@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/exp/slices"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
-	"namespacelabs.dev/foundation/internal/stringscol"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -88,7 +88,7 @@ func (d *D) AddDep(pkg, goos string) {
 	if isBoringPackage(pkg) {
 		return
 	}
-	if !stringscol.SliceContains(d.Deps, pkg) {
+	if !slices.Contains(d.Deps, pkg) {
 		d.Deps = append(d.Deps, pkg)
 	}
 }

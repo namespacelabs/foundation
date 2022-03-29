@@ -18,13 +18,13 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/fsnotify/fsnotify"
 	"github.com/karrick/godirwalk"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fntypes"
-	"namespacelabs.dev/foundation/internal/stringscol"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -122,7 +122,7 @@ func snapshotContents(modulePath, rel string) (*memfs.FS, error) {
 				return godirwalk.SkipThis
 			} else if name[0] == '.' { // Skip hidden directories.
 				return godirwalk.SkipThis
-			} else if stringscol.SliceContains(DirsToAvoid, name) {
+			} else if slices.Contains(DirsToAvoid, name) {
 				return godirwalk.SkipThis
 			}
 
@@ -290,7 +290,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 			return err
 		}
 
-		if (path != "." && path[0] == '.') || stringscol.SliceContains(DirsToAvoid, d.Name()) {
+		if (path != "." && path[0] == '.') || slices.Contains(DirsToAvoid, d.Name()) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}

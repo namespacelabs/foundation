@@ -8,10 +8,10 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/executor"
-	"namespacelabs.dev/foundation/internal/stringscol"
 	"namespacelabs.dev/foundation/workspace/cache"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -43,13 +43,13 @@ func newPruneCmd() *cobra.Command {
 
 			eg, wait := executor.New(ctx)
 
-			if stringscol.SliceContains(what, "foundation") {
+			if slices.Contains(what, "foundation") {
 				eg.Go(func(ctx context.Context) error {
 					return cache.Prune(ctx)
 				})
 			}
 
-			if stringscol.SliceContains(what, "buildkit") {
+			if slices.Contains(what, "buildkit") {
 				eg.Go(func(ctx context.Context) error {
 					// XXX make platform configurable.
 					return buildkit.Prune(ctx, root.DevHost, buildkit.HostPlatform())

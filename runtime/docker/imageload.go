@@ -13,10 +13,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/ctxio"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/stringscol"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -42,7 +42,7 @@ func WriteImage(ctx context.Context, img v1.Image, ref name.Tag, ensureTag bool)
 				return nil
 			}
 
-			if stringscol.SliceContains(inspect.RepoTags, ref.String()) {
+			if slices.Contains(inspect.RepoTags, ref.String()) {
 				// Nothing to do.
 				return nil
 			}

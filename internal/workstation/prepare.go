@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/docker/docker/client"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
 	corev1 "k8s.io/api/core/v1"
 	"namespacelabs.dev/foundation/build/buildkit"
@@ -17,7 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
-	"namespacelabs.dev/foundation/internal/stringscol"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
@@ -64,7 +64,7 @@ func Prepare(ctx context.Context, root *workspace.Root, env ops.Environment, pre
 		var without []*anypb.Any
 
 		for _, cfg := range u.Configuration {
-			if !stringscol.SliceContains(deprecatedConfigs, cfg.TypeUrl) {
+			if !slices.Contains(deprecatedConfigs, cfg.TypeUrl) {
 				without = append(without, cfg)
 			} else {
 				pr.UpdateCount++

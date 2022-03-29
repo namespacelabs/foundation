@@ -13,12 +13,12 @@ import (
 
 	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
-	"namespacelabs.dev/foundation/internal/stringscol"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -76,7 +76,7 @@ func sdkList(sdks []string, goVersion string) []sdk {
 
 	var ret []sdk
 	for _, sdk := range available {
-		if stringscol.SliceContains(sdks, sdk.name) {
+		if slices.Contains(sdks, sdk.name) {
 			ret = append(ret, sdk)
 		}
 	}

@@ -20,13 +20,13 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
-	"namespacelabs.dev/foundation/internal/stringscol"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/std/dev/controller/admin"
 )
@@ -151,7 +151,7 @@ func (s sinkServer) Push(ctx context.Context, req *wsremote.PushRequest) (*wsrem
 				filePath := filepath.Join(basePath, ev.Path)
 
 				for k, hook := range backend.OnChange {
-					if stringscol.SliceContains(hook.Path, ev.Path) {
+					if slices.Contains(hook.Path, ev.Path) {
 						hookMap[k] = struct{}{} // Mark this hook for execution.
 					}
 				}

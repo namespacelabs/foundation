@@ -21,7 +21,6 @@ import (
 	"github.com/morikuni/aec"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/logoutput"
-	"namespacelabs.dev/foundation/internal/stringscol"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
 )
 
@@ -414,12 +413,22 @@ func (c *ConsoleSink) recomputeTree() {
 	// If a line item has at least one anchor, unattached from it's original root.
 	for anchorID := range anchors {
 		anchorParent := parentOf(root, nodes, nodes[anchorID].item.data.parentID)
-		anchorParent.children = stringscol.Without(anchorParent.children, anchorID)
+		anchorParent.children = without(anchorParent.children, anchorID)
 	}
 
 	c.root = root
 	c.nodes = nodes
 	sortNodes(nodes, root)
+}
+
+func without(strs []string, str string) []string {
+	var newStrs []string
+	for _, s := range strs {
+		if s != str {
+			newStrs = append(newStrs, s)
+		}
+	}
+	return newStrs
 }
 
 func sortNodes(nodes map[string]*node, n *node) {

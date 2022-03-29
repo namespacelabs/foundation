@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/stringscol"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -65,7 +65,7 @@ func computeServiceEndpoint(server *schema.Server, n *schema.Node, t schema.Endp
 		Port:          serverPort,
 	}
 
-	if stringscol.SliceContains(reservedServiceNames, endpoint.ServiceName) {
+	if slices.Contains(reservedServiceNames, endpoint.ServiceName) {
 		return nil, fnerrors.InternalError("%s: %q is a reserved service name", n.PackageName, endpoint.ServiceName)
 	}
 

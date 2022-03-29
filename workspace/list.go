@@ -10,9 +10,9 @@ import (
 	"io/fs"
 	"path/filepath"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/stringscol"
 	"namespacelabs.dev/foundation/internal/wscontents"
 )
 
@@ -37,7 +37,7 @@ func ListSchemas(ctx context.Context, root *Root) (SchemaList, error) {
 		}
 
 		if d.IsDir() {
-			if (path != "." && path[0] == '.') || stringscol.SliceContains(wscontents.DirsToAvoid, path) {
+			if (path != "." && path[0] == '.') || slices.Contains(wscontents.DirsToAvoid, path) {
 				return fs.SkipDir
 			}
 			return nil

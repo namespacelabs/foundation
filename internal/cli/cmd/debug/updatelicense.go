@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/stringscol"
 )
 
 func newUpdateLicenseCmd() *cobra.Command {
@@ -39,7 +39,7 @@ func newUpdateLicenseCmd() *cobra.Command {
 					return nil
 				}
 
-				if stringscol.SliceContains([]string{".go", ".js", ".ts", ".jsx", ".tsx", ".proto", ".hcl", ".yaml", ".yml", ".css"}, filepath.Ext(path)) {
+				if slices.Contains([]string{".go", ".js", ".ts", ".jsx", ".tsx", ".proto", ".hcl", ".yaml", ".yml", ".css"}, filepath.Ext(path)) {
 					paths = append(paths, path)
 				}
 				return nil
