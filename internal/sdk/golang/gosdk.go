@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/console"
@@ -60,6 +61,18 @@ func builtin() *versions {
 		}
 	})
 	return &v
+}
+
+func MatchSDK(version string, platform specs.Platform) (compute.Computable[LocalSDK], error) {
+	v := builtin()
+
+	for ver := range v.Versions {
+		if semver.Compare("v"+ver, "v"+version) > 0 {
+			version = ver
+		}
+	}
+
+	return SDK(version, platform)
 }
 
 func SDK(version string, platform specs.Platform) (compute.Computable[LocalSDK], error) {

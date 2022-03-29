@@ -32,7 +32,7 @@ func Build(ctx context.Context, env ops.Environment, bin GoBinary, conf build.Co
 }
 
 func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.Workspace, bin GoBinary, target specs.Platform) (compute.Computable[oci.Image], error) {
-	sdk, err := golang.SDK(bin.GoVersion, golang.HostPlatform())
+	sdk, err := golang.MatchSDK(bin.GoVersion, golang.HostPlatform())
 	if err != nil {
 		return nil, err
 	}

@@ -113,7 +113,7 @@ func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *sche
 		return fnerrors.Wrap(loc, err)
 	}
 
-	sdk, err := golang.SDK(ext.GoVersion, golang.HostPlatform())
+	sdk, err := golang.MatchSDK(ext.GoVersion, golang.HostPlatform())
 	if err != nil {
 		return err
 	}
