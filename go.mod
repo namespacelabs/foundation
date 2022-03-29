@@ -44,7 +44,7 @@ require (
 	github.com/protocolbuffers/txtpbfmt v0.0.0-20201118171849-f6a6b3f636fc
 	github.com/rs/zerolog v1.26.1
 	github.com/soheilhy/cmux v0.1.5
-	github.com/spf13/cobra v1.3.0
+	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.1
 	github.com/tailscale/depaware v0.0.0-20210622194025-720c4b409502
@@ -53,7 +53,8 @@ require (
 	go.opentelemetry.io/otel/exporters/jaeger v1.4.1
 	go.opentelemetry.io/otel/sdk v1.4.1
 	go.opentelemetry.io/otel/trace v1.4.1
-	golang.org/x/mod v0.5.1
+	golang.org/x/exp v0.0.0-20220328175248-053ad81199eb
+	golang.org/x/mod v0.6.0-dev.0.20211013180041-c96bc1413d57
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5
