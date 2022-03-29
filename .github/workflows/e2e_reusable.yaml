@@ -21,7 +21,7 @@ jobs:
         with:
           go-version: 1.18
       - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cache/go-build
@@ -67,7 +67,7 @@ jobs:
         uses: crazy-max/ghaction-github-runtime@v1
 
       - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cache/go-build
@@ -118,7 +118,7 @@ jobs:
         uses: crazy-max/ghaction-github-runtime@v1
 
       - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cache/go-build
