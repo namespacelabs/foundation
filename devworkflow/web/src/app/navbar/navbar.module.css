@@ -1,0 +1,129 @@
+.fixedNavbar {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 72px;
+	border-bottom: 1px solid rgb(210, 210, 210);
+
+	display: flex;
+	flex-direction: row;
+
+	background-color: white;
+}
+
+.navbarMain {
+	flex: 1;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	padding: 0 16px;
+}
+
+.selector {
+	flex: 0 250px;
+	border-right: 1px solid rgb(210, 210, 210);
+
+	display: flex;
+	padding: 0 16px;
+
+	background-color: white;
+	cursor: pointer;
+}
+
+.selector.active {
+	background-color: #f0f3fa;
+}
+
+.selector:hover {
+	background-color: #d1daf0;
+}
+
+.selector > div {
+	display: flex;
+	align-items: center;
+}
+
+.selector > div:first-child {
+	flex: 1;
+}
+
+.logo {
+	padding: 15px;
+	flex: 0 250px;
+
+	text-decoration: none;
+	color: black;
+
+	display: flex;
+	flex-direction: row;
+	gap: 5px;
+	align-items: center;
+	line-height: 28px;
+	vertical-align: middle;
+}
+
+.namespaceLabsImg {
+	width: 28px;
+	height: 28px;
+	border-radius: 4px;
+}
+
+.namespaceLabs {
+	font-size: 10px;
+	font-weight: 600;
+}
+
+.foundation {
+	font-size: 20px;
+	font-weight: 600;
+}
+
+.attribution {
+	white-space: nowrap;
+	display: flex;
+	gap: 5px;
+}
+
+.namespaceLabs {
+	color: #1c32ff;
+	display: flex;
+	gap: 5px;
+}
+
+.namespaceLabsText {
+	display: flex;
+	flex-direction: column;
+	line-height: 9px;
+	justify-content: center;
+}
+
+.searchBox {
+	background-color: rgb(240, 240, 240);
+	padding: 0 10px;
+	border-radius: 8px;
+
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+
+	flex: 0 1 550px;
+}
+
+.searchBox input {
+	font-size: 14px;
+	height: 40px;
+	width: 100%;
+	outline: none;
+	border: 0;
+	background-color: transparent;
+}
+
+.searchHint {
+	font-size: 14px;
+	color: rgba(0, 0, 0, 0.5);
+	padding: 3px 8px;
+	background-color: rgb(220, 220, 220);
+	border-radius: 8px;
+	height: 28px;
+}

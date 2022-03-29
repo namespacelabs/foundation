@@ -1,0 +1,22 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.universe.db.postgres;
+
+option go_package = "namespacelabs.dev/foundation/universe/db/postgres";
+
+import "std/types/resource.proto";
+
+message Endpoint {
+    string address = 1;
+    uint32 port    = 2;
+}
+
+message Database {
+    string                        name        = 1;
+    foundation.std.types.Resource schema_file = 2;
+    Endpoint                      hosted_at   = 3;
+}

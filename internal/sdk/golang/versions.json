@@ -1,0 +1,28 @@
+{
+  "versions": {
+    "1.18": "1.18",
+    "1.17": "1.17.7",
+    "1.16": "1.16.14"
+  },
+
+  "artifacts": {
+    "1.18": {
+      "linux/amd64": "e85278e98f57cdb150fe8409e6e5df5343ecb13cebf03a5d5ff12bd55a80264f",
+      "linux/arm64": "7ac7b396a691e588c5fb57687759e6c4db84a2a3bbebb0765f4b38e5b1c5b00e",
+      "darwin/amd64": "70bb4a066997535e346c8bfa3e0dfe250d61100b17ccc5676274642447834969",
+      "darwin/arm64": "9cab6123af9ffade905525d79fc9ee76651e716c85f1f215872b5f2976782480"
+    },
+    "1.17.7": {
+      "linux/amd64": "02b111284bedbfa35a7e5b74a06082d18632eff824fd144312f6063943d49259",
+      "linux/arm64": "a5aa1ed17d45ee1d58b4a4099b12f8942acbd1dd09b2e9a6abb1c4898043c5f5",
+      "darwin/amd64": "7c3d9cc70ee592515d92a44385c0cba5503fd0a9950f78d76a4587916c67a84d",
+      "darwin/arm64": "e141bd85577b875cc771cfcc18604989c861e93bbef377ba6c80d29e18f9a338"
+    },
+    "1.16.14": {
+      "linux/amd64": "f4f5f02eb6809ac5bf19b5ad517b23504fd5fc036f6487651968ad36aa7a20e0",
+      "linux/arm64": "5e59056e36704acb25809bcdb27191f27593cb7aba4d716b523008135a1e764a",
+      "darwin/amd64": "671fc0673394b16747cc9fd4fe7f33de6a62610fd8c13b2cfad190a7280ec7ab",
+      "darwin/arm64": "c97f02a5c93dcda5f0e25bc49a31761b31e9cb30de1e30f94033f5ddb9138133"
+    }
+  }
+}

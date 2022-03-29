@@ -1,0 +1,23 @@
+{
+    "name": "fn dev",
+    "build": {
+        "dockerfile": "Dockerfile",
+    },
+    "mounts": [
+        "source=fn-dev-nix,target=/nix,type=volume",
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+    ],
+    "containerEnv": {
+        "PROJECT_DIR": "${containerWorkspaceFolder}"
+    },
+    "userEnvProbe": "loginShell",
+    "extensions": [
+        "bbenoist.nix",
+        "golang.go",
+        "esbenp.prettier-vscode",
+        "zxh404.vscode-proto3",
+        "arrterian.nix-env-selector"
+    ],
+    "forwardPorts": [],
+    "remoteUser": "vscode",
+}

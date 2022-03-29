@@ -1,0 +1,16 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.internal.artifacts.oci;
+
+option go_package = "namespacelabs.dev/foundation/internal/artifacts/oci";
+
+message RawDescriptor {
+    string repository   = 1;
+    string media_type   = 2;
+    bytes  raw_manifest = 3;
+    bytes  raw_config   = 4;  // Only available when the descriptor points at an image.
+}

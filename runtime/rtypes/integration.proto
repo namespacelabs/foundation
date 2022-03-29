@@ -1,0 +1,39 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.runtime.rtypes;
+
+option go_package = "namespacelabs.dev/foundation/runtime/rtypes";
+
+import "google/protobuf/any.proto";
+import "schema/definition.proto";
+
+// Map a local directory to a container. Used for development purposes.
+message LocalMapping {
+    // Relative to workspace root.
+    string local_path = 1;
+    // Absolute path within the host (overrides local_path).
+    string host_path = 2;
+    // Must be an absolute path.
+    string container_path = 3;
+}
+
+message Arg {
+    string name  = 1;
+    string value = 2;
+}
+
+message Port {
+    string name           = 1;
+    int32  container_port = 2;
+    int32  host_port      = 3;
+}
+
+message ProvisionProps {
+    repeated LocalMapping local_mapping          = 1;
+    repeated google.protobuf.Any provision_input = 2;
+    repeated schema.Definition definition        = 3;
+}

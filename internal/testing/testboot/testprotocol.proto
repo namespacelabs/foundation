@@ -1,0 +1,16 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.internal.testing.testboot;
+
+option go_package = "namespacelabs.dev/foundation/internal/testing/testboot";
+
+import "schema/networking.proto";
+
+message TestRequest {
+    repeated .foundation.schema.Endpoint         endpoint          = 1;
+    repeated .foundation.schema.InternalEndpoint internal_endpoint = 2;
+}

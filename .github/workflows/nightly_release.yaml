@@ -1,0 +1,50 @@
+name: Nightly Release
+
+on:
+  schedule:
+    # On weekdays at 2am UTC
+    - cron: "0 2 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  packages: read
+  # For updating the "nightly" tag in "action-automatic-releases"
+  contents: write
+  # For changelog in "action-automatic-releases"
+  pull-requests: read
+
+jobs:
+  e2e-test-workflow:
+    uses: ./.github/workflows/e2e_reusable.yaml
+
+  release:
+    runs-on: ubuntu-20.04
+    needs: e2e-test-workflow
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --rm-dist -f .goreleaser.nightly.yaml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: "v0.0.0"
+
+      - name: Release to "nightly"
+        uses: marvinpinto/action-automatic-releases@v1.2.1
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "nightly"
+          prerelease: false
+          title: "Nightly Build"
+          files: dist/*

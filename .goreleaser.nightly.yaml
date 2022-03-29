@@ -1,0 +1,21 @@
+project_name: fn
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    main: ./cmd/fn
+    binary: fn
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+release:
+  github:
+    owner: namespacelabs
+    name: foundation
+
+checksum:
+  name_template: "checksums.txt"

@@ -1,0 +1,56 @@
+project_name: fn
+
+builds:
+  - id: linux
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/fn
+    binary: fn
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+  - id: macos
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/fn
+    binary: fn
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+signs:
+  - signature: "${artifact}_macos.dmg"
+    ids:
+      - macos
+    cmd: gon
+    args:
+      - cmd/fn/gon.hcl
+    artifacts: all
+
+release:
+  github:
+    owner: namespacelabs
+    name: foundation
+  extra_files:
+    - glob: ./dist/fn_macos.dmg
+    - glob: ./dist/fn_macos.zip
+
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ incpatch .Version }}-snapshot"
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - nochangelog
+      - Merge pull request
+      - Merge branch

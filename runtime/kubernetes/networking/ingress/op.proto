@@ -1,0 +1,15 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.runtime.kubernetes.networking.ingress;
+
+option go_package = "namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress";
+
+message OpMapAddress {
+    string fdqn = 1;
+    string ingress_ns = 2;
+    string ingress_name = 3;
+}

@@ -1,0 +1,23 @@
+{
+  "images": {
+    "docker.io/library/golang:1.17-alpine": "519c827ec22e5cf7417c9ff063ec840a446cdd30681700a16cf42eb43823e27c",
+    "bufbuild/buf": "e922aa1a727c5a6968d716a26eee57d43629670c1ac2ca2c44363cd4cec05eb8",
+    "docker.io/library/alpine:3.14": "e1c082e3d3c45cccac829840a25941e679c25d438cc8412c2fa221cf1a824e6a",
+    "docker.io/fullstorydev/grpcurl:v1.8.5": "69afacd15afc7533c7c926b62585efbeb03e2889ce76f346da12288baff99a91",
+    "docker.io/library/node:16.13-alpine": "2f50f4a428f8b5280817c9d4d896dbee03f072e93f4e0c70b90cc84bd1fcfe0d",
+    "gcr.io/distroless/static:nonroot": "80c956fb0836a17a565c43a4026c9c80b2013c83bea09f74fa4da195a59b7a99",
+    "nixos/nix:2.6.0": "f0c68f870c655d8d96658ca762a0704a30704de22d16b4956e762a2ddfbccb09"
+  },
+  "defaults": {
+    "node": "docker.io/library/node:16.13-alpine",
+    "golang": "docker.io/library/golang:1.17-alpine",
+    "alpine": "docker.io/library/alpine:3.14",
+    "fullstorydev/grpcurl": "docker.io/fullstorydev/grpcurl:v1.8.5"
+  },
+  "serverBases": {
+    "distroless": {
+      "base": "gcr.io/distroless/static:nonroot",
+      "nonRootUserId": 65532
+    }
+  }
+}

@@ -1,0 +1,68 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+package opaque
+
+import (
+	"context"
+
+	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/languages"
+	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
+)
+
+func Register() {
+	languages.Register(schema.Node_OPAQUE, impl{})
+	runtime.RegisterSupport(schema.Node_OPAQUE, impl{})
+}
+
+type impl struct {
+	languages.MaybePrepare
+	languages.MaybeGenerate
+	languages.MaybeTidy
+	languages.NoDev
+}
+
+func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server provision.Server, isFocus bool) (build.Spec, error) {
+	image := server.Proto().GetBinary().GetImage()
+	if image == "" {
+		return nil, fnerrors.UserError(server.Location, "binary.image is not set")
+	}
+
+	imgid, err := oci.ParseImageID(image)
+	if err != nil {
+		return nil, err
+	}
+
+	return build.PrebuiltPlan(imgid, false), nil
+}
+
+func (impl) ParseNode(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
+	return nil
+}
+
+func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
+	return nil
+}
+
+func (impl) PostParseServer(ctx context.Context, _ *workspace.Sealed) error {
+	return nil
+}
+
+func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *workspace.CueService) error {
+	return nil
+}
+
+func (impl) FillEndpoint(*schema.Node, *schema.Endpoint) error {
+	return nil
+}
+
+func (impl) InternalEndpoints(*schema.Environment, *schema.Server, []*schema.Endpoint_Port) ([]*schema.InternalEndpoint, error) {
+	return nil, nil
+}

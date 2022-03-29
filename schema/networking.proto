@@ -1,0 +1,109 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+
+message Endpoint {
+    enum Type {
+        INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
+        PRIVATE             = 1;
+        INTERNET_FACING     = 2;
+    }
+
+    Type type = 1;
+    reserved 2;
+
+    // The tuple (endpoint_owner, service_name) uniquely identifies an endpoint.
+    string service_name   = 3;
+    string endpoint_owner = 4;  // Package name.
+
+    Port                     port             = 5;
+    string                   allocated_name   = 6;
+    string                   server_owner     = 7;  // Package name.
+    repeated ServiceMetadata service_metadata = 8;
+    repeated IngressHttpPath http_path        = 9;  // Only valid if type=INTERNET_FACING.
+
+    message Port {
+        string name           = 1;
+        int32  container_port = 2;
+    }
+
+    message IngressHttpPath {
+        string path    = 1;
+        string kind    = 2;
+        string owner   = 3;  // Package name.
+        string service = 4;
+        Port   port    = 5;
+    }
+}
+
+message InternalEndpoint {
+    string                   server_owner     = 1;  // Package name.
+    Endpoint.Port            port             = 2;
+    repeated ServiceMetadata service_metadata = 3;
+}
+
+message IngressFragment {
+    string                   name      = 1;
+    string                   owner     = 2;  // Package name.
+    Domain                   domain    = 3;
+    Endpoint                 endpoint  = 6;
+    repeated IngressHttpPath http_path = 4;
+
+    // Accepted: HttpCors.
+    repeated google.protobuf.Any extension = 5;
+
+    message IngressHttpPath {
+        string        path    = 1;
+        string        kind    = 2;
+        string        owner   = 3;  // Package name.
+        string        service = 4;
+        Endpoint.Port port    = 5;
+    }
+}
+
+message HttpCors {
+    bool            enabled        = 1;
+    repeated string allowed_origin = 2;
+}
+
+message Domain {
+    string      fqdn        = 1;
+    Certificate certificate = 2;
+    ManagedType managed     = 3;
+
+    message Certificate {
+        bytes private_key        = 1;
+        bytes certificate_bundle = 2;
+    }
+
+    enum ManagedType {
+        MANAGED_UNKNOWN            = 0;
+        LOCAL_MANAGED              = 1;
+        CLOUD_MANAGED              = 2;
+        USER_SPECIFIED             = 3;
+        USER_SPECIFIED_TLS_MANAGED = 4;
+    }
+}
+
+message ServiceMetadata {
+    string              kind     = 1;
+    string              protocol = 2;
+    google.protobuf.Any details  = 3;
+}
+
+message HttpUrlMap {
+    repeated Entry entry = 1;
+
+    message Entry {
+        string path_prefix = 1;
+        string kind        = 2;
+    }
+}

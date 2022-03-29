@@ -1,0 +1,33 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.workspace.tasks.protocol;
+
+option go_package = "namespacelabs.dev/foundation/workspace/tasks/protocol";
+
+message StoredTask {
+    string id = 1;
+    string name = 2;
+    string human_readable_label = 3;
+    int64 created_ts = 4; // Unix time.
+    int64 completed_ts = 5; // Unix time.
+    string error_message = 6; // When completed_ts is set.
+    repeated string scope = 7;
+    repeated Value argument = 8;
+    repeated Value result = 9;
+    repeated Output output = 10;
+
+    message Value {
+        string key = 1;
+        string json_value = 2;
+    }
+
+    message Output {
+        string id = 1;
+        string name = 2;
+        string content_type = 3;
+    }
+}
