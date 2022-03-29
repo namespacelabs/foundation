@@ -34,6 +34,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/logoutput"
+	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/languages/golang"
 	"namespacelabs.dev/foundation/languages/nodejs"
 	"namespacelabs.dev/foundation/languages/opaque"
@@ -165,6 +166,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to false, fn does not upload any usage data.")
 	rootCmd.PersistentFlags().BoolVar(&buildkit.SkipExpectedMaxWorkspaceSizeCheck, "skip_buildkit_workspace_size_check", buildkit.SkipExpectedMaxWorkspaceSizeCheck,
 		"If set to true, skips our enforcement of the maximum workspace size we're willing to push to buildkit.")
+	rootCmd.PersistentFlags().BoolVar(&k3d.IgnoreZfsCheck, "ignore_zfs_check", k3d.IgnoreZfsCheck,
+		"If set to true, ignores checkign whether the base system is ZFS based.")
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
@@ -175,6 +178,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"send_usage_data",
 		"telemetry_error_logging",
 		"skip_buildkit_workspace_size_check",
+		"ignore_zfs_check",
 	} {
 		rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/disk"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fntypes"
 	"namespacelabs.dev/foundation/internal/localexec"
@@ -29,6 +30,8 @@ import (
 )
 
 const version = "5.2.2"
+
+var IgnoreZfsCheck = false
 
 var Pins = map[string]artifacts.Reference{
 	"linux/amd64": {
@@ -82,6 +85,14 @@ func SDK(ctx context.Context) (compute.Computable[K3D], error) {
 	ref, ok := Pins[key]
 	if !ok {
 		return nil, fnerrors.UserError(nil, "platform not supported: %s", key)
+	}
+
+	if !IgnoreZfsCheck {
+		if fstype, err := disk.FSType("/"); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "failed to retrieve filesystem type, can't check for ZFS: %v\n", err)
+		} else if fstype == "zfs" {
+			return nil, fnerrors.InternalError("currently a base system of ZFS is not supported, as it is not compatible with k3d (see https://github.com/namespacelabs/foundation/issues/121). You can ignore this check by retrying with --ignore_zfs_check")
+		}
 	}
 
 	cacheDir, err := dirs.SDKCache("k3d")
