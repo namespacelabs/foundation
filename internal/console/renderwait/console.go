@@ -68,12 +68,12 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 					Scope:    ev.Scope.String(),
 					Ready:    ev.Ready == ops.Ready,
 					Start:    time.Now(),
-					Status:   ev.Status,
 				}
 			}
 
 			m[ev.ResourceID].AlreadyExisted = ev.AlreadyExisted
 			m[ev.ResourceID].Ready = ev.Ready == ops.Ready
+			m[ev.ResourceID].Status = ev.Status
 			if m[ev.ResourceID].Ready {
 				m[ev.ResourceID].End = time.Now()
 			}

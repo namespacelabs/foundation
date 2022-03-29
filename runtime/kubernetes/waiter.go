@@ -6,16 +6,17 @@ package kubernetes
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
-	"github.com/rs/zerolog"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -33,6 +34,54 @@ type waitOn struct {
 	scope    schema.PackageName
 
 	previousGen, expectedGen int64
+}
+
+func (w waitOn) getReplicaSetName(ctx context.Context, cli *k8s.Clientset) (string, error) {
+	replicasets, err := cli.AppsV1().ReplicaSets(w.apply.Namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	for _, replicaset := range replicasets.Items {
+		if replicaset.ObjectMeta.Annotations["deployment.kubernetes.io/revision"] != fmt.Sprintf("%d", w.expectedGen) {
+			continue
+		}
+		for _, owner := range replicaset.ObjectMeta.OwnerReferences {
+			if owner.Name == w.apply.Name {
+				return replicaset.ObjectMeta.Name, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no matching replica set found")
+}
+
+func (w waitOn) podWaitingStatus(ctx context.Context, cli *k8s.Clientset, replicaset string) (string, error) {
+	pods, err := cli.CoreV1().Pods(w.apply.Namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	var reasons uniquestrings.List
+	for _, pod := range pods.Items {
+		owned := false
+		for _, owner := range pod.ObjectMeta.OwnerReferences {
+			if owner.Name == replicaset {
+				owned = true
+			}
+		}
+		if !owned {
+			continue
+		}
+
+		for _, s := range pod.Status.ContainerStatuses {
+			if s.State.Waiting != nil && s.State.Waiting.Reason != "" {
+				reasons.Add(s.State.Waiting.Reason)
+			}
+		}
+	}
+
+	return strings.Join(reasons.Strings(), ","), nil
 }
 
 func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
@@ -91,9 +140,6 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 					replicas = res.Status.Replicas
 					readyReplicas = res.Status.ReadyReplicas
 					ev.ImplMetadata = res.Status
-					if serialized, err := json.MarshalIndent(res, "", "  "); err == nil {
-						zerolog.Ctx(ctx).Info().Msgf("%s", serialized)
-					}
 
 				case "statefulsets":
 					res, err := cli.AppsV1().StatefulSets(w.apply.Namespace).Get(c, w.apply.Name, metav1.GetOptions{})
@@ -108,6 +154,12 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 
 				default:
 					return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.resource)
+				}
+
+				if rs, err := w.getReplicaSetName(c, cli); err == nil {
+					if status, err := w.podWaitingStatus(c, cli, rs); err == nil {
+						ev.Status = status
+					}
 				}
 
 				ev.Ready = ops.NotReady
