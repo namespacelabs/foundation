@@ -7,6 +7,7 @@ package debug
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -17,7 +18,12 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 )
 
+var checkExtensions = []string{".go", ".js", ".ts", ".jsx", ".tsx", ".proto", ".hcl", ".yaml", ".yml", ".css"}
+var ignoreExtensions = []string{".pb.go", ".fn.go", ".pb.gw.go"}
+
 func newUpdateLicenseCmd() *cobra.Command {
+	var check bool
+
 	cmd := &cobra.Command{
 		Use: "update-license",
 
@@ -31,15 +37,32 @@ func newUpdateLicenseCmd() *cobra.Command {
 					return err
 				}
 
-				if d.Name() == "node_modules" && d.IsDir() {
-					return fs.SkipDir
-				}
-
-				if d.IsDir() {
+				if d.Name() == "." {
 					return nil
 				}
 
-				if slices.Contains([]string{".go", ".js", ".ts", ".jsx", ".tsx", ".proto", ".hcl", ".yaml", ".yml", ".css"}, filepath.Ext(path)) {
+				if len(d.Name()) > 0 && d.Name()[0] == '.' {
+					if d.IsDir() {
+						return fs.SkipDir
+					}
+					return nil
+				}
+
+				if d.IsDir() {
+					if d.Name() == "node_modules" {
+						return fs.SkipDir
+					}
+
+					return nil
+				}
+
+				for _, ignore := range ignoreExtensions {
+					if strings.HasSuffix(path, ignore) {
+						return nil
+					}
+				}
+
+				if slices.Contains(checkExtensions, filepath.Ext(path)) {
 					paths = append(paths, path)
 				}
 				return nil
@@ -63,6 +86,8 @@ func newUpdateLicenseCmd() *cobra.Command {
 
 			const target = earlyAccessLicense
 
+			var wouldWrite []string
+
 		file:
 			for _, path := range paths {
 				contents, err := fs.ReadFile(fsys, path)
@@ -76,7 +101,7 @@ func newUpdateLicenseCmd() *cobra.Command {
 							continue file
 						}
 
-						updated := bytes.TrimSpace(bytes.TrimPrefix(contents, h.prefix))
+						updated := append(bytes.TrimSpace(bytes.TrimPrefix(contents, h.prefix)), byte('\n'))
 						if err := os.WriteFile(path, updated, 0644); err != nil {
 							return err
 						}
@@ -86,16 +111,26 @@ func newUpdateLicenseCmd() *cobra.Command {
 
 				p := extensions[filepath.Ext(path)]
 				if p != nil {
-					gen := p(target)
-					if err := os.WriteFile(path, append(gen, contents...), 0644); err != nil {
-						return err
+					if check {
+						wouldWrite = append(wouldWrite, path)
+					} else {
+						gen := p(target)
+						if err := os.WriteFile(path, append(gen, contents...), 0644); err != nil {
+							return err
+						}
 					}
 				}
+			}
+
+			if len(wouldWrite) > 0 {
+				return fmt.Errorf("the following files need their license header updated:\n%s", strings.Join(wouldWrite, "\n"))
 			}
 
 			return nil
 		}),
 	}
+
+	cmd.Flags().BoolVar(&check, "check", check, "If set to true, check that all files have the appropriate header.")
 
 	return cmd
 }
