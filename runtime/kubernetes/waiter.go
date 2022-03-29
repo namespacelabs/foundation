@@ -6,8 +6,10 @@ package kubernetes
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
+	"github.com/rs/zerolog"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -89,6 +91,9 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 					replicas = res.Status.Replicas
 					readyReplicas = res.Status.ReadyReplicas
 					ev.ImplMetadata = res.Status
+					if serialized, err := json.MarshalIndent(res, "", "  "); err == nil {
+						zerolog.Ctx(ctx).Info().Msgf("%s", serialized)
+					}
 
 				case "statefulsets":
 					res, err := cli.AppsV1().StatefulSets(w.apply.Namespace).Get(c, w.apply.Name, metav1.GetOptions{})
