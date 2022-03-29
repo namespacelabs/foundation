@@ -1,0 +1,91 @@
+body.terminal #app {
+  height: 100%;
+  display: flex;
+}
+
+body {
+  overflow: hidden;
+}
+
+body,
+input {
+  font-family: "Inter", sans-serif;
+}
+
+#content {
+  height: calc(100vh - 72px);
+  margin-top: 72px;
+  margin-left: 250px;
+  display: flex;
+  flex-direction: column;
+}
+
+#content.inlineSidebar {
+  margin-left: 0;
+}
+
+#content.hasFooter {
+  height: calc(100vh - (72px + 40px));
+}
+
+.fiddle {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  overflow: hidden;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  /* max-width: 100%; */
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+}
+
+#app {
+  isolation: isolate;
+}

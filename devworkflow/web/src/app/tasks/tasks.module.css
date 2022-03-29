@@ -1,0 +1,65 @@
+.taskGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 3fr 1fr;
+  font-size: 14px;
+}
+
+.taskGrid > div {
+  border-bottom: 1px solid rgb(210, 210, 210);
+  padding: 5px 10px;
+}
+
+.taskStart,
+.taskEnd {
+  color: darkgrey;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.taskEnd {
+  text-align: right;
+}
+
+.taskWhat {
+  font-weight: bold;
+  flex: 0 120px;
+}
+
+.taskArgs a {
+  display: block;
+}
+
+.serverLink:hover {
+  text-decoration: underline;
+}
+
+.backButton {
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  padding: 0 10px 0 5px;
+  cursor: pointer;
+}
+
+.backButton div {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.backButton div > * {
+  display: block;
+  font-weight: 600;
+}
+
+.backButton span {
+  line-height: 24px;
+}
+
+.backButton svg {
+  width: 12px;
+  height: 12px;
+  margin-right: 5px;
+}

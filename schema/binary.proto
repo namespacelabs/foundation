@@ -1,0 +1,28 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+message Binary {
+    // The package name (computed).
+    string package_name = 1;
+
+    string name       = 2;
+    string repository = 3;
+    string digest     = 4;
+
+    From from = 5;  // Build instructions.
+
+    message From {
+        string go_package    = 1;  // Use go binary builder.
+        string dockerfile    = 2;  // Use Dockerfile builder.
+        string web_build     = 3;  // Use Web build (temporary).
+        string llb_go_binary = 4;  // Build a go binary which itself produces LLB.
+        string nix_flake     = 5;  // Build a docker image from a nix flake.
+    }
+}

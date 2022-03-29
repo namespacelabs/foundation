@@ -1,0 +1,15 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.languages.nodejs;
+
+option go_package = "namespacelabs.dev/foundation/languages/nodejs";
+
+import "schema/schema.proto";
+
+message OpGenServer {
+    foundation.schema.Server server = 1;
+}

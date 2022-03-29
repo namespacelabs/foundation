@@ -1,0 +1,15 @@
+{
+  "buf": {
+    "go": "docker.io/library/golang:1.17-alpine"
+  },
+  "goPackages": {
+    "github.com/bufbuild/buf/cmd/buf": "8b26061eeebc26fa9b68583d1a4f14315cdfa69b",
+    "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway": "fa67768a440ff01c662ed62e92a157ae2621d158",
+    "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2": "fa67768a440ff01c662ed62e92a157ae2621d158",
+    "google.golang.org/protobuf/cmd/protoc-gen-go": "b92717ecb630d4a4824b372bf98c729d87311a4d",
+    "google.golang.org/grpc/cmd/protoc-gen-go-grpc": "b4c5e24c7373b22c6c38d68379c39ecdc616a968"
+  },
+  "protoc": "3.15.7-r1",
+  "yarn": "1.22.10-r0",
+  "ts-protoc-gen": "0.15.0"
+}

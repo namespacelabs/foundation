@@ -1,0 +1,26 @@
+# throttle_configuration {
+#     labels {
+#         key: "action"
+#         value: "go.build.binary"
+#     }
+#     capacity: 2
+#     count_per_label: "module"
+# }
+
+# Don't issue more than 5 concurrent docker invocations.
+throttle_configuration {
+    labels {
+        key: "action"
+        value: "container.execute"
+    }
+    capacity: 5
+}
+
+# Don't issue more than 3 Go concurrent builds.
+throttle_configuration {
+    labels {
+        key: "action"
+        value: "go.build.binary"
+    }
+    capacity: 3
+}

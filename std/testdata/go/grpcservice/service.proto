@@ -1,0 +1,21 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package std.testdata.go.grpcservice;
+
+option go_package = "namespacelabs.dev/foundation/std/testdata/go/grpcservice";
+
+message PostRequest {
+    string input = 1;
+}
+
+message PostResponse {
+    string response = 1;
+}
+
+service PostService {
+    rpc Post(PostRequest) returns (PostResponse);
+}

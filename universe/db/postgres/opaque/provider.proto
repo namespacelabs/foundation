@@ -1,0 +1,12 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.universe.db.postgres.opaque;
+
+option go_package = "namespacelabs.dev/foundation/universe/db/postgres/opaque";
+
+// Export Database type in current package for codegen compatibility
+import public "universe/db/postgres/database.proto";

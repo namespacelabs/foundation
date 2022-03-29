@@ -1,0 +1,74 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+package fnfs
+
+import (
+	"context"
+	"io"
+	"io/fs"
+	"path/filepath"
+)
+
+func CopyTo(ctx context.Context, dst WriteFS, dstBasePath string, src fs.FS) error {
+	return VisitFiles(ctx, src, func(path string, contents []byte, dirent fs.DirEntry) error {
+		st, err := dirent.Info()
+		if err != nil {
+			return err
+		}
+
+		target := filepath.Join(dstBasePath, path)
+
+		if mkdir, has := dst.(MkdirFS); has {
+			dir := filepath.Dir(target)
+			if err := mkdir.MkdirAll(dir, addExecToRead(st.Mode())); err != nil {
+				return err
+			}
+		}
+
+		return WriteFile(ctx, dst, target, contents, st.Mode().Perm())
+	})
+}
+
+func CopyFile(dst WriteFS, dstFile string, src fs.FS, srcFile string) error {
+	r, err := src.Open(srcFile)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	st, err := r.Stat()
+	if err != nil {
+		return err
+	}
+
+	if mkdir, has := dst.(MkdirFS); has {
+		dir := filepath.Dir(dstFile)
+		if err := mkdir.MkdirAll(dir, addExecToRead(st.Mode())); err != nil {
+			return err
+		}
+	}
+
+	w, err := dst.OpenWrite(dstFile, st.Mode())
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	_, err = io.Copy(w, r)
+	return err
+}
+
+func addExecToRead(mode fs.FileMode) fs.FileMode {
+	if (mode & 0004) != 0 {
+		mode |= 0001
+	}
+	if (mode & 0040) != 0 {
+		mode |= 0010
+	}
+	if (mode & 0400) != 0 {
+		mode |= 0100
+	}
+	return mode
+}

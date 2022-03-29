@@ -1,0 +1,63 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+import "schema/schema.proto";
+
+// Workspace definition.
+message Workspace {
+    string               module_name = 1;
+    repeated Environment env         = 2;
+
+    // Package manager.
+    repeated Dependency dep = 3;
+
+    // Development options.
+    repeated Replace replace      = 4;
+    repeated string  private_repo = 5;
+
+    // Workspace-wide pre-compiled binaries.
+    repeated BinaryDigest prebuilt_binary = 6;
+
+    message Dependency {
+        string module_name = 1;
+        string version     = 2;
+    }
+
+    message Replace {
+        string module_name = 1;
+        string path        = 2;
+    }
+
+    message BinaryDigest {
+        string package_name = 1;
+        string digest       = 2;
+    }
+}
+
+// Configure a developer workstation.
+message DevHost {
+    repeated ConfigureEnvironment configure          = 1;
+    repeated ConfigurePlatform    configure_platform = 2;
+
+    message ConfigureEnvironment {
+        string              name                   = 1;
+        string              runtime                = 2;
+        Environment.Purpose purpose                = 3;
+        repeated google.protobuf.Any configuration = 4;
+    }
+
+    message ConfigurePlatform {
+        string   architecture                      = 1;
+        string   os                                = 2;
+        string   variant                           = 3;
+        repeated google.protobuf.Any configuration = 4;
+    }
+}

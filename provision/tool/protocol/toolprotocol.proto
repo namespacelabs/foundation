@@ -1,0 +1,69 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.provision.tool.protocol;
+
+option go_package = "namespacelabs.dev/foundation/provision/tool/protocol";
+
+import "google/protobuf/any.proto";
+import "schema/defextension.proto";
+import "schema/definition.proto";
+import "schema/schema.proto";
+
+message ToolRequest {
+    string tool_package = 1;
+    string focused_server = 2;
+    string workspace_dir = 3;
+    schema.Environment env = 4;
+    repeated google.protobuf.Any input = 5;
+    schema.Stack stack = 8;
+    repeated Snapshot snapshot = 9;
+
+    oneof request_type {
+        ApplyRequest apply_request = 6;
+        DeleteRequest delete_request = 7;
+    }
+}
+
+message ToolResponse {
+    ApplyResponse apply_response = 1;
+    DeleteResponse delete_response = 2;
+}
+
+message ApplyRequest {}
+
+message ApplyResponse {
+    repeated schema.DefExtension extension = 1;
+    repeated schema.Definition definition = 2;
+
+    // The outcome of this tool computation is valid for as long as these
+    // inputs don't change.
+    repeated CacheKey cache_key = 3;
+}
+
+message DeleteRequest {}
+
+message DeleteResponse {
+    repeated schema.Definition definition = 1;
+}
+
+message CacheKey {}
+
+enum Lifecycle {
+    LIFECYCLE_UNKNOWN = 0;
+    PROVISION = 1;
+    SHUTDOWN = 2;
+}
+
+message Snapshot {
+    string name = 1;
+    repeated FileEntry entry = 2;
+
+    message FileEntry {
+        string path = 1;
+        bytes contents = 2;
+    }
+}

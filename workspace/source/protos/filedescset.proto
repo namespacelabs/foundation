@@ -1,0 +1,16 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.workspace.source.protos;
+
+option go_package = "namespacelabs.dev/foundation/workspace/source/protos";
+
+import "google/protobuf/descriptor.proto";
+
+message FileDescriptorSetAndDeps {
+    repeated google.protobuf.FileDescriptorProto file = 1;
+    repeated google.protobuf.FileDescriptorProto dependency = 2;
+}

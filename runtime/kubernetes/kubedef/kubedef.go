@@ -1,0 +1,144 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+package kubedef
+
+import (
+	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
+
+	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/schema"
+)
+
+type Apply struct {
+	Description string
+	Resource    string // XXX this can be implied from `kind` in the body. See #339.
+	Namespace   string // XXX this can be implied from `namespace` in the body. See #339.
+	Name        string // XXX this can be implied from `name` in the body. See #339.
+	Body        interface{}
+}
+
+type Delete struct {
+	Description string
+	Resource    string
+	Namespace   string
+	Name        string
+}
+
+type DeleteList struct {
+	Description string
+	Resource    string
+	Namespace   string
+	Selector    map[string]string
+}
+
+type ExtendSpec struct {
+	For  schema.PackageName
+	With *SpecExtension
+}
+
+type ExtendContainer struct {
+	For  schema.PackageName
+	With *ContainerExtension
+}
+
+func (a Apply) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+	if a.Body == nil {
+		return nil, fnerrors.InternalError("body is missing")
+	}
+
+	body, err := json.Marshal(a.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	x, err := anypb.New(&OpApply{
+		Resource:  a.Resource,
+		Namespace: a.Namespace,
+		Name:      a.Name,
+		BodyJson:  string(body), // We use strings for better debuggability.
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.Definition{
+		Description: a.Description,
+		Impl:        x,
+		Scope:       scopeToStrings(scope),
+	}, nil
+}
+
+func scopeToStrings(scope []schema.PackageName) []string {
+	r := make([]string, len(scope))
+	for k, s := range scope {
+		r[k] = s.String()
+	}
+	return r
+}
+
+func (d Delete) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+	x, err := anypb.New(&OpDelete{
+		Resource:  d.Resource,
+		Namespace: d.Namespace,
+		Name:      d.Name,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.Definition{
+		Description: d.Description,
+		Impl:        x,
+		Scope:       scopeToStrings(scope),
+	}, nil
+}
+
+func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+	x, err := anypb.New(&OpDeleteList{
+		Resource:      d.Resource,
+		Namespace:     d.Namespace,
+		LabelSelector: SerializeSelector(d.Selector),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.Definition{
+		Description: d.Description,
+		Impl:        x,
+		Scope:       scopeToStrings(scope),
+	}, nil
+}
+
+func (es ExtendSpec) ToDefinition() (*schema.DefExtension, error) {
+	x, err := anypb.New(es.With)
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.DefExtension{For: es.For.String(), Impl: x}, nil
+}
+
+func (ec ExtendContainer) ToDefinition() (*schema.DefExtension, error) {
+	x, err := anypb.New(ec.With)
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.DefExtension{For: ec.For.String(), Impl: x}, nil
+}
+
+func SerializeSelector(selector map[string]string) string {
+	var sels []string
+	for k, v := range selector {
+		sels = append(sels, fmt.Sprintf("%s=%s", k, v))
+	}
+	sort.Strings(sels)
+	return strings.Join(sels, ",")
+}

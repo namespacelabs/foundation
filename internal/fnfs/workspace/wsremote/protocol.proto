@@ -1,0 +1,28 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.internal.wsremote;
+
+option go_package = "namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote";
+
+import "internal/wscontents/types.proto";
+
+message Signature {
+    string module_name = 1;
+    string rel = 2;
+}
+
+message PushRequest {
+    Signature signature = 1;
+    repeated foundation.internal.wscontents.FileEvent file_event = 2;
+}
+
+message PushResponse {
+}
+
+service FileSyncService {
+    rpc Push(PushRequest) returns (PushResponse);
+}

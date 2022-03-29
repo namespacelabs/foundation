@@ -1,0 +1,41 @@
+.panelHeader {
+  display: flex;
+  flex-direction: row;
+  font-size: 14px;
+  background-color: black;
+}
+
+.panelHeaderRight {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  justify-content: end;
+}
+
+.panelHeader button {
+  margin: 8px;
+}
+
+.panelHeaderItem {
+  color: rgb(160, 160, 160);
+  padding: 8px 16px 9px;
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  text-decoration: none;
+}
+
+.panelHeaderItem span {
+  border-bottom: 2px solid transparent;
+  padding: 2px;
+}
+
+.panelHeaderItem.active span {
+  border-bottom: 2px solid rgb(160, 160, 160);
+}
+
+.panelHeaderItem.active {
+  color: white;
+}

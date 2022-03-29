@@ -1,0 +1,150 @@
+name: e2e reusable
+on:
+  workflow_call:
+
+permissions:
+  packages: read
+  contents: read
+
+jobs:
+  build_fn:
+    name: Build Foundation
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, macos-11]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+      - name: Setup cross-invocation caching (Go)
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-fnbuild-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-go-fnbuild-
+      - name: Build fn
+        env:
+          CGO_ENABLED: 0
+        run: go build -v -o fn ./cmd/fn
+      - name: Upload fn
+        uses: actions/upload-artifact@v2
+        with:
+          name: fn-${{ runner.os }}
+          path: fn
+          # We don't need to persist it for long, only for the next job to download it.
+          retention-days: 1
+
+  run_deploy:
+    name: Kubernetes e2e test os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }} golang_use_buildkit=${{ matrix.golang_use_buildkit }}
+    needs: build_fn
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, ubuntu-20.04]
+        use_prebuilts: [false, true]
+        golang_use_buildkit: [false, true]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Required by buildkit gha cache.
+      - name: Expose GitHub Runtime
+        uses: crazy-max/ghaction-github-runtime@v1
+
+      - name: Setup cross-invocation caching (Go)
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-fnrun-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-go-fnrun-
+
+      - name: Download Foundation
+        uses: actions/download-artifact@v2
+        with:
+          name: fn-${{ runner.os }}
+
+      # fn is moved out of the workspace so we don't spend time uploading it to buildkit.
+      - name: Make Foundation executable
+        run: chmod +x fn && mv fn /tmp/fn
+
+      - name: Prepare development environment
+        run: /tmp/fn prepare
+
+      - name: Print kubectl cluster-info
+        run: kubectl cluster-info
+
+      - name: Deploy std/testdata/gogrpcserver
+        run: |
+          /tmp/fn deploy \
+            --buildkit_import_cache=type=gha \
+            --buildkit_export_cache=type=gha,mode=max \
+            --use_prebuilts=${{ matrix.use_prebuilts }} \
+            --golang_use_buildkit=${{ matrix.golang_use_buildkit }} \
+            --naming_no_tls=true \
+            --wait std/testdata/gogrpcserver
+
+  run_e2e_tests:
+    name: e2e tests
+    needs: build_fn
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, ubuntu-20.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
+      # Required by buildkit gha cache.
+      - name: Expose GitHub Runtime
+        uses: crazy-max/ghaction-github-runtime@v1
+
+      - name: Setup cross-invocation caching (Go)
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-fnrun-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-go-fnrun-
+
+      - name: Download Foundation
+        uses: actions/download-artifact@v2
+        with:
+          name: fn-${{ runner.os }}
+
+      - name: Make Foundation executable
+        run: chmod +x fn
+
+      - name: Prepare development environment
+        run: ./fn prepare
+
+      - name: Print kubectl cluster-info
+        run: kubectl cluster-info
+
+      - name: Run all tests
+        run: |
+          ./fn test \
+            --buildkit_import_cache=type=gha \
+            --buildkit_export_cache=type=gha,mode=max \
+            --use_prebuilts=true \
+            --golang_use_buildkit=false

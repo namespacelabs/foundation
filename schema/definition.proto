@@ -1,0 +1,21 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+
+message Definition {
+    string              description = 1;  // Human readable label.
+    google.protobuf.Any impl        = 2;
+    repeated string     scope       = 3;  // List of package names.
+}
+
+message DefinitionList {
+    repeated Definition definition = 1;
+}
