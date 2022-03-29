@@ -7,9 +7,7 @@ package server
 import (
 	"context"
 	"net/http"
-	"os"
 
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
@@ -35,14 +33,8 @@ func (s *Grpc) RegisterGrpcGateway(reg func(context.Context, *runtime.ServeMux, 
 	s.gatewayRegistrations = append(s.gatewayRegistrations, reg)
 }
 
-func MakeHandler(p http.Handler) http.Handler {
-	p = handlers.LoggingHandler(os.Stdout, p)
-	p = proxyHeaders(p) // We always run behind a reverse proxy.
-	return p
-}
-
 func (s *Grpc) Handle(path string, p http.Handler) *mux.Route {
-	return s.httpMux.Handle(path, MakeHandler(p))
+	return s.httpMux.Handle(path, p)
 }
 
 func (s *Grpc) PathPrefix(path string) *mux.Route {

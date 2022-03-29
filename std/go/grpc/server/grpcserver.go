@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -57,6 +59,10 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 	reflection.Register(grpcServer)
 
 	httpMux := mux.NewRouter()
+	httpMux.Use(proxyHeaders)
+	httpMux.Use(func(h http.Handler) http.Handler {
+		return handlers.CombinedLoggingHandler(os.Stdout, h)
+	})
 
 	s := &Grpc{srv: grpcServer, httpMux: httpMux}
 	registerServices(s)
