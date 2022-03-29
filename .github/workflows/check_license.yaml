@@ -1,0 +1,31 @@
+on: [push, pull_request]
+name: Check License Headers
+jobs:
+  test:
+    strategy:
+      matrix:
+        go-version: [1.18.x]
+        os: [ubuntu-20.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Setup cross-invocation caching
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Build fndev
+        env:
+          CGO_ENABLED: 0
+        run: go build -v -o fndev ./cmd/fndev
+      - name: Check License headers
+        run: ./fndev debug update-license --check
