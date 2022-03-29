@@ -210,7 +210,7 @@ func domainSchema(domain *schema.Domain, localPort uint, endpoints ...*schema.En
 		if protocols.Strings()[0] == "grpc" {
 			schema, portLabel = grpcSchema(domain.Certificate != nil, localPort)
 			if domain.Certificate == nil {
-				suffix = tasks.ColorFade.Apply(" # not currently working, see #341")
+				suffix = tasks.ColorFade.Apply(" # not currently working, see #26")
 			}
 		} else {
 			schema, portLabel = httpSchema(domain, localPort)
