@@ -13,7 +13,6 @@ import (
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/kr/text"
 	"github.com/morikuni/aec"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func Wrap(loc Location, err error) error {
@@ -190,7 +189,7 @@ func format(w io.Writer, colors bool, err error) {
 			}
 		}
 
-	case *tasks.DependencyFailedError:
+	case *DependencyFailedError:
 		fmt.Fprintf(w, "failed to resolve %s %s:\n", formatLabel(x.Name, colors), aec.LightBlackF.Apply(fmt.Sprintf("(%s)", x.Type)))
 		format(indent(w), colors, x.Err)
 

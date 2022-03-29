@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -32,7 +32,7 @@ func newDownloadCmd() *cobra.Command {
 				artifact.URL = parts[0]
 				if len(parts) == 2 {
 					var err error
-					artifact.Digest, err = fntypes.ParseDigest(parts[1])
+					artifact.Digest, err = schema.ParseDigest(parts[1])
 					if err != nil {
 						return err
 					}

@@ -17,7 +17,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -44,7 +44,7 @@ func WriteFSToWorkspace(ctx context.Context, vfs ReadWriteFS, src fs.FS) error {
 }
 
 type WriteFileExtendedOpts struct {
-	ContentsDigest  fntypes.Digest
+	ContentsDigest  schema.Digest
 	CompareContents bool
 	EnsureFileMode  bool
 	AnnounceWrite   bool
@@ -88,7 +88,7 @@ func WriteFileExtended(ctx context.Context, dst ReadWriteFS, filePath string, mo
 				return err
 			}
 
-			if fntypes.FromHash("sha256", h) == opts.ContentsDigest {
+			if schema.FromHash("sha256", h) == opts.ContentsDigest {
 				// Contents are good.
 				if opts.EnsureFileMode {
 					return chmod(dst, filePath, mode)

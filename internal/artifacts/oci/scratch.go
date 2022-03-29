@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"github.com/google/go-containerregistry/pkg/v1/empty"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -29,9 +29,9 @@ func (scratch) Compute(_ context.Context, _ compute.Resolved) (Image, error) {
 	return empty.Image, nil
 }
 
-func (scratch) ComputeDigest(context.Context) (fntypes.Digest, error) {
+func (scratch) ComputeDigest(context.Context) (schema.Digest, error) {
 	h, err := empty.Image.Digest()
-	return fntypes.Digest(h), err
+	return schema.Digest(h), err
 }
 
 func (scratch) ImageRef() string { return "(scratch)" }

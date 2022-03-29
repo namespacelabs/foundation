@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -46,17 +46,17 @@ func (in *inline[V]) Compute(ctx context.Context, deps Resolved) (V, error) {
 }
 
 type Digestible interface {
-	ComputeDigest(context.Context) (fntypes.Digest, error)
+	ComputeDigest(context.Context) (schema.Digest, error)
 }
 
-func Precomputed[V any](v V, compute func(context.Context) (fntypes.Digest, error)) Computable[V] {
+func Precomputed[V any](v V, compute func(context.Context) (schema.Digest, error)) Computable[V] {
 	return precomputed[V]{value: v, computeDigest: compute}
 }
 
 type precomputed[V any] struct {
 	value         V
 	err           error
-	computeDigest func(context.Context) (fntypes.Digest, error)
+	computeDigest func(context.Context) (schema.Digest, error)
 	PrecomputeScoped[V]
 }
 
@@ -78,7 +78,7 @@ func (p precomputed[V]) Compute(ctx context.Context, deps Resolved) (V, error) {
 	return p.value, p.err
 }
 
-func (p precomputed[V]) ComputeDigest(ctx context.Context) (fntypes.Digest, error) {
+func (p precomputed[V]) ComputeDigest(ctx context.Context) (schema.Digest, error) {
 	return p.computeDigest(ctx)
 }
 

@@ -27,7 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -122,7 +122,7 @@ func SDK(version string, platform specs.Platform) (compute.Computable[LocalSDK],
 		sdk: sdk,
 		tarStream: download.URL(artifacts.Reference{
 			URL: fmt.Sprintf("https://go.dev/dl/go%s.%s-%s.tar.gz", actualVer, platform.OS, platform.Architecture),
-			Digest: fntypes.Digest{
+			Digest: schema.Digest{
 				Algorithm: "sha256",
 				Hex:       digest,
 			},
@@ -144,8 +144,8 @@ func (sdk LocalSDK) GoRootEnv() string {
 	return fmt.Sprintf("GOROOT=%s", filepath.Join(sdk.Path, "go"))
 }
 
-func (sdk LocalSDK) ComputeDigest(context.Context) (fntypes.Digest, error) {
-	return fntypes.DigestOf(sdk)
+func (sdk LocalSDK) ComputeDigest(context.Context) (schema.Digest, error) {
+	return schema.DigestOf(sdk)
 }
 
 type installSDK struct {

@@ -7,11 +7,11 @@ package compute
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 )
 
 type Digester interface {
-	ComputeDigest(context.Context, any) (fntypes.Digest, error)
+	ComputeDigest(context.Context, any) (schema.Digest, error)
 }
 
 type Output struct {

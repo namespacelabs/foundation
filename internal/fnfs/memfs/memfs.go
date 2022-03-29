@@ -16,7 +16,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 )
 
 type FS struct {
@@ -148,7 +148,7 @@ func (m *FS) Clone() fnfs.ReadWriteFS {
 	return c
 }
 
-func (m *FS) ComputeDigest(ctx context.Context) (fntypes.Digest, error) {
+func (m *FS) ComputeDigest(ctx context.Context) (schema.Digest, error) {
 	return digestfs.Digest(ctx, m, nil, nil)
 }
 

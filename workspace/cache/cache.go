@@ -20,7 +20,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
@@ -30,18 +30,18 @@ const VerifyCacheWrites = false
 const mapJson = "map.json"
 
 type Cache interface {
-	Bytes(context.Context, fntypes.Digest) ([]byte, error)
-	Blob(fntypes.Digest) (io.ReadCloser, error) // XXX No context is required here to make it simpler for Compressed() to call Blob().
+	Bytes(context.Context, schema.Digest) ([]byte, error)
+	Blob(schema.Digest) (io.ReadCloser, error) // XXX No context is required here to make it simpler for Compressed() to call Blob().
 
-	WriteBlob(context.Context, fntypes.Digest, io.ReadCloser) error
-	WriteBytes(context.Context, fntypes.Digest, []byte) error
+	WriteBlob(context.Context, schema.Digest, io.ReadCloser) error
+	WriteBytes(context.Context, schema.Digest, []byte) error
 
-	LoadEntry(context.Context, fntypes.Digest) (CachedOutput, bool, error)
-	StoreEntry(context.Context, []fntypes.Digest, CachedOutput) error
+	LoadEntry(context.Context, schema.Digest) (CachedOutput, bool, error)
+	StoreEntry(context.Context, []schema.Digest, CachedOutput) error
 }
 
 type CachedOutput struct {
-	Digest    fntypes.Digest
+	Digest    schema.Digest
 	Timestamp time.Time
 }
 
@@ -79,29 +79,29 @@ type cacheIndex struct {
 	Outputs map[string]CachedOutput
 }
 
-func (c *localCache) blobPath(h fntypes.Digest) string {
+func (c *localCache) blobPath(h schema.Digest) string {
 	return filepath.Join(c.path, h.Algorithm, h.Hex)
 }
 
-func (c *localCache) Bytes(ctx context.Context, h fntypes.Digest) ([]byte, error) {
+func (c *localCache) Bytes(ctx context.Context, h schema.Digest) ([]byte, error) {
 	if h.Algorithm == "" || h.Hex == "" {
 		return nil, fnerrors.InternalError("digest not set")
 	}
 	return ioutil.ReadFile(c.blobPath(h))
 }
 
-func (c *localCache) Blob(h fntypes.Digest) (io.ReadCloser, error) {
+func (c *localCache) Blob(h schema.Digest) (io.ReadCloser, error) {
 	if h.Algorithm == "" || h.Hex == "" {
 		return nil, fnerrors.InternalError("digest not set")
 	}
 	return os.Open(c.blobPath(h))
 }
 
-func (c *localCache) WriteBytes(ctx context.Context, h fntypes.Digest, contents []byte) error {
+func (c *localCache) WriteBytes(ctx context.Context, h schema.Digest, contents []byte) error {
 	return c.WriteBlob(ctx, h, io.NopCloser(bytes.NewReader(contents)))
 }
 
-func (c *localCache) WriteBlob(ctx context.Context, h fntypes.Digest, r io.ReadCloser) error {
+func (c *localCache) WriteBlob(ctx context.Context, h schema.Digest, r io.ReadCloser) error {
 	if VerifyCacheWrites {
 		r = verifyReader{reader: r, expected: h, hash: sha256.New()}
 	}
@@ -148,7 +148,7 @@ func (c *localCache) WriteBlob(ctx context.Context, h fntypes.Digest, r io.ReadC
 
 type verifyReader struct {
 	reader   io.ReadCloser
-	expected fntypes.Digest
+	expected schema.Digest
 	hash     hash.Hash
 }
 
@@ -166,23 +166,23 @@ func (vr verifyReader) Close() error {
 	return verifyHash(vr.expected, vr.hash)
 }
 
-func verifyHash(expected fntypes.Digest, hash hash.Hash) error {
-	got := fntypes.FromHash("sha256", hash)
+func verifyHash(expected schema.Digest, hash hash.Hash) error {
+	got := schema.FromHash("sha256", hash)
 	if got != expected {
 		return fnerrors.InternalError("digest didn't match, expected %q got %q", expected.String(), got.String())
 	}
 	return nil
 }
 
-func DigestBytes(contents []byte) (fntypes.Digest, error) {
+func DigestBytes(contents []byte) (schema.Digest, error) {
 	h := sha256.New()
 	if _, err := h.Write(contents); err != nil {
-		return fntypes.Digest{}, nil
+		return schema.Digest{}, nil
 	}
-	return fntypes.Digest{Algorithm: "sha256", Hex: hex.EncodeToString(h.Sum(nil))}, nil
+	return schema.Digest{Algorithm: "sha256", Hex: hex.EncodeToString(h.Sum(nil))}, nil
 }
 
-func (c *localCache) LoadEntry(ctx context.Context, h fntypes.Digest) (CachedOutput, bool, error) {
+func (c *localCache) LoadEntry(ctx context.Context, h schema.Digest) (CachedOutput, bool, error) {
 	index, err := loadIndex(ctx, string(c.path))
 	if err != nil {
 		return CachedOutput{}, false, err
@@ -192,7 +192,7 @@ func (c *localCache) LoadEntry(ctx context.Context, h fntypes.Digest) (CachedOut
 	return output, ok, nil
 }
 
-func (c *localCache) StoreEntry(ctx context.Context, inputs []fntypes.Digest, output CachedOutput) error {
+func (c *localCache) StoreEntry(ctx context.Context, inputs []schema.Digest, output CachedOutput) error {
 	if len(inputs) == 0 {
 		return nil
 	}

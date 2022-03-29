@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 )
 
 type Keychain interface {
@@ -22,8 +22,8 @@ type AllocatedName struct {
 	ImageID
 }
 
-func (t AllocatedName) ComputeDigest(context.Context) (fntypes.Digest, error) {
-	return fntypes.DigestOf("insecureRegistry", t.InsecureRegistry, "repository", t.Repository, "tag", t.Tag, "digest", t.Digest)
+func (t AllocatedName) ComputeDigest(context.Context) (schema.Digest, error) {
+	return schema.DigestOf("insecureRegistry", t.InsecureRegistry, "repository", t.Repository, "tag", t.Tag, "digest", t.Digest)
 }
 
 func ParseTag(tag AllocatedName) (name.Tag, error) {

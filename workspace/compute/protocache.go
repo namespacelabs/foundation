@@ -10,7 +10,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/cache"
 )
 
@@ -20,16 +20,16 @@ func RegisterProtoCacheable() {
 
 type protoCacheable struct{}
 
-func (protoCacheable) ComputeDigest(ctx context.Context, v interface{}) (fntypes.Digest, error) {
+func (protoCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.Digest, error) {
 	_, h, err := marshalProto(v.(proto.Message))
 	if err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
 	return h, nil
 }
 
-func (protoCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h fntypes.Digest) (Result[proto.Message], error) {
+func (protoCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h schema.Digest) (Result[proto.Message], error) {
 	if t.Kind() != reflect.Ptr {
 		return Result[proto.Message]{}, fnerrors.InternalError("expected %q to be a pointer", t.Name())
 	}
@@ -54,23 +54,23 @@ func (protoCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.T
 	}, nil
 }
 
-func (protoCacheable) Cache(ctx context.Context, c cache.Cache, msg proto.Message) (fntypes.Digest, error) {
+func (protoCacheable) Cache(ctx context.Context, c cache.Cache, msg proto.Message) (schema.Digest, error) {
 	bytes, h, err := marshalProto(msg)
 	if err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
 	if err := c.WriteBytes(ctx, h, bytes); err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
 	return h, err
 }
 
-func marshalProto(msg proto.Message) ([]byte, fntypes.Digest, error) {
+func marshalProto(msg proto.Message) ([]byte, schema.Digest, error) {
 	bytes, err := (proto.MarshalOptions{Deterministic: true}).Marshal(msg)
 	if err != nil {
-		return nil, fntypes.Digest{}, err
+		return nil, schema.Digest{}, err
 	}
 
 	h, err := cache.DigestBytes(bytes)

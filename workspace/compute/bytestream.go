@@ -13,13 +13,13 @@ import (
 	"os"
 	"sync"
 
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type ByteStream interface {
-	Digest() fntypes.Digest
+	Digest() schema.Digest
 	ContentLength() uint64
 	Reader() (io.ReadCloser, error)
 }
@@ -47,14 +47,14 @@ func NewByteStream(ctx context.Context) (*ByteStreamWriter, error) {
 
 type byteStream struct {
 	path          string
-	digest        fntypes.Digest
+	digest        schema.Digest
 	contentLength uint64
 
 	mu       sync.Mutex
 	consumed bool
 }
 
-func (bsw *byteStream) Digest() fntypes.Digest {
+func (bsw *byteStream) Digest() schema.Digest {
 	return bsw.digest
 }
 
@@ -102,7 +102,7 @@ func (bsw *ByteStreamWriter) Complete() (ByteStream, error) {
 		return nil, err
 	}
 
-	d := fntypes.FromHash("sha256", bsw.h)
+	d := schema.FromHash("sha256", bsw.h)
 	bsw.result.digest = d
 	bsw.result.contentLength = bsw.byteCount
 	return bsw.result, nil

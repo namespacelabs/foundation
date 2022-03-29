@@ -10,7 +10,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/cache"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -26,12 +26,12 @@ var defaultPlatform = v1.Platform{
 }
 
 type ResolvableImage interface {
-	Digest() (fntypes.Digest, error)
+	Digest() (schema.Digest, error)
 	Image() (Image, error)
 	ImageIndex() (ImageIndex, error)
 
 	push(context.Context, AllocatedName) (ImageID, error)
-	cache(context.Context, cache.Cache) (fntypes.Digest, error)
+	cache(context.Context, cache.Cache) (schema.Digest, error)
 }
 
 type imageFetchFunc func(v1.Hash) (Image, error)
@@ -46,9 +46,9 @@ type rawImage struct {
 	image v1.Image
 }
 
-func (raw rawImage) Digest() (fntypes.Digest, error) {
+func (raw rawImage) Digest() (schema.Digest, error) {
 	h, err := raw.image.Digest()
-	return fntypes.Digest(h), err
+	return schema.Digest(h), err
 }
 
 func (raw rawImage) Image() (Image, error) {
@@ -63,7 +63,7 @@ func (raw rawImage) push(ctx context.Context, tag AllocatedName) (ImageID, error
 	return pushImage(ctx, tag, raw.image)
 }
 
-func (raw rawImage) cache(ctx context.Context, c cache.Cache) (fntypes.Digest, error) {
+func (raw rawImage) cache(ctx context.Context, c cache.Cache) (schema.Digest, error) {
 	return imageCacheable{}.Cache(ctx, c, raw.image)
 }
 
@@ -71,9 +71,9 @@ type rawImageIndex struct {
 	index v1.ImageIndex
 }
 
-func (raw rawImageIndex) Digest() (fntypes.Digest, error) {
+func (raw rawImageIndex) Digest() (schema.Digest, error) {
 	h, err := raw.index.Digest()
-	return fntypes.Digest(h), err
+	return schema.Digest(h), err
 }
 
 func (raw rawImageIndex) Image() (Image, error) {
@@ -97,7 +97,7 @@ func (raw rawImageIndex) push(ctx context.Context, tag AllocatedName) (ImageID, 
 	return tag.WithDigest(digest), nil
 }
 
-func (raw rawImageIndex) cache(ctx context.Context, c cache.Cache) (fntypes.Digest, error) {
+func (raw rawImageIndex) cache(ctx context.Context, c cache.Cache) (schema.Digest, error) {
 	return writeImageIndex(ctx, c, raw.index)
 }
 

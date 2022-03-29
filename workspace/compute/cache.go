@@ -14,25 +14,25 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/cache"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type Cacheable[V any] interface {
 	Digester
-	LoadCached(context.Context, cache.Cache, reflect.Type, fntypes.Digest) (Result[V], error)
-	Cache(context.Context, cache.Cache, V) (fntypes.Digest, error)
+	LoadCached(context.Context, cache.Cache, reflect.Type, schema.Digest) (Result[V], error)
+	Cache(context.Context, cache.Cache, V) (schema.Digest, error)
 }
 
-type ComputeDigestFunc func(context.Context, any) (fntypes.Digest, error)
+type ComputeDigestFunc func(context.Context, any) (schema.Digest, error)
 
 type cacheable struct {
 	Type reflect.Type
 
 	ComputeDigest ComputeDigestFunc
-	LoadCached    func(context.Context, cache.Cache, reflect.Type, fntypes.Digest) (Result[any], error)
-	Cache         func(context.Context, cache.Cache, any) (fntypes.Digest, error)
+	LoadCached    func(context.Context, cache.Cache, reflect.Type, schema.Digest) (Result[any], error)
+	Cache         func(context.Context, cache.Cache, any) (schema.Digest, error)
 }
 
 var cacheables []cacheable
@@ -42,10 +42,10 @@ func RegisterCacheable[V any](c Cacheable[V]) {
 
 	cacheables = append(cacheables, cacheable{
 		Type: interfaceType(t),
-		ComputeDigest: func(ctx context.Context, v any) (fntypes.Digest, error) {
+		ComputeDigest: func(ctx context.Context, v any) (schema.Digest, error) {
 			return c.ComputeDigest(ctx, v)
 		},
-		LoadCached: func(ctx context.Context, cache cache.Cache, t reflect.Type, d fntypes.Digest) (Result[any], error) {
+		LoadCached: func(ctx context.Context, cache cache.Cache, t reflect.Type, d schema.Digest) (Result[any], error) {
 			v, err := c.LoadCached(ctx, cache, t, d)
 			if err != nil {
 				return Result[any]{}, err
@@ -56,10 +56,10 @@ func RegisterCacheable[V any](c Cacheable[V]) {
 			r.Value = v.Value
 			return r, nil
 		},
-		Cache: func(ctx context.Context, cache cache.Cache, v any) (fntypes.Digest, error) {
+		Cache: func(ctx context.Context, cache cache.Cache, v any) (schema.Digest, error) {
 			vtyped, ok := v.(V)
 			if !ok {
-				return fntypes.Digest{}, fnerrors.InternalError("failed to cast")
+				return schema.Digest{}, fnerrors.InternalError("failed to cast")
 			}
 			return c.Cache(ctx, cache, vtyped)
 		},
@@ -82,15 +82,15 @@ func interfaceType(t interface{}) reflect.Type {
 }
 
 type cacheHit struct {
-	Input        fntypes.Digest
-	OutputDigest fntypes.Digest
+	Input        schema.Digest
+	OutputDigest schema.Digest
 	Hit          bool // Always set if we have a stored entry that maps to the inputs.
 	VerifiedHit  bool // If verification is enabled, only set if we've verified the output matches our expectations. Else same value as Hit.
 
 	Inputs *computedInputs // Set if VerifyCache is true.
 }
 
-func checkLoadCache(ctx context.Context, what string, g *Orch, c computeInstance, cacheable *cacheable, computedDigest fntypes.Digest, p *Promise[any]) (cacheHit, error) {
+func checkLoadCache(ctx context.Context, what string, g *Orch, c computeInstance, cacheable *cacheable, computedDigest schema.Digest, p *Promise[any]) (cacheHit, error) {
 	var hit cacheHit
 
 	err := c.Action().Clone(func(name string) string { return fmt.Sprintf("%s (%s)", what, name) }).
@@ -130,8 +130,8 @@ func checkLoadCache(ctx context.Context, what string, g *Orch, c computeInstance
 	return hit, err
 }
 
-func deferStore(ctx context.Context, g *Orch, c hasAction, cacheable *cacheable, d fntypes.Digest, ts time.Time, v any, rawPointers ...fntypes.Digest) {
-	var pointers []fntypes.Digest
+func deferStore(ctx context.Context, g *Orch, c hasAction, cacheable *cacheable, d schema.Digest, ts time.Time, v any, rawPointers ...schema.Digest) {
+	var pointers []schema.Digest
 	for _, ptr := range rawPointers {
 		if ptr.IsSet() {
 			pointers = append(pointers, ptr)
@@ -190,7 +190,7 @@ func cacheableFor(outputType interface{}) *cacheable {
 	return nil
 }
 
-func verifyComputedDigest(ctx context.Context, c rawComputable, cacheable *cacheable, v interface{}, outputDigest fntypes.Digest) {
+func verifyComputedDigest(ctx context.Context, c rawComputable, cacheable *cacheable, v interface{}, outputDigest schema.Digest) {
 	l := zerolog.Ctx(ctx).With().
 		Str("cacheableType", typeStr(cacheable)).
 		Str("type", typeStr(c)).

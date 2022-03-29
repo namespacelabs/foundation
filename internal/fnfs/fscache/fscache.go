@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/cache"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
@@ -26,21 +26,21 @@ func RegisterFSCacheable() {
 // Implementations of a `fs.FS` cache where each FS is cached as a individual image layer.
 type fsCacheable struct{}
 
-func ComputeDigest(ctx context.Context, fsys fs.FS) (fntypes.Digest, error) {
+func ComputeDigest(ctx context.Context, fsys fs.FS) (schema.Digest, error) {
 	layer, err := oci.LayerFromFS(ctx, fsys)
 	if err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
 	_, d, err := oci.ComputeLayerCacheData(layer)
 	return d, err
 }
 
-func (fsCacheable) ComputeDigest(ctx context.Context, v interface{}) (fntypes.Digest, error) {
+func (fsCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.Digest, error) {
 	return ComputeDigest(ctx, v.(fs.FS)) // XXX don't pay the cost twice (see Cache below).
 }
 
-func (fsCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h fntypes.Digest) (compute.Result[fs.FS], error) {
+func (fsCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h schema.Digest) (compute.Result[fs.FS], error) {
 	layer, digest, err := oci.LoadCachedLayer(ctx, c, h)
 	if err != nil {
 		return compute.Result[fs.FS]{}, err
@@ -52,10 +52,10 @@ func (fsCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type
 	}, nil
 }
 
-func (fsCacheable) Cache(ctx context.Context, c cache.Cache, vfs fs.FS) (fntypes.Digest, error) {
+func (fsCacheable) Cache(ctx context.Context, c cache.Cache, vfs fs.FS) (schema.Digest, error) {
 	layer, err := oci.LayerFromFS(ctx, vfs)
 	if err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
 	return oci.CacheLayer(ctx, c, layer)

@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/cache"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -87,7 +87,7 @@ func (b *compressedBlob) Digest() (v1.Hash, error) {
 }
 
 func (b *compressedBlob) Compressed() (io.ReadCloser, error) {
-	return b.cache.Blob(fntypes.Digest(b.desc.Digest))
+	return b.cache.Blob(schema.Digest(b.desc.Digest))
 }
 
 func (b *compressedBlob) Size() (int64, error) {
@@ -99,10 +99,10 @@ func (b *compressedBlob) MediaType() (types.MediaType, error) {
 }
 
 // Adapted from go-containerregistry.
-func writeImageIndex(ctx context.Context, cache cache.Cache, index v1.ImageIndex) (fntypes.Digest, error) {
+func writeImageIndex(ctx context.Context, cache cache.Cache, index v1.ImageIndex) (schema.Digest, error) {
 	manifest, err := index.IndexManifest()
 	if err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
 	// Walk the descriptors and write any v1.Image or v1.ImageIndex that we find.
@@ -112,48 +112,48 @@ func writeImageIndex(ctx context.Context, cache cache.Cache, index v1.ImageIndex
 		case types.OCIImageIndex, types.DockerManifestList:
 			index, err := index.ImageIndex(desc.Digest)
 			if err != nil {
-				return fntypes.Digest{}, err
+				return schema.Digest{}, err
 			}
 			if _, err := writeImageIndex(ctx, cache, index); err != nil {
-				return fntypes.Digest{}, err
+				return schema.Digest{}, err
 			}
 		case types.OCIManifestSchema1, types.DockerManifestSchema2:
 			img, err := index.Image(desc.Digest)
 			if err != nil {
-				return fntypes.Digest{}, err
+				return schema.Digest{}, err
 			}
 
 			if _, err := (imageCacheable{}).Cache(ctx, cache, img); err != nil {
-				return fntypes.Digest{}, err
+				return schema.Digest{}, err
 			}
 		default:
-			return fntypes.Digest{}, fnerrors.BadInputError("don't support caching image indexes with %s", desc.MediaType)
+			return schema.Digest{}, fnerrors.BadInputError("don't support caching image indexes with %s", desc.MediaType)
 		}
 	}
 
 	rawIndex, err := index.RawManifest()
 	if err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
 	h, err := index.Digest()
 	if err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
-	d := fntypes.Digest(h)
+	d := schema.Digest(h)
 
 	return d, cache.WriteBytes(ctx, d, rawIndex)
 }
 
 type layerCacheable struct{}
 
-func (layerCacheable) ComputeDigest(ctx context.Context, v interface{}) (fntypes.Digest, error) {
+func (layerCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.Digest, error) {
 	_, h, err := ComputeLayerCacheData(v.(v1.Layer))
 	return h, err
 }
 
-func (layerCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h fntypes.Digest) (compute.Result[v1.Layer], error) {
+func (layerCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h schema.Digest) (compute.Result[v1.Layer], error) {
 	l, d, err := LoadCachedLayer(ctx, c, h)
 	if err != nil {
 		return compute.Result[v1.Layer]{}, err
@@ -161,42 +161,42 @@ func (layerCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.T
 	return compute.Result[v1.Layer]{Value: l, Digest: d}, nil
 }
 
-func (layerCacheable) Cache(ctx context.Context, c cache.Cache, v v1.Layer) (fntypes.Digest, error) {
+func (layerCacheable) Cache(ctx context.Context, c cache.Cache, v v1.Layer) (schema.Digest, error) {
 	return CacheLayer(ctx, c, v)
 }
 
-func LoadCachedLayer(ctx context.Context, c cache.Cache, h fntypes.Digest) (v1.Layer, fntypes.Digest, error) {
+func LoadCachedLayer(ctx context.Context, c cache.Cache, h schema.Digest) (v1.Layer, schema.Digest, error) {
 	dataBytes, err := c.Bytes(ctx, h)
 	if err != nil {
-		return nil, fntypes.Digest{}, err
+		return nil, schema.Digest{}, err
 	}
 
 	var data cachedLayerData
 	if err := json.Unmarshal(dataBytes, &data); err != nil {
-		return nil, fntypes.Digest{}, err
+		return nil, schema.Digest{}, err
 	}
 
 	l, err := partial.CompressedToLayer(&cachedLayer{cache: c, data: data})
 	if err != nil {
-		return nil, fntypes.Digest{}, err
+		return nil, schema.Digest{}, err
 	}
 
-	return l, fntypes.Digest(data.Digest), nil
+	return l, schema.Digest(data.Digest), nil
 }
 
-func CacheLayer(ctx context.Context, c cache.Cache, layer v1.Layer) (fntypes.Digest, error) {
+func CacheLayer(ctx context.Context, c cache.Cache, layer v1.Layer) (schema.Digest, error) {
 	d, err := layer.Digest()
 	if err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
 	r, err := layer.Compressed()
 	if err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
-	if err := c.WriteBlob(ctx, fntypes.Digest(d), r); err != nil {
-		return fntypes.Digest{}, err
+	if err := c.WriteBlob(ctx, schema.Digest(d), r); err != nil {
+		return schema.Digest{}, err
 	}
 
 	dataBytes, h, err := ComputeLayerCacheData(layer)
@@ -211,31 +211,31 @@ func CacheLayer(ctx context.Context, c cache.Cache, layer v1.Layer) (fntypes.Dig
 	return h, nil
 }
 
-func ComputeLayerCacheData(layer v1.Layer) ([]byte, fntypes.Digest, error) {
+func ComputeLayerCacheData(layer v1.Layer) ([]byte, schema.Digest, error) {
 	d, err := layer.Digest()
 	if err != nil {
-		return nil, fntypes.Digest{}, err
+		return nil, schema.Digest{}, err
 	}
 
 	size, err := layer.Size()
 	if err != nil {
-		return nil, fntypes.Digest{}, err
+		return nil, schema.Digest{}, err
 	}
 
 	mediaType, err := layer.MediaType()
 	if err != nil {
-		return nil, fntypes.Digest{}, err
+		return nil, schema.Digest{}, err
 	}
 
 	data := cachedLayerData{
-		Digest:    fntypes.Digest(d),
+		Digest:    schema.Digest(d),
 		Size:      size,
 		MediaType: mediaType,
 	}
 
 	dataBytes, err := json.Marshal(data)
 	if err != nil {
-		return nil, fntypes.Digest{}, err
+		return nil, schema.Digest{}, err
 	}
 
 	h, err := cache.DigestBytes(dataBytes)
@@ -248,7 +248,7 @@ type cachedLayer struct {
 }
 
 type cachedLayerData struct {
-	Digest    fntypes.Digest
+	Digest    schema.Digest
 	Size      int64
 	MediaType types.MediaType
 }
@@ -260,12 +260,12 @@ func (cl *cachedLayer) MediaType() (types.MediaType, error) { return cl.data.Med
 
 type imageCacheable struct{}
 
-func (imageCacheable) ComputeDigest(ctx context.Context, v interface{}) (fntypes.Digest, error) {
+func (imageCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.Digest, error) {
 	d, err := v.(v1.Image).Digest()
-	return fntypes.Digest(d), err
+	return schema.Digest(d), err
 }
 
-func (imageCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h fntypes.Digest) (compute.Result[v1.Image], error) {
+func (imageCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h schema.Digest) (compute.Result[v1.Image], error) {
 	img, err := loadFromCache(ctx, c, v1.Hash(h))
 	if err != nil {
 		return compute.Result[v1.Image]{}, err
@@ -281,21 +281,21 @@ func (imageCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.T
 	}, nil
 }
 
-func (imageCacheable) Cache(ctx context.Context, c cache.Cache, img v1.Image) (fntypes.Digest, error) {
+func (imageCacheable) Cache(ctx context.Context, c cache.Cache, img v1.Image) (schema.Digest, error) {
 	d, err := img.Digest()
 	if err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
 	if err := writeImage(ctx, c, img); err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
-	return fntypes.Digest(d), nil
+	return schema.Digest(d), nil
 }
 
 func loadCachedManifest(ctx context.Context, cache cache.Cache, d v1.Hash) ([]byte, *v1.Manifest, error) {
-	rawManifest, err := cache.Bytes(ctx, fntypes.Digest(d))
+	rawManifest, err := cache.Bytes(ctx, schema.Digest(d))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil, nil
@@ -323,7 +323,7 @@ func loadFromCache(ctx context.Context, cache cache.Cache, d v1.Hash) (v1.Image,
 
 	switch m.MediaType {
 	case types.DockerManifestSchema2:
-		rawConfig, err := cache.Bytes(ctx, fntypes.Digest(m.Config.Digest))
+		rawConfig, err := cache.Bytes(ctx, schema.Digest(m.Config.Digest))
 		if err != nil {
 			return nil, err
 		}
@@ -350,11 +350,11 @@ func platformMatches(stored, requested *v1.Platform) bool {
 
 type resolvableCacheable struct{}
 
-func (resolvableCacheable) ComputeDigest(ctx context.Context, v interface{}) (fntypes.Digest, error) {
+func (resolvableCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.Digest, error) {
 	return v.(ResolvableImage).Digest()
 }
 
-func (resolvableCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h fntypes.Digest) (compute.Result[ResolvableImage], error) {
+func (resolvableCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h schema.Digest) (compute.Result[ResolvableImage], error) {
 	r, err := loadCachedResolvable(ctx, c, v1.Hash(h))
 	if err != nil {
 		return compute.Result[ResolvableImage]{}, err
@@ -370,7 +370,7 @@ func (resolvableCacheable) LoadCached(ctx context.Context, c cache.Cache, t refl
 	}, nil
 }
 
-func (resolvableCacheable) Cache(ctx context.Context, c cache.Cache, r ResolvableImage) (fntypes.Digest, error) {
+func (resolvableCacheable) Cache(ctx context.Context, c cache.Cache, r ResolvableImage) (schema.Digest, error) {
 	return r.cache(ctx, c)
 }
 
@@ -528,11 +528,11 @@ func writeImage(ctx context.Context, cache cache.Cache, img Image) error {
 			return err
 		}
 
-		if err := cache.WriteBlob(ctx, fntypes.Digest(cfgName), progress.WrapBytesAsReader(cfgBlob)); err != nil {
+		if err := cache.WriteBlob(ctx, schema.Digest(cfgName), progress.WrapBytesAsReader(cfgBlob)); err != nil {
 			return err
 		}
 
-		return cache.WriteBlob(ctx, fntypes.Digest(digest), progress.WrapBytesAsReader(manifest))
+		return cache.WriteBlob(ctx, schema.Digest(digest), progress.WrapBytesAsReader(manifest))
 	})
 }
 
@@ -547,5 +547,5 @@ func writeLayer(ctx context.Context, cache cache.Cache, layer v1.Layer, progress
 		return err
 	}
 
-	return cache.WriteBlob(ctx, fntypes.Digest(d), progress.WrapReader(r))
+	return cache.WriteBlob(ctx, schema.Digest(d), progress.WrapReader(r))
 }

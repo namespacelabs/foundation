@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -52,7 +52,7 @@ func (m *serveFS) Compute(ctx context.Context, deps compute.Resolved) (*mux.Rout
 	return MuxFromFS(ctx, fsys, image.Digest, image.Timestamp, m.spa)
 }
 
-func MuxFromFS(ctx context.Context, fsys fs.FS, d fntypes.Digest, ts time.Time, spa bool) (*mux.Router, error) {
+func MuxFromFS(ctx context.Context, fsys fs.FS, d schema.Digest, ts time.Time, spa bool) (*mux.Router, error) {
 	r := mux.NewRouter()
 
 	if err := fnfs.VisitFiles(ctx, fsys, func(path string, contents []byte, _ fs.DirEntry) error {

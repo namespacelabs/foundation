@@ -13,7 +13,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fntypes"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -114,7 +113,7 @@ func (r precomputedTag) Compute(ctx context.Context, _ compute.Resolved) (oci.Al
 	return r.tag, nil
 }
 
-func (r precomputedTag) ComputeDigest(ctx context.Context) (fntypes.Digest, error) {
+func (r precomputedTag) ComputeDigest(ctx context.Context) (schema.Digest, error) {
 	return r.tag.ComputeDigest(ctx)
 }
 

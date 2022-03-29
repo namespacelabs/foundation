@@ -24,8 +24,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/internal/fntypes"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -259,7 +259,7 @@ func (vp *versioned) FS() fs.FS {
 	return vp.fs
 }
 
-func (vp *versioned) ComputeDigest(ctx context.Context) (fntypes.Digest, error) {
+func (vp *versioned) ComputeDigest(ctx context.Context) (schema.Digest, error) {
 	return digestfs.Digest(ctx, vp.fs, nil, nil)
 }
 

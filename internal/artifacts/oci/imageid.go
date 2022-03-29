@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 )
 
 type ImageID struct {
@@ -45,8 +45,8 @@ func (i ImageID) WithDigest(d fmt.Stringer) ImageID {
 	return ImageID{Repository: i.Repository, Tag: i.Tag, Digest: d.String()}
 }
 
-func (i ImageID) ComputeDigest(ctx context.Context) (fntypes.Digest, error) {
-	return fntypes.DigestOf("repository", i.Repository, "tag", i.Tag, "digest", i.Digest)
+func (i ImageID) ComputeDigest(ctx context.Context) (schema.Digest, error) {
+	return schema.DigestOf("repository", i.Repository, "tag", i.Tag, "digest", i.Digest)
 }
 
 func MakeImageID(repository, tag string) ImageID {

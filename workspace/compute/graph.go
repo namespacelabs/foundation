@@ -17,7 +17,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/cache"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -303,7 +303,7 @@ func compute(ctx context.Context, g *Orch, opts computeInstance, cacheable *cach
 
 	d, err := computeOutputDigest(ctx, digester, v)
 	if err != nil {
-		d = fntypes.Digest{} // Ignore errors, but don't cache.
+		d = schema.Digest{} // Ignore errors, but don't cache.
 		if VerifyCaching {
 			zerolog.Ctx(ctx).Error().Err(err).Msgf("VerifyCache: failed to compute digest for %q", typeStr(opts.Computable))
 		}
@@ -366,7 +366,7 @@ func waitDeps(ctx context.Context, g *Orch, computable map[string]rawComputable)
 			if err != nil {
 				// Make sure this is reported as one of the dependencies failing, instead of this
 				// computation. This will provide for better error reporting.
-				return tasks.DependencyFailed(k, reflect.TypeOf(d).String(), err)
+				return fnerrors.DependencyFailed(k, reflect.TypeOf(d).String(), err)
 			}
 			rmu.Lock()
 			results[k] = res
@@ -383,7 +383,7 @@ func waitDeps(ctx context.Context, g *Orch, computable map[string]rawComputable)
 	return results, err
 }
 
-func computeOutputDigest(ctx context.Context, digester ComputeDigestFunc, v interface{}) (fntypes.Digest, error) {
+func computeOutputDigest(ctx context.Context, digester ComputeDigestFunc, v interface{}) (schema.Digest, error) {
 	if digester != nil {
 		return digester(ctx, v)
 	}
@@ -392,7 +392,7 @@ func computeOutputDigest(ctx context.Context, digester ComputeDigestFunc, v inte
 		return cd.ComputeDigest(ctx)
 	}
 
-	return fntypes.Digest{}, nil
+	return schema.Digest{}, nil
 }
 
 func (g *Orch) Detach(ev *tasks.ActionEvent, f func(context.Context) error) {
@@ -552,7 +552,7 @@ func addOutputsToSpan(ctx context.Context, results map[string]ResultWithTimestam
 	}
 }
 
-func verifyCacheHits(ctx context.Context, c rawComputable, hits []cacheHit, d fntypes.Digest) {
+func verifyCacheHits(ctx context.Context, c rawComputable, hits []cacheHit, d schema.Digest) {
 	for _, hit := range hits {
 		if hit.Hit && hit.OutputDigest != d {
 			zerolog.Ctx(ctx).Error().

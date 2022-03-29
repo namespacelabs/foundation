@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -25,28 +25,28 @@ const version = "1.13.5"
 var Pins = map[string]artifacts.Reference{
 	"linux/amd64": {
 		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/linux/amd64/kubectl", version),
-		Digest: fntypes.Digest{
+		Digest: schema.Digest{
 			Algorithm: "sha256",
 			Hex:       "3b0ddcde72fd6ec30675f2d0500b3aff43a0bfd580602bb1c5c75c4072242f35",
 		},
 	},
 	"linux/arm64": {
 		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/linux/arm64/kubectl", version),
-		Digest: fntypes.Digest{
+		Digest: schema.Digest{
 			Algorithm: "sha256",
 			Hex:       "46298ad006f76aa3a07338dcd3c24fa9704571ccfcd7cefc0cdb67ece0822a2a",
 		},
 	},
 	"darwin/arm64": {
 		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/darwin/arm64/kubectl", version),
-		Digest: fntypes.Digest{
+		Digest: schema.Digest{
 			Algorithm: "sha256",
 			Hex:       "74b5db42979c6ba6c25dfc433509b39221788dc4e0644f218c7549a42405b073",
 		},
 	},
 	"darwin/amd64": {
 		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/darwin/amd64/kubectl", version),
-		Digest: fntypes.Digest{
+		Digest: schema.Digest{
 			Algorithm: "sha256",
 			Hex:       "b5980f5a719166ef414455b7f8e9462a3a81c72ef59018cdfca00438af7f3378",
 		},

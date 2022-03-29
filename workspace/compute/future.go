@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -35,7 +35,7 @@ type Future[V any] struct {
 }
 
 type Result[V any] struct {
-	Digest           fntypes.Digest
+	Digest           schema.Digest
 	NonDeterministic bool
 	Value            V
 }

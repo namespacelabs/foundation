@@ -9,7 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -59,8 +59,8 @@ func (p prebuiltImage) Compute(context.Context, compute.Resolved) (oci.ImageID, 
 	return p.imgid, nil
 }
 
-func (p prebuiltImage) ComputeDigest(context.Context) (fntypes.Digest, error) {
-	return fntypes.DigestOf(p.imgid)
+func (p prebuiltImage) ComputeDigest(context.Context) (schema.Digest, error) {
+	return schema.DigestOf(p.imgid)
 }
 
 func (p prebuiltImage) ImageRef() string { return p.imgid.ImageRef() }

@@ -15,7 +15,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 )
 
 const cacheVersion = 1 // Allow for global cache invalidation.
@@ -133,8 +133,8 @@ type computedInputs struct {
 	computable       map[string]rawComputable
 	nonDeterministic bool // Even waiting for dependencies won't really lead to a deterministic digest.
 
-	Digest            fntypes.Digest // Only set if all inputs are known recursively over all dependencies.
-	PostComputeDigest fntypes.Digest // Only set after `Finalize`, and if all values were resolved.
+	Digest            schema.Digest // Only set if all inputs are known recursively over all dependencies.
+	PostComputeDigest schema.Digest // Only set after `Finalize`, and if all values were resolved.
 }
 
 func (c *computedInputs) Finalize(resolved map[string]ResultWithTimestamp[any]) error {
@@ -166,24 +166,24 @@ func (c *computedInputs) Finalize(resolved map[string]ResultWithTimestamp[any]) 
 	return err
 }
 
-func digestWithInputs(pkgPath, typeName string, serial int64, inputs []keyDigest) (fntypes.Digest, error) {
+func digestWithInputs(pkgPath, typeName string, serial int64, inputs []keyDigest) (schema.Digest, error) {
 	h := sha256.New()
 
 	if _, err := fmt.Fprintf(h, "$V:%d\nPkgPath:%s\nType:%s\nVersion:%d\nInputs{\n", cacheVersion, pkgPath, typeName, serial); err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
 	for _, kv := range inputs {
 		if _, err := fmt.Fprintf(h, "%s:%s\n", kv.Name, kv.Digest); err != nil {
-			return fntypes.Digest{}, err
+			return schema.Digest{}, err
 		}
 	}
 
 	if _, err := fmt.Fprint(h, "}\n"); err != nil {
-		return fntypes.Digest{}, err
+		return schema.Digest{}, err
 	}
 
-	return fntypes.FromHash("sha256", h), nil
+	return schema.FromHash("sha256", h), nil
 }
 
 func (in *In) computeDigest(ctx context.Context, c rawComputable, processComputable bool) (*computedInputs, error) {
@@ -211,7 +211,7 @@ func (in *In) computeDigest(ctx context.Context, c rawComputable, processComputa
 		}
 
 		if !isComputable {
-			if d, err := fntypes.DigestOf(kv.Value); err != nil {
+			if d, err := schema.DigestOf(kv.Value); err != nil {
 				return nil, fnerrors.InternalError("%s: failed to compute digest: %w", kv.Name, err)
 			} else {
 				res.digests = append(res.digests, keyDigest{Name: kv.Name, Digest: d.String(), Set: true})
@@ -265,7 +265,7 @@ func (in *In) computeDigest(ctx context.Context, c rawComputable, processComputa
 			return nil, fnerrors.InternalError("%s: marshaller failed with: %w", m.Name, err)
 		}
 
-		res.digests = append(res.digests, keyDigest{Name: m.Name, Digest: fntypes.FromHash("sha256", h).String(), Set: true})
+		res.digests = append(res.digests, keyDigest{Name: m.Name, Digest: schema.FromHash("sha256", h).String(), Set: true})
 	}
 
 	sort.Slice(res.digests, func(i, j int) bool {

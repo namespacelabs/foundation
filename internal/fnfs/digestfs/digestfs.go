@@ -10,11 +10,11 @@ import (
 	"io/fs"
 
 	"namespacelabs.dev/foundation/internal/fnfs/maketarfs"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 )
 
-func Digest(ctx context.Context, fsys fs.FS, includeFiles []string, excludeFiles []string) (fntypes.Digest, error) {
+func Digest(ctx context.Context, fsys fs.FS, includeFiles []string, excludeFiles []string) (schema.Digest, error) {
 	h := sha256.New()
 	err := maketarfs.TarFS(ctx, h, fsys, includeFiles, excludeFiles)
-	return fntypes.FromHash("sha256", h), err
+	return schema.FromHash("sha256", h), err
 }

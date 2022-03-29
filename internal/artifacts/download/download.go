@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/ctxio"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fntypes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -23,7 +23,7 @@ func URL(ref artifacts.Reference) compute.Computable[compute.ByteStream] {
 
 type downloadUrl struct {
 	url    string
-	digest fntypes.Digest
+	digest schema.Digest
 
 	compute.LocalScoped[compute.ByteStream]
 }

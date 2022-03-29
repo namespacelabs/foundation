@@ -4,9 +4,9 @@
 
 package artifacts
 
-import "namespacelabs.dev/foundation/internal/fntypes"
+import "namespacelabs.dev/foundation/schema"
 
 type Reference struct {
 	URL    string
-	Digest fntypes.Digest
+	Digest schema.Digest
 }

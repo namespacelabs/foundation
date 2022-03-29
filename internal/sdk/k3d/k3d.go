@@ -21,8 +21,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/disk"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fntypes"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -36,28 +36,28 @@ var IgnoreZfsCheck = false
 var Pins = map[string]artifacts.Reference{
 	"linux/amd64": {
 		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-linux-amd64", version),
-		Digest: fntypes.Digest{
+		Digest: schema.Digest{
 			Algorithm: "sha256",
 			Hex:       "7ddb900e6e50120b65d61568f6af007a82331bf83918608a6a7be8910792faef",
 		},
 	},
 	"linux/arm64": {
 		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-linux-arm64", version),
-		Digest: fntypes.Digest{
+		Digest: schema.Digest{
 			Algorithm: "sha256",
 			Hex:       "ccf1dafc1eddfef083375377a52ef0ca269a41c5bc4f0f4d7e11a7c56da08833",
 		},
 	},
 	"darwin/arm64": {
 		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-darwin-arm64", version),
-		Digest: fntypes.Digest{
+		Digest: schema.Digest{
 			Algorithm: "sha256",
 			Hex:       "d0149ecb9b3fb831d617a0a880d8235722a70b9131f45f1389235e586050f8f9",
 		},
 	},
 	"darwin/amd64": {
 		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-darwin-amd64", version),
-		Digest: fntypes.Digest{
+		Digest: schema.Digest{
 			Algorithm: "sha256",
 			Hex:       "40ac312bc762611de80daff24cb66d79aaaf17bf90e5e8d61caf90e63b57542d",
 		},
