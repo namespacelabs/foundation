@@ -6,12 +6,17 @@ package fncobra
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"runtime/pprof"
 	"strings"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/logs"
 	"github.com/rs/zerolog"
@@ -22,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -52,6 +58,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		done := cpuprofile(v)
 		defer done()
 	}
+
+	versionUpdatesChannel := make(chan string)
+	go checkForUpdates(versionUpdatesChannel)
 
 	setupViper()
 
@@ -182,6 +191,13 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	if tasks.ActionStorer != nil {
 		tasks.ActionStorer.Flush(os.Stderr)
+	}
+
+	// Printing the new version message if any.
+	select {
+	case msg := <-versionUpdatesChannel:
+		fmt.Fprintln(console.Stdout(ctx), msg)
+	default:
 	}
 
 	if err != nil {
@@ -324,4 +340,73 @@ func cpuprofile(cpuprofile string) func() {
 		pprof.StopCPUProfile()
 		f.Close()
 	}
+}
+
+// Does nothing if version check failed
+func checkForUpdates(channel chan string) {
+	tagName, latestReleaseBuildTime, err := getLatestReleaseVersion()
+	if err != nil {
+		return
+	}
+	binaryBuildTime, err := getBinaryBuildTime()
+	if err != nil || binaryBuildTime == nil {
+		return
+	}
+
+	if latestReleaseBuildTime.After(*binaryBuildTime) {
+		channel <- colors.Green(fmt.Sprintf(
+			"New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s",
+			*tagName, *tagName))
+	}
+}
+
+type version struct {
+	TagName   string `json:"tag_name"`
+	CreatedAt string `json:"created_at"`
+}
+
+func getLatestReleaseVersion() (tagName *string, createdAt *time.Time, err error) {
+	response, err := http.Get("https://namespacelabs.github.io/foundation-version/version.json")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var latestVersion version
+	err = json.Unmarshal(body, &latestVersion)
+	if err != nil {
+		return nil, nil, err
+	}
+	latestBuildTime, err := time.Parse(time.RFC3339, latestVersion.CreatedAt)
+	return &latestVersion.TagName, &latestBuildTime, err
+}
+
+// Returns nil if this "fn" was built manually.
+func getBinaryBuildTime() (*time.Time, error) {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return nil, fnerrors.InternalError("buildinfo is missing")
+	}
+
+	for _, n := range info.Settings {
+		if n.Key == "vcs.modified" {
+			// Ignore manual builds
+			return nil, nil
+		}
+	}
+	for _, n := range info.Settings {
+		if n.Key == "vcs.time" {
+			buildTime, err := time.Parse(time.RFC3339, n.Value)
+			if err != nil {
+				return nil, err
+			}
+			return &buildTime, nil
+		}
+	}
+
+	return nil, fnerrors.InternalError("Couldn't find 'vcs.time' in buildinfo")
 }

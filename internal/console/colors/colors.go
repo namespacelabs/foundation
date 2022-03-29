@@ -13,3 +13,7 @@ func Faded(str string) string {
 func Bold(str string) string {
 	return aec.Bold.Apply(str)
 }
+
+func Green(str string) string {
+	return aec.GreenF.Apply(str)
+}
