@@ -89,24 +89,28 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	if fmwk := v.LookupPath("framework"); fmwk.Exists() {
-		str, err := fmwk.Val.String()
+		fmwkStr, err := fmwk.Val.String()
 		if err != nil {
 			return err
 		}
 
-		if v, ok := schema.Node_Framework_value[str]; ok {
-			out.Supports = append(out.Supports, schema.Node_Framework(v))
+		if v, err := parseFramework(loc, fmwkStr); err != nil {
+			out.ServiceFramework = schema.Framework(v)
 		} else {
-			return fnerrors.UserError(loc, "unrecognized framework: %s", str)
+			return err
 		}
 	}
 
-	if hasInit := v.LookupPath("hasInitialization"); hasInit.Exists() {
-		v, err := hasInit.Val.Bool()
-		if err != nil {
+	var initializeInFrameworks []string
+	if err := v.LookupPath("initializeIn").Val.Decode(&initializeInFrameworks); err != nil {
+		return err
+	}
+	for _, fmwkStr := range initializeInFrameworks {
+		if v, err := parseFramework(loc, fmwkStr); err != nil {
+			out.Initializers = append(out.Initializers, &schema.NodeInitializer{Framework: schema.Framework(v)})
+		} else {
 			return err
 		}
-		out.HasInitialization = v
 	}
 
 	if provides := v.LookupPath("provides"); provides.Exists() {
@@ -350,6 +354,19 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	return workspace.TransformNode(ctx, pl, loc, out, kind)
+}
+
+func parseFramework(loc workspace.Location, str string) (schema.Framework, error) {
+	if v, ok := schema.Framework_value[str]; ok {
+		fmwk := schema.Framework(v)
+		if (fmwk != schema.Framework_FRAMEWORK_UNSPECIFIED) &&
+			(fmwk != schema.Framework_OPAQUE) {
+			return fmwk, nil
+		}
+	}
+
+	return schema.Framework_FRAMEWORK_UNSPECIFIED,
+		fnerrors.UserError(loc, "unrecognized framework: %s", str)
 }
 
 func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, provides *fncue.CueV, pkg *workspace.Package, out *schema.Node) error {

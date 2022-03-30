@@ -37,8 +37,8 @@ const (
 )
 
 func Register() {
-	languages.Register(schema.Node_GO_GRPC, impl{})
-	runtime.RegisterSupport(schema.Node_GO_GRPC, impl{})
+	languages.Register(schema.Framework_GO, impl{})
+	runtime.RegisterSupport(schema.Framework_GO, impl{})
 
 	ops.Register(&OpGenNode{}, generator{})
 	ops.Register(&OpGenServer{}, generator{})

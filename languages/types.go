@@ -47,12 +47,12 @@ var (
 	mapping = map[string]Integration{}
 )
 
-func Register(fmwk schema.Node_Framework, i Integration) {
+func Register(fmwk schema.Framework, i Integration) {
 	mapping[fmwk.String()] = i
 	workspace.RegisterFrameworkHandler(fmwk, i)
 }
 
-func IntegrationFor(fmwk schema.Node_Framework) Integration {
+func IntegrationFor(fmwk schema.Framework) Integration {
 	return mapping[fmwk.String()]
 }
 

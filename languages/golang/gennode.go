@@ -30,6 +30,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		depVars = append(depVars, p.Provisioned.DepVars...)
 	}
 
+	hasInitialization := n.GetInitializer(schema.Framework_GO) != nil
 	var providesCount int
 	for _, p := range n.Provides {
 		for _, prov := range p.AvailableIn {
@@ -40,7 +41,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 	}
 
 	// Irrespective of whether instances are declared, if there's no code to consume them, don't codegen.
-	if len(n.ExportService) == 0 && len(n.ExportHttp) == 0 && !n.HasInitialization && providesCount == 0 {
+	if len(n.ExportService) == 0 && len(n.ExportHttp) == 0 && !hasInitialization && providesCount == 0 {
 		return nil
 	}
 
@@ -48,7 +49,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 
 	var depPackages []string
 	if err := visitAllDeps(ctx, nodes, n.GetImportedPackages(), func(dep *schema.Node) error {
-		if dep.HasInitialization {
+		if dep.GetInitializer(schema.Framework_GO) != nil {
 			nodeLoc, err := loader.Resolve(ctx, schema.PackageName(dep.PackageName))
 			if err != nil {
 				return err
@@ -112,7 +113,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		DepVars:           depVars,
 		Provides:          provides,
 		DepPackages:       depPackages,
-		HasInitialization: n.HasInitialization,
+		HasInitialization: hasInitialization,
 		NeedsDepsType:     len(n.ExportService) > 0 || len(n.ExportHttp) > 0 || len(depVars) > 0,
 	})
 }

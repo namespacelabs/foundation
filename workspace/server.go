@@ -73,7 +73,7 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 			continue
 		}
 
-		if len(n.Supports) > 0 && !isSupported(n.Supports, srv.Framework) {
+		if n.Kind == schema.Node_SERVICE && n.ServiceFramework != srv.Framework {
 			return nil, fnerrors.UserError(dep.Location, "doesn't suppport %s", srv.Framework)
 		}
 
@@ -105,7 +105,7 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 	return sealed.Proto.Server, nil
 }
 
-func isSupported(supports []schema.Node_Framework, fmwk schema.Node_Framework) bool {
+func isSupported(supports []schema.Framework, fmwk schema.Framework) bool {
 	for _, n := range supports {
 		if n == fmwk {
 			return true

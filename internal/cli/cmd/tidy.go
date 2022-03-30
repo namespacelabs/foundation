@@ -68,8 +68,8 @@ func NewTidyCmd() *cobra.Command {
 					}
 
 				case pkg.Node() != nil:
-					for _, fmwk := range pkg.Node().Supports {
-						lang := languages.IntegrationFor(fmwk)
+					if pkg.Node().Kind == schema.Node_SERVICE {
+						lang := languages.IntegrationFor(pkg.Node().ServiceFramework)
 						if err := lang.TidyNode(ctx, pkg.Location, pkg.Node()); err != nil {
 							errs = append(errs, err)
 						}

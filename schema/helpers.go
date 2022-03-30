@@ -20,6 +20,15 @@ func (n *Node) GetImportedPackages() []PackageName {
 	return asPackages(n.GetImport()...)
 }
 
+func (n *Node) GetInitializer(fmwk Framework) *NodeInitializer {
+	for _, i := range n.Initializers {
+		if i.Framework == fmwk {
+			return i
+		}
+	}
+	return nil
+}
+
 func (n *Node) ErrorLocation() string { return n.PackageName }
 
 func (s *Server) GetImportedPackages() []PackageName {

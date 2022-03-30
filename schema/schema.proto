@@ -80,9 +80,6 @@ message Node {
 
     Framework service_framework = 19;
 
-    // XXX rename this.
-    bool has_initialization = 12;
-
     repeated Reference reference = 13;
 
     // Set of dependencies specified explicitly by the user.
@@ -110,6 +107,8 @@ enum Framework {
     GO                    = 1;
     WEB                   = 2;
     NODEJS                = 3;
+    // Only for servers
+    OPAQUE = 4;
 }
 
 message HttpPath {
@@ -208,9 +207,7 @@ message Server {
     // All of the allocations performed in this server's dependency tree.
     repeated Allocation allocation = 7;
 
-    // The framework this server follows. Either this field or "is_opaque" must be set.
     Framework framework = 8;
-    bool      is_opaque = 21;
 
     bool is_stateful = 20;
 

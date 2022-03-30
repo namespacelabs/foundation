@@ -40,7 +40,7 @@ _#Node: {
 	#Provides: [X=string]: {
 		name: X
 		{input: types.#Proto} | {type: types.#Proto}
-    outputType: [#Framework]: {...}
+    availableIn: [#Framework]: {...}
 	}
 }
 
