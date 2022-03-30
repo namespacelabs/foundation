@@ -5,7 +5,6 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -96,32 +95,6 @@ func NewDeployCmd() *cobra.Command {
 			}
 
 			if alsoWait {
-				envLabel := fmt.Sprintf("--env=%s ", envRef)
-				if envRef == defaultEnvRef {
-					envLabel = ""
-				}
-
-				var sticky bytes.Buffer
-				for k, srv := range servers {
-					if k > 0 {
-						fmt.Fprintln(&sticky)
-					}
-
-					hints := append([]string{
-						fmt.Sprintf("You can inspect server logs using %s.", colors.Bold(fmt.Sprintf("fn logs %s%s", envLabel, srv.Location.Rel()))),
-					}, computed.Hints...)
-
-					hints = append(hints, fmt.Sprintf("Try out a stateful development session with %s.",
-						colors.Bold(fmt.Sprintf("fn dev %s%s", envLabel, srv.Location.Rel()))))
-
-					fmt.Fprintf(&sticky, " Next steps:\n\n")
-					for _, hint := range hints {
-						fmt.Fprintf(&sticky, "   · %s\n", hint)
-					}
-				}
-
-				tasks.SetStickyContent(ctx, "logs", sticky.Bytes())
-
 				if err := deploy.Wait(ctx, servers, env, waiters); err != nil {
 					return err
 				}
@@ -145,10 +118,34 @@ func NewDeployCmd() *cobra.Command {
 				fmt.Fprintln(console.Stderr(ctx), "Failed to report on ingress:", err)
 			}
 
+			out := console.TypedOutput(ctx, "deploy", tasks.CatOutputUs)
+
 			deploy.SortPorts(ports, focusServers)
 			deploy.SortIngresses(computed.IngressFragments)
-			deploy.RenderPortsAndIngresses(false, console.TypedOutput(ctx, "ingress", tasks.CatOutputUs), "", stack.Proto(),
+			deploy.RenderPortsAndIngresses(false, out, "", stack.Proto(),
 				focusServers, ports, domains, computed.IngressFragments)
+
+			envLabel := fmt.Sprintf("--env=%s ", envRef)
+			if envRef == defaultEnvRef {
+				envLabel = ""
+			}
+
+			fmt.Fprintf(out, "\n Next steps:\n\n")
+
+			for _, srv := range servers {
+				var hints []string
+				hints = append(hints, fmt.Sprintf("You can inspect server logs using %s.", colors.Bold(fmt.Sprintf("fn logs %s%s", envLabel, srv.Location.Rel()))))
+				hints = append(hints, computed.Hints...)
+
+				if env.Purpose() == schema.Environment_DEVELOPMENT {
+					hints = append(hints, fmt.Sprintf("Try out a stateful development session with %s.",
+						colors.Bold(fmt.Sprintf("fn dev %s%s", envLabel, srv.Location.Rel()))))
+				}
+
+				for _, hint := range hints {
+					fmt.Fprintf(out, "   · %s\n", hint)
+				}
+			}
 
 			return nil
 		}),
