@@ -105,7 +105,11 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	if err := v.LookupPath("initializeIn").Val.Decode(&initializeInFrameworks); err != nil {
 		return err
 	}
+	uniqFrameworks := uniquestrings.List{}
 	for _, fmwkStr := range initializeInFrameworks {
+		if !uniqFrameworks.Add(fmwkStr) {
+			return fnerrors.UserError(loc, "Duplicate initialization framework value: %s", fmwkStr)
+		}
 		if v, err := parseFramework(loc, fmwkStr); err != nil {
 			out.Initializers = append(out.Initializers, &schema.NodeInitializer{Framework: schema.Framework(v)})
 		} else {

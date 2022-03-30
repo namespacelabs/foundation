@@ -76,6 +76,8 @@ message Node {
     // internet (only valid for services).
     Endpoint.Type ingress = 10;
 
+    // Can't containg multiple initializer with the same "framework".
+    // Not a map since "framework" will likely be broken down and converted to a message.
     repeated NodeInitializer initializers = 11;
 
     Framework service_framework = 19;

@@ -18,8 +18,8 @@ import (
 )
 
 func Register() {
-	languages.Register(schema.Node_OPAQUE, impl{})
-	runtime.RegisterSupport(schema.Node_OPAQUE, impl{})
+	languages.Register(schema.Framework_OPAQUE, impl{})
+	runtime.RegisterSupport(schema.Framework_OPAQUE, impl{})
 }
 
 type impl struct {

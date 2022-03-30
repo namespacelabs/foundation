@@ -80,20 +80,18 @@ func ForNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.Defini
 		}
 	}
 
-	frameworkSet := map[schema.Framework]bool{}
+	fmwks := []schema.Framework{}
 	if pkg.Node().ServiceFramework != schema.Framework_FRAMEWORK_UNSPECIFIED {
-		frameworkSet[pkg.Node().ServiceFramework] = true
+		fmwks = append(fmwks, pkg.Node().ServiceFramework)
 	}
 	for _, i := range pkg.Node().Initializers {
-		frameworkSet[i.Framework] = true
+		fmwks = append(fmwks, i.Framework)
 	}
-	fmwks =
+	sort.Slice(fmwks, func(i, j int) bool {
+		return fmwks[i].Number() < fmwks[j].Number()
+	})
 
-		sort.Slice(fmwks, func(i, j int) bool {
-			return fmwks[i].Number() < fmwks[j].Number()
-		})
-
-	for _, fmwk := range frameworkSet {
+	for _, fmwk := range fmwks {
 		defs, err := languages.IntegrationFor(fmwk).GenerateNode(pkg, available)
 		if err != nil {
 			return nil, err
