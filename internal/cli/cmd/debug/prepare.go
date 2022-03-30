@@ -9,10 +9,10 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime/docker/install"
+	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 func newPrepareCmd() *cobra.Command {
@@ -41,15 +41,11 @@ func newPrepareCmd() *cobra.Command {
 
 			w := console.Stdout(ctx)
 
-			fmt.Fprintf(w, "\n  Jaeger listening on: http://localhost:20001/api/traces\n")
+			config, _ := dirs.Config()
 
-			viper.Set("jaeger_endpoint", "http://localhost:20001/api/traces")
-
-			if err := viper.WriteConfig(); err != nil {
-				return err
-			}
-
-			fmt.Fprintf(w, "\n  (Updated configuration.)\n")
+			fmt.Fprintf(w, "\n  Jaeger listening on: http://localhost:20001/api/traces\n\n")
+			fmt.Fprintf(w, "Consider updating %s/config.json with:\n\n", config)
+			fmt.Fprintf(w, "  %q: %q\n\n", "jaeger_endpoint", "http://localhost:20001/api/traces")
 
 			return nil
 		}),
