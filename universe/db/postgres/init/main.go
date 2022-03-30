@@ -11,13 +11,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"golang.org/x/xerrors"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
@@ -28,14 +26,10 @@ var (
 	passwordFile = flag.String("postgres_password_file", "", "location of the password secret")
 )
 
-func logf(message string, args ...interface{}) {
-	fmt.Fprintf(os.Stdout, "%s : %s\n", time.Now().String(), fmt.Sprintf(message, args...))
-}
-
 func existsDb(ctx context.Context, conn *pgxpool.Pool, dbName string) (bool, error) {
 	rows, err := conn.Query(ctx, "SELECT FROM pg_database WHERE datname = $1;", dbName)
 	if err != nil {
-		return false, xerrors.Errorf("failed to check for database %s: %w", dbName, err)
+		return false, fmt.Errorf("failed to check for database %s: %w", dbName, err)
 	}
 	defer rows.Close()
 
@@ -44,16 +38,16 @@ func existsDb(ctx context.Context, conn *pgxpool.Pool, dbName string) (bool, err
 
 func connect(ctx context.Context, connString string) (conn *pgxpool.Pool, err error) {
 	err = backoff.Retry(func() error {
-		logf("Connecting to postgres.")
+		log.Printf("Connecting to postgres.")
 		conn, err = pgxpool.Connect(ctx, connString)
 		if err != nil {
-			logf("Failed to connect to postgres: %v", err)
+			log.Printf("Failed to connect to postgres: %v", err)
 		}
 		return err
 	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx))
 
 	if err != nil {
-		return nil, xerrors.Errorf("unable to establish postgres connection: %w", err)
+		return nil, fmt.Errorf("unable to establish postgres connection: %w", err)
 	}
 
 	return conn, nil
@@ -67,14 +61,14 @@ func ensureDb(ctx context.Context, db *postgres.Database, user string, password 
 	defer conn.Close()
 
 	// Postgres does not support CREATE DATABASE IF NOT EXISTS
-	logf("Querying for existing databases.")
+	log.Printf("Querying for existing databases.")
 	exists, err := existsDb(ctx, conn, db.Name)
 	if err != nil {
 		return err
 	}
 
 	if exists {
-		logf("Database %s already exists.", db.Name)
+		log.Printf("Database %s already exists.", db.Name)
 		return nil
 	}
 
@@ -82,14 +76,14 @@ func ensureDb(ctx context.Context, db *postgres.Database, user string, password 
 	// https://www.postgresql.org/docs/9.5/xfunc-sql.html
 	// As we need to use Sprintf instead, let's do some basic sanity checking (whitespaces are forbidden).
 	if len(strings.Fields(db.Name)) > 1 {
-		return xerrors.Errorf("Invalid database name: %s", db.Name)
+		return fmt.Errorf("Invalid database name: %s", db.Name)
 	}
 	_, err = conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s;", db.Name))
 	if err != nil {
-		return xerrors.Errorf("failed to create database %s: %w", db.Name, err)
+		return fmt.Errorf("failed to create database %s: %w", db.Name, err)
 	}
 
-	logf("Created database %s.", db.Name)
+	log.Printf("Created database %s.", db.Name)
 	return nil
 }
 
@@ -102,13 +96,13 @@ func applySchema(ctx context.Context, db *postgres.Database, user string, passwo
 
 	schema, err := ioutil.ReadFile(db.SchemaFile.Path)
 	if err != nil {
-		return xerrors.Errorf("unable to read file %s: %v", db.SchemaFile.Path, err)
+		return fmt.Errorf("unable to read file %s: %v", db.SchemaFile.Path, err)
 	}
 
-	logf("Applying schema %s.", db.SchemaFile.Path)
+	log.Printf("Applying schema %s.", db.SchemaFile.Path)
 	_, err = conn.Exec(ctx, string(schema))
 	if err != nil {
-		return xerrors.Errorf("unable to execute schema %s: %v", db.SchemaFile.Path, err)
+		return fmt.Errorf("unable to execute schema %s: %v", db.SchemaFile.Path, err)
 	}
 	return nil
 }
@@ -119,7 +113,7 @@ func readConfigs() ([]*postgres.Database, error) {
 	for _, path := range flag.Args() {
 		file, err := ioutil.ReadFile(path)
 		if err != nil {
-			return nil, xerrors.Errorf("unable to read file %s: %v", path, err)
+			return nil, fmt.Errorf("unable to read file %s: %v", path, err)
 		}
 
 		db := &postgres.Database{}
@@ -133,8 +127,10 @@ func readConfigs() ([]*postgres.Database, error) {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	flag.Parse()
-	logf("postgres init begins")
+	log.Printf("postgres init begins")
 	ctx := context.Background()
 
 	// TODO: creds should be definable per db instance #217
@@ -161,5 +157,5 @@ func main() {
 			log.Fatalf("%v", err)
 		}
 	}
-	logf("postgres init completed")
+	log.Printf("postgres init completed")
 }

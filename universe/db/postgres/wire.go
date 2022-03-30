@@ -22,7 +22,7 @@ func logf(message string, args ...interface{}) {
 func ProvideDatabase(ctx context.Context, caller string, db *Database, creds *creds.Creds, ready core.Check) (*pgxpool.Pool, error) {
 	// Config has to be created by ParseConfig
 	config, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
-		creds.UserName,
+		creds.Username,
 		creds.Password,
 		db.HostedAt.Address,
 		db.HostedAt.Port,
