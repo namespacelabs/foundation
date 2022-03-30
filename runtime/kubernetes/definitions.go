@@ -59,7 +59,7 @@ func RegisterGraphHandlers() {
 				return err
 			}
 
-			patchOpts := ego().ToPatchOptions()
+			patchOpts := kubedef.Ego().ToPatchOptions()
 			req := client.Patch(types.ApplyPatchType)
 			if apply.Namespace != "" {
 				req = req.Namespace(apply.Namespace)

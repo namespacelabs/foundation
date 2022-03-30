@@ -6,6 +6,8 @@ package cuefrontend
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -24,7 +26,7 @@ type cueServer struct {
 	Import     []string                  `json:"import"`
 	Services   map[string]cueServiceSpec `json:"service"`
 	StaticEnv  map[string]string         `json:"env"`
-	Binary     cueServerBinary           `json:"binary"`
+	Binary     interface{}               `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
 
 	// XXX this should be somewhere else.
 	URLMap []cueURLMapEntry `json:"urlmap"`
@@ -40,10 +42,6 @@ type cueServiceSpec struct {
 	ContainerPort int32                  `json:"containerPort"`
 	Metadata      cueServiceSpecMetadata `json:"metadata"`
 	Internal      bool                   `json:"internal"`
-}
-
-type cueServerBinary struct {
-	Image string `json:"image"`
 }
 
 type cueServiceSpecMetadata struct {
@@ -72,13 +70,26 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 		return nil, fnerrors.UserError(loc, "unrecognized framework: %s", bits.Framework)
 	}
 
-	if bits.Binary.Image != "" {
-		if out.Framework == schema.Framework_OPAQUE {
+	if bits.Binary != nil {
+		if out.Framework != schema.Framework_OPAQUE {
+			return nil, fnerrors.UserError(loc, "can't specify binary on non-opaque servers")
+		}
+
+		switch x := bits.Binary.(type) {
+		case string:
 			out.Binary = &schema.Server_Binary{
-				Image: bits.Binary.Image,
+				PackageName: x,
 			}
-		} else {
-			return nil, fnerrors.UserError(loc, "can't specify binary.image on non-opaque servers")
+		case map[string]interface{}:
+			if image, ok := x["image"]; ok {
+				out.Binary = &schema.Server_Binary{
+					Prebuilt: fmt.Sprintf("%s", image),
+				}
+			} else {
+				return nil, fnerrors.UserError(loc, "binary: must either specify an image, or be a pointer to a binary package")
+			}
+		default:
+			return nil, fnerrors.InternalError("binary: unexpected type: %v", reflect.TypeOf(bits.Binary))
 		}
 	}
 

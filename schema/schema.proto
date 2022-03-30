@@ -236,7 +236,8 @@ message Server {
     repeated RequiredStorage required_storage = 18;
 
     message Binary {
-        string image = 1;
+        string prebuilt     = 1;
+        string package_name = 2;
     }
 
     message ServiceSpec {

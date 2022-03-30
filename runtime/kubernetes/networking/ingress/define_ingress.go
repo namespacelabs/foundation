@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func EnsureStack(ctx context.Context) ([]kubedef.Apply, error) {
+func EnsureStack(ctx context.Context) ([]*schema.Definition, error) {
 	// XXX make this configurable.
 	return nginx.Ensure(ctx)
 }

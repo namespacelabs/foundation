@@ -15,13 +15,13 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/testdata/go/grpcservice"
+	"namespacelabs.dev/foundation/std/testdata/service/post"
 	"namespacelabs.dev/foundation/testing"
 )
 
 func main() {
 	testing.Do(func(ctx context.Context, t testing.Test) error {
-		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/testdata/go/grpcservice", "grpcservice")
+		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/testdata/service/post", "post")
 
 		var metrics *schema.HttpExportedService
 		for _, md := range endpoint.ServiceMetadata {
@@ -43,7 +43,7 @@ func main() {
 			return err
 		}
 
-		response, err := grpcservice.NewPostServiceClient(conn).Post(ctx, &grpcservice.PostRequest{Input: "Hello from the test"})
+		response, err := post.NewPostServiceClient(conn).Post(ctx, &post.PostRequest{Input: "Hello from the test"})
 		if err != nil {
 			return err
 		}
@@ -71,7 +71,7 @@ func main() {
 			if mf.GetName() == "grpc_server_msg_received_total" {
 				for _, metric := range mf.Metric {
 					if hasLabels(metric.Label, map[string]string{
-						"grpc_service": "std.testdata.go.grpcservice.PostService",
+						"grpc_service": "std.testdata.service.post.PostService",
 						"grpc_method":  "Post",
 					}) {
 						m = metric

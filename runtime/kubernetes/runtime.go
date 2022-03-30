@@ -146,13 +146,7 @@ func (r k8sRuntime) PrepareCluster(ctx context.Context) (runtime.DeploymentState
 		return nil, err
 	}
 
-	for _, apply := range ingressDefs {
-		def, err := apply.ToDefinition()
-		if err != nil {
-			return nil, err
-		}
-		state.definitions = append(state.definitions, def)
-	}
+	state.definitions = ingressDefs
 
 	return state, nil
 }
@@ -322,10 +316,6 @@ func (r k8sRuntime) PlanShutdown(ctx context.Context, foci []provision.Server, s
 	}
 
 	return definitions, nil
-}
-
-func ego() metav1.ApplyOptions {
-	return metav1.ApplyOptions{FieldManager: kubedef.K8sFieldManager}
 }
 
 func (r k8sRuntime) StreamLogsTo(ctx context.Context, w io.Writer, server *schema.Server, opts runtime.StreamLogsOpts) error {

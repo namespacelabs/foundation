@@ -76,12 +76,6 @@ _#Node: {
 
 	isStateful?: bool
 
-	if framework == "OPAQUE" {
-		binary: {
-			image: string
-		}
-	}
-
 	if framework == "OPAQUE" || framework == "NODEJS" {
 		service: [string]: #ServiceSpec
 	}
@@ -111,8 +105,14 @@ _#Node: {
 	}
 }
 
-#OpaqueServer: #Server & {
+#OpaqueServer: {
+	#Server
+
 	framework: "OPAQUE"
+
+	binary: *{
+		image: string
+	} | inputs.#Package
 }
 
 #Image: {

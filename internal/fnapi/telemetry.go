@@ -10,7 +10,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -21,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -36,6 +39,7 @@ type Telemetry struct {
 	backendAddress string
 	mu             sync.Mutex // Protects `recID`.
 	recID          string     // Set after an invocation is recorded.
+	makeClientID   func(context.Context) (clientID, bool)
 }
 
 func NewTelemetry() *Telemetry {
@@ -43,6 +47,7 @@ func NewTelemetry() *Telemetry {
 		UseTelemetry:   true,
 		errorLogging:   false,
 		backendAddress: "https://grpc-gateway-g793omo8v6okrjjo0v60.prod.namespacelabs.nscloud.dev",
+		makeClientID:   generateClientIDAndSalt,
 	}
 }
 
@@ -80,7 +85,7 @@ type arg struct {
 }
 
 type recordInvocationRequest struct {
-	Id      string `json:"id,omitempty"`
+	ID      string `json:"id,omitempty"`
 	Command string `json:"command,omitempty"`
 	Arg     []arg  `json:"arg"`
 	Flag    []flag `json:"flag"`
@@ -91,35 +96,58 @@ type recordInvocationRequest struct {
 }
 
 type recordErrorRequest struct {
-	Id      string `json:"id,omitempty"`
+	ID      string `json:"id,omitempty"`
 	Message string `json:"message,omitempty"`
 }
 
-func readOrGenerateRandID(ctx context.Context, name string) string {
-	id := viper.GetString(name)
-	if id != "" {
-		return id
+type clientID struct {
+	ID   string `json:"id"`
+	Salt string `json:"salt"`
+}
+
+func newRandID() string {
+	return ids.NewRandomBase62ID(16)
+}
+
+func generateClientIDAndSalt(ctx context.Context) (clientID, bool) {
+	configDir, err := dirs.Config()
+	if err != nil {
+		return clientID{newRandID(), newRandID()}, false
 	}
 
-	id = ids.NewRandomBase62ID(16)
+	idfile := filepath.Join(configDir, "clientid.json")
+	idcontents, err := ioutil.ReadFile(idfile)
+	if err == nil {
+		var clientID clientID
+		if err := json.Unmarshal(idcontents, &clientID); err == nil {
+			if clientID.ID != "" && clientID.Salt != "" {
+				return clientID, false
+			}
+		}
+	}
 
-	viper.Set(name, id)
-	if err := viper.WriteConfig(); err != nil {
+	newClientID := clientID{newRandID(), newRandID()}
+	if err := writeJSON(idfile, newClientID); err != nil {
 		fmt.Fprintln(console.Warnings(ctx), "failed to persist user-id", err)
 	}
 
-	return id
+	return newClientID, true
+}
+
+func writeJSON(path string, msg interface{}) error {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path, data, 0644)
 }
 
 // Extracts command name and set flags from cmd. Reports args and flag values in hashed form.
-func buildRecordInvocationRequest(ctx context.Context, cmd *cobra.Command, reqID string, args []string) *recordInvocationRequest {
-	salt := readOrGenerateRandID(ctx, "telemetry_salt")
-	userId := readOrGenerateRandID(ctx, "telemetry_user_id")
-
+func buildRecordInvocationRequest(ctx context.Context, cmd *cobra.Command, c clientID, reqID string, args []string) *recordInvocationRequest {
 	req := recordInvocationRequest{
-		Id:      reqID,
+		ID:      reqID,
 		Command: cmd.Use,
-		UserId:  userId,
+		UserId:  c.ID,
 		Os:      runtime.GOOS,
 		Arch:    runtime.GOARCH,
 		NumCpu:  runtime.NumCPU(),
@@ -128,12 +156,12 @@ func buildRecordInvocationRequest(ctx context.Context, cmd *cobra.Command, reqID
 	cmd.Flags().Visit(func(pflag *pflag.Flag) {
 		req.Flag = append(req.Flag, flag{
 			Name: pflag.Name,
-			Hash: combinedHash(pflag.Value.String(), pflag.Name, salt),
+			Hash: combinedHash(pflag.Value.String(), pflag.Name, c.Salt),
 		})
 	})
 
 	for _, a := range args {
-		req.Arg = append(req.Arg, arg{Hash: combinedHash(a, salt)})
+		req.Arg = append(req.Arg, arg{Hash: combinedHash(a, c.Salt)})
 	}
 
 	return &req
@@ -153,17 +181,19 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 		return
 	}
 
-	if viper.GetString("telemetry_user_id") == "" {
+	c, created := tel.makeClientID(ctx)
+
+	if created {
 		// First fn invocation with Telemetry. Add hint about early access plain text logging.
 		// TODO remove before public release.
 		out := console.TypedOutput(ctx, "telemetry", tasks.CatOutputUs)
-		fmt.Fprint(out, "During the early access, errors are uploaded to our servers for debugging purposes (this will change on our public release).\n")
-		fmt.Fprint(out, "This helps us understand what issues you may be hitting.\n")
-		fmt.Fprintf(out, "If you'd like to disable this behavior, set %s or %s at %s.\n",
+		fmt.Fprint(out, "During early access, errors are uploaded to our servers for debugging purposes.\n")
+		fmt.Fprint(out, "This default behavior will change ahead of release, but helps us understand what\nissues you may be hitting.\n\n")
+		fmt.Fprintf(out, "If you'd like to disable this behavior, set %s or\n%s at %s.\n",
 			colors.Bold("DO_NOT_TRACK=1"), colors.Bold("\"enable_telemetry\": false"), viper.ConfigFileUsed())
 	}
 
-	req := buildRecordInvocationRequest(ctx, cmd, reqID, args)
+	req := buildRecordInvocationRequest(ctx, cmd, c, reqID, args)
 
 	if err := tel.postRecordInvocationRequest(ctx, req); err != nil {
 		tel.logError(ctx, err)
@@ -171,7 +201,7 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 	}
 
 	tel.mu.Lock()
-	tel.recID = req.Id
+	tel.recID = req.ID
 	tel.mu.Unlock()
 }
 
@@ -212,7 +242,7 @@ func (tel *Telemetry) recordError(ctx context.Context, recID string, err error) 
 		return
 	}
 
-	req := recordErrorRequest{Id: recID}
+	req := recordErrorRequest{ID: recID}
 
 	// TODO remove plain text logging after early access.
 	req.Message = err.Error()

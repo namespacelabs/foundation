@@ -1,11 +1,11 @@
 // This file was automatically generated.
-package grpcservice
+package post
 
 import (
 	"context"
 
 	"namespacelabs.dev/foundation/std/go/grpc/server"
-	"namespacelabs.dev/foundation/std/testdata/go/datastore"
+	"namespacelabs.dev/foundation/std/testdata/datastore"
 )
 
 type ServiceDeps struct {

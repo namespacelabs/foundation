@@ -1,7 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/std/testdata/go/datastore"
+	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
 )
 
 $proto: inputs.#Proto & {
@@ -9,26 +9,18 @@ $proto: inputs.#Proto & {
 }
 
 service: fn.#Service & {
-  framework: "GO"
-
 	instantiate: {
-		main: datastore.#Exports.Database & {
+		db: incluster.#Exports.Database & {
 			with: {
-				name:       "main"
+				name:       "list"
 				schemaFile: inputs.#FromFile & {
-					path: "schema.txt"
+					path: "schema.sql"
 				}
 			}
 		}
 	}
 
-	exportService:        $proto.services.PostService
+	exportService:        $proto.services.ListService
 	exportServicesAsHttp: true
 	ingress:              "INTERNET_FACING"
-
-	requirePersistentStorage: {
-		persistentId: "test-data"
-		byteCount:    "1GiB"
-		mountPath:    "/testdata"
-	}
 }

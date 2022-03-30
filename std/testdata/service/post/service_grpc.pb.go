@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             (unknown)
-// source: std/testdata/go/grpcservice/service.proto
+// source: std/testdata/service/post/service.proto
 
-package grpcservice
+package post
 
 import (
 	context "context"
@@ -35,7 +35,7 @@ func NewPostServiceClient(cc grpc.ClientConnInterface) PostServiceClient {
 
 func (c *postServiceClient) Post(ctx context.Context, in *PostRequest, opts ...grpc.CallOption) (*PostResponse, error) {
 	out := new(PostResponse)
-	err := c.cc.Invoke(ctx, "/std.testdata.go.grpcservice.PostService/Post", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/std.testdata.service.post.PostService/Post", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func _PostService_Post_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/std.testdata.go.grpcservice.PostService/Post",
+		FullMethod: "/std.testdata.service.post.PostService/Post",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).Post(ctx, req.(*PostRequest))
@@ -90,7 +90,7 @@ func _PostService_Post_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var PostService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "std.testdata.go.grpcservice.PostService",
+	ServiceName: "std.testdata.service.post.PostService",
 	HandlerType: (*PostServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -99,5 +99,5 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "std/testdata/go/grpcservice/service.proto",
+	Metadata: "std/testdata/service/post/service.proto",
 }
