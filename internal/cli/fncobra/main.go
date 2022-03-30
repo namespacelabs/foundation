@@ -27,7 +27,7 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/colors"
+	clrs "namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -73,8 +73,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	logger, sink, flushLogs := consoleToSink(out, colors)
 
-	versionUpdatesChannel := make(chan string)
-	go checkForUpdates(logger, versionUpdatesChannel)
+	tagNameChannel := make(chan string)
+	go checkForUpdates(logger, tagNameChannel)
 
 	ctxWithSink := tasks.WithSink(logger.WithContext(ctx), sink)
 
@@ -199,8 +199,15 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	// Printing the new version message if any.
 	select {
-	case msg := <-versionUpdatesChannel:
-		fmt.Fprintln(console.Stdout(ctx), msg)
+	case tagName := <-tagNameChannel:
+		msg := fmt.Sprintf(
+			"New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s",
+			tagName, tagName)
+		if colors {
+			fmt.Fprintln(console.Stdout(ctx), clrs.Green(msg))
+		} else {
+			fmt.Fprintln(console.Stdout(ctx), msg)
+		}
 	default:
 	}
 
@@ -347,7 +354,9 @@ func cpuprofile(cpuprofile string) func() {
 }
 
 // Does nothing if version check failed
-func checkForUpdates(logger *zerolog.Logger, channel chan string) {
+func checkForUpdates(logger *zerolog.Logger, tagNameChannel chan string) {
+	defer close(tagNameChannel)
+
 	tagName, latestReleaseBuildTime, err := getLatestReleaseVersion()
 	if err != nil {
 		logger.Debug().AnErr("latest_release_version", err).Msg("version check failed")
@@ -367,9 +376,7 @@ func checkForUpdates(logger *zerolog.Logger, channel chan string) {
 	logger.Debug().Str("binary_build_time", binaryBuildTime.String()).Msg("version check")
 
 	if latestReleaseBuildTime.After(*binaryBuildTime) {
-		channel <- colors.Green(fmt.Sprintf(
-			"New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s",
-			*tagName, *tagName))
+		tagNameChannel <- *tagName
 	}
 }
 
