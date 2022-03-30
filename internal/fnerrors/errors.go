@@ -194,7 +194,11 @@ func format(w io.Writer, colors bool, err error) {
 		format(indent(w), colors, x.Err)
 
 	default:
-		fmt.Fprintln(w, x)
+		if unwrapped := errors.Unwrap(x); unwrapped != nil {
+			format(indent(w), colors, unwrapped)
+		} else {
+			fmt.Fprintln(w, x)
+		}
 	}
 }
 
