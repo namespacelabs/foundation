@@ -147,4 +147,5 @@ jobs:
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=true \
-            --golang_use_buildkit=false
+            --golang_use_buildkit=false \
+            --include_servers
