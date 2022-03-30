@@ -127,11 +127,13 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 		fmt.Fprintf(out, " %s%s%s  %s%s%s\n", checkLabel(checkmark, isFocus, p.LocalPort), label, spaces, url, spacesUrl, comment(p.Endpoint.EndpointOwner))
 	}
 
-	var nonLocalIngress []*schema.IngressFragment
+	var nonLocalManaged, nonLocalNonManaged []*schema.IngressFragment
 	for _, n := range ingress {
 		// Local domains need `fn dev` for port forwarding.
-		if n.GetDomain().GetManaged() != schema.Domain_LOCAL_MANAGED {
-			nonLocalIngress = append(nonLocalIngress, n)
+		if n.GetDomain().GetManaged() == schema.Domain_USER_SPECIFIED {
+			nonLocalNonManaged = append(nonLocalNonManaged, n)
+		} else if n.GetDomain().GetManaged() == schema.Domain_CLOUD_MANAGED || n.GetDomain().GetManaged() == schema.Domain_USER_SPECIFIED_TLS_MANAGED {
+			nonLocalManaged = append(nonLocalManaged, n)
 		}
 	}
 
@@ -150,22 +152,37 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 		}
 	}
 
-	if ingressFwdCount == 0 && len(nonLocalIngress) > 0 {
-		fmt.Fprintf(out, "\n Ingress deployed:\n\n")
+	if ingressFwdCount == 0 && len(nonLocalManaged) > 0 {
+		renderIngressBlock(out, "Ingress configured", nonLocalManaged)
+	}
 
-		var longestIngress int
-		for _, n := range nonLocalIngress {
-			if x := len(n.Domain.Fqdn); x > longestIngress {
-				longestIngress = x
-			}
+	if ingressFwdCount == 0 && len(nonLocalNonManaged) > 0 {
+		renderIngressBlock(out, "Ingress configured, but not managed", nonLocalNonManaged)
+	}
+}
+
+func renderIngressBlock(out io.Writer, label string, fragments []*schema.IngressFragment) {
+	fmt.Fprintf(out, "\n %s:\n\n", label)
+
+	labels := make([]string, len(fragments))
+	suffixes := make([]string, len(fragments))
+
+	var longestLabel int
+	for k, n := range fragments {
+		schema, portLabel, suffix := domainSchema(n.Domain, 443, n.Endpoint)
+		labels[k] = fmt.Sprintf("%s%s%s", schema, n.Domain.Fqdn, portLabel)
+		suffixes[k] = suffix
+
+		if x := len(labels[k]); x > longestLabel {
+			longestLabel = x
 		}
+	}
 
-		for _, n := range nonLocalIngress {
-			schema, portLabel, suffix := domainSchema(n.Domain, 443, n.Endpoint)
-			spaces := makeSpaces(longestIngress - len(n.Domain.Fqdn))
+	for k, n := range fragments {
+		label := labels[k]
+		spaces := makeSpaces(longestLabel - len(label))
 
-			fmt.Fprintf(out, " %s%s%s%s%s%s%s\n", checkLabel(true, true, 1), schema, n.Domain.Fqdn, portLabel, spaces, suffix, comment(n.Owner))
-		}
+		fmt.Fprintf(out, " %s%s%s %s%s\n", checkbox(true, false), label, spaces, comment(n.Owner), suffixes[k])
 	}
 }
 
@@ -223,11 +240,15 @@ func domainSchema(domain *schema.Domain, localPort uint, endpoints ...*schema.En
 }
 
 func checkLabel(b, isFocus bool, port uint) string {
+	return checkbox(!b || port > 0, !isFocus)
+}
+
+func checkbox(on, dimmed bool) string {
 	x := " [ ] "
-	if !b || port > 0 {
+	if on {
 		x = " [✓] "
 	}
-	if !isFocus {
+	if dimmed {
 		return tasks.ColorFade.Apply(x)
 	}
 	return x
@@ -241,7 +262,7 @@ func grpcSchema(tls bool, port uint) (string, string) {
 }
 
 func httpSchema(d *schema.Domain, port uint) (string, string) {
-	if d.Certificate != nil {
+	if d.Certificate != nil || port == 443 {
 		return "https://", checkPort(port, 443)
 	}
 	return "http://", checkPort(port, 80)
