@@ -26,6 +26,7 @@ func TestTelemetryDisabled(t *testing.T) {
 	tel := &Telemetry{
 		UseTelemetry: false,
 		errorLogging: true,
+		makeClientID: generateTestIDs,
 	}
 
 	cmd := &cobra.Command{
@@ -45,6 +46,10 @@ func TestTelemetryDisabled(t *testing.T) {
 	tel.RecordError(context.Background(), fmt.Errorf("foo error"))
 }
 
+func generateTestIDs(ctx context.Context) (clientID, bool) {
+	return clientID{newRandID(), newRandID()}, false
+}
+
 func TestTelemetryDisabledViaEnv(t *testing.T) {
 	reset := setupEnv(t)
 	defer reset()
@@ -52,6 +57,7 @@ func TestTelemetryDisabledViaEnv(t *testing.T) {
 	tel := &Telemetry{
 		UseTelemetry: true,
 		errorLogging: true,
+		makeClientID: generateTestIDs,
 	}
 	t.Setenv("DO_NOT_TRACK", "1")
 
@@ -84,6 +90,7 @@ func TestTelemetryDisabledViaViper(t *testing.T) {
 	tel := &Telemetry{
 		UseTelemetry: true,
 		errorLogging: true,
+		makeClientID: generateTestIDs,
 	}
 
 	cmd := &cobra.Command{
@@ -113,6 +120,7 @@ func TestTelemetryRecordInvocationAnon(t *testing.T) {
 	tel := &Telemetry{
 		UseTelemetry: true,
 		errorLogging: true,
+		makeClientID: generateTestIDs,
 	}
 
 	sentID := make(chan string, 1)
@@ -135,7 +143,6 @@ func TestTelemetryRecordInvocationAnon(t *testing.T) {
 		defer close(receivedID)
 
 		assert.Equal(t, req.Command, cmd.Use, req)
-		assert.Equal(t, req.UserId, viper.GetString("telemetry_user_id"), req)
 
 		// Assert that we don't transmit user data in plain text.
 		assert.Equal(t, len(req.Arg), 1, req)
@@ -146,7 +153,7 @@ func TestTelemetryRecordInvocationAnon(t *testing.T) {
 		assert.Assert(t, req.Flag[0].Hash != "true", req)
 		assert.Equal(t, req.Flag[0].Plaintext, "", req)
 
-		receivedID <- req.Id
+		receivedID <- req.ID
 	}))
 
 	defer svr.Close()
@@ -167,6 +174,7 @@ func TestTelemetryRecordErrorPlaintext(t *testing.T) {
 		UseTelemetry: true,
 		errorLogging: true,
 		recID:        "fake-id",
+		makeClientID: generateTestIDs,
 	}
 
 	var req recordErrorRequest
@@ -176,7 +184,7 @@ func TestTelemetryRecordErrorPlaintext(t *testing.T) {
 
 		assert.Assert(t, req.Message != "", req)
 
-		receivedID <- req.Id
+		receivedID <- req.ID
 	}))
 	defer svr.Close()
 
@@ -213,8 +221,6 @@ func setupEnv(t *testing.T) func() {
 	t.Setenv("DO_NOT_TRACK", "")
 	t.Setenv("CI", "")
 
-	viper.Set("telemetry_salt", "fake_telemetry_salt")
-	viper.Set("telemetry_user_id", "fake_telemetry_user_id")
 	viper.Set("enable_telemetry", true)
 
 	return func() { viper.Reset() }

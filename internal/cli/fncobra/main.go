@@ -280,8 +280,6 @@ func setupViper() {
 	viper.BindEnv("enable_tracing")
 
 	viper.SetDefault("enable_telemetry", true)
-	viper.SetDefault("telemetry_salt", "")
-	viper.SetDefault("telemetry_user_id", "")
 
 	viper.SetDefault("console_log_level", 0)
 	viper.BindEnv("console_log_level")

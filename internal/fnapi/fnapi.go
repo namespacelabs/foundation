@@ -19,11 +19,11 @@ import (
 )
 
 func init() {
-	viper.SetDefault("prod_api_endpoint", "https://api.namespacelabs.net")
+	viper.SetDefault("api_endpoint", "https://api.namespacelabs.net")
 }
 
 func callProdAPI(ctx context.Context, method string, req interface{}, handle func(dec *json.Decoder) error) error {
-	endpoint := viper.GetString("prod_api_endpoint")
+	endpoint := viper.GetString("api_endpoint")
 	return tasks.Action("fnapi.call").LogLevel(2).Arg("endpoint", endpoint).Arg("method", method).Arg("request", req).Run(ctx, func(ctx context.Context) error {
 		return callAPI(ctx, endpoint, method, req, handle)
 	})
