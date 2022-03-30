@@ -33,7 +33,7 @@ jobs:
           mkdir tmp
           cd tmp
           git init --initial-branch=gh-pages
-          echo "{'tag_name': '${{ steps.last_release.outputs.tag_name }}', 'created_at': '${{ steps.last_release.outputs.created_at }}'}" > version.json
+          echo "{\"tag_name\": \"${{ steps.last_release.outputs.tag_name }}\", \"created_at\": \"${{ steps.last_release.outputs.created_at }}\"}" > version.json
           cat version.json
           git add -A
           git config --local user.email "action@github.com"
