@@ -8,9 +8,7 @@ server: fn.#OpaqueServer & {
 
 	isStateful: true
 
-	binary: {
-		image: "namespacelabs.dev/foundation/universe/db/postgres/server/img"
-	}
+	binary: "namespacelabs.dev/foundation/universe/db/postgres/server/img"
 
 	import: [
 		"namespacelabs.dev/foundation/universe/db/postgres/server/creds",
