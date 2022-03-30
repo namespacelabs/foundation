@@ -7,6 +7,6 @@ package nodejs
 import "embed"
 
 var (
-	//go:embed main.ts
-	lib embed.FS
+	//go:embed main.ts versions.json
+	resources embed.FS
 )

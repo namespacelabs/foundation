@@ -7,8 +7,10 @@ package nodejs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
+	"sort"
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/build"
@@ -48,7 +50,7 @@ func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definit
 		}
 
 		return nil, fnfs.WriteWorkspaceFile(ctx, loc.Module.ReadWriteFS(), loc.Rel("main.fn.ts"), func(w io.Writer) error {
-			f, err := lib.Open("main.ts")
+			f, err := resources.Open("main.ts")
 			if err != nil {
 				return err
 			}
@@ -82,25 +84,29 @@ func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.Ser
 }
 
 func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *schema.Server) error {
-	packages := []string{
-		"typescript@4.5.4",
-		"ts-node@10.4.x",
-		"@grpc/grpc-js@1.5.1",
-		"yargs@16.x",
+	var packages, devPackages []string
+
+	for pkg, version := range builtin().Dependencies {
+		packages = append(packages, fmt.Sprintf("%s@%s", pkg, version))
 	}
 
-	devPackages := []string{
-		"@types/yargs@16.x",
-		"@types/node@16.x",
-		"@tsconfig/node16@1.0.2",
+	for pkg, version := range builtin().DevDependencies {
+		devPackages = append(devPackages, fmt.Sprintf("%s@%s", pkg, version))
 	}
 
-	if err := RunYarn(ctx, loc, append([]string{"add"}, packages...)); err != nil {
-		return err
+	sort.Strings(packages)
+	sort.Strings(devPackages)
+
+	if len(packages) > 0 {
+		if err := RunYarn(ctx, loc, append([]string{"add"}, packages...)); err != nil {
+			return err
+		}
 	}
 
-	if err := RunYarn(ctx, loc, append([]string{"add", "-D"}, devPackages...)); err != nil {
-		return err
+	if len(devPackages) > 0 {
+		if err := RunYarn(ctx, loc, append([]string{"add", "-D"}, devPackages...)); err != nil {
+			return err
+		}
 	}
 
 	return nil
