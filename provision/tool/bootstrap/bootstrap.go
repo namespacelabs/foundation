@@ -27,7 +27,7 @@ type Request struct {
 	Env       *schema.Environment
 	Focus     *schema.Stack_Entry
 	Stack     *schema.Stack
-	Snapshots map[string]fs.ReadDirFS
+	Snapshots map[string]fs.FS
 
 	r *protocol.ToolRequest
 }
@@ -104,7 +104,7 @@ func runTool(ctx context.Context, r io.Reader, w io.Writer, t Tool) error {
 		Env:       req.Env,
 		Focus:     s,
 		Stack:     req.Stack,
-		Snapshots: map[string]fs.ReadDirFS{},
+		Snapshots: map[string]fs.FS{},
 	}
 
 	for _, snapshot := range req.Snapshot {

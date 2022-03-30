@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
-func Visit(ctx context.Context, keysDir fs.ReadDirFS, callback func(*age.X25519Identity) error) error {
+func Visit(ctx context.Context, keysDir fs.FS, callback func(*age.X25519Identity) error) error {
 	return fnfs.VisitFiles(ctx, keysDir, func(path string, contents []byte, dirent fs.DirEntry) error {
 		if filepath.Ext(path) != ".txt" {
 			return nil

@@ -24,7 +24,7 @@ const (
 
 var internalFiles = []string{EncryptedFile, keyListFile}
 
-func EncryptLocal(ctx context.Context, dst fnfs.LocalFS, src fs.ReadDirFS) error {
+func EncryptLocal(ctx context.Context, dst fnfs.LocalFS, src fs.FS) error {
 	return Encrypt(dst, func(w io.Writer) error {
 		return maketarfs.TarFS(ctx, w, src, nil, internalFiles)
 	})

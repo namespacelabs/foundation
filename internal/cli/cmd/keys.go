@@ -18,7 +18,9 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/keys"
+	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -109,8 +111,13 @@ func NewKeysCmd() *cobra.Command {
 				return fnerrors.InternalError("failed to decrypt: %w", err)
 			}
 
+			originalDigest, err := digestfs.Digest(ctx, fsys, nil, nil)
+			if err != nil {
+				return fnerrors.InternalError("failed to compute a digest of the input: %w", err)
+			}
+
 			// XXX guarantee in-memory?
-			dir, err := os.MkdirTemp(args[0], "keys-shell")
+			dir, err := dirs.CreateUserTempDir(args[0], "keys-shell")
 			if err != nil {
 				return fnerrors.InternalError("failed to create tempdir: %w", err)
 			}
@@ -147,7 +154,22 @@ func NewKeysCmd() *cobra.Command {
 				return err
 			}
 
-			return enc(ctx, args[0], dst, false)
+			changedDigest, err := digestfs.Digest(ctx, dst, nil, nil)
+			if err == nil {
+				// If we fail to compute the digest, it's ok, just go ahead and rewrite the contents.
+				if changedDigest == originalDigest {
+					fmt.Fprintf(console.Stdout(ctx), "No changes were made to %s.\n", archive.Name())
+					return nil
+				}
+			}
+
+			if err := keys.EncryptLocal(ctx, fnfs.ReadWriteLocalFS(dir), dst); err != nil {
+				return err
+			}
+
+			fmt.Fprintf(console.Stdout(ctx), "Updated %s.\n", archive.Name())
+
+			return nil
 		}),
 	}
 
@@ -160,7 +182,7 @@ func NewKeysCmd() *cobra.Command {
 	return cmd
 }
 
-func enc(ctx context.Context, dir string, src fs.ReadDirFS, reencrypt bool) error {
+func enc(ctx context.Context, dir string, src fs.FS, reencrypt bool) error {
 	fsys := fnfs.ReadWriteLocalFS(dir)
 
 	if reencrypt {

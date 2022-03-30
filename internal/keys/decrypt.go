@@ -22,7 +22,7 @@ type Reader interface {
 
 var ErrKeyGen = fnerrors.UsageError("Please run `fn key generate` to generate a new identity.", "Decryption requires that at least one identity to be configured.")
 
-func Decrypt(ctx context.Context, keyDir fs.ReadDirFS, src io.Reader) ([]byte, error) {
+func Decrypt(ctx context.Context, keyDir fs.FS, src io.Reader) ([]byte, error) {
 	var identities []age.Identity
 	if err := Visit(ctx, keyDir, func(xi *age.X25519Identity) error {
 		identities = append(identities, xi)
@@ -48,7 +48,7 @@ func Decrypt(ctx context.Context, keyDir fs.ReadDirFS, src io.Reader) ([]byte, e
 	return decryptedContents, nil
 }
 
-func DecryptAsFS(ctx context.Context, keyDir fs.ReadDirFS, archive io.Reader) (fs.ReadDirFS, error) {
+func DecryptAsFS(ctx context.Context, keyDir fs.FS, archive io.Reader) (fs.FS, error) {
 	decrypted, err := Decrypt(ctx, keyDir, archive)
 	if err != nil {
 		return nil, err
