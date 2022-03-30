@@ -45,13 +45,14 @@ type NameCertificate struct {
 	CertificateURL    string `json:"certificateUrl"`
 }
 
+// JSON annotations below are used for the Arg() serialization below.
 type AllocateOpts struct {
-	FQDN      string
-	Subdomain string
-	NoTLS     bool
-	Org       string
+	FQDN      string `json:"fqdn,omitempty"`
+	Subdomain string `json:"subdomain,omitempty"`
+	NoTLS     bool   `json:"-"`
+	Org       string `json:"org,omitempty"`
 
-	Stored *NameResource
+	Stored *NameResource `json:"-"`
 }
 
 func AllocateName(ctx context.Context, srv *schema.Server, opts AllocateOpts) (nr *NameResource, err error) {
