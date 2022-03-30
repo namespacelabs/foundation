@@ -13,12 +13,3 @@ server: fn.#Server & {
 		"namespacelabs.dev/foundation/std/testdata/service/list",
 	]
 }
-
-$env:      inputs.#Environment
-configure: fn.#Configure & {
-	naming: {
-		if $env.purpose == "PRODUCTION" {
-			domainName: "test.namespacelabs.net"
-		}
-	}
-}
