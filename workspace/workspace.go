@@ -10,8 +10,10 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/protocolbuffers/txtpbfmt/parser"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/schema"
@@ -49,6 +51,15 @@ func FormatWorkspace(w io.Writer, ws *schema.Workspace) error {
 	if len(ws.Replace) > 0 {
 		fmt.Fprintln(&buf)
 		writeTextMessage(&buf, &schema.Workspace{Replace: ws.Replace})
+	}
+
+	if len(ws.PrebuiltBinary) > 0 {
+		sorted := slices.Clone(ws.PrebuiltBinary)
+		slices.SortFunc(sorted, func(a, b *schema.Workspace_BinaryDigest) bool {
+			return strings.Compare(a.PackageName, b.PackageName) < 0
+		})
+		fmt.Fprintln(&buf)
+		writeTextMessage(&buf, &schema.Workspace{PrebuiltBinary: sorted})
 	}
 
 	stableFmt, err := parser.Format(buf.Bytes())

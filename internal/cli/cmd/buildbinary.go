@@ -12,7 +12,6 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -152,17 +151,17 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 	}
 
 	if outputPrebuilts {
-		workspace := &schema.Workspace{}
+		ws := &schema.Workspace{}
 
 		for k, r := range res.Value {
 			prebuilt := &schema.Workspace_BinaryDigest{
 				PackageName: pkgs[k].PackageName().String(),
 				Digest:      r.Value.Digest,
 			}
-			workspace.PrebuiltBinary = append(workspace.PrebuiltBinary, prebuilt)
+			ws.PrebuiltBinary = append(ws.PrebuiltBinary, prebuilt)
 		}
 
-		fmt.Fprintln(console.Stdout(ctx), prototext.Format(workspace))
+		workspace.FormatWorkspace(console.Stdout(ctx), ws)
 	}
 
 	return nil
