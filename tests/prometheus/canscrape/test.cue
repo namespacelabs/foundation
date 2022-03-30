@@ -8,6 +8,6 @@ test: fn.#Test & {
 	}
 
 	fixture: {
-		sut: "namespacelabs.dev/foundation/std/testdata/gogrpcserver"
+		sut: "namespacelabs.dev/foundation/std/testdata/server/gogrpc"
 	}
 }

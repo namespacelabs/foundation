@@ -10,12 +10,12 @@ import (
 	"namespacelabs.dev/foundation/std/go/grpc/server"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/secrets"
-	"namespacelabs.dev/foundation/std/testdata/go/datastore"
-	"namespacelabs.dev/foundation/std/testdata/go/grpcservice"
+	"namespacelabs.dev/foundation/std/testdata/datastore"
+	"namespacelabs.dev/foundation/std/testdata/service/post"
 )
 
 type ServerDeps struct {
-	grpcservice grpcservice.ServiceDeps
+	post post.ServiceDeps
 }
 
 func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
@@ -58,7 +58,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 			p := &secrets.Secret{}
 			core.MustUnwrapProto("CgRjZXJ0EgEB", p)
 
-			if datastore0.Cert, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/go/datastore", p); err != nil {
+			if datastore0.Cert, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
 				return err
 			}
 			return nil
@@ -69,7 +69,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		PackageName: "namespacelabs.dev/foundation/std/go/core",
 		Instance:    "datastore0",
 		Do: func(ctx context.Context) (err error) {
-			if datastore0.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, "namespacelabs.dev/foundation/std/testdata/go/datastore", nil); err != nil {
+			if datastore0.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", nil); err != nil {
 				return err
 			}
 			return nil
@@ -77,8 +77,8 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 	})
 
 	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/testdata/go/datastore",
-		Instance:    "server.grpcservice",
+		PackageName: "namespacelabs.dev/foundation/std/testdata/datastore",
+		Instance:    "server.post",
 		DependsOn:   []string{"datastore0"}, Do: func(ctx context.Context) (err error) {
 			// name: "main"
 			// schema_file: {
@@ -88,7 +88,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 			p := &datastore.Database{}
 			core.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
 
-			if server.grpcservice.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/go/grpcservice", p, datastore0); err != nil {
+			if server.post.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastore0); err != nil {
 				return err
 			}
 			return nil
@@ -115,6 +115,6 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 }
 
 func WireServices(ctx context.Context, srv *server.Grpc, server *ServerDeps) {
-	grpcservice.WireService(ctx, srv, server.grpcservice)
-	srv.RegisterGrpcGateway(grpcservice.RegisterPostServiceHandler)
+	post.WireService(ctx, srv, server.post)
+	srv.RegisterGrpcGateway(post.RegisterPostServiceHandler)
 }

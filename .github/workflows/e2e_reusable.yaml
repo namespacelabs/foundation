@@ -91,7 +91,7 @@ jobs:
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
-      - name: Deploy std/testdata/gogrpcserver
+      - name: Deploy std/testdata/server/gogrpc
         run: |
           /tmp/fn deploy \
             --buildkit_import_cache=type=gha \
@@ -99,7 +99,7 @@ jobs:
             --use_prebuilts=${{ matrix.use_prebuilts }} \
             --golang_use_buildkit=${{ matrix.golang_use_buildkit }} \
             --naming_no_tls=true \
-            --wait std/testdata/gogrpcserver
+            --wait std/testdata/server/gogrpc
 
   run_e2e_tests:
     name: e2e tests

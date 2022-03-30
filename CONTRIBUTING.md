@@ -104,13 +104,13 @@ You can then update the `prebuilt_binary` definitions in `workspace.textpb` with
 Any node type:
 
 ```bash
-fndev debug print-computed std/testdata/gogrpcserver
+fndev debug print-computed std/testdata/server/gogrpc
 ```
 
 For servers:
 
 ```bash
-fndev debug print-sealed std/testdata/gogrpcserver
+fndev debug print-sealed std/testdata/server/gogrpc
 ```
 
 ### Debugging latency
@@ -147,14 +147,14 @@ go run github.com/tailscale/depaware --update namespacelabs.dev/foundation/cmd/f
 ### Iterating on the internal Dev UI
 
 ```bash
-fn dev --devweb std/testdata/gogrpcserver
+fn dev --devweb std/testdata/server/gogrpc
 ```
 
 Adding `--devweb` starts a development web frontend. Yarn and NodeJS are required for `--devweb`.
 Also, run `yarn install` in the `devworkflow/web` directory to fetch and link node dependencies.
 
 ```bash
-fn dev -H 0.0.0.0:4001 --devweb std/testdata/gogrpcserver
+fn dev -H 0.0.0.0:4001 --devweb std/testdata/server/gogrpc
 ```
 
 Use `-H` to change the listening hostname/port, in case you're running `fn dev` in a machine or VM

@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.std.testdata.go.datastore;
+package foundation.std.testdata.datastore;
 
-option go_package = "namespacelabs.dev/foundation/std/testdata/go/datastore";
+option go_package = "namespacelabs.dev/foundation/std/testdata/datastore";
 
 import "std/types/resource.proto";
 

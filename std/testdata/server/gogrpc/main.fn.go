@@ -13,7 +13,7 @@ import (
 func main() {
 	flag.Parse()
 
-	resources := core.PrepareEnv("namespacelabs.dev/foundation/std/testdata/gogrpcserver")
+	resources := core.PrepareEnv("namespacelabs.dev/foundation/std/testdata/server/gogrpc")
 	defer resources.Close(context.Background())
 
 	ctx := core.WithResources(context.Background(), resources)

@@ -5,10 +5,10 @@ import "namespacelabs.dev/foundation/std/fn:types"
 
 #Exports: {
 	Database: {
-		packageName: "namespacelabs.dev/foundation/std/testdata/go/datastore"
+		packageName: "namespacelabs.dev/foundation/std/testdata/datastore"
 		type:        "Database"
 		typeDefinition: {
-			"typename": "foundation.std.testdata.go.datastore.Database"
+			"typename": "foundation.std.testdata.datastore.Database"
 			"source": [
 				"provider.proto",
 			]
