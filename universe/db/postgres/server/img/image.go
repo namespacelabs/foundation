@@ -47,5 +47,5 @@ func init() {
 func makePostgresImageState(platform specs.Platform) llb.State {
 	target := llbutil.Image(postgresImage, platform)
 
-	return target.Run(llb.Shlex(fmt.Sprintf("echo %s", "hello"))).Root()
+	return target.Run(llb.Shlex(fmt.Sprintf("echo %s", "world"))).Root()
 }
