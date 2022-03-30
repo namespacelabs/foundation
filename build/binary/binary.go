@@ -74,8 +74,15 @@ func Plan(ctx context.Context, pkg *workspace.Package, opts BuildImageOpts) (*Pr
 	return &Prepared{
 		Name:    loc.PackageName.String(),
 		Plan:    plan,
-		Command: []string{"/" + pkg.Binary.Name},
+		Command: []string{Command(pkg)},
 	}, nil
+}
+
+func Command(pkg *workspace.Package) string {
+	if pkg.Binary == nil {
+		return ""
+	}
+	return "/" + pkg.Binary.Name
 }
 
 func (p Prepared) Image(ctx context.Context, env ops.Environment) (compute.Computable[oci.ResolvableImage], error) {
