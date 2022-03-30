@@ -190,7 +190,7 @@ func format(w io.Writer, colors bool, err error) {
 		}
 
 	case *DependencyFailedError:
-		fmt.Fprintf(w, "failed to resolve %s %s:\n", formatLabel(x.Name, colors), aec.LightBlackF.Apply(fmt.Sprintf("(%s)", x.Type)))
+		fmt.Fprintf(w, "failed to compute %s %s:\n", formatLabel(x.Name, colors), aec.LightBlackF.Apply(fmt.Sprintf("(%s)", x.Type)))
 		format(indent(w), colors, x.Err)
 
 	default:
