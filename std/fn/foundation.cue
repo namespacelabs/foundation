@@ -112,7 +112,7 @@ _#Node: {
 
 	binary: *{
 		image: string
-	} | inputs.#PackageName
+	} | inputs.#Package
 }
 
 #Image: {
