@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package std.testdata.go.grpcservice;
+package std.testdata.service.post;
 
-option go_package = "namespacelabs.dev/foundation/std/testdata/go/grpcservice";
+option go_package = "namespacelabs.dev/foundation/std/testdata/service/post";
 
 message PostRequest {
     string input = 1;

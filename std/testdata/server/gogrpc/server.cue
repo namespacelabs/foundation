@@ -10,7 +10,7 @@ server: fn.#Server & {
 
 	import: [
 		"namespacelabs.dev/foundation/std/go/grpc/gateway",
-		"namespacelabs.dev/foundation/std/testdata/go/grpcservice",
+		"namespacelabs.dev/foundation/std/testdata/service/post",
 	]
 }
 
