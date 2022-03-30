@@ -5,7 +5,7 @@
     "build": "tsc -p ."
   },
   "dependencies": {
-    "@grpc/grpc-js": "1.5.1",
+    "@grpc/grpc-js": "1.5.7",
     "ts-node": "10.4.x",
     "typescript": "4.5.4",
     "yargs": "16.x"
