@@ -60,9 +60,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		defer done()
 	}
 
-	versionUpdatesChannel := make(chan string)
-	go checkForUpdates(versionUpdatesChannel)
-
 	setupViper()
 
 	ctx := context.Background()
@@ -75,6 +72,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	out, colors := consoleFromFile()
 
 	logger, sink, flushLogs := consoleToSink(out, colors)
+
+	versionUpdatesChannel := make(chan string)
+	go checkForUpdates(logger, versionUpdatesChannel)
 
 	ctxWithSink := tasks.WithSink(logger.WithContext(ctx), sink)
 
@@ -347,15 +347,24 @@ func cpuprofile(cpuprofile string) func() {
 }
 
 // Does nothing if version check failed
-func checkForUpdates(channel chan string) {
+func checkForUpdates(logger *zerolog.Logger, channel chan string) {
 	tagName, latestReleaseBuildTime, err := getLatestReleaseVersion()
 	if err != nil {
+		logger.Debug().AnErr("latest_release_version", err).Msg("version check failed")
 		return
 	}
+	logger.Debug().Str("latest_release_version", latestReleaseBuildTime.String()).Msg("version check")
+
 	binaryBuildTime, err := getBinaryBuildTime()
-	if err != nil || binaryBuildTime == nil {
+	if err != nil {
+		logger.Debug().AnErr("binary_build_time", err).Msg("version check failed")
 		return
 	}
+	if binaryBuildTime == nil {
+		logger.Debug().Str("modified_build", "true").Msg("version check")
+		return
+	}
+	logger.Debug().Str("binary_build_time", binaryBuildTime.String()).Msg("version check")
 
 	if latestReleaseBuildTime.After(*binaryBuildTime) {
 		channel <- colors.Green(fmt.Sprintf(
