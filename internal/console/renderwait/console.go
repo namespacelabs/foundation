@@ -31,6 +31,7 @@ type blockState struct {
 	Ready          bool
 	AlreadyExisted bool
 	Start, End     time.Time
+	Status         string
 }
 
 func (rwb consRenderer) Ch() chan ops.Event { return rwb.ch }
@@ -62,11 +63,17 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 				ids = append(ids, ev.ResourceID)
 				sort.Strings(ids)
 
-				m[ev.ResourceID] = &blockState{Category: ev.Category, Scope: ev.Scope.String(), Ready: ev.Ready == ops.Ready, Start: time.Now()}
+				m[ev.ResourceID] = &blockState{
+					Category: ev.Category,
+					Scope:    ev.Scope.String(),
+					Ready:    ev.Ready == ops.Ready,
+					Start:    time.Now(),
+				}
 			}
 
 			m[ev.ResourceID].AlreadyExisted = ev.AlreadyExisted
 			m[ev.ResourceID].Ready = ev.Ready == ops.Ready
+			m[ev.ResourceID].Status = ev.Status
 			if m[ev.ResourceID].Ready {
 				m[ev.ResourceID].End = time.Now()
 			}
@@ -111,6 +118,9 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 			if blk.AlreadyExisted && !blk.Ready {
 				icon = "[ ]"
 				took = "(no updated required, waiting for old deployment)"
+				if blk.Status != "" {
+					took = fmt.Sprintf("(no updated required, waiting for old deployment, last deployment status: %s)", blk.Status)
+				}
 			} else if blk.AlreadyExisted {
 				icon = "[✓]"
 				took = "(no updated required)"
@@ -120,6 +130,9 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 			} else {
 				icon = "[ ]"
 				took = "waiting ..."
+				if blk.Status != "" {
+					took = fmt.Sprintf("waiting ... (last deployment status: %s)", blk.Status)
+				}
 			}
 			fmt.Fprintf(&b, "  %s %s %s\n", icon, blk.Scope, aec.LightBlackF.Apply(took))
 		}
