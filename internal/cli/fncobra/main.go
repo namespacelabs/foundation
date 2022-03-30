@@ -209,8 +209,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			} else {
 				fmt.Fprintln(console.Stdout(ctx), msg)
 			}
-		} else {
-			logger.Debug().Str("tag_name_channel_read", "failed").Msg("version check")
 		}
 	default:
 	}
