@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"google.golang.org/protobuf/types/known/anypb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -141,4 +142,8 @@ func SerializeSelector(selector map[string]string) string {
 	}
 	sort.Strings(sels)
 	return strings.Join(sels, ",")
+}
+
+func Ego() metav1.ApplyOptions {
+	return metav1.ApplyOptions{FieldManager: K8sFieldManager}
 }

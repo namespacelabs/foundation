@@ -42,6 +42,8 @@ func RegisterGraphHandlers() {
 			return waitForIngress(ctx, cli, ingressSvc, op)
 		})
 	}))
+
+	nginx.RegisterGraphHandlers()
 }
 
 func waitForIngress(ctx context.Context, cli *k8s.Clientset, ingressSvc *nginx.NameRef, op *OpMapAddress) error {

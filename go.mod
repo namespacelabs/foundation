@@ -30,6 +30,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.3
 	github.com/iancoleman/strcase v0.2.0
 	github.com/jackc/pgx/v4 v4.15.0
+	github.com/jet/kube-webhook-certgen v1.5.2
 	github.com/jhump/protoreflect v1.10.3
 	github.com/karrick/godirwalk v1.16.1
 	github.com/kr/text v0.2.0

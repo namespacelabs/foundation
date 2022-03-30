@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
@@ -43,7 +44,7 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 	pod := applycorev1.Pod(name, r.ns()).
 		WithSpec(applycorev1.PodSpec().WithContainers(container).WithRestartPolicy(corev1.RestartPolicyNever))
 
-	if _, err := cli.CoreV1().Pods(r.ns()).Apply(ctx, pod, ego()); err != nil {
+	if _, err := cli.CoreV1().Pods(r.ns()).Apply(ctx, pod, kubedef.Ego()); err != nil {
 		return err
 	}
 
