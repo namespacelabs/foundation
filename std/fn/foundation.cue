@@ -28,8 +28,6 @@ _#Node: {
 	}
 }
 
-#Framework: "GO" | "NODEJS" | "WEB"
-
 #Extension: {
 	_#Node
 
@@ -65,6 +63,8 @@ _#Node: {
 	path:  string
 	kind?: string
 }
+
+#Framework: "GO" | "GO_GRPC" | "NODEJS_GRPC" | "WEB" | "NODEJS"
 
 #Server: {
 	_#Imports
