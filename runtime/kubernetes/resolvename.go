@@ -13,6 +13,7 @@ import (
 )
 
 func getReplicaSetName(ctx context.Context, cli *k8s.Clientset, ns string, owner string, gen int64) (string, error) {
+	// TODO explore how to limit the list here (e.g. through labels or by using a different API) 
 	replicasets, err := cli.AppsV1().ReplicaSets(ns).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return "", err

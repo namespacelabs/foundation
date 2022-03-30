@@ -14,6 +14,7 @@ import (
 )
 
 func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, ns string, replicaset string) (string, error) {
+	// TODO explore how to limit the list here (e.g. through labels or by using a different API)
 	pods, err := cli.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return "", err
