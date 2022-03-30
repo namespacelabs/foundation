@@ -33,9 +33,8 @@ configure: fn.#Configure & {
 				// XXX we need a validation step that is more understandable to users.
 				fromWorkspace: path.Join([$workspace.serverPath, "secrets"])
 			}
-			// We don't want secret values to end up in the cache.
-			noCache:      true
-			requiresKeys: true
+			noCache:      true // We don't want secret values to end up in the cache.
+			requiresKeys: true // This is temporary while we don't pipe a keys service to tools.
 		}
 	}
 

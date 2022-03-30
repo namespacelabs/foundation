@@ -14,7 +14,7 @@ server: fn.#Server & {
 	]
 }
 
-$env:   inputs.#Environment
+$env:      inputs.#Environment
 configure: fn.#Configure & {
 	naming: {
 		if $env.purpose == "PRODUCTION" {
