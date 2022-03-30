@@ -27,6 +27,31 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 
 	var deps schema.PackageList
 	for k, dep := range node.Instantiate {
+		// Checking language compatibility
+
+		pkg, err := pl.LoadByName(ctx, schema.PackageName(dep.PackageName))
+		if err != nil {
+			return err
+		}
+		ext := pkg.Extension
+		if ext == nil {
+			return fnerrors.UserError(loc, "Trying to instantiate a node that is not an extension: %s", dep.PackageName)
+		}
+		providesFmwks := ext.GetProvidesFrameworks()
+		for _, fmwk := range node.GetCodegenFrameworks() {
+			if _, ok := providesFmwks[fmwk]; !ok {
+				return fnerrors.UserError(
+					loc,
+					"Node has generated code for framework %s but tries to instantiate an "+
+						"extension provider '%s' that doesn't support this framework",
+					fmwk.String(),
+					dep.Name,
+				)
+			}
+		}
+
+		// Adding a proto dependency.
+
 		ptype, err := ResolveDependency(dep)
 		if err != nil {
 			return fnerrors.Wrapf(loc, err, "dep#%d (%s): %w", k, dep.Name)

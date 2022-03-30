@@ -4,6 +4,8 @@
 
 package schema
 
+import "sort"
+
 const (
 	GrpcProtocol = "grpc"
 	HttpProtocol = "http"
@@ -20,6 +22,8 @@ func (n *Node) GetImportedPackages() []PackageName {
 	return asPackages(n.GetImport()...)
 }
 
+func (n *Node) ErrorLocation() string { return n.PackageName }
+
 func (n *Node) GetInitializer(fmwk Framework) *NodeInitializer {
 	for _, i := range n.Initializers {
 		if i.Framework == fmwk {
@@ -29,7 +33,41 @@ func (n *Node) GetInitializer(fmwk Framework) *NodeInitializer {
 	return nil
 }
 
-func (n *Node) ErrorLocation() string { return n.PackageName }
+// All frameworks that the node has codegen generated for.
+// Stable order.
+func (n *Node) GetCodegenFrameworks() []Framework {
+	fmwksSet := map[Framework]bool{}
+	if n.ServiceFramework != Framework_FRAMEWORK_UNSPECIFIED {
+		fmwksSet[n.ServiceFramework] = true
+	}
+	for _, i := range n.Initializers {
+		fmwksSet[i.Framework] = true
+	}
+	for p := range n.GetProvidesFrameworks() {
+		fmwksSet[p] = true
+	}
+	fmwks := make([]Framework, 0, len(fmwksSet))
+	for f := range fmwksSet {
+		fmwks = append(fmwks, f)
+	}
+	sort.Slice(fmwks, func(i, j int) bool {
+		return fmwks[i].Number() < fmwks[j].Number()
+	})
+
+	return fmwks
+}
+
+func (n *Node) GetProvidesFrameworks() map[Framework]bool {
+	fmwksSet := map[Framework]bool{}
+	for _, p := range n.Provides {
+		for _, a := range p.AvailableIn {
+			if a.Go != nil {
+				fmwksSet[Framework_GO] = true
+			}
+		}
+	}
+	return fmwksSet
+}
 
 func (s *Server) GetImportedPackages() []PackageName {
 	return asPackages(s.GetImport()...)

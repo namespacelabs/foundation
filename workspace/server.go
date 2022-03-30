@@ -105,15 +105,6 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 	return sealed.Proto.Server, nil
 }
 
-func isSupported(supports []schema.Framework, fmwk schema.Framework) bool {
-	for _, n := range supports {
-		if n == fmwk {
-			return true
-		}
-	}
-	return false
-}
-
 type depVisitor struct{ alloc int }
 
 func (depv *depVisitor) allocName(p string) string {

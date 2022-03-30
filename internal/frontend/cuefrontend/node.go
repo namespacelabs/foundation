@@ -94,26 +94,31 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			return err
 		}
 
-		if v, err := parseFramework(loc, fmwkStr); err != nil {
-			out.ServiceFramework = schema.Framework(v)
+		if fmwk, err := parseFramework(loc, fmwkStr); err != nil {
+			if fmwk == schema.Framework_OPAQUE {
+				return fnerrors.UserError(loc, "Only servers can be OPAQUE")
+			}
+			out.ServiceFramework = schema.Framework(fmwk)
 		} else {
 			return err
 		}
 	}
 
 	var initializeInFrameworks []string
-	if err := v.LookupPath("initializeIn").Val.Decode(&initializeInFrameworks); err != nil {
-		return err
-	}
-	uniqFrameworks := uniquestrings.List{}
-	for _, fmwkStr := range initializeInFrameworks {
-		if !uniqFrameworks.Add(fmwkStr) {
-			return fnerrors.UserError(loc, "Duplicate initialization framework value: %s", fmwkStr)
-		}
-		if v, err := parseFramework(loc, fmwkStr); err != nil {
-			out.Initializers = append(out.Initializers, &schema.NodeInitializer{Framework: schema.Framework(v)})
-		} else {
+	if initializers := v.LookupPath("initializeIn"); initializers.Exists() {
+		if err := initializers.Val.Decode(&initializeInFrameworks); err != nil {
 			return err
+		}
+		uniqFrameworks := uniquestrings.List{}
+		for _, fmwkStr := range initializeInFrameworks {
+			if !uniqFrameworks.Add(fmwkStr) {
+				return fnerrors.UserError(loc, "Duplicate initialization framework value: %s", fmwkStr)
+			}
+			if v, err := parseFramework(loc, fmwkStr); err != nil {
+				out.Initializers = append(out.Initializers, &schema.NodeInitializer{Framework: schema.Framework(v)})
+			} else {
+				return err
+			}
 		}
 	}
 
@@ -358,19 +363,6 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	return workspace.TransformNode(ctx, pl, loc, out, kind)
-}
-
-func parseFramework(loc workspace.Location, str string) (schema.Framework, error) {
-	if v, ok := schema.Framework_value[str]; ok {
-		fmwk := schema.Framework(v)
-		if (fmwk != schema.Framework_FRAMEWORK_UNSPECIFIED) &&
-			(fmwk != schema.Framework_OPAQUE) {
-			return fmwk, nil
-		}
-	}
-
-	return schema.Framework_FRAMEWORK_UNSPECIFIED,
-		fnerrors.UserError(loc, "unrecognized framework: %s", str)
 }
 
 func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, provides *fncue.CueV, pkg *workspace.Package, out *schema.Node) error {

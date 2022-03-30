@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"cuelang.org/go/cue/format"
@@ -80,18 +79,7 @@ func ForNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.Defini
 		}
 	}
 
-	fmwks := []schema.Framework{}
-	if pkg.Node().ServiceFramework != schema.Framework_FRAMEWORK_UNSPECIFIED {
-		fmwks = append(fmwks, pkg.Node().ServiceFramework)
-	}
-	for _, i := range pkg.Node().Initializers {
-		fmwks = append(fmwks, i.Framework)
-	}
-	sort.Slice(fmwks, func(i, j int) bool {
-		return fmwks[i].Number() < fmwks[j].Number()
-	})
-
-	for _, fmwk := range fmwks {
+	for _, fmwk := range pkg.Node().GetCodegenFrameworks() {
 		defs, err := languages.IntegrationFor(fmwk).GenerateNode(pkg, available)
 		if err != nil {
 			return nil, err

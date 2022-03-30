@@ -1,0 +1,23 @@
+package cuefrontend
+
+import (
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
+)
+
+func parseFramework(loc workspace.Location, str string) (schema.Framework, error) {
+	switch str {
+	case "GO", "GO_GRPC":
+		return schema.Framework_GO, nil
+	case "NODEJS", "NODEJS_GRPC":
+		return schema.Framework_NODEJS, nil
+	case "WEB":
+		return schema.Framework_WEB, nil
+	case "OPAQUE":
+		return schema.Framework_OPAQUE, nil
+	}
+
+	return schema.Framework_FRAMEWORK_UNSPECIFIED,
+		fnerrors.UserError(loc, "unrecognized framework: %s", str)
+}

@@ -5,7 +5,7 @@ import (
 )
 
 extension: fn.#Extension & {
-	hasInitialization: true
+	initializeIn: ["GO"]
 
 	instantiate: token: secrets.#Exports.Secret & {
 		with: {
