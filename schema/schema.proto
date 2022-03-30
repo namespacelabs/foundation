@@ -76,10 +76,9 @@ message Node {
     // internet (only valid for services).
     Endpoint.Type ingress = 10;
 
-    // The list of frameworks this node supports.
-    // XXX as with other things, we probably want these to be packages at
-    // some point.
-    repeated Framework supports = 11;
+    repeated NodeInitializer initializers = 11;
+
+    Framework service_framework = 19;
 
     // XXX rename this.
     bool has_initialization = 12;
@@ -100,15 +99,17 @@ message Node {
         SERVICE          = 1;
         EXTENSION        = 2;
     }
+}
 
-    enum Framework {
-        FRAMEWORK_UNSPECIFIED = 0;
-        OPAQUE                = 1;
-        GO_GRPC               = 2;
-        NODEJS_GRPC           = 3;
-        WEB                   = 4;
-        NODEJS                = 5;
-    }
+message NodeInitializer {
+    Framework framework = 1;
+}
+
+enum Framework {
+    FRAMEWORK_UNSPECIFIED = 0;
+    GO                    = 1;
+    WEB                   = 2;
+    NODEJS                = 3;
 }
 
 message HttpPath {
@@ -207,8 +208,9 @@ message Server {
     // All of the allocations performed in this server's dependency tree.
     repeated Allocation allocation = 7;
 
-    // The framework this server follows (required).
-    Node.Framework framework = 8;
+    // The framework this server follows. Either this field or "is_opaque" must be set.
+    Framework framework = 8;
+    bool      is_opaque = 21;
 
     bool is_stateful = 20;
 

@@ -12,8 +12,6 @@ _#Imports: {
 _#Node: {
 	_#Imports
 
-	framework?: #Framework
-
 	instantiate: [#InstanceName]: {
 		packageName?:   string
 		type?:          string
@@ -30,17 +28,19 @@ _#Node: {
 	}
 }
 
+#Framework: "GO" | "NODEJS" | "WEB"
+
 #Extension: {
 	_#Node
 
-	hasInitialization: *false | true
+	initializeIn?: [...#Framework]
 
 	provides?: #Provides
 
 	#Provides: [X=string]: {
 		name: X
 		{input: types.#Proto} | {type: types.#Proto}
-		availableIn: [string]: {...}
+    outputType: [#Framework]: {...}
 	}
 }
 
@@ -48,6 +48,8 @@ _#Node: {
 
 #Service: {
 	_#Node
+
+	framework: #Framework
 
 	ingress: *"PRIVATE" | "INTERNET_FACING"
 
@@ -64,15 +66,13 @@ _#Node: {
 	kind?: string
 }
 
-#Framework: "GO_GRPC" | "NODEJS_GRPC" | "OPAQUE" | "WEB" | "NODEJS"
-
 #Server: {
 	_#Imports
 
 	id:   string
 	name: string
 
-	framework: #Framework
+	framework: #Framework | "OPAQUE"
 
 	isStateful?: bool
 
