@@ -199,14 +199,16 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	// Printing the new version message if any.
 	select {
-	case tagName := <-tagNameChannel:
-		msg := fmt.Sprintf(
-			"New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s",
-			tagName, tagName)
-		if colors {
-			fmt.Fprintln(console.Stdout(ctx), clrs.Green(msg))
-		} else {
-			fmt.Fprintln(console.Stdout(ctx), msg)
+	case tagName, ok := <-tagNameChannel:
+		if ok {
+			msg := fmt.Sprintf(
+				"New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s",
+				tagName, tagName)
+			if colors {
+				fmt.Fprintln(console.Stdout(ctx), clrs.Green(msg))
+			} else {
+				fmt.Fprintln(console.Stdout(ctx), msg)
+			}
 		}
 	default:
 	}
