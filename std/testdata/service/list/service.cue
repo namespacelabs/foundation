@@ -9,6 +9,8 @@ $proto: inputs.#Proto & {
 }
 
 service: fn.#Service & {
+  framework: "GO"
+
 	instantiate: {
 		db: incluster.#Exports.Database & {
 			with: {

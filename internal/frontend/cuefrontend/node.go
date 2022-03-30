@@ -94,14 +94,14 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			return err
 		}
 
-		if fmwk, err := parseFramework(loc, fmwkStr); err != nil {
-			if fmwk == schema.Framework_OPAQUE {
-				return fnerrors.UserError(loc, "Only servers can be OPAQUE")
-			}
-			out.ServiceFramework = schema.Framework(fmwk)
-		} else {
+		fmwk, err := parseFramework(loc, fmwkStr)
+		if err != nil {
 			return err
 		}
+		if fmwk == schema.Framework_OPAQUE {
+			return fnerrors.UserError(loc, "Only servers can be OPAQUE")
+		}
+		out.ServiceFramework = fmwk
 	}
 
 	var initializeInFrameworks []string
@@ -114,11 +114,11 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			if !uniqFrameworks.Add(fmwkStr) {
 				return fnerrors.UserError(loc, "Duplicate initialization framework value: %s", fmwkStr)
 			}
-			if v, err := parseFramework(loc, fmwkStr); err != nil {
-				out.Initializers = append(out.Initializers, &schema.NodeInitializer{Framework: schema.Framework(v)})
-			} else {
+			v, err := parseFramework(loc, fmwkStr)
+			if err != nil {
 				return err
 			}
+			out.Initializers = append(out.Initializers, &schema.NodeInitializer{Framework: schema.Framework(v)})
 		}
 	}
 

@@ -74,7 +74,14 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 		}
 
 		if n.Kind == schema.Node_SERVICE && n.ServiceFramework != srv.Framework {
-			return nil, fnerrors.UserError(dep.Location, "doesn't suppport %s", srv.Framework)
+			return nil, fnerrors.UserError(
+				dep.Location,
+				"Can't embed service '%s' implemented in %s to the server '%s' with framework %s",
+				n.PackageName,
+				n.ServiceFramework,
+				srv.PackageName,
+				srv.Framework,
+			)
 		}
 
 		if err := ida.visit(ctx, pl, &srv.Allocation, n, ""); err != nil {
