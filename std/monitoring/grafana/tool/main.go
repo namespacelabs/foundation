@@ -14,7 +14,7 @@ import (
 
 	"github.com/rs/zerolog"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	"namespacelabs.dev/foundation/provision/tool/bootstrap"
+	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 )
@@ -30,10 +30,10 @@ var volumeName = strings.Replace(id, ".", "-", -1)
 type tool struct{}
 
 func main() {
-	bootstrap.RunTool(tool{})
+	configure.RunTool(tool{})
 }
 
-func (tool) Apply(ctx context.Context, r bootstrap.Request, out *bootstrap.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
@@ -132,7 +132,7 @@ func (tool) Apply(ctx context.Context, r bootstrap.Request, out *bootstrap.Apply
 	return nil
 }
 
-func (tool) Delete(ctx context.Context, r bootstrap.Request, out *bootstrap.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r configure.Request, out *configure.DeleteOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}

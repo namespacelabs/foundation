@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
-	"namespacelabs.dev/foundation/provision/tool/bootstrap"
+	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
@@ -34,7 +34,7 @@ var (
 
 type configureServer struct{}
 
-func (configureServer) Apply(ctx context.Context, r bootstrap.Request, out *bootstrap.ApplyOutput) error {
+func (configureServer) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
 	namespace := kubetool.FromRequest(r).Namespace
 
 	promYamlData, err := fs.ReadFile(embeddedData, promYaml)
@@ -135,7 +135,7 @@ func (configureServer) Apply(ctx context.Context, r bootstrap.Request, out *boot
 	return nil
 }
 
-func (configureServer) Delete(ctx context.Context, r bootstrap.Request, out *bootstrap.DeleteOutput) error {
+func (configureServer) Delete(ctx context.Context, r configure.Request, out *configure.DeleteOutput) error {
 	prom := r.Stack.GetServer(promServer)
 	if prom == nil {
 		zerolog.Ctx(ctx).Warn().

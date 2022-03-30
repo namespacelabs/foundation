@@ -5,14 +5,14 @@
 package main
 
 import (
-	"namespacelabs.dev/foundation/provision/tool/bootstrap"
+	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/schema"
 )
 
 func main() {
-	h := bootstrap.NewRegistration()
+	h := configure.NewRegistration()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.Handle(configureTargets{})
 	henv.Handle(configureServer{})
-	bootstrap.RunWith(h)
+	configure.RunWith(h)
 }

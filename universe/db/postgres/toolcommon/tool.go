@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	"namespacelabs.dev/foundation/provision/tool/bootstrap"
+	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
@@ -33,7 +33,7 @@ func makeKey(s string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func mountConfigs(dbMap map[schema.PackageName][]*postgres.Database, namespace string, name string, out *bootstrap.ApplyOutput) ([]string, error) {
+func mountConfigs(dbMap map[schema.PackageName][]*postgres.Database, namespace string, name string, out *configure.ApplyOutput) ([]string, error) {
 	args := []string{}
 
 	data := map[string]string{}
@@ -118,7 +118,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*postgres.Database, namespace s
 	return args, nil
 }
 
-func Apply(ctx context.Context, r bootstrap.Request, dbs map[schema.PackageName][]*postgres.Database, name string, out *bootstrap.ApplyOutput) error {
+func Apply(ctx context.Context, r configure.Request, dbs map[schema.PackageName][]*postgres.Database, name string, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
@@ -142,7 +142,7 @@ func Apply(ctx context.Context, r bootstrap.Request, dbs map[schema.PackageName]
 
 }
 
-func Delete(r bootstrap.Request, name string, out *bootstrap.DeleteOutput) error {
+func Delete(r configure.Request, name string, out *configure.DeleteOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}

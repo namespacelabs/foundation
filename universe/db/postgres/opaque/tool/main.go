@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/provision/tool/bootstrap"
+	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/toolcommon"
@@ -17,7 +17,7 @@ import (
 type tool struct{}
 
 func main() {
-	bootstrap.RunTool(tool{})
+	configure.RunTool(tool{})
 }
 
 func collectDatabases(server *schema.Server) (map[schema.PackageName][]*postgres.Database, error) {
@@ -38,7 +38,7 @@ func collectDatabases(server *schema.Server) (map[schema.PackageName][]*postgres
 	return dbs, nil
 }
 
-func (tool) Apply(ctx context.Context, r bootstrap.Request, out *bootstrap.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
@@ -51,6 +51,6 @@ func (tool) Apply(ctx context.Context, r bootstrap.Request, out *bootstrap.Apply
 	return toolcommon.Apply(ctx, r, dbs, "opaque", out)
 }
 
-func (tool) Delete(ctx context.Context, r bootstrap.Request, out *bootstrap.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r configure.Request, out *configure.DeleteOutput) error {
 	return toolcommon.Delete(r, "opaque", out)
 }

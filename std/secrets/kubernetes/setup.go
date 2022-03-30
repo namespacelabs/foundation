@@ -14,8 +14,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/internal/keys"
+	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/provision/deploy"
-	"namespacelabs.dev/foundation/provision/tool/bootstrap"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
@@ -25,10 +25,10 @@ import (
 type tool struct{}
 
 func main() {
-	bootstrap.RunTool(tool{})
+	configure.RunTool(tool{})
 }
 
-func (tool) Apply(ctx context.Context, r bootstrap.Request, out *bootstrap.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
 	namespace := kubetool.FromRequest(r).Namespace
 
 	contents := r.Snapshots["secrets"]
@@ -120,7 +120,7 @@ func (tool) Apply(ctx context.Context, r bootstrap.Request, out *bootstrap.Apply
 	return nil
 }
 
-func (tool) Delete(ctx context.Context, r bootstrap.Request, out *bootstrap.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r configure.Request, out *configure.DeleteOutput) error {
 	namespace := kubetool.FromRequest(r).Namespace
 
 	out.Ops = append(out.Ops, kubedef.Delete{

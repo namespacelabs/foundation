@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/provision/tool/bootstrap"
+	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/std/secrets"
 )
@@ -15,7 +15,7 @@ import (
 type tool struct{}
 
 func main() {
-	bootstrap.RunTool(tool{})
+	configure.RunTool(tool{})
 }
 
 func getSecrets(devMap *secrets.SecretDevMap) []*secrets.SecretDevMap_SecretSpec {
@@ -27,7 +27,7 @@ func getSecrets(devMap *secrets.SecretDevMap) []*secrets.SecretDevMap_SecretSpec
 	return nil
 }
 
-func (tool) Apply(ctx context.Context, r bootstrap.Request, out *bootstrap.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
 	devMap, _, err := secrets.CollectSecrets(ctx, r.Focus.Server, nil)
 	if err != nil {
 		return err
@@ -58,6 +58,6 @@ func (tool) Apply(ctx context.Context, r bootstrap.Request, out *bootstrap.Apply
 	return nil
 }
 
-func (tool) Delete(ctx context.Context, r bootstrap.Request, out *bootstrap.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r configure.Request, out *configure.DeleteOutput) error {
 	return nil
 }
