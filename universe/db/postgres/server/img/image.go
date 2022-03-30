@@ -9,12 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"path/filepath"
-	"sort"
-	"strings"
 
 	"github.com/moby/buildkit/client/llb"
-	"github.com/moby/buildkit/util/system"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/workspace/pins"
@@ -24,13 +20,12 @@ var (
 	//go:embed versions.json
 	lib embed.FS
 
-	golangImage, alpineImage string
+	postgresImage string
 )
 
 type versionsJSON struct {
-	Images     map[string]string `json:"images"`
-	Postgres   string            `json:"postgres"`
-	GoPackages map[string]string `json:"goPackages"`
+	Images   map[string]string `json:"images"`
+	Postgres string            `json:"postgres"`
 }
 
 var (
@@ -46,43 +41,11 @@ func init() {
 		panic(err)
 	}
 
-	golangImage = pins.Image(versions.Postgres)
-	alpineImage = pins.Default("alpine")
+	postgresImage = pins.Image(versions.Postgres)
 }
 
 func makePostgresImageState(platform specs.Platform) llb.State {
-	gobase := llbutil.Image(golangImage, platform).
-		AddEnv("CGO_ENABLED", "0").
-		AddEnv("PATH", "/usr/local/go/bin:"+system.DefaultPathEnvUnix).
-		AddEnv("GOPATH", "/go").
-		AddEnv("GOOS", platform.OS).
-		AddEnv("GOARCH", platform.Architecture)
+	target := llbutil.Image(postgresImage, platform)
 
-	var packages []string
-	for repo, version := range versions.GoPackages {
-		packages = append(packages, fmt.Sprintf("%s@%s", repo, version))
-	}
-	sort.Strings(packages) // determinism.
-
-	out := gobase
-
-	var bins []string
-	for _, p := range packages {
-		fp := filepath.Base(p)
-		parts := strings.SplitN(fp, "@", 2)
-		bins = append(bins, parts[0])
-
-		goInstall := append([]string{"go", "install"}, p)
-		out = out.Run(llb.Shlex(strings.Join(goInstall, " "))).Root()
-	}
-
-	var copies []llb.StateOption
-	for _, bin := range bins {
-		copies = append(copies, llbutil.CopyFrom(out, "/go/bin/"+bin, "/bin/"+bin))
-	}
-
-	target := llbutil.Image(alpineImage, platform)
-	target = target.Run(llb.Shlex(fmt.Sprintf("RUN correct command"))).Root()
-
-	return target.With(copies...)
+	return target.Run(llb.Shlex(fmt.Sprintf("RUN correct command"))).Root()
 }
