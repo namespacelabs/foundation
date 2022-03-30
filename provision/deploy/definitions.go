@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack, handlers []*tool.Handler, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
+func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
 	props, err := runtime.For(env).PrepareProvision(ctx)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ type handlerResult struct {
 
 type finishInvokeHandlers struct {
 	stack       *stack.Stack
-	handlers    []*tool.Handler
+	handlers    []*tool.Definition
 	invocations []compute.Computable[*protocol.ToolResponse]
 	props       *rtypes.ProvisionProps
 	event       protocol.Lifecycle

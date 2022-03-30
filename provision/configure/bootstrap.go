@@ -69,6 +69,11 @@ func (p Request) UnpackInput(msg proto.Message) error {
 	return fnerrors.InternalError("no such env: %s", msg.ProtoReflect().Descriptor().FullName())
 }
 
+// PackageOwner returns the name of the package that defined this tool.
+func (p Request) PackageOwner() string {
+	return p.r.GetToolPackage()
+}
+
 func RunTool(t Tool) {
 	flag.Parse()
 

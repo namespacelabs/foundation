@@ -23,12 +23,12 @@ func main() {
 	configure.RunTool(tool{})
 }
 
-func collectDatabases(server *schema.Server, internalEndpoint *schema.Endpoint) (map[schema.PackageName][]*postgres.Database, error) {
+func collectDatabases(server *schema.Server, owner string, internalEndpoint *schema.Endpoint) (map[schema.PackageName][]*postgres.Database, error) {
 	dbs := map[schema.PackageName][]*postgres.Database{}
 	for _, alloc := range server.Allocation {
 		for _, instance := range alloc.Instance {
 			for _, instantiate := range instance.Instantiated {
-				if instantiate.GetPackageName() == "namespacelabs.dev/foundation/universe/db/postgres/incluster" && instantiate.GetType() == "Database" {
+				if instantiate.GetPackageName() == owner && instantiate.GetType() == "Database" {
 					in := incluster.Database{}
 					if err := proto.Unmarshal(instantiate.Constructor.Value, &in); err != nil {
 						return nil, err
@@ -42,8 +42,8 @@ func collectDatabases(server *schema.Server, internalEndpoint *schema.Endpoint) 
 							Port:    uint32(internalEndpoint.Port.ContainerPort),
 						},
 					}
-					dbs[schema.PackageName(instance.InstanceOwner)] = append(dbs[schema.PackageName(instance.InstanceOwner)], &db)
 
+					dbs[schema.PackageName(instance.InstanceOwner)] = append(dbs[schema.PackageName(instance.InstanceOwner)], &db)
 				}
 			}
 		}
@@ -79,7 +79,7 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 			}},
 		}})
 
-	dbs, err := collectDatabases(r.Focus.Server, endpoint)
+	dbs, err := collectDatabases(r.Focus.Server, r.PackageOwner(), endpoint)
 	if err != nil {
 		return err
 	}

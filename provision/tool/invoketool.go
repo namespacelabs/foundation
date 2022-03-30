@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Invoke(ctx context.Context, env ops.Environment, r *Handler, stack *schema.Stack, focus schema.PackageName, props *rtypes.ProvisionProps, ev protocol.Lifecycle) compute.Computable[*protocol.ToolResponse] {
+func Invoke(ctx context.Context, env ops.Environment, r *Definition, stack *schema.Stack, focus schema.PackageName, props *rtypes.ProvisionProps, ev protocol.Lifecycle) compute.Computable[*protocol.ToolResponse] {
 	return &cacheableInvocation{
 		handler:   *r,
 		stack:     stack,
@@ -35,7 +35,7 @@ func Invoke(ctx context.Context, env ops.Environment, r *Handler, stack *schema.
 }
 
 type cacheableInvocation struct {
-	handler   Handler
+	handler   Definition
 	stack     *schema.Stack
 	focus     schema.PackageName
 	env       *schema.Environment
@@ -54,7 +54,7 @@ func (inv *cacheableInvocation) Inputs() *compute.In {
 	invocation.Image = nil // To make the invocation JSON serializable.
 	return compute.Inputs().
 		Computable("image", inv.handler.Invocation.Image).
-		JSON("handler", Handler{For: inv.handler.For, Source: inv.handler.Source, Invocation: &invocation}). // Without image and PackageAbsPath.
+		JSON("handler", Definition{For: inv.handler.For, Source: inv.handler.Source, Invocation: &invocation}). // Without image and PackageAbsPath.
 		Proto("stack", inv.stack).Stringer("focus", inv.focus).Proto("env", inv.env).
 		Proto("props", inv.props).JSON("lifecycle", inv.lifecycle)
 }
@@ -117,7 +117,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 			Args:       rtypes.FlattenArgs(r.Invocation.Args),
 			WorkingDir: r.Invocation.WorkingDir,
 		},
-		MountAbsRoot: inv.handler.PackageAbsPath,
+		MountAbsRoot: inv.handler.ServerAbsPath,
 		// Don't let an invocation reach out, it should be hermetic. Tools are
 		// expected to produce operations which can be inspected. And then these
 		// operations are applied by the caller.

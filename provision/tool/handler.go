@@ -18,11 +18,11 @@ type Source struct {
 	DeclaredStack []schema.PackageName // Handlers can only configure servers that were configured by the source.
 }
 
-type Handler struct {
-	For            schema.PackageName
-	PackageAbsPath string
-	Source         Source
-	Invocation     *Invocation
+type Definition struct {
+	For           schema.PackageName
+	ServerAbsPath string
+	Source        Source
+	Invocation    *Invocation
 }
 
 type Invocation struct {

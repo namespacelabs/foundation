@@ -20,12 +20,12 @@ func main() {
 	configure.RunTool(tool{})
 }
 
-func collectDatabases(server *schema.Server) (map[schema.PackageName][]*postgres.Database, error) {
+func collectDatabases(server *schema.Server, owner string) (map[schema.PackageName][]*postgres.Database, error) {
 	dbs := map[schema.PackageName][]*postgres.Database{}
 	for _, alloc := range server.Allocation {
 		for _, instance := range alloc.Instance {
 			for _, instantiate := range instance.Instantiated {
-				if instantiate.GetPackageName() == "namespacelabs.dev/foundation/universe/db/postgres/opaque" && instantiate.GetType() == "Database" {
+				if instantiate.GetPackageName() == owner && instantiate.GetType() == "Database" {
 					db := postgres.Database{}
 					if err := proto.Unmarshal(instantiate.Constructor.Value, &db); err != nil {
 						return nil, err
@@ -43,7 +43,7 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 		return nil
 	}
 
-	dbs, err := collectDatabases(r.Focus.Server)
+	dbs, err := collectDatabases(r.Focus.Server, r.PackageOwner())
 	if err != nil {
 		return err
 	}

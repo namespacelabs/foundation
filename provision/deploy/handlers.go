@@ -25,8 +25,8 @@ import (
 
 const SnapshotKeys = "fn.keys"
 
-func computeHandlers(ctx context.Context, in *stack.Stack) ([]*tool.Handler, error) {
-	var handlers []*tool.Handler
+func computeHandlers(ctx context.Context, in *stack.Stack) ([]*tool.Definition, error) {
+	var handlers []*tool.Definition
 	for k, s := range in.ParsedServers {
 		for _, n := range s.Deps {
 			h, err := parseHandlers(ctx, in.Servers[k], n)
@@ -48,7 +48,7 @@ func computeHandlers(ctx context.Context, in *stack.Stack) ([]*tool.Handler, err
 	return handlers, nil
 }
 
-func parseHandlers(ctx context.Context, server provision.Server, pr *stack.ParsedNode) ([]*tool.Handler, error) {
+func parseHandlers(ctx context.Context, server provision.Server, pr *stack.ParsedNode) ([]*tool.Definition, error) {
 	pkg := pr.Package
 	source := tool.Source{
 		PackageName: pkg.PackageName(),
@@ -61,7 +61,7 @@ func parseHandlers(ctx context.Context, server provision.Server, pr *stack.Parse
 		return strings.Compare(source.DeclaredStack[i].String(), source.DeclaredStack[j].String()) < 0
 	})
 
-	var handlers []*tool.Handler
+	var handlers []*tool.Definition
 	if dec := pr.ProvisionPlan.Provisioning; dec != nil {
 		if dec.Binary == "" {
 			return nil, fnerrors.UserError(pkg.Location, "extend.provisioning.with.binary is required to point to a binary package")
@@ -83,11 +83,11 @@ func parseHandlers(ctx context.Context, server provision.Server, pr *stack.Parse
 			return nil, err
 		}
 
-		handlers = append(handlers, &tool.Handler{
-			For:            server.PackageName(),
-			PackageAbsPath: server.Location.Abs(),
-			Source:         source,
-			Invocation:     invocation,
+		handlers = append(handlers, &tool.Definition{
+			For:           server.PackageName(),
+			ServerAbsPath: server.Location.Abs(),
+			Source:        source,
+			Invocation:    invocation,
 		})
 	}
 
