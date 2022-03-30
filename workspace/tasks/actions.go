@@ -152,6 +152,7 @@ func Action(name string) *ActionEvent {
 	return ev
 }
 
+// Deprecated, use Action().
 func Task(name string) *ActionEvent {
 	ev := Action(name)
 	ev.isTask = true

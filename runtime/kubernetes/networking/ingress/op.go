@@ -8,7 +8,6 @@ import (
 	"context"
 	"time"
 
-	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -23,9 +22,7 @@ import (
 )
 
 func RegisterGraphHandlers() {
-	ops.Register(&OpMapAddress{}, ops.DispatcherFunc(func(ctx context.Context, env ops.Environment, g *schema.Definition, msg proto.Message) (*ops.DispatcherResult, error) {
-		op := msg.(*OpMapAddress)
-
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, g *schema.Definition, op *OpMapAddress) (*ops.DispatcherResult, error) {
 		cfg, err := client.ComputeHostEnv(env.DevHost(), env.Proto())
 		if err != nil {
 			return nil, err
@@ -41,7 +38,7 @@ func RegisterGraphHandlers() {
 
 			return waitForIngress(ctx, cli, ingressSvc, op)
 		})
-	}))
+	})
 
 	nginx.RegisterGraphHandlers()
 }

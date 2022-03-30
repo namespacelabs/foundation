@@ -34,9 +34,7 @@ var (
 )
 
 func RegisterGraphHandlers() {
-	ops.Register(&OpGenerateWebhookCert{}, ops.DispatcherFunc(func(ctx context.Context, env ops.Environment, g *schema.Definition, msg proto.Message) (*ops.DispatcherResult, error) {
-		op := msg.(*OpGenerateWebhookCert)
-
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, g *schema.Definition, op *OpGenerateWebhookCert) (*ops.DispatcherResult, error) {
 		cfg, err := client.ComputeHostEnv(env.DevHost(), env.Proto())
 		if err != nil {
 			return nil, err
@@ -100,7 +98,7 @@ func RegisterGraphHandlers() {
 		}
 
 		return nil, nil
-	}))
+	})
 }
 
 func Ensure(ctx context.Context) ([]*schema.Definition, error) {

@@ -7,9 +7,10 @@ package ops
 import (
 	"context"
 	"io"
+	"reflect"
 
 	"google.golang.org/protobuf/proto"
-	anypb "google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/schema"
@@ -18,24 +19,22 @@ import (
 	"tailscale.com/util/multierr"
 )
 
-type Dispatcher interface {
-	Run(context.Context, Environment, *schema.Definition, proto.Message) (*DispatcherResult, error)
+type Dispatcher[M proto.Message] interface {
+	Run(context.Context, Environment, *schema.Definition, M) (*DispatcherResult, error)
 }
 
-type DispatcherCloser interface {
-	Dispatcher
+type DispatcherCloser[M proto.Message] interface {
+	Dispatcher[M]
 	io.Closer
 }
 
-type IsStateful interface {
-	StartSession(context.Context, Environment) DispatcherCloser
+type HasStartSession[M proto.Message] interface {
+	StartSession(context.Context, Environment) DispatcherCloser[M]
 }
 
 type DispatcherResult struct {
 	Waiters []Waiter
 }
-
-type DispatcherFunc func(context.Context, Environment, *schema.Definition, proto.Message) (*DispatcherResult, error)
 
 type Environment interface {
 	fnerrors.Location
@@ -49,10 +48,6 @@ type WorkspaceEnvironment interface {
 	OutputFS() fnfs.ReadWriteFS
 }
 
-func (f DispatcherFunc) Run(ctx context.Context, env Environment, def *schema.Definition, m proto.Message) (*DispatcherResult, error) {
-	return f(ctx, env, def, m)
-}
-
 type Runner struct {
 	definitions []*schema.Definition
 	nodes       []rnode
@@ -60,30 +55,64 @@ type Runner struct {
 }
 
 type rnode struct {
-	def        *schema.Definition
-	tmpl       proto.Message
-	dispatcher Dispatcher
-	res        *DispatcherResult
-	err        error
+	def *schema.Definition
+	reg registration
+	res *DispatcherResult
+	err error // Error captured from a previous run.
 }
 
-type dispatcherRegistration struct {
-	tmpl       proto.Message
-	dispatcher Dispatcher
+type registration struct {
+	tmpl         proto.Message
+	dispatcher   dispatcherFunc
+	startSession startSessionFunc
 }
 
-var handlers = map[string]dispatcherRegistration{}
+type dispatcherFunc func(context.Context, Environment, *schema.Definition, proto.Message) (*DispatcherResult, error)
+type startSessionFunc func(context.Context, Environment) (dispatcherFunc, io.Closer)
 
-func Register(msg proto.Message, mr Dispatcher) {
-	p, err := anypb.New(msg)
+var handlers = map[string]registration{}
+
+func Register[M proto.Message](mr Dispatcher[M]) {
+	var startSession startSessionFunc
+	if stateful, ok := mr.(HasStartSession[M]); ok {
+		startSession = func(ctx context.Context, env Environment) (dispatcherFunc, io.Closer) {
+			st := stateful.StartSession(ctx, env)
+			return func(ctx context.Context, env Environment, def *schema.Definition, msg proto.Message) (*DispatcherResult, error) {
+				return st.Run(ctx, env, def, msg.(M))
+			}, st
+		}
+	}
+
+	register[M](func(ctx context.Context, env Environment, def *schema.Definition, msg proto.Message) (*DispatcherResult, error) {
+		return mr.Run(ctx, env, def, msg.(M))
+	}, startSession)
+}
+
+func RegisterFunc[M proto.Message](mr func(ctx context.Context, env Environment, def *schema.Definition, m M) (*DispatcherResult, error)) {
+	register[M](func(ctx context.Context, env Environment, def *schema.Definition, msg proto.Message) (*DispatcherResult, error) {
+		return mr(ctx, env, def, msg.(M))
+	}, nil)
+}
+
+func register[M proto.Message](dispatcher dispatcherFunc, startSession startSessionFunc) {
+	var m M
+
+	tmpl := reflect.New(reflect.TypeOf(m).Elem()).Interface().(proto.Message)
+	reg := registration{
+		tmpl:         tmpl,
+		dispatcher:   dispatcher,
+		startSession: startSession,
+	}
+
+	handlers[messageKey(tmpl)] = reg
+}
+
+func messageKey(msg proto.Message) string {
+	packed, err := anypb.New(msg)
 	if err != nil {
 		panic(err)
 	}
-
-	handlers[p.GetTypeUrl()] = dispatcherRegistration{
-		tmpl:       msg,
-		dispatcher: mr,
-	}
+	return packed.GetTypeUrl()
 }
 
 func NewRunner() *Runner {
@@ -99,9 +128,8 @@ func (g *Runner) Add(defs ...*schema.Definition) error {
 		}
 
 		nodes = append(nodes, rnode{
-			def:        src,
-			tmpl:       reg.tmpl,
-			dispatcher: reg.dispatcher,
+			def: src,
+			reg: reg,
 		})
 
 		for _, scope := range src.Scope {
@@ -125,7 +153,8 @@ func (g *Runner) Apply(ctx context.Context, name string, env Environment) (waite
 func (g *Runner) apply(ctx context.Context, env Environment) ([]Waiter, error) {
 	tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 
-	sessions := map[string]DispatcherCloser{}
+	sessions := map[string]dispatcherFunc{}
+	closers := map[string]io.Closer{}
 
 	for _, n := range g.nodes {
 		if n.err != nil {
@@ -137,8 +166,10 @@ func (g *Runner) apply(ctx context.Context, env Environment) ([]Waiter, error) {
 			continue
 		}
 
-		if stateful, ok := n.dispatcher.(IsStateful); ok {
-			sessions[typeUrl] = stateful.StartSession(ctx, env)
+		if n.reg.startSession != nil {
+			dispatcher, closer := n.reg.startSession(ctx, env)
+			sessions[typeUrl] = dispatcher
+			closers[typeUrl] = closer
 		}
 	}
 
@@ -149,19 +180,19 @@ func (g *Runner) apply(ctx context.Context, env Environment) ([]Waiter, error) {
 			continue
 		}
 
-		copy := proto.Clone(n.tmpl)
+		copy := proto.Clone(n.reg.tmpl)
 		if err := n.def.Impl.UnmarshalTo(copy); err != nil {
 			errs = append(errs, err)
 			continue
 		}
 
-		dispatcher := n.dispatcher
+		dispatcher := n.reg.dispatcher
 		typeUrl := n.def.Impl.GetTypeUrl()
 		if d, has := sessions[typeUrl]; has {
 			dispatcher = d
 		}
 
-		d, err := dispatcher.Run(ctx, env, n.def, copy)
+		d, err := dispatcher(ctx, env, n.def, copy)
 		g.nodes[k].res = d
 		g.nodes[k].err = err
 		if err != nil {
@@ -175,7 +206,7 @@ func (g *Runner) apply(ctx context.Context, env Environment) ([]Waiter, error) {
 	// Use insertion order.
 	for _, n := range g.nodes {
 		typeUrl := n.def.Impl.GetTypeUrl()
-		if closer, has := sessions[typeUrl]; has {
+		if closer, has := closers[typeUrl]; has {
 			if err := closer.Close(); err != nil {
 				errs = append(errs, fnerrors.InternalError("failed to close %q: %w", typeUrl, err))
 			}

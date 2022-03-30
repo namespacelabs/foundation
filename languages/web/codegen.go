@@ -12,9 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"reflect"
 
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -28,43 +26,37 @@ import (
 
 type generator struct{}
 
-func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg proto.Message) (*ops.DispatcherResult, error) {
+func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenHttpBackend) (*ops.DispatcherResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, errors.New("workspace.Packages required")
 	}
 
-	switch x := msg.(type) {
-	case *OpGenHttpBackend:
-		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Node.PackageName))
-		if err != nil {
-			return nil, err
-		}
-
-		fsys, err := generateBackendConf(ctx, loc, x, generatePlaceholder(wenv), true)
-		if err != nil {
-			return nil, err
-		}
-
-		out := loc.Module.ReadWriteFS()
-		return nil, fnfs.VisitFiles(ctx, fsys, func(path string, contents []byte, de fs.DirEntry) error {
-			info, err := de.Info()
-			if err != nil {
-				return err
-			}
-
-			return fnfs.WriteFileExtended(ctx, out, loc.Rel(path), info.Mode(), fnfs.WriteFileExtendedOpts{
-				CompareContents: true,
-				AnnounceWrite:   true,
-			}, func(w io.Writer) error {
-				_, err := w.Write(contents)
-				return err
-			})
-		})
-
-	default:
-		return nil, fnerrors.InternalError("unsupported type: %s", reflect.TypeOf(x).String())
+	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.Node.PackageName))
+	if err != nil {
+		return nil, err
 	}
+
+	fsys, err := generateBackendConf(ctx, loc, msg, generatePlaceholder(wenv), true)
+	if err != nil {
+		return nil, err
+	}
+
+	out := loc.Module.ReadWriteFS()
+	return nil, fnfs.VisitFiles(ctx, fsys, func(path string, contents []byte, de fs.DirEntry) error {
+		info, err := de.Info()
+		if err != nil {
+			return err
+		}
+
+		return fnfs.WriteFileExtended(ctx, out, loc.Rel(path), info.Mode(), fnfs.WriteFileExtendedOpts{
+			CompareContents: true,
+			AnnounceWrite:   true,
+		}, func(w io.Writer) error {
+			_, err := w.Write(contents)
+			return err
+		})
+	})
 }
 
 type genFunc func(context.Context, workspace.Location, *OpGenHttpBackend_Backend) (*backendDefinition, error)
