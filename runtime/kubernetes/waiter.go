@@ -105,6 +105,12 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 					return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.resource)
 				}
 
+				if rs, err := getReplicaSetName(c, cli, w.apply.Namespace, w.apply.Name, w.expectedGen); err == nil {
+					if status, err := podWaitingStatus(c, cli, w.apply.Namespace, rs); err == nil {
+						ev.Status = status
+					}
+				}
+
 				ev.Ready = ops.NotReady
 				if observedGeneration > w.expectedGen {
 					ev.Ready = ops.Ready

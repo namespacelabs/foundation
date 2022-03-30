@@ -29,6 +29,7 @@ type Event struct {
 	ImplMetadata   interface{} // JSON serializable implementation-specific metadata.
 
 	AllDone bool // True when WaitUntilReady returns.
+	Status  string
 }
 
 type Waiter interface {
