@@ -8,7 +8,6 @@ import (
 	"context"
 	"io"
 	"io/fs"
-	"reflect"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -40,7 +39,7 @@ func (fsCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.Dig
 	return ComputeDigest(ctx, v.(fs.FS)) // XXX don't pay the cost twice (see Cache below).
 }
 
-func (fsCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h schema.Digest) (compute.Result[fs.FS], error) {
+func (fsCacheable) LoadCached(ctx context.Context, c cache.Cache, t compute.CacheableInstance, h schema.Digest) (compute.Result[fs.FS], error) {
 	layer, digest, err := oci.LoadCachedLayer(ctx, c, h)
 	if err != nil {
 		return compute.Result[fs.FS]{}, err

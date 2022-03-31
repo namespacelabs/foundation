@@ -29,14 +29,11 @@ func (protoCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.
 	return h, nil
 }
 
-func (protoCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h schema.Digest) (Result[proto.Message], error) {
-	if t.Kind() != reflect.Ptr {
-		return Result[proto.Message]{}, fnerrors.InternalError("expected %q to be a pointer", t.Name())
-	}
-
-	msg, ok := reflect.New(t.Elem()).Interface().(proto.Message)
+func (protoCacheable) LoadCached(ctx context.Context, c cache.Cache, t CacheableInstance, h schema.Digest) (Result[proto.Message], error) {
+	raw := t.NewInstance()
+	msg, ok := raw.(proto.Message)
 	if !ok {
-		return Result[proto.Message]{}, fnerrors.InternalError("expected %q to be a ptr to a proto.Message", t.Name())
+		return Result[proto.Message]{}, fnerrors.InternalError("expected %q to be a ptr to a proto.Message", reflect.TypeOf(raw))
 	}
 
 	bytes, err := c.Bytes(ctx, h)
