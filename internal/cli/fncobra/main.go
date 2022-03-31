@@ -416,7 +416,7 @@ func getBinaryBuildTime() (*time.Time, error) {
 	}
 
 	for _, n := range info.Settings {
-		if n.Key == "vcs.modified" {
+		if n.Key == "vcs.modified" && n.Value == "true" {
 			// Ignore manual builds
 			return nil, nil
 		}
