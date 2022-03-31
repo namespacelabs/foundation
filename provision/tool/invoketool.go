@@ -114,7 +114,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		RunBinaryOpts: rtypes.RunBinaryOpts{
 			Image:      resolvedImage,
 			Command:    r.Invocation.Command,
-			Args:       rtypes.FlattenArgs(r.Invocation.Args),
+			Args:       r.Invocation.Args,
 			WorkingDir: r.Invocation.WorkingDir,
 		},
 		MountAbsRoot: inv.handler.ServerAbsPath,

@@ -89,12 +89,12 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env ops.Envir
 
 	focus, stack, err := loadSUT(ctx, pl, testDef)
 	if err != nil {
-		return nil, fnerrors.UserError(testPkg.Location, "failed to load fixture")
+		return nil, fnerrors.UserError(testPkg.Location, "failed to load fixture: %w", err)
 	}
 
 	deployPlan, err := deploy.PrepareDeployStack(ctx, env, stack, focus)
 	if err != nil {
-		return nil, fnerrors.UserError(testPkg.Location, "failed to load stack")
+		return nil, fnerrors.UserError(testPkg.Location, "failed to load stack: %w", err)
 	}
 
 	testReq := &testboot.TestRequest{

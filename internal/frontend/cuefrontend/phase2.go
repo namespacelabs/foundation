@@ -20,27 +20,37 @@ type phase2plan struct {
 	Left  []fncue.KeyAndPath // injected values left to be filled.
 }
 
+type cueStartupPlan struct {
+	Args *argsListOrMap    `json:"args"`
+	Env  map[string]string `json:"env"`
+}
+
 var _ frontend.PreStartup = phase2plan{}
 
 func (s phase2plan) EvalStartup(ctx context.Context, info frontend.StartupInputs, allocs []frontend.ValueWithPath) (frontend.StartupPlan, error) {
+	var plan frontend.StartupPlan
+
 	res, _, err := s.evalStartupStage(ctx, info)
 	if err != nil {
-		return frontend.StartupPlan{}, err
+		return plan, err
 	}
 
 	for _, alloc := range allocs {
 		res = res.FillPath(cue.ParsePath(alloc.Need.CuePath), alloc.Value)
 	}
 
-	var plan frontend.StartupPlan
 	if v := lookupTransition(res, "startup"); v.Exists() {
 		if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 			return plan, err
 		}
 
-		if err := v.Val.Decode(&plan); err != nil {
-			return plan, err
+		var raw cueStartupPlan
+		if err := v.Val.Decode(&raw); err != nil {
+			return frontend.StartupPlan{}, err
 		}
+
+		plan.Env = raw.Env
+		plan.Args = raw.Args.Parsed()
 	}
 
 	return plan, nil

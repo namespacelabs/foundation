@@ -163,9 +163,9 @@ func (plainImpl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server
 func (plainImpl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.ServerRunOpts) error {
 	run.Command = []string{"yarn", "serve"}
 	run.WorkingDir = "/app"
-	run.Env = map[string]string{
-		"NODE_ENV": nodeEnv(t.Env()),
-	}
+	run.Env = []*schema.BinaryConfig_Entry{{
+		Name: "NODE_ENV", Value: nodeEnv(t.Env()),
+	}}
 	return nil
 }
 

@@ -24,5 +24,9 @@ func parseCueBinary(ctx context.Context, loc workspace.Location, parent, v *fncu
 		return nil, err
 	}
 
-	return workspace.TransformBinary(loc, bin)
+	if err := workspace.TransformBinary(loc, bin); err != nil {
+		return nil, err
+	}
+
+	return bin, nil
 }

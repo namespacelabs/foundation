@@ -211,6 +211,12 @@ _#ConfigureBase: {
 		web_build?:     string
 		llb_go_binary?: string
 	}
+	config?: {
+		command?: [...string]
+		// XXX enable when they can also be used by all binaries.
+		// args?: #Args
+		// env?: map[string]string
+	}
 }
 
 #Test: {

@@ -179,8 +179,8 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		}
 	}
 
-	for k, v := range server.Env {
-		container = container.WithEnv(applycorev1.EnvVar().WithName(k).WithValue(v))
+	for _, kv := range server.Env {
+		container = container.WithEnv(applycorev1.EnvVar().WithName(kv.Name).WithValue(kv.Value))
 	}
 
 	if server.WorkingDir != "" {

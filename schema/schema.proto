@@ -10,6 +10,7 @@ option go_package = "namespacelabs.dev/foundation/schema";
 
 import "google/protobuf/any.proto";
 import "schema/networking.proto";
+import "schema/binary.proto";
 
 // A schema file may include services and server; but initially we constraint
 // files to include exclusively one. That constraint is applied at `lint` time,
@@ -220,7 +221,7 @@ message Server {
     repeated Reference reference = 12;
 
     // XXX temporary.
-    map<string, string> static_env = 13;
+    repeated BinaryConfig.Entry static_env = 13;
 
     // Set of dependencies specified explicitly by the user.
     repeated string user_imports = 14;
