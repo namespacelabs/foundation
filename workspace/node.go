@@ -39,8 +39,8 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 			if ext == nil {
 				return fnerrors.UserError(loc, "Trying to instantiate a node that is not an extension: %s", dep.PackageName)
 			}
-			providesFmwks := ext.GetProvidesFrameworks()
-			for _, fmwk := range node.GetCodegenFrameworks() {
+			providesFmwks := ext.ProvidedInFrameworks()
+			for _, fmwk := range node.CodegeneratedFrameworks() {
 				if _, ok := providesFmwks[fmwk]; !ok {
 					return fnerrors.UserError(
 						loc,

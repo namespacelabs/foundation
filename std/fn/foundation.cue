@@ -31,7 +31,7 @@ _#Node: {
 #Extension: {
 	_#Node
 
-	initializeIn?: [...#Framework]
+	hasInitializerIn?: #Framework | [...#Framework]
 
 	provides?: #Provides
 

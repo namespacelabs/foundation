@@ -5,7 +5,7 @@ import (
 )
 
 extension: fn.#Extension & {
-	initializeIn: ["GO"]
+	hasInitializerIn: "GO"
 
 	instantiate: {
 		"interceptors": interceptors.#Exports.InterceptorRegistration
