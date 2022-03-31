@@ -8,8 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"runtime"
 	"sort"
 
 	"github.com/docker/docker/api/types"
@@ -19,7 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -55,10 +52,7 @@ func (p PersistentSpec) Ensure(ctx context.Context, progress io.Writer) error {
 
 		info, err := p.running(ctx, cli)
 		if err != nil {
-			if os.IsPermission(err) && runtime.GOOS == "linux" {
-				fmt.Fprintf(console.TypedOutput(ctx, "hint", tasks.CatOutputUs), "Unable to connect to docker. Did you follow https://docs.docker.com/engine/install/linux-postinstall/?")
-			}
-			return fnerrors.RemoteError("failed to retrieve running %s information: %w", p.Name, err)
+			return err
 		}
 
 		if info.Version != p.Version || info.HaveHostNetwork != p.UseHostNetworking {
@@ -79,7 +73,7 @@ func (p PersistentSpec) Ensure(ctx context.Context, progress io.Writer) error {
 	})
 }
 
-func (p PersistentSpec) start(ctx context.Context, cli *client.Client) error {
+func (p PersistentSpec) start(ctx context.Context, cli docker.Client) error {
 	log.Ctx(ctx).Debug().Str("version", p.Version).Msgf("starting %s", p.Name)
 
 	if err := cli.ContainerStart(ctx, p.ContainerName, types.ContainerStartOptions{}); err != nil {
@@ -93,7 +87,7 @@ func (p PersistentSpec) start(ctx context.Context, cli *client.Client) error {
 	return p.WaitUntilRunning(ctx, p.ContainerName)
 }
 
-func (p PersistentSpec) install(ctx context.Context, cli *client.Client, progress io.Writer) error {
+func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress io.Writer) error {
 	var imageID oci.ImageID
 	imageID.Repository = p.Image
 	imageID.Tag = p.Version
@@ -163,7 +157,7 @@ func (p PersistentSpec) install(ctx context.Context, cli *client.Client, progres
 	return p.WaitUntilRunning(ctx, p.ContainerName)
 }
 
-func (p PersistentSpec) remove(ctx context.Context, cli *client.Client) error {
+func (p PersistentSpec) remove(ctx context.Context, cli docker.Client) error {
 	err := cli.ContainerRemove(ctx, p.ContainerName, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
 	if client.IsErrNotFound(err) {
 		return nil
@@ -171,7 +165,7 @@ func (p PersistentSpec) remove(ctx context.Context, cli *client.Client) error {
 	return err
 }
 
-func (p PersistentSpec) running(ctx context.Context, cli *client.Client) (*PersistentInformation, error) {
+func (p PersistentSpec) running(ctx context.Context, cli docker.Client) (*PersistentInformation, error) {
 	res, err := cli.ContainerInspect(ctx, p.ContainerName)
 	if err != nil {
 		if client.IsErrNotFound(err) {
