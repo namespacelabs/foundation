@@ -7,7 +7,6 @@ package main
 import (
 	"embed"
 	"encoding/json"
-	"fmt"
 	"io/fs"
 
 	"github.com/moby/buildkit/client/llb"
@@ -17,10 +16,11 @@ import (
 )
 
 var (
-	//go:embed versions.json
+	//go:embed versions.json fn-postgres-entrypoint.sh
 	lib embed.FS
 
 	postgresImage string
+	entrypoint    []byte
 )
 
 type versionsJSON struct {
@@ -42,10 +42,15 @@ func init() {
 	}
 
 	postgresImage = pins.Image(versions.Postgres)
+
+	entrypoint, err = fs.ReadFile(lib, "fn-postgres-entrypoint.sh")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func makePostgresImageState(platform specs.Platform) llb.State {
 	target := llbutil.Image(postgresImage, platform)
 
-	return target.Run(llb.Shlex(fmt.Sprintf("echo %s", "world"))).Root()
+	return target.File(llb.Mkfile("fn-postgres-entrypoint.sh", 0777, entrypoint))
 }
