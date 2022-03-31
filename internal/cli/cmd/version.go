@@ -35,32 +35,23 @@ func NewVersionCmd() *cobra.Command {
 				return nil
 			}
 
-			var modified bool
-			var revision, time string
-
-			for _, n := range info.Settings {
-				switch n.Key {
-				case "vcs.revision":
-					revision = n.Value
-				case "vcs.time":
-					time = n.Value
-				case "vcs.modified":
-					modified = n.Value == "true"
-				}
+			v, err := fncobra.VersionFrom(info)
+			if err != nil {
+				return err
 			}
 
-			if revision == "" {
+			if v.Version == "" {
 				return fnerrors.InternalError("binary does not include version information")
 			}
 
 			out := console.Stdout(ctx)
-			fmt.Fprintf(out, "fn version %s", revision)
+			fmt.Fprintf(out, "fn version %s", v.Version)
 
 			hints := []string{}
-			if time != "" {
-				hints = append(hints, fmt.Sprintf("built at %s", time))
+			if v.BuildTimeStr != "" {
+				hints = append(hints, fmt.Sprintf("built at %s", v.BuildTimeStr))
 			}
-			if modified {
+			if v.Modified {
 				hints = append(hints, "from a modified repo")
 			}
 			hints = append(hints, fmt.Sprintf("on %s/%s", runtime.GOOS, runtime.GOARCH))
