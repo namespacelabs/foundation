@@ -427,6 +427,12 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 				p.AvailableIn = append(p.AvailableIn, &schema.Provides_AvailableIn{
 					Go: g,
 				})
+			case "web":
+				{
+					p.AvailableIn = append(p.AvailableIn, &schema.Provides_AvailableIn{
+						Web: &schema.Provides_AvailableIn_Web{},
+					})
+				}
 			}
 		}
 

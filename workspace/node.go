@@ -29,24 +29,28 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 	for k, dep := range node.Instantiate {
 		// Checking language compatibility
 
-		pkg, err := pl.LoadByName(ctx, schema.PackageName(dep.PackageName))
-		if err != nil {
-			return err
-		}
-		ext := pkg.Extension
-		if ext == nil {
-			return fnerrors.UserError(loc, "Trying to instantiate a node that is not an extension: %s", dep.PackageName)
-		}
-		providesFmwks := ext.GetProvidesFrameworks()
-		for _, fmwk := range node.GetCodegenFrameworks() {
-			if _, ok := providesFmwks[fmwk]; !ok {
-				return fnerrors.UserError(
-					loc,
-					"Node has generated code for framework %s but tries to instantiate an "+
-						"extension provider '%s' that doesn't support this framework",
-					fmwk.String(),
-					dep.Name,
-				)
+		// No package happen for internal nodes, e.g. "std/grpc"
+		if len(dep.PackageName) > 0 {
+			pkg, err := pl.LoadByName(ctx, schema.PackageName(dep.PackageName))
+			if err != nil {
+				return err
+			}
+			ext := pkg.Extension
+			if ext == nil {
+				return fnerrors.UserError(loc, "Trying to instantiate a node that is not an extension: %s", dep.PackageName)
+			}
+			providesFmwks := ext.GetProvidesFrameworks()
+			for _, fmwk := range node.GetCodegenFrameworks() {
+				if _, ok := providesFmwks[fmwk]; !ok {
+					return fnerrors.UserError(
+						loc,
+						"Node has generated code for framework %s but tries to instantiate an "+
+							"extension provider '%s:%s' that doesn't support this framework",
+						fmwk.String(),
+						dep.PackageName,
+						dep.Name,
+					)
+				}
 			}
 		}
 

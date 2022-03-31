@@ -64,6 +64,9 @@ func (n *Node) GetProvidesFrameworks() map[Framework]bool {
 			if a.Go != nil {
 				fmwksSet[Framework_GO] = true
 			}
+			if a.Web != nil {
+				fmwksSet[Framework_WEB] = true
+			}
 		}
 	}
 	return fmwksSet

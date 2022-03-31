@@ -140,12 +140,15 @@ message Provides {
     repeated AvailableIn available_in = 3;
 
     message AvailableIn {
-        Go go = 1;
+        Go  go  = 1;
+        Web web = 2;
 
         message Go {
             string package = 1;
             string type    = 2;
         }
+
+        message Web {}
     }
 }
 
