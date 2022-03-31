@@ -18,6 +18,10 @@
     "distroless": {
       "base": "gcr.io/distroless/static:nonroot",
       "nonRootUserId": 65532
+    },
+    "alpine": {
+      "base": "docker.io/library/alpine:3.14",
+      "nonRootUserId": 65000
     }
   }
 }
