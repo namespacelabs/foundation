@@ -16,7 +16,6 @@ import (
 
 	"cuelang.org/go/cue/format"
 	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -31,29 +30,23 @@ import (
 const wellKnownResource = ".foundation.std.types.Resource"
 
 func Register() {
-	ops.Register(&OpGenNode{}, generator{})
+	ops.Register[*OpGenNode](generator{})
 }
 
 type generator struct{}
 
-func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg proto.Message) (*ops.DispatcherResult, error) {
+func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenNode) (*ops.DispatcherResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, errors.New("workspace.Packages required")
 	}
 
-	switch x := msg.(type) {
-	case *OpGenNode:
-		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Node.PackageName))
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, generateNode(ctx, loc, x.Node, x.Protos, loc.Module.ReadWriteFS())
-
-	default:
-		return nil, fnerrors.InternalError("unsupported type")
+	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.Node.PackageName))
+	if err != nil {
+		return nil, err
 	}
+
+	return nil, generateNode(ctx, loc, msg.Node, msg.Protos, loc.Module.ReadWriteFS())
 }
 
 func ForNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.Definition, error) {

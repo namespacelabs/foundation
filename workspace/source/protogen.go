@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/sdk/buf"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -39,36 +38,31 @@ type GoProtosOpts struct {
 }
 
 func RegisterGraphHandlers() {
-	ops.Register(&OpProtoGen{}, statefulGen{})
+	ops.Register[*OpProtoGen](statefulGen{})
 }
 
 type statefulGen struct{}
 
-var _ ops.IsStateful = statefulGen{}
+var _ ops.HasStartSession[*OpProtoGen] = statefulGen{}
 
-func (statefulGen) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg proto.Message) (*ops.DispatcherResult, error) {
+func (statefulGen) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.DispatcherResult, error) {
 	wenv, ok := env.(ops.WorkspaceEnvironment)
 	if !ok {
 		return nil, errors.New("WorkspaceEnvironment required")
 	}
 
-	switch x := msg.(type) {
-	case *OpProtoGen:
-		mod := &perModuleGen{}
+	mod := &perModuleGen{}
 
-		if x.GenerateHttpGateway {
-			mod.withHTTP.add(x.Framework, x.Protos)
-		} else {
-			mod.withoutHTTP.add(x.Framework, x.Protos)
-		}
-
-		return nil, generateProtoSrcs(ctx, buf.Image(ctx, env, wenv), mod, wenv.OutputFS())
-	default:
-		return nil, fnerrors.InternalError("unsupported type")
+	if msg.GenerateHttpGateway {
+		mod.withHTTP.add(msg.Framework, msg.Protos)
+	} else {
+		mod.withoutHTTP.add(msg.Framework, msg.Protos)
 	}
+
+	return nil, generateProtoSrcs(ctx, buf.Image(ctx, env, wenv), mod, wenv.OutputFS())
 }
 
-func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.DispatcherCloser {
+func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.DispatcherCloser[*OpProtoGen] {
 	wenv, ok := env.(ops.WorkspaceEnvironment)
 	if !ok {
 		// An error will then be returned in Close().
@@ -89,31 +83,26 @@ type multiGen struct {
 	files []*protos.FileDescriptorSetAndDeps
 }
 
-func (m *multiGen) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg proto.Message) (*ops.DispatcherResult, error) {
+func (m *multiGen) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.DispatcherResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, errors.New("workspace.Packages required")
 	}
 
-	switch x := msg.(type) {
-	case *OpProtoGen:
-		loc, err := wenv.Resolve(ctx, schema.PackageName(x.PackageName))
-		if err != nil {
-			return nil, err
-		}
-
-		m.mu.Lock()
-		m.locs = append(m.locs, loc)
-		m.opts = append(m.opts, GoProtosOpts{
-			HTTPGateway: x.GenerateHttpGateway,
-			Framework:   x.Framework,
-		})
-		m.files = append(m.files, x.Protos)
-		m.mu.Unlock()
-		return nil, nil
-	default:
-		return nil, fnerrors.InternalError("unsupported type")
+	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.PackageName))
+	if err != nil {
+		return nil, err
 	}
+
+	m.mu.Lock()
+	m.locs = append(m.locs, loc)
+	m.opts = append(m.opts, GoProtosOpts{
+		HTTPGateway: msg.GenerateHttpGateway,
+		Framework:   msg.Framework,
+	})
+	m.files = append(m.files, msg.Protos)
+	m.mu.Unlock()
+	return nil, nil
 }
 
 type perLanguageDescriptors struct {

@@ -8,9 +8,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
-	"reflect"
 
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/engine/ops"
@@ -40,38 +38,33 @@ func Register() {
 	languages.Register(schema.Framework_GO, impl{})
 	runtime.RegisterSupport(schema.Framework_GO, impl{})
 
-	ops.Register(&OpGenNode{}, generator{})
-	ops.Register(&OpGenServer{}, generator{})
-}
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.DispatcherResult, error) {
+		wenv, ok := env.(workspace.Packages)
+		if !ok {
+			return nil, errors.New("workspace.Packages required")
+		}
 
-type generator struct{}
-
-func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg proto.Message) (*ops.DispatcherResult, error) {
-	wenv, ok := env.(workspace.Packages)
-	if !ok {
-		return nil, errors.New("workspace.Packages required")
-	}
-
-	switch x := msg.(type) {
-	case *OpGenNode:
 		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Node.PackageName))
 		if err != nil {
 			return nil, err
 		}
 
 		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
+	})
 
-	case *OpGenServer:
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenServer) (*ops.DispatcherResult, error) {
+		wenv, ok := env.(workspace.Packages)
+		if !ok {
+			return nil, errors.New("workspace.Packages required")
+		}
+
 		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Server.PackageName))
 		if err != nil {
 			return nil, err
 		}
 
 		return nil, generateServer(ctx, wenv, loc, x.Server, x.LoadedNode, loc.Module.ReadWriteFS())
-
-	default:
-		return nil, fnerrors.InternalError("unsupported type: %s", reflect.TypeOf(x).String())
-	}
+	})
 }
 
 type impl struct {

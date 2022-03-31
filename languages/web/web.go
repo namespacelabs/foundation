@@ -51,7 +51,7 @@ const (
 
 func Register() {
 	languages.Register(schema.Framework_WEB, impl{})
-	ops.Register(&OpGenHttpBackend{}, generator{})
+	ops.Register[*OpGenHttpBackend](generator{})
 }
 
 type impl struct {

@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"google.golang.org/protobuf/proto"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -26,9 +25,7 @@ import (
 )
 
 func RegisterGraphHandlers() {
-	ops.Register(&kubedef.OpApply{}, ops.DispatcherFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, m proto.Message) (*ops.DispatcherResult, error) {
-		apply := m.(*kubedef.OpApply)
-
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, apply *kubedef.OpApply) (*ops.DispatcherResult, error) {
 		if apply.Resource == "" {
 			return nil, fnerrors.InternalError("%s: apply.Resource is required", d.Description)
 		}
@@ -107,11 +104,9 @@ func RegisterGraphHandlers() {
 		}
 
 		return nil, nil
-	}))
+	})
 
-	ops.Register(&kubedef.OpDelete{}, ops.DispatcherFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, m proto.Message) (*ops.DispatcherResult, error) {
-		delete := m.(*kubedef.OpDelete)
-
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, delete *kubedef.OpDelete) (*ops.DispatcherResult, error) {
 		if delete.Resource == "" {
 			return nil, fnerrors.InternalError("%s: delete.Resource is required", d.Description)
 		}
@@ -150,11 +145,9 @@ func RegisterGraphHandlers() {
 		}
 
 		return nil, nil
-	}))
+	})
 
-	ops.Register(&kubedef.OpDeleteList{}, ops.DispatcherFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, m proto.Message) (*ops.DispatcherResult, error) {
-		deleteList := m.(*kubedef.OpDeleteList)
-
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, deleteList *kubedef.OpDeleteList) (*ops.DispatcherResult, error) {
 		if deleteList.Resource == "" {
 			return nil, fnerrors.InternalError("%s: deleteList.Resource is required", d.Description)
 		}
@@ -222,7 +215,7 @@ func RegisterGraphHandlers() {
 		}
 
 		return nil, nil
-	}))
+	})
 
 	ingress.RegisterGraphHandlers()
 }

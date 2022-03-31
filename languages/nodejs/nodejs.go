@@ -9,14 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"sort"
 
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
@@ -30,38 +27,32 @@ import (
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
 
-	ops.Register(&OpGenServer{}, generator{})
+	ops.Register[*OpGenServer](generator{})
 }
 
 type generator struct{}
 
-func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg proto.Message) (*ops.DispatcherResult, error) {
+func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenServer) (*ops.DispatcherResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, errors.New("workspace.Packages required")
 	}
 
-	switch x := msg.(type) {
-	case *OpGenServer:
-		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Server.PackageName))
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, fnfs.WriteWorkspaceFile(ctx, loc.Module.ReadWriteFS(), loc.Rel("main.fn.ts"), func(w io.Writer) error {
-			f, err := resources.Open("main.ts")
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-
-			_, err = io.Copy(w, f)
-			return err
-		})
-
-	default:
-		return nil, fnerrors.InternalError("unsupported type: %s", reflect.TypeOf(x).String())
+	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.Server.PackageName))
+	if err != nil {
+		return nil, err
 	}
+
+	return nil, fnfs.WriteWorkspaceFile(ctx, loc.Module.ReadWriteFS(), loc.Rel("main.fn.ts"), func(w io.Writer) error {
+		f, err := resources.Open("main.ts")
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		_, err = io.Copy(w, f)
+		return err
+	})
 }
 
 type impl struct {

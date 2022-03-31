@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"runtime"
 	"sort"
 
 	"github.com/docker/docker/api/types"
@@ -53,6 +55,9 @@ func (p PersistentSpec) Ensure(ctx context.Context, progress io.Writer) error {
 
 		info, err := p.running(ctx, cli)
 		if err != nil {
+			if os.IsPermission(err) && runtime.GOOS == "linux" {
+				fmt.Fprintf(console.TypedOutput(ctx, "hint", tasks.CatOutputUs), "Unable to connect to docker. Did you follow https://docs.docker.com/engine/install/linux-postinstall/?")
+			}
 			return fnerrors.RemoteError("failed to retrieve running %s information: %w", p.Name, err)
 		}
 
