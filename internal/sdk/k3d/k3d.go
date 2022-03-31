@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/docker/api/types"
 	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
@@ -130,17 +131,7 @@ func ValidateDocker(ctx context.Context, cli docker.Client) error {
 		return fnerrors.RemoteError("failed to obtain docker version: %w", err)
 	}
 
-	dockerOK := semver.Compare("v"+ver.Version, "v"+minimumDockerVer) >= 0
-	runcOK := false
-
-	runcVersion := "<not present>"
-	for _, comp := range ver.Components {
-		if comp.Name == "runc" {
-			runcVersion = comp.Version
-			runcOK = semver.Compare("v"+comp.Version, "v"+minimumRuncVer) >= 0
-		}
-	}
-
+	dockerOK, runcOK, runcVersion := validateVersions(ver)
 	if !dockerOK || !runcOK {
 		stderr := console.Stderr(ctx)
 		fmt.Fprintln(stderr, "Docker does not meet our minimum requirements:")
@@ -150,6 +141,27 @@ func ValidateDocker(ctx context.Context, cli docker.Client) error {
 	}
 
 	return nil
+}
+
+func validateVersions(ver types.Version) (bool, bool, string) {
+	dockerOK := semver.Compare("v"+ver.Version, "v"+minimumDockerVer) >= 0
+	runcOK := false
+
+	runcVersion := "<not present>"
+	for _, comp := range ver.Components {
+		if comp.Name == "runc" {
+			runcVersion = comp.Version
+
+			// Debian uses a different format for versions, using ~ instead of -
+			// to mark rc builds. Ideally we'd have a more robust version parser
+			// here, but for now, just convert all ~ back to - so Go's semver
+			// parsing is happy.
+			modifiedVersion := strings.ReplaceAll(runcVersion, "~", "-")
+
+			runcOK = semver.Compare("v"+modifiedVersion, "v"+minimumRuncVer) >= 0
+		}
+	}
+	return dockerOK, runcOK, runcVersion
 }
 
 func (k3d K3D) ListClusters(ctx context.Context) ([]Cluster, error) {
