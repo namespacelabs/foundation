@@ -25,9 +25,9 @@ func readerLoop(l zerolog.Logger, ws *websocket.Conn, f func([]byte) error) {
 		t, msg, err := ws.ReadMessage()
 
 		if err != nil {
-			// Ignoring errors that are not CloseError.
-			// Closing the websocker may happen for various reasons and it is not an exception.
-			if e := err.(*websocket.CloseError); e == nil {
+			// Not reporting CloseError's.
+			// Closing the websocket may happen for various reasons and it is not an exception.
+			if _, ok := err.(*websocket.CloseError); !ok {
 				l.Err(err).Msg("WebSocket.ReadMessage failed, bailing out")
 			}
 			break
