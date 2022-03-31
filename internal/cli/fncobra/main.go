@@ -33,6 +33,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/languages/golang"
@@ -155,6 +156,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to false, compute caching is disabled.")
 	rootCmd.PersistentFlags().BoolVar(&storeActions, "store_actions", storeActions,
 		"If set to true, each completed action and its attachments are also persisted into storage.")
+	rootCmd.PersistentFlags().BoolVar(&git.AssumeSSHAuth, "git_ssh_auth", git.AssumeSSHAuth,
+		"If set to true, assume that you use SSH authentication with git (this enables us to properly instruct git when downloading private repositories).")
 
 	rootCmd.PersistentFlags().Var(buildkit.ImportCacheVar, "buildkit_import_cache", "Internal, set buildkit import-cache.")
 	rootCmd.PersistentFlags().Var(buildkit.ExportCacheVar, "buildkit_export_cache", "Internal, set buildkit export-cache.")

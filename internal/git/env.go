@@ -1,9 +1,17 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
 package git
 
 import (
 	"fmt"
 	"os"
+
+	"namespacelabs.dev/foundation/internal/localexec"
 )
+
+var AssumeSSHAuth = !localexec.IsRunningInCI()
 
 func NoPromptEnv() []string {
 	// Disable password promts as we don't handle them properly, yet.
@@ -23,9 +31,12 @@ func NoPromptEnv() []string {
 		env = append(env, "GCM_INTERACTIVE=never")
 	}
 
-	// XXX make this an input parameter.
-	overrides := [][2]string{
-		{`url.git@github.com:namespacelabs/.insteadOf`, "https://github.com/namespacelabs/"},
+	var overrides [][2]string
+	if AssumeSSHAuth {
+		// XXX make this an input parameter.
+		overrides = append(overrides,
+			[2]string{`url.git@github.com:namespacelabs/.insteadOf`, "https://github.com/namespacelabs/"},
+		)
 	}
 
 	env = append(env, fmt.Sprintf("GIT_CONFIG_COUNT=%d", len(overrides)))
