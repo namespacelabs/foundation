@@ -76,11 +76,11 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 		if n.Kind == schema.Node_SERVICE && n.ServiceFramework != srv.Framework {
 			return nil, fnerrors.UserError(
 				dep.Location,
-				"Can't embed service '%s' implemented in %s to the server '%s' with framework %s",
-				n.PackageName,
-				n.ServiceFramework,
+				"The server '%s' can only embed services of its framework %s. Can't embed service '%s' implemented in %s.",
 				srv.PackageName,
 				srv.Framework,
+				n.PackageName,
+				n.ServiceFramework,
 			)
 		}
 
