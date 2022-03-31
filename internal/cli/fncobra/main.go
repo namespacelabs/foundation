@@ -389,7 +389,7 @@ type version struct {
 }
 
 func getLatestReleaseVersion() (tagName *string, createdAt *time.Time, err error) {
-	response, err := http.Get("https://namespacelabs.github.io/foundation-version/version.json")
+	response, err := http.Get("https://foundation-version.namespacelabs.workers.dev")
 	if err != nil {
 		return nil, nil, err
 	}
