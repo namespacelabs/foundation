@@ -13,7 +13,8 @@ server: fn.#OpaqueServer & {
 	}
 
 	import: [
-		"namespacelabs.dev/foundation/universe/db/postgres/server/creds",
+		"namespacelabs.dev/foundation/universe/db/postgres/server/creds",	
+		"namespacelabs.dev/foundation/universe/db/postgres/server/data",
 	]
 
 	service: "postgres": {
