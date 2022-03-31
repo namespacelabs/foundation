@@ -15,8 +15,10 @@ import (
 	"strings"
 
 	"golang.org/x/net/html"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
@@ -96,8 +98,10 @@ func moduleHeadTo(ctx context.Context, resolved *ResolvedPackage, dep *schema.Wo
 	return tasks.Action("workspace.module.resolve-head").Arg("name", resolved.ModuleName).Run(ctx, func(ctx context.Context) error {
 		var out bytes.Buffer
 		cmd := exec.CommandContext(ctx, "git", "ls-remote", "-q", resolved.Repository, "HEAD")
-		cmd.Env = append(os.Environ(), gitEnv()...)
+		cmd.Env = append(os.Environ(), git.NoPromptEnv()...)
 		cmd.Stdout = &out
+
+		fmt.Fprintln(console.Stderr(ctx), cmd.Env)
 
 		if err := cmd.Run(); err != nil {
 			return err
@@ -170,27 +174,6 @@ func resolvePackageTo(ctx context.Context, packageName string, resolved *Resolve
 
 		return fnerrors.InternalError("%s: don't know how to handle package", packageName)
 	})
-}
-
-func gitEnv() []string {
-	// Disable password promts as we don't handle them properly, yet.
-	env := []string{"GIT_TERMINAL_PROMPT=0"}
-
-	// Also disable prompting for passwords by the 'ssh' subprocess spawned by Git.
-	//
-	// See https://github.com/golang/go/blob/fad67f8a5342f4bc309f26f0ae021ce9d21724e6/src/cmd/go/internal/get/get.go#L129
-	if os.Getenv("GIT_SSH") == "" && os.Getenv("GIT_SSH_COMMAND") == "" {
-		env = append(env, "GIT_SSH_COMMAND=ssh -o ControlMaster=no -o BatchMode=yes")
-	}
-
-	// And one more source of Git prompts: the Git Credential Manager Core for Windows.
-	//
-	// See https://github.com/microsoft/Git-Credential-Manager-Core/blob/master/docs/environment.md#gcm_interactive.
-	if os.Getenv("GCM_INTERACTIVE") == "" {
-		env = append(env, "GCM_INTERACTIVE=never")
-	}
-
-	return env
 }
 
 func parseGithubPackage(packageName string) (*ResolvedPackage, error) {
@@ -282,7 +265,7 @@ func downloadModuleTo(ctx context.Context, dep *schema.Workspace_Dependency, for
 		var cmd localexec.Command
 		cmd.Command = "git"
 		cmd.Args = []string{"clone", "-q", mod.Repository, tmpModDir}
-		cmd.AdditionalEnv = gitEnv()
+		cmd.AdditionalEnv = git.NoPromptEnv()
 		cmd.Label = "git clone"
 		if err := cmd.Run(ctx); err != nil {
 			return err

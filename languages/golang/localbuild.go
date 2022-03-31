@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
@@ -64,6 +65,7 @@ func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targ
 	env := platformToEnv(platform, 0)
 	env = append(env, "GOROOT="+sdk.GoRoot())
 	env = append(env, goPrivate())
+	env = append(env, git.NoPromptEnv()...)
 
 	if platform.Architecture == "arm" {
 		v, err := goarm(platform)
