@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
@@ -66,7 +65,7 @@ func WriteImage(ctx context.Context, img v1.Image, ref name.Tag, ensureTag bool)
 }
 
 // Write saves the image into the daemon as the given tag.
-func writeImage(ctx context.Context, client *client.Client, tag name.Tag, img v1.Image) (string, error) {
+func writeImage(ctx context.Context, client Client, tag name.Tag, img v1.Image) (string, error) {
 	pr, pw := io.Pipe()
 	go func() {
 		pw.CloseWithError(tarball.Write(tag, img, ctxio.WriterWithContext(ctx, pw, nil)))

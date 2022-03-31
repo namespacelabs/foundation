@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/docker/client"
 	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
@@ -22,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/disk"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -124,7 +124,7 @@ func AllDownloads() []compute.Computable[compute.ByteStream] {
 const minimumDockerVer = "20.10.5"
 const minimumRuncVer = "1.0.0-rc93"
 
-func ValidateDocker(ctx context.Context, cli *client.Client) error {
+func ValidateDocker(ctx context.Context, cli docker.Client) error {
 	ver, err := cli.ServerVersion(ctx)
 	if err != nil {
 		return fnerrors.RemoteError("failed to obtain docker version: %w", err)
