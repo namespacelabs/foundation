@@ -6,6 +6,8 @@ builds:
       - CGO_ENABLED=0
     main: ./cmd/fn
     binary: fn
+    flags:
+      - -trimpath
     goos:
       - linux
     goarch:
@@ -17,6 +19,8 @@ builds:
       - CGO_ENABLED=0
     main: ./cmd/fn
     binary: fn
+    flags:
+      - -trimpath
     goos:
       - darwin
     goarch:
