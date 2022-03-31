@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -Eeo pipefail
 # TODO swap to -Eeuo pipefail above (after handling all potentially-unset variables)
+
+# Foundation: edit begin
 # Branched from on https://github.com/docker-library/postgres/blob/master/14/bullseye/docker-entrypoint.sh
+# All edits are marked like this block
+# Foundation: edit end
 
 # usage: file_env VAR [DEFAULT]
 #    ie: file_env 'XYZ_DB_PASSWORD' 'example'
@@ -220,7 +224,13 @@ docker_setup_env() {
 	file_env 'POSTGRES_PASSWORD'
 
 	file_env 'POSTGRES_USER' 'postgres'
+    # Foundation: edit begin
+	# pin POSTGRES_DB to postgres so that initdb is enough and we can skip starting a temp postgres
+	# Foundation never sets POSTGRES_DB
+	#
 	file_env 'POSTGRES_DB' "$POSTGRES_USER"
+	# export POSTGRES_DB=postgres
+    # Foundation: edit end
 	file_env 'POSTGRES_INITDB_ARGS'
 	: "${POSTGRES_HOST_AUTH_METHOD:=}"
 
@@ -295,10 +305,18 @@ _pg_want_help() {
 
 _main() {
     # Foundation: edit begin
-    # always run postgres
-    echo "$@"
-	set -- postgres "$@"
-    echo "$@"
+	echo path is $PATH
+    # if is required because script may restart below
+	if [ -z "$@" ]; then
+		# manually fix command
+		set -- postgres "$@"
+
+		# Replicate ENV overwrites from Dockerfile
+		export LANG=en_US.utf8
+		export PG_MAJOR=14
+		export PATH=$PATH:/usr/lib/postgresql/$PG_MAJOR/bin
+		export PG_VERSION=4.2-1.pgdg110+1
+	fi
     # Foundation: edit end
 	# if first arg looks like a flag, assume we want to run postgres server
 	if [ "${1:0:1}" = '-' ]; then
@@ -328,16 +346,16 @@ _main() {
             # Skip temp server as we perform database initialization through init containers.
             # This speeds up postgres startup time.
             #
-		    #	# PGPASSWORD is required for psql when authentication is required for 'local' connections via pg_hba.conf and is otherwise harmless
-			#   # e.g. when '--auth=md5' or '--auth-local=md5' is used in POSTGRES_INITDB_ARGS
-			export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
-			docker_temp_server_start "$@"
-
-			docker_setup_db
-			docker_process_init_files /docker-entrypoint-initdb.d/*
-
-			docker_temp_server_stop
-			unset PGPASSWORD
+		    # # PGPASSWORD is required for psql when authentication is required for 'local' connections via pg_hba.conf and is otherwise harmless
+			# # e.g. when '--auth=md5' or '--auth-local=md5' is used in POSTGRES_INITDB_ARGS
+			 export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
+			 docker_temp_server_start "$@"
+			
+			 docker_setup_db
+			 docker_process_init_files /docker-entrypoint-initdb.d/*
+			
+			 docker_temp_server_stop
+			 unset PGPASSWORD
             # Foundation: edit end
 
 			echo
@@ -350,6 +368,9 @@ _main() {
 		fi
 	fi
 
+    # Foundation: edit begin
+    echo calling \"$@\"
+    # Foundation: edit end
 	exec "$@"
 }
 
