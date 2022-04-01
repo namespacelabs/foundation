@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -85,15 +86,22 @@ type arg struct {
 	Plaintext string `json:"plaintext,omitempty"`
 }
 
+type binaryVersion struct {
+	Version   string `json:"version,omitempty"`
+	BuildTime string `json:"build_time,omitempty"`
+	Modified  bool   `json:"modified,omitempty"`
+}
+
 type recordInvocationRequest struct {
-	ID      string `json:"id,omitempty"`
-	Command string `json:"command,omitempty"`
-	Arg     []arg  `json:"arg"`
-	Flag    []flag `json:"flag"`
-	UserId  string `json:"user_id,omitempty"`
-	Os      string `json:"os,omitempty"`
-	Arch    string `json:"arch,omitempty"`
-	NumCpu  int    `json:"num_cpu"`
+	ID      string         `json:"id,omitempty"`
+	Command string         `json:"command,omitempty"`
+	Arg     []arg          `json:"arg"`
+	Flag    []flag         `json:"flag"`
+	UserId  string         `json:"user_id,omitempty"`
+	Os      string         `json:"os,omitempty"`
+	Arch    string         `json:"arch,omitempty"`
+	NumCpu  int            `json:"num_cpu"`
+	Version *binaryVersion `json:"version"`
 }
 
 type recordErrorRequest struct {
@@ -161,6 +169,14 @@ func buildRecordInvocationRequest(ctx context.Context, cmd *cobra.Command, c cli
 		Os:      runtime.GOOS,
 		Arch:    runtime.GOARCH,
 		NumCpu:  runtime.NumCPU(),
+	}
+
+	if v, err := version.Version(); err == nil {
+		req.Version = &binaryVersion{
+			Version:   v.Version,
+			BuildTime: v.BuildTimeStr,
+			Modified:  v.Modified,
+		}
 	}
 
 	cmd.Flags().Visit(func(pflag *pflag.Flag) {

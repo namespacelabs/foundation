@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
@@ -35,7 +36,7 @@ func NewVersionCmd() *cobra.Command {
 				return nil
 			}
 
-			v, err := fncobra.VersionFrom(info)
+			v, err := version.VersionFrom(info)
 			if err != nil {
 				return err
 			}
