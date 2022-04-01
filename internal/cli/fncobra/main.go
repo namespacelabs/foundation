@@ -182,7 +182,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"also_compute_ingress",
 		"golang_use_buildkit",
 		"send_usage_data",
-		"telemetry_error_logging",
 		"skip_buildkit_workspace_size_check",
 		"ignore_zfs_check",
 	} {
