@@ -14,6 +14,11 @@ package secrets
 		with: {
 			name?: string
 			provision?: [...("PROVISION_UNSPECIFIED" | "PROVISION_INLINE" | "PROVISION_AS_FILE")]
+			generate?: {
+				uniqueId?:        string
+				randomByteCount?: int
+				format?:          ("FORMAT_UNKNOWN" | "FORMAT_BASE64" | "FORMAT_BASE32")
+			}
 		}
 	}
 }

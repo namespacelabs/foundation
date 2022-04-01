@@ -12,29 +12,19 @@ import (
 )
 
 var (
-	simpleSecretsBasepath = flag.String("simple_secrets_basepath", "secrets/", "Basepath of local secret definitions.")
+	serverSecretsBasepath = flag.String("server_secrets_basepath", "", "Basepath of local secret definitions.")
 )
 
 func ProvideSecret(ctx context.Context, caller string, req *Secret) (*Value, error) {
-	// XXX this will be changed.
-	m, err := ProvideSecrets(ctx, caller, &Secrets{Secret: []*Secret{req}})
+	m, err := ProvideSecretsFromFS(ctx, os.DirFS(*serverSecretsBasepath), caller, req)
 	if err != nil {
 		return nil, err
 	}
 
-	return m[req.Name], nil
-}
+	v := m[req.Name]
+	if v.Path != "" && !filepath.IsAbs(v.Path) {
+		v.Path = filepath.Join(*serverSecretsBasepath, v.Path)
+	}
 
-func ProvideSecrets(ctx context.Context, caller string, req *Secrets) (map[string]*Value, error) {
-	m, err := ProvideSecretsFromFS(ctx, os.DirFS(*simpleSecretsBasepath), caller, req)
-	if err != nil {
-		return nil, err
-	}
-	for _, s := range m {
-		if s.Path != "" {
-			// Make sure that paths are absolute.
-			s.Path = filepath.Join(*simpleSecretsBasepath, s.Path)
-		}
-	}
-	return m, nil
+	return v, nil
 }

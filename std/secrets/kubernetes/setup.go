@@ -53,18 +53,23 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 		}
 	}
 
-	devMap, data, err := secrets.CollectSecrets(ctx, r.Focus.Server, contents)
+	collection, err := secrets.Collect(r.Focus.Server)
+	if err != nil {
+		return err
+	}
+
+	data, err := secrets.FillData(ctx, collection, contents)
 	if err != nil {
 		return err
 	}
 
 	// XXX LoadDevMap() assumes textproto; eventually should change this to binary.
-	devMapBytes, err := prototext.Marshal(devMap)
+	devMapBytes, err := prototext.Marshal(collection.DevMap)
 	if err != nil {
 		return err
 	}
 
-	devMapJSON, err := protojson.Marshal(devMap)
+	devMapJSON, err := protojson.Marshal(collection.DevMap)
 	if err != nil {
 		return err
 	}

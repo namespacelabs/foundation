@@ -6,101 +6,203 @@ package secrets
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base32"
 	"encoding/base64"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"path/filepath"
+	"regexp"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )
 
-const MountPath = "/secrets"
+var (
+	ScopedMountPath = "/secrets"
+	MountPath       = filepath.Join(ScopedMountPath, "server")
+)
 
-func CollectSecrets(ctx context.Context, server *schema.Server, contents fs.FS) (*SecretDevMap, map[string][]byte, error) {
+type Collection2 struct {
+	DevMap *SecretDevMap
+	Data   map[string][]byte // User managed data; only present if contents were provided.
+}
+
+type Collection struct {
+	DevMap         *SecretDevMap
+	UserManaged    [][]*Secret // Indexing is the same as `DevMap.Configure`.
+	InstanceOwners []string    // Indexing is the same as `DevMap.Configure`.
+	Names          [][]string  // Indexing is the same as `DevMap.Configure`.
+	Generated      []Generated
+}
+
+type Generated struct {
+	UniqueID string
+	Secrets  []*Secret
+}
+
+var (
+	validIdRe           = regexp.MustCompile("^[a-z][0123456789abcdefghijklmnopqrstuvwyxz]{7,15}$")
+	lowerCaseBase32Raw  = "0123456789abcdefghijklmnopqrstuv"
+	base32enc           = base32.NewEncoding(lowerCaseBase32Raw).WithPadding(base32.NoPadding)
+	reservedSecretNames = []string{"server"}
+)
+
+func Collect(server *schema.Server) (*Collection, error) {
 	devMap := &SecretDevMap{}
-	data := map[string][]byte{}
+	col := &Collection{DevMap: devMap}
 
+	var generated []*Secret
 	for _, alloc := range server.Allocation {
 		for _, instance := range alloc.Instance {
-			merged := &Secrets{}
+			var userManaged []*Secret
 			for _, instantiate := range instance.GetInstantiated() {
-				// XXX old path, remove soon.
-				if instantiate.GetConstructor().GetTypeUrl() == "namespacelabs.dev/foundation/std/secrets/ns.Secret" {
-					secret := &Secret{}
-					if err := proto.Unmarshal(instantiate.GetConstructor().Value, secret); err != nil {
-						return nil, nil, err
-					}
-					merged.Secret = append(merged.Secret, secret)
-				}
 				if instantiate.GetPackageName() == "namespacelabs.dev/foundation/std/secrets" && instantiate.GetType() == "Secret" {
 					secret := &Secret{}
 					if err := proto.Unmarshal(instantiate.GetConstructor().Value, secret); err != nil {
-						return nil, nil, err
+						return nil, err
 					}
-					merged.Secret = append(merged.Secret, secret)
+					if secret.Generate != nil {
+						if secret.Generate.UniqueId == "" {
+							h := sha256.New()
+							fmt.Fprint(h, instance.InstanceOwner)
+							secret.Generate.UniqueId = base32enc.EncodeToString(h.Sum(nil)[:8])
+						} else if slices.Contains(reservedSecretNames, secret.Generate.UniqueId) {
+							return nil, fnerrors.UserError(nil, "bad unique secret id: %q (is a reserved word)", secret.Generate.UniqueId)
+						} else if !validIdRe.MatchString(secret.Generate.UniqueId) {
+							return nil, fnerrors.UserError(nil, "bad unique secret id: %q (must be alphanumeric, between 8 and 16 characters)", secret.Generate.UniqueId)
+						}
+						generated = append(generated, secret)
+					} else {
+						userManaged = append(userManaged, secret)
+					}
 				}
 			}
 
-			if len(merged.Secret) == 0 {
-				continue
-			}
-
-			var m map[string]*Value
-			var err error
-			if contents != nil {
-				m, err = ProvideSecretsFromFS(ctx, contents, instance.InstanceOwner, merged)
-				if err != nil {
-					return nil, nil, err
-				}
-			}
 			// XXX this is not quite right as it doesn't take into account the
 			// allocation path.
 			configure := &SecretDevMap_Configure{
 				PackageName: instance.InstanceOwner,
 			}
 
-			for _, sec := range merged.Secret {
-				// For development, each secret is maintained under a single
-				// top-level server-scoped secret. We may want to revisit this
-				// and break down the granularity of the secretblob. But
-				// unfortunately Kubernete's resource name limitations make it
-				// a bit unfortunate to maintain any kind of decent top-level
-				// names.
-				rawPath := fmt.Sprintf("%s/%s", instance.InstanceOwner, instance.AllocName)
-				name := base64.RawStdEncoding.EncodeToString([]byte(rawPath)) + "." + sec.Name
+			var names []string
+			if len(userManaged) > 0 {
+				for _, sec := range userManaged {
+					// For development, each secret is maintained under a single
+					// top-level server-scoped secret. We may want to revisit this
+					// and break down the granularity of the secretblob. But
+					// unfortunately Kubernete's resource name limitations make it
+					// a bit unfortunate to maintain any kind of decent top-level
+					// names.
+					rawPath := fmt.Sprintf("%s/%s", instance.InstanceOwner, instance.AllocName)
+					name := base64.RawStdEncoding.EncodeToString([]byte(rawPath)) + "." + sec.Name
+					names = append(names, name)
 
-				if contents != nil {
-					if contains(sec.Provision, Provision_PROVISION_AS_FILE) {
-						b, err := fs.ReadFile(contents, m[sec.Name].Path)
-						if err != nil {
-							return nil, nil, err
-						}
-
-						data[name] = b
-					} else {
-						data[name] = []byte(m[sec.Name].Value)
-					}
+					// Tell the runtime where to find the secret data.
+					configure.Secret = append(configure.Secret, &SecretDevMap_SecretSpec{
+						Name:     sec.Name,
+						FromPath: filepath.Join(MountPath, name),
+					})
 				}
-
-				// Tell the runtime where to find the secret data.
-				configure.Secret = append(configure.Secret, &SecretDevMap_SecretSpec{
-					Name:     sec.Name,
-					FromPath: filepath.Join(MountPath, name),
-				})
 			}
-			devMap.Configure = append(devMap.Configure, configure)
+
+			if len(generated) > 0 {
+				for _, sec := range generated {
+					configure.Secret = append(configure.Secret, &SecretDevMap_SecretSpec{
+						Name:     sec.Name,
+						FromPath: filepath.Join(ScopedMountPath, sec.Generate.UniqueId, sec.Name),
+					})
+				}
+			}
+
+			if len(configure.Secret) > 0 {
+				devMap.Configure = append(devMap.Configure, configure)
+				col.InstanceOwners = append(col.InstanceOwners, instance.InstanceOwner)
+				col.Names = append(col.Names, names)
+				col.UserManaged = append(col.UserManaged, userManaged)
+			}
 		}
 	}
 
-	return devMap, data, nil
+	byUniqueID := map[string][]*Secret{}
+	for _, gen := range generated {
+		byUniqueID[gen.Generate.UniqueId] = append(byUniqueID[gen.Generate.UniqueId], gen)
+	}
 
+	for id, group := range byUniqueID {
+		seen := map[string]*Secret{}
+		for _, secret := range group {
+			if existing := seen[secret.Name]; existing != nil {
+				if !proto.Equal(existing, secret) {
+					return nil, fnerrors.UserError(nil, "%s: %s: incompatible secret definition", id, secret.Name)
+				}
+			} else {
+				seen[secret.Name] = secret
+			}
+		}
+
+		gen := Generated{UniqueID: id}
+		for _, secret := range seen {
+			gen.Secrets = append(gen.Secrets, secret)
+		}
+
+		slices.SortFunc(gen.Secrets, func(a, b *Secret) bool {
+			return strings.Compare(a.Name, b.Name) < 0
+		})
+
+		col.Generated = append(col.Generated, gen)
+	}
+
+	slices.SortFunc(col.Generated, func(a, b Generated) bool {
+		return strings.Compare(a.UniqueID, b.UniqueID) < 0
+	})
+
+	return col, nil
 }
 
-func ProvideSecretsFromFS(ctx context.Context, src fs.FS, caller string, req *Secrets) (map[string]*Value, error) {
+func FillData(ctx context.Context, col *Collection, contents fs.FS) (map[string][]byte, error) {
+	data := map[string][]byte{}
+	for k, userManaged := range col.UserManaged {
+		m, err := ProvideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
+		if err != nil {
+			return nil, err
+		}
+
+		names := col.Names[k]
+		for j, sec := range userManaged {
+			name := names[j]
+			if contains(sec.Provision, Provision_PROVISION_AS_FILE) {
+				b, err := fs.ReadFile(contents, m[sec.Name].Path)
+				if err != nil {
+					return nil, err
+				}
+
+				data[name] = b
+			} else {
+				data[name] = []byte(m[sec.Name].Value)
+			}
+		}
+	}
+
+	return data, nil
+}
+
+func (col *Collection) SecretsOf(packageName string) []*SecretDevMap_SecretSpec {
+	for _, conf := range col.DevMap.Configure {
+		if conf.PackageName == packageName {
+			return conf.Secret
+		}
+	}
+
+	return nil
+}
+
+func ProvideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userManaged ...*Secret) (map[string]*Value, error) {
 	sdm, err := loadDevMap(src)
 	if err != nil {
 		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
@@ -112,7 +214,7 @@ func ProvideSecretsFromFS(ctx context.Context, src fs.FS, caller string, req *Se
 	}
 
 	result := map[string]*Value{}
-	for _, s := range req.Secret {
+	for _, s := range userManaged {
 		spec := lookupSecret(cfg, s.Name)
 		if spec == nil {
 			return nil, fmt.Errorf("no secret configuration for %s of %q in map.textpb", s.Name, caller)

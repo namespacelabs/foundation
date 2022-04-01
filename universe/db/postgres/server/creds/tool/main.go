@@ -18,22 +18,13 @@ func main() {
 	configure.RunTool(tool{})
 }
 
-func getSecrets(devMap *secrets.SecretDevMap) []*secrets.SecretDevMap_SecretSpec {
-	for _, conf := range devMap.Configure {
-		if conf.PackageName == "namespacelabs.dev/foundation/universe/db/postgres/creds" {
-			return conf.Secret
-		}
-	}
-	return nil
-}
-
 func (tool) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
-	devMap, _, err := secrets.CollectSecrets(ctx, r.Focus.Server, nil)
+	collection, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
 		return err
 	}
 
-	for _, secret := range getSecrets(devMap) {
+	for _, secret := range collection.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/creds") {
 		switch secret.Name {
 		case "postgres_user_file":
 			out.Extensions = append(out.Extensions, kubedef.ExtendContainer{

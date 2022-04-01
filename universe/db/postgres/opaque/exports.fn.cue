@@ -17,7 +17,10 @@ import "namespacelabs.dev/foundation/std/fn:types"
 		with: {
 			name?:       string
 			schemaFile?: types.#Resource
-			...
+			hostedAt?: {
+				address?: string
+				port?:    int
+			}
 		}
 	}
 }

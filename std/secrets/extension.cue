@@ -44,7 +44,7 @@ configure: fn.#Configure & {
 		// Only Go/gRPC servers embed our library.
 		if $focus.framework == "GO_GRPC" {
 			args: {
-				simple_secrets_basepath: "/secrets"
+				server_secrets_basepath: "/secrets/server"
 			}
 		}
 	}
