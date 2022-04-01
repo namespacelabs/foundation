@@ -6,16 +6,12 @@ package fncobra
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"runtime/pprof"
 	"strings"
-	"time"
 
 	"github.com/google/go-containerregistry/pkg/logs"
 	"github.com/rs/zerolog"
@@ -74,10 +70,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	logger, sink, flushLogs := consoleToSink(out, colors)
 
-	var detectedVersion chan string
+	var remoteStatusChan chan remoteStatus
 	if !localexec.IsRunningInCI() {
-		detectedVersion = make(chan string)
-		go checkForUpdates(logger, detectedVersion)
+		remoteStatusChan = make(chan remoteStatus)
+		go checkRemoteStatus(logger, remoteStatusChan)
 	}
 
 	ctxWithSink := tasks.WithSink(logger.WithContext(ctx), sink)
@@ -203,16 +199,25 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		tasks.ActionStorer.Flush(os.Stderr)
 	}
 
-	if detectedVersion != nil {
+	if remoteStatusChan != nil {
 		// Printing the new version message if any.
 		select {
-		case version, ok := <-detectedVersion:
+		case status, ok := <-remoteStatusChan:
 			if ok {
-				msg := fmt.Sprintf("New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s", version, version)
-				if colors {
-					fmt.Fprintln(console.Stdout(ctx), clrs.Green(msg))
-				} else {
-					fmt.Fprintln(console.Stdout(ctx), msg)
+				if status.TagName != nil {
+					msg := fmt.Sprintf("New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s", *status.TagName, *status.TagName)
+					if colors {
+						fmt.Fprintln(console.Stdout(ctx), clrs.Green(msg))
+					} else {
+						fmt.Fprintln(console.Stdout(ctx), msg)
+					}
+				}
+				if status.Message != nil {
+					if colors {
+						fmt.Fprintln(console.Stdout(ctx), clrs.Green(*status.Message))
+					} else {
+						fmt.Fprintln(console.Stdout(ctx), status.Message)
+					}
 				}
 			}
 		default:
@@ -359,9 +364,15 @@ func cpuprofile(cpuprofile string) func() {
 	}
 }
 
-// Does nothing if version check failed
-func checkForUpdates(logger *zerolog.Logger, tagNameChannel chan string) {
-	defer close(tagNameChannel)
+type remoteStatus struct {
+	TagName *string
+	Message *string
+}
+
+// Checks for updates and messages from Foundation developers.
+// Does nothing if a check for remote status failed
+func checkRemoteStatus(logger *zerolog.Logger, channel chan remoteStatus) {
+	defer close(channel)
 
 	version, err := Version()
 	if err != nil {
@@ -375,39 +386,21 @@ func checkForUpdates(logger *zerolog.Logger, tagNameChannel chan string) {
 
 	logger.Debug().Stringer("binary_build_time", version.BuildTime).Msg("version check")
 
-	tagName, latestReleaseBuildTime, err := fetchLatestReleaseVersion()
+	status, err := FetchLatestRemoteStatus("https://foundation-version.namespacelabs.workers.dev", version.Version)
 	if err != nil {
 		logger.Debug().Err(err).Msg("version check failed")
 	} else {
-		logger.Debug().Stringer("latest_release_version", latestReleaseBuildTime).Msg("version check")
+		logger.Debug().Stringer("latest_release_version", status.LatestRelease.BuildTime).Msg("version check")
+		s := remoteStatus{}
+		if len(status.Message) > 0 {
+			s.Message = &status.Message
+		}
 
-		if latestReleaseBuildTime.After(*version.BuildTime) {
-			tagNameChannel <- *tagName
+		if status.LatestRelease.BuildTime.After(*version.BuildTime) {
+			s.TagName = &status.LatestRelease.TagName
+		}
+		if s.TagName != nil || s.Message != nil {
+			channel <- s
 		}
 	}
-}
-
-type version struct {
-	TagName   string `json:"tag_name"`
-	CreatedAt string `json:"created_at"`
-}
-
-func fetchLatestReleaseVersion() (*string, *time.Time, error) {
-	response, err := http.Get("https://foundation-version.namespacelabs.workers.dev")
-	if err != nil {
-		return nil, nil, err
-	}
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var latestVersion version
-	err = json.Unmarshal(body, &latestVersion)
-	if err != nil {
-		return nil, nil, err
-	}
-	latestBuildTime, err := time.Parse(time.RFC3339, latestVersion.CreatedAt)
-	return &latestVersion.TagName, &latestBuildTime, err
 }
