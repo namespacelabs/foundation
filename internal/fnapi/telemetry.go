@@ -52,7 +52,7 @@ func NewTelemetry() *Telemetry {
 	}
 }
 
-func (tel *Telemetry) isTelemetryEnabled() bool {
+func (tel *Telemetry) IsTelemetryEnabled() bool {
 	doNotTrack := os.Getenv("DO_NOT_TRACK")
 	enableTelemetry := viper.GetBool("enable_telemetry")
 	return !localexec.IsRunningInCI() && tel.UseTelemetry && doNotTrack == "" && enableTelemetry
@@ -177,7 +177,7 @@ func (tel *Telemetry) postRecordInvocationRequest(ctx context.Context, req *reco
 }
 
 func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, reqID string, args []string) {
-	if !tel.isTelemetryEnabled() {
+	if !tel.IsTelemetryEnabled() {
 		return
 	}
 
@@ -224,7 +224,7 @@ func (tel *Telemetry) postRecordErrorRequest(ctx context.Context, req recordErro
 }
 
 func (tel *Telemetry) RecordError(ctx context.Context, err error) {
-	if !tel.isTelemetryEnabled() || err == nil {
+	if !tel.IsTelemetryEnabled() || err == nil {
 		return
 	}
 
