@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
@@ -136,15 +137,14 @@ func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schem
 		list = append(list, svc)
 	}
 
-	// TODO(#348): enable when we figure out where to store the codegen.
-	// if len(list) > 0 {
-	// 	dl.Add("Generate Javascript/Typescript proto sources", &source.OpProtoGen{
-	// 		PackageName:         pkg.PackageName().String(),
-	// 		GenerateHttpGateway: pkg.Node().ExportServicesAsHttp,
-	// 		Protos:              protos.Merge(list...),
-	// 		Framework:           source.OpProtoGen_TYPESCRIPT,
-	// 	})
-	// }
+	if len(list) > 0 {
+		dl.Add("Generate Javascript/Typescript proto sources", &source.OpProtoGen{
+			PackageName:         pkg.PackageName().String(),
+			GenerateHttpGateway: pkg.Node().ExportServicesAsHttp,
+			Protos:              protos.Merge(list...),
+			Framework:           source.OpProtoGen_TYPESCRIPT,
+		})
+	}
 
 	return dl.Serialize()
 }
