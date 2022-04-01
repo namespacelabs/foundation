@@ -14,6 +14,7 @@ import (
 type AnyResolver interface {
 	protoregistry.ExtensionTypeResolver
 	protoregistry.MessageTypeResolver
+	FindEnumByName(enum protoreflect.FullName) (protoreflect.EnumType, error)
 }
 
 func AsResolver(pr *protoregistry.Files) (AnyResolver, error) {

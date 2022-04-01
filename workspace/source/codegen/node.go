@@ -15,7 +15,8 @@ import (
 	"strings"
 
 	"cuelang.org/go/cue/format"
-	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -27,7 +28,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-const wellKnownResource = ".foundation.std.types.Resource"
+const wellKnownResource = "foundation.std.types.Resource"
 
 func Register() {
 	ops.Register[*OpGenNode](generator{})
@@ -87,16 +88,30 @@ func ForNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.Defini
 func generateNode(ctx context.Context, loc workspace.Location, n *schema.Node, parsed *protos.FileDescriptorSetAndDeps, fs fnfs.ReadWriteFS) error {
 	var imports uniquestrings.List
 
-	types := make([]*dpb.DescriptorProto, len(n.Provides))
+	pd, err := protodesc.NewFiles(parsed.AsFileDescriptorSet())
+	if err != nil {
+		return err
+	}
+
+	resolver, err := protos.AsResolver(pd)
+	if err != nil {
+		return err
+	}
+
+	types := make([]protoreflect.MessageType, len(n.Provides))
 	for k, p := range n.Provides {
-		_, types[k] = protos.LookupDescriptorProto(parsed, p.GetType().GetTypename())
-		if types[k] == nil {
-			return fnerrors.InternalError("%s: type not found", p.GetType().GetTypename())
+		msg, err := resolver.FindMessageByName(protoreflect.FullName(p.GetType().GetTypename()))
+		if err != nil {
+			return fnerrors.InternalError("%s: type not found: %w", p.GetType().GetTypename(), err)
 		}
 
-		for _, f := range types[k].Field {
-			if f.GetType() == dpb.FieldDescriptorProto_TYPE_MESSAGE {
-				if f.GetTypeName() == wellKnownResource {
+		types[k] = msg
+
+		for k := 0; k < msg.Descriptor().Fields().Len(); k++ {
+			f := msg.Descriptor().Fields().Get(k)
+
+			if f.Kind() == protoreflect.MessageKind {
+				if f.Message().FullName() == wellKnownResource {
 					imports.Add("namespacelabs.dev/foundation/std/fn:types")
 				}
 			}
@@ -121,61 +136,10 @@ func generateNode(ctx context.Context, loc workspace.Location, n *schema.Node, p
 		enc.Encode(p.Type)
 
 		t := types[k]
-		if len(t.GetField()) > 0 {
-			fmt.Fprintf(&out, "with: {\n")
-			var missingDef int
-			for _, field := range t.GetField() {
-				var t string
-				if field.Type != nil {
-					switch *field.Type {
-					case dpb.FieldDescriptorProto_TYPE_DOUBLE,
-						dpb.FieldDescriptorProto_TYPE_FLOAT:
-						t = "float"
-					case dpb.FieldDescriptorProto_TYPE_INT64,
-						dpb.FieldDescriptorProto_TYPE_UINT64,
-						dpb.FieldDescriptorProto_TYPE_INT32,
-						dpb.FieldDescriptorProto_TYPE_FIXED64,
-						dpb.FieldDescriptorProto_TYPE_FIXED32,
-						dpb.FieldDescriptorProto_TYPE_UINT32,
-						dpb.FieldDescriptorProto_TYPE_SFIXED32,
-						dpb.FieldDescriptorProto_TYPE_SFIXED64,
-						dpb.FieldDescriptorProto_TYPE_SINT32,
-						dpb.FieldDescriptorProto_TYPE_SINT64:
-						t = "int"
-					case dpb.FieldDescriptorProto_TYPE_STRING:
-						t = "string"
-					case dpb.FieldDescriptorProto_TYPE_BYTES:
-						t = "bytes"
-					case dpb.FieldDescriptorProto_TYPE_ENUM:
-						enum := protos.LookupEnumDescriptorProto(parsed, field.GetTypeName())
-						var values []string
-						for _, v := range enum.Value {
-							values = append(values, fmt.Sprintf("%q", v.GetName()))
-						}
-						t = fmt.Sprintf("(%s)", strings.Join(values, "|"))
-					case dpb.FieldDescriptorProto_TYPE_MESSAGE:
-						if field.GetTypeName() == wellKnownResource {
-							t = "types.#Resource"
-						}
-					}
-				} else {
-					t = "{...}"
-				}
-
-				if t == "" {
-					missingDef++
-				} else {
-					if field.GetLabel() == dpb.FieldDescriptorProto_LABEL_REPEATED {
-						t = "[..." + t + "]"
-					}
-
-					fmt.Fprintf(&out, "%s?: %s\n", field.GetJsonName(), t)
-				}
-			}
-			if missingDef > 0 {
-				fmt.Fprintf(&out, "...\n")
-			}
-			fmt.Fprintf(&out, "}\n")
+		if t.Descriptor().Fields().Len() > 0 {
+			fmt.Fprint(&out, "with: ")
+			generateProto(&out, resolver, t.Descriptor())
+			fmt.Fprint(&out, "\n")
 		}
 
 		fmt.Fprintf(&out, "}\n")
@@ -191,6 +155,67 @@ func generateNode(ctx context.Context, loc workspace.Location, n *schema.Node, p
 		_, err = w.Write(formatted)
 		return err
 	})
+}
+
+func generateProto(out io.Writer, parsed protos.AnyResolver, proto protoreflect.MessageDescriptor) {
+	fmt.Fprintf(out, "{\n")
+
+	var missingDef int
+	for k := 0; k < proto.Fields().Len(); k++ {
+		field := proto.Fields().Get(k)
+		var t string
+		switch field.Kind() {
+		case protoreflect.DoubleKind,
+			protoreflect.FloatKind:
+			t = "float"
+		case protoreflect.Int32Kind,
+			protoreflect.Fixed32Kind,
+			protoreflect.Uint32Kind,
+			protoreflect.Sfixed32Kind,
+			protoreflect.Sint32Kind,
+			protoreflect.Int64Kind,
+			protoreflect.Fixed64Kind,
+			protoreflect.Uint64Kind,
+			protoreflect.Sfixed64Kind,
+			protoreflect.Sint64Kind:
+			t = "int"
+		case protoreflect.StringKind:
+			t = "string"
+		case protoreflect.BytesKind:
+			t = "bytes"
+		case protoreflect.EnumKind:
+			var values []string
+			enum := field.Enum()
+			for j := 0; j < enum.Values().Len(); j++ {
+				v := enum.Values().Get(j)
+				values = append(values, fmt.Sprintf("%q", v.Name()))
+			}
+			t = fmt.Sprintf("(%s)", strings.Join(values, "|"))
+		case protoreflect.MessageKind:
+			msg := field.Message()
+			if msg.FullName() == wellKnownResource {
+				t = "types.#Resource"
+			} else {
+				var b bytes.Buffer
+				generateProto(&b, parsed, msg)
+				t = b.String()
+			}
+		}
+
+		if t == "" {
+			missingDef++
+		} else {
+			if field.Cardinality() == protoreflect.Repeated {
+				t = "[..." + t + "]"
+			}
+			fmt.Fprintf(out, "%s?: %s\n", field.JSONName(), t)
+		}
+	}
+
+	if missingDef > 0 {
+		fmt.Fprintf(out, "...\n")
+	}
+	fmt.Fprintf(out, "}")
 }
 
 func packageName(loc workspace.Location) string {

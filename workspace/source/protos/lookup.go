@@ -10,6 +10,13 @@ import (
 )
 
 func LookupDescriptorProto(src *FileDescriptorSetAndDeps, typename string) (*dpb.FileDescriptorProto, *dpb.DescriptorProto) {
+	if len(typename) == 0 {
+		return nil, nil
+	}
+	if typename[0] == '.' {
+		typename = typename[1:]
+	}
+
 	t := protoreflect.FullName(typename)
 	parent := t.Parent()
 	name := t.Name()
