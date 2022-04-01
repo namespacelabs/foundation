@@ -172,10 +172,17 @@ func buildRecordInvocationRequest(ctx context.Context, cmd *cobra.Command, c cli
 	}
 
 	if v, err := version.Version(); err == nil {
-		req.Version = &binaryVersion{
-			Version:   v.Version,
-			BuildTime: v.BuildTimeStr,
-			Modified:  v.Modified,
+		if v.Modified {
+			// don't upload version information on modified binaries
+			req.Version = &binaryVersion{
+				Modified: true,
+			}
+		} else {
+			req.Version = &binaryVersion{
+				Version:   v.Version,
+				BuildTime: v.BuildTimeStr,
+				Modified:  false,
+			}
 		}
 	}
 
