@@ -50,5 +50,5 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/server/img"
-  digest: "sha256:68effc94cc868cadcb3d4f4eea742b0387c17c75b0d61d212b75243dc57124a4"
+  digest: "sha256:3089ed7cf27848c4de8cd1052c5c658864339858099f1a0db8cf1328f505e7f3"
 }

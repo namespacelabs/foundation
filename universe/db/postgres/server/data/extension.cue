@@ -13,7 +13,8 @@ extension: fn.#Extension & {
 configure: fn.#Configure & {
 	startup: {
 		env: {
-			"PGDATA": "/postgres/data"
+			// PGDATA may not be a mount point but only a subdirectory.
+			"PGDATA": "/postgres/data/pgdata"
 		}
 	}
 }
