@@ -204,7 +204,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		select {
 		case status, ok := <-remoteStatusChan:
 			if ok {
-				if len(status.TagName) > 0 {
+				if status.TagName != "" {
 					msg := fmt.Sprintf("New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s",
 						status.TagName, status.TagName)
 					if colors {
@@ -213,7 +213,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 						fmt.Fprintln(console.Stdout(ctx), msg)
 					}
 				}
-				if len(status.Message) > 0 {
+				if status.Message != "" {
 					if colors {
 						fmt.Fprintln(console.Stdout(ctx), clrs.Green(status.Message))
 					} else {
