@@ -29,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/git"
-	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/languages/golang"
@@ -70,15 +69,15 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	logger, sink, flushLogs := consoleToSink(out, colors)
 
-	var remoteStatusChan chan remoteStatus
-	if !localexec.IsRunningInCI() {
-		remoteStatusChan = make(chan remoteStatus)
-		go checkRemoteStatus(logger, remoteStatusChan)
-	}
-
 	ctxWithSink := tasks.WithSink(logger.WithContext(ctx), sink)
 
 	tel := fnapi.NewTelemetry()
+
+	var remoteStatusChan chan remoteStatus
+	if tel.IsTelemetryEnabled() {
+		remoteStatusChan = make(chan remoteStatus)
+		go checkRemoteStatus(logger, remoteStatusChan)
+	}
 
 	var storeActions bool
 
