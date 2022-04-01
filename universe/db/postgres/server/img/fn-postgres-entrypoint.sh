@@ -225,14 +225,10 @@ docker_setup_env() {
 
 	file_env 'POSTGRES_USER' 'postgres'
     # Foundation: edit begin
-	# pin POSTGRES_DB and PGDATABASE to postgres so that initdb is enough and we can skip starting a temp postgres
-	# Foundation never sets POSTGRES_DB
-	# PGDATABASE sets the default database to connect to for db-less connection strings
-	# https://www.postgresql.org/docs/current/app-psql.html
+	# pin POSTGRES_DB to postgres so that initdb is enough and we can skip starting a temp postgres
 	#
 	# file_env 'POSTGRES_DB' "$POSTGRES_USER"
 	export POSTGRES_DB=postgres
-	export PGDATABASE=postgres
     # Foundation: edit end
 	file_env 'POSTGRES_INITDB_ARGS'
 	: "${POSTGRES_HOST_AUTH_METHOD:=}"
@@ -308,7 +304,6 @@ _pg_want_help() {
 
 _main() {
     # Foundation: edit begin
-	echo path is $PATH
     # if is required because script may restart below
 	if [ -z "$@" ]; then
 		# manually fix command
@@ -321,6 +316,7 @@ _main() {
 		export PG_VERSION=4.2-1.pgdg110+1
 	fi
     # Foundation: edit end
+
 	# if first arg looks like a flag, assume we want to run postgres server
 	if [ "${1:0:1}" = '-' ]; then
 		set -- postgres "$@"
