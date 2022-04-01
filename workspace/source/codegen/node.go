@@ -49,7 +49,7 @@ func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definit
 	return nil, generateNode(ctx, loc, msg.Node, msg.Protos, loc.Module.ReadWriteFS())
 }
 
-func ForNode(pkg *workspace.Package, available []*schema.Node, frameworks []schema.Node_Framework) ([]*schema.Definition, error) {
+func ForNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.Definition, error) {
 	var allDefs []*schema.Definition
 
 	if len(pkg.Provides) > 0 {
@@ -72,12 +72,7 @@ func ForNode(pkg *workspace.Package, available []*schema.Node, frameworks []sche
 		}
 	}
 
-	supports := pkg.Node().Supports
-	if len(supports) == 0 {
-		supports = frameworks
-	}
-
-	for _, fmwk := range supports {
+	for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
 		defs, err := languages.IntegrationFor(fmwk).GenerateNode(pkg, available)
 		if err != nil {
 			return nil, err

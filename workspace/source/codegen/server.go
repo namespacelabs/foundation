@@ -25,7 +25,7 @@ func ForServerAndDeps(server provision.Server) ([]*schema.Definition, error) {
 	for _, dep := range server.Deps() {
 		// We only update co-located nodes.
 		if dep.Location.Module.ModuleName() == server.Location.Module.ModuleName() {
-			defs, err := ForNode(dep, server.StackEntry().Node, []schema.Node_Framework{server.Framework()})
+			defs, err := ForNode(dep, server.StackEntry().Node)
 			if err != nil {
 				return nil, err
 			}

@@ -50,7 +50,7 @@ const (
 )
 
 func Register() {
-	languages.Register(schema.Node_WEB, impl{})
+	languages.Register(schema.Framework_WEB, impl{})
 	ops.Register[*OpGenHttpBackend](generator{})
 }
 

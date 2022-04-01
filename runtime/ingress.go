@@ -44,7 +44,7 @@ type LanguageRuntimeSupport interface {
 var supportByFramework = map[string]LanguageRuntimeSupport{}
 
 // XXX this is not the right place for protocol handling.
-func RegisterSupport(fmwk schema.Node_Framework, f LanguageRuntimeSupport) {
+func RegisterSupport(fmwk schema.Framework, f LanguageRuntimeSupport) {
 	supportByFramework[fmwk.String()] = f
 }
 

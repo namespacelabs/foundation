@@ -89,24 +89,41 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	if fmwk := v.LookupPath("framework"); fmwk.Exists() {
-		str, err := fmwk.Val.String()
+		fmwkStr, err := fmwk.Val.String()
 		if err != nil {
 			return err
 		}
 
-		if v, ok := schema.Node_Framework_value[str]; ok {
-			out.Supports = append(out.Supports, schema.Node_Framework(v))
-		} else {
-			return fnerrors.UserError(loc, "unrecognized framework: %s", str)
+		fmwk, err := parseFramework(loc, fmwkStr)
+		if err != nil {
+			return err
 		}
+		if fmwk == schema.Framework_OPAQUE {
+			return fnerrors.UserError(loc, "Only servers can be OPAQUE")
+		}
+		out.ServiceFramework = fmwk
 	}
 
-	if hasInit := v.LookupPath("hasInitialization"); hasInit.Exists() {
-		v, err := hasInit.Val.Bool()
-		if err != nil {
-			return err
+	var initializeInFrameworks []string
+	if initializers := v.LookupPath("hasInitializerIn"); initializers.Exists() {
+		if err := initializers.Val.Decode(&initializeInFrameworks); err != nil {
+			fmwkStr, err := initializers.Val.String()
+			if err != nil {
+				return err
+			}
+			initializeInFrameworks = []string{fmwkStr}
 		}
-		out.HasInitialization = v
+		uniqFrameworks := uniquestrings.List{}
+		for _, fmwkStr := range initializeInFrameworks {
+			if !uniqFrameworks.Add(fmwkStr) {
+				return fnerrors.UserError(loc, "Duplicate initialization framework value: %s", fmwkStr)
+			}
+			v, err := parseFramework(loc, fmwkStr)
+			if err != nil {
+				return err
+			}
+			out.Initializers = append(out.Initializers, &schema.NodeInitializer{Framework: schema.Framework(v)})
+		}
 	}
 
 	if provides := v.LookupPath("provides"); provides.Exists() {
@@ -414,6 +431,12 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 				p.AvailableIn = append(p.AvailableIn, &schema.Provides_AvailableIn{
 					Go: g,
 				})
+			case "web":
+				{
+					p.AvailableIn = append(p.AvailableIn, &schema.Provides_AvailableIn{
+						Web: &schema.Provides_AvailableIn_Web{},
+					})
+				}
 			}
 		}
 

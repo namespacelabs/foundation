@@ -73,8 +73,15 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 			continue
 		}
 
-		if len(n.Supports) > 0 && !isSupported(n.Supports, srv.Framework) {
-			return nil, fnerrors.UserError(dep.Location, "doesn't suppport %s", srv.Framework)
+		if n.Kind == schema.Node_SERVICE && n.ServiceFramework != srv.Framework {
+			return nil, fnerrors.UserError(
+				dep.Location,
+				"The server '%s' can only embed services of its framework %s. Can't embed service '%s' implemented in %s.",
+				srv.PackageName,
+				srv.Framework,
+				n.PackageName,
+				n.ServiceFramework,
+			)
 		}
 
 		if err := ida.visit(ctx, pl, &srv.Allocation, n, ""); err != nil {
@@ -103,15 +110,6 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 	}
 
 	return sealed.Proto.Server, nil
-}
-
-func isSupported(supports []schema.Node_Framework, fmwk schema.Node_Framework) bool {
-	for _, n := range supports {
-		if n == fmwk {
-			return true
-		}
-	}
-	return false
 }
 
 type depVisitor struct{ alloc int }

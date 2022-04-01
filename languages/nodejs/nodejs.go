@@ -25,8 +25,7 @@ import (
 )
 
 func Register() {
-	languages.Register(schema.Node_NODEJS_GRPC, impl{})
-	languages.Register(schema.Node_NODEJS, plainImpl{})
+	languages.Register(schema.Framework_NODEJS, impl{})
 
 	ops.Register[*OpGenServer](generator{})
 }
@@ -148,40 +147,4 @@ func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schem
 	// }
 
 	return dl.Serialize()
-}
-
-type plainImpl struct {
-	languages.MaybeGenerate
-	languages.MaybeTidy
-	languages.NoDev
-}
-
-func (plainImpl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server provision.Server, isFocus bool) (build.Spec, error) {
-	return buildNodeJS{loc: server.Location, isFocus: isFocus}, nil
-}
-
-func (plainImpl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.ServerRunOpts) error {
-	run.Command = []string{"yarn", "serve"}
-	run.WorkingDir = "/app"
-	run.Env = []*schema.BinaryConfig_Entry{{
-		Name: "NODE_ENV", Value: nodeEnv(t.Env()),
-	}}
-	return nil
-}
-
-func (plainImpl) ParseNode(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
-	return nil
-}
-
-func (plainImpl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
-	return nil
-}
-
-func (plainImpl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error {
-	sealed.Proto.Server.StaticPort = []*schema.Endpoint_Port{{Name: "http-port", ContainerPort: 8080}}
-	return nil
-}
-
-func (plainImpl) InjectService(loc workspace.Location, node *schema.Node, svc *workspace.CueService) error {
-	return nil
 }

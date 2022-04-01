@@ -64,14 +64,14 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	out.Id = bits.ID
 	out.Name = bits.Name
 
-	if v, ok := schema.Node_Framework_value[bits.Framework]; ok {
-		out.Framework = schema.Node_Framework(v)
+	if fmwk, err := parseFramework(loc, bits.Framework); err == nil {
+		out.Framework = schema.Framework(fmwk)
 	} else {
 		return nil, fnerrors.UserError(loc, "unrecognized framework: %s", bits.Framework)
 	}
 
 	if bits.Binary != nil {
-		if out.Framework != schema.Node_OPAQUE {
+		if out.Framework != schema.Framework_OPAQUE {
 			return nil, fnerrors.UserError(loc, "can't specify binary on non-opaque servers")
 		}
 

@@ -37,10 +37,10 @@ type CueService struct {
 }
 
 var (
-	FrameworkHandlers = map[schema.Node_Framework]FrameworkHandler{}
+	FrameworkHandlers = map[schema.Framework]FrameworkHandler{}
 )
 
-func RegisterFrameworkHandler(framework schema.Node_Framework, handler FrameworkHandler) {
+func RegisterFrameworkHandler(framework schema.Framework, handler FrameworkHandler) {
 	FrameworkHandlers[framework] = handler
 }
 

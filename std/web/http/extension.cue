@@ -8,8 +8,6 @@ $providerProto: inputs.#Proto & {
 }
 
 extension: fn.#Extension & {
-	framework: "WEB"
-
 	provides: {
 		Backend: {
 			input: $providerProto.types.Backend

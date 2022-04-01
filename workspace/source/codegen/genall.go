@@ -6,7 +6,6 @@ package codegen
 
 import (
 	"context"
-	"sort"
 
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -24,17 +23,6 @@ type GenerateError struct {
 func ForLocations(ctx context.Context, root *workspace.Root, locs []fnfs.Location, onError func(GenerateError)) error {
 	var errCount int
 	var g ops.Runner
-
-	var fmwks []schema.Node_Framework
-	for raw := range schema.Node_Framework_name {
-		if raw != 0 {
-			fmwks = append(fmwks, schema.Node_Framework(raw))
-		}
-	}
-
-	sort.Slice(fmwks, func(i, j int) bool {
-		return fmwks[i].Number() < fmwks[j].Number()
-	})
 
 	pl := workspace.NewPackageLoader(root)
 
@@ -65,7 +53,7 @@ func ForLocations(ctx context.Context, root *workspace.Root, locs []fnfs.Locatio
 					continue
 				}
 
-				defs, err := ForNode(pkg, sealed.Proto.Node, fmwks)
+				defs, err := ForNode(pkg, sealed.Proto.Node)
 				if err != nil {
 					onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
 					errCount++
