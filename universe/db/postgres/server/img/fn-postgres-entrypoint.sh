@@ -225,11 +225,14 @@ docker_setup_env() {
 
 	file_env 'POSTGRES_USER' 'postgres'
     # Foundation: edit begin
-	# pin POSTGRES_DB to postgres so that initdb is enough and we can skip starting a temp postgres
+	# pin POSTGRES_DB and PGDATABASE to postgres so that initdb is enough and we can skip starting a temp postgres
 	# Foundation never sets POSTGRES_DB
+	# PGDATABASE sets the default database to connect to for db-less connection strings
+	# https://www.postgresql.org/docs/current/app-psql.html
 	#
-	file_env 'POSTGRES_DB' "$POSTGRES_USER"
-	# export POSTGRES_DB=postgres
+	# file_env 'POSTGRES_DB' "$POSTGRES_USER"
+	export POSTGRES_DB=postgres
+	export PGDATABASE=postgres
     # Foundation: edit end
 	file_env 'POSTGRES_INITDB_ARGS'
 	: "${POSTGRES_HOST_AUTH_METHOD:=}"
@@ -348,14 +351,14 @@ _main() {
             #
 		    # # PGPASSWORD is required for psql when authentication is required for 'local' connections via pg_hba.conf and is otherwise harmless
 			# # e.g. when '--auth=md5' or '--auth-local=md5' is used in POSTGRES_INITDB_ARGS
-			 export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
-			 docker_temp_server_start "$@"
-			
-			 docker_setup_db
-			 docker_process_init_files /docker-entrypoint-initdb.d/*
-			
-			 docker_temp_server_stop
-			 unset PGPASSWORD
+			# export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
+			# docker_temp_server_start "$@"
+			#
+			# docker_setup_db
+			# docker_process_init_files /docker-entrypoint-initdb.d/*
+			#
+			# docker_temp_server_stop
+			# unset PGPASSWORD
             # Foundation: edit end
 
 			echo
@@ -368,10 +371,7 @@ _main() {
 		fi
 	fi
 
-    # Foundation: edit begin
-    echo calling \"$@\"
-    # Foundation: edit end
-	exec "$@"
+   exec "$@"
 }
 
 if ! _is_sourced; then
