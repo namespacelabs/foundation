@@ -48,3 +48,7 @@ prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/tool"
   digest: "sha256:b609b6520d3d232ccb4893ced4afa9261843d667e88534ddd5f1fbc6ea526d43"
 }
+prebuilt_binary: {
+  package_name: "namespacelabs.dev/foundation/universe/db/postgres/server/img"
+  digest: "sha256:68effc94cc868cadcb3d4f4eea742b0387c17c75b0d61d212b75243dc57124a4"
+}
