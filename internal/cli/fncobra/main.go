@@ -74,6 +74,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	tel := fnapi.NewTelemetry()
 
 	var remoteStatusChan chan remoteStatus
+	// Checking a version could be used for fingerprinting purposes,
+	// and thus we don't do it if the user has opted-out from providing data.
 	if tel.IsTelemetryEnabled() {
 		remoteStatusChan = make(chan remoteStatus)
 		go checkRemoteStatus(logger, remoteStatusChan)
