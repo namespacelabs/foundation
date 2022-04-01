@@ -36,7 +36,8 @@ func existsDb(ctx context.Context, conn *pgxpool.Pool, dbName string) (bool, err
 	return rows.Next(), nil
 }
 
-func connect(ctx context.Context, connString string) (conn *pgxpool.Pool, err error) {
+func connect(ctx context.Context, user string, password string, address string, port uint32, db string) (conn *pgxpool.Pool, err error) {
+	connString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", user, password, address, port, db)
 	err = backoff.Retry(func() error {
 		log.Printf("Connecting to postgres.")
 		conn, err = pgxpool.Connect(ctx, connString)
@@ -54,7 +55,8 @@ func connect(ctx context.Context, connString string) (conn *pgxpool.Pool, err er
 }
 
 func ensureDb(ctx context.Context, db *postgres.Database, user string, password string) error {
-	conn, err := connect(ctx, fmt.Sprintf("postgres://%s:%s@%s:%d", user, password, db.HostedAt.Address, db.HostedAt.Port))
+	// Postgres needs a db to connect to so we pin one that is guaranteed to exist.
+	conn, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, "postgres")
 	if err != nil {
 		return err
 	}
@@ -68,7 +70,7 @@ func ensureDb(ctx context.Context, db *postgres.Database, user string, password 
 	}
 
 	if exists {
-		log.Printf("Database %s already exists.", db.Name)
+		log.Printf("Database `%s` already exists.", db.Name)
 		return nil
 	}
 
@@ -80,15 +82,15 @@ func ensureDb(ctx context.Context, db *postgres.Database, user string, password 
 	}
 	_, err = conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s;", db.Name))
 	if err != nil {
-		return fmt.Errorf("failed to create database %s: %w", db.Name, err)
+		return fmt.Errorf("failed to create database `%s`: %w", db.Name, err)
 	}
 
-	log.Printf("Created database %s.", db.Name)
+	log.Printf("Created database `%s`.", db.Name)
 	return nil
 }
 
 func applySchema(ctx context.Context, db *postgres.Database, user string, password string) error {
-	conn, err := connect(ctx, fmt.Sprintf("postgres://%s:%s@%s:%d/%s", user, password, db.HostedAt.Address, db.HostedAt.Port, db.Name))
+	conn, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, db.Name)
 	if err != nil {
 		return err
 	}

@@ -34,7 +34,7 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/init"
-  digest: "sha256:8ccc56d6b25a7d2e8b21c322fd4560cafbd1e9f3bbf4d052b898e94232e26ded"
+  digest: "sha256:90a0497cac76ba91835aeac5b4bce8f8c667d1ee23d06f34b99e2e37bfb3da97"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/opaque/tool"
