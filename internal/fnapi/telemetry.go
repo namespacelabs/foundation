@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -142,11 +143,20 @@ func writeJSON(path string, msg interface{}) error {
 	return ioutil.WriteFile(path, data, 0644)
 }
 
+func fullCommand(cmd *cobra.Command) string {
+	commands := []string{cmd.Use}
+	for cmd.HasParent() {
+		cmd = cmd.Parent()
+		commands = append([]string{cmd.Use}, commands...)
+	}
+	return strings.Join(commands, " ")
+}
+
 // Extracts command name and set flags from cmd. Reports args and flag values in hashed form.
 func buildRecordInvocationRequest(ctx context.Context, cmd *cobra.Command, c clientID, reqID string, args []string) *recordInvocationRequest {
 	req := recordInvocationRequest{
 		ID:      reqID,
-		Command: cmd.Use,
+		Command: fullCommand(cmd),
 		UserId:  c.ID,
 		Os:      runtime.GOOS,
 		Arch:    runtime.GOARCH,
