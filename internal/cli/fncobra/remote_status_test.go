@@ -23,8 +23,8 @@ func TestFetchLatestRemoteStatusFull(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, status.Message, "test")
-	assert.Equal(t, status.LatestRelease.TagName, "v0.0.21")
-	assert.Equal(t, status.LatestRelease.BuildTime.UTC().Format(time.UnixDate), "Thu Mar 31 23:21:43 UTC 2022")
+	assert.Equal(t, status.TagName, "v0.0.21")
+	assert.Equal(t, status.BuildTime.UTC().Format(time.UnixDate), "Thu Mar 31 23:21:43 UTC 2022")
 }
 
 func TestFetchLatestRemoteStatusNoMessage(t *testing.T) {

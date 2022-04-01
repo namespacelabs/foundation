@@ -204,9 +204,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		select {
 		case status, ok := <-remoteStatusChan:
 			if ok {
-				if status.LatestRelease != nil {
+				if len(status.TagName) > 0 {
 					msg := fmt.Sprintf("New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s",
-						status.LatestRelease.TagName, status.LatestRelease.TagName)
+						status.TagName, status.TagName)
 					if colors {
 						fmt.Fprintln(console.Stdout(ctx), clrs.Green(msg))
 					} else {
@@ -386,13 +386,13 @@ func checkRemoteStatus(logger *zerolog.Logger, channel chan remoteStatus) {
 	if err != nil {
 		logger.Debug().Err(err).Msg("version check failed")
 	} else {
-		logger.Debug().Stringer("latest_release_version", status.LatestRelease.BuildTime).Msg("version check")
+		logger.Debug().Stringer("latest_release_version", status.BuildTime).Msg("version check")
 		s := remoteStatus{
 			Message: status.Message,
 		}
 
-		if status.LatestRelease.BuildTime.After(*version.BuildTime) {
-			s.LatestRelease = status.LatestRelease
+		if status.BuildTime.After(*version.BuildTime) {
+			s.TagName = status.TagName
 		}
 		channel <- s
 	}

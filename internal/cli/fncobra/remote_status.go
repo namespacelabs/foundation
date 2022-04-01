@@ -19,11 +19,9 @@ type rawRemoteStatus struct {
 }
 
 type remoteStatus struct {
-	LatestRelease *struct {
-		TagName   string
-		BuildTime time.Time
-	}
-	Message string
+	TagName   string
+	BuildTime time.Time
+	Message   string
 }
 
 // Used to get the latest release version and potentially a message for the users.
@@ -55,13 +53,8 @@ func FetchLatestRemoteStatus(baseUrl string, currentVer string) (*remoteStatus, 
 		return nil, err
 	}
 	return &remoteStatus{
-		Message: rs.Message,
-		LatestRelease: &struct {
-			TagName   string
-			BuildTime time.Time
-		}{
-			TagName:   rs.TagName,
-			BuildTime: latestBuildTime,
-		},
+		Message:   rs.Message,
+		TagName:   rs.TagName,
+		BuildTime: latestBuildTime,
 	}, nil
 }
