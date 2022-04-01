@@ -14,12 +14,14 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -84,15 +86,22 @@ type arg struct {
 	Plaintext string `json:"plaintext,omitempty"`
 }
 
+type binaryVersion struct {
+	Version   string `json:"version,omitempty"`
+	BuildTime string `json:"build_time,omitempty"`
+	Modified  bool   `json:"modified,omitempty"`
+}
+
 type recordInvocationRequest struct {
-	ID      string `json:"id,omitempty"`
-	Command string `json:"command,omitempty"`
-	Arg     []arg  `json:"arg"`
-	Flag    []flag `json:"flag"`
-	UserId  string `json:"user_id,omitempty"`
-	Os      string `json:"os,omitempty"`
-	Arch    string `json:"arch,omitempty"`
-	NumCpu  int    `json:"num_cpu"`
+	ID      string         `json:"id,omitempty"`
+	Command string         `json:"command,omitempty"`
+	Arg     []arg          `json:"arg"`
+	Flag    []flag         `json:"flag"`
+	UserId  string         `json:"user_id,omitempty"`
+	Os      string         `json:"os,omitempty"`
+	Arch    string         `json:"arch,omitempty"`
+	NumCpu  int            `json:"num_cpu"`
+	Version *binaryVersion `json:"version"`
 }
 
 type recordErrorRequest struct {
@@ -142,15 +151,39 @@ func writeJSON(path string, msg interface{}) error {
 	return ioutil.WriteFile(path, data, 0644)
 }
 
+func fullCommand(cmd *cobra.Command) string {
+	commands := []string{cmd.Use}
+	for cmd.HasParent() {
+		cmd = cmd.Parent()
+		commands = append([]string{cmd.Use}, commands...)
+	}
+	return strings.Join(commands, " ")
+}
+
 // Extracts command name and set flags from cmd. Reports args and flag values in hashed form.
 func buildRecordInvocationRequest(ctx context.Context, cmd *cobra.Command, c clientID, reqID string, args []string) *recordInvocationRequest {
 	req := recordInvocationRequest{
 		ID:      reqID,
-		Command: cmd.Use,
+		Command: fullCommand(cmd),
 		UserId:  c.ID,
 		Os:      runtime.GOOS,
 		Arch:    runtime.GOARCH,
 		NumCpu:  runtime.NumCPU(),
+	}
+
+	if v, err := version.Version(); err == nil {
+		if v.Modified {
+			// don't upload version information on modified binaries
+			req.Version = &binaryVersion{
+				Modified: true,
+			}
+		} else {
+			req.Version = &binaryVersion{
+				Version:   v.Version,
+				BuildTime: v.BuildTimeStr,
+				Modified:  false,
+			}
+		}
 	}
 
 	cmd.Flags().Visit(func(pflag *pflag.Flag) {

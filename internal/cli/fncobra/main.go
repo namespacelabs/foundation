@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	clrs "namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/termios"
@@ -370,7 +371,7 @@ func cpuprofile(cpuprofile string) func() {
 func checkRemoteStatus(logger *zerolog.Logger, channel chan remoteStatus) {
 	defer close(channel)
 
-	version, err := Version()
+	version, err := version.Version()
 	if err != nil {
 		logger.Debug().Err(err).Msg("failed to obtain version information")
 		return
