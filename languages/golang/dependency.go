@@ -81,7 +81,7 @@ func expandInstancedDeps(ctx context.Context, loader workspace.Packages, compute
 			e.services = append(e.services, nodeLoc{Location: refLoc, Node: referenced})
 		}
 
-		if referenced.InitializerFor(schema.Framework_GO) != nil {
+		if referenced.InitializerFor(schema.Framework_GO_GRPC) != nil {
 			e.initializers = append(e.initializers, nodeLoc{Location: refLoc, Node: referenced})
 		}
 	}

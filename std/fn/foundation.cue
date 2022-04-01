@@ -64,7 +64,7 @@ _#Node: {
 	kind?: string
 }
 
-#Framework: "GO" | "GO_GRPC" | "NODEJS_GRPC" | "WEB" | "NODEJS"
+#Framework: "GO_GRPC" | "NODEJS_GRPC" | "WEB" | "NODEJS"
 
 #Server: {
 	_#Imports
