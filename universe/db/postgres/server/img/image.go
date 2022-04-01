@@ -50,7 +50,7 @@ func init() {
 }
 
 func makePostgresImageState(platform specs.Platform) llb.State {
-	target := llbutil.Image(postgresImage, platform)
-
-	return target.File(llb.Mkfile("fn-postgres-entrypoint.sh", 0777, entrypoint))
+	return llbutil.Image(postgresImage, platform).
+		File(llb.Mkfile("fn-postgres-entrypoint.sh", 0777, entrypoint)).
+		File(llb.Rm("/usr/local/bin/docker-entrypoint.sh"))
 }
