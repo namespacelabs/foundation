@@ -204,17 +204,18 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		select {
 		case status, ok := <-remoteStatusChan:
 			if ok {
-				if status.TagName != nil {
-					msg := fmt.Sprintf("New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s", *status.TagName, *status.TagName)
+				if status.LatestRelease != nil {
+					msg := fmt.Sprintf("New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s",
+						status.LatestRelease.TagName, status.LatestRelease.TagName)
 					if colors {
 						fmt.Fprintln(console.Stdout(ctx), clrs.Green(msg))
 					} else {
 						fmt.Fprintln(console.Stdout(ctx), msg)
 					}
 				}
-				if status.Message != nil {
+				if len(status.Message) > 0 {
 					if colors {
-						fmt.Fprintln(console.Stdout(ctx), clrs.Green(*status.Message))
+						fmt.Fprintln(console.Stdout(ctx), clrs.Green(status.Message))
 					} else {
 						fmt.Fprintln(console.Stdout(ctx), status.Message)
 					}
@@ -364,11 +365,6 @@ func cpuprofile(cpuprofile string) func() {
 	}
 }
 
-type remoteStatus struct {
-	TagName *string
-	Message *string
-}
-
 // Checks for updates and messages from Foundation developers.
 // Does nothing if a check for remote status failed
 func checkRemoteStatus(logger *zerolog.Logger, channel chan remoteStatus) {
@@ -391,16 +387,13 @@ func checkRemoteStatus(logger *zerolog.Logger, channel chan remoteStatus) {
 		logger.Debug().Err(err).Msg("version check failed")
 	} else {
 		logger.Debug().Stringer("latest_release_version", status.LatestRelease.BuildTime).Msg("version check")
-		s := remoteStatus{}
-		if len(status.Message) > 0 {
-			s.Message = &status.Message
+		s := remoteStatus{
+			Message: status.Message,
 		}
 
 		if status.LatestRelease.BuildTime.After(*version.BuildTime) {
-			s.TagName = &status.LatestRelease.TagName
+			s.LatestRelease = status.LatestRelease
 		}
-		if s.TagName != nil || s.Message != nil {
-			channel <- s
-		}
+		channel <- s
 	}
 }

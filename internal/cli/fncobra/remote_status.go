@@ -18,18 +18,16 @@ type rawRemoteStatus struct {
 	Message   string `json:"message"`
 }
 
-type Release struct {
-	TagName   string
-	BuildTime time.Time
-}
-
-type RemoteStatus struct {
-	LatestRelease Release
-	Message       string
+type remoteStatus struct {
+	LatestRelease *struct {
+		TagName   string
+		BuildTime time.Time
+	}
+	Message string
 }
 
 // Used to get the latest release version and potentially a message for the users.
-func FetchLatestRemoteStatus(baseUrl string, currentVer string) (*RemoteStatus, error) {
+func FetchLatestRemoteStatus(baseUrl string, currentVer string) (*remoteStatus, error) {
 	fullUrl, err := url.Parse(baseUrl)
 	if err != nil {
 		return nil, err
@@ -47,19 +45,22 @@ func FetchLatestRemoteStatus(baseUrl string, currentVer string) (*RemoteStatus, 
 		return nil, err
 	}
 
-	var remoteStatus rawRemoteStatus
-	err = json.Unmarshal(body, &remoteStatus)
+	var rs rawRemoteStatus
+	err = json.Unmarshal(body, &rs)
 	if err != nil {
 		return nil, err
 	}
-	latestBuildTime, err := time.Parse(time.RFC3339, remoteStatus.CreatedAt)
+	latestBuildTime, err := time.Parse(time.RFC3339, rs.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
-	return &RemoteStatus{
-		Message: remoteStatus.Message,
-		LatestRelease: Release{
-			TagName:   remoteStatus.TagName,
+	return &remoteStatus{
+		Message: rs.Message,
+		LatestRelease: &struct {
+			TagName   string
+			BuildTime time.Time
+		}{
+			TagName:   rs.TagName,
 			BuildTime: latestBuildTime,
 		},
 	}, nil
