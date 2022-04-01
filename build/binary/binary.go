@@ -45,10 +45,18 @@ type BuildImageOpts struct {
 	Platforms    []specs.Platform
 }
 
+func ValidateIsBinary(pkg *workspace.Package) error {
+	if pkg.Binary == nil {
+		return fnerrors.UserError(pkg.Location, "expected a binary")
+	}
+
+	return nil
+}
+
 // Returns a Prepared.
 func Plan(ctx context.Context, pkg *workspace.Package, opts BuildImageOpts) (*Prepared, error) {
-	if pkg.Binary == nil {
-		return nil, fnerrors.UserError(pkg.Location, "expected a binary")
+	if err := ValidateIsBinary(pkg); err != nil {
+		return nil, err
 	}
 
 	loc := pkg.Location
@@ -74,15 +82,13 @@ func Plan(ctx context.Context, pkg *workspace.Package, opts BuildImageOpts) (*Pr
 	return &Prepared{
 		Name:    loc.PackageName.String(),
 		Plan:    plan,
-		Command: []string{Command(pkg)},
+		Command: Command(pkg),
+		// XXX pass args, and env.
 	}, nil
 }
 
-func Command(pkg *workspace.Package) string {
-	if pkg.Binary == nil {
-		return ""
-	}
-	return "/" + pkg.Binary.Name
+func Command(pkg *workspace.Package) []string {
+	return pkg.Binary.GetConfig().GetCommand()
 }
 
 func (p Prepared) Image(ctx context.Context, env ops.Environment) (compute.Computable[oci.ResolvableImage], error) {
@@ -113,7 +119,8 @@ func PlanImage(ctx context.Context, pkg *workspace.Package, env ops.Environment,
 	return &PreparedImage{
 		Name:    loc.PackageName.String(),
 		Image:   img,
-		Command: []string{"/" + pkg.Binary.Name},
+		Command: Command(pkg),
+		// XXX pass args, and env.
 	}, nil
 }
 
@@ -168,6 +175,8 @@ func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary) 
 	src := bin.From
 
 	if goPackage := src.GoPackage; goPackage != "" {
+		// Note, regardless of what config.command has been set to, we always build a
+		// binary named bin.Name.
 		return BuildGo(loc, goPackage, bin.Name, false)
 	}
 

@@ -105,9 +105,13 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	var initializeInFrameworks []string
-	if initializers := v.LookupPath("initializeIn"); initializers.Exists() {
+	if initializers := v.LookupPath("hasInitializerIn"); initializers.Exists() {
 		if err := initializers.Val.Decode(&initializeInFrameworks); err != nil {
-			return err
+			fmwkStr, err := initializers.Val.String()
+			if err != nil {
+				return err
+			}
+			initializeInFrameworks = []string{fmwkStr}
 		}
 		uniqFrameworks := uniquestrings.List{}
 		for _, fmwkStr := range initializeInFrameworks {

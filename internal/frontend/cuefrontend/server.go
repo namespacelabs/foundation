@@ -95,7 +95,19 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 
 	out.IsStateful = bits.IsStateful
 	out.Import = bits.Import
-	out.StaticEnv = bits.StaticEnv
+
+	for k, v := range bits.StaticEnv {
+		out.StaticEnv = append(out.StaticEnv, &schema.BinaryConfig_Entry{
+			Name: k, Value: v,
+		})
+	}
+	sort.Slice(out.StaticEnv, func(i, j int) bool {
+		x, y := out.StaticEnv[i].Name, out.StaticEnv[j].Name
+		if x == y {
+			return strings.Compare(out.StaticEnv[i].Value, out.StaticEnv[j].Value) < 0
+		}
+		return strings.Compare(x, y) < 0
+	})
 
 	var webServices schema.PackageList
 	for _, entry := range bits.URLMap {

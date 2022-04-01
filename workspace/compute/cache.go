@@ -21,8 +21,12 @@ import (
 
 type Cacheable[V any] interface {
 	Digester
-	LoadCached(context.Context, cache.Cache, reflect.Type, schema.Digest) (Result[V], error)
+	LoadCached(context.Context, cache.Cache, CacheableInstance, schema.Digest) (Result[V], error)
 	Cache(context.Context, cache.Cache, V) (schema.Digest, error)
+}
+
+type CacheableInstance interface {
+	NewInstance() interface{}
 }
 
 type ComputeDigestFunc func(context.Context, any) (schema.Digest, error)
@@ -31,7 +35,7 @@ type cacheable struct {
 	Type reflect.Type
 
 	ComputeDigest ComputeDigestFunc
-	LoadCached    func(context.Context, cache.Cache, reflect.Type, schema.Digest) (Result[any], error)
+	LoadCached    func(context.Context, cache.Cache, CacheableInstance, schema.Digest) (Result[any], error)
 	Cache         func(context.Context, cache.Cache, any) (schema.Digest, error)
 }
 
@@ -45,7 +49,7 @@ func RegisterCacheable[V any](c Cacheable[V]) {
 		ComputeDigest: func(ctx context.Context, v any) (schema.Digest, error) {
 			return c.ComputeDigest(ctx, v)
 		},
-		LoadCached: func(ctx context.Context, cache cache.Cache, t reflect.Type, d schema.Digest) (Result[any], error) {
+		LoadCached: func(ctx context.Context, cache cache.Cache, t CacheableInstance, d schema.Digest) (Result[any], error) {
 			v, err := c.LoadCached(ctx, cache, t, d)
 			if err != nil {
 				return Result[any]{}, err
@@ -103,7 +107,7 @@ func checkLoadCache(ctx context.Context, what string, g *Orch, c computeInstance
 				if !cached {
 					return nil
 				}
-				v, err := cacheable.LoadCached(ctx, g.cache, reflect.TypeOf(c.OutputType), output.Digest)
+				v, err := cacheable.LoadCached(ctx, g.cache, c, output.Digest)
 				if err == nil {
 					hit.Hit = true
 					hit.OutputDigest = output.Digest

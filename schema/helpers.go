@@ -24,7 +24,7 @@ func (n *Node) GetImportedPackages() []PackageName {
 
 func (n *Node) ErrorLocation() string { return n.PackageName }
 
-func (n *Node) GetInitializer(fmwk Framework) *NodeInitializer {
+func (n *Node) InitializerFor(fmwk Framework) *NodeInitializer {
 	for _, i := range n.Initializers {
 		if i.Framework == fmwk {
 			return i
@@ -35,7 +35,7 @@ func (n *Node) GetInitializer(fmwk Framework) *NodeInitializer {
 
 // All frameworks that the node has codegen generated for.
 // Stable order.
-func (n *Node) GetCodegenFrameworks() []Framework {
+func (n *Node) CodegeneratedFrameworks() []Framework {
 	fmwksSet := map[Framework]bool{}
 	if n.ServiceFramework != Framework_FRAMEWORK_UNSPECIFIED {
 		fmwksSet[n.ServiceFramework] = true
@@ -43,7 +43,7 @@ func (n *Node) GetCodegenFrameworks() []Framework {
 	for _, i := range n.Initializers {
 		fmwksSet[i.Framework] = true
 	}
-	for p := range n.GetProvidesFrameworks() {
+	for p := range n.ProvidedInFrameworks() {
 		fmwksSet[p] = true
 	}
 	fmwks := make([]Framework, 0, len(fmwksSet))
@@ -57,7 +57,7 @@ func (n *Node) GetCodegenFrameworks() []Framework {
 	return fmwks
 }
 
-func (n *Node) GetProvidesFrameworks() map[Framework]bool {
+func (n *Node) ProvidedInFrameworks() map[Framework]bool {
 	fmwksSet := map[Framework]bool{}
 	for _, p := range n.Provides {
 		for _, a := range p.AvailableIn {

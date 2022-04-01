@@ -72,7 +72,7 @@ func ForNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.Defini
 		}
 	}
 
-	for _, fmwk := range pkg.Node().GetCodegenFrameworks() {
+	for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
 		defs, err := languages.IntegrationFor(fmwk).GenerateNode(pkg, available)
 		if err != nil {
 			return nil, err

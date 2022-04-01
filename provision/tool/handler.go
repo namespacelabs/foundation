@@ -29,7 +29,7 @@ type Invocation struct {
 	ImageName  string
 	Image      compute.Computable[oci.Image]
 	Command    []string
-	Args       []*rtypes.Arg
+	Args       []string
 	Mounts     []*rtypes.LocalMapping
 	Snapshots  []Snapshot
 	WorkingDir string

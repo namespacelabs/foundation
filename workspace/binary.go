@@ -9,15 +9,23 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func TransformBinary(loc Location, bin *schema.Binary) (*schema.Binary, error) {
+func TransformBinary(loc Location, bin *schema.Binary) error {
 	if bin.PackageName != "" {
-		return nil, fnerrors.UserError(loc, "package_name can not be set")
+		return fnerrors.UserError(loc, "package_name can not be set")
 	}
 
 	if bin.Name == "" {
-		return nil, fnerrors.UserError(loc, "binary name can't be empty")
+		return fnerrors.UserError(loc, "binary name can't be empty")
 	}
 
 	bin.PackageName = loc.PackageName.String()
-	return bin, nil
+
+	if bin.Config == nil {
+		// By default, assume the binary is built with the same name as the package name.
+		bin.Config = &schema.BinaryConfig{
+			Command: []string{"/" + bin.Name},
+		}
+	}
+
+	return nil
 }

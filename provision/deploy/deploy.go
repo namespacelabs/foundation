@@ -25,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/provision/startup"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -452,7 +451,6 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 	if imgs.Config.Repository != "" {
 		out.ConfigImage = &imgs.Config
 	}
-	out.Env = map[string]string{}
 
 	if err := languages.IntegrationFor(s.Framework()).PrepareRun(ctx, s, &out.ServerRunOpts); err != nil {
 		return err
@@ -467,9 +465,9 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 		return err
 	}
 
-	out.Args = append(out.Args, rtypes.FlattenArgs(merged.Args)...)
-	startup.MergeEnvs(out.Env, s.Proto().StaticEnv)
-	startup.MergeEnvs(out.Env, merged.Env)
+	out.Args = append(out.Args, merged.Args...)
+	out.Env = append(out.Env, s.Proto().StaticEnv...)
+	out.Env = append(out.Env, merged.Env...)
 
 	return nil
 }
@@ -495,16 +493,11 @@ func prepareInitRunOpts(dep *stack.ParsedNode, imageIDs builtImages, initCommand
 			return fnerrors.InternalError("%s: missing an image to run", pkg)
 		}
 
-		var args []*rtypes.Arg
-		for k, v := range init.Args {
-			args = append(args, &rtypes.Arg{Name: k, Value: v})
-		}
-
 		out.Inits = append(out.Inits, runtime.InitRunOpts{
 			PackageName: pkg,
 			ServerRunOpts: runtime.ServerRunOpts{
 				Image:   imgs.Binary,
-				Args:    rtypes.FlattenArgs(args),
+				Args:    init.Args,
 				Command: initpkg.Command,
 			},
 		})

@@ -10,28 +10,23 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/stack"
-	"namespacelabs.dev/foundation/runtime/rtypes"
+	"namespacelabs.dev/foundation/schema"
 )
 
-type Computed struct {
-	Args []*rtypes.Arg     `json:"args"`
-	Env  map[string]string `json:"env"`
-}
-
-func ComputeConfig(ctx context.Context, deps []*stack.ParsedNode, info frontend.StartupInputs) (*Computed, error) {
-	var computed Computed
+func ComputeConfig(ctx context.Context, deps []*stack.ParsedNode, info frontend.StartupInputs) (*schema.BinaryConfig, error) {
+	computed := &schema.BinaryConfig{}
 
 	// For each already loaded configuration, unify the startup args to produce the final startup configuration.
 	for _, dep := range deps {
-		if err := loadStartupPlan(ctx, dep, info, &computed); err != nil {
+		if err := loadStartupPlan(ctx, dep, info, computed); err != nil {
 			return nil, fnerrors.Wrapf(dep.Package.Location, err, "computing startup config")
 		}
 	}
 
-	return &computed, nil
+	return computed, nil
 }
 
-func loadStartupPlan(ctx context.Context, dep *stack.ParsedNode, info frontend.StartupInputs, merged *Computed) error {
+func loadStartupPlan(ctx context.Context, dep *stack.ParsedNode, info frontend.StartupInputs, merged *schema.BinaryConfig) error {
 	plan, err := dep.ProvisionPlan.Startup.EvalStartup(ctx, info, dep.Allocations)
 	if err != nil {
 		return fnerrors.Wrap(dep.Package.Location, err)
@@ -40,22 +35,12 @@ func loadStartupPlan(ctx context.Context, dep *stack.ParsedNode, info frontend.S
 	return mergePlan(plan, merged)
 }
 
-func mergePlan(plan frontend.StartupPlan, merged *Computed) error {
-	for k, v := range plan.Args {
-		merged.Args = append(merged.Args, &rtypes.Arg{Name: k, Value: v})
-	}
+func mergePlan(plan frontend.StartupPlan, merged *schema.BinaryConfig) error {
+	merged.Args = append(merged.Args, plan.Args...)
 
-	if plan.Env != nil && merged.Env == nil {
-		merged.Env = map[string]string{}
+	for k, v := range plan.Env {
+		merged.Env = append(merged.Env, &schema.BinaryConfig_Entry{Name: k, Value: v})
 	}
-
-	MergeEnvs(merged.Env, plan.Env)
 
 	return nil
-}
-
-func MergeEnvs(t map[string]string, src map[string]string) {
-	for k, v := range src {
-		t[k] = v
-	}
 }
