@@ -13,7 +13,7 @@ import (
 func parseFramework(loc workspace.Location, str string) (schema.Framework, error) {
 	switch str {
 	case "GO", "GO_GRPC":
-		return schema.Framework_GO, nil
+		return schema.Framework_GO_GRPC, nil
 	case "NODEJS", "NODEJS_GRPC":
 		return schema.Framework_NODEJS, nil
 	case "WEB":

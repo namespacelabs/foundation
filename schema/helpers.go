@@ -62,7 +62,7 @@ func (n *Node) ProvidedInFrameworks() map[Framework]bool {
 	for _, p := range n.Provides {
 		for _, a := range p.AvailableIn {
 			if a.Go != nil {
-				fmwksSet[Framework_GO] = true
+				fmwksSet[Framework_GO_GRPC] = true
 			}
 			if a.Web != nil {
 				fmwksSet[Framework_WEB] = true

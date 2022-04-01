@@ -35,8 +35,8 @@ const (
 )
 
 func Register() {
-	languages.Register(schema.Framework_GO, impl{})
-	runtime.RegisterSupport(schema.Framework_GO, impl{})
+	languages.Register(schema.Framework_GO_GRPC, impl{})
+	runtime.RegisterSupport(schema.Framework_GO_GRPC, impl{})
 
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.DispatcherResult, error) {
 		wenv, ok := env.(workspace.Packages)

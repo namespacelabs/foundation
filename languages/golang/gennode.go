@@ -30,7 +30,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		depVars = append(depVars, p.Provisioned.DepVars...)
 	}
 
-	hasInitialization := n.InitializerFor(schema.Framework_GO) != nil
+	hasInitialization := n.InitializerFor(schema.Framework_GO_GRPC) != nil
 	var providesCount int
 	for _, p := range n.Provides {
 		for _, prov := range p.AvailableIn {
@@ -49,7 +49,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 
 	var depPackages []string
 	if err := visitAllDeps(ctx, nodes, n.GetImportedPackages(), func(dep *schema.Node) error {
-		if dep.InitializerFor(schema.Framework_GO) != nil {
+		if dep.InitializerFor(schema.Framework_GO_GRPC) != nil {
 			nodeLoc, err := loader.Resolve(ctx, schema.PackageName(dep.PackageName))
 			if err != nil {
 				return err

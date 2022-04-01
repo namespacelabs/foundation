@@ -42,7 +42,7 @@ configure: fn.#Configure & {
 	// pick them up. A map.textpb is also synthesized.
 	startup: {
 		// Only Go/gRPC servers embed our library.
-		if $focus.framework == "GO" {
+		if $focus.framework == "GO_GRPC" {
 			args: {
 				simple_secrets_basepath: "/secrets"
 			}
