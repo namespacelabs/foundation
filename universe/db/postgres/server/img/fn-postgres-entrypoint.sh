@@ -224,12 +224,12 @@ docker_setup_env() {
 	file_env 'POSTGRES_PASSWORD'
 
 	file_env 'POSTGRES_USER' 'postgres'
-    # Foundation: edit begin
+	# Foundation: edit begin
 	# pin POSTGRES_DB to postgres so that initdb is enough and we can skip starting a temp postgres
 	#
 	# file_env 'POSTGRES_DB' "$POSTGRES_USER"
 	export POSTGRES_DB=postgres
-    # Foundation: edit end
+	# Foundation: edit end
 	file_env 'POSTGRES_INITDB_ARGS'
 	: "${POSTGRES_HOST_AUTH_METHOD:=}"
 
@@ -303,8 +303,8 @@ _pg_want_help() {
 }
 
 _main() {
-    # Foundation: edit begin
-    # if is required because script may restart below
+	# Foundation: edit begin
+	# if is required because script may restart below
 	if [ -z "$@" ]; then
 		# manually fix command
 		set -- postgres "$@"
@@ -315,7 +315,7 @@ _main() {
 		export PATH=$PATH:/usr/lib/postgresql/$PG_MAJOR/bin
 		export PG_VERSION=4.2-1.pgdg110+1
 	fi
-    # Foundation: edit end
+	# Foundation: edit end
 
 	# if first arg looks like a flag, assume we want to run postgres server
 	if [ "${1:0:1}" = '-' ]; then
@@ -341,11 +341,11 @@ _main() {
 			docker_init_database_dir
 			pg_setup_hba_conf "$@"
 
-            # Foundation: edit begin
-            # Skip temp server as we perform database initialization through init containers.
-            # This speeds up postgres startup time.
-            #
-		    # # PGPASSWORD is required for psql when authentication is required for 'local' connections via pg_hba.conf and is otherwise harmless
+			# Foundation: edit begin
+			# Skip temp server as we perform database initialization through init containers.
+			# This speeds up postgres startup time.
+			#
+			# # PGPASSWORD is required for psql when authentication is required for 'local' connections via pg_hba.conf and is otherwise harmless
 			# # e.g. when '--auth=md5' or '--auth-local=md5' is used in POSTGRES_INITDB_ARGS
 			# export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
 			# docker_temp_server_start "$@"
@@ -355,7 +355,7 @@ _main() {
 			#
 			# docker_temp_server_stop
 			# unset PGPASSWORD
-            # Foundation: edit end
+			# Foundation: edit end
 
 			echo
 			echo 'PostgreSQL init process complete; ready for start up.'
