@@ -66,8 +66,15 @@ func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtim
 			return err
 		}
 
-		if cmd := binary.Command(pkg); cmd != "" {
-			run.Command = []string{cmd}
+		if err := binary.ValidateIsBinary(pkg); err != nil {
+			return err
+		}
+
+		config := pkg.Binary.Config
+		if config != nil {
+			run.Command = config.Command
+			run.Args = config.Args
+			run.Env = config.Env
 		}
 	}
 

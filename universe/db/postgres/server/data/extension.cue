@@ -10,7 +10,7 @@ extension: fn.#Extension & {
 	}
 }
 
-extend: fn.#Extend & {
+configure: fn.#Configure & {
 	startup: {
 		env: {
 			"PGDATA": "/postgres/data"

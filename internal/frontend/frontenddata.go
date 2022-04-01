@@ -60,13 +60,13 @@ type InvocationSnapshot struct {
 }
 
 type Init struct {
-	Binary string            `json:"binary"`
-	Args   map[string]string `json:"args"`
+	Binary string   `json:"binary"`
+	Args   []string `json:"args"`
 }
 
 type Invocation struct {
 	Binary       string                        `json:"binary"`
-	Args         map[string]string             `json:"args"`
+	Args         []string                      `json:"args"`
 	Mounts       map[string]InvocationMount    `json:"mount"`
 	WorkingDir   string                        `json:"workingDir"`
 	Snapshots    map[string]InvocationSnapshot `json:"snapshot"`
@@ -75,6 +75,6 @@ type Invocation struct {
 }
 
 type StartupPlan struct {
-	Args map[string]string `json:"args"`
+	Args []string          `json:"args"`
 	Env  map[string]string `json:"env"`
 }

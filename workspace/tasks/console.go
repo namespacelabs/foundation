@@ -125,14 +125,15 @@ type ConsoleSink struct {
 	ch       chan consoleEvent
 	ticker   <-chan time.Time
 
-	rendering   bool
-	buffer      []consoleOutput  // Pending regular log output lines.
-	running     []*lineItem      // Computed EventData for waiting/running actions.
-	root        *node            // Root of the tree of displayable events.
-	nodes       map[string]*node // Map of actionID->tree node.
-	previous    uint             // How many lines we displayed previously.
-	started     time.Time        // When did we start counting.
-	waitForIdle []func() bool
+	rendering       bool
+	idling          bool
+	buffer          []consoleOutput  // Pending regular log output lines.
+	running         []*lineItem      // Computed EventData for waiting/running actions.
+	root            *node            // Root of the tree of displayable events.
+	nodes           map[string]*node // Map of actionID->tree node.
+	previous        uint             // How many lines we displayed previously.
+	startedCounting time.Time        // When did we start counting.
+	waitForIdle     []func() bool
 
 	maxLevel int // Only display actions at this level or below (all actions are still computed).
 
@@ -170,6 +171,7 @@ func NewConsoleSink(out *os.File, maxLevel int) *ConsoleSink {
 		out:       out,
 		outbuf:    bytes.NewBuffer(make([]byte, 4*1024)), // Start with 4k, enough to hold 20 lines of 100 bytes. bytes.Buffer will grow as needed.
 		rendering: true,
+		idling:    true,
 		maxLevel:  maxLevel,
 	}
 }
@@ -315,9 +317,6 @@ func (c *ConsoleSink) addOrGet(actionID string, addIfMissing bool) *lineItem {
 		}
 
 		index = len(c.running)
-		if index == 0 {
-			c.started = time.Now()
-		}
 		c.running = append(c.running, &lineItem{})
 	}
 
@@ -387,8 +386,12 @@ func (c *ConsoleSink) recomputeTree() {
 	root := &node{}
 	anchors := map[string]bool{}
 
+	var runningCount int
 	for _, item := range c.running {
 		nodes[item.data.actionID] = &node{item: item}
+		if !item.data.indefinite {
+			runningCount++
+		}
 	}
 
 	for _, item := range c.running {
@@ -419,6 +422,15 @@ func (c *ConsoleSink) recomputeTree() {
 	c.root = root
 	c.nodes = nodes
 	sortNodes(nodes, root)
+
+	if runningCount > 0 {
+		if c.idling {
+			c.idling = false
+			c.startedCounting = time.Now()
+		}
+	} else {
+		c.idling = true
+	}
 }
 
 func without(strs []string, str string) []string {
@@ -749,7 +761,7 @@ func (c *ConsoleSink) drawFrame(out io.Writer, t time.Time, width, height uint, 
 		return
 	}
 
-	report := fmt.Sprintf("[+] %s", timefmt.Seconds(t.Sub(c.started)))
+	report := fmt.Sprintf("[+] %s", timefmt.Seconds(t.Sub(c.startedCounting)))
 	report += fmt.Sprintf(" %s %s running", num(aec.GreenF, running), plural(running, "action", "actions"))
 	if waiting > 0 {
 		report += fmt.Sprintf(", %s waiting", num(aec.CyanF, waiting))

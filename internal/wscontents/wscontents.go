@@ -404,6 +404,11 @@ func handleEvents(ctx context.Context, logger io.Writer, absPath string, fsys fn
 
 	var actions []*FileEvent
 	for _, p := range dirtyPaths.Strings() {
+		// Ignore changes to .swp files (i.e. Vim swap files).
+		if filepath.Ext(p) == ".swp" && filepath.Base(p)[0] == '.' {
+			continue
+		}
+
 		rel, err := filepath.Rel(absPath, p)
 		if err != nil {
 			return nil, false, fnerrors.InternalError("rel failed: %v", err)

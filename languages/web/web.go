@@ -345,7 +345,7 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 		// XXX support a persistent cache: https://vitejs.dev/guide/dep-pre-bundling.html#file-system-cache
 
 		run.Command = []string{"/devcontroller"}
-		run.Args = append(run.Args, "--configuration="+string(serialized))
+		run.Args = append(run.Args, fmt.Sprintf("--configuration=%s", serialized))
 		return nil
 	}
 

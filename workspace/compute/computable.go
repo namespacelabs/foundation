@@ -6,6 +6,7 @@ package compute
 
 import (
 	"context"
+	"reflect"
 
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -107,6 +108,16 @@ func (opts computeInstance) CacheInfo() (*cacheable, bool) {
 	cacheable := cacheableFor(opts.OutputType)
 	shouldCache := CachingEnabled && opts.CanCache() && cacheable != nil
 	return cacheable, shouldCache
+}
+
+func (opts computeInstance) NewInstance() interface{} {
+	// OutputType is a *V
+	typ := reflect.TypeOf(opts.OutputType).Elem()
+	if typ.Kind() == reflect.Ptr {
+		// If it's a pointer, e.g. a proto pointer, then instantiate the value instead.
+		return reflect.New(typ.Elem()).Interface()
+	}
+	return reflect.New(typ).Elem().Interface()
 }
 
 func produceValue[V any]() func(context.Context, rawComputable, Resolved) (any, error) {

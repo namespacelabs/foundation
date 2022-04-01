@@ -21,11 +21,6 @@ message LocalMapping {
     string container_path = 3;
 }
 
-message Arg {
-    string name  = 1;
-    string value = 2;
-}
-
 message Port {
     string name           = 1;
     int32  container_port = 2;

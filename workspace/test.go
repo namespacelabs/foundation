@@ -9,29 +9,34 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func TransformTest(loc Location, test *schema.Test) (*schema.Test, error) {
+func TransformTest(loc Location, test *schema.Test) error {
 	if test.PackageName != "" {
-		return nil, fnerrors.UserError(loc, "package_name can not be set")
+		return fnerrors.UserError(loc, "package_name can not be set")
 	}
 
 	if test.Name == "" {
-		return nil, fnerrors.UserError(loc, "test name can't be empty")
+		return fnerrors.UserError(loc, "test name must be set")
 	}
 
-	if test.Binary.PackageName != "" {
-		return nil, fnerrors.UserError(loc, "package_name can not be set")
+	if test.Binary == nil {
+		return fnerrors.UserError(loc, "binary must be set")
 	}
 
-	if len(test.ServersUnderTest) == 0 {
-		return nil, fnerrors.UserError(loc, "need at least one server under test")
-	}
-
-	if test.Binary.Name == "" {
+	if test.Binary.Name != "" && test.Binary.Name != test.Name {
+		return fnerrors.UserError(loc, "binary.name must be unset or be the same as the test name")
+	} else {
 		test.Binary.Name = test.Name
 	}
 
-	test.PackageName = loc.PackageName.String()
-	test.Binary.PackageName = loc.PackageName.String()
+	if err := TransformBinary(loc, test.Binary); err != nil {
+		return err
+	}
 
-	return test, nil
+	if len(test.ServersUnderTest) == 0 {
+		return fnerrors.UserError(loc, "need at least one server under test")
+	}
+
+	test.PackageName = loc.PackageName.String()
+
+	return nil
 }

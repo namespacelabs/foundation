@@ -6,6 +6,8 @@ package cuefrontend
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
@@ -26,14 +28,25 @@ type cueStack struct {
 	Append []cueWithPackageName `json:"append"`
 }
 
-type cueProvisioningConf struct {
-	With *frontend.Invocation `json:"with"`
+type cueInvocation struct {
+	Binary       string                                 `json:"binary"`
+	Args         *argsListOrMap                         `json:"args"`
+	Mounts       map[string]frontend.InvocationMount    `json:"mount"`
+	WorkingDir   string                                 `json:"workingDir"`
+	Snapshots    map[string]frontend.InvocationSnapshot `json:"snapshot"`
+	NoCache      bool                                   `json:"noCache"`
+	RequiresKeys bool                                   `json:"requiresKeys"`
 }
 
 type cueNaming struct {
 	DomainName           string `json:"domainName"`
 	TLSManagedDomainName string `json:"tlsManagedDomainName"`
 	WithOrg              string `json:"withOrg"`
+}
+
+type cueInit struct {
+	Binary string         `json:"binary"`
+	Args   *argsListOrMap `json:"args"`
 }
 
 func (p1 phase1plan) EvalProvision(ctx context.Context, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
@@ -58,25 +71,34 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, inputs frontend.Provisio
 	}
 
 	if with := vv.LookupPath("configure.with"); with.Exists() {
-		dec := &frontend.Invocation{}
-		if err := with.Val.Decode(dec); err != nil {
+		var dec cueInvocation
+		if err := with.Val.Decode(&dec); err != nil {
 			return pdata, err
 		}
-		pdata.Provisioning = dec
-	} else if provisioning := vv.LookupPath("extend.provisioning"); provisioning.Exists() {
-		var dec cueProvisioningConf
-		if err := provisioning.Val.Decode(&dec); err != nil {
-			return pdata, err
+
+		pdata.Provisioning = &frontend.Invocation{
+			Binary:       dec.Binary,
+			Args:         dec.Args.Parsed(),
+			Mounts:       dec.Mounts,
+			WorkingDir:   dec.WorkingDir,
+			Snapshots:    dec.Snapshots,
+			NoCache:      dec.NoCache,
+			RequiresKeys: dec.RequiresKeys,
 		}
-		if dec.With == nil {
-			return pdata, fnerrors.UserError(nil, "provisioning.with can't be empty")
-		}
-		pdata.Provisioning = dec.With
 	}
 
 	if init := lookupTransition(vv, "init"); init.Exists() {
-		if err := init.Val.Decode(&pdata.Inits); err != nil {
+		var initData []cueInit
+
+		if err := init.Val.Decode(&initData); err != nil {
 			return pdata, err
+		}
+
+		for _, data := range initData {
+			pdata.Inits = append(pdata.Inits, frontend.Init{
+				Binary: data.Binary,
+				Args:   data.Args.Parsed(),
+			})
 		}
 	}
 
@@ -96,6 +118,41 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, inputs frontend.Provisio
 	}
 
 	return pdata, nil
+}
+
+type argsListOrMap struct {
+	args []string
+}
+
+var _ json.Unmarshaler = &argsListOrMap{}
+
+func (args *argsListOrMap) Parsed() []string {
+	if args == nil {
+		return nil
+	}
+	return args.args
+}
+
+func (args *argsListOrMap) UnmarshalJSON(contents []byte) error {
+	var list []string
+	if json.Unmarshal(contents, &list) == nil {
+		args.args = list
+		return nil
+	}
+
+	var m map[string]string
+	if json.Unmarshal(contents, &m) == nil {
+		for k, v := range m {
+			if v != "" {
+				args.args = append(args.args, fmt.Sprintf("--%s=%s", k, v))
+			} else {
+				args.args = append(args.args, fmt.Sprintf("--%s", k))
+			}
+		}
+		return nil
+	}
+
+	return fnerrors.InternalError("args: expected a list of strings, or a map of string to string")
 }
 
 func lookupTransition(vv *fncue.CueV, name string) *fncue.CueV {

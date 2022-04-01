@@ -10,7 +10,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"reflect"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -28,7 +27,7 @@ func (bc bytesCacheable) ComputeDigest(_ context.Context, v interface{}) (schema
 	return cache.DigestBytes(v.([]byte))
 }
 
-func (bc bytesCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, d schema.Digest) (Result[[]byte], error) {
+func (bc bytesCacheable) LoadCached(ctx context.Context, c cache.Cache, t CacheableInstance, d schema.Digest) (Result[[]byte], error) {
 	bytes, err := c.Bytes(ctx, d)
 	if err != nil {
 		return Result[[]byte]{}, err
@@ -54,7 +53,7 @@ func (bc byteStreamCacheable) ComputeDigest(_ context.Context, v interface{}) (s
 	return v.(ByteStream).Digest(), nil
 }
 
-func (bc byteStreamCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, d schema.Digest) (Result[ByteStream], error) {
+func (bc byteStreamCacheable) LoadCached(ctx context.Context, c cache.Cache, t CacheableInstance, d schema.Digest) (Result[ByteStream], error) {
 	f, err := c.Blob(d)
 	if err != nil {
 		return Result[ByteStream]{}, err

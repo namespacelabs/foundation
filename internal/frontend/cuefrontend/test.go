@@ -34,9 +34,15 @@ func parseCueTest(ctx context.Context, loc workspace.Location, parent, v *fncue.
 		return nil, err
 	}
 
-	return workspace.TransformTest(loc, &schema.Test{
+	testDef := &schema.Test{
 		Name:             test.Name,
 		Binary:           test.Binary,
 		ServersUnderTest: test.Fixture.ServersUnderTest,
-	})
+	}
+
+	if err := workspace.TransformTest(loc, testDef); err != nil {
+		return nil, err
+	}
+
+	return testDef, nil
 }

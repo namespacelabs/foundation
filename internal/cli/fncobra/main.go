@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"runtime/debug"
 	"runtime/pprof"
 	"strings"
 	"time"
@@ -34,6 +33,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/git"
+	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/languages/golang"
@@ -74,8 +74,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	logger, sink, flushLogs := consoleToSink(out, colors)
 
-	tagNameChannel := make(chan string)
-	go checkForUpdates(logger, tagNameChannel)
+	var detectedVersion chan string
+	if !localexec.IsRunningInCI() {
+		detectedVersion = make(chan string)
+		go checkForUpdates(logger, detectedVersion)
+	}
 
 	ctxWithSink := tasks.WithSink(logger.WithContext(ctx), sink)
 
@@ -200,20 +203,20 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		tasks.ActionStorer.Flush(os.Stderr)
 	}
 
-	// Printing the new version message if any.
-	select {
-	case tagName, ok := <-tagNameChannel:
-		if ok {
-			msg := fmt.Sprintf(
-				"New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s",
-				tagName, tagName)
-			if colors {
-				fmt.Fprintln(console.Stdout(ctx), clrs.Green(msg))
-			} else {
-				fmt.Fprintln(console.Stdout(ctx), msg)
+	if detectedVersion != nil {
+		// Printing the new version message if any.
+		select {
+		case version, ok := <-detectedVersion:
+			if ok {
+				msg := fmt.Sprintf("New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s", version, version)
+				if colors {
+					fmt.Fprintln(console.Stdout(ctx), clrs.Green(msg))
+				} else {
+					fmt.Fprintln(console.Stdout(ctx), msg)
+				}
 			}
+		default:
 		}
-	default:
 	}
 
 	if err != nil {
@@ -360,26 +363,27 @@ func cpuprofile(cpuprofile string) func() {
 func checkForUpdates(logger *zerolog.Logger, tagNameChannel chan string) {
 	defer close(tagNameChannel)
 
-	tagName, latestReleaseBuildTime, err := getLatestReleaseVersion()
+	version, err := Version()
 	if err != nil {
-		logger.Debug().AnErr("latest_release_version", err).Msg("version check failed")
+		logger.Debug().Err(err).Msg("failed to obtain version information")
 		return
 	}
-	logger.Debug().Str("latest_release_version", latestReleaseBuildTime.String()).Msg("version check")
 
-	binaryBuildTime, err := getBinaryBuildTime()
+	if version.BuildTime == nil || version.Modified {
+		return // Nothing to check.
+	}
+
+	logger.Debug().Stringer("binary_build_time", version.BuildTime).Msg("version check")
+
+	tagName, latestReleaseBuildTime, err := fetchLatestReleaseVersion()
 	if err != nil {
-		logger.Debug().AnErr("binary_build_time", err).Msg("version check failed")
-		return
-	}
-	if binaryBuildTime == nil {
-		logger.Debug().Str("modified_build", "true").Msg("version check")
-		return
-	}
-	logger.Debug().Str("binary_build_time", binaryBuildTime.String()).Msg("version check")
+		logger.Debug().Err(err).Msg("version check failed")
+	} else {
+		logger.Debug().Stringer("latest_release_version", latestReleaseBuildTime).Msg("version check")
 
-	if latestReleaseBuildTime.After(*binaryBuildTime) {
-		tagNameChannel <- *tagName
+		if latestReleaseBuildTime.After(*version.BuildTime) {
+			tagNameChannel <- *tagName
+		}
 	}
 }
 
@@ -388,8 +392,8 @@ type version struct {
 	CreatedAt string `json:"created_at"`
 }
 
-func getLatestReleaseVersion() (tagName *string, createdAt *time.Time, err error) {
-	response, err := http.Get("https://namespacelabs.github.io/foundation-version/version.json")
+func fetchLatestReleaseVersion() (*string, *time.Time, error) {
+	response, err := http.Get("https://foundation-version.namespacelabs.workers.dev")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -406,30 +410,4 @@ func getLatestReleaseVersion() (tagName *string, createdAt *time.Time, err error
 	}
 	latestBuildTime, err := time.Parse(time.RFC3339, latestVersion.CreatedAt)
 	return &latestVersion.TagName, &latestBuildTime, err
-}
-
-// Returns nil if this "fn" was built manually.
-func getBinaryBuildTime() (*time.Time, error) {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return nil, fnerrors.InternalError("buildinfo is missing")
-	}
-
-	for _, n := range info.Settings {
-		if n.Key == "vcs.modified" && n.Value == "true" {
-			// Ignore manual builds
-			return nil, nil
-		}
-	}
-	for _, n := range info.Settings {
-		if n.Key == "vcs.time" {
-			buildTime, err := time.Parse(time.RFC3339, n.Value)
-			if err != nil {
-				return nil, err
-			}
-			return &buildTime, nil
-		}
-	}
-
-	return nil, fnerrors.InternalError("Couldn't find 'vcs.time' in buildinfo")
 }

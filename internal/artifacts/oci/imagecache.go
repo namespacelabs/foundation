@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"reflect"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
@@ -153,7 +152,7 @@ func (layerCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.
 	return h, err
 }
 
-func (layerCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h schema.Digest) (compute.Result[v1.Layer], error) {
+func (layerCacheable) LoadCached(ctx context.Context, c cache.Cache, t compute.CacheableInstance, h schema.Digest) (compute.Result[v1.Layer], error) {
 	l, d, err := LoadCachedLayer(ctx, c, h)
 	if err != nil {
 		return compute.Result[v1.Layer]{}, err
@@ -265,7 +264,7 @@ func (imageCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.
 	return schema.Digest(d), err
 }
 
-func (imageCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h schema.Digest) (compute.Result[v1.Image], error) {
+func (imageCacheable) LoadCached(ctx context.Context, c cache.Cache, t compute.CacheableInstance, h schema.Digest) (compute.Result[v1.Image], error) {
 	img, err := loadFromCache(ctx, c, v1.Hash(h))
 	if err != nil {
 		return compute.Result[v1.Image]{}, err
@@ -354,7 +353,7 @@ func (resolvableCacheable) ComputeDigest(ctx context.Context, v interface{}) (sc
 	return v.(ResolvableImage).Digest()
 }
 
-func (resolvableCacheable) LoadCached(ctx context.Context, c cache.Cache, t reflect.Type, h schema.Digest) (compute.Result[ResolvableImage], error) {
+func (resolvableCacheable) LoadCached(ctx context.Context, c cache.Cache, t compute.CacheableInstance, h schema.Digest) (compute.Result[ResolvableImage], error) {
 	r, err := loadCachedResolvable(ctx, c, v1.Hash(h))
 	if err != nil {
 		return compute.Result[ResolvableImage]{}, err

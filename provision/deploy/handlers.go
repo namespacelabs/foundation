@@ -64,7 +64,7 @@ func parseHandlers(ctx context.Context, server provision.Server, pr *stack.Parse
 	var handlers []*tool.Definition
 	if dec := pr.ProvisionPlan.Provisioning; dec != nil {
 		if dec.Binary == "" {
-			return nil, fnerrors.UserError(pkg.Location, "extend.provisioning.with.binary is required to point to a binary package")
+			return nil, fnerrors.UserError(pkg.Location, "configure.with.binary is required to point to a binary package")
 		}
 
 		bin, err := server.Env().LoadByName(ctx, schema.PackageName(dec.Binary))
@@ -111,9 +111,7 @@ func makeInvocation(ctx context.Context, env ops.Environment, serverLoc workspac
 		})
 	}
 
-	for k, v := range with.Args {
-		invocation.Args = append(invocation.Args, &rtypes.Arg{Name: k, Value: v})
-	}
+	invocation.Args = with.Args
 
 	for k, v := range with.Snapshots {
 		if v.FromWorkspace == "" {
@@ -156,9 +154,7 @@ func makeInvocation(ctx context.Context, env ops.Environment, serverLoc workspac
 		return strings.Compare(i_l, i_j) < 0
 	})
 
-	sort.Slice(invocation.Args, func(i, j int) bool {
-		return strings.Compare(invocation.Args[i].Name, invocation.Args[j].Name) < 0
-	})
+	sort.Strings(invocation.Args)
 
 	sort.Slice(invocation.Snapshots, func(i, j int) bool {
 		return strings.Compare(invocation.Snapshots[i].Name, invocation.Snapshots[j].Name) < 0

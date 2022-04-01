@@ -22,6 +22,8 @@ import (
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/wscontents"
+	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -38,7 +40,7 @@ func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.W
 		return nil, err
 	}
 
-	baseImage, err := production.ServerImage(production.Distroless, target)
+	baseImage, err := baseImage(ctx, env, target)
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +57,28 @@ func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.W
 	}
 
 	return compute.Named(tasks.Action("go.make-binary-image").Arg("binary", bin), oci.MakeImage(baseImage, layers...)), nil
+}
+
+func baseImage(ctx context.Context, env ops.Environment, target specs.Platform) (compute.Computable[oci.Image], error) {
+	// We use a different base for development because most Kubernetes installations don't
+	// yet support ephemeral containers, which would allow us to side-load into the same
+	// namespace as the running server, for debugging. So we instead add a base with some
+	// utilities so we can exec into the server. There's a tension here on reproducibility,
+	// as the server could inadvertidely depend on these utilities. But we only do this for
+	// DEVELOPMENT, not for TESTING.
+	if env.Proto().Purpose == schema.Environment_DEVELOPMENT {
+		return production.DevelopmentImage(ctx, production.Alpine, env, target)
+	}
+
+	return production.ServerImage(production.Distroless, target)
+}
+
+func runAs(env ops.Environment) *runtime.RunAs {
+	if env.Proto().Purpose == schema.Environment_DEVELOPMENT {
+		return production.NonRootRunAs(production.Alpine)
+	}
+
+	return production.NonRootRunAs(production.Distroless)
 }
 
 func platformToEnv(platform specs.Platform, cgo int) []string {
