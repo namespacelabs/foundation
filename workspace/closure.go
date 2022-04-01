@@ -109,6 +109,9 @@ func (g *sealer) DoServer(loc Location, srv *schema.Server, pp *Package) error {
 func (g *sealer) DoNode(loc Location, n *schema.Node, parsed *Package) error {
 	g.Do(n.GetImportedPackages()...)
 
+	// Make sure that any static dependencies are always loaded.
+	g.Do(StaticDeps...)
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
