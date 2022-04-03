@@ -19,6 +19,7 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/morikuni/aec"
+	"github.com/muesli/reflow/truncate"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
@@ -42,6 +43,8 @@ const (
 	CatOutputErrors   CatOutputType = "fn.output.errors"
 
 	includeToolIDs = false
+
+	FPS = 60
 )
 
 var (
@@ -117,9 +120,9 @@ type atom struct {
 }
 
 type ConsoleSink struct {
-	out       *os.File
-	outbuf    *bytes.Buffer // A buffer is utilized when preparing output, to avoiding having multiple individual writes hit the console.
-	lastFrame []byte        // We keep a copy of the last rendered frame to avoid redrawing if the output doesn't change.
+	out           *os.File
+	outbuf        *bytes.Buffer // A buffer is utilized when preparing output, to avoiding having multiple individual writes hit the console.
+	previousLines [][]byte      // We keep a copy of the last rendered lines to avoid redrawing if the output doesn't change.
 
 	waitDone chan struct{}
 	ch       chan consoleEvent
@@ -131,7 +134,6 @@ type ConsoleSink struct {
 	running         []*lineItem      // Computed EventData for waiting/running actions.
 	root            *node            // Root of the tree of displayable events.
 	nodes           map[string]*node // Map of actionID->tree node.
-	previous        uint             // How many lines we displayed previously.
 	startedCounting time.Time        // When did we start counting.
 	waitForIdle     []func() bool
 
@@ -186,7 +188,7 @@ func (c *ConsoleSink) Start() func() {
 	ch := make(chan consoleEvent)
 	c.ch = ch
 
-	interval := 100 * time.Millisecond
+	interval := (1000 / FPS) * time.Millisecond
 	if DebugConsoleOutput {
 		interval = 300 * time.Millisecond
 	}
@@ -582,32 +584,67 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 		height = uint(w.Height)
 	}
 
+	// Hide the cursor while re-rendering.
+	fmt.Fprint(c.out, aec.Hide)
+	defer fmt.Fprint(c.out, aec.Show)
+
+	previousLines := c.previousLines
+
+	if !DebugConsoleOutput {
+		if x := uint(len(previousLines)); x > 0 {
+			fmt.Fprint(c.out, aec.Up(x))
+		}
+	}
+
+	rawOut := checkDirtyWriter{out: c.out}
+	c.drawFrame(&rawOut, c.outbuf, t, width, height, flush)
+
+	newFrame := make([]byte, len(c.outbuf.Bytes()))
+	copy(newFrame, c.outbuf.Bytes())
 	c.outbuf.Reset()
 
-	// Hide the cursor while re-rendering.
-	fmt.Fprint(c.outbuf, aec.Hide)
-	c.drawFrame(c.outbuf, t, width, height, flush)
-	fmt.Fprint(c.outbuf, aec.Show)
+	newLines := bytes.Split(bytes.TrimSpace(newFrame), []byte("\n"))
+	c.previousLines = newLines
 
-	newFrame := c.outbuf.Bytes()
+	if !rawOut.dirty {
+		for k, line := range newLines {
+			if k < len(previousLines) && bytes.Equal(line, previousLines[k]) {
+				fmt.Fprint(c.out, aec.Down(1))
+				continue
+			}
 
-	if bytes.Equal(newFrame, c.lastFrame) {
-		return
+			// We could look for a common prefix here, and do a narrower clear. But
+			// ANSI codes make this a bit complicated, as we can't easily cut a line
+			// in the middle of an ansi sequence. So for now, we repaint the whole
+			// line as needed.
+
+			fmt.Fprint(c.out, aec.EraseLine(aec.EraseModes.Tail).String())
+			c.out.Write(line)
+			fmt.Fprint(c.out, "\n\r")
+		}
+		fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
 	}
 
-	c.lastFrame = make([]byte, len(newFrame))
-	copy(c.lastFrame, newFrame)
-
-	c.out.Write(c.lastFrame)
+	fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
+	if rawOut.dirty {
+		c.out.Write(newFrame)
+	}
 }
 
-func (c *ConsoleSink) drawFrame(out io.Writer, t time.Time, width, height uint, flush bool) {
-	// Clear up everything we've previously written.
-	if !DebugConsoleOutput {
-		fmt.Fprint(out, aec.Up(c.previous))
-		fmt.Fprint(out, aec.EraseDisplay(aec.EraseModes.Tail))
-	}
+type checkDirtyWriter struct {
+	out   io.Writer
+	dirty bool
+}
 
+func (c *checkDirtyWriter) Write(p []byte) (int, error) {
+	n, err := c.out.Write(p)
+	if n > 0 {
+		c.dirty = true
+	}
+	return n, err
+}
+
+func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height uint, flush bool) {
 	var running, anchored, waiting, completed, completedAnchors int
 	var printableCompleted []*lineItem
 	for _, r := range c.running {
@@ -641,19 +678,20 @@ func (c *ConsoleSink) drawFrame(out io.Writer, t time.Time, width, height uint, 
 		})
 
 		for _, r := range printableCompleted {
-			renderLine(out, r)
+			fmt.Fprint(raw, aec.EraseLine(aec.EraseModes.Tail))
+			renderLine(raw, r)
 			if !r.data.started.IsZero() && !r.cached {
 				if !r.data.started.Equal(r.data.created) {
 					d := r.data.started.Sub(r.data.created)
 					if d >= 1*time.Microsecond {
-						fmt.Fprint(out, " ", aec.LightBlackF.Apply("waited="), timefmt.Format(d))
+						fmt.Fprint(raw, " ", aec.LightBlackF.Apply("waited="), timefmt.Format(d))
 					}
 				}
 
 				d := r.data.completed.Sub(r.data.started)
-				fmt.Fprint(out, " ", aec.LightBlackF.Apply("took="), timefmt.Format(d))
+				fmt.Fprint(raw, " ", aec.LightBlackF.Apply("took="), timefmt.Format(d))
 			}
-			fmt.Fprintln(out)
+			fmt.Fprintln(raw)
 		}
 	}
 
@@ -672,12 +710,12 @@ func (c *ConsoleSink) drawFrame(out io.Writer, t time.Time, width, height uint, 
 				}
 			}
 			for _, line := range block.lines {
-				fmt.Fprintf(out, "%s %s\n", hdrBuf.Bytes(), line)
+				fmt.Fprintf(raw, "%s%s %s\n", aec.EraseLine(aec.EraseModes.Tail), hdrBuf.Bytes(), line)
 			}
 			hdrBuf.Reset()
 		} else {
 			for _, line := range block.lines {
-				fmt.Fprintf(out, "%s\n", line)
+				fmt.Fprintf(raw, "%s%s\n", aec.EraseLine(aec.EraseModes.Tail), line)
 			}
 		}
 	}
@@ -704,7 +742,6 @@ func (c *ConsoleSink) drawFrame(out io.Writer, t time.Time, width, height uint, 
 		}
 
 		c.debugOut.Encode(debugData{
-			Previous:    c.previous,
 			Width:       width,
 			Height:      height,
 			Flush:       flush,
@@ -725,8 +762,6 @@ func (c *ConsoleSink) drawFrame(out io.Writer, t time.Time, width, height uint, 
 		c.running = newRunning
 		c.recomputeTree()
 	}
-
-	c.previous = 0
 
 	if len(c.stickyContent) > 0 {
 		hdr := fmt.Sprintf("%s ", stickyBar)
@@ -761,23 +796,40 @@ func (c *ConsoleSink) drawFrame(out io.Writer, t time.Time, width, height uint, 
 		return
 	}
 
-	report := fmt.Sprintf("[+] %s", timefmt.Seconds(t.Sub(c.startedCounting)))
+	report := ""
+	if LogActions {
+		report += "\n"
+	}
+
+	report = fmt.Sprintf("[+] %s", timefmt.Seconds(t.Sub(c.startedCounting)))
 	report += fmt.Sprintf(" %s %s running", num(aec.GreenF, running), plural(running, "action", "actions"))
 	if waiting > 0 {
 		report += fmt.Sprintf(", %s waiting", num(aec.CyanF, waiting))
 	}
 	c.writeLineWithMaxW(out, width, report+".", "")
 
-	maxDisplay := uint(4)
-	if height > maxDisplay*2 {
-		maxDisplay = height / 2
+	// The idea here is that we traverse the tree to figure out how many drawn lines would
+	// have been emitted. And if we see too many, we try to reduce the tree depth, until
+	// the number of lines is acceptable.
+	maxDepth, lineCount := c.maxRenderDepth(c.root, 0, 16)
+
+	maxHeight := uint(20) // If no height is known.
+
+	reportLineCount := uint(len(strings.Split(report, "\n")))
+	if height > reportLineCount {
+		maxHeight = height - reportLineCount
+	}
+
+	for lineCount > maxHeight {
+		maxDepth--
+		if maxDepth < 2 { // Never go below depth 2, as we'd lose too much information.
+			break
+		}
+		_, lineCount = c.maxRenderDepth(c.root, 0, maxDepth)
 	}
 
 	// Recurse through the line item tree.
-	if !c.renderLineRec(out, width, c.root, t, " ", maxDisplay) {
-		// Didn't have enough space for everything.
-		c.writeLineWithMaxW(out, width, "", "(...)")
-	}
+	c.renderLineRec(out, width, c.root, t, " => ", 0, maxDepth)
 }
 
 func plural(count int, singular, plural string) string {
@@ -791,8 +843,45 @@ func num(c aec.ANSI, d int) string {
 	return c.Apply(fmt.Sprintf("%d", d))
 }
 
-func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.Time, inputPrefix string, maxDisplay uint) bool {
-	prefix := inputPrefix + "=> "
+func (c *ConsoleSink) maxRenderDepth(n *node, currDepth, maxDepth uint) (uint, uint) {
+	if currDepth >= maxDepth {
+		return 0, 0
+	}
+
+	depth := uint(0)
+	drawn := uint(0)
+	for _, id := range n.children {
+		child := follow(c.nodes[id])
+		if child.hidden {
+			// If hidden, don't even go through it's children.
+			continue
+		}
+
+		subDepth, subDrawn := c.maxRenderDepth(child, currDepth+1, maxDepth)
+		drawn += subDrawn
+		if !skipRendering(child.item.data, c.maxLevel) {
+			drawn++
+		}
+
+		subDepth++
+		if subDepth > depth {
+			depth = subDepth
+		}
+	}
+	return depth, drawn
+}
+
+func skipRendering(data EventData, maxLevel int) bool {
+	skip := data.level > maxLevel
+	skip = skip || data.indefinite
+	skip = skip || (!DisplayWaitingActions && data.state == actionWaiting)
+	return skip
+}
+
+func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.Time, inputPrefix string, currDepth, maxDepth uint) {
+	if currDepth >= maxDepth {
+		return
+	}
 
 	var lineb bytes.Buffer
 	for _, id := range n.children {
@@ -805,61 +894,40 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 
 		data := child.item.data
 
-		skipRendering := data.level > c.maxLevel
-		skipRendering = skipRendering || data.indefinite
-		skipRendering = skipRendering || (!DisplayWaitingActions && data.state == actionWaiting)
+		prefix := inputPrefix
+		if !skipRendering(data, c.maxLevel) {
+			// Although this is not very efficient as we're thrashing strings, we need to make sure
+			// we don't print more than one line, as that would disrupt the line acount we keep track
+			// of to make for a smooth update in place.
+			// XXX precompute these lines as they don't change if the arguments don't change.
+			lineb.Reset()
 
-		if skipRendering {
-			// Recurse through the children of this line item, even if we don't render it.
-			if !c.renderLineRec(out, width, child, t, inputPrefix, maxDisplay) {
-				return false
+			if OutputActionID {
+				fmt.Fprint(&lineb, aec.LightBlackF.Apply(" ["+data.actionID[:8]+"]"))
 			}
-			continue
+
+			fmt.Fprint(&lineb, prefix)
+
+			renderLine(&lineb, child.item)
+
+			suffix := ""
+			if data.state == actionRunning {
+				d := t.Sub(data.started)
+				suffix = " (" + timefmt.Seconds(d) + ") "
+			} else if data.state == actionWaiting {
+				suffix = " (waiting) "
+			}
+
+			c.writeLineWithMaxW(out, width, lineb.String(), suffix)
+			prefix += "=> "
 		}
 
-		if c.previous >= maxDisplay {
-			// Wanted to print a new line but have no spare space.
-			return false
-		}
-
-		// Although this is not very efficient as we're thrashing strings, we need to make sure
-		// we don't print more than one line, as that would disrupt the line acount we keep track
-		// of to make for a smooth update in place (see use of c.previous above).
-		// XXX precompute these lines as they don't change if the arguments don't change.
-		lineb.Reset()
-
-		if OutputActionID {
-			fmt.Fprint(&lineb, aec.LightBlackF.Apply(" ["+data.actionID[:8]+"]"))
-		}
-
-		fmt.Fprint(&lineb, prefix)
-
-		renderLine(&lineb, child.item)
-
-		suffix := ""
-		if data.state == actionRunning {
-			d := t.Sub(data.started)
-			suffix = " (" + timefmt.Format(d) + ")"
-		} else if data.state == actionWaiting {
-			suffix = " (waiting)"
-		}
-
-		c.writeLineWithMaxW(out, width, lineb.String(), suffix)
-
-		if !c.renderLineRec(out, width, child, t, prefix, maxDisplay) {
-			return false
-		}
+		c.renderLineRec(out, width, child, t, prefix, currDepth+1, maxDepth)
 	}
-
-	return true
 }
 
-func (c *ConsoleSink) writeLineWithMaxW(w io.Writer, width uint, line string, ensure string) {
-	if width > 20 && (len(line)+len(ensure)) >= int(width-1) {
-		line = line[:int(width-1)-len(ensure)]
-	}
-	fmt.Fprintln(w, line+ensure)
-	c.previous++
+func (c *ConsoleSink) writeLineWithMaxW(w io.Writer, width uint, line string, suffix string) {
+	fmt.Fprintln(w, truncate.StringWithTail(line+suffix, width, " [...]"+suffix))
 }
 
 func (c *ConsoleSink) Waiting(ra *RunningAction) {
