@@ -8,12 +8,12 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 
 	"github.com/karrick/godirwalk"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/workspace"
@@ -36,7 +36,7 @@ func NewFmtCmd() *cobra.Command {
 
 			if !all {
 				return walkSchemas(ctx, root, func(loc fnfs.Location, name string) {
-					fncue.Format(os.Stderr, root, loc, name)
+					fncue.Format(console.Stdout(ctx), root, loc, name)
 				})
 			} else {
 				return godirwalk.Walk(root.Abs(), &godirwalk.Options{
@@ -50,7 +50,7 @@ func NewFmtCmd() *cobra.Command {
 							return err
 						}
 
-						fncue.Format(os.Stderr, root, root.RelPackage(rel), filepath.Base(path))
+						fncue.Format(console.Stdout(ctx), root, root.RelPackage(rel), filepath.Base(path))
 						return nil
 					},
 				})
@@ -72,7 +72,7 @@ func walkSchemas(ctx context.Context, root *workspace.Root, f func(fnfs.Location
 	for _, e := range list.Locations {
 		ents, err := ioutil.ReadDir(filepath.Join(root.Abs(), e.RelPath))
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "failed to readdir", err)
+			fmt.Fprintln(console.Stderr(ctx), "failed to readdir", err)
 			continue
 		}
 
