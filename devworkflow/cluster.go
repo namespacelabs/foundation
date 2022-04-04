@@ -106,7 +106,27 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 
 		instance := &portFwd{endpoint: endpoint, revision: pi.revision}
 
+		endpoint := endpoint // Close endpoint.
 		closer, err := pi.portFwd(ctx, endpoint, pi.revision, func(wasrevision int, localPort uint) {
+			// Emit stack update without locks.
+			if endpoint.GetPort().GetContainerPort() > 0 {
+				pi.obs.updateStack(func(stack *Stack) *Stack {
+					for _, fwd := range stack.ForwardedPort {
+						if fwd.Endpoint == endpoint {
+							fwd.LocalPort = int32(localPort)
+							return stack
+						}
+					}
+
+					stack.ForwardedPort = append(stack.ForwardedPort, &ForwardedPort{
+						Endpoint:      endpoint,
+						ContainerPort: endpoint.GetPort().GetContainerPort(),
+						LocalPort:     int32(localPort),
+					})
+					return stack
+				})
+			}
+
 			pi.mu.Lock()
 			defer pi.mu.Unlock()
 
@@ -133,8 +153,29 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 		}
 	}
 
-	for _, key := range unused {
-		delete(pi.endpointPortFwds, key)
+	if len(unused) > 0 {
+		pi.obs.updateStack(func(stack *Stack) *Stack {
+			var portFwds []*ForwardedPort
+			for _, fwd := range stack.ForwardedPort {
+				filtered := false
+				for _, key := range unused {
+					if fwd.Endpoint == pi.endpointPortFwds[key].endpoint {
+						filtered = true
+						break
+					}
+				}
+				if !filtered {
+					portFwds = append(portFwds, fwd)
+				}
+			}
+
+			stack.ForwardedPort = portFwds
+			return stack
+		})
+
+		for _, key := range unused {
+			delete(pi.endpointPortFwds, key)
+		}
 	}
 
 	if len(domains) > 0 && pi.env.Proto().Purpose == schema.Environment_DEVELOPMENT {
