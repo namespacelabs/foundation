@@ -4,24 +4,24 @@
 
 // XXX This file is generated.
 
-import yargs from "yargs/yargs";
 import { Server, ServerCredentials } from "@grpc/grpc-js";
+import yargs from "yargs/yargs";
+import { prepareDeps, wireServices } from "./deps";
 
 const argv = yargs(process.argv.slice(2))
-  .options({
-    listen_hostname: { type: "string" },
-    port: { type: "number" },
-  })
-  .parse();
+	.options({
+		listen_hostname: { type: "string" },
+		port: { type: "number" },
+	})
+	.parse();
 
 const server = new Server();
+wireServices(server, prepareDeps());
 
-console.log(`Starting to listen on ${argv.listen_hostname}:${argv.port}`);
+console.log(`Starting the server on ${argv.listen_hostname}:${argv.port}`);
 
-server.bindAsync(
-  `${argv.listen_hostname}:${argv.port}`,
-  ServerCredentials.createInsecure(),
-  () => {
-    server.start();
-  }
-);
+server.bindAsync(`${argv.listen_hostname}:${argv.port}`, ServerCredentials.createInsecure(), () => {
+	server.start();
+
+	console.log(`Server started.`);
+});
