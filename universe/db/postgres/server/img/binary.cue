@@ -1,5 +1,5 @@
 binary: {
-	name:       "fn-postgres-image"
+	name: "fn-postgres-image"
 	config: {
 		command: ["/fn-postgres-entrypoint.sh"]
 	}

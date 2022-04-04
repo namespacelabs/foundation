@@ -67,7 +67,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env ops.Envir
 	} else if testPkg.Test != nil {
 		testDef = testPkg.Test
 		testBinary = &workspace.Package{
-			Binary:   testPkg.Test.Binary,
+			Binary:   testPkg.Test.Driver,
 			Location: testPkg.Location,
 		}
 

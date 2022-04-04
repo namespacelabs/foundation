@@ -220,8 +220,8 @@ _#ConfigureBase: {
 }
 
 #Test: {
-	name:    string
-	binary:  #Binary
+	name: string
+	*{driver: #Binary} | {binary: #Binary}
 	fixture: *{
 		sut: inputs.#Package
 		serversUnderTest: [sut]
