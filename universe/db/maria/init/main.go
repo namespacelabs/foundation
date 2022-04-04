@@ -57,7 +57,6 @@ func ensureDb(ctx context.Context, db *maria.Database, password string) (*sql.DB
 	log.Printf("Pinged database.")
 
 	// SQL arguments can only be values, not identifiers.
-	// https://www.postgresql.org/docs/9.5/xfunc-sql.html
 	// As we need to use Sprintf instead, let's do some basic sanity checking (whitespaces are forbidden).
 	if len(strings.Fields(db.Name)) > 1 {
 		return nil, fmt.Errorf("Invalid database name: %s", db.Name)
