@@ -29,6 +29,20 @@ func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
 
 	ops.Register[*OpGenServer](generator{})
+
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.DispatcherResult, error) {
+		wenv, ok := env.(workspace.Packages)
+		if !ok {
+			return nil, errors.New("workspace.Packages required")
+		}
+
+		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Node.PackageName))
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
+	})
 }
 
 type generator struct{}
@@ -128,6 +142,11 @@ func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *worksp
 
 func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
 	var dl defs.DefList
+
+	dl.Add("Generate Nodejs node dependencies", &OpGenNode{
+		Node:       pkg.Node(),
+		LoadedNode: nodes,
+	}, pkg.PackageName())
 
 	var list []*protos.FileDescriptorSetAndDeps
 	for _, dl := range pkg.Provides {
