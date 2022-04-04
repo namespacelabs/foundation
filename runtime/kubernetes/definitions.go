@@ -217,6 +217,93 @@ func RegisterGraphHandlers() {
 		return nil, nil
 	})
 
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, create *kubedef.OpCreate) (*ops.DispatcherResult, error) {
+		if create.Resource == "" {
+			return nil, fnerrors.InternalError("%s: create.Resource is required", d.Description)
+		}
+
+		if create.Name == "" {
+			return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
+		}
+
+		if create.IfMissing {
+			var exists bool
+			// XXX this is racy here, we need to have a loop and a callback for contents.
+			if err := tasks.Action("kubernetes.get").Scope(asPackages(d.Scope)...).
+				HumanReadablef(d.Description).
+				Arg("resource", create.Resource).
+				Arg("name", create.Name).
+				Arg("namespace", create.Namespace).Run(ctx, func(ctx context.Context) error {
+				restcfg, err := client.ResolveConfig(env)
+				if err != nil {
+					return err
+				}
+
+				client, err := client.MakeResourceSpecificClient(create.Resource, restcfg)
+				if err != nil {
+					return err
+				}
+
+				opts := metav1.GetOptions{}
+				req := client.Get()
+				if create.Namespace != "" {
+					req.Namespace(create.Namespace)
+				}
+
+				if err := req.Resource(create.Resource).
+					Name(create.Name).
+					Body(&opts).
+					Do(ctx).Error(); err != nil {
+					if errors.IsNotFound(err) {
+						return nil
+					} else {
+						return err
+					}
+				}
+
+				exists = true
+				return nil
+			}); err != nil {
+				return nil, err
+			}
+
+			if exists {
+				return nil, nil // Nothing to do.
+			}
+		}
+
+		if err := tasks.Action("kubernetes.create").Scope(asPackages(d.Scope)...).
+			HumanReadablef(d.Description).
+			Arg("resource", create.Resource).
+			Arg("name", create.Name).
+			Arg("namespace", create.Namespace).Run(ctx, func(ctx context.Context) error {
+			restcfg, err := client.ResolveConfig(env)
+			if err != nil {
+				return err
+			}
+
+			client, err := client.MakeResourceSpecificClient(create.Resource, restcfg)
+			if err != nil {
+				return err
+			}
+
+			opts := metav1.CreateOptions{}
+			req := client.Post()
+			if create.Namespace != "" {
+				req.Namespace(create.Namespace)
+			}
+
+			return req.Resource(create.Resource).
+				VersionedParams(&opts, scheme.ParameterCodec).
+				Body([]byte(create.BodyJson)).
+				Do(ctx).Error()
+		}); err != nil && !errors.IsNotFound(err) {
+			return nil, fnerrors.RemoteError("%s: failed to create: %w", d.Description, err)
+		}
+
+		return nil, nil
+	})
+
 	ingress.RegisterGraphHandlers()
 }
 

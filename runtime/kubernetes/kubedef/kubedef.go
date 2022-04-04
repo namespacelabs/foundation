@@ -38,6 +38,15 @@ type DeleteList struct {
 	Selector    map[string]string
 }
 
+type Create struct {
+	Description string
+	IfMissing   bool
+	Resource    string // XXX this can be implied from `kind` in the body. See #339.
+	Namespace   string // XXX this can be implied from `namespace` in the body. See #339.
+	Name        string // XXX this can be implied from `name` in the body. See #339.
+	Body        interface{}
+}
+
 type ExtendSpec struct {
 	For  schema.PackageName
 	With *SpecExtension
@@ -112,6 +121,34 @@ func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.Definitio
 
 	return &schema.Definition{
 		Description: d.Description,
+		Impl:        x,
+		Scope:       scopeToStrings(scope),
+	}, nil
+}
+
+func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+	if c.Body == nil {
+		return nil, fnerrors.InternalError("body is missing")
+	}
+
+	body, err := json.Marshal(c.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	x, err := anypb.New(&OpCreate{
+		Resource:  c.Resource,
+		IfMissing: c.IfMissing,
+		Namespace: c.Namespace,
+		Name:      c.Name,
+		BodyJson:  string(body), // We use strings for better debuggability.
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.Definition{
+		Description: c.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
 	}, nil
