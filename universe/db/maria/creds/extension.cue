@@ -11,12 +11,6 @@ $providerProto: inputs.#Proto & {
 
 extension: fn.#Extension & {
 	instantiate: {
-		user: secrets.#Exports.Secret & {
-			with: {
-				name: "mariadb_user_file"
-				provision: ["PROVISION_INLINE", "PROVISION_AS_FILE"]
-			}
-		}
 		password: secrets.#Exports.Secret & {
 			with: {
 				name: "mariadb_password_file"

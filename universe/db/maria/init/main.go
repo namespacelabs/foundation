@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -15,82 +16,64 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/universe/db/maria"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const connBackoff = 3 * time.Second
 
 var (
-	userFile     = flag.String("mariadb_user_file", "", "location of the user secret")
 	passwordFile = flag.String("mariadb_password_file", "", "location of the password secret")
 )
 
-func existsDb(ctx context.Context, conn *pgxpool.Pool, dbName string) (bool, error) {
-	rows, err := conn.Query(ctx, "SELECT FROM pg_database WHERE datname = $1;", dbName)
-	if err != nil {
-		return false, fmt.Errorf("failed to check for database %s: %w", dbName, err)
-	}
-	defer rows.Close()
-
-	return rows.Next(), nil
-}
-
-func connect(ctx context.Context, user string, password string, address string, port uint32, db string) (conn *pgxpool.Pool, err error) {
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", user, password, address, port, db)
+func connect(ctx context.Context, password string, address string, port uint32) (db *sql.DB, err error) {
+	connString := fmt.Sprintf("root:%s@tcp(%s:%d)/", password, address, port)
 	err = backoff.Retry(func() error {
-		log.Printf("Connecting to postgres.")
-		conn, err = pgxpool.Connect(ctx, connString)
+		log.Printf("Connecting to MariaDB with `%s`.", connString)
+		db, err = sql.Open("mysql", connString)
 		if err != nil {
-			log.Printf("Failed to connect to postgres: %v", err)
+			log.Printf("Failed to connect to MariaDB: %v", err)
 		}
 		return err
 	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx))
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to establish postgres connection: %w", err)
+		return nil, fmt.Errorf("unable to establish MariaDB connection: %w", err)
 	}
 
-	return conn, nil
+	return db, nil
 }
 
-func ensureDb(ctx context.Context, db *maria.Database, user string, password string) error {
-	// Postgres needs a db to connect to so we pin one that is guaranteed to exist.
-	conn, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, "postgres")
+func ensureDb(ctx context.Context, db *maria.Database, password string) (*sql.DB, error) {
+	conn, err := connect(ctx, password, db.HostedAt.Address, db.HostedAt.Port)
 	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	// Postgres does not support CREATE DATABASE IF NOT EXISTS
-	log.Printf("Querying for existing databases.")
-	exists, err := existsDb(ctx, conn, db.Name)
-	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if exists {
-		log.Printf("Database `%s` already exists.", db.Name)
-		return nil
+	if err := conn.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping connection: %w", err)
 	}
+	log.Printf("Pinged database.")
 
 	// SQL arguments can only be values, not identifiers.
 	// https://www.postgresql.org/docs/9.5/xfunc-sql.html
 	// As we need to use Sprintf instead, let's do some basic sanity checking (whitespaces are forbidden).
 	if len(strings.Fields(db.Name)) > 1 {
-		return fmt.Errorf("Invalid database name: %s", db.Name)
+		return nil, fmt.Errorf("Invalid database name: %s", db.Name)
 	}
-	_, err = conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s;", db.Name))
+	_, err = conn.ExecContext(ctx, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", db.Name))
 	if err != nil {
-		return fmt.Errorf("failed to create database `%s`: %w", db.Name, err)
+		return nil, fmt.Errorf("failed to create database `%s`: %w", db.Name, err)
 	}
 
 	log.Printf("Created database `%s`.", db.Name)
-	return nil
+
+	return conn, nil
 }
 
-func applySchema(ctx context.Context, db *maria.Database, user string, password string) error {
-	conn, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, db.Name)
+func applySchema(ctx context.Context, db *maria.Database, password string) error {
+	conn, err := ensureDb(ctx, db, string(password))
 	if err != nil {
 		return err
 	}
@@ -102,8 +85,18 @@ func applySchema(ctx context.Context, db *maria.Database, user string, password 
 	}
 
 	log.Printf("Applying schema %s.", db.SchemaFile.Path)
-	_, err = conn.Exec(ctx, string(schema))
+	tx, err := conn.Begin()
 	if err != nil {
+		return fmt.Errorf("unable to create transaction: %v", err)
+	}
+	if _, err = tx.ExecContext(ctx, fmt.Sprintf("USE %s;", db.Name)); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, string(schema)); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("unable to execute schema %s: %v", db.SchemaFile.Path, err)
 	}
 	return nil
@@ -136,11 +129,6 @@ func main() {
 	ctx := context.Background()
 
 	// TODO: creds should be definable per db instance #217
-	user, err := ioutil.ReadFile(*userFile)
-	if err != nil {
-		log.Fatalf("unable to read file %s: %v", *userFile, err)
-	}
-
 	password, err := ioutil.ReadFile(*passwordFile)
 	if err != nil {
 		log.Fatalf("unable to read file %s: %v", *passwordFile, err)
@@ -152,10 +140,7 @@ func main() {
 	}
 
 	for _, db := range dbs {
-		if err := ensureDb(ctx, db, string(user), string(password)); err != nil {
-			log.Fatalf("%v", err)
-		}
-		if err := applySchema(ctx, db, string(user), string(password)); err != nil {
+		if err := applySchema(ctx, db, string(password)); err != nil {
 			log.Fatalf("%v", err)
 		}
 	}

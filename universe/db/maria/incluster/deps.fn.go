@@ -6,7 +6,7 @@ import (
 
 	"database/sql"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/universe/db/postgres/creds"
+	"namespacelabs.dev/foundation/universe/db/maria/creds"
 )
 
 type ExtensionDeps struct {

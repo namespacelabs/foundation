@@ -12,6 +12,5 @@ message CredsRequest {
 }
 
 message Creds {
-    string username = 1;
-    string password = 2;
+    string password = 1;
 }

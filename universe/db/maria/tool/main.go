@@ -39,8 +39,6 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 	// TODO: creds should be definable per db instance #217
 	for _, secret := range getSecrets(devMap) {
 		switch secret.Name {
-		case "mariadb_user_file":
-			args = append(args, fmt.Sprintf("--mariadb_user_file=%s", secret.FromPath))
 		case "mariadb_password_file":
 			args = append(args, fmt.Sprintf("--mariadb_password_file=%s", secret.FromPath))
 		default:

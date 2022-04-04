@@ -12,9 +12,9 @@ import (
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/universe/db/postgres"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
-	"namespacelabs.dev/foundation/universe/db/postgres/toolcommon"
+	"namespacelabs.dev/foundation/universe/db/maria"
+	"namespacelabs.dev/foundation/universe/db/maria/incluster"
+	"namespacelabs.dev/foundation/universe/db/maria/toolcommon"
 )
 
 type tool struct{}
@@ -23,8 +23,8 @@ func main() {
 	configure.RunTool(tool{})
 }
 
-func collectDatabases(server *schema.Server, owner string, internalEndpoint *schema.Endpoint) (map[schema.PackageName][]*postgres.Database, error) {
-	dbs := map[schema.PackageName][]*postgres.Database{}
+func collectDatabases(server *schema.Server, owner string, internalEndpoint *schema.Endpoint) (map[schema.PackageName][]*maria.Database, error) {
+	dbs := map[schema.PackageName][]*maria.Database{}
 	for _, alloc := range server.Allocation {
 		for _, instance := range alloc.Instance {
 			for _, instantiate := range instance.Instantiated {
@@ -34,10 +34,10 @@ func collectDatabases(server *schema.Server, owner string, internalEndpoint *sch
 						return nil, err
 					}
 
-					db := postgres.Database{
+					db := maria.Database{
 						Name:       in.Name,
 						SchemaFile: in.SchemaFile,
-						HostedAt: &postgres.Endpoint{
+						HostedAt: &maria.Endpoint{
 							Address: internalEndpoint.AllocatedName,
 							Port:    uint32(internalEndpoint.Port.ContainerPort),
 						},

@@ -41,7 +41,7 @@ func ProvideDatabase(ctx context.Context, caller string, db *Database, deps Exte
 		return nil, err
 	}
 
-	res, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", deps.Creds.Username, deps.Creds.Password, endpoint.AllocatedName, endpoint.Port.ContainerPort, db.Name))
+	res, err := sql.Open("mysql", fmt.Sprintf("root:%s@tcp(%s:%d)/%s", deps.Creds.Password, endpoint.AllocatedName, endpoint.Port.ContainerPort, db.Name))
 	if err != nil {
 		panic(err)
 	}

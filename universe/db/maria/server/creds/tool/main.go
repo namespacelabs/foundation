@@ -35,19 +35,11 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 
 	for _, secret := range getSecrets(devMap) {
 		switch secret.Name {
-		case "mariadb_user_file":
-			out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-				With: &kubedef.ContainerExtension{
-					Env: []*kubedef.ContainerExtension_Env{{
-						Name:  "MARIADB_USER_FILE",
-						Value: secret.FromPath,
-					}},
-				}})
 		case "mariadb_password_file":
 			out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 				With: &kubedef.ContainerExtension{
 					Env: []*kubedef.ContainerExtension_Env{{
-						Name:  "MARIADB_PASSWORD_FILE",
+						Name:  "MARIADB_ROOT_PASSWORD_FILE",
 						Value: secret.FromPath,
 					}},
 				}})

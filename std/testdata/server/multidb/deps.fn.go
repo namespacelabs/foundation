@@ -11,8 +11,9 @@ import (
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/testdata/service/multidb"
+	"namespacelabs.dev/foundation/universe/db/maria/creds"
 	"namespacelabs.dev/foundation/universe/db/maria/incluster"
-	"namespacelabs.dev/foundation/universe/db/postgres/creds"
+	fncreds "namespacelabs.dev/foundation/universe/db/postgres/creds"
 	fnincluster "namespacelabs.dev/foundation/universe/db/postgres/incluster"
 )
 
@@ -55,30 +56,13 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		PackageName: "namespacelabs.dev/foundation/std/secrets",
 		Instance:    "creds0",
 		Do: func(ctx context.Context) (err error) {
-			// name: "postgres_password_file"
+			// name: "mariadb_password_file"
 			// provision: PROVISION_INLINE
 			// provision: PROVISION_AS_FILE
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChZwb3N0Z3Jlc19wYXNzd29yZF9maWxlEgIBAg==", p)
+			core.MustUnwrapProto("ChVtYXJpYWRiX3Bhc3N3b3JkX2ZpbGUSAgEC", p)
 
-			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/creds", p); err != nil {
-				return err
-			}
-			return nil
-		},
-	})
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/secrets",
-		Instance:    "creds0",
-		Do: func(ctx context.Context) (err error) {
-			// name: "postgres_user_file"
-			// provision: PROVISION_INLINE
-			// provision: PROVISION_AS_FILE
-			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChJwb3N0Z3Jlc191c2VyX2ZpbGUSAgEC", p)
-
-			if creds0.User, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/creds", p); err != nil {
+			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/maria/creds", p); err != nil {
 				return err
 			}
 			return nil
@@ -88,7 +72,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 	var incluster0 incluster.ExtensionDeps
 
 	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/creds",
+		PackageName: "namespacelabs.dev/foundation/universe/db/maria/creds",
 		Instance:    "incluster0",
 		DependsOn:   []string{"creds0"}, Do: func(ctx context.Context) (err error) {
 			if incluster0.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", nil, creds0); err != nil {
@@ -109,13 +93,49 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		},
 	})
 
+	var creds2 fncreds.ExtensionDeps
+
+	di.Register(core.Initializer{
+		PackageName: "namespacelabs.dev/foundation/std/secrets",
+		Instance:    "creds2",
+		Do: func(ctx context.Context) (err error) {
+			// name: "postgres_password_file"
+			// provision: PROVISION_INLINE
+			// provision: PROVISION_AS_FILE
+			p := &secrets.Secret{}
+			core.MustUnwrapProto("ChZwb3N0Z3Jlc19wYXNzd29yZF9maWxlEgIBAg==", p)
+
+			if creds2.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/creds", p); err != nil {
+				return err
+			}
+			return nil
+		},
+	})
+
+	di.Register(core.Initializer{
+		PackageName: "namespacelabs.dev/foundation/std/secrets",
+		Instance:    "creds2",
+		Do: func(ctx context.Context) (err error) {
+			// name: "postgres_user_file"
+			// provision: PROVISION_INLINE
+			// provision: PROVISION_AS_FILE
+			p := &secrets.Secret{}
+			core.MustUnwrapProto("ChJwb3N0Z3Jlc191c2VyX2ZpbGUSAgEC", p)
+
+			if creds2.User, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/creds", p); err != nil {
+				return err
+			}
+			return nil
+		},
+	})
+
 	var incluster2 fnincluster.ExtensionDeps
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/creds",
 		Instance:    "incluster2",
-		DependsOn:   []string{"creds0"}, Do: func(ctx context.Context) (err error) {
-			if incluster2.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, creds0); err != nil {
+		DependsOn:   []string{"creds2"}, Do: func(ctx context.Context) (err error) {
+			if incluster2.Creds, err = fncreds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, creds2); err != nil {
 				return err
 			}
 			return nil
