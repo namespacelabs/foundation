@@ -17,7 +17,7 @@ service: fn.#Service & {
 			with: {
 				name:       "list"
 				schemaFile: inputs.#FromFile & {
-					path: "schema.sql"
+					path: "schema_postgres.sql"
 				}
 			}
 		}
@@ -25,7 +25,7 @@ service: fn.#Service & {
 			with: {
 				name:       "list"
 				schemaFile: inputs.#FromFile & {
-					path: "schema.sql"
+					path: "schema_maria.sql"
 				}
 			}
 		}
