@@ -26,7 +26,7 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/secrets/kubernetes"
-  digest: "sha256:2447e43bb857923913efe4ef5803bec30115bcad241c9e821e624bffd73989f0"
+  digest: "sha256:aad438764297320a53ff7364e6f4b1477b4e1adf94d517af012df7d5c2211411"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool"

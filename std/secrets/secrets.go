@@ -9,11 +9,9 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -168,9 +166,6 @@ func Collect(server *schema.Server) (*Collection, error) {
 }
 
 func FillData(ctx context.Context, col *Collection, contents fs.FS) (map[string][]byte, error) {
-	j, _ := json.MarshalIndent(col, "", "  ")
-	fmt.Fprintln(os.Stderr, string(j))
-
 	data := map[string][]byte{}
 	for k, userManaged := range col.UserManaged {
 		m, err := ProvideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
