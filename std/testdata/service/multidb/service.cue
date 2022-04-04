@@ -15,7 +15,7 @@ service: fn.#Service & {
 	instantiate: {
 		postgres: postgresdb.#Exports.Database & {
 			with: {
-				name:       "list"
+				name:       "postgreslist"
 				schemaFile: inputs.#FromFile & {
 					path: "schema_postgres.sql"
 				}
@@ -23,7 +23,7 @@ service: fn.#Service & {
 		}
 		maria: mariadb.#Exports.Database & {
 			with: {
-				name:       "list"
+				name:       "mariadblist"
 				schemaFile: inputs.#FromFile & {
 					path: "schema_maria.sql"
 				}

@@ -157,13 +157,13 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		PackageName: "namespacelabs.dev/foundation/universe/db/maria/incluster",
 		Instance:    "server.multidb",
 		DependsOn:   []string{"incluster0"}, Do: func(ctx context.Context) (err error) {
-			// name: "list"
+			// name: "mariadblist"
 			// schema_file: {
 			//   path: "schema_maria.sql"
 			//   contents: "CREATE TABLE IF NOT EXISTS list (\n    Id INT NOT NULL AUTO_INCREMENT,\n    Item varchar(255) NOT NULL,\n    PRIMARY KEY(Id)\n);"
 			// }
 			p := &incluster.Database{}
-			core.MustUnwrapProto("CgRsaXN0EpABChBzY2hlbWFfbWFyaWEuc3FsEnxDUkVBVEUgVEFCTEUgSUYgTk9UIEVYSVNUUyBsaXN0ICgKICAgIElkIElOVCBOT1QgTlVMTCBBVVRPX0lOQ1JFTUVOVCwKICAgIEl0ZW0gdmFyY2hhcigyNTUpIE5PVCBOVUxMLAogICAgUFJJTUFSWSBLRVkoSWQpCik7", p)
+			core.MustUnwrapProto("CgttYXJpYWRibGlzdBKQAQoQc2NoZW1hX21hcmlhLnNxbBJ8Q1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgbGlzdCAoCiAgICBJZCBJTlQgTk9UIE5VTEwgQVVUT19JTkNSRU1FTlQsCiAgICBJdGVtIHZhcmNoYXIoMjU1KSBOT1QgTlVMTCwKICAgIFBSSU1BUlkgS0VZKElkKQopOw==", p)
 
 			if server.multidb.Maria, err = incluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", p, incluster0); err != nil {
 				return err
@@ -176,13 +176,13 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster",
 		Instance:    "server.multidb",
 		DependsOn:   []string{"incluster2"}, Do: func(ctx context.Context) (err error) {
-			// name: "list"
+			// name: "postgreslist"
 			// schema_file: {
 			//   path: "schema_postgres.sql"
 			//   contents: "CREATE TABLE IF NOT EXISTS list (\n    Id INT GENERATED ALWAYS AS IDENTITY,\n    Item varchar(255) NOT NULL,\n    PRIMARY KEY(Id)\n);"
 			// }
 			p := &fnincluster.Database{}
-			core.MustUnwrapProto("CgRsaXN0EpkBChNzY2hlbWFfcG9zdGdyZXMuc3FsEoEBQ1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgbGlzdCAoCiAgICBJZCBJTlQgR0VORVJBVEVEIEFMV0FZUyBBUyBJREVOVElUWSwKICAgIEl0ZW0gdmFyY2hhcigyNTUpIE5PVCBOVUxMLAogICAgUFJJTUFSWSBLRVkoSWQpCik7", p)
+			core.MustUnwrapProto("Cgxwb3N0Z3Jlc2xpc3QSmQEKE3NjaGVtYV9wb3N0Z3Jlcy5zcWwSgQFDUkVBVEUgVEFCTEUgSUYgTk9UIEVYSVNUUyBsaXN0ICgKICAgIElkIElOVCBHRU5FUkFURUQgQUxXQVlTIEFTIElERU5USVRZLAogICAgSXRlbSB2YXJjaGFyKDI1NSkgTk9UIE5VTEwsCiAgICBQUklNQVJZIEtFWShJZCkKKTs=", p)
 
 			if server.multidb.Postgres, err = fnincluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", p, incluster2); err != nil {
 				return err
