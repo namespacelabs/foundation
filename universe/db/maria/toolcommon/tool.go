@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
-	"namespacelabs.dev/foundation/universe/db/mariadb"
+	"namespacelabs.dev/foundation/universe/db/maria"
 )
 
 const (
@@ -33,7 +33,7 @@ func makeKey(s string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func mountConfigs(dbMap map[schema.PackageName][]*mariadb.Database, namespace string, name string, out *configure.ApplyOutput) ([]string, error) {
+func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace string, name string, out *configure.ApplyOutput) ([]string, error) {
 	args := []string{}
 
 	data := map[string]string{}
@@ -55,7 +55,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*mariadb.Database, namespace st
 			configPath := filepath.Join(packageName.String(), "config", db.Name)
 			configKey := makeKey(configPath)
 
-			config := &mariadb.Database{
+			config := &maria.Database{
 				Name: db.Name,
 				SchemaFile: &types.Resource{
 					Path: filepath.Join(mountPath, schemaPath),
@@ -118,7 +118,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*mariadb.Database, namespace st
 	return args, nil
 }
 
-func Apply(ctx context.Context, r configure.Request, dbs map[schema.PackageName][]*mariadb.Database, name string, out *configure.ApplyOutput) error {
+func Apply(ctx context.Context, r configure.Request, dbs map[schema.PackageName][]*maria.Database, name string, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
@@ -133,7 +133,7 @@ func Apply(ctx context.Context, r configure.Request, dbs map[schema.PackageName]
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
 			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
-				PackageName: "namespacelabs.dev/foundation/universe/db/mariadb/init",
+				PackageName: "namespacelabs.dev/foundation/universe/db/maria/init",
 				Arg:         args,
 			}},
 		}})
@@ -150,7 +150,7 @@ func Delete(r configure.Request, name string, out *configure.DeleteOutput) error
 	namespace := kubetool.FromRequest(r).Namespace
 
 	out.Ops = append(out.Ops, kubedef.Delete{
-		Description: "Postgres Init ConfigMap",
+		Description: "MariaDB Init ConfigMap",
 		Resource:    "configmaps",
 		Namespace:   namespace,
 		Name:        fmt.Sprintf("%s.%s", name, id),

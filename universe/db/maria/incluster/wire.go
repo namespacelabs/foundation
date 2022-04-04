@@ -6,47 +6,50 @@ package incluster
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 
-	"github.com/jackc/pgx/v4/pgxpool"
 	"golang.org/x/xerrors"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/universe/db/postgres"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 var (
-	postgresqlEndpoint = flag.String("postgresql_endpoint", "", "Endpoint configuration.")
+	mariadbEndpoint = flag.String("mariadb_endpoint", "", "Endpoint configuration.")
 )
 
 func getEndpoint() (*schema.Endpoint, error) {
-	if *postgresqlEndpoint == "" {
-		return nil, errors.New("startup configuration missing, --postgresql_endpoint not specified")
+	if *mariadbEndpoint == "" {
+		return nil, errors.New("startup configuration missing, --mariadb_endpoint not specified")
 	}
 
 	var endpoint schema.Endpoint
-	if err := json.Unmarshal([]byte(*postgresqlEndpoint), &endpoint); err != nil {
-		return nil, xerrors.Errorf("failed to parse postgresql endpoint configuration: %w", err)
+	if err := json.Unmarshal([]byte(*mariadbEndpoint), &endpoint); err != nil {
+		return nil, xerrors.Errorf("failed to parse mariadb endpoint configuration: %w", err)
 	}
 
 	return &endpoint, nil
 }
 
-func ProvideDatabase(ctx context.Context, caller string, db *Database, deps ExtensionDeps) (*pgxpool.Pool, error) {
+func ProvideDatabase(ctx context.Context, caller string, db *Database, deps ExtensionDeps) (*sql.DB, error) {
 	endpoint, err := getEndpoint()
 	if err != nil {
 		return nil, err
 	}
 
-	base := &postgres.Database{
-		Name:       db.Name,
-		SchemaFile: db.SchemaFile,
-		HostedAt: &postgres.Endpoint{
-			Address: endpoint.AllocatedName,
-			Port:    uint32(endpoint.Port.ContainerPort),
-		},
+	res, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", deps.Creds.Username, deps.Creds.Password, endpoint.AllocatedName, endpoint.Port.ContainerPort, db.Name))
+	if err != nil {
+		panic(err)
 	}
 
-	return postgres.ProvideDatabase(ctx, caller, base, deps.Creds, deps.ReadinessCheck)
+	// Asynchronously wait until a database connection is ready.
+	deps.ReadinessCheck.RegisterFunc(fmt.Sprintf("%s/%s", caller, db.Name), func(ctx context.Context) error {
+		return res.PingContext(ctx)
+	})
+
+	return res, nil
 }

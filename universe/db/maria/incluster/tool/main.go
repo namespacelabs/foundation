@@ -53,7 +53,7 @@ func collectDatabases(server *schema.Server, owner string, internalEndpoint *sch
 
 func internalEndpoint(s *schema.Stack) *schema.Endpoint {
 	for _, e := range s.Endpoint {
-		if e.ServiceName == "postgres" && e.ServerOwner == "namespacelabs.dev/foundation/universe/db/postgres/server" {
+		if e.ServiceName == "mariadb" && e.ServerOwner == "namespacelabs.dev/foundation/universe/db/maria/server" {
 			return e
 		}
 	}
@@ -74,7 +74,7 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
 			Arg: []*kubedef.ContainerExtension_Arg{{
-				Name:  "postgresql_endpoint",
+				Name:  "mariadb_endpoint",
 				Value: string(value),
 			}},
 		}})

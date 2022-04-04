@@ -6,6 +6,7 @@ package multidb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"time"
@@ -16,7 +17,8 @@ import (
 )
 
 type Service struct {
-	db *pgxpool.Pool
+	maria    *sql.DB
+	postgres *pgxpool.Pool
 }
 
 const postgresTimeout = 2 * time.Second
@@ -32,7 +34,7 @@ func addPostgres(ctx context.Context, db *pgxpool.Pool, item string) error {
 func (svc *Service) AddPostgres(ctx context.Context, req *AddRequest) (*emptypb.Empty, error) {
 	log.Printf("new AddPostgres request: %+v\n", req)
 
-	if err := addPostgres(ctx, svc.db, req.Item); err != nil {
+	if err := addPostgres(ctx, svc.postgres, req.Item); err != nil {
 		log.Fatalf("failed to add list item: %v", err)
 	}
 
@@ -49,7 +51,7 @@ func (svc *Service) AddMaria(ctx context.Context, req *AddRequest) (*emptypb.Emp
 	return response, nil
 }
 
-func list(ctx context.Context, db *pgxpool.Pool) ([]string, error) {
+func listPostgres(ctx context.Context, db *pgxpool.Pool) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, postgresTimeout)
 	defer cancel()
 
@@ -75,7 +77,7 @@ func list(ctx context.Context, db *pgxpool.Pool) ([]string, error) {
 func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*ListResponse, error) {
 	log.Print("new List request\n")
 
-	l, err := list(ctx, svc.db)
+	l, err := listPostgres(ctx, svc.postgres)
 	if err != nil {
 		log.Fatalf("failed to read list: %v", err)
 	}
@@ -85,6 +87,9 @@ func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*ListResponse, 
 }
 
 func WireService(ctx context.Context, srv *server.Grpc, deps ServiceDeps) {
-	svc := &Service{db: deps.Db}
+	svc := &Service{
+		maria:    deps.Maria,
+		postgres: deps.Postgres,
+	}
 	RegisterListServiceServer(srv, svc)
 }

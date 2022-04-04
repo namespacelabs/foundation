@@ -4,7 +4,7 @@ package incluster
 import (
 	"context"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"database/sql"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/universe/db/postgres/creds"
 )
@@ -14,6 +14,6 @@ type ExtensionDeps struct {
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, ExtensionDeps) (*pgxpool.Pool, error)
+type _checkProvideDatabase func(context.Context, string, *Database, ExtensionDeps) (*sql.DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

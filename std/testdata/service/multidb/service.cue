@@ -1,8 +1,8 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	postgres "namespacelabs.dev/foundation/universe/db/postgres/incluster"
-	maria "namespacelabs.dev/foundation/universe/db/maria/incluster"
+	postgresdb "namespacelabs.dev/foundation/universe/db/postgres/incluster"
+	mariadb "namespacelabs.dev/foundation/universe/db/maria/incluster"
 )
 
 $proto: inputs.#Proto & {
@@ -13,7 +13,7 @@ service: fn.#Service & {
   framework: "GO_GRPC"
 
 	instantiate: {
-		postgres: postgres.#Exports.Database & {
+		postgres: postgresdb.#Exports.Database & {
 			with: {
 				name:       "list"
 				schemaFile: inputs.#FromFile & {
@@ -21,7 +21,7 @@ service: fn.#Service & {
 				}
 			}
 		}
-		maria: maria.#Exports.Database & {
+		maria: mariadb.#Exports.Database & {
 			with: {
 				name:       "list"
 				schemaFile: inputs.#FromFile & {

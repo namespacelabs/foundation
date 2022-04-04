@@ -6,7 +6,7 @@ package creds
 		packageName: "namespacelabs.dev/foundation/universe/db/maria/creds"
 		type:        "Creds"
 		typeDefinition: {
-			"typename": "foundation.universe.db.mariadb.CredsRequest"
+			"typename": "foundation.universe.db.maria.CredsRequest"
 			"source": [
 				"provider.proto",
 			]

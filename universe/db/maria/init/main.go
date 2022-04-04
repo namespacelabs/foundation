@@ -16,8 +16,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"namespacelabs.dev/foundation/universe/db/mariadb"
-	"namespacelabs.dev/foundation/universe/db/postgres"
+	"namespacelabs.dev/foundation/universe/db/maria"
 )
 
 const connBackoff = 3 * time.Second
@@ -55,7 +54,7 @@ func connect(ctx context.Context, user string, password string, address string, 
 	return conn, nil
 }
 
-func ensureDb(ctx context.Context, db *postgres.Database, user string, password string) error {
+func ensureDb(ctx context.Context, db *maria.Database, user string, password string) error {
 	// Postgres needs a db to connect to so we pin one that is guaranteed to exist.
 	conn, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, "postgres")
 	if err != nil {
@@ -90,7 +89,7 @@ func ensureDb(ctx context.Context, db *postgres.Database, user string, password 
 	return nil
 }
 
-func applySchema(ctx context.Context, db *mariadb.Database, user string, password string) error {
+func applySchema(ctx context.Context, db *maria.Database, user string, password string) error {
 	conn, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, db.Name)
 	if err != nil {
 		return err
@@ -110,8 +109,8 @@ func applySchema(ctx context.Context, db *mariadb.Database, user string, passwor
 	return nil
 }
 
-func readConfigs() ([]*mariadb.Database, error) {
-	dbs := []*mariadb.Database{}
+func readConfigs() ([]*maria.Database, error) {
+	dbs := []*maria.Database{}
 
 	for _, path := range flag.Args() {
 		file, err := ioutil.ReadFile(path)
@@ -119,7 +118,7 @@ func readConfigs() ([]*mariadb.Database, error) {
 			return nil, fmt.Errorf("unable to read file %s: %v", path, err)
 		}
 
-		db := &mariadb.Database{}
+		db := &maria.Database{}
 		if err := json.Unmarshal(file, db); err != nil {
 			return nil, err
 		}

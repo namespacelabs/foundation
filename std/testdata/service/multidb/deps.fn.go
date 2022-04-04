@@ -4,12 +4,13 @@ package multidb
 import (
 	"context"
 
+	"database/sql"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
 )
 
 type ServiceDeps struct {
-	Maria    *pgxpool.Pool
+	Maria    *sql.DB
 	Postgres *pgxpool.Pool
 }
 

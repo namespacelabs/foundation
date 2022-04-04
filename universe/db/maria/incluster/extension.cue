@@ -26,8 +26,8 @@ extension: fn.#Extension & {
 
 			availableIn: {
 				go: {
-					package: "github.com/jackc/pgx/v4/pgxpool"
-					type:    "*Pool"
+					package: "database/sql"
+					type:    "*DB"
 				}
 			}
 		}
@@ -35,7 +35,7 @@ extension: fn.#Extension & {
 }
 
 $server: inputs.#Server & {
-	packageName: "namespacelabs.dev/foundation/universe/db/postgres/server"
+	packageName: "namespacelabs.dev/foundation/universe/db/maria/server"
 }
 
 configure: fn.#Configure & {
@@ -43,5 +43,5 @@ configure: fn.#Configure & {
 		append: [$server]
 	}
 
-	with: binary: "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool"
+	with: binary: "namespacelabs.dev/foundation/universe/db/maria/incluster/tool"
 }
