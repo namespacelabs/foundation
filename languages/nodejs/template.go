@@ -30,19 +30,20 @@ type singleImport struct {
 
 var (
 	serviceTmpl = template.Must(template.New(ServiceDepsFilename).Parse(
-		`{{define "T1"}}ONE{{end}}// This file was automatically generated.{{with $opts := .}}
+		`// This file was automatically generated.{{with $opts := .}}
 {{range $opts.Imports}}
 import * as {{.Alias}} from "{{.Package}}"{{end}}
 
 {{if .NeedsDepsType}}
 export interface Deps {
 {{range $k, $v := .DepVars}}
-	{{$v.Name}}: {{if $v.Type.ImportAlias}}{{$v.Type.ImportAlias}}.{{end}}{{$v.Type.Name}}{{end}}
+	{{$v.Name}}: {{template "Alias" $v.Type.ImportAlias}}{{$v.Type.Name}}{{end}}
 }
 {{end}}
 
-export type ServiceProvider = (deps: Deps) => {{if $opts.ServiceType.ImportAlias}}{{$opts.ServiceType.ImportAlias}}.{{end}}{{$opts.ServiceType.Name}};
+export type ServiceProvider = (deps: Deps) => {{template "Alias" $opts.ServiceType.ImportAlias}}{{$opts.ServiceType.Name}};
 export const exportService: ServiceProvider = impl.exportService;
 
-{{end}}`))
+{{end}}
+{{define "Alias"}}{{if .}}{{.}}.{{end}}{{end}}`))
 )
