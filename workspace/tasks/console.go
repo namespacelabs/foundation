@@ -594,7 +594,10 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 		}
 	}
 
-	rawOut := checkDirtyWriter{out: c.out}
+	rawOut := checkDirtyWriter{out: c.out, onDirty: func() {
+		// If anything is trying to write directly, clear the screen first.
+		fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
+	}}
 	c.drawFrame(&rawOut, c.outbuf, t, width, height, flush)
 
 	newFrame := make([]byte, len(c.outbuf.Bytes()))
@@ -604,42 +607,39 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 	newLines := bytes.Split(bytes.TrimSpace(newFrame), []byte("\n"))
 	c.previousLines = newLines
 
-	if !rawOut.dirty {
-		for k, line := range newLines {
-			if k < len(previousLines) && bytes.Equal(line, previousLines[k]) {
-				fmt.Fprint(c.out, aec.Down(1))
-				continue
-			}
-
+	for k, line := range newLines {
+		if !rawOut.dirty && k < len(previousLines) && bytes.Equal(line, previousLines[k]) {
 			// We could look for a common prefix here, and do a narrower clear. But
 			// ANSI codes make this a bit complicated, as we can't easily cut a line
 			// in the middle of an ansi sequence. So for now, we repaint the whole
 			// line as needed.
-
-			fmt.Fprint(c.out, aec.EraseLine(aec.EraseModes.Tail).String())
-			c.out.Write(line)
-			fmt.Fprint(c.out, "\n\r")
+			fmt.Fprint(c.out, aec.Down(1))
+			continue
 		}
-		fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
+
+		fmt.Fprint(c.out, aec.EraseLine(aec.EraseModes.Tail))
+		c.out.Write(line)
+		fmt.Fprint(c.out, "\n\r")
 	}
 
+	// Clear any previously rendering additional lines.
 	fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
-	if rawOut.dirty {
-		c.out.Write(newFrame)
-	}
 }
 
 type checkDirtyWriter struct {
-	out   io.Writer
-	dirty bool
+	out     io.Writer
+	dirty   bool
+	onDirty func()
 }
 
 func (c *checkDirtyWriter) Write(p []byte) (int, error) {
-	n, err := c.out.Write(p)
-	if n > 0 {
+	if !c.dirty {
 		c.dirty = true
+		if c.onDirty != nil {
+			c.onDirty()
+		}
 	}
-	return n, err
+	return c.out.Write(p)
 }
 
 func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height uint, flush bool) {
