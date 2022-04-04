@@ -10,7 +10,6 @@ extension: fn.#Extension & {
 	instantiate: token: secrets.#Exports.Secret & {
 		with: {
 			name: "http_csrf_token"
-			provision: ["PROVISION_INLINE"]
 		}
 	}
 }

@@ -14,13 +14,11 @@ extension: fn.#Extension & {
 		user: secrets.#Exports.Secret & {
 			with: {
 				name: "postgres_user_file"
-				provision: ["PROVISION_INLINE", "PROVISION_AS_FILE"]
 			}
 		}
 		password: secrets.#Exports.Secret & {
 			with: {
 				name: "postgres_password_file"
-				provision: ["PROVISION_INLINE", "PROVISION_AS_FILE"]
 			}
 		}
 	}

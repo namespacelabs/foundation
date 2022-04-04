@@ -55,10 +55,8 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		Instance:    "creds0",
 		Do: func(ctx context.Context) (err error) {
 			// name: "postgres_password_file"
-			// provision: PROVISION_INLINE
-			// provision: PROVISION_AS_FILE
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChZwb3N0Z3Jlc19wYXNzd29yZF9maWxlEgIBAg==", p)
+			core.MustUnwrapProto("ChZwb3N0Z3Jlc19wYXNzd29yZF9maWxl", p)
 
 			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/creds", p); err != nil {
 				return err
@@ -72,10 +70,8 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		Instance:    "creds0",
 		Do: func(ctx context.Context) (err error) {
 			// name: "postgres_user_file"
-			// provision: PROVISION_INLINE
-			// provision: PROVISION_AS_FILE
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChJwb3N0Z3Jlc191c2VyX2ZpbGUSAgEC", p)
+			core.MustUnwrapProto("ChJwb3N0Z3Jlc191c2VyX2ZpbGU=", p)
 
 			if creds0.User, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/creds", p); err != nil {
 				return err

@@ -54,9 +54,8 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		Instance:    "datastore0",
 		Do: func(ctx context.Context) (err error) {
 			// name: "cert"
-			// provision: PROVISION_INLINE
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("CgRjZXJ0EgEB", p)
+			core.MustUnwrapProto("CgRjZXJ0", p)
 
 			if datastore0.Cert, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
 				return err
@@ -70,12 +69,11 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		Instance:    "datastore0",
 		Do: func(ctx context.Context) (err error) {
 			// name: "gen"
-			// provision: PROVISION_INLINE
 			// generate: {
 			//   random_byte_count: 32
 			// }
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("CgNnZW4SAQEaAhAg", p)
+			core.MustUnwrapProto("CgNnZW4SAhAg", p)
 
 			if datastore0.Gen, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
 				return err
