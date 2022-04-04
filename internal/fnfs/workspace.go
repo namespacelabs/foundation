@@ -46,6 +46,7 @@ func WriteFSToWorkspace(ctx context.Context, vfs ReadWriteFS, src fs.FS) error {
 type WriteFileExtendedOpts struct {
 	ContentsDigest  schema.Digest
 	CompareContents bool
+	FailOverwrite   bool
 	EnsureFileMode  bool
 	AnnounceWrite   bool
 	AddProgress     bool
@@ -99,6 +100,10 @@ func WriteFileExtended(ctx context.Context, dst ReadWriteFS, filePath string, mo
 	}
 
 write:
+	if opts.FailOverwrite {
+		return fmt.Errorf("%s: would have been rewritten", filePath)
+	}
+
 	var wp io.Writer
 	if opts.AddProgress {
 		p := artifacts.NewProgressWriter(0, nil)
