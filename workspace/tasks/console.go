@@ -195,8 +195,6 @@ func (c *ConsoleSink) Start() func() {
 	t := time.NewTicker(interval)
 	c.ticker = t.C
 
-	c.idleLabel = "nothing to do"
-
 	var out *os.File
 	if DebugOutputDecisions {
 		var err error
@@ -790,7 +788,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 				surpressBanner = true
 			}
 		}
-		if !surpressBanner {
+		if !surpressBanner && c.idleLabel != "" {
 			c.writeLineWithMaxW(out, width, fmt.Sprintf("[-] idle, %s.", c.idleLabel), "")
 		}
 		return
