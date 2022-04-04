@@ -17,6 +17,15 @@ extension: fn.#Extension & {
 				provision: ["PROVISION_INLINE"]
 			}
 		}
+		gen: secrets.#Exports.Secret & {
+			with: {
+				name: "gen"
+				provision: ["PROVISION_INLINE"]
+				generate: {
+					randomByteCount: 32
+				}
+			}
+		}
 		readinessCheck: core.#Exports.ReadinessCheck
 	}
 

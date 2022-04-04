@@ -6,12 +6,17 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/provision/configure"
@@ -20,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/secrets"
+	"namespacelabs.dev/go-ids"
 )
 
 type tool struct{}
@@ -83,7 +89,7 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 	// We also include a JSON version of the map to facilitiate JS-based uses.
 	data["map.json"] = devMapJSON
 
-	name := secretName(r.Focus.Server)
+	name := serverSecretName(r.Focus.Server)
 
 	out.Definitions = append(out.Definitions, kubedef.Apply{
 		Description: "server secrets",
@@ -98,7 +104,7 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 			WithData(data),
 	})
 
-	volId := fmt.Sprintf("%s-secrets-namespacelabs-dev", r.Focus.Server.Id)
+	volId := fmt.Sprintf("fn-managed-server-secrets-%s", r.Focus.Server.Id)
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
 		With: &kubedef.SpecExtension{
@@ -122,6 +128,64 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 			}},
 		}})
 
+	for _, gen := range collection.Generated {
+		name := fmt.Sprintf("fn-managed-%s", gen.UniqueID)
+		volId := name
+
+		out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
+			With: &kubedef.SpecExtension{
+				Volume: []*kubedef.SpecExtension_Volume{{
+					Name: volId,
+					VolumeType: &kubedef.SpecExtension_Volume_Secret_{
+						Secret: &kubedef.SpecExtension_Volume_Secret{
+							SecretName: name,
+						},
+					},
+				}},
+			}})
+
+		out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
+			With: &kubedef.ContainerExtension{
+				VolumeMount: []*kubedef.ContainerExtension_VolumeMount{{
+					Name:        volId,
+					ReadOnly:    true,
+					MountPath:   gen.BasePath,
+					MountOnInit: true, // Allow secret access during server initialization
+				}},
+			}})
+
+		data := map[string][]byte{}
+		for _, sec := range gen.Secrets {
+			switch sec.Generate.Format {
+			case secrets.GenerateSpecification_FORMAT_BASE32:
+				data[sec.Name] = []byte(ids.NewRandomBase32ID(int(sec.Generate.RandomByteCount)))
+			default: // Including BASE64
+				raw := make([]byte, sec.Generate.RandomByteCount)
+				rand.Reader.Read(raw)
+				data[sec.Name] = []byte(base64.RawStdEncoding.EncodeToString(raw))
+			}
+		}
+
+		newSecret := &v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Labels:    kubedef.MakeLabels(r.Env, nil),
+			},
+			Data: data,
+		}
+
+		out.Definitions = append(out.Definitions, kubedef.Create{
+			Description: "Generated server secrets",
+			IfMissing:   true,
+			Resource:    "secrets",
+			Namespace:   namespace,
+			Name:        name,
+			Body:        newSecret,
+		})
+
+	}
+
 	return nil
 }
 
@@ -132,12 +196,12 @@ func (tool) Delete(ctx context.Context, r configure.Request, out *configure.Dele
 		Description: "server secrets",
 		Resource:    "secrets",
 		Namespace:   namespace,
-		Name:        secretName(r.Focus.Server),
+		Name:        serverSecretName(r.Focus.Server),
 	})
 
 	return nil
 }
 
-func secretName(srv *schema.Server) string {
-	return fmt.Sprintf("%s.secrets.namespacelabs.dev", srv.Id)
+func serverSecretName(srv *schema.Server) string {
+	return strings.Join([]string{"fn-usermanaged", srv.Name, srv.Id}, "-")
 }

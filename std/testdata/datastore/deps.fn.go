@@ -10,6 +10,7 @@ import (
 
 type ExtensionDeps struct {
 	Cert           *secrets.Value
+	Gen            *secrets.Value
 	ReadinessCheck core.Check
 }
 

@@ -9,9 +9,11 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -43,6 +45,7 @@ type Collection struct {
 
 type Generated struct {
 	UniqueID string
+	BasePath string
 	Secrets  []*Secret
 }
 
@@ -57,10 +60,9 @@ func Collect(server *schema.Server) (*Collection, error) {
 	devMap := &SecretDevMap{}
 	col := &Collection{DevMap: devMap}
 
-	var generated []*Secret
 	for _, alloc := range server.Allocation {
 		for _, instance := range alloc.Instance {
-			var userManaged []*Secret
+			var generated, userManaged []*Secret
 			for _, instantiate := range instance.GetInstantiated() {
 				if instantiate.GetPackageName() == "namespacelabs.dev/foundation/std/secrets" && instantiate.GetType() == "Secret" {
 					secret := &Secret{}
@@ -112,11 +114,40 @@ func Collect(server *schema.Server) (*Collection, error) {
 			}
 
 			if len(generated) > 0 {
+				byUniqueID := map[string][]*Secret{}
 				for _, sec := range generated {
 					configure.Secret = append(configure.Secret, &SecretDevMap_SecretSpec{
 						Name:     sec.Name,
-						FromPath: filepath.Join(ScopedMountPath, sec.Generate.UniqueId, sec.Name),
+						FromPath: filepath.Join(ScopedMountPath, strings.ReplaceAll(instance.InstanceOwner, "/", "-")+"-"+sec.Generate.UniqueId, sec.Name),
 					})
+					byUniqueID[sec.Generate.UniqueId] = append(byUniqueID[sec.Generate.UniqueId], sec)
+				}
+
+				for id, group := range byUniqueID {
+					seen := map[string]*Secret{}
+					for _, secret := range group {
+						if existing := seen[secret.Name]; existing != nil {
+							if !proto.Equal(existing, secret) {
+								return nil, fnerrors.UserError(nil, "%s: %s: incompatible secret definition", id, secret.Name)
+							}
+						} else {
+							seen[secret.Name] = secret
+						}
+					}
+
+					gen := Generated{
+						UniqueID: id,
+						BasePath: filepath.Join(ScopedMountPath, strings.ReplaceAll(instance.InstanceOwner, "/", "-")+"-"+id),
+					}
+					for _, secret := range seen {
+						gen.Secrets = append(gen.Secrets, secret)
+					}
+
+					slices.SortFunc(gen.Secrets, func(a, b *Secret) bool {
+						return strings.Compare(a.Name, b.Name) < 0
+					})
+
+					col.Generated = append(col.Generated, gen)
 				}
 			}
 
@@ -129,35 +160,6 @@ func Collect(server *schema.Server) (*Collection, error) {
 		}
 	}
 
-	byUniqueID := map[string][]*Secret{}
-	for _, gen := range generated {
-		byUniqueID[gen.Generate.UniqueId] = append(byUniqueID[gen.Generate.UniqueId], gen)
-	}
-
-	for id, group := range byUniqueID {
-		seen := map[string]*Secret{}
-		for _, secret := range group {
-			if existing := seen[secret.Name]; existing != nil {
-				if !proto.Equal(existing, secret) {
-					return nil, fnerrors.UserError(nil, "%s: %s: incompatible secret definition", id, secret.Name)
-				}
-			} else {
-				seen[secret.Name] = secret
-			}
-		}
-
-		gen := Generated{UniqueID: id}
-		for _, secret := range seen {
-			gen.Secrets = append(gen.Secrets, secret)
-		}
-
-		slices.SortFunc(gen.Secrets, func(a, b *Secret) bool {
-			return strings.Compare(a.Name, b.Name) < 0
-		})
-
-		col.Generated = append(col.Generated, gen)
-	}
-
 	slices.SortFunc(col.Generated, func(a, b Generated) bool {
 		return strings.Compare(a.UniqueID, b.UniqueID) < 0
 	})
@@ -166,6 +168,9 @@ func Collect(server *schema.Server) (*Collection, error) {
 }
 
 func FillData(ctx context.Context, col *Collection, contents fs.FS) (map[string][]byte, error) {
+	j, _ := json.MarshalIndent(col, "", "  ")
+	fmt.Fprintln(os.Stderr, string(j))
+
 	data := map[string][]byte{}
 	for k, userManaged := range col.UserManaged {
 		m, err := ProvideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
