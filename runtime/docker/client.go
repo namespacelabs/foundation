@@ -88,26 +88,23 @@ func (w wrappedClient) Close() error {
 }
 
 func maybeReplaceErr(err error) error {
-	if unwrapped := errors.Unwrap(err); unwrapped != nil {
-		if os.IsPermission(unwrapped) {
-			var lines = []string{
-				"Failed to connect to Docker, due to lack of permissions. This is likely",
-				"due to your user not being in the right group to be able to use Docker.",
-				"",
-			}
-
-			if runtime.GOOS == "linux" {
-				lines = append(lines,
-					"Checkout the following URL for instructions on how to handle this error:",
-					"",
-					"https://docs.docker.com/engine/install/linux-postinstall/")
-			} else {
-				lines = append(lines, "Please refer to Docker's documentation on how to solve this issue.")
-			}
-
-			return fnerrors.Wrapf(nil, err, strings.Join(lines, "\n"))
+	if errors.Is(err, os.ErrPermission) {
+		var lines = []string{
+			"Failed to connect to Docker, due to lack of permissions. This is likely",
+			"due to your user not being in the right group to be able to use Docker.",
+			"",
 		}
-	}
 
+		if runtime.GOOS == "linux" {
+			lines = append(lines,
+				"Checkout the following URL for instructions on how to handle this error:",
+				"",
+				"https://docs.docker.com/engine/install/linux-postinstall/")
+		} else {
+			lines = append(lines, "Please refer to Docker's documentation on how to solve this issue.")
+		}
+
+		return fnerrors.Wrapf(nil, err, strings.Join(lines, "\n"))
+	}
 	return err
 }
