@@ -1,4 +1,4 @@
 binary: {
-	name:       "keygen"
+	name: "keygen"
 	from: go_package: "."
 }
