@@ -12,7 +12,7 @@ extension: fn.#Extension & {
 			name: "http_csrf_token"
 			generate: {
 				randomByteCount: 32
-				format: "FORMAT_BASE64"
+				format:          "FORMAT_BASE64"
 			}
 		}
 	}
