@@ -24,12 +24,15 @@ import (
 )
 
 type Request struct {
-	Env       *schema.Environment
-	Focus     *schema.Stack_Entry
-	Stack     *schema.Stack
 	Snapshots map[string]fs.FS
+	r         *protocol.ToolRequest
+}
 
-	r *protocol.ToolRequest
+type StackRequest struct {
+	Request
+	Env   *schema.Environment
+	Focus *schema.Stack_Entry
+	Stack *schema.Stack
 }
 
 type MakeExtension interface {
@@ -46,8 +49,8 @@ type DeleteOutput struct {
 }
 
 type Handler interface {
-	Apply(context.Context, Request, *ApplyOutput) error
-	Delete(context.Context, Request, *DeleteOutput) error
+	Apply(context.Context, StackRequest, *ApplyOutput) error
+	Delete(context.Context, StackRequest, *DeleteOutput) error
 }
 
 // XXX remove Tool when all the uses are gone.
@@ -55,7 +58,7 @@ type Tool interface {
 	Handler
 }
 
-func (p Request) UnpackInput(msg proto.Message) error {
+func (p StackRequest) UnpackInput(msg proto.Message) error {
 	if msg == nil {
 		return errors.New("msg is nil")
 	}
@@ -70,7 +73,7 @@ func (p Request) UnpackInput(msg proto.Message) error {
 }
 
 // PackageOwner returns the name of the package that defined this tool.
-func (p Request) PackageOwner() string {
+func (p StackRequest) PackageOwner() string {
 	return p.r.GetToolPackage()
 }
 
@@ -104,26 +107,27 @@ func runTool(ctx context.Context, r io.Reader, w io.Writer, t Tool) error {
 		return fnerrors.InternalError("%s: focused server not present in the stack", req.FocusedServer)
 	}
 
-	p := Request{
-		r:         req,
-		Env:       req.Env,
-		Focus:     s,
-		Stack:     req.Stack,
-		Snapshots: map[string]fs.FS{},
-	}
+	var br Request
+	br.r = req
+	br.Snapshots = map[string]fs.FS{}
 
 	for _, snapshot := range req.Snapshot {
 		var m memfs.FS
 		for _, entry := range snapshot.Entry {
 			m.Add(entry.Path, entry.Contents)
 		}
-		p.Snapshots[snapshot.Name] = &m
+		br.Snapshots[snapshot.Name] = &m
 	}
 
 	response := &protocol.ToolResponse{}
 
-	switch req.RequestType.(type) {
+	switch x := req.RequestType.(type) {
 	case *protocol.ToolRequest_ApplyRequest:
+		p, err := parseStackRequest(br, x.ApplyRequest.Header)
+		if err != nil {
+			return err
+		}
+
 		var out ApplyOutput
 		if err := t.Apply(ctx, p, &out); err != nil {
 			return err
@@ -149,6 +153,11 @@ func runTool(ctx context.Context, r io.Reader, w io.Writer, t Tool) error {
 		}
 
 	case *protocol.ToolRequest_DeleteRequest:
+		p, err := parseStackRequest(br, x.DeleteRequest.Header)
+		if err != nil {
+			return err
+		}
+
 		var out DeleteOutput
 		if err := t.Delete(ctx, p, &out); err != nil {
 			return err
@@ -168,4 +177,29 @@ func runTool(ctx context.Context, r io.Reader, w io.Writer, t Tool) error {
 
 	w.Write(serialized)
 	return nil
+}
+
+func parseStackRequest(br Request, header *protocol.StackRelated) (StackRequest, error) {
+	if header == nil {
+		// This is temporary, while we move from top-level fields to {Apply,Delete} specific ones.
+		header = &protocol.StackRelated{
+			FocusedServer: br.r.FocusedServer,
+			Env:           br.r.Env,
+			Stack:         br.r.Stack,
+		}
+	}
+
+	var p StackRequest
+
+	s := header.Stack.GetServer(schema.PackageName(header.FocusedServer))
+	if s == nil {
+		return p, fnerrors.InternalError("%s: focused server not present in the stack", header.FocusedServer)
+	}
+
+	p.Request = br
+	p.Env = header.Env
+	p.Focus = s
+	p.Stack = header.Stack
+
+	return p, nil
 }

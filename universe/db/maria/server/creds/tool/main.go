@@ -18,7 +18,7 @@ func main() {
 	configure.RunTool(tool{})
 }
 
-func (tool) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
 	col, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
 		return err
@@ -41,6 +41,6 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 	return nil
 }
 
-func (tool) Delete(ctx context.Context, r configure.Request, out *configure.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
 	return nil
 }

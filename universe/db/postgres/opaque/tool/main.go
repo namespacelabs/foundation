@@ -41,7 +41,7 @@ func collectDatabases(server *schema.Server, owner string) (map[schema.PackageNa
 	return dbs, nil
 }
 
-func (tool) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
@@ -80,6 +80,6 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 	return toolcommon.Apply(ctx, r, dbs, "opaque", out)
 }
 
-func (tool) Delete(ctx context.Context, r configure.Request, out *configure.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
 	return toolcommon.Delete(r, "opaque", out)
 }

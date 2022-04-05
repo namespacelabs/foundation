@@ -118,7 +118,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*postgres.Database, namespace s
 	return args, nil
 }
 
-func Apply(ctx context.Context, r configure.Request, dbs map[schema.PackageName][]*postgres.Database, name string, out *configure.ApplyOutput) error {
+func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.PackageName][]*postgres.Database, name string, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
@@ -142,7 +142,7 @@ func Apply(ctx context.Context, r configure.Request, dbs map[schema.PackageName]
 
 }
 
-func Delete(r configure.Request, name string, out *configure.DeleteOutput) error {
+func Delete(r configure.StackRequest, name string, out *configure.DeleteOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}

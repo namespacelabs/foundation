@@ -74,17 +74,30 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	r := inv.handler
 
 	req := &protocol.ToolRequest{
+		ToolPackage: r.Source.PackageName.String(),
+		// XXX temporary.
 		Stack:         inv.stack,
 		FocusedServer: inv.focus.String(),
-		ToolPackage:   r.Source.PackageName.String(),
+		Env:           inv.env,
+	}
+
+	header := &protocol.StackRelated{
+		Stack:         inv.stack,
+		FocusedServer: inv.focus.String(),
 		Env:           inv.env,
 	}
 
 	switch inv.lifecycle {
 	case protocol.Lifecycle_PROVISION:
-		req.RequestType = &protocol.ToolRequest_ApplyRequest{ApplyRequest: &protocol.ApplyRequest{}}
+		req.RequestType = &protocol.ToolRequest_ApplyRequest{
+			ApplyRequest: &protocol.ApplyRequest{
+				Header: header,
+			}}
 	case protocol.Lifecycle_SHUTDOWN:
-		req.RequestType = &protocol.ToolRequest_DeleteRequest{DeleteRequest: &protocol.DeleteRequest{}}
+		req.RequestType = &protocol.ToolRequest_DeleteRequest{
+			DeleteRequest: &protocol.DeleteRequest{
+				Header: header,
+			}}
 	default:
 		return nil, fnerrors.InternalError("%v: no support for lifecycle", inv.lifecycle)
 	}

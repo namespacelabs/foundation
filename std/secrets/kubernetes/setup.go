@@ -34,7 +34,7 @@ func main() {
 	configure.RunTool(tool{})
 }
 
-func (tool) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
 	namespace := kubetool.FromRequest(r).Namespace
 
 	contents := r.Snapshots["secrets"]
@@ -197,7 +197,7 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 	return nil
 }
 
-func (tool) Delete(ctx context.Context, r configure.Request, out *configure.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
 	namespace := kubetool.FromRequest(r).Namespace
 
 	out.Ops = append(out.Ops, kubedef.Delete{

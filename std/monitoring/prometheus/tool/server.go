@@ -34,7 +34,7 @@ var (
 
 type configureServer struct{}
 
-func (configureServer) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
+func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
 	namespace := kubetool.FromRequest(r).Namespace
 
 	promYamlData, err := fs.ReadFile(embeddedData, promYaml)
@@ -135,7 +135,7 @@ func (configureServer) Apply(ctx context.Context, r configure.Request, out *conf
 	return nil
 }
 
-func (configureServer) Delete(ctx context.Context, r configure.Request, out *configure.DeleteOutput) error {
+func (configureServer) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
 	prom := r.Stack.GetServer(promServer)
 	if prom == nil {
 		zerolog.Ctx(ctx).Warn().
