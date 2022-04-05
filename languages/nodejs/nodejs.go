@@ -66,13 +66,24 @@ type impl struct {
 }
 
 func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server provision.Server, isFocus bool) (build.Spec, error) {
-	return buildNodeJS{loc: server.Location, isFocus: isFocus}, nil
+	deps := []workspace.Location{}
+	for _, dep := range server.Deps() {
+		if dep.Node() != nil && dep.Node().ServiceFramework == schema.Framework_NODEJS {
+			deps = append(deps, dep.Location)
+		}
+	}
+
+	return buildNodeJS{
+		serverLoc: server.Location,
+		deps:      deps,
+		isFocus:   isFocus}, nil
 }
 
 func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.ServerRunOpts) error {
-	run.Command = []string{"node", "main.fn.js"}
+	// run.Command = []string{"ts-node", "main.fn.ts"}
+	run.Command = []string{"yarn", "serve"}
 	run.WorkingDir = "/app"
-	run.ReadOnlyFilesystem = true
+	// run.ReadOnlyFilesystem = true
 	run.RunAs = production.NonRootRunAsWithID(production.NonRootUserID)
 	return nil
 }

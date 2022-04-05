@@ -13,7 +13,8 @@
 			// Specify the absolute path to the working directory.
 			// NOTE(Nik): I couldn't make relative paths work on my workstation.
 			"cwd": "~/code/no-golang",
-			"args": ["generate"]
+			// "cwd": "~/code/examples/todos",
+			"args": ["deploy", "nodejsserver", "--skip_buildkit_workspace_size_check=true"]
 		}
 	]
 }
