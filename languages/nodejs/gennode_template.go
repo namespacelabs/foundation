@@ -16,7 +16,7 @@ var (
 	serviceTmpl = template.Must(template.New("template").Parse(
 		`// This file was automatically generated.
 import { Server } from "@grpc/grpc-js";
-import * as wire from "./wire";
+import * as impl from "./impl";
 
 {{if .NeedsDepsType}}
 export interface Deps {
@@ -24,6 +24,6 @@ export interface Deps {
 {{end}}
 
 export type WireService = (deps: Deps, server: Server) => void;
-export const wireService: WireService = wire.wireService;
+export const wireService: WireService = impl.wireService;
 `))
 )
