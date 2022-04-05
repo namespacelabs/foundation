@@ -5,14 +5,10 @@
 package nodejs
 
 import (
-	"context"
 	"fmt"
-	"io"
 	"strings"
-	"text/template"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -35,11 +31,4 @@ func nodejsServiceDepsImport(npmPackage string) string {
 type nodejsLocation struct {
 	Name       string
 	NpmPackage string
-}
-
-func generateSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, data interface{}) error {
-	return fnfs.WriteWorkspaceFile(ctx, fsfs, filePath, func(w io.Writer) error {
-		// TODO(@nicolasalt): format the file.
-		return WriteSource(w, t, data)
-	})
 }
