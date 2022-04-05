@@ -18,22 +18,13 @@ func main() {
 	configure.RunTool(tool{})
 }
 
-func getSecrets(devMap *secrets.SecretDevMap) []*secrets.SecretDevMap_SecretSpec {
-	for _, conf := range devMap.Configure {
-		if conf.PackageName == "namespacelabs.dev/foundation/universe/db/maria/creds" {
-			return conf.Secret
-		}
-	}
-	return nil
-}
-
 func (tool) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
-	devMap, _, err := secrets.CollectSecrets(ctx, r.Focus.Server, nil)
+	col, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
 		return err
 	}
 
-	for _, secret := range getSecrets(devMap) {
+	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/maria/creds") {
 		switch secret.Name {
 		case "mariadb_password_file":
 			out.Extensions = append(out.Extensions, kubedef.ExtendContainer{

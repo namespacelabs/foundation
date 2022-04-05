@@ -29,12 +29,12 @@ func collectDatabases(server *schema.Server, owner string, internalEndpoint *sch
 		for _, instance := range alloc.Instance {
 			for _, instantiate := range instance.Instantiated {
 				if instantiate.GetPackageName() == owner && instantiate.GetType() == "Database" {
-					in := incluster.Database{}
-					if err := proto.Unmarshal(instantiate.Constructor.Value, &in); err != nil {
+					in := &incluster.Database{}
+					if err := proto.Unmarshal(instantiate.Constructor.Value, in); err != nil {
 						return nil, err
 					}
 
-					db := maria.Database{
+					db := &maria.Database{
 						Name:       in.Name,
 						SchemaFile: in.SchemaFile,
 						HostedAt: &maria.Endpoint{
@@ -43,7 +43,7 @@ func collectDatabases(server *schema.Server, owner string, internalEndpoint *sch
 						},
 					}
 
-					dbs[schema.PackageName(instance.InstanceOwner)] = append(dbs[schema.PackageName(instance.InstanceOwner)], &db)
+					dbs[schema.PackageName(instance.InstanceOwner)] = append(dbs[schema.PackageName(instance.InstanceOwner)], db)
 				}
 			}
 		}
