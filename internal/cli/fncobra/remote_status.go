@@ -5,6 +5,7 @@
 package fncobra
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -24,8 +25,10 @@ type remoteStatus struct {
 	Message   string
 }
 
+const versionCheckEndpoint = "https://foundation-version.namespacelabs.workers.dev"
+
 // Used to get the latest release version and potentially a message for the users.
-func FetchLatestRemoteStatus(baseUrl string, currentVer string) (*remoteStatus, error) {
+func FetchLatestRemoteStatus(ctx context.Context, baseUrl string, currentVer string) (*remoteStatus, error) {
 	fullUrl, err := url.Parse(baseUrl)
 	if err != nil {
 		return nil, err
@@ -33,7 +36,14 @@ func FetchLatestRemoteStatus(baseUrl string, currentVer string) (*remoteStatus, 
 	q := fullUrl.Query()
 	q.Set("current_version", currentVer)
 	fullUrl.RawQuery = q.Encode()
-	response, err := http.Get(fullUrl.String())
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, fullUrl.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &http.Client{}
+	response, err := c.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}

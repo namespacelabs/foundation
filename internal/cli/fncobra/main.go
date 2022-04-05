@@ -12,8 +12,11 @@ import (
 	"os/exec"
 	"runtime/pprof"
 	"strings"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/logs"
+	"github.com/muesli/reflow/indent"
+	"github.com/muesli/reflow/wordwrap"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -203,26 +206,32 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		tasks.ActionStorer.Flush(os.Stderr)
 	}
 
-	if remoteStatusChan != nil {
+	// Check if this is a version requirement error, if yes, skip the regular version checker.
+	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
 		// Printing the new version message if any.
 		select {
 		case status, ok := <-remoteStatusChan:
 			if ok {
-				if status.TagName != "" {
-					msg := fmt.Sprintf("New Foundation release %s is available.\nDownload: https://github.com/namespacelabs/foundation/releases/tag/%s",
-						status.TagName, status.TagName)
-					if colors {
-						fmt.Fprintln(console.Stdout(ctx), clrs.Green(msg))
-					} else {
-						fmt.Fprintln(console.Stdout(ctx), msg)
-					}
+				clr := clrs.Green
+				if !colors {
+					clr = func(str string) string { return str }
 				}
+
+				var messages []string
+
+				if status.TagName != "" {
+					messages = append(messages, fmt.Sprintf("New Foundation release %s is available.\nDownload: %s", status.TagName, downloadUrl(status.TagName)))
+				}
+
 				if status.Message != "" {
-					if colors {
-						fmt.Fprintln(console.Stdout(ctx), clrs.Green(status.Message))
-					} else {
-						fmt.Fprintln(console.Stdout(ctx), status.Message)
+					if len(messages) > 0 {
+						messages = append(messages, "")
 					}
+					messages = append(messages, status.Message)
+				}
+
+				if len(messages) > 0 {
+					fmt.Fprintln(console.Stdout(ctx), clr(strings.Join(messages, "\n")))
 				}
 			}
 		default:
@@ -235,6 +244,22 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			// If we are exiting, because a sub-process failed, don't bother outputting
 			// an error again, just forward the appropriate exit code.
 			exitCode = exitError.ExitCode()
+		} else if versionError, ok := err.(*fnerrors.VersionError); ok {
+			fnerrors.Format(os.Stderr, colors, versionError)
+			exitCode = 2
+
+			if version, err := version.Version(); err == nil {
+				ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				if status, err := FetchLatestRemoteStatus(ctxWithTimeout, versionCheckEndpoint, version.Version); err == nil && status.TagName != "" {
+					fmt.Fprintln(os.Stderr, indent.String(
+						wordwrap.String(
+							fmt.Sprintf("\nThe latest version of Foundation is %s, available at %s\n", clrs.Bold(status.TagName), downloadUrl(status.TagName)),
+							80),
+						2))
+				}
+			}
 		} else {
 			// Only print errors after calling flushLogs above, so the console driver
 			// is no longer erasing lines.
@@ -307,6 +332,10 @@ func setupViper() {
 			log.Fatal(err)
 		}
 	}
+}
+
+func downloadUrl(version string) string {
+	return fmt.Sprintf("https://github.com/namespacelabs/foundation/releases/tag/%s", version)
 }
 
 func ensureFnConfig() {
@@ -386,7 +415,7 @@ func checkRemoteStatus(logger *zerolog.Logger, channel chan remoteStatus) {
 
 	logger.Debug().Stringer("binary_build_time", version.BuildTime).Msg("version check")
 
-	status, err := FetchLatestRemoteStatus("https://foundation-version.namespacelabs.workers.dev", version.Version)
+	status, err := FetchLatestRemoteStatus(context.Background(), versionCheckEndpoint, version.Version)
 	if err != nil {
 		logger.Debug().Err(err).Msg("version check failed")
 	} else {
