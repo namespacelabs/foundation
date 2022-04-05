@@ -14,10 +14,10 @@
   dependencies:
     "@cspotcode/source-map-consumer" "0.8.0"
 
-"@grpc/grpc-js@1.5.7":
-  version "1.5.7"
-  resolved "https://registry.yarnpkg.com/@grpc/grpc-js/-/grpc-js-1.5.7.tgz#c83a5dc1d0cf7b8aa82371cfa7125955d1f25a96"
-  integrity sha512-RAlSbZ9LXo0wNoHKeUlwP9dtGgVBDUbnBKFpfAv5iSqMG4qWz9um2yLH215+Wow1I48etIa1QMS+WAGmsE/7HQ==
+"@grpc/grpc-js@1.5.8":
+  version "1.5.8"
+  resolved "https://registry.yarnpkg.com/@grpc/grpc-js/-/grpc-js-1.5.8.tgz#ae42b78a1de8dfabeb638d93dabb1c2e27ca0e34"
+  integrity sha512-sfoF2yMVJcqEoX8E3o9+idUckv/w4cM+lt3U7Qz6GUBLgxAh1NS/3fEZKOMhwdvOEgWvPqbls/EgLXGKI0sm2A==
   dependencies:
     "@grpc/proto-loader" "^0.6.4"
     "@types/node" ">=12.12.47"
