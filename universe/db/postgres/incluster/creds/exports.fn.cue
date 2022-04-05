@@ -3,10 +3,10 @@ package creds
 
 #Exports: {
 	Creds: {
-		packageName: "namespacelabs.dev/foundation/universe/db/postgres/creds"
+		packageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 		type:        "Creds"
 		typeDefinition: {
-			"typename": "foundation.universe.db.postgres.CredsRequest"
+			"typename": "foundation.universe.db.postgres.incluster.CredsRequest"
 			"source": [
 				"provider.proto",
 			]

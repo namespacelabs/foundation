@@ -12,18 +12,17 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/universe/db/postgres/creds"
 )
 
 func logf(message string, args ...interface{}) {
 	fmt.Fprintf(os.Stdout, "%s : %s\n", time.Now().String(), fmt.Sprintf(message, args...))
 }
 
-func ProvideDatabase(ctx context.Context, caller string, db *Database, creds *creds.Creds, ready core.Check) (*pgxpool.Pool, error) {
+func ProvideDatabase(ctx context.Context, caller string, db *Database, username string, password string, ready core.Check) (*pgxpool.Pool, error) {
 	// Config has to be created by ParseConfig
 	config, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
-		creds.Username,
-		creds.Password,
+		username,
+		password,
 		db.HostedAt.Address,
 		db.HostedAt.Port,
 		db.Name))

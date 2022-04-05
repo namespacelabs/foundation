@@ -24,17 +24,9 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 		return err
 	}
 
-	for _, secret := range collection.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/creds") {
+	for _, secret := range collection.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/incluster/creds") {
 		switch secret.Name {
-		case "postgres_user_file":
-			out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-				With: &kubedef.ContainerExtension{
-					Env: []*kubedef.ContainerExtension_Env{{
-						Name:  "POSTGRES_USER_FILE",
-						Value: secret.FromPath,
-					}},
-				}})
-		case "postgres_password_file":
+		case "postgres-password-file":
 			out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 				With: &kubedef.ContainerExtension{
 					Env: []*kubedef.ContainerExtension_Env{{

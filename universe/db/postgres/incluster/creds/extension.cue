@@ -11,16 +11,13 @@ $providerProto: inputs.#Proto & {
 
 extension: fn.#Extension & {
 	instantiate: {
-		user: secrets.#Exports.Secret & {
-			with: {
-				name: "postgres_user_file"
-				provision: ["PROVISION_INLINE", "PROVISION_AS_FILE"]
-			}
-		}
 		password: secrets.#Exports.Secret & {
 			with: {
-				name: "postgres_password_file"
+				name: "postgres-password-file"
 				provision: ["PROVISION_INLINE", "PROVISION_AS_FILE"]
+				generate: {
+					randomByteCount: 32
+				}
 			}
 		}
 	}
