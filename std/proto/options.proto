@@ -11,5 +11,12 @@ option go_package = "namespacelabs.dev/foundation/std/proto";
 import "google/protobuf/descriptor.proto";
 
 extend google.protobuf.FieldOptions {
+    // Mark a string as representing a package name, which affects package loading.
     bool is_package = 60000;
+
+    // Mark the field as sensitive, should never be logged (TODO).
+    bool is_sensitive = 60001;
+
+    // Only retain this field in provisioning, clear it from the final binary.
+    bool provision_only = 60002;
 }

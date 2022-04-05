@@ -8,6 +8,7 @@ package foundation.universe.db.postgres;
 
 option go_package = "namespacelabs.dev/foundation/universe/db/postgres";
 
+import "std/proto/options.proto";
 import "std/types/resource.proto";
 
 message Endpoint {
@@ -17,6 +18,6 @@ message Endpoint {
 
 message Database {
     string                        name        = 1;
-    foundation.std.types.Resource schema_file = 2;
+    foundation.std.types.Resource schema_file = 2 [(foundation.std.proto.provision_only) = true];
     Endpoint                      hosted_at   = 3;
 }

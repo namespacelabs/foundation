@@ -57,11 +57,8 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		Instance:    "creds0",
 		Do: func(ctx context.Context) (err error) {
 			// name: "mariadb-password-file"
-			// generate: {
-			//   random_byte_count: 32
-			// }
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGUaAhAg", p)
+			core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGU=", p)
 
 			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/maria/creds", p); err != nil {
 				return err
@@ -101,11 +98,8 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		Instance:    "creds2",
 		Do: func(ctx context.Context) (err error) {
 			// name: "postgres-password-file"
-			// generate: {
-			//   random_byte_count: 32
-			// }
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxlGgIQIA==", p)
+			core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
 
 			if creds2.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", p); err != nil {
 				return err
@@ -162,12 +156,8 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		Instance:    "server.multidb",
 		DependsOn:   []string{"incluster2"}, Do: func(ctx context.Context) (err error) {
 			// name: "postgreslist"
-			// schema_file: {
-			//   path: "schema_postgres.sql"
-			//   contents: "CREATE TABLE IF NOT EXISTS list (\n    Id INT GENERATED ALWAYS AS IDENTITY,\n    Item varchar(255) NOT NULL,\n    PRIMARY KEY(Id)\n);"
-			// }
 			p := &fnincluster.Database{}
-			core.MustUnwrapProto("Cgxwb3N0Z3Jlc2xpc3QSmQEKE3NjaGVtYV9wb3N0Z3Jlcy5zcWwSgQFDUkVBVEUgVEFCTEUgSUYgTk9UIEVYSVNUUyBsaXN0ICgKICAgIElkIElOVCBHRU5FUkFURUQgQUxXQVlTIEFTIElERU5USVRZLAogICAgSXRlbSB2YXJjaGFyKDI1NSkgTk9UIE5VTEwsCiAgICBQUklNQVJZIEtFWShJZCkKKTs=", p)
+			core.MustUnwrapProto("Cgxwb3N0Z3Jlc2xpc3Q=", p)
 
 			if server.multidb.Postgres, err = fnincluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", p, incluster2); err != nil {
 				return err

@@ -55,11 +55,8 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		Instance:    "creds0",
 		Do: func(ctx context.Context) (err error) {
 			// name: "postgres-password-file"
-			// generate: {
-			//   random_byte_count: 32
-			// }
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxlGgIQIA==", p)
+			core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
 
 			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", p); err != nil {
 				return err
@@ -97,12 +94,8 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		Instance:    "server.list",
 		DependsOn:   []string{"incluster0"}, Do: func(ctx context.Context) (err error) {
 			// name: "list"
-			// schema_file: {
-			//   path: "schema.sql"
-			//   contents: "CREATE TABLE IF NOT EXISTS list (\n    Id INT GENERATED ALWAYS AS IDENTITY,\n    Item varchar(255) NOT NULL,\n    PRIMARY KEY(Id)\n);"
-			// }
 			p := &incluster.Database{}
-			core.MustUnwrapProto("CgRsaXN0EpABCgpzY2hlbWEuc3FsEoEBQ1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgbGlzdCAoCiAgICBJZCBJTlQgR0VORVJBVEVEIEFMV0FZUyBBUyBJREVOVElUWSwKICAgIEl0ZW0gdmFyY2hhcigyNTUpIE5PVCBOVUxMLAogICAgUFJJTUFSWSBLRVkoSWQpCik7", p)
+			core.MustUnwrapProto("CgRsaXN0", p)
 
 			if server.list.Db, err = incluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/list", p, incluster0); err != nil {
 				return err

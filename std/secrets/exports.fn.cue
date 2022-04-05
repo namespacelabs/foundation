@@ -8,7 +8,7 @@ import "namespacelabs.dev/foundation/std/fn:inputs"
 		packageName: "namespacelabs.dev/foundation/std/secrets"
 		type:        "Secret"
 		typeDefinition: {
-			"typename": "ns.Secret"
+			"typename": "foundation.std.secrets.Secret"
 			"source": [
 				"provider.proto",
 			]

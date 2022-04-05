@@ -228,12 +228,15 @@ func serializeContents(ctx context.Context, loader workspace.Packages, provides 
 		return fnerrors.InternalError("%s: failed to load message %q: %w", instance.PackageName, provides.Type.Typename, err)
 	}
 
-	msg := dynamicpb.NewMessage(msgdesc).Interface()
-	if err := proto.Unmarshal(instance.Constructor.Value, msg); err != nil {
+	raw := dynamicpb.NewMessage(msgdesc)
+	if err := proto.Unmarshal(instance.Constructor.Value, raw.Interface()); err != nil {
 		return fnerrors.InternalError("failed to unmarshal constructor: %w", err)
 	}
 
-	deterministicBytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(msg)
+	// Clean up all values which are not meant to be shipped into the binary.
+	protos.CleanupForNonProvisioning(raw)
+
+	deterministicBytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(raw.Interface())
 	if err != nil {
 		return fnerrors.InternalError("failed to marshal depvar: %w", err)
 	}
@@ -245,7 +248,7 @@ func serializeContents(ctx context.Context, loader workspace.Packages, provides 
 		return fnerrors.InternalError("failed to create resolver: %w", err)
 	}
 
-	serialized, err := prototext.MarshalOptions{Multiline: true, Resolver: resolver}.Marshal(msg)
+	serialized, err := prototext.MarshalOptions{Multiline: true, Resolver: resolver}.Marshal(raw.Interface())
 	if err == nil {
 		stableFmt, err := parser.Format(serialized)
 		if err == nil {

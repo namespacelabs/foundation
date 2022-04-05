@@ -250,13 +250,11 @@ type nodeWithDeps struct {
 }
 
 type serverTmplOptions struct {
-	Imports       *gosupport.GoImports
-	SerializedMsg []string
-	ProtoComments []string
-	Nodes         []*nodeWithDeps
-	Services      []*nodeWithDeps
-	Initializers  []initializer
-	Server        string
+	Imports      *gosupport.GoImports
+	Nodes        []*nodeWithDeps
+	Services     []*nodeWithDeps
+	Initializers []initializer
+	Server       string
 }
 
 type mainTmplOptions struct {
