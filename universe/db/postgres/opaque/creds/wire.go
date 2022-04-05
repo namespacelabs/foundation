@@ -10,8 +10,8 @@ import (
 
 func ProvideCreds(ctx context.Context, caller string, _ *CredsRequest, deps ExtensionDeps) (*Creds, error) {
 	creds := &Creds{
-		Username: string(deps.User.Value),
-		Password: string(deps.Password.Value),
+		Username: string(deps.User.MustValue()),
+		Password: string(deps.Password.MustValue()),
 	}
 	return creds, nil
 }

@@ -57,13 +57,11 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		Instance:    "creds0",
 		Do: func(ctx context.Context) (err error) {
 			// name: "mariadb-password-file"
-			// provision: PROVISION_INLINE
-			// provision: PROVISION_AS_FILE
 			// generate: {
 			//   random_byte_count: 32
 			// }
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGUSAgECGgIQIA==", p)
+			core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGUaAhAg", p)
 
 			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/maria/creds", p); err != nil {
 				return err
@@ -103,13 +101,11 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		Instance:    "creds2",
 		Do: func(ctx context.Context) (err error) {
 			// name: "postgres-password-file"
-			// provision: PROVISION_INLINE
-			// provision: PROVISION_AS_FILE
 			// generate: {
 			//   random_byte_count: 32
 			// }
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxlEgIBAhoCECA=", p)
+			core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxlGgIQIA==", p)
 
 			if creds2.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", p); err != nil {
 				return err

@@ -15,7 +15,6 @@ import "namespacelabs.dev/foundation/std/fn:inputs"
 		}
 		with: {
 			name?: string
-			provision?: [...("PROVISION_UNSPECIFIED" | "PROVISION_INLINE" | "PROVISION_AS_FILE")]
 			generate?: {
 				uniqueId?:        string
 				randomByteCount?: int

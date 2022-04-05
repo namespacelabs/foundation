@@ -25,7 +25,7 @@ func Protect(h http.HandlerFunc) http.Handler {
 }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	key, err := hex.DecodeString(string(deps.Token.Value))
+	key, err := hex.DecodeString(string(deps.Token.MustValue()))
 	if err != nil {
 		return fmt.Errorf("failed to decode key: %v", err)
 	}

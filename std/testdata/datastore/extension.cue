@@ -14,13 +14,11 @@ extension: fn.#Extension & {
 		cert: secrets.#Exports.Secret & {
 			with: {
 				name: "cert"
-				provision: ["PROVISION_INLINE"]
 			}
 		}
 		gen: secrets.#Exports.Secret & {
 			with: {
 				name: "gen"
-				provision: ["PROVISION_INLINE"]
 				generate: {
 					randomByteCount: 32
 				}
@@ -29,7 +27,6 @@ extension: fn.#Extension & {
 		keygen: secrets.#Exports.Secret & {
 			with: {
 				name: "keygen"
-				provision: ["PROVISION_INLINE"]
 				initializeWith: {
 					binary: "namespacelabs.dev/foundation/std/testdata/datastore/keygen"
 				}

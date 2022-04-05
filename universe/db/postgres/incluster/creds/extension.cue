@@ -14,7 +14,6 @@ extension: fn.#Extension & {
 		password: secrets.#Exports.Secret & {
 			with: {
 				name: "postgres-password-file"
-				provision: ["PROVISION_INLINE", "PROVISION_AS_FILE"]
 				generate: {
 					randomByteCount: 32
 				}

@@ -11,7 +11,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -164,7 +163,7 @@ func Collect(server *schema.Server) (*Collection, error) {
 func FillData(ctx context.Context, col *Collection, contents fs.FS) (map[string][]byte, error) {
 	data := map[string][]byte{}
 	for k, userManaged := range col.UserManaged {
-		m, err := ProvideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
+		m, err := provideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
 		if err != nil {
 			return nil, err
 		}
@@ -172,16 +171,7 @@ func FillData(ctx context.Context, col *Collection, contents fs.FS) (map[string]
 		names := col.Names[k]
 		for j, sec := range userManaged {
 			name := names[j]
-			if contains(sec.Provision, Provision_PROVISION_AS_FILE) {
-				b, err := fs.ReadFile(contents, m[sec.Name].Path)
-				if err != nil {
-					return nil, err
-				}
-
-				data[name] = b
-			} else {
-				data[name] = []byte(m[sec.Name].Value)
-			}
+			data[name] = m[sec.Name]
 		}
 	}
 
@@ -198,7 +188,7 @@ func (col *Collection) SecretsOf(packageName string) []*SecretDevMap_SecretSpec 
 	return nil
 }
 
-func ProvideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userManaged ...*Secret) (map[string]*Value, error) {
+func provideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userManaged ...*Secret) (map[string][]byte, error) {
 	sdm, err := loadDevMap(src)
 	if err != nil {
 		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
@@ -209,58 +199,32 @@ func ProvideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userMan
 		return nil, fmt.Errorf("%v: no secret configuration definition in map.textpb", caller)
 	}
 
-	result := map[string]*Value{}
+	result := map[string][]byte{}
 	for _, s := range userManaged {
 		spec := lookupSecret(cfg, s.Name)
 		if spec == nil {
 			return nil, fmt.Errorf("no secret configuration for %s of %q in map.textpb", s.Name, caller)
 		}
 
-		value := &Value{
-			Name:      s.Name,
-			Provision: s.Provision,
-		}
+		if spec.FromPath != "" {
+			var contents []byte
+			var err error
 
-		result[s.Name] = value
-
-		if contains(s.Provision, Provision_PROVISION_AS_FILE) {
-			if spec.FromPath == "" {
-				return nil, fmt.Errorf("requested secret %s by file, but the provider set it by value; and we don't implement secure secret writing yet", s.Name)
+			if filepath.IsAbs(spec.FromPath) {
+				return nil, fmt.Errorf("%s: %s: absolute paths are not supported in devmaps", caller, s.Name)
 			}
-			value.Path = spec.FromPath
-		}
 
-		if contains(s.Provision, Provision_PROVISION_INLINE) {
-			if spec.FromPath != "" {
-				var contents []byte
-				var err error
-
-				if filepath.IsAbs(spec.FromPath) {
-					contents, err = ioutil.ReadFile(spec.FromPath)
-				} else {
-					contents, err = fs.ReadFile(src, spec.FromPath)
-				}
-
-				if err != nil {
-					return nil, fmt.Errorf("failed while reading secret %s: %w", s.Name, err)
-				}
-				value.Value = []byte(strings.TrimSpace(string(contents)))
-			} else {
-				value.Value = []byte(spec.Value)
+			contents, err = fs.ReadFile(src, spec.FromPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed while reading secret %s: %w", s.Name, err)
 			}
+			result[s.Name] = []byte(strings.TrimSpace(string(contents)))
+		} else {
+			result[s.Name] = []byte(spec.Value)
 		}
 	}
 
 	return result, nil
-}
-
-func contains(provisions []Provision, provision Provision) bool {
-	for _, p := range provisions {
-		if p == provision {
-			return true
-		}
-	}
-	return false
 }
 
 func loadDevMap(src fs.FS) (*SecretDevMap, error) {
