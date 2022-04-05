@@ -17,14 +17,12 @@ import (
 const ServiceDepsFilename = "deps.fn.ts"
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
+	if len(n.ExportService) == 0 {
+		return nil
+	}
+
 	return generateSource(ctx, fs, loc.Rel(ServiceDepsFilename), serviceTmpl, nodeTmplOptions{
-		Imports: []singleImport{{
-			Alias:   "impl",
-			Package: "./service_impl",
-		}, {
-			Alias:   "grpc_def",
-			Package: "./service_grpc_pb",
-		}},
+		Imports:       []singleImport{},
 		NeedsDepsType: true,
 		DepVars: []depVar{{
 			Name: "myDep",
@@ -33,10 +31,6 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 				Name:        "string",
 			},
 		}},
-		ServiceType: typeDef{
-			ImportAlias: "grpc_def",
-			Name:        "IPostServiceServer",
-		},
 	})
 }
 

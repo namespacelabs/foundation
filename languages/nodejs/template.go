@@ -12,7 +12,6 @@ type nodeTmplOptions struct {
 	Imports       []singleImport
 	NeedsDepsType bool
 	DepVars       []depVar
-	ServiceType   typeDef
 }
 
 type depVar struct {
@@ -31,19 +30,20 @@ type singleImport struct {
 var (
 	serviceTmpl = template.Must(template.New(ServiceDepsFilename).Parse(
 		`// This file was automatically generated.{{with $opts := .}}
+import { Server } from "@grpc/grpc-js";
+import * as wire from "./wire";
 {{range $opts.Imports}}
 import * as {{.Alias}} from "{{.Package}}"{{end}}
 
 {{if .NeedsDepsType}}
 export interface Deps {
 {{range $k, $v := .DepVars}}
-	{{$v.Name}}: {{template "Alias" $v.Type.ImportAlias}}{{$v.Type.Name}}{{end}}
+	{{$v.Name}}: {{if $v.Type.ImportAlias}}{{$v.Type.ImportAlias}}.{{end}}{{$v.Type.Name}}{{end}}
 }
 {{end}}
 
-export type ServiceProvider = (deps: Deps) => {{template "Alias" $opts.ServiceType.ImportAlias}}{{$opts.ServiceType.Name}};
-export const exportService: ServiceProvider = impl.exportService;
+export type WireService = (deps: Deps, server: Server) => void;
+export const wireService: WireService = wire.wireService;
 
-{{end}}
-{{define "Alias"}}{{if .}}{{.}}.{{end}}{{end}}`))
+{{end}}`))
 )
