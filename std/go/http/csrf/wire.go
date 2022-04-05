@@ -6,7 +6,7 @@ package csrf
 
 import (
 	"context"
-	"encoding/hex"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 
@@ -25,7 +25,7 @@ func Protect(h http.HandlerFunc) http.Handler {
 }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	key, err := hex.DecodeString(string(deps.Token.MustValue()))
+	key, err := base64.RawStdEncoding.DecodeString(string(deps.Token.MustValue()))
 	if err != nil {
 		return fmt.Errorf("failed to decode key: %v", err)
 	}
