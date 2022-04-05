@@ -166,7 +166,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			return compute.Continuously(ctx, &updateCluster{
 				obs:       do.obs,
 				localAddr: do.obs.parent.localHostname,
-				env:       do.env,
+				env:       focusServers.Env(),
 				stack:     stack.Proto(),
 				focus:     do.serverPackages,
 				plan:      plan,

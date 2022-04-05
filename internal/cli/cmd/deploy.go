@@ -65,7 +65,7 @@ func NewDeployCmd() *cobra.Command {
 				}
 			}
 
-			servers, err := loadServers(ctx, env, locations, specified)
+			packages, servers, err := loadServers(ctx, env, locations, specified)
 			if err != nil {
 				return err
 			}
@@ -89,7 +89,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			waiters, err := computed.Deployer.Apply(ctx, runtime.TaskServerDeploy, env)
+			waiters, err := computed.Deployer.Apply(ctx, runtime.TaskServerDeploy, env.BindWith(packages))
 			if err != nil {
 				return err
 			}

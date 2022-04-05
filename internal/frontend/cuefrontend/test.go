@@ -16,6 +16,7 @@ import (
 type cueTest struct {
 	Name    string         `json:"name"`
 	Binary  *schema.Binary `json:"binary"`
+	Driver  *schema.Binary `json:"driver"`
 	Fixture cueFixture     `json:"fixture"`
 }
 
@@ -29,15 +30,20 @@ func parseCueTest(ctx context.Context, loc workspace.Location, parent, v *fncue.
 		return nil, err
 	}
 
-	test := cueTest{Binary: &schema.Binary{}}
+	test := cueTest{}
 	if err := v.Val.Decode(&test); err != nil {
 		return nil, err
 	}
 
 	testDef := &schema.Test{
 		Name:             test.Name,
-		Binary:           test.Binary,
 		ServersUnderTest: test.Fixture.ServersUnderTest,
+	}
+
+	if test.Driver != nil {
+		testDef.Driver = test.Driver
+	} else if test.Binary != nil {
+		testDef.Driver = test.Binary
 	}
 
 	if err := workspace.TransformTest(loc, testDef); err != nil {

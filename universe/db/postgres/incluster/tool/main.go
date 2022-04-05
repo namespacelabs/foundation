@@ -7,11 +7,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	"namespacelabs.dev/foundation/universe/db/postgres/toolcommon"
@@ -29,12 +31,12 @@ func collectDatabases(server *schema.Server, owner string, internalEndpoint *sch
 		for _, instance := range alloc.Instance {
 			for _, instantiate := range instance.Instantiated {
 				if instantiate.GetPackageName() == owner && instantiate.GetType() == "Database" {
-					in := incluster.Database{}
-					if err := proto.Unmarshal(instantiate.Constructor.Value, &in); err != nil {
+					in := &incluster.Database{}
+					if err := proto.Unmarshal(instantiate.Constructor.Value, in); err != nil {
 						return nil, err
 					}
 
-					db := postgres.Database{
+					db := &postgres.Database{
 						Name:       in.Name,
 						SchemaFile: in.SchemaFile,
 						HostedAt: &postgres.Endpoint{
@@ -43,7 +45,7 @@ func collectDatabases(server *schema.Server, owner string, internalEndpoint *sch
 						},
 					}
 
-					dbs[schema.PackageName(instance.InstanceOwner)] = append(dbs[schema.PackageName(instance.InstanceOwner)], &db)
+					dbs[schema.PackageName(instance.InstanceOwner)] = append(dbs[schema.PackageName(instance.InstanceOwner)], db)
 				}
 			}
 		}
@@ -64,6 +66,30 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
+
+	args := []string{}
+
+	col, err := secrets.Collect(r.Focus.Server)
+	if err != nil {
+		return err
+	}
+
+	// TODO: creds should be definable per db instance #217
+	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/incluster/creds") {
+		switch secret.Name {
+		case "postgres-password-file":
+			args = append(args, fmt.Sprintf("--postgres_password_file=%s", secret.FromPath))
+		default:
+		}
+	}
+
+	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
+		With: &kubedef.ContainerExtension{
+			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
+				PackageName: "namespacelabs.dev/foundation/universe/db/postgres/init",
+				Arg:         args,
+			}},
+		}})
 
 	endpoint := internalEndpoint(r.Stack)
 

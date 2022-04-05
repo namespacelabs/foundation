@@ -27,7 +27,7 @@ import (
 )
 
 type testRun struct {
-	Env ops.Environment // Doesn't affect the output.
+	Env ops.WorkspaceEnvironment // Doesn't affect the output.
 
 	TestName       string
 	TestBinPkg     schema.PackageName

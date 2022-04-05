@@ -32,7 +32,7 @@ type TestOpts struct {
 
 type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) ([]provision.Server, *stack.Stack, error)
 
-func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env ops.Environment, pkgname schema.PackageName, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[oci.ImageID], error) {
+func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision.Env, pkgname schema.PackageName, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[oci.ImageID], error) {
 	testPkg, err := pl.LoadByName(ctx, pkgname)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env ops.Envir
 	} else if testPkg.Test != nil {
 		testDef = testPkg.Test
 		testBinary = &workspace.Package{
-			Binary:   testPkg.Test.Binary,
+			Binary:   testPkg.Test.Driver,
 			Location: testPkg.Location,
 		}
 
@@ -126,7 +126,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env ops.Envir
 
 	results := &testRun{
 		TestName:       testDef.Name,
-		Env:            env,
+		Env:            env.BindWith(pl.Seal()),
 		Plan:           deployPlan,
 		Focus:          focusServers,
 		Stack:          stack.Proto(),

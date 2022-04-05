@@ -34,12 +34,12 @@ func NewShutdownCmd() *cobra.Command {
 				return err
 			}
 
-			servers, err := loadServers(ctx, env, locations, specified)
+			packages, servers, err := loadServers(ctx, env, locations, specified)
 			if err != nil {
 				return err
 			}
 
-			return deploy.Shutdown(ctx, env, servers)
+			return deploy.Shutdown(ctx, env.BindWith(packages), servers)
 		}),
 	}
 

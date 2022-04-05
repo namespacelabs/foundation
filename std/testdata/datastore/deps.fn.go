@@ -11,6 +11,7 @@ import (
 type ExtensionDeps struct {
 	Cert           *secrets.Value
 	Gen            *secrets.Value
+	Keygen         *secrets.Value
 	ReadinessCheck core.Check
 }
 

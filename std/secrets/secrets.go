@@ -9,16 +9,13 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
-	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -44,16 +41,17 @@ type Collection struct {
 }
 
 type Generated struct {
-	UniqueID string
-	BasePath string
-	Secrets  []*Secret
+	ID     string
+	Path   string
+	Secret *Secret
 }
 
 var (
 	validIdRe           = regexp.MustCompile("^[a-z][0123456789abcdefghijklmnopqrstuvwyxz]{7,15}$")
+	validNameRe         = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-_]{0,31}$")
 	lowerCaseBase32Raw  = "0123456789abcdefghijklmnopqrstuv"
 	base32enc           = base32.NewEncoding(lowerCaseBase32Raw).WithPadding(base32.NoPadding)
-	reservedSecretNames = []string{"server"}
+	reservedSecretNames = map[string]struct{}{"server": {}}
 )
 
 func Collect(server *schema.Server) (*Collection, error) {
@@ -69,12 +67,23 @@ func Collect(server *schema.Server) (*Collection, error) {
 					if err := proto.Unmarshal(instantiate.GetConstructor().Value, secret); err != nil {
 						return nil, err
 					}
+
+					if !validNameRe.MatchString(secret.Name) {
+						return nil, fnerrors.UserError(nil, "bad secret name: %q (must be alphanumeric, up to 32 characters)", secret.Name)
+					}
+
+					if secret.InitializeWith != nil {
+						if secret.Generate == nil {
+							secret.Generate = &GenerateSpecification{}
+						}
+					}
+
 					if secret.Generate != nil {
 						if secret.Generate.UniqueId == "" {
 							h := sha256.New()
 							fmt.Fprint(h, instance.InstanceOwner)
-							secret.Generate.UniqueId = base32enc.EncodeToString(h.Sum(nil)[:8])
-						} else if slices.Contains(reservedSecretNames, secret.Generate.UniqueId) {
+							secret.Generate.UniqueId = base32enc.EncodeToString(h.Sum(nil)[:16])
+						} else if _, ok := reservedSecretNames[secret.Generate.UniqueId]; ok {
 							return nil, fnerrors.UserError(nil, "bad unique secret id: %q (is a reserved word)", secret.Generate.UniqueId)
 						} else if !validIdRe.MatchString(secret.Generate.UniqueId) {
 							return nil, fnerrors.UserError(nil, "bad unique secret id: %q (must be alphanumeric, between 8 and 16 characters)", secret.Generate.UniqueId)
@@ -116,38 +125,22 @@ func Collect(server *schema.Server) (*Collection, error) {
 			if len(generated) > 0 {
 				byUniqueID := map[string][]*Secret{}
 				for _, sec := range generated {
-					configure.Secret = append(configure.Secret, &SecretDevMap_SecretSpec{
-						Name:     sec.Name,
-						FromPath: filepath.Join(ScopedMountPath, strings.ReplaceAll(instance.InstanceOwner, "/", "-")+"-"+sec.Generate.UniqueId, sec.Name),
-					})
 					byUniqueID[sec.Generate.UniqueId] = append(byUniqueID[sec.Generate.UniqueId], sec)
-				}
+					id := strings.Join([]string{sec.Name, sec.Generate.UniqueId}, "-")
+					path := filepath.Join(ScopedMountPath, strings.ReplaceAll(instance.InstanceOwner, "/", "-"), id)
 
-				for id, group := range byUniqueID {
-					seen := map[string]*Secret{}
-					for _, secret := range group {
-						if existing := seen[secret.Name]; existing != nil {
-							if !proto.Equal(existing, secret) {
-								return nil, fnerrors.UserError(nil, "%s: %s: incompatible secret definition", id, secret.Name)
-							}
-						} else {
-							seen[secret.Name] = secret
-						}
-					}
-
-					gen := Generated{
-						UniqueID: id,
-						BasePath: filepath.Join(ScopedMountPath, strings.ReplaceAll(instance.InstanceOwner, "/", "-")+"-"+id),
-					}
-					for _, secret := range seen {
-						gen.Secrets = append(gen.Secrets, secret)
-					}
-
-					slices.SortFunc(gen.Secrets, func(a, b *Secret) bool {
-						return strings.Compare(a.Name, b.Name) < 0
+					configure.Secret = append(configure.Secret, &SecretDevMap_SecretSpec{
+						Name: sec.Name,
+						// By convention, the generated k8s secret has a single secret inside, with
+						// the actual secret name.
+						FromPath: filepath.Join(path, sec.Name),
 					})
 
-					col.Generated = append(col.Generated, gen)
+					col.Generated = append(col.Generated, Generated{
+						ID:     id,
+						Path:   path,
+						Secret: sec,
+					})
 				}
 			}
 
@@ -160,20 +153,17 @@ func Collect(server *schema.Server) (*Collection, error) {
 		}
 	}
 
-	slices.SortFunc(col.Generated, func(a, b Generated) bool {
-		return strings.Compare(a.UniqueID, b.UniqueID) < 0
+	sort.Slice(col.Generated, func(i, j int) bool {
+		return strings.Compare(col.Generated[i].ID, col.Generated[j].ID) < 0
 	})
 
 	return col, nil
 }
 
 func FillData(ctx context.Context, col *Collection, contents fs.FS) (map[string][]byte, error) {
-	j, _ := json.MarshalIndent(col, "", "  ")
-	fmt.Fprintln(os.Stderr, string(j))
-
 	data := map[string][]byte{}
 	for k, userManaged := range col.UserManaged {
-		m, err := ProvideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
+		m, err := provideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
 		if err != nil {
 			return nil, err
 		}
@@ -181,16 +171,7 @@ func FillData(ctx context.Context, col *Collection, contents fs.FS) (map[string]
 		names := col.Names[k]
 		for j, sec := range userManaged {
 			name := names[j]
-			if contains(sec.Provision, Provision_PROVISION_AS_FILE) {
-				b, err := fs.ReadFile(contents, m[sec.Name].Path)
-				if err != nil {
-					return nil, err
-				}
-
-				data[name] = b
-			} else {
-				data[name] = []byte(m[sec.Name].Value)
-			}
+			data[name] = m[sec.Name]
 		}
 	}
 
@@ -207,7 +188,7 @@ func (col *Collection) SecretsOf(packageName string) []*SecretDevMap_SecretSpec 
 	return nil
 }
 
-func ProvideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userManaged ...*Secret) (map[string]*Value, error) {
+func provideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userManaged ...*Secret) (map[string][]byte, error) {
 	sdm, err := loadDevMap(src)
 	if err != nil {
 		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
@@ -218,58 +199,32 @@ func ProvideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userMan
 		return nil, fmt.Errorf("%v: no secret configuration definition in map.textpb", caller)
 	}
 
-	result := map[string]*Value{}
+	result := map[string][]byte{}
 	for _, s := range userManaged {
 		spec := lookupSecret(cfg, s.Name)
 		if spec == nil {
 			return nil, fmt.Errorf("no secret configuration for %s of %q in map.textpb", s.Name, caller)
 		}
 
-		value := &Value{
-			Name:      s.Name,
-			Provision: s.Provision,
-		}
+		if spec.FromPath != "" {
+			var contents []byte
+			var err error
 
-		result[s.Name] = value
-
-		if contains(s.Provision, Provision_PROVISION_AS_FILE) {
-			if spec.FromPath == "" {
-				return nil, fmt.Errorf("requested secret %s by file, but the provider set it by value; and we don't implement secure secret writing yet", s.Name)
+			if filepath.IsAbs(spec.FromPath) {
+				return nil, fmt.Errorf("%s: %s: absolute paths are not supported in devmaps", caller, s.Name)
 			}
-			value.Path = spec.FromPath
-		}
 
-		if contains(s.Provision, Provision_PROVISION_INLINE) {
-			if spec.FromPath != "" {
-				var contents []byte
-				var err error
-
-				if filepath.IsAbs(spec.FromPath) {
-					contents, err = ioutil.ReadFile(spec.FromPath)
-				} else {
-					contents, err = fs.ReadFile(src, spec.FromPath)
-				}
-
-				if err != nil {
-					return nil, fmt.Errorf("failed while reading secret %s: %w", s.Name, err)
-				}
-				value.Value = []byte(strings.TrimSpace(string(contents)))
-			} else {
-				value.Value = []byte(spec.Value)
+			contents, err = fs.ReadFile(src, spec.FromPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed while reading secret %s: %w", s.Name, err)
 			}
+			result[s.Name] = []byte(strings.TrimSpace(string(contents)))
+		} else {
+			result[s.Name] = []byte(spec.Value)
 		}
 	}
 
 	return result, nil
-}
-
-func contains(provisions []Provision, provision Provision) bool {
-	for _, p := range provisions {
-		if p == provision {
-			return true
-		}
-	}
-	return false
 }
 
 func loadDevMap(src fs.FS) (*SecretDevMap, error) {

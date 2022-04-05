@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/universe/db/postgres/creds"
+	"namespacelabs.dev/foundation/universe/db/postgres/opaque/creds"
 )
 
 type ExtensionDeps struct {

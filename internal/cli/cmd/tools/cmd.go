@@ -12,10 +12,11 @@ func NewToolsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "tools",
 		Short:   "Tool-related commands.",
-		Aliases: []string{"t"},
+		Aliases: []string{"t", "tool"},
 	}
 
 	cmd.AddCommand(newGRPCurlCmd())
+	cmd.AddCommand(newKubeCtlCmd())
 
 	return cmd
 }

@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -20,7 +21,9 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
+	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -227,43 +230,8 @@ func RegisterGraphHandlers() {
 		}
 
 		if create.IfMissing {
-			var exists bool
-			// XXX this is racy here, we need to have a loop and a callback for contents.
-			if err := tasks.Action("kubernetes.get").Scope(asPackages(d.Scope)...).
-				HumanReadablef(d.Description).
-				Arg("resource", create.Resource).
-				Arg("name", create.Name).
-				Arg("namespace", create.Namespace).Run(ctx, func(ctx context.Context) error {
-				restcfg, err := client.ResolveConfig(env)
-				if err != nil {
-					return err
-				}
-
-				client, err := client.MakeResourceSpecificClient(create.Resource, restcfg)
-				if err != nil {
-					return err
-				}
-
-				opts := metav1.GetOptions{}
-				req := client.Get()
-				if create.Namespace != "" {
-					req.Namespace(create.Namespace)
-				}
-
-				if err := req.Resource(create.Resource).
-					Name(create.Name).
-					Body(&opts).
-					Do(ctx).Error(); err != nil {
-					if errors.IsNotFound(err) {
-						return nil
-					} else {
-						return err
-					}
-				}
-
-				exists = true
-				return nil
-			}); err != nil {
+			exists, err := checkResourceExists(ctx, env, d.Description, create.Resource, create.Name, create.Namespace, asPackages(d.Scope))
+			if err != nil {
 				return nil, err
 			}
 
@@ -304,7 +272,114 @@ func RegisterGraphHandlers() {
 		return nil, nil
 	})
 
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, create *kubedef.OpCreateSecretConditionally) (*ops.DispatcherResult, error) {
+		wenv, ok := env.(ops.WorkspaceEnvironment)
+		if !ok {
+			return nil, fnerrors.InternalError("expected a ops.WorkspaceEnvironment")
+		}
+
+		if create.Name == "" {
+			return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
+		}
+
+		if create.Namespace == "" {
+			return nil, fnerrors.InternalError("%s: create.Namespace is required", d.Description)
+		}
+
+		exists, err := checkResourceExists(ctx, env, d.Description, "secrets", create.Name, create.Namespace, asPackages(d.Scope))
+		if err != nil {
+			return nil, err
+		}
+
+		if exists {
+			return nil, nil // Nothing to do.
+		}
+
+		cfg, err := client.ComputeHostEnv(env.DevHost(), env.Proto())
+		if err != nil {
+			return nil, err
+		}
+
+		cli, err := client.NewClientFromHostEnv(cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		invocation, err := tools.Invoke(ctx, env, wenv, schema.PackageName(create.GetInvocation().GetBinary()), false)
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := compute.GetValue(ctx, invocation)
+		if err != nil {
+			return nil, err
+		}
+
+		newSecret := &v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      create.Name,
+				Namespace: create.Namespace,
+				Labels:    kubedef.MakeLabels(env.Proto(), nil),
+			},
+			Data: map[string][]byte{
+				create.UserSpecifiedName: result.Bytes,
+			},
+		}
+
+		if _, err := cli.CoreV1().Secrets(create.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
+			FieldManager: kubedef.Ego().FieldManager,
+		}); err != nil {
+			return nil, err
+		}
+
+		return nil, nil
+	})
+
 	ingress.RegisterGraphHandlers()
+}
+
+func checkResourceExists(ctx context.Context, env ops.Environment, description, resource, name, namespace string, scope []schema.PackageName) (bool, error) {
+	var exists bool
+	// XXX this is racy here, we need to have a loop and a callback for contents.
+	if err := tasks.Action("kubernetes.get").Scope(scope...).
+		HumanReadablef("Check: "+description).
+		Arg("resource", resource).
+		Arg("name", name).
+		Arg("namespace", namespace).Run(ctx, func(ctx context.Context) error {
+		restcfg, err := client.ResolveConfig(env)
+		if err != nil {
+			return err
+		}
+
+		client, err := client.MakeResourceSpecificClient(resource, restcfg)
+		if err != nil {
+			return err
+		}
+
+		opts := metav1.GetOptions{}
+		req := client.Get()
+		if namespace != "" {
+			req.Namespace(namespace)
+		}
+
+		if err := req.Resource(resource).
+			Name(name).
+			Body(&opts).
+			Do(ctx).Error(); err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			} else {
+				return err
+			}
+		}
+
+		exists = true
+		return nil
+	}); err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }
 
 func asPackages(input []string) []schema.PackageName {

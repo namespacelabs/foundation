@@ -12,5 +12,5 @@ import (
 )
 
 func ProvideDatabase(ctx context.Context, caller string, db *Database, deps ExtensionDeps) (*pgxpool.Pool, error) {
-	return postgres.ProvideDatabase(ctx, caller, db, deps.Creds, deps.ReadinessCheck)
+	return postgres.ProvideDatabase(ctx, caller, db, deps.Creds.Username, deps.Creds.Password, deps.ReadinessCheck)
 }

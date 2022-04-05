@@ -9,6 +9,6 @@ package foundation.std.types;
 option go_package = "namespacelabs.dev/foundation/std/types";
 
 message Resource {
-    string path = 1;
-    bytes contents = 2;
+    string path     = 1;
+    bytes  contents = 2;
 }
