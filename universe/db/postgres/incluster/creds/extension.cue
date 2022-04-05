@@ -16,7 +16,7 @@ extension: fn.#Extension & {
 				name: "postgres-password-file"
 				generate: {
 					randomByteCount: 32
-					format: "FORMAT_BASE32"
+					format:          "FORMAT_BASE32"
 				}
 			}
 		}
