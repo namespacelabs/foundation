@@ -46,25 +46,21 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool"
-  digest: "sha256:64f961fd54399d579d9163f5b3539c12b102cd93dbd1eb99992e7202eb75def0"
+  digest: "sha256:388f653be92b3ad5a37acb10dfce9e230d6dabf93c93b77ef4d31530908003d3"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/init"
-  digest: "sha256:df4f8c158643c4ac4fac8fe372aae1c640506b7dabba07c92437207dbfd64b5b"
+  digest: "sha256:5b691672ea9ab220badcd356c30045fa08579bf9ead625e891ea4dde4f5b57b1"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/opaque/tool"
-  digest: "sha256:5841d86190622bb7c5d7d8d4061d59d68a52ef67076d400b6f7a505f403b9748"
+  digest: "sha256:3f3133b30f0dd43253ecd6fcc1db542a599e403bfe66fbd867b12be3deaf7ccc"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/server/creds/tool"
-  digest: "sha256:272628d01b2eb0ef47424d72fb20e25c99cdfe6ba2c6291ee29e317c46c0a066"
+  digest: "sha256:5a7be21119b73a0ec29a9dd20873fda5ed04392a9a9d8bc8461f75ee758ecdaa"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/server/img"
   digest: "sha256:84def5e236a4e73437ee2f2c4a4efd75656f3a107665afd47f1487fe79e629cc"
-}
-prebuilt_binary: {
-  package_name: "namespacelabs.dev/foundation/universe/db/postgres/tool"
-  digest: "sha256:9f223ff889ea97273bf0c02e2247158b6defa22999b177db2e6558830b586016"
 }
