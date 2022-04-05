@@ -30,7 +30,7 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/maria/incluster/tool"
-  digest: "sha256:3bb9335b39fa7209d858d0fa5aed78a772b8070a6c57323909e904c68a252b22"
+  digest: "sha256:3cd02f6218b602d7ed70b93f83fc30b92282eed093ded75dc9e221a783fa3b90"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/maria/init"
@@ -38,11 +38,7 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/maria/server/creds/tool"
-  digest: "sha256:1c4a8dc90ccded554caedc1d59db338dd0332bd3213bb030d372a60c9da8b694"
-}
-prebuilt_binary: {
-  package_name: "namespacelabs.dev/foundation/universe/db/maria/tool"
-  digest: "sha256:cec5023281fbb1995b34643064a15dfd4e6c7576c055cd0ce00d62e23dfbc006"
+  digest: "sha256:e01b5599bb121ed641047ad0eb877a2b6c6a6800c0c4601264dff97fb5a8d125"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool"

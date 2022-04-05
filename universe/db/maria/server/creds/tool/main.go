@@ -24,7 +24,7 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 		return err
 	}
 
-	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/maria/creds") {
+	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/maria/incluster/creds") {
 		switch secret.Name {
 		case "mariadb-password-file":
 			out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
