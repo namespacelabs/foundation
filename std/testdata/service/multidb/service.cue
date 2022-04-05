@@ -10,7 +10,7 @@ $proto: inputs.#Proto & {
 }
 
 service: fn.#Service & {
-  framework: "GO_GRPC"
+	framework: "GO_GRPC"
 
 	instantiate: {
 		postgres: postgresdb.#Exports.Database & {
