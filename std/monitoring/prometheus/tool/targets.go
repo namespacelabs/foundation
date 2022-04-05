@@ -16,7 +16,7 @@ import (
 
 type configureTargets struct{}
 
-func (configureTargets) Apply(ctx context.Context, r configure.Request, out *configure.ApplyOutput) error {
+func (configureTargets) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
 	for _, endpoint := range r.Stack.GetInternalEndpoint() {
 		for _, md := range endpoint.GetServiceMetadata() {
 			if md.Kind != "prometheus.io/metrics" || md.Protocol != schema.HttpProtocol {
@@ -66,7 +66,7 @@ func (configureTargets) Apply(ctx context.Context, r configure.Request, out *con
 	return nil
 }
 
-func (configureTargets) Delete(ctx context.Context, r configure.Request, out *configure.DeleteOutput) error {
+func (configureTargets) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
 	// Nothing to do, the annotations live with their corresponding servers.
 	return nil
 }

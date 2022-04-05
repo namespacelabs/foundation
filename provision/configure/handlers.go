@@ -74,7 +74,7 @@ func (m matches) match(env *schema.Environment) bool {
 	return true
 }
 
-func (rh runHandlers) Apply(ctx context.Context, req Request, out *ApplyOutput) error {
+func (rh runHandlers) Apply(ctx context.Context, req StackRequest, out *ApplyOutput) error {
 	var errs []error
 
 	for _, r := range rh.h.handlers {
@@ -90,7 +90,7 @@ func (rh runHandlers) Apply(ctx context.Context, req Request, out *ApplyOutput) 
 	return multierr.New(errs...)
 }
 
-func (rh runHandlers) Delete(ctx context.Context, req Request, out *DeleteOutput) error {
+func (rh runHandlers) Delete(ctx context.Context, req StackRequest, out *DeleteOutput) error {
 	var errs []error
 
 	for _, r := range rh.h.handlers {
