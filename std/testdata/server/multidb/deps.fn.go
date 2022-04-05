@@ -11,8 +11,8 @@ import (
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/testdata/service/multidb"
-	"namespacelabs.dev/foundation/universe/db/maria/creds"
 	"namespacelabs.dev/foundation/universe/db/maria/incluster"
+	"namespacelabs.dev/foundation/universe/db/maria/incluster/creds"
 	fnincluster "namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	fncreds "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 )
@@ -60,7 +60,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 			p := &secrets.Secret{}
 			core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGU=", p)
 
-			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/maria/creds", p); err != nil {
+			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster/creds", p); err != nil {
 				return err
 			}
 			return nil
@@ -70,7 +70,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 	var incluster0 incluster.ExtensionDeps
 
 	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/universe/db/maria/creds",
+		PackageName: "namespacelabs.dev/foundation/universe/db/maria/incluster/creds",
 		Instance:    "incluster0",
 		DependsOn:   []string{"creds0"}, Do: func(ctx context.Context) (err error) {
 			if incluster0.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", nil, creds0); err != nil {

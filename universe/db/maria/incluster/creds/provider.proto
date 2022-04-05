@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.universe.db.maria;
+package foundation.universe.db.maria.incluster;
 
-option go_package = "namespacelabs.dev/foundation/universe/db/maria/creds";
+option go_package = "namespacelabs.dev/foundation/universe/db/maria/incluster/creds";
 
 message CredsRequest {
 }

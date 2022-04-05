@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.universe.db.postgres;
+package foundation.universe.db.postgres.opaque;
 
-option go_package = "namespacelabs.dev/foundation/universe/db/postgres/creds";
+option go_package = "namespacelabs.dev/foundation/universe/db/postgres/opaque/creds";
 
 message CredsRequest {
 }

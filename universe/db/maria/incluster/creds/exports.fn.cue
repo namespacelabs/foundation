@@ -3,10 +3,10 @@ package creds
 
 #Exports: {
 	Creds: {
-		packageName: "namespacelabs.dev/foundation/universe/db/maria/creds"
+		packageName: "namespacelabs.dev/foundation/universe/db/maria/incluster/creds"
 		type:        "Creds"
 		typeDefinition: {
-			"typename": "foundation.universe.db.maria.CredsRequest"
+			"typename": "foundation.universe.db.maria.incluster.CredsRequest"
 			"source": [
 				"provider.proto",
 			]

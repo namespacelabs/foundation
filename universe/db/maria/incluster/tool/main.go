@@ -7,11 +7,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/db/maria"
 	"namespacelabs.dev/foundation/universe/db/maria/incluster"
 	"namespacelabs.dev/foundation/universe/db/maria/toolcommon"
@@ -65,6 +67,29 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 		return nil
 	}
 
+	args := []string{}
+
+	col, err := secrets.Collect(r.Focus.Server)
+	if err != nil {
+		return err
+	}
+
+	// TODO: creds should be definable per db instance #217
+	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/maria/incluster/creds") {
+		switch secret.Name {
+		case "mariadb-password-file":
+			args = append(args, fmt.Sprintf("--mariadb_password_file=%s", secret.FromPath))
+		default:
+		}
+	}
+
+	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
+		With: &kubedef.ContainerExtension{
+			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
+				PackageName: "namespacelabs.dev/foundation/universe/db/maria/init",
+				Arg:         args,
+			}},
+		}})
 	endpoint := internalEndpoint(r.Stack)
 
 	value, err := json.Marshal(endpoint)

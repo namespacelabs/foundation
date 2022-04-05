@@ -6,7 +6,7 @@ package creds
 		packageName: "namespacelabs.dev/foundation/universe/db/postgres/opaque/creds"
 		type:        "Creds"
 		typeDefinition: {
-			"typename": "foundation.universe.db.postgres.CredsRequest"
+			"typename": "foundation.universe.db.postgres.opaque.CredsRequest"
 			"source": [
 				"provider.proto",
 			]
