@@ -13,12 +13,12 @@ extension: fn.#Extension & {
 	instantiate: {
 		user: secrets.#Exports.Secret & {
 			with: {
-				name: "postgres_user_file"
+				name: "postgres-user-file"
 			}
 		}
 		password: secrets.#Exports.Secret & {
 			with: {
-				name: "postgres_password_file"
+				name: "postgres-password-file"
 			}
 		}
 	}

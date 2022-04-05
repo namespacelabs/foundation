@@ -48,5 +48,5 @@ func ProvideDatabase(ctx context.Context, caller string, db *Database, deps Exte
 		},
 	}
 
-	return postgres.ProvideDatabase(ctx, caller, base, deps.Creds, deps.ReadinessCheck)
+	return postgres.ProvideDatabase(ctx, caller, base, "postgres", deps.Creds.Password, deps.ReadinessCheck)
 }
