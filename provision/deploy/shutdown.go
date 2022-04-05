@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
-func Shutdown(ctx context.Context, env ops.Environment, servers []provision.Server) error {
+func Shutdown(ctx context.Context, env ops.WorkspaceEnvironment, servers []provision.Server) error {
 	stack, defs0, err := computeShutdown(ctx, env, servers)
 	if err != nil {
 		return err

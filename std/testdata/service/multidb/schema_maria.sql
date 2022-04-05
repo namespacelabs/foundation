@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS list (
+    Id INT NOT NULL AUTO_INCREMENT,
+    Item varchar(255) NOT NULL,
+    PRIMARY KEY(Id)
+);

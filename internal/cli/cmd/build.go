@@ -50,7 +50,7 @@ func NewBuildCmd() *cobra.Command {
 				return err
 			}
 
-			servers, err := loadServers(ctx, env, serverLocs, specified)
+			_, servers, err := loadServers(ctx, env, serverLocs, specified)
 			if err != nil {
 				return err
 			}
@@ -170,19 +170,19 @@ func allServersOrFromArgs(ctx context.Context, env provision.Env, args []string)
 	return locations, true, nil
 }
 
-func loadServers(ctx context.Context, env provision.Env, locations []fnfs.Location, specified bool) ([]provision.Server, error) {
+func loadServers(ctx context.Context, env provision.Env, locations []fnfs.Location, specified bool) (workspace.SealedPackages, []provision.Server, error) {
 	loader := workspace.NewPackageLoader(env.Root())
 
 	var servers []provision.Server
 	for _, loc := range locations {
 		pp, err := loader.LoadByName(ctx, loc.AsPackageName())
 		if err != nil {
-			return nil, fnerrors.Wrap(loc, err)
+			return nil, nil, fnerrors.Wrap(loc, err)
 		}
 
 		if pp.Server == nil {
 			if specified {
-				return nil, fnerrors.UserError(loc, "expected a server")
+				return nil, nil, fnerrors.UserError(loc, "expected a server")
 			}
 
 			continue
@@ -190,11 +190,11 @@ func loadServers(ctx context.Context, env provision.Env, locations []fnfs.Locati
 
 		srv, err := env.RequireServerWith(ctx, loader, loc.AsPackageName())
 		if err != nil {
-			return nil, fnerrors.Wrap(loc, err)
+			return nil, nil, fnerrors.Wrap(loc, err)
 		}
 
 		servers = append(servers, srv)
 	}
 
-	return servers, nil
+	return loader.Seal(), servers, nil
 }

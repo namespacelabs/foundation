@@ -41,13 +41,14 @@ type Collection struct {
 }
 
 type Generated struct {
-	UniqueID string
-	BasePath string
-	Secrets  []*Secret
+	ID     string
+	Path   string
+	Secret *Secret
 }
 
 var (
 	validIdRe           = regexp.MustCompile("^[a-z][0123456789abcdefghijklmnopqrstuvwyxz]{7,15}$")
+	validNameRe         = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-_]{0,31}$")
 	lowerCaseBase32Raw  = "0123456789abcdefghijklmnopqrstuv"
 	base32enc           = base32.NewEncoding(lowerCaseBase32Raw).WithPadding(base32.NoPadding)
 	reservedSecretNames = []string{"server"}
@@ -66,11 +67,22 @@ func Collect(server *schema.Server) (*Collection, error) {
 					if err := proto.Unmarshal(instantiate.GetConstructor().Value, secret); err != nil {
 						return nil, err
 					}
+
+					if !validNameRe.MatchString(secret.Name) {
+						return nil, fnerrors.UserError(nil, "bad secret name: %q (must be alphanumeric, up to 32 characters)", secret.Name)
+					}
+
+					if secret.InitializeWith != nil {
+						if secret.Generate == nil {
+							secret.Generate = &GenerateSpecification{}
+						}
+					}
+
 					if secret.Generate != nil {
 						if secret.Generate.UniqueId == "" {
 							h := sha256.New()
 							fmt.Fprint(h, instance.InstanceOwner)
-							secret.Generate.UniqueId = base32enc.EncodeToString(h.Sum(nil)[:8])
+							secret.Generate.UniqueId = base32enc.EncodeToString(h.Sum(nil)[:16])
 						} else if slices.Contains(reservedSecretNames, secret.Generate.UniqueId) {
 							return nil, fnerrors.UserError(nil, "bad unique secret id: %q (is a reserved word)", secret.Generate.UniqueId)
 						} else if !validIdRe.MatchString(secret.Generate.UniqueId) {
@@ -113,38 +125,22 @@ func Collect(server *schema.Server) (*Collection, error) {
 			if len(generated) > 0 {
 				byUniqueID := map[string][]*Secret{}
 				for _, sec := range generated {
-					configure.Secret = append(configure.Secret, &SecretDevMap_SecretSpec{
-						Name:     sec.Name,
-						FromPath: filepath.Join(ScopedMountPath, strings.ReplaceAll(instance.InstanceOwner, "/", "-")+"-"+sec.Generate.UniqueId, sec.Name),
-					})
 					byUniqueID[sec.Generate.UniqueId] = append(byUniqueID[sec.Generate.UniqueId], sec)
-				}
+					id := strings.Join([]string{sec.Name, sec.Generate.UniqueId}, "-")
+					path := filepath.Join(ScopedMountPath, strings.ReplaceAll(instance.InstanceOwner, "/", "-"), id)
 
-				for id, group := range byUniqueID {
-					seen := map[string]*Secret{}
-					for _, secret := range group {
-						if existing := seen[secret.Name]; existing != nil {
-							if !proto.Equal(existing, secret) {
-								return nil, fnerrors.UserError(nil, "%s: %s: incompatible secret definition", id, secret.Name)
-							}
-						} else {
-							seen[secret.Name] = secret
-						}
-					}
-
-					gen := Generated{
-						UniqueID: id,
-						BasePath: filepath.Join(ScopedMountPath, strings.ReplaceAll(instance.InstanceOwner, "/", "-")+"-"+id),
-					}
-					for _, secret := range seen {
-						gen.Secrets = append(gen.Secrets, secret)
-					}
-
-					slices.SortFunc(gen.Secrets, func(a, b *Secret) bool {
-						return strings.Compare(a.Name, b.Name) < 0
+					configure.Secret = append(configure.Secret, &SecretDevMap_SecretSpec{
+						Name: sec.Name,
+						// By convention, the generated k8s secret has a single secret inside, with
+						// the actual secret name.
+						FromPath: filepath.Join(path, sec.Name),
 					})
 
-					col.Generated = append(col.Generated, gen)
+					col.Generated = append(col.Generated, Generated{
+						ID:     id,
+						Path:   path,
+						Secret: sec,
+					})
 				}
 			}
 
@@ -158,7 +154,7 @@ func Collect(server *schema.Server) (*Collection, error) {
 	}
 
 	slices.SortFunc(col.Generated, func(a, b Generated) bool {
-		return strings.Compare(a.UniqueID, b.UniqueID) < 0
+		return strings.Compare(a.ID, b.ID) < 0
 	})
 
 	return col, nil

@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package binary
+package genbinary
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/moby/buildkit/client/llb"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
@@ -24,7 +25,9 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const llbGenBinaryName = "llbgen"
+func LLBBinary(packageName schema.PackageName, module *workspace.Module, bin build.Spec) build.Spec {
+	return llbBinary{packageName, module, bin}
+}
 
 type llbBinary struct {
 	packageName schema.PackageName
@@ -70,7 +73,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env ops.Environment, conf bui
 			run.WorkingDir = "/"
 			run.Image = binImage
 			// XXX security user id
-			run.Command = []string{"/" + llbGenBinaryName}
+			run.Command = []string{"/" + binary.LLBGenBinaryName}
 			run.Env = map[string]string{
 				"TARGET_PLATFORM": targetPlatform,
 			}
