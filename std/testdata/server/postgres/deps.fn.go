@@ -57,9 +57,10 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 			// name: "postgres-password-file"
 			// generate: {
 			//   random_byte_count: 32
+			//   format: FORMAT_BASE32
 			// }
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxlGgIQIA==", p)
+			core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxlGgQQIBgC", p)
 
 			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", p); err != nil {
 				return err
