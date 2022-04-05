@@ -28,6 +28,7 @@ message ToolRequest {
     oneof request_type {
         ApplyRequest  apply_request  = 6;
         DeleteRequest delete_request = 7;
+        InvokeRequest invoke_request = 10;
     }
 }
 
@@ -40,6 +41,7 @@ message StackRelated {
 message ToolResponse {
     ApplyResponse  apply_response  = 1;
     DeleteResponse delete_response = 2;
+    InvokeResponse invoke_response = 3;
 }
 
 message ApplyRequest {
@@ -61,6 +63,13 @@ message DeleteRequest {
 
 message DeleteResponse {
     repeated schema.Definition definition = 1;
+}
+
+message InvokeRequest {}
+
+message InvokeResponse {
+    google.protobuf.Any output     = 1;
+    bytes               raw_output = 2;  // Alternative to structured output above.
 }
 
 message CacheKey {}

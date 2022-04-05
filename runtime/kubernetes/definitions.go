@@ -315,6 +315,10 @@ func RegisterGraphHandlers() {
 			return nil, err
 		}
 
+		if result.RawOutput == nil {
+			return nil, fnerrors.BadInputError("%s: tool didn't produce an output", create.Invocation.Binary)
+		}
+
 		newSecret := &v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      create.Name,
@@ -322,7 +326,7 @@ func RegisterGraphHandlers() {
 				Labels:    kubedef.MakeLabels(env.Proto(), nil),
 			},
 			Data: map[string][]byte{
-				create.UserSpecifiedName: result.Bytes,
+				create.UserSpecifiedName: result.RawOutput,
 			},
 		}
 

@@ -10,9 +10,9 @@ import (
 )
 
 func main() {
-	h := configure.NewRegistration()
+	h := configure.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
-	henv.Handle(configureTargets{})
-	henv.Handle(configureServer{})
-	configure.RunWith(h)
+	henv.HandleStack(configureTargets{})
+	henv.HandleStack(configureServer{})
+	configure.Handle(h)
 }

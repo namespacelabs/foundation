@@ -8,9 +8,11 @@ import (
 	"bytes"
 	"context"
 
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -18,11 +20,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type InvocationResult struct {
-	Bytes []byte
-}
-
-func Invoke(ctx context.Context, env ops.Environment, packages workspace.Packages, binpkg schema.PackageName, cacheable bool) (compute.Computable[InvocationResult], error) {
+func Invoke(ctx context.Context, env ops.Environment, packages workspace.Packages, binpkg schema.PackageName, cacheable bool) (compute.Computable[*protocol.InvokeResponse], error) {
 	pkg, err := packages.LoadByName(ctx, binpkg)
 	if err != nil {
 		return nil, err
@@ -46,7 +44,7 @@ type invokeTool struct {
 	prepared  *binary.PreparedImage
 	cacheable bool
 
-	compute.LocalScoped[InvocationResult]
+	compute.LocalScoped[*protocol.InvokeResponse]
 }
 
 func (inv *invokeTool) Action() *tasks.ActionEvent {
@@ -59,12 +57,25 @@ func (inv *invokeTool) Inputs() *compute.In {
 
 func (inv *invokeTool) Output() compute.Output { return compute.Output{NotCacheable: !inv.cacheable} }
 
-func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (InvocationResult, error) {
+func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protocol.InvokeResponse, error) {
 	var out bytes.Buffer
+
+	req := &protocol.ToolRequest{
+		ToolPackage: inv.pkg.String(),
+		RequestType: &protocol.ToolRequest_InvokeRequest{
+			InvokeRequest: &protocol.InvokeRequest{},
+		},
+	}
+
+	reqbytes, err := proto.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
 
 	run := rtypes.RunToolOpts{
 		ImageName: inv.pkg.String(),
 		IO: rtypes.IO{
+			Stdin:  bytes.NewReader(reqbytes),
 			Stdout: &out,
 			Stderr: console.Output(ctx, inv.prepared.Name),
 		},
@@ -79,8 +90,13 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (Invocat
 		}}
 
 	if err := Impl().Run(ctx, run); err != nil {
-		return InvocationResult{}, err
+		return nil, err
 	}
 
-	return InvocationResult{Bytes: out.Bytes()}, nil
+	resp := &protocol.ToolResponse{}
+	if err := proto.Unmarshal(out.Bytes(), resp); err != nil {
+		return nil, err
+	}
+
+	return resp.InvokeResponse, nil
 }
