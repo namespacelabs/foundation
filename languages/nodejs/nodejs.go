@@ -8,13 +8,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"sort"
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
@@ -48,26 +46,17 @@ func Register() {
 type generator struct{}
 
 func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenServer) (*ops.DispatcherResult, error) {
-	wenv, ok := env.(workspace.Packages)
+	workspacePackages, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, errors.New("workspace.Packages required")
 	}
 
-	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.Server.PackageName))
+	loc, err := workspacePackages.Resolve(ctx, schema.PackageName(msg.Server.PackageName))
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, fnfs.WriteWorkspaceFile(ctx, loc.Module.ReadWriteFS(), loc.Rel("main.fn.ts"), func(w io.Writer) error {
-		f, err := resources.Open("main.ts")
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-
-		_, err = io.Copy(w, f)
-		return err
-	})
+	return nil, generateServer(ctx, workspacePackages, loc, msg.Server, msg.LoadedNode, loc.Module.ReadWriteFS())
 }
 
 type impl struct {
@@ -119,7 +108,7 @@ func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *sche
 
 func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
 	var dl defs.DefList
-	dl.Add("Generate Typescript server dependencies", &OpGenServer{Server: pkg.Server}, pkg.PackageName())
+	dl.Add("Generate Typescript server dependencies", &OpGenServer{Server: pkg.Server, LoadedNode: nodes}, pkg.PackageName())
 	return dl.Serialize()
 }
 

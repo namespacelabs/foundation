@@ -13,8 +13,8 @@ type nodeTmplOptions struct {
 }
 
 var (
-	serviceTmpl = template.Must(template.New(ServiceDepsFilename).Parse(
-		`// This file was automatically generated.{{with $opts := .}}
+	serviceTmpl = template.Must(template.New("template").Parse(
+		`// This file was automatically generated.
 import { Server } from "@grpc/grpc-js";
 import * as wire from "./wire";
 
@@ -25,6 +25,5 @@ export interface Deps {
 
 export type WireService = (deps: Deps, server: Server) => void;
 export const wireService: WireService = wire.wireService;
-
-{{end}}`))
+`))
 )

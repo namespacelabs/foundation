@@ -6,15 +6,13 @@ package nodejs
 
 import (
 	"context"
-	"io"
-	"text/template"
 
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const ServiceDepsFilename = "deps.fn.ts"
+const DepsFilename = "deps.fn.ts"
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
 	// Only services for now.
@@ -22,13 +20,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		return nil
 	}
 
-	return generateSource(ctx, fs, loc.Rel(ServiceDepsFilename), serviceTmpl, nodeTmplOptions{
+	return generateSource(ctx, fs, loc.Rel(DepsFilename), serviceTmpl, nodeTmplOptions{
 		NeedsDepsType: len(n.ExportService) != 0,
-	})
-}
-
-func generateSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, data interface{}) error {
-	return fnfs.WriteWorkspaceFile(ctx, fsfs, filePath, func(w io.Writer) error {
-		return WriteSource(w, t, data)
 	})
 }
