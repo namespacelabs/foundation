@@ -85,6 +85,15 @@ func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *sche
 		packages = append(packages, fmt.Sprintf("%s@%s", pkg, version))
 	}
 
+	for _, importName := range server.Import {
+		loc, err := nodejsLocationFrom(schema.Name(importName))
+		if err != nil {
+			return err
+		}
+		// Hard-coding the version of dependencies since we only support monorepo for now.
+		packages = append(packages, fmt.Sprintf("%s@%s", loc.NpmPackage, "v1.0.0"))
+	}
+
 	for pkg, version := range builtin().DevDependencies {
 		devPackages = append(devPackages, fmt.Sprintf("%s@%s", pkg, version))
 	}
