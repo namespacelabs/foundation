@@ -13,9 +13,9 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
-	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -51,7 +51,7 @@ var (
 	validNameRe         = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-_]{0,31}$")
 	lowerCaseBase32Raw  = "0123456789abcdefghijklmnopqrstuv"
 	base32enc           = base32.NewEncoding(lowerCaseBase32Raw).WithPadding(base32.NoPadding)
-	reservedSecretNames = []string{"server"}
+	reservedSecretNames = map[string]struct{}{"server": {}}
 )
 
 func Collect(server *schema.Server) (*Collection, error) {
@@ -83,7 +83,7 @@ func Collect(server *schema.Server) (*Collection, error) {
 							h := sha256.New()
 							fmt.Fprint(h, instance.InstanceOwner)
 							secret.Generate.UniqueId = base32enc.EncodeToString(h.Sum(nil)[:16])
-						} else if slices.Contains(reservedSecretNames, secret.Generate.UniqueId) {
+						} else if _, ok := reservedSecretNames[secret.Generate.UniqueId]; ok {
 							return nil, fnerrors.UserError(nil, "bad unique secret id: %q (is a reserved word)", secret.Generate.UniqueId)
 						} else if !validIdRe.MatchString(secret.Generate.UniqueId) {
 							return nil, fnerrors.UserError(nil, "bad unique secret id: %q (must be alphanumeric, between 8 and 16 characters)", secret.Generate.UniqueId)
@@ -153,8 +153,8 @@ func Collect(server *schema.Server) (*Collection, error) {
 		}
 	}
 
-	slices.SortFunc(col.Generated, func(a, b Generated) bool {
-		return strings.Compare(a.ID, b.ID) < 0
+	sort.Slice(col.Generated, func(i, j int) bool {
+		return strings.Compare(col.Generated[i].ID, col.Generated[j].ID) < 0
 	})
 
 	return col, nil
