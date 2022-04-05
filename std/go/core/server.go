@@ -4,26 +4,22 @@
 
 package core
 
-import sync "sync"
+import (
+	"go.uber.org/atomic"
+)
 
 var (
 	running struct {
-		mu sync.Mutex
-		is bool
+		is atomic.Bool
 	}
 )
 
 func AssertNotRunning(what string) {
-	running.mu.Lock()
-	isRunning := running.is
-	running.mu.Unlock()
-	if isRunning {
+	if running.is.Load() {
 		Log.Fatalf("tried to call %s after the server has been initialized", what)
 	}
 }
 
 func InitializationDone() {
-	running.mu.Lock()
-	running.is = true
-	running.mu.Unlock()
+	running.is.Store(true)
 }
