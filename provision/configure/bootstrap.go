@@ -14,6 +14,8 @@ import (
 	"log"
 	"os"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -48,17 +50,23 @@ type DeleteOutput struct {
 	Ops []defs.MakeDefinition
 }
 
-type Handler interface {
+type StackHandler interface {
 	Apply(context.Context, StackRequest, *ApplyOutput) error
 	Delete(context.Context, StackRequest, *DeleteOutput) error
 }
 
 // XXX remove Tool when all the uses are gone.
 type Tool interface {
-	Handler
+	StackHandler
 }
 
-func (p StackRequest) UnpackInput(msg proto.Message) error {
+type AllHandlers interface {
+	StackHandler
+
+	Invoke(context.Context, Request) (*protocol.InvokeResponse, error)
+}
+
+func (p Request) UnpackInput(msg proto.Message) error {
 	if msg == nil {
 		return errors.New("msg is nil")
 	}
@@ -73,25 +81,53 @@ func (p StackRequest) UnpackInput(msg proto.Message) error {
 }
 
 // PackageOwner returns the name of the package that defined this tool.
-func (p StackRequest) PackageOwner() string {
+func (p Request) PackageOwner() string {
 	return p.r.GetToolPackage()
 }
 
 func RunTool(t Tool) {
+	run(handlerCompat{t})
+}
+
+func run(h AllHandlers) {
 	flag.Parse()
 
 	ctx := logoutput.WithOutput(context.Background(), logoutput.OutputTo{Writer: os.Stderr})
 
-	if err := runTool(ctx, os.Stdin, os.Stdout, t); err != nil {
+	if err := runTool(ctx, os.Stdin, os.Stdout, h); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func RunWith(h *Handlers) {
-	RunTool(runHandlers{h})
+type handlerCompat struct {
+	tool Tool
 }
 
-func runTool(ctx context.Context, r io.Reader, w io.Writer, t Tool) error {
+var _ AllHandlers = handlerCompat{}
+
+func (h handlerCompat) Apply(ctx context.Context, req StackRequest, output *ApplyOutput) error {
+	return h.tool.Apply(ctx, req, output)
+}
+
+func (h handlerCompat) Delete(ctx context.Context, req StackRequest, output *DeleteOutput) error {
+	return h.tool.Delete(ctx, req, output)
+}
+
+func (h handlerCompat) Invoke(context.Context, Request) (*protocol.InvokeResponse, error) {
+	return nil, status.Error(codes.Unavailable, "invoke not supported")
+}
+
+func Handle(h *Handlers) {
+	run(runHandlers{h})
+}
+
+func HandleInvoke(f InvokeFunc) {
+	h := NewHandlers()
+	h.Any().HandleInvoke(f)
+	Handle(h)
+}
+
+func runTool(ctx context.Context, r io.Reader, w io.Writer, t AllHandlers) error {
 	reqBytes, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err
@@ -100,11 +136,6 @@ func runTool(ctx context.Context, r io.Reader, w io.Writer, t Tool) error {
 	req := &protocol.ToolRequest{}
 	if err := proto.Unmarshal(reqBytes, req); err != nil {
 		return err
-	}
-
-	s := req.Stack.GetServer(schema.PackageName(req.FocusedServer))
-	if s == nil {
-		return fnerrors.InternalError("%s: focused server not present in the stack", req.FocusedServer)
 	}
 
 	var br Request
@@ -141,7 +172,7 @@ func runTool(ctx context.Context, r io.Reader, w io.Writer, t Tool) error {
 			}
 
 			if packed.For == "" {
-				packed.For = s.GetPackageName().String()
+				packed.For = p.Focus.GetPackageName().String()
 			}
 
 			response.ApplyResponse.Extension = append(response.ApplyResponse.Extension, packed)
@@ -168,6 +199,13 @@ func runTool(ctx context.Context, r io.Reader, w io.Writer, t Tool) error {
 		if err != nil {
 			return err
 		}
+
+	case *protocol.ToolRequest_InvokeRequest:
+		output, err := t.Invoke(ctx, br)
+		if err != nil {
+			return err
+		}
+		response.InvokeResponse = output
 	}
 
 	serialized, err := proto.Marshal(response)
