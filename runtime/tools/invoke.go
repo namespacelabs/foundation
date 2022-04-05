@@ -15,13 +15,14 @@ import (
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Invoke(ctx context.Context, env ops.Environment, packages workspace.Packages, binpkg schema.PackageName, cacheable bool) (compute.Computable[*protocol.InvokeResponse], error) {
-	pkg, err := packages.LoadByName(ctx, binpkg)
+func Invoke(ctx context.Context, env ops.Environment, packages workspace.Packages, inv *types.DeferredInvocation) (compute.Computable[*protocol.InvokeResponse], error) {
+	pkg, err := packages.LoadByName(ctx, schema.PackageName(inv.Binary))
 	if err != nil {
 		return nil, err
 	}
@@ -33,35 +34,35 @@ func Invoke(ctx context.Context, env ops.Environment, packages workspace.Package
 	}
 
 	return &invokeTool{
-		pkg:       binpkg,
-		prepared:  prepared,
-		cacheable: cacheable,
+		invocation: inv,
+		prepared:   prepared,
 	}, nil
 }
 
 type invokeTool struct {
-	pkg       schema.PackageName
-	prepared  *binary.PreparedImage
-	cacheable bool
+	invocation *types.DeferredInvocation
+	prepared   *binary.PreparedImage
 
 	compute.LocalScoped[*protocol.InvokeResponse]
 }
 
 func (inv *invokeTool) Action() *tasks.ActionEvent {
-	return tasks.Action("tool.invoke").Arg("package_name", inv.pkg)
+	return tasks.Action("tool.invoke").Arg("package_name", inv.invocation.Binary)
 }
 
 func (inv *invokeTool) Inputs() *compute.In {
-	return compute.Inputs().Str("name", inv.prepared.Name).Strs("command", inv.prepared.Command).Computable("image", inv.prepared.Image).Stringer("pkg", inv.pkg)
+	return compute.Inputs().Str("name", inv.prepared.Name).Strs("command", inv.prepared.Command).Computable("image", inv.prepared.Image).Proto("invocation", inv.invocation)
 }
 
-func (inv *invokeTool) Output() compute.Output { return compute.Output{NotCacheable: !inv.cacheable} }
+func (inv *invokeTool) Output() compute.Output {
+	return compute.Output{NotCacheable: !inv.invocation.Cacheable}
+}
 
 func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protocol.InvokeResponse, error) {
 	var out bytes.Buffer
 
 	req := &protocol.ToolRequest{
-		ToolPackage: inv.pkg.String(),
+		ToolPackage: inv.invocation.Binary,
 		RequestType: &protocol.ToolRequest_InvokeRequest{
 			InvokeRequest: &protocol.InvokeRequest{},
 		},
@@ -73,7 +74,7 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 	}
 
 	run := rtypes.RunToolOpts{
-		ImageName: inv.pkg.String(),
+		ImageName: inv.invocation.Binary,
 		IO: rtypes.IO{
 			Stdin:  bytes.NewReader(reqbytes),
 			Stdout: &out,

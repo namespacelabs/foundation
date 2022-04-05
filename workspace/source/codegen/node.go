@@ -168,6 +168,8 @@ func generateProto(out io.Writer, parsed protos.AnyResolver, msg protoreflect.Me
 		field := msg.Fields().Get(k)
 		var t string
 		switch field.Kind() {
+		case protoreflect.BoolKind:
+			t = "bool"
 		case protoreflect.DoubleKind,
 			protoreflect.FloatKind:
 			t = "float"
