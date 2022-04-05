@@ -27,6 +27,10 @@ var UsePrebuilts = true // XXX make these a scoped configuration instead.
 
 var BuildGo func(loc workspace.Location, goPackage, binName string, unsafeCacheable bool) (build.Spec, error)
 var BuildWeb func(workspace.Location) build.Spec
+var BuildLLBGen func(schema.PackageName, *workspace.Module, build.Spec) build.Spec
+var BuildNix func(schema.PackageName, *workspace.Module, fs.FS) build.Spec
+
+const LLBGenBinaryName = "llbgen"
 
 type Prepared struct {
 	Name    string
@@ -190,11 +194,11 @@ func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary) 
 	if llb := src.LlbGoBinary; llb != "" {
 		// We allow these Go binaries to be cached because we expect them to be seldom
 		// changed, and the impact of not being able to verify the cache is too big.
-		spec, err := BuildGo(loc, llb, llbGenBinaryName, true)
+		spec, err := BuildGo(loc, llb, LLBGenBinaryName, true)
 		if err != nil {
 			return nil, err
 		}
-		return llbBinary{loc.PackageName, loc.Module, spec}, nil
+		return BuildLLBGen(loc.PackageName, loc.Module, spec), nil
 	}
 
 	if nix := src.NixFlake; nix != "" {
@@ -202,8 +206,7 @@ func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary) 
 		if err != nil {
 			return nil, fnerrors.Wrap(loc, err)
 		}
-
-		return nixImage{loc.PackageName, loc.Module, fsys}, nil
+		return BuildNix(loc.PackageName, loc.Module, fsys), nil
 	}
 
 	if dockerFile := src.Dockerfile; dockerFile != "" {

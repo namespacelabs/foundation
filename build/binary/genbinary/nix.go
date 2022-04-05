@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package binary
+package genbinary
 
 import (
 	"context"
@@ -20,6 +20,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/pins"
 )
+
+func NixImage(packageName schema.PackageName, module *workspace.Module, sources fs.FS) build.Spec {
+	return nixImage{packageName, module, sources}
+}
 
 type nixImage struct {
 	packageName schema.PackageName
