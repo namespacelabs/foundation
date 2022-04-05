@@ -10,6 +10,10 @@ extension: fn.#Extension & {
 	instantiate: token: secrets.#Exports.Secret & {
 		with: {
 			name: "http_csrf_token"
+			generate: {
+				randomByteCount: 32
+				format: "FORMAT_BASE64"
+			}
 		}
 	}
 }
