@@ -29,7 +29,7 @@ const fetchLogsAfter = 10 * time.Second
 type updateCluster struct {
 	obs       *stackState
 	localAddr string
-	env       ops.Environment
+	env       ops.WorkspaceEnvironment
 	stack     *schema.Stack
 	servers   []provision.Server
 	focus     []schema.PackageName

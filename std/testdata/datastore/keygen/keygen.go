@@ -2,13 +2,14 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-syntax = "proto3";
+package main
 
-package foundation.std.types;
+import (
+	"os"
 
-option go_package = "namespacelabs.dev/foundation/std/types";
+	"namespacelabs.dev/go-ids"
+)
 
-message Resource {
-    string path     = 1;
-    bytes  contents = 2;
+func main() {
+	os.Stdout.Write([]byte(ids.NewRandomBase32ID(128)))
 }

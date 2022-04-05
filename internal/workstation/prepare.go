@@ -244,6 +244,8 @@ type noPackageEnv struct {
 	ops.Environment
 }
 
+var _ workspace.Packages = noPackageEnv{}
+
 func (noPackageEnv) Resolve(ctx context.Context, packageName schema.PackageName) (workspace.Location, error) {
 	return workspace.Location{}, errors.New("not supported")
 }

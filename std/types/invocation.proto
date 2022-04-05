@@ -8,7 +8,8 @@ package foundation.std.types;
 
 option go_package = "namespacelabs.dev/foundation/std/types";
 
-message Resource {
-    string path     = 1;
-    bytes  contents = 2;
+import "std/proto/options.proto";
+
+message DeferredInvocation {
+    string binary = 1 [(foundation.std.proto.is_package) = true];
 }

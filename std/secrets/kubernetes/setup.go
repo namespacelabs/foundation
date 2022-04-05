@@ -104,7 +104,7 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 			WithData(data),
 	})
 
-	volId := fmt.Sprintf("fn-managed-server-secrets-%s", r.Focus.Server.Id)
+	volId := fmt.Sprintf("fn-secrets-%s", r.Focus.Server.Id)
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
 		With: &kubedef.SpecExtension{
@@ -129,8 +129,8 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 		}})
 
 	for _, gen := range collection.Generated {
-		name := fmt.Sprintf("fn-managed-%s", gen.UniqueID)
-		volId := name
+		name := gen.ID + ".managed.namespacelabs.dev"
+		volId := "fn-secret-" + gen.ID
 
 		out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
 			With: &kubedef.SpecExtension{
@@ -149,40 +149,48 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 				VolumeMount: []*kubedef.ContainerExtension_VolumeMount{{
 					Name:        volId,
 					ReadOnly:    true,
-					MountPath:   gen.BasePath,
+					MountPath:   gen.Path,
 					MountOnInit: true, // Allow secret access during server initialization
 				}},
 			}})
 
-		data := map[string][]byte{}
-		for _, sec := range gen.Secrets {
-			switch sec.Generate.Format {
+		if gen.Secret.InitializeWith == nil {
+			data := map[string][]byte{}
+			switch gen.Secret.Generate.Format {
 			case secrets.GenerateSpecification_FORMAT_BASE32:
-				data[sec.Name] = []byte(ids.NewRandomBase32ID(int(sec.Generate.RandomByteCount)))
+				data[gen.Secret.Name] = []byte(ids.NewRandomBase32ID(int(gen.Secret.Generate.RandomByteCount)))
 			default: // Including BASE64
-				raw := make([]byte, sec.Generate.RandomByteCount)
+				raw := make([]byte, gen.Secret.Generate.RandomByteCount)
 				rand.Reader.Read(raw)
-				data[sec.Name] = []byte(base64.RawStdEncoding.EncodeToString(raw))
+				data[gen.Secret.Name] = []byte(base64.RawStdEncoding.EncodeToString(raw))
 			}
-		}
 
-		newSecret := &v1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				Labels:    kubedef.MakeLabels(r.Env, nil),
-			},
-			Data: data,
-		}
+			newSecret := &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+					Labels:    kubedef.MakeLabels(r.Env, nil),
+				},
+				Data: data,
+			}
 
-		out.Definitions = append(out.Definitions, kubedef.Create{
-			Description: "Generated server secrets",
-			IfMissing:   true,
-			Resource:    "secrets",
-			Namespace:   namespace,
-			Name:        name,
-			Body:        newSecret,
-		})
+			out.Definitions = append(out.Definitions, kubedef.Create{
+				Description: "Generated server secrets",
+				IfMissing:   true,
+				Resource:    "secrets",
+				Namespace:   namespace,
+				Name:        name,
+				Body:        newSecret,
+			})
+		} else {
+			out.Definitions = append(out.Definitions, kubedef.CreateSecretConditionally{
+				Description:       "Generated server secrets",
+				Namespace:         namespace,
+				Name:              name,
+				UserSpecifiedName: gen.Secret.Name,
+				Invocation:        gen.Secret.InitializeWith,
+			})
+		}
 
 	}
 
@@ -203,5 +211,5 @@ func (tool) Delete(ctx context.Context, r configure.Request, out *configure.Dele
 }
 
 func serverSecretName(srv *schema.Server) string {
-	return strings.Join([]string{"fn-usermanaged", srv.Name, srv.Id}, "-")
+	return strings.Join([]string{srv.Name, srv.Id}, "-") + ".managed.namespacelabs.dev"
 }

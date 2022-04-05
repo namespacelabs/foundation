@@ -4,11 +4,12 @@
 
 syntax = "proto3";
 
-package foundation.std.types;
+package foundation.std.proto;
 
-option go_package = "namespacelabs.dev/foundation/std/types";
+option go_package = "namespacelabs.dev/foundation/std/proto";
 
-message Resource {
-    string path     = 1;
-    bytes  contents = 2;
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.FieldOptions {
+    bool is_package = 60000;
 }

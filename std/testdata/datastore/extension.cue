@@ -26,6 +26,15 @@ extension: fn.#Extension & {
 				}
 			}
 		}
+		keygen: secrets.#Exports.Secret & {
+			with: {
+				name: "keygen"
+				provision: ["PROVISION_INLINE"]
+				initializeWith: {
+					binary: "namespacelabs.dev/foundation/std/testdata/datastore/keygen"
+				}
+			}
+		}
 		readinessCheck: core.#Exports.ReadinessCheck
 	}
 

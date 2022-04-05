@@ -85,6 +85,25 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 	})
 
 	di.Register(core.Initializer{
+		PackageName: "namespacelabs.dev/foundation/std/secrets",
+		Instance:    "datastore0",
+		Do: func(ctx context.Context) (err error) {
+			// name: "keygen"
+			// provision: PROVISION_INLINE
+			// initialize_with: {
+			//   binary: "namespacelabs.dev/foundation/std/testdata/datastore/keygen"
+			// }
+			p := &secrets.Secret{}
+			core.MustUnwrapProto("CgZrZXlnZW4SAQEiPAo6bmFtZXNwYWNlbGFicy5kZXYvZm91bmRhdGlvbi9zdGQvdGVzdGRhdGEvZGF0YXN0b3JlL2tleWdlbg==", p)
+
+			if datastore0.Keygen, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
+				return err
+			}
+			return nil
+		},
+	})
+
+	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/core",
 		Instance:    "datastore0",
 		Do: func(ctx context.Context) (err error) {
