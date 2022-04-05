@@ -26,7 +26,7 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 
 	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/maria/creds") {
 		switch secret.Name {
-		case "mariadb_password_file":
+		case "mariadb-password-file":
 			out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 				With: &kubedef.ContainerExtension{
 					Env: []*kubedef.ContainerExtension_Env{{

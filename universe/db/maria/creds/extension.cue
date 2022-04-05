@@ -13,8 +13,11 @@ extension: fn.#Extension & {
 	instantiate: {
 		password: secrets.#Exports.Secret & {
 			with: {
-				name: "mariadb_password_file"
+				name: "mariadb-password-file"
 				provision: ["PROVISION_INLINE", "PROVISION_AS_FILE"]
+				generate: {
+					randomByteCount: 32
+				}
 			}
 		}
 	}

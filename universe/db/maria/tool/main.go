@@ -30,7 +30,7 @@ func (tool) Apply(ctx context.Context, r configure.Request, out *configure.Apply
 	// TODO: creds should be definable per db instance #217
 	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/maria/creds") {
 		switch secret.Name {
-		case "mariadb_password_file":
+		case "mariadb-password-file":
 			args = append(args, fmt.Sprintf("--mariadb_password_file=%s", secret.FromPath))
 		default:
 		}

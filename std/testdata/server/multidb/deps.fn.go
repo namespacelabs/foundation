@@ -56,11 +56,14 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		PackageName: "namespacelabs.dev/foundation/std/secrets",
 		Instance:    "creds0",
 		Do: func(ctx context.Context) (err error) {
-			// name: "mariadb_password_file"
+			// name: "mariadb-password-file"
 			// provision: PROVISION_INLINE
 			// provision: PROVISION_AS_FILE
+			// generate: {
+			//   random_byte_count: 32
+			// }
 			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChVtYXJpYWRiX3Bhc3N3b3JkX2ZpbGUSAgEC", p)
+			core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGUSAgECGgIQIA==", p)
 
 			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/maria/creds", p); err != nil {
 				return err
