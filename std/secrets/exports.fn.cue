@@ -21,7 +21,8 @@ import "namespacelabs.dev/foundation/std/fn:inputs"
 				format?:          ("FORMAT_UNKNOWN" | "FORMAT_BASE64" | "FORMAT_BASE32")
 			}
 			initializeWith?: {
-				binary?: inputs.#Package
+				binary?:    inputs.#Package
+				cacheable?: bool
 			}
 		}
 	}

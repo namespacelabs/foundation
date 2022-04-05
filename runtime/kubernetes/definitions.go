@@ -305,7 +305,7 @@ func RegisterGraphHandlers() {
 			return nil, err
 		}
 
-		invocation, err := tools.Invoke(ctx, env, wenv, schema.PackageName(create.GetInvocation().GetBinary()), false)
+		invocation, err := tools.Invoke(ctx, env, wenv, create.GetInvocation())
 		if err != nil {
 			return nil, err
 		}
