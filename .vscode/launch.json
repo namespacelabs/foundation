@@ -9,11 +9,11 @@
 			"type": "go",
 			"request": "launch",
 			"mode": "debug",
-			"program": "${workspaceRoot}/cmd/fn"
+			"program": "${workspaceRoot}/cmd/fn",
 			// Specify the absolute path to the working directory.
 			// NOTE(Nik): I couldn't make relative paths work on my workstation.
-			// "cwd": "~/code/ea-example",
-			// "args": ["generate"]
+			"cwd": "~/code/no-golang",
+			"args": ["generate"]
 		}
 	]
 }

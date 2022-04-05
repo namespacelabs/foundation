@@ -17,20 +17,13 @@ import (
 const ServiceDepsFilename = "deps.fn.ts"
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
+	// Only services for now.
 	if len(n.ExportService) == 0 {
 		return nil
 	}
 
 	return generateSource(ctx, fs, loc.Rel(ServiceDepsFilename), serviceTmpl, nodeTmplOptions{
-		Imports:       []singleImport{},
-		NeedsDepsType: true,
-		DepVars: []depVar{{
-			Name: "myDep",
-			Type: typeDef{
-				ImportAlias: "",
-				Name:        "string",
-			},
-		}},
+		NeedsDepsType: len(n.ExportService) != 0,
 	})
 }
 
