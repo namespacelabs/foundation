@@ -1,6 +1,4 @@
 binary: {
-	name:       "ns.tool"
-	repository: "us-docker.pkg.dev/foundation-344819/prebuilts/foundation/std/secrets/kubernetes"
-
+	name: "ns.tool"
 	from: go_package: "."
 }

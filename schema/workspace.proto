@@ -39,6 +39,7 @@ message Workspace {
     message BinaryDigest {
         string package_name = 1;
         string digest       = 2;
+        string repository   = 3;
     }
 }
 

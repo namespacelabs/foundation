@@ -7,6 +7,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -28,11 +30,13 @@ import (
 )
 
 func NewBuildBinaryCmd() *cobra.Command {
-	all := false
-	envRef := "dev"
-	publishToDocker := false
-	keepRepositories := true
-	outputPrebuilts := false
+	var (
+		all             = false
+		envRef          = "dev"
+		publishToDocker = false
+		outputPrebuilts = false
+		baseRepository  string
+	)
 
 	cmd := &cobra.Command{
 		Use:   "build-binary",
@@ -63,7 +67,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 				}
 			}
 
-			return buildLocations(ctx, root, locs, envRef, keepRepositories, publishToDocker, outputPrebuilts)
+			return buildLocations(ctx, root, locs, envRef, baseRepository, publishToDocker, outputPrebuilts)
 		}),
 	}
 
@@ -71,13 +75,13 @@ func NewBuildBinaryCmd() *cobra.Command {
 	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to build for (as defined in the workspace).")
 	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
 	cmd.Flags().BoolVar(&publishToDocker, "docker", publishToDocker, "If set to true, don't push to registries, but to local docker.")
-	cmd.Flags().BoolVar(&keepRepositories, "keep_repositories", keepRepositories, "If set to true, re-uses the configured repository (as opposed to env-bound repository).")
+	cmd.Flags().StringVar(&baseRepository, "base_repository", baseRepository, "If set, overrides the registry we'll upload the images to.")
 	cmd.Flags().BoolVar(&outputPrebuilts, "output_prebuilts", outputPrebuilts, "If true, also outputs a prebuilt configuration which can be embedded in your workspace configuration.")
 
 	return cmd
 }
 
-func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Location, envRef string, keepRepositories, publishToDocker, outputPrebuilts bool) error {
+func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Location, envRef, baseRepository string, publishToDocker, outputPrebuilts bool) error {
 	bid := provision.NewBuildID()
 
 	env, err := provision.RequireEnv(root, envRef)
@@ -98,20 +102,12 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 			continue
 		}
 
-		if pkg.Binary.Repository == "" {
-			fmt.Fprintf(console.Stderr(ctx), "Skipping %q, no repository defined.\n", pkg.Binary.PackageName)
-			continue
-		}
-
 		pkgs = append(pkgs, pkg)
 	}
 
 	sort.Slice(pkgs, func(i, j int) bool {
 		return strings.Compare(pkgs[i].PackageName().String(), pkgs[j].PackageName().String()) < 0
 	})
-
-	sealed := pl.Seal()
-	boundEnv := env.BindWith(sealed)
 
 	var opts binary.BuildImageOpts
 	opts.UsePrebuilts = false
@@ -129,9 +125,17 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 			return err
 		}
 
-		tag, err := binary.MakeTag(ctx, boundEnv, pkg, bid, keepRepositories)
-		if err != nil {
-			return err
+		var tag compute.Computable[oci.AllocatedName]
+		if baseRepository != "" {
+			tag = registry.StaticName(nil, oci.ImageID{
+				Repository: filepath.Join(baseRepository, pkg.PackageName().String()),
+				Tag:        bid.String(),
+			})
+		} else {
+			tag, err = registry.AllocateName(ctx, env, pkg.PackageName(), bid)
+			if err != nil {
+				return err
+			}
 		}
 
 		if publishToDocker {
@@ -157,6 +161,7 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 			prebuilt := &schema.Workspace_BinaryDigest{
 				PackageName: pkgs[k].PackageName().String(),
 				Digest:      r.Value.Digest,
+				Repository:  r.Value.Repository,
 			}
 			ws.PrebuiltBinary = append(ws.PrebuiltBinary, prebuilt)
 		}
