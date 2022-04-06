@@ -53,7 +53,7 @@ func FormatWorkspace(w io.Writer, ws *schema.Workspace) error {
 
 	var buf bytes.Buffer
 
-	writeTextMessage(&buf, &schema.Workspace{ModuleName: ws.ModuleName})
+	writeTextMessage(&buf, &schema.Workspace{ModuleName: ws.ModuleName, Foundation: ws.Foundation})
 
 	if len(ws.Dep) > 0 {
 		fmt.Fprintln(&buf)
