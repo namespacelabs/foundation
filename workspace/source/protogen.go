@@ -253,7 +253,7 @@ func (g *genGoProtosAtLoc) Compute(ctx context.Context, deps compute.Resolved) (
 
 		// Generates "_pb.js" file
 		t.Plugins = append(t.Plugins,
-			buf.PluginTmpl{Name: "js", Out: outDir, Opt: []string{"import_style=commonjs"}})
+			buf.PluginTmpl{Name: "js", Out: outDir, Opt: []string{"import_style=commonjs,binary"}})
 		// Generates "_grpc_pb.js" file
 		// TODO(@nicolasalt): switch to a local plugin from `grpc-tools` for speed and making the build hermetic.
 		// I couldn't make it work.
