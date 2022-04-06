@@ -24,7 +24,8 @@ message Workspace {
     repeated string  private_repo = 5;
 
     // Workspace-wide pre-compiled binaries.
-    repeated BinaryDigest prebuilt_binary = 6;
+    repeated BinaryDigest prebuilt_binary          = 6;
+    string                prebuilt_base_repository = 7;
 
     FoundationRequirements foundation = 7;
 
@@ -41,6 +42,7 @@ message Workspace {
     message BinaryDigest {
         string package_name = 1;
         string digest       = 2;
+        string repository   = 3;
     }
 
     message FoundationRequirements {

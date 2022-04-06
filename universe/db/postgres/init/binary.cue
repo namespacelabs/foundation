@@ -1,6 +1,4 @@
 binary: {
-	name:       "init-postgres"
-	repository: "us-docker.pkg.dev/foundation-344819/prebuilts/foundation/universe/db/postgres/init"
-
+	name: "init-postgres"
 	from: go_package: "."
 }

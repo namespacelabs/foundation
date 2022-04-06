@@ -9,12 +9,12 @@ package foundation.schema;
 option go_package = "namespacelabs.dev/foundation/schema";
 
 message Binary {
+    reserved 3, 4;
+
     // The package name (computed).
     string package_name = 1;
 
-    string name       = 2;
-    string repository = 3;
-    string digest     = 4;
+    string name = 2;
 
     From         from   = 5;  // Build instructions.
     BinaryConfig config = 6;  // Run instructions.

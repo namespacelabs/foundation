@@ -83,7 +83,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		return nil, err
 	}
 
-	testBinTag, err := binary.MakeTag(ctx, env, testBinary, bid, false)
+	testBinTag, err := registry.AllocateName(ctx, env, testBinary.PackageName(), bid)
 	if err != nil {
 		return nil, err
 	}

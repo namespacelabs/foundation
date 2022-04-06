@@ -94,7 +94,8 @@ Run `gcloud auth login` to authenticate to GCP with your `namespacelabs.com` acc
 whenever you need to write new prebuilt images, you'll have to run:
 
 ```bash
-fn build-binary --all --build_platforms=linux/arm64,linux/amd64 --log_actions --output_prebuilts
+fn build-binary --all --build_platforms=linux/arm64,linux/amd64 \
+     --output_prebuilts --base_repository=us-docker.pkg.dev/foundation-344819/prebuilts/ --log_actions
 ```
 
 You can then update the `prebuilt_binary` definitions in `workspace.textpb` with the values above.
