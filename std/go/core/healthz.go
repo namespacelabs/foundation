@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"go.uber.org/atomic"
 )
 
 var healthz struct {
@@ -35,24 +37,17 @@ func (c CheckerFunc) isManual() bool                  { return false }
 
 type memoizingChecker struct {
 	checker   Checker
-	mu        sync.Mutex
-	succeeded bool
+	succeeded atomic.Bool
 }
 
 func (m *memoizingChecker) Check(ctx context.Context) error {
-	m.mu.Lock()
-	success := m.succeeded
-	m.mu.Unlock()
-
-	if success {
+	if m.succeeded.Load() {
 		return nil
 	}
 
 	err := m.checker.Check(ctx)
 	if err == nil {
-		m.mu.Lock()
-		m.succeeded = true
-		m.mu.Unlock()
+		m.succeeded.Store(true)
 	}
 	return err
 }
