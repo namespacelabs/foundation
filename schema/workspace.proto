@@ -27,7 +27,7 @@ message Workspace {
     repeated BinaryDigest prebuilt_binary          = 6;
     string                prebuilt_base_repository = 7;
 
-    FoundationRequirements foundation = 7;
+    FoundationRequirements foundation = 8;
 
     message Dependency {
         string module_name = 1;
