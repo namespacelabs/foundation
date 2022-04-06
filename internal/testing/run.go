@@ -111,7 +111,7 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (fs.FS, erro
 		serverLogs = append(serverLogs, serverLog)
 
 		ex.Go(func(ctx context.Context) error {
-			err := runtime.For(rt.Env).StreamLogsTo(ctx, w, srv, runtime.StreamLogsOpts{})
+			err := runtime.For(rt.Env).StreamLogsTo(ctx, w, srv, runtime.StreamLogsOpts{Follow: true})
 			if errors.Is(err, context.Canceled) {
 				return nil
 			}

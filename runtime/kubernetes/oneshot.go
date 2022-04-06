@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,7 +64,7 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 		return err
 	}
 
-	for {
+	for k := 0; ; k++ {
 		finalState, err := cli.CoreV1().Pods(r.ns()).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return fnerrors.RemoteError("kubernetes: failed to fetch final pod status: %w", err)
@@ -71,6 +72,15 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 
 		for _, containerStatus := range finalState.Status.ContainerStatuses {
 			if term := containerStatus.State.Terminated; term != nil {
+				if k > 0 {
+					fmt.Fprintln(logOutput, "<Attempting to fetch the last 50 lines of test log.>")
+
+					ctxWithTimeout, cancel := context.WithTimeout(ctx, 3*time.Second)
+					defer cancel()
+
+					_ = r.fetchPodLogs(ctxWithTimeout, cli, logOutput, name, "", runtime.StreamLogsOpts{TailLines: 50})
+				}
+
 				if term.ExitCode != 0 {
 					return runtime.ErrContainerExitStatus{ExitCode: term.ExitCode}
 				}
