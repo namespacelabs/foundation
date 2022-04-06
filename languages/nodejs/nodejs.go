@@ -88,20 +88,28 @@ func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.Ser
 	return nil
 }
 
+func (impl) TidyNode(ctx context.Context, loc workspace.Location, node *schema.Node) error {
+	return tidyPackageJson(ctx, loc, node.Import)
+}
+
 func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *schema.Server) error {
+	return tidyPackageJson(ctx, loc, server.Import)
+}
+
+func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []string) error {
 	var packages, devPackages []string
 
 	for pkg, version := range builtin().Dependencies {
 		packages = append(packages, fmt.Sprintf("%s@%s", pkg, version))
 	}
 
-	for _, importName := range server.Import {
+	for _, importName := range imports {
 		loc, err := nodejsLocationFrom(schema.Name(importName))
 		if err != nil {
 			return err
 		}
 		// Hard-coding the version of dependencies since we only support monorepo for now.
-		packages = append(packages, fmt.Sprintf("%s@%s", loc.NpmPackage, "v1.0.0"))
+		packages = append(packages, fmt.Sprintf("%s@%s", loc.NpmPackage, "1.0.0"))
 	}
 
 	for pkg, version := range builtin().DevDependencies {
