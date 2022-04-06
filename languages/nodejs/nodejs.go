@@ -6,8 +6,10 @@ package nodejs
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"sort"
 
@@ -23,6 +25,9 @@ import (
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
+
+// Hard-coding the version of generated yarn workspaces since we only support a monorepo for now.
+const yarnWorkspaceVersion = "0.0.0"
 
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
@@ -97,6 +102,41 @@ func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *sche
 }
 
 func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []string) error {
+	err := tidyPackageJsonFields(loc)
+	if err != nil {
+		return err
+	}
+
+	return tidyDependencies(ctx, loc, imports)
+}
+
+func tidyPackageJsonFields(loc workspace.Location) error {
+	packageJsonFn := filepath.Join(loc.Abs(), "package.json")
+	packageJsonRaw, err := ioutil.ReadFile(packageJsonFn)
+	if err != nil {
+		return err
+	}
+
+	var packageJson map[string]interface{}
+	json.Unmarshal(packageJsonRaw, &packageJson)
+
+	nodejsLoc, err := nodejsLocationFrom(loc.PackageName)
+	if err != nil {
+		return err
+	}
+	packageJson["name"] = nodejsLoc.NpmPackage
+	packageJson["private"] = true
+	packageJson["version"] = yarnWorkspaceVersion
+
+	editedPackageJsonRaw, err := json.MarshalIndent(packageJson, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(packageJsonFn, editedPackageJsonRaw, 0644)
+}
+
+func tidyDependencies(ctx context.Context, loc workspace.Location, imports []string) error {
 	var packages, devPackages []string
 
 	for pkg, version := range builtin().Dependencies {
@@ -108,8 +148,7 @@ func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []stri
 		if err != nil {
 			return err
 		}
-		// Hard-coding the version of dependencies since we only support monorepo for now.
-		packages = append(packages, fmt.Sprintf("%s@%s", loc.NpmPackage, "1.0.0"))
+		packages = append(packages, fmt.Sprintf("%s@%s", loc.NpmPackage, yarnWorkspaceVersion))
 	}
 
 	for pkg, version := range builtin().DevDependencies {
