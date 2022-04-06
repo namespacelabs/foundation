@@ -3,23 +3,27 @@ package core
 
 #Exports: {
 	LivenessCheck: {
-		packageName: "namespacelabs.dev/foundation/std/go/core"
-		type:        "LivenessCheck"
-		typeDefinition: {
-			"typename": "foundation.std.go.core.LivenessCheck"
-			"source": [
-				"coretypes.proto",
-			]
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/go/core"
+			type:        "LivenessCheck"
+			typeDefinition: {
+				"typename": "foundation.std.go.core.LivenessCheck"
+				"source": [
+					"coretypes.proto",
+				]
+			}
 		}
 	}
 	ReadinessCheck: {
-		packageName: "namespacelabs.dev/foundation/std/go/core"
-		type:        "ReadinessCheck"
-		typeDefinition: {
-			"typename": "foundation.std.go.core.ReadinessCheck"
-			"source": [
-				"coretypes.proto",
-			]
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/go/core"
+			type:        "ReadinessCheck"
+			typeDefinition: {
+				"typename": "foundation.std.go.core.ReadinessCheck"
+				"source": [
+					"coretypes.proto",
+				]
+			}
 		}
 	}
 }

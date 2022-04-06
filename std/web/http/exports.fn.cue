@@ -5,17 +5,18 @@ import "namespacelabs.dev/foundation/std/fn:inputs"
 
 #Exports: {
 	Backend: {
-		packageName: "namespacelabs.dev/foundation/std/web/http"
-		type:        "Backend"
-		typeDefinition: {
-			"typename": "foundation.std.web.http.Backend"
-			"source": [
-				"provider.proto",
-			]
-		}
-		with: {
-			endpointOwner?: inputs.#Package
-			serviceName?:   string
+		endpointOwner?: inputs.#Package
+		serviceName?:   string
+
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/web/http"
+			type:        "Backend"
+			typeDefinition: {
+				"typename": "foundation.std.web.http.Backend"
+				"source": [
+					"provider.proto",
+				]
+			}
 		}
 	}
 }

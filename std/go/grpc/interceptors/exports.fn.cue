@@ -3,16 +3,17 @@ package interceptors
 
 #Exports: {
 	InterceptorRegistration: {
-		packageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors"
-		type:        "InterceptorRegistration"
-		typeDefinition: {
-			"typename": "foundation.std.go.grpc.interceptors.InterceptorRegistration"
-			"source": [
-				"provider.proto",
-			]
-		}
-		with: {
-			name?: string
+		name?: string
+
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors"
+			type:        "InterceptorRegistration"
+			typeDefinition: {
+				"typename": "foundation.std.go.grpc.interceptors.InterceptorRegistration"
+				"source": [
+					"provider.proto",
+				]
+			}
 		}
 	}
 }

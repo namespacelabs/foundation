@@ -13,6 +13,7 @@ import (
 
 	"cuelang.org/go/cue"
 	"github.com/docker/go-units"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/dynamicpb"
@@ -173,8 +174,19 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			name := it.Label()
 
 			var inst cueInstantiate
-			if err := it.Value().Decode(&inst); err != nil {
-				return err
+
+			v := (&fncue.CueV{Val: it.Value()})
+			newAPI := false
+			if newDefinition := v.LookupPath("#Definition"); newDefinition.Exists() {
+				if err := newDefinition.Val.Decode(&inst); err != nil {
+					return err
+				}
+				newAPI = true
+			} else {
+				// Backwards compatibility with fn_api<20.
+				if err := it.Value().Decode(&inst); err != nil {
+					return err
+				}
 			}
 
 			if inst.PackageName != "" {
@@ -222,7 +234,13 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 						return fnerrors.UserError(loc, "%s: %w", resolved.PackageName, err)
 					}
 
-					msg, err := (&fncue.CueV{Val: it.Value()}).LookupPath("with").DecodeAs(dynamicpb.NewMessageType(msgdesc))
+					var msg proto.Message
+					if newAPI {
+						msg, err = v.DecodeAs(dynamicpb.NewMessageType(msgdesc))
+					} else {
+						msg, err = v.LookupPath("with").DecodeAs(dynamicpb.NewMessageType(msgdesc))
+					}
+
 					if err != nil {
 						return fnerrors.UserError(loc, "%s: %s: failed to decode message: %w", resolved.PackageName, inst.TypeDef.Typename, err)
 					}

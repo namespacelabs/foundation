@@ -12,12 +12,10 @@ $providerProto: inputs.#Proto & {
 extension: fn.#Extension & {
 	instantiate: {
 		password: secrets.#Exports.Secret & {
-			with: {
-				name: "mariadb-password-file"
-				generate: {
-					randomByteCount: 32
-					format:          "FORMAT_BASE32"
-				}
+			name: "mariadb-password-file"
+			generate: {
+				randomByteCount: 32
+				format:          "FORMAT_BASE32"
 			}
 		}
 	}

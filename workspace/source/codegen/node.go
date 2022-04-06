@@ -117,23 +117,24 @@ func generateNode(ctx context.Context, loc workspace.Location, n *schema.Node, p
 	fmt.Fprintf(&out, "#Exports: {\n")
 	for k, p := range n.Provides {
 		fmt.Fprintf(&out, "%s: {\n", p.Name)
+
+		if t := types[k]; t.Descriptor().Fields().Len() > 0 {
+			if err := generateProto(&out, resolver, t.Descriptor(), &imports); err != nil {
+				return err
+			}
+			fmt.Fprintln(&out)
+		}
+
+		fmt.Fprintf(&out, "#Definition: {\n")
 		fmt.Fprintf(&out, "packageName: %q\n", n.PackageName)
 		fmt.Fprintf(&out, "type: %q\n", p.Name)
 		fmt.Fprintf(&out, "typeDefinition: ")
 		enc := json.NewEncoder(&out)
 		enc.SetIndent("", "  ")
 		enc.Encode(p.Type)
-
-		t := types[k]
-		if t.Descriptor().Fields().Len() > 0 {
-			fmt.Fprint(&out, "with: ")
-			if err := generateProto(&out, resolver, t.Descriptor(), &imports); err != nil {
-				return err
-			}
-			fmt.Fprint(&out, "\n")
-		}
-
 		fmt.Fprintf(&out, "}\n")
+
+		fmt.Fprintln(&out, "}")
 	}
 	fmt.Fprintf(&out, "}\n")
 
@@ -161,8 +162,6 @@ func generateNode(ctx context.Context, loc workspace.Location, n *schema.Node, p
 }
 
 func generateProto(out io.Writer, parsed protos.AnyResolver, msg protoreflect.MessageDescriptor, imports *uniquestrings.List) error {
-	fmt.Fprintf(out, "{\n")
-
 	var missingDef int
 	for k := 0; k < msg.Fields().Len(); k++ {
 		field := msg.Fields().Get(k)
@@ -215,9 +214,11 @@ func generateProto(out io.Writer, parsed protos.AnyResolver, msg protoreflect.Me
 				imports.Add("namespacelabs.dev/foundation/std/fn:types")
 			} else {
 				var b bytes.Buffer
+				fmt.Fprintln(&b, "{")
 				if err := generateProto(&b, parsed, msg, imports); err != nil {
 					return err
 				}
+				fmt.Fprint(&b, "}")
 				t = b.String()
 			}
 		}
@@ -235,7 +236,6 @@ func generateProto(out io.Writer, parsed protos.AnyResolver, msg protoreflect.Me
 	if missingDef > 0 {
 		fmt.Fprintf(out, "...\n")
 	}
-	fmt.Fprintf(out, "}")
 
 	return nil
 }

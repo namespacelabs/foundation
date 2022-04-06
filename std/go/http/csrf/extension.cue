@@ -8,12 +8,10 @@ extension: fn.#Extension & {
 	hasInitializerIn: "GO_GRPC"
 
 	instantiate: token: secrets.#Exports.Secret & {
-		with: {
-			name: "http_csrf_token"
-			generate: {
-				randomByteCount: 32
-				format:          "FORMAT_BASE64"
-			}
+		name: "http_csrf_token"
+		generate: {
+			randomByteCount: 32
+			format:          "FORMAT_BASE64"
 		}
 	}
 }

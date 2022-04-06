@@ -3,17 +3,18 @@ package grpc
 
 #Exports: {
 	Conn: {
-		packageName: "namespacelabs.dev/foundation/std/go/grpc"
-		type:        "Conn"
-		typeDefinition: {
-			"typename": "foundation.std.go.grpc.Conn"
-			"source": [
-				"provider.proto",
-			]
-		}
-		with: {
-			packageName?:   string
-			protoTypename?: string
+		packageName?:   string
+		protoTypename?: string
+
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/go/grpc"
+			type:        "Conn"
+			typeDefinition: {
+				"typename": "foundation.std.go.grpc.Conn"
+				"source": [
+					"provider.proto",
+				]
+			}
 		}
 	}
 }
