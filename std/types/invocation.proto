@@ -1,0 +1,15 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.std.types;
+
+option go_package = "namespacelabs.dev/foundation/std/types";
+
+import "std/proto/options.proto";
+
+message DeferredInvocation {
+    string binary = 1 [(foundation.std.proto.is_package) = true];
+}

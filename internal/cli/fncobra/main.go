@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
+	"namespacelabs.dev/foundation/build/binary/genbinary"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/version"
@@ -112,6 +113,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		binary.BuildWeb = func(loc workspace.Location) build.Spec {
 			return web.StaticBuild{Location: loc}
 		}
+		binary.BuildLLBGen = genbinary.LLBBinary
+		binary.BuildNix = genbinary.NixImage
 
 		// Setting up container registry logging, which is unfortunately global.
 		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", tasks.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)

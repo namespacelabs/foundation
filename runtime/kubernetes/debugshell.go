@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func (r boundEnv) DebugShell(ctx context.Context, img oci.ImageID, io rtypes.IO) error {
+func (r boundEnv) Kubectl(ctx context.Context, io rtypes.IO, args ...string) error {
 	kubectlBin, err := kubectl.EnsureSDK(ctx)
 	if err != nil {
 		return err
@@ -23,11 +23,14 @@ func (r boundEnv) DebugShell(ctx context.Context, img oci.ImageID, io rtypes.IO)
 	done := tasks.EnterInputMode(ctx)
 	defer done()
 
-	kubectl := exec.CommandContext(ctx, string(kubectlBin), "--kubeconfig="+r.hostEnv.Kubeconfig, "--context="+r.hostEnv.Context,
-		"run", "-n", r.ns(), "-i", "--tty", "--rm", "debug", "--image="+img.ImageRef(), "--restart=Never", "--", "bash")
+	kubectl := exec.CommandContext(ctx, string(kubectlBin),
+		append([]string{"--kubeconfig=" + r.hostEnv.Kubeconfig, "--context=" + r.hostEnv.Context, "-n", r.ns()}, args...)...)
 	kubectl.Stdout = io.Stdout
 	kubectl.Stderr = io.Stderr
 	kubectl.Stdin = io.Stdin
-
 	return kubectl.Run()
+}
+
+func (r boundEnv) DebugShell(ctx context.Context, img oci.ImageID, io rtypes.IO) error {
+	return r.Kubectl(ctx, io, "run", "-i", "--tty", "--rm", "debug", "--image="+img.ImageRef(), "--restart=Never", "--", "bash")
 }

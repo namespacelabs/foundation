@@ -2,7 +2,7 @@ import (
 	"encoding/json"
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/universe/db/postgres/creds"
+	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 	"namespacelabs.dev/foundation/std/go/core"
 )
 

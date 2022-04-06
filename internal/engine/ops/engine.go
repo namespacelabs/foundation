@@ -44,7 +44,12 @@ type Environment interface {
 }
 
 type WorkspaceEnvironment interface {
+	Environment
 	workspace.Packages
+}
+
+type MutableWorkspaceEnvironment interface {
+	WorkspaceEnvironment
 	OutputFS() fnfs.ReadWriteFS
 }
 
@@ -141,7 +146,7 @@ func (g *Runner) Add(defs ...*schema.Definition) error {
 	return nil
 }
 
-func (g *Runner) Apply(ctx context.Context, name string, env Environment) (waiters []Waiter, err error) {
+func (g *Runner) Apply(ctx context.Context, name string, env WorkspaceEnvironment) (waiters []Waiter, err error) {
 	err = tasks.Task(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env)

@@ -18,17 +18,17 @@ func TransformTest(loc Location, test *schema.Test) error {
 		return fnerrors.UserError(loc, "test name must be set")
 	}
 
-	if test.Binary == nil {
-		return fnerrors.UserError(loc, "binary must be set")
+	if test.Driver == nil {
+		return fnerrors.UserError(loc, "driver must be set")
 	}
 
-	if test.Binary.Name != "" && test.Binary.Name != test.Name {
-		return fnerrors.UserError(loc, "binary.name must be unset or be the same as the test name")
+	if test.Driver.Name != "" && test.Driver.Name != test.Name {
+		return fnerrors.UserError(loc, "driver.name must be unset or be the same as the test name")
 	} else {
-		test.Binary.Name = test.Name
+		test.Driver.Name = test.Name
 	}
 
-	if err := TransformBinary(loc, test.Binary); err != nil {
+	if err := TransformBinary(loc, test.Driver); err != nil {
 		return err
 	}
 

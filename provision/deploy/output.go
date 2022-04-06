@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/morikuni/aec"
+	"github.com/muesli/reflow/padding"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/runtime"
@@ -24,17 +25,17 @@ type PortFwd struct {
 }
 
 func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string, stack *schema.Stack, focus []*schema.Server, portFwds []*PortFwd, ingressDomains []*runtime.FilteredDomain, ingress []*schema.IngressFragment) {
-	var longest int
+	var longest uint
 	for _, p := range portFwds {
 		if !isIngress(p.Endpoint) {
 			label := makeServiceLabel(stack, p.Endpoint)
-			if l := len(label); l > longest {
+			if l := uint(len(label)); l > longest {
 				longest = l
 			}
 		}
 	}
 
-	var longestUrl, ingressFwdCount, internalCount int
+	var longestUrl, ingressFwdCount, internalCount uint
 	urls := map[int]string{}
 	for k, p := range portFwds {
 		if isInternal(p.Endpoint) {
@@ -76,8 +77,8 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 		}
 
 		urls[k] = url
-		if len(url) > longestUrl {
-			longestUrl = len(url)
+		if l := uint(len(url)); l > longestUrl {
+			longestUrl = l
 		}
 	}
 
@@ -98,7 +99,6 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 
 		var protocols uniquestrings.List
 		label := makeServiceLabel(stack, p.Endpoint)
-		spaces := makeSpaces(longest - len(label))
 
 		for _, md := range p.Endpoint.ServiceMetadata {
 			protocols.Add(md.Protocol)
@@ -122,9 +122,7 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 			}
 		}
 
-		spacesUrl := makeSpaces(longestUrl - len(urls[k]) + 2)
-
-		fmt.Fprintf(out, " %s%s%s  %s%s%s\n", checkLabel(checkmark, isFocus, p.LocalPort), label, spaces, url, spacesUrl, comment(p.Endpoint.EndpointOwner))
+		fmt.Fprintf(out, " %s%s  %s%s\n", checkLabel(checkmark, isFocus, p.LocalPort), padding.String(label, longest), padding.String(url, longestUrl+2), comment(p.Endpoint.EndpointOwner))
 	}
 
 	var nonLocalManaged, nonLocalNonManaged []*schema.IngressFragment
@@ -167,22 +165,19 @@ func renderIngressBlock(out io.Writer, label string, fragments []*schema.Ingress
 	labels := make([]string, len(fragments))
 	suffixes := make([]string, len(fragments))
 
-	var longestLabel int
+	var longestLabel uint
 	for k, n := range fragments {
 		schema, portLabel, suffix := domainSchema(n.Domain, 443, n.Endpoint)
 		labels[k] = fmt.Sprintf("%s%s%s", schema, n.Domain.Fqdn, portLabel)
 		suffixes[k] = suffix
 
-		if x := len(labels[k]); x > longestLabel {
+		if x := uint(len(labels[k])); x > longestLabel {
 			longestLabel = x
 		}
 	}
 
 	for k, n := range fragments {
-		label := labels[k]
-		spaces := makeSpaces(longestLabel - len(label))
-
-		fmt.Fprintf(out, " %s%s%s %s%s\n", checkbox(true, false), label, spaces, comment(n.Owner), suffixes[k])
+		fmt.Fprintf(out, " %s%s %s%s\n", checkbox(true, false), padding.String(labels[k], longestLabel), comment(n.Owner), suffixes[k])
 	}
 }
 
@@ -364,18 +359,6 @@ func isInternal(endpoint *schema.Endpoint) bool {
 	}
 
 	return false
-}
-
-func makeSpaces(n int) []byte {
-	if n <= 0 {
-		return nil
-	}
-
-	b := make([]byte, n)
-	for k := range b {
-		b[k] = ' '
-	}
-	return b
 }
 
 func makeServiceLabel(stack *schema.Stack, endpoint *schema.Endpoint) string {

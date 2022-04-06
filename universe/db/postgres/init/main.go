@@ -136,9 +136,13 @@ func main() {
 	ctx := context.Background()
 
 	// TODO: creds should be definable per db instance #217
-	user, err := ioutil.ReadFile(*userFile)
-	if err != nil {
-		log.Fatalf("unable to read file %s: %v", *userFile, err)
+	user := "postgres"
+	if *userFile != "" {
+		bytes, err := ioutil.ReadFile(*userFile)
+		if err != nil {
+			log.Fatalf("unable to read file %s: %v", *userFile, err)
+		}
+		user = string(bytes)
 	}
 
 	password, err := ioutil.ReadFile(*passwordFile)
@@ -152,10 +156,10 @@ func main() {
 	}
 
 	for _, db := range dbs {
-		if err := ensureDb(ctx, db, string(user), string(password)); err != nil {
+		if err := ensureDb(ctx, db, user, string(password)); err != nil {
 			log.Fatalf("%v", err)
 		}
-		if err := applySchema(ctx, db, string(user), string(password)); err != nil {
+		if err := applySchema(ctx, db, user, string(password)); err != nil {
 			log.Fatalf("%v", err)
 		}
 	}

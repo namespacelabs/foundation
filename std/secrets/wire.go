@@ -7,6 +7,7 @@ package secrets
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -16,15 +17,27 @@ var (
 )
 
 func ProvideSecret(ctx context.Context, caller string, req *Secret) (*Value, error) {
-	m, err := ProvideSecretsFromFS(ctx, os.DirFS(*serverSecretsBasepath), caller, req)
+	sdm, err := loadDevMap(os.DirFS(*serverSecretsBasepath))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
 	}
 
-	v := m[req.Name]
-	if v.Path != "" && !filepath.IsAbs(v.Path) {
-		v.Path = filepath.Join(*serverSecretsBasepath, v.Path)
+	cfg := lookupConfig(sdm, caller)
+	if cfg == nil {
+		return nil, fmt.Errorf("%v: no secret configuration definition in map.textpb", caller)
 	}
 
-	return v, nil
+	for _, secret := range cfg.Secret {
+		if secret.Name == req.Name {
+			if secret.FromPath == "" {
+				return nil, fmt.Errorf("%v: no path definition for secret %q", caller, secret.Name)
+			}
+			if !filepath.IsAbs(secret.FromPath) {
+				return nil, fmt.Errorf("%v: %s: expected an absolute path", caller, secret.Name)
+			}
+			return &Value{Name: secret.Name, Path: secret.FromPath}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("%v: %s: no secret configuration", caller, req.Name)
 }
