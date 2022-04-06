@@ -231,7 +231,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 				}
 
 				if len(messages) > 0 {
-					fmt.Fprintln(console.Stdout(ctx), clr(strings.Join(messages, "\n")))
+					fmt.Fprintln(os.Stdout, clr(strings.Join(messages, "\n")))
 				}
 			}
 		default:
