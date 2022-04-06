@@ -121,6 +121,7 @@ func NewTestCmd() *cobra.Command {
 
 	cmd.Flags().Int32Var(&runOpts.BaseServerPort, "port_base", 40000, "Base port to listen on (additional requested ports will be base port + n).")
 	cmd.Flags().BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
+	cmd.Flags().BoolVar(&testOpts.KeepRuntime, "keep_runtime", testOpts.KeepRuntime, "If true, don't cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
 	cmd.Flags().BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
 
 	return cmd

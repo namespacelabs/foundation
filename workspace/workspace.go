@@ -16,16 +16,28 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )
 
 const WorkspaceFilename = "workspace.ns.textpb"
 
 func ModuleAt(path string) (*schema.Workspace, error) {
-	// XXX we need our own module definition.
 	moduleBytes, err := ioutil.ReadFile(filepath.Join(path, WorkspaceFilename))
 	if err != nil {
 		return nil, err
+	}
+
+	// So we do a first-pass at the module definition, with loose parsing on, to
+	// make sure that we meet the version requirements set by the module owners.
+
+	firstPass := &schema.Workspace{}
+	if err := (prototext.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(moduleBytes, firstPass); err != nil {
+		return nil, fnerrors.Wrapf(nil, err, "failed to parse workspace definition")
+	}
+
+	if firstPass.GetFoundation().GetMinimumApi() > APIVersion {
+		return nil, fnerrors.DoesNotMeetVersionRequirements(firstPass.ModuleName, firstPass.GetFoundation().GetMinimumApi(), APIVersion)
 	}
 
 	w := &schema.Workspace{}

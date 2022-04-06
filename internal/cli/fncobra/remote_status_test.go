@@ -5,6 +5,7 @@
 package fncobra
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -18,7 +19,7 @@ func TestFetchLatestRemoteStatusFull(t *testing.T) {
 	svr := testServer(t, "{\"tag_name\": \"v0.0.21\", \"created_at\": \"2022-03-31T23:21:43Z\", \"message\": \"test\"}")
 	defer svr.Close()
 
-	status, err := FetchLatestRemoteStatus(svr.URL, "myversion")
+	status, err := FetchLatestRemoteStatus(context.Background(), svr.URL, "myversion")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +32,7 @@ func TestFetchLatestRemoteStatusNoMessage(t *testing.T) {
 	svr := testServer(t, "{\"tag_name\": \"v0.0.21\", \"created_at\": \"2022-03-31T23:21:43Z\"}")
 	defer svr.Close()
 
-	status, err := FetchLatestRemoteStatus(svr.URL, "myversion")
+	status, err := FetchLatestRemoteStatus(context.Background(), svr.URL, "myversion")
 	if err != nil {
 		t.Fatal(err)
 	}
