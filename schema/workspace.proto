@@ -26,6 +26,8 @@ message Workspace {
     // Workspace-wide pre-compiled binaries.
     repeated BinaryDigest prebuilt_binary = 6;
 
+    FoundationRequirements foundation = 7;
+
     message Dependency {
         string module_name = 1;
         string version     = 2;
@@ -39,6 +41,10 @@ message Workspace {
     message BinaryDigest {
         string package_name = 1;
         string digest       = 2;
+    }
+
+    message FoundationRequirements {
+        int32 minimum_api = 1;
     }
 }
 

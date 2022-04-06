@@ -66,6 +66,11 @@ func ExpectedError(format string, args ...interface{}) error {
 	return &internalError{fmt.Errorf(format, args...), true}
 }
 
+// This error means that Foundation does not meet the minimum version requirements.
+func DoesNotMeetVersionRequirements(pkg string, expected, got int32) error {
+	return &VersionError{pkg, expected, got}
+}
+
 type userError struct {
 	Location Location
 	Err      error
@@ -106,6 +111,15 @@ func (e *usageError) Error() string {
 
 func (e *internalError) Error() string {
 	return e.Err.Error()
+}
+
+type VersionError struct {
+	Pkg           string
+	Expected, Got int32
+}
+
+func (e *VersionError) Error() string {
+	return fmt.Sprintf("`fn` needs to be updated to use %q, (need api version %d, got %d)", e.Pkg, e.Expected, e.Got)
 }
 
 func Format(w io.Writer, colors bool, err error) {

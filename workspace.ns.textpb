@@ -1,5 +1,9 @@
 module_name: "namespacelabs.dev/foundation"
 
+foundation: {
+  minimum_api: 20
+}
+
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/devworkflow/web"
   digest: "sha256:ea7a843264735dd996fed11dcf3df31b7f5dfa1c6c83ad6ed07ab1b225e39702"
