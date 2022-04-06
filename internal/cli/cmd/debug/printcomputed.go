@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
+	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 )
 
 func newPrintComputedCmd() *cobra.Command {
@@ -54,7 +55,7 @@ func output(ctx context.Context, pl workspace.Packages, msg proto.Message, outpu
 		body, err := (protojson.MarshalOptions{
 			UseProtoNames: true,
 			Multiline:     true,
-			Resolver:      workspace.NewProviderProtoResolver(ctx, pl),
+			Resolver:      fnany.NewResolver(ctx, pl),
 		}).Marshal(msg)
 		if err != nil {
 			return err
@@ -65,7 +66,7 @@ func output(ctx context.Context, pl workspace.Packages, msg proto.Message, outpu
 	case "textproto":
 		out, err := prototext.MarshalOptions{
 			Multiline: true,
-			Resolver:  workspace.NewProviderProtoResolver(ctx, pl),
+			Resolver:  fnany.NewResolver(ctx, pl),
 		}.Marshal(msg)
 		if err != nil {
 			return err

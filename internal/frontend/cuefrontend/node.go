@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
+	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 )
 
 type cueGrpcService struct {
@@ -226,7 +227,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 						return fnerrors.UserError(loc, "%s: %s: failed to decode message: %w", resolved.PackageName, inst.TypeDef.Typename, err)
 					}
 
-					constructor, err = workspace.MarshalPackageAny(resolved.PackageName, msg)
+					constructor, err = fnany.Marshal(resolved.PackageName, msg)
 					if err != nil {
 						return err // Error already has context.
 					}
