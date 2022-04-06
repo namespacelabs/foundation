@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -29,6 +30,9 @@ type FrameworkHandler interface {
 	PreParseServer(context.Context, Location, *FrameworkExt) error
 	PostParseServer(context.Context, *Sealed) error
 	InjectService(Location, *schema.Node, *CueService) error
+	// XXX this is provisional: we need an additional lifecyle hook before provisioning,
+	// which extensions can hook to.
+	EvalProvision(*schema.Node) (frontend.ProvisionStack, error)
 }
 
 type CueService struct {

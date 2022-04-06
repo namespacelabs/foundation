@@ -39,13 +39,17 @@ type ValueWithPath struct {
 	Value interface{}
 }
 
+type ProvisionStack struct {
+	DeclaredStack []schema.PackageName
+}
+
 type ProvisionPlan struct {
 	Startup PreStartup
 
 	// Node only.
-	DeclaredStack []schema.PackageName
-	Provisioning  *Invocation
-	Inits         []Init
+	ProvisionStack
+	Provisioning *Invocation
+	Inits        []Init
 
 	// Server only.
 	Naming *schema.Naming

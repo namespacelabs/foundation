@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
+	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/languages/nodejs"
@@ -77,6 +78,24 @@ func (i impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) err
 
 func (i impl) InjectService(workspace.Location, *schema.Node, *workspace.CueService) error {
 	return nil
+}
+
+func (i impl) EvalProvision(n *schema.Node) (frontend.ProvisionStack, error) {
+	var pdata frontend.ProvisionStack
+	for _, inst := range n.Instantiate {
+		backend := &http.Backend{}
+		// XXX this is provisional: we need an additional lifecyle hook before provisioning,
+		// which extensions can hook to.
+		if ok, err := fnany.CheckUnmarshal(inst.Constructor, webPkg, backend); ok {
+			if err != nil {
+				return pdata, err
+			}
+
+			pdata.DeclaredStack = append(pdata.DeclaredStack, schema.PackageName(backend.EndpointOwner))
+		}
+	}
+
+	return pdata, nil
 }
 
 func (i impl) PrepareBuild(ctx context.Context, endpoints languages.Endpoints, srv provision.Server, isFocus bool) (build.Spec, error) {
