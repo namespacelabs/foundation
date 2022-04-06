@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"strings"
 
@@ -54,24 +55,38 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 		return err
 	}
 
-	if err := r.fetchPodLogs(ctx, cli, logOutput, name, "", runtime.StreamLogsOpts{}); err != nil {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	if err := r.fetchPodLogs(ctx, cli, logOutput, name, "", runtime.StreamLogsOpts{Follow: true}); err != nil {
 		return err
 	}
 
-	finalState, err := cli.CoreV1().Pods(r.ns()).Get(ctx, name, metav1.GetOptions{})
-	if err != nil {
-		return fnerrors.RemoteError("kubernetes: failed to fetch final pod status: %w", err)
-	}
+	for {
+		finalState, err := cli.CoreV1().Pods(r.ns()).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return fnerrors.RemoteError("kubernetes: failed to fetch final pod status: %w", err)
+		}
 
-	for _, containerStatus := range finalState.Status.ContainerStatuses {
-		if term := containerStatus.State.Terminated; term != nil {
-			if term.ExitCode != 0 {
-				return runtime.ErrContainerExitStatus{ExitCode: term.ExitCode}
+		for _, containerStatus := range finalState.Status.ContainerStatuses {
+			if term := containerStatus.State.Terminated; term != nil {
+				if term.ExitCode != 0 {
+					return runtime.ErrContainerExitStatus{ExitCode: term.ExitCode}
+				}
+
+				return nil
 			}
 		}
-	}
 
-	return nil
+		fmt.Fprintln(logOutput, "<No longer streaming pod logs, but pod is still running, waiting for completion.>")
+
+		if err := r.Wait(ctx, tasks.Action("kubernetes.pod.wait"), WaitForPodConditition(fetchPod(r.ns(), name), func(status corev1.PodStatus) bool {
+			return status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded
+		})); err != nil {
+			return fnerrors.InternalError("kubernetes: expected pod to have terminated, but didn't see termination status: %w", err)
+		}
+	}
 }
 
 func fetchPod(ns, name string) func(ctx context.Context, c *k8s.Clientset) ([]corev1.Pod, error) {
