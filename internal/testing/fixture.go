@@ -27,7 +27,8 @@ import (
 const startupTestBinary = "namespacelabs.dev/foundation/std/startup/testdriver"
 
 type TestOpts struct {
-	Debug bool
+	Debug       bool
+	KeepRuntime bool // If true, don't release test-specific runtime resources (e.g. Kubernetes namespace).
 }
 
 type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) ([]provision.Server, *stack.Stack, error)
@@ -126,6 +127,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 	results := &testRun{
 		TestName:       testDef.Name,
+		CleanupRuntime: !opts.KeepRuntime,
 		Env:            env.BindWith(pl.Seal()),
 		Plan:           deployPlan,
 		Focus:          focusServers,
