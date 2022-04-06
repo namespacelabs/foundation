@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"sort"
 
 	"namespacelabs.dev/foundation/build"
@@ -80,10 +81,9 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server prov
 }
 
 func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.ServerRunOpts) error {
-	// run.Command = []string{"ts-node", "main.fn.ts"}
-	run.Command = []string{"yarn", "serve"}
+	run.Command = []string{"node", filepath.Join(t.Location.Rel(), "main.fn.js")}
 	run.WorkingDir = "/app"
-	// run.ReadOnlyFilesystem = true
+	run.ReadOnlyFilesystem = true
 	run.RunAs = production.NonRootRunAsWithID(production.NonRootUserID)
 	return nil
 }

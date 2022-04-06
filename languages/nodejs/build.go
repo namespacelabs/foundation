@@ -76,21 +76,17 @@ func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.Configuration) (llb.State,
 	buildBase := prepareYarnWithWorkspaces(yarnWorkspacePaths, n.NodeJsBase, src, *conf.Target)
 
 	stateOptions := []llb.StateOption{
-		llbutil.CopyFrom(src, "tsconfig.json", filepath.Join(appRootPath, "tsconfig.json")),
-		llbutil.CopyFrom(src, "package.json", filepath.Join(appRootPath, "package.json")),
 		llbutil.CopyFrom(buildBase, filepath.Join(appRootPath, "node_modules"), filepath.Join(appRootPath, "node_modules")),
 	}
-
 	for _, path := range yarnWorkspacePaths {
 		stateOptions = append(stateOptions, llbutil.CopyFrom(
-			src, path, filepath.Join(appRootPath, path)))
+			buildBase, filepath.Join(appRootPath, path), filepath.Join(appRootPath, path)))
 	}
 
 	// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
 	out := production.PrepareImage(llbutil.Image(n.NodeJsBase, *conf.Target), *conf.Target).
 		With(stateOptions...).
-		AddEnv("NODE_ENV", n.Env).
-		Run(llb.Shlex("yarn run build"), llb.Dir(appRootPath)).Root()
+		AddEnv("NODE_ENV", n.Env)
 
 	return out, local
 }
@@ -102,14 +98,22 @@ func prepareYarnWithWorkspaces(workspacePaths []string, nodejsBase string, src l
 		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn").
 		With(
 			llbutil.CopyFrom(src, "package.json", filepath.Join(appRootPath, "package.json")),
-			llbutil.CopyFrom(src, "yarn.lock", filepath.Join(appRootPath, "yarn.lock")))
+			llbutil.CopyFrom(src, "tsconfig.json", filepath.Join(appRootPath, "tsconfig.json")),
+			llbutil.CopyFrom(src, "yarn.lock", filepath.Join(appRootPath, "yarn.lock")),
+			llbutil.CopyFrom(src, ".yarnrc.yml", filepath.Join(appRootPath, ".yarnrc.yml")),
+			llbutil.CopyFrom(src, ".yarn/releases", filepath.Join(appRootPath, ".yarn/releases")))
 	for _, path := range workspacePaths {
-		buildBase = buildBase.With(llbutil.CopyFrom(src, filepath.Join(path, "package.json"), filepath.Join(appRootPath, path, "package.json")))
+		buildBase = buildBase.With(llbutil.CopyFrom(src, path, filepath.Join(appRootPath, path)))
 	}
 
-	yarnInstall := buildBase.Run(llb.Shlex("yarn install --frozen-lockfile"), llb.Dir(appRootPath))
+	yarnInstall := buildBase.Run(llb.Shlex("yarn install --immutable"), llb.Dir(appRootPath))
 	yarnInstall.AddMount("/cache/yarn", llb.Scratch(), llb.AsPersistentCacheDir(
 		"yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
 
-	return yarnInstall.Root()
+	out := yarnInstall.Root().
+		Run(llb.Shlex("yarn plugin import workspace-tools@3.1.1"), llb.Dir(appRootPath)).Root().
+		// Compile Typescript in parallel in the reverse dependency order.
+		Run(llb.Shlex("yarn workspaces foreach -pt run tsc"), llb.Dir(appRootPath)).Root()
+
+	return out
 }
