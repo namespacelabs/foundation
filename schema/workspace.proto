@@ -24,7 +24,8 @@ message Workspace {
     repeated string  private_repo = 5;
 
     // Workspace-wide pre-compiled binaries.
-    repeated BinaryDigest prebuilt_binary = 6;
+    repeated BinaryDigest prebuilt_binary          = 6;
+    string                prebuilt_base_repository = 7;
 
     message Dependency {
         string module_name = 1;

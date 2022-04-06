@@ -157,11 +157,18 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 	if outputPrebuilts {
 		ws := &schema.Workspace{}
 
+		if baseRepository != "" {
+			ws.PrebuiltBaseRepository = baseRepository
+
+		}
+
 		for k, r := range res.Value {
 			prebuilt := &schema.Workspace_BinaryDigest{
 				PackageName: pkgs[k].PackageName().String(),
 				Digest:      r.Value.Digest,
-				Repository:  r.Value.Repository,
+			}
+			if baseRepository == "" {
+				prebuilt.Repository = r.Value.Repository
 			}
 			ws.PrebuiltBinary = append(ws.PrebuiltBinary, prebuilt)
 		}

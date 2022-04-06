@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build"
@@ -139,10 +140,15 @@ func planImage(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 	}
 
 	if opts.UsePrebuilts && UsePrebuilts {
-
 		for _, prebuilt := range loc.Module.Workspace.PrebuiltBinary {
 			if prebuilt.PackageName == loc.PackageName.String() {
 				imgid := oci.ImageID{Repository: prebuilt.Repository, Digest: prebuilt.Digest}
+				if imgid.Repository == "" {
+					if loc.Module.Workspace.PrebuiltBaseRepository == "" {
+						break // Silently fail.
+					}
+					imgid.Repository = filepath.Join(loc.Module.Workspace.PrebuiltBaseRepository, prebuilt.PackageName)
+				}
 				return build.PrebuiltPlan(imgid, spec.PlatformIndependent()), nil
 			}
 		}

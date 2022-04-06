@@ -62,6 +62,10 @@ func FormatWorkspace(w io.Writer, ws *schema.Workspace) error {
 		writeTextMessage(&buf, &schema.Workspace{PrebuiltBinary: sorted})
 	}
 
+	if ws.PrebuiltBaseRepository != "" {
+		writeTextMessage(&buf, &schema.Workspace{PrebuiltBaseRepository: ws.PrebuiltBaseRepository})
+	}
+
 	stableFmt, err := parser.Format(buf.Bytes())
 	if err != nil {
 		return err
