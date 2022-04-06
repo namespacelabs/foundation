@@ -16,7 +16,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -36,12 +35,14 @@ import (
 	"namespacelabs.dev/foundation/std/web/http"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"tailscale.com/util/multierr"
 )
 
 const (
 	controllerPkg schema.PackageName = "namespacelabs.dev/foundation/std/dev/controller"
+	webPkg        schema.PackageName = "namespacelabs.dev/foundation/std/web/http"
 	httpPort                         = 10080
 	fileSyncPort                     = 50000
 	httpPortName                     = "http-port"
@@ -385,9 +386,10 @@ func (i impl) TidyNode(ctx context.Context, loc workspace.Location, node *schema
 func parseBackends(n *schema.Node) ([]*OpGenHttpBackend_Backend, error) {
 	var backends []*OpGenHttpBackend_Backend
 	for _, p := range n.Instantiate {
-		if p.Constructor.GetTypeUrl() == "type.foundation.namespacelabs.dev/namespacelabs.dev/foundation/std/web/http/foundation.std.web.http.Backend" {
-			backend := &http.Backend{}
-			if err := proto.Unmarshal(p.Constructor.Value, backend); err != nil {
+		backend := &http.Backend{}
+
+		if ok, err := fnany.CheckUnmarshal(p.Constructor, webPkg, backend); ok {
+			if err != nil {
 				return nil, err
 			}
 

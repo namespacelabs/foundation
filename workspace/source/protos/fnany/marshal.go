@@ -23,7 +23,12 @@ func Marshal(pkg schema.PackageName, msg proto.Message) (*anypb.Any, error) {
 	}
 
 	return &anypb.Any{
-		TypeUrl: fmt.Sprintf("%s%s/%s", protos.TypeUrlBaseSlash, pkg, typename),
+		TypeUrl: TypeURL(pkg, msg),
 		Value:   msgBytes,
 	}, nil
+}
+
+func TypeURL(pkg schema.PackageName, msg proto.Message) string {
+	typename := string(msg.ProtoReflect().Descriptor().FullName())
+	return fmt.Sprintf("%s%s/%s", protos.TypeUrlBaseSlash, pkg, typename)
 }
