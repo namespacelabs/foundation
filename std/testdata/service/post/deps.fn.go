@@ -5,10 +5,12 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/grpc/deadlines"
 	"namespacelabs.dev/foundation/std/testdata/datastore"
 )
 
 type ServiceDeps struct {
+	Dl   *deadlines.DeadlineRegistration
 	Main *datastore.DB
 }
 
