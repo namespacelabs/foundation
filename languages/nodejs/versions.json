@@ -2,10 +2,7 @@
 	"dependencies": {
 		"typescript": "4.6.2",
 		"ts-node": "10.7.x",
-<<<<<<< HEAD
 		"google-protobuf": "^3.20.0",
-=======
->>>>>>> main
 		"@grpc/grpc-js": "1.5.7",
 		"yargs": "16.x"
 	},
@@ -13,10 +10,7 @@
 	"devDependencies": {
 		"@types/yargs": "16.x",
 		"@types/node": "16.x",
-<<<<<<< HEAD
 		"@types/google-protobuf": "^3.15.5",
-=======
->>>>>>> main
 		"@tsconfig/node16": "1.0.2",
 		"nodemon": "^2.0.15"
 	}
