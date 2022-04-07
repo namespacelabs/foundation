@@ -1,27 +1,35 @@
-// Copyright 2022 Namespace Labs Inc; All rights reserved.
-// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
-// available at http://github.com/namespacelabs/foundation
+// This file was automatically generated.
 
-// XXX This file is generated.
-
-import yargs from "yargs/yargs";
 import { Server, ServerCredentials } from "@grpc/grpc-js";
+import yargs from "yargs/yargs";
+
+
+interface Deps {
+
+}
+
+const prepareDeps = (): Deps => ({
+
+});
+
+const wireServices = (server: Server, deps: Deps): void => {
+
+};
 
 const argv = yargs(process.argv.slice(2))
-  .options({
-    listen_hostname: { type: "string" },
-    port: { type: "number" },
-  })
-  .parse();
+	.options({
+		listen_hostname: { type: "string" },
+		port: { type: "number" },
+	})
+	.parse();
 
 const server = new Server();
+wireServices(server, prepareDeps());
 
-console.log(`Starting to listen on ${argv.listen_hostname}:${argv.port}`);
+console.log(`Starting the server on ${argv.listen_hostname}:${argv.port}`);
 
-server.bindAsync(
-  `${argv.listen_hostname}:${argv.port}`,
-  ServerCredentials.createInsecure(),
-  () => {
-    server.start();
-  }
-);
+server.bindAsync(`${argv.listen_hostname}:${argv.port}`, ServerCredentials.createInsecure(), () => {
+	server.start();
+
+	console.log(`Server started.`);
+});
