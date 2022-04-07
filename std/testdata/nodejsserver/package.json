@@ -1,18 +1,7 @@
 {
-  "private": "true",
-  "name": "nodejsserver",
-  "scripts": {
-    "build": "tsc -p ."
-  },
-  "dependencies": {
-    "@grpc/grpc-js": "1.5.7",
-    "ts-node": "10.7.x",
-    "typescript": "4.6.2",
-    "yargs": "16.x"
-  },
-  "devDependencies": {
-    "@tsconfig/node16": "1.0.2",
-    "@types/node": "16.x",
-    "@types/yargs": "16.x"
-  }
+	"private": true,
+	"workspaces": [
+		"**/*"
+	],
+	"packageManager": "yarn@3.2.0"
 }

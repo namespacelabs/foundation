@@ -80,9 +80,15 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server prov
 		}
 	}
 
+	yarnRoot, err := findYarnRoot(server.Location)
+	if err != nil {
+		return nil, err
+	}
+
 	return buildNodeJS{
 		serverLoc: server.Location,
 		deps:      deps,
+		yarnRoot:  yarnRoot,
 		isFocus:   isFocus}, nil
 }
 
@@ -113,12 +119,10 @@ func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []stri
 
 func tidyPackageJsonFields(loc workspace.Location) error {
 	packageJsonFn := filepath.Join(loc.Abs(), "package.json")
-	packageJsonRaw, err := ioutil.ReadFile(packageJsonFn)
-	if err != nil {
-		return err
-	}
+	// Ignoring the error: creating the file if it doesn't exist.
+	packageJsonRaw, _ := ioutil.ReadFile(packageJsonFn)
 
-	var packageJson map[string]interface{}
+	packageJson := map[string]interface{}{}
 	json.Unmarshal(packageJsonRaw, &packageJson)
 
 	nodejsLoc, err := nodejsLocationFrom(loc.PackageName)
