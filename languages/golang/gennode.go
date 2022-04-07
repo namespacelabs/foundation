@@ -10,7 +10,6 @@ import (
 	"strings"
 	"text/template"
 
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/schema"
@@ -23,8 +22,7 @@ const corePackage = "namespacelabs.dev/foundation/std/go/core"
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
 	var e instancedDepList
-	produceSerialized := false
-	if err := expandNode(ctx, loader, loc, n, produceSerialized, &e); err != nil {
+	if err := expandNode(ctx, loader, loc, n, false, &e); err != nil {
 		return err
 	}
 
@@ -40,8 +38,10 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 
 		imports.AddOrGet(grpcServerPackage)
 	}
-	for _, p := range e.instances {
-		single.DepVars = append(single.DepVars, p.Provisioned.DepVars...)
+	for _, dep := range e.instances {
+		if dep.Scope == nil {
+			single.DepVars = append(single.DepVars, dep.Provisioned.DepVars...)
+		}
 	}
 
 	hasInitialization := n.InitializerFor(schema.Framework_GO_GRPC) != nil
@@ -116,18 +116,14 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 			s := &depsType{
 				DepsType: makeProvidesDepsType(prov),
 			}
-			for k, dep := range prov.Instantiate {
-				var prov typeProvider
-
-				if err := makeDep(ctx, loader, dep, produceSerialized, &prov); err != nil {
-					return fnerrors.UserError(loc, "%s.dependency[%d]: %w", n.GetPackageName(), k, err)
+			for _, dep := range e.instances {
+				if dep.Parent.PackageName == n.PackageName && prov.Name == dep.Scope.GetName() {
+					s.DepVars = append(s.DepVars, dep.Provisioned.DepVars...)
 				}
-				s.DepVars = append(s.DepVars, prov.DepVars...)
-
-				for _, dv := range prov.DepVars {
-					if dv.GoImportURL != "" {
-						imports.AddOrGet(dv.GoImportURL)
-					}
+			}
+			for _, dv := range s.DepVars {
+				if dv.GoImportURL != "" {
+					imports.AddOrGet(dv.GoImportURL)
 				}
 			}
 

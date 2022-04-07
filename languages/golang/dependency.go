@@ -37,6 +37,7 @@ type instancedDepList struct {
 type instancedDep struct {
 	Location    workspace.Location
 	Parent      *schema.Node
+	Scope       *schema.Provides // Parent provider - nil for singleton dependencies.
 	Instance    *schema.Instantiate
 	Provisioned *typeProvider
 }
@@ -133,6 +134,25 @@ func expandNode(ctx context.Context, loader workspace.Packages, loc workspace.Lo
 		}
 	}
 
+	for _, p := range n.Provides {
+		for k, dep := range p.GetInstantiate() {
+			var prov typeProvider
+
+			if err := makeDep(ctx, loader, dep, produceSerialized, &prov); err != nil {
+				return fnerrors.UserError(loc, "%s.%s.dependency[%d]: %w", n.GetPackageName(), p.Name, k, err)
+			}
+
+			if len(prov.DepVars) > 0 {
+				e.instances = append(e.instances, &instancedDep{
+					Location:    loc,
+					Parent:      n,
+					Instance:    dep,
+					Provisioned: &prov,
+					Scope:       p,
+				})
+			}
+		}
+	}
 	return nil
 }
 

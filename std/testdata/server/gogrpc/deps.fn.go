@@ -9,9 +9,9 @@ import (
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
 	"namespacelabs.dev/foundation/std/grpc"
-	"namespacelabs.dev/foundation/std/grpc/deadlines"
 	"namespacelabs.dev/foundation/std/grpc/logging"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
+	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/testdata/datastore"
 	"namespacelabs.dev/foundation/std/testdata/service/post"
 	"namespacelabs.dev/foundation/std/testdata/service/simple"
@@ -21,83 +21,149 @@ type ServerDeps struct {
 	post post.ServiceDeps
 }
 
-func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
-	var server ServerDeps
+func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	var di core.DepInitializer
-	var metrics0 metrics.SingletonDeps
 
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors",
-		Instance:    "metrics0",
-		Do: func(ctx context.Context) (err error) {
-			if metrics0.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", nil); err != nil {
-				return err
+	di.Add(core.Factory{
+		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
+		Instance:    "metricsSingle",
+		Singleton:   true,
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps metrics.SingletonDeps
+			var err error
+			{
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", nil); err != nil {
+					return nil, err
+				}
 			}
-			return nil
+			return deps, err
 		},
 	})
 
-	var tracing0 tracing.SingletonDeps
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors",
-		Instance:    "tracing0",
-		Do: func(ctx context.Context) (err error) {
-			if tracing0.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", nil); err != nil {
-				return err
+	di.Add(core.Factory{
+		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
+		Instance:    "tracingSingle",
+		Singleton:   true,
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps tracing.SingletonDeps
+			var err error
+			{
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", nil); err != nil {
+					return nil, err
+				}
 			}
-			return nil
+			return deps, err
 		},
 	})
 
-	var datastore0 datastore.SingletonDeps
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/go/core",
-		Instance:    "datastore0",
-		Do: func(ctx context.Context) (err error) {
-			if datastore0.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", nil); err != nil {
-				return err
-			}
-			return nil
-		},
-	})
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/grpc/deadlines",
-		Instance:    "server.post",
-		DependsOn:   []string{"deadlines0"}, Do: func(ctx context.Context) (err error) {
-			// configuration: {
-			//   service_name: "PostService"
-			//   method_name: "*"
-			//   maximum_deadline: 5
-			// }
-			p := &deadlines.Deadline{}
-			core.MustUnwrapProto("ChUKC1Bvc3RTZXJ2aWNlEgEqHQAAoEA=", p)
-
-			if server.post.Dl, err = deadlines.ProvideDeadlines(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, deadlines0); err != nil {
-				return err
-			}
-			return nil
-		},
-	})
-
-	di.Register(core.Initializer{
+	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/datastore",
-		Instance:    "server.post",
-		DependsOn:   []string{"datastore0"}, Do: func(ctx context.Context) (err error) {
-			// name: "main"
-			// schema_file: {
-			//   path: "schema.txt"
-			//   contents: "just a test file"
-			// }
-			p := &datastore.Database{}
-			core.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
+		Instance:    "datastoreSingle",
+		Singleton:   true,
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps datastore.SingletonDeps
+			var err error
+			{
+				// name: "gen"
+				p := &secrets.Secret{}
+				core.MustUnwrapProto("CgNnZW4=", p)
 
-			if server.post.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastore0); err != nil {
-				return err
+				if deps.Gen, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
+					return nil, err
+				}
 			}
-			return nil
+
+			{
+				// name: "keygen"
+				p := &secrets.Secret{}
+				core.MustUnwrapProto("CgZrZXlnZW4=", p)
+
+				if deps.Keygen, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
+					return nil, err
+				}
+			}
+
+			{
+				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", nil); err != nil {
+					return nil, err
+				}
+			}
+			return deps, err
+		},
+	})
+
+	di.Add(core.Factory{
+		PackageName: "namespacelabs.dev/foundation/std/testdata/datastore",
+		Instance:    "datastore0",
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps datastore.DatabaseDeps
+			var err error
+			{
+				// name: "cert"
+				p := &secrets.Secret{}
+				core.MustUnwrapProto("CgRjZXJ0", p)
+
+				if deps.Cert, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
+					return nil, err
+				}
+			}
+			return deps, err
+		},
+	})
+
+	di.Add(core.Factory{
+		PackageName: "namespacelabs.dev/foundation/std/testdata/service/post",
+		Instance:    "server.post",
+		Singleton:   true,
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps post.ServiceDeps
+			var err error
+			{
+				// name: "aux"
+				// schema_file: {
+				//   path: "schema.txt"
+				//   contents: "just a test file"
+				// }
+				p := &datastore.Database{}
+				core.MustUnwrapProto("CgNhdXgSHgoKc2NoZW1hLnR4dBIQanVzdCBhIHRlc3QgZmlsZQ==", p)
+
+				datastoreSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "datastoreSingle")
+				if err != nil {
+					return nil, err
+				}
+
+				datastore0, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "datastore0")
+				if err != nil {
+					return nil, err
+				}
+				if deps.Aux, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastoreSingle.(datastore.SingletonDeps), datastore0.(datastore.DatabaseDeps)); err != nil {
+					return nil, err
+				}
+			}
+
+			{
+				// name: "main"
+				// schema_file: {
+				//   path: "schema.txt"
+				//   contents: "just a test file"
+				// }
+				p := &datastore.Database{}
+				core.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
+
+				datastoreSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "datastoreSingle")
+				if err != nil {
+					return nil, err
+				}
+
+				datastore0, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "datastore0")
+				if err != nil {
+					return nil, err
+				}
+				if deps.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastoreSingle.(datastore.SingletonDeps), datastore0.(datastore.DatabaseDeps)); err != nil {
+					return nil, err
+				}
+			}
+			return deps, err
 		},
 	})
 
@@ -133,37 +199,32 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
-		DependsOn:   []string{"metrics0"},
 		Do: func(ctx context.Context) error {
-			return metrics.Prepare(ctx, metrics0)
+			metricsSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "metricsSingle")
+			if err != nil {
+				return err
+			}
+			return metrics.Prepare(ctx, metricsSingle)
 		},
 	})
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
-		DependsOn:   []string{"tracing0"},
 		Do: func(ctx context.Context) error {
-			return tracing.Prepare(ctx, tracing0)
+			tracingSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "tracingSingle")
+			if err != nil {
+				return err
+			}
+			return tracing.Prepare(ctx, tracingSingle)
 		},
 	})
 
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/grpc/deadlines",
-		DependsOn:   []string{"deadlines0"},
-		Do: func(ctx context.Context) error {
-			return deadlines.Prepare(ctx, deadlines0)
-		},
-	})
+	server.post, err = di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", "server.post")
+	if err != nil {
+		return nil, err
+	}
 
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/grpc/logging",
-		DependsOn:   []string{"logging0"},
-		Do: func(ctx context.Context) error {
-			return logging.Prepare(ctx, logging0)
-		},
-	})
-
-	return &server, di.Wait(ctx)
+	return server, di.Init(ctx)
 }
 
 func WireServices(ctx context.Context, srv *server.Grpc, server *ServerDeps) {

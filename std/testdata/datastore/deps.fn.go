@@ -9,14 +9,14 @@ import (
 )
 
 type SingletonDeps struct {
+	Gen            *secrets.Value
+	Keygen         *secrets.Value
 	ReadinessCheck core.Check
 }
 
 // Scoped dependencies that are reinstantiated for each call to ProvideDatabase
 type DatabaseDeps struct {
-	Cert   *secrets.Value
-	Gen    *secrets.Value
-	Keygen *secrets.Value
+	Cert *secrets.Value
 }
 
 type _checkProvideDatabase func(context.Context, string, *Database, SingletonDeps, DatabaseDeps) (*DB, error)

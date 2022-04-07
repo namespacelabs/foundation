@@ -7,11 +7,10 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
-// Scoped dependencies that are reinstantiated for each call to ProvideCreds
-type CredsDeps struct {
+type SingletonDeps struct {
 	Password *secrets.Value
 }
 
-type _checkProvideCreds func(context.Context, string, *CredsRequest, CredsDeps) (*Creds, error)
+type _checkProvideCreds func(context.Context, string, *CredsRequest, SingletonDeps) (*Creds, error)
 
 var _ _checkProvideCreds = ProvideCreds

@@ -70,68 +70,88 @@ func MustUnwrapProto(b64 string, m proto.Message) {
 	}
 }
 
+type key struct {
+	PackageName string
+	Instance    string
+}
+
+type result struct {
+	res interface{}
+	err error
+}
+
 type DepInitializer struct {
-	inits []Initializer
+	factories map[key]*Factory
+	cache     map[key]*result
+	inits     []*Initializer
+}
+
+type Factory struct {
+	PackageName string
+	Instance    string
+	Singleton   bool
+	Do          func(context.Context) (interface{}, error)
+}
+
+func (f Factory) Desc() string {
+	if f.Instance != "" {
+		return fmt.Sprintf("%s/%s", f.PackageName, f.Instance)
+	}
+	return f.PackageName
+}
+
+func (di *DepInitializer) Add(f Factory) {
+	if di.factories == nil {
+		di.factories = make(map[key]*Factory)
+	}
+	di.factories[key{PackageName: f.PackageName, Instance: f.Instance}] = &f
+}
+
+func (di *DepInitializer) Get(ctx context.Context, pkg string, inst string) (interface{}, error) {
+	k := key{PackageName: pkg, Instance: inst}
+	if res, ok := di.cache[k]; ok {
+		return res.res, res.err
+	}
+
+	f, ok := di.factories[k]
+	if !ok {
+		return nil, fmt.Errorf("No factory found found for instance %s in package %s.", inst, pkg)
+	}
+
+	start := time.Now()
+	res, err := f.Do(ctx)
+	took := time.Since(start)
+	if took > maximumInitTime {
+		Log.Printf("[factory] %s took %d (log thresh is %d)", f.Desc(), took, maximumInitTime)
+	}
+
+	if f.Singleton {
+		di.cache[k] = &result{res: res, err: err}
+	}
+	return res, err
 }
 
 type Initializer struct {
 	PackageName string
-	Instance    string
-	DependsOn   []string
 	Do          func(context.Context) error
 }
 
-func (init Initializer) Desc() string {
-	if init.Instance != "" {
-		return fmt.Sprintf("%s/%s", init.PackageName, init.Instance)
-	}
-	return init.PackageName
-}
-
 func (di *DepInitializer) Register(init Initializer) {
-	di.inits = append(di.inits, init)
+	di.inits = append(di.inits, &init)
 }
 
-func (di *DepInitializer) Wait(ctx context.Context) error {
-	resources := ServerResourcesFrom(ctx)
-	if resources == nil {
-		return fmt.Errorf("missing server resources")
-	}
-
-	initializationDeadline := resources.startupTime.Add(maxStartupTime)
-	ctx, cancel := context.WithDeadline(ctx, initializationDeadline)
-	defer cancel()
-
-	Log.Printf("[init] starting with %v initialization deadline left", time.Until(initializationDeadline))
-
-	for k, init := range di.inits {
-		// XXX at the moment we don't make sure of dependency information, but we can
-		// to enable concurrent initialization.
-
-		if *debug {
-			Log.Printf("[init] initializing %s/%s with %v deadline left", init.PackageName, init.Instance, time.Until(initializationDeadline))
-		}
-
+func (di *DepInitializer) Init(ctx context.Context) error {
+	for _, init := range di.inits {
 		start := time.Now()
 		err := init.Do(ctx)
 		took := time.Since(start)
-
 		if took > maximumInitTime {
-			Log.Printf("[init] %s took %s (log thresh is %s)", init.Desc(), took, maximumInitTime)
+			Log.Printf("[init] %s took %d (log thresh is %d)", init.PackageName, took, maximumInitTime)
 		}
-
 		if err != nil {
-			Log.Printf("Failed to initialize %q: %v.", di.inits[k].Desc(), err)
-			for j := k + 1; j < len(di.inits); j++ {
-				// If one of the dependencies already failed, we can't assume there's a clean state to follow
-				// up with. And thus we bail out.
-				Log.Printf("Not initializing %q, due to previous failure.", di.inits[j].Desc())
-			}
-
-			return fmt.Errorf("initialization failed: %w", err)
+			return err
 		}
 	}
-
 	return nil
 }
 
@@ -145,18 +165,3 @@ func WithResources(ctx context.Context, res *ServerResources) context.Context {
 
 func ServerResourcesFrom(ctx context.Context) *ServerResources {
 	v := ctx.Value(ctxResourcesKey)
-	if v == nil {
-		return nil
-	}
-
-	return v.(*ServerResources)
-}
-
-func StatusHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
-
-		fmt.Fprintf(w, "<!doctype html><html><body><pre>%s image_version=%s\n%s</pre></body></html>",
-			serverName, *imageVer, prototext.Format(env))
-	})
-}

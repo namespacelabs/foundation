@@ -10,21 +10,21 @@ $providerProto: inputs.#Proto & {
 }
 
 extension: fn.#Extension & {
+	instantiate: {
+		password: secrets.#Exports.Secret & {
+			name: "postgres-password-file"
+			generate: {
+				randomByteCount: 32
+				format:          "FORMAT_BASE32"
+			}
+		}
+	}
 	provides: {
 		Creds: {
 			input: $providerProto.types.CredsRequest
 
 			availableIn: {
 				go: type: "*Creds"
-			}
-			instantiate: {
-				password: secrets.#Exports.Secret & {
-					name: "postgres-password-file"
-					generate: {
-						randomByteCount: 32
-						format:          "FORMAT_BASE32"
-					}
-				}
 			}
 		}
 	}
