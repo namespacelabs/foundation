@@ -91,7 +91,7 @@ func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *sche
 			return err
 		}
 		// Hard-coding the version of dependencies since we only support monorepo for now.
-		packages = append(packages, fmt.Sprintf("%s@%s", loc.NpmPackage, "v1.0.0"))
+		packages = append(packages, fmt.Sprintf("%s@%s", loc.NpmPackage, "0.0.0"))
 	}
 
 	for pkg, version := range builtin().DevDependencies {
