@@ -8,13 +8,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"sort"
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
@@ -30,31 +28,36 @@ func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
 
 	ops.Register[*OpGenServer](generator{})
+
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.DispatcherResult, error) {
+		wenv, ok := env.(workspace.Packages)
+		if !ok {
+			return nil, errors.New("workspace.Packages required")
+		}
+
+		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Node.PackageName))
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
+	})
 }
 
 type generator struct{}
 
 func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenServer) (*ops.DispatcherResult, error) {
-	wenv, ok := env.(workspace.Packages)
+	workspacePackages, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, errors.New("workspace.Packages required")
 	}
 
-	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.Server.PackageName))
+	loc, err := workspacePackages.Resolve(ctx, schema.PackageName(msg.Server.PackageName))
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, fnfs.WriteWorkspaceFile(ctx, loc.Module.ReadWriteFS(), loc.Rel("main.fn.ts"), func(w io.Writer) error {
-		f, err := resources.Open("main.ts")
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-
-		_, err = io.Copy(w, f)
-		return err
-	})
+	return nil, generateServer(ctx, workspacePackages, loc, msg.Server, msg.LoadedNode, loc.Module.ReadWriteFS())
 }
 
 type impl struct {
@@ -82,6 +85,15 @@ func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *sche
 		packages = append(packages, fmt.Sprintf("%s@%s", pkg, version))
 	}
 
+	for _, importName := range server.Import {
+		loc, err := nodejsLocationFrom(schema.Name(importName))
+		if err != nil {
+			return err
+		}
+		// Hard-coding the version of dependencies since we only support monorepo for now.
+		packages = append(packages, fmt.Sprintf("%s@%s", loc.NpmPackage, "0.0.0"))
+	}
+
 	for pkg, version := range builtin().DevDependencies {
 		devPackages = append(devPackages, fmt.Sprintf("%s@%s", pkg, version))
 	}
@@ -106,7 +118,7 @@ func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *sche
 
 func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
 	var dl defs.DefList
-	dl.Add("Generate Typescript server dependencies", &OpGenServer{Server: pkg.Server}, pkg.PackageName())
+	dl.Add("Generate Typescript server dependencies", &OpGenServer{Server: pkg.Server, LoadedNode: nodes}, pkg.PackageName())
 	return dl.Serialize()
 }
 
@@ -133,6 +145,11 @@ func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
 
 func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
 	var dl defs.DefList
+
+	dl.Add("Generate Nodejs node dependencies", &OpGenNode{
+		Node:       pkg.Node(),
+		LoadedNode: nodes,
+	}, pkg.PackageName())
 
 	var list []*protos.FileDescriptorSetAndDeps
 	for _, dl := range pkg.Provides {
