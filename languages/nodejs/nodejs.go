@@ -10,12 +10,16 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
+	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
@@ -29,6 +33,7 @@ import (
 
 // Hard-coding the version of generated yarn workspaces since we only support a monorepo for now.
 const yarnWorkspaceVersion = "0.0.0"
+const implFileName = "impl.ts"
 
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
@@ -100,27 +105,50 @@ func (impl) TidyNode(ctx context.Context, p *workspace.Package, loc workspace.Lo
 		return err
 	}
 
-	implFn := filepath.Join(loc.Rel(), "impl2.ts")
+	return maybeGenerateImplStub(ctx, p)
+}
+
+func maybeGenerateImplStub(ctx context.Context, p *workspace.Package) error {
+	if len(p.Services) == 0 {
+		// This is not an error, the user might have not added anything yet.
+		return nil
+	}
+
+	implFn := filepath.Join(p.Location.Rel(), implFileName)
+	if _, err := os.Stat(implFn); err == nil {
+		// File alreasy exists, do nothing
+		return nil
+	}
+
 	tmplOptions := nodeimplTmplOptions{}
 	for key, srv := range p.Services {
-		// srv.File FileDescriptorProto
-		tmplOptions.ServiceFileName = key
-		tmplOptions.ServiceName = srv.File[0].GetName()
-		tmplOptions.ServiceFileName = key
+		srvNameParts := strings.Split(key, ".")
+		srvName := srvNameParts[len(srvNameParts)-1]
+		tmplOptions.ServiceServerName = fmt.Sprintf("I%sServer", srvName)
+		tmplOptions.ServiceName = fmt.Sprintf("%sService", srvName)
+
+		srvFullFn, err := fileNameForService(srvName, srv.File)
+		if err != nil {
+			return err
+		}
+		tmplOptions.ServiceFileName = strings.TrimSuffix(filepath.Base(srvFullFn), filepath.Ext(srvFullFn))
+
+		// Only supporting one service for now.
 		break
 	}
-	err = generateSource(ctx, loc.Module.ReadWriteFS(), implFn, nodeimplTmpl, tmplOptions)
-	// nodeimplTmplOptions{
-	// 	ServiceServerName: "IPostServiceServer",
-	// 	ServiceName:       "PostServiceService",
-	// 	ServiceFileName:   "service",
-	// }
 
-	if err != nil {
-		return err
+	return generateSource(ctx, p.Location.Module.ReadWriteFS(), implFn, nodeimplTmpl, tmplOptions)
+}
+
+func fileNameForService(srvName string, descriptors []*descriptorpb.FileDescriptorProto) (string, error) {
+	for _, file := range descriptors {
+		for _, service := range file.Service {
+			if *service.Name == srvName {
+				return file.GetName(), nil
+			}
+		}
 	}
-
-	return nil
+	return "", fnerrors.InternalError("Couldn't find service %s in the generated proto descriptors.", srvName)
 }
 
 func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *schema.Server) error {
