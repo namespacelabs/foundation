@@ -7,6 +7,7 @@ package workspace
 import (
 	"context"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -363,7 +364,10 @@ func (cache *moduleCache) resolveExternal(moduleName string, download func() (*D
 
 	w, err := ModuleAt(downloaded.LocalPath)
 	if err != nil {
-		return nil, fnerrors.UserError(nil, "%s: is not a workspace, %q missing.", moduleName, WorkspaceFilename)
+		if os.IsNotExist(err) {
+			return nil, fnerrors.UserError(nil, "%s: is not a workspace, %q missing.", moduleName, WorkspaceFilename)
+		}
+		return nil, err
 	}
 
 	if w.ModuleName != moduleName {
