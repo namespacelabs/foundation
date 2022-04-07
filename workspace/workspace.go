@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -36,8 +37,8 @@ func ModuleAt(path string) (*schema.Workspace, error) {
 		return nil, fnerrors.Wrapf(nil, err, "failed to parse workspace definition for validation")
 	}
 
-	if firstPass.GetFoundation().GetMinimumApi() > APIVersion {
-		return nil, fnerrors.DoesNotMeetVersionRequirements(firstPass.ModuleName, firstPass.GetFoundation().GetMinimumApi(), APIVersion)
+	if firstPass.GetFoundation().GetMinimumApi() > versions.APIVersion {
+		return nil, fnerrors.DoesNotMeetVersionRequirements(firstPass.ModuleName, firstPass.GetFoundation().GetMinimumApi(), versions.APIVersion)
 	}
 
 	w := &schema.Workspace{}
