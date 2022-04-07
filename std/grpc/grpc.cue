@@ -17,21 +17,20 @@ import (
 
 	instances: {
 		"\(connInstanceName)": grpc.#Exports.Conn & {
-			with: {
-				packageName:   service.packageName
-				protoTypename: service.protoTypename
-			}
+			packageName:   service.packageName
+			protoTypename: service.protoTypename
 		}
 
 		"\(instanceName)": {
-			typeDefinition: {
-				"typename": "foundation.languages.golang.Instantiate"
-			}
-			with: {
-				"package":  service.goPackage
-				"typename": "\(service.protoTypename)Client"
-				"method":   "New\(service.protoTypename)Client"
-				"arguments": [{ref: connInstanceName}]
+			"package":  service.goPackage
+			"typename": "\(service.protoTypename)Client"
+			"method":   "New\(service.protoTypename)Client"
+			"arguments": [{ref: connInstanceName}]
+
+			#Definition: {
+				typeDefinition: {
+					"typename": "foundation.languages.golang.Instantiate"
+				}
 			}
 		}
 	}
