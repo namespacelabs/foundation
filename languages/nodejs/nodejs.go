@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
@@ -34,6 +35,7 @@ import (
 // Hard-coding the version of generated yarn workspaces since we only support a monorepo for now.
 const yarnWorkspaceVersion = "0.0.0"
 const implFileName = "impl.ts"
+const packageJsonFn = "package.json"
 
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
@@ -85,9 +87,15 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server prov
 		}
 	}
 
+	yarnRoot, err := findYarnRoot(server.Location)
+	if err != nil {
+		return nil, err
+	}
+
 	return buildNodeJS{
 		serverLoc: server.Location,
 		deps:      deps,
+		yarnRoot:  yarnRoot,
 		isFocus:   isFocus}, nil
 }
 
@@ -156,23 +164,42 @@ func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *sche
 }
 
 func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []string) error {
-	err := tidyPackageJsonFields(loc)
+	// If package.json doesn't exist, creating it before calling yarn.
+	// We always need to call "tidyPackageJsonFields" again in the end to keep
+	// the field order alphabetical to make "tidy" idempotent.
+	// yarn messes with package.json in a different way: adds new fields to the end
+	// but also removes empty fields like "dependencies".
+	err := tidyPackageJsonFields(ctx, loc)
 	if err != nil {
 		return err
 	}
 
-	return tidyDependencies(ctx, loc, imports)
+	err = tidyDependencies(ctx, loc, imports)
+	if err != nil {
+		return err
+	}
+
+	return tidyPackageJsonFields(ctx, loc)
 }
 
-func tidyPackageJsonFields(loc workspace.Location) error {
-	packageJsonFn := filepath.Join(loc.Abs(), "package.json")
-	packageJsonRaw, err := ioutil.ReadFile(packageJsonFn)
-	if err != nil {
+func tidyPackageJsonFields(ctx context.Context, loc workspace.Location) error {
+	packageJson := map[string]interface{}{}
+
+	packageJsonRelFn := filepath.Join(loc.Rel(), packageJsonFn)
+	packageJsonFile, err := loc.Module.ReadWriteFS().Open(packageJsonRelFn)
+	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	if err == nil {
+		defer packageJsonFile.Close()
 
-	var packageJson map[string]interface{}
-	json.Unmarshal(packageJsonRaw, &packageJson)
+		packageJsonRaw, err := io.ReadAll(packageJsonFile)
+		if err != nil {
+			return err
+		}
+
+		json.Unmarshal(packageJsonRaw, &packageJson)
+	}
 
 	nodejsLoc, err := nodejsLocationFrom(loc.PackageName)
 	if err != nil {
@@ -187,7 +214,10 @@ func tidyPackageJsonFields(loc workspace.Location) error {
 		return err
 	}
 
-	return ioutil.WriteFile(packageJsonFn, editedPackageJsonRaw, 0644)
+	return fnfs.WriteWorkspaceFile(ctx, loc.Module.ReadWriteFS(), packageJsonRelFn, func(w io.Writer) error {
+		_, err := w.Write(editedPackageJsonRaw)
+		return err
+	})
 }
 
 func tidyDependencies(ctx context.Context, loc workspace.Location, imports []string) error {

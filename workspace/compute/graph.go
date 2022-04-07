@@ -310,7 +310,7 @@ func compute(ctx context.Context, g *Orch, opts computeInstance, cacheable *cach
 	}
 
 	if shouldCache && d.IsSet() {
-		deferStore(ctx, g, opts.Computable, cacheable, d, ts, v, inputs.Digest, inputs.PostComputeDigest)
+		deferStore(ctx, g, opts.Computable, cacheable, d, ts, v, inputs)
 	}
 
 	if outputCachingInformation {

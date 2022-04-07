@@ -24,7 +24,7 @@ func FindRoot(ctx context.Context, dir string) (*workspace.Root, error) {
 }
 
 func findWorkspaceRoot(ctx context.Context, dir string) (*workspace.Root, error) {
-	path, err := findroot.Find(dir, findroot.LookForFile(workspace.WorkspaceFilename))
+	path, err := findroot.Find("workspace", dir, findroot.LookForFile(workspace.WorkspaceFilename))
 	if err != nil {
 		return nil, fnerrors.UserError(nil, "workspace: %w", err)
 	}

@@ -8,11 +8,17 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"path/filepath"
 	"text/template"
 
+	"namespacelabs.dev/foundation/internal/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 )
+
+const yarnLockFn = "yarn.lock"
 
 func generateSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, data interface{}) error {
 	return fnfs.WriteWorkspaceFile(ctx, fsfs, filePath, func(w io.Writer) error {
@@ -32,4 +38,18 @@ func writeSource(w io.Writer, t *template.Template, data interface{}) error {
 
 	_, err := w.Write(b.Bytes())
 	return err
+}
+
+func findYarnRoot(loc workspace.Location) (schema.PackageName, error) {
+	path, err := findroot.Find(yarnLockFn, loc.Abs(), findroot.LookForFile(yarnLockFn))
+	if err != nil {
+		return "", nil
+	}
+
+	relPath, err := filepath.Rel(loc.Module.Abs(), path)
+	if err != nil {
+		return "", err
+	}
+
+	return schema.Name(relPath), nil
 }

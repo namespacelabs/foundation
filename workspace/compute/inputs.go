@@ -15,10 +15,9 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
 )
-
-const cacheVersion = 1 // Allow for global cache invalidation.
 
 func Inputs() *In { return &In{} }
 
@@ -122,7 +121,7 @@ func (in *In) Digest(key string, d Digestible) *In {
 type keyDigest struct {
 	Name   string
 	Digest string
-	Set    bool // If not set, the input was not deterministic. It will have to be then set via Finalize().
+	IsSet  bool // If not set, the input was not deterministic. It will have to be then set via Finalize().
 }
 
 type computedInputs struct {
@@ -144,7 +143,7 @@ func (c *computedInputs) Finalize(resolved map[string]ResultWithTimestamp[any]) 
 
 	var computedInputs []keyDigest
 	for _, kv := range c.digests {
-		if !kv.Set {
+		if !kv.IsSet {
 			v, has := resolved[kv.Name]
 			if !has {
 				return fnerrors.InternalError("%s: computed value is missing", kv.Name)
@@ -155,7 +154,7 @@ func (c *computedInputs) Finalize(resolved map[string]ResultWithTimestamp[any]) 
 				return nil
 			}
 
-			computedInputs = append(computedInputs, keyDigest{Name: kv.Name, Digest: v.Digest.String(), Set: true})
+			computedInputs = append(computedInputs, keyDigest{Name: kv.Name, Digest: v.Digest.String(), IsSet: true})
 		} else {
 			computedInputs = append(computedInputs, kv)
 		}
@@ -169,7 +168,7 @@ func (c *computedInputs) Finalize(resolved map[string]ResultWithTimestamp[any]) 
 func digestWithInputs(pkgPath, typeName string, serial int64, inputs []keyDigest) (schema.Digest, error) {
 	h := sha256.New()
 
-	if _, err := fmt.Fprintf(h, "$V:%d\nPkgPath:%s\nType:%s\nVersion:%d\nInputs{\n", cacheVersion, pkgPath, typeName, serial); err != nil {
+	if _, err := fmt.Fprintf(h, "$V:%d\nPkgPath:%s\nType:%s\nVersion:%d\nInputs{\n", versions.CacheVersion, pkgPath, typeName, serial); err != nil {
 		return schema.Digest{}, err
 	}
 
@@ -214,7 +213,7 @@ func (in *In) computeDigest(ctx context.Context, c rawComputable, processComputa
 			if d, err := schema.DigestOf(kv.Value); err != nil {
 				return nil, fnerrors.InternalError("%s: failed to compute digest: %w", kv.Name, err)
 			} else {
-				res.digests = append(res.digests, keyDigest{Name: kv.Name, Digest: d.String(), Set: true})
+				res.digests = append(res.digests, keyDigest{Name: kv.Name, Digest: d.String(), IsSet: true})
 			}
 			continue
 		}
@@ -245,7 +244,7 @@ func (in *In) computeDigest(ctx context.Context, c rawComputable, processComputa
 		// the inputs is not available, i.e. it needs to be computed.
 		if computed.Digest.IsSet() {
 			kv.Digest = computed.Digest.String()
-			kv.Set = true
+			kv.IsSet = true
 		} else {
 			unsetCount++
 		}
@@ -265,7 +264,7 @@ func (in *In) computeDigest(ctx context.Context, c rawComputable, processComputa
 			return nil, fnerrors.InternalError("%s: marshaller failed with: %w", m.Name, err)
 		}
 
-		res.digests = append(res.digests, keyDigest{Name: m.Name, Digest: schema.FromHash("sha256", h).String(), Set: true})
+		res.digests = append(res.digests, keyDigest{Name: m.Name, Digest: schema.FromHash("sha256", h).String(), IsSet: true})
 	}
 
 	sort.Slice(res.digests, func(i, j int) bool {
