@@ -107,8 +107,8 @@ func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.Ser
 	return nil
 }
 
-func (impl) TidyNode(ctx context.Context, p *workspace.Package, loc workspace.Location, node *schema.Node) error {
-	err := tidyPackageJson(ctx, loc, node.Import)
+func (impl) TidyNode(ctx context.Context, p *workspace.Package) error {
+	err := tidyPackageJson(ctx, p.Location, p.Node().Import)
 	if err != nil {
 		return err
 	}

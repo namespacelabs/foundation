@@ -385,8 +385,8 @@ func useDevBuild(env *schema.Environment) bool {
 	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
-func (i impl) TidyNode(ctx context.Context, p *workspace.Package, loc workspace.Location, node *schema.Node) error {
-	if node.Kind != schema.Node_SERVICE {
+func (i impl) TidyNode(ctx context.Context, p *workspace.Package) error {
+	if p.Node().Kind != schema.Node_SERVICE {
 		return nil
 	}
 
@@ -395,7 +395,7 @@ func (i impl) TidyNode(ctx context.Context, p *workspace.Package, loc workspace.
 		"vite@2.7.13",
 	}
 
-	if err := nodejs.RunYarn(ctx, loc, append([]string{"add", "-D"}, devPackages...)); err != nil {
+	if err := nodejs.RunYarn(ctx, p.Location, append([]string{"add", "-D"}, devPackages...)); err != nil {
 		return err
 	}
 
