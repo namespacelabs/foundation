@@ -8,6 +8,7 @@ import (
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/grpc/logging"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/testdata/datastore"
@@ -124,6 +125,19 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		},
 	})
 
+	var logging0 logging.ExtensionDeps
+
+	di.Register(core.Initializer{
+		PackageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors",
+		Instance:    "logging0",
+		Do: func(ctx context.Context) (err error) {
+			if logging0.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/grpc/logging", nil); err != nil {
+				return err
+			}
+			return nil
+		},
+	})
+
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		DependsOn:   []string{"metrics0"},
@@ -137,6 +151,14 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		DependsOn:   []string{"tracing0"},
 		Do: func(ctx context.Context) error {
 			return tracing.Prepare(ctx, tracing0)
+		},
+	})
+
+	di.Register(core.Initializer{
+		PackageName: "namespacelabs.dev/foundation/std/grpc/logging",
+		DependsOn:   []string{"logging0"},
+		Do: func(ctx context.Context) error {
+			return logging.Prepare(ctx, logging0)
 		},
 	})
 
