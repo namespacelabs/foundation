@@ -2,37 +2,33 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package workspace
+package fnany
 
 import (
 	"context"
-	"fmt"
 	"path"
 	"strings"
 
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/dynamicpb"
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
-
-const typeUrlBaseSlash = "type.foundation.namespacelabs.dev/"
 
 type providerProtoResolver struct {
 	// proto resolver interface passes no context, so we retain the caller's.
 	ctx  context.Context
-	root Packages
+	root workspace.Packages
 }
 
-func NewProviderProtoResolver(ctx context.Context, root Packages) *providerProtoResolver {
+func NewResolver(ctx context.Context, root workspace.Packages) *providerProtoResolver {
 	return &providerProtoResolver{ctx, root}
 }
 
-func (pr *providerProtoResolver) resolvePackage(name schema.PackageName) (*Package, error) {
+func (pr *providerProtoResolver) resolvePackage(name schema.PackageName) (*workspace.Package, error) {
 	return pr.root.LoadByName(pr.ctx, name)
 }
 
@@ -40,16 +36,16 @@ func (pr *providerProtoResolver) FindMessageByName(message protoreflect.FullName
 	return protoregistry.GlobalTypes.FindMessageByName(message)
 }
 
-func hasBuiltAnyTypeUrl(url string) bool {
+func isBuiltinAny(url string) bool {
 	return strings.HasPrefix(url, "type.googleapis.com/")
 }
 
 func (pr *providerProtoResolver) FindMessageByURL(url string) (protoreflect.MessageType, error) {
-	if hasBuiltAnyTypeUrl(url) {
+	if isBuiltinAny(url) {
 		return protoregistry.GlobalTypes.FindMessageByURL(url)
 	}
 
-	v := strings.TrimPrefix(url, typeUrlBaseSlash)
+	v := strings.TrimPrefix(url, protos.TypeUrlBaseSlash)
 	if v == url {
 		return nil, protoregistry.NotFound
 	}
@@ -83,33 +79,4 @@ func (pr *providerProtoResolver) FindExtensionByName(field protoreflect.FullName
 
 func (pr *providerProtoResolver) FindExtensionByNumber(message protoreflect.FullName, field protoreflect.FieldNumber) (protoreflect.ExtensionType, error) {
 	return protoregistry.GlobalTypes.FindExtensionByNumber(message, field)
-}
-
-func MarshalPackageAny(pkg schema.PackageName, msg proto.Message) (*anypb.Any, error) {
-	typename := string(msg.ProtoReflect().Descriptor().FullName())
-
-	msgBytes, err := proto.Marshal(msg)
-	if err != nil {
-		return nil, fnerrors.InternalError("%s: %s: failed to marshal message: %w", pkg, typename, err)
-	}
-
-	return &anypb.Any{
-		TypeUrl: fmt.Sprintf("%s%s/%s", typeUrlBaseSlash, pkg, typename),
-		Value:   msgBytes,
-	}, nil
-}
-
-func FindProvider(pkg *Package, packageName schema.PackageName, typeName string) (*schema.Node, *schema.Provides) {
-	// Only extensions can be providers.
-	if n := pkg.Extension; n != nil {
-		if packageName.Equals(n.GetPackageName()) {
-			for _, p := range n.Provides {
-				if p.Type.Typename == typeName {
-					return n, p
-				}
-			}
-		}
-	}
-
-	return nil, nil
 }

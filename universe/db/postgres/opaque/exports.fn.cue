@@ -5,21 +5,22 @@ import "namespacelabs.dev/foundation/std/fn:types"
 
 #Exports: {
 	Database: {
-		packageName: "namespacelabs.dev/foundation/universe/db/postgres/opaque"
-		type:        "Database"
-		typeDefinition: {
-			"typename": "foundation.universe.db.postgres.Database"
-			"source": [
-				"provider.proto",
-				"../database.proto",
-			]
+		name?:       string
+		schemaFile?: types.#Resource
+		hostedAt?: {
+			address?: string
+			port?:    int
 		}
-		with: {
-			name?:       string
-			schemaFile?: types.#Resource
-			hostedAt?: {
-				address?: string
-				port?:    int
+
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/universe/db/postgres/opaque"
+			type:        "Database"
+			typeDefinition: {
+				"typename": "foundation.universe.db.postgres.Database"
+				"source": [
+					"provider.proto",
+					"../database.proto",
+				]
 			}
 		}
 	}

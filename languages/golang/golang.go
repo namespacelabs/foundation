@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/production"
@@ -234,6 +235,10 @@ func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *worksp
 
 	svc.GoPackage = pkg
 	return nil
+}
+
+func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
+	return frontend.ProvisionStack{}, nil
 }
 
 func packageFrom(loc workspace.Location) (string, error) {

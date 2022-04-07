@@ -14,56 +14,78 @@ import "schema/definition.proto";
 import "schema/schema.proto";
 
 message ToolRequest {
-    string tool_package = 1;
-    string focused_server = 2;
-    string workspace_dir = 3;
-    schema.Environment env = 4;
-    repeated google.protobuf.Any input = 5;
-    schema.Stack stack = 8;
-    repeated Snapshot snapshot = 9;
+    reserved 3;
+
+    string   tool_package                 = 1;
+    repeated google.protobuf.Any input    = 5;
+    repeated Snapshot            snapshot = 9;
+
+    // XXX deprecated, in favor of StackRelated.
+    string             focused_server = 2;
+    schema.Environment env            = 4;
+    schema.Stack       stack          = 8;
 
     oneof request_type {
-        ApplyRequest apply_request = 6;
+        ApplyRequest  apply_request  = 6;
         DeleteRequest delete_request = 7;
+        InvokeRequest invoke_request = 10;
     }
 }
 
-message ToolResponse {
-    ApplyResponse apply_response = 1;
-    DeleteResponse delete_response = 2;
+message StackRelated {
+    string             focused_server = 1;
+    schema.Environment env            = 2;
+    schema.Stack       stack          = 3;
 }
 
-message ApplyRequest {}
+message ToolResponse {
+    ApplyResponse  apply_response  = 1;
+    DeleteResponse delete_response = 2;
+    InvokeResponse invoke_response = 3;
+}
+
+message ApplyRequest {
+    StackRelated header = 1;
+}
 
 message ApplyResponse {
     repeated schema.DefExtension extension = 1;
-    repeated schema.Definition definition = 2;
+    repeated schema.Definition definition  = 2;
 
     // The outcome of this tool computation is valid for as long as these
     // inputs don't change.
     repeated CacheKey cache_key = 3;
 }
 
-message DeleteRequest {}
+message DeleteRequest {
+    StackRelated header = 1;
+}
 
 message DeleteResponse {
     repeated schema.Definition definition = 1;
+}
+
+message InvokeRequest {}
+
+message InvokeResponse {
+    google.protobuf.Any output     = 1;
+    bytes               raw_output = 2;  // Alternative to structured output above.
 }
 
 message CacheKey {}
 
 enum Lifecycle {
     LIFECYCLE_UNKNOWN = 0;
-    PROVISION = 1;
-    SHUTDOWN = 2;
+    PROVISION         = 1;
+    SHUTDOWN          = 2;
 }
 
 message Snapshot {
-    string name = 1;
+    string             name  = 1;
     repeated FileEntry entry = 2;
 
     message FileEntry {
-        string path = 1;
-        bytes contents = 2;
+        string path     = 1;
+        bytes  contents = 2;
     }
 }

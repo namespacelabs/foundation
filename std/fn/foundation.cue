@@ -13,10 +13,7 @@ _#Node: {
 	_#Imports
 
 	instantiate: [#InstanceName]: {
-		packageName?:   string
-		type?:          string
-		typeDefinition: types.#Proto
-		with?: {...}
+		...
 	}
 
 	packageData: [...string]

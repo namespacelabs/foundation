@@ -5,23 +5,25 @@ import "namespacelabs.dev/foundation/std/fn:inputs"
 
 #Exports: {
 	Secret: {
-		packageName: "namespacelabs.dev/foundation/std/secrets"
-		type:        "Secret"
-		typeDefinition: {
-			"typename": "foundation.std.secrets.Secret"
-			"source": [
-				"provider.proto",
-			]
+		name?: string
+		generate?: {
+			uniqueId?:        string
+			randomByteCount?: int
+			format?:          ("FORMAT_UNKNOWN" | "FORMAT_BASE64" | "FORMAT_BASE32")
 		}
-		with: {
-			name?: string
-			generate?: {
-				uniqueId?:        string
-				randomByteCount?: int
-				format?:          ("FORMAT_UNKNOWN" | "FORMAT_BASE64" | "FORMAT_BASE32")
-			}
-			initializeWith?: {
-				binary?: inputs.#Package
+		initializeWith?: {
+			binary?:    inputs.#Package
+			cacheable?: bool
+		}
+
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/secrets"
+			type:        "Secret"
+			typeDefinition: {
+				"typename": "foundation.std.secrets.Secret"
+				"source": [
+					"provider.proto",
+				]
 			}
 		}
 	}

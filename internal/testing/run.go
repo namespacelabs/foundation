@@ -27,7 +27,8 @@ import (
 )
 
 type testRun struct {
-	Env ops.WorkspaceEnvironment // Doesn't affect the output.
+	Env            ops.WorkspaceEnvironment // Doesn't affect the output.
+	CleanupRuntime bool                     // Doesn't affect the output.
 
 	TestName       string
 	TestBinPkg     schema.PackageName
@@ -63,13 +64,15 @@ func (rt *testRun) Inputs() *compute.In {
 func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (fs.FS, error) {
 	p := compute.GetDepValue(r, rt.Plan, "plan")
 
-	compute.On(ctx).Cleanup(tasks.Action("test.cleanup"), func(ctx context.Context) error {
-		if err := runtime.For(rt.Env).DeleteRecursively(ctx); err != nil {
-			return err
-		}
+	if rt.CleanupRuntime {
+		compute.On(ctx).Cleanup(tasks.Action("test.cleanup"), func(ctx context.Context) error {
+			if err := runtime.For(rt.Env).DeleteRecursively(ctx); err != nil {
+				return err
+			}
 
-		return nil
-	})
+			return nil
+		})
+	}
 
 	waiters, err := p.Deployer.Apply(ctx, runtime.TaskServerDeploy, rt.Env)
 	if err != nil {
@@ -111,7 +114,7 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (fs.FS, erro
 		serverLogs = append(serverLogs, serverLog)
 
 		ex.Go(func(ctx context.Context) error {
-			err := runtime.For(rt.Env).StreamLogsTo(ctx, w, srv, runtime.StreamLogsOpts{})
+			err := runtime.For(rt.Env).StreamLogsTo(ctx, w, srv, runtime.StreamLogsOpts{Follow: true})
 			if errors.Is(err, context.Canceled) {
 				return nil
 			}

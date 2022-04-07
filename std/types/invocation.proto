@@ -11,5 +11,6 @@ option go_package = "namespacelabs.dev/foundation/std/types";
 import "std/proto/options.proto";
 
 message DeferredInvocation {
-    string binary = 1 [(foundation.std.proto.is_package) = true];
+    string binary    = 1 [(foundation.std.proto.is_package) = true];
+    bool   cacheable = 2;
 }

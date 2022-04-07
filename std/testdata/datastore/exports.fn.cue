@@ -5,17 +5,18 @@ import "namespacelabs.dev/foundation/std/fn:types"
 
 #Exports: {
 	Database: {
-		packageName: "namespacelabs.dev/foundation/std/testdata/datastore"
-		type:        "Database"
-		typeDefinition: {
-			"typename": "foundation.std.testdata.datastore.Database"
-			"source": [
-				"provider.proto",
-			]
-		}
-		with: {
-			name?:       string
-			schemaFile?: types.#Resource
+		name?:       string
+		schemaFile?: types.#Resource
+
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/testdata/datastore"
+			type:        "Database"
+			typeDefinition: {
+				"typename": "foundation.std.testdata.datastore.Database"
+				"source": [
+					"provider.proto",
+				]
+			}
 		}
 	}
 }

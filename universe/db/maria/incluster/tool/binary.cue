@@ -1,6 +1,4 @@
 binary: {
-	name:       "setup-incluster-maria"
-	repository: "us-docker.pkg.dev/foundation-344819/prebuilts/foundation/universe/db/maria/incluster/tool"
-
+	name: "setup-incluster-maria"
 	from: go_package: "."
 }

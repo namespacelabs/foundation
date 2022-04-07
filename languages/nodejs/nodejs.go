@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
+	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
@@ -194,6 +195,10 @@ func (impl) PostParseServer(ctx context.Context, _ *workspace.Sealed) error {
 
 func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *workspace.CueService) error {
 	return nil
+}
+
+func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
+	return frontend.ProvisionStack{}, nil
 }
 
 func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {

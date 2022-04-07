@@ -8,7 +8,9 @@ package foundation.std.web.http;
 
 option go_package = "namespacelabs.dev/foundation/std/web/http";
 
+import "std/proto/options.proto";
+
 message Backend {
-    string endpoint_owner = 1;
-    string service_name = 2;
+    string endpoint_owner = 1 [(foundation.std.proto.is_package) = true];
+    string service_name   = 2;
 }

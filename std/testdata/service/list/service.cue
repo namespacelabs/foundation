@@ -13,11 +13,9 @@ service: fn.#Service & {
 
 	instantiate: {
 		db: incluster.#Exports.Database & {
-			with: {
-				name:       "list"
-				schemaFile: inputs.#FromFile & {
-					path: "schema.sql"
-				}
+			name:       "list"
+			schemaFile: inputs.#FromFile & {
+				path: "schema.sql"
 			}
 		}
 	}

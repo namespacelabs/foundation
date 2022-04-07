@@ -8,16 +8,15 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -128,24 +127,6 @@ func PlanImage(ctx context.Context, pkg *workspace.Package, env ops.Environment,
 	}, nil
 }
 
-func MakeTag(ctx context.Context, env ops.Environment, pkg *workspace.Package, bid provision.BuildID, keepRepos bool) (compute.Computable[oci.AllocatedName], error) {
-	if pkg.Binary == nil {
-		return nil, fnerrors.UserError(pkg.Location, "expected a binary")
-	}
-
-	if keepRepos {
-		// Build a new tag that looks like the original tag, but with the current build ID.
-		// Creating a tag is required because unfortunately uploading an image to Docker
-		// requires a tag, even though we operate on digests.
-		return registry.StaticName(nil, oci.ImageID{
-			Repository: pkg.Binary.Repository,
-			Tag:        bid.String(),
-		}), nil
-	}
-
-	return registry.AllocateName(ctx, env, pkg.Location.PackageName, bid)
-}
-
 func planImage(ctx context.Context, loc workspace.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
 	if bin.From == nil {
 		return nil, fnerrors.UserError(loc, "don't know how to build binary image: `from` statement is missing")
@@ -159,14 +140,15 @@ func planImage(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 	}
 
 	if opts.UsePrebuilts && UsePrebuilts {
-		if bin.Digest != "" {
-			imgid := oci.ImageID{Repository: bin.Repository, Digest: bin.Digest}
-			return build.PrebuiltPlan(imgid, spec.PlatformIndependent()), nil
-		}
-
 		for _, prebuilt := range loc.Module.Workspace.PrebuiltBinary {
 			if prebuilt.PackageName == loc.PackageName.String() {
-				imgid := oci.ImageID{Repository: bin.Repository, Digest: prebuilt.Digest}
+				imgid := oci.ImageID{Repository: prebuilt.Repository, Digest: prebuilt.Digest}
+				if imgid.Repository == "" {
+					if loc.Module.Workspace.PrebuiltBaseRepository == "" {
+						break // Silently fail.
+					}
+					imgid.Repository = filepath.Join(loc.Module.Workspace.PrebuiltBaseRepository, prebuilt.PackageName)
+				}
 				return build.PrebuiltPlan(imgid, spec.PlatformIndependent()), nil
 			}
 		}

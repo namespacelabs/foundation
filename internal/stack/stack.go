@@ -132,7 +132,7 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 
 			exec.Go(func(ctx context.Context) error {
 				return tasks.Action("package.eval.provisioning").Scope(loc.PackageName).Run(ctx, func(ctx context.Context) error {
-					ev, err := evalNode(ctx, server, n, state)
+					ev, err := EvalProvision(ctx, server, n, state)
 					if err != nil {
 						return fnerrors.Wrap(loc, err)
 					}
@@ -207,7 +207,7 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 	})
 }
 
-func evalNode(ctx context.Context, server provision.Server, n *workspace.Package, state *eval.AllocState) (*ParsedNode, error) {
+func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Package, state *eval.AllocState) (*ParsedNode, error) {
 	// We need to make sure that `env` is available before we read extend.stack, as env is often used
 	// for branching.
 
@@ -222,6 +222,16 @@ func evalNode(ctx context.Context, server provision.Server, n *workspace.Package
 
 	if pdata.Naming != nil {
 		return nil, fnerrors.UserError(n.Location, "nodes can't provide naming specifications")
+	}
+
+	if node := n.Node(); node != nil {
+		if handler, ok := workspace.FrameworkHandlers[server.Framework()]; ok {
+			fmwkData, err := handler.EvalProvision(node)
+			if err != nil {
+				return nil, err
+			}
+			pdata.DeclaredStack = append(pdata.DeclaredStack, fmwkData.DeclaredStack...)
+		}
 	}
 
 	return &ParsedNode{Package: n, ProvisionPlan: pdata}, nil

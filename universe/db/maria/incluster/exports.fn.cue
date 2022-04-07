@@ -5,17 +5,18 @@ import "namespacelabs.dev/foundation/std/fn:types"
 
 #Exports: {
 	Database: {
-		packageName: "namespacelabs.dev/foundation/universe/db/maria/incluster"
-		type:        "Database"
-		typeDefinition: {
-			"typename": "foundation.universe.db.maria.incluster.Database"
-			"source": [
-				"provider.proto",
-			]
-		}
-		with: {
-			name?:       string
-			schemaFile?: types.#Resource
+		name?:       string
+		schemaFile?: types.#Resource
+
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/universe/db/maria/incluster"
+			type:        "Database"
+			typeDefinition: {
+				"typename": "foundation.universe.db.maria.incluster.Database"
+				"source": [
+					"provider.proto",
+				]
+			}
 		}
 	}
 }

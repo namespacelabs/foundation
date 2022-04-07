@@ -12,12 +12,10 @@ $providerProto: inputs.#Proto & {
 extension: fn.#Extension & {
 	instantiate: {
 		password: secrets.#Exports.Secret & {
-			with: {
-				name: "postgres-password-file"
-				generate: {
-					randomByteCount: 32
-					format:          "FORMAT_BASE32"
-				}
+			name: "postgres-password-file"
+			generate: {
+				randomByteCount: 32
+				format:          "FORMAT_BASE32"
 			}
 		}
 	}

@@ -5,11 +5,17 @@
 package main
 
 import (
-	"os"
+	"context"
 
+	"namespacelabs.dev/foundation/provision/configure"
+	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/go-ids"
 )
 
 func main() {
-	os.Stdout.Write([]byte(ids.NewRandomBase32ID(128)))
+	configure.HandleInvoke(func(ctx context.Context, r configure.Request) (*protocol.InvokeResponse, error) {
+		return &protocol.InvokeResponse{
+			RawOutput: []byte(ids.NewRandomBase32ID(128)),
+		}, nil
+	})
 }

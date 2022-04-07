@@ -7,11 +7,17 @@ package configure
 import (
 	"context"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
 	"tailscale.com/util/multierr"
 )
 
-type Handlers struct{ handlers []*HandlerRoute }
+type Handlers struct {
+	handlers      []*HandlerRoute
+	invokeHandler InvokeFunc
+}
 
 type MatchingHandlers struct {
 	hs *Handlers
@@ -19,7 +25,7 @@ type MatchingHandlers struct {
 }
 
 type HandlerRoute struct {
-	h Handler
+	h StackHandler
 	matches
 }
 
@@ -27,8 +33,14 @@ type matches struct {
 	matchEnv *schema.Environment
 }
 
-func NewRegistration() *Handlers {
+func NewHandlers() *Handlers {
 	return &Handlers{}
+}
+
+func (hs *Handlers) Any() *MatchingHandlers {
+	matches := matches{}
+	m := &MatchingHandlers{hs: hs, matches: matches}
+	return m
 }
 
 func (hs *Handlers) MatchEnv(env *schema.Environment) *MatchingHandlers {
@@ -37,17 +49,18 @@ func (hs *Handlers) MatchEnv(env *schema.Environment) *MatchingHandlers {
 	return m
 }
 
-func (hs *Handlers) Handler(h Handler) *HandlerRoute {
-	route := &HandlerRoute{h: h}
-	hs.handlers = append(hs.handlers, route)
-	return route
-}
-
-func (mh *MatchingHandlers) Handle(h Handler) *HandlerRoute {
+func (mh *MatchingHandlers) HandleStack(h StackHandler) *HandlerRoute {
 	r := &HandlerRoute{h: h}
 	r.matches = mh.matches
 	mh.hs.handlers = append(mh.hs.handlers, r)
 	return r
+}
+
+type InvokeFunc func(context.Context, Request) (*protocol.InvokeResponse, error)
+
+func (mh *MatchingHandlers) HandleInvoke(f InvokeFunc) *MatchingHandlers {
+	mh.hs.invokeHandler = f
+	return mh
 }
 
 type runHandlers struct {
@@ -74,7 +87,7 @@ func (m matches) match(env *schema.Environment) bool {
 	return true
 }
 
-func (rh runHandlers) Apply(ctx context.Context, req Request, out *ApplyOutput) error {
+func (rh runHandlers) Apply(ctx context.Context, req StackRequest, out *ApplyOutput) error {
 	var errs []error
 
 	for _, r := range rh.h.handlers {
@@ -90,7 +103,7 @@ func (rh runHandlers) Apply(ctx context.Context, req Request, out *ApplyOutput) 
 	return multierr.New(errs...)
 }
 
-func (rh runHandlers) Delete(ctx context.Context, req Request, out *DeleteOutput) error {
+func (rh runHandlers) Delete(ctx context.Context, req StackRequest, out *DeleteOutput) error {
 	var errs []error
 
 	for _, r := range rh.h.handlers {
@@ -104,4 +117,12 @@ func (rh runHandlers) Delete(ctx context.Context, req Request, out *DeleteOutput
 	}
 
 	return multierr.New(errs...)
+}
+
+func (rh runHandlers) Invoke(ctx context.Context, req Request) (*protocol.InvokeResponse, error) {
+	if rh.h.invokeHandler == nil {
+		return nil, status.Error(codes.Unavailable, "invoke not supported")
+	}
+
+	return rh.h.invokeHandler(ctx, req)
 }

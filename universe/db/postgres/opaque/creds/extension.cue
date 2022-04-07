@@ -12,14 +12,10 @@ $providerProto: inputs.#Proto & {
 extension: fn.#Extension & {
 	instantiate: {
 		user: secrets.#Exports.Secret & {
-			with: {
-				name: "postgres-user-file"
-			}
+			name: "postgres-user-file"
 		}
 		password: secrets.#Exports.Secret & {
-			with: {
-				name: "postgres-password-file"
-			}
+			name: "postgres-password-file"
 		}
 	}
 

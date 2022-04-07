@@ -8,10 +8,10 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
-	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.Node, kind schema.Node_Kind) error {
@@ -107,31 +107,22 @@ type ParsedType struct {
 	Builtin   bool
 }
 
-func ResolveDependency(dep *schema.Instantiate) (ParsedType, error) {
+func ResolveDependency(dep *schema.Instantiate) (protos.TypeReference, error) {
 	if dep.Constructor != nil {
-		if t := strings.TrimPrefix(dep.Constructor.TypeUrl, "type.googleapis.com/"); t != dep.Constructor.TypeUrl {
-			if dep.PackageName != "" {
-				return ParsedType{
+		ref := protos.Ref(dep.Constructor)
+		if ref != nil {
+			if ref.Builtin && dep.PackageName != "" {
+				return protos.TypeReference{
 					Package:   schema.PackageName(dep.PackageName),
-					ProtoType: t,
+					ProtoType: ref.ProtoType,
 				}, nil
 			}
 
-			return ParsedType{
-				ProtoType: t,
-				Builtin:   true,
-			}, nil
-		}
-
-		if t := strings.TrimPrefix(dep.Constructor.TypeUrl, typeUrlBaseSlash); t != dep.Constructor.TypeUrl {
-			return ParsedType{
-				Package:   schema.PackageName(filepath.Dir(t)),
-				ProtoType: filepath.Base(t),
-			}, nil
+			return *ref, nil
 		}
 	}
 
-	return ParsedType{}, fnerrors.InternalError("don't know how to build type")
+	return protos.TypeReference{}, fnerrors.InternalError("don't know how to build type")
 }
 
 func visitDeps(ctx context.Context, pl Packages, loc Location, includes []schema.PackageName, dl *schema.PackageList, visit func(n *schema.Node) error) error {
