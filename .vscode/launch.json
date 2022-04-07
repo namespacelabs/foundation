@@ -12,8 +12,15 @@
 			"program": "${workspaceRoot}/cmd/fn"
 			// Specify the absolute path to the working directory.
 			// NOTE(Nik): I couldn't make relative paths work on my workstation.
+<<<<<<< HEAD
 			// "cwd": "~/code/ea-example",
 			// "args": ["generate"]
+=======
+			"cwd": "~/code/no-golang",
+			// "cwd": "~/code/examples/todos",
+			// "args": ["dev", "nodejsserver"]
+			"args": ["tidy"]
+>>>>>>> Experimental Tidy for impl.
 		}
 	]
 }

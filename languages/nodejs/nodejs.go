@@ -94,8 +94,33 @@ func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.Ser
 	return nil
 }
 
-func (impl) TidyNode(ctx context.Context, loc workspace.Location, node *schema.Node) error {
-	return tidyPackageJson(ctx, loc, node.Import)
+func (impl) TidyNode(ctx context.Context, p *workspace.Package, loc workspace.Location, node *schema.Node) error {
+	err := tidyPackageJson(ctx, loc, node.Import)
+	if err != nil {
+		return err
+	}
+
+	implFn := filepath.Join(loc.Rel(), "impl2.ts")
+	tmplOptions := nodeimplTmplOptions{}
+	for key, srv := range p.Services {
+		// srv.File FileDescriptorProto
+		tmplOptions.ServiceFileName = key
+		tmplOptions.ServiceName = srv.File[0].GetName()
+		tmplOptions.ServiceFileName = key
+		break
+	}
+	err = generateSource(ctx, loc.Module.ReadWriteFS(), implFn, nodeimplTmpl, tmplOptions)
+	// nodeimplTmplOptions{
+	// 	ServiceServerName: "IPostServiceServer",
+	// 	ServiceName:       "PostServiceService",
+	// 	ServiceFileName:   "service",
+	// }
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *schema.Server) error {
