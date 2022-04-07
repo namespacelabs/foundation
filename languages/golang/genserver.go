@@ -326,7 +326,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 						{{end -}}
 
 						{{range $p.DepVars -}}
-						if {{$v.VarName}}.{{.GoName}}, err = {{$opts.Imports.MustGet $p.GoPackage}}.{{$p.Method}}(ctx, "{{$v.PackageName}}", {{if $p.SerializedMsg}}p{{else}}nil{{end}}{{with $ref := index $v.Refs $k2}}{{if $ref}}, {{$ref}}{{end}}{{end}}{{if $p.DepsType}}, deps{{end}}); err != nil {
+						if {{$v.VarName}}.{{.GoName}}, err = {{$opts.Imports.MustGet $p.GoPackage}}.{{$p.Method}}(ctx, "{{$v.PackageName}}", {{if $p.SerializedMsg}}p{{else}}nil{{end}}{{with $ref := index $v.Refs $k2}}{{if $ref}}, {{$ref}}{{end}}{{end}}); err != nil {
 							return err
 						}
 						{{- end}}

@@ -50,9 +50,6 @@ type typeProvider struct {
 	Method      string
 	Args        []string
 
-	DepsType     string
-	InputDepVars []gosupport.TypeDef
-
 	SerializedMsg string
 	ProtoComments string
 
