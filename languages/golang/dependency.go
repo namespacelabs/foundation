@@ -133,47 +133,14 @@ func expandNode(ctx context.Context, loader workspace.Packages, loc workspace.Lo
 }
 
 func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instantiate, produceSerialized bool, prov *typeProvider) error {
-	if ptype := protos.Ref(dep.Constructor); ptype != nil && ptype.Builtin {
-		switch ptype.ProtoType {
-		case "foundation.languages.golang.Instantiate":
-			inst := &Instantiate{}
-			if err := proto.Unmarshal(dep.Constructor.Value, inst); err != nil {
-				return fnerrors.UserError(nil, "failed to unmarshal %s: %w", dep.Constructor.TypeUrl, err)
-			}
-
-			prov.GoPackage = inst.Package
-			prov.Method = inst.Method
-			for _, arg := range inst.Arguments {
-				prov.Args = append(prov.Args, gosupport.MakeGoPubVar(arg.Ref))
-			}
-
-			prov.DepVars = append(prov.DepVars, gosupport.TypeDef{
-				GoName:      gosupport.MakeGoPubVar(dep.Name),
-				GoImportURL: inst.Package,
-				GoTypeName:  inst.Typename,
-			})
-
-		default:
-			return fnerrors.UserError(nil, "don't know how to instantiate %v", dep)
-		}
-
-		return nil
-	}
-
 	pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
 	if err != nil {
 		return fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
 	}
 
-	_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
-	if p == nil {
-		return fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
-	}
-
 	// XXX Well, yes, this shouldn't live here. But being practical. We need to either have
 	// a way to define how to generate the types. Or we need to use generics (although generics
 	// don't replace all of the uses).
-	var goprovider *schema.Provides_AvailableIn_Go
 	if dep.PackageName == "namespacelabs.dev/foundation/std/grpc" && dep.Type == "Backend" {
 		backend := &grpcprotos.Backend{}
 		if err := proto.Unmarshal(dep.Constructor.Value, backend); err != nil {
@@ -222,12 +189,18 @@ func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instant
 			GoTypeName:  clientType,
 		})
 		return nil
-	} else {
-		for _, prov := range p.AvailableIn {
-			if prov.Go != nil {
-				goprovider = prov.Go
-				break
-			}
+	}
+
+	_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
+	if p == nil {
+		return fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
+	}
+
+	var goprovider *schema.Provides_AvailableIn_Go
+	for _, prov := range p.AvailableIn {
+		if prov.Go != nil {
+			goprovider = prov.Go
+			break
 		}
 	}
 
