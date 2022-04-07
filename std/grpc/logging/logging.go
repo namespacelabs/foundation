@@ -25,9 +25,9 @@ func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryS
 	reqid := logHeader(ctx, "request", info.FullMethod, req)
 	resp, err := handler(ctx, req)
 	if err == nil {
-		Log.Printf("%s: %s: took %v; response: %+v", info.FullMethod, reqid, time.Since(t), resp)
+		Log.Printf("%s: id=%s: took %v; response: %+v", info.FullMethod, reqid, time.Since(t), resp)
 	} else {
-		Log.Printf("%s: %s: took %v; error: %v", info.FullMethod, reqid, time.Since(t), err)
+		Log.Printf("%s: id=%s: took %v; error: %v", info.FullMethod, reqid, time.Since(t), err)
 	}
 	return resp, err
 }
@@ -37,9 +37,9 @@ func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *gr
 	reqid := logHeader(stream.Context(), "stream", info.FullMethod, nil)
 	err := handler(srv, stream)
 	if err == nil {
-		Log.Printf("%s: %s: took %v, finished ok", info.FullMethod, reqid, time.Since(t))
+		Log.Printf("%s: id=%s: took %v, finished ok", info.FullMethod, reqid, time.Since(t))
 	} else {
-		Log.Printf("%s: %s: took %v; error: %v", info.FullMethod, reqid, time.Since(t), err)
+		Log.Printf("%s: id=%s: took %v; error: %v", info.FullMethod, reqid, time.Since(t), err)
 	}
 	return err
 }
@@ -57,9 +57,9 @@ func logHeader(ctx context.Context, what, fullMethod string, req interface{}) st
 	}
 
 	if req != nil {
-		core.Log.Printf("%s: %s: request from %s (auth: %s): %+v", fullMethod, reqid, peerAddr, authType, req)
+		core.Log.Printf("%s: id=%s: request from %s (auth: %s): %+v", fullMethod, reqid, peerAddr, authType, req)
 	} else {
-		core.Log.Printf("%s: %s: request from %s (auth: %s)", fullMethod, reqid, peerAddr, authType)
+		core.Log.Printf("%s: id=%s: request from %s (auth: %s)", fullMethod, reqid, peerAddr, authType)
 	}
 	return reqid
 }
