@@ -49,7 +49,7 @@ func NewTidyCmd() *cobra.Command {
 				return err
 			}
 
-			var errs []error
+			packages := []*workspace.Package{}
 			for _, loc := range list.Locations {
 				pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
 				if err != nil {
@@ -60,6 +60,20 @@ func NewTidyCmd() *cobra.Command {
 					continue
 				}
 
+				packages = append(packages, pkg)
+			}
+
+			var errs []error
+			for _, fmwk := range schema.Framework_value {
+				lang := languages.IntegrationFor(schema.Framework(fmwk))
+				if lang == nil {
+					continue
+				}
+				if err := lang.TidyWorkspace(ctx, packages); err != nil {
+					errs = append(errs, err)
+				}
+			}
+			for _, pkg := range packages {
 				switch {
 				case pkg.Server != nil:
 					lang := languages.IntegrationFor(pkg.Server.Framework)

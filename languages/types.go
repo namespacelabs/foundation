@@ -23,6 +23,7 @@ type Integration interface {
 	PrepareRun(context.Context, provision.Server, *runtime.ServerRunOpts) error
 
 	// Called on `fn tidy`
+	TidyWorkspace(context.Context, []*workspace.Package) error
 	TidyNode(context.Context, workspace.Location, *schema.Node) error
 	TidyServer(context.Context, workspace.Location, *schema.Server) error
 
@@ -75,6 +76,10 @@ func (MaybeGenerate) GenerateServer(*workspace.Package, []*schema.Node) ([]*sche
 }
 
 type MaybeTidy struct{}
+
+func (MaybeTidy) TidyWorkspace(context.Context, []*workspace.Package) error {
+	return nil
+}
 
 func (MaybeTidy) TidyNode(ctx context.Context, loc workspace.Location, server *schema.Node) error {
 	return nil
