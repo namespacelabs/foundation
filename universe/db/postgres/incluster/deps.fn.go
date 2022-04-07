@@ -9,11 +9,11 @@ import (
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 )
 
-type ExtensionDeps struct {
+type SingletonDeps struct {
 	Creds          *creds.Creds
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, ExtensionDeps) (*pgxpool.Pool, error)
+type _checkProvideDatabase func(context.Context, string, *Database, SingletonDeps) (*pgxpool.Pool, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

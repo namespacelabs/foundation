@@ -8,13 +8,17 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
-type ExtensionDeps struct {
-	Cert           *secrets.Value
-	Gen            *secrets.Value
-	Keygen         *secrets.Value
+type SingletonDeps struct {
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, ExtensionDeps) (*DB, error)
+// Scoped dependencies that are reinstantiated for each call to ProvideDatabase
+type DatabaseDeps struct {
+	Cert   *secrets.Value
+	Gen    *secrets.Value
+	Keygen *secrets.Value
+}
+
+type _checkProvideDatabase func(context.Context, string, *Database, SingletonDeps, DatabaseDeps) (*DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

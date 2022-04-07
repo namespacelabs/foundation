@@ -7,10 +7,10 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
-type ExtensionDeps struct {
+type SingletonDeps struct {
 	Token *secrets.Value
 }
 
-type _checkPrepare func(context.Context, ExtensionDeps) error
+type _checkPrepare func(context.Context, SingletonDeps) error
 
 var _ _checkPrepare = Prepare

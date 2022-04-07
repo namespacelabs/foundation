@@ -11,6 +11,6 @@ import (
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
-func ProvideDatabase(ctx context.Context, caller string, db *Database, deps ExtensionDeps) (*pgxpool.Pool, error) {
-	return postgres.ProvideDatabase(ctx, caller, db, deps.Creds.Username, deps.Creds.Password, deps.ReadinessCheck)
+func ProvideDatabase(ctx context.Context, caller string, db *Database, sdeps SingletonDeps, dbdeps DatabaseDeps) (*pgxpool.Pool, error) {
+	return postgres.ProvideDatabase(ctx, caller, db, dbdeps.Creds.Username, dbdeps.Creds.Password, sdeps.ReadinessCheck)
 }

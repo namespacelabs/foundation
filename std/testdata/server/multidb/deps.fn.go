@@ -9,7 +9,6 @@ import (
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
-	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/testdata/service/multidb"
 	"namespacelabs.dev/foundation/universe/db/maria/incluster"
 	"namespacelabs.dev/foundation/universe/db/maria/incluster/creds"
@@ -24,7 +23,7 @@ type ServerDeps struct {
 func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 	var server ServerDeps
 	var di core.DepInitializer
-	var metrics0 metrics.ExtensionDeps
+	var metrics0 metrics.SingletonDeps
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors",
@@ -37,7 +36,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		},
 	})
 
-	var tracing0 tracing.ExtensionDeps
+	var tracing0 tracing.SingletonDeps
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors",
@@ -50,30 +49,19 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		},
 	})
 
-	var creds0 creds.ExtensionDeps
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/secrets",
-		Instance:    "creds0",
-		Do: func(ctx context.Context) (err error) {
-			// name: "mariadb-password-file"
-			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGU=", p)
-
-			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster/creds", p); err != nil {
-				return err
-			}
-			return nil
-		},
-	})
-
-	var incluster0 incluster.ExtensionDeps
+	var incluster0 incluster.SingletonDeps
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/universe/db/maria/incluster/creds",
 		Instance:    "incluster0",
-		DependsOn:   []string{"creds0"}, Do: func(ctx context.Context) (err error) {
-			if incluster0.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", nil, creds0); err != nil {
+		Do: func(ctx context.Context) (err error) {
+			var deps CredsDeps
+
+			if deps.Password, err = Foo(); err != nil {
+				return err
+			}
+
+			if incluster0.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", nil, deps); err != nil {
 				return err
 			}
 			return nil
@@ -91,30 +79,19 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		},
 	})
 
-	var creds2 fncreds.ExtensionDeps
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/secrets",
-		Instance:    "creds2",
-		Do: func(ctx context.Context) (err error) {
-			// name: "postgres-password-file"
-			p := &secrets.Secret{}
-			core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
-
-			if creds2.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", p); err != nil {
-				return err
-			}
-			return nil
-		},
-	})
-
-	var incluster2 fnincluster.ExtensionDeps
+	var incluster2 fnincluster.SingletonDeps
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds",
 		Instance:    "incluster2",
-		DependsOn:   []string{"creds2"}, Do: func(ctx context.Context) (err error) {
-			if incluster2.Creds, err = fncreds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, creds2); err != nil {
+		Do: func(ctx context.Context) (err error) {
+			var deps CredsDeps
+
+			if deps.Password, err = Foo(); err != nil {
+				return err
+			}
+
+			if incluster2.Creds, err = fncreds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, deps); err != nil {
 				return err
 			}
 			return nil

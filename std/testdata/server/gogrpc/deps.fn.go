@@ -12,7 +12,6 @@ import (
 	"namespacelabs.dev/foundation/std/grpc/deadlines"
 	"namespacelabs.dev/foundation/std/grpc/logging"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
-	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/testdata/datastore"
 	"namespacelabs.dev/foundation/std/testdata/service/post"
 	"namespacelabs.dev/foundation/std/testdata/service/simple"
@@ -25,7 +24,7 @@ type ServerDeps struct {
 func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 	var server ServerDeps
 	var di core.DepInitializer
-	var metrics0 metrics.ExtensionDeps
+	var metrics0 metrics.SingletonDeps
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors",
@@ -38,7 +37,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		},
 	})
 
-	var tracing0 tracing.ExtensionDeps
+	var tracing0 tracing.SingletonDeps
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors",
@@ -51,65 +50,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		},
 	})
 
-	var deadlines0 deadlines.ExtensionDeps
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors",
-		Instance:    "deadlines0",
-		Do: func(ctx context.Context) (err error) {
-			if deadlines0.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", nil); err != nil {
-				return err
-			}
-			return nil
-		},
-	})
-
-	var datastore0 datastore.ExtensionDeps
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/secrets",
-		Instance:    "datastore0",
-		Do: func(ctx context.Context) (err error) {
-			// name: "cert"
-			p := &secrets.Secret{}
-			core.MustUnwrapProto("CgRjZXJ0", p)
-
-			if datastore0.Cert, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
-				return err
-			}
-			return nil
-		},
-	})
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/secrets",
-		Instance:    "datastore0",
-		Do: func(ctx context.Context) (err error) {
-			// name: "gen"
-			p := &secrets.Secret{}
-			core.MustUnwrapProto("CgNnZW4=", p)
-
-			if datastore0.Gen, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
-				return err
-			}
-			return nil
-		},
-	})
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/secrets",
-		Instance:    "datastore0",
-		Do: func(ctx context.Context) (err error) {
-			// name: "keygen"
-			p := &secrets.Secret{}
-			core.MustUnwrapProto("CgZrZXlnZW4=", p)
-
-			if datastore0.Keygen, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
-				return err
-			}
-			return nil
-		},
-	})
+	var datastore0 datastore.SingletonDeps
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/core",
@@ -153,7 +94,21 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 			p := &datastore.Database{}
 			core.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
 
-			if server.post.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastore0); err != nil {
+			var deps DatabaseDeps
+
+			if deps.Cert, err = Foo(); err != nil {
+				return err
+			}
+
+			if deps.Gen, err = Foo(); err != nil {
+				return err
+			}
+
+			if deps.Keygen, err = Foo(); err != nil {
+				return err
+			}
+
+			if server.post.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastore0, deps); err != nil {
 				return err
 			}
 			return nil

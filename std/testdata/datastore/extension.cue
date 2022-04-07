@@ -11,21 +11,6 @@ $providerProto: inputs.#Proto & {
 
 extension: fn.#Extension & {
 	instantiate: {
-		cert: secrets.#Exports.Secret & {
-			name: "cert"
-		}
-		gen: secrets.#Exports.Secret & {
-			name: "gen"
-			generate: {
-				randomByteCount: 32
-			}
-		}
-		keygen: secrets.#Exports.Secret & {
-			name: "keygen"
-			initializeWith: {
-				binary: "namespacelabs.dev/foundation/std/testdata/datastore/keygen"
-			}
-		}
 		readinessCheck: core.#Exports.ReadinessCheck
 	}
 
@@ -35,6 +20,23 @@ extension: fn.#Extension & {
 
 			availableIn: {
 				go: type: "*DB"
+			}
+			instantiate: {
+				cert: secrets.#Exports.Secret & {
+					name: "cert"
+				}
+				gen: secrets.#Exports.Secret & {
+					name: "gen"
+					generate: {
+						randomByteCount: 32
+					}
+				}
+				keygen: secrets.#Exports.Secret & {
+					name: "keygen"
+					initializeWith: {
+						binary: "namespacelabs.dev/foundation/std/testdata/datastore/keygen"
+					}
+				}
 			}
 		}
 	}

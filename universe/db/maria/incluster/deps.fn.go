@@ -9,11 +9,11 @@ import (
 	"namespacelabs.dev/foundation/universe/db/maria/incluster/creds"
 )
 
-type ExtensionDeps struct {
+type SingletonDeps struct {
 	Creds          *creds.Creds
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, ExtensionDeps) (*sql.DB, error)
+type _checkProvideDatabase func(context.Context, string, *Database, SingletonDeps) (*sql.DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

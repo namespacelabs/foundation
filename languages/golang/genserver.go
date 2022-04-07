@@ -99,7 +99,7 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 
 				opts.Services = append(opts.Services, n)
 			} else {
-				n.Typename = "ExtensionDeps"
+				n.Typename = "SingletonDeps"
 				n.VarName = makeName(filepath.Base(dep.Location.Rel()), usedNames, true)
 			}
 
@@ -156,7 +156,7 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 				Name:        makeName(filepath.Base(svc.Location.Rel()), usedNames, false), // XXX use package instead?
 				VarName:     makeName(filepath.Base(svc.Location.Rel()), usedNames, true),
 				PackageName: svc.Location.PackageName,
-				Typename:    "ServiceDeps",
+				Typename:    "SingletonDeps",
 				IsService:   true,
 			}
 
@@ -294,9 +294,17 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 						{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}.MustUnwrapProto("{{$p.SerializedMsg}}", p)
 
 						{{end -}}
-						
+						{{if $p.DepsType -}}
+						var deps {{$p.DepsType}}
+							{{range $k, $v := $p.InputDepVars}}
+								if deps.{{$v.GoName}}, err = Foo(); err != nil {
+									return err
+								}
+							{{end}}
+						{{end -}}
+
 						{{range $p.DepVars -}}
-						if {{$v.VarName}}.{{.GoName}}, err = {{$opts.Imports.MustGet $p.GoPackage}}.{{$p.Method}}(ctx, "{{$v.PackageName}}", {{if $p.SerializedMsg}}p{{else}}nil{{end}}{{with $ref := index $v.Refs $k2}}{{if $ref}}, {{$ref}}{{end}}{{end}}); err != nil {
+						if {{$v.VarName}}.{{.GoName}}, err = {{$opts.Imports.MustGet $p.GoPackage}}.{{$p.Method}}(ctx, "{{$v.PackageName}}", {{if $p.SerializedMsg}}p{{else}}nil{{end}}{{with $ref := index $v.Refs $k2}}{{if $ref}}, {{$ref}}{{end}}{{end}}{{if $p.DepsType}}, deps{{end}}); err != nil {
 							return err
 						}
 						{{- end}}
