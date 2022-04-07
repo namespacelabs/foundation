@@ -6,6 +6,7 @@ package logging
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -48,6 +49,7 @@ func logHeader(ctx context.Context, what, fullMethod string, req interface{}) st
 	reqid := ids.NewRandomBase32ID(8)
 	peerAddr := "unknown"
 	authType := "none"
+	deadline := "none"
 	if p, has := peer.FromContext(ctx); has {
 		peerAddr = p.Addr.String()
 		if p.AuthInfo != nil {
@@ -55,10 +57,15 @@ func logHeader(ctx context.Context, what, fullMethod string, req interface{}) st
 		}
 	}
 
+	if t, ok := ctx.Deadline(); ok {
+		left := t.Sub(time.Now())
+		deadline = fmt.Sprintf("%v", left)
+	}
+
 	if req != nil {
-		Log.Printf("%s: id=%s: request from %s (auth: %s): %+v", fullMethod, reqid, peerAddr, authType, req)
+		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s): %+v", fullMethod, reqid, peerAddr, authType, deadline, req)
 	} else {
-		Log.Printf("%s: id=%s: request from %s (auth: %s)", fullMethod, reqid, peerAddr, authType)
+		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s)", fullMethod, reqid, peerAddr, authType, deadline)
 	}
 	return reqid
 }

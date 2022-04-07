@@ -39,7 +39,7 @@ func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryS
 	}
 
 	if selected != nil {
-		// XXX check incoming deadline.
+		// Go will already make sure that we can't increase the incoming deadline.
 		newCtx, cancel := context.WithTimeout(ctx, time.Duration(selected.MaximumDeadline*1000000000))
 		defer cancel()
 
