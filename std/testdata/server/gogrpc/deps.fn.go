@@ -94,21 +94,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 			p := &datastore.Database{}
 			core.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
 
-			var deps DatabaseDeps
-
-			if deps.Cert, err = Foo(); err != nil {
-				return err
-			}
-
-			if deps.Gen, err = Foo(); err != nil {
-				return err
-			}
-
-			if deps.Keygen, err = Foo(); err != nil {
-				return err
-			}
-
-			if server.post.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastore0, deps); err != nil {
+			if server.post.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastore0); err != nil {
 				return err
 			}
 			return nil

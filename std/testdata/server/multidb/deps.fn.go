@@ -55,13 +55,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		PackageName: "namespacelabs.dev/foundation/universe/db/maria/incluster/creds",
 		Instance:    "incluster0",
 		Do: func(ctx context.Context) (err error) {
-			var deps CredsDeps
-
-			if deps.Password, err = Foo(); err != nil {
-				return err
-			}
-
-			if incluster0.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", nil, deps); err != nil {
+			if incluster0.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", nil); err != nil {
 				return err
 			}
 			return nil
@@ -85,13 +79,7 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds",
 		Instance:    "incluster2",
 		Do: func(ctx context.Context) (err error) {
-			var deps CredsDeps
-
-			if deps.Password, err = Foo(); err != nil {
-				return err
-			}
-
-			if incluster2.Creds, err = fncreds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, deps); err != nil {
+			if incluster2.Creds, err = fncreds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil); err != nil {
 				return err
 			}
 			return nil

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/rs/zerolog"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -31,6 +32,22 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 		return err
 	}
 
+	if strings.Contains(srv.Name, "multidb") {
+		for _, n := range opts.Nodes {
+			zerolog.Ctx(ctx).Info().
+				Stringer("n", n.PackageName).
+				Str("var", n.VarName).
+				Strs("refs", n.Refs).
+				Msg("generateServer")
+			for _, p := range n.Provisioned {
+				zerolog.Ctx(ctx).Info().
+					Stringer("prov", p.PackageName).
+					Str("method", p.Method).
+					Msg("generateServer")
+			}
+		}
+	}
+
 	if err := generateGoSource(ctx, fs, loc.Rel(ServerPrepareFilename), serverPrepareTmpl, opts); err != nil {
 		return err
 	}
@@ -45,6 +62,16 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 }
 
 func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, nodes []*schema.Node, opts *serverTmplOptions) error {
+	debug := false
+	if strings.Contains(srv.Name, "multidb") {
+		debug = true
+		for _, p := range srv.GetImportedPackages() {
+			zerolog.Ctx(ctx).Info().
+				Stringer("import", p).
+				Msg("prepareServer")
+		}
+	}
+
 	allDeps, err := expandInstancedDeps(ctx, loader, srv.GetImportedPackages(), nodes)
 	if err != nil {
 		return err
@@ -63,6 +90,9 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 
 	// XXX use allocation tree instead.
 	for _, dep := range allDeps.instances {
+		if debug {
+			zerolog.Ctx(ctx).Info().Stringer("dep", dep.Location.PackageName).Msg("prepareServer")
+		}
 		// Force each of the type URLs to be known, so we do a single template pass.
 		opts.Imports.AddOrGet(dep.Provisioned.GoPackage)
 
@@ -293,14 +323,6 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 						p := &{{$opts.Imports.MustGet $p.GoPackage}}.{{makeProvisionProtoName $p}}{}
 						{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}.MustUnwrapProto("{{$p.SerializedMsg}}", p)
 
-						{{end -}}
-						{{if $p.DepsType -}}
-						var deps {{$p.DepsType}}
-							{{range $k, $v := $p.InputDepVars}}
-								if deps.{{$v.GoName}}, err = Foo(); err != nil {
-									return err
-								}
-							{{end}}
 						{{end -}}
 
 						{{range $p.DepVars -}}

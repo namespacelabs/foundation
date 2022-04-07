@@ -126,17 +126,6 @@ func expandNode(ctx context.Context, loader workspace.Packages, loc workspace.Lo
 			return fnerrors.UserError(loc, "%s.dependency[%d]: %w", n.GetPackageName(), k, err)
 		}
 
-		if len(prov.Provides.Instantiate) > 0 {
-			prov.DepsType = makeProvidesDeps(prov.Provides)
-		}
-		for k, dep := range prov.Provides.Instantiate {
-			var p typeProvider
-
-			if err := makeDep(ctx, loader, dep, produceSerialized, &p); err != nil {
-				return fnerrors.UserError(loc, "%s.dependency[%d]: %w", n.GetPackageName(), k, err)
-			}
-			prov.InputDepVars = append(prov.InputDepVars, p.DepVars...)
-		}
 		if len(prov.DepVars) > 0 {
 			e.instances = append(e.instances, &instancedDep{
 				Location:    loc,
@@ -286,7 +275,7 @@ func makeProvidesMethod(p *schema.Provides) string {
 	return "Provide" + gosupport.MakeGoPubVar(p.Name)
 }
 
-func makeProvidesDeps(p *schema.Provides) string {
+func makeProvidesDepsType(p *schema.Provides) string {
 	return gosupport.MakeGoPubVar(p.Name) + "Deps"
 }
 

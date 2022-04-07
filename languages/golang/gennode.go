@@ -113,7 +113,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 				}}}
 
 			if len(prov.Instantiate) > 0 {
-				p.DepsType = makeProvidesDeps(prov)
+				p.DepsType = makeProvidesDepsType(prov)
 			}
 			for k, dep := range prov.Instantiate {
 				var prov typeProvider
