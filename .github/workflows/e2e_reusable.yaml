@@ -42,7 +42,9 @@ jobs:
           retention-days: 1
 
   run_deploy:
-    name: Kubernetes e2e test os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }} golang_use_buildkit=${{ matrix.golang_use_buildkit }}
+    name:
+      Kubernetes e2e test os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
+      golang_use_buildkit=${{ matrix.golang_use_buildkit }}
     needs: build_fn
     strategy:
       matrix:
@@ -132,18 +134,19 @@ jobs:
         with:
           name: fn-${{ runner.os }}
 
+      # fn is moved out of the workspace so we don't spend time uploading it to buildkit.
       - name: Make Foundation executable
-        run: chmod +x fn
+        run: chmod +x fn && mv fn /tmp/fn
 
       - name: Prepare development environment
-        run: ./fn prepare
+        run: /tmp/fn prepare
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
       - name: Run all tests
         run: |
-          ./fn test \
+          /tmp/fn test \
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=true \
