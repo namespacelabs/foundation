@@ -208,7 +208,12 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 						return fnerrors.UserError(loc, "%s: no such message: %w", inst.TypeDef.Typename, err)
 					}
 
-					msg, err := (&fncue.CueV{Val: it.Value()}).LookupPath("with").DecodeAs(msgtype)
+					var msg proto.Message
+					if newAPI {
+						msg, err = v.DecodeAs(msgtype)
+					} else {
+						msg, err = v.LookupPath("with").DecodeAs(msgtype)
+					}
 					if err != nil {
 						return fnerrors.UserError(loc, "%s: failed to decode builtin message: %w", inst.TypeDef.Typename, err)
 					}
