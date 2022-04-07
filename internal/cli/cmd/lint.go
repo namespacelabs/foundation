@@ -35,7 +35,7 @@ func NewLintCmd() *cobra.Command {
 
 				for _, loc := range list.Locations {
 					fmt.Fprintln(console.Stderr(ctx), "Checking", loc.AsPackageName())
-					if _, err := workspace.LoadPackage(ctx, root, loc); err != nil {
+					if _, err := workspace.LoadPackageByName(ctx, root, loc.AsPackageName()); err != nil {
 						fmt.Fprintln(console.Stderr(ctx), loc.AsPackageName(), err)
 					}
 				}
@@ -48,7 +48,7 @@ func NewLintCmd() *cobra.Command {
 				return err
 			}
 
-			_, err = workspace.LoadPackage(ctx, root, loc)
+			_, err = workspace.LoadPackageByName(ctx, root, loc.AsPackageName())
 			return err
 		}),
 	}

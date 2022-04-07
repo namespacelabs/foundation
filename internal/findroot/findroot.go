@@ -5,7 +5,7 @@
 package findroot
 
 import (
-	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -23,7 +23,7 @@ func LookForFile(name string) Matcher {
 	}
 }
 
-func Find(startAt string, match Matcher) (string, error) {
+func Find(label, startAt string, match Matcher) (string, error) {
 	dir := filepath.Clean(startAt)
 
 	for {
@@ -33,7 +33,7 @@ func Find(startAt string, match Matcher) (string, error) {
 
 		d := filepath.Dir(dir)
 		if d == dir {
-			return "", errors.New("could not determine root")
+			return "", fmt.Errorf("%s: could not determine root", label)
 		}
 		dir = d
 	}

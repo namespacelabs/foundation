@@ -33,7 +33,7 @@ func ModuleAt(path string) (*schema.Workspace, error) {
 
 	firstPass := &schema.Workspace{}
 	if err := (prototext.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(moduleBytes, firstPass); err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "failed to parse workspace definition")
+		return nil, fnerrors.Wrapf(nil, err, "failed to parse workspace definition for validation")
 	}
 
 	if firstPass.GetFoundation().GetMinimumApi() > APIVersion {
@@ -42,7 +42,7 @@ func ModuleAt(path string) (*schema.Workspace, error) {
 
 	w := &schema.Workspace{}
 	if err := prototext.Unmarshal(moduleBytes, w); err != nil {
-		return nil, err
+		return nil, fnerrors.Wrapf(nil, err, "failed to parse workspace definition")
 	}
 
 	return w, nil

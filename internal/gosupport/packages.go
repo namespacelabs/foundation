@@ -7,10 +7,10 @@ package gosupport
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 
 	"golang.org/x/mod/modfile"
+	"namespacelabs.dev/foundation/internal/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
@@ -29,11 +29,12 @@ func ComputeGoPackage(parentPath string) (string, error) {
 }
 
 func LookupGoModule(srcPath string) (*modfile.File, string, error) {
-	gomodFile, err := findGoModule(srcPath)
+	gomodDir, err := findroot.Find("go module", srcPath, findroot.LookForFile("go.mod"))
 	if err != nil {
 		return nil, "", err
 	}
 
+	gomodFile := filepath.Join(gomodDir, "go.mod")
 	gomodBytes, err := ioutil.ReadFile(gomodFile)
 	if err != nil {
 		return nil, gomodFile, err
@@ -49,29 +50,4 @@ func LookupGoModule(srcPath string) (*modfile.File, string, error) {
 	}
 
 	return f, gomodFile, nil
-}
-
-func findRoot(what, dir, presenceTest string, isDir bool) (string, error) {
-	dir = filepath.Clean(dir)
-
-	for {
-		if fi, err := os.Stat(filepath.Join(dir, presenceTest)); err == nil && fi.IsDir() == isDir {
-			return dir, nil
-		}
-
-		d := filepath.Dir(dir)
-		if d == dir {
-			return "", fnerrors.UserError(nil, "could not determine %s root", what)
-		}
-		dir = d
-	}
-}
-
-func findGoModule(dir string) (string, error) {
-	dir, err := findRoot("go module", dir, "go.mod", false)
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(dir, "go.mod"), nil
 }
