@@ -12,7 +12,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
-	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -57,9 +56,9 @@ func logHeader(ctx context.Context, what, fullMethod string, req interface{}) st
 	}
 
 	if req != nil {
-		core.Log.Printf("%s: id=%s: request from %s (auth: %s): %+v", fullMethod, reqid, peerAddr, authType, req)
+		Log.Printf("%s: id=%s: request from %s (auth: %s): %+v", fullMethod, reqid, peerAddr, authType, req)
 	} else {
-		core.Log.Printf("%s: id=%s: request from %s (auth: %s)", fullMethod, reqid, peerAddr, authType)
+		Log.Printf("%s: id=%s: request from %s (auth: %s)", fullMethod, reqid, peerAddr, authType)
 	}
 	return reqid
 }
