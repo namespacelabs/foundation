@@ -12,13 +12,13 @@ import (
 	"io/fs"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
-	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -99,29 +99,6 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (fs.FS, erro
 
 	ex, wait := executor.New(localCtx)
 
-	var focus uniquestrings.List
-
-	for _, srv := range rt.Focus {
-		focus.Add(srv)
-	}
-
-	var serverLogs []*syncbuffer.ByteBuffer // Follows same indexing as rt.Focus.
-
-	for _, entry := range rt.Stack.Entry {
-		srv := entry.Server // Close on srv.
-
-		w, serverLog := makeLog(ctx, srv.Name, focus.Has(srv.PackageName))
-		serverLogs = append(serverLogs, serverLog)
-
-		ex.Go(func(ctx context.Context) error {
-			err := runtime.For(rt.Env).StreamLogsTo(ctx, w, srv, runtime.StreamLogsOpts{Follow: true})
-			if errors.Is(err, context.Canceled) {
-				return nil
-			}
-			return err
-		})
-	}
-
 	testLog, testLogBuf := makeLog(ctx, "testlog", true)
 
 	ex.Go(func(ctx context.Context) error {
@@ -143,10 +120,43 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (fs.FS, erro
 		return nil, err
 	}
 
-	var fs memfs.FS
-	fs.Add("test.log", testLogBuf.Seal().Bytes())
+	fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
+	fsys, err := collectLogs(ctx, rt.Env, rt.Stack, rt.Focus)
+	if err != nil {
+		return nil, err
+	}
 
-	for k, entry := range rt.Stack.Entry {
+	fsys.Add("test.log", testLogBuf.Seal().Bytes())
+
+	return fsys, nil
+}
+
+func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, focus []string) (*memfs.FS, error) {
+	ex, wait := executor.New(ctx)
+
+	var serverLogs []*syncbuffer.ByteBuffer // Follows same indexing as rt.Focus.
+
+	for _, entry := range stack.Entry {
+		srv := entry.Server // Close on srv.
+
+		w, serverLog := makeLog(ctx, srv.Name, slices.Contains(focus, srv.PackageName))
+		serverLogs = append(serverLogs, serverLog)
+
+		ex.Go(func(ctx context.Context) error {
+			err := runtime.For(env).StreamLogsTo(ctx, w, srv, runtime.StreamLogsOpts{})
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
+			return err
+		})
+	}
+
+	if err := wait(); err != nil {
+		return nil, err
+	}
+
+	var fs memfs.FS
+	for k, entry := range stack.Entry {
 		fs.Add(fmt.Sprintf("server/%s.log", strings.ReplaceAll(entry.GetPackageName().String(), "/", "-")), serverLogs[k].Seal().Bytes())
 	}
 
