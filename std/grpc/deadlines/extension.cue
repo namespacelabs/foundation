@@ -21,7 +21,7 @@ extension: fn.#Extension & {
 			input: $providerProto.types.Deadline
 			availableIn: {
 				go: {
-					type:    "*DeadlineRegistration"
+					type: "*DeadlineRegistration"
 				}
 			}
 		}

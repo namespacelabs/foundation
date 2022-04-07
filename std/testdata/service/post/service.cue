@@ -22,7 +22,7 @@ service: fn.#Service & {
 
 		dl: deadlines.#Exports.Deadlines & {
 			configuration: [
-				{serviceName: "PostService", methodName: "*", maximumDeadline: 5.0}
+				{serviceName: "PostService", methodName: "*", maximumDeadline: 5.0},
 			]
 		}
 	}
