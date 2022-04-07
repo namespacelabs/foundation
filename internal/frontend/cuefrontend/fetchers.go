@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"cuelang.org/go/cue"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -145,26 +146,66 @@ func FetchProto(fsys fs.FS, loc workspace.Location) FetcherFunc {
 			return nil, err
 		}
 
+		load.Types = map[string]cueProto{}
 		load.Services = map[string]cueProto{}
 
 		for _, d := range fds.File {
-			for _, t := range d.GetMessageType() {
-				load.Types[t.GetName()] = cueProto{
-					Typename: fmt.Sprintf("%s.%s", d.GetPackage(), t.GetName()),
-					Source:   load.Sources,
-				}
-			}
-
-			for _, svc := range d.GetService() {
-				load.Services[svc.GetName()] = cueProto{
-					Typename: fmt.Sprintf("%s.%s", d.GetPackage(), svc.GetName()),
-					Source:   load.Sources,
-				}
+			if err := fillFromFile(fds, d, &load); err != nil {
+				return load, err
 			}
 		}
 
 		return load, nil
 	}
+}
+
+func fillFromFile(fds *protos.FileDescriptorSetAndDeps, d *descriptorpb.FileDescriptorProto, out *cueProtoload) error {
+	for _, index := range d.PublicDependency {
+		if int(index) >= len(d.Dependency) {
+			return fnerrors.InternalError("%s: public_dependency out of bonds", d.GetName())
+		}
+		dep := d.Dependency[index]
+
+		var filedep *descriptorpb.FileDescriptorProto
+		for _, d := range fds.File {
+			if d.GetName() == dep {
+				filedep = d
+				break
+			}
+		}
+		if filedep == nil {
+			for _, d := range fds.Dependency {
+				if d.GetName() == dep {
+					filedep = d
+					break
+				}
+			}
+		}
+
+		if filedep == nil {
+			return fnerrors.InternalError("%s: public_dependency refers to unknown dependency %q", d.GetName(), dep)
+		}
+
+		if err := fillFromFile(fds, filedep, out); err != nil {
+			return err
+		}
+	}
+
+	for _, t := range d.GetMessageType() {
+		out.Types[t.GetName()] = cueProto{
+			Typename: fmt.Sprintf("%s.%s", d.GetPackage(), t.GetName()),
+			Source:   out.Sources,
+		}
+	}
+
+	for _, svc := range d.GetService() {
+		out.Services[svc.GetName()] = cueProto{
+			Typename: fmt.Sprintf("%s.%s", d.GetPackage(), svc.GetName()),
+			Source:   out.Sources,
+		}
+	}
+
+	return nil
 }
 
 type cueResource struct {

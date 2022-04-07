@@ -13,7 +13,7 @@ func FindProvider(pkg *Package, packageName schema.PackageName, typeName string)
 	if n := pkg.Extension; n != nil {
 		if packageName.Equals(n.GetPackageName()) {
 			for _, p := range n.Provides {
-				if p.Type.Typename == typeName {
+				if p.Name == typeName {
 					return n, p
 				}
 			}

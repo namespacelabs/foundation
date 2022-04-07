@@ -8,12 +8,14 @@ import (
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/grpc"
 	"namespacelabs.dev/foundation/std/grpc/deadlines"
 	"namespacelabs.dev/foundation/std/grpc/logging"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/testdata/datastore"
 	"namespacelabs.dev/foundation/std/testdata/service/post"
+	"namespacelabs.dev/foundation/std/testdata/service/simple"
 )
 
 type ServerDeps struct {
@@ -154,6 +156,23 @@ func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
 			if server.post.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastore0); err != nil {
 				return err
 			}
+			return nil
+		},
+	})
+
+	di.Register(core.Initializer{
+		PackageName: "namespacelabs.dev/foundation/std/grpc",
+		Instance:    "server.post",
+		Do: func(ctx context.Context) (err error) {
+			// package_name: "namespacelabs.dev/foundation/std/testdata/service/simple"
+			p := &grpc.Backend{}
+			core.MustUnwrapProto("CjhuYW1lc3BhY2VsYWJzLmRldi9mb3VuZGF0aW9uL3N0ZC90ZXN0ZGF0YS9zZXJ2aWNlL3NpbXBsZQ==", p)
+
+			if server.post.SimpleConn, err = grpc.ProvideConn(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p); err != nil {
+				return err
+			}
+
+			server.post.Simple = simple.NewEmptyServiceClient(server.post.SimpleConn)
 			return nil
 		},
 	})

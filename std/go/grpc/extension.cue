@@ -3,28 +3,12 @@ import (
 	"namespacelabs.dev/foundation/std/fn:inputs"
 )
 
-$providerProto: inputs.#Proto & {
-	source: "provider.proto"
-}
-
 extension: fn.#Extension & {
 	import: [
 		"namespacelabs.dev/foundation/std/go/core",
 		"namespacelabs.dev/foundation/std/go/grpc/metrics",
 		"namespacelabs.dev/foundation/std/monitoring/tracing",
 	]
-
-	provides: {
-		Conn: {
-			input: $providerProto.types.Conn
-			availableIn: {
-				go: {
-					package: "google.golang.org/grpc"
-					type:    "*ClientConn"
-				}
-			}
-		}
-	}
 }
 
 $inputs: {

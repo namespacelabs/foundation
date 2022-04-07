@@ -1,0 +1,14 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.std.grpc;
+
+option go_package = "namespacelabs.dev/foundation/std/grpc";
+
+import "std/proto/options.proto";
+
+// Separating the protos so fn can compiled them in with minimal dependencies.
+import public "std/grpc/protos/provider.proto";
