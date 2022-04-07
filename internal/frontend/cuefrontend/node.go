@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
+	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 )
 
 type cueGrpcService struct {
@@ -518,7 +519,7 @@ func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAP
 		return nil, fnerrors.UserError(loc, "%s: %s: failed to decode message: %w", resolved.PackageName, inst.TypeDef.Typename, err)
 	}
 
-	return workspace.Marshal(resolved.PackageName, msg)
+	return fnany.Marshal(resolved.PackageName, msg)
 }
 
 func handleRef(loc workspace.Location, v cue.Value, value string, out *[]*schema.Reference) error {
