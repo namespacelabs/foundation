@@ -34,10 +34,6 @@ type SealedPackages interface {
 	Sources() []ModuleSources
 }
 
-func LoadPackage(ctx context.Context, root *Root, loc fnfs.Location, opts ...LoadPackageOpt) (*Package, error) {
-	return LoadPackageByName(ctx, root, loc.AsPackageName(), opts...)
-}
-
 func LoadPackageByName(ctx context.Context, root *Root, name schema.PackageName, opts ...LoadPackageOpt) (*Package, error) {
 	pl := NewPackageLoader(root)
 	parsed, err := pl.LoadByNameWithOpts(ctx, name, opts...)

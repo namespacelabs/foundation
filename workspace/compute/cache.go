@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/cache"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -134,12 +135,14 @@ func checkLoadCache(ctx context.Context, what string, g *Orch, c computeInstance
 	return hit, err
 }
 
-func deferStore(ctx context.Context, g *Orch, c hasAction, cacheable *cacheable, d schema.Digest, ts time.Time, v any, rawPointers ...schema.Digest) {
+func deferStore(ctx context.Context, g *Orch, c hasAction, cacheable *cacheable, d schema.Digest, ts time.Time, v any, inputs *computedInputs) {
 	var pointers []schema.Digest
-	for _, ptr := range rawPointers {
-		if ptr.IsSet() {
-			pointers = append(pointers, ptr)
-		}
+
+	if inputs.Digest.IsSet() {
+		pointers = append(pointers, inputs.Digest)
+	}
+	if inputs.PostComputeDigest.IsSet() {
+		pointers = append(pointers, inputs.PostComputeDigest)
 	}
 
 	if len(pointers) == 0 {
@@ -147,7 +150,7 @@ func deferStore(ctx context.Context, g *Orch, c hasAction, cacheable *cacheable,
 	}
 
 	g.DetachWith(Detach{
-		Action:     c.Action().Clone(func(name string) string { return fmt.Sprintf("cache.store (%s)", name) }).Arg("digests", pointers),
+		Action:     c.Action().Clone(func(name string) string { return fmt.Sprintf("cache.store (%s)", name) }).LogLevel(1).Arg("digests", pointers),
 		BestEffort: true,
 		Do: func(ctx context.Context) error {
 			result, err := cacheable.Cache(ctx, g.cache, v)
@@ -163,10 +166,24 @@ func deferStore(ctx context.Context, g *Orch, c hasAction, cacheable *cacheable,
 					Msg("VerifyCache: source of non-determinism writing to the output cache")
 			}
 
-			return g.cache.StoreEntry(ctx, pointers, cache.CachedOutput{
-				Digest:    result,
-				Timestamp: ts,
-			})
+			entry := cache.CachedOutput{
+				Digest:       result,
+				Timestamp:    ts,
+				CacheVersion: versions.CacheVersion,
+			}
+
+			entry.Debug.Serial = inputs.serial
+			entry.Debug.PackagePath = inputs.pkgPath
+			entry.Debug.Typename = inputs.typeName
+
+			entry.InputDigests = map[string]string{}
+			for _, kv := range inputs.digests {
+				if kv.IsSet {
+					entry.InputDigests[kv.Name] = kv.Digest
+				}
+			}
+
+			return g.cache.StoreEntry(ctx, pointers, entry)
 		},
 	})
 }

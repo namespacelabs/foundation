@@ -41,8 +41,15 @@ type Cache interface {
 }
 
 type CachedOutput struct {
-	Digest    schema.Digest
-	Timestamp time.Time
+	Digest       schema.Digest
+	Timestamp    time.Time
+	CacheVersion int
+	InputDigests map[string]string
+
+	Debug struct {
+		Serial                int64
+		PackagePath, Typename string
+	}
 }
 
 func Local() (Cache, error) {
@@ -196,6 +203,11 @@ func (c *localCache) StoreEntry(ctx context.Context, inputs []schema.Digest, out
 	if len(inputs) == 0 {
 		return nil
 	}
+
+	// XXX consider using a model where each index entry is a separate file. That would
+	// reduce the number of updates that need to happen here, and would reduce raciness
+	// with updating the index. Another option would be to use something like sqlite, but
+	// that would incur a building + maintenance cost on `fn`.
 
 	index, err := loadIndex(ctx, string(c.path))
 	if err != nil {
