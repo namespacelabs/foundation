@@ -41,9 +41,9 @@ func writeSource(w io.Writer, t *template.Template, data interface{}) error {
 }
 
 func findYarnRoot(loc workspace.Location) (schema.PackageName, error) {
-	path, err := findroot.Find(loc.Abs(), findroot.LookForFile(yarnLockFn))
+	path, err := findroot.Find(yarnLockFn, loc.Abs(), findroot.LookForFile(yarnLockFn))
 	if err != nil {
-		return "", fnerrors.UserError(nil, "Couldn't find %s: %w", yarnLockFn, err)
+		return "", nil
 	}
 
 	relPath, err := filepath.Rel(loc.Module.Abs(), path)
