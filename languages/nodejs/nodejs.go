@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -123,7 +124,9 @@ func maybeGenerateImplStub(ctx context.Context, p *workspace.Package) error {
 	}
 
 	implFn := filepath.Join(p.Location.Rel(), implFileName)
-	if _, err := os.Stat(implFn); err == nil {
+
+	_, err := fs.Stat(p.Location.Module.ReadWriteFS(), implFn)
+	if err == nil || !os.IsNotExist(err) {
 		// File alreasy exists, do nothing
 		return nil
 	}
