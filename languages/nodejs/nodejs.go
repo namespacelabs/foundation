@@ -133,25 +133,24 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 }
 
 func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) error {
-	installYarn := false
-	_, err := updatePackageJson(ctx, path, module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
-		packageJson["private"] = true
-		packageJson["workspaces"] = []string{"**/*"}
-		yarnWithVersion := fmt.Sprintf("yarn@%s", yarnVersion)
-		installYarn = packageJson["packageManager"] != yarnWithVersion
-	})
+	yarnHasCorrectVersion, err := updateYarnRootPackageJson(ctx, path, module.ReadWriteFS())
 
 	if err != nil {
 		return err
 	}
 
 	// Install Yarn 3+ if needed
-	if installYarn {
+	if !yarnHasCorrectVersion {
 		if err := RunYarn(ctx, path, []string{"set", "version", yarnVersion}); err != nil {
+			return err
+		}
+		// If yarn messed with package.json, re-format it to make tn tidy idempotent.
+		if _, err = updateYarnRootPackageJson(ctx, path, module.ReadWriteFS()); err != nil {
 			return err
 		}
 	}
 
+	// Write .yarnrc.yml with the correct nodeLinker.
 	if err := fnfs.WriteWorkspaceFile(ctx, module.ReadWriteFS(), filepath.Join(path, yarnRcFn), func(w io.Writer) error {
 		_, err := io.WriteString(w, yarnRcContent())
 		return err
@@ -159,6 +158,7 @@ func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) er
 		return err
 	}
 
+	// Create "tsconfig.json" if it doesn't exist.
 	tsconfigFn := filepath.Join(path, "tsconfig.json")
 	if _, err := updateJson(ctx, tsconfigFn, module.ReadWriteFS(),
 		func(packageJson map[string]interface{}, fileExisted bool) {
@@ -178,6 +178,19 @@ func yarnRcContent() string {
 
 yarnPath: .yarn/releases/yarn-%s.cjs
 `, yarnVersion)
+}
+
+// Returns whether yarn has the correct version
+func updateYarnRootPackageJson(ctx context.Context, path string, fs fnfs.ReadWriteFS) (bool, error) {
+	yarnHasCorrectVersion := false
+	_, err := updatePackageJson(ctx, path, fs, func(packageJson map[string]interface{}, fileExisted bool) {
+		packageJson["private"] = true
+		packageJson["workspaces"] = []string{"**/*"}
+		yarnWithVersion := fmt.Sprintf("yarn@%s", yarnVersion)
+		yarnHasCorrectVersion = packageJson["packageManager"] == yarnWithVersion
+	})
+
+	return yarnHasCorrectVersion, err
 }
 
 func (impl) TidyNode(ctx context.Context, p *workspace.Package) error {
