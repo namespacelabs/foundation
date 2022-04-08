@@ -285,26 +285,23 @@ func tidyPackageJsonFields(ctx context.Context, loc workspace.Location) (map[str
 	})
 }
 
-func updatePackageJson(ctx context.Context, path string, fs fnfs.ReadWriteFS, callback func(json map[string]interface{}, fileExisted bool)) (map[string]interface{}, error) {
-	return updateJson(ctx, filepath.Join(path, packageJsonFn), fs, callback)
+func updatePackageJson(ctx context.Context, path string, fsys fnfs.ReadWriteFS, callback func(json map[string]interface{}, fileExisted bool)) (map[string]interface{}, error) {
+	// We are not using a struct to parse package.json because:
+	//  - it may be customized with non-standard keys.
+	//  - some keys (for example, "workspaces", even though this particular key the user shouldn't set),
+	//    may be an array or an object, and this can't be represented with a struct.
+	return updateJson(ctx, filepath.Join(path, packageJsonFn), fsys, callback)
 }
 
-func updateJson(ctx context.Context, filepath string, fs fnfs.ReadWriteFS, callback func(json map[string]interface{}, fileExisted bool)) (map[string]interface{}, error) {
+func updateJson(ctx context.Context, filepath string, fsys fnfs.ReadWriteFS, callback func(json map[string]interface{}, fileExisted bool)) (map[string]interface{}, error) {
 	parsedJson := map[string]interface{}{}
 
-	jsonFile, err := fs.Open(filepath)
+	jsonRaw, err := fs.ReadFile(fsys, filepath)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 	fileExisted := err == nil
 	if err == nil {
-		defer jsonFile.Close()
-
-		jsonRaw, err := io.ReadAll(jsonFile)
-		if err != nil {
-			return nil, err
-		}
-
 		json.Unmarshal(jsonRaw, &parsedJson)
 	}
 
@@ -315,7 +312,7 @@ func updateJson(ctx context.Context, filepath string, fs fnfs.ReadWriteFS, callb
 		return nil, err
 	}
 
-	return parsedJson, fnfs.WriteWorkspaceFile(ctx, fs, filepath, func(w io.Writer) error {
+	return parsedJson, fnfs.WriteWorkspaceFile(ctx, fsys, filepath, func(w io.Writer) error {
 		_, err := w.Write(updatedJsonRaw)
 		return err
 	})
