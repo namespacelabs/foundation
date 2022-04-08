@@ -8,13 +8,12 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/workspace"
 )
 
-func RunYarn(ctx context.Context, loc workspace.Location, args []string) error {
+func RunYarn(ctx context.Context, relPath string, args []string) error {
 	var cmd localexec.Command
 	cmd.Command = "yarn"
 	cmd.Args = args
-	cmd.Dir = loc.Rel()
+	cmd.Dir = relPath
 	return cmd.Run(ctx)
 }

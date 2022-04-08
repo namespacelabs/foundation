@@ -395,7 +395,7 @@ func (i impl) TidyNode(ctx context.Context, loc workspace.Location, node *schema
 		"vite@2.7.13",
 	}
 
-	if err := nodejs.RunYarn(ctx, loc, append([]string{"add", "-D"}, devPackages...)); err != nil {
+	if err := nodejs.RunYarn(ctx, loc.Rel(), append([]string{"add", "-D"}, devPackages...)); err != nil {
 		return err
 	}
 
