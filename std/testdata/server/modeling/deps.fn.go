@@ -23,7 +23,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
-		Instance:    "metricsSingle",
+		Typename:    "SingletonDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
 			deps := &metrics.SingletonDeps{}
@@ -39,7 +39,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
-		Instance:    "tracingSingle",
+		Typename:    "SingletonDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
 			deps := &tracing.SingletonDeps{}
@@ -55,7 +55,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/scopes",
-		Instance:    "scopes0",
+		Typename:    "ScopedDataDeps",
 		Do: func(ctx context.Context) (interface{}, error) {
 			deps := &scopes.ScopedDataDeps{}
 			var err error
@@ -70,29 +70,29 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/service/modeling",
-		Instance:    "modelingDeps",
+		Typename:    "ServiceDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
 			deps := &modeling.ServiceDeps{}
 			var err error
 			{
 
-				scopes0, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/scopes", "scopes0")
+				scopedDataDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.One, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopes0.(*scopes.ScopedDataDeps)); err != nil {
+				if deps.One, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopedDataDeps.(*scopes.ScopedDataDeps)); err != nil {
 					return nil, err
 				}
 			}
 
 			{
 
-				scopes0, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/scopes", "scopes0")
+				scopedDataDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Two, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopes0.(*scopes.ScopedDataDeps)); err != nil {
+				if deps.Two, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopedDataDeps.(*scopes.ScopedDataDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -103,28 +103,28 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
-			metricsSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "metricsSingle")
+			singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "SingletonDeps")
 			if err != nil {
 				return err
 			}
-			return metrics.Prepare(ctx, metricsSingle.(*metrics.SingletonDeps))
+			return metrics.Prepare(ctx, singletonDeps.(*metrics.SingletonDeps))
 		},
 	})
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Do: func(ctx context.Context) error {
-			tracingSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "tracingSingle")
+			singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "SingletonDeps")
 			if err != nil {
 				return err
 			}
-			return tracing.Prepare(ctx, tracingSingle.(*tracing.SingletonDeps))
+			return tracing.Prepare(ctx, singletonDeps.(*tracing.SingletonDeps))
 		},
 	})
 
 	server = &ServerDeps{}
 
-	modelingDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", "modelingDeps")
+	modelingDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", "ServiceDeps")
 	if err != nil {
 		return nil, err
 	}

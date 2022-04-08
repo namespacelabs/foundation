@@ -24,7 +24,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
-		Instance:    "metricsSingle",
+		Typename:    "SingletonDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
 			deps := &metrics.SingletonDeps{}
@@ -40,7 +40,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
-		Instance:    "tracingSingle",
+		Typename:    "SingletonDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
 			deps := &tracing.SingletonDeps{}
@@ -56,7 +56,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds",
-		Instance:    "credsSingle",
+		Typename:    "SingletonDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
 			deps := &creds.SingletonDeps{}
@@ -76,18 +76,18 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster",
-		Instance:    "inclusterSingle",
+		Typename:    "SingletonDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
 			deps := &incluster.SingletonDeps{}
 			var err error
 			{
 
-				credsSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", "credsSingle")
+				singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, credsSingle.(*creds.SingletonDeps)); err != nil {
+				if deps.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, singletonDeps.(*creds.SingletonDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -103,7 +103,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/service/list",
-		Instance:    "listDeps",
+		Typename:    "ServiceDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
 			deps := &list.ServiceDeps{}
@@ -113,11 +113,11 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				p := &incluster.Database{}
 				core.MustUnwrapProto("CgRsaXN0", p)
 
-				inclusterSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", "inclusterSingle")
+				singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Db, err = incluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/list", p, inclusterSingle.(*incluster.SingletonDeps)); err != nil {
+				if deps.Db, err = incluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/list", p, singletonDeps.(*incluster.SingletonDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -128,28 +128,28 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
-			metricsSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "metricsSingle")
+			singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "SingletonDeps")
 			if err != nil {
 				return err
 			}
-			return metrics.Prepare(ctx, metricsSingle.(*metrics.SingletonDeps))
+			return metrics.Prepare(ctx, singletonDeps.(*metrics.SingletonDeps))
 		},
 	})
 
 	di.Register(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Do: func(ctx context.Context) error {
-			tracingSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "tracingSingle")
+			singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "SingletonDeps")
 			if err != nil {
 				return err
 			}
-			return tracing.Prepare(ctx, tracingSingle.(*tracing.SingletonDeps))
+			return tracing.Prepare(ctx, singletonDeps.(*tracing.SingletonDeps))
 		},
 	})
 
 	server = &ServerDeps{}
 
-	listDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/list", "listDeps")
+	listDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/list", "ServiceDeps")
 	if err != nil {
 		return nil, err
 	}

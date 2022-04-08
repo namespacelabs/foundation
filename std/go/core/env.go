@@ -72,7 +72,7 @@ func MustUnwrapProto(b64 string, m proto.Message) {
 
 type key struct {
 	PackageName string
-	Instance    string
+	Typename    string
 }
 
 type result struct {
@@ -95,31 +95,31 @@ func MakeInitializer() *depInitializer {
 
 type Factory struct {
 	PackageName string
-	Instance    string
+	Typename    string
 	Singleton   bool
 	Do          func(context.Context) (interface{}, error)
 }
 
 func (f Factory) Desc() string {
-	if f.Instance != "" {
-		return fmt.Sprintf("%s/%s", f.PackageName, f.Instance)
+	if f.Typename != "" {
+		return fmt.Sprintf("%s/%s", f.PackageName, f.Typename)
 	}
 	return f.PackageName
 }
 
 func (di *depInitializer) Add(f Factory) {
-	di.factories[key{PackageName: f.PackageName, Instance: f.Instance}] = &f
+	di.factories[key{PackageName: f.PackageName, Typename: f.Typename}] = &f
 }
 
-func (di *depInitializer) Get(ctx context.Context, pkg string, inst string) (interface{}, error) {
-	k := key{PackageName: pkg, Instance: inst}
+func (di *depInitializer) Get(ctx context.Context, pkg string, typ string) (interface{}, error) {
+	k := key{PackageName: pkg, Typename: typ}
 	if res, ok := di.cache[k]; ok {
 		return res.res, res.err
 	}
 
 	f, ok := di.factories[k]
 	if !ok {
-		return nil, fmt.Errorf("No factory found for instance %s in package %s.", inst, pkg)
+		return nil, fmt.Errorf("No factory found for type %s in package %s.", typ, pkg)
 	}
 
 	start := time.Now()

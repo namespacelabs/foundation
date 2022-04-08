@@ -107,10 +107,10 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 
 				opts.Services = append(opts.Services, n)
 			} else if dep.Scope != nil {
-				n.VarName = makeName(filepath.Base(dep.Location.Rel()), usedNames, true)
+				n.VarName = makeProvidesDepsVar(dep.Scope)
 			} else {
 				n.IsSingleton = true
-				n.VarName = makeName(filepath.Base(dep.Location.Rel())+"Single", usedNames, false)
+				n.VarName = "singletonDeps"
 			}
 
 			opts.Nodes = append(opts.Nodes, n)
@@ -312,7 +312,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 	{{range $k, $v := .Nodes}}
 		di.Add({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}.Factory{
 			PackageName: "{{$v.PackageName}}",
-			Instance: "{{$v.VarName}}",
+			Typename: "{{$v.Typename}}",
 			{{- if $v.IsSingleton}}
 			Singleton: true,{{end}}
 			Do: func(ctx context.Context) (interface{}, error) {
@@ -330,7 +330,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 
 								{{range $p.DepVars -}}
 								{{with $refs := index $v.Refs $k2}}{{range $k, $ref := $refs}}
-									{{$ref.VarName}}, err := di.Get(ctx, "{{$p.PackageName}}", "{{$ref.VarName}}")
+									{{$ref.VarName}}, err := di.Get(ctx, "{{$p.PackageName}}", "{{$ref.Typename}}")
 									if err != nil {
 										return nil, err
 									}
@@ -360,7 +360,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 		PackageName: "{{$init.PackageName}}",
 		Do: func(ctx context.Context) error {
 			{{- if $init.Deps.VarName}}
-			{{$init.Deps.VarName}}, err := di.Get(ctx, "{{$init.PackageName}}", "{{$init.Deps.VarName}}")
+			{{$init.Deps.VarName}}, err := di.Get(ctx, "{{$init.PackageName}}", "{{$init.Deps.Typename}}")
 			if err != nil {
 				return err
 			}
@@ -372,7 +372,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 
 	{{$opts.Server}} = &ServerDeps{}
 	{{range $k, $v := .Services}}
-		{{$v.VarName}}, err := di.Get(ctx, "{{$v.PackageName}}", "{{$v.VarName}}")
+		{{$v.VarName}}, err := di.Get(ctx, "{{$v.PackageName}}", "{{$v.Typename}}")
 		if err != nil {
 			return nil, err
 		}
