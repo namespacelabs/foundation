@@ -336,12 +336,16 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		}
 		containers = append(containers, name)
 
-		spec.WithInitContainers(
-			applycorev1.Container().
-				WithName(name).
-				WithImage(sidecar.Image.RepoAndDigest()).
-				WithArgs(sidecar.Args...).
-				WithCommand(sidecar.Command...))
+		scntr := applycorev1.Container().
+			WithName(name).
+			WithImage(sidecar.Image.RepoAndDigest()).
+			WithArgs(sidecar.Args...).
+			WithCommand(sidecar.Command...)
+
+		// Share all mounts with sidecards for now.
+		// XXX security review this.
+		scntr.VolumeMounts = container.VolumeMounts
+		spec.WithContainers(scntr)
 	}
 
 	for _, init := range server.Inits {
