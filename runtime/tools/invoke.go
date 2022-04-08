@@ -68,6 +68,10 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 		},
 	}
 
+	if inv.invocation.GetWithInput().GetTypeUrl() != "" {
+		req.Input = append(req.Input, inv.invocation.WithInput)
+	}
+
 	reqbytes, err := proto.Marshal(req)
 	if err != nil {
 		return nil, err

@@ -11,6 +11,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func ValidateServerID(n *schema.Server) error {
@@ -136,14 +137,10 @@ func (depv *depVisitor) visit(ctx context.Context, pl Packages, allocs *[]*schem
 	// XXX at the moment the instantiate statements are not being dedup'd
 	// but it may sense to do so in the future (i.e. two instantiate with
 	// the same constructor would yield the same value).
-	for k, n := range n.Instantiate {
-		ptype, err := ResolveDependency(n)
-		if err != nil {
-			return fnerrors.UserError(nil, "dep#%d (%s): %w", k, n.Name, err)
-		}
-		if !ptype.Builtin {
-			deps.Add(ptype.Package) // Using uniquestrings.List to produce a stable ordered list.
-			perPkg[ptype.Package] = append(perPkg[ptype.Package], n)
+	for _, n := range n.Instantiate {
+		if ref := protos.Ref(n.Constructor); ref != nil && !ref.Builtin {
+			deps.Add(ref.Package) // Using uniquestrings.List to produce a stable ordered list.
+			perPkg[ref.Package] = append(perPkg[ref.Package], n)
 		}
 	}
 

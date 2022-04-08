@@ -4,11 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.std.go.grpc;
+package std.testdata.service.simple;
 
-option go_package = "namespacelabs.dev/foundation/std/go/grpc";
+option go_package = "namespacelabs.dev/foundation/std/testdata/service/simple";
 
-message Conn {
-    string package_name = 1;
-    string proto_typename = 2;
+service EmptyService {
 }

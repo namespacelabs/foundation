@@ -1,7 +1,7 @@
 module_name: "namespacelabs.dev/foundation"
 
 foundation: {
-  minimum_api: 20
+  minimum_api: 21
 }
 
 prebuilt_binary: {

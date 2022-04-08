@@ -26,7 +26,7 @@ type ServerInputs struct {
 // XXX we're injection Location in these, which allows for loading arbitrary files for the workspace;
 // Ideally we'd pass a PackageLoader instead.
 type FrameworkHandler interface {
-	ParseNode(context.Context, Location, *FrameworkExt) error
+	ParseNode(context.Context, Location, *schema.Node, *FrameworkExt) error
 	PreParseServer(context.Context, Location, *FrameworkExt) error
 	PostParseServer(context.Context, *Sealed) error
 	InjectService(Location, *schema.Node, *CueService) error

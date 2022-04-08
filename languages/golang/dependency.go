@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"strings"
 
 	"github.com/kr/text"
 	"github.com/protocolbuffers/txtpbfmt/parser"
@@ -17,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/schema"
+	grpcprotos "namespacelabs.dev/foundation/std/grpc/protos"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
@@ -110,6 +112,10 @@ func visitAllDeps(ctx context.Context, nodes []*schema.Node, includes []schema.P
 }
 
 func expandNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, produceSerialized bool, e *instancedDepList) error {
+	if !isGoNode(n) {
+		return nil
+	}
+
 	for k, dep := range n.GetInstantiate() {
 		var prov typeProvider
 
@@ -130,47 +136,88 @@ func expandNode(ctx context.Context, loader workspace.Packages, loc workspace.Lo
 	return nil
 }
 
-func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instantiate, produceSerialized bool, prov *typeProvider) error {
-	ptype, err := workspace.ResolveDependency(dep)
-	if err != nil {
-		return err
+func isGoNode(n *schema.Node) bool {
+	if n.ServiceFramework == schema.Framework_GO_GRPC {
+		return true
 	}
 
-	if ptype.Builtin {
-		switch ptype.ProtoType {
-		case "foundation.languages.golang.Instantiate":
-			inst := &Instantiate{}
-			if err := proto.Unmarshal(dep.Constructor.Value, inst); err != nil {
-				return fnerrors.UserError(nil, "failed to unmarshal %s: %w", dep.Constructor.TypeUrl, err)
+	if n.InitializerFor(schema.Framework_GO_GRPC) != nil {
+		return true
+	}
+
+	for _, pr := range n.Provides {
+		for _, available := range pr.AvailableIn {
+			if available.Go != nil {
+				return true
 			}
+		}
+	}
 
-			prov.GoPackage = inst.Package
-			prov.Method = inst.Method
-			for _, arg := range inst.Arguments {
-				prov.Args = append(prov.Args, gosupport.MakeGoPubVar(arg.Ref))
-			}
+	return false
+}
 
-			prov.DepVars = append(prov.DepVars, gosupport.TypeDef{
-				GoName:      gosupport.MakeGoPubVar(dep.Name),
-				GoImportURL: inst.Package,
-				GoTypeName:  inst.Typename,
-			})
+func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instantiate, produceSerialized bool, prov *typeProvider) error {
+	pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
+	if err != nil {
+		return fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
+	}
 
-		default:
-			return fnerrors.UserError(nil, "don't know how to instantiate %v", dep)
+	// XXX Well, yes, this shouldn't live here. But being practical. We need to either have
+	// a way to define how to generate the types. Or we need to use generics (although generics
+	// don't replace all of the uses).
+	if dep.PackageName == "namespacelabs.dev/foundation/std/grpc" && dep.Type == "Backend" {
+		backend := &grpcprotos.Backend{}
+		if err := proto.Unmarshal(dep.Constructor.Value, backend); err != nil {
+			return err
 		}
 
+		pkg, err := loader.LoadByName(ctx, schema.PackageName(backend.PackageName))
+		if err != nil {
+			return err
+		}
+
+		if pkg.Node().GetKind() != schema.Node_SERVICE {
+			return fnerrors.UserError(nil, "%s: must be a service", backend.PackageName)
+		}
+
+		var exportedService *schema.GrpcExportService
+		for _, svc := range pkg.Node().ExportService {
+			if backend.ServiceName == "" || matchesService(svc.ProtoTypename, backend.ServiceName) {
+				if exportedService != nil {
+					return fnerrors.UserError(nil, "%s: matching too many services, already had %s, got %s as well",
+						backend.PackageName, exportedService.ProtoTypename, svc.ProtoTypename)
+				}
+				exportedService = svc
+			}
+		}
+
+		if exportedService == nil {
+			return fnerrors.UserError(nil, "%s: no such service %q", backend.PackageName, backend.ServiceName)
+		}
+
+		// XXX not hermetic.
+		gopkg, err := gosupport.ComputeGoPackage(pkg.Location.Abs())
+		if err != nil {
+			return err
+		}
+
+		clientType := simpleName(exportedService.ProtoTypename) + "Client"
+
+		prov.GoPackage = gopkg
+		prov.Method = "New" + clientType
+		prov.Args = append(prov.Args, gosupport.MakeGoPubVar(dep.Name+"Conn"))
+
+		prov.DepVars = append(prov.DepVars, gosupport.TypeDef{
+			GoName:      gosupport.MakeGoPubVar(dep.Name),
+			GoImportURL: gopkg,
+			GoTypeName:  clientType,
+		})
 		return nil
 	}
 
-	pkg, err := loader.LoadByName(ctx, ptype.Package)
-	if err != nil {
-		return fnerrors.UserError(nil, "failed to load %s (for %s): %w", ptype.Package, ptype.ProtoType, err)
-	}
-
-	_, p := workspace.FindProvider(pkg, ptype.Package, ptype.ProtoType)
+	_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
 	if p == nil {
-		return fnerrors.UserError(nil, "didn't find a provider for %s/%s", ptype.Package, ptype.ProtoType)
+		return fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
 	}
 
 	var goprovider *schema.Provides_AvailableIn_Go
@@ -186,7 +233,7 @@ func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instant
 	}
 
 	prov.Provides = p
-	prov.PackageName = ptype.Package
+	prov.PackageName = schema.PackageName(dep.PackageName)
 	prov.GoPackage, _ = packageFrom(pkg.Location)
 	prov.Method = makeProvidesMethod(p)
 
@@ -206,6 +253,19 @@ func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instant
 	}
 
 	return nil
+}
+
+func matchesService(exported, provided string) bool {
+	// Exported is always fully qualified, and provided may be a simple name.
+	if exported == provided {
+		return true
+	}
+	return simpleName(exported) == provided
+}
+
+func simpleName(typename string) string {
+	parts := strings.Split(typename, ".")
+	return parts[len(parts)-1]
 }
 
 func makeProvidesMethod(p *schema.Provides) string {

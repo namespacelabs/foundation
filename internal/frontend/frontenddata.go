@@ -49,7 +49,8 @@ type ProvisionPlan struct {
 	// Node only.
 	ProvisionStack
 	Provisioning *Invocation
-	Inits        []Init
+	Sidecars     []Container
+	Inits        []Container
 
 	// Server only.
 	Naming *schema.Naming
@@ -63,7 +64,7 @@ type InvocationSnapshot struct {
 	FromWorkspace string `json:"fromWorkspace"`
 }
 
-type Init struct {
+type Container struct {
 	Binary string   `json:"binary"`
 	Args   []string `json:"args"`
 }

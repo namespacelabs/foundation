@@ -15,3 +15,8 @@ package types
 	path:     string
 	contents: bytes
 }
+
+#Any: {
+	typeUrl?: string
+	value?:   bytes
+}

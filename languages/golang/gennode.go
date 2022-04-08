@@ -86,6 +86,11 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 				continue
 			}
 
+			// Skip provides which have computable availableIn, i.e. empty blocks.
+			if available.Go.GetType() == "" {
+				continue
+			}
+
 			goImport, err := goPackageOr(loc, available.Go.Package)
 			if err != nil {
 				return err

@@ -99,7 +99,9 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	}
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
-			Arg: []*kubedef.ContainerExtension_Arg{{
+			Args: []string{fmt.Sprintf("--postgresql_endpoint=%s", value)},
+			// XXX remove when backwards compat no longer necessary.
+			ArgTuple: []*kubedef.ContainerExtension_ArgTuple{{
 				Name:  "postgresql_endpoint",
 				Value: string(value),
 			}},

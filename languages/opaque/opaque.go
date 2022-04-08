@@ -82,7 +82,7 @@ func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtim
 	return nil
 }
 
-func (impl) ParseNode(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
+func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Node, ext *workspace.FrameworkExt) error {
 	return nil
 }
 
