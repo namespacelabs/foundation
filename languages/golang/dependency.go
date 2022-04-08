@@ -112,6 +112,10 @@ func visitAllDeps(ctx context.Context, nodes []*schema.Node, includes []schema.P
 }
 
 func expandNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, produceSerialized bool, e *instancedDepList) error {
+	if !isGoNode(n) {
+		return nil
+	}
+
 	for k, dep := range n.GetInstantiate() {
 		var prov typeProvider
 
@@ -130,6 +134,26 @@ func expandNode(ctx context.Context, loader workspace.Packages, loc workspace.Lo
 	}
 
 	return nil
+}
+
+func isGoNode(n *schema.Node) bool {
+	if n.ServiceFramework == schema.Framework_GO_GRPC {
+		return true
+	}
+
+	if n.InitializerFor(schema.Framework_GO_GRPC) != nil {
+		return true
+	}
+
+	for _, pr := range n.Provides {
+		for _, available := range pr.AvailableIn {
+			if available.Go != nil {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instantiate, produceSerialized bool, prov *typeProvider) error {
