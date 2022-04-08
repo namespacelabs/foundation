@@ -7,11 +7,13 @@ package core
 import (
 	"context"
 	"fmt"
+
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 )
 
 type Check struct {
 	register func(string, Checker)
-	owner    string
+	owner    fninit.Caller
 }
 
 // By default, a Readiness checker never returns a failure after it becomes
@@ -20,7 +22,7 @@ type Check struct {
 // whether our dependencies are reachable). To manually control the behavior
 // pass in a `ManualChecker` instead.
 func (c Check) Register(name string, check Checker) {
-	c.register(fmt.Sprintf("%s %s", c.owner, name), check)
+	c.register(fmt.Sprintf("%s %s", c.owner.String(), name), check)
 }
 
 func (c Check) RegisterFunc(name string, check CheckerFunc) {
@@ -31,12 +33,12 @@ func ManualChecker(check CheckerFunc) Checker {
 	return manualChecker{check}
 }
 
-func ProvideLivenessCheck(ctx context.Context, pkgName string, _ *LivenessCheck) (Check, error) {
-	return Check{registerLiveness, pkgName}, nil
+func ProvideLivenessCheck(ctx context.Context, caller fninit.Caller, _ *LivenessCheck) (Check, error) {
+	return Check{registerLiveness, caller}, nil
 }
 
-func ProvideReadinessCheck(ctx context.Context, pkgName string, _ *ReadinessCheck) (Check, error) {
-	return Check{registerReadiness, pkgName}, nil
+func ProvideReadinessCheck(ctx context.Context, caller fninit.Caller, _ *ReadinessCheck) (Check, error) {
+	return Check{registerReadiness, caller}, nil
 }
 
 type manualChecker struct{ c CheckerFunc }

@@ -6,6 +6,7 @@ import (
 
 	"database/sql"
 	"namespacelabs.dev/foundation/std/go/core"
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/universe/db/maria/incluster/creds"
 )
 
@@ -14,6 +15,6 @@ type SingletonDeps struct {
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, *SingletonDeps) (*sql.DB, error)
+type _checkProvideDatabase func(context.Context, fninit.Caller, *Database, *SingletonDeps) (*sql.DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

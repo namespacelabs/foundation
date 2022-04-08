@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/std/go/core"
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
@@ -15,6 +16,6 @@ type SingletonDeps struct {
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, *SingletonDeps) (*DB, error)
+type _checkProvideDatabase func(context.Context, fninit.Caller, *Database, *SingletonDeps) (*DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

@@ -4,8 +4,12 @@
 
 package data
 
-import "context"
+import (
+	"context"
 
-func ProvideData(_ context.Context, caller string, _ *Input) (*Data, error) {
-	return &Data{Caller: []string{caller}}, nil
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
+)
+
+func ProvideData(_ context.Context, caller fninit.Caller, _ *Input) (*Data, error) {
+	return &Data{Caller: caller.String()}, nil
 }

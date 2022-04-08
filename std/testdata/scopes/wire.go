@@ -4,8 +4,12 @@
 
 package scopes
 
-import "context"
+import (
+	"context"
 
-func ProvideScopedData(_ context.Context, _ string, _ *Input, deps *ScopedDataDeps) (*ScopedData, error) {
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
+)
+
+func ProvideScopedData(_ context.Context, _ fninit.Caller, _ *Input, deps *ScopedDataDeps) (*ScopedData, error) {
 	return &ScopedData{Data: deps.Data}, nil
 }

@@ -9,6 +9,7 @@ package foundation.std.testdata.scopes.data;
 option go_package = "namespacelabs.dev/foundation/std/testdata/scopes/data";
 
 message Input {}
+
 message Data {
-    repeated string caller = 1;
+    string caller = 1;
 }

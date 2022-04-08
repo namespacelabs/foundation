@@ -10,19 +10,22 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 )
 
 var (
 	serverSecretsBasepath = flag.String("server_secrets_basepath", "", "Basepath of local secret definitions.")
 )
 
-func ProvideSecret(ctx context.Context, caller string, req *Secret) (*Value, error) {
+func ProvideSecret(ctx context.Context, caller fninit.Caller, req *Secret) (*Value, error) {
 	sdm, err := loadDevMap(os.DirFS(*serverSecretsBasepath))
 	if err != nil {
 		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
 	}
 
-	cfg := lookupConfig(sdm, caller)
+	// TODO change secrets to handle scoped instantiation correctly
+	cfg := lookupConfig(sdm, caller.LastPkg())
 	if cfg == nil {
 		return nil, fmt.Errorf("%v: no secret configuration definition in map.textpb", caller)
 	}

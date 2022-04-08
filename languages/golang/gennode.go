@@ -18,7 +18,7 @@ import (
 
 const depsFilename = "deps.fn.go"
 const grpcServerPackage = "namespacelabs.dev/foundation/std/go/grpc/server"
-const corePackage = "namespacelabs.dev/foundation/std/go/core"
+const initPackage = "namespacelabs.dev/foundation/std/go/core/init"
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
 	var e instancedDepList
@@ -133,6 +133,10 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		}
 	}
 
+	if len(provides) > 0 {
+		imports.AddOrGet(initPackage)
+	}
+
 	return generateGoSource(ctx, fs, loc.Rel(depsFilename), serviceTmpl, nodeTmplOptions{
 		Type:              typ,
 		Singleton:         single,
@@ -221,7 +225,7 @@ var _ checkWireService = WireService
 {{end}}
 
 {{range $k, $v := .Provides}}
-type _check{{$v.Method}} func(context.Context, string, *{{makeProvisionProtoName $v}}
+type _check{{$v.Method}} func(context.Context, {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.Caller, *{{makeProvisionProtoName $v}}
 	{{- if $opts.NeedsSingleton}}, *{{$opts.Singleton.DepsType}}{{end}}
 	{{- with $scoped := index $opts.Scoped $k}}{{if $scoped.DepVars}}, *{{$scoped.DepsType}}{{end}}{{end -}}
 	) ({{range $v.DepVars}}{{makeType $opts.Imports .GoImportURL .GoTypeName}},{{end}} error)

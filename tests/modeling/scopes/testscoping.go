@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"strings"
+	"log"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/std/testdata/service/modeling"
@@ -32,11 +32,12 @@ func main() {
 		if len(res.Item) != 2 {
 			return fmt.Errorf("expected 2 items, got %d", len(res.Item))
 		}
-		path0 := strings.Join(res.Item[0].Data.Caller, "->")
-		path1 := strings.Join(res.Item[1].Data.Caller, "->")
 
-		if path0 == path1 {
-			return fmt.Errorf("expected different caller paths, got twice:\n%s", path0)
+		log.Printf("caller #1: %s", res.Item[0].Data.Caller)
+		log.Printf("caller #2: %s", res.Item[1].Data.Caller)
+
+		if res.Item[0].Data.Caller == res.Item[1].Data.Caller {
+			return fmt.Errorf("expected different caller paths, got twice the same")
 		}
 		return nil
 	})

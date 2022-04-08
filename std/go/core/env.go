@@ -6,19 +6,15 @@ package core
 
 import (
 	"context"
-	"encoding/base64"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"sync/atomic"
-	"time"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/schema"
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 )
 
 var (
@@ -33,20 +29,16 @@ var (
 	initialized uint32
 )
 
-const maximumInitTime = 10 * time.Millisecond
-
-var Log = log.New(os.Stderr, "[foundation] ", log.Ldate|log.Ltime|log.Lmicroseconds)
-
 func PrepareEnv(specifiedServerName string) *ServerResources {
 	if !atomic.CompareAndSwapUint32(&initialized, 0, 1) {
-		Log.Fatal("already initialized")
+		fninit.Log.Fatal("already initialized")
 	}
 
-	Log.Println("Initializing server...")
+	fninit.Log.Println("Initializing server...")
 
 	env = &schema.Environment{}
 	if err := protojson.Unmarshal([]byte(*serializedEnv), env); err != nil {
-		Log.Fatal("failed to parse environment", err)
+		fninit.Log.Fatal("failed to parse environment", err)
 	}
 
 	serverName = specifiedServerName
@@ -56,107 +48,6 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 
 func EnvIs(purpose schema.Environment_Purpose) bool {
 	return env.Purpose == purpose
-}
-
-// MustUnwrapProto unserializes a proto from a base64 string. This is used to
-// pack pre-computed protos into a binary, and is never expected to fail.
-func MustUnwrapProto(b64 string, m proto.Message) {
-	data, err := base64.StdEncoding.DecodeString(b64)
-	if err != nil {
-		panic(err)
-	}
-	if err := proto.Unmarshal(data, m); err != nil {
-		panic(err)
-	}
-}
-
-type key struct {
-	PackageName string
-	Typename    string
-}
-
-type result struct {
-	res interface{}
-	err error
-}
-
-type depInitializer struct {
-	factories map[key]*Factory
-	cache     map[key]*result
-	inits     []*Initializer
-}
-
-func MakeInitializer() *depInitializer {
-	return &depInitializer{
-		factories: map[key]*Factory{},
-		cache:     map[key]*result{},
-	}
-}
-
-type Factory struct {
-	PackageName string
-	Typename    string
-	Singleton   bool
-	Do          func(context.Context) (interface{}, error)
-}
-
-func (f Factory) Desc() string {
-	if f.Typename != "" {
-		return fmt.Sprintf("%s/%s", f.PackageName, f.Typename)
-	}
-	return f.PackageName
-}
-
-func (di *depInitializer) Add(f Factory) {
-	di.factories[key{PackageName: f.PackageName, Typename: f.Typename}] = &f
-}
-
-func (di *depInitializer) Get(ctx context.Context, pkg string, typ string) (interface{}, error) {
-	k := key{PackageName: pkg, Typename: typ}
-	if res, ok := di.cache[k]; ok {
-		return res.res, res.err
-	}
-
-	f, ok := di.factories[k]
-	if !ok {
-		return nil, fmt.Errorf("No factory found for type %s in package %s.", typ, pkg)
-	}
-
-	start := time.Now()
-	res, err := f.Do(ctx)
-	took := time.Since(start)
-	if took > maximumInitTime {
-		Log.Printf("[factory] %s took %d (log thresh is %d)", f.Desc(), took, maximumInitTime)
-	}
-
-	if f.Singleton {
-		di.cache[k] = &result{res: res, err: err}
-	}
-	return res, err
-}
-
-type Initializer struct {
-	PackageName string
-	Do          func(context.Context) error
-}
-
-func (di *depInitializer) Register(init Initializer) {
-	di.inits = append(di.inits, &init)
-}
-
-func (di *depInitializer) Init(ctx context.Context) error {
-	for _, init := range di.inits {
-		start := time.Now()
-		err := init.Do(ctx)
-		took := time.Since(start)
-		if took > maximumInitTime {
-			Log.Printf("[init] %s took %d (log thresh is %d)", init.PackageName, took, maximumInitTime)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type frameworkKey string

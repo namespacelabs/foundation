@@ -22,7 +22,7 @@ func NewGoImports(pkgName string) *GoImports {
 	return &GoImports{
 		PkgName: pkgName,
 		urlmap:  map[string]string{},
-		revmap:  map[string]string{},
+		revmap:  map[string]string{"init": "forbiddenImport"},
 	}
 }
 

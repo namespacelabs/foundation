@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"google.golang.org/grpc"
-	"namespacelabs.dev/foundation/std/go/core"
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
 )
 
@@ -19,8 +19,8 @@ const grpcConnMapKeyword = "grpc_conn_map"
 
 var connMapStr = flag.String(grpcConnMapKeyword, "", "{caller_package}:{owner_package}/{owner_service}={endpoint}")
 
-func ProvideConn(ctx context.Context, caller string, req *Backend) (*grpc.ClientConn, error) {
-	key := fmt.Sprintf("%s:%s/%s", caller, req.PackageName, req.ServiceName)
+func ProvideConn(ctx context.Context, caller fninit.Caller, req *Backend) (*grpc.ClientConn, error) {
+	key := fmt.Sprintf("%s:%s/%s", caller.String(), req.PackageName, req.ServiceName)
 
 	endpoint := connMapFromArgs()[key]
 	if endpoint == "" {
@@ -49,7 +49,7 @@ func parseConn(src string) map[string]string {
 
 		kvs := strings.SplitN(v, "=", 2)
 		if len(kvs) < 2 {
-			core.Log.Fatalf("expected key=value format in --%s", grpcConnMapKeyword)
+			fninit.Log.Fatalf("expected key=value format in --%s", grpcConnMapKeyword)
 		}
 
 		m[kvs[0]] = kvs[1]

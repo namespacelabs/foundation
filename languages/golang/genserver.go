@@ -54,10 +54,7 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 	opts.Imports = gosupport.NewGoImports(loc.PackageName.String())
 
 	opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/grpc/server")
-
-	if len(allDeps.instances) > 0 {
-		opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/core")
-	}
+	opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/core/init")
 
 	usedNames := map[string]bool{"deps": true}
 
@@ -97,7 +94,6 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 			if dep.Parent.GetKind() == schema.Node_SERVICE {
 				n.VarName = fmt.Sprintf("%sDeps", n.Name)
 				n.IsService = true
-				n.IsSingleton = true
 
 				if dep.Parent.ExportServicesAsHttp {
 					for _, svc := range dep.Parent.ExportService {
@@ -109,7 +105,6 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 			} else if dep.Scope != nil {
 				n.VarName = makeProvidesDepsVar(dep.Scope)
 			} else {
-				n.IsSingleton = true
 				n.VarName = "singletonDeps"
 			}
 
@@ -200,7 +195,8 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 							Typename:    m.Typename,
 							GoImportURL: m.GoImportURL,
 						}
-						if m.Typename == "SingletonDeps" {
+						if m.Typename == "SingletonDeps" || m.Typename == "ServiceDeps" {
+							ref.IsSingleton = true
 							n.Refs[k] = append([]Ref{ref}, n.Refs[k]...)
 						} else if m.Typename == makeProvidesDepsType(p.Provides) {
 							n.Refs[k] = append(n.Refs[k], ref)
@@ -263,6 +259,7 @@ type Ref struct {
 	VarName     string
 	GoImportURL string
 	Typename    string
+	IsSingleton bool
 }
 
 type nodeWithDeps struct {
@@ -271,7 +268,6 @@ type nodeWithDeps struct {
 	Name                string
 	VarName             string
 	Typename            string
-	IsSingleton         bool
 	IsService           bool
 	GrpcGatewayServices []string
 	Provisioned         []*typeProvider
@@ -308,34 +304,34 @@ type ServerDeps struct {
 }
 
 func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) {
-	di := {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}.MakeInitializer()
+	di := {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.MakeInitializer()
 	{{range $k, $v := .Nodes}}
-		di.Add({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}.Factory{
+		di.Add({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.Factory{
 			PackageName: "{{$v.PackageName}}",
 			Typename: "{{$v.Typename}}",
-			{{- if $v.IsSingleton}}
-			Singleton: true,{{end}}
-			Do: func(ctx context.Context) (interface{}, error) {
+			Do: func(ctx context.Context, cf *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.CallerFactory) (interface{}, error) {
 				deps := &{{makeType $opts.Imports $v.GoImportURL $v.Typename}}{}
 				var err error
+				var caller {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.Caller
 				{{- range $k2, $p := $v.Provisioned}}
 					{{if $p -}}
 							{
 								{{ if $p.SerializedMsg -}}
 								{{$p.ProtoComments -}}
 								p := &{{$opts.Imports.MustGet $p.GoPackage}}.{{makeProvisionProtoName $p}}{}
-								{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}.MustUnwrapProto("{{$p.SerializedMsg}}", p)
+								{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.MustUnwrapProto("{{$p.SerializedMsg}}", p)
 
 								{{end -}}
 
 								{{range $p.DepVars -}}
-								{{with $refs := index $v.Refs $k2}}{{range $k, $ref := $refs}}
-									{{$ref.VarName}}, err := di.Get(ctx, "{{$p.PackageName}}", "{{$ref.Typename}}")
+								caller = cf.MakeCaller("{{.GoName}}")
+								{{with $refs := index $v.Refs $k2}}{{range $k, $ref := $refs -}}
+									{{$ref.VarName}}, err := di.Get{{if $ref.IsSingleton}}Singleton{{end}}(ctx, caller, "{{$p.PackageName}}", "{{$ref.Typename}}")
 									if err != nil {
 										return nil, err
 									}
 								{{end}}{{end -}}
-								if deps.{{.GoName}}, err = {{$opts.Imports.MustGet $p.GoPackage}}.{{$p.Method}}(ctx, "{{$v.PackageName}}",
+								if deps.{{.GoName}}, err = {{$opts.Imports.MustGet $p.GoPackage}}.{{$p.Method}}(ctx, caller,
 									{{- if $p.SerializedMsg}}p{{else}}nil{{end}}
 									{{- with $refs := index $v.Refs $k2}}{{range $k, $ref := $refs}},{{$ref.VarName}}.(*{{makeType $opts.Imports $ref.GoImportURL $ref.Typename}}){{end}}{{end -}}
 									); err != nil {
@@ -356,11 +352,11 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 	{{end}}
 
 	{{- range $k, $init := .Initializers}}
-	di.Register({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}.Initializer{
+	di.AddInitializer({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.Initializer{
 		PackageName: "{{$init.PackageName}}",
 		Do: func(ctx context.Context) error {
 			{{- if $init.Deps.VarName}}
-			{{$init.Deps.VarName}}, err := di.Get(ctx, "{{$init.PackageName}}", "{{$init.Deps.Typename}}")
+			{{$init.Deps.VarName}}, err := di.GetSingleton(ctx, "{{$init.PackageName}}", "{{$init.Deps.Typename}}")
 			if err != nil {
 				return err
 			}
@@ -372,7 +368,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 
 	{{$opts.Server}} = &ServerDeps{}
 	{{range $k, $v := .Services}}
-		{{$v.VarName}}, err := di.Get(ctx, "{{$v.PackageName}}", "{{$v.Typename}}")
+		{{$v.VarName}}, err := di.GetSingleton(ctx, "{{$v.PackageName}}", "{{$v.Typename}}")
 		if err != nil {
 			return nil, err
 		}

@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/std/go/core"
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
@@ -20,17 +21,18 @@ type ServerDeps struct {
 }
 
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
-	di := core.MakeInitializer()
+	di := fninit.MakeInitializer()
 
-	di.Add(core.Factory{
+	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Typename:    "SingletonDeps",
-		Singleton:   true,
-		Do: func(ctx context.Context) (interface{}, error) {
+		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &metrics.SingletonDeps{}
 			var err error
+			var caller fninit.Caller
 			{
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", nil); err != nil {
+				caller = cf.MakeCaller("Interceptors")
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -38,15 +40,16 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(core.Factory{
+	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Typename:    "SingletonDeps",
-		Singleton:   true,
-		Do: func(ctx context.Context) (interface{}, error) {
+		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &tracing.SingletonDeps{}
 			var err error
+			var caller fninit.Caller
 			{
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", nil); err != nil {
+				caller = cf.MakeCaller("Interceptors")
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -54,19 +57,20 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(core.Factory{
+	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds",
 		Typename:    "SingletonDeps",
-		Singleton:   true,
-		Do: func(ctx context.Context) (interface{}, error) {
+		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &creds.SingletonDeps{}
 			var err error
+			var caller fninit.Caller
 			{
 				// name: "postgres-password-file"
 				p := &secrets.Secret{}
-				core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
+				fninit.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
 
-				if deps.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", p); err != nil {
+				caller = cf.MakeCaller("Password")
+				if deps.Password, err = secrets.ProvideSecret(ctx, caller, p); err != nil {
 					return nil, err
 				}
 			}
@@ -74,26 +78,27 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(core.Factory{
+	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster",
 		Typename:    "SingletonDeps",
-		Singleton:   true,
-		Do: func(ctx context.Context) (interface{}, error) {
+		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &incluster.SingletonDeps{}
 			var err error
+			var caller fninit.Caller
 			{
-
-				singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", "SingletonDeps")
+				caller = cf.MakeCaller("Creds")
+				singletonDeps, err := di.GetSingleton(ctx, caller, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, singletonDeps.(*creds.SingletonDeps)); err != nil {
+				if deps.Creds, err = creds.ProvideCreds(ctx, caller, nil, singletonDeps.(*creds.SingletonDeps)); err != nil {
 					return nil, err
 				}
 			}
 
 			{
-				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil); err != nil {
+				caller = cf.MakeCaller("ReadinessCheck")
+				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, caller, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -101,23 +106,24 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(core.Factory{
+	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/service/list",
 		Typename:    "ServiceDeps",
-		Singleton:   true,
-		Do: func(ctx context.Context) (interface{}, error) {
+		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &list.ServiceDeps{}
 			var err error
+			var caller fninit.Caller
 			{
 				// name: "list"
 				p := &incluster.Database{}
-				core.MustUnwrapProto("CgRsaXN0", p)
+				fninit.MustUnwrapProto("CgRsaXN0", p)
 
-				singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", "SingletonDeps")
+				caller = cf.MakeCaller("Db")
+				singletonDeps, err := di.GetSingleton(ctx, caller, "namespacelabs.dev/foundation/universe/db/postgres/incluster", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Db, err = incluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/list", p, singletonDeps.(*incluster.SingletonDeps)); err != nil {
+				if deps.Db, err = incluster.ProvideDatabase(ctx, caller, p, singletonDeps.(*incluster.SingletonDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -125,10 +131,10 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Register(core.Initializer{
+	di.AddInitializer(fninit.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
-			singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "SingletonDeps")
+			singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "SingletonDeps")
 			if err != nil {
 				return err
 			}
@@ -136,10 +142,10 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Register(core.Initializer{
+	di.AddInitializer(fninit.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Do: func(ctx context.Context) error {
-			singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "SingletonDeps")
+			singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "SingletonDeps")
 			if err != nil {
 				return err
 			}
@@ -149,7 +155,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	server = &ServerDeps{}
 
-	listDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/list", "ServiceDeps")
+	listDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/testdata/service/list", "ServiceDeps")
 	if err != nil {
 		return nil, err
 	}

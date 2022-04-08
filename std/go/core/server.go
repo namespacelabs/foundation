@@ -6,6 +6,7 @@ package core
 
 import (
 	"go.uber.org/atomic"
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 )
 
 var (
@@ -16,7 +17,7 @@ var (
 
 func AssertNotRunning(what string) {
 	if running.is.Load() {
-		Log.Fatalf("tried to call %s after the server has been initialized", what)
+		fninit.Log.Fatalf("tried to call %s after the server has been initialized", what)
 	}
 }
 

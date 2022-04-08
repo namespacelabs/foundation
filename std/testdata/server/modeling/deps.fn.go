@@ -4,7 +4,7 @@ package main
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/std/go/core"
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
@@ -19,17 +19,18 @@ type ServerDeps struct {
 }
 
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
-	di := core.MakeInitializer()
+	di := fninit.MakeInitializer()
 
-	di.Add(core.Factory{
+	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Typename:    "SingletonDeps",
-		Singleton:   true,
-		Do: func(ctx context.Context) (interface{}, error) {
+		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &metrics.SingletonDeps{}
 			var err error
+			var caller fninit.Caller
 			{
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", nil); err != nil {
+				caller = cf.MakeCaller("Interceptors")
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -37,15 +38,16 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(core.Factory{
+	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Typename:    "SingletonDeps",
-		Singleton:   true,
-		Do: func(ctx context.Context) (interface{}, error) {
+		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &tracing.SingletonDeps{}
 			var err error
+			var caller fninit.Caller
 			{
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", nil); err != nil {
+				caller = cf.MakeCaller("Interceptors")
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -53,14 +55,16 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(core.Factory{
+	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/scopes",
 		Typename:    "ScopedDataDeps",
-		Do: func(ctx context.Context) (interface{}, error) {
+		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &scopes.ScopedDataDeps{}
 			var err error
+			var caller fninit.Caller
 			{
-				if deps.Data, err = data.ProvideData(ctx, "namespacelabs.dev/foundation/std/testdata/scopes", nil); err != nil {
+				caller = cf.MakeCaller("Data")
+				if deps.Data, err = data.ProvideData(ctx, caller, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -68,31 +72,31 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(core.Factory{
+	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/service/modeling",
 		Typename:    "ServiceDeps",
-		Singleton:   true,
-		Do: func(ctx context.Context) (interface{}, error) {
+		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &modeling.ServiceDeps{}
 			var err error
+			var caller fninit.Caller
 			{
-
-				scopedDataDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
+				caller = cf.MakeCaller("One")
+				scopedDataDeps, err := di.Get(ctx, caller, "namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.One, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopedDataDeps.(*scopes.ScopedDataDeps)); err != nil {
+				if deps.One, err = scopes.ProvideScopedData(ctx, caller, nil, scopedDataDeps.(*scopes.ScopedDataDeps)); err != nil {
 					return nil, err
 				}
 			}
 
 			{
-
-				scopedDataDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
+				caller = cf.MakeCaller("Two")
+				scopedDataDeps, err := di.Get(ctx, caller, "namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Two, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopedDataDeps.(*scopes.ScopedDataDeps)); err != nil {
+				if deps.Two, err = scopes.ProvideScopedData(ctx, caller, nil, scopedDataDeps.(*scopes.ScopedDataDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -100,10 +104,10 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Register(core.Initializer{
+	di.AddInitializer(fninit.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
-			singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "SingletonDeps")
+			singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "SingletonDeps")
 			if err != nil {
 				return err
 			}
@@ -111,10 +115,10 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Register(core.Initializer{
+	di.AddInitializer(fninit.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Do: func(ctx context.Context) error {
-			singletonDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "SingletonDeps")
+			singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "SingletonDeps")
 			if err != nil {
 				return err
 			}
@@ -124,7 +128,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	server = &ServerDeps{}
 
-	modelingDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", "ServiceDeps")
+	modelingDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", "ServiceDeps")
 	if err != nil {
 		return nil, err
 	}
