@@ -11,9 +11,21 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
+type RunOpts struct {
+	OnStart func()
+}
+
 func RunAndPropagateCancelation(ctx context.Context, label string, cmd *exec.Cmd) error {
+	return RunAndPropagateCancelationWithOpts(ctx, label, cmd, RunOpts{})
+}
+
+func RunAndPropagateCancelationWithOpts(ctx context.Context, label string, cmd *exec.Cmd, opts RunOpts) error {
 	if err := checkCancelation(ctx, label, "execution start", cmd.Start()); err != nil {
 		return err
+	}
+
+	if opts.OnStart != nil {
+		opts.OnStart()
 	}
 
 	return WaitAndPropagateCancelation(ctx, label, cmd)

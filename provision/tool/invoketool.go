@@ -5,12 +5,9 @@
 package tool
 
 import (
-	"bytes"
 	"context"
 	"io/fs"
 
-	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -141,36 +138,5 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	opts.Mounts = append(opts.Mounts, inv.props.GetLocalMapping()...)
 	req.Input = append(req.Input, inv.props.GetProvisionInput()...)
 
-	// XXX security: think through whether it is OK or not to expose Snapshots here.
-	// For now, assume not.
-	attachments := tasks.Attachments(ctx)
-	if attachments.IsRecording() {
-		reqcopy := proto.Clone(req).(*protocol.ToolRequest)
-		reqcopy.Snapshot = nil
-		attachments.AttachSerializable("request.textpb", "", reqcopy)
-	}
-
-	reqBytes, err := proto.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	var out bytes.Buffer
-
-	opts.Stdin = bytes.NewReader(reqBytes)
-	opts.Stdout = &out
-	opts.Stderr = console.Output(ctx, "tool")
-
-	if err := tools.Impl().Run(ctx, opts); err != nil {
-		return nil, fnerrors.InternalError("%s: prepare failed: %w", r.Source, err)
-	}
-
-	resp := &protocol.ToolResponse{}
-	if err := proto.Unmarshal(out.Bytes(), resp); err != nil {
-		return nil, fnerrors.InternalError("failed to parse tool output: %w", err)
-	}
-
-	attachments.AttachSerializable("response.textpb", "", resp)
-
-	return resp, nil
+	return tools.LowLevelInvoke(ctx, r.Source.PackageName, opts, req)
 }

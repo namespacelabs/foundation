@@ -12,8 +12,11 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
+	"time"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -21,9 +24,15 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/logoutput"
+	"namespacelabs.dev/foundation/internal/versions"
+	"namespacelabs.dev/foundation/provision/tool/grpcstdio"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
 )
+
+func init() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+}
 
 type Request struct {
 	Snapshots map[string]fs.FS
@@ -86,16 +95,75 @@ func (p Request) PackageOwner() string {
 }
 
 func RunTool(t Tool) {
-	run(handlerCompat{t})
+	run(context.Background(), handlerCompat{t})
 }
 
-func run(h AllHandlers) {
+func run(ctx context.Context, h AllHandlers) {
 	flag.Parse()
 
-	ctx := logoutput.WithOutput(context.Background(), logoutput.OutputTo{Writer: os.Stderr})
+	ctx = logoutput.WithOutput(ctx, logoutput.OutputTo{Writer: os.Stderr})
 
-	if err := runTool(ctx, os.Stdin, os.Stdout, h); err != nil {
+	if err := handle(ctx, h); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func handle(ctx context.Context, h AllHandlers) error {
+	conn, err := grpc.DialContext(ctx, "stdio",
+		grpc.WithInsecure(),
+		grpc.WithReadBufferSize(0),
+		grpc.WithWriteBufferSize(0),
+		grpc.WithDialer(func(_ string, _ time.Duration) (net.Conn, error) {
+			return grpcstdio.NewConnection(os.Stdout, os.Stdin), nil
+		}))
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	cli := protocol.NewInvocationServiceClient(conn)
+	stream, err := cli.Worker(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := stream.Send(&protocol.WorkerChunk{ClientHello: &protocol.WorkerChunk_ClientHello{
+		FnApiVersion:     versions.APIVersion,
+		ClientApiVersion: versions.ToolAPIVersion,
+	}}); err != nil {
+		return err
+	}
+
+	for {
+		msg, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+
+		if msg.ToolRequest != nil {
+			response, err := handleRequest(ctx, msg.ToolRequest, h)
+			if err != nil {
+				return err
+			}
+
+			if err := stream.Send(&protocol.WorkerChunk{ToolResponse: response}); err != nil {
+				return err
+			}
+
+			if err := stream.CloseSend(); err != nil {
+				return err
+			}
+
+			// Make sure that the send was received.
+			if _, err := stream.Recv(); err != nil {
+				if err != io.EOF {
+					return err
+				}
+			}
+
+			return nil
+		}
 	}
 }
 
@@ -118,7 +186,7 @@ func (h handlerCompat) Invoke(context.Context, Request) (*protocol.InvokeRespons
 }
 
 func Handle(h *Handlers) {
-	run(runHandlers{h})
+	run(context.Background(), runHandlers{h})
 }
 
 func HandleInvoke(f InvokeFunc) {
@@ -138,6 +206,21 @@ func runTool(ctx context.Context, r io.Reader, w io.Writer, t AllHandlers) error
 		return err
 	}
 
+	response, err := handleRequest(ctx, req, t)
+	if err != nil {
+		return err
+	}
+
+	serialized, err := proto.Marshal(response)
+	if err != nil {
+		return err
+	}
+
+	w.Write(serialized)
+	return nil
+}
+
+func handleRequest(ctx context.Context, req *protocol.ToolRequest, t AllHandlers) (*protocol.ToolResponse, error) {
 	var br Request
 	br.r = req
 	br.Snapshots = map[string]fs.FS{}
@@ -156,19 +239,19 @@ func runTool(ctx context.Context, r io.Reader, w io.Writer, t AllHandlers) error
 	case *protocol.ToolRequest_ApplyRequest:
 		p, err := parseStackRequest(br, x.ApplyRequest.Header)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		var out ApplyOutput
 		if err := t.Apply(ctx, p, &out); err != nil {
-			return err
+			return nil, err
 		}
 
 		response.ApplyResponse = &protocol.ApplyResponse{}
 		for _, input := range out.Extensions {
 			packed, err := input.ToDefinition()
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			if packed.For == "" {
@@ -180,41 +263,35 @@ func runTool(ctx context.Context, r io.Reader, w io.Writer, t AllHandlers) error
 
 		response.ApplyResponse.Definition, err = defs.Make(out.Definitions...)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 	case *protocol.ToolRequest_DeleteRequest:
 		p, err := parseStackRequest(br, x.DeleteRequest.Header)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		var out DeleteOutput
 		if err := t.Delete(ctx, p, &out); err != nil {
-			return err
+			return nil, err
 		}
 
 		response.DeleteResponse = &protocol.DeleteResponse{}
 		response.DeleteResponse.Definition, err = defs.Make(out.Ops...)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 	case *protocol.ToolRequest_InvokeRequest:
 		output, err := t.Invoke(ctx, br)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		response.InvokeResponse = output
 	}
 
-	serialized, err := proto.Marshal(response)
-	if err != nil {
-		return err
-	}
-
-	w.Write(serialized)
-	return nil
+	return response, nil
 }
 
 func parseStackRequest(br Request, header *protocol.StackRelated) (StackRequest, error) {

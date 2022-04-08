@@ -89,3 +89,28 @@ message Snapshot {
         bytes  contents = 2;
     }
 }
+
+service InvocationService {
+    rpc Worker(stream WorkerChunk) returns (stream WorkerCoordinatorChunk);
+}
+
+message WorkerChunk {
+    ClientHello client_hello = 1;
+
+    ToolResponse tool_response = 2;
+
+    message ClientHello {
+        int32 fn_api_version     = 1;
+        int32 client_api_version = 2;
+    }
+}
+
+message WorkerCoordinatorChunk {
+    ServerHello server_hello = 1;
+
+    ToolRequest tool_request = 2;
+
+    message ServerHello {
+        int32 fn_api_version = 1;
+    }
+}

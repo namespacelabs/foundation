@@ -5,12 +5,9 @@
 package tools
 
 import (
-	"bytes"
 	"context"
 
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/build/binary"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -59,8 +56,6 @@ func (inv *invokeTool) Output() compute.Output {
 }
 
 func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protocol.InvokeResponse, error) {
-	var out bytes.Buffer
-
 	req := &protocol.ToolRequest{
 		ToolPackage: inv.invocation.Binary,
 		RequestType: &protocol.ToolRequest_InvokeRequest{
@@ -72,18 +67,8 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 		req.Input = append(req.Input, inv.invocation.WithInput)
 	}
 
-	reqbytes, err := proto.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
 	run := rtypes.RunToolOpts{
 		ImageName: inv.invocation.Binary,
-		IO: rtypes.IO{
-			Stdin:  bytes.NewReader(reqbytes),
-			Stdout: &out,
-			Stderr: console.Output(ctx, inv.prepared.Name),
-		},
 		// NoNetworking: true, // XXX security
 
 		RunBinaryOpts: rtypes.RunBinaryOpts{
@@ -94,12 +79,8 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 			RunAsUser:  true,
 		}}
 
-	if err := Impl().Run(ctx, run); err != nil {
-		return nil, err
-	}
-
-	resp := &protocol.ToolResponse{}
-	if err := proto.Unmarshal(out.Bytes(), resp); err != nil {
+	resp, err := LowLevelInvoke(ctx, schema.PackageName(inv.invocation.Binary), run, req)
+	if err != nil {
 		return nil, err
 	}
 
