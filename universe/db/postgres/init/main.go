@@ -39,7 +39,7 @@ func existsDb(ctx context.Context, conn *pgxpool.Pool, dbName string) (bool, err
 func connect(ctx context.Context, user string, password string, address string, port uint32, db string) (conn *pgxpool.Pool, err error) {
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", user, password, address, port, db)
 	err = backoff.Retry(func() error {
-		log.Printf("Connecting to postgres.")
+		log.Printf("Connecting to postgres with `%s`.", connString)
 		conn, err = pgxpool.Connect(ctx, connString)
 		if err != nil {
 			log.Printf("Failed to connect to postgres: %v", err)

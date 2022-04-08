@@ -4,7 +4,11 @@
 
 package deadlines
 
-import "context"
+import (
+	"context"
+
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
+)
 
 type DeadlineRegistration struct {
 	conf *Deadline
@@ -14,7 +18,7 @@ func (dl *DeadlineRegistration) Add(conf *Deadline_Configuration) {
 	dl.conf.Configuration = append(dl.conf.Configuration, conf)
 }
 
-func ProvideDeadlines(ctx context.Context, caller string, conf *Deadline, deps *SingletonDeps) (*DeadlineRegistration, error) {
+func ProvideDeadlines(ctx context.Context, _ fninit.Caller, conf *Deadline, deps *SingletonDeps) (*DeadlineRegistration, error) {
 	// XXX validate isolation, i.e. caller is only registering deadlines for itself.
 
 	reg := &DeadlineRegistration{conf: conf}

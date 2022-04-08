@@ -14,6 +14,7 @@ import (
 
 	"golang.org/x/xerrors"
 	"namespacelabs.dev/foundation/schema"
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -35,7 +36,7 @@ func getEndpoint() (*schema.Endpoint, error) {
 	return &endpoint, nil
 }
 
-func ProvideDatabase(ctx context.Context, caller string, db *Database, deps *SingletonDeps) (*sql.DB, error) {
+func ProvideDatabase(ctx context.Context, caller fninit.Caller, db *Database, deps *SingletonDeps) (*sql.DB, error) {
 	endpoint, err := getEndpoint()
 	if err != nil {
 		return nil, err
@@ -47,7 +48,7 @@ func ProvideDatabase(ctx context.Context, caller string, db *Database, deps *Sin
 	}
 
 	// Asynchronously wait until a database connection is ready.
-	deps.ReadinessCheck.RegisterFunc(fmt.Sprintf("%s/%s", caller, db.Name), func(ctx context.Context) error {
+	deps.ReadinessCheck.RegisterFunc(fmt.Sprintf("%s/%s", caller.String(), db.Name), func(ctx context.Context) error {
 		return res.PingContext(ctx)
 	})
 

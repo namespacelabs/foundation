@@ -87,7 +87,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			var caller fninit.Caller
 			{
 				caller = cf.MakeCaller("Creds")
-				singletonDeps, err := di.GetSingleton(ctx, caller, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", "SingletonDeps")
+				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}
@@ -119,7 +119,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				fninit.MustUnwrapProto("CgRsaXN0", p)
 
 				caller = cf.MakeCaller("Db")
-				singletonDeps, err := di.GetSingleton(ctx, caller, "namespacelabs.dev/foundation/universe/db/postgres/incluster", "SingletonDeps")
+				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}

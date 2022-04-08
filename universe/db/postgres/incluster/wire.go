@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"golang.org/x/xerrors"
 	"namespacelabs.dev/foundation/schema"
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
@@ -33,7 +34,7 @@ func getEndpoint() (*schema.Endpoint, error) {
 	return &endpoint, nil
 }
 
-func ProvideDatabase(ctx context.Context, caller string, db *Database, deps *SingletonDeps) (*pgxpool.Pool, error) {
+func ProvideDatabase(ctx context.Context, caller fninit.Caller, db *Database, deps *SingletonDeps) (*pgxpool.Pool, error) {
 	endpoint, err := getEndpoint()
 	if err != nil {
 		return nil, err

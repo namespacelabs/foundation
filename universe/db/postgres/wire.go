@@ -12,13 +12,14 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/std/go/core"
+	fninit "namespacelabs.dev/foundation/std/go/core/init"
 )
 
 func logf(message string, args ...interface{}) {
 	fmt.Fprintf(os.Stdout, "%s : %s\n", time.Now().String(), fmt.Sprintf(message, args...))
 }
 
-func ProvideDatabase(ctx context.Context, caller string, db *Database, username string, password string, ready core.Check) (*pgxpool.Pool, error) {
+func ProvideDatabase(ctx context.Context, caller fninit.Caller, db *Database, username string, password string, ready core.Check) (*pgxpool.Pool, error) {
 	// Config has to be created by ParseConfig
 	config, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
 		username,
@@ -40,7 +41,7 @@ func ProvideDatabase(ctx context.Context, caller string, db *Database, username 
 	}
 
 	// Asynchronously wait until a database connection is ready.
-	ready.RegisterFunc(fmt.Sprintf("%s/%s", caller, db.Name), func(ctx context.Context) error {
+	ready.RegisterFunc(fmt.Sprintf("%s/%s", caller.String(), db.Name), func(ctx context.Context) error {
 		return conn.Ping(ctx)
 	})
 

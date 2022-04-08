@@ -18,14 +18,16 @@ var (
 	serverSecretsBasepath = flag.String("server_secrets_basepath", "", "Basepath of local secret definitions.")
 )
 
-func ProvideSecret(ctx context.Context, caller fninit.Caller, req *Secret) (*Value, error) {
+func ProvideSecret(ctx context.Context, c fninit.Caller, req *Secret) (*Value, error) {
+	// TODO change secrets to handle scoped instantiation correctly
+	caller := c.LastPkg()
+
 	sdm, err := loadDevMap(os.DirFS(*serverSecretsBasepath))
 	if err != nil {
 		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
 	}
 
-	// TODO change secrets to handle scoped instantiation correctly
-	cfg := lookupConfig(sdm, caller.LastPkg())
+	cfg := lookupConfig(sdm, caller)
 	if cfg == nil {
 		return nil, fmt.Errorf("%v: no secret configuration definition in map.textpb", caller)
 	}

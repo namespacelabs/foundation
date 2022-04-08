@@ -144,7 +144,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				fninit.MustUnwrapProto("ChUKC1Bvc3RTZXJ2aWNlEgEqHQAAoEA=", p)
 
 				caller = cf.MakeCaller("Dl")
-				singletonDeps, err := di.GetSingleton(ctx, caller, "namespacelabs.dev/foundation/std/grpc/deadlines", "SingletonDeps")
+				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}
@@ -163,7 +163,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				fninit.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
 
 				caller = cf.MakeCaller("Main")
-				singletonDeps, err := di.GetSingleton(ctx, caller, "namespacelabs.dev/foundation/std/testdata/datastore", "SingletonDeps")
+				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}

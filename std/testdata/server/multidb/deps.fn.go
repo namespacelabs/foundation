@@ -89,7 +89,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			var caller fninit.Caller
 			{
 				caller = cf.MakeCaller("Creds")
-				singletonDeps, err := di.GetSingleton(ctx, caller, "namespacelabs.dev/foundation/universe/db/maria/incluster/creds", "SingletonDeps")
+				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster/creds", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}
@@ -138,7 +138,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			var caller fninit.Caller
 			{
 				caller = cf.MakeCaller("Creds")
-				singletonDeps, err := di.GetSingleton(ctx, caller, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", "SingletonDeps")
+				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}
@@ -174,7 +174,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				fninit.MustUnwrapProto("CgttYXJpYWRibGlzdBKQAQoQc2NoZW1hX21hcmlhLnNxbBJ8Q1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgbGlzdCAoCiAgICBJZCBJTlQgTk9UIE5VTEwgQVVUT19JTkNSRU1FTlQsCiAgICBJdGVtIHZhcmNoYXIoMjU1KSBOT1QgTlVMTCwKICAgIFBSSU1BUlkgS0VZKElkKQopOw==", p)
 
 				caller = cf.MakeCaller("Maria")
-				singletonDeps, err := di.GetSingleton(ctx, caller, "namespacelabs.dev/foundation/universe/db/maria/incluster", "SingletonDeps")
+				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}
@@ -189,7 +189,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				fninit.MustUnwrapProto("Cgxwb3N0Z3Jlc2xpc3Q=", p)
 
 				caller = cf.MakeCaller("Postgres")
-				singletonDeps, err := di.GetSingleton(ctx, caller, "namespacelabs.dev/foundation/universe/db/postgres/incluster", "SingletonDeps")
+				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", "SingletonDeps")
 				if err != nil {
 					return nil, err
 				}

@@ -326,7 +326,9 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 								{{range $p.DepVars -}}
 								caller = cf.MakeCaller("{{.GoName}}")
 								{{with $refs := index $v.Refs $k2}}{{range $k, $ref := $refs -}}
-									{{$ref.VarName}}, err := di.Get{{if $ref.IsSingleton}}Singleton{{end}}(ctx, caller, "{{$p.PackageName}}", "{{$ref.Typename}}")
+									{{$ref.VarName}}, err := di.Get{{if $ref.IsSingleton}}Singleton{{end}}(ctx, 
+										{{- if not $ref.IsSingleton}}caller, {{end -}}
+										"{{$p.PackageName}}", "{{$ref.Typename}}")
 									if err != nil {
 										return nil, err
 									}
