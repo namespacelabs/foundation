@@ -18,6 +18,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/soheilhy/cmux"
+	"go.uber.org/automaxprocs/maxprocs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
@@ -75,6 +76,9 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 
 	// XXX configurable logging.
 	core.Log.Printf("Starting to listen on %v", lis.Addr())
+
+	// Set runtime.GOMAXPROCS to respect container limits if the env var GOMAXPROCS is not set or is invalid, preventing CPU throttling.
+	maxprocs.Set(maxprocs.Logger(core.Log.Printf))
 
 	debugMux := mux.NewRouter()
 	core.RegisterDebugEndpoints(debugMux)
