@@ -8,9 +8,11 @@ package foundation.std.types;
 
 option go_package = "namespacelabs.dev/foundation/std/types";
 
+import "google/protobuf/any.proto";
 import "std/proto/options.proto";
 
 message DeferredInvocation {
-    string binary    = 1 [(foundation.std.proto.is_package) = true];
-    bool   cacheable = 2;
+    string              binary     = 1 [(foundation.std.proto.is_package) = true];
+    bool                cacheable  = 2;
+    google.protobuf.Any with_input = 3;
 }
