@@ -45,7 +45,7 @@ func (c *Caller) String() string {
 	return strings.Join(inst, "->")
 }
 
-func (cf *CallerFactory) MakeCaller(inst string) Caller {
+func (cf *CallerFactory) ForInstance(inst string) Caller {
 	copy := *cf.caller
 	copy.path = append(copy.path, instantiation{
 		PackageName: cf.packageName,

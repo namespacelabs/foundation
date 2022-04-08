@@ -31,9 +31,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &metrics.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("Interceptors")
+				caller := cf.ForInstance("Interceptors")
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}
@@ -48,9 +47,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &tracing.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("Interceptors")
+				caller := cf.ForInstance("Interceptors")
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}
@@ -65,13 +63,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &creds.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
 				// name: "mariadb-password-file"
 				p := &secrets.Secret{}
 				fninit.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGU=", p)
 
-				caller = cf.MakeCaller("Password")
+				caller := cf.ForInstance("Password")
 				if deps.Password, err = secrets.ProvideSecret(ctx, caller, p); err != nil {
 					return nil, err
 				}
@@ -86,9 +83,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &incluster.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("Creds")
+				caller := cf.ForInstance("Creds")
 				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster/creds", "SingletonDeps")
 				if err != nil {
 					return nil, err
@@ -99,7 +95,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			}
 
 			{
-				caller = cf.MakeCaller("ReadinessCheck")
+				caller := cf.ForInstance("ReadinessCheck")
 				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, caller, nil); err != nil {
 					return nil, err
 				}
@@ -114,13 +110,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &fncreds.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
 				// name: "postgres-password-file"
 				p := &secrets.Secret{}
 				fninit.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
 
-				caller = cf.MakeCaller("Password")
+				caller := cf.ForInstance("Password")
 				if deps.Password, err = secrets.ProvideSecret(ctx, caller, p); err != nil {
 					return nil, err
 				}
@@ -135,9 +130,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &fnincluster.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("Creds")
+				caller := cf.ForInstance("Creds")
 				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", "SingletonDeps")
 				if err != nil {
 					return nil, err
@@ -148,7 +142,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			}
 
 			{
-				caller = cf.MakeCaller("ReadinessCheck")
+				caller := cf.ForInstance("ReadinessCheck")
 				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, caller, nil); err != nil {
 					return nil, err
 				}
@@ -163,7 +157,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &multidb.ServiceDeps{}
 			var err error
-			var caller fninit.Caller
 			{
 				// name: "mariadblist"
 				// schema_file: {
@@ -173,7 +166,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				p := &incluster.Database{}
 				fninit.MustUnwrapProto("CgttYXJpYWRibGlzdBKQAQoQc2NoZW1hX21hcmlhLnNxbBJ8Q1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgbGlzdCAoCiAgICBJZCBJTlQgTk9UIE5VTEwgQVVUT19JTkNSRU1FTlQsCiAgICBJdGVtIHZhcmNoYXIoMjU1KSBOT1QgTlVMTCwKICAgIFBSSU1BUlkgS0VZKElkKQopOw==", p)
 
-				caller = cf.MakeCaller("Maria")
+				caller := cf.ForInstance("Maria")
 				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", "SingletonDeps")
 				if err != nil {
 					return nil, err
@@ -188,7 +181,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				p := &fnincluster.Database{}
 				fninit.MustUnwrapProto("Cgxwb3N0Z3Jlc2xpc3Q=", p)
 
-				caller = cf.MakeCaller("Postgres")
+				caller := cf.ForInstance("Postgres")
 				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", "SingletonDeps")
 				if err != nil {
 					return nil, err

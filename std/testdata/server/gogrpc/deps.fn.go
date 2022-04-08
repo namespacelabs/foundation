@@ -32,9 +32,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &metrics.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("Interceptors")
+				caller := cf.ForInstance("Interceptors")
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}
@@ -49,9 +48,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &tracing.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("Interceptors")
+				caller := cf.ForInstance("Interceptors")
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}
@@ -66,9 +64,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &deadlines.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("Interceptors")
+				caller := cf.ForInstance("Interceptors")
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}
@@ -83,13 +80,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &datastore.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
 				// name: "cert"
 				p := &secrets.Secret{}
 				fninit.MustUnwrapProto("CgRjZXJ0", p)
 
-				caller = cf.MakeCaller("Cert")
+				caller := cf.ForInstance("Cert")
 				if deps.Cert, err = secrets.ProvideSecret(ctx, caller, p); err != nil {
 					return nil, err
 				}
@@ -100,7 +96,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				p := &secrets.Secret{}
 				fninit.MustUnwrapProto("CgNnZW4=", p)
 
-				caller = cf.MakeCaller("Gen")
+				caller := cf.ForInstance("Gen")
 				if deps.Gen, err = secrets.ProvideSecret(ctx, caller, p); err != nil {
 					return nil, err
 				}
@@ -111,14 +107,14 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				p := &secrets.Secret{}
 				fninit.MustUnwrapProto("CgZrZXlnZW4=", p)
 
-				caller = cf.MakeCaller("Keygen")
+				caller := cf.ForInstance("Keygen")
 				if deps.Keygen, err = secrets.ProvideSecret(ctx, caller, p); err != nil {
 					return nil, err
 				}
 			}
 
 			{
-				caller = cf.MakeCaller("ReadinessCheck")
+				caller := cf.ForInstance("ReadinessCheck")
 				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, caller, nil); err != nil {
 					return nil, err
 				}
@@ -133,7 +129,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &post.ServiceDeps{}
 			var err error
-			var caller fninit.Caller
 			{
 				// configuration: {
 				//   service_name: "PostService"
@@ -143,7 +138,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				p := &deadlines.Deadline{}
 				fninit.MustUnwrapProto("ChUKC1Bvc3RTZXJ2aWNlEgEqHQAAoEA=", p)
 
-				caller = cf.MakeCaller("Dl")
+				caller := cf.ForInstance("Dl")
 				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", "SingletonDeps")
 				if err != nil {
 					return nil, err
@@ -162,7 +157,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				p := &datastore.Database{}
 				fninit.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
 
-				caller = cf.MakeCaller("Main")
+				caller := cf.ForInstance("Main")
 				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "SingletonDeps")
 				if err != nil {
 					return nil, err
@@ -177,7 +172,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				p := &grpc.Backend{}
 				fninit.MustUnwrapProto("CjhuYW1lc3BhY2VsYWJzLmRldi9mb3VuZGF0aW9uL3N0ZC90ZXN0ZGF0YS9zZXJ2aWNlL3NpbXBsZQ==", p)
 
-				caller = cf.MakeCaller("SimpleConn")
+				caller := cf.ForInstance("SimpleConn")
 				if deps.SimpleConn, err = grpc.ProvideConn(ctx, caller, p); err != nil {
 					return nil, err
 				}
@@ -194,9 +189,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &logging.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("Interceptors")
+				caller := cf.ForInstance("Interceptors")
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}

@@ -312,7 +312,6 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 			Do: func(ctx context.Context, cf *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.CallerFactory) (interface{}, error) {
 				deps := &{{makeType $opts.Imports $v.GoImportURL $v.Typename}}{}
 				var err error
-				var caller {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.Caller
 				{{- range $k2, $p := $v.Provisioned}}
 					{{if $p -}}
 							{
@@ -324,7 +323,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 								{{end -}}
 
 								{{range $p.DepVars -}}
-								caller = cf.MakeCaller("{{.GoName}}")
+								caller := cf.ForInstance("{{.GoName}}")
 								{{with $refs := index $v.Refs $k2}}{{range $k, $ref := $refs -}}
 									{{$ref.VarName}}, err := di.Get{{if $ref.IsSingleton}}Singleton{{end}}(ctx, 
 										{{- if not $ref.IsSingleton}}caller, {{end -}}

@@ -27,9 +27,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &metrics.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("Interceptors")
+				caller := cf.ForInstance("Interceptors")
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}
@@ -44,9 +43,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &tracing.SingletonDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("Interceptors")
+				caller := cf.ForInstance("Interceptors")
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
 					return nil, err
 				}
@@ -61,9 +59,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &scopes.ScopedDataDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("Data")
+				caller := cf.ForInstance("Data")
 				if deps.Data, err = data.ProvideData(ctx, caller, nil); err != nil {
 					return nil, err
 				}
@@ -78,9 +75,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
 			deps := &modeling.ServiceDeps{}
 			var err error
-			var caller fninit.Caller
 			{
-				caller = cf.MakeCaller("One")
+				caller := cf.ForInstance("One")
 				scopedDataDeps, err := di.Get(ctx, caller, "namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
 				if err != nil {
 					return nil, err
@@ -91,7 +87,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			}
 
 			{
-				caller = cf.MakeCaller("Two")
+				caller := cf.ForInstance("Two")
 				scopedDataDeps, err := di.Get(ctx, caller, "namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
 				if err != nil {
 					return nil, err
