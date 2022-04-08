@@ -160,7 +160,16 @@ func Collect(server *schema.Server) (*Collection, error) {
 	return col, nil
 }
 
-func FillData(ctx context.Context, col *Collection, contents fs.FS) (map[string][]byte, error) {
+func FillData(ctx context.Context, col *Collection, openContents func() (fs.FS, error)) (map[string][]byte, error) {
+	if len(col.UserManaged) == 0 {
+		return nil, nil
+	}
+
+	contents, err := openContents()
+	if err != nil {
+		return nil, err
+	}
+
 	data := map[string][]byte{}
 	for k, userManaged := range col.UserManaged {
 		m, err := provideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)

@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 
@@ -37,34 +38,36 @@ func main() {
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
 	namespace := kubetool.FromRequest(r).Namespace
 
-	contents := r.Snapshots["secrets"]
-	if contents == nil {
-		return fmt.Errorf("secrets snapshot is missing from input")
-	}
-
-	archive, err := contents.Open(keys.EncryptedFile)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	} else if err == nil {
-		defer archive.Close()
-
-		keyDir := r.Snapshots[deploy.SnapshotKeys]
-		if keyDir == nil {
-			return fmt.Errorf("can't use encrypted secrets without keys")
-		}
-
-		contents, err = keys.DecryptAsFS(ctx, keyDir, archive)
-		if err != nil {
-			return fmt.Errorf("failed to decrypt: %w", err)
-		}
-	}
-
 	collection, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
 		return err
 	}
 
-	data, err := secrets.FillData(ctx, collection, contents)
+	data, err := secrets.FillData(ctx, collection, func() (fs.FS, error) {
+		contents := r.Snapshots["secrets"]
+		if contents == nil {
+			return nil, fmt.Errorf("secrets snapshot is missing from input")
+		}
+
+		archive, err := contents.Open(keys.EncryptedFile)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		} else if err == nil {
+			defer archive.Close()
+
+			keyDir := r.Snapshots[deploy.SnapshotKeys]
+			if keyDir == nil {
+				return nil, fmt.Errorf("can't use encrypted secrets without keys")
+			}
+
+			contents, err = keys.DecryptAsFS(ctx, keyDir, archive)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decrypt: %w", err)
+			}
+		}
+
+		return contents, nil
+	})
 	if err != nil {
 		return err
 	}
