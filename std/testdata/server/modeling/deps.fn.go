@@ -10,14 +10,13 @@ import (
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
-	"namespacelabs.dev/foundation/std/secrets"
-	"namespacelabs.dev/foundation/std/testdata/service/list"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
+	"namespacelabs.dev/foundation/std/testdata/scopes"
+	"namespacelabs.dev/foundation/std/testdata/scopes/data"
+	"namespacelabs.dev/foundation/std/testdata/service/modeling"
 )
 
 type ServerDeps struct {
-	list list.ServiceDeps
+	modeling modeling.ServiceDeps
 }
 
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
@@ -56,18 +55,13 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	})
 
 	di.Add(core.Factory{
-		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds",
-		Instance:    "credsSingle",
-		Singleton:   true,
+		PackageName: "namespacelabs.dev/foundation/std/testdata/scopes",
+		Instance:    "scopes0",
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *creds.SingletonDeps
+			var deps *scopes.ScopedDataDeps
 			var err error
 			{
-				// name: "postgres-password-file"
-				p := &secrets.Secret{}
-				core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
-
-				if deps.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", p); err != nil {
+				if deps.Data, err = data.ProvideData(ctx, "namespacelabs.dev/foundation/std/testdata/scopes", nil); err != nil {
 					return nil, err
 				}
 			}
@@ -76,49 +70,30 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	})
 
 	di.Add(core.Factory{
-		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster",
-		Instance:    "inclusterSingle",
+		PackageName: "namespacelabs.dev/foundation/std/testdata/service/modeling",
+		Instance:    "modelingDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *incluster.SingletonDeps
+			var deps *modeling.ServiceDeps
 			var err error
 			{
 
-				credsSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", "credsSingle")
+				scopes0, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/scopes", "scopes0")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, credsSingle.(creds.SingletonDeps)); err != nil {
+				if deps.One, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopes0.(scopes.ScopedDataDeps)); err != nil {
 					return nil, err
 				}
 			}
 
 			{
-				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil); err != nil {
-					return nil, err
-				}
-			}
-			return deps, err
-		},
-	})
 
-	di.Add(core.Factory{
-		PackageName: "namespacelabs.dev/foundation/std/testdata/service/list",
-		Instance:    "listDeps",
-		Singleton:   true,
-		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *list.ServiceDeps
-			var err error
-			{
-				// name: "list"
-				p := &incluster.Database{}
-				core.MustUnwrapProto("CgRsaXN0", p)
-
-				inclusterSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", "inclusterSingle")
+				scopes0, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/scopes", "scopes0")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Db, err = incluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/list", p, inclusterSingle.(incluster.SingletonDeps)); err != nil {
+				if deps.Two, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopes0.(scopes.ScopedDataDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -150,18 +125,17 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	var ok bool
 
-	listDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/list", "listDeps")
+	modelingDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", "modelingDeps")
 	if err != nil {
 		return nil, err
 	}
-	if server.list, ok = listDeps.(list.ServiceDeps); !ok {
-		return nil, fmt.Errorf("listDeps is not of type list.ServiceDeps")
+	if server.modeling, ok = modelingDeps.(modeling.ServiceDeps); !ok {
+		return nil, fmt.Errorf("modelingDeps is not of type modeling.ServiceDeps")
 	}
 
 	return server, di.Init(ctx)
 }
 
 func WireServices(ctx context.Context, srv *server.Grpc, server *ServerDeps) {
-	list.WireService(ctx, srv, server.list)
-	srv.RegisterGrpcGateway(list.RegisterListServiceHandler)
+	modeling.WireService(ctx, srv, server.modeling)
 }

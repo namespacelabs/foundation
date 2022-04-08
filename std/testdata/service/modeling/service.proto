@@ -1,0 +1,21 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package std.testdata.service.modeling;
+
+option go_package = "namespacelabs.dev/foundation/std/testdata/service/modeling";
+
+import "google/protobuf/empty.proto";
+import "std/testdata/scopes/provider.proto";
+
+
+message GetScopedDataResponse {
+    repeated foundation.std.testdata.scopes.ScopedData item = 1;
+}
+
+service ModelingService {
+    rpc GetScopedData(google.protobuf.Empty) returns (GetScopedDataResponse);
+}

@@ -80,10 +80,17 @@ type result struct {
 	err error
 }
 
-type DepInitializer struct {
+type depInitializer struct {
 	factories map[key]*Factory
 	cache     map[key]*result
 	inits     []*Initializer
+}
+
+func MakeInitializer() *depInitializer {
+	return &depInitializer{
+		factories: map[key]*Factory{},
+		cache:     map[key]*result{},
+	}
 }
 
 type Factory struct {
@@ -100,14 +107,11 @@ func (f Factory) Desc() string {
 	return f.PackageName
 }
 
-func (di *DepInitializer) Add(f Factory) {
-	if di.factories == nil {
-		di.factories = make(map[key]*Factory)
-	}
+func (di *depInitializer) Add(f Factory) {
 	di.factories[key{PackageName: f.PackageName, Instance: f.Instance}] = &f
 }
 
-func (di *DepInitializer) Get(ctx context.Context, pkg string, inst string) (interface{}, error) {
+func (di *depInitializer) Get(ctx context.Context, pkg string, inst string) (interface{}, error) {
 	k := key{PackageName: pkg, Instance: inst}
 	if res, ok := di.cache[k]; ok {
 		return res.res, res.err
@@ -115,7 +119,7 @@ func (di *DepInitializer) Get(ctx context.Context, pkg string, inst string) (int
 
 	f, ok := di.factories[k]
 	if !ok {
-		return nil, fmt.Errorf("No factory found found for instance %s in package %s.", inst, pkg)
+		return nil, fmt.Errorf("No factory found for instance %s in package %s.", inst, pkg)
 	}
 
 	start := time.Now()
@@ -136,11 +140,11 @@ type Initializer struct {
 	Do          func(context.Context) error
 }
 
-func (di *DepInitializer) Register(init Initializer) {
+func (di *depInitializer) Register(init Initializer) {
 	di.inits = append(di.inits, &init)
 }
 
-func (di *DepInitializer) Init(ctx context.Context) error {
+func (di *depInitializer) Init(ctx context.Context) error {
 	for _, init := range di.inits {
 		start := time.Now()
 		err := init.Do(ctx)

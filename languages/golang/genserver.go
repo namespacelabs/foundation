@@ -31,21 +31,6 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 		return err
 	}
 
-	// if strings.Contains(srv.Name, "multidb") {
-	// 	for _, n := range opts.Nodes {
-	// 		zerolog.Ctx(ctx).Info().
-	// 			Stringer("n", n.PackageName).
-	// 			Str("var", n.VarName).
-	// 			Msg("generateServer")
-	// 		for _, p := range n.Provisioned {
-	// 			zerolog.Ctx(ctx).Info().
-	// 				Stringer("prov", p.PackageName).
-	// 				Str("method", p.Method).
-	// 				Msg("generateServer")
-	// 		}
-	// 	}
-	// }
-
 	if err := generateGoSource(ctx, fs, loc.Rel(ServerPrepareFilename), serverPrepareTmpl, opts); err != nil {
 		return err
 	}
@@ -60,16 +45,6 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 }
 
 func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, nodes []*schema.Node, opts *serverTmplOptions) error {
-	debug := false
-	if strings.Contains(srv.Name, "gogrpc") {
-		debug = true
-		// for _, p := range srv.GetImportedPackages() {
-		// 	zerolog.Ctx(ctx).Info().
-		// 		Stringer("import", p).
-		// 		Msg("prepareServer")
-		// }
-	}
-
 	allDeps, err := expandInstancedDeps(ctx, loader, srv.GetImportedPackages(), nodes)
 	if err != nil {
 		return err
@@ -88,13 +63,6 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 
 	// XXX use allocation tree instead.
 	for _, dep := range allDeps.instances {
-		if debug {
-			// zerolog.Ctx(ctx).Info().
-			// 	Stringer("dep", dep.Location.PackageName).
-			// 	Str("scope", dep.Scope.GetName()).
-			// 	Str("instance", dep.Instance.GetName()).
-			// 	Msg("prepareServer")
-		}
 		// Force each of the type URLs to be known, so we do a single template pass.
 		opts.Imports.AddOrGet(dep.Provisioned.GoPackage)
 
@@ -127,7 +95,7 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 			n.GoImportURL = importURL
 
 			if dep.Parent.GetKind() == schema.Node_SERVICE {
-				n.VarName = fmt.Sprintf("%s.%s", opts.Server, n.Name)
+				n.VarName = fmt.Sprintf("%sDeps", n.Name)
 				n.IsService = true
 				n.IsSingleton = true
 
@@ -167,7 +135,9 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 		for _, node := range opts.Nodes {
 			if node.PackageName.Equals(init.Node.PackageName) {
 				i.Deps = Ref{
-					VarName: node.VarName,
+					VarName:     node.VarName,
+					GoImportURL: node.GoImportURL,
+					Typename:    node.Typename,
 				}
 				break
 			}
@@ -327,6 +297,8 @@ package main
 
 import (
 	"context"
+	{{if .Services}}"fmt"{{end}}
+
 {{range $opts.Imports.ImportMap}}
 	{{.Rename}} "{{.TypeURL}}"{{end}}
 )
@@ -337,7 +309,7 @@ type ServerDeps struct {
 }
 
 func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) {
-	var di {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}.DepInitializer
+	di := {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}.MakeInitializer()
 	{{range $k, $v := .Nodes}}
 		di.Add({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}.Factory{
 			PackageName: "{{$v.PackageName}}",
@@ -345,7 +317,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 			{{- if $v.IsSingleton}}
 			Singleton: true,{{end}}
 			Do: func(ctx context.Context) (interface{}, error) {
-				var deps {{makeType $opts.Imports $v.GoImportURL $v.Typename}}
+				var deps *{{makeType $opts.Imports $v.GoImportURL $v.Typename}}
 				var err error
 				{{- range $k2, $p := $v.Provisioned}}
 					{{if $p -}}
@@ -384,25 +356,29 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 		})
 	{{end}}
 
-	{{- range .Initializers}}
+	{{- range $k, $init := .Initializers}}
 	di.Register({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}.Initializer{
-		PackageName: "{{.PackageName}}",
+		PackageName: "{{$init.PackageName}}",
 		Do: func(ctx context.Context) error {
-			{{- if .Deps}}
-			{{.Deps}}, err := di.Get(ctx, "{{.PackageName}}", "{{.Deps}}")
+			{{- if $init.Deps.VarName}}
+			{{$init.Deps.VarName}}, err := di.Get(ctx, "{{$init.PackageName}}", "{{$init.Deps.VarName}}")
 			if err != nil {
 				return err
 			}
 			{{end -}}
-			return {{$opts.Imports.MustGet .GoImportURL}}.Prepare(ctx{{if .Deps}}, {{.Deps}}.(){{end}})
+			return {{$opts.Imports.MustGet .GoImportURL}}.Prepare(ctx{{if $init.Deps.VarName}}, {{$init.Deps.VarName}}.({{makeType $opts.Imports $init.Deps.GoImportURL $init.Deps.Typename}}){{end}})
 		},
 	})
 	{{end}}
 
+	{{if .Services}}var ok bool{{end}}
 	{{range $k, $v := .Services}}
-		{{$opts.Server}}.{{$v.Name}}, err = di.Get(ctx, "{{$v.PackageName}}", "{{$opts.Server}}.{{$v.Name}}")
+		{{$v.VarName}}, err := di.Get(ctx, "{{$v.PackageName}}", "{{$v.VarName}}")
 		if err != nil {
 			return nil, err
+		}
+		if {{$opts.Server}}.{{$v.Name}}, ok = {{$v.VarName}}.({{makeType $opts.Imports $v.GoImportURL $v.Typename}}); !ok {
+			return nil, fmt.Errorf("{{$v.VarName}} is not of type {{makeType $opts.Imports $v.GoImportURL $v.Typename}}")
 		}
 	{{end}}
 	return {{$opts.Server}}, di.Init(ctx)

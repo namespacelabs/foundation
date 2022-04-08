@@ -61,6 +61,7 @@ func Collect(server *schema.Server) (*Collection, error) {
 	for _, alloc := range server.Allocation {
 		for _, instance := range alloc.Instance {
 			var generated, userManaged []*Secret
+			// TODO
 			for _, instantiate := range instance.GetInstantiated() {
 				if instantiate.GetPackageName() == "namespacelabs.dev/foundation/std/secrets" && instantiate.GetType() == "Secret" {
 					secret := &Secret{}

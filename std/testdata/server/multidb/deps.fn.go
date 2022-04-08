@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
@@ -22,14 +23,14 @@ type ServerDeps struct {
 }
 
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
-	var di core.DepInitializer
+	di := core.MakeInitializer()
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Instance:    "metricsSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps metrics.SingletonDeps
+			var deps *metrics.SingletonDeps
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", nil); err != nil {
@@ -45,7 +46,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "tracingSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps tracing.SingletonDeps
+			var deps *tracing.SingletonDeps
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", nil); err != nil {
@@ -61,7 +62,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "credsSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps creds.SingletonDeps
+			var deps *creds.SingletonDeps
 			var err error
 			{
 				// name: "mariadb-password-file"
@@ -81,7 +82,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "inclusterSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps incluster.SingletonDeps
+			var deps *incluster.SingletonDeps
 			var err error
 			{
 
@@ -108,7 +109,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "credsSingle1",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps fncreds.SingletonDeps
+			var deps *fncreds.SingletonDeps
 			var err error
 			{
 				// name: "postgres-password-file"
@@ -128,7 +129,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "inclusterSingle1",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps fnincluster.SingletonDeps
+			var deps *fnincluster.SingletonDeps
 			var err error
 			{
 
@@ -152,10 +153,10 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/service/multidb",
-		Instance:    "server.multidb",
+		Instance:    "multidbDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps multidb.ServiceDeps
+			var deps *multidb.ServiceDeps
 			var err error
 			{
 				// name: "mariadblist"
@@ -199,7 +200,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return metrics.Prepare(ctx, metricsSingle)
+			return metrics.Prepare(ctx, metricsSingle.(metrics.SingletonDeps))
 		},
 	})
 
@@ -210,13 +211,18 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return tracing.Prepare(ctx, tracingSingle)
+			return tracing.Prepare(ctx, tracingSingle.(tracing.SingletonDeps))
 		},
 	})
 
-	server.multidb, err = di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", "server.multidb")
+	var ok bool
+
+	multidbDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", "multidbDeps")
 	if err != nil {
 		return nil, err
+	}
+	if server.multidb, ok = multidbDeps.(multidb.ServiceDeps); !ok {
+		return nil, fmt.Errorf("multidbDeps is not of type multidb.ServiceDeps")
 	}
 
 	return server, di.Init(ctx)

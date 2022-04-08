@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
@@ -22,14 +23,14 @@ type ServerDeps struct {
 }
 
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
-	var di core.DepInitializer
+	di := core.MakeInitializer()
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Instance:    "metricsSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps metrics.SingletonDeps
+			var deps *metrics.SingletonDeps
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", nil); err != nil {
@@ -45,7 +46,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "tracingSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps tracing.SingletonDeps
+			var deps *tracing.SingletonDeps
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", nil); err != nil {
@@ -61,7 +62,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "datastoreSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps datastore.SingletonDeps
+			var deps *datastore.SingletonDeps
 			var err error
 			{
 				// name: "gen"
@@ -96,7 +97,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		PackageName: "namespacelabs.dev/foundation/std/testdata/datastore",
 		Instance:    "datastore0",
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps datastore.DatabaseDeps
+			var deps *datastore.DatabaseDeps
 			var err error
 			{
 				// name: "cert"
@@ -113,34 +114,11 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(core.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/service/post",
-		Instance:    "server.post",
+		Instance:    "postDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps post.ServiceDeps
+			var deps *post.ServiceDeps
 			var err error
-			{
-				// name: "aux"
-				// schema_file: {
-				//   path: "schema.txt"
-				//   contents: "just a test file"
-				// }
-				p := &datastore.Database{}
-				core.MustUnwrapProto("CgNhdXgSHgoKc2NoZW1hLnR4dBIQanVzdCBhIHRlc3QgZmlsZQ==", p)
-
-				datastoreSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "datastoreSingle")
-				if err != nil {
-					return nil, err
-				}
-
-				datastore0, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "datastore0")
-				if err != nil {
-					return nil, err
-				}
-				if deps.Aux, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastoreSingle.(datastore.SingletonDeps), datastore0.(datastore.DatabaseDeps)); err != nil {
-					return nil, err
-				}
-			}
-
 			{
 				// name: "main"
 				// schema_file: {
@@ -204,7 +182,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return metrics.Prepare(ctx, metricsSingle)
+			return metrics.Prepare(ctx, metricsSingle.(metrics.SingletonDeps))
 		},
 	})
 
@@ -215,13 +193,18 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return tracing.Prepare(ctx, tracingSingle)
+			return tracing.Prepare(ctx, tracingSingle.(tracing.SingletonDeps))
 		},
 	})
 
-	server.post, err = di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", "server.post")
+	var ok bool
+
+	postDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", "postDeps")
 	if err != nil {
 		return nil, err
+	}
+	if server.post, ok = postDeps.(post.ServiceDeps); !ok {
+		return nil, fmt.Errorf("postDeps is not of type post.ServiceDeps")
 	}
 
 	return server, di.Init(ctx)

@@ -1,18 +1,16 @@
 // This file was automatically generated.
-package post
+package modeling
 
 import (
 	"context"
 
-	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
-	"namespacelabs.dev/foundation/std/grpc/deadlines"
-	"namespacelabs.dev/foundation/std/testdata/datastore"
-	"namespacelabs.dev/foundation/std/testdata/service/simple"
+	"namespacelabs.dev/foundation/std/testdata/scopes"
 )
 
 type ServiceDeps struct {
-	Main *datastore.DB
+	One *scopes.ScopedData
+	Two *scopes.ScopedData
 }
 
 // Verify that WireService is present and has the appropriate type.
