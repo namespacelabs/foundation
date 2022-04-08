@@ -35,6 +35,8 @@ import (
 
 // Hard-coding the version of generated yarn workspaces since we only support a monorepo for now.
 const yarnWorkspaceVersion = "0.0.0"
+const yarnVersion = "3.2.0"
+const yarnRcFn = ".yarnrc.yml"
 const implFileName = "impl.ts"
 const packageJsonFn = "package.json"
 
@@ -106,6 +108,89 @@ func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.Ser
 	run.ReadOnlyFilesystem = true
 	run.RunAs = production.NonRootRunAsWithID(production.NonRootUserID)
 	return nil
+}
+
+func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) error {
+	yarnRoots := map[string]*workspace.Module{}
+	for _, pkg := range packages {
+		if (pkg.Server != nil && pkg.Server.Framework == schema.Framework_NODEJS) ||
+			(pkg.Node() != nil && pkg.Node().ServiceFramework == schema.Framework_NODEJS) {
+			yarnRoot, err := findYarnRoot(pkg.Location)
+			if err != nil {
+				// If we can't find yarn root, using the workspace root.
+				yarnRoot = ""
+			}
+			// It is always the same module, but saving it as a value allows to avoid additional checks for nil.
+			yarnRoots[yarnRoot.String()] = pkg.Location.Module
+		}
+	}
+
+	for yarnRoot, module := range yarnRoots {
+		tidyYarnRoot(ctx, yarnRoot, module)
+	}
+
+	return nil
+}
+
+func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) error {
+	yarnHasCorrectVersion, err := updateYarnRootPackageJson(ctx, path, module.ReadWriteFS())
+
+	if err != nil {
+		return err
+	}
+
+	// Install Yarn 3+ if needed
+	if !yarnHasCorrectVersion {
+		if err := RunYarn(ctx, path, []string{"set", "version", yarnVersion}); err != nil {
+			return err
+		}
+		// If yarn messed with package.json, re-format it to make tn tidy idempotent.
+		if _, err = updateYarnRootPackageJson(ctx, path, module.ReadWriteFS()); err != nil {
+			return err
+		}
+	}
+
+	// Write .yarnrc.yml with the correct nodeLinker.
+	if err := fnfs.WriteWorkspaceFile(ctx, module.ReadWriteFS(), filepath.Join(path, yarnRcFn), func(w io.Writer) error {
+		_, err := io.WriteString(w, yarnRcContent())
+		return err
+	}); err != nil {
+		return err
+	}
+
+	// Create "tsconfig.json" if it doesn't exist.
+	tsconfigFn := filepath.Join(path, "tsconfig.json")
+	if _, err := updateJson(ctx, tsconfigFn, module.ReadWriteFS(),
+		func(packageJson map[string]interface{}, fileExisted bool) {
+			if !fileExisted {
+				packageJson["extends"] = "@tsconfig/node16/tsconfig.json"
+			}
+		}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func yarnRcContent() string {
+	return fmt.Sprintf(
+		`nodeLinker: node-modules
+
+yarnPath: .yarn/releases/yarn-%s.cjs
+`, yarnVersion)
+}
+
+// Returns whether yarn has the correct version
+func updateYarnRootPackageJson(ctx context.Context, path string, fs fnfs.ReadWriteFS) (bool, error) {
+	yarnHasCorrectVersion := false
+	_, err := updatePackageJson(ctx, path, fs, func(packageJson map[string]interface{}, fileExisted bool) {
+		packageJson["private"] = true
+		packageJson["workspaces"] = []string{"**/*"}
+		yarnWithVersion := fmt.Sprintf("yarn@%s", yarnVersion)
+		yarnHasCorrectVersion = packageJson["packageManager"] == yarnWithVersion
+	})
+
+	return yarnHasCorrectVersion, err
 }
 
 func (impl) TidyNode(ctx context.Context, p *workspace.Package) error {
@@ -188,39 +273,47 @@ func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []stri
 
 // Returns the tydied package.json file.
 func tidyPackageJsonFields(ctx context.Context, loc workspace.Location) (map[string]interface{}, error) {
-	packageJson := map[string]interface{}{}
-
-	packageJsonRelFn := filepath.Join(loc.Rel(), packageJsonFn)
-	packageJsonFile, err := loc.Module.ReadWriteFS().Open(packageJsonRelFn)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-	if err == nil {
-		defer packageJsonFile.Close()
-
-		packageJsonRaw, err := io.ReadAll(packageJsonFile)
-		if err != nil {
-			return nil, err
-		}
-
-		json.Unmarshal(packageJsonRaw, &packageJson)
-	}
-
 	nodejsLoc, err := nodejsLocationFrom(loc.PackageName)
 	if err != nil {
 		return nil, err
 	}
-	packageJson["name"] = nodejsLoc.NpmPackage
-	packageJson["private"] = true
-	packageJson["version"] = yarnWorkspaceVersion
 
-	editedPackageJsonRaw, err := json.MarshalIndent(packageJson, "", "\t")
+	return updatePackageJson(ctx, loc.Rel(), loc.Module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
+		packageJson["name"] = nodejsLoc.NpmPackage
+		packageJson["private"] = true
+		packageJson["version"] = yarnWorkspaceVersion
+	})
+}
+
+func updatePackageJson(ctx context.Context, path string, fsys fnfs.ReadWriteFS, callback func(json map[string]interface{}, fileExisted bool)) (map[string]interface{}, error) {
+	// We are not using a struct to parse package.json because:
+	//  - it may be customized with non-standard keys.
+	//  - some keys (for example, "workspaces", even though this particular key the user shouldn't set),
+	//    may be an array or an object, and this can't be represented with a struct.
+	return updateJson(ctx, filepath.Join(path, packageJsonFn), fsys, callback)
+}
+
+func updateJson(ctx context.Context, filepath string, fsys fnfs.ReadWriteFS, callback func(json map[string]interface{}, fileExisted bool)) (map[string]interface{}, error) {
+	parsedJson := map[string]interface{}{}
+
+	jsonRaw, err := fs.ReadFile(fsys, filepath)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	fileExisted := err == nil
+	if err == nil {
+		json.Unmarshal(jsonRaw, &parsedJson)
+	}
+
+	callback(parsedJson, fileExisted)
+
+	updatedJsonRaw, err := json.MarshalIndent(parsedJson, "", "\t")
 	if err != nil {
 		return nil, err
 	}
 
-	return packageJson, fnfs.WriteWorkspaceFile(ctx, loc.Module.ReadWriteFS(), packageJsonRelFn, func(w io.Writer) error {
-		_, err := w.Write(editedPackageJsonRaw)
+	return parsedJson, fnfs.WriteWorkspaceFile(ctx, fsys, filepath, func(w io.Writer) error {
+		_, err := w.Write(updatedJsonRaw)
 		return err
 	})
 }
@@ -243,13 +336,13 @@ func tidyDependencies(ctx context.Context, loc workspace.Location, imports []str
 	devPackages := formatPackages(trimExistingPackages(builtin().DevDependencies, packageJson["devDependencies"]))
 
 	if len(packages) > 0 {
-		if err := RunYarn(ctx, loc, append([]string{"add"}, packages...)); err != nil {
+		if err := RunYarn(ctx, loc.Rel(), append([]string{"add"}, packages...)); err != nil {
 			return false, err
 		}
 	}
 
 	if len(devPackages) > 0 {
-		if err := RunYarn(ctx, loc, append([]string{"add", "-D"}, devPackages...)); err != nil {
+		if err := RunYarn(ctx, loc.Rel(), append([]string{"add", "-D"}, devPackages...)); err != nil {
 			return false, err
 		}
 	}
