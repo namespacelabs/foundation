@@ -114,7 +114,8 @@ func (svc service) Worker(server protocol.InvocationService_WorkerServer) error 
 		if chunk.ClientHello != nil {
 			if err := server.Send(&protocol.WorkerCoordinatorChunk{
 				ServerHello: &protocol.WorkerCoordinatorChunk_ServerHello{
-					FnApiVersion: versions.APIVersion,
+					FnApiVersion:   versions.APIVersion,
+					ToolApiVersion: versions.ToolAPIVersion,
 				},
 				ToolRequest: svc.request,
 			}); err != nil {

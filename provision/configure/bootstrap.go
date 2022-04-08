@@ -128,8 +128,8 @@ func handle(ctx context.Context, h AllHandlers) error {
 	}
 
 	if err := stream.Send(&protocol.WorkerChunk{ClientHello: &protocol.WorkerChunk_ClientHello{
-		FnApiVersion:     versions.APIVersion,
-		ClientApiVersion: versions.ToolAPIVersion,
+		FnApiVersion:   versions.APIVersion,
+		ToolApiVersion: versions.ToolAPIVersion,
 	}}); err != nil {
 		return err
 	}
