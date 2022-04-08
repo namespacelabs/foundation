@@ -12,6 +12,6 @@ type ScopedDataDeps struct {
 	Data *data.Data
 }
 
-type _checkProvideScopedData func(context.Context, string, *Input, ScopedDataDeps) (*ScopedData, error)
+type _checkProvideScopedData func(context.Context, string, *Input, *ScopedDataDeps) (*ScopedData, error)
 
 var _ _checkProvideScopedData = ProvideScopedData

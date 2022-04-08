@@ -18,6 +18,6 @@ type DatabaseDeps struct {
 	Creds *creds.Creds
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, SingletonDeps, DatabaseDeps) (*pgxpool.Pool, error)
+type _checkProvideDatabase func(context.Context, string, *Database, *SingletonDeps, *DatabaseDeps) (*pgxpool.Pool, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

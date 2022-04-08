@@ -10,7 +10,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 )
 
-func Prepare(ctx context.Context, deps SingletonDeps) error {
+func Prepare(ctx context.Context, deps *SingletonDeps) error {
 	deps.Interceptors.Add(grpc_prometheus.UnaryServerInterceptor, grpc_prometheus.StreamServerInterceptor)
 	return nil
 }

@@ -13,7 +13,7 @@ import (
 )
 
 type Service struct {
-	deps ServiceDeps
+	deps *ServiceDeps
 }
 
 func (svc *Service) GetScopedData(ctx context.Context, _ *emptypb.Empty) (*GetScopedDataResponse, error) {
@@ -25,7 +25,7 @@ func (svc *Service) GetScopedData(ctx context.Context, _ *emptypb.Empty) (*GetSc
 	return response, nil
 }
 
-func WireService(ctx context.Context, srv *server.Grpc, deps ServiceDeps) {
+func WireService(ctx context.Context, srv *server.Grpc, deps *ServiceDeps) {
 	svc := &Service{deps: deps}
 	RegisterModelingServiceServer(srv, svc)
 }

@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
@@ -20,7 +19,7 @@ import (
 )
 
 type ServerDeps struct {
-	post post.ServiceDeps
+	post *post.ServiceDeps
 }
 
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
@@ -31,7 +30,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "metricsSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *metrics.SingletonDeps
+			deps := &metrics.SingletonDeps{}
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", nil); err != nil {
@@ -47,7 +46,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "tracingSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *tracing.SingletonDeps
+			deps := &tracing.SingletonDeps{}
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", nil); err != nil {
@@ -63,7 +62,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "deadlinesSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *deadlines.SingletonDeps
+			deps := &deadlines.SingletonDeps{}
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", nil); err != nil {
@@ -79,7 +78,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "datastoreSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *datastore.SingletonDeps
+			deps := &datastore.SingletonDeps{}
 			var err error
 			{
 				// name: "gen"
@@ -114,7 +113,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		PackageName: "namespacelabs.dev/foundation/std/testdata/datastore",
 		Instance:    "datastore0",
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *datastore.DatabaseDeps
+			deps := &datastore.DatabaseDeps{}
 			var err error
 			{
 				// name: "cert"
@@ -134,7 +133,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "postDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *post.ServiceDeps
+			deps := &post.ServiceDeps{}
 			var err error
 			{
 				// configuration: {
@@ -149,7 +148,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				if err != nil {
 					return nil, err
 				}
-				if deps.Dl, err = deadlines.ProvideDeadlines(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, deadlinesSingle.(deadlines.SingletonDeps)); err != nil {
+				if deps.Dl, err = deadlines.ProvideDeadlines(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, deadlinesSingle.(*deadlines.SingletonDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -172,7 +171,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				if err != nil {
 					return nil, err
 				}
-				if deps.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastoreSingle.(datastore.SingletonDeps), datastore0.(datastore.DatabaseDeps)); err != nil {
+				if deps.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastoreSingle.(*datastore.SingletonDeps), datastore0.(*datastore.DatabaseDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -186,7 +185,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 					return nil, err
 				}
 
-				deps.Simple = simple.NewEmptyServiceClient(postDeps.SimpleConn)
+				deps.Simple = simple.NewEmptyServiceClient(deps.SimpleConn)
 			}
 			return deps, err
 		},
@@ -197,7 +196,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "loggingSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *logging.SingletonDeps
+			deps := &logging.SingletonDeps{}
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/grpc/logging", nil); err != nil {
@@ -215,7 +214,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return metrics.Prepare(ctx, metricsSingle.(metrics.SingletonDeps))
+			return metrics.Prepare(ctx, metricsSingle.(*metrics.SingletonDeps))
 		},
 	})
 
@@ -226,7 +225,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return tracing.Prepare(ctx, tracingSingle.(tracing.SingletonDeps))
+			return tracing.Prepare(ctx, tracingSingle.(*tracing.SingletonDeps))
 		},
 	})
 
@@ -237,7 +236,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return deadlines.Prepare(ctx, deadlinesSingle.(deadlines.SingletonDeps))
+			return deadlines.Prepare(ctx, deadlinesSingle.(*deadlines.SingletonDeps))
 		},
 	})
 
@@ -248,19 +247,17 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return logging.Prepare(ctx, loggingSingle.(logging.SingletonDeps))
+			return logging.Prepare(ctx, loggingSingle.(*logging.SingletonDeps))
 		},
 	})
 
-	var ok bool
+	server = &ServerDeps{}
 
 	postDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", "postDeps")
 	if err != nil {
 		return nil, err
 	}
-	if server.post, ok = postDeps.(post.ServiceDeps); !ok {
-		return nil, fmt.Errorf("postDeps is not of type post.ServiceDeps")
-	}
+	server.post = postDeps.(*post.ServiceDeps)
 
 	return server, di.Init(ctx)
 }

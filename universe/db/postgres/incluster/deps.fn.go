@@ -14,6 +14,6 @@ type SingletonDeps struct {
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, SingletonDeps) (*pgxpool.Pool, error)
+type _checkProvideDatabase func(context.Context, string, *Database, *SingletonDeps) (*pgxpool.Pool, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

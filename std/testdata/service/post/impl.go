@@ -33,7 +33,7 @@ func (svc *Service) Post(ctx context.Context, req *PostRequest) (*PostResponse, 
 	return response, nil
 }
 
-func WireService(ctx context.Context, srv *server.Grpc, deps ServiceDeps) {
+func WireService(ctx context.Context, srv *server.Grpc, deps *ServiceDeps) {
 	svc := &Service{}
 	RegisterPostServiceServer(srv, svc)
 }

@@ -13,6 +13,6 @@ import (
 type Service struct {
 }
 
-func WireService(ctx context.Context, srv *server.Grpc, deps ServiceDeps) {
+func WireService(ctx context.Context, srv *server.Grpc, deps *ServiceDeps) {
 	RegisterEmptyServiceServer(srv, &Service{})
 }

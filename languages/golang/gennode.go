@@ -216,20 +216,20 @@ type {{.Singleton.DepsType}} struct {
 
 {{if eq .Type "Service"}}
 // Verify that WireService is present and has the appropriate type.
-type checkWireService func(context.Context, *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/grpc/server"}}.Grpc, {{.Singleton.DepsType}})
+type checkWireService func(context.Context, *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/grpc/server"}}.Grpc, *{{.Singleton.DepsType}})
 var _ checkWireService = WireService
 {{end}}
 
 {{range $k, $v := .Provides}}
 type _check{{$v.Method}} func(context.Context, string, *{{makeProvisionProtoName $v}}
-	{{- if $opts.NeedsSingleton}}, {{$opts.Singleton.DepsType}}{{end}}
-	{{- with $scoped := index $opts.Scoped $k}}{{if $scoped.DepVars}}, {{$scoped.DepsType}}{{end}}{{end -}}
+	{{- if $opts.NeedsSingleton}}, *{{$opts.Singleton.DepsType}}{{end}}
+	{{- with $scoped := index $opts.Scoped $k}}{{if $scoped.DepVars}}, *{{$scoped.DepsType}}{{end}}{{end -}}
 	) ({{range $v.DepVars}}{{makeType $opts.Imports .GoImportURL .GoTypeName}},{{end}} error)
 var _ _check{{$v.Method}} = {{$v.Method}}
 {{end}}
 
 {{if .HasInitialization}}
-type _checkPrepare func(context.Context{{if .NeedsSingleton}}, {{.Singleton.DepsType}}{{end}}) error
+type _checkPrepare func(context.Context{{if .NeedsSingleton}}, *{{.Singleton.DepsType}}{{end}}) error
 var _ _checkPrepare = Prepare
 {{end}}
 

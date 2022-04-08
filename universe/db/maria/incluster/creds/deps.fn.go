@@ -11,6 +11,6 @@ type SingletonDeps struct {
 	Password *secrets.Value
 }
 
-type _checkProvideCreds func(context.Context, string, *CredsRequest, SingletonDeps) (*Creds, error)
+type _checkProvideCreds func(context.Context, string, *CredsRequest, *SingletonDeps) (*Creds, error)
 
 var _ _checkProvideCreds = ProvideCreds

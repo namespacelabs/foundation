@@ -14,6 +14,6 @@ type ServiceDeps struct {
 }
 
 // Verify that WireService is present and has the appropriate type.
-type checkWireService func(context.Context, *server.Grpc, ServiceDeps)
+type checkWireService func(context.Context, *server.Grpc, *ServiceDeps)
 
 var _ checkWireService = WireService

@@ -70,7 +70,7 @@ func logHeader(ctx context.Context, what, fullMethod string, req interface{}) st
 	return reqid
 }
 
-func Prepare(ctx context.Context, deps ExtensionDeps) error {
+func Prepare(ctx context.Context, deps *SingletonDeps) error {
 	var interceptor interceptor
 	deps.Interceptors.Add(interceptor.unary, interceptor.streaming)
 	return nil

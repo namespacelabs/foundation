@@ -11,6 +11,6 @@ type SingletonDeps struct {
 	Interceptors interceptors.Registration
 }
 
-type _checkPrepare func(context.Context, SingletonDeps) error
+type _checkPrepare func(context.Context, *SingletonDeps) error
 
 var _ _checkPrepare = Prepare

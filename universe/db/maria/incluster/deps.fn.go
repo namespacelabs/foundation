@@ -14,6 +14,6 @@ type SingletonDeps struct {
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, SingletonDeps) (*sql.DB, error)
+type _checkProvideDatabase func(context.Context, string, *Database, *SingletonDeps) (*sql.DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

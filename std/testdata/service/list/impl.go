@@ -75,7 +75,7 @@ func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*ListResponse, 
 	return response, nil
 }
 
-func WireService(ctx context.Context, srv *server.Grpc, deps ServiceDeps) {
+func WireService(ctx context.Context, srv *server.Grpc, deps *ServiceDeps) {
 	svc := &Service{db: deps.Db}
 	RegisterListServiceServer(srv, svc)
 }

@@ -8,7 +8,7 @@ import "context"
 
 type DB struct{}
 
-func ProvideDatabase(_ context.Context, _ string, _ *Database, deps SingletonDeps, _ DatabaseDeps) (*DB, error) {
+func ProvideDatabase(_ context.Context, _ string, _ *Database, deps *SingletonDeps, _ *DatabaseDeps) (*DB, error) {
 	deps.ReadinessCheck.RegisterFunc("foobar", func(ctx context.Context) error {
 		return nil
 	})

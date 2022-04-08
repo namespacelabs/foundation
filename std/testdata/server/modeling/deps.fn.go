@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
@@ -16,7 +15,7 @@ import (
 )
 
 type ServerDeps struct {
-	modeling modeling.ServiceDeps
+	modeling *modeling.ServiceDeps
 }
 
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
@@ -27,7 +26,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "metricsSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *metrics.SingletonDeps
+			deps := &metrics.SingletonDeps{}
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", nil); err != nil {
@@ -43,7 +42,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "tracingSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *tracing.SingletonDeps
+			deps := &tracing.SingletonDeps{}
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", nil); err != nil {
@@ -58,7 +57,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		PackageName: "namespacelabs.dev/foundation/std/testdata/scopes",
 		Instance:    "scopes0",
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *scopes.ScopedDataDeps
+			deps := &scopes.ScopedDataDeps{}
 			var err error
 			{
 				if deps.Data, err = data.ProvideData(ctx, "namespacelabs.dev/foundation/std/testdata/scopes", nil); err != nil {
@@ -74,7 +73,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "modelingDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *modeling.ServiceDeps
+			deps := &modeling.ServiceDeps{}
 			var err error
 			{
 
@@ -82,7 +81,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				if err != nil {
 					return nil, err
 				}
-				if deps.One, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopes0.(scopes.ScopedDataDeps)); err != nil {
+				if deps.One, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopes0.(*scopes.ScopedDataDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -93,7 +92,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				if err != nil {
 					return nil, err
 				}
-				if deps.Two, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopes0.(scopes.ScopedDataDeps)); err != nil {
+				if deps.Two, err = scopes.ProvideScopedData(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", nil, scopes0.(*scopes.ScopedDataDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -108,7 +107,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return metrics.Prepare(ctx, metricsSingle.(metrics.SingletonDeps))
+			return metrics.Prepare(ctx, metricsSingle.(*metrics.SingletonDeps))
 		},
 	})
 
@@ -119,19 +118,17 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return tracing.Prepare(ctx, tracingSingle.(tracing.SingletonDeps))
+			return tracing.Prepare(ctx, tracingSingle.(*tracing.SingletonDeps))
 		},
 	})
 
-	var ok bool
+	server = &ServerDeps{}
 
 	modelingDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/modeling", "modelingDeps")
 	if err != nil {
 		return nil, err
 	}
-	if server.modeling, ok = modelingDeps.(modeling.ServiceDeps); !ok {
-		return nil, fmt.Errorf("modelingDeps is not of type modeling.ServiceDeps")
-	}
+	server.modeling = modelingDeps.(*modeling.ServiceDeps)
 
 	return server, di.Init(ctx)
 }

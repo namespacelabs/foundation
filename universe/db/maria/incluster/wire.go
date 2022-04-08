@@ -35,7 +35,7 @@ func getEndpoint() (*schema.Endpoint, error) {
 	return &endpoint, nil
 }
 
-func ProvideDatabase(ctx context.Context, caller string, db *Database, deps SingletonDeps) (*sql.DB, error) {
+func ProvideDatabase(ctx context.Context, caller string, db *Database, deps *SingletonDeps) (*sql.DB, error) {
 	endpoint, err := getEndpoint()
 	if err != nil {
 		return nil, err

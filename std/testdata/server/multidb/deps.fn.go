@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
@@ -19,7 +18,7 @@ import (
 )
 
 type ServerDeps struct {
-	multidb multidb.ServiceDeps
+	multidb *multidb.ServiceDeps
 }
 
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
@@ -30,7 +29,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "metricsSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *metrics.SingletonDeps
+			deps := &metrics.SingletonDeps{}
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", nil); err != nil {
@@ -46,7 +45,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "tracingSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *tracing.SingletonDeps
+			deps := &tracing.SingletonDeps{}
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", nil); err != nil {
@@ -62,7 +61,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "credsSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *creds.SingletonDeps
+			deps := &creds.SingletonDeps{}
 			var err error
 			{
 				// name: "mariadb-password-file"
@@ -82,7 +81,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "inclusterSingle",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *incluster.SingletonDeps
+			deps := &incluster.SingletonDeps{}
 			var err error
 			{
 
@@ -90,7 +89,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				if err != nil {
 					return nil, err
 				}
-				if deps.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", nil, credsSingle.(creds.SingletonDeps)); err != nil {
+				if deps.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", nil, credsSingle.(*creds.SingletonDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -109,7 +108,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "credsSingle1",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *fncreds.SingletonDeps
+			deps := &fncreds.SingletonDeps{}
 			var err error
 			{
 				// name: "postgres-password-file"
@@ -129,7 +128,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "inclusterSingle1",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *fnincluster.SingletonDeps
+			deps := &fnincluster.SingletonDeps{}
 			var err error
 			{
 
@@ -137,7 +136,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				if err != nil {
 					return nil, err
 				}
-				if deps.Creds, err = fncreds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, credsSingle1.(fncreds.SingletonDeps)); err != nil {
+				if deps.Creds, err = fncreds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, credsSingle1.(*fncreds.SingletonDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -156,7 +155,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Instance:    "multidbDeps",
 		Singleton:   true,
 		Do: func(ctx context.Context) (interface{}, error) {
-			var deps *multidb.ServiceDeps
+			deps := &multidb.ServiceDeps{}
 			var err error
 			{
 				// name: "mariadblist"
@@ -171,7 +170,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				if err != nil {
 					return nil, err
 				}
-				if deps.Maria, err = incluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", p, inclusterSingle.(incluster.SingletonDeps)); err != nil {
+				if deps.Maria, err = incluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", p, inclusterSingle.(*incluster.SingletonDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -185,7 +184,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				if err != nil {
 					return nil, err
 				}
-				if deps.Postgres, err = fnincluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", p, inclusterSingle1.(fnincluster.SingletonDeps)); err != nil {
+				if deps.Postgres, err = fnincluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", p, inclusterSingle1.(*fnincluster.SingletonDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -200,7 +199,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return metrics.Prepare(ctx, metricsSingle.(metrics.SingletonDeps))
+			return metrics.Prepare(ctx, metricsSingle.(*metrics.SingletonDeps))
 		},
 	})
 
@@ -211,19 +210,17 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			if err != nil {
 				return err
 			}
-			return tracing.Prepare(ctx, tracingSingle.(tracing.SingletonDeps))
+			return tracing.Prepare(ctx, tracingSingle.(*tracing.SingletonDeps))
 		},
 	})
 
-	var ok bool
+	server = &ServerDeps{}
 
 	multidbDeps, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", "multidbDeps")
 	if err != nil {
 		return nil, err
 	}
-	if server.multidb, ok = multidbDeps.(multidb.ServiceDeps); !ok {
-		return nil, fmt.Errorf("multidbDeps is not of type multidb.ServiceDeps")
-	}
+	server.multidb = multidbDeps.(*multidb.ServiceDeps)
 
 	return server, di.Init(ctx)
 }

@@ -297,7 +297,6 @@ package main
 
 import (
 	"context"
-	{{if .Services}}"fmt"{{end}}
 
 {{range $opts.Imports.ImportMap}}
 	{{.Rename}} "{{.TypeURL}}"{{end}}
@@ -305,7 +304,7 @@ import (
 
 type ServerDeps struct {
 {{range $k, $v := .Services}}
-	{{$v.Name}} {{$opts.Imports.MustGet $v.GoImportURL}}.{{$v.Typename}}{{end}}
+	{{$v.Name}} *{{$opts.Imports.MustGet $v.GoImportURL}}.{{$v.Typename}}{{end}}
 }
 
 func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) {
@@ -317,7 +316,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 			{{- if $v.IsSingleton}}
 			Singleton: true,{{end}}
 			Do: func(ctx context.Context) (interface{}, error) {
-				var deps *{{makeType $opts.Imports $v.GoImportURL $v.Typename}}
+				deps := &{{makeType $opts.Imports $v.GoImportURL $v.Typename}}{}
 				var err error
 				{{- range $k2, $p := $v.Provisioned}}
 					{{if $p -}}
@@ -338,14 +337,14 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 								{{end}}{{end -}}
 								if deps.{{.GoName}}, err = {{$opts.Imports.MustGet $p.GoPackage}}.{{$p.Method}}(ctx, "{{$v.PackageName}}",
 									{{- if $p.SerializedMsg}}p{{else}}nil{{end}}
-									{{- with $refs := index $v.Refs $k2}}{{range $k, $ref := $refs}},{{$ref.VarName}}.({{makeType $opts.Imports $ref.GoImportURL $ref.Typename}}){{end}}{{end -}}
+									{{- with $refs := index $v.Refs $k2}}{{range $k, $ref := $refs}},{{$ref.VarName}}.(*{{makeType $opts.Imports $ref.GoImportURL $ref.Typename}}){{end}}{{end -}}
 									); err != nil {
 									return nil, err
 								}
 								{{- end}}
 								{{range $kdep, $dep := $p.Dependencies}}
 								{{with $depvar := index .DepVars 0}}
-								deps.{{$depvar.GoName}}={{$opts.Imports.MustGet $dep.GoPackage}}.{{$dep.Method}}({{$v.VarName}}.{{join $dep.Args ","}})
+								deps.{{$depvar.GoName}}={{$opts.Imports.MustGet $dep.GoPackage}}.{{$dep.Method}}(deps.{{join $dep.Args ","}})
 								{{end -}}
 								{{end -}}
 							}
@@ -366,20 +365,18 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 				return err
 			}
 			{{end -}}
-			return {{$opts.Imports.MustGet .GoImportURL}}.Prepare(ctx{{if $init.Deps.VarName}}, {{$init.Deps.VarName}}.({{makeType $opts.Imports $init.Deps.GoImportURL $init.Deps.Typename}}){{end}})
+			return {{$opts.Imports.MustGet .GoImportURL}}.Prepare(ctx{{if $init.Deps.VarName}}, {{$init.Deps.VarName}}.(*{{makeType $opts.Imports $init.Deps.GoImportURL $init.Deps.Typename}}){{end}})
 		},
 	})
 	{{end}}
 
-	{{if .Services}}var ok bool{{end}}
+	{{$opts.Server}} = &ServerDeps{}
 	{{range $k, $v := .Services}}
 		{{$v.VarName}}, err := di.Get(ctx, "{{$v.PackageName}}", "{{$v.VarName}}")
 		if err != nil {
 			return nil, err
 		}
-		if {{$opts.Server}}.{{$v.Name}}, ok = {{$v.VarName}}.({{makeType $opts.Imports $v.GoImportURL $v.Typename}}); !ok {
-			return nil, fmt.Errorf("{{$v.VarName}} is not of type {{makeType $opts.Imports $v.GoImportURL $v.Typename}}")
-		}
+		{{$opts.Server}}.{{$v.Name}} = {{$v.VarName}}.(*{{makeType $opts.Imports $v.GoImportURL $v.Typename}})
 	{{end}}
 	return {{$opts.Server}}, di.Init(ctx)
 }

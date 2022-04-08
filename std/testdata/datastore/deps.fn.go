@@ -19,6 +19,6 @@ type DatabaseDeps struct {
 	Cert *secrets.Value
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, SingletonDeps, DatabaseDeps) (*DB, error)
+type _checkProvideDatabase func(context.Context, string, *Database, *SingletonDeps, *DatabaseDeps) (*DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase
