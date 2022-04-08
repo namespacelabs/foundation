@@ -142,6 +142,7 @@ _#ConfigureBase: {
 		append: [...#WithPackageName]
 	}
 	startup?: #Startup
+	sidecar?: [...#Container]
 	init?: [...#Container]
 	naming?: #Naming
 	...
