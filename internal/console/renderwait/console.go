@@ -117,13 +117,13 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 			var icon, took string
 			if blk.AlreadyExisted && !blk.Ready {
 				icon = "[ ]"
-				took = "(no updated required, waiting for old deployment)"
+				took = "(no update required, waiting for old deployment)"
 				if blk.Status != "" {
-					took = fmt.Sprintf("(no updated required, waiting for old deployment, last deployment status: %s)", blk.Status)
+					took = fmt.Sprintf("(no update required, waiting for old deployment, last deployment status: %s)", blk.Status)
 				}
 			} else if blk.AlreadyExisted {
 				icon = "[✓]"
-				took = "(no updated required)"
+				took = "(no update required)"
 			} else if blk.Ready {
 				icon = "[✓]"
 				took = fmt.Sprintf("took %v", timefmt.Format(blk.End.Sub(blk.Start)))
