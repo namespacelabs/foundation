@@ -9,16 +9,12 @@ import (
 )
 
 type SingletonDeps struct {
+	Cert           *secrets.Value
 	Gen            *secrets.Value
 	Keygen         *secrets.Value
 	ReadinessCheck core.Check
 }
 
-// Scoped dependencies that are reinstantiated for each call to ProvideDatabase
-type DatabaseDeps struct {
-	Cert *secrets.Value
-}
-
-type _checkProvideDatabase func(context.Context, string, *Database, *SingletonDeps, *DatabaseDeps) (*DB, error)
+type _checkProvideDatabase func(context.Context, string, *Database, *SingletonDeps) (*DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

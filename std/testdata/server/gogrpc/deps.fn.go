@@ -81,6 +81,16 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			deps := &datastore.SingletonDeps{}
 			var err error
 			{
+				// name: "cert"
+				p := &secrets.Secret{}
+				core.MustUnwrapProto("CgRjZXJ0", p)
+
+				if deps.Cert, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
+					return nil, err
+				}
+			}
+
+			{
 				// name: "gen"
 				p := &secrets.Secret{}
 				core.MustUnwrapProto("CgNnZW4=", p)
@@ -102,25 +112,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 			{
 				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", nil); err != nil {
-					return nil, err
-				}
-			}
-			return deps, err
-		},
-	})
-
-	di.Add(core.Factory{
-		PackageName: "namespacelabs.dev/foundation/std/testdata/datastore",
-		Instance:    "datastore0",
-		Do: func(ctx context.Context) (interface{}, error) {
-			deps := &datastore.DatabaseDeps{}
-			var err error
-			{
-				// name: "cert"
-				p := &secrets.Secret{}
-				core.MustUnwrapProto("CgRjZXJ0", p)
-
-				if deps.Cert, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", p); err != nil {
 					return nil, err
 				}
 			}
@@ -166,12 +157,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				if err != nil {
 					return nil, err
 				}
-
-				datastore0, err := di.Get(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "datastore0")
-				if err != nil {
-					return nil, err
-				}
-				if deps.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastoreSingle.(*datastore.SingletonDeps), datastore0.(*datastore.DatabaseDeps)); err != nil {
+				if deps.Main, err = datastore.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, datastoreSingle.(*datastore.SingletonDeps)); err != nil {
 					return nil, err
 				}
 			}
