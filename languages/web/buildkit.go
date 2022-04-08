@@ -20,9 +20,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/wscontents"
-	"namespacelabs.dev/foundation/languages/nodejs"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/pins"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -86,7 +86,7 @@ func viteBase(ctx context.Context, target string, module build.Workspace, rel st
 		return buildkit.LocalContents{}, llb.State{}, err
 	}
 
-	buildBase := nodejs.PrepareYarn(target, nodeImage, src, buildkit.HostPlatform())
+	buildBase := PrepareYarn(target, nodeImage, src, buildkit.HostPlatform())
 
 	// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
 	base := llbutil.Image(nodeImage, buildkit.HostPlatform()).
@@ -131,4 +131,19 @@ func (obs observerSink) Deposit(ctx context.Context, events []*wscontents.FileEv
 	}
 
 	return obs.sink.Deposit(ctx, events)
+}
+
+func PrepareYarn(target, nodejsBase string, src llb.State, platform specs.Platform) llb.State {
+	base := llbutil.Image(nodejsBase, platform)
+	buildBase := base.Run(llb.Shlex("apk add --no-cache python2 make g++")).
+		Root().
+		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn").
+		With(
+			llbutil.CopyFrom(src, "package.json", filepath.Join(target, "package.json")),
+			llbutil.CopyFrom(src, "yarn.lock", filepath.Join(target, "yarn.lock")))
+
+	yarnInstall := buildBase.Run(llb.Shlex("yarn install --frozen-lockfile"), llb.Dir(target))
+	yarnInstall.AddMount("/cache/yarn", llb.Scratch(), llb.AsPersistentCacheDir("yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
+
+	return yarnInstall.Root()
 }

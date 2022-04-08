@@ -6,13 +6,18 @@ package nodejs
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"sort"
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
@@ -23,6 +28,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
+
+// Hard-coding the version of generated yarn workspaces since we only support a monorepo for now.
+const yarnWorkspaceVersion = "0.0.0"
+const packageJsonFn = "package.json"
 
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
@@ -67,53 +76,157 @@ type impl struct {
 }
 
 func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server provision.Server, isFocus bool) (build.Spec, error) {
-	return buildNodeJS{loc: server.Location, isFocus: isFocus}, nil
+	deps := []workspace.Location{}
+	for _, dep := range server.Deps() {
+		if dep.Node() != nil && dep.Node().ServiceFramework == schema.Framework_NODEJS {
+			deps = append(deps, dep.Location)
+		}
+	}
+
+	yarnRoot, err := findYarnRoot(server.Location)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildNodeJS{
+		serverLoc: server.Location,
+		deps:      deps,
+		yarnRoot:  yarnRoot,
+		isFocus:   isFocus}, nil
 }
 
 func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.ServerRunOpts) error {
-	run.Command = []string{"node", "main.fn.js"}
+	run.Command = []string{"node", filepath.Join(t.Location.Rel(), "main.fn.js")}
 	run.WorkingDir = "/app"
 	run.ReadOnlyFilesystem = true
 	run.RunAs = production.NonRootRunAsWithID(production.NonRootUserID)
 	return nil
 }
 
-func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *schema.Server) error {
-	var packages, devPackages []string
+func (impl) TidyNode(ctx context.Context, loc workspace.Location, node *schema.Node) error {
+	return tidyPackageJson(ctx, loc, node.Import)
+}
 
-	for pkg, version := range builtin().Dependencies {
-		packages = append(packages, fmt.Sprintf("%s@%s", pkg, version))
+func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *schema.Server) error {
+	return tidyPackageJson(ctx, loc, server.Import)
+}
+
+func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []string) error {
+	packageJson, err := tidyPackageJsonFields(ctx, loc)
+	if err != nil {
+		return err
 	}
 
-	for _, importName := range server.Import {
+	wasYarnCalled, err := tidyDependencies(ctx, loc, imports, packageJson)
+	if err != nil {
+		return err
+	}
+
+	if wasYarnCalled {
+		// If yarn messed with package.json, re-format it to make tn tidy idempotent.
+		_, err = tidyPackageJsonFields(ctx, loc)
+		return err
+	} else {
+		return nil
+	}
+}
+
+// Returns the tydied package.json file.
+func tidyPackageJsonFields(ctx context.Context, loc workspace.Location) (map[string]interface{}, error) {
+	packageJson := map[string]interface{}{}
+
+	packageJsonRelFn := filepath.Join(loc.Rel(), packageJsonFn)
+	packageJsonFile, err := loc.Module.ReadWriteFS().Open(packageJsonRelFn)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	if err == nil {
+		defer packageJsonFile.Close()
+
+		packageJsonRaw, err := io.ReadAll(packageJsonFile)
+		if err != nil {
+			return nil, err
+		}
+
+		json.Unmarshal(packageJsonRaw, &packageJson)
+	}
+
+	nodejsLoc, err := nodejsLocationFrom(loc.PackageName)
+	if err != nil {
+		return nil, err
+	}
+	packageJson["name"] = nodejsLoc.NpmPackage
+	packageJson["private"] = true
+	packageJson["version"] = yarnWorkspaceVersion
+
+	editedPackageJsonRaw, err := json.MarshalIndent(packageJson, "", "\t")
+	if err != nil {
+		return nil, err
+	}
+
+	return packageJson, fnfs.WriteWorkspaceFile(ctx, loc.Module.ReadWriteFS(), packageJsonRelFn, func(w io.Writer) error {
+		_, err := w.Write(editedPackageJsonRaw)
+		return err
+	})
+}
+
+// Returns true if yarn was called.
+func tidyDependencies(ctx context.Context, loc workspace.Location, imports []string, packageJson map[string]interface{}) (bool, error) {
+	dependencies := map[string]string{}
+	for key, value := range builtin().Dependencies {
+		dependencies[key] = value
+	}
+	for _, importName := range imports {
 		loc, err := nodejsLocationFrom(schema.Name(importName))
 		if err != nil {
-			return err
+			return false, err
 		}
-		// Hard-coding the version of dependencies since we only support monorepo for now.
-		packages = append(packages, fmt.Sprintf("%s@%s", loc.NpmPackage, "0.0.0"))
+		dependencies[loc.NpmPackage] = yarnWorkspaceVersion
 	}
 
-	for pkg, version := range builtin().DevDependencies {
-		devPackages = append(devPackages, fmt.Sprintf("%s@%s", pkg, version))
-	}
-
-	sort.Strings(packages)
-	sort.Strings(devPackages)
+	packages := formatPackages(trimExistingPackages(dependencies, packageJson["dependencies"]))
+	devPackages := formatPackages(trimExistingPackages(builtin().DevDependencies, packageJson["devDependencies"]))
 
 	if len(packages) > 0 {
 		if err := RunYarn(ctx, loc, append([]string{"add"}, packages...)); err != nil {
-			return err
+			return false, err
 		}
 	}
 
 	if len(devPackages) > 0 {
 		if err := RunYarn(ctx, loc, append([]string{"add", "-D"}, devPackages...)); err != nil {
-			return err
+			return false, err
 		}
 	}
 
-	return nil
+	return len(packages) > 0 || len(devPackages) > 0, nil
+}
+
+func trimExistingPackages(packages map[string]string, existingPackages interface{}) map[string]string {
+	if existingPackages == nil {
+		return packages
+	}
+
+	existingPackagesMap := existingPackages.(map[string]interface{})
+
+	trimmedPackages := map[string]string{}
+	for pkgName, version := range packages {
+		if existingVersion, ok := existingPackagesMap[pkgName]; !ok || version != existingVersion {
+			trimmedPackages[pkgName] = version
+		}
+	}
+
+	return trimmedPackages
+}
+
+func formatPackages(packages map[string]string) []string {
+	formattedPackages := []string{}
+	for pkg, version := range packages {
+		formattedPackages = append(formattedPackages, fmt.Sprintf("%s@%s", pkg, version))
+	}
+	sort.Strings(formattedPackages)
+
+	return formattedPackages
 }
 
 func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {

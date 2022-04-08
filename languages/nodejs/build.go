@@ -24,9 +24,14 @@ import (
 	"namespacelabs.dev/foundation/workspace/pins"
 )
 
+const appRootPath = "/app"
+const tmpBundlePath = "/tmp_bundle"
+
 type buildNodeJS struct {
-	loc     workspace.Location
-	isFocus bool
+	serverLoc workspace.Location
+	deps      []workspace.Location
+	yarnRoot  schema.PackageName
+	isFocus   bool
 }
 
 func (bnj buildNodeJS) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
@@ -40,7 +45,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env ops.Environment, conf
 		Env:        nodeEnv(env),
 	}
 
-	state, local := n.LLB(bnj.loc, bnj.isFocus, conf)
+	state, local := n.LLB(bnj, conf)
 
 	return buildkit.LLBToImage(ctx, env, conf.Target, state, local)
 }
@@ -60,34 +65,56 @@ type NodeJsBinary struct {
 	Env        string
 }
 
-func (n NodeJsBinary) LLB(loc workspace.Location, rebuildOnChanges bool, conf build.Configuration) (llb.State, buildkit.LocalContents) {
-	local := buildkit.LocalContents{Module: loc.Module, Path: loc.Rel(), ObserveChanges: rebuildOnChanges}
+func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.Configuration) (llb.State, buildkit.LocalContents) {
+	local := buildkit.LocalContents{Module: bnj.serverLoc.Module, Path: "", ObserveChanges: bnj.isFocus}
 	src := buildkit.MakeLocalState(local)
 
-	buildBase := PrepareYarn("/app", n.NodeJsBase, src, *conf.Target)
+	yarnWorkspacePaths := []string{bnj.serverLoc.Rel()}
+	for _, dep := range bnj.deps {
+		yarnWorkspacePaths = append(yarnWorkspacePaths, dep.Rel())
+	}
+
+	yarnRoot := bnj.yarnRoot.String()
+	buildBase := prepareYarnWithWorkspaces(yarnWorkspacePaths, yarnRoot, n.NodeJsBase, src, *conf.Target)
+
+	stateOptions := []llb.StateOption{
+		llbutil.CopyFrom(buildBase, filepath.Join(appRootPath, yarnRoot, "node_modules"), filepath.Join(appRootPath, yarnRoot, "node_modules")),
+	}
+	for _, path := range yarnWorkspacePaths {
+		stateOptions = append(stateOptions, llbutil.CopyFrom(
+			buildBase, filepath.Join(appRootPath, path), filepath.Join(appRootPath, path)))
+	}
 
 	// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
 	out := production.PrepareImage(llbutil.Image(n.NodeJsBase, *conf.Target), *conf.Target).
-		With(
-			llbutil.CopyFrom(src, ".", "/app"),
-			llbutil.CopyFrom(buildBase, "/app/node_modules", "/app/node_modules")).
-		AddEnv("NODE_ENV", n.Env).
-		Run(llb.Shlex("yarn run build"), llb.Dir("/app"))
+		With(stateOptions...).
+		AddEnv("NODE_ENV", n.Env)
 
-	return out.Root(), local
+	return out, local
 }
 
-func PrepareYarn(target, nodejsBase string, src llb.State, platform specs.Platform) llb.State {
+func prepareYarnWithWorkspaces(workspacePaths []string, yarnRoot string, nodejsBase string, src llb.State, platform specs.Platform) llb.State {
 	base := llbutil.Image(nodejsBase, platform)
+	targetYarnRoot := filepath.Join(appRootPath, yarnRoot)
 	buildBase := base.Run(llb.Shlex("apk add --no-cache python2 make g++")).
 		Root().
-		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn").
-		With(
-			llbutil.CopyFrom(src, "package.json", filepath.Join(target, "package.json")),
-			llbutil.CopyFrom(src, "yarn.lock", filepath.Join(target, "yarn.lock")))
+		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn")
+	for _, fn := range []string{"package.json", "tsconfig.json", "yarn.lock", ".yarnrc.yml", ".yarn/releases"} {
+		buildBase = buildBase.With(
+			llbutil.CopyFrom(src, filepath.Join(yarnRoot, fn), filepath.Join(targetYarnRoot, fn)))
+	}
+	for _, path := range workspacePaths {
+		buildBase = buildBase.With(llbutil.CopyFrom(src, path, filepath.Join(appRootPath, path)))
+	}
 
-	yarnInstall := buildBase.Run(llb.Shlex("yarn install --frozen-lockfile"), llb.Dir(target))
-	yarnInstall.AddMount("/cache/yarn", llb.Scratch(), llb.AsPersistentCacheDir("yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
+	yarnInstall := buildBase.Run(llb.Shlex("yarn install --immutable"), llb.Dir(targetYarnRoot))
+	yarnInstall.AddMount("/cache/yarn", llb.Scratch(), llb.AsPersistentCacheDir(
+		"yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
 
-	return yarnInstall.Root()
+	out := yarnInstall.Root().
+		Run(llb.Shlex("yarn plugin import workspace-tools@3.1.1"), llb.Dir(targetYarnRoot)).Root().
+		// Compile Typescript in parallel in the reverse dependency order.
+		Run(llb.Shlex("yarn workspaces foreach -pt run tsc"), llb.Dir(targetYarnRoot)).Root()
+
+	return out
 }
