@@ -150,7 +150,7 @@ func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) er
 
 	// Install Yarn 3+ if needed
 	if installYarn {
-		if err := RunYarn(ctx, path, []string{fmt.Sprintf("set version %s", yarnVersion)}); err != nil {
+		if err := RunYarn(ctx, path, []string{"set", "version", yarnVersion}); err != nil {
 			return err
 		}
 	}
@@ -208,33 +208,36 @@ func tidyPackageJsonFields(ctx context.Context, loc workspace.Location) (map[str
 }
 
 func updatePackageJson(ctx context.Context, path string, fs fnfs.ReadWriteFS, callback func(map[string]interface{})) (map[string]interface{}, error) {
-	packageJson := map[string]interface{}{}
+	return updateJson(ctx, filepath.Join(path, packageJsonFn), fs, callback)
+}
 
-	packageJsonRelFn := filepath.Join(path, packageJsonFn)
-	packageJsonFile, err := fs.Open(packageJsonRelFn)
+func updateJson(ctx context.Context, filepath string, fs fnfs.ReadWriteFS, callback func(map[string]interface{})) (map[string]interface{}, error) {
+	parsedJson := map[string]interface{}{}
+
+	jsonFile, err := fs.Open(filepath)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 	if err == nil {
-		defer packageJsonFile.Close()
+		defer jsonFile.Close()
 
-		packageJsonRaw, err := io.ReadAll(packageJsonFile)
+		jsonRaw, err := io.ReadAll(jsonFile)
 		if err != nil {
 			return nil, err
 		}
 
-		json.Unmarshal(packageJsonRaw, &packageJson)
+		json.Unmarshal(jsonRaw, &parsedJson)
 	}
 
-	callback(packageJson)
+	callback(parsedJson)
 
-	editedPackageJsonRaw, err := json.MarshalIndent(packageJson, "", "\t")
+	updatedJsonRaw, err := json.MarshalIndent(parsedJson, "", "\t")
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, fnfs.WriteWorkspaceFile(ctx, fs, packageJsonRelFn, func(w io.Writer) error {
-		_, err := w.Write(editedPackageJsonRaw)
+	return nil, fnfs.WriteWorkspaceFile(ctx, fs, filepath, func(w io.Writer) error {
+		_, err := w.Write(updatedJsonRaw)
 		return err
 	})
 }
