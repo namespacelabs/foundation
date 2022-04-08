@@ -44,7 +44,7 @@ type cueNaming struct {
 	WithOrg              string `json:"withOrg"`
 }
 
-type cueInit struct {
+type cueContainer struct {
 	Binary string         `json:"binary"`
 	Args   *argsListOrMap `json:"args"`
 }
@@ -87,15 +87,30 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, inputs frontend.Provisio
 		}
 	}
 
-	if init := lookupTransition(vv, "init"); init.Exists() {
-		var initData []cueInit
+	if sidecar := lookupTransition(vv, "sidecar"); sidecar.Exists() {
+		var sidecards []cueContainer
 
-		if err := init.Val.Decode(&initData); err != nil {
+		if err := sidecar.Val.Decode(&sidecards); err != nil {
 			return pdata, err
 		}
 
-		for _, data := range initData {
-			pdata.Inits = append(pdata.Inits, frontend.Init{
+		for _, data := range sidecards {
+			pdata.Sidecars = append(pdata.Sidecars, frontend.Container{
+				Binary: data.Binary,
+				Args:   data.Args.Parsed(),
+			})
+		}
+	}
+
+	if init := lookupTransition(vv, "init"); init.Exists() {
+		var inits []cueContainer
+
+		if err := init.Val.Decode(&inits); err != nil {
+			return pdata, err
+		}
+
+		for _, data := range inits {
+			pdata.Inits = append(pdata.Inits, frontend.Container{
 				Binary: data.Binary,
 				Args:   data.Args.Parsed(),
 			})

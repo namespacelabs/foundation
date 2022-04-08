@@ -162,7 +162,7 @@ type prepareAndBuildResult struct {
 	DeploymentState runtime.DeploymentState
 }
 
-type initPackage struct {
+type sidecarPackage struct {
 	Package schema.PackageName
 	Command []string
 }
@@ -195,30 +195,30 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 		return nil, err
 	}
 
-	initImages, err := prepareInitImages(ctx, stack, buildID)
+	sidecarImages, err := prepareSidecarAndInitImages(ctx, stack, buildID)
 	if err != nil {
 		return nil, err
 	}
 
 	finalInputs := compute.Inputs()
 
-	var initCommands []initPackage
-	for pkg, v := range initImages {
-		// There's an assumption here that init packages are non-overlapping with servers.
+	var sidecarCommands []sidecarPackage
+	for pkg, v := range sidecarImages {
+		// There's an assumption here that sidecar/init packages are non-overlapping with servers.
 		imgs[pkg] = images{
 			Package: pkg,
 			Binary:  v.Image,
 		}
-		initCommands = append(initCommands, initPackage{Package: pkg, Command: v.Command})
+		sidecarCommands = append(sidecarCommands, sidecarPackage{Package: pkg, Command: v.Command})
 	}
 
 	// Stable ordering.
-	sort.Slice(initCommands, func(i, j int) bool {
-		return strings.Compare(initCommands[i].Package.String(), initCommands[j].Package.String()) < 0
+	sort.Slice(sidecarCommands, func(i, j int) bool {
+		return strings.Compare(sidecarCommands[i].Package.String(), sidecarCommands[j].Package.String()) < 0
 	})
 
-	// Ensure initCommands are part of the cache key.
-	finalInputs = finalInputs.JSON("initCommands", initCommands)
+	// Ensure sidecarCommands are part of the cache key.
+	finalInputs = finalInputs.JSON("sidecarCommands", sidecarCommands)
 
 	// A two-layer graph is created here: the first layer depends on all the server binaries,
 	// while the second layer depends on all config images (if specified), plus depending on
@@ -291,10 +291,12 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 				}
 
 				for _, dep := range stack.ParsedServers[k].Deps {
-					if err := prepareInitRunOpts(dep, imageIDs, initCommands, &run); err != nil {
+					if err := prepareInitRunOpts(dep.ProvisionPlan.Sidecars, imageIDs, sidecarCommands, &run.Sidecars); err != nil {
 						return prepareAndBuildResult{}, err
 					}
-
+					if err := prepareInitRunOpts(dep.ProvisionPlan.Inits, imageIDs, sidecarCommands, &run.Inits); err != nil {
+						return prepareAndBuildResult{}, err
+					}
 				}
 
 				run.Extensions = handlerR.ServerExtensions[s.PackageName()]
@@ -374,17 +376,20 @@ func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *s
 	return imageMap, nil
 }
 
-type initImage struct {
+type containerImage struct {
 	Image   compute.Computable[oci.ImageID]
 	Command []string
 }
 
-func prepareInitImages(ctx context.Context, stack *stack.Stack, buildID provision.BuildID) (map[schema.PackageName]initImage, error) {
-	res := map[schema.PackageName]initImage{}
+func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildID provision.BuildID) (map[schema.PackageName]containerImage, error) {
+	res := map[schema.PackageName]containerImage{}
 	for k, srv := range stack.Servers {
 		for _, dep := range stack.ParsedServers[k].Deps {
-			for _, init := range dep.ProvisionPlan.Inits {
-				pkgname := schema.PackageName(init.Binary)
+			containers := append([]frontend.Container{}, dep.ProvisionPlan.Sidecars...)
+			containers = append(containers, dep.ProvisionPlan.Inits...)
+
+			for _, container := range containers {
+				pkgname := schema.PackageName(container.Binary)
 				bin, err := srv.Env().LoadByName(ctx, pkgname)
 				if err != nil {
 					return nil, err
@@ -409,7 +414,7 @@ func prepareInitImages(ctx context.Context, stack *stack.Stack, buildID provisio
 					return nil, err
 				}
 
-				res[pkgname] = initImage{
+				res[pkgname] = containerImage{
 					Image:   oci.PublishResolvable(tag, image),
 					Command: prepared.Command,
 				}
@@ -472,19 +477,19 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 	return nil
 }
 
-func prepareInitRunOpts(dep *stack.ParsedNode, imageIDs builtImages, initCommands []initPackage, out *runtime.ServerConfig) error {
-	for _, init := range dep.ProvisionPlan.Inits {
-		pkg := schema.PackageName(init.Binary)
+func prepareInitRunOpts(containers []frontend.Container, imageIDs builtImages, sidecarCommands []sidecarPackage, out *[]runtime.SidecarRunOpts) error {
+	for _, container := range containers {
+		pkg := schema.PackageName(container.Binary)
 
-		var initpkg *initPackage
-		for _, ip := range initCommands {
+		var sidecarPkg *sidecarPackage
+		for _, ip := range sidecarCommands {
 			if ip.Package == pkg {
-				initpkg = &ip
+				sidecarPkg = &ip
 				break
 			}
 		}
 
-		if initpkg == nil {
+		if sidecarPkg == nil {
 			return fnerrors.InternalError("%s: missing a command", pkg)
 		}
 
@@ -493,12 +498,12 @@ func prepareInitRunOpts(dep *stack.ParsedNode, imageIDs builtImages, initCommand
 			return fnerrors.InternalError("%s: missing an image to run", pkg)
 		}
 
-		out.Inits = append(out.Inits, runtime.InitRunOpts{
+		*out = append(*out, runtime.SidecarRunOpts{
 			PackageName: pkg,
 			ServerRunOpts: runtime.ServerRunOpts{
 				Image:   imgs.Binary,
-				Args:    init.Args,
-				Command: initpkg.Command,
+				Args:    container.Args,
+				Command: sidecarPkg.Command,
 			},
 		})
 	}

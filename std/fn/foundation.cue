@@ -142,7 +142,7 @@ _#ConfigureBase: {
 		append: [...#WithPackageName]
 	}
 	startup?: #Startup
-	init?: [...#Init]
+	init?: [...#Container]
 	naming?: #Naming
 	...
 
@@ -165,7 +165,7 @@ _#ConfigureBase: {
 		env: [string]: string
 	}
 
-	#Init: {
+	#Container: {
 		binary: inputs.#Package
 		args:   #Args
 	}

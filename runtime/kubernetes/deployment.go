@@ -327,6 +327,23 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		})
 	}
 
+	for _, sidecar := range server.Sidecars {
+		name := fmt.Sprintf("sidecar-%s", shortPackageName(sidecar.PackageName))
+		for _, c := range containers {
+			if name == c {
+				return fnerrors.UserError(server.Server.Location, "duplicate sidecar container name: %s", name)
+			}
+		}
+		containers = append(containers, name)
+
+		spec.WithInitContainers(
+			applycorev1.Container().
+				WithName(name).
+				WithImage(sidecar.Image.RepoAndDigest()).
+				WithArgs(sidecar.Args...).
+				WithCommand(sidecar.Command...))
+	}
+
 	for _, init := range server.Inits {
 		name := fmt.Sprintf("init-%v", labelName(init.Command))
 		for _, c := range containers {
