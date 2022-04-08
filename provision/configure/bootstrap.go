@@ -14,7 +14,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -113,7 +112,7 @@ func handle(ctx context.Context, h AllHandlers) error {
 		grpc.WithInsecure(),
 		grpc.WithReadBufferSize(0),
 		grpc.WithWriteBufferSize(0),
-		grpc.WithDialer(func(_ string, _ time.Duration) (net.Conn, error) {
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
 			return grpcstdio.NewConnection(os.Stdout, os.Stdin), nil
 		}))
 	if err != nil {
