@@ -93,7 +93,8 @@ type ServerConfig struct {
 	Server      provision.Server
 	ConfigImage *oci.ImageID
 	Extensions  []*schema.DefExtension
-	Inits       []InitRunOpts
+	Sidecars    []SidecarRunOpts
+	Inits       []SidecarRunOpts
 }
 
 type ServerRunOpts struct {
@@ -110,7 +111,7 @@ type RunAs struct {
 	UserID string
 }
 
-type InitRunOpts struct {
+type SidecarRunOpts struct {
 	PackageName schema.PackageName
 	ServerRunOpts
 }

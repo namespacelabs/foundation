@@ -8,17 +8,6 @@ package foundation.languages.golang;
 
 option go_package = "namespacelabs.dev/foundation/languages/golang";
 
-message Instantiate {
-    string package = 1;
-    string typename = 2;
-    string method = 3;
-    repeated MethodArg arguments = 4;
-
-    message MethodArg {
-        string ref = 1;
-    }
-}
-
 message FrameworkExt {
     // Which Go version this server is compiled against (computed).
     string go_version = 1;

@@ -4,12 +4,18 @@ package post
 import (
 	"context"
 
+	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/grpc/deadlines"
 	"namespacelabs.dev/foundation/std/testdata/datastore"
+	"namespacelabs.dev/foundation/std/testdata/service/simple"
 )
 
 type ServiceDeps struct {
-	Main *datastore.DB
+	Dl         *deadlines.DeadlineRegistration
+	Main       *datastore.DB
+	Simple     simple.EmptyServiceClient
+	SimpleConn *grpc.ClientConn
 }
 
 // Verify that WireService is present and has the appropriate type.

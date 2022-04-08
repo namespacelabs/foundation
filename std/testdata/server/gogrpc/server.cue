@@ -11,6 +11,7 @@ server: fn.#Server & {
 	import: [
 		"namespacelabs.dev/foundation/std/go/grpc/gateway",
 		"namespacelabs.dev/foundation/std/testdata/service/post",
+		"namespacelabs.dev/foundation/std/grpc/logging",
 	]
 }
 

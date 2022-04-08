@@ -25,8 +25,10 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 		}
 	}
 
+	var additionalInstances []*schema.Instantiate
+
 	var deps schema.PackageList
-	for k, dep := range node.Instantiate {
+	for _, dep := range node.Instantiate {
 		// Checking language compatibility
 
 		// No package happen for internal nodes, e.g. "std/grpc"
@@ -55,16 +57,22 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 		}
 
 		// Adding a proto dependency.
-
-		ptype, err := ResolveDependency(dep)
-		if err != nil {
-			return fnerrors.Wrapf(loc, err, "dep#%d (%s): %w", k, dep.Name)
+		if ref := protos.Ref(dep.Constructor); ref != nil && !ref.Builtin {
+			deps.Add(ref.Package)
 		}
 
-		if !ptype.Builtin {
-			deps.Add(ptype.Package)
+		// XXX this special casing should be found a new home.
+		if dep.PackageName == "namespacelabs.dev/foundation/std/grpc" && dep.Type == "Backend" {
+			additionalInstances = append(additionalInstances, &schema.Instantiate{
+				PackageName: dep.PackageName,
+				Type:        "Conn",
+				Name:        dep.Name + "Conn",
+				Constructor: dep.Constructor,
+			})
 		}
 	}
+
+	node.Instantiate = append(node.Instantiate, additionalInstances...)
 
 	if kind == schema.Node_SERVICE {
 		node.IngressServiceName = filepath.Base(loc.PackageName.String())
@@ -84,7 +92,7 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 	// XXX stable order is missing
 	for _, handler := range FrameworkHandlers {
 		var ext FrameworkExt
-		if err := handler.ParseNode(ctx, loc, &ext); err != nil {
+		if err := handler.ParseNode(ctx, loc, node, &ext); err != nil {
 			return err
 		}
 
@@ -99,30 +107,6 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 
 	node.Import = deps.PackageNamesAsString()
 	return nil
-}
-
-type ParsedType struct {
-	Package   schema.PackageName
-	ProtoType string
-	Builtin   bool
-}
-
-func ResolveDependency(dep *schema.Instantiate) (protos.TypeReference, error) {
-	if dep.Constructor != nil {
-		ref := protos.Ref(dep.Constructor)
-		if ref != nil {
-			if ref.Builtin && dep.PackageName != "" {
-				return protos.TypeReference{
-					Package:   schema.PackageName(dep.PackageName),
-					ProtoType: ref.ProtoType,
-				}, nil
-			}
-
-			return *ref, nil
-		}
-	}
-
-	return protos.TypeReference{}, fnerrors.InternalError("don't know how to build type")
 }
 
 func visitDeps(ctx context.Context, pl Packages, loc Location, includes []schema.PackageName, dl *schema.PackageList, visit func(n *schema.Node) error) error {

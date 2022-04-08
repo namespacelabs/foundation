@@ -34,7 +34,14 @@ func cleanWith(msg protoreflect.Message, xt protoreflect.ExtensionType) {
 		}
 
 		if field.Kind() == protoreflect.MessageKind {
-			cleanWith(msg.Get(field).Message(), xt)
+			if field.Cardinality() == protoreflect.Repeated {
+				list := msg.Get(field).List()
+				for n := 0; n < list.Len(); n++ {
+					cleanWith(list.Get(n).Message(), xt)
+				}
+			} else {
+				cleanWith(msg.Get(field).Message(), xt)
+			}
 		}
 	}
 }

@@ -206,6 +206,7 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	for _, input := range server.Extensions {
 		specExt := &kubedef.SpecExtension{}
 		containerExt := &kubedef.ContainerExtension{}
+		initContainerExt := &kubedef.InitContainerExtension{}
 
 		switch {
 		case input.Impl.MessageIs(specExt):
@@ -262,16 +263,31 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 				container = container.WithEnv(applycorev1.EnvVar().WithName(env.Name).WithValue(env.Value))
 			}
 
-			for _, arg := range containerExt.Arg {
-				if currentValue, found := getArg(container, arg.Name); found && currentValue != arg.Value {
-					return fnerrors.UserError(server.Server.Location, "argument '%s' is already set to '%s' but would be overwritten to '%s' by container extension", arg.Name, currentValue, arg.Value)
+			if containerExt.Args != nil {
+				container = container.WithArgs(containerExt.Args...)
+			} else {
+				// Deprecated path.
+				for _, arg := range containerExt.ArgTuple {
+					if currentValue, found := getArg(container, arg.Name); found && currentValue != arg.Value {
+						return fnerrors.UserError(server.Server.Location, "argument '%s' is already set to '%s' but would be overwritten to '%s' by container extension", arg.Name, currentValue, arg.Value)
+					}
+					container = container.WithArgs(fmt.Sprintf("--%s=%s", arg.Name, arg.Value))
 				}
-				container = container.WithArgs(fmt.Sprintf("--%s=%s", arg.Name, arg.Value))
 			}
 
+			// Deprecated path.
 			for _, initContainer := range containerExt.InitContainer {
-				initArgs[schema.PackageName(initContainer.PackageName)] = append(initArgs[schema.PackageName(initContainer.PackageName)], initContainer.Arg...)
+				pkg := schema.PackageName(initContainer.PackageName)
+				initArgs[pkg] = append(initArgs[pkg], initContainer.Arg...)
 			}
+
+		case input.Impl.MessageIs(initContainerExt):
+			if err := input.Impl.UnmarshalTo(initContainerExt); err != nil {
+				return fnerrors.InternalError("failed to unmarshal InitContainerExtension: %w", err)
+			}
+
+			pkg := schema.PackageName(initContainerExt.PackageName)
+			initArgs[pkg] = append(initArgs[pkg], initContainerExt.Args...)
 
 		default:
 			return fnerrors.InternalError("unused startup input: %s", input.Impl.GetTypeUrl())
@@ -309,6 +325,27 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 						corev1.ResourceStorage: *resource.NewScaledQuantity(int64(rs.ByteCount), resource.Scale(1)),
 					}))),
 		})
+	}
+
+	for _, sidecar := range server.Sidecars {
+		name := fmt.Sprintf("sidecar-%s", shortPackageName(sidecar.PackageName))
+		for _, c := range containers {
+			if name == c {
+				return fnerrors.UserError(server.Server.Location, "duplicate sidecar container name: %s", name)
+			}
+		}
+		containers = append(containers, name)
+
+		scntr := applycorev1.Container().
+			WithName(name).
+			WithImage(sidecar.Image.RepoAndDigest()).
+			WithArgs(sidecar.Args...).
+			WithCommand(sidecar.Command...)
+
+		// Share all mounts with sidecards for now.
+		// XXX security review this.
+		scntr.VolumeMounts = container.VolumeMounts
+		spec.WithContainers(scntr)
 	}
 
 	for _, init := range server.Inits {

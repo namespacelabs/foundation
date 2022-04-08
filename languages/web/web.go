@@ -62,25 +62,25 @@ type impl struct {
 	languages.MaybeTidy
 }
 
-func (i impl) ParseNode(context.Context, workspace.Location, *workspace.FrameworkExt) error {
+func (impl) ParseNode(context.Context, workspace.Location, *schema.Node, *workspace.FrameworkExt) error {
 	return nil
 }
 
-func (i impl) PreParseServer(_ context.Context, _ workspace.Location, ext *workspace.FrameworkExt) error {
+func (impl) PreParseServer(_ context.Context, _ workspace.Location, ext *workspace.FrameworkExt) error {
 	ext.Include = append(ext.Include, controllerPkg)
 	return nil
 }
 
-func (i impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error {
+func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error {
 	sealed.Proto.Server.StaticPort = []*schema.Endpoint_Port{{Name: httpPortName, ContainerPort: httpPort}}
 	return nil
 }
 
-func (i impl) InjectService(workspace.Location, *schema.Node, *workspace.CueService) error {
+func (impl) InjectService(workspace.Location, *schema.Node, *workspace.CueService) error {
 	return nil
 }
 
-func (i impl) EvalProvision(n *schema.Node) (frontend.ProvisionStack, error) {
+func (impl) EvalProvision(n *schema.Node) (frontend.ProvisionStack, error) {
 	var pdata frontend.ProvisionStack
 	for _, inst := range n.Instantiate {
 		backend := &http.Backend{}
@@ -98,7 +98,7 @@ func (i impl) EvalProvision(n *schema.Node) (frontend.ProvisionStack, error) {
 	return pdata, nil
 }
 
-func (i impl) PrepareBuild(ctx context.Context, endpoints languages.Endpoints, srv provision.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, endpoints languages.Endpoints, srv provision.Server, isFocus bool) (build.Spec, error) {
 	builds, err := buildWebApps(ctx, endpoints, srv, isFocus)
 	if err != nil {
 		return nil, err
@@ -385,8 +385,8 @@ func useDevBuild(env *schema.Environment) bool {
 	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
-func (i impl) TidyNode(ctx context.Context, loc workspace.Location, node *schema.Node) error {
-	if node.Kind != schema.Node_SERVICE {
+func (i impl) TidyNode(ctx context.Context, p *workspace.Package) error {
+	if p.Node().Kind != schema.Node_SERVICE {
 		return nil
 	}
 
@@ -395,7 +395,7 @@ func (i impl) TidyNode(ctx context.Context, loc workspace.Location, node *schema
 		"vite@2.7.13",
 	}
 
-	if err := nodejs.RunYarn(ctx, loc.Rel(), append([]string{"add", "-D"}, devPackages...)); err != nil {
+	if err := nodejs.RunYarn(ctx, p.Location.Rel(), append([]string{"add", "-D"}, devPackages...)); err != nil {
 		return err
 	}
 

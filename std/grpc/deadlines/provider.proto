@@ -1,0 +1,19 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.std.grpc.deadlines;
+
+option go_package = "namespacelabs.dev/foundation/std/grpc/deadlines";
+
+message Deadline {
+    repeated Configuration configuration = 1;
+
+    message Configuration {
+        string service_name     = 1;
+        string method_name      = 2;
+        float  maximum_deadline = 3;
+    }
+}
