@@ -10,6 +10,7 @@ import (
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
 	"namespacelabs.dev/foundation/std/grpc"
+	"namespacelabs.dev/foundation/std/grpc/deadlines"
 	"namespacelabs.dev/foundation/std/grpc/logging"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/secrets"
@@ -50,6 +51,22 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			var err error
 			{
 				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", nil); err != nil {
+					return nil, err
+				}
+			}
+			return deps, err
+		},
+	})
+
+	di.Add(core.Factory{
+		PackageName: "namespacelabs.dev/foundation/std/grpc/deadlines",
+		Instance:    "deadlinesSingle",
+		Singleton:   true,
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps *deadlines.SingletonDeps
+			var err error
+			{
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", nil); err != nil {
 					return nil, err
 				}
 			}
@@ -120,6 +137,24 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			var deps *post.ServiceDeps
 			var err error
 			{
+				// configuration: {
+				//   service_name: "PostService"
+				//   method_name: "*"
+				//   maximum_deadline: 5
+				// }
+				p := &deadlines.Deadline{}
+				core.MustUnwrapProto("ChUKC1Bvc3RTZXJ2aWNlEgEqHQAAoEA=", p)
+
+				deadlinesSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", "deadlinesSingle")
+				if err != nil {
+					return nil, err
+				}
+				if deps.Dl, err = deadlines.ProvideDeadlines(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p, deadlinesSingle.(deadlines.SingletonDeps)); err != nil {
+					return nil, err
+				}
+			}
+
+			{
 				// name: "main"
 				// schema_file: {
 				//   path: "schema.txt"
@@ -141,37 +176,35 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 					return nil, err
 				}
 			}
+
+			{
+				// package_name: "namespacelabs.dev/foundation/std/testdata/service/simple"
+				p := &grpc.Backend{}
+				core.MustUnwrapProto("CjhuYW1lc3BhY2VsYWJzLmRldi9mb3VuZGF0aW9uL3N0ZC90ZXN0ZGF0YS9zZXJ2aWNlL3NpbXBsZQ==", p)
+
+				if deps.SimpleConn, err = grpc.ProvideConn(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p); err != nil {
+					return nil, err
+				}
+
+				deps.Simple = simple.NewEmptyServiceClient(postDeps.SimpleConn)
+			}
 			return deps, err
 		},
 	})
 
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/grpc",
-		Instance:    "server.post",
-		Do: func(ctx context.Context) (err error) {
-			// package_name: "namespacelabs.dev/foundation/std/testdata/service/simple"
-			p := &grpc.Backend{}
-			core.MustUnwrapProto("CjhuYW1lc3BhY2VsYWJzLmRldi9mb3VuZGF0aW9uL3N0ZC90ZXN0ZGF0YS9zZXJ2aWNlL3NpbXBsZQ==", p)
-
-			if server.post.SimpleConn, err = grpc.ProvideConn(ctx, "namespacelabs.dev/foundation/std/testdata/service/post", p); err != nil {
-				return err
+	di.Add(core.Factory{
+		PackageName: "namespacelabs.dev/foundation/std/grpc/logging",
+		Instance:    "loggingSingle",
+		Singleton:   true,
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps *logging.SingletonDeps
+			var err error
+			{
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/grpc/logging", nil); err != nil {
+					return nil, err
+				}
 			}
-
-			server.post.Simple = simple.NewEmptyServiceClient(server.post.SimpleConn)
-			return nil
-		},
-	})
-
-	var logging0 logging.ExtensionDeps
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors",
-		Instance:    "logging0",
-		Do: func(ctx context.Context) (err error) {
-			if logging0.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/grpc/logging", nil); err != nil {
-				return err
-			}
-			return nil
+			return deps, err
 		},
 	})
 
@@ -194,6 +227,28 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				return err
 			}
 			return tracing.Prepare(ctx, tracingSingle.(tracing.SingletonDeps))
+		},
+	})
+
+	di.Register(core.Initializer{
+		PackageName: "namespacelabs.dev/foundation/std/grpc/deadlines",
+		Do: func(ctx context.Context) error {
+			deadlinesSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", "deadlinesSingle")
+			if err != nil {
+				return err
+			}
+			return deadlines.Prepare(ctx, deadlinesSingle.(deadlines.SingletonDeps))
+		},
+	})
+
+	di.Register(core.Initializer{
+		PackageName: "namespacelabs.dev/foundation/std/grpc/logging",
+		Do: func(ctx context.Context) error {
+			loggingSingle, err := di.Get(ctx, "namespacelabs.dev/foundation/std/grpc/logging", "loggingSingle")
+			if err != nil {
+				return err
+			}
+			return logging.Prepare(ctx, loggingSingle.(logging.SingletonDeps))
 		},
 	})
 

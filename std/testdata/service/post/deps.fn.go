@@ -12,7 +12,10 @@ import (
 )
 
 type ServiceDeps struct {
-	Main *datastore.DB
+	Dl         *deadlines.DeadlineRegistration
+	Main       *datastore.DB
+	Simple     simple.EmptyServiceClient
+	SimpleConn *grpc.ClientConn
 }
 
 // Verify that WireService is present and has the appropriate type.
