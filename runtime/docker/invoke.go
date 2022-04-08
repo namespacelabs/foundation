@@ -25,6 +25,10 @@ type ToolRuntime struct{}
 func Impl() ToolRuntime { return ToolRuntime{} }
 
 func (r ToolRuntime) Run(ctx context.Context, opts rtypes.RunToolOpts) error {
+	return r.RunWithOpts(ctx, opts, localexec.RunOpts{})
+}
+
+func (r ToolRuntime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.RunOpts) error {
 	digest, err := opts.Image.Digest()
 	if err != nil {
 		return err
@@ -43,7 +47,7 @@ func (r ToolRuntime) Run(ctx context.Context, opts rtypes.RunToolOpts) error {
 		Arg("config", config).
 		Arg("args", opts.Args).
 		Run(ctx, func(ctx context.Context) error {
-			return runImpl(ctx, opts)
+			return runImpl(ctx, opts, additional)
 		})
 }
 
@@ -55,7 +59,7 @@ func HostPlatform() specs.Platform {
 
 func (r ToolRuntime) HostPlatform() specs.Platform { return HostPlatform() }
 
-func runImpl(ctx context.Context, opts rtypes.RunToolOpts) error {
+func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.RunOpts) error {
 	n := opts.ImageName
 	if n == "" {
 		n = "foundation.namespacelabs.dev/docker-invocation"
@@ -141,10 +145,14 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts) error {
 	args = append(args, opts.Command...)
 	args = append(args, opts.Args...)
 
-	return DockerRun(ctx, args, opts.IO)
+	return dockerRun(ctx, args, opts.IO, additional)
 }
 
 func DockerRun(ctx context.Context, args []string, opts rtypes.IO) error {
+	return dockerRun(ctx, args, opts, localexec.RunOpts{})
+}
+
+func dockerRun(ctx context.Context, args []string, opts rtypes.IO, additional localexec.RunOpts) error {
 	return tasks.Action("docker.run").
 		LogLevel(2).
 		Arg("args", args).
@@ -155,6 +163,6 @@ func DockerRun(ctx context.Context, args []string, opts rtypes.IO) error {
 			c.Stdout = opts.Stdout
 			c.Stderr = opts.Stderr
 
-			return localexec.RunAndPropagateCancelation(ctx, "docker", c)
+			return localexec.RunAndPropagateCancelationWithOpts(ctx, "docker", c, additional)
 		})
 }

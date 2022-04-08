@@ -8,7 +8,10 @@ package versions
 // are built into Foundation itself (i.e. is not versioned as part of the
 // foundation repository). Whenever new non-backwards compatible semantics are
 // added to Foundation, this number must be bumped.
-const APIVersion = 21
+const APIVersion = 22
+
+// Embedded into provisioning tools.
+const ToolAPIVersion = 1
 
 // Allow for global cache invalidation.
 const CacheVersion = 1

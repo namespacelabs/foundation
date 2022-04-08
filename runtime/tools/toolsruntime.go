@@ -8,12 +8,14 @@ import (
 	"context"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 )
 
 type Runtime interface {
 	Run(context.Context, rtypes.RunToolOpts) error
+	RunWithOpts(context.Context, rtypes.RunToolOpts, localexec.RunOpts) error
 	HostPlatform() specs.Platform
 }
 
