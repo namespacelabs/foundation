@@ -21,6 +21,11 @@ func New(ctx context.Context) (Executor, func() error) {
 	return fromErrGroup(eg, ctx), eg.Wait
 }
 
+func Serial(ctx context.Context) (Executor, func() error) {
+	s := &serial{ctx: ctx}
+	return s, func() error { return s.err }
+}
+
 func fromErrGroup(eg *errgroup.Group, ctx context.Context) Executor {
 	return &errGroupExecutor{eg, ctx}
 }
@@ -48,4 +53,22 @@ func (exec *errGroupExecutor) GoCancelable(f func(context.Context) error) func()
 		return nil
 	})
 	return cancel
+}
+
+type serial struct {
+	ctx context.Context
+	err error
+}
+
+func (s *serial) Go(f func(context.Context) error) {
+	if s.err == nil {
+		s.err = f(s.ctx)
+	}
+}
+
+func (s *serial) GoCancelable(f func(context.Context) error) func() {
+	if s.err == nil {
+		s.err = f(s.ctx)
+	}
+	return func() {}
 }

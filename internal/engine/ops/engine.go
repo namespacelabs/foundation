@@ -6,11 +6,11 @@ package ops
 
 import (
 	"context"
-	"io"
 	"reflect"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/schema"
@@ -23,13 +23,13 @@ type Dispatcher[M proto.Message] interface {
 	Run(context.Context, Environment, *schema.Definition, M) (*DispatcherResult, error)
 }
 
-type DispatcherCloser[M proto.Message] interface {
+type Session[M proto.Message] interface {
 	Dispatcher[M]
-	io.Closer
+	Commit() error
 }
 
 type HasStartSession[M proto.Message] interface {
-	StartSession(context.Context, Environment) DispatcherCloser[M]
+	StartSession(context.Context, Environment) Session[M]
 }
 
 type DispatcherResult struct {
@@ -73,18 +73,21 @@ type registration struct {
 }
 
 type dispatcherFunc func(context.Context, Environment, *schema.Definition, proto.Message) (*DispatcherResult, error)
-type startSessionFunc func(context.Context, Environment) (dispatcherFunc, io.Closer)
+type commitSessionFunc func() error
+type startSessionFunc func(context.Context, Environment) (dispatcherFunc, commitSessionFunc)
 
 var handlers = map[string]registration{}
 
 func Register[M proto.Message](mr Dispatcher[M]) {
 	var startSession startSessionFunc
 	if stateful, ok := mr.(HasStartSession[M]); ok {
-		startSession = func(ctx context.Context, env Environment) (dispatcherFunc, io.Closer) {
+		startSession = func(ctx context.Context, env Environment) (dispatcherFunc, commitSessionFunc) {
 			st := stateful.StartSession(ctx, env)
 			return func(ctx context.Context, env Environment, def *schema.Definition, msg proto.Message) (*DispatcherResult, error) {
-				return st.Run(ctx, env, def, msg.(M))
-			}, st
+					return st.Run(ctx, env, def, msg.(M))
+				}, func() error {
+					return st.Commit()
+				}
 		}
 	}
 
@@ -149,17 +152,26 @@ func (g *Runner) Add(defs ...*schema.Definition) error {
 func (g *Runner) Apply(ctx context.Context, name string, env WorkspaceEnvironment) (waiters []Waiter, err error) {
 	err = tasks.Task(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
-			waiters, err = g.apply(ctx, env)
+			waiters, err = g.apply(ctx, env, false)
 			return
 		})
 	return
 }
 
-func (g *Runner) apply(ctx context.Context, env Environment) ([]Waiter, error) {
+func (g *Runner) ApplyParallel(ctx context.Context, name string, env WorkspaceEnvironment) (waiters []Waiter, err error) {
+	err = tasks.Task(name).Scope(g.scope.PackageNames()...).Run(ctx,
+		func(ctx context.Context) (err error) {
+			waiters, err = g.apply(ctx, env, true)
+			return
+		})
+	return
+}
+
+func (g *Runner) apply(ctx context.Context, env Environment, parallel bool) ([]Waiter, error) {
 	tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 
 	sessions := map[string]dispatcherFunc{}
-	closers := map[string]io.Closer{}
+	commits := map[string]commitSessionFunc{}
 
 	for _, n := range g.nodes {
 		if n.err != nil {
@@ -172,9 +184,9 @@ func (g *Runner) apply(ctx context.Context, env Environment) ([]Waiter, error) {
 		}
 
 		if n.reg.startSession != nil {
-			dispatcher, closer := n.reg.startSession(ctx, env)
+			dispatcher, commit := n.reg.startSession(ctx, env)
 			sessions[typeUrl] = dispatcher
-			closers[typeUrl] = closer
+			commits[typeUrl] = commit
 		}
 	}
 
@@ -209,14 +221,40 @@ func (g *Runner) apply(ctx context.Context, env Environment) ([]Waiter, error) {
 	}
 
 	// Use insertion order.
+	var ordered []commitSessionFunc
+	var orderedTypeUrls []string
 	for _, n := range g.nodes {
 		typeUrl := n.def.Impl.GetTypeUrl()
-		if closer, has := closers[typeUrl]; has {
-			if err := closer.Close(); err != nil {
-				errs = append(errs, fnerrors.InternalError("failed to close %q: %w", typeUrl, err))
-			}
+		if commit, has := commits[typeUrl]; has {
+			ordered = append(ordered, commit)
+			orderedTypeUrls = append(orderedTypeUrls, typeUrl)
 			delete(sessions, typeUrl)
 		}
+	}
+
+	var ex executor.Executor
+	var wait func() error
+
+	if parallel {
+		ex, wait = executor.New(ctx)
+	} else {
+		ex, wait = executor.Serial(ctx)
+	}
+
+	for k, commit := range ordered {
+		k := k           // Close k.
+		commit := commit // Close commit.
+
+		ex.Go(func(ctx context.Context) error {
+			if err := commit(); err != nil {
+				return fnerrors.InternalError("failed to close %q: %w", orderedTypeUrls[k], err)
+			}
+			return nil
+		})
+	}
+
+	if err := wait(); err != nil {
+		errs = append(errs, err)
 	}
 
 	return waiters, multierr.New(errs...)

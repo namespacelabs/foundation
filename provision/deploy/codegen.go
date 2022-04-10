@@ -90,7 +90,7 @@ func codegenServer(ctx context.Context, srv provision.Server) error {
 		return err
 	}
 
-	waiters, err := r.Apply(ctx, "workspace.codegen", codegenEnv{
+	waiters, err := r.ApplyParallel(ctx, "workspace.codegen", codegenEnv{
 		root:     srv.Module(),
 		packages: srv.Env(),
 		env:      srv.Env().Proto(),

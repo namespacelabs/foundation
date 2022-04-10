@@ -62,7 +62,7 @@ func (statefulGen) Run(ctx context.Context, env ops.Environment, _ *schema.Defin
 	return nil, generateProtoSrcs(ctx, buf.Image(ctx, env, wenv), mod, wenv.OutputFS())
 }
 
-func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.DispatcherCloser[*OpProtoGen] {
+func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Session[*OpProtoGen] {
 	wenv, ok := env.(ops.MutableWorkspaceEnvironment)
 	if !ok {
 		// An error will then be returned in Close().
@@ -140,7 +140,7 @@ func ensurePerModule(mods []*perModuleGen, root *workspace.Module) ([]*perModule
 	return append(mods, mod), mod
 }
 
-func (m *multiGen) Close() error {
+func (m *multiGen) Commit() error {
 	if m.wenv == nil {
 		return errors.New("WorkspaceEnvironment required")
 	}
