@@ -27,7 +27,7 @@ import (
 )
 
 const VerifyCacheWrites = false
-const mapJson = "map.json"
+const indexDir = "index"
 
 type Cache interface {
 	Bytes(context.Context, schema.Digest) ([]byte, error)
@@ -190,13 +190,23 @@ func DigestBytes(contents []byte) (schema.Digest, error) {
 }
 
 func (c *localCache) LoadEntry(ctx context.Context, h schema.Digest) (CachedOutput, bool, error) {
-	index, err := loadIndex(ctx, string(c.path))
+	indexFile := filepath.Join(c.path, indexDir, h.String()+".json")
+	f, err := os.Open(indexFile)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return CachedOutput{}, false, nil
+		}
 		return CachedOutput{}, false, err
 	}
 
-	output, ok := index.Outputs[h.String()]
-	return output, ok, nil
+	defer f.Close()
+
+	var out CachedOutput
+	if err := json.NewDecoder(f).Decode(&out); err != nil {
+		return out, false, fnerrors.InternalError("failed to decode cached entry: %w", err)
+	}
+
+	return out, true, nil
 }
 
 func (c *localCache) StoreEntry(ctx context.Context, inputs []schema.Digest, output CachedOutput) error {
@@ -204,14 +214,9 @@ func (c *localCache) StoreEntry(ctx context.Context, inputs []schema.Digest, out
 		return nil
 	}
 
-	// XXX consider using a model where each index entry is a separate file. That would
-	// reduce the number of updates that need to happen here, and would reduce raciness
-	// with updating the index. Another option would be to use something like sqlite, but
-	// that would incur a building + maintenance cost on `fn`.
-
-	index, err := loadIndex(ctx, string(c.path))
-	if err != nil {
-		return err
+	indexDir := filepath.Join(c.path, indexDir)
+	if err := os.MkdirAll(indexDir, 0700); err != nil {
+		return fnerrors.InternalError("failed to create cache index dir: %w", err)
 	}
 
 	for _, input := range inputs {
@@ -219,47 +224,33 @@ func (c *localCache) StoreEntry(ctx context.Context, inputs []schema.Digest, out
 			continue
 		}
 
-		if existing, ok := index.Outputs[input.String()]; ok && existing.Digest != output.Digest {
-			fmt.Fprintf(console.Warnings(ctx), "cache.StoreEntry: non-determinism, overwriting pointer; input=%s existing=%v output=%v\n", input, existing.Digest, output.Digest)
+		indexFile := filepath.Join(indexDir, input.String()+".json")
+		t, err := ioutil.ReadFile(indexFile)
+		if err == nil {
+			var existing CachedOutput
+			if err := json.Unmarshal(t, &existing); err == nil {
+				if !existing.Digest.Equals(output.Digest) {
+					fmt.Fprintf(console.Warnings(ctx), "cache.StoreEntry: non-determinism, overwriting pointer; input=%s existing=%v output=%v\n", input, existing.Digest, output.Digest)
+				}
+			}
 		}
 
-		index.Outputs[input.String()] = output
-	}
-
-	f, err := os.CreateTemp(string(c.path), mapJson)
-	if err != nil {
-		return err
-	}
-
-	err = json.NewEncoder(f).Encode(index)
-	f.Close()
-
-	if err != nil {
-		return err
-	}
-
-	return os.Rename(f.Name(), filepath.Join(string(c.path), mapJson))
-}
-
-func loadIndex(ctx context.Context, path string) (cacheIndex, error) {
-	contents, err := ioutil.ReadFile(filepath.Join(path, mapJson))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return cacheIndex{Outputs: map[string]CachedOutput{}}, nil
+		marshalled, err := json.Marshal(output)
+		if err != nil {
+			return fnerrors.InternalError("failed to marshal cached output: %w", err)
 		}
-		return cacheIndex{}, nil
+
+		tmpid := ids.NewRandomBase32ID(4)
+
+		tmpFile := indexFile + "." + tmpid
+		if err := ioutil.WriteFile(tmpFile, marshalled, 0600); err != nil {
+			return fnerrors.InternalError("failed to write cached output: %w", err)
+		}
+
+		if err := os.Rename(tmpFile, indexFile); err != nil {
+			return fnerrors.InternalError("failed to commit cached output: %w", err)
+		}
 	}
 
-	var index cacheIndex
-	if err := json.Unmarshal(contents, &index); err != nil {
-		index = cacheIndex{}
-
-		fmt.Fprintf(console.Warnings(ctx), "Dropped existing index, invalid format. Got: %v\n", err)
-	}
-
-	if index.Outputs == nil {
-		index.Outputs = map[string]CachedOutput{}
-	}
-
-	return index, nil
+	return nil
 }
