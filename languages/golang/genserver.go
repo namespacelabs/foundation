@@ -312,7 +312,7 @@ type ServerDeps struct {
 func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) {
 	di := {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.MakeInitializer()
 	{{range $k, $v := .Nodes}}
-		di.Add({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.Factory{
+		di.Add({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.Provider{
 			PackageName: "{{$v.PackageName}}",
 			Typename: "{{$v.Typename}}",
 			Do: func(ctx context.Context, cf *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.CallerFactory) (interface{}, error) {

@@ -23,7 +23,7 @@ type ServerDeps struct {
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	di := fninit.MakeInitializer()
 
-	di.Add(fninit.Factory{
+	di.Add(fninit.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Typename:    "ExtensionDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
@@ -39,7 +39,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Factory{
+	di.Add(fninit.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Typename:    "ExtensionDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
@@ -55,7 +55,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Factory{
+	di.Add(fninit.Provider{
 		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds",
 		Typename:    "ExtensionDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
@@ -75,7 +75,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Factory{
+	di.Add(fninit.Provider{
 		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster",
 		Typename:    "ExtensionDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
@@ -102,7 +102,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Factory{
+	di.Add(fninit.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/service/list",
 		Typename:    "ServiceDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {

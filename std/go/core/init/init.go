@@ -19,13 +19,13 @@ const maximumInitTime = 10 * time.Millisecond
 
 var Log = log.New(os.Stderr, "[foundation] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 
-type Factory struct {
+type Provider struct {
 	PackageName string
 	Typename    string
 	Do          func(context.Context, *CallerFactory) (interface{}, error)
 }
 
-func (f *Factory) Desc() string {
+func (f *Provider) Desc() string {
 	if f.Typename != "" {
 		return fmt.Sprintf("%s/%s", f.PackageName, f.Typename)
 	}
@@ -43,26 +43,26 @@ type result struct {
 }
 
 type depInitializer struct {
-	factories map[key]*Factory
+	providers map[key]*Provider
 	cache     map[key]*result
 	inits     []*Initializer
 }
 
 func MakeInitializer() *depInitializer {
 	return &depInitializer{
-		factories: map[key]*Factory{},
+		providers: map[key]*Provider{},
 		cache:     map[key]*result{},
 	}
 }
 
-func (di *depInitializer) Add(f Factory) {
-	di.factories[key{PackageName: f.PackageName, Typename: f.Typename}] = &f
+func (di *depInitializer) Add(p Provider) {
+	di.providers[key{PackageName: p.PackageName, Typename: p.Typename}] = &p
 }
 
 func (di *depInitializer) Get(ctx context.Context, caller Caller, pkg string, typ string) (interface{}, error) {
 	k := key{PackageName: pkg, Typename: typ}
 
-	f, ok := di.factories[k]
+	p, ok := di.providers[k]
 	if !ok {
 		return nil, fmt.Errorf("No factory found for type %s in package %s.", typ, pkg)
 	}
@@ -70,7 +70,7 @@ func (di *depInitializer) Get(ctx context.Context, caller Caller, pkg string, ty
 	cf := caller.append(pkg)
 
 	start := time.Now()
-	res, err := f.Do(ctx, cf)
+	res, err := p.Do(ctx, cf)
 	took := time.Since(start)
 	if took > maximumInitTime {
 		Log.Printf("[factory] %s took %d (log thresh is %d)", f.Desc(), took, maximumInitTime)
