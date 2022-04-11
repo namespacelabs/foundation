@@ -23,7 +23,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const MaxHandshakeTime = 10 * time.Second // Maximum amount of time we'll wait for a Hello from a worker.
+const (
+	MaxHandshakeTime      = 10 * time.Second // Maximum amount of time we'll wait for a Hello from a worker.
+	MaxInvocationDuration = 30 * time.Second
+)
 
 func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.RunToolOpts, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {
 	// XXX security: think through whether it is OK or not to expose Snapshots here.
@@ -60,10 +63,14 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 
 	eg, wait := executor.New(ctx)
 
-	lis := grpcstdio.NewListener(ctx)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, MaxInvocationDuration)
+	defer cancel()
+
+	lis := grpcstdio.NewListener(ctxWithTimeout)
+	s := grpc.NewServer()
 
 	eg.Go(func(ctx context.Context) error {
-		defer lis.Close() // Signal the server to exit when the client leaves.
+		defer s.Stop()
 		return Impl().RunWithOpts(ctx, opts, localexec.RunOpts{
 			OnStart: func() {
 				// Let grpc know there's a new connection, i.e. the process has spawned.
@@ -79,6 +86,8 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 		defer t.Stop()
 
 		select {
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-t.C:
 			return fnerrors.InternalError("%s: did not handshake in time, waited %v", pkg, MaxHandshakeTime)
 		case <-helloCh:
@@ -88,24 +97,17 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 
 	var resp *protocol.ToolResponse // XXX lock.
 	eg.Go(func(ctx context.Context) error {
-		s := grpc.NewServer()
 		protocol.RegisterInvocationServiceServer(s, service{
 			Request: req,
 			OnHello: func() {
 				// The worker process said hi, so it follows the protocol.
+				close(helloCh)
 			},
 			OnResponse: func(tr *protocol.ToolResponse) {
 				resp = tr
 			},
 		})
-		if err := s.Serve(lis); err != nil {
-			// ErrListenerClosed is emitted when the listener is canceled
-			// because the process has exited. This is expected.
-			if err != grpcstdio.ErrListenerClosed {
-				return err
-			}
-		}
-		return nil
+		return s.Serve(lis)
 	})
 
 	if err := wait(); err != nil {
