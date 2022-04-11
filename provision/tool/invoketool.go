@@ -43,7 +43,7 @@ type cacheableInvocation struct {
 }
 
 func (inv *cacheableInvocation) Action() *tasks.ActionEvent {
-	return tasks.Task(runtime.TaskProvisionInvoke).Scope(inv.handler.Source.PackageName)
+	return tasks.Action(runtime.TaskProvisionInvoke).Scope(inv.handler.Source.PackageName)
 }
 
 func (inv *cacheableInvocation) Inputs() *compute.In {
