@@ -7,6 +7,7 @@ package tools
 import (
 	"context"
 	"os"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
@@ -21,6 +22,8 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
+
+const MaxHandshakeTime = 10 * time.Second // Maximum amount of time we'll wait for a Hello from a worker.
 
 func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.RunToolOpts, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {
 	// XXX security: think through whether it is OK or not to expose Snapshots here.
@@ -63,22 +66,41 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 		defer lis.Close() // Signal the server to exit when the client leaves.
 		return Impl().RunWithOpts(ctx, opts, localexec.RunOpts{
 			OnStart: func() {
+				// Let grpc know there's a new connection, i.e. the process has spawned.
 				lis.Ready(grpcstdio.NewConnection(inw, outr))
 			},
 		})
+	})
+
+	// Closed by OnHello when we get an hello from the process.
+	helloCh := make(chan struct{})
+	eg.Go(func(ctx context.Context) error {
+		t := time.NewTimer(MaxHandshakeTime)
+		defer t.Stop()
+
+		select {
+		case <-t.C:
+			return fnerrors.InternalError("%s: did not handshake in time, waited %v", pkg, MaxHandshakeTime)
+		case <-helloCh:
+			return nil // All good
+		}
 	})
 
 	var resp *protocol.ToolResponse // XXX lock.
 	eg.Go(func(ctx context.Context) error {
 		s := grpc.NewServer()
 		protocol.RegisterInvocationServiceServer(s, service{
-			request: req,
-			onResponse: func(tr *protocol.ToolResponse) {
+			Request: req,
+			OnHello: func() {
+				// The worker process said hi, so it follows the protocol.
+			},
+			OnResponse: func(tr *protocol.ToolResponse) {
 				resp = tr
 			},
 		})
 		if err := s.Serve(lis); err != nil {
-			// Expected exit.
+			// ErrListenerClosed is emitted when the listener is canceled
+			// because the process has exited. This is expected.
 			if err != grpcstdio.ErrListenerClosed {
 				return err
 			}
@@ -100,8 +122,9 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 }
 
 type service struct {
-	request    *protocol.ToolRequest
-	onResponse func(*protocol.ToolResponse)
+	Request    *protocol.ToolRequest
+	OnHello    func()
+	OnResponse func(*protocol.ToolResponse)
 }
 
 func (svc service) Worker(server protocol.InvocationService_WorkerServer) error {
@@ -112,19 +135,21 @@ func (svc service) Worker(server protocol.InvocationService_WorkerServer) error 
 		}
 
 		if chunk.ClientHello != nil {
+			svc.OnHello()
+
 			if err := server.Send(&protocol.WorkerCoordinatorChunk{
 				ServerHello: &protocol.WorkerCoordinatorChunk_ServerHello{
 					FnApiVersion:   versions.APIVersion,
 					ToolApiVersion: versions.ToolAPIVersion,
 				},
-				ToolRequest: svc.request,
+				ToolRequest: svc.Request,
 			}); err != nil {
 				return err
 			}
 		}
 
 		if chunk.ToolResponse != nil {
-			svc.onResponse(chunk.ToolResponse)
+			svc.OnResponse(chunk.ToolResponse)
 			return nil
 		}
 	}
