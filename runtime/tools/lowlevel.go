@@ -61,12 +61,15 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 	opts.Stdout = outw
 	opts.Stderr = console.Output(ctx, pkg.String())
 
+	if !localexec.IsRunningInCI() {
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, MaxInvocationDuration)
+		defer cancel()
+		ctx = ctxWithTimeout
+	}
+
 	eg, wait := executor.New(ctx)
 
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, MaxInvocationDuration)
-	defer cancel()
-
-	lis := grpcstdio.NewListener(ctxWithTimeout)
+	lis := grpcstdio.NewListener(ctx)
 	s := grpc.NewServer()
 
 	eg.Go(func(ctx context.Context) error {
@@ -79,21 +82,26 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 		})
 	})
 
-	// Closed by OnHello when we get an hello from the process.
-	helloCh := make(chan struct{})
-	eg.Go(func(ctx context.Context) error {
-		t := time.NewTimer(MaxHandshakeTime)
-		defer t.Stop()
+	var helloCh chan (struct{})
 
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-t.C:
-			return fnerrors.InternalError("%s: did not handshake in time, waited %v", pkg, MaxHandshakeTime)
-		case <-helloCh:
-			return nil // All good
-		}
-	})
+	// Some of these timeouts are aggressive for CI; just rely on total timeouts there.
+	if !localexec.IsRunningInCI() {
+		// Closed by OnHello when we get an hello from the process.
+		helloCh = make(chan struct{})
+		eg.Go(func(ctx context.Context) error {
+			t := time.NewTimer(MaxHandshakeTime)
+			defer t.Stop()
+
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-t.C:
+				return fnerrors.InternalError("%s: did not handshake in time, waited %v", pkg, MaxHandshakeTime)
+			case <-helloCh:
+				return nil // All good
+			}
+		})
+	}
 
 	var resp *protocol.ToolResponse // XXX lock.
 	eg.Go(func(ctx context.Context) error {
@@ -101,7 +109,9 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 			Request: req,
 			OnHello: func() {
 				// The worker process said hi, so it follows the protocol.
-				close(helloCh)
+				if helloCh != nil {
+					close(helloCh)
+				}
 			},
 			OnResponse: func(tr *protocol.ToolResponse) {
 				resp = tr
