@@ -31,12 +31,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &metrics.ExtensionDeps{}
 			var err error
-			{
-				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
-					return nil, err
-				}
+
+			ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+			if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+				return nil, err
 			}
+
 			return deps, err
 		},
 	})
@@ -47,12 +47,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &tracing.ExtensionDeps{}
 			var err error
-			{
-				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
-					return nil, err
-				}
+
+			ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+			if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+				return nil, err
 			}
+
 			return deps, err
 		},
 	})
@@ -63,16 +63,16 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &creds.ExtensionDeps{}
 			var err error
-			{
-				// name: "mariadb-password-file"
-				p := &secrets.Secret{}
-				core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGU=", p)
 
-				ctx = core.PathFromContext(ctx).Append(pkg, "Password").WithContext(ctx)
-				if deps.Password, err = secrets.ProvideSecret(ctx, p); err != nil {
-					return nil, err
-				}
+			// name: "mariadb-password-file"
+			p := &secrets.Secret{}
+			core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGU=", p)
+
+			ctx = core.PathFromContext(ctx).Append(pkg, "Password").WithContext(ctx)
+			if deps.Password, err = secrets.ProvideSecret(ctx, p); err != nil {
+				return nil, err
 			}
+
 			return deps, err
 		},
 	})
@@ -94,7 +94,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 					return nil, err
 				}
 			}
-
 			{
 				ctx = core.PathFromContext(ctx).Append(pkg, "ReadinessCheck").WithContext(ctx)
 				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
@@ -111,16 +110,16 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &fncreds.ExtensionDeps{}
 			var err error
-			{
-				// name: "postgres-password-file"
-				p := &secrets.Secret{}
-				core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
 
-				ctx = core.PathFromContext(ctx).Append(pkg, "Password").WithContext(ctx)
-				if deps.Password, err = secrets.ProvideSecret(ctx, p); err != nil {
-					return nil, err
-				}
+			// name: "postgres-password-file"
+			p := &secrets.Secret{}
+			core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
+
+			ctx = core.PathFromContext(ctx).Append(pkg, "Password").WithContext(ctx)
+			if deps.Password, err = secrets.ProvideSecret(ctx, p); err != nil {
+				return nil, err
 			}
+
 			return deps, err
 		},
 	})
@@ -142,7 +141,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 					return nil, err
 				}
 			}
-
 			{
 				ctx = core.PathFromContext(ctx).Append(pkg, "ReadinessCheck").WithContext(ctx)
 				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
@@ -178,7 +176,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 					return nil, err
 				}
 			}
-
 			{
 				// name: "postgreslist"
 				p := &fnincluster.Database{}

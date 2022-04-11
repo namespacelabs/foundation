@@ -319,9 +319,10 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 			Do: func(ctx context.Context, pkg {{$opts.Imports.MustGet "namespacelabs.dev/foundation/schema"}}PackageName) (interface{}, error) {
 				deps := &{{makeType $opts.Imports $v.GoImportURL $v.Typename}}{}
 				var err error
+				{{- $length := len $v.Provisioned }}
 				{{- range $k2, $p := $v.Provisioned}}
 					{{if $p -}}
-							{
+							{{- if gt $length 1 -}} { {{end}}
 								{{ if $p.SerializedMsg -}}
 								{{$p.ProtoComments -}}
 								p := &{{$opts.Imports.MustGet $p.GoPackage}}{{makeProvisionProtoName $p}}{}
@@ -350,9 +351,9 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 								deps.{{$depvar.GoName}}={{$opts.Imports.MustGet $dep.GoPackage}}{{$dep.Method}}(deps.{{join $dep.Args ","}})
 								{{end -}}
 								{{end -}}
-							}
-					{{- end}}
-				{{end -}}
+							{{if gt $length 1}} } {{end -}}
+					{{end -}}
+				{{end}}
 				return deps, err
 			},
 		})

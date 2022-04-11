@@ -28,12 +28,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &metrics.ExtensionDeps{}
 			var err error
-			{
-				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
-					return nil, err
-				}
+
+			ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+			if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+				return nil, err
 			}
+
 			return deps, err
 		},
 	})
@@ -44,12 +44,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &tracing.ExtensionDeps{}
 			var err error
-			{
-				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
-					return nil, err
-				}
+
+			ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+			if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+				return nil, err
 			}
+
 			return deps, err
 		},
 	})
@@ -60,12 +60,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &scopes.ScopedDataDeps{}
 			var err error
-			{
-				ctx = core.PathFromContext(ctx).Append(pkg, "Data").WithContext(ctx)
-				if deps.Data, err = data.ProvideData(ctx, nil); err != nil {
-					return nil, err
-				}
+
+			ctx = core.PathFromContext(ctx).Append(pkg, "Data").WithContext(ctx)
+			if deps.Data, err = data.ProvideData(ctx, nil); err != nil {
+				return nil, err
 			}
+
 			return deps, err
 		},
 	})
@@ -87,7 +87,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 					return nil, err
 				}
 			}
-
 			{
 				ctx = core.PathFromContext(ctx).Append(pkg, "Two").WithContext(ctx)
 				scopedDataDeps, err := di.Get(ctx,

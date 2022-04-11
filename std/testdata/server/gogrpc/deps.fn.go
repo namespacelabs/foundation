@@ -32,12 +32,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &metrics.ExtensionDeps{}
 			var err error
-			{
-				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
-					return nil, err
-				}
+
+			ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+			if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+				return nil, err
 			}
+
 			return deps, err
 		},
 	})
@@ -48,12 +48,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &tracing.ExtensionDeps{}
 			var err error
-			{
-				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
-					return nil, err
-				}
+
+			ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+			if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+				return nil, err
 			}
+
 			return deps, err
 		},
 	})
@@ -64,12 +64,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &deadlines.ExtensionDeps{}
 			var err error
-			{
-				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
-					return nil, err
-				}
+
+			ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+			if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+				return nil, err
 			}
+
 			return deps, err
 		},
 	})
@@ -90,7 +90,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 					return nil, err
 				}
 			}
-
 			{
 				// name: "gen"
 				p := &secrets.Secret{}
@@ -101,7 +100,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 					return nil, err
 				}
 			}
-
 			{
 				// name: "keygen"
 				p := &secrets.Secret{}
@@ -112,7 +110,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 					return nil, err
 				}
 			}
-
 			{
 				ctx = core.PathFromContext(ctx).Append(pkg, "ReadinessCheck").WithContext(ctx)
 				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
@@ -148,7 +145,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 					return nil, err
 				}
 			}
-
 			{
 				// name: "main"
 				// schema_file: {
@@ -191,12 +187,12 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &logging.ExtensionDeps{}
 			var err error
-			{
-				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
-					return nil, err
-				}
+
+			ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+			if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+				return nil, err
 			}
+
 			return deps, err
 		},
 	})
