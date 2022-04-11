@@ -76,7 +76,6 @@ type EventData struct {
 
 type ActionEvent struct {
 	data      EventData
-	isTask    bool // XXX rethink this.
 	progress  ActionProgress
 	onDone    OnDoneFunc
 	wellKnown map[WellKnown]string
@@ -149,13 +148,6 @@ func Action(name string) *ActionEvent {
 	ev := allocEvent()
 	ev.data.name = name
 	ev.data.state = actionCreated
-	return ev
-}
-
-// Deprecated, use Action().
-func Task(name string) *ActionEvent {
-	ev := Action(name)
-	ev.isTask = true
 	return ev
 }
 
@@ -253,8 +245,7 @@ func (ev *ActionEvent) Indefinite() *ActionEvent {
 
 func (ev *ActionEvent) Clone(makeName func(string) string) *ActionEvent {
 	copy := &ActionEvent{
-		data:   ev.data,
-		isTask: ev.isTask,
+		data: ev.data,
 	}
 
 	name := copy.data.name

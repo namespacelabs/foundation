@@ -185,7 +185,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		}
 
 		server := focus[0]
-		if err := tasks.Task(runtime.TaskGraphCompute).Scope(server.PackageName()).Run(ctx,
+		if err := tasks.Action(runtime.TaskGraphCompute).Scope(server.PackageName()).Run(ctx,
 			func(ctx context.Context) error {
 				buildID, err := runtime.For(do.env).DeployedConfigImageID(ctx, server.Proto())
 				if err != nil {
