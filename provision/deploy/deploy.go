@@ -143,7 +143,7 @@ func ComputeStack(ctx context.Context, server provision.Server, opts StackOpts, 
 }
 
 func prepareHandlerInvocations(ctx context.Context, env ops.Environment, stack *stack.Stack) (c compute.Computable[*handlerResult], err error) {
-	err = tasks.Task(runtime.TaskServerProvision).Scope(provision.ServerPackages(stack.Servers).PackageNames()...).Run(ctx,
+	err = tasks.Action(runtime.TaskServerProvision).Scope(provision.ServerPackages(stack.Servers).PackageNames()...).Run(ctx,
 		func(ctx context.Context) error {
 			handlers, err := computeHandlers(ctx, stack)
 			if err != nil {
@@ -235,7 +235,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 		}
 	}
 
-	imageIDs := compute.Map(tasks.Task(runtime.TaskServerBuild),
+	imageIDs := compute.Map(tasks.Action(runtime.TaskServerBuild),
 		binaryInputs, compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (builtImages, error) {
 			var built builtImages
@@ -267,7 +267,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 		})
 
 	c1 := compute.Map(
-		tasks.Task(runtime.TaskServerProvision).
+		tasks.Action(runtime.TaskServerProvision).
 			Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
 		finalInputs.Computable("images", imageIDs).Computable("stackAndDefs", stackDef),
 		compute.Output{},
