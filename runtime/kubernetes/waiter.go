@@ -41,7 +41,7 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 		}()
 	}
 
-	return tasks.Task(runtime.TaskServerStart).Scope(w.scope).Run(ctx,
+	return tasks.Action(runtime.TaskServerStart).Scope(w.scope).Run(ctx,
 		func(ctx context.Context) error {
 			ev := ops.Event{
 				ResourceID: w.apply.Name,

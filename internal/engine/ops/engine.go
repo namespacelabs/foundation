@@ -150,7 +150,7 @@ func (g *Runner) Add(defs ...*schema.Definition) error {
 }
 
 func (g *Runner) Apply(ctx context.Context, name string, env WorkspaceEnvironment) (waiters []Waiter, err error) {
-	err = tasks.Task(name).Scope(g.scope.PackageNames()...).Run(ctx,
+	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, false)
 			return
@@ -159,7 +159,7 @@ func (g *Runner) Apply(ctx context.Context, name string, env WorkspaceEnvironmen
 }
 
 func (g *Runner) ApplyParallel(ctx context.Context, name string, env WorkspaceEnvironment) (waiters []Waiter, err error) {
-	err = tasks.Task(name).Scope(g.scope.PackageNames()...).Run(ctx,
+	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, true)
 			return

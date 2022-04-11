@@ -81,7 +81,7 @@ func (stack *Stack) GetParsed(srv schema.PackageName) []*ParsedNode {
 
 func Compute(ctx context.Context, servers []provision.Server, opts ProvisionOpts) (*Stack, error) {
 	var s *Stack
-	err := tasks.Task(runtime.TaskGraphCompute).Scope(provision.ServerPackages(servers).PackageNames()...).Run(ctx,
+	err := tasks.Action(runtime.TaskGraphCompute).Scope(provision.ServerPackages(servers).PackageNames()...).Run(ctx,
 		func(ctx context.Context) error {
 			var err error
 			s, err = compute(ctx, opts, servers...)
