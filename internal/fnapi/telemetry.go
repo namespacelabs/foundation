@@ -15,12 +15,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/atomic"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -40,8 +40,7 @@ type Telemetry struct {
 	errorLogging bool // For testing and debugging.
 
 	backendAddress string
-	mu             sync.Mutex // Protects `recID`.
-	recID          string     // Set after an invocation is recorded.
+	recID          atomic.String // Set after an invocation is recorded.
 	makeClientID   func(context.Context) (clientID, bool)
 }
 
@@ -233,9 +232,7 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 		return
 	}
 
-	tel.mu.Lock()
-	tel.recID = req.ID
-	tel.mu.Unlock()
+	tel.recID.Store(req.ID)
 }
 
 func (tel *Telemetry) RecordInvocation(ctx context.Context, cmd *cobra.Command, args []string) string {
@@ -261,11 +258,7 @@ func (tel *Telemetry) RecordError(ctx context.Context, err error) {
 		return
 	}
 
-	tel.mu.Lock()
-	recID := tel.recID
-	tel.mu.Unlock()
-
-	tel.recordError(ctx, recID, err)
+	tel.recordError(ctx, tel.recID.Load(), err)
 }
 
 func (tel *Telemetry) recordError(ctx context.Context, recID string, err error) {
