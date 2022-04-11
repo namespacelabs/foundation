@@ -56,7 +56,13 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 	opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/grpc/server")
 	opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/core/init")
 
-	usedNames := map[string]bool{"deps": true}
+	// Prepopulate variable names that are used in serverPrepareTmpl.
+	usedNames := map[string]bool{
+		"caller": true,
+		"deps":   true,
+		"di":     true,
+		"err":    true,
+	}
 
 	// XXX use allocation tree instead.
 	for _, dep := range allDeps.instances {
@@ -64,11 +70,11 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 		opts.Imports.AddOrGet(dep.Provisioned.GoPackage)
 
 		var n *nodeWithDeps
-		typename := "SingletonDeps"
+		typename := extensionDepsType
 		if dep.Scope != nil {
 			typename = makeProvidesDepsType(dep.Scope)
 		} else if dep.Parent.GetKind() == schema.Node_SERVICE {
-			typename = "ServiceDeps"
+			typename = serviceDepsType
 		}
 		for _, node := range opts.Nodes {
 			if node.PackageName.Equals(dep.Parent.PackageName) &&
@@ -105,7 +111,7 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 			} else if dep.Scope != nil {
 				n.VarName = makeProvidesDepsVar(dep.Scope)
 			} else {
-				n.VarName = "singletonDeps"
+				n.VarName = gosupport.MakeGoPrivVar(extensionDepsType)
 			}
 
 			opts.Nodes = append(opts.Nodes, n)
@@ -165,7 +171,7 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 				Name:        makeName(filepath.Base(svc.Location.Rel()), usedNames, false), // XXX use package instead?
 				VarName:     makeName(filepath.Base(svc.Location.Rel()), usedNames, true),
 				PackageName: svc.Location.PackageName,
-				Typename:    "ServiceDeps",
+				Typename:    serviceDepsType,
 				IsService:   true,
 			}
 
@@ -195,7 +201,7 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 							Typename:    m.Typename,
 							GoImportURL: m.GoImportURL,
 						}
-						if m.Typename == "SingletonDeps" || m.Typename == "ServiceDeps" {
+						if m.Typename == extensionDepsType || m.Typename == serviceDepsType {
 							ref.IsSingleton = true
 							n.Refs[k] = append([]Ref{ref}, n.Refs[k]...)
 						} else if m.Typename == makeProvidesDepsType(p.Provides) {

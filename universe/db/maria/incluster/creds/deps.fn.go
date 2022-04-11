@@ -8,10 +8,11 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
-type SingletonDeps struct {
+// Dependencies that are instantiated once for the lifetime of the extension
+type ExtensionDeps struct {
 	Password *secrets.Value
 }
 
-type _checkProvideCreds func(context.Context, fninit.Caller, *CredsRequest, *SingletonDeps) (*Creds, error)
+type _checkProvideCreds func(context.Context, fninit.Caller, *CredsRequest, *ExtensionDeps) (*Creds, error)
 
 var _ _checkProvideCreds = ProvideCreds

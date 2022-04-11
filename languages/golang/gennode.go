@@ -16,9 +16,13 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const depsFilename = "deps.fn.go"
-const grpcServerPackage = "namespacelabs.dev/foundation/std/go/grpc/server"
-const initPackage = "namespacelabs.dev/foundation/std/go/core/init"
+const (
+	depsFilename      = "deps.fn.go"
+	extensionDepsType = "ExtensionDeps"
+	serviceDepsType   = "ServiceDeps"
+	grpcServerPackage = "namespacelabs.dev/foundation/std/go/grpc/server"
+	initPackage       = "namespacelabs.dev/foundation/std/go/core/init"
+)
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
 	var e instancedDepList
@@ -30,11 +34,11 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 
 	typ := "Extension"
 	single := &depsType{
-		DepsType: "SingletonDeps",
+		DepsType: extensionDepsType,
 	}
 	if n.GetKind() == schema.Node_SERVICE {
 		typ = "Service"
-		single.DepsType = "ServiceDeps"
+		single.DepsType = serviceDepsType
 
 		imports.AddOrGet(grpcServerPackage)
 	}
@@ -202,6 +206,7 @@ import (
 )
 
 {{if .NeedsSingleton}}
+// Dependencies that are instantiated once for the lifetime of the extension
 type {{.Singleton.DepsType}} struct {
 {{range $k, $v := .Singleton.DepVars}}
 	{{$v.GoName}} {{$v.MakeType $opts.Imports}}{{end}}

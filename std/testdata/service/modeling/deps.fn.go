@@ -8,6 +8,7 @@ import (
 	"namespacelabs.dev/foundation/std/testdata/scopes"
 )
 
+// Dependencies that are instantiated once for the lifetime of the extension
 type ServiceDeps struct {
 	One *scopes.ScopedData
 	Two *scopes.ScopedData

@@ -28,9 +28,9 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
-		Typename:    "SingletonDeps",
+		Typename:    "ExtensionDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
-			deps := &metrics.SingletonDeps{}
+			deps := &metrics.ExtensionDeps{}
 			var err error
 			{
 				caller := cf.ForInstance("Interceptors")
@@ -44,9 +44,9 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
-		Typename:    "SingletonDeps",
+		Typename:    "ExtensionDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
-			deps := &tracing.SingletonDeps{}
+			deps := &tracing.ExtensionDeps{}
 			var err error
 			{
 				caller := cf.ForInstance("Interceptors")
@@ -60,9 +60,9 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/grpc/deadlines",
-		Typename:    "SingletonDeps",
+		Typename:    "ExtensionDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
-			deps := &deadlines.SingletonDeps{}
+			deps := &deadlines.ExtensionDeps{}
 			var err error
 			{
 				caller := cf.ForInstance("Interceptors")
@@ -76,9 +76,9 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/datastore",
-		Typename:    "SingletonDeps",
+		Typename:    "ExtensionDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
-			deps := &datastore.SingletonDeps{}
+			deps := &datastore.ExtensionDeps{}
 			var err error
 			{
 				// name: "cert"
@@ -139,11 +139,11 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				fninit.MustUnwrapProto("ChUKC1Bvc3RTZXJ2aWNlEgEqHQAAoEA=", p)
 
 				caller := cf.ForInstance("Dl")
-				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", "SingletonDeps")
+				extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", "ExtensionDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Dl, err = deadlines.ProvideDeadlines(ctx, caller, p, singletonDeps.(*deadlines.SingletonDeps)); err != nil {
+				if deps.Dl, err = deadlines.ProvideDeadlines(ctx, caller, p, extensionDeps.(*deadlines.ExtensionDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -158,11 +158,11 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				fninit.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
 
 				caller := cf.ForInstance("Main")
-				singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "SingletonDeps")
+				extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "ExtensionDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Main, err = datastore.ProvideDatabase(ctx, caller, p, singletonDeps.(*datastore.SingletonDeps)); err != nil {
+				if deps.Main, err = datastore.ProvideDatabase(ctx, caller, p, extensionDeps.(*datastore.ExtensionDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -185,9 +185,9 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/grpc/logging",
-		Typename:    "SingletonDeps",
+		Typename:    "ExtensionDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
-			deps := &logging.SingletonDeps{}
+			deps := &logging.ExtensionDeps{}
 			var err error
 			{
 				caller := cf.ForInstance("Interceptors")
@@ -202,44 +202,44 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	di.AddInitializer(fninit.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
-			singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "SingletonDeps")
+			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "ExtensionDeps")
 			if err != nil {
 				return err
 			}
-			return metrics.Prepare(ctx, singletonDeps.(*metrics.SingletonDeps))
+			return metrics.Prepare(ctx, extensionDeps.(*metrics.ExtensionDeps))
 		},
 	})
 
 	di.AddInitializer(fninit.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Do: func(ctx context.Context) error {
-			singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "SingletonDeps")
+			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "ExtensionDeps")
 			if err != nil {
 				return err
 			}
-			return tracing.Prepare(ctx, singletonDeps.(*tracing.SingletonDeps))
+			return tracing.Prepare(ctx, extensionDeps.(*tracing.ExtensionDeps))
 		},
 	})
 
 	di.AddInitializer(fninit.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/grpc/deadlines",
 		Do: func(ctx context.Context) error {
-			singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", "SingletonDeps")
+			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", "ExtensionDeps")
 			if err != nil {
 				return err
 			}
-			return deadlines.Prepare(ctx, singletonDeps.(*deadlines.SingletonDeps))
+			return deadlines.Prepare(ctx, extensionDeps.(*deadlines.ExtensionDeps))
 		},
 	})
 
 	di.AddInitializer(fninit.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/grpc/logging",
 		Do: func(ctx context.Context) error {
-			singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/grpc/logging", "SingletonDeps")
+			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/grpc/logging", "ExtensionDeps")
 			if err != nil {
 				return err
 			}
-			return logging.Prepare(ctx, singletonDeps.(*logging.SingletonDeps))
+			return logging.Prepare(ctx, extensionDeps.(*logging.ExtensionDeps))
 		},
 	})
 

@@ -11,6 +11,7 @@ import (
 	"namespacelabs.dev/foundation/std/testdata/service/simple"
 )
 
+// Dependencies that are instantiated once for the lifetime of the extension
 type ServiceDeps struct {
 	Dl         *deadlines.DeadlineRegistration
 	Main       *datastore.DB

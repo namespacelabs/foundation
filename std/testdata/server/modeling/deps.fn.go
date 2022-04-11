@@ -23,9 +23,9 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
-		Typename:    "SingletonDeps",
+		Typename:    "ExtensionDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
-			deps := &metrics.SingletonDeps{}
+			deps := &metrics.ExtensionDeps{}
 			var err error
 			{
 				caller := cf.ForInstance("Interceptors")
@@ -39,9 +39,9 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	di.Add(fninit.Factory{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
-		Typename:    "SingletonDeps",
+		Typename:    "ExtensionDeps",
 		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
-			deps := &tracing.SingletonDeps{}
+			deps := &tracing.ExtensionDeps{}
 			var err error
 			{
 				caller := cf.ForInstance("Interceptors")
@@ -103,22 +103,22 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	di.AddInitializer(fninit.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
-			singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "SingletonDeps")
+			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "ExtensionDeps")
 			if err != nil {
 				return err
 			}
-			return metrics.Prepare(ctx, singletonDeps.(*metrics.SingletonDeps))
+			return metrics.Prepare(ctx, extensionDeps.(*metrics.ExtensionDeps))
 		},
 	})
 
 	di.AddInitializer(fninit.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Do: func(ctx context.Context) error {
-			singletonDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "SingletonDeps")
+			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "ExtensionDeps")
 			if err != nil {
 				return err
 			}
-			return tracing.Prepare(ctx, singletonDeps.(*tracing.SingletonDeps))
+			return tracing.Prepare(ctx, extensionDeps.(*tracing.ExtensionDeps))
 		},
 	})
 
