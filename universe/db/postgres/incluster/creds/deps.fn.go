@@ -4,7 +4,6 @@ package creds
 import (
 	"context"
 
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
@@ -13,6 +12,6 @@ type ExtensionDeps struct {
 	Password *secrets.Value
 }
 
-type _checkProvideCreds func(context.Context, fninit.Caller, *CredsRequest, *ExtensionDeps) (*Creds, error)
+type _checkProvideCreds func(context.Context, *CredsRequest, *ExtensionDeps) (*Creds, error)
 
 var _ _checkProvideCreds = ProvideCreds

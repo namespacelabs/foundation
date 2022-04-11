@@ -8,10 +8,9 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
-func ProvideDatabase(ctx context.Context, caller fninit.Caller, db *Database, single *SingletonDeps, deps *DatabaseDeps) (*pgxpool.Pool, error) {
-	return postgres.ProvideDatabase(ctx, caller, db, deps.Creds.Username, deps.Creds.Password, single.ReadinessCheck)
+func ProvideDatabase(ctx context.Context, db *Database, single *ExtensionDeps, deps *DatabaseDeps) (*pgxpool.Pool, error) {
+	return postgres.ProvideDatabase(ctx, db, deps.Creds.Username, deps.Creds.Password, single.ReadinessCheck)
 }

@@ -11,6 +11,7 @@ option go_package = "namespacelabs.dev/foundation/std/testdata/scopes";
 import "std/testdata/scopes/data/provider.proto";
 
 message Input {}
+
 message ScopedData {
     foundation.std.testdata.scopes.data.Data data = 1;
 }

@@ -25,7 +25,6 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"namespacelabs.dev/foundation/std/go/core"
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 )
 
@@ -76,7 +75,7 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 	grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
 
 	// XXX configurable logging.
-	fninit.Log.Printf("Starting to listen on %v", lis.Addr())
+	core.Log.Printf("Starting to listen on %v", lis.Addr())
 
 	// Set runtime.GOMAXPROCS to respect container limits if the env var GOMAXPROCS is not set or is invalid, preventing CPU throttling.
 	if _, err := maxprocs.Set(maxprocs.Logger(core.Log.Printf)); err != nil {
@@ -98,7 +97,7 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 			return err
 		}
 
-		fninit.Log.Printf("Starting HTTP listen on %v", gwLis.Addr())
+		core.Log.Printf("Starting HTTP listen on %v", gwLis.Addr())
 
 		go func() { listen("http", httpServer.Serve(gwLis)) }()
 	}
@@ -123,7 +122,7 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 			return err
 		}
 
-		fninit.Log.Printf("Starting gRPC gateway listen on %v", gwLis.Addr())
+		core.Log.Printf("Starting gRPC gateway listen on %v", gwLis.Addr())
 
 		go func() { listen("grpc-gateway", httpServer.Serve(gwLis)) }()
 	}

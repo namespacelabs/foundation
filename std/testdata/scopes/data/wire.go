@@ -7,9 +7,9 @@ package data
 import (
 	"context"
 
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
+	"namespacelabs.dev/foundation/std/go/core"
 )
 
-func ProvideData(_ context.Context, caller fninit.Caller, _ *Input) (*Data, error) {
-	return &Data{Caller: caller.String()}, nil
+func ProvideData(ctx context.Context, _ *Input) (*Data, error) {
+	return &Data{Caller: core.PathFromContext(ctx).String()}, nil
 }

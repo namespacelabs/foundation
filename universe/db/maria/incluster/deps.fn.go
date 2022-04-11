@@ -6,7 +6,6 @@ import (
 
 	"database/sql"
 	"namespacelabs.dev/foundation/std/go/core"
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/universe/db/maria/incluster/creds"
 )
 
@@ -16,6 +15,6 @@ type ExtensionDeps struct {
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, fninit.Caller, *Database, *ExtensionDeps) (*sql.DB, error)
+type _checkProvideDatabase func(context.Context, *Database, *ExtensionDeps) (*sql.DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

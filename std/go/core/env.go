@@ -8,13 +8,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/schema"
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
 )
 
 var (
@@ -29,16 +30,18 @@ var (
 	initialized uint32
 )
 
+var Log = log.New(os.Stderr, "[foundation] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+
 func PrepareEnv(specifiedServerName string) *ServerResources {
 	if !atomic.CompareAndSwapUint32(&initialized, 0, 1) {
-		fninit.Log.Fatal("already initialized")
+		Log.Fatal("already initialized")
 	}
 
-	fninit.Log.Println("Initializing server...")
+	Log.Println("Initializing server...")
 
 	env = &schema.Environment{}
 	if err := protojson.Unmarshal([]byte(*serializedEnv), env); err != nil {
-		fninit.Log.Fatal("failed to parse environment", err)
+		Log.Fatal("failed to parse environment", err)
 	}
 
 	serverName = specifiedServerName

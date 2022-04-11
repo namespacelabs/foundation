@@ -4,8 +4,8 @@ package main
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
@@ -24,17 +24,17 @@ type ServerDeps struct {
 }
 
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
-	di := fninit.MakeInitializer()
+	di := core.MakeInitializer()
 
-	di.Add(fninit.Provider{
+	di.Add(core.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Typename:    "ExtensionDeps",
-		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
+		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &metrics.ExtensionDeps{}
 			var err error
 			{
-				caller := cf.ForInstance("Interceptors")
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -42,15 +42,15 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Provider{
+	di.Add(core.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Typename:    "ExtensionDeps",
-		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
+		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &tracing.ExtensionDeps{}
 			var err error
 			{
-				caller := cf.ForInstance("Interceptors")
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -58,15 +58,15 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Provider{
+	di.Add(core.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/grpc/deadlines",
 		Typename:    "ExtensionDeps",
-		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
+		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &deadlines.ExtensionDeps{}
 			var err error
 			{
-				caller := cf.ForInstance("Interceptors")
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -74,19 +74,19 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Provider{
+	di.Add(core.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/datastore",
 		Typename:    "ExtensionDeps",
-		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
+		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &datastore.ExtensionDeps{}
 			var err error
 			{
 				// name: "cert"
 				p := &secrets.Secret{}
-				fninit.MustUnwrapProto("CgRjZXJ0", p)
+				core.MustUnwrapProto("CgRjZXJ0", p)
 
-				caller := cf.ForInstance("Cert")
-				if deps.Cert, err = secrets.ProvideSecret(ctx, caller, p); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "Cert").WithContext(ctx)
+				if deps.Cert, err = secrets.ProvideSecret(ctx, p); err != nil {
 					return nil, err
 				}
 			}
@@ -94,10 +94,10 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			{
 				// name: "gen"
 				p := &secrets.Secret{}
-				fninit.MustUnwrapProto("CgNnZW4=", p)
+				core.MustUnwrapProto("CgNnZW4=", p)
 
-				caller := cf.ForInstance("Gen")
-				if deps.Gen, err = secrets.ProvideSecret(ctx, caller, p); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "Gen").WithContext(ctx)
+				if deps.Gen, err = secrets.ProvideSecret(ctx, p); err != nil {
 					return nil, err
 				}
 			}
@@ -105,17 +105,17 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			{
 				// name: "keygen"
 				p := &secrets.Secret{}
-				fninit.MustUnwrapProto("CgZrZXlnZW4=", p)
+				core.MustUnwrapProto("CgZrZXlnZW4=", p)
 
-				caller := cf.ForInstance("Keygen")
-				if deps.Keygen, err = secrets.ProvideSecret(ctx, caller, p); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "Keygen").WithContext(ctx)
+				if deps.Keygen, err = secrets.ProvideSecret(ctx, p); err != nil {
 					return nil, err
 				}
 			}
 
 			{
-				caller := cf.ForInstance("ReadinessCheck")
-				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, caller, nil); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "ReadinessCheck").WithContext(ctx)
+				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -123,10 +123,10 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Provider{
+	di.Add(core.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/service/post",
 		Typename:    "ServiceDeps",
-		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
+		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &post.ServiceDeps{}
 			var err error
 			{
@@ -136,14 +136,15 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				//   maximum_deadline: 5
 				// }
 				p := &deadlines.Deadline{}
-				fninit.MustUnwrapProto("ChUKC1Bvc3RTZXJ2aWNlEgEqHQAAoEA=", p)
+				core.MustUnwrapProto("ChUKC1Bvc3RTZXJ2aWNlEgEqHQAAoEA=", p)
 
-				caller := cf.ForInstance("Dl")
-				extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", "ExtensionDeps")
+				ctx = core.PathFromContext(ctx).Append(pkg, "Dl").WithContext(ctx)
+				extensionDeps, err := di.GetSingleton(ctx,
+					"namespacelabs.dev/foundation/std/grpc/deadlines", "ExtensionDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Dl, err = deadlines.ProvideDeadlines(ctx, caller, p, extensionDeps.(*deadlines.ExtensionDeps)); err != nil {
+				if deps.Dl, err = deadlines.ProvideDeadlines(ctx, p, extensionDeps.(*deadlines.ExtensionDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -155,14 +156,15 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				//   contents: "just a test file"
 				// }
 				p := &datastore.Database{}
-				fninit.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
+				core.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
 
-				caller := cf.ForInstance("Main")
-				extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/testdata/datastore", "ExtensionDeps")
+				ctx = core.PathFromContext(ctx).Append(pkg, "Main").WithContext(ctx)
+				extensionDeps, err := di.GetSingleton(ctx,
+					"namespacelabs.dev/foundation/std/testdata/datastore", "ExtensionDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Main, err = datastore.ProvideDatabase(ctx, caller, p, extensionDeps.(*datastore.ExtensionDeps)); err != nil {
+				if deps.Main, err = datastore.ProvideDatabase(ctx, p, extensionDeps.(*datastore.ExtensionDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -170,10 +172,10 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			{
 				// package_name: "namespacelabs.dev/foundation/std/testdata/service/simple"
 				p := &grpc.Backend{}
-				fninit.MustUnwrapProto("CjhuYW1lc3BhY2VsYWJzLmRldi9mb3VuZGF0aW9uL3N0ZC90ZXN0ZGF0YS9zZXJ2aWNlL3NpbXBsZQ==", p)
+				core.MustUnwrapProto("CjhuYW1lc3BhY2VsYWJzLmRldi9mb3VuZGF0aW9uL3N0ZC90ZXN0ZGF0YS9zZXJ2aWNlL3NpbXBsZQ==", p)
 
-				caller := cf.ForInstance("SimpleConn")
-				if deps.SimpleConn, err = grpc.ProvideConn(ctx, caller, p); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "SimpleConn").WithContext(ctx)
+				if deps.SimpleConn, err = grpc.ProvideConn(ctx, p); err != nil {
 					return nil, err
 				}
 
@@ -183,15 +185,15 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Provider{
+	di.Add(core.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/grpc/logging",
 		Typename:    "ExtensionDeps",
-		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
+		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &logging.ExtensionDeps{}
 			var err error
 			{
-				caller := cf.ForInstance("Interceptors")
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -199,7 +201,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.AddInitializer(fninit.Initializer{
+	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
 			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "ExtensionDeps")
@@ -210,7 +212,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.AddInitializer(fninit.Initializer{
+	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Do: func(ctx context.Context) error {
 			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "ExtensionDeps")
@@ -221,7 +223,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.AddInitializer(fninit.Initializer{
+	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/grpc/deadlines",
 		Do: func(ctx context.Context) error {
 			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/grpc/deadlines", "ExtensionDeps")
@@ -232,7 +234,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.AddInitializer(fninit.Initializer{
+	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/grpc/logging",
 		Do: func(ctx context.Context) error {
 			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/grpc/logging", "ExtensionDeps")

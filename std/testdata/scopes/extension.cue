@@ -19,6 +19,7 @@ extension: fn.#Extension & {
 					type:    "*ScopedData"
 				}
 			}
+
 			instantiate: {
 				"data": data.#Exports.Data
 			}

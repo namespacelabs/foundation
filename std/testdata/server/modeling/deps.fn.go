@@ -4,7 +4,8 @@ package main
 import (
 	"context"
 
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/grpc/server"
@@ -19,17 +20,17 @@ type ServerDeps struct {
 }
 
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
-	di := fninit.MakeInitializer()
+	di := core.MakeInitializer()
 
-	di.Add(fninit.Provider{
+	di.Add(core.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Typename:    "ExtensionDeps",
-		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
+		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &metrics.ExtensionDeps{}
 			var err error
 			{
-				caller := cf.ForInstance("Interceptors")
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -37,15 +38,15 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Provider{
+	di.Add(core.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Typename:    "ExtensionDeps",
-		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
+		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &tracing.ExtensionDeps{}
 			var err error
 			{
-				caller := cf.ForInstance("Interceptors")
-				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, caller, nil); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "Interceptors").WithContext(ctx)
+				if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -53,15 +54,15 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Provider{
+	di.Add(core.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/scopes",
 		Typename:    "ScopedDataDeps",
-		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
+		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &scopes.ScopedDataDeps{}
 			var err error
 			{
-				caller := cf.ForInstance("Data")
-				if deps.Data, err = data.ProvideData(ctx, caller, nil); err != nil {
+				ctx = core.PathFromContext(ctx).Append(pkg, "Data").WithContext(ctx)
+				if deps.Data, err = data.ProvideData(ctx, nil); err != nil {
 					return nil, err
 				}
 			}
@@ -69,30 +70,32 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.Add(fninit.Provider{
+	di.Add(core.Provider{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/service/modeling",
 		Typename:    "ServiceDeps",
-		Do: func(ctx context.Context, cf *fninit.CallerFactory) (interface{}, error) {
+		Do: func(ctx context.Context, pkg schema.PackageName) (interface{}, error) {
 			deps := &modeling.ServiceDeps{}
 			var err error
 			{
-				caller := cf.ForInstance("One")
-				scopedDataDeps, err := di.Get(ctx, caller, "namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
+				ctx = core.PathFromContext(ctx).Append(pkg, "One").WithContext(ctx)
+				scopedDataDeps, err := di.Get(ctx,
+					"namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.One, err = scopes.ProvideScopedData(ctx, caller, nil, scopedDataDeps.(*scopes.ScopedDataDeps)); err != nil {
+				if deps.One, err = scopes.ProvideScopedData(ctx, nil, scopedDataDeps.(*scopes.ScopedDataDeps)); err != nil {
 					return nil, err
 				}
 			}
 
 			{
-				caller := cf.ForInstance("Two")
-				scopedDataDeps, err := di.Get(ctx, caller, "namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
+				ctx = core.PathFromContext(ctx).Append(pkg, "Two").WithContext(ctx)
+				scopedDataDeps, err := di.Get(ctx,
+					"namespacelabs.dev/foundation/std/testdata/scopes", "ScopedDataDeps")
 				if err != nil {
 					return nil, err
 				}
-				if deps.Two, err = scopes.ProvideScopedData(ctx, caller, nil, scopedDataDeps.(*scopes.ScopedDataDeps)); err != nil {
+				if deps.Two, err = scopes.ProvideScopedData(ctx, nil, scopedDataDeps.(*scopes.ScopedDataDeps)); err != nil {
 					return nil, err
 				}
 			}
@@ -100,7 +103,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.AddInitializer(fninit.Initializer{
+	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
 			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", "ExtensionDeps")
@@ -111,7 +114,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	di.AddInitializer(fninit.Initializer{
+	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Do: func(ctx context.Context) error {
 			extensionDeps, err := di.GetSingleton(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", "ExtensionDeps")

@@ -54,7 +54,7 @@ func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *gr
 	return handler(srv, stream)
 }
 
-func Prepare(ctx context.Context, deps *SingletonDeps) error {
+func Prepare(ctx context.Context, deps *ExtensionDeps) error {
 	var interceptor interceptor
 	deps.Interceptors.Add(interceptor.unary, interceptor.streaming)
 	return nil

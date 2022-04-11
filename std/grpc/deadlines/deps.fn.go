@@ -4,7 +4,6 @@ package deadlines
 import (
 	"context"
 
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 )
 
@@ -13,7 +12,7 @@ type ExtensionDeps struct {
 	Interceptors interceptors.Registration
 }
 
-type _checkProvideDeadlines func(context.Context, fninit.Caller, *Deadline, *ExtensionDeps) (*DeadlineRegistration, error)
+type _checkProvideDeadlines func(context.Context, *Deadline, *ExtensionDeps) (*DeadlineRegistration, error)
 
 var _ _checkProvideDeadlines = ProvideDeadlines
 

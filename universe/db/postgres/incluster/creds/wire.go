@@ -6,11 +6,9 @@ package creds
 
 import (
 	"context"
-
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
 )
 
-func ProvideCreds(ctx context.Context, _ fninit.Caller, _ *CredsRequest, deps *SingletonDeps) (*Creds, error) {
+func ProvideCreds(ctx context.Context, _ *CredsRequest, deps *ExtensionDeps) (*Creds, error) {
 	creds := &Creds{
 		Password: string(deps.Password.MustValue()),
 	}

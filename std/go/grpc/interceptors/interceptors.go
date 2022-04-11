@@ -10,7 +10,6 @@ import (
 
 	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/std/go/core"
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
 )
 
 var interceptors struct {
@@ -21,8 +20,8 @@ var interceptors struct {
 }
 
 type Registration struct {
-	caller fninit.Caller
-	name   string
+	owner *core.InstantiationPath
+	name  string
 }
 
 func (r Registration) Add(u grpc.UnaryServerInterceptor, s grpc.StreamServerInterceptor) {
@@ -48,6 +47,6 @@ func Consume() ([]grpc.UnaryServerInterceptor, []grpc.StreamServerInterceptor) {
 	return unary, streaming
 }
 
-func ProvideInterceptorRegistration(_ context.Context, caller fninit.Caller, r *InterceptorRegistration) (Registration, error) {
-	return Registration{caller: caller, name: r.GetName()}, nil
+func ProvideInterceptorRegistration(ctx context.Context, r *InterceptorRegistration) (Registration, error) {
+	return Registration{owner: core.PathFromContext(ctx), name: r.GetName()}, nil
 }

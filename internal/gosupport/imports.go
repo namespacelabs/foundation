@@ -118,9 +118,13 @@ func (gi *GoImports) AddOrGet(typeUrl string) {
 }
 
 func (gi *GoImports) MustGet(typeUrl string) string {
+	if typeUrl == gi.PkgName {
+		return ""
+	}
+
 	rel, ok := gi.urlmap[typeUrl]
 	if ok {
-		return rel
+		return rel + "."
 	}
 
 	panic(typeUrl + " is not known")

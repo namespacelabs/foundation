@@ -6,7 +6,6 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/std/go/core"
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
 	"namespacelabs.dev/foundation/universe/db/postgres/opaque/creds"
 )
 
@@ -20,6 +19,6 @@ type DatabaseDeps struct {
 	Creds *creds.Creds
 }
 
-type _checkProvideDatabase func(context.Context, fninit.Caller, *Database, *ExtensionDeps, *DatabaseDeps) (*pgxpool.Pool, error)
+type _checkProvideDatabase func(context.Context, *Database, *ExtensionDeps, *DatabaseDeps) (*pgxpool.Pool, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

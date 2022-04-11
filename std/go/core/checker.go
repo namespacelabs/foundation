@@ -7,13 +7,11 @@ package core
 import (
 	"context"
 	"fmt"
-
-	fninit "namespacelabs.dev/foundation/std/go/core/init"
 )
 
 type Check struct {
 	register func(string, Checker)
-	owner    fninit.Caller
+	owner    *InstantiationPath
 }
 
 // By default, a Readiness checker never returns a failure after it becomes
@@ -33,12 +31,12 @@ func ManualChecker(check CheckerFunc) Checker {
 	return manualChecker{check}
 }
 
-func ProvideLivenessCheck(ctx context.Context, caller fninit.Caller, _ *LivenessCheck) (Check, error) {
-	return Check{registerLiveness, caller}, nil
+func ProvideLivenessCheck(ctx context.Context, _ *LivenessCheck) (Check, error) {
+	return Check{registerLiveness, PathFromContext(ctx)}, nil
 }
 
-func ProvideReadinessCheck(ctx context.Context, caller fninit.Caller, _ *ReadinessCheck) (Check, error) {
-	return Check{registerReadiness, caller}, nil
+func ProvideReadinessCheck(ctx context.Context, _ *ReadinessCheck) (Check, error) {
+	return Check{registerReadiness, PathFromContext(ctx)}, nil
 }
 
 type manualChecker struct{ c CheckerFunc }

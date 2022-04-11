@@ -2,38 +2,35 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package init
+package core
 
 import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"log"
-	"os"
 	"time"
 
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/schema"
 )
 
 const maximumInitTime = 10 * time.Millisecond
 
-var Log = log.New(os.Stderr, "[foundation] ", log.Ldate|log.Ltime|log.Lmicroseconds)
-
 type Provider struct {
-	PackageName string
+	PackageName schema.PackageName
 	Typename    string
-	Do          func(context.Context, *CallerFactory) (interface{}, error)
+	Do          func(context.Context, schema.PackageName) (interface{}, error)
 }
 
 func (f *Provider) Desc() string {
 	if f.Typename != "" {
 		return fmt.Sprintf("%s/%s", f.PackageName, f.Typename)
 	}
-	return f.PackageName
+	return f.PackageName.String()
 }
 
 type key struct {
-	PackageName string
+	PackageName schema.PackageName
 	Typename    string
 }
 
@@ -59,33 +56,31 @@ func (di *depInitializer) Add(p Provider) {
 	di.providers[key{PackageName: p.PackageName, Typename: p.Typename}] = &p
 }
 
-func (di *depInitializer) Get(ctx context.Context, caller Caller, pkg string, typ string) (interface{}, error) {
+func (di *depInitializer) Get(ctx context.Context, pkg schema.PackageName, typ string) (interface{}, error) {
 	k := key{PackageName: pkg, Typename: typ}
 
 	p, ok := di.providers[k]
 	if !ok {
-		return nil, fmt.Errorf("No factory found for type %s in package %s.", typ, pkg)
+		return nil, fmt.Errorf("No provider found for type %s in package %s.", typ, pkg)
 	}
 
-	cf := caller.append(pkg)
-
 	start := time.Now()
-	res, err := p.Do(ctx, cf)
+	res, err := p.Do(ctx, pkg)
 	took := time.Since(start)
 	if took > maximumInitTime {
-		Log.Printf("[factory] %s took %d (log thresh is %d)", f.Desc(), took, maximumInitTime)
+		Log.Printf("[provider] %s took %d (log thresh is %d)", p.Desc(), took, maximumInitTime)
 	}
 
 	return res, err
 }
 
-func (di *depInitializer) GetSingleton(ctx context.Context, pkg string, typ string) (interface{}, error) {
+func (di *depInitializer) GetSingleton(ctx context.Context, pkg schema.PackageName, typ string) (interface{}, error) {
 	k := key{PackageName: pkg, Typename: typ}
 	if res, ok := di.cache[k]; ok {
 		return res.res, res.err
 	}
 
-	res, err := di.Get(ctx, Caller{}, pkg, typ)
+	res, err := di.Get(resetInstantiationPath(ctx), pkg, typ)
 	di.cache[k] = &result{res: res, err: err}
 	return res, err
 }

@@ -53,8 +53,9 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 	opts.Server = "server"
 	opts.Imports = gosupport.NewGoImports(loc.PackageName.String())
 
+	opts.Imports.AddOrGet("namespacelabs.dev/foundation/schema")
 	opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/grpc/server")
-	opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/core/init")
+	opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/core")
 
 	// Prepopulate variable names that are used in serverPrepareTmpl.
 	usedNames := map[string]bool{
@@ -306,16 +307,16 @@ import (
 
 type ServerDeps struct {
 {{range $k, $v := .Services}}
-	{{$v.Name}} *{{$opts.Imports.MustGet $v.GoImportURL}}.{{$v.Typename}}{{end}}
+	{{$v.Name}} *{{$opts.Imports.MustGet $v.GoImportURL}}{{$v.Typename}}{{end}}
 }
 
 func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) {
-	di := {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.MakeInitializer()
+	di := {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}MakeInitializer()
 	{{range $k, $v := .Nodes}}
-		di.Add({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.Provider{
+		di.Add({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Provider{
 			PackageName: "{{$v.PackageName}}",
 			Typename: "{{$v.Typename}}",
-			Do: func(ctx context.Context, cf *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.CallerFactory) (interface{}, error) {
+			Do: func(ctx context.Context, pkg {{$opts.Imports.MustGet "namespacelabs.dev/foundation/schema"}}PackageName) (interface{}, error) {
 				deps := &{{makeType $opts.Imports $v.GoImportURL $v.Typename}}{}
 				var err error
 				{{- range $k2, $p := $v.Provisioned}}
@@ -323,22 +324,21 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 							{
 								{{ if $p.SerializedMsg -}}
 								{{$p.ProtoComments -}}
-								p := &{{$opts.Imports.MustGet $p.GoPackage}}.{{makeProvisionProtoName $p}}{}
-								{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.MustUnwrapProto("{{$p.SerializedMsg}}", p)
+								p := &{{$opts.Imports.MustGet $p.GoPackage}}{{makeProvisionProtoName $p}}{}
+								{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}MustUnwrapProto("{{$p.SerializedMsg}}", p)
 
 								{{end -}}
 
 								{{range $p.DepVars -}}
-								caller := cf.ForInstance("{{.GoName}}")
+								ctx = {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}PathFromContext(ctx).Append(pkg, "{{.GoName}}").WithContext(ctx)
 								{{with $refs := index $v.Refs $k2}}{{range $k, $ref := $refs -}}
 									{{$ref.VarName}}, err := di.Get{{if $ref.IsSingleton}}Singleton{{end}}(ctx, 
-										{{- if not $ref.IsSingleton}}caller, {{end -}}
 										"{{$p.PackageName}}", "{{$ref.Typename}}")
 									if err != nil {
 										return nil, err
 									}
 								{{end}}{{end -}}
-								if deps.{{.GoName}}, err = {{$opts.Imports.MustGet $p.GoPackage}}.{{$p.Method}}(ctx, caller,
+								if deps.{{.GoName}}, err = {{$opts.Imports.MustGet $p.GoPackage}}{{$p.Method}}(ctx,
 									{{- if $p.SerializedMsg}}p{{else}}nil{{end}}
 									{{- with $refs := index $v.Refs $k2}}{{range $k, $ref := $refs}},{{$ref.VarName}}.(*{{makeType $opts.Imports $ref.GoImportURL $ref.Typename}}){{end}}{{end -}}
 									); err != nil {
@@ -347,7 +347,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 								{{- end}}
 								{{range $kdep, $dep := $p.Dependencies}}
 								{{with $depvar := index .DepVars 0}}
-								deps.{{$depvar.GoName}}={{$opts.Imports.MustGet $dep.GoPackage}}.{{$dep.Method}}(deps.{{join $dep.Args ","}})
+								deps.{{$depvar.GoName}}={{$opts.Imports.MustGet $dep.GoPackage}}{{$dep.Method}}(deps.{{join $dep.Args ","}})
 								{{end -}}
 								{{end -}}
 							}
@@ -359,7 +359,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 	{{end}}
 
 	{{- range $k, $init := .Initializers}}
-	di.AddInitializer({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core/init"}}.Initializer{
+	di.AddInitializer({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Initializer{
 		PackageName: "{{$init.PackageName}}",
 		Do: func(ctx context.Context) error {
 			{{- if $init.Deps.VarName}}
@@ -368,7 +368,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 				return err
 			}
 			{{end -}}
-			return {{$opts.Imports.MustGet .GoImportURL}}.Prepare(ctx{{if $init.Deps.VarName}}, {{$init.Deps.VarName}}.(*{{makeType $opts.Imports $init.Deps.GoImportURL $init.Deps.Typename}}){{end}})
+			return {{$opts.Imports.MustGet .GoImportURL}}Prepare(ctx{{if $init.Deps.VarName}}, {{$init.Deps.VarName}}.(*{{makeType $opts.Imports $init.Deps.GoImportURL $init.Deps.Typename}}){{end}})
 		},
 	})
 	{{end}}
@@ -384,9 +384,9 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 	return {{$opts.Server}}, di.Init(ctx)
 }
 
-func WireServices(ctx context.Context, srv *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/grpc/server"}}.Grpc, server *ServerDeps) {
-{{range $k, $v := .Services}}{{$opts.Imports.MustGet $v.GoImportURL}}.WireService(ctx, srv, server.{{$v.Name}})
-{{range $v.GrpcGatewayServices}}srv.RegisterGrpcGateway({{$opts.Imports.MustGet $v.GoImportURL}}.Register{{.}}Handler)
+func WireServices(ctx context.Context, srv *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/grpc/server"}}Grpc, server *ServerDeps) {
+{{range $k, $v := .Services}}{{$opts.Imports.MustGet $v.GoImportURL}}WireService(ctx, srv, server.{{$v.Name}})
+{{range $v.GrpcGatewayServices}}srv.RegisterGrpcGateway({{$opts.Imports.MustGet $v.GoImportURL}}Register{{.}}Handler)
 {{end -}}
 {{end}}}
 {{end}}`))

@@ -24,7 +24,7 @@ func Protect(h http.HandlerFunc) http.Handler {
 	return protect(h)
 }
 
-func Prepare(ctx context.Context, deps *SingletonDeps) error {
+func Prepare(ctx context.Context, deps *ExtensionDeps) error {
 	key, err := base64.RawStdEncoding.DecodeString(string(deps.Token.MustValue()))
 	if err != nil {
 		return fmt.Errorf("failed to decode key: %v", err)
