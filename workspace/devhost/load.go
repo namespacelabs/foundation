@@ -38,7 +38,7 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 		}
 	} else {
 		if err := prototext.Unmarshal(devHostBytes, root.DevHost); err != nil {
-			return err
+			return fnerrors.BadInputError("Failed to parse `%s` with serialized pbtext:\n\n %s", DevHostFilename, devHostBytes)
 		}
 	}
 
