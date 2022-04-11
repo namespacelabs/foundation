@@ -18,7 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/pins"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -47,13 +46,8 @@ func buildUsingBuildkit(ctx context.Context, env ops.Environment, bin GoBinary, 
 		label += fmt.Sprintf(" %s", bin.PackageName)
 	}
 
-	goBuild := []string{"go", "build", "-v"}
-
-	if env.Proto().GetPurpose() == schema.Environment_PRODUCTION {
-		goBuild = append(goBuild, "-trimpath")
-	}
-
-	goBuild = append(goBuild, "-o", "/out/%s")
+	goBuild := goBuildArgs(bin.GoVersion)
+	goBuild = append(goBuild, fmt.Sprintf("-o=/out/%s", bin.BinaryName))
 
 	state := (llbutil.RunGo{
 		Base:       prepareGoMod(base, src, conf.Target).Root(),
@@ -61,7 +55,7 @@ func buildUsingBuildkit(ctx context.Context, env ops.Environment, bin GoBinary, 
 		WorkingDir: bin.SourcePath,
 		Platform:   conf.Target,
 	}).With(
-		llbutil.PrefixSh(label, conf.Target, strings.Join(goBuild, " "), bin.BinaryName)...).
+		llbutil.PrefixSh(label, conf.Target, strings.Join(goBuild, " "))...).
 		AddMount("/out", prodBase)
 
 	image, err := buildkit.LLBToImage(ctx, env, conf.Target, state, local)

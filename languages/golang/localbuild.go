@@ -22,7 +22,6 @@ import (
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/wscontents"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -73,14 +72,6 @@ func baseImage(ctx context.Context, env ops.Environment, target specs.Platform) 
 	return production.ServerImage(production.Distroless, target)
 }
 
-func runAs(env ops.Environment) *runtime.RunAs {
-	if env.Proto().Purpose == schema.Environment_DEVELOPMENT {
-		return production.NonRootRunAs(production.Alpine)
-	}
-
-	return production.NonRootRunAs(production.Distroless)
-}
-
 func platformToEnv(platform specs.Platform, cgo int) []string {
 	return []string{fmt.Sprintf("CGO_ENABLED=%d", cgo), "GOOS=" + platform.OS, "GOARCH=" + platform.Architecture}
 }
@@ -106,7 +97,8 @@ func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targ
 	var cmd localexec.Command
 	cmd.Label = "go build"
 	cmd.Command = sdk.GoBin()
-	cmd.Args = []string{"build", "-v", "-o=" + out, pkg}
+	cmd.Args = goBuildArgs(sdk.Version)
+	cmd.Args = append(cmd.Args, "-o="+out, pkg)
 	cmd.AdditionalEnv = env
 	cmd.Dir = modulePath
 	return cmd.Run(ctx)
