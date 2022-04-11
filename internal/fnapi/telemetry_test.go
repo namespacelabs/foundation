@@ -16,6 +16,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/atomic"
 	"gotest.tools/assert"
 )
 
@@ -173,7 +174,7 @@ func TestTelemetryRecordErrorPlaintext(t *testing.T) {
 	tel := &Telemetry{
 		UseTelemetry: true,
 		errorLogging: true,
-		recID:        "fake-id",
+		recID:        *atomic.NewString("fake-id"),
 		makeClientID: generateTestIDs,
 	}
 
@@ -193,7 +194,7 @@ func TestTelemetryRecordErrorPlaintext(t *testing.T) {
 	tel.RecordError(context.Background(), fmt.Errorf("foo error"))
 
 	// Assert on intercepted request outside the HandlerFunc to ensure the handler is called
-	assert.Equal(t, <-receivedID, tel.recID)
+	assert.Equal(t, <-receivedID, tel.recID.Load())
 }
 
 func assertGrpcInvocation(t *testing.T, method string, request interface{}, handle func(http.ResponseWriter)) http.HandlerFunc {
