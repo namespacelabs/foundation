@@ -55,7 +55,7 @@ func buildUsingBuildkit(ctx context.Context, env ops.Environment, bin GoBinary, 
 		WorkingDir: bin.SourcePath,
 		Platform:   conf.Target,
 	}).With(
-		llbutil.PrefixSh(label, conf.Target, strings.Join(goBuild, " "))...).
+		llbutil.PrefixSh(label, conf.Target, "go "+strings.Join(goBuild, " "))...).
 		AddMount("/out", prodBase)
 
 	image, err := buildkit.LLBToImage(ctx, env, conf.Target, state, local)
