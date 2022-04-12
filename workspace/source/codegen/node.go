@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	"cuelang.org/go/cue/format"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -131,7 +131,9 @@ func generateNode(ctx context.Context, loc workspace.Location, n *schema.Node, p
 		fmt.Fprintf(&out, "typeDefinition: ")
 		enc := json.NewEncoder(&out)
 		enc.SetIndent("", "  ")
-		enc.Encode(p.Type)
+		if err := enc.Encode(p.Type); err != nil {
+			return err
+		}
 		fmt.Fprintf(&out, "}\n")
 
 		fmt.Fprintln(&out, "}")
@@ -152,7 +154,7 @@ func generateNode(ctx context.Context, loc workspace.Location, n *schema.Node, p
 		fmt.Fprintf(&final, ")\n")
 	}
 
-	out.WriteTo(&final)
+	_, _ = out.WriteTo(&final)
 
 	return fnfs.WriteWorkspaceFile(ctx, fs, loc.Rel("exports.fn.cue"), func(w io.Writer) error {
 		formatted, err := format.Source(final.Bytes())
@@ -191,14 +193,10 @@ func generateProto(out io.Writer, parsed protos.AnyResolver, msg protoreflect.Me
 			t = "string"
 			opts := field.Options().(*descriptorpb.FieldOptions)
 			if opts != nil {
-				x, err := proto.GetExtension(opts, p.E_IsPackage)
-				if err == nil {
-					if b := x.(*bool); b != nil && *b {
-						t = "inputs.#Package"
-						imports.Add("namespacelabs.dev/foundation/std/fn:inputs")
-					}
-				} else if err != proto.ErrMissingExtension {
-					return err
+				x := proto.GetExtension(opts, p.E_IsPackage)
+				if b := x.(bool); b {
+					t = "inputs.#Package"
+					imports.Add("namespacelabs.dev/foundation/std/fn:inputs")
 				}
 			}
 		case protoreflect.BytesKind:

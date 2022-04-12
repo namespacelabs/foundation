@@ -125,7 +125,9 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 	}
 
 	for yarnRoot, module := range yarnRoots {
-		tidyYarnRoot(ctx, yarnRoot, module)
+		if err := tidyYarnRoot(ctx, yarnRoot, module); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -275,7 +277,7 @@ func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []stri
 		dependencies[loc.NpmPackage] = yarnWorkspaceVersion
 	}
 
-	updatePackageJson(ctx, loc.Rel(), loc.Module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
+	_, err = updatePackageJson(ctx, loc.Rel(), loc.Module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
 		packageJson["name"] = nodejsLoc.NpmPackage
 		packageJson["private"] = true
 		packageJson["version"] = yarnWorkspaceVersion
@@ -284,7 +286,7 @@ func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []stri
 		packageJson["devDependencies"] = mergeJsonMap(packageJson["devDependencies"], builtin().DevDependencies)
 	})
 
-	return nil
+	return err
 }
 
 func mergeJsonMap(existingValues interface{}, newValues map[string]string) map[string]string {
@@ -325,7 +327,9 @@ func updateJson(ctx context.Context, filepath string, fsys fnfs.ReadWriteFS, cal
 	}
 	fileExisted := err == nil
 	if err == nil {
-		json.Unmarshal(jsonRaw, &parsedJson)
+		if err := json.Unmarshal(jsonRaw, &parsedJson); err != nil {
+			return nil, err
+		}
 	}
 
 	callback(parsedJson, fileExisted)

@@ -86,7 +86,7 @@ func serveStream(kind string, w http.ResponseWriter, r *http.Request, handler fu
 		return
 	}
 
-	ws.SetCompressionLevel(6)
+	_ = ws.SetCompressionLevel(6)
 
 	writer := writeStream{ws}
 

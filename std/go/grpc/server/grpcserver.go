@@ -86,8 +86,8 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 	core.RegisterDebugEndpoints(debugMux)
 
 	debugHTTP := &http.Server{Handler: debugMux}
-	go func() { _ = debugHTTP.Serve(httpL) }()
-	go func() { _ = grpcServer.Serve(anyL) }()
+	go listen("http/debug", debugHTTP.Serve(httpL))
+	go listen("grpc", grpcServer.Serve(anyL))
 
 	if *httpPort != 0 {
 		httpServer := &http.Server{Handler: httpMux}
@@ -99,7 +99,7 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 
 		core.Log.Printf("Starting HTTP listen on %v", gwLis.Addr())
 
-		go httpServer.Serve(gwLis)
+		go listen("http", httpServer.Serve(gwLis))
 	}
 
 	if *gatewayPort != 0 {
@@ -124,7 +124,7 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 
 		core.Log.Printf("Starting gRPC gateway listen on %v", gwLis.Addr())
 
-		go func() { _ = httpServer.Serve(gwLis) }()
+		go listen("grpc-gateway", httpServer.Serve(gwLis))
 	}
 
 	return m.Serve()
@@ -136,5 +136,11 @@ func interceptorsAsOpts() []grpc.ServerOption {
 	return []grpc.ServerOption{
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(streaming...)),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unary...)),
+	}
+}
+
+func listen(what string, err error) {
+	if err != nil {
+		core.Log.Fatalf("%s: serving failed: %v", what, err)
 	}
 }
