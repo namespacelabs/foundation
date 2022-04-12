@@ -53,7 +53,7 @@ func NewLogsCmd() *cobra.Command {
 			cancel := tasks.SetIdleLabel(ctx, "listening for deployment changes")
 			defer cancel()
 
-			return rt.Observe(ctx, server, runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) error {
+			return rt.Observe(ctx, server.Proto(), runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) error {
 				mu.Lock()
 				existing := streams[ev.InstanceID]
 				if ev.Removed {

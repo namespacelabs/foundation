@@ -73,7 +73,7 @@ func (r runtimeFwdErr) ForwardPort(ctx context.Context, server *schema.Server, e
 func (r runtimeFwdErr) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f PortForwardedFunc) (io.Closer, error) {
 	return nil, r.err
 }
-func (r runtimeFwdErr) Observe(context.Context, provision.Server, ObserveOpts, func(ObserveEvent) error) error {
+func (r runtimeFwdErr) Observe(context.Context, *schema.Server, ObserveOpts, func(ObserveEvent) error) error {
 	return r.err
 }
 

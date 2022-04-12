@@ -35,7 +35,14 @@ type blockState struct {
 }
 
 func (rwb consRenderer) Ch() chan ops.Event { return rwb.ch }
-func (rwb consRenderer) Wait()              { <-rwb.done }
+func (rwb consRenderer) Wait(ctx context.Context) error {
+	select {
+	case <-rwb.done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
 
 func (rwb consRenderer) Loop(ctx context.Context) {
 	defer close(rwb.done) // Signal parent we're done.

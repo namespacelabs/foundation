@@ -432,7 +432,7 @@ func (c channelCloser) Close() error {
 	return nil
 }
 
-func (r k8sRuntime) Observe(ctx context.Context, srv provision.Server, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
+func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
 	cli, err := client.NewClientFromHostEnv(r.hostEnv)
 	if err != nil {
 		return err
@@ -445,7 +445,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv provision.Server, opts runt
 		// XXX check for cancelation.
 
 		pods, err := cli.CoreV1().Pods(r.ns()).List(ctx, metav1.ListOptions{
-			LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv.Proto())),
+			LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
 		})
 		if err != nil {
 			return err

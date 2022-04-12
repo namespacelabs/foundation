@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -79,7 +80,16 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (fs.FS, erro
 		return nil, err
 	}
 
-	if err := ops.WaitMultiple(ctx, waiters, nil); err != nil {
+	var focusServers []*schema.Server
+	for _, focus := range rt.Focus {
+		entry := rt.Stack.GetServer(schema.PackageName(focus))
+		if entry == nil {
+			return nil, fnerrors.InternalError("%s: not present in stack?", focus)
+		}
+		focusServers = append(focusServers, entry.Server)
+	}
+
+	if err := deploy.Wait(ctx, rt.Env, focusServers, waiters); err != nil {
 		return nil, err
 	}
 

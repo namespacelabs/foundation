@@ -11,20 +11,22 @@ import (
 
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/schema"
 )
 
-func FetchLogs(ctx context.Context, servers []provision.Server, env ops.Environment) {
-	const logTimeout = time.Second
+const streamLogTimeout = time.Second
 
+func FetchLogs(ctx context.Context, env ops.Environment, servers []*schema.Server) {
 	rt := runtime.For(env)
+
 	for _, srv := range servers {
 		err := rt.Observe(ctx, srv, runtime.ObserveOpts{OneShot: true}, func(ev runtime.ObserveEvent) error {
 			w := console.Output(ctx, ev.HumanReadableID)
-			ctx, cancel := context.WithTimeout(ctx, logTimeout)
+			ctx, cancel := context.WithTimeout(ctx, streamLogTimeout)
 			defer cancel()
-			return rt.StreamLogsTo(ctx, w, srv.Proto(), runtime.StreamLogsOpts{
+
+			return rt.StreamLogsTo(ctx, w, srv, runtime.StreamLogsOpts{
 				InstanceID: ev.InstanceID,
 				TailLines:  20,
 				Follow:     false,
@@ -32,7 +34,7 @@ func FetchLogs(ctx context.Context, servers []provision.Server, env ops.Environm
 		})
 
 		if err != nil {
-			fmt.Fprintf(console.Warnings(ctx), "%s: failed to obtain logs: %v", srv.PackageName(), err)
+			fmt.Fprintf(console.Warnings(ctx), "%s: failed to obtain logs: %v", srv.PackageName, err)
 		}
 	}
 }

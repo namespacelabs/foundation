@@ -62,7 +62,7 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 		return err
 	}
 
-	if err := deploy.Wait(ctx, pi.servers, pi.env, waiters); err != nil {
+	if err := deploy.Wait(ctx, pi.env, provision.ServerSchemas(pi.servers), waiters); err != nil {
 		return err
 	}
 

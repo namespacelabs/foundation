@@ -15,7 +15,7 @@ import (
 
 type Consumer interface {
 	Ch() chan ops.Event
-	Wait()
+	Wait(context.Context) error
 }
 
 func NewBlock(ctx context.Context, name string) Consumer {
