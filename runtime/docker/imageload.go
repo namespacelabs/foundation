@@ -65,6 +65,7 @@ func WriteImage(ctx context.Context, img v1.Image, ref name.Tag, ensureTag bool)
 }
 
 // Write saves the image into the daemon as the given tag.
+// XXX cancelation support is missing.
 func writeImage(ctx context.Context, client Client, tag name.Tag, img v1.Image) (string, error) {
 	pr, pw := io.Pipe()
 	go func() {
