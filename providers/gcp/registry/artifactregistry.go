@@ -96,7 +96,7 @@ func (defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Aut
 		cmd.Stdout = &out
 		cmd.Stderr = console.TypedOutput(ctx, "gcloud", tasks.CatOutputTool)
 		if err := cmd.Run(); err != nil {
-			return fnerrors.RemoteError("failed to obtain gcloud access token: %w", err)
+			return fnerrors.InvocationError("failed to obtain gcloud access token: %w", err)
 		}
 		return nil
 	}); err != nil {
