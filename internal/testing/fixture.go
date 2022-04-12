@@ -6,7 +6,11 @@ package testing
 
 import (
 	"context"
+	"fmt"
+	"io/fs"
+	"strings"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/multiplatform"
@@ -14,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
 	"namespacelabs.dev/foundation/provision"
@@ -22,9 +27,15 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const startupTestBinary = "namespacelabs.dev/foundation/std/startup/testdriver"
+
+type StoredTestResults struct {
+	Bundle   *TestBundle
+	ImageRef oci.ImageID
+}
 
 type TestOpts struct {
 	Debug       bool
@@ -33,7 +44,7 @@ type TestOpts struct {
 
 type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) ([]provision.Server, *stack.Stack, error)
 
-func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision.Env, pkgname schema.PackageName, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[oci.ImageID], error) {
+func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision.Env, pkgname schema.PackageName, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[StoredTestResults], error) {
 	testPkg, err := pl.LoadByName(ctx, pkgname)
 	if err != nil {
 		return nil, err
@@ -138,7 +149,40 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		Debug:          opts.Debug,
 	}
 
-	return oci.PublishImage(tag, oci.MakeImage(oci.Scratch(), oci.MakeLayer("results", results))), nil
+	toFS := compute.Map(tasks.Action("test.to-fs"), compute.Inputs().Computable("bundle", results), compute.Output{},
+		func(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
+			computed, ok := compute.GetDepWithType[*TestBundle](deps, "bundle")
+			if !ok {
+				return nil, fnerrors.InternalError("results are missing")
+			}
+
+			bundle := computed.Value
+
+			result, err := protojson.Marshal(bundle.Result)
+			if err != nil {
+				return nil, fnerrors.InternalError("failed to marshal results: %w", err)
+			}
+
+			var fsys memfs.FS
+			fsys.Add("test.log", bundle.TestLog.Output)
+			fsys.Add("result.json", result)
+
+			for _, s := range bundle.ServerLog {
+				fsys.Add(fmt.Sprintf("server/%s.log", strings.ReplaceAll(s.PackageName, "/", "-")), s.Output)
+			}
+
+			return &fsys, nil
+		})
+
+	imageID := oci.PublishImage(tag, oci.MakeImage(oci.Scratch(), oci.MakeLayer("results", toFS)))
+
+	return compute.Map(tasks.Action("test.make-results"), compute.Inputs().Computable("stored", imageID).Computable("bundle", results), compute.Output{},
+		func(ctx context.Context, deps compute.Resolved) (StoredTestResults, error) {
+			return StoredTestResults{
+				Bundle:   compute.GetDepValue[*TestBundle](deps, results, "bundle"),
+				ImageRef: compute.GetDepValue(deps, imageID, "stored"),
+			}, nil
+		}), nil
 }
 
 type buildAndAttachDataLayer struct {

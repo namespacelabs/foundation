@@ -1,0 +1,24 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.internal.testing;
+
+option go_package = "namespacelabs.dev/foundation/internal/testing";
+
+message TestBundle {
+    TestResult   result     = 1;
+    Log          test_log   = 2;
+    repeated Log server_log = 3;
+}
+
+message TestResult {
+    bool success = 1;
+}
+
+message Log {
+    string package_name = 1;
+    bytes  output       = 2;
+}

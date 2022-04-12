@@ -9,8 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
-	"strings"
 
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -18,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
@@ -26,6 +23,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
+
+var errTestFailed = errors.New("test failed")
 
 type testRun struct {
 	Env            ops.WorkspaceEnvironment // Doesn't affect the output.
@@ -41,10 +40,10 @@ type testRun struct {
 	Plan  compute.Computable[*deploy.Plan]
 	Debug bool
 
-	compute.LocalScoped[fs.FS]
+	compute.LocalScoped[*TestBundle]
 }
 
-var _ compute.Computable[fs.FS] = &testRun{}
+var _ compute.Computable[*TestBundle] = &testRun{}
 
 func (rt *testRun) Action() *tasks.ActionEvent {
 	return tasks.Action("test").Arg("name", rt.TestName).Arg("package_name", rt.TestBinPkg)
@@ -62,7 +61,7 @@ func (rt *testRun) Inputs() *compute.In {
 		Bool("debug", rt.Debug)
 }
 
-func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (fs.FS, error) {
+func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
 	p := compute.GetDepValue(r, rt.Plan, "plan")
 
 	if rt.CleanupRuntime {
@@ -117,7 +116,7 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (fs.FS, erro
 		if err := runtime.For(rt.Env).RunOneShot(ctx, rt.TestBinPkg, testRun, testLog); err != nil {
 			var e runtime.ErrContainerExitStatus
 			if errors.As(err, &e) && e.ExitCode > 0 {
-				return errors.New("test failed")
+				return errTestFailed
 			} else {
 				return err
 			}
@@ -126,22 +125,33 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (fs.FS, erro
 		return nil
 	})
 
-	if err := wait(); err != nil {
+	testResults := &TestResult{}
+
+	waitErr := wait()
+	if waitErr == nil {
+		testResults.Success = true
+	} else if errors.Is(waitErr, errTestFailed) {
+		testResults.Success = false
+	} else {
 		return nil, err
 	}
 
 	fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
-	fsys, err := collectLogs(ctx, rt.Env, rt.Stack, rt.Focus)
+	bundle, err := collectLogs(ctx, rt.Env, rt.Stack, rt.Focus)
 	if err != nil {
 		return nil, err
 	}
 
-	fsys.Add("test.log", testLogBuf.Seal().Bytes())
+	bundle.Result = testResults
+	bundle.TestLog = &Log{
+		PackageName: rt.TestBinPkg.String(),
+		Output:      testLogBuf.Seal().Bytes(),
+	}
 
-	return fsys, nil
+	return bundle, nil
 }
 
-func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, focus []string) (*memfs.FS, error) {
+func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, focus []string) (*TestBundle, error) {
 	ex, wait := executor.New(ctx)
 
 	var serverLogs []*syncbuffer.ByteBuffer // Follows same indexing as rt.Focus.
@@ -165,12 +175,16 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 		return nil, err
 	}
 
-	var fs memfs.FS
+	bundle := &TestBundle{}
+
 	for k, entry := range stack.Entry {
-		fs.Add(fmt.Sprintf("server/%s.log", strings.ReplaceAll(entry.GetPackageName().String(), "/", "-")), serverLogs[k].Seal().Bytes())
+		bundle.ServerLog = append(bundle.ServerLog, &Log{
+			PackageName: entry.GetPackageName().String(),
+			Output:      serverLogs[k].Seal().Bytes(),
+		})
 	}
 
-	return &fs, nil
+	return bundle, nil
 }
 
 func makeLog(ctx context.Context, name string, focus bool) (io.Writer, *syncbuffer.ByteBuffer) {

@@ -103,16 +103,22 @@ func NewTestCmd() *cobra.Command {
 					return err
 				}
 
-				if v, err := compute.Get(ctx, test); err != nil {
+				v, err := compute.Get(ctx, test)
+				if err != nil {
 					return err
-				} else {
-					cached := ""
-					if v.Cached {
-						cached = aec.LightBlackF.Apply(" (CACHED)")
-					}
-
-					fmt.Fprintf(stderr, "%s: Test %s%s %s\n", loc.AsPackageName(), aec.GreenF.Apply("PASSED"), cached, aec.LightBlackF.Apply(v.Value.ImageRef()))
 				}
+
+				status := aec.GreenF.Apply("PASSED")
+				if !v.Value.Bundle.Result.Success {
+					status = aec.RedF.Apply("FAILED")
+				}
+
+				cached := ""
+				if v.Cached {
+					cached = aec.LightBlackF.Apply(" (CACHED)")
+				}
+
+				fmt.Fprintf(stderr, "%s: Test %s%s %s\n", loc.AsPackageName(), status, cached, aec.LightBlackF.Apply(v.Value.ImageRef.ImageRef()))
 			}
 
 			return nil
