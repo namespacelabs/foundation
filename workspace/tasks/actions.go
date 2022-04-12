@@ -99,13 +99,13 @@ type resultData struct {
 
 type EventAttachments struct {
 	actionID string
-	sink     ActionSink
 
 	mu sync.Mutex // Protects below.
 	resultData
 	// For the time being we just keep everything in memory for simplicity.
 	buffers        map[string]attachedBuffer
 	insertionOrder []OutputName
+	sink           ActionSink
 }
 
 type RunningAction struct {
@@ -592,12 +592,12 @@ func (ev *EventAttachments) attach(name OutputName, body []byte) {
 		name:        name.name,
 		contentType: name.contentType,
 	}
+	ev.sink.AttachmentsUpdated(ev.actionID, nil)
 }
 
 func (ev *EventAttachments) Attach(name OutputName, body []byte) {
 	if ev != nil {
 		ev.attach(name, body)
-		ev.sink.AttachmentsUpdated(ev.actionID, nil)
 	}
 }
 
@@ -631,23 +631,21 @@ func (ev *EventAttachments) addResult(key string, msg interface{}) resultData {
 	for _, item := range ev.items {
 		if item.Name == key {
 			item.msg = msg
+			ev.sink.AttachmentsUpdated(ev.actionID, &ev.resultData)
 			return ev.resultData
 		}
 	}
 
 	// Not found, add a new result.
 	ev.items = append(ev.items, &actionArgument{key, msg})
+	ev.sink.AttachmentsUpdated(ev.actionID, &ev.resultData)
 	return ev.resultData
 }
 
 func (ev *EventAttachments) AddResult(key string, msg interface{}) *EventAttachments {
 	if ev != nil {
-		data := ev.addResult(key, msg)
-		// XXX this is racy as we don't guarantee the AttachmentsUpdated order if the caller
-		// is using multiple go-routines to update outputs.
-		ev.sink.AttachmentsUpdated(ev.actionID, &data)
+		ev.addResult(key, msg)
 	}
-
 	return ev
 }
 
@@ -655,12 +653,9 @@ func (ev *EventAttachments) SetProgress(p ActionProgress) *EventAttachments {
 	if ev != nil {
 		ev.mu.Lock()
 		ev.progress = p
-		copy := ev.resultData
+		ev.sink.AttachmentsUpdated(ev.actionID, &ev.resultData)
 		ev.mu.Unlock()
-
-		ev.sink.AttachmentsUpdated(ev.actionID, &copy)
 	}
-
 	return ev
 }
 
@@ -679,16 +674,16 @@ func (ev *EventAttachments) ReaderByName(name string) io.ReadCloser {
 	return io.NopCloser(bytes.NewReader(nil))
 }
 
-func (ev *EventAttachments) ensureOutput(name OutputName, addIfMissing bool) (io.Writer, bool) {
+func (ev *EventAttachments) ensureOutput(name OutputName, addIfMissing bool) io.Writer {
 	if ev == nil {
-		return io.Discard, false
+		return io.Discard
 	}
 
 	ev.mu.Lock()
 	defer ev.mu.Unlock()
 
 	if !addIfMissing && ev.buffers == nil {
-		return io.Discard, false
+		return io.Discard
 	}
 
 	ev.init()
@@ -696,7 +691,7 @@ func (ev *EventAttachments) ensureOutput(name OutputName, addIfMissing bool) (io
 	added := false
 	if _, ok := ev.buffers[name.computed]; !ok {
 		if !addIfMissing {
-			return io.Discard, false
+			return io.Discard
 		}
 
 		ev.buffers[name.computed] = attachedBuffer{
@@ -707,16 +702,14 @@ func (ev *EventAttachments) ensureOutput(name OutputName, addIfMissing bool) (io
 		ev.insertionOrder = append(ev.insertionOrder, name)
 		added = true
 	}
-
-	return ev.buffers[name.computed].buffer.Writer(), added
-}
-
-func (ev *EventAttachments) Output(name OutputName) io.Writer {
-	w, added := ev.ensureOutput(name, true)
 	if added {
 		ev.sink.AttachmentsUpdated(ev.actionID, nil)
 	}
-	return w
+	return ev.buffers[name.computed].buffer.Writer()
+}
+
+func (ev *EventAttachments) Output(name OutputName) io.Writer {
+	return ev.ensureOutput(name, true)
 }
 
 func (ev *EventAttachments) ActionID() string {
