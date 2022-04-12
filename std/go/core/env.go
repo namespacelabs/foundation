@@ -25,6 +25,8 @@ var (
 	serializedEnv = flag.String("env_json", "", "The environment definition, serialized as JSON.")
 	imageVer      = flag.String("image_version", "", "The version being run.")
 
+	maxStartupTime = 2 * time.Second
+
 	env         *schema.Environment
 	serverName  string
 	initialized uint32
@@ -48,7 +50,7 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 
 	serverName = specifiedServerName
 
-	return &ServerResources{}
+	return &ServerResources{startupTime: time.Now()}
 }
 
 func EnvIs(purpose schema.Environment_Purpose) bool {
@@ -90,6 +92,17 @@ func (di *DepInitializer) Register(init Initializer) {
 }
 
 func (di *DepInitializer) Wait(ctx context.Context) error {
+	resources := ServerResourcesFrom(ctx)
+	if resources == nil {
+		return fmt.Errorf("missing server resources")
+	}
+
+	initializationDeadline := resources.startupTime.Add(maxStartupTime)
+	ctx, cancel := context.WithDeadline(ctx, initializationDeadline)
+	defer cancel()
+
+	Log.Printf("[init] starting with %v initialization deadline left", time.Until(initializationDeadline))
+
 	for k, init := range di.inits {
 		// XXX at the moment we don't make sure of dependency information, but we can
 		// to enable concurrent initialization.
