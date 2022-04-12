@@ -81,7 +81,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 						return err
 					}
 					return nil
-
 				})
 			if err != nil {
 				return nil, err
@@ -92,7 +91,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
 					return nil, err
 				}
-
 			}
 
 			return deps, err
@@ -115,7 +113,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 						return err
 					}
 					return nil
-
 				})
 			if err != nil {
 				return nil, err

@@ -333,7 +333,8 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 								func(ctx context.Context, v interface{}) (err error) {
 							{{end}}
 							{{- if $refs.Scoped}}
-								{{if $refs.Single}}return{{else}}err ={{end -}}
+								{{- if $refs.Single}}return {{else}}
+									err = {{end -}}
 							di.Instantiate(ctx, {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Reference{
 									Package: "{{$p.PackageName}}",
 									Scope: "{{$refs.Scoped.Scope}}"},
@@ -365,9 +366,8 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 								{{- if not $refs.Single}}
 								if err != nil {
 									return nil, err
-								}
-								{{- end}}
-							{{end}}
+								} {{end -}}
+							{{end -}}
 							{{if $refs.Single}}
 								})
 								if err != nil {
