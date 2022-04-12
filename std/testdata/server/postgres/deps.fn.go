@@ -125,6 +125,23 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
+	server = &ServerDeps{}
+	di.AddInitializer(core.Initializer{
+		PackageName: "",
+		Do: func(ctx context.Context) error {
+
+			err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/testdata/service/list"},
+				func(ctx context.Context, v interface{}) (err error) {
+					server.list = v.(list.ServiceDeps)
+					return nil
+				})
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+	})
 	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
@@ -144,17 +161,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 				})
 		},
 	})
-
-	server = &ServerDeps{}
-
-	err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/testdata/service/list"},
-		func(ctx context.Context, v interface{}) (err error) {
-			server.list = v.(list.ServiceDeps)
-			return nil
-		})
-	if err != nil {
-		return nil, err
-	}
 
 	return server, di.Init(ctx)
 }

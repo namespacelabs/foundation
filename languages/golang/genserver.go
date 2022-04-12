@@ -387,7 +387,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 	di.AddInitializer({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Initializer{
 		PackageName: "{{$opts.PackageName}}",
 		Do: func(ctx context.Context) error {
-		{{range $k, $v := .Services}}
+			{{range $k, $v := .Services}}
 			err = di.Instantiate(ctx,
 				{{- $opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Reference{Package: "{{$v.PackageName}}"},
 				func(ctx context.Context, v interface{}) (err error) {
@@ -395,9 +395,10 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 					return nil
 				})
 			if err != nil {
-				return nil, err
+				return err
 			}
-		{{end}}
+			{{end}}
+			return nil
 		},
 	})
 
