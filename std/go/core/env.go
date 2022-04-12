@@ -24,6 +24,7 @@ import (
 var (
 	serializedEnv = flag.String("env_json", "", "The environment definition, serialized as JSON.")
 	imageVer      = flag.String("image_version", "", "The version being run.")
+	debug         = flag.Bool("debug_init", false, "If set to true, emits additional initialization information.")
 
 	maxStartupTime = 2 * time.Second
 
@@ -106,6 +107,10 @@ func (di *DepInitializer) Wait(ctx context.Context) error {
 	for k, init := range di.inits {
 		// XXX at the moment we don't make sure of dependency information, but we can
 		// to enable concurrent initialization.
+
+		if *debug {
+			Log.Printf("[init] initializing %s/%s with %v deadline left", init.PackageName, init.Instance, time.Until(initializationDeadline))
+		}
 
 		start := time.Now()
 		err := init.Do(ctx)
