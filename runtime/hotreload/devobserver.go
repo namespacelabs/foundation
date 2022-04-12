@@ -1,4 +1,4 @@
-package devobserver
+package hotreload
 
 import (
 	"context"
@@ -33,10 +33,11 @@ type FileSyncDevObserver struct {
 
 func NewFileSyncDevObserver(ctx context.Context, srv provision.Server, fileSyncPort int32) *FileSyncDevObserver {
 	return &FileSyncDevObserver{
-		ctx:    ctx,
-		log:    console.TypedOutput(ctx, "hmr", tasks.CatOutputUs),
-		server: srv.Proto(),
-		rt:     runtime.For(srv.Env()),
+		ctx:          ctx,
+		log:          console.TypedOutput(ctx, "hot reload", tasks.CatOutputUs),
+		server:       srv.Proto(),
+		rt:           runtime.For(srv.Env()),
+		fileSyncPort: fileSyncPort,
 	}
 }
 
@@ -104,7 +105,7 @@ func (do *FileSyncDevObserver) onEndpoint(fpe runtime.ForwardedPort) {
 	} else {
 		do.conn = conn
 
-		fmt.Fprintln(do.log, "Connected to FileSync (for HMR).")
+		fmt.Fprintln(do.log, "Connected to FileSync (for hot reload).")
 	}
 }
 

@@ -15,11 +15,10 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/llbutil"
-	"namespacelabs.dev/foundation/internal/wscontents"
+	"namespacelabs.dev/foundation/runtime/hotreload"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -55,9 +54,9 @@ func viteSource(ctx context.Context, target string, loc workspace.Location, isFo
 	var module build.Workspace
 
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {
-		module = webModule{
-			mod:  loc.Module,
-			sink: r.For(&wsremote.Signature{ModuleName: loc.Module.ModuleName(), Rel: loc.Rel()}),
+		module = hotreload.YarnHotReloadModule{
+			Mod:  loc.Module,
+			Sink: r.For(&wsremote.Signature{ModuleName: loc.Module.ModuleName(), Rel: loc.Rel()}),
 		}
 	} else {
 		module = loc.Module
@@ -102,35 +101,6 @@ func viteBase(ctx context.Context, target string, module build.Workspace, rel st
 	}
 
 	return local, base, nil
-}
-
-type webModule struct {
-	mod  *workspace.Module
-	sink wsremote.Sink
-}
-
-func (w webModule) ModuleName() string { return w.mod.ModuleName() }
-func (w webModule) Abs() string        { return w.mod.Abs() }
-func (w webModule) VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
-	if observeChanges {
-		return wsremote.ObserveAndPush(w.mod.Abs(), rel, observerSink{w.sink})
-	}
-
-	return w.mod.VersionedFS(rel, observeChanges)
-}
-
-type observerSink struct {
-	sink wsremote.Sink
-}
-
-func (obs observerSink) Deposit(ctx context.Context, events []*wscontents.FileEvent) error {
-	for _, ev := range events {
-		if ev.Path == "yarn.lock" {
-			return fnerrors.ExpectedError("yarn.lock changed, triggering a rebuild")
-		}
-	}
-
-	return obs.sink.Deposit(ctx, events)
 }
 
 func PrepareYarn(target, nodejsBase string, src llb.State, platform specs.Platform) llb.State {

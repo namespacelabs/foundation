@@ -24,7 +24,7 @@ import (
 	"namespacelabs.dev/foundation/languages/nodejs"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/devobserver"
+	"namespacelabs.dev/foundation/runtime/hotreload"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/dev/controller/admin"
 	"namespacelabs.dev/foundation/std/web/http"
@@ -200,10 +200,10 @@ func buildWebApps(ctx context.Context, endpoints languages.Endpoints, srv provis
 
 func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
 	if wsremote.Ctx(ctx) != nil {
-		return nil, nil, fnerrors.UserError(srv.Location, "`fn dev` on multiple web servers not supported")
+		return nil, nil, fnerrors.UserError(srv.Location, "`fn dev` on multiple web/nodejs servers not supported")
 	}
 
-	devObserver := devobserver.NewFileSyncDevObserver(ctx, srv, fileSyncPort)
+	devObserver := hotreload.NewFileSyncDevObserver(ctx, srv, fileSyncPort)
 
 	newCtx, _ := wsremote.WithRegistrar(ctx, devObserver.Deposit)
 

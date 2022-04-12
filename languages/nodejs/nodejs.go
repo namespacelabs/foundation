@@ -15,29 +15,41 @@ import (
 	"path/filepath"
 	"strings"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/hotreload"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/dev/controller/admin"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 // Hard-coding the version of generated yarn workspaces since we only support a monorepo for now.
-const yarnWorkspaceVersion = "0.0.0"
-const yarnVersion = "3.2.0"
-const yarnRcFn = ".yarnrc.yml"
-const implFileName = "impl.ts"
-const packageJsonFn = "package.json"
+const (
+	controllerPkg        schema.PackageName = "namespacelabs.dev/foundation/std/dev/controller"
+	grpcPkg              schema.PackageName = "namespacelabs.dev/foundation/std/web/http"
+	yarnWorkspaceVersion                    = "0.0.0"
+	yarnVersion                             = "3.2.0"
+	yarnRcFn                                = ".yarnrc.yml"
+	implFileName                            = "impl.ts"
+	packageJsonFn                           = "package.json"
+	fileSyncPort                            = 50001
+	serverPort                              = 10090
+	serverPortName                          = "server-port"
+	ForceProd                               = false
+)
 
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
@@ -57,6 +69,10 @@ func Register() {
 
 		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
 	})
+}
+
+func useDevBuild(env *schema.Environment) bool {
+	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
 type generator struct{}
@@ -94,18 +110,79 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server prov
 		return nil, err
 	}
 
+	locs := append(deps, server.Location)
+
+	isDevBuild := useDevBuild(server.Env().Proto())
+
+	var module build.Workspace
+	if r := wsremote.Ctx(ctx); r != nil && isFocus && !server.Location.Module.IsExternal() && isDevBuild {
+		module = hotreload.YarnHotReloadModule{
+			Mod: server.Location.Module,
+			// "ModuleName" is empty because we have only one module in the image and
+			// we can put everything under the root "/app" directory.
+			Sink: r.For(&wsremote.Signature{ModuleName: "", Rel: yarnRoot.String()}),
+		}
+	} else {
+		module = server.Location.Module
+	}
+
 	return buildNodeJS{
-		serverLoc: server.Location,
-		deps:      deps,
-		yarnRoot:  yarnRoot,
-		isFocus:   isFocus}, nil
+		module:     module,
+		locs:       locs,
+		yarnRoot:   yarnRoot,
+		serverEnv:  server.Env(),
+		isDevBuild: isDevBuild,
+		isFocus:    isFocus}, nil
 }
 
-func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.ServerRunOpts) error {
-	run.Command = []string{"node", filepath.Join(t.Location.Rel(), "main.fn.js")}
+func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
+	if wsremote.Ctx(ctx) != nil {
+		return nil, nil, fnerrors.UserError(srv.Location, "`fn dev` on multiple web/nodejs servers not supported")
+	}
+
+	devObserver := hotreload.NewFileSyncDevObserver(ctx, srv, fileSyncPort)
+
+	newCtx, _ := wsremote.WithRegistrar(ctx, devObserver.Deposit)
+
+	return newCtx, devObserver, nil
+}
+
+func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.ServerRunOpts) error {
+	if useDevBuild(srv.Env().Proto()) {
+		run.Command = []string{"nodemon", filepath.Join(srv.Location.Rel(), "main.fn.ts")}
+		// For dev builds we use runtime complication of Typescript.
+		run.ReadOnlyFilesystem = false
+
+		// Initialize devcontroller
+
+		configuration := &admin.Configuration{
+			PackageBase:  "/app",
+			FilesyncPort: fileSyncPort,
+			Backend: []*admin.Backend{{
+				// To match the file sync event package name.
+				PackageName: ".",
+				Execution: &admin.Execution{
+					Args: []string{
+						"nodemon",
+						filepath.Join(srv.Location.Rel(), "main.fn.ts"),
+						"--listen_hostname=127.0.0.1",
+						fmt.Sprintf("--port=%d", serverPort),
+					},
+				},
+			}},
+		}
+		serialized, err := protojson.Marshal(configuration)
+		if err != nil {
+			return fnerrors.InternalError("failed to serialize configuration: %v", err)
+		}
+		run.Command = []string{"/devcontroller"}
+		run.Args = append(run.Args, fmt.Sprintf("--configuration=%s", serialized))
+	} else {
+		run.Command = []string{"node", filepath.Join(srv.Location.Rel(), "main.fn.js")}
+		run.ReadOnlyFilesystem = true
+		run.RunAs = production.NonRootRunAsWithID(production.NonRootUserID)
+	}
 	run.WorkingDir = "/app"
-	run.ReadOnlyFilesystem = true
-	run.RunAs = production.NonRootRunAsWithID(production.NonRootUserID)
 	return nil
 }
 
@@ -359,11 +436,12 @@ func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Nod
 }
 
 func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
-	ext.Include = append(ext.Include, "namespacelabs.dev/foundation/std/nodejs/grpc")
+	ext.Include = append(ext.Include, grpcPkg, controllerPkg)
 	return nil
 }
 
-func (impl) PostParseServer(ctx context.Context, _ *workspace.Sealed) error {
+func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error {
+	sealed.Proto.Server.StaticPort = []*schema.Endpoint_Port{{Name: serverPortName, ContainerPort: serverPort}}
 	return nil
 }
 
