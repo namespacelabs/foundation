@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"time"
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
@@ -23,8 +22,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
-
-const fetchLogsAfter = 10 * time.Second
 
 type updateCluster struct {
 	obs       *stackState
@@ -65,7 +62,7 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 		return err
 	}
 
-	if err := deploy.Wait(ctx, pi.servers, pi.env, waiters); err != nil {
+	if err := deploy.Wait(ctx, pi.env, provision.ServerSchemas(pi.servers), waiters); err != nil {
 		return err
 	}
 

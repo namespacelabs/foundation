@@ -264,7 +264,7 @@ func (do *devObserver) OnDeployment() {
 	do.mu.Lock()
 	defer do.mu.Unlock()
 
-	do.cleanup()
+	_ = do.cleanup()
 
 	// An endpoint is manufactored here, we don't actually export this in our metadata.
 	var err error

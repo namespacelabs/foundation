@@ -71,7 +71,7 @@ func RegisterGraphHandlers() {
 				Body([]byte(apply.BodyJson)).
 				Do(ctx).Into(&res)
 		}); err != nil {
-			return nil, fnerrors.RemoteError("%s: %w", d.Description, err)
+			return nil, fnerrors.InvocationError("%s: %w", d.Description, err)
 		}
 
 		// XXX support more resource types.
@@ -144,7 +144,7 @@ func RegisterGraphHandlers() {
 				Body(&opts).
 				Do(ctx).Error()
 		}); err != nil && !errors.IsNotFound(err) {
-			return nil, fnerrors.RemoteError("%s: %w", d.Description, err)
+			return nil, fnerrors.InvocationError("%s: %w", d.Description, err)
 		}
 
 		return nil, nil
@@ -214,7 +214,7 @@ func RegisterGraphHandlers() {
 					Do(ctx).Error()
 			})
 		}); err != nil {
-			return nil, fnerrors.RemoteError("%s: %w", d.Description, err)
+			return nil, fnerrors.InvocationError("%s: %w", d.Description, err)
 		}
 
 		return nil, nil
@@ -266,7 +266,7 @@ func RegisterGraphHandlers() {
 				Body([]byte(create.BodyJson)).
 				Do(ctx).Error()
 		}); err != nil && !errors.IsNotFound(err) {
-			return nil, fnerrors.RemoteError("%s: failed to create: %w", d.Description, err)
+			return nil, fnerrors.InvocationError("%s: failed to create: %w", d.Description, err)
 		}
 
 		return nil, nil

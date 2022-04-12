@@ -13,7 +13,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -126,7 +125,9 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 	}
 
 	for yarnRoot, module := range yarnRoots {
-		tidyYarnRoot(ctx, yarnRoot, module)
+		if err := tidyYarnRoot(ctx, yarnRoot, module); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -144,7 +145,8 @@ func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) er
 		if err := RunYarn(ctx, path, []string{"set", "version", yarnVersion}); err != nil {
 			return err
 		}
-		// If yarn messed with package.json, re-format it to make tn tidy idempotent.
+		// Yarn adds "packageManager" field to the end of package.json, re-format it in alphapetical order
+		// to make tn tidy idempotent.
 		if _, err = updateYarnRootPackageJson(ctx, path, module.ReadWriteFS()); err != nil {
 			return err
 		}
@@ -166,6 +168,12 @@ func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) er
 				packageJson["extends"] = "@tsconfig/node16/tsconfig.json"
 			}
 		}); err != nil {
+		return err
+	}
+
+	// `fn tidy` could update dependencies of some nodes/servers, running `yarn install` to update
+	// `node_modules`.
+	if err := RunYarn(ctx, path, []string{"install"}); err != nil {
 		return err
 	}
 
@@ -252,37 +260,54 @@ func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *sche
 }
 
 func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []string) error {
-	packageJson, err := tidyPackageJsonFields(ctx, loc)
-	if err != nil {
-		return err
-	}
-
-	wasYarnCalled, err := tidyDependencies(ctx, loc, imports, packageJson)
-	if err != nil {
-		return err
-	}
-
-	if wasYarnCalled {
-		// If yarn messed with package.json, re-format it to make tn tidy idempotent.
-		_, err = tidyPackageJsonFields(ctx, loc)
-		return err
-	} else {
-		return nil
-	}
-}
-
-// Returns the tydied package.json file.
-func tidyPackageJsonFields(ctx context.Context, loc workspace.Location) (map[string]interface{}, error) {
 	nodejsLoc, err := nodejsLocationFrom(loc.PackageName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return updatePackageJson(ctx, loc.Rel(), loc.Module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
+	dependencies := map[string]string{}
+	for key, value := range builtin().Dependencies {
+		dependencies[key] = value
+	}
+	for _, importName := range imports {
+		loc, err := nodejsLocationFrom(schema.Name(importName))
+		if err != nil {
+			return err
+		}
+		dependencies[loc.NpmPackage] = yarnWorkspaceVersion
+	}
+
+	_, err = updatePackageJson(ctx, loc.Rel(), loc.Module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
 		packageJson["name"] = nodejsLoc.NpmPackage
 		packageJson["private"] = true
 		packageJson["version"] = yarnWorkspaceVersion
+
+		packageJson["dependencies"] = mergeJsonMap(packageJson["dependencies"], dependencies)
+		packageJson["devDependencies"] = mergeJsonMap(packageJson["devDependencies"], builtin().DevDependencies)
 	})
+
+	return err
+}
+
+func mergeJsonMap(existingValues interface{}, newValues map[string]string) map[string]string {
+	if existingValues == nil {
+		return newValues
+	}
+
+	existingValueMap, ok := existingValues.(map[string]interface{})
+	if !ok {
+		existingValueMap = map[string]interface{}{}
+	}
+
+	resultMap := map[string]string{}
+	for key, value := range existingValueMap {
+		resultMap[key] = fmt.Sprintf("%s", value)
+	}
+	for key, value := range newValues {
+		resultMap[key] = value
+	}
+
+	return resultMap
 }
 
 func updatePackageJson(ctx context.Context, path string, fsys fnfs.ReadWriteFS, callback func(json map[string]interface{}, fileExisted bool)) (map[string]interface{}, error) {
@@ -302,7 +327,9 @@ func updateJson(ctx context.Context, filepath string, fsys fnfs.ReadWriteFS, cal
 	}
 	fileExisted := err == nil
 	if err == nil {
-		json.Unmarshal(jsonRaw, &parsedJson)
+		if err := json.Unmarshal(jsonRaw, &parsedJson); err != nil {
+			return nil, err
+		}
 	}
 
 	callback(parsedJson, fileExisted)
@@ -311,70 +338,14 @@ func updateJson(ctx context.Context, filepath string, fsys fnfs.ReadWriteFS, cal
 	if err != nil {
 		return nil, err
 	}
+	// Appending a new line: yarn re-writes package.json every time it reads it and always adds a new line,
+	// so for idempotency we do the same.
+	updatedJsonRaw = append(updatedJsonRaw, '\n')
 
 	return parsedJson, fnfs.WriteWorkspaceFile(ctx, fsys, filepath, func(w io.Writer) error {
 		_, err := w.Write(updatedJsonRaw)
 		return err
 	})
-}
-
-// Returns true if yarn was called.
-func tidyDependencies(ctx context.Context, loc workspace.Location, imports []string, packageJson map[string]interface{}) (bool, error) {
-	dependencies := map[string]string{}
-	for key, value := range builtin().Dependencies {
-		dependencies[key] = value
-	}
-	for _, importName := range imports {
-		loc, err := nodejsLocationFrom(schema.Name(importName))
-		if err != nil {
-			return false, err
-		}
-		dependencies[loc.NpmPackage] = yarnWorkspaceVersion
-	}
-
-	packages := formatPackages(trimExistingPackages(dependencies, packageJson["dependencies"]))
-	devPackages := formatPackages(trimExistingPackages(builtin().DevDependencies, packageJson["devDependencies"]))
-
-	if len(packages) > 0 {
-		if err := RunYarn(ctx, loc.Rel(), append([]string{"add"}, packages...)); err != nil {
-			return false, err
-		}
-	}
-
-	if len(devPackages) > 0 {
-		if err := RunYarn(ctx, loc.Rel(), append([]string{"add", "-D"}, devPackages...)); err != nil {
-			return false, err
-		}
-	}
-
-	return len(packages) > 0 || len(devPackages) > 0, nil
-}
-
-func trimExistingPackages(packages map[string]string, existingPackages interface{}) map[string]string {
-	if existingPackages == nil {
-		return packages
-	}
-
-	existingPackagesMap := existingPackages.(map[string]interface{})
-
-	trimmedPackages := map[string]string{}
-	for pkgName, version := range packages {
-		if existingVersion, ok := existingPackagesMap[pkgName]; !ok || version != existingVersion {
-			trimmedPackages[pkgName] = version
-		}
-	}
-
-	return trimmedPackages
-}
-
-func formatPackages(packages map[string]string) []string {
-	formattedPackages := []string{}
-	for pkg, version := range packages {
-		formattedPackages = append(formattedPackages, fmt.Sprintf("%s@%s", pkg, version))
-	}
-	sort.Strings(formattedPackages)
-
-	return formattedPackages
 }
 
 func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {

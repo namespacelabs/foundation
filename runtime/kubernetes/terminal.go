@@ -50,7 +50,7 @@ func (r boundEnv) startTerminal(ctx context.Context, cli *kubernetes.Clientset, 
 
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 	if err != nil {
-		return fnerrors.RemoteError("creating executor failed: %w", err)
+		return fnerrors.InvocationError("creating executor failed: %w", err)
 	}
 
 	opts := remotecommand.StreamOptions{
@@ -68,10 +68,10 @@ func (r boundEnv) startTerminal(ctx context.Context, cli *kubernetes.Clientset, 
 
 	if err := exec.Stream(opts); err != nil {
 		if s, ok := err.(*k8serrors.StatusError); ok {
-			return fnerrors.RemoteError("%+v: %w", s.ErrStatus, err)
+			return fnerrors.InvocationError("%+v: %w", s.ErrStatus, err)
 		}
 
-		return fnerrors.RemoteError("stream failed: %w", err)
+		return fnerrors.InvocationError("stream failed: %w", err)
 	}
 
 	return nil

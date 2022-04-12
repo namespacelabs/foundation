@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/stack"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -95,7 +96,7 @@ func NewDeployCmd() *cobra.Command {
 			}
 
 			if alsoWait {
-				if err := deploy.Wait(ctx, servers, env, waiters); err != nil {
+				if err := deploy.Wait(ctx, env, provision.ServerSchemas(servers), waiters); err != nil {
 					return err
 				}
 			}

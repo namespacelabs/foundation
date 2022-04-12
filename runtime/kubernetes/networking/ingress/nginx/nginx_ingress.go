@@ -52,7 +52,7 @@ func RegisterGraphHandlers() {
 			}), kubedef.Ego())
 			return err
 		}); err != nil {
-			return nil, fnerrors.RemoteError("nginx: failed to ensure namespace: %w", err)
+			return nil, fnerrors.InvocationError("nginx: failed to ensure namespace: %w", err)
 		}
 
 		if err := tasks.Action("nginx.generate-webhook").HumanReadablef(g.Description).Run(ctx, func(ctx context.Context) error {
@@ -76,12 +76,12 @@ func RegisterGraphHandlers() {
 					FieldManager: kubedef.Ego().FieldManager,
 				})
 				if err != nil {
-					return fnerrors.RemoteError("nginx: failed to create secret: %w", err)
+					return fnerrors.InvocationError("nginx: failed to create secret: %w", err)
 				}
 
 				secret = newSecret
 			} else if err != nil {
-				return fnerrors.RemoteError("nginx: failed to get secret: %w", err)
+				return fnerrors.InvocationError("nginx: failed to get secret: %w", err)
 			}
 
 			for _, webhook := range webhook.Webhooks {
@@ -89,7 +89,7 @@ func RegisterGraphHandlers() {
 			}
 
 			if _, err := cli.AdmissionregistrationV1().ValidatingWebhookConfigurations().Apply(ctx, webhook, kubedef.Ego()); err != nil {
-				return fnerrors.RemoteError("nginx: failed to apply webhook: %w", err)
+				return fnerrors.InvocationError("nginx: failed to apply webhook: %w", err)
 			}
 
 			return nil

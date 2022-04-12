@@ -78,14 +78,16 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 	core.Log.Printf("Starting to listen on %v", lis.Addr())
 
 	// Set runtime.GOMAXPROCS to respect container limits if the env var GOMAXPROCS is not set or is invalid, preventing CPU throttling.
-	maxprocs.Set(maxprocs.Logger(core.Log.Printf))
+	if _, err := maxprocs.Set(maxprocs.Logger(core.Log.Printf)); err != nil {
+		core.Log.Printf("Failed to reset GOMAXPROCS: %v", err)
+	}
 
 	debugMux := mux.NewRouter()
 	core.RegisterDebugEndpoints(debugMux)
 
 	debugHTTP := &http.Server{Handler: debugMux}
-	go debugHTTP.Serve(httpL)
-	go grpcServer.Serve(anyL)
+	go func() { listen("http/debug", debugHTTP.Serve(httpL)) }()
+	go func() { listen("grpc", grpcServer.Serve(anyL)) }()
 
 	if *httpPort != 0 {
 		httpServer := &http.Server{Handler: httpMux}
@@ -97,7 +99,7 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 
 		core.Log.Printf("Starting HTTP listen on %v", gwLis.Addr())
 
-		go httpServer.Serve(gwLis)
+		go func() { listen("http", httpServer.Serve(gwLis)) }()
 	}
 
 	if *gatewayPort != 0 {
@@ -122,7 +124,7 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 
 		core.Log.Printf("Starting gRPC gateway listen on %v", gwLis.Addr())
 
-		go httpServer.Serve(gwLis)
+		go func() { listen("grpc-gateway", httpServer.Serve(gwLis)) }()
 	}
 
 	return m.Serve()
@@ -134,5 +136,11 @@ func interceptorsAsOpts() []grpc.ServerOption {
 	return []grpc.ServerOption{
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(streaming...)),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unary...)),
+	}
+}
+
+func listen(what string, err error) {
+	if err != nil {
+		core.Log.Fatalf("%s: serving failed: %v", what, err)
 	}
 }

@@ -24,6 +24,9 @@ import (
 var (
 	serializedEnv = flag.String("env_json", "", "The environment definition, serialized as JSON.")
 	imageVer      = flag.String("image_version", "", "The version being run.")
+	debug         = flag.Bool("debug_init", false, "If set to true, emits additional initialization information.")
+
+	maxStartupTime = 2 * time.Second
 
 	env         *schema.Environment
 	serverName  string
@@ -48,7 +51,7 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 
 	serverName = specifiedServerName
 
-	return &ServerResources{}
+	return &ServerResources{startupTime: time.Now()}
 }
 
 func EnvIs(purpose schema.Environment_Purpose) bool {
@@ -90,16 +93,31 @@ func (di *DepInitializer) Register(init Initializer) {
 }
 
 func (di *DepInitializer) Wait(ctx context.Context) error {
+	resources := ServerResourcesFrom(ctx)
+	if resources == nil {
+		return fmt.Errorf("missing server resources")
+	}
+
+	initializationDeadline := resources.startupTime.Add(maxStartupTime)
+	ctx, cancel := context.WithDeadline(ctx, initializationDeadline)
+	defer cancel()
+
+	Log.Printf("[init] starting with %v initialization deadline left", time.Until(initializationDeadline))
+
 	for k, init := range di.inits {
 		// XXX at the moment we don't make sure of dependency information, but we can
 		// to enable concurrent initialization.
+
+		if *debug {
+			Log.Printf("[init] initializing %s/%s with %v deadline left", init.PackageName, init.Instance, time.Until(initializationDeadline))
+		}
 
 		start := time.Now()
 		err := init.Do(ctx)
 		took := time.Since(start)
 
 		if took > maximumInitTime {
-			Log.Printf("[init] %s took %d (log thresh is %d)", init.Desc(), took, maximumInitTime)
+			Log.Printf("[init] %s took %s (log thresh is %s)", init.Desc(), took, maximumInitTime)
 		}
 
 		if err != nil {

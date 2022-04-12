@@ -120,13 +120,6 @@ func (opts computeInstance) NewInstance() interface{} {
 	return reflect.New(typ).Elem().Interface()
 }
 
-func produceValue[V any]() func(context.Context, rawComputable, Resolved) (any, error) {
-	return func(ctx context.Context, rc rawComputable, deps Resolved) (any, error) {
-		v, err := rc.(Computable[V]).Compute(ctx, deps)
-		return v, err
-	}
-}
-
 type hasUnwrap interface {
 	Unwrap() rawComputable
 }

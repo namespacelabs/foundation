@@ -38,7 +38,9 @@ func ForLocations(ctx context.Context, root *workspace.Root, locs []fnfs.Locatio
 					onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate server", Err: err})
 					errCount++
 				} else {
-					g.Add(defs...)
+					if err := g.Add(defs...); err != nil {
+						return err
+					}
 				}
 			} else {
 				var pkg *workspace.Package
@@ -58,7 +60,9 @@ func ForLocations(ctx context.Context, root *workspace.Root, locs []fnfs.Locatio
 					onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
 					errCount++
 				} else {
-					g.Add(defs...)
+					if err := g.Add(defs...); err != nil {
+						return err
+					}
 				}
 			}
 		}

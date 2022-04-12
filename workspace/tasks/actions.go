@@ -601,19 +601,19 @@ func (ev *EventAttachments) Attach(name OutputName, body []byte) {
 	}
 }
 
-func (ev *EventAttachments) AttachSerializable(name, modifier string, body interface{}) error {
+func (ev *EventAttachments) AttachSerializable(name, modifier string, body interface{}) {
 	if ev == nil {
 		panic("no running action")
 	}
 
 	msg, err := serialize(body)
 	if err != nil {
-		return err
+		panic(fmt.Sprintf("failed to serialize payload: %v", err))
 	}
 
 	bytes, err := serializeToBytes(msg)
 	if err != nil {
-		return err
+		panic(fmt.Sprintf("failed to serialize payload to bytes: %v", err))
 	}
 
 	contentType := "application/json"
@@ -622,7 +622,6 @@ func (ev *EventAttachments) AttachSerializable(name, modifier string, body inter
 	}
 
 	ev.Attach(Output(name, contentType), bytes)
-	return nil
 }
 
 func (ev *EventAttachments) addResult(key string, msg interface{}) resultData {

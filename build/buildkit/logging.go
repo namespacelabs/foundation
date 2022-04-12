@@ -173,7 +173,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 					streams[log.Stream] = console.Output(ctx, fmt.Sprintf("buildkit:%d", log.Stream))
 				}
 
-				streams[log.Stream].Write(log.Data)
+				_, _ = streams[log.Stream].Write(log.Data)
 			}
 		}
 

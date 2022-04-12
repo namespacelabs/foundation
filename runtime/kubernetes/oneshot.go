@@ -67,7 +67,7 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 	for k := 0; ; k++ {
 		finalState, err := cli.CoreV1().Pods(r.ns()).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			return fnerrors.RemoteError("kubernetes: failed to fetch final pod status: %w", err)
+			return fnerrors.InvocationError("kubernetes: failed to fetch final pod status: %w", err)
 		}
 
 		for _, containerStatus := range finalState.Status.ContainerStatuses {

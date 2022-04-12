@@ -43,7 +43,7 @@ func TestTelemetryDisabled(t *testing.T) {
 
 	tel.backendAddress = svr.URL
 
-	cmd.Execute()
+	_ = cmd.Execute()
 	tel.RecordError(context.Background(), fmt.Errorf("foo error"))
 }
 
@@ -78,7 +78,7 @@ func TestTelemetryDisabledViaEnv(t *testing.T) {
 
 	tel.backendAddress = svr.URL
 
-	cmd.Execute()
+	_ = cmd.Execute()
 	tel.RecordError(context.Background(), fmt.Errorf("foo error"))
 }
 
@@ -110,7 +110,7 @@ func TestTelemetryDisabledViaViper(t *testing.T) {
 
 	tel.backendAddress = svr.URL
 
-	cmd.Execute()
+	_ = cmd.Execute()
 	tel.RecordError(context.Background(), fmt.Errorf("foo error"))
 }
 

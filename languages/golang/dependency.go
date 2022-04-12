@@ -313,7 +313,7 @@ func serializeContents(ctx context.Context, loader workspace.Packages, provides 
 		stableFmt, err := parser.Format(serialized)
 		if err == nil {
 			var b bytes.Buffer
-			text.NewIndentWriter(&b, []byte("// ")).Write(stableFmt)
+			_, _ = text.NewIndentWriter(&b, []byte("// ")).Write(stableFmt)
 			prov.ProtoComments = b.String()
 		}
 	}

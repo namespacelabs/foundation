@@ -128,7 +128,7 @@ const minimumRuncVer = "1.0.0-rc93"
 func ValidateDocker(ctx context.Context, cli docker.Client) error {
 	ver, err := cli.ServerVersion(ctx)
 	if err != nil {
-		return fnerrors.RemoteError("failed to obtain docker version: %w", err)
+		return fnerrors.InvocationError("failed to obtain docker version: %w", err)
 	}
 
 	dockerOK, runcOK, runcVersion := validateVersions(ver)

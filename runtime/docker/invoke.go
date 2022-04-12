@@ -72,7 +72,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.
 
 	config, err := opts.Image.ConfigName()
 	if err != nil {
-		return fnerrors.RemoteError("docker: failed to fetch image config: %w", err)
+		return fnerrors.InvocationError("docker: failed to fetch image config: %w", err)
 	}
 
 	if err := WriteImage(ctx, opts.Image, tag, false); err != nil {

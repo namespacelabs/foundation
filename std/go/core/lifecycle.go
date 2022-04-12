@@ -7,6 +7,7 @@ package core
 import (
 	"context"
 	"sync"
+	"time"
 
 	"tailscale.com/util/multierr"
 )
@@ -16,6 +17,8 @@ type CtxCloseable interface {
 }
 
 type ServerResources struct {
+	startupTime time.Time
+
 	mu         sync.Mutex
 	closeables []CtxCloseable
 }

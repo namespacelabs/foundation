@@ -43,6 +43,6 @@ func testServer(t *testing.T, response string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.Method, "GET")
 		assert.DeepEqual(t, r.URL.Query()["current_version"], []string{"myversion"})
-		fmt.Fprintf(w, response)
+		fmt.Fprint(w, response)
 	}))
 }

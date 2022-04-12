@@ -68,7 +68,7 @@ type Runtime interface {
 	DebugShell(ctx context.Context, imageID oci.ImageID, io rtypes.IO) error
 
 	// Observes lifecyle events of the specified server. Unless OneShot is set, Observe runs until the context is cancelled.
-	Observe(context.Context, provision.Server, ObserveOpts, func(ObserveEvent) error) error
+	Observe(context.Context, *schema.Server, ObserveOpts, func(ObserveEvent) error) error
 
 	// Runs the specified container as a one-shot, streaming it's output to the specified writer.
 	// This mechanism is targeted at invoking test runners within the runtime environment.

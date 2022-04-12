@@ -125,7 +125,7 @@ func printContents(ctx context.Context, img v1.Image, filename string) error {
 	if filename != "" {
 		contents, err := oci.ReadFileFromImage(ctx, img, filename)
 		if err == nil {
-			console.Stdout(ctx).Write(contents)
+			_, _ = console.Stdout(ctx).Write(contents)
 		}
 		return err
 	}
@@ -142,7 +142,7 @@ func printContents(ctx context.Context, img v1.Image, filename string) error {
 			fmt.Fprintf(&buf, " (%s)", typName(typ))
 		}
 		fmt.Fprintln(&buf)
-		buf.WriteTo(out)
+		_, _ = buf.WriteTo(out)
 	})
 }
 

@@ -82,10 +82,6 @@ type localCache struct {
 	path string
 }
 
-type cacheIndex struct {
-	Outputs map[string]CachedOutput
-}
-
 func (c *localCache) blobPath(h schema.Digest) string {
 	return filepath.Join(c.path, h.Algorithm, h.Hex)
 }

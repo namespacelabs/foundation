@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -30,7 +31,9 @@ func StartDevServer(ctx context.Context, root *workspace.Root, pkg schema.Packag
 		cmd.Dir = loc.Abs()
 		cmd.AdditionalEnv = []string{fmt.Sprintf("CMD_DEV_PORT=%d", mainPort)}
 		cmd.Persistent = true
-		cmd.Run(ctx)
+		if err := cmd.Run(ctx); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "vite failed: %v\n", err)
+		}
 	}()
 
 	return hostPort, nil

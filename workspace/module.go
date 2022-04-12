@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"golang.org/x/net/html"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/git"
@@ -69,7 +68,7 @@ func (root *Module) SnapshotContents(ctx context.Context, rel string) (fs.FS, er
 	if err != nil {
 		return nil, err
 	}
-	return v.Value.(wscontents.Versioned).FS(), nil
+	return v.Value.FS(), nil
 }
 
 func (root *Module) ReadWriteFS() fnfs.ReadWriteFS {
@@ -94,17 +93,15 @@ func ModuleHead(ctx context.Context, resolved *ResolvedPackage) (*schema.Workspa
 	return dep, err
 }
 
-func moduleHeadTo(ctx context.Context, resolved *ResolvedPackage, dep *schema.Workspace_Dependency) (err error) {
+func moduleHeadTo(ctx context.Context, resolved *ResolvedPackage, dep *schema.Workspace_Dependency) error {
 	return tasks.Action("workspace.module.resolve-head").Arg("name", resolved.ModuleName).Run(ctx, func(ctx context.Context) error {
 		var out bytes.Buffer
 		cmd := exec.CommandContext(ctx, "git", "ls-remote", "-q", resolved.Repository, "HEAD")
 		cmd.Env = append(os.Environ(), git.NoPromptEnv()...)
 		cmd.Stdout = &out
 
-		fmt.Fprintln(console.Stderr(ctx), cmd.Env)
-
 		if err := cmd.Run(); err != nil {
-			return err
+			return fnerrors.InvocationError("%s: failed to `git ls-remote`: %w", resolved.Repository, err)
 		}
 
 		gitout := strings.TrimSpace(out.String())
@@ -114,7 +111,7 @@ func moduleHeadTo(ctx context.Context, resolved *ResolvedPackage, dep *schema.Wo
 			return nil
 		}
 
-		return fnerrors.RemoteError("%s: failed to resolve HEAD", resolved.Repository)
+		return fnerrors.InvocationError("%s: failed to resolve HEAD", resolved.Repository)
 	})
 }
 

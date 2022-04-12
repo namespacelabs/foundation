@@ -43,17 +43,6 @@ func toV1Plat(p *specs.Platform) *v1.Platform {
 	}
 }
 
-func fromV1Plat(p *v1.Platform) *specs.Platform {
-	if p == nil {
-		return nil
-	}
-	return &specs.Platform{
-		OS:           p.OS,
-		Architecture: p.Architecture,
-		// XXX handle variant.
-	}
-}
-
 type fetchImage struct {
 	imageid    compute.Computable[ImageID]
 	descriptor compute.Computable[*RawDescriptor]
@@ -105,7 +94,7 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 
 		img, err := remote.Image(name, RemoteOpts(ctx)...)
 		if err != nil {
-			return nil, fnerrors.RemoteError("failed to fetch image: %w", err)
+			return nil, fnerrors.InvocationError("failed to fetch image: %w", err)
 		}
 
 		return img, nil
@@ -163,7 +152,7 @@ func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*
 	digest := compute.GetDepValue(deps, r.imageID, "resolved")
 	d, err := fetchRemoteDescriptor(ctx, digest.ImageRef())
 	if err != nil {
-		return nil, fnerrors.RemoteError("failed to fetch descriptor: %w", err)
+		return nil, fnerrors.InvocationError("failed to fetch descriptor: %w", err)
 	}
 
 	res := &RawDescriptor{

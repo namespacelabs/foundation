@@ -18,7 +18,14 @@ type logRenderer struct {
 }
 
 func (rwb logRenderer) Ch() chan ops.Event { return rwb.ch }
-func (rwb logRenderer) Wait()              { <-rwb.done }
+func (rwb logRenderer) Wait(ctx context.Context) error {
+	select {
+	case <-rwb.done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
 
 func (rwb logRenderer) Loop(ctx context.Context) {
 	defer close(rwb.done) // Signal parent we're done.

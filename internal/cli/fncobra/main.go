@@ -189,7 +189,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"skip_buildkit_workspace_size_check",
 		"ignore_zfs_check",
 	} {
-		rootCmd.PersistentFlags().MarkHidden(noisy)
+		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
 
 	err := rootCmd.ExecuteContext(ctxWithSink)
@@ -239,38 +239,41 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	}
 
 	if err != nil {
-		exitCode := 1
-		if exitError, ok := err.(*exec.ExitError); ok {
-			// If we are exiting, because a sub-process failed, don't bother outputting
-			// an error again, just forward the appropriate exit code.
-			exitCode = exitError.ExitCode()
-		} else if versionError, ok := err.(*fnerrors.VersionError); ok {
-			fnerrors.Format(os.Stderr, colors, versionError)
-			exitCode = 2
-
-			if version, err := version.Version(); err == nil {
-				ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-
-				if status, err := FetchLatestRemoteStatus(ctxWithTimeout, versionCheckEndpoint, version.Version); err == nil && status.TagName != "" {
-					fmt.Fprintln(os.Stderr, indent.String(
-						wordwrap.String(
-							fmt.Sprintf("\nThe latest version of Foundation is %s, available at %s\n", clrs.Bold(status.TagName), downloadUrl(status.TagName)),
-							80),
-						2))
-				}
-			}
-		} else {
-			// Only print errors after calling flushLogs above, so the console driver
-			// is no longer erasing lines.
-			fnerrors.Format(os.Stderr, colors, err)
-			exitCode = 1
-		}
-
+		exitCode := handleExitError(colors, err)
 		// Record errors only after the user sees them to hide potential latency implications.
 		// We pass the original ctx without sink since logs have already been flushed.
 		tel.RecordError(ctx, err)
 		os.Exit(exitCode)
+	}
+}
+
+func handleExitError(colors bool, err error) int {
+	if exitError, ok := err.(*exec.ExitError); ok {
+		// If we are exiting, because a sub-process failed, don't bother outputting
+		// an error again, just forward the appropriate exit code.
+		return exitError.ExitCode()
+	} else if versionError, ok := err.(*fnerrors.VersionError); ok {
+		fnerrors.Format(os.Stderr, colors, versionError)
+
+		if version, err := version.Version(); err == nil {
+			ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			if status, err := FetchLatestRemoteStatus(ctxWithTimeout, versionCheckEndpoint, version.Version); err == nil && status.TagName != "" {
+				fmt.Fprintln(os.Stderr, indent.String(
+					wordwrap.String(
+						fmt.Sprintf("\nThe latest version of Foundation is %s, available at %s\n", clrs.Bold(status.TagName), downloadUrl(status.TagName)),
+						80),
+					2))
+			}
+		}
+
+		return 2
+	} else {
+		// Only print errors after calling flushLogs above, so the console driver
+		// is no longer erasing lines.
+		fnerrors.Format(os.Stderr, colors, err)
+		return 1
 	}
 }
 
@@ -308,24 +311,24 @@ func setupViper() {
 	}
 
 	viper.SetDefault("log_level", "info")
-	viper.BindEnv("log_level")
+	_ = viper.BindEnv("log_level")
 
 	viper.SetDefault("jaeger_endpoint", "")
-	viper.BindEnv("jaeger_endpoint")
+	_ = viper.BindEnv("jaeger_endpoint")
 
 	viper.SetDefault("console_output", "text")
-	viper.BindEnv("console_output")
+	_ = viper.BindEnv("console_output")
 
 	viper.SetDefault("console_no_colors", false)
-	viper.BindEnv("console_no_colors")
+	_ = viper.BindEnv("console_no_colors")
 
 	viper.SetDefault("enable_tracing", false)
-	viper.BindEnv("enable_tracing")
+	_ = viper.BindEnv("enable_tracing")
 
 	viper.SetDefault("enable_telemetry", true)
 
 	viper.SetDefault("console_log_level", 0)
-	viper.BindEnv("console_log_level")
+	_ = viper.BindEnv("console_log_level")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {

@@ -33,7 +33,7 @@ func FromReader(description string, r io.Reader) ([]kubedef.Apply, error) {
 		// Handle buffered data before returning errors.
 		if bytes.Equal(line, []byte("---\n")) || err == io.EOF {
 			copy := make([]byte, buf.Len())
-			buf.Read(copy)
+			_, _ = buf.Read(copy)
 			sections = append(sections, copy)
 			buf.Reset()
 		} else {

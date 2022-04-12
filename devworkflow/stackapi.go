@@ -30,7 +30,7 @@ func serveStack(s *SessionState, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ws.SetCompressionLevel(6)
+	_ = ws.SetCompressionLevel(6)
 
 	l.Debug().Str("url", r.URL.String()).Msg("connected")
 

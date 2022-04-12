@@ -47,8 +47,8 @@ func InternalError(format string, args ...interface{}) error {
 }
 
 // A call to a remote endpoint failed, perhaps due to a transient issue.
-func RemoteError(format string, args ...interface{}) error {
-	return &internalError{fmt.Errorf(format, args...), false}
+func InvocationError(format string, args ...interface{}) error {
+	return &invocationError{fmt.Errorf(format, args...), false}
 }
 
 // The input does match our expectations (e.g. missing bits, wrong version, etc).
@@ -87,6 +87,11 @@ type internalError struct {
 	expected bool
 }
 
+type invocationError struct {
+	Err      error
+	expected bool
+}
+
 func IsExpected(err error) (string, bool) {
 	if x, ok := unwrap(err).(*internalError); ok && x.expected {
 		return x.Err.Error(), true
@@ -113,6 +118,10 @@ func (e *internalError) Error() string {
 	return e.Err.Error()
 }
 
+func (e *invocationError) Error() string {
+	return fmt.Sprintf("failed when calling resource: %s", e.Err.Error())
+}
+
 type VersionError struct {
 	Pkg           string
 	Expected, Got int32
@@ -130,8 +139,6 @@ func Format(w io.Writer, colors bool, err error) {
 	}
 	format(indent(w), colors, err)
 }
-
-const expandXError = false
 
 func format(w io.Writer, colors bool, err error) {
 	if x, ok := unwrap(err).(*usageError); ok {
@@ -182,11 +189,13 @@ func format(w io.Writer, colors bool, err error) {
 		fmt.Fprintf(w, "%s: %s\n", bold("internal error", colors), x.Err.Error())
 		fmt.Fprintln(w)
 		fmt.Fprintf(w, "This was unexpected, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
+		errorReportRequest(w)
+
+	case *invocationError:
+		fmt.Fprintf(w, "%s: %s\n", bold("invocation error", colors), x.Err.Error())
 		fmt.Fprintln(w)
-		fmt.Fprintf(w, "Please include,\n")
-		fmt.Fprintf(w, "- the full command line you've used.\n")
-		fmt.Fprintf(w, "- the full output that fn produced\n")
-		fmt.Fprintf(w, "- the output of `fn version`\n")
+		fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
+		errorReportRequest(w)
 
 	case cueerrors.Error:
 		err := cueerrors.Sanitize(x)
@@ -216,6 +225,14 @@ func format(w io.Writer, colors bool, err error) {
 	}
 }
 
+func errorReportRequest(w io.Writer) {
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "Please include,\n")
+	fmt.Fprintf(w, "- the full command line you've used.\n")
+	fmt.Fprintf(w, "- the full output that fn produced\n")
+	fmt.Fprintf(w, "- the output of `fn version`\n")
+}
+
 func formatLabel(str string, colors bool) string {
 	if colors {
 		return aec.CyanF.Apply(str)
@@ -239,15 +256,6 @@ func formatPos(pos string, colors bool) string {
 }
 
 func indent(w io.Writer) io.Writer { return text.NewIndentWriter(w, []byte("  ")) }
-
-type printer struct{ w io.Writer }
-
-func (y printer) Print(args ...interface{}) { fmt.Fprint(y.w, args...) }
-
-// Printf writes a formatted string.
-func (y printer) Printf(format string, args ...interface{}) { fmt.Fprintf(y.w, format, args...) }
-
-func (printer) Detail() bool { return true }
 
 // Adapted from xerror's codebase.
 type frame struct {

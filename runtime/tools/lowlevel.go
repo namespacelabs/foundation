@@ -77,7 +77,7 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 		return Impl().RunWithOpts(ctx, opts, localexec.RunOpts{
 			OnStart: func() {
 				// Let grpc know there's a new connection, i.e. the process has spawned.
-				lis.Ready(grpcstdio.NewConnection(inw, outr))
+				_ = lis.Ready(ctx, grpcstdio.NewConnection(inw, outr))
 			},
 		})
 	})

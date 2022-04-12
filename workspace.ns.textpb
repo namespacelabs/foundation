@@ -1,5 +1,4 @@
 module_name: "namespacelabs.dev/foundation"
-
 foundation: {
   minimum_api: 22
 }

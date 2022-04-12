@@ -10,5 +10,4 @@ import (
 
 const (
 	ioctl_GETATTR = unix.TCGETS
-	ioctl_SETATTR = unix.TCSETS
 )

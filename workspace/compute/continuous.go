@@ -95,7 +95,7 @@ func (g *sinkInvocation) sink(ctx context.Context, in *In, updated func(context.
 
 	if len(requiredKeys) == 0 {
 		// XXX Make sure that the error is propagated to the caller.
-		updated(ctx, Resolved{})
+		_ = updated(ctx, Resolved{})
 		return
 	}
 

@@ -618,7 +618,7 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 		}
 
 		fmt.Fprint(c.out, aec.EraseLine(aec.EraseModes.Tail))
-		c.out.Write(line)
+		_, _ = c.out.Write(line)
 		fmt.Fprint(c.out, "\n\r")
 	}
 
@@ -739,7 +739,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 			})
 		}
 
-		c.debugOut.Encode(debugData{
+		_ = c.debugOut.Encode(debugData{
 			Width:       width,
 			Height:      height,
 			Flush:       flush,
@@ -799,7 +799,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		report += "\n"
 	}
 
-	report = fmt.Sprintf("[+] %s", timefmt.Seconds(t.Sub(c.startedCounting)))
+	report += fmt.Sprintf("[+] %s", timefmt.Seconds(t.Sub(c.startedCounting)))
 	report += fmt.Sprintf(" %s %s running", num(aec.GreenF, running), plural(running, "action", "actions"))
 	if waiting > 0 {
 		report += fmt.Sprintf(", %s waiting", num(aec.CyanF, waiting))

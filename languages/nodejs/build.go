@@ -25,7 +25,6 @@ import (
 )
 
 const appRootPath = "/app"
-const tmpBundlePath = "/tmp_bundle"
 
 type buildNodeJS struct {
 	serverLoc workspace.Location
