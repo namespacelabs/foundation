@@ -164,7 +164,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				data[gen.Secret.Name] = []byte(ids.NewRandomBase32ID(int(gen.Secret.Generate.RandomByteCount)))
 			default: // Including BASE64
 				raw := make([]byte, gen.Secret.Generate.RandomByteCount)
-				rand.Reader.Read(raw)
+				_, _ = rand.Reader.Read(raw)
 				data[gen.Secret.Name] = []byte(base64.RawStdEncoding.EncodeToString(raw))
 			}
 

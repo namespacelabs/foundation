@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"time"
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
@@ -23,8 +22,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
-
-const fetchLogsAfter = 10 * time.Second
 
 type updateCluster struct {
 	obs       *stackState

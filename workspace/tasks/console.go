@@ -618,7 +618,7 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 		}
 
 		fmt.Fprint(c.out, aec.EraseLine(aec.EraseModes.Tail))
-		c.out.Write(line)
+		_, _ = c.out.Write(line)
 		fmt.Fprint(c.out, "\n\r")
 	}
 
@@ -739,7 +739,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 			})
 		}
 
-		c.debugOut.Encode(debugData{
+		_ = c.debugOut.Encode(debugData{
 			Width:       width,
 			Height:      height,
 			Flush:       flush,

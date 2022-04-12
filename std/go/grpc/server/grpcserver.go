@@ -78,14 +78,16 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 	core.Log.Printf("Starting to listen on %v", lis.Addr())
 
 	// Set runtime.GOMAXPROCS to respect container limits if the env var GOMAXPROCS is not set or is invalid, preventing CPU throttling.
-	maxprocs.Set(maxprocs.Logger(core.Log.Printf))
+	if _, err := maxprocs.Set(maxprocs.Logger(core.Log.Printf)); err != nil {
+		core.Log.Printf("Failed to reset GOMAXPROCS: %v", err)
+	}
 
 	debugMux := mux.NewRouter()
 	core.RegisterDebugEndpoints(debugMux)
 
 	debugHTTP := &http.Server{Handler: debugMux}
-	go debugHTTP.Serve(httpL)
-	go grpcServer.Serve(anyL)
+	go func() { _ = debugHTTP.Serve(httpL) }()
+	go func() { _ = grpcServer.Serve(anyL) }()
 
 	if *httpPort != 0 {
 		httpServer := &http.Server{Handler: httpMux}
@@ -122,7 +124,7 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 
 		core.Log.Printf("Starting gRPC gateway listen on %v", gwLis.Addr())
 
-		go httpServer.Serve(gwLis)
+		go func() { _ = httpServer.Serve(gwLis) }()
 	}
 
 	return m.Serve()

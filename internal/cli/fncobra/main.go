@@ -189,7 +189,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"skip_buildkit_workspace_size_check",
 		"ignore_zfs_check",
 	} {
-		rootCmd.PersistentFlags().MarkHidden(noisy)
+		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
 
 	err := rootCmd.ExecuteContext(ctxWithSink)
@@ -308,24 +308,24 @@ func setupViper() {
 	}
 
 	viper.SetDefault("log_level", "info")
-	viper.BindEnv("log_level")
+	_ = viper.BindEnv("log_level")
 
 	viper.SetDefault("jaeger_endpoint", "")
-	viper.BindEnv("jaeger_endpoint")
+	_ = viper.BindEnv("jaeger_endpoint")
 
 	viper.SetDefault("console_output", "text")
-	viper.BindEnv("console_output")
+	_ = viper.BindEnv("console_output")
 
 	viper.SetDefault("console_no_colors", false)
-	viper.BindEnv("console_no_colors")
+	_ = viper.BindEnv("console_no_colors")
 
 	viper.SetDefault("enable_tracing", false)
-	viper.BindEnv("enable_tracing")
+	_ = viper.BindEnv("enable_tracing")
 
 	viper.SetDefault("enable_telemetry", true)
 
 	viper.SetDefault("console_log_level", 0)
-	viper.BindEnv("console_log_level")
+	_ = viper.BindEnv("console_log_level")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {

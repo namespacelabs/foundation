@@ -54,7 +54,7 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 			}
 
 			if ev.AllDone {
-				rwb.flushLog.Write(render(m, ids, true))
+				_, _ = rwb.flushLog.Write(render(m, ids, true))
 				rwb.setSticky(nil)
 				return
 			}

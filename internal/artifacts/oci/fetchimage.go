@@ -43,17 +43,6 @@ func toV1Plat(p *specs.Platform) *v1.Platform {
 	}
 }
 
-func fromV1Plat(p *v1.Platform) *specs.Platform {
-	if p == nil {
-		return nil
-	}
-	return &specs.Platform{
-		OS:           p.OS,
-		Architecture: p.Architecture,
-		// XXX handle variant.
-	}
-}
-
 type fetchImage struct {
 	imageid    compute.Computable[ImageID]
 	descriptor compute.Computable[*RawDescriptor]

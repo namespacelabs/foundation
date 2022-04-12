@@ -313,7 +313,9 @@ func (pl *PackageLoader) Stats(ctx context.Context) PackageLoaderStats {
 	stats.PerModule = map[string][]string{}
 	for name, mod := range pl.fsys {
 		name := name // Close mod.
-		fnfs.VisitFiles(ctx, mod, func(path string, _ []byte, _ fs.DirEntry) error {
+
+		// Ignore errors; we're best effort.
+		_ = fnfs.VisitFiles(ctx, mod, func(path string, _ []byte, _ fs.DirEntry) error {
 			stats.PerModule[name] = append(stats.PerModule[name], path)
 			return nil
 		})

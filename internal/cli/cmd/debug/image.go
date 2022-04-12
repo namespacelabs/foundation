@@ -142,7 +142,7 @@ func printContents(ctx context.Context, img v1.Image, filename string) error {
 			fmt.Fprintf(&buf, " (%s)", typName(typ))
 		}
 		fmt.Fprintln(&buf)
-		buf.WriteTo(out)
+		_, _ = buf.WriteTo(out)
 	})
 }
 

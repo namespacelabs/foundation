@@ -32,17 +32,10 @@ func (root *Root) FS() fnfs.LocalFS {
 }
 
 func (root *Root) RelPackage(rel string) fnfs.Location {
-	rel = filepath.Clean(rel)
-
-	pkg := root.Workspace.ModuleName
-	if rel != "." {
-		pkg += "/" + rel
-	}
-
 	return fnfs.Location{
 		ModuleName: root.Workspace.ModuleName,
 		FS:         root.FS(),
-		RelPath:    rel,
+		RelPath:    filepath.Clean(rel),
 	}
 }
 

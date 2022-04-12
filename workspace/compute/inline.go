@@ -69,7 +69,7 @@ func (p precomputed[V]) Inputs() *In {
 		if err != nil {
 			return err
 		}
-		_, err = fmt.Fprintf(w, digest.String())
+		_, err = fmt.Fprint(w, digest.String())
 		return err
 	})
 }

@@ -68,7 +68,7 @@ func NewPromise[V any](g *Orch, action *tasks.ActionEvent, f func(context.Contex
 
 	g.Detach(action, func(ctx context.Context) error {
 		result, err := f(ctx)
-		p.resolve(result, err)
+		_ = p.resolve(result, err)
 		return nil
 	})
 

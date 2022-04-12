@@ -32,7 +32,7 @@ func SetupTracing(ctx context.Context, jaegerEndpoint string) (context.Context, 
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
-		tp.Shutdown(ctx)
+		_ = tp.Shutdown(ctx)
 	}
 }
 

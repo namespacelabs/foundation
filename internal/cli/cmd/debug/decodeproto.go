@@ -64,7 +64,7 @@ func newDecodeProtoCmd() *cobra.Command {
 				return err
 			}
 
-			console.Stdout(ctx).Write(out)
+			_, _ = console.Stdout(ctx).Write(out)
 			return nil
 		}),
 	}

@@ -140,8 +140,6 @@ func Format(w io.Writer, colors bool, err error) {
 	format(indent(w), colors, err)
 }
 
-const expandXError = false
-
 func format(w io.Writer, colors bool, err error) {
 	if x, ok := unwrap(err).(*usageError); ok {
 		// XXX don't wordwrap if terminal is below 80 chars in width.
@@ -258,15 +256,6 @@ func formatPos(pos string, colors bool) string {
 }
 
 func indent(w io.Writer) io.Writer { return text.NewIndentWriter(w, []byte("  ")) }
-
-type printer struct{ w io.Writer }
-
-func (y printer) Print(args ...interface{}) { fmt.Fprint(y.w, args...) }
-
-// Printf writes a formatted string.
-func (y printer) Printf(format string, args ...interface{}) { fmt.Fprintf(y.w, format, args...) }
-
-func (printer) Detail() bool { return true }
 
 // Adapted from xerror's codebase.
 type frame struct {

@@ -173,7 +173,7 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 			ws.PrebuiltBinary = append(ws.PrebuiltBinary, prebuilt)
 		}
 
-		workspace.FormatWorkspace(console.Stdout(ctx), ws)
+		return workspace.FormatWorkspace(console.Stdout(ctx), ws)
 	}
 
 	return nil

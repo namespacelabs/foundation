@@ -131,7 +131,7 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 		// Check whether imports refer to packages; we'll see calls to workspaceResolver.
 		// We ignore errors, because some of the errors may be related to the lack of
 		// presence of packages.
-		fncue.CollectImports(ctx, r, loc.AsPackageName().String(), imports)
+		_ = fncue.CollectImports(ctx, r, loc.AsPackageName().String(), imports)
 
 		parsed, err := alloc.loader.LoadByNameWithOpts(ctx, loc.AsPackageName(), workspace.DontLoadDependencies())
 		if err != nil {
@@ -172,8 +172,7 @@ func rewriteWorkspace(ctx context.Context, root *workspace.Root, ws *schema.Work
 
 	// Write an updated workspace.ns.textpb before continuing.
 	return fnfs.WriteWorkspaceFile(ctx, root.FS(), workspace.WorkspaceFilename, func(w io.Writer) error {
-		workspace.FormatWorkspace(w, ws)
-		return nil
+		return workspace.FormatWorkspace(w, ws)
 	})
 }
 

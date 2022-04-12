@@ -7,14 +7,13 @@ package console
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"io"
 	"os"
 	"sync"
 
 	"github.com/kr/text"
 	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/go-ids"
 )
 
 func Stdout(ctx context.Context) io.Writer {
@@ -50,7 +49,7 @@ func TypedOutput(ctx context.Context, name string, cat tasks.CatOutputType) io.W
 
 	id := tasks.Attachments(ctx).ActionID()
 	if id == "" {
-		id = smallRandID()
+		id = ids.NewRandomBase32ID(8)
 	}
 
 	if len(id) > 6 {
@@ -58,12 +57,6 @@ func TypedOutput(ctx context.Context, name string, cat tasks.CatOutputType) io.W
 	}
 
 	return &consoleBuffer{actual: console, name: name, cat: cat, id: tasks.IdAndHashFrom(id)}
-}
-
-func smallRandID() string {
-	data := make([]byte, 8)
-	rand.Read(data)
-	return base64.RawStdEncoding.EncodeToString(data)
 }
 
 func ConsoleOutputWith(console *tasks.ConsoleSink, name string) io.Writer {
@@ -91,7 +84,7 @@ func (w *consoleBuffer) Write(p []byte) (int, error) {
 	for {
 		if i := bytes.IndexByte(w.buf.Bytes(), '\n'); i >= 0 {
 			data := make([]byte, i+1)
-			w.buf.Read(data)
+			_, _ = w.buf.Read(data)
 			line := dropCR(data[0 : len(data)-1]) // Drop the \n and the \r.
 			lines = append(lines, line)
 		} else {
