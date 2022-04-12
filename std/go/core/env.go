@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"sync/atomic"
+	"time"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -22,8 +23,6 @@ var (
 	serializedEnv = flag.String("env_json", "", "The environment definition, serialized as JSON.")
 	imageVer      = flag.String("image_version", "", "The version being run.")
 	debug         = flag.Bool("debug_init", false, "If set to true, emits additional initialization information.")
-
-	maxStartupTime = 2 * time.Second
 
 	env         *schema.Environment
 	serverName  string
@@ -63,3 +62,18 @@ func WithResources(ctx context.Context, res *ServerResources) context.Context {
 
 func ServerResourcesFrom(ctx context.Context) *ServerResources {
 	v := ctx.Value(ctxResourcesKey)
+	if v == nil {
+		return nil
+	}
+
+	return v.(*ServerResources)
+}
+
+func StatusHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+
+		fmt.Fprintf(w, "<!doctype html><html><body><pre>%s image_version=%s\n%s</pre></body></html>",
+			serverName, *imageVer, prototext.Format(env))
+	})
+}

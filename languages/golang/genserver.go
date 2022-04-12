@@ -403,17 +403,23 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 	{{end}}
 
 	{{$opts.Server}} = &ServerDeps{}
-	{{range $k, $v := .Services}}
-		err = di.Instantiate(ctx,
-			{{- $opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Reference{Package: "{{$v.PackageName}}"},
-			func(ctx context.Context, v interface{}) (err error) {
-				{{$opts.Server}}.{{$v.Name}} = v.({{makeType $opts.Imports $v.GoImportURL $v.Typename}})
-				return nil
-			})
-		if err != nil {
-			return nil, err
-		}
-	{{end}}
+	di.AddInitializer({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Initializer{
+		PackageName: "{{$opts.PackageName}}",
+		Do: func(ctx context.Context) error {
+		{{range $k, $v := .Services}}
+			err = di.Instantiate(ctx,
+				{{- $opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Reference{Package: "{{$v.PackageName}}"},
+				func(ctx context.Context, v interface{}) (err error) {
+					{{$opts.Server}}.{{$v.Name}} = v.({{makeType $opts.Imports $v.GoImportURL $v.Typename}})
+					return nil
+				})
+			if err != nil {
+				return nil, err
+			}
+		{{end}}
+		},
+	})
+
 	return {{$opts.Server}}, di.Init(ctx)
 }
 

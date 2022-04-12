@@ -14,7 +14,10 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-const maximumInitTime = 10 * time.Millisecond
+const (
+	maximumInitTime = 10 * time.Millisecond
+	maxStartupTime  = 2 * time.Second
+)
 
 type Reference struct {
 	Package schema.PackageName
@@ -105,6 +108,15 @@ func (di *depInitializer) AddInitializer(init Initializer) {
 }
 
 func (di *depInitializer) Init(ctx context.Context) error {
+	resources := ServerResourcesFrom(ctx)
+	if resources == nil {
+		return fmt.Errorf("missing server resources")
+	}
+
+	initializationDeadline := resources.startupTime.Add(maxStartupTime)
+	ctx, cancel := context.WithDeadline(ctx, initializationDeadline)
+	defer cancel()
+
 	for _, init := range di.inits {
 		start := time.Now()
 		err := init.Do(ctx)
