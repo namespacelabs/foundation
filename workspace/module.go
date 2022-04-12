@@ -101,11 +101,7 @@ func moduleHeadTo(ctx context.Context, resolved *ResolvedPackage, dep *schema.Wo
 		cmd.Stdout = &out
 
 		if err := cmd.Run(); err != nil {
-<<<<<<< HEAD
-			return fnerrors.InvocationError("%s: failed to `git ls-remote`: %w", resolved.Repository, err)
-=======
 			return fnerrors.RemoteError("%s: failed to `git ls-remote`: %w", resolved.Repository, err)
->>>>>>> workspace/module: wrap ExitError, else we forward the exit error.
 		}
 
 		gitout := strings.TrimSpace(out.String())
