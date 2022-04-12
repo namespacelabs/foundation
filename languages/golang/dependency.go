@@ -296,10 +296,6 @@ func makeProvidesDepsType(p *schema.Provides) string {
 	return gosupport.MakeGoPubVar(p.Name) + "Deps"
 }
 
-func makeProvidesDepsVar(p *schema.Provides) string {
-	return gosupport.MakeGoPrivVar(p.Name) + "Deps"
-}
-
 func serializeContents(ctx context.Context, loader workspace.Packages, provides *schema.Provides, instance *schema.Instantiate, prov *typeProvider) error {
 	pkg, err := loader.LoadByName(ctx, schema.PackageName(instance.PackageName))
 	if err != nil {

@@ -118,6 +118,10 @@ func (di *depInitializer) Init(ctx context.Context) error {
 	defer cancel()
 
 	for _, init := range di.inits {
+		if *debug {
+			Log.Printf("[init] initializing %s with %v deadline left", init.PackageName, time.Until(initializationDeadline))
+		}
+
 		start := time.Now()
 		err := init.Do(ctx)
 		took := time.Since(start)
