@@ -55,7 +55,7 @@ func WriteImage(ctx context.Context, img v1.Image, ref name.Tag, ensureTag bool)
 		}
 
 		if _, err := writeImage(ctx, client, ref, img); err != nil {
-			return fnerrors.RemoteError("failed to push to docker: %w", err)
+			return fnerrors.InvocationError("failed to push to docker: %w", err)
 		}
 
 		tasks.Attachments(ctx).AddResult("uploaded", true)
@@ -78,13 +78,13 @@ func writeImage(ctx context.Context, client Client, tag name.Tag, img v1.Image) 
 	// write the image in docker save format first, then load it
 	resp, err := client.ImageLoad(ctx, progressReader, false)
 	if err != nil {
-		return "", fnerrors.RemoteError("error loading image: %w", err)
+		return "", fnerrors.InvocationError("error loading image: %w", err)
 	}
 	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
 	response := string(b)
 	if err != nil {
-		return response, fnerrors.RemoteError("error reading load response body: %w", err)
+		return response, fnerrors.InvocationError("error reading load response body: %w", err)
 	}
 	return response, nil
 }

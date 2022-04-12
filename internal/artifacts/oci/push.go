@@ -39,7 +39,7 @@ func pushImage(ctx context.Context, tag AllocatedName, img v1.Image) (ImageID, e
 				return nerr
 			}
 
-			return fnerrors.RemoteError("failed to push to registry %q: %w", ref, err)
+			return fnerrors.InvocationError("failed to push to registry %q: %w", ref, err)
 		}
 
 		return nil

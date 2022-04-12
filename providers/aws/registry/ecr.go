@@ -127,7 +127,7 @@ func (m *makeRepository) Compute(ctx context.Context, deps compute.Resolved) (st
 		if errors.As(err, &e) {
 			// If the repository already exists, that's all good.
 		} else {
-			return "", fnerrors.RemoteError("failed to create ECR repository for package: %w", err)
+			return "", fnerrors.InvocationError("failed to create ECR repository for package: %w", err)
 		}
 	}
 

@@ -62,10 +62,10 @@ func callAPI(ctx context.Context, endpoint string, method string, req interface{
 			return status.ErrorProto(st)
 		}
 
-		return fnerrors.RemoteError("internal server error, and wasn't able to parse error response")
+		return fnerrors.InvocationError("internal server error, and wasn't able to parse error response")
 	} else if response.StatusCode == http.StatusUnauthorized {
 		return ErrRelogin
 	} else {
-		return fnerrors.RemoteError("unexpected %d error reaching %q: %s", response.StatusCode, endpoint, response.Status)
+		return fnerrors.InvocationError("unexpected %d error reaching %q: %s", response.StatusCode, endpoint, response.Status)
 	}
 }
