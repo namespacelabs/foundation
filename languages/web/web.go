@@ -7,38 +7,30 @@ package web
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/fs"
 	"path/filepath"
-	"sync"
-	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/frontend"
-	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/languages/nodejs"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/devobserver"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/dev/controller/admin"
 	"namespacelabs.dev/foundation/std/web/http"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
-	"namespacelabs.dev/foundation/workspace/tasks"
-	"tailscale.com/util/multierr"
 )
 
 const (
@@ -211,118 +203,11 @@ func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Conte
 		return nil, nil, fnerrors.UserError(srv.Location, "`fn dev` on multiple web servers not supported")
 	}
 
-	devObserver := &devObserver{
-		ctx:    ctx,
-		log:    console.TypedOutput(ctx, "hmr", tasks.CatOutputUs),
-		server: srv.Proto(),
-		rt:     runtime.For(srv.Env()),
-	}
+	devObserver := devobserver.NewFileSyncDevObserver(ctx, srv, fileSyncPort)
 
 	newCtx, _ := wsremote.WithRegistrar(ctx, devObserver.Deposit)
 
 	return newCtx, devObserver, nil
-}
-
-type devObserver struct {
-	ctx    context.Context
-	log    io.Writer
-	server *schema.Server
-	rt     runtime.Runtime
-
-	mu   sync.Mutex
-	conn *grpc.ClientConn
-	port io.Closer
-}
-
-func (do *devObserver) Close() error {
-	do.mu.Lock()
-	defer do.mu.Unlock()
-	return do.cleanup()
-}
-
-func (do *devObserver) cleanup() error {
-	var errs []error
-
-	if do.conn != nil {
-		if err := do.conn.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		do.conn = nil
-	}
-
-	if do.port != nil {
-		if err := do.port.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		do.port = nil
-	}
-
-	return multierr.New(errs...)
-}
-
-func (do *devObserver) OnDeployment() {
-	do.mu.Lock()
-	defer do.mu.Unlock()
-
-	_ = do.cleanup()
-
-	// An endpoint is manufactored here, we don't actually export this in our metadata.
-	var err error
-	do.port, err = do.rt.ForwardPort(do.ctx, do.server, &schema.Endpoint{
-		ServiceName: "filesync",
-		Port: &schema.Endpoint_Port{
-			ContainerPort: fileSyncPort,
-		},
-	}, []string{"127.0.0.1"}, func(fp runtime.ForwardedPort) {
-		do.onEndpoint(fp)
-	})
-	if err != nil {
-		fmt.Fprintln(do.log, "failed to port forward filesync port", err)
-	}
-}
-
-func (do *devObserver) onEndpoint(fpe runtime.ForwardedPort) {
-	do.mu.Lock()
-	defer do.mu.Unlock()
-
-	if do.conn != nil {
-		do.conn.Close()
-		do.conn = nil
-	}
-
-	host := fmt.Sprintf("127.0.0.1:%d", fpe.LocalPort)
-
-	conn, err := grpc.DialContext(do.ctx, host, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		fmt.Fprintln(do.log, "failed to connect to filesync", err)
-	} else {
-		do.conn = conn
-
-		fmt.Fprintln(do.log, "Connected to FileSync (for HMR).")
-	}
-}
-
-func (do *devObserver) Deposit(ctx context.Context, s *wsremote.Signature, fe []*wscontents.FileEvent) error {
-	do.mu.Lock()
-	defer do.mu.Unlock()
-
-	if do.conn == nil {
-		return wsremote.ErrNotReady
-	}
-
-	fmt.Fprintln(do.log, "FileSync event:", s)
-
-	newCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	if _, err := wsremote.NewFileSyncServiceClient(do.conn).Push(newCtx, &wsremote.PushRequest{
-		Signature: s,
-		FileEvent: fe,
-	}); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.ServerRunOpts) error {
