@@ -38,7 +38,7 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 		}
 	} else {
 		if err := prototext.Unmarshal(devHostBytes, root.DevHost); err != nil {
-			return err
+			return fnerrors.BadInputError("Failed to parse %q. If you changed it manually, try to undo your changes.", DevHostFilename)
 		}
 	}
 
