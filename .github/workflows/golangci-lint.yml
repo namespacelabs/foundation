@@ -15,3 +15,4 @@ jobs:
         with:
           version: v1.45.2
           only-new-issues: true
+          args: --timeout=10m
