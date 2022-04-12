@@ -117,7 +117,7 @@ func (di *DepInitializer) Wait(ctx context.Context) error {
 		took := time.Since(start)
 
 		if took > maximumInitTime {
-			Log.Printf("[init] %s took %d (log thresh is %d)", init.Desc(), took, maximumInitTime)
+			Log.Printf("[init] %s took %s (log thresh is %s)", init.Desc(), took, maximumInitTime)
 		}
 
 		if err != nil {
