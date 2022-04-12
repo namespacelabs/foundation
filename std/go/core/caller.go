@@ -57,7 +57,3 @@ func (ip *InstantiationPath) Append(pkg schema.PackageName) *InstantiationPath {
 	copy.path = append(copy.path, pkg)
 	return &copy
 }
-
-func (ip *InstantiationPath) trim() *InstantiationPath {
-	return &InstantiationPath{path: []schema.PackageName{ip.Last()}}
-}

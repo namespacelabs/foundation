@@ -6,8 +6,11 @@ package data
 
 import (
 	"context"
+
+	"namespacelabs.dev/foundation/std/go/core"
 )
 
 func ProvideData(ctx context.Context, _ *Input) (*Data, error) {
+	core.Log.Printf("[debug] path: %s", core.PathFromContext(ctx).String())
 	return &Data{}, nil
 }
