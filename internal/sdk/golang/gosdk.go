@@ -243,7 +243,7 @@ func output(ctx context.Context, args ...string) ([]byte, error) {
 	c.Stderr = console.Stderr(ctx)
 	c.Stdin = nil
 	if err := c.Run(); err != nil {
-		return nil, err
+		return nil, fnerrors.RemoteError("failed to invoke: %w", err)
 	}
 	return b.Bytes(), nil
 }

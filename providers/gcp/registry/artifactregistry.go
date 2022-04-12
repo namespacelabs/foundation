@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/gcp"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
@@ -94,7 +95,10 @@ func (defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Aut
 		cmd := exec.CommandContext(ctx, "gcloud", "auth", "print-access-token")
 		cmd.Stdout = &out
 		cmd.Stderr = console.TypedOutput(ctx, "gcloud", tasks.CatOutputTool)
-		return cmd.Run()
+		if err := cmd.Run(); err != nil {
+			return fnerrors.RemoteError("failed to obtain gcloud access token: %w", err)
+		}
+		return nil
 	}); err != nil {
 		return nil, err
 	}
