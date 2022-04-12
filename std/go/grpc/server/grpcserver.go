@@ -86,8 +86,8 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 	core.RegisterDebugEndpoints(debugMux)
 
 	debugHTTP := &http.Server{Handler: debugMux}
-	go func() { _ = debugHTTP.Serve(httpL) }()
-	go func() { _ = grpcServer.Serve(anyL) }()
+	go listen("http/debug", debugHTTP.Serve(httpL))
+	go listen("grpc", grpcServer.Serve(anyL))
 
 	if *httpPort != 0 {
 		httpServer := &http.Server{Handler: httpMux}
@@ -99,7 +99,7 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 
 		core.Log.Printf("Starting HTTP listen on %v", gwLis.Addr())
 
-		go func() { listen("http", httpServer.Serve(gwLis)) }()
+		go listen("http", httpServer.Serve(gwLis))
 	}
 
 	if *gatewayPort != 0 {
@@ -124,7 +124,7 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 
 		core.Log.Printf("Starting gRPC gateway listen on %v", gwLis.Addr())
 
-		go func() { _ = httpServer.Serve(gwLis) }()
+		go listen("grpc-gateway", httpServer.Serve(gwLis))
 	}
 
 	return m.Serve()
