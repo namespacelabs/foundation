@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
+	httppprof "net/http/pprof"
 	"os"
 	"os/exec"
 	"runtime/pprof"
@@ -59,6 +61,19 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if v := os.Getenv("FN_CPU_PROFILE"); v != "" {
 		done := cpuprofile(v)
 		defer done()
+	}
+
+	if v := os.Getenv("FN_ENABLE_PPROF"); v != "" {
+		h := http.NewServeMux()
+		h.HandleFunc("/debug/pprof/", httppprof.Index)
+		h.HandleFunc("/debug/pprof/cmdline", httppprof.Cmdline)
+		h.HandleFunc("/debug/pprof/profile", httppprof.Profile)
+		h.HandleFunc("/debug/pprof/symbol", httppprof.Symbol)
+		h.HandleFunc("/debug/pprof/trace", httppprof.Trace)
+
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", h))
+		}()
 	}
 
 	setupViper()
