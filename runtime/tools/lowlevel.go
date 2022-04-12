@@ -74,6 +74,8 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 
 	eg.Go(func(ctx context.Context) error {
 		defer s.Stop()
+		defer outr.Close() // Force read()s to fail, else the grpcserver may be forever stuck.
+
 		return Impl().RunWithOpts(ctx, opts, localexec.RunOpts{
 			OnStart: func() {
 				// Let grpc know there's a new connection, i.e. the process has spawned.
