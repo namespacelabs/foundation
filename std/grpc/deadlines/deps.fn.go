@@ -12,10 +12,10 @@ type ExtensionDeps struct {
 	Interceptors interceptors.Registration
 }
 
-type _checkProvideDeadlines func(context.Context, *Deadline, *ExtensionDeps) (*DeadlineRegistration, error)
+type _checkProvideDeadlines func(context.Context, *Deadline, ExtensionDeps) (*DeadlineRegistration, error)
 
 var _ _checkProvideDeadlines = ProvideDeadlines
 
-type _checkPrepare func(context.Context, *ExtensionDeps) error
+type _checkPrepare func(context.Context, ExtensionDeps) error
 
 var _ _checkPrepare = Prepare

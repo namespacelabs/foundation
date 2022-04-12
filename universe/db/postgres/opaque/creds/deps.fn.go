@@ -13,6 +13,6 @@ type CredsDeps struct {
 	Password *secrets.Value
 }
 
-type _checkProvideCreds func(context.Context, *CredsRequest, *CredsDeps) (*Creds, error)
+type _checkProvideCreds func(context.Context, *CredsRequest, CredsDeps) (*Creds, error)
 
 var _ _checkProvideCreds = ProvideCreds

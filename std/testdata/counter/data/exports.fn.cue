@@ -4,7 +4,7 @@ package data
 #Exports: {
 	Data: {
 		#Definition: {
-			packageName: "namespacelabs.dev/foundation/std/testdata/scopes/data"
+			packageName: "namespacelabs.dev/foundation/std/testdata/counter/data"
 			type:        "Data"
 			typeDefinition: {
 				"typename": "foundation.std.testdata.scopes.data.Input"

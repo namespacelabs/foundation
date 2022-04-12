@@ -26,7 +26,7 @@ var (
 	jaegerShutdownTimeout = flag.Duration("jaeger_shutdown_timeout", 5*time.Second, "How long to wait for the tracer to shutdown.")
 )
 
-func Prepare(ctx context.Context, deps *ExtensionDeps) error {
+func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	if *jaegerEndpoint == "" {
 		return nil
 	}

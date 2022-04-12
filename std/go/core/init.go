@@ -16,22 +16,22 @@ import (
 
 const maximumInitTime = 10 * time.Millisecond
 
+type Reference struct {
+	Package schema.PackageName
+	Scope   string
+}
+
 type Provider struct {
-	PackageName schema.PackageName
-	Typename    string
-	Do          func(context.Context, schema.PackageName) (interface{}, error)
+	Package schema.PackageName
+	Scope   string
+	Do      func(context.Context) (interface{}, error)
 }
 
 func (f *Provider) Desc() string {
-	if f.Typename != "" {
-		return fmt.Sprintf("%s/%s", f.PackageName, f.Typename)
+	if f.Scope != "" {
+		return fmt.Sprintf("%s/%s", f.Package, f.Scope)
 	}
-	return f.PackageName.String()
-}
-
-type key struct {
-	PackageName schema.PackageName
-	Typename    string
+	return f.Package.String()
 }
 
 type result struct {
@@ -40,49 +40,54 @@ type result struct {
 }
 
 type depInitializer struct {
-	providers map[key]*Provider
-	cache     map[key]*result
-	inits     []*Initializer
+	providers  map[Reference]Provider
+	singletons map[Reference]result
+	inits      []Initializer
 }
 
 func MakeInitializer() *depInitializer {
 	return &depInitializer{
-		providers: map[key]*Provider{},
-		cache:     map[key]*result{},
+		providers:  map[Reference]Provider{},
+		singletons: map[Reference]result{},
 	}
 }
 
 func (di *depInitializer) Add(p Provider) {
-	di.providers[key{PackageName: p.PackageName, Typename: p.Typename}] = &p
+	di.providers[Reference{Package: p.Package, Scope: p.Scope}] = p
 }
 
-func (di *depInitializer) Get(ctx context.Context, pkg schema.PackageName, typ string) (interface{}, error) {
-	k := key{PackageName: pkg, Typename: typ}
-
-	p, ok := di.providers[k]
-	if !ok {
-		return nil, fmt.Errorf("No provider found for type %s in package %s.", typ, pkg)
+func (di *depInitializer) Instantiate(ctx context.Context, ref Reference, f func(context.Context, interface{}) error) error {
+	if singleton, ok := di.singletons[ref]; ok {
+		if singleton.err != nil {
+			return singleton.err
+		}
+		return f(ctx, singleton.res)
 	}
 
+	p, ok := di.providers[ref]
+	if !ok {
+		return fmt.Errorf("No provider found for type %s in package %s.", ref.Scope, ref.Package)
+	}
+
+	isSingleton := ref.Scope == ""
+	childctx := PathFromContext(ctx).Append(ref.Package).WithContext(ctx)
 	start := time.Now()
-	res, err := p.Do(ctx, pkg)
+	res, err := p.Do(childctx)
+	if isSingleton {
+		di.singletons[ref] = result{
+			res: res,
+			err: err,
+		}
+	}
+	if err != nil {
+		return err
+	}
 	took := time.Since(start)
 	if took > maximumInitTime {
 		Log.Printf("[provider] %s took %d (log thresh is %d)", p.Desc(), took, maximumInitTime)
 	}
 
-	return res, err
-}
-
-func (di *depInitializer) GetSingleton(ctx context.Context, pkg schema.PackageName, typ string) (interface{}, error) {
-	k := key{PackageName: pkg, Typename: typ}
-	if res, ok := di.cache[k]; ok {
-		return res.res, res.err
-	}
-
-	res, err := di.Get(resetInstantiationPath(ctx), pkg, typ)
-	di.cache[k] = &result{res: res, err: err}
-	return res, err
+	return f(ctx, res)
 }
 
 type Initializer struct {
@@ -91,7 +96,7 @@ type Initializer struct {
 }
 
 func (di *depInitializer) AddInitializer(init Initializer) {
-	di.inits = append(di.inits, &init)
+	di.inits = append(di.inits, init)
 }
 
 func (di *depInitializer) Init(ctx context.Context) error {

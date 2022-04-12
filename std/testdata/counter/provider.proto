@@ -2,12 +2,12 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package scopes
+syntax = "proto3";
 
-import (
-	"context"
-)
+package foundation.std.testdata.counter;
 
-func ProvideScopedData(_ context.Context, _ *Input, deps *ScopedDataDeps) (*ScopedData, error) {
-	return &ScopedData{Data: deps.Data}, nil
+option go_package = "namespacelabs.dev/foundation/std/testdata/counter";
+
+message Input {
+    string name = 1;
 }

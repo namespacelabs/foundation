@@ -10,7 +10,7 @@ import (
 
 type DB struct{}
 
-func ProvideDatabase(_ context.Context, _ *Database, deps *ExtensionDeps) (*DB, error) {
+func ProvideDatabase(_ context.Context, _ *Database, deps ExtensionDeps) (*DB, error) {
 	deps.ReadinessCheck.RegisterFunc("foobar", func(ctx context.Context) error {
 		return nil
 	})

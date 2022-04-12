@@ -6,7 +6,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"namespacelabs.dev/foundation/schema"
@@ -14,34 +13,33 @@ import (
 
 type ctxKey struct{}
 
-type instantiation struct {
-	PackageName schema.PackageName
-	Instance    string
-}
-
 type InstantiationPath struct {
-	path []instantiation
+	path []schema.PackageName
 }
 
 func (ip *InstantiationPath) Last() schema.PackageName {
 	if len(ip.path) == 0 {
 		return ""
 	}
-	return ip.path[len(ip.path)-1].PackageName
+	return ip.path[len(ip.path)-1]
 }
 
 func (ip *InstantiationPath) String() string {
-	var inst []string
+	var a []string
 	for _, step := range ip.path {
-		inst = append(inst, fmt.Sprintf("%s:%s", step.PackageName, step.Instance))
+		a = append(a, step.String())
 	}
-	return strings.Join(inst, "->")
+	return strings.Join(a, ",")
 }
 
 // PathFromContext returns the InstantiationPath associated with the ctx.
 // If no logger is associated, nil is returned
 func PathFromContext(ctx context.Context) *InstantiationPath {
-	return ctx.Value(ctxKey{}).(*InstantiationPath)
+	v := ctx.Value(ctxKey{})
+	if v == nil {
+		return nil
+	}
+	return v.(*InstantiationPath)
 }
 
 // WithContext returns a copy of ctx with ip associated. If an instance of InstantiationPath
@@ -50,21 +48,16 @@ func (ip *InstantiationPath) WithContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, ctxKey{}, ip)
 }
 
-func resetInstantiationPath(ctx context.Context) context.Context {
-	return context.WithValue(ctx, ctxKey{}, &InstantiationPath{})
-}
-
-func (ip *InstantiationPath) Append(pkg schema.PackageName, inst string) *InstantiationPath {
-	last := instantiation{
-		PackageName: pkg,
-		Instance:    inst,
-	}
-
+func (ip *InstantiationPath) Append(pkg schema.PackageName) *InstantiationPath {
 	if ip == nil {
-		return &InstantiationPath{path: []instantiation{last}}
+		return &InstantiationPath{path: []schema.PackageName{pkg}}
 	}
 
 	copy := *ip
-	copy.path = append(copy.path, last)
+	copy.path = append(copy.path, pkg)
 	return &copy
+}
+
+func (ip *InstantiationPath) trim() *InstantiationPath {
+	return &InstantiationPath{path: []schema.PackageName{ip.Last()}}
 }

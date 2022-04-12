@@ -11,5 +11,5 @@ option go_package = "namespacelabs.dev/foundation/std/testdata/scopes/data";
 message Input {}
 
 message Data {
-    string caller = 1;
+    int32 value = 1;
 }

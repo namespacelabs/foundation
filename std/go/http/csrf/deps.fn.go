@@ -12,6 +12,6 @@ type ExtensionDeps struct {
 	Token *secrets.Value
 }
 
-type _checkPrepare func(context.Context, *ExtensionDeps) error
+type _checkPrepare func(context.Context, ExtensionDeps) error
 
 var _ _checkPrepare = Prepare

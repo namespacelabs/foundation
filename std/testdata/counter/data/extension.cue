@@ -14,7 +14,7 @@ extension: fn.#Extension & {
 
 			availableIn: {
 				go: {
-					package: "namespacelabs.dev/foundation/std/testdata/scopes/data"
+					package: "namespacelabs.dev/foundation/std/testdata/counter/data"
 					type:    "*Data"
 				}
 			}

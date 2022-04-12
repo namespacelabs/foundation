@@ -7,38 +7,62 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 
-	"google.golang.org/protobuf/types/known/emptypb"
-	"namespacelabs.dev/foundation/std/testdata/service/modeling"
+	"namespacelabs.dev/foundation/std/testdata/service/multicounter"
 	"namespacelabs.dev/foundation/testing"
 )
 
 func main() {
 	testing.Do(func(ctx context.Context, t testing.Test) error {
-		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/testdata/service/modeling", "modeling")
+		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/testdata/service/multicounter", "multicounter")
 
 		conn, err := t.Connect(ctx, endpoint)
 		if err != nil {
 			return err
 		}
 
-		cli := modeling.NewModelingServiceClient(conn)
-		res, err := cli.GetScopedData(ctx, &emptypb.Empty{})
+		cli := multicounter.NewMulticounterServiceClient(conn)
+		one, err := cli.Get(ctx, &multicounter.GetRequest{Name: "one"})
 		if err != nil {
 			return err
 		}
 
-		if len(res.Item) != 2 {
-			return fmt.Errorf("expected 2 items, got %d", len(res.Item))
+		two, err := cli.Get(ctx, &multicounter.GetRequest{Name: "two"})
+		if err != nil {
+			return err
 		}
 
-		log.Printf("caller #1: %s", res.Item[0].Data.Caller)
-		log.Printf("caller #2: %s", res.Item[1].Data.Caller)
-
-		if res.Item[0].Data.Caller == res.Item[1].Data.Caller {
-			return fmt.Errorf("expected different caller paths, got twice the same")
+		if _, err := cli.Increment(ctx, &multicounter.IncrementRequest{Name: "one"}); err != nil {
+			return err
 		}
+
+		newone, err := cli.Get(ctx, &multicounter.GetRequest{Name: "one"})
+		if err != nil {
+			return err
+		}
+
+		newtwo, err := cli.Get(ctx, &multicounter.GetRequest{Name: "two"})
+		if err != nil {
+			return err
+		}
+
+		expected := one.Value + 1
+		if expected != newone.Value {
+			return fmt.Errorf("increment failed: expected %d but got %d", expected, newone.Value)
+		}
+
+		if two.Value != newtwo.Value {
+			return fmt.Errorf("accidental side-effect: counter changed from %d to %d", two.Value, newtwo.Value)
+		}
+
+		if _, err := cli.Increment(ctx, &multicounter.IncrementRequest{Name: "unknown"}); err == nil {
+			return fmt.Errorf("expected failure for Increment on unknown name")
+		}
+
+		if _, err := cli.Get(ctx, &multicounter.GetRequest{Name: "unknown"}); err == nil {
+			return fmt.Errorf("expected failure for Increment on unknown name")
+		}
+
 		return nil
 	})
 }

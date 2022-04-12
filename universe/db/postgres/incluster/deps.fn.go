@@ -15,6 +15,6 @@ type ExtensionDeps struct {
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, *Database, *ExtensionDeps) (*pgxpool.Pool, error)
+type _checkProvideDatabase func(context.Context, *Database, ExtensionDeps) (*pgxpool.Pool, error)
 
 var _ _checkProvideDatabase = ProvideDatabase
