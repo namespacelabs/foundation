@@ -799,7 +799,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		report += "\n"
 	}
 
-	report = fmt.Sprintf("[+] %s", timefmt.Seconds(t.Sub(c.startedCounting)))
+	report += fmt.Sprintf("[+] %s", timefmt.Seconds(t.Sub(c.startedCounting)))
 	report += fmt.Sprintf(" %s %s running", num(aec.GreenF, running), plural(running, "action", "actions"))
 	if waiting > 0 {
 		report += fmt.Sprintf(", %s waiting", num(aec.CyanF, waiting))
