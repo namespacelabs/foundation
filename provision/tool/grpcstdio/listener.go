@@ -24,8 +24,13 @@ type StdinListener struct {
 	closed bool
 }
 
-func (lis *StdinListener) Ready(conn net.Conn) {
-	lis.ch <- conn
+func (lis *StdinListener) Ready(ctx context.Context, conn net.Conn) error {
+	select {
+	case lis.ch <- conn:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (lis *StdinListener) Accept() (net.Conn, error) {
