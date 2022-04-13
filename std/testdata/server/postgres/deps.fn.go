@@ -124,7 +124,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 
 	server = &ServerDeps{}
 	di.AddInitializer(core.Initializer{
-		PackageName: "",
+		PackageName: "namespacelabs.dev/foundation/std/testdata/server/postgres",
 		Do: func(ctx context.Context) error {
 
 			err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/testdata/service/list"},

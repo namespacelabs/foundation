@@ -51,6 +51,7 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 	}
 
 	opts.Server = "server"
+	opts.PackageName = srv.PackageName
 	opts.Imports = gosupport.NewGoImports(loc.PackageName.String())
 
 	opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/grpc/server")
