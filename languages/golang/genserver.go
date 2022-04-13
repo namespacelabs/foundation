@@ -59,9 +59,9 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 
 	// Prepopulate variable names that are used in serverPrepareTmpl.
 	usedNames := map[string]bool{
-		"deps":   true,
-		"di":     true,
-		"err":    true,
+		"deps": true,
+		"di":   true,
+		"err":  true,
 	}
 
 	// XXX use allocation tree instead.
@@ -165,12 +165,22 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 		}
 
 		if !has {
-			n := &nodeWithDeps{
-				Name:        makeName(filepath.Base(svc.Location.Rel()), usedNames, false), // XXX use package instead?
-				VarName:     makeName(filepath.Base(svc.Location.Rel()), usedNames, true),
-				PackageName: svc.Location.PackageName,
-				Typename:    serviceDepsType,
-				IsService:   true,
+			var n *nodeWithDeps
+			for _, node := range opts.Nodes {
+				if node.PackageName == svc.Location.PackageName {
+					n = node
+				}
+			}
+			if n == nil {
+				// Ensure that services with no deps create an empty provider.
+				n = &nodeWithDeps{
+					Name:        makeName(filepath.Base(svc.Location.Rel()), usedNames, false), // XXX use package instead?
+					VarName:     makeName(filepath.Base(svc.Location.Rel()), usedNames, true),
+					PackageName: svc.Location.PackageName,
+					Typename:    serviceDepsType,
+					IsService:   true,
+				}
+				opts.Nodes = append(opts.Nodes, n)
 			}
 
 			importURL, err := packageFrom(svc.Location)
