@@ -57,6 +57,7 @@ type cueProvides struct {
 	Input       *schema.TypeDef        `json:"input"`
 	Type        *schema.TypeDef        `json:"type"`
 	AvailableIn map[string]interface{} `json:"availableIn"`
+	Instantiate cueInstantiate         `json:"instantiate"`
 }
 
 type cueInstantiate struct {
@@ -129,7 +130,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	if provides := v.LookupPath("provides"); provides.Exists() {
-		if err := handleProvides(ctx, pl, loc, provides, pkg, out); err != nil {
+		if err := handleProvides(ctx, pl, loc, provides, pkg, opts, out); err != nil {
 			return err
 		}
 	}
@@ -196,64 +197,9 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			}
 
 			if opts.LoadDependencies {
-				var constructor *anypb.Any
-
-				if inst.PackageName == "" {
-					if len(inst.TypeDef.Source) > 0 {
-						return fnerrors.UserError(loc, "source can't be provided when package is unspecified")
-					}
-
-					msgtype, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(inst.TypeDef.Typename))
-					if err != nil {
-						return fnerrors.UserError(loc, "%s: no such message: %w", inst.TypeDef.Typename, err)
-					}
-
-					var msg proto.Message
-					if newAPI {
-						msg, err = v.DecodeAs(msgtype)
-					} else {
-						msg, err = v.LookupPath("with").DecodeAs(msgtype)
-					}
-					if err != nil {
-						return fnerrors.UserError(loc, "%s: failed to decode builtin message: %w", inst.TypeDef.Typename, err)
-					}
-
-					constructor, err = anypb.New(msg)
-					if err != nil {
-						return fnerrors.UserError(loc, "%s: failed to serialize constructor: %w", inst.TypeDef.Typename, err)
-					}
-				} else {
-					pkg, err := pl.LoadByName(ctx, schema.PackageName(inst.PackageName))
-					if err != nil {
-						return err
-					}
-
-					resolved := pkg.Location
-					fsys, err := pl.WorkspaceOf(ctx, pkg.Location.Module)
-					if err != nil {
-						return err
-					}
-
-					msgdesc, err := protos.LoadMessageAtLocation(fsys, resolved, inst.TypeDef.Source, inst.TypeDef.Typename)
-					if err != nil {
-						return fnerrors.UserError(loc, "%s: %w", resolved.PackageName, err)
-					}
-
-					var msg proto.Message
-					if newAPI {
-						msg, err = v.DecodeAs(dynamicpb.NewMessageType(msgdesc))
-					} else {
-						msg, err = v.LookupPath("with").DecodeAs(dynamicpb.NewMessageType(msgdesc))
-					}
-
-					if err != nil {
-						return fnerrors.UserError(loc, "%s: %s: failed to decode message: %w", resolved.PackageName, inst.TypeDef.Typename, err)
-					}
-
-					constructor, err = fnany.Marshal(resolved.PackageName, msg)
-					if err != nil {
-						return err // Error already has context.
-					}
+				constructor, err := constructAny(ctx, inst, v, newAPI, pl, loc)
+				if err != nil {
+					return err
 				}
 
 				out.Instantiate = append(out.Instantiate, &schema.Instantiate{
@@ -393,30 +339,31 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	return workspace.TransformNode(ctx, pl, loc, out, kind)
 }
 
-func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, provides *fncue.CueV, pkg *workspace.Package, out *schema.Node) error {
-	m := map[string]cueProvides{}
-	if err := provides.Val.Decode(&m); err != nil {
+func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, provides *fncue.CueV, pkg *workspace.Package, opts workspace.LoadPackageOpts, out *schema.Node) error {
+	it, err := provides.Val.Fields()
+	if err != nil {
 		return err
 	}
 
-	var keys uniquestrings.List
-	for key := range m {
-		keys.Add(key)
-	}
+	for it.Next() {
+		name := it.Label()
 
-	for _, key := range keys.Strings() {
+		var provides cueProvides
+		if err := it.Value().Decode(&provides); err != nil {
+			return err
+		}
 		p := &schema.Provides{
-			Name: m[key].Name,
-			Type: m[key].Type,
+			Name: provides.Name,
+			Type: provides.Type,
 		}
 
-		if m[key].Input != nil {
-			if m[key].Type != nil {
+		if provides.Input != nil {
+			if provides.Type != nil {
 				return fnerrors.UserError(loc, "can't specify both input and type in a provides block")
 			}
-			p.Type = m[key].Input
-		} else if m[key].Type != nil {
-			p.Type = m[key].Type
+			p.Type = provides.Input
+		} else if provides.Type != nil {
+			p.Type = provides.Type
 		} else {
 			return fnerrors.UserError(loc, "a provides block requires a input definition")
 		}
@@ -438,9 +385,9 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 		if pkg.Provides == nil {
 			pkg.Provides = map[string]*protos.FileDescriptorSetAndDeps{}
 		}
-		pkg.Provides[key] = parsed
+		pkg.Provides[name] = parsed
 
-		for k, m := range m[key].AvailableIn {
+		for k, m := range provides.AvailableIn {
 			// XXX This should use reflection.
 			switch k {
 			case "go":
@@ -464,10 +411,115 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 			}
 		}
 
+		v := fncue.CueV{Val: it.Value()}
+		if instantiate := v.LookupPath("instantiate"); instantiate.Exists() {
+			it, err := instantiate.Val.Fields()
+			if err != nil {
+				return err
+			}
+
+			for it.Next() {
+				name := it.Label()
+
+				var inst cueInstantiate
+
+				v := (&fncue.CueV{Val: it.Value()})
+				newAPI := false
+				if newDefinition := v.LookupPath("#Definition"); newDefinition.Exists() {
+					if err := newDefinition.Val.Decode(&inst); err != nil {
+						return err
+					}
+					newAPI = true
+				} else {
+					// Backwards compatibility with fn_api<20.
+					if err := it.Value().Decode(&inst); err != nil {
+						return err
+					}
+				}
+
+				if inst.PackageName != "" {
+					out.Reference = append(out.Reference, &schema.Reference{
+						PackageName: inst.PackageName,
+					})
+				}
+
+				if opts.LoadDependencies {
+					constructor, err := constructAny(ctx, inst, v, newAPI, pl, loc)
+					if err != nil {
+						return err
+					}
+
+					p.Instantiate = append(p.Instantiate, &schema.Instantiate{
+						PackageName: inst.PackageName,
+						Type:        inst.Type,
+						Name:        name,
+						Constructor: constructor,
+					})
+				}
+			}
+		}
+
 		out.Provides = append(out.Provides, p)
 	}
 
 	return nil
+}
+
+func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAPI bool, pl workspace.EarlyPackageLoader, loc workspace.Location) (*anypb.Any, error) {
+	if inst.PackageName == "" {
+		if len(inst.TypeDef.Source) > 0 {
+			return nil, fnerrors.UserError(loc, "source can't be provided when package is unspecified")
+		}
+
+		msgtype, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(inst.TypeDef.Typename))
+		if err != nil {
+			return nil, fnerrors.UserError(loc, "%s: no such message: %w", inst.TypeDef.Typename, err)
+		}
+
+		var msg proto.Message
+		if newAPI {
+			msg, err = v.DecodeAs(msgtype)
+		} else {
+			msg, err = v.LookupPath("with").DecodeAs(msgtype)
+		}
+		if err != nil {
+			return nil, fnerrors.UserError(loc, "%s: failed to decode builtin message: %w", inst.TypeDef.Typename, err)
+		}
+
+		constructor, err := anypb.New(msg)
+		if err != nil {
+			return nil, fnerrors.UserError(loc, "%s: failed to serialize constructor: %w", inst.TypeDef.Typename, err)
+		}
+		return constructor, nil
+	}
+
+	pkg, err := pl.LoadByName(ctx, schema.PackageName(inst.PackageName))
+	if err != nil {
+		return nil, err
+	}
+
+	resolved := pkg.Location
+	fsys, err := pl.WorkspaceOf(ctx, pkg.Location.Module)
+	if err != nil {
+		return nil, err
+	}
+
+	msgdesc, err := protos.LoadMessageAtLocation(fsys, resolved, inst.TypeDef.Source, inst.TypeDef.Typename)
+	if err != nil {
+		return nil, fnerrors.UserError(loc, "%s: %w", resolved.PackageName, err)
+	}
+
+	var msg proto.Message
+	if newAPI {
+		msg, err = v.DecodeAs(dynamicpb.NewMessageType(msgdesc))
+	} else {
+		msg, err = v.LookupPath("with").DecodeAs(dynamicpb.NewMessageType(msgdesc))
+	}
+	if err != nil {
+		return nil, fnerrors.UserError(loc, "%s: %s: failed to decode message: %w", resolved.PackageName, inst.TypeDef.Typename, err)
+	}
+
+	return fnany.Marshal(resolved.PackageName, msg)
 }
 
 func handleRef(loc workspace.Location, v cue.Value, value string, out *[]*schema.Reference) error {

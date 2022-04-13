@@ -381,6 +381,26 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		annotations[kubedef.K8sConfigImage] = server.ConfigImage.RepoAndDigest()
 	}
 
+	// We don't deploy managed deployments or statefulsets in tests, as these are one-shot
+	// servers which we want to control a bit more carefully. For example, we want to deploy
+	// them with restart_policy=never, which we would otherwise not be able to do with
+	// deployments.
+	if r.env.Purpose == schema.Environment_TESTING {
+		s.declarations = append(s.declarations, kubedef.Apply{
+			Description: "Server",
+			Resource:    "pods",
+			Namespace:   r.ns(),
+			Name:        deploymentId,
+			Body: applycorev1.Pod(deploymentId, r.ns()).
+				WithAnnotations(annotations).
+				WithAnnotations(tmpl.Annotations).
+				WithLabels(labels).
+				WithLabels(tmpl.Labels).
+				WithSpec(tmpl.Spec.WithRestartPolicy(corev1.RestartPolicyNever)),
+		})
+		return nil
+	}
+
 	if server.Server.IsStateful() {
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server StatefulSet",

@@ -7,11 +7,12 @@ import (
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 )
 
+// Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
 	Interceptors interceptors.Registration
 }
 
-type _checkProvideDeadlines func(context.Context, string, *Deadline, ExtensionDeps) (*DeadlineRegistration, error)
+type _checkProvideDeadlines func(context.Context, *Deadline, ExtensionDeps) (*DeadlineRegistration, error)
 
 var _ _checkProvideDeadlines = ProvideDeadlines
 

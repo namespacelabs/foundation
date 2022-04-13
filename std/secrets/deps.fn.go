@@ -5,6 +5,6 @@ import (
 	"context"
 )
 
-type _checkProvideSecret func(context.Context, string, *Secret) (*Value, error)
+type _checkProvideSecret func(context.Context, *Secret) (*Value, error)
 
 var _ _checkProvideSecret = ProvideSecret

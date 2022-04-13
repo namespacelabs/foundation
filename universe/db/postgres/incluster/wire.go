@@ -33,7 +33,7 @@ func getEndpoint() (*schema.Endpoint, error) {
 	return &endpoint, nil
 }
 
-func ProvideDatabase(ctx context.Context, caller string, db *Database, deps ExtensionDeps) (*pgxpool.Pool, error) {
+func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*pgxpool.Pool, error) {
 	endpoint, err := getEndpoint()
 	if err != nil {
 		return nil, err
@@ -48,5 +48,5 @@ func ProvideDatabase(ctx context.Context, caller string, db *Database, deps Exte
 		},
 	}
 
-	return postgres.ProvideDatabase(ctx, caller, base, "postgres", deps.Creds.Password, deps.ReadinessCheck)
+	return postgres.ProvideDatabase(ctx, base, "postgres", deps.Creds.Password, deps.ReadinessCheck)
 }

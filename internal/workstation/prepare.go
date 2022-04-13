@@ -231,7 +231,7 @@ func PrepareIngress(ctx context.Context, env ops.Environment, pr *PrepareResult)
 
 	// XXX this should be part of WaitUntilReady.
 	if err := kube.Wait(ctx, tasks.Action("kubernetes.ingress.deploy"), kubernetes.WaitForPodConditition(
-		kubernetes.SelectPods(nginx.IngressLoadBalancerService().Namespace, nginx.ControllerSelector()),
+		kubernetes.SelectPods(nginx.IngressLoadBalancerService().Namespace, nil, nginx.ControllerSelector()),
 		kubernetes.MatchPodCondition(corev1.PodReady))); err != nil {
 		return nil, err
 	}

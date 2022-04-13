@@ -9,11 +9,12 @@ import (
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 )
 
+// Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
 	Creds          *creds.Creds
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, ExtensionDeps) (*pgxpool.Pool, error)
+type _checkProvideDatabase func(context.Context, *Database, ExtensionDeps) (*pgxpool.Pool, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

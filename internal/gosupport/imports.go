@@ -13,16 +13,18 @@ import (
 type GoImports struct {
 	PkgName string
 
-	urls   []string
-	urlmap map[string]string
-	revmap map[string]string
+	urls     []string
+	urlmap   map[string]string
+	revmap   map[string]string
+	reserved map[string]struct{}
 }
 
 func NewGoImports(pkgName string) *GoImports {
 	return &GoImports{
-		PkgName: pkgName,
-		urlmap:  map[string]string{},
-		revmap:  map[string]string{},
+		PkgName:  pkgName,
+		urlmap:   map[string]string{},
+		revmap:   map[string]string{},
+		reserved: map[string]struct{}{"init": {}},
 	}
 }
 
@@ -66,6 +68,15 @@ func heuristicPackageName(p string) string {
 	return parts[len(parts)-1]
 }
 
+func (gi *GoImports) isValidAndNew(name string) bool {
+	if _, reserved := gi.reserved[name]; reserved {
+		return false
+	}
+
+	_, ok := gi.revmap[name]
+	return !ok
+}
+
 func (gi *GoImports) AddOrGet(typeUrl string) {
 	if typeUrl == gi.PkgName {
 		return
@@ -78,7 +89,7 @@ func (gi *GoImports) AddOrGet(typeUrl string) {
 	base := heuristicPackageName(typeUrl)
 
 	var rename string
-	if _, ok := gi.revmap[base]; !ok {
+	if gi.isValidAndNew(base) {
 		gi.revmap[base] = typeUrl
 		rename = base
 	}
@@ -86,7 +97,7 @@ func (gi *GoImports) AddOrGet(typeUrl string) {
 	if rename == "" && strings.HasPrefix(typeUrl, "namespacelabs.dev/foundation/") {
 		base = "fn" + base
 
-		if _, ok := gi.revmap[base]; !ok {
+		if gi.isValidAndNew(base) {
 			gi.revmap[base] = typeUrl
 			rename = base
 		}
@@ -95,7 +106,7 @@ func (gi *GoImports) AddOrGet(typeUrl string) {
 	if rename == "" {
 		for k := 1; ; k++ {
 			rename = fmt.Sprintf("%s%d", base, k)
-			if _, ok := gi.revmap[rename]; !ok {
+			if gi.isValidAndNew(rename) {
 				gi.revmap[rename] = typeUrl
 				break
 			}
@@ -107,9 +118,13 @@ func (gi *GoImports) AddOrGet(typeUrl string) {
 }
 
 func (gi *GoImports) MustGet(typeUrl string) string {
+	if typeUrl == gi.PkgName {
+		return ""
+	}
+
 	rel, ok := gi.urlmap[typeUrl]
 	if ok {
-		return rel
+		return rel + "."
 	}
 
 	panic(typeUrl + " is not known")

@@ -8,7 +8,7 @@ import (
 	"context"
 )
 
-func ProvideCreds(ctx context.Context, caller string, _ *CredsRequest, deps ExtensionDeps) (*Creds, error) {
+func ProvideCreds(ctx context.Context, _ *CredsRequest, deps ExtensionDeps) (*Creds, error) {
 	creds := &Creds{
 		Password: string(deps.Password.MustValue()),
 	}

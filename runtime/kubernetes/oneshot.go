@@ -50,9 +50,10 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 		return err
 	}
 
-	if err := r.Wait(ctx, tasks.Action("kubernetes.pod.deploy"), WaitForPodConditition(fetchPod(r.ns(), name), func(status corev1.PodStatus) bool {
-		return status.Phase == corev1.PodRunning || status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded
-	})); err != nil {
+	if err := r.Wait(ctx, tasks.Action("kubernetes.pod.deploy").Scope(pkg),
+		WaitForPodConditition(fetchPod(r.ns(), name), func(status corev1.PodStatus) bool {
+			return status.Phase == corev1.PodRunning || status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded
+		})); err != nil {
 		return err
 	}
 

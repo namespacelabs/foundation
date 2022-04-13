@@ -19,7 +19,6 @@ extension: fn.#Extension & {
 			}
 		}
 	}
-
 	provides: {
 		Creds: {
 			input: $providerProto.types.CredsRequest

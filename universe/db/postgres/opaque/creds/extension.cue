@@ -10,21 +10,20 @@ $providerProto: inputs.#Proto & {
 }
 
 extension: fn.#Extension & {
-	instantiate: {
-		user: secrets.#Exports.Secret & {
-			name: "postgres-user-file"
-		}
-		password: secrets.#Exports.Secret & {
-			name: "postgres-password-file"
-		}
-	}
-
 	provides: {
 		Creds: {
 			input: $providerProto.types.CredsRequest
 
 			availableIn: {
 				go: type: "*Creds"
+			}
+			instantiate: {
+				user: secrets.#Exports.Secret & {
+					name: "postgres-user-file"
+				}
+				password: secrets.#Exports.Secret & {
+					name: "postgres-password-file"
+				}
 			}
 		}
 	}

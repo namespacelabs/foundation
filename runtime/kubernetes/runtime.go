@@ -110,6 +110,10 @@ func (r k8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, f func(
 		return err
 	}
 
+	return waitForCondition(ctx, cli, action, f)
+}
+
+func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.ActionEvent, f func(context.Context, *k8s.Clientset) (bool, error)) error {
 	return action.Run(ctx, func(ctx context.Context) error {
 		return wait.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(c context.Context) (done bool, err error) {
 			return f(c, cli)

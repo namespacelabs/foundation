@@ -11,7 +11,7 @@ import (
 
 type Check struct {
 	register func(string, Checker)
-	owner    string
+	owner    *InstantiationPath
 }
 
 // By default, a Readiness checker never returns a failure after it becomes
@@ -31,12 +31,12 @@ func ManualChecker(check CheckerFunc) Checker {
 	return manualChecker{check}
 }
 
-func ProvideLivenessCheck(ctx context.Context, pkgName string, _ *LivenessCheck) (Check, error) {
-	return Check{registerLiveness, pkgName}, nil
+func ProvideLivenessCheck(ctx context.Context, _ *LivenessCheck) (Check, error) {
+	return Check{registerLiveness, InstantiationPathFromContext(ctx)}, nil
 }
 
-func ProvideReadinessCheck(ctx context.Context, pkgName string, _ *ReadinessCheck) (Check, error) {
-	return Check{registerReadiness, pkgName}, nil
+func ProvideReadinessCheck(ctx context.Context, _ *ReadinessCheck) (Check, error) {
+	return Check{registerReadiness, InstantiationPathFromContext(ctx)}, nil
 }
 
 type manualChecker struct{ c CheckerFunc }

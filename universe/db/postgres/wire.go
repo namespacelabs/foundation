@@ -18,7 +18,7 @@ func logf(message string, args ...interface{}) {
 	fmt.Fprintf(os.Stdout, "%s : %s\n", time.Now().String(), fmt.Sprintf(message, args...))
 }
 
-func ProvideDatabase(ctx context.Context, caller string, db *Database, username string, password string, ready core.Check) (*pgxpool.Pool, error) {
+func ProvideDatabase(ctx context.Context, db *Database, username string, password string, ready core.Check) (*pgxpool.Pool, error) {
 	// Config has to be created by ParseConfig
 	config, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
 		username,
@@ -40,7 +40,7 @@ func ProvideDatabase(ctx context.Context, caller string, db *Database, username 
 	}
 
 	// Asynchronously wait until a database connection is ready.
-	ready.RegisterFunc(fmt.Sprintf("%s/%s", caller, db.Name), func(ctx context.Context) error {
+	ready.RegisterFunc(fmt.Sprintf("%s/%s", core.InstantiationPathFromContext(ctx), db.Name), func(ctx context.Context) error {
 		return conn.Ping(ctx)
 	})
 

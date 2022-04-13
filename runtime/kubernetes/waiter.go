@@ -161,13 +161,23 @@ func MatchPodCondition(typ corev1.PodConditionType) func(corev1.PodStatus) bool 
 	}
 }
 
-func SelectPods(ns string, selector map[string]string) func(context.Context, *k8s.Clientset) ([]corev1.Pod, error) {
+func SelectPods(ns string, name *string, selector map[string]string) func(context.Context, *k8s.Clientset) ([]corev1.Pod, error) {
 	sel := kubedef.SerializeSelector(selector)
 
 	return func(ctx context.Context, c *k8s.Clientset) ([]corev1.Pod, error) {
 		pods, err := c.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: sel})
 		if err != nil {
 			return nil, err
+		}
+
+		if name != nil {
+			var filtered []corev1.Pod
+			for _, item := range pods.Items {
+				if item.GetName() == *name {
+					filtered = append(filtered, item)
+				}
+			}
+			return filtered, nil
 		}
 
 		return pods.Items, nil

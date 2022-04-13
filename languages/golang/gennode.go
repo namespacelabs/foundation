@@ -16,8 +16,12 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const ServiceDepsFilename = "deps.fn.go"
-const grpcServerPackage = "namespacelabs.dev/foundation/std/go/grpc/server"
+const (
+	depsFilename      = "deps.fn.go"
+	extensionDepsType = "ExtensionDeps"
+	serviceDepsType   = "ServiceDeps"
+	grpcServerPackage = "namespacelabs.dev/foundation/std/go/grpc/server"
+)
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
 	var e instancedDepList
@@ -25,9 +29,22 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		return err
 	}
 
-	var depVars []gosupport.TypeDef
-	for _, p := range e.instances {
-		depVars = append(depVars, p.Provisioned.DepVars...)
+	imports := gosupport.NewGoImports(loc.PackageName.String())
+
+	typ := "extension"
+	single := &depsType{
+		DepsType: extensionDepsType,
+	}
+	if n.GetKind() == schema.Node_SERVICE {
+		typ = "service"
+		single.DepsType = serviceDepsType
+
+		imports.AddOrGet(grpcServerPackage)
+	}
+	for _, dep := range e.instances {
+		if dep.Scope == nil {
+			single.DepVars = append(single.DepVars, dep.Provisioned.DepVars...)
+		}
 	}
 
 	hasInitialization := n.InitializerFor(schema.Framework_GO_GRPC) != nil
@@ -44,8 +61,6 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 	if len(n.ExportService) == 0 && len(n.ExportHttp) == 0 && !hasInitialization && providesCount == 0 {
 		return nil
 	}
-
-	imports := gosupport.NewGoImports(loc.PackageName.String())
 
 	var depPackages []string
 	if err := visitAllDeps(ctx, nodes, n.GetImportedPackages(), func(dep *schema.Node) error {
@@ -66,20 +81,14 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 	}
 
 	// Force each of the type URLs to be known, so we do a single template pass.
-	for _, dv := range depVars {
+	for _, dv := range single.DepVars {
 		if dv.GoImportURL != "" {
 			imports.AddOrGet(dv.GoImportURL)
 		}
 	}
 
-	typ := "Extension"
-	if n.GetKind() == schema.Node_SERVICE {
-		typ = "Service"
-
-		imports.AddOrGet(grpcServerPackage)
-	}
-
 	var provides []*typeProvider
+	var scoped []*depsType
 	for _, prov := range n.Provides {
 		for _, available := range prov.AvailableIn {
 			if available.Go == nil {
@@ -98,28 +107,45 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 
 			imports.AddOrGet(goImport)
 
-			provides = append(provides, &typeProvider{
+			p := &typeProvider{
 				Provides:    prov,
 				PackageName: loc.PackageName,
 				Method:      makeProvidesMethod(prov),
 				DepVars: []gosupport.TypeDef{{
 					GoImportURL: goImport,
 					GoTypeName:  available.Go.Type,
-				}},
-			})
+				}}}
+
+			s := &depsType{
+				DepsType: makeProvidesDepsType(prov),
+			}
+			for _, dep := range e.instances {
+				if dep.Parent.PackageName == n.PackageName && prov.Name == dep.Scope.GetName() {
+					s.DepVars = append(s.DepVars, dep.Provisioned.DepVars...)
+				}
+			}
+			for _, dv := range s.DepVars {
+				if dv.GoImportURL != "" {
+					imports.AddOrGet(dv.GoImportURL)
+				}
+			}
+
+			provides = append(provides, p)
+			scoped = append(scoped, s)
 			break
 		}
 	}
 
-	return generateGoSource(ctx, fs, loc.Rel(ServiceDepsFilename), serviceTmpl, nodeTmplOptions{
+	return generateGoSource(ctx, fs, loc.Rel(depsFilename), serviceTmpl, nodeTmplOptions{
 		Type:              typ,
+		Singleton:         single,
 		PackageName:       filepath.Base(loc.Rel()),
 		Imports:           imports,
-		DepVars:           depVars,
 		Provides:          provides,
+		Scoped:            scoped,
 		DepPackages:       depPackages,
 		HasInitialization: hasInitialization,
-		NeedsDepsType:     len(n.ExportService) > 0 || len(n.ExportHttp) > 0 || len(depVars) > 0,
+		NeedsSingleton:    len(n.ExportService) > 0 || len(n.ExportHttp) > 0 || len(single.DepVars) > 0,
 	})
 }
 
@@ -135,15 +161,21 @@ func makeProvisionProtoName(p *typeProvider) string {
 	return gosupport.MakeGoPubVar(parts[len(parts)-1])
 }
 
+type depsType struct {
+	DepsType string
+	DepVars  []gosupport.TypeDef
+}
+
 type nodeTmplOptions struct {
 	Type              string
+	Singleton         *depsType
 	PackageName       string
 	Imports           *gosupport.GoImports
-	DepVars           []gosupport.TypeDef
 	Provides          []*typeProvider
+	Scoped            []*depsType // Same indexing as `Provisioned`.
 	DepPackages       []string
 	HasInitialization bool
-	NeedsDepsType     bool
+	NeedsSingleton    bool
 }
 
 var (
@@ -155,7 +187,7 @@ var (
 		"makeProvisionProtoName": makeProvisionProtoName,
 	}
 
-	serviceTmpl = template.Must(template.New(ServiceDepsFilename).Funcs(funcs).Parse(`// This file was automatically generated.{{with $opts := .}}
+	serviceTmpl = template.Must(template.New(depsFilename).Funcs(funcs).Parse(`// This file was automatically generated.{{with $opts := .}}
 package {{$opts.PackageName}}
 
 import (
@@ -168,27 +200,40 @@ import (
 	{{.Rename}} "{{.TypeURL}}"{{end}}
 )
 
-{{if .NeedsDepsType}}
-type {{.Type}}Deps struct {
-{{range $k, $v := .DepVars}}
+{{if .NeedsSingleton}}
+// Dependencies that are instantiated once for the lifetime of the {{.Type}}.
+type {{.Singleton.DepsType}} struct {
+{{range $k, $v := .Singleton.DepVars}}
 	{{$v.GoName}} {{$v.MakeType $opts.Imports}}{{end}}
 }
 {{end}}
 
-{{if eq .Type "Service"}}
+{{range $k, $v := .Scoped}}
+	{{if $v.DepVars}}
+		// Scoped dependencies that are reinstantiated for each call to {{with $p := index $opts.Provides $k}}{{$p.Method}}{{end}}.
+		type {{$v.DepsType}} struct {
+		{{range $k, $i := $v.DepVars}}
+			{{$i.GoName}} {{$i.MakeType $opts.Imports}}{{end}}
+  		}
+	{{end}}
+{{end}}
+
+{{if eq .Type "service"}}
 // Verify that WireService is present and has the appropriate type.
-type checkWireService func(context.Context, *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/grpc/server"}}.Grpc, {{.Type}}Deps)
+type checkWireService func(context.Context, *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/grpc/server"}}Grpc, {{.Singleton.DepsType}})
 var _ checkWireService = WireService
 {{end}}
 
 {{range $k, $v := .Provides}}
-type _check{{$v.Method}} func(context.Context, string, *{{makeProvisionProtoName $v}}{{if $opts.DepVars}}, {{$opts.Type}}Deps{{end}}) ({{range $v.DepVars}}{{makeType $opts.Imports .GoImportURL .GoTypeName}},{{end}} error)
-
+type _check{{$v.Method}} func(context.Context, *{{makeProvisionProtoName $v}}
+	{{- if $opts.NeedsSingleton}}, {{$opts.Singleton.DepsType}}{{end}}
+	{{- with $scoped := index $opts.Scoped $k}}{{if $scoped.DepVars}}, {{$scoped.DepsType}}{{end}}{{end -}}
+	) ({{range $v.DepVars}}{{makeType $opts.Imports .GoImportURL .GoTypeName}},{{end}} error)
 var _ _check{{$v.Method}} = {{$v.Method}}
 {{end}}
 
 {{if .HasInitialization}}
-type _checkPrepare func(context.Context{{if .NeedsDepsType}}, {{.Type}}Deps{{end}}) error
+type _checkPrepare func(context.Context{{if .NeedsSingleton}}, {{.Singleton.DepsType}}{{end}}) error
 var _ _checkPrepare = Prepare
 {{end}}
 

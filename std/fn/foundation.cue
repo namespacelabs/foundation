@@ -9,12 +9,16 @@ _#Imports: {
 	"import": [...string]
 }
 
-_#Node: {
-	_#Imports
-
+_#Instantiate: {
 	instantiate: [#InstanceName]: {
 		...
 	}
+}
+
+_#Node: {
+	_#Imports
+
+	_#Instantiate
 
 	packageData: [...string]
 
@@ -33,6 +37,8 @@ _#Node: {
 	provides?: #Provides
 
 	#Provides: [X=string]: {
+		_#Instantiate
+
 		name: X
 		{input: types.#Proto} | {type: types.#Proto}
 		availableIn: [string]: {...}

@@ -51,7 +51,7 @@ message Node {
     // Name used publicly.
     string ingress_service_name = 5;
 
-    // Dependencies instantiated for this service.
+    // Singleton dependencies instantiated for this node.
     repeated Instantiate instantiate = 6;
 
     // A list of node needs (e.g. ports, etc).
@@ -152,6 +152,9 @@ message Provides {
 
         message Web {}
     }
+
+    // Scoped dependencies instantiated for this provided type.
+    repeated Instantiate instantiate = 4;
 }
 
 message TypeDef {

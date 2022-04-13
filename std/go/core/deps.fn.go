@@ -5,10 +5,10 @@ import (
 	"context"
 )
 
-type _checkProvideLivenessCheck func(context.Context, string, *LivenessCheck) (Check, error)
+type _checkProvideLivenessCheck func(context.Context, *LivenessCheck) (Check, error)
 
 var _ _checkProvideLivenessCheck = ProvideLivenessCheck
 
-type _checkProvideReadinessCheck func(context.Context, string, *ReadinessCheck) (Check, error)
+type _checkProvideReadinessCheck func(context.Context, *ReadinessCheck) (Check, error)
 
 var _ _checkProvideReadinessCheck = ProvideReadinessCheck

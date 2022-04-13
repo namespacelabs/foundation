@@ -1,0 +1,29 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package std.testdata.service.multicounter;
+
+option go_package = "namespacelabs.dev/foundation/std/testdata/service/multicounter";
+
+import "google/protobuf/empty.proto";
+
+
+message IncrementRequest {
+    string name = 1;
+}
+
+message GetRequest {
+    string name = 1;
+}
+
+message GetResponse {
+    int32 value = 1;
+}
+
+service MulticounterService {
+    rpc Increment(IncrementRequest) returns (google.protobuf.Empty);
+    rpc Get(GetRequest) returns (GetResponse);
+}

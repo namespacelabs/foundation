@@ -8,6 +8,7 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
+// Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
 	Cert           *secrets.Value
 	Gen            *secrets.Value
@@ -15,6 +16,6 @@ type ExtensionDeps struct {
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, ExtensionDeps) (*DB, error)
+type _checkProvideDatabase func(context.Context, *Database, ExtensionDeps) (*DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

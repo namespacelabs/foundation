@@ -28,7 +28,11 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 	var additionalInstances []*schema.Instantiate
 
 	var deps schema.PackageList
-	for _, dep := range node.Instantiate {
+	instances := node.Instantiate
+	for _, p := range node.Provides {
+		instances = append(instances, p.Instantiate...)
+	}
+	for _, dep := range instances {
 		// Checking language compatibility
 
 		// No package happen for internal nodes, e.g. "std/grpc"

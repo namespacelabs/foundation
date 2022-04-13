@@ -9,11 +9,16 @@ import (
 	"namespacelabs.dev/foundation/universe/db/postgres/opaque/creds"
 )
 
+// Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
-	Creds          *creds.Creds
 	ReadinessCheck core.Check
 }
 
-type _checkProvideDatabase func(context.Context, string, *Database, ExtensionDeps) (*pgxpool.Pool, error)
+// Scoped dependencies that are reinstantiated for each call to ProvideDatabase.
+type DatabaseDeps struct {
+	Creds *creds.Creds
+}
+
+type _checkProvideDatabase func(context.Context, *Database, ExtensionDeps, DatabaseDeps) (*pgxpool.Pool, error)
 
 var _ _checkProvideDatabase = ProvideDatabase

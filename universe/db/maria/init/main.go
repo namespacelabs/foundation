@@ -30,7 +30,7 @@ var (
 func connect(ctx context.Context, password string, address string, port uint32) (db *sql.DB, err error) {
 	connString := fmt.Sprintf("root:%s@tcp(%s:%d)/", password, address, port)
 	err = backoff.Retry(func() error {
-		log.Printf("Connecting to MariaDB with `%s`.", connString)
+		log.Printf("Connecting to MariaDB.")
 		db, err = sql.Open("mysql", connString)
 		if err != nil {
 			log.Printf("Failed to connect to MariaDB: %v", err)

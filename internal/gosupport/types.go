@@ -34,7 +34,7 @@ func MakeType(imports *GoImports, pkg, typeName string) string {
 		}
 	}
 
-	return fmt.Sprintf("%s%s.%s", qual, imports.MustGet(pkg), typeName)
+	return fmt.Sprintf("%s%s%s", qual, imports.MustGet(pkg), typeName)
 }
 
 func (dp TypeDef) MakeType(imports *GoImports) string {

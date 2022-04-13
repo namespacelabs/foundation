@@ -7,11 +7,12 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
-type ExtensionDeps struct {
-	Password *secrets.Value
+// Scoped dependencies that are reinstantiated for each call to ProvideCreds.
+type CredsDeps struct {
 	User     *secrets.Value
+	Password *secrets.Value
 }
 
-type _checkProvideCreds func(context.Context, string, *CredsRequest, ExtensionDeps) (*Creds, error)
+type _checkProvideCreds func(context.Context, *CredsRequest, CredsDeps) (*Creds, error)
 
 var _ _checkProvideCreds = ProvideCreds
