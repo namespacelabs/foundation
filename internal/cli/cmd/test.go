@@ -46,9 +46,6 @@ func NewTestCmd() *cobra.Command {
 				return err
 			}
 
-			// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
-			env := testing.PrepareEnvFrom(devEnv)
-
 			var locs []fnfs.Location
 
 			if len(args) == 0 {
@@ -77,9 +74,12 @@ func NewTestCmd() *cobra.Command {
 			}
 
 			stderr := console.Stderr(ctx)
-			pl := workspace.NewPackageLoader(env.Root())
+			pl := workspace.NewPackageLoader(devEnv.Root())
 
 			for _, loc := range locs {
+				// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
+				env := testing.PrepareEnvFrom(devEnv)
+
 				test, err := testing.PrepareTest(ctx, pl, env, loc.AsPackageName(), testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
 					var suts []provision.Server
 
