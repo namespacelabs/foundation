@@ -32,14 +32,13 @@ type Event struct {
 	Status  string
 }
 
-type Waiter interface {
-	WaitUntilReady(context.Context, chan Event) error
-}
+// A waiter implementation is required to close the received channel when it's done.
+type Waiter func(context.Context, chan Event) error
 
 func WaitMultiple(ctx context.Context, waiters []Waiter, ch chan Event) error {
 	if len(waiters) == 1 {
 		// Defer channel management to the child waiter as well.
-		return waiters[0].WaitUntilReady(ctx, ch)
+		return waiters[0](ctx, ch)
 	}
 
 	if ch != nil {
@@ -76,7 +75,7 @@ func WaitMultiple(ctx context.Context, waiters []Waiter, ch chan Event) error {
 				})
 			}
 
-			return w.WaitUntilReady(ctx, chch)
+			return w(ctx, chch)
 		})
 	}
 

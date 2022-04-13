@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
@@ -74,8 +75,8 @@ func RegisterGraphHandlers() {
 			return nil, fnerrors.InvocationError("%s: %w", d.Description, err)
 		}
 
-		// XXX support more resource types.
-		if apply.Resource == "deployments" || apply.Resource == "statefulsets" {
+		switch apply.Resource {
+		case "deployments", "statefulsets":
 			generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
 			observedGen, found2, err2 := unstructured.NestedInt64(res.Object, "status", "observedGeneration")
 			if err2 != nil || !found2 {
@@ -96,14 +97,61 @@ func RegisterGraphHandlers() {
 						previousGen: observedGen,
 						expectedGen: generation,
 					}
-					waiters = append(waiters, w)
+					waiters = append(waiters, w.WaitUntilReady)
 				}
 				return &ops.DispatcherResult{
 					Waiters: waiters,
 				}, nil
 			} else {
-				fmt.Fprintf(console.Warnings(ctx), "missing generation data from deployment: %v / %v [found1=%v found2=%v]\n", err1, err2, found1, found2)
+				fmt.Fprintf(console.Warnings(ctx), "missing generation data from %s: %v / %v [found1=%v found2=%v]\n",
+					apply.Resource, err1, err2, found1, found2)
 			}
+
+		case "pods":
+			var waiters []ops.Waiter
+			for _, sc := range scope {
+				sc := sc // Close sc.
+				waiters = append(waiters, func(ctx context.Context, ch chan ops.Event) error {
+					if ch != nil {
+						defer func() {
+							ch <- ops.Event{AllDone: true}
+							close(ch)
+						}()
+					}
+
+					cfg, err := client.ComputeHostEnv(env.DevHost(), env.Proto())
+					if err != nil {
+						return err
+					}
+
+					cli, err := client.NewClientFromHostEnv(cfg)
+					if err != nil {
+						return err
+					}
+
+					return waitForCondition(ctx, cli, tasks.Action(runtime.TaskServerStart).Scope(sc),
+						WaitForPodConditition(fetchPod(apply.Namespace, apply.Name),
+							func(ps v1.PodStatus) bool {
+								ev := ops.Event{
+									ResourceID: apply.Name,
+									Kind:       apply.Resource,
+									Category:   "Servers deployed",
+									Scope:      sc,
+									Ready:      ops.NotReady,
+								}
+								ready := MatchPodCondition(v1.PodReady)(ps)
+								if ready {
+									ev.Ready = ops.Ready
+								}
+								ch <- ev
+								return ready
+							}))
+				})
+			}
+
+			return &ops.DispatcherResult{
+				Waiters: waiters,
+			}, nil
 		}
 
 		return nil, nil
