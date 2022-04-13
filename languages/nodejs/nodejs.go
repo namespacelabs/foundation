@@ -149,7 +149,6 @@ func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Conte
 
 func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.ServerRunOpts) error {
 	if useDevBuild(srv.Env().Proto()) {
-		run.Command = []string{"nodemon", filepath.Join(srv.Location.Rel(), "main.fn.ts")}
 		// For dev builds we use runtime complication of Typescript.
 		run.ReadOnlyFilesystem = false
 
