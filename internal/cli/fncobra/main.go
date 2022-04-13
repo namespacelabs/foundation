@@ -63,7 +63,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		defer done()
 	}
 
-	if v := os.Getenv("FN_ENABLE_PPROF"); v != "" {
+	setupViper()
+
+	if viper.GetBool("enable_pprof") {
 		h := http.NewServeMux()
 		h.HandleFunc("/debug/pprof/", httppprof.Index)
 		h.HandleFunc("/debug/pprof/cmdline", httppprof.Cmdline)
@@ -75,8 +77,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			log.Println(http.ListenAndServe("localhost:6060", h))
 		}()
 	}
-
-	setupViper()
 
 	ctx := context.Background()
 
@@ -344,6 +344,9 @@ func setupViper() {
 
 	viper.SetDefault("console_log_level", 0)
 	_ = viper.BindEnv("console_log_level")
+
+	viper.SetDefault("enable_pprof", false)
+	_ = viper.BindEnv("enable_pprof")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
