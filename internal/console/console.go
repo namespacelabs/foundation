@@ -28,6 +28,10 @@ func Output(ctx context.Context, name string) io.Writer {
 	return TypedOutput(ctx, name, tasks.CatOutputTool)
 }
 
+func Debug(ctx context.Context) io.Writer {
+	return TypedOutput(ctx, "debug", tasks.CatOutputDebug)
+}
+
 func Warnings(ctx context.Context) io.Writer {
 	return TypedOutput(ctx, "warnings", tasks.CatOutputWarnings)
 }
