@@ -51,9 +51,8 @@ type OnDoneFunc func(*protocol.Task)
 type WellKnown string
 
 const (
-	WkAction      = "action"
-	WkActionClass = "action_class"
-	WkModule      = "module"
+	WkAction = "action"
+	WkModule = "module"
 )
 
 type EventData struct {
