@@ -21,168 +21,212 @@ type ServerDeps struct {
 	multidb multidb.ServiceDeps
 }
 
-func PrepareDeps(ctx context.Context) (*ServerDeps, error) {
-	var server ServerDeps
-	var di core.DepInitializer
-	var metrics0 metrics.ExtensionDeps
+// This code uses type assertions for now. When go 1.18 is more widely deployed, it will switch to generics.
+func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
+	di := core.MakeInitializer()
 
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors",
-		Instance:    "metrics0",
-		Do: func(ctx context.Context) (err error) {
-			if metrics0.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/go/grpc/metrics", nil); err != nil {
-				return err
+	di.Add(core.Provider{
+		Package: "namespacelabs.dev/foundation/std/go/grpc/metrics",
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps metrics.ExtensionDeps
+			var err error
+
+			if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+				return nil, err
 			}
-			return nil
+
+			return deps, err
 		},
 	})
 
-	var tracing0 tracing.ExtensionDeps
+	di.Add(core.Provider{
+		Package: "namespacelabs.dev/foundation/std/monitoring/tracing",
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps tracing.ExtensionDeps
+			var err error
 
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors",
-		Instance:    "tracing0",
-		Do: func(ctx context.Context) (err error) {
-			if tracing0.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, "namespacelabs.dev/foundation/std/monitoring/tracing", nil); err != nil {
-				return err
+			if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+				return nil, err
 			}
-			return nil
+
+			return deps, err
 		},
 	})
 
-	var creds0 creds.ExtensionDeps
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/secrets",
-		Instance:    "creds0",
-		Do: func(ctx context.Context) (err error) {
+	di.Add(core.Provider{
+		Package: "namespacelabs.dev/foundation/universe/db/maria/incluster/creds",
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps creds.ExtensionDeps
+			var err error
 			// name: "mariadb-password-file"
 			p := &secrets.Secret{}
 			core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGU=", p)
 
-			if creds0.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster/creds", p); err != nil {
-				return err
+			if deps.Password, err = secrets.ProvideSecret(ctx, p); err != nil {
+				return nil, err
 			}
-			return nil
+
+			return deps, err
 		},
 	})
 
-	var incluster0 incluster.ExtensionDeps
+	di.Add(core.Provider{
+		Package: "namespacelabs.dev/foundation/universe/db/maria/incluster",
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps incluster.ExtensionDeps
+			var err error
 
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/universe/db/maria/incluster/creds",
-		Instance:    "incluster0",
-		DependsOn:   []string{"creds0"}, Do: func(ctx context.Context) (err error) {
-			if incluster0.Creds, err = creds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", nil, creds0); err != nil {
-				return err
+			err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/universe/db/maria/incluster/creds"},
+				func(ctx context.Context, v interface{}) (err error) {
+
+					if deps.Creds, err = creds.ProvideCreds(ctx, nil, v.(creds.ExtensionDeps)); err != nil {
+						return err
+					}
+					return nil
+				})
+			if err != nil {
+				return nil, err
 			}
-			return nil
+
+			{
+
+				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
+					return nil, err
+				}
+			}
+
+			return deps, err
 		},
 	})
 
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/go/core",
-		Instance:    "incluster0",
-		Do: func(ctx context.Context) (err error) {
-			if incluster0.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, "namespacelabs.dev/foundation/universe/db/maria/incluster", nil); err != nil {
-				return err
-			}
-			return nil
-		},
-	})
-
-	var creds2 fncreds.ExtensionDeps
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/secrets",
-		Instance:    "creds2",
-		Do: func(ctx context.Context) (err error) {
+	di.Add(core.Provider{
+		Package: "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds",
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps fncreds.ExtensionDeps
+			var err error
 			// name: "postgres-password-file"
 			p := &secrets.Secret{}
 			core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
 
-			if creds2.Password, err = secrets.ProvideSecret(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds", p); err != nil {
-				return err
+			if deps.Password, err = secrets.ProvideSecret(ctx, p); err != nil {
+				return nil, err
 			}
-			return nil
+
+			return deps, err
 		},
 	})
 
-	var incluster2 fnincluster.ExtensionDeps
+	di.Add(core.Provider{
+		Package: "namespacelabs.dev/foundation/universe/db/postgres/incluster",
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps fnincluster.ExtensionDeps
+			var err error
 
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds",
-		Instance:    "incluster2",
-		DependsOn:   []string{"creds2"}, Do: func(ctx context.Context) (err error) {
-			if incluster2.Creds, err = fncreds.ProvideCreds(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil, creds2); err != nil {
-				return err
+			err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"},
+				func(ctx context.Context, v interface{}) (err error) {
+
+					if deps.Creds, err = fncreds.ProvideCreds(ctx, nil, v.(fncreds.ExtensionDeps)); err != nil {
+						return err
+					}
+					return nil
+				})
+			if err != nil {
+				return nil, err
 			}
-			return nil
+
+			{
+
+				if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
+					return nil, err
+				}
+			}
+
+			return deps, err
 		},
 	})
 
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/go/core",
-		Instance:    "incluster2",
-		Do: func(ctx context.Context) (err error) {
-			if incluster2.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, "namespacelabs.dev/foundation/universe/db/postgres/incluster", nil); err != nil {
-				return err
+	di.Add(core.Provider{
+		Package: "namespacelabs.dev/foundation/std/testdata/service/multidb",
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps multidb.ServiceDeps
+			var err error
+
+			err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/universe/db/maria/incluster"},
+				func(ctx context.Context, v interface{}) (err error) {
+					// name: "mariadblist"
+					// schema_file: {
+					//   path: "schema_maria.sql"
+					//   contents: "CREATE TABLE IF NOT EXISTS list (\n    Id INT NOT NULL AUTO_INCREMENT,\n    Item varchar(255) NOT NULL,\n    PRIMARY KEY(Id)\n);"
+					// }
+					p := &incluster.Database{}
+					core.MustUnwrapProto("CgttYXJpYWRibGlzdBKQAQoQc2NoZW1hX21hcmlhLnNxbBJ8Q1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgbGlzdCAoCiAgICBJZCBJTlQgTk9UIE5VTEwgQVVUT19JTkNSRU1FTlQsCiAgICBJdGVtIHZhcmNoYXIoMjU1KSBOT1QgTlVMTCwKICAgIFBSSU1BUlkgS0VZKElkKQopOw==", p)
+
+					if deps.Maria, err = incluster.ProvideDatabase(ctx, p, v.(incluster.ExtensionDeps)); err != nil {
+						return err
+					}
+					return nil
+				})
+			if err != nil {
+				return nil, err
 			}
-			return nil
+
+			err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/universe/db/postgres/incluster"},
+				func(ctx context.Context, v interface{}) (err error) {
+					// name: "postgreslist"
+					p := &fnincluster.Database{}
+					core.MustUnwrapProto("Cgxwb3N0Z3Jlc2xpc3Q=", p)
+
+					if deps.Postgres, err = fnincluster.ProvideDatabase(ctx, p, v.(fnincluster.ExtensionDeps)); err != nil {
+						return err
+					}
+					return nil
+				})
+			if err != nil {
+				return nil, err
+			}
+
+			return deps, err
 		},
 	})
 
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/universe/db/maria/incluster",
-		Instance:    "server.multidb",
-		DependsOn:   []string{"incluster0"}, Do: func(ctx context.Context) (err error) {
-			// name: "mariadblist"
-			// schema_file: {
-			//   path: "schema_maria.sql"
-			//   contents: "CREATE TABLE IF NOT EXISTS list (\n    Id INT NOT NULL AUTO_INCREMENT,\n    Item varchar(255) NOT NULL,\n    PRIMARY KEY(Id)\n);"
-			// }
-			p := &incluster.Database{}
-			core.MustUnwrapProto("CgttYXJpYWRibGlzdBKQAQoQc2NoZW1hX21hcmlhLnNxbBJ8Q1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgbGlzdCAoCiAgICBJZCBJTlQgTk9UIE5VTEwgQVVUT19JTkNSRU1FTlQsCiAgICBJdGVtIHZhcmNoYXIoMjU1KSBOT1QgTlVMTCwKICAgIFBSSU1BUlkgS0VZKElkKQopOw==", p)
+	server = &ServerDeps{}
+	di.AddInitializer(core.Initializer{
+		PackageName: "",
+		Do: func(ctx context.Context) error {
 
-			if server.multidb.Maria, err = incluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", p, incluster0); err != nil {
+			err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/testdata/service/multidb"},
+				func(ctx context.Context, v interface{}) (err error) {
+					server.multidb = v.(multidb.ServiceDeps)
+					return nil
+				})
+			if err != nil {
 				return err
 			}
+
 			return nil
 		},
 	})
-
-	di.Register(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster",
-		Instance:    "server.multidb",
-		DependsOn:   []string{"incluster2"}, Do: func(ctx context.Context) (err error) {
-			// name: "postgreslist"
-			p := &fnincluster.Database{}
-			core.MustUnwrapProto("Cgxwb3N0Z3Jlc2xpc3Q=", p)
-
-			if server.multidb.Postgres, err = fnincluster.ProvideDatabase(ctx, "namespacelabs.dev/foundation/std/testdata/service/multidb", p, incluster2); err != nil {
-				return err
-			}
-			return nil
-		},
-	})
-
-	di.Register(core.Initializer{
+	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
-		DependsOn:   []string{"metrics0"},
 		Do: func(ctx context.Context) error {
-			return metrics.Prepare(ctx, metrics0)
+			return di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/go/grpc/metrics"},
+				func(ctx context.Context, v interface{}) (err error) {
+					return metrics.Prepare(ctx, v.(metrics.ExtensionDeps))
+				})
 		},
 	})
 
-	di.Register(core.Initializer{
+	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
-		DependsOn:   []string{"tracing0"},
 		Do: func(ctx context.Context) error {
-			return tracing.Prepare(ctx, tracing0)
+			return di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/monitoring/tracing"},
+				func(ctx context.Context, v interface{}) (err error) {
+					return tracing.Prepare(ctx, v.(tracing.ExtensionDeps))
+				})
 		},
 	})
 
-	return &server, di.Wait(ctx)
+	return server, di.Init(ctx)
 }
 
 func WireServices(ctx context.Context, srv *server.Grpc, server *ServerDeps) {

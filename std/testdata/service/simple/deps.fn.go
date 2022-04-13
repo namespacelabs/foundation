@@ -7,6 +7,7 @@ import (
 	"namespacelabs.dev/foundation/std/go/grpc/server"
 )
 
+// Dependencies that are instantiated once for the lifetime of the service.
 type ServiceDeps struct {
 }
 

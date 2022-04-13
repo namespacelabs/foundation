@@ -18,7 +18,6 @@ extension: fn.#Extension & {
 	]
 
 	instantiate: {
-		"creds":        creds.#Exports.Creds
 		readinessCheck: core.#Exports.ReadinessCheck
 	}
 
@@ -31,6 +30,9 @@ extension: fn.#Extension & {
 					package: "github.com/jackc/pgx/v4/pgxpool"
 					type:    "*Pool"
 				}
+			}
+			instantiate: {
+				"creds": creds.#Exports.Creds
 			}
 		}
 	}

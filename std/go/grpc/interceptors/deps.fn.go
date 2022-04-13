@@ -5,6 +5,6 @@ import (
 	"context"
 )
 
-type _checkProvideInterceptorRegistration func(context.Context, string, *InterceptorRegistration) (Registration, error)
+type _checkProvideInterceptorRegistration func(context.Context, *InterceptorRegistration) (Registration, error)
 
 var _ _checkProvideInterceptorRegistration = ProvideInterceptorRegistration

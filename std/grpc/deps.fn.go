@@ -7,6 +7,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-type _checkProvideConn func(context.Context, string, *Backend) (*grpc.ClientConn, error)
+type _checkProvideConn func(context.Context, *Backend) (*grpc.ClientConn, error)
 
 var _ _checkProvideConn = ProvideConn

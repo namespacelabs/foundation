@@ -1,0 +1,13 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.std.testdata.counter;
+
+option go_package = "namespacelabs.dev/foundation/std/testdata/counter";
+
+message Input {
+    string name = 1;
+}

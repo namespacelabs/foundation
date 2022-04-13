@@ -16,6 +16,7 @@ extension: fn.#Extension & {
 	]
 
 	instantiate: {
+		// TODO: Move creds instantiation into provides when the server supports multiple users
 		"creds":        creds.#Exports.Creds
 		readinessCheck: core.#Exports.ReadinessCheck
 	}

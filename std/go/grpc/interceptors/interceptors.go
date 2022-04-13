@@ -20,7 +20,8 @@ var interceptors struct {
 }
 
 type Registration struct {
-	pkg, name string
+	owner *core.InstantiationPath
+	name  string
 }
 
 func (r Registration) Add(u grpc.UnaryServerInterceptor, s grpc.StreamServerInterceptor) {
@@ -46,6 +47,6 @@ func Consume() ([]grpc.UnaryServerInterceptor, []grpc.StreamServerInterceptor) {
 	return unary, streaming
 }
 
-func ProvideInterceptorRegistration(_ context.Context, pkg string, r *InterceptorRegistration) (Registration, error) {
-	return Registration{pkg: pkg, name: r.GetName()}, nil
+func ProvideInterceptorRegistration(ctx context.Context, r *InterceptorRegistration) (Registration, error) {
+	return Registration{owner: core.InstantiationPathFromContext(ctx), name: r.GetName()}, nil
 }
