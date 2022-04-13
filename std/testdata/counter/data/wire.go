@@ -11,6 +11,6 @@ import (
 )
 
 func ProvideData(ctx context.Context, _ *Input) (*Data, error) {
-	core.Log.Printf("[debug] path: %s", core.PathFromContext(ctx).String())
+	core.Log.Printf("[debug] path: %s", core.InstantiationPathFromContext(ctx))
 	return &Data{}, nil
 }

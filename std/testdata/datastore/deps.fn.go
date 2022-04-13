@@ -8,7 +8,7 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
-// Dependencies that are instantiated once for the lifetime of the extension
+// Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
 	Cert           *secrets.Value
 	Gen            *secrets.Value

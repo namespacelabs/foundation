@@ -8,7 +8,7 @@ import (
 	"namespacelabs.dev/foundation/std/testdata/counter"
 )
 
-// Dependencies that are instantiated once for the lifetime of the extension
+// Dependencies that are instantiated once for the lifetime of the service.
 type ServiceDeps struct {
 	One *counter.Counter
 	Two *counter.Counter

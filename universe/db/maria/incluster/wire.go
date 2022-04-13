@@ -48,7 +48,7 @@ func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*sq
 	}
 
 	// Asynchronously wait until a database connection is ready.
-	deps.ReadinessCheck.RegisterFunc(fmt.Sprintf("%s/%s", core.PathFromContext(ctx).String(), db.Name), func(ctx context.Context) error {
+	deps.ReadinessCheck.RegisterFunc(fmt.Sprintf("%s/%s", core.InstantiationPathFromContext(ctx), db.Name), func(ctx context.Context) error {
 		return res.PingContext(ctx)
 	})
 

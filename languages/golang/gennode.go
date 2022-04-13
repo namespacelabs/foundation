@@ -31,12 +31,12 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 
 	imports := gosupport.NewGoImports(loc.PackageName.String())
 
-	typ := "Extension"
+	typ := "extension"
 	single := &depsType{
 		DepsType: extensionDepsType,
 	}
 	if n.GetKind() == schema.Node_SERVICE {
-		typ = "Service"
+		typ = "service"
 		single.DepsType = serviceDepsType
 
 		imports.AddOrGet(grpcServerPackage)
@@ -201,7 +201,7 @@ import (
 )
 
 {{if .NeedsSingleton}}
-// Dependencies that are instantiated once for the lifetime of the extension
+// Dependencies that are instantiated once for the lifetime of the {{.Type}}.
 type {{.Singleton.DepsType}} struct {
 {{range $k, $v := .Singleton.DepVars}}
 	{{$v.GoName}} {{$v.MakeType $opts.Imports}}{{end}}
@@ -210,7 +210,7 @@ type {{.Singleton.DepsType}} struct {
 
 {{range $k, $v := .Scoped}}
 	{{if $v.DepVars}}
-		// Scoped dependencies that are reinstantiated for each call to {{with $p := index $opts.Provides $k}}{{$p.Method}}{{end}}
+		// Scoped dependencies that are reinstantiated for each call to {{with $p := index $opts.Provides $k}}{{$p.Method}}{{end}}.
 		type {{$v.DepsType}} struct {
 		{{range $k, $i := $v.DepVars}}
 			{{$i.GoName}} {{$i.MakeType $opts.Imports}}{{end}}
@@ -218,7 +218,7 @@ type {{.Singleton.DepsType}} struct {
 	{{end}}
 {{end}}
 
-{{if eq .Type "Service"}}
+{{if eq .Type "service"}}
 // Verify that WireService is present and has the appropriate type.
 type checkWireService func(context.Context, *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/grpc/server"}}Grpc, {{.Singleton.DepsType}})
 var _ checkWireService = WireService

@@ -14,6 +14,8 @@ import (
 type ctxKey struct{}
 
 type InstantiationPath struct {
+	// TODO this can collide (e.g. if a service instantiates two dbs of the same type).
+	// Consider adding a way to differentiate.
 	path []schema.PackageName
 }
 
@@ -32,9 +34,9 @@ func (ip *InstantiationPath) String() string {
 	return strings.Join(a, ",")
 }
 
-// PathFromContext returns the InstantiationPath associated with the ctx.
+// InstantiationPathFromContext returns the InstantiationPath associated with the ctx.
 // If no logger is associated, nil is returned
-func PathFromContext(ctx context.Context) *InstantiationPath {
+func InstantiationPathFromContext(ctx context.Context) *InstantiationPath {
 	v := ctx.Value(ctxKey{})
 	if v == nil {
 		return nil

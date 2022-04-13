@@ -9,7 +9,7 @@ import (
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 )
 
-// Dependencies that are instantiated once for the lifetime of the extension
+// Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
 	Creds          *creds.Creds
 	ReadinessCheck core.Check

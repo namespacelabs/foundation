@@ -7,7 +7,7 @@ import (
 	"namespacelabs.dev/foundation/std/testdata/counter/data"
 )
 
-// Scoped dependencies that are reinstantiated for each call to ProvideCounter
+// Scoped dependencies that are reinstantiated for each call to ProvideCounter.
 type CounterDeps struct {
 	Data *data.Data
 }

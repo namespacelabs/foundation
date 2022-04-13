@@ -68,7 +68,7 @@ func heuristicPackageName(p string) string {
 	return parts[len(parts)-1]
 }
 
-func (gi *GoImports) validNewName(name string) bool {
+func (gi *GoImports) isValidAndNew(name string) bool {
 	if _, reserved := gi.reserved[name]; reserved {
 		return false
 	}
@@ -89,7 +89,7 @@ func (gi *GoImports) AddOrGet(typeUrl string) {
 	base := heuristicPackageName(typeUrl)
 
 	var rename string
-	if gi.validNewName(base) {
+	if gi.isValidAndNew(base) {
 		gi.revmap[base] = typeUrl
 		rename = base
 	}
@@ -97,7 +97,7 @@ func (gi *GoImports) AddOrGet(typeUrl string) {
 	if rename == "" && strings.HasPrefix(typeUrl, "namespacelabs.dev/foundation/") {
 		base = "fn" + base
 
-		if gi.validNewName(base) {
+		if gi.isValidAndNew(base) {
 			gi.revmap[base] = typeUrl
 			rename = base
 		}
@@ -106,7 +106,7 @@ func (gi *GoImports) AddOrGet(typeUrl string) {
 	if rename == "" {
 		for k := 1; ; k++ {
 			rename = fmt.Sprintf("%s%d", base, k)
-			if gi.validNewName(rename) {
+			if gi.isValidAndNew(rename) {
 				gi.revmap[rename] = typeUrl
 				break
 			}

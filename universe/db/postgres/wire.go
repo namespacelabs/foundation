@@ -40,7 +40,7 @@ func ProvideDatabase(ctx context.Context, db *Database, username string, passwor
 	}
 
 	// Asynchronously wait until a database connection is ready.
-	ready.RegisterFunc(fmt.Sprintf("%s/%s", core.PathFromContext(ctx).String(), db.Name), func(ctx context.Context) error {
+	ready.RegisterFunc(fmt.Sprintf("%s/%s", core.InstantiationPathFromContext(ctx), db.Name), func(ctx context.Context) error {
 		return conn.Ping(ctx)
 	})
 

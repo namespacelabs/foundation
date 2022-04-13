@@ -20,7 +20,7 @@ const grpcConnMapKeyword = "grpc_conn_map"
 var connMapStr = flag.String(grpcConnMapKeyword, "", "{caller_package}:{owner_package}/{owner_service}={endpoint}")
 
 func ProvideConn(ctx context.Context, req *Backend) (*grpc.ClientConn, error) {
-	key := fmt.Sprintf("%s:%s/%s", core.PathFromContext(ctx).Last(), req.PackageName, req.ServiceName)
+	key := fmt.Sprintf("%s:%s/%s", core.InstantiationPathFromContext(ctx).Last(), req.PackageName, req.ServiceName)
 
 	endpoint := connMapFromArgs()[key]
 	if endpoint == "" {

@@ -311,7 +311,7 @@ type ServerDeps struct {
 	{{$v.Name}} {{$opts.Imports.MustGet $v.GoImportURL}}ServiceDeps{{end}}
 }
 
-// This code uses type assertions for now. When go 1.18 is more common, it will switch to generics.
+// This code uses type assertions for now. When go 1.18 is more widely deployed, it will switch to generics.
 func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) {
 	di := {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}MakeInitializer()
 	{{range $k, $v := .Nodes}}

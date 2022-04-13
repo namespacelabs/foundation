@@ -20,7 +20,7 @@ var (
 
 func ProvideSecret(ctx context.Context, req *Secret) (*Value, error) {
 	// TODO change secrets to handle scoped instantiation correctly
-	caller := core.PathFromContext(ctx).Last()
+	caller := core.InstantiationPathFromContext(ctx).Last()
 
 	sdm, err := loadDevMap(os.DirFS(*serverSecretsBasepath))
 	if err != nil {

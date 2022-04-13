@@ -75,7 +75,7 @@ func (di *depInitializer) Instantiate(ctx context.Context, ref Reference, f func
 	isSingleton := ref.Scope == ""
 	var path *InstantiationPath
 	if !isSingleton {
-		path = PathFromContext(ctx)
+		path = InstantiationPathFromContext(ctx)
 	}
 	childctx := path.Append(ref.Package).WithContext(ctx)
 

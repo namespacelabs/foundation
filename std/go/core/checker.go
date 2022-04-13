@@ -20,7 +20,7 @@ type Check struct {
 // whether our dependencies are reachable). To manually control the behavior
 // pass in a `ManualChecker` instead.
 func (c Check) Register(name string, check Checker) {
-	c.register(fmt.Sprintf("%s %s", c.owner.String(), name), check)
+	c.register(fmt.Sprintf("%s %s", c.owner, name), check)
 }
 
 func (c Check) RegisterFunc(name string, check CheckerFunc) {
@@ -32,11 +32,11 @@ func ManualChecker(check CheckerFunc) Checker {
 }
 
 func ProvideLivenessCheck(ctx context.Context, _ *LivenessCheck) (Check, error) {
-	return Check{registerLiveness, PathFromContext(ctx)}, nil
+	return Check{registerLiveness, InstantiationPathFromContext(ctx)}, nil
 }
 
 func ProvideReadinessCheck(ctx context.Context, _ *ReadinessCheck) (Check, error) {
-	return Check{registerReadiness, PathFromContext(ctx)}, nil
+	return Check{registerReadiness, InstantiationPathFromContext(ctx)}, nil
 }
 
 type manualChecker struct{ c CheckerFunc }

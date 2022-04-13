@@ -19,7 +19,7 @@ type ServerDeps struct {
 	list list.ServiceDeps
 }
 
-// This code uses type assertions for now. When go 1.18 is more common, it will switch to generics.
+// This code uses type assertions for now. When go 1.18 is more widely deployed, it will switch to generics.
 func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	di := core.MakeInitializer()
 

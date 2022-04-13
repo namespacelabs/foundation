@@ -48,5 +48,5 @@ func Consume() ([]grpc.UnaryServerInterceptor, []grpc.StreamServerInterceptor) {
 }
 
 func ProvideInterceptorRegistration(ctx context.Context, r *InterceptorRegistration) (Registration, error) {
-	return Registration{owner: core.PathFromContext(ctx), name: r.GetName()}, nil
+	return Registration{owner: core.InstantiationPathFromContext(ctx), name: r.GetName()}, nil
 }

@@ -7,7 +7,7 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
-// Scoped dependencies that are reinstantiated for each call to ProvideCreds
+// Scoped dependencies that are reinstantiated for each call to ProvideCreds.
 type CredsDeps struct {
 	User     *secrets.Value
 	Password *secrets.Value
