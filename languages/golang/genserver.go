@@ -59,7 +59,6 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 
 	// Prepopulate variable names that are used in serverPrepareTmpl.
 	usedNames := map[string]bool{
-		"caller": true,
 		"deps":   true,
 		"di":     true,
 		"err":    true,
