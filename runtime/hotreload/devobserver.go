@@ -75,10 +75,12 @@ func (do *FileSyncDevObserver) OnDeployment() {
 	do.mu.Lock()
 	defer do.mu.Unlock()
 
-	do.cleanup()
+	err := do.cleanup()
+	if err != nil {
+		fmt.Fprintln(do.log, "failed to port forwarding cleanup", err)
+	}
 
 	// An endpoint is manufactored here, we don't actually export this in our metadata.
-	var err error
 	do.port, err = do.rt.ForwardPort(do.ctx, do.server, &schema.Endpoint{
 		ServiceName: "filesync",
 		Port: &schema.Endpoint_Port{
