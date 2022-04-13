@@ -68,11 +68,14 @@ func (di *depInitializer) Instantiate(ctx context.Context, ref Reference, f func
 	}
 
 	p, ok := di.providers[ref]
+	isSingleton := ref.Scope == ""
 	if !ok {
+		if isSingleton {
+			return fmt.Errorf("No singleton provider found for package %s.", ref.Package)
+		}
 		return fmt.Errorf("No provider found for type %s in package %s.", ref.Scope, ref.Package)
 	}
 
-	isSingleton := ref.Scope == ""
 	var path *InstantiationPath
 	if !isSingleton {
 		path = InstantiationPathFromContext(ctx)
