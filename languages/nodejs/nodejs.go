@@ -46,10 +46,12 @@ const (
 	yarnRcFn                                = ".yarnrc.yml"
 	implFileName                            = "impl.ts"
 	packageJsonFn                           = "package.json"
-	fileSyncPort                            = 50001
+	fileSyncPort                            = 50000
 	serverPort                              = 10090
-	serverPortName                          = "server-port"
-	ForceProd                               = false
+	// This has the specific value to make the ingress code to do port forwarding and expose this port.
+	// TODO(@nicolasalt): expose individual gRPC services instead when extensions are supported.
+	serverPortName = "server-port"
+	ForceProd      = false
 )
 
 func Register() {

@@ -113,6 +113,10 @@ func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.Configuration) (llb.State,
 	buildBase := prepareYarnWithWorkspaces(yarnWorkspacePaths, yarnRoot, bnj.isDevBuild, n.NodeJsBase, src, *conf.Target)
 
 	var out llb.State
+	// The dev and prod builds are different:
+	//  - For prod we produce the smallest image, without Yarn and its dependencies.
+	//  - For dev we keep the base image with Yarn and install nodemon there.
+	// This can cause discrepancies between environments however the risk seems to be small.
 	if bnj.isDevBuild {
 		out = buildBase
 	} else {
