@@ -57,13 +57,12 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env ops.Environment, conf
 
 	if bnj.isDevBuild {
 		// Adding dev controller
-
 		pkg, err := bnj.serverEnv.LoadByName(ctx, controllerPkg)
 		if err != nil {
 			return nil, err
 		}
 
-		p, err := binary.Plan(ctx, pkg, binary.BuildImageOpts{UsePrebuilts: false})
+		p, err := binary.Plan(ctx, pkg, binary.BuildImageOpts{UsePrebuilts: true})
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +76,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env ops.Environment, conf
 			return nil, err
 		}
 
-		images := []compute.Computable[oci.Image]{devControllerImage, nodejsImage}
+		images := []compute.Computable[oci.Image]{nodejsImage, devControllerImage}
 
 		return oci.MergeImageLayers(images...), nil
 	} else {
@@ -102,7 +101,7 @@ type NodeJsBinary struct {
 }
 
 func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.Configuration) (llb.State, buildkit.LocalContents) {
-	local := buildkit.LocalContents{Module: bnj.module, Path: "", ObserveChanges: bnj.isFocus}
+	local := buildkit.LocalContents{Module: bnj.module, Path: ".", ObserveChanges: bnj.isFocus}
 	src := buildkit.MakeLocalState(local)
 
 	yarnWorkspacePaths := []string{}
@@ -144,6 +143,7 @@ func prepareYarnWithWorkspaces(workspacePaths []string, yarnRoot string, isDevBu
 		Root().
 		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn")
 	if isDevBuild {
+		// Nodemon is used to watch for changes in the source code within a container and restart the "ts-node" server.
 		buildBase = buildBase.Run(llb.Shlex("yarn global add nodemon@2.0.15"), llb.Dir(yarnRoot)).Root()
 	}
 	for _, fn := range []string{"package.json", "tsconfig.json", "yarn.lock", ".yarnrc.yml", ".yarn/releases"} {

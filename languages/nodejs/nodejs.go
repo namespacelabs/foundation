@@ -24,11 +24,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/frontend"
+	"namespacelabs.dev/foundation/internal/hotreload"
+	"namespacelabs.dev/foundation/internal/hotreload/yarn"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/hotreload"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/dev/controller/admin"
 	"namespacelabs.dev/foundation/workspace"
@@ -116,7 +117,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server prov
 
 	var module build.Workspace
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !server.Location.Module.IsExternal() && isDevBuild {
-		module = hotreload.YarnHotReloadModule{
+		module = yarn.YarnHotReloadModule{
 			Mod: server.Location.Module,
 			// "ModuleName" is empty because we have only one module in the image and
 			// we can put everything under the root "/app" directory.
