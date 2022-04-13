@@ -34,8 +34,13 @@ func connect(ctx context.Context, password string, address string, port uint32) 
 		db, err = sql.Open("mysql", connString)
 		if err != nil {
 			log.Printf("Failed to connect to MariaDB: %v", err)
+			return err
 		}
-		return err
+		if err := db.PingContext(ctx); err != nil {
+			return fmt.Errorf("failed to ping connection: %w", err)
+		}
+		log.Printf("Pinged database.")
+		return nil
 	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx))
 
 	if err != nil {
@@ -51,16 +56,12 @@ func ensureDb(ctx context.Context, db *maria.Database, password string) (*sql.DB
 		return nil, err
 	}
 
-	if err := conn.PingContext(ctx); err != nil {
-		return nil, fmt.Errorf("failed to ping connection: %w", err)
-	}
-	log.Printf("Pinged database.")
-
 	// SQL arguments can only be values, not identifiers.
 	// As we need to use Sprintf instead, let's do some basic sanity checking (whitespaces are forbidden).
 	if len(strings.Fields(db.Name)) > 1 {
-		return nil, fmt.Errorf("Invalid database name: %s", db.Name)
+		return nil, fmt.Errorf("invalid database name: %s", db.Name)
 	}
+
 	_, err = conn.ExecContext(ctx, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", db.Name))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create database `%s`: %w", db.Name, err)
