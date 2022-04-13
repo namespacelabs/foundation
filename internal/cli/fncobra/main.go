@@ -5,11 +5,15 @@
 package fncobra
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
+	"image"
 	"log"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"runtime/pprof"
 	"strings"
 	"time"
@@ -17,6 +21,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/logs"
 	"github.com/muesli/reflow/indent"
 	"github.com/muesli/reflow/wordwrap"
+	"github.com/qeesung/image2ascii/convert"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -55,11 +60,22 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+var (
+	//go:embed nslabs.png
+	imgByte []byte
+)
+
 func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if v := os.Getenv("FN_CPU_PROFILE"); v != "" {
 		done := cpuprofile(v)
 		defer done()
 	}
+
+	// convert []byte to image for saving to file
+	img, _, _ := image.Decode(bytes.NewReader(imgByte))
+
+	imgConverter := convert.NewImageConverter()
+	fmt.Println(imgConverter.Image2ASCIIString(img, &convert.DefaultOptions))
 
 	setupViper()
 
@@ -239,6 +255,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	}
 
 	if err != nil {
+		debug.PrintStack()
 		exitCode := handleExitError(colors, err)
 		// Record errors only after the user sees them to hide potential latency implications.
 		// We pass the original ctx without sink since logs have already been flushed.
