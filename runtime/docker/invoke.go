@@ -7,6 +7,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
@@ -162,6 +163,9 @@ func dockerRun(ctx context.Context, args []string, opts rtypes.IO, additional lo
 			c.Stdin = opts.Stdin
 			c.Stdout = opts.Stdout
 			c.Stderr = opts.Stderr
+			c.Env = []string{}
+			c.Env = append(c.Env, os.Environ()...)
+			c.Env = append(c.Env, clientConfiguration().asEnv()...)
 
 			return localexec.RunAndPropagateCancelationWithOpts(ctx, "docker", c, additional)
 		})

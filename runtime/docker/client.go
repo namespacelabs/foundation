@@ -10,13 +10,16 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
 	configtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/tlsconfig"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
@@ -33,9 +36,67 @@ type Client interface {
 	Close() error
 }
 
+func clientConfiguration() *Configuration {
+	config := &Configuration{}
+	fillConfigFromEnv(config)
+	return config
+}
+
 func NewClient() (Client, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	config := clientConfiguration()
+
+	opts := []client.Opt{client.WithHost(config.Host), client.WithAPIVersionNegotiation()}
+
+	if config.CertPath != "" {
+		options := tlsconfig.Options{
+			CAFile:             filepath.Join(config.CertPath, "ca.pem"),
+			CertFile:           filepath.Join(config.CertPath, "cert.pem"),
+			KeyFile:            filepath.Join(config.CertPath, "key.pem"),
+			InsecureSkipVerify: !config.VerifyTls,
+		}
+		tlsc, err := tlsconfig.Client(options)
+		if err != nil {
+			return nil, err
+		}
+
+		httpClient := &http.Client{
+			Transport:     &http.Transport{TLSClientConfig: tlsc},
+			CheckRedirect: client.CheckRedirect,
+		}
+
+		opts = append(opts, client.WithHTTPClient(httpClient))
+	}
+
+	if config.Version != "" {
+		opts = append(opts, client.WithVersion(config.Version))
+	}
+
+	cli, err := client.NewClientWithOpts(opts...)
 	return wrappedClient{cli}, err
+}
+
+func fillConfigFromEnv(config *Configuration) {
+	config.Version = os.Getenv("DOCKER_API_VERSION")
+	config.CertPath = os.Getenv("DOCKER_CERT_PATH")
+	config.VerifyTls = os.Getenv("DOCKER_TLS_VERIFY") != ""
+	config.Host = os.Getenv("DOCKER_HOST")
+
+	if config.Host == "" {
+		config.Host = client.DefaultDockerHost
+	}
+}
+
+func (c *Configuration) asEnv() []string {
+	var env []string
+	env = append(env, "DOCKER_HOST="+c.Host)
+	env = append(env, "DOCKER_API_VERSION="+c.Version)
+	env = append(env, "DOCKER_CERT_PATH="+c.CertPath)
+	if c.VerifyTls {
+		env = append(env, "DOCKER_TLS_VERIFY=1")
+	} else {
+		env = append(env, "DOCKER_TLS_VERIFY=")
+	}
+	return env
 }
 
 // From "github.com/docker/cli/cli/command", but avoiding dep creep.
