@@ -174,6 +174,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
 	rootCmd.PersistentFlags().BoolVar(&tasks.LogActions, "log_actions", tasks.LogActions,
 		"If set to true, each completed action is also output as a log message.")
+	rootCmd.PersistentFlags().BoolVar(&tasks.LogActions, "debug_to_console", console.DebugToConsole,
+		"If set to true, we also output debug log messages to the console.")
 	rootCmd.PersistentFlags().BoolVar(&compute.CachingEnabled, "caching", compute.CachingEnabled,
 		"If set to false, compute caching is disabled.")
 	rootCmd.PersistentFlags().BoolVar(&storeActions, "store_actions", storeActions,
