@@ -524,7 +524,12 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 	announced := map[string]runtime.ContainerReference{}
 
 	for {
-		// XXX check for cancelation.
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			// No cancelation, moving along.
+		}
 
 		pods, err := cli.CoreV1().Pods(r.ns()).List(ctx, metav1.ListOptions{
 			LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
@@ -594,7 +599,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 			return nil
 		}
 
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 }
 
