@@ -37,8 +37,15 @@ func Errors(ctx context.Context) io.Writer {
 }
 
 func TypedOutput(ctx context.Context, name string, cat tasks.CatOutputType) io.Writer {
+	console := consoleOutputFromCtx(ctx, name, cat)
+	stored := tasks.Attachments(ctx).Output(tasks.Output("console:"+name, "text/plain"))
+	return io.MultiWriter(console, stored)
+}
+
+func consoleOutputFromCtx(ctx context.Context, name string, cat tasks.CatOutputType) io.Writer {
 	console := tasks.ConsoleOf(tasks.SinkFrom(ctx))
 	if console == nil {
+		// If there's no console sink in context, pass along the original Stdout or Stderr.
 		if name == tasks.KnownStdout {
 			return os.Stdout
 		} else if name == tasks.KnownStderr {
@@ -59,7 +66,8 @@ func TypedOutput(ctx context.Context, name string, cat tasks.CatOutputType) io.W
 	return &consoleBuffer{actual: console, name: name, cat: cat, id: tasks.IdAndHashFrom(id)}
 }
 
-func ConsoleOutputWith(console *tasks.ConsoleSink, name string) io.Writer {
+// ConsoleOutput returns a writer, whose output will be managed by the specified ConsoleSink.
+func ConsoleOutput(console *tasks.ConsoleSink, name string) io.Writer {
 	return &consoleBuffer{actual: console, name: name}
 }
 

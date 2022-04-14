@@ -395,7 +395,7 @@ func consoleToSink(out *os.File, colors bool) (*zerolog.Logger, tasks.ActionSink
 	if colors && !viper.GetBool("console_no_colors") {
 		consoleSink := tasks.NewConsoleSink(out, viper.GetInt("console_log_level"))
 		cleanup := consoleSink.Start()
-		logout.Writer = console.ConsoleOutputWith(consoleSink, tasks.KnownStderr)
+		logout.Writer = console.ConsoleOutput(consoleSink, tasks.KnownStderr)
 
 		return logout.Logger(), consoleSink, cleanup
 	}
