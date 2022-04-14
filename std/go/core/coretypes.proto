@@ -8,5 +8,6 @@ package foundation.std.go.core;
 
 option go_package = "namespacelabs.dev/foundation/std/go/core";
 
-message LivenessCheck {}
-message ReadinessCheck {}
+message LivenessCheckArgs {}
+message ReadinessCheckArgs {}
+message DebugHandlerArgs {}

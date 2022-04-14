@@ -11,16 +11,23 @@ $coreTypesProto: inputs.#Proto & {
 extension: fn.#Extension & {
 	provides: {
 		LivenessCheck: {
-			input: $coreTypesProto.types.LivenessCheck
+			input: $coreTypesProto.types.LivenessCheckArgs
 			availableIn: {
 				go: type: "Check"
 			}
 		}
 
 		ReadinessCheck: {
-			input: $coreTypesProto.types.ReadinessCheck
+			input: $coreTypesProto.types.ReadinessCheckArgs
 			availableIn: {
 				go: type: "Check"
+			}
+		}
+
+		DebugHandler: {
+			input: $coreTypesProto.types.DebugHandlerArgs
+			availableIn: {
+				go: type: "DebugHandler"
 			}
 		}
 	}

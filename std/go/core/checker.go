@@ -31,11 +31,11 @@ func ManualChecker(check CheckerFunc) Checker {
 	return manualChecker{check}
 }
 
-func ProvideLivenessCheck(ctx context.Context, _ *LivenessCheck) (Check, error) {
+func ProvideLivenessCheck(ctx context.Context, _ *LivenessCheckArgs) (Check, error) {
 	return Check{registerLiveness, InstantiationPathFromContext(ctx)}, nil
 }
 
-func ProvideReadinessCheck(ctx context.Context, _ *ReadinessCheck) (Check, error) {
+func ProvideReadinessCheck(ctx context.Context, _ *ReadinessCheckArgs) (Check, error) {
 	return Check{registerReadiness, InstantiationPathFromContext(ctx)}, nil
 }
 

@@ -15,4 +15,10 @@ func RegisterDebugEndpoints(mux *mux.Router) {
 	mux.Handle("/livez", livezEndpoint())
 	mux.Handle("/readyz", readyzEndpoint())
 	mux.Handle("/", StatusHandler())
+
+	debugHandlers.mu.RLock()
+	defer debugHandlers.mu.RUnlock()
+	for pkg, handlers := range debugHandlers.handlers {
+		mux.Handle("/debug/"+pkg+"/", handlers)
+	}
 }
