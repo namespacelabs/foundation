@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -27,8 +28,7 @@ import (
 var errTestFailed = errors.New("test failed")
 
 type testRun struct {
-	Env            ops.WorkspaceEnvironment // Doesn't affect the output.
-	CleanupRuntime bool                     // Doesn't affect the output.
+	Env ops.WorkspaceEnvironment // Doesn't affect the output.
 
 	TestName       string
 	TestBinPkg     schema.PackageName
@@ -64,16 +64,6 @@ func (rt *testRun) Inputs() *compute.In {
 func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
 	p := compute.GetDepValue(r, rt.Plan, "plan")
 
-	if rt.CleanupRuntime {
-		compute.On(ctx).Cleanup(tasks.Action("test.cleanup"), func(ctx context.Context) error {
-			if err := runtime.For(rt.Env).DeleteRecursively(ctx); err != nil {
-				return err
-			}
-
-			return nil
-		})
-	}
-
 	waiters, err := p.Deployer.Apply(ctx, runtime.TaskServerDeploy, rt.Env)
 	if err != nil {
 		return nil, err
@@ -89,6 +79,18 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle
 	}
 
 	if err := deploy.Wait(ctx, rt.Env, focusServers, waiters); err != nil {
+		var e runtime.ErrContainerFailedToStart
+		if errors.As(err, &e) {
+			// Don't spend more than N time waiting for logs.
+			ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+
+			for k, failed := range e.FailedContainers {
+				out := console.TypedOutput(ctx, fmt.Sprintf("%s:%d", e.Name, k), tasks.CatOutputTool)
+				runtime.For(rt.Env).FetchLogsTo(ctx, out, failed, runtime.FetchLogsOpts{TailLines: 50})
+			}
+		}
+
 		return nil, err
 	}
 
@@ -133,7 +135,7 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle
 	} else if errors.Is(waitErr, errTestFailed) {
 		testResults.Success = false
 	} else {
-		return nil, err
+		return nil, waitErr
 	}
 
 	fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")

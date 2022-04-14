@@ -6,6 +6,9 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
+	"strings"
+	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -107,7 +110,7 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 
 				if rs, err := getReplicaSetName(c, cli, w.apply.Namespace, w.apply.Name, w.expectedGen); err == nil {
 					if status, err := podWaitingStatus(c, cli, w.apply.Namespace, rs); err == nil {
-						ev.Status = status
+						ev.WaitStatus = status
 					}
 				}
 
@@ -129,35 +132,119 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 		})
 }
 
-func WaitForPodConditition(selector func(context.Context, *k8s.Clientset) ([]corev1.Pod, error), isOk func(corev1.PodStatus) bool) func(context.Context, *k8s.Clientset) (bool, error) {
-	return func(ctx context.Context, c *k8s.Clientset) (bool, error) {
-		pods, err := selector(ctx, c)
+type podWaiter struct {
+	selector func(context.Context, *k8s.Clientset) ([]corev1.Pod, error)
+	isOk     func(corev1.PodStatus) (bool, error)
+
+	mu                   sync.Mutex
+	podCount, matchCount int
+}
+
+// FormatProgress implements ActionProgress.
+func (w *podWaiter) FormatProgress() string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if w.podCount == 0 {
+		return "(waiting for pods...)"
+	}
+
+	return fmt.Sprintf("%d / %d", w.matchCount, w.podCount)
+}
+
+func (w *podWaiter) Prepare(ctx context.Context, c *k8s.Clientset) error {
+	tasks.Attachments(ctx).SetProgress(w)
+	return nil
+}
+
+func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
+	pods, err := w.selector(ctx, c)
+	if err != nil {
+		return false, err
+	}
+
+	var count int
+	for _, pod := range pods {
+		// If the pod is configured to never restart, we check if it's in an unrecoverable state.
+		if pod.Spec.RestartPolicy == corev1.RestartPolicyNever {
+			var terminated [][2]string
+			for _, init := range pod.Status.InitContainerStatuses {
+				if init.State.Terminated != nil && init.State.Terminated.ExitCode != 0 {
+					terminated = append(terminated, [2]string{
+						init.Name,
+						fmt.Sprintf("%s: exit code %d", init.State.Terminated.Reason, init.State.Terminated.ExitCode),
+					})
+				}
+			}
+
+			for _, container := range pod.Status.ContainerStatuses {
+				if container.State.Terminated != nil {
+					terminated = append(terminated, [2]string{
+						container.Name,
+						fmt.Sprintf("%s: exit code %d", container.State.Terminated.Reason, container.State.Terminated.ExitCode),
+					})
+				}
+			}
+
+			if len(terminated) > 0 {
+				var failed []*runtime.ContainerReference
+				var labels []string
+				for _, t := range terminated {
+					labels = append(labels, fmt.Sprintf("%s: %s", t[0], t[1]))
+					failed = append(failed, &runtime.ContainerReference{
+						Opaque: containerPodReference{
+							Namespace: pod.Namespace,
+							Name:      pod.Name,
+							Container: t[0],
+						},
+					})
+				}
+
+				return false, runtime.ErrContainerFailedToStart{
+					Name:             fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
+					Reason:           strings.Join(labels, "; "),
+					FailedContainers: failed,
+				}
+			}
+		}
+
+		ok, err := w.isOk(pod.Status)
 		if err != nil {
 			return false, err
 		}
-
-		var count int
-		for _, pod := range pods {
-			if isOk(pod.Status) {
-				count++
-				break // Don't overcount.
-			}
+		if ok {
+			count++
+			break // Don't overcount.
 		}
-
-		tasks.Attachments(ctx).AddResult("pod_count", len(pods)).AddResult("match_count", count)
-
-		return count > 0 && count == len(pods), nil
 	}
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	w.podCount = len(pods)
+	w.matchCount = count
+
+	return count > 0 && count == len(pods), nil
 }
 
-func MatchPodCondition(typ corev1.PodConditionType) func(corev1.PodStatus) bool {
-	return func(ps corev1.PodStatus) bool {
+type containerPodReference struct {
+	Namespace string
+	Name      string
+	Container string
+}
+
+func WaitForPodConditition(selector func(context.Context, *k8s.Clientset) ([]corev1.Pod, error), isOk func(corev1.PodStatus) (bool, error)) ConditionWaiter {
+	return &podWaiter{selector: selector, isOk: isOk}
+}
+
+func MatchPodCondition(typ corev1.PodConditionType) func(corev1.PodStatus) (bool, error) {
+	return func(ps corev1.PodStatus) (bool, error) {
 		for _, cond := range ps.Conditions {
 			if cond.Type == typ && cond.Status == corev1.ConditionTrue {
-				return true
+				return true, nil
 			}
 		}
-		return false
+		return false, nil
 	}
 }
 

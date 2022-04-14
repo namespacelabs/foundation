@@ -138,7 +138,6 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 	results := &testRun{
 		TestName:       testDef.Name,
-		CleanupRuntime: !opts.KeepRuntime,
 		Env:            env.BindWith(pl.Seal()),
 		Plan:           deployPlan,
 		Focus:          focusServers,
@@ -147,6 +146,16 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		TestBinCommand: testBin.Command,
 		TestBinImageID: fixtureImage,
 		Debug:          opts.Debug,
+	}
+
+	if !opts.KeepRuntime {
+		compute.On(ctx).Cleanup(tasks.Action("test.cleanup"), func(ctx context.Context) error {
+			if err := runtime.For(env).DeleteRecursively(ctx); err != nil {
+				return err
+			}
+
+			return nil
+		})
 	}
 
 	toFS := compute.Map(tasks.Action("test.to-fs"), compute.Inputs().Computable("bundle", results), compute.Output{},

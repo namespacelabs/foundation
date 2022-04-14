@@ -28,8 +28,13 @@ type Event struct {
 	AlreadyExisted bool
 	ImplMetadata   interface{} // JSON serializable implementation-specific metadata.
 
+	WaitStatus []WaitStatus
+
 	AllDone bool // True when WaitUntilReady returns.
-	Status  string
+}
+
+type WaitStatus interface {
+	WaitStatus() string
 }
 
 // A waiter implementation is required to close the received channel when it's done.

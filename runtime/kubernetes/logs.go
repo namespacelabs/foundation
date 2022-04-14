@@ -29,10 +29,10 @@ func (r boundEnv) fetchLogs(ctx context.Context, cli *kubernetes.Clientset, w io
 		containerName = parts[1]
 	}
 
-	return r.fetchPodLogs(ctx, cli, w, pod.Name, containerName, opts)
+	return fetchPodLogs(ctx, cli, w, r.ns(), pod.Name, containerName, opts)
 }
 
-func (r boundEnv) fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, podName, containerName string, opts runtime.StreamLogsOpts) error {
+func fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, namespace, podName, containerName string, opts runtime.StreamLogsOpts) error {
 	logOpts := &corev1.PodLogOptions{Follow: opts.Follow, Container: containerName}
 
 	if opts.TailLines > 0 {
@@ -40,7 +40,7 @@ func (r boundEnv) fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, w
 		logOpts.TailLines = &tailLines
 	}
 
-	logsReq := cli.CoreV1().Pods(r.ns()).GetLogs(podName, logOpts)
+	logsReq := cli.CoreV1().Pods(namespace).GetLogs(podName, logOpts)
 
 	content, err := logsReq.Stream(ctx)
 	if err != nil {

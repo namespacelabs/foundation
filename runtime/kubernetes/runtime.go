@@ -104,19 +104,28 @@ func (r deploymentState) Hints() []string {
 	return r.hints
 }
 
-func (r k8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, f func(context.Context, *k8s.Clientset) (bool, error)) error {
+type ConditionWaiter interface {
+	Prepare(context.Context, *k8s.Clientset) error
+	Poll(context.Context, *k8s.Clientset) (bool, error)
+}
+
+func (r k8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, waiter ConditionWaiter) error {
 	cli, err := client.NewClientFromHostEnv(r.hostEnv)
 	if err != nil {
 		return err
 	}
 
-	return waitForCondition(ctx, cli, action, f)
+	return waitForCondition(ctx, cli, action, waiter)
 }
 
-func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.ActionEvent, f func(context.Context, *k8s.Clientset) (bool, error)) error {
+func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.ActionEvent, waiter ConditionWaiter) error {
 	return action.Run(ctx, func(ctx context.Context) error {
-		return wait.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(c context.Context) (done bool, err error) {
-			return f(c, cli)
+		if err := waiter.Prepare(ctx, cli); err != nil {
+			return err
+		}
+
+		return wait.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
+			return waiter.Poll(ctx, cli)
 		})
 	})
 }
@@ -329,6 +338,23 @@ func (r k8sRuntime) StreamLogsTo(ctx context.Context, w io.Writer, server *schem
 	}
 
 	return r.fetchLogs(ctx, cli, w, server, opts)
+}
+
+func (r k8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference *runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
+	if reference == nil || reference.Opaque == nil {
+		return fnerrors.InternalError("invalid reference")
+	}
+
+	cli, err := client.NewClientFromHostEnv(r.hostEnv)
+	if err != nil {
+		return err
+	}
+
+	opaque := reference.Opaque.(containerPodReference)
+
+	return fetchPodLogs(ctx, cli, w, opaque.Namespace, opaque.Name, opaque.Container, runtime.StreamLogsOpts{
+		TailLines: opts.TailLines,
+	})
 }
 
 func (r k8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {

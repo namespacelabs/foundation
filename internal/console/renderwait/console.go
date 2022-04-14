@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/morikuni/aec"
@@ -31,7 +32,7 @@ type blockState struct {
 	Ready          bool
 	AlreadyExisted bool
 	Start, End     time.Time
-	Status         string
+	WaitStatus     []ops.WaitStatus
 }
 
 func (rwb consRenderer) Ch() chan ops.Event { return rwb.ch }
@@ -80,7 +81,7 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 
 			m[ev.ResourceID].AlreadyExisted = ev.AlreadyExisted
 			m[ev.ResourceID].Ready = ev.Ready == ops.Ready
-			m[ev.ResourceID].Status = ev.Status
+			m[ev.ResourceID].WaitStatus = ev.WaitStatus
 			if m[ev.ResourceID].Ready {
 				m[ev.ResourceID].End = time.Now()
 			}
@@ -124,10 +125,7 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 			var icon, took string
 			if blk.AlreadyExisted && !blk.Ready {
 				icon = "[ ]"
-				took = "(no update required, waiting for old deployment)"
-				if blk.Status != "" {
-					took = fmt.Sprintf("(no update required, waiting for old deployment, last deployment status: %s)", blk.Status)
-				}
+				took = box("waiting for previous deployment ...", mergeWaitStatus(blk.WaitStatus))
 			} else if blk.AlreadyExisted {
 				icon = "[✓]"
 				took = "(no update required)"
@@ -136,10 +134,7 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 				took = fmt.Sprintf("took %v", timefmt.Format(blk.End.Sub(blk.Start)))
 			} else {
 				icon = "[ ]"
-				took = "waiting ..."
-				if blk.Status != "" {
-					took = fmt.Sprintf("waiting ... (last deployment status: %s)", blk.Status)
-				}
+				took = box("waiting ...", mergeWaitStatus(blk.WaitStatus))
 			}
 			fmt.Fprintf(&b, "  %s %s %s\n", icon, blk.Scope, aec.LightBlackF.Apply(took))
 		}
@@ -149,4 +144,19 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 		fmt.Fprintln(&b)
 	}
 	return b.Bytes()
+}
+
+func mergeWaitStatus(status []ops.WaitStatus) string {
+	var st []string
+	for _, s := range status {
+		st = append(st, s.WaitStatus())
+	}
+	return strings.Join(st, "; ")
+}
+
+func box(a, b string) string {
+	if b == "" {
+		return a
+	}
+	return fmt.Sprintf("%s (%s)", a, b)
 }

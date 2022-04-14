@@ -131,20 +131,24 @@ func RegisterGraphHandlers() {
 
 					return waitForCondition(ctx, cli, tasks.Action(runtime.TaskServerStart).Scope(sc),
 						WaitForPodConditition(fetchPod(apply.Namespace, apply.Name),
-							func(ps v1.PodStatus) bool {
+							func(ps v1.PodStatus) (bool, error) {
 								ev := ops.Event{
-									ResourceID: apply.Name,
-									Kind:       apply.Resource,
-									Category:   "Servers deployed",
-									Scope:      sc,
-									Ready:      ops.NotReady,
+									ResourceID:   apply.Name,
+									Kind:         apply.Resource,
+									Category:     "Servers deployed",
+									Scope:        sc,
+									Ready:        ops.NotReady,
+									ImplMetadata: ps,
 								}
-								ready := MatchPodCondition(v1.PodReady)(ps)
+
+								ev.WaitStatus = append(ev.WaitStatus, waiterFromPodStatus(apply.Namespace, apply.Name, ps))
+
+								ready, _ := MatchPodCondition(v1.PodReady)(ps)
 								if ready {
 									ev.Ready = ops.Ready
 								}
 								ch <- ev
-								return ready
+								return ready, nil
 							}))
 				})
 			}
@@ -388,6 +392,23 @@ func RegisterGraphHandlers() {
 	})
 
 	ingress.RegisterGraphHandlers()
+}
+
+func containerStateLabel(st v1.ContainerState) string {
+	if st.Running != nil {
+		return "Running"
+	}
+	if st.Waiting != nil {
+		return st.Waiting.Reason
+	}
+	if st.Terminated != nil {
+		if st.Terminated.ExitCode == 0 {
+			return ""
+		}
+		return fmt.Sprintf("Terminated: %s (exit code %d)", st.Terminated.Reason, st.Terminated.ExitCode)
+	}
+
+	return "(Unknown)"
 }
 
 func checkResourceExists(ctx context.Context, env ops.Environment, description, resource, name, namespace string, scope []schema.PackageName) (bool, error) {

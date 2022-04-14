@@ -51,8 +51,8 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 	}
 
 	if err := r.Wait(ctx, tasks.Action("kubernetes.pod.deploy").Scope(pkg),
-		WaitForPodConditition(fetchPod(r.ns(), name), func(status corev1.PodStatus) bool {
-			return status.Phase == corev1.PodRunning || status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded
+		WaitForPodConditition(fetchPod(r.ns(), name), func(status corev1.PodStatus) (bool, error) {
+			return (status.Phase == corev1.PodRunning || status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 		})); err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 		return ctx.Err()
 	}
 
-	if err := r.fetchPodLogs(ctx, cli, logOutput, name, "", runtime.StreamLogsOpts{Follow: true}); err != nil {
+	if err := fetchPodLogs(ctx, cli, logOutput, r.ns(), name, "", runtime.StreamLogsOpts{Follow: true}); err != nil {
 		return err
 	}
 
@@ -79,7 +79,7 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 					ctxWithTimeout, cancel := context.WithTimeout(ctx, 3*time.Second)
 					defer cancel()
 
-					_ = r.fetchPodLogs(ctxWithTimeout, cli, logOutput, name, "", runtime.StreamLogsOpts{TailLines: 50})
+					_ = fetchPodLogs(ctxWithTimeout, cli, logOutput, r.ns(), name, "", runtime.StreamLogsOpts{TailLines: 50})
 				}
 
 				if term.ExitCode != 0 {
@@ -92,8 +92,8 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 
 		fmt.Fprintln(logOutput, "<No longer streaming pod logs, but pod is still running, waiting for completion.>")
 
-		if err := r.Wait(ctx, tasks.Action("kubernetes.pod.wait"), WaitForPodConditition(fetchPod(r.ns(), name), func(status corev1.PodStatus) bool {
-			return status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded
+		if err := r.Wait(ctx, tasks.Action("kubernetes.pod.wait"), WaitForPodConditition(fetchPod(r.ns(), name), func(status corev1.PodStatus) (bool, error) {
+			return (status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 		})); err != nil {
 			return fnerrors.InternalError("kubernetes: expected pod to have terminated, but didn't see termination status: %w", err)
 		}

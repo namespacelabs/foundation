@@ -64,6 +64,9 @@ func (r runtimeFwdErr) PlanShutdown(context.Context, []provision.Server, []provi
 func (r runtimeFwdErr) StreamLogsTo(context.Context, io.Writer, *schema.Server, StreamLogsOpts) error {
 	return r.err
 }
+func (r runtimeFwdErr) FetchLogsTo(context.Context, io.Writer, *ContainerReference, FetchLogsOpts) error {
+	return r.err
+}
 func (r runtimeFwdErr) StartTerminal(ctx context.Context, server *schema.Server, io TerminalIO, command string, rest ...string) error {
 	return r.err
 }

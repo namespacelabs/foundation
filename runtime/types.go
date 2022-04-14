@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -50,6 +51,9 @@ type Runtime interface {
 
 	// Streams logs from a previously deployed server.
 	StreamLogsTo(context.Context, io.Writer, *schema.Server, StreamLogsOpts) error
+
+	// Fetch logs of a specific container reference.
+	FetchLogsTo(context.Context, io.Writer, *ContainerReference, FetchLogsOpts) error
 
 	// Starts a new shell in the container of a previously deployed server. The image of the
 	// server must contain the specified command. For ephemeral containers, see #329.
@@ -122,6 +126,10 @@ type StreamLogsOpts struct {
 	Follow     bool
 }
 
+type FetchLogsOpts struct {
+	TailLines int // Only used if it's a positive value.
+}
+
 type ObserveOpts struct {
 	OneShot bool
 }
@@ -174,4 +182,61 @@ type ErrContainerExitStatus struct {
 
 func (e ErrContainerExitStatus) Error() string {
 	return fmt.Sprintf("container exited with code %d", e.ExitCode)
+}
+
+type ContainerReference struct {
+	Opaque interface{}
+}
+
+type ErrContainerFailedToStart struct {
+	Name   string
+	Reason string
+
+	FailedContainers []*ContainerReference // A pointer that can be passed to the runtime to fetch logs.
+}
+
+func (e ErrContainerFailedToStart) Error() string {
+	return fmt.Sprintf("%s: container did not start successfully, failed with: %s", e.Name, e.Reason)
+}
+
+type ContainerWaitStatus struct {
+	Containers   []ContainerUnitWaitStatus
+	Initializers []ContainerUnitWaitStatus
+}
+
+type ContainerUnitWaitStatus struct {
+	Reference *ContainerReference
+	Name      string
+	Status    string
+}
+
+func (cw ContainerWaitStatus) WaitStatus() string {
+	var inits []string
+	for _, init := range cw.Initializers {
+		inits = append(inits, fmt.Sprintf("%s: %s", init.Name, init.Status))
+	}
+
+	joinedInits := strings.Join(inits, "; ")
+
+	switch len(cw.Containers) {
+	case 0:
+		return joinedInits
+	case 1:
+		return box(cw.Containers[0].Status, joinedInits)
+	default:
+		var labels []string
+		for _, ctr := range cw.Containers {
+			labels = append(labels, fmt.Sprintf("%s: %s", ctr.Name, ctr.Status))
+		}
+
+		return box(fmt.Sprintf("{%s}", strings.Join(labels, "; ")), joinedInits)
+	}
+}
+
+func box(a, b string) string {
+	if b == "" {
+		return a
+	}
+
+	return fmt.Sprintf("%s [%s]", a, b)
 }

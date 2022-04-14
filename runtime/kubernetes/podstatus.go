@@ -6,21 +6,20 @@ package kubernetes
 
 import (
 	"context"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
-	"namespacelabs.dev/foundation/internal/uniquestrings"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 )
 
-func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, ns string, replicaset string) (string, error) {
+func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, ns string, replicaset string) ([]ops.WaitStatus, error) {
 	// TODO explore how to limit the list here (e.g. through labels or by using a different API)
 	pods, err := cli.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	var reasons uniquestrings.List
+	var statuses []ops.WaitStatus
 	for _, pod := range pods.Items {
 		owned := false
 		for _, owner := range pod.ObjectMeta.OwnerReferences {
@@ -32,12 +31,8 @@ func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, ns string, replic
 			continue
 		}
 
-		for _, s := range pod.Status.ContainerStatuses {
-			if s.State.Waiting != nil && s.State.Waiting.Reason != "" {
-				reasons.Add(s.State.Waiting.Reason)
-			}
-		}
+		statuses = append(statuses, waiterFromPodStatus(pod.Namespace, pod.Name, pod.Status))
 	}
 
-	return strings.Join(reasons.Strings(), ","), nil
+	return statuses, nil
 }
