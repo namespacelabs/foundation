@@ -21,7 +21,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const connBackoff = 3 * time.Second
+const connBackoff = 500 * time.Millisecond
 
 var (
 	passwordFile = flag.String("mariadb_password_file", "", "location of the password secret")

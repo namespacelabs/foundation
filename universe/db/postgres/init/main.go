@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
-const connBackoff = 3 * time.Second
+const connBackoff = 500 * time.Millisecond
 
 var (
 	userFile     = flag.String("postgres_user_file", "", "location of the user secret")
