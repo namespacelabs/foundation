@@ -178,7 +178,7 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 			}
 
 			for _, container := range pod.Status.ContainerStatuses {
-				if container.State.Terminated != nil {
+				if container.State.Terminated != nil && container.State.Terminated.ExitCode != 0 {
 					terminated = append(terminated, [2]string{
 						container.Name,
 						fmt.Sprintf("%s: exit code %d", container.State.Terminated.Reason, container.State.Terminated.ExitCode),
