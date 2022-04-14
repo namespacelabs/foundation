@@ -16,6 +16,11 @@ import (
 	"namespacelabs.dev/go-ids"
 )
 
+var (
+	// Configured globally.
+	DebugToConsole = false
+)
+
 func Stdout(ctx context.Context) io.Writer {
 	return Output(ctx, tasks.KnownStdout)
 }
@@ -26,6 +31,14 @@ func Stderr(ctx context.Context) io.Writer {
 
 func Output(ctx context.Context, name string) io.Writer {
 	return TypedOutput(ctx, name, tasks.CatOutputTool)
+}
+
+func Debug(ctx context.Context) io.Writer {
+	if DebugToConsole {
+		return TypedOutput(ctx, "debug", tasks.CatOutputDebug)
+	} else {
+		return tasks.Attachments(ctx).Output(tasks.Output(string(tasks.CatOutputDebug), "text/plain"))
+	}
 }
 
 func Warnings(ctx context.Context) io.Writer {
