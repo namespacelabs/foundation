@@ -13,7 +13,7 @@ import (
 )
 
 func waiterFromPodStatus(ns, name string, ps v1.PodStatus) ops.WaitStatus {
-	if ps.Phase == v1.PodPending {
+	if ps.Phase == v1.PodPending && len(ps.ContainerStatuses) == 0 {
 		return pendingWaitStatus{}
 	}
 
