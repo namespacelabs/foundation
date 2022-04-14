@@ -35,12 +35,10 @@ func waiterFromPodStatus(ns, name string, ps v1.PodStatus) ops.WaitStatus {
 	return cw
 }
 
-func makePodRef(ns, name, containerName string) *runtime.ContainerReference {
-	return &runtime.ContainerReference{
-		Opaque: containerPodReference{
-			Namespace: ns,
-			Name:      name,
-			Container: containerName,
-		},
+func makePodRef(ns, name, containerName string) runtime.ContainerReference {
+	return containerPodReference{
+		Namespace: ns,
+		Name:      name,
+		Container: containerName,
 	}
 }

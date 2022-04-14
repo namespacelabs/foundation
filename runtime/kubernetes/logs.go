@@ -7,7 +7,6 @@ package kubernetes
 import (
 	"context"
 	"io"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -16,24 +15,16 @@ import (
 )
 
 func (r boundEnv) fetchLogs(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, server *schema.Server, opts runtime.StreamLogsOpts) error {
-	parts := strings.SplitN(opts.InstanceID, ":", 2)
-	podName := parts[0]
-
-	pod, err := r.resolvePod(ctx, cli, w, server, podName)
+	pod, err := r.resolvePod(ctx, cli, w, server)
 	if err != nil {
 		return err
 	}
 
-	var containerName string
-	if len(parts) > 1 {
-		containerName = parts[1]
-	}
-
-	return fetchPodLogs(ctx, cli, w, r.ns(), pod.Name, containerName, opts)
+	return fetchPodLogs(ctx, cli, w, r.ns(), pod.Name, "", opts)
 }
 
 func fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, namespace, podName, containerName string, opts runtime.StreamLogsOpts) error {
-	logOpts := &corev1.PodLogOptions{Follow: opts.Follow, Container: containerName}
+	logOpts := &corev1.PodLogOptions{Follow: opts.Follow, Container: containerName, Previous: opts.FetchLastFailure}
 
 	if opts.TailLines > 0 {
 		var tailLines int64 = int64(opts.TailLines)

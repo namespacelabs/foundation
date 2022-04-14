@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -53,7 +54,10 @@ type Runtime interface {
 	StreamLogsTo(context.Context, io.Writer, *schema.Server, StreamLogsOpts) error
 
 	// Fetch logs of a specific container reference.
-	FetchLogsTo(context.Context, io.Writer, *ContainerReference, FetchLogsOpts) error
+	FetchLogsTo(context.Context, io.Writer, ContainerReference, FetchLogsOpts) error
+
+	// Fetch diagnostics of a particular container reference.
+	FetchDiagnostics(context.Context, ContainerReference) (Diagnostics, error)
 
 	// Starts a new shell in the container of a previously deployed server. The image of the
 	// server must contain the specified command. For ephemeral containers, see #329.
@@ -121,13 +125,15 @@ type SidecarRunOpts struct {
 }
 
 type StreamLogsOpts struct {
-	InstanceID string
-	TailLines  int // Only used if it's a positive value.
-	Follow     bool
+	TailLines        int // Only used if it's a positive value.
+	Follow           bool
+	FetchLastFailure bool
 }
 
 type FetchLogsOpts struct {
-	TailLines int // Only used if it's a positive value.
+	TailLines        int // Only used if it's a positive value.
+	Follow           bool
+	FetchLastFailure bool
 }
 
 type ObserveOpts struct {
@@ -135,10 +141,10 @@ type ObserveOpts struct {
 }
 
 type ObserveEvent struct {
-	InstanceID      string
-	HumanReadableID string
-	Added           bool
-	Removed         bool
+	ContainerReference ContainerReference
+	HumanReadableID    string
+	Added              bool
+	Removed            bool
 }
 
 type DeploymentState interface {
@@ -184,15 +190,11 @@ func (e ErrContainerExitStatus) Error() string {
 	return fmt.Sprintf("container exited with code %d", e.ExitCode)
 }
 
-type ContainerReference struct {
-	Opaque interface{}
-}
-
 type ErrContainerFailedToStart struct {
 	Name   string
 	Reason string
 
-	FailedContainers []*ContainerReference // A pointer that can be passed to the runtime to fetch logs.
+	FailedContainers []ContainerReference // A pointer that can be passed to the runtime to fetch logs.
 }
 
 func (e ErrContainerFailedToStart) Error() string {
@@ -205,9 +207,14 @@ type ContainerWaitStatus struct {
 }
 
 type ContainerUnitWaitStatus struct {
-	Reference *ContainerReference
+	Reference ContainerReference
 	Name      string
 	Status    string
+}
+
+type ContainerReference interface {
+	UniqueID() string
+	HumanReference() string
 }
 
 func (cw ContainerWaitStatus) WaitStatus() string {
@@ -239,4 +246,18 @@ func box(a, b string) string {
 	}
 
 	return fmt.Sprintf("%s [%s]", a, b)
+}
+
+type Diagnostics struct {
+	Running bool
+	Started time.Time
+
+	Waiting       bool
+	WaitingReason string
+
+	Terminated       bool
+	TerminatedReason string
+	ExitCode         int32
+
+	RestartCount int32
 }

@@ -133,7 +133,7 @@ func RegisterGraphHandlers() {
 						WaitForPodConditition(fetchPod(apply.Namespace, apply.Name),
 							func(ps v1.PodStatus) (bool, error) {
 								ev := ops.Event{
-									ResourceID:   apply.Name,
+									ResourceID:   fmt.Sprintf("%s/%s", apply.Namespace, apply.Name),
 									Kind:         apply.Resource,
 									Category:     "Servers deployed",
 									Scope:        sc,

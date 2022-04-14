@@ -55,9 +55,9 @@ func NewLogsCmd() *cobra.Command {
 
 			return rt.Observe(ctx, server.Proto(), runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) error {
 				mu.Lock()
-				existing := streams[ev.InstanceID]
+				existing := streams[ev.ContainerReference.UniqueID()]
 				if ev.Removed {
-					delete(streams, ev.InstanceID)
+					delete(streams, ev.ContainerReference.UniqueID())
 				}
 				mu.Unlock()
 
@@ -74,7 +74,7 @@ func NewLogsCmd() *cobra.Command {
 
 				newS := &logStream{}
 				mu.Lock()
-				streams[ev.InstanceID] = newS
+				streams[ev.ContainerReference.UniqueID()] = newS
 				mu.Unlock()
 
 				compute.On(ctx).Detach(tasks.Action("stream-log").Indefinite(), func(ctx context.Context) error {
@@ -88,10 +88,9 @@ func NewLogsCmd() *cobra.Command {
 
 					fmt.Fprintln(w, "<Starting to stream>")
 
-					return rt.StreamLogsTo(ctx, w, server.Proto(), runtime.StreamLogsOpts{
-						InstanceID: ev.InstanceID,
-						TailLines:  20,
-						Follow:     true,
+					return rt.FetchLogsTo(ctx, w, ev.ContainerReference, runtime.FetchLogsOpts{
+						TailLines: 20,
+						Follow:    true,
 					})
 				})
 

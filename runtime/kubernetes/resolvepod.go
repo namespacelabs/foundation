@@ -19,15 +19,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func (r boundEnv) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, server *schema.Server, podName string) (corev1.Pod, error) {
-	if podName != "" {
-		pod, err := cli.CoreV1().Pods(r.ns()).Get(ctx, podName, metav1.GetOptions{})
-		if err != nil {
-			return corev1.Pod{}, nil
-		}
-		return *pod, nil
-	}
-
+func (r boundEnv) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, server *schema.Server) (corev1.Pod, error) {
 	return resolvePodByLabels(ctx, cli, w, r.ns(), map[string]string{
 		kubedef.K8sServerId: server.Id,
 	})

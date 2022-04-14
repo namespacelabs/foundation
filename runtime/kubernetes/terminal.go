@@ -25,7 +25,7 @@ func (r boundEnv) startTerminal(ctx context.Context, cli *kubernetes.Clientset, 
 		return err
 	}
 
-	pod, err := r.resolvePod(ctx, cli, rio.Stderr, server, "")
+	pod, err := r.resolvePod(ctx, cli, rio.Stderr, server)
 	if err != nil {
 		return err
 	}

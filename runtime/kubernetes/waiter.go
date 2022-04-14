@@ -47,7 +47,7 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 	return tasks.Action(runtime.TaskServerStart).Scope(w.scope).Run(ctx,
 		func(ctx context.Context) error {
 			ev := ops.Event{
-				ResourceID: w.apply.Name,
+				ResourceID: fmt.Sprintf("%s/%s", w.apply.Namespace, w.apply.Name),
 				Kind:       w.apply.Resource,
 				Scope:      w.scope,
 			}
@@ -187,16 +187,14 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 			}
 
 			if len(terminated) > 0 {
-				var failed []*runtime.ContainerReference
+				var failed []runtime.ContainerReference
 				var labels []string
 				for _, t := range terminated {
 					labels = append(labels, fmt.Sprintf("%s: %s", t[0], t[1]))
-					failed = append(failed, &runtime.ContainerReference{
-						Opaque: containerPodReference{
-							Namespace: pod.Namespace,
-							Name:      pod.Name,
-							Container: t[0],
-						},
+					failed = append(failed, containerPodReference{
+						Namespace: pod.Namespace,
+						Name:      pod.Name,
+						Container: t[0],
 					})
 				}
 
@@ -231,6 +229,17 @@ type containerPodReference struct {
 	Namespace string
 	Name      string
 	Container string
+}
+
+func (cpr containerPodReference) UniqueID() string {
+	return cpr.HumanReference()
+}
+
+func (cpr containerPodReference) HumanReference() string {
+	if cpr.Container == "" {
+		return fmt.Sprintf("%s/%s", cpr.Namespace, cpr.Name)
+	}
+	return fmt.Sprintf("%s/%s/%s", cpr.Namespace, cpr.Name, cpr.Container)
 }
 
 func WaitForPodConditition(selector func(context.Context, *k8s.Clientset) ([]corev1.Pod, error), isOk func(corev1.PodStatus) (bool, error)) ConditionWaiter {

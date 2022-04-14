@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"google.golang.org/protobuf/types/known/anypb"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -340,8 +340,9 @@ func (r k8sRuntime) StreamLogsTo(ctx context.Context, w io.Writer, server *schem
 	return r.fetchLogs(ctx, cli, w, server, opts)
 }
 
-func (r k8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference *runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
-	if reference == nil || reference.Opaque == nil {
+func (r k8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
+	opaque, ok := reference.(containerPodReference)
+	if !ok {
 		return fnerrors.InternalError("invalid reference")
 	}
 
@@ -350,11 +351,62 @@ func (r k8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference *run
 		return err
 	}
 
-	opaque := reference.Opaque.(containerPodReference)
-
 	return fetchPodLogs(ctx, cli, w, opaque.Namespace, opaque.Name, opaque.Container, runtime.StreamLogsOpts{
-		TailLines: opts.TailLines,
+		TailLines:        opts.TailLines,
+		FetchLastFailure: opts.FetchLastFailure,
 	})
+}
+
+func (r k8sRuntime) FetchDiagnostics(ctx context.Context, reference runtime.ContainerReference) (runtime.Diagnostics, error) {
+	opaque, ok := reference.(containerPodReference)
+	if !ok {
+		return runtime.Diagnostics{}, fnerrors.InternalError("invalid reference")
+	}
+
+	cli, err := client.NewClientFromHostEnv(r.hostEnv)
+	if err != nil {
+		return runtime.Diagnostics{}, err
+	}
+
+	pod, err := cli.CoreV1().Pods(opaque.Namespace).Get(ctx, opaque.Name, metav1.GetOptions{})
+	if err != nil {
+		return runtime.Diagnostics{}, err
+	}
+
+	for _, init := range pod.Status.InitContainerStatuses {
+		if init.Name == opaque.Container {
+			return statusToDiagnostic(init)
+		}
+	}
+
+	for _, ctr := range pod.Status.ContainerStatuses {
+		if ctr.Name == opaque.Container {
+			return statusToDiagnostic(ctr)
+		}
+	}
+
+	return runtime.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.Name, opaque.Container)
+}
+
+func statusToDiagnostic(status v1.ContainerStatus) (runtime.Diagnostics, error) {
+	var diag runtime.Diagnostics
+
+	diag.RestartCount = status.RestartCount
+
+	switch {
+	case status.State.Running != nil:
+		diag.Running = true
+		diag.Started = status.State.Running.StartedAt.Time
+	case status.State.Waiting != nil:
+		diag.Waiting = true
+		diag.WaitingReason = status.State.Waiting.Reason
+	case status.State.Terminated != nil:
+		diag.Terminated = true
+		diag.TerminatedReason = status.State.Terminated.Reason
+		diag.ExitCode = status.State.Terminated.ExitCode
+	}
+
+	return diag, nil
 }
 
 func (r k8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
@@ -469,7 +521,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 	}
 
 	// XXX use a watch
-	announced := map[string]struct{}{}
+	announced := map[string]runtime.ContainerReference{}
 
 	for {
 		// XXX check for cancelation.
@@ -482,25 +534,28 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 		}
 
 		type Key struct {
-			Instance  string
+			Instance  runtime.ContainerReference
 			CreatedAt time.Time // used for sorting
 		}
 		keys := []Key{}
 		newM := map[string]struct{}{}
 		labels := map[string]string{}
 		for _, pod := range pods.Items {
-			if pod.Status.Phase == corev1.PodRunning {
-				id := pod.Name
-				keys = append(keys, Key{Instance: id, CreatedAt: pod.CreationTimestamp.Time})
-				newM[id] = struct{}{}
-				labels[id] = pod.Name
+			if pod.Status.Phase == v1.PodRunning {
+				instance := makePodRef(r.ns(), pod.Name, serverCtrName(srv))
+				keys = append(keys, Key{
+					Instance:  instance,
+					CreatedAt: pod.CreationTimestamp.Time,
+				})
+				newM[instance.UniqueID()] = struct{}{}
+				labels[instance.UniqueID()] = pod.Name
 
 				if ObserveInitContainerLogs {
 					for _, container := range pod.Spec.InitContainers {
-						id := fmt.Sprintf("%s:%s", pod.Name, container.Name)
-						keys = append(keys, Key{Instance: id, CreatedAt: pod.CreationTimestamp.Time})
-						newM[id] = struct{}{}
-						labels[id] = fmt.Sprintf("%s:%s", pod.Name, container.Name)
+						instance := makePodRef(r.ns(), pod.Name, container.Name)
+						keys = append(keys, Key{Instance: instance, CreatedAt: pod.CreationTimestamp.Time})
+						newM[instance.UniqueID()] = struct{}{}
+						labels[instance.UniqueID()] = fmt.Sprintf("%s:%s", pod.Name, container.Name)
 					}
 				}
 			}
@@ -509,11 +564,11 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 			return keys[i].CreatedAt.Before(keys[j].CreatedAt)
 		})
 
-		for k := range announced {
+		for k, ref := range announced {
 			if _, ok := newM[k]; ok {
 				delete(newM, k)
 			} else {
-				if err := onInstance(runtime.ObserveEvent{InstanceID: k, Removed: true}); err != nil {
+				if err := onInstance(runtime.ObserveEvent{ContainerReference: ref, Removed: true}); err != nil {
 					return err
 				}
 			}
@@ -521,18 +576,18 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 
 		for _, key := range keys {
 			instance := key.Instance
-			if _, ok := newM[instance]; !ok {
+			if _, ok := newM[instance.UniqueID()]; !ok {
 				continue
 			}
-			human := labels[instance]
+			human := labels[instance.UniqueID()]
 			if human == "" {
-				human = instance
+				human = instance.HumanReference()
 			}
 
-			if err := onInstance(runtime.ObserveEvent{InstanceID: instance, HumanReadableID: human, Added: true}); err != nil {
+			if err := onInstance(runtime.ObserveEvent{ContainerReference: instance, HumanReadableID: human, Added: true}); err != nil {
 				return err
 			}
-			announced[instance] = struct{}{}
+			announced[instance.UniqueID()] = instance
 		}
 
 		if opts.OneShot {

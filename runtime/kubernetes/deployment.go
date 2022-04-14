@@ -150,7 +150,7 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		podSecCtx = podSecCtx.WithRunAsUser(userId).WithRunAsNonRoot(true)
 	}
 
-	name := strings.ToLower(server.Server.Name()) // k8s doesn't accept uppercase names.
+	name := serverCtrName(server.Server.Proto())
 	containers := []string{name}
 	container := applycorev1.Container().
 		WithName(name).
@@ -434,6 +434,10 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	}
 
 	return nil
+}
+
+func serverCtrName(server *schema.Server) string {
+	return strings.ToLower(server.Name) // k8s doesn't accept uppercase names.
 }
 
 func makeStorageVolumeName(rs *schema.RequiredStorage) string {
