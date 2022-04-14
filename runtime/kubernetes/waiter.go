@@ -248,13 +248,17 @@ func WaitForPodConditition(selector func(context.Context, *k8s.Clientset) ([]cor
 
 func MatchPodCondition(typ corev1.PodConditionType) func(corev1.PodStatus) (bool, error) {
 	return func(ps corev1.PodStatus) (bool, error) {
-		for _, cond := range ps.Conditions {
-			if cond.Type == typ && cond.Status == corev1.ConditionTrue {
-				return true, nil
-			}
-		}
-		return false, nil
+		return matchPodCondition(ps, typ), nil
 	}
+}
+
+func matchPodCondition(ps corev1.PodStatus, typ corev1.PodConditionType) bool {
+	for _, cond := range ps.Conditions {
+		if cond.Type == typ && cond.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }
 
 func SelectPods(ns string, name *string, selector map[string]string) func(context.Context, *k8s.Clientset) ([]corev1.Pod, error) {

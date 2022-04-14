@@ -394,23 +394,6 @@ func RegisterGraphHandlers() {
 	ingress.RegisterGraphHandlers()
 }
 
-func containerStateLabel(st v1.ContainerState) string {
-	if st.Running != nil {
-		return "Running"
-	}
-	if st.Waiting != nil {
-		return st.Waiting.Reason
-	}
-	if st.Terminated != nil {
-		if st.Terminated.ExitCode == 0 {
-			return ""
-		}
-		return fmt.Sprintf("Terminated: %s (exit code %d)", st.Terminated.Reason, st.Terminated.ExitCode)
-	}
-
-	return "(Unknown)"
-}
-
 func checkResourceExists(ctx context.Context, env ops.Environment, description, resource, name, namespace string, scope []schema.PackageName) (bool, error) {
 	var exists bool
 	// XXX this is racy here, we need to have a loop and a callback for contents.

@@ -134,7 +134,10 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 				took = fmt.Sprintf("took %v", timefmt.Format(blk.End.Sub(blk.Start)))
 			} else {
 				icon = "[ ]"
-				took = box("waiting ...", mergeWaitStatus(blk.WaitStatus))
+				took = mergeWaitStatus(blk.WaitStatus)
+				if took == "" {
+					took = "waiting ..."
+				}
 			}
 			fmt.Fprintf(&b, "  %s %s %s\n", icon, blk.Scope, aec.LightBlackF.Apply(took))
 		}
