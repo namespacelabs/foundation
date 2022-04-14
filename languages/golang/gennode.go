@@ -20,7 +20,7 @@ const (
 	depsFilename      = "deps.fn.go"
 	extensionDepsType = "ExtensionDeps"
 	serviceDepsType   = "ServiceDeps"
-	grpcServerPackage = "namespacelabs.dev/foundation/std/go/grpc/server"
+	grpcServerPackage = "namespacelabs.dev/foundation/std/go/server"
 )
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
@@ -220,7 +220,7 @@ type {{.Singleton.DepsType}} struct {
 
 {{if eq .Type "service"}}
 // Verify that WireService is present and has the appropriate type.
-type checkWireService func(context.Context, *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/grpc/server"}}Grpc, {{.Singleton.DepsType}})
+type checkWireService func(context.Context, {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/server"}}Registrar, {{.Singleton.DepsType}})
 var _ checkWireService = WireService
 {{end}}
 

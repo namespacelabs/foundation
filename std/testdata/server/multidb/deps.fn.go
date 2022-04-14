@@ -7,7 +7,7 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/testdata/service/multidb"
@@ -229,7 +229,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	return server, di.Init(ctx)
 }
 
-func WireServices(ctx context.Context, srv *server.Grpc, server *ServerDeps) {
-	multidb.WireService(ctx, srv, server.multidb)
-	srv.RegisterGrpcGateway(multidb.RegisterListServiceHandler)
+func WireServices(ctx context.Context, srv server.Server, server *ServerDeps) {
+	multidb.WireService(ctx, srv.Scope("namespacelabs.dev/foundation/std/testdata/service/multidb"), server.multidb)
+	srv.InternalRegisterGrpcGateway(multidb.RegisterListServiceHandler)
 }

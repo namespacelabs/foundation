@@ -41,7 +41,7 @@ func InitializationDone() {
 	core.InitializationDone()
 }
 
-func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
+func Listen(ctx context.Context, registerServices func(Server)) error {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *listenHostname, *port))
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func ListenGRPC(ctx context.Context, registerServices func(*Grpc)) error {
 		return handlers.CombinedLoggingHandler(os.Stdout, h)
 	})
 
-	s := &Grpc{srv: grpcServer, httpMux: httpMux}
+	s := &ServerImpl{srv: grpcServer, httpMux: httpMux}
 	registerServices(s)
 
 	// Export standard metrics.

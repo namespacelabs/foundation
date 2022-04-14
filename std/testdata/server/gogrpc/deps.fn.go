@@ -7,7 +7,7 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/std/grpc"
 	"namespacelabs.dev/foundation/std/grpc/deadlines"
 	"namespacelabs.dev/foundation/std/grpc/logging"
@@ -249,7 +249,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	return server, di.Init(ctx)
 }
 
-func WireServices(ctx context.Context, srv *server.Grpc, server *ServerDeps) {
-	post.WireService(ctx, srv, server.post)
-	srv.RegisterGrpcGateway(post.RegisterPostServiceHandler)
+func WireServices(ctx context.Context, srv server.Server, server *ServerDeps) {
+	post.WireService(ctx, srv.Scope("namespacelabs.dev/foundation/std/testdata/service/post"), server.post)
+	srv.InternalRegisterGrpcGateway(post.RegisterPostServiceHandler)
 }

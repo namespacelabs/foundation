@@ -12,7 +12,7 @@ import (
 
 	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
 )
 
 const grpcConnMapKeyword = "grpc_conn_map"

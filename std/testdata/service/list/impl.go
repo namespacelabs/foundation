@@ -12,7 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
 )
 
 type Service struct {
@@ -75,7 +75,7 @@ func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*ListResponse, 
 	return response, nil
 }
 
-func WireService(ctx context.Context, srv *server.Grpc, deps ServiceDeps) {
+func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	svc := &Service{db: deps.Db}
 	RegisterListServiceServer(srv, svc)
 }

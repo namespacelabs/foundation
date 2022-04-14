@@ -7,12 +7,12 @@ package simple
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
 )
 
 type Service struct {
 }
 
-func WireService(ctx context.Context, srv *server.Grpc, deps ServiceDeps) {
+func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	RegisterEmptyServiceServer(srv, &Service{})
 }

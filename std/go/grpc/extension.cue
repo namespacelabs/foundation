@@ -20,7 +20,7 @@ $inputs: {
 configure: fn.#Configure & {
 	startup: {
 		args: {
-			listen_hostname: "0.0.0.0" // docker_proxy needs to be able to connect.
+			listen_hostname: "0.0.0.0"
 			port:            "\($inputs.serverPort.port)"
 		}
 	}

@@ -9,7 +9,7 @@ import (
 	"log"
 
 	"google.golang.org/grpc/peer"
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
 )
 
 type Service struct {
@@ -33,7 +33,7 @@ func (svc *Service) Post(ctx context.Context, req *PostRequest) (*PostResponse, 
 	return response, nil
 }
 
-func WireService(ctx context.Context, srv *server.Grpc, deps ServiceDeps) {
+func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	svc := &Service{}
 	RegisterPostServiceServer(srv, svc)
 }

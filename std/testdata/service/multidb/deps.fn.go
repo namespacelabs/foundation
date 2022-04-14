@@ -6,7 +6,7 @@ import (
 
 	"database/sql"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
 )
 
 // Dependencies that are instantiated once for the lifetime of the service.
@@ -16,6 +16,6 @@ type ServiceDeps struct {
 }
 
 // Verify that WireService is present and has the appropriate type.
-type checkWireService func(context.Context, *server.Grpc, ServiceDeps)
+type checkWireService func(context.Context, server.Registrar, ServiceDeps)
 
 var _ checkWireService = WireService

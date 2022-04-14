@@ -7,7 +7,7 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/testdata/service/list"
@@ -162,7 +162,7 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	return server, di.Init(ctx)
 }
 
-func WireServices(ctx context.Context, srv *server.Grpc, server *ServerDeps) {
-	list.WireService(ctx, srv, server.list)
-	srv.RegisterGrpcGateway(list.RegisterListServiceHandler)
+func WireServices(ctx context.Context, srv server.Server, server *ServerDeps) {
+	list.WireService(ctx, srv.Scope("namespacelabs.dev/foundation/std/testdata/service/list"), server.list)
+	srv.InternalRegisterGrpcGateway(list.RegisterListServiceHandler)
 }

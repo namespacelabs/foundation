@@ -54,8 +54,8 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 	opts.PackageName = srv.PackageName
 	opts.Imports = gosupport.NewGoImports(loc.PackageName.String())
 
-	opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/grpc/server")
 	opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/core")
+	opts.Imports.AddOrGet("namespacelabs.dev/foundation/std/go/server")
 
 	// Prepopulate variable names that are used in serverPrepareTmpl.
 	usedNames := map[string]bool{
@@ -434,9 +434,9 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 	return {{$opts.Server}}, di.Init(ctx)
 }
 
-func WireServices(ctx context.Context, srv *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/grpc/server"}}Grpc, server *ServerDeps) {
-{{range $k, $v := .Services}}{{$opts.Imports.MustGet $v.GoImportURL}}WireService(ctx, srv, server.{{$v.Name}})
-{{range $v.GrpcGatewayServices}}srv.RegisterGrpcGateway({{$opts.Imports.MustGet $v.GoImportURL}}Register{{.}}Handler)
+func WireServices(ctx context.Context, srv {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/server"}}Server, server *ServerDeps) {
+{{range $k, $v := .Services}}{{$opts.Imports.MustGet $v.GoImportURL}}WireService(ctx, srv.Scope("{{$v.PackageName}}"), server.{{$v.Name}})
+{{range $v.GrpcGatewayServices}}srv.InternalRegisterGrpcGateway({{$opts.Imports.MustGet $v.GoImportURL}}Register{{.}}Handler)
 {{end -}}
 {{end}}}
 {{end}}`))
@@ -450,7 +450,7 @@ import (
 	"log"
 
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
 )
 
 func main() {
@@ -468,7 +468,7 @@ func main() {
 
 	server.InitializationDone()
 
-	server.ListenGRPC(ctx, func(srv *server.Grpc) {
+	server.Listen(ctx, func(srv server.Server) {
 		WireServices(ctx, srv, deps)
 	})
 }

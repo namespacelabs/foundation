@@ -7,7 +7,7 @@ import (
 	"log"
 
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 
 	server.InitializationDone()
 
-	server.ListenGRPC(ctx, func(srv *server.Grpc) {
+	server.Listen(ctx, func(srv server.Server) {
 		WireServices(ctx, srv, deps)
 	})
 }
