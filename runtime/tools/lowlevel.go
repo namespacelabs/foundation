@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
@@ -61,7 +62,7 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 	opts.Stdout = outw
 	opts.Stderr = console.Output(ctx, pkg.String())
 
-	if !localexec.IsRunningInCI() {
+	if !environment.IsRunningInCI() {
 		ctxWithTimeout, cancel := context.WithTimeout(ctx, MaxInvocationDuration)
 		defer cancel()
 		ctx = ctxWithTimeout
@@ -87,7 +88,7 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 	var helloCh chan (struct{})
 
 	// Some of these timeouts are aggressive for CI; just rely on total timeouts there.
-	if !localexec.IsRunningInCI() {
+	if !environment.IsRunningInCI() {
 		// Closed by OnHello when we get an hello from the process.
 		helloCh = make(chan struct{})
 		eg.Go(func(ctx context.Context) error {

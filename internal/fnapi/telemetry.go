@@ -24,8 +24,8 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
@@ -56,7 +56,7 @@ func NewTelemetry() *Telemetry {
 func (tel *Telemetry) IsTelemetryEnabled() bool {
 	doNotTrack := os.Getenv("DO_NOT_TRACK")
 	enableTelemetry := viper.GetBool("enable_telemetry")
-	return !localexec.IsRunningInCI() && tel.UseTelemetry && doNotTrack == "" && enableTelemetry
+	return !environment.IsRunningInCI() && tel.UseTelemetry && doNotTrack == "" && enableTelemetry
 }
 
 func (tel *Telemetry) logError(ctx context.Context, err error) {

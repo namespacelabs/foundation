@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"os"
 
-	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/environment"
 )
 
-var AssumeSSHAuth = !localexec.IsRunningInCI()
+var AssumeSSHAuth = !environment.IsRunningInCI()
 
 func NoPromptEnv() []string {
 	// Disable password promts as we don't handle them properly, yet.
