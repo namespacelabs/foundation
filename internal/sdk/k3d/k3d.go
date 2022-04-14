@@ -200,7 +200,9 @@ func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, 
 }
 
 func (k3d K3D) MergeConfiguration(ctx context.Context, name string) error {
-	return k3d.do(ctx, "kubeconfig", "merge", name, "-d", "--kubeconfig-switch-context=false")
+	return tasks.Action("k3d.merge-configuration").Arg("name", name).Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, "kubeconfig", "merge", name, "-d", "--kubeconfig-switch-context=false")
+	})
 }
 
 func (k3d K3D) do(ctx context.Context, args ...string) error {
