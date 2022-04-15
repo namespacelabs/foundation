@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/std/testdata/datastore"
 	"namespacelabs.dev/foundation/std/testdata/service/post"
 	"namespacelabs.dev/foundation/std/testdata/service/simple"
+	"namespacelabs.dev/foundation/universe/go/panicparse"
 )
 
 type ServerDeps struct {
@@ -189,6 +190,20 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
+	di.Add(core.Provider{
+		Package: "namespacelabs.dev/foundation/universe/go/panicparse",
+		Do: func(ctx context.Context) (interface{}, error) {
+			var deps panicparse.ExtensionDeps
+			var err error
+
+			if deps.DebugHandler, err = core.ProvideDebugHandler(ctx, nil); err != nil {
+				return nil, err
+			}
+
+			return deps, err
+		},
+	})
+
 	server = &ServerDeps{}
 	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/testdata/server/gogrpc",
@@ -242,6 +257,16 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			return di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/grpc/logging"},
 				func(ctx context.Context, v interface{}) (err error) {
 					return logging.Prepare(ctx, v.(logging.ExtensionDeps))
+				})
+		},
+	})
+
+	di.AddInitializer(core.Initializer{
+		PackageName: "namespacelabs.dev/foundation/universe/go/panicparse",
+		Do: func(ctx context.Context) error {
+			return di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/universe/go/panicparse"},
+				func(ctx context.Context, v interface{}) (err error) {
+					return panicparse.Prepare(ctx, v.(panicparse.ExtensionDeps))
 				})
 		},
 	})
