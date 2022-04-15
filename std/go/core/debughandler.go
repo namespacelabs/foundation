@@ -2,36 +2,30 @@ package core
 
 import (
 	"context"
+	"net/http"
 	"sync"
 
-	"github.com/gorilla/mux"
 	"namespacelabs.dev/foundation/schema"
 )
 
 var debugHandlers struct {
 	mu       sync.RWMutex
-	handlers map[string]*mux.Router
+	handlers map[string]http.Handler
 }
 
 type DebugHandler struct {
 	owner schema.PackageName
 }
 
-func (h DebugHandler) Mux() *mux.Router {
+func (h DebugHandler) Handle(handler http.Handler) {
 	debugHandlers.mu.Lock()
 	defer debugHandlers.mu.Unlock()
 
 	if debugHandlers.handlers == nil {
-		debugHandlers.handlers = map[string]*mux.Router{}
+		debugHandlers.handlers = map[string]http.Handler{}
 	}
 
-	if r, ok := debugHandlers.handlers[h.owner.String()]; ok {
-		return r
-	}
-
-	r := mux.NewRouter()
-	debugHandlers.handlers[h.owner.String()] = r
-	return r
+	debugHandlers.handlers[h.owner.String()] = handler
 }
 
 func ProvideDebugHandler(ctx context.Context, _ *DebugHandlerArgs) (DebugHandler, error) {

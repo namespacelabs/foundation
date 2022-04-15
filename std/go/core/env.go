@@ -69,11 +69,19 @@ func ServerResourcesFrom(ctx context.Context) *ServerResources {
 	return v.(*ServerResources)
 }
 
-func StatusHandler() http.Handler {
+func StatusHandler(registered []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
-		fmt.Fprintf(w, "<!doctype html><html><body><pre>%s image_version=%s\n%s</pre></body></html>",
+		fmt.Fprintf(w, "<!doctype html><html><body><pre>%s\nimage_version=%s\n%s</pre>",
 			serverName, *imageVer, prototext.Format(env))
+
+		fmt.Fprintf(w, "<b>Registered endpoints</b></br><ul>")
+		for _, endpoint := range registered {
+			fmt.Fprintf(w, "<li><a href=%s>%s</a></li>", endpoint, endpoint)
+		}
+		fmt.Fprintf(w, "</ul>")
+
+		fmt.Fprintf(w, "</body></html>")
 	})
 }
