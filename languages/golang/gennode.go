@@ -185,6 +185,14 @@ var (
 		"makeType": gosupport.MakeType,
 
 		"makeProvisionProtoName": makeProvisionProtoName,
+
+		"longProviderType": func(pkg schema.PackageName, typ string) string {
+			l := strings.ReplaceAll(strings.ReplaceAll(pkg.String(), "/", "_"), ".", "_")
+			if typ != "" {
+				l += "__" + typ
+			}
+			return l
+		},
 	}
 
 	serviceTmpl = template.Must(template.New(depsFilename).Funcs(funcs).Parse(`// This file was automatically generated.{{with $opts := .}}

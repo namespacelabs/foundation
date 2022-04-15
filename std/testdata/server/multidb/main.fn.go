@@ -19,8 +19,8 @@ func main() {
 	ctx := core.WithResources(context.Background(), resources)
 
 	depgraph := core.NewDependencyGraph()
-	RegisterDependencies(depgraph)
-	if err := depgraph.Init(ctx); err != nil {
+	RegisterInitializers(depgraph)
+	if err := depgraph.RunInitializers(ctx); err != nil {
 		log.Fatal(err)
 	}
 

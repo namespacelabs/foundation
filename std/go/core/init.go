@@ -25,16 +25,16 @@ type Reference struct {
 }
 
 type Provider struct {
-	Package  schema.PackageName
-	Typename string
-	Do       func(context.Context) (interface{}, error)
+	PackageName string
+	Typename    string
+	Instantiate func(context.Context, Dependencies) (interface{}, error)
 }
 
-func (f *Provider) Desc() string {
+func (f Provider) key() string {
 	if f.Typename != "" {
-		return fmt.Sprintf("%s/%s", f.Package, f.Typename)
+		return fmt.Sprintf("%s/%s", f.PackageName, f.Typename)
 	}
-	return f.Package.String()
+	return f.PackageName
 }
 
 type result struct {
@@ -43,49 +43,40 @@ type result struct {
 }
 
 type DependencyGraph struct {
-	providers  map[Reference]Provider
-	singletons map[Reference]result
+	singletons map[string]result
 	inits      []Initializer
+}
+
+type Dependencies interface {
+	Instantiate(ctx context.Context, provider Provider, f func(context.Context, interface{}) error) error
 }
 
 func NewDependencyGraph() *DependencyGraph {
 	return &DependencyGraph{
-		providers:  map[Reference]Provider{},
-		singletons: map[Reference]result{},
+		singletons: map[string]result{},
 	}
 }
 
-func (di *DependencyGraph) Add(p Provider) {
-	di.providers[Reference{Package: p.Package, Typename: p.Typename}] = p
-}
-
-func (di *DependencyGraph) Instantiate(ctx context.Context, ref Reference, f func(context.Context, interface{}) error) error {
-	if singleton, ok := di.singletons[ref]; ok {
+func (di *DependencyGraph) Instantiate(ctx context.Context, provider Provider, f func(context.Context, interface{}) error) error {
+	if singleton, ok := di.singletons[provider.key()]; ok {
 		if singleton.err != nil {
 			return singleton.err
 		}
 		return f(ctx, singleton.res)
 	}
 
-	p, ok := di.providers[ref]
-	isSingleton := ref.Typename == ""
-	if !ok {
-		if isSingleton {
-			return fmt.Errorf("no singleton provider found for package %s", ref.Package)
-		}
-		return fmt.Errorf("no provider found for type %s in package %s", ref.Typename, ref.Package)
-	}
+	isSingleton := provider.Typename == ""
 
 	var path *InstantiationPath
 	if !isSingleton {
 		path = InstantiationPathFromContext(ctx)
 	}
-	childctx := path.Append(ref.Package).WithContext(ctx)
+	childctx := path.Append(schema.PackageName(provider.PackageName)).WithContext(ctx)
 
 	start := time.Now()
-	res, err := p.Do(childctx)
+	res, err := provider.Instantiate(childctx, di)
 	if isSingleton {
-		di.singletons[ref] = result{
+		di.singletons[provider.key()] = result{
 			res: res,
 			err: err,
 		}
@@ -95,7 +86,7 @@ func (di *DependencyGraph) Instantiate(ctx context.Context, ref Reference, f fun
 	}
 	took := time.Since(start)
 	if took > maximumInitTime {
-		Log.Printf("[provider] %s took %d (log thresh is %d)", p.Desc(), took, maximumInitTime)
+		Log.Printf("[provider] %s took %d (log thresh is %d)", provider.key(), took, maximumInitTime)
 	}
 
 	return f(ctx, res)
@@ -110,7 +101,12 @@ func (di *DependencyGraph) AddInitializer(init Initializer) {
 	di.inits = append(di.inits, init)
 }
 
+// Init is deprecated; use RunInitializers.
 func (di *DependencyGraph) Init(ctx context.Context) error {
+	return di.RunInitializers(ctx)
+}
+
+func (di *DependencyGraph) RunInitializers(ctx context.Context) error {
 	resources := ServerResourcesFrom(ctx)
 	if resources == nil {
 		return fmt.Errorf("missing server resources")

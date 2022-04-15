@@ -1,4 +1,5 @@
 // This file was automatically generated.
+// This code uses type assertions for now. When go 1.18 is more widely deployed, it will switch to generics.
 package main
 
 import (
@@ -19,12 +20,10 @@ import (
 	"namespacelabs.dev/foundation/universe/go/panicparse"
 )
 
-// This code uses type assertions for now. When go 1.18 is more widely deployed, it will switch to generics.
-func RegisterDependencies(di *core.DependencyGraph) {
-
-	di.Add(core.Provider{
-		Package: "namespacelabs.dev/foundation/std/go/grpc/metrics",
-		Do: func(ctx context.Context) (interface{}, error) {
+var (
+	namespacelabs_dev_foundation_std_go_grpc_metrics = core.Provider{
+		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
+		Instantiate: func(ctx context.Context, di core.Dependencies) (interface{}, error) {
 			var deps metrics.ExtensionDeps
 			var err error
 
@@ -32,13 +31,13 @@ func RegisterDependencies(di *core.DependencyGraph) {
 				return nil, err
 			}
 
-			return deps, err
+			return deps, nil
 		},
-	})
+	}
 
-	di.Add(core.Provider{
-		Package: "namespacelabs.dev/foundation/std/monitoring/tracing",
-		Do: func(ctx context.Context) (interface{}, error) {
+	namespacelabs_dev_foundation_std_monitoring_tracing = core.Provider{
+		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
+		Instantiate: func(ctx context.Context, di core.Dependencies) (interface{}, error) {
 			var deps tracing.ExtensionDeps
 			var err error
 
@@ -46,13 +45,13 @@ func RegisterDependencies(di *core.DependencyGraph) {
 				return nil, err
 			}
 
-			return deps, err
+			return deps, nil
 		},
-	})
+	}
 
-	di.Add(core.Provider{
-		Package: "namespacelabs.dev/foundation/std/grpc/deadlines",
-		Do: func(ctx context.Context) (interface{}, error) {
+	namespacelabs_dev_foundation_std_grpc_deadlines = core.Provider{
+		PackageName: "namespacelabs.dev/foundation/std/grpc/deadlines",
+		Instantiate: func(ctx context.Context, di core.Dependencies) (interface{}, error) {
 			var deps deadlines.ExtensionDeps
 			var err error
 
@@ -60,13 +59,13 @@ func RegisterDependencies(di *core.DependencyGraph) {
 				return nil, err
 			}
 
-			return deps, err
+			return deps, nil
 		},
-	})
+	}
 
-	di.Add(core.Provider{
-		Package: "namespacelabs.dev/foundation/std/testdata/datastore",
-		Do: func(ctx context.Context) (interface{}, error) {
+	namespacelabs_dev_foundation_std_testdata_datastore = core.Provider{
+		PackageName: "namespacelabs.dev/foundation/std/testdata/datastore",
+		Instantiate: func(ctx context.Context, di core.Dependencies) (interface{}, error) {
 			var deps datastore.ExtensionDeps
 			var err error
 			{
@@ -106,50 +105,48 @@ func RegisterDependencies(di *core.DependencyGraph) {
 				}
 			}
 
-			return deps, err
+			return deps, nil
 		},
-	})
+	}
 
-	di.Add(core.Provider{
-		Package: "namespacelabs.dev/foundation/std/testdata/service/post",
-		Do: func(ctx context.Context) (interface{}, error) {
+	namespacelabs_dev_foundation_std_testdata_service_post = core.Provider{
+		PackageName: "namespacelabs.dev/foundation/std/testdata/service/post",
+		Instantiate: func(ctx context.Context, di core.Dependencies) (interface{}, error) {
 			var deps post.ServiceDeps
 			var err error
 
-			err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/grpc/deadlines"},
-				func(ctx context.Context, v interface{}) (err error) {
-					// configuration: {
-					//   service_name: "PostService"
-					//   method_name: "*"
-					//   maximum_deadline: 5
-					// }
-					p := &deadlines.Deadline{}
-					core.MustUnwrapProto("ChUKC1Bvc3RTZXJ2aWNlEgEqHQAAoEA=", p)
+			err = di.Instantiate(ctx, namespacelabs_dev_foundation_std_grpc_deadlines, func(ctx context.Context, v interface{}) (err error) {
+				// configuration: {
+				//   service_name: "PostService"
+				//   method_name: "*"
+				//   maximum_deadline: 5
+				// }
+				p := &deadlines.Deadline{}
+				core.MustUnwrapProto("ChUKC1Bvc3RTZXJ2aWNlEgEqHQAAoEA=", p)
 
-					if deps.Dl, err = deadlines.ProvideDeadlines(ctx, p, v.(deadlines.ExtensionDeps)); err != nil {
-						return err
-					}
-					return nil
-				})
+				if deps.Dl, err = deadlines.ProvideDeadlines(ctx, p, v.(deadlines.ExtensionDeps)); err != nil {
+					return err
+				}
+				return nil
+			})
 			if err != nil {
 				return nil, err
 			}
 
-			err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/testdata/datastore"},
-				func(ctx context.Context, v interface{}) (err error) {
-					// name: "main"
-					// schema_file: {
-					//   path: "schema.txt"
-					//   contents: "just a test file"
-					// }
-					p := &datastore.Database{}
-					core.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
+			err = di.Instantiate(ctx, namespacelabs_dev_foundation_std_testdata_datastore, func(ctx context.Context, v interface{}) (err error) {
+				// name: "main"
+				// schema_file: {
+				//   path: "schema.txt"
+				//   contents: "just a test file"
+				// }
+				p := &datastore.Database{}
+				core.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
 
-					if deps.Main, err = datastore.ProvideDatabase(ctx, p, v.(datastore.ExtensionDeps)); err != nil {
-						return err
-					}
-					return nil
-				})
+				if deps.Main, err = datastore.ProvideDatabase(ctx, p, v.(datastore.ExtensionDeps)); err != nil {
+					return err
+				}
+				return nil
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -167,13 +164,13 @@ func RegisterDependencies(di *core.DependencyGraph) {
 
 			}
 
-			return deps, err
+			return deps, nil
 		},
-	})
+	}
 
-	di.Add(core.Provider{
-		Package: "namespacelabs.dev/foundation/std/grpc/logging",
-		Do: func(ctx context.Context) (interface{}, error) {
+	namespacelabs_dev_foundation_std_grpc_logging = core.Provider{
+		PackageName: "namespacelabs.dev/foundation/std/grpc/logging",
+		Instantiate: func(ctx context.Context, di core.Dependencies) (interface{}, error) {
 			var deps logging.ExtensionDeps
 			var err error
 
@@ -181,13 +178,13 @@ func RegisterDependencies(di *core.DependencyGraph) {
 				return nil, err
 			}
 
-			return deps, err
+			return deps, nil
 		},
-	})
+	}
 
-	di.Add(core.Provider{
-		Package: "namespacelabs.dev/foundation/universe/go/panicparse",
-		Do: func(ctx context.Context) (interface{}, error) {
+	namespacelabs_dev_foundation_universe_go_panicparse = core.Provider{
+		PackageName: "namespacelabs.dev/foundation/universe/go/panicparse",
+		Instantiate: func(ctx context.Context, di core.Dependencies) (interface{}, error) {
 			var deps panicparse.ExtensionDeps
 			var err error
 
@@ -195,70 +192,66 @@ func RegisterDependencies(di *core.DependencyGraph) {
 				return nil, err
 			}
 
-			return deps, err
+			return deps, nil
 		},
-	})
+	}
+)
 
+func RegisterInitializers(di *core.DependencyGraph) {
 	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
-			return di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/go/grpc/metrics"},
-				func(ctx context.Context, v interface{}) (err error) {
-					return metrics.Prepare(ctx, v.(metrics.ExtensionDeps))
-				})
+			return di.Instantiate(ctx, namespacelabs_dev_foundation_std_go_grpc_metrics, func(ctx context.Context, v interface{}) (err error) {
+				return metrics.Prepare(ctx, v.(metrics.ExtensionDeps))
+			})
 		},
 	})
 
 	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
 		Do: func(ctx context.Context) error {
-			return di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/monitoring/tracing"},
-				func(ctx context.Context, v interface{}) (err error) {
-					return tracing.Prepare(ctx, v.(tracing.ExtensionDeps))
-				})
+			return di.Instantiate(ctx, namespacelabs_dev_foundation_std_monitoring_tracing, func(ctx context.Context, v interface{}) (err error) {
+				return tracing.Prepare(ctx, v.(tracing.ExtensionDeps))
+			})
 		},
 	})
 
 	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/grpc/deadlines",
 		Do: func(ctx context.Context) error {
-			return di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/grpc/deadlines"},
-				func(ctx context.Context, v interface{}) (err error) {
-					return deadlines.Prepare(ctx, v.(deadlines.ExtensionDeps))
-				})
+			return di.Instantiate(ctx, namespacelabs_dev_foundation_std_grpc_deadlines, func(ctx context.Context, v interface{}) (err error) {
+				return deadlines.Prepare(ctx, v.(deadlines.ExtensionDeps))
+			})
 		},
 	})
 
 	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/grpc/logging",
 		Do: func(ctx context.Context) error {
-			return di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/grpc/logging"},
-				func(ctx context.Context, v interface{}) (err error) {
-					return logging.Prepare(ctx, v.(logging.ExtensionDeps))
-				})
+			return di.Instantiate(ctx, namespacelabs_dev_foundation_std_grpc_logging, func(ctx context.Context, v interface{}) (err error) {
+				return logging.Prepare(ctx, v.(logging.ExtensionDeps))
+			})
 		},
 	})
 
 	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/universe/go/panicparse",
 		Do: func(ctx context.Context) error {
-			return di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/universe/go/panicparse"},
-				func(ctx context.Context, v interface{}) (err error) {
-					return panicparse.Prepare(ctx, v.(panicparse.ExtensionDeps))
-				})
+			return di.Instantiate(ctx, namespacelabs_dev_foundation_universe_go_panicparse, func(ctx context.Context, v interface{}) (err error) {
+				return panicparse.Prepare(ctx, v.(panicparse.ExtensionDeps))
+			})
 		},
 	})
 
 }
 
-func WireServices(ctx context.Context, srv server.Server, depgraph *core.DependencyGraph) []error {
+func WireServices(ctx context.Context, srv server.Server, depgraph core.Dependencies) []error {
 	var errs []error
 
-	if err := depgraph.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/testdata/service/post"},
-		func(ctx context.Context, v interface{}) error {
-			post.WireService(ctx, srv.Scope("namespacelabs.dev/foundation/std/testdata/service/post"), v.(post.ServiceDeps))
-			return nil
-		}); err != nil {
+	if err := depgraph.Instantiate(ctx, namespacelabs_dev_foundation_std_testdata_service_post, func(ctx context.Context, v interface{}) error {
+		post.WireService(ctx, srv.Scope(namespacelabs_dev_foundation_std_testdata_service_post.PackageName), v.(post.ServiceDeps))
+		return nil
+	}); err != nil {
 		errs = append(errs, err)
 	}
 

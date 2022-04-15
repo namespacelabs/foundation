@@ -128,7 +128,7 @@ func prepareServer(ctx context.Context, loader workspace.Packages, loc workspace
 		}
 
 		i := initializer{
-			PackageName: init.Node.PackageName,
+			PackageName: schema.PackageName(init.Node.PackageName),
 			GoImportURL: pkg,
 		}
 
@@ -263,7 +263,7 @@ type goPackage struct {
 }
 
 type initializer struct {
-	PackageName string
+	PackageName schema.PackageName
 	GoImportURL string
 	Deps        Ref
 }
@@ -307,6 +307,7 @@ type mainTmplOptions struct {
 
 var (
 	serverPrepareTmpl = template.Must(template.New(ServerPrepareFilename).Funcs(funcs).Parse(`// This file was automatically generated.{{with $opts := .}}
+// This file uses type assertions. When go 1.18 is more widely deployed, it will switch to generics.
 package main
 
 import (
@@ -316,85 +317,79 @@ import (
 	{{.Rename}} "{{.TypeURL}}"{{end}}
 )
 
-// This code uses type assertions for now. When go 1.18 is more widely deployed, it will switch to generics.
-func RegisterDependencies(di *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}DependencyGraph) {
-	{{range $k, $v := .Nodes}}
-		di.Add({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Provider{
-			Package: "{{$v.PackageName}}",
-			{{- if $v.Scope}}
-			Typename: "{{$v.Scope}}",{{end}}
-			Do: func(ctx context.Context) (interface{}, error) {
-				var deps {{makeType $opts.Imports $v.GoImportURL $v.Typename}}
-				var err error
-				{{- range $k2, $p := $v.Provisioned}}
-					{{if $p -}}
-						{{with $refs := index $v.Refs $k2}}
-							{{- if and (not $refs.Single) (not $refs.Scoped) (gt (len $v.Provisioned) 1)}} {
-							{{end}}
-							{{- if $refs.Single}}
-							err = di.Instantiate(ctx,
-								{{- $opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Reference{Package: "{{$p.PackageName}}"},
-								func(ctx context.Context, v interface{}) (err error) {
-							{{end}}
-							{{- if $refs.Scoped}}
-								{{- if $refs.Single}}return {{else}}
-									err = {{end -}}
-							di.Instantiate(ctx, {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Reference{
-									Package: "{{$p.PackageName}}",
-									Typename: "{{$refs.Scoped.Scope}}"},
-								func(ctx context.Context, scoped interface{}) (err error) { 
-							{{end -}}
-							{{- if $p.SerializedMsg -}}
-							{{$p.ProtoComments -}}
-							p := &{{$opts.Imports.MustGet $p.GoPackage}}{{makeProvisionProtoName $p}}{}
-							{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}MustUnwrapProto("{{$p.SerializedMsg}}", p)
-
-							{{end}}
-							{{range $p.DepVars -}}
-							if deps.{{.GoName}}, err = {{$opts.Imports.MustGet $p.GoPackage}}{{$p.Method}}(ctx,
-								{{- if $p.SerializedMsg}}p{{else}}nil{{end -}}
-								{{if $refs.Single}}, v.({{makeType $opts.Imports $refs.Single.GoImportURL $refs.Single.Typename}}){{end -}}
-								{{if $refs.Scoped}}, scoped.({{makeType $opts.Imports $refs.Scoped.GoImportURL $refs.Scoped.Typename}}){{end -}}
-								); err != nil {
-								return {{if or $refs.Single $refs.Scoped}}err{{else}}nil, err{{end}}
-							}
-							{{- end}}
-							{{- range $kdep, $dep := $p.Dependencies}}
-								{{with $depvar := index .DepVars 0}}
-								deps.{{$depvar.GoName}}={{$opts.Imports.MustGet $dep.GoPackage}}{{$dep.Method}}(deps.{{join $dep.Args ","}})
-								{{end -}}
-							{{end}}
-							{{if or $refs.Single $refs.Scoped}}return nil{{end}}
-							{{- if $refs.Scoped}}
-								})
-								{{- if not $refs.Single}}
-								if err != nil {
-									return nil, err
-								} {{end -}}
-							{{end -}}
-							{{if $refs.Single}}
-								})
-								if err != nil {
-									return nil, err
-								}
-							{{end}}
-							{{- if and (not $refs.Single) (not $refs.Scoped) (gt (len $v.Provisioned) 1)}} } {{end}}
-						{{end -}}
+var (
+{{range $k, $v := .Nodes}}
+{{longProviderType $v.PackageName $v.Scope}} = {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Provider{
+	PackageName: "{{$v.PackageName}}",
+	{{- if $v.Scope}}
+	Typename: "{{$v.Scope}}",{{end}}
+	Instantiate: func(ctx context.Context, di {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Dependencies) (interface{}, error) {
+		var deps {{makeType $opts.Imports $v.GoImportURL $v.Typename}}
+		var err error
+		{{- range $k2, $p := $v.Provisioned}}
+			{{if $p -}}
+				{{with $refs := index $v.Refs $k2}}
+					{{- if and (not $refs.Single) (not $refs.Scoped) (gt (len $v.Provisioned) 1)}} {
+					{{end}}
+					{{- if $refs.Single}}
+					err = di.Instantiate(ctx, {{longProviderType $p.PackageName ""}}, func(ctx context.Context, v interface{}) (err error) {
+					{{end}}
+					{{- if $refs.Scoped}}
+						{{- if $refs.Single}}return {{else}}
+							err = {{end -}}
+					di.Instantiate(ctx, {{longProviderType $p.PackageName $refs.Scoped.Scope}}, func(ctx context.Context, scoped interface{}) (err error) { 
 					{{end -}}
-				{{end}}
-				return deps, err
-			},
-		})
-	{{end}}
+					{{- if $p.SerializedMsg -}}
+					{{$p.ProtoComments -}}
+					p := &{{$opts.Imports.MustGet $p.GoPackage}}{{makeProvisionProtoName $p}}{}
+					{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}MustUnwrapProto("{{$p.SerializedMsg}}", p)
 
+					{{end}}
+					{{range $p.DepVars -}}
+					if deps.{{.GoName}}, err = {{$opts.Imports.MustGet $p.GoPackage}}{{$p.Method}}(ctx,
+						{{- if $p.SerializedMsg}}p{{else}}nil{{end -}}
+						{{if $refs.Single}}, v.({{makeType $opts.Imports $refs.Single.GoImportURL $refs.Single.Typename}}){{end -}}
+						{{if $refs.Scoped}}, scoped.({{makeType $opts.Imports $refs.Scoped.GoImportURL $refs.Scoped.Typename}}){{end -}}
+						); err != nil {
+						return {{if or $refs.Single $refs.Scoped}}err{{else}}nil, err{{end}}
+					}
+					{{- end}}
+					{{- range $kdep, $dep := $p.Dependencies}}
+						{{with $depvar := index .DepVars 0}}
+						deps.{{$depvar.GoName}}={{$opts.Imports.MustGet $dep.GoPackage}}{{$dep.Method}}(deps.{{join $dep.Args ","}})
+						{{end -}}
+					{{end}}
+					{{if or $refs.Single $refs.Scoped}}return nil{{end}}
+					{{- if $refs.Scoped}}
+						})
+						{{- if not $refs.Single}}
+						if err != nil {
+							return nil, err
+						} {{end -}}
+					{{end -}}
+					{{if $refs.Single}}
+						})
+						if err != nil {
+							return nil, err
+						}
+					{{end}}
+					{{- if and (not $refs.Single) (not $refs.Scoped) (gt (len $v.Provisioned) 1)}} } {{end}}
+				{{end -}}
+			{{end -}}
+		{{end}}
+		return deps, nil
+	},
+}
+{{end}}
+)
+
+func RegisterInitializers(di *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}DependencyGraph) {
 	{{- range $k, $init := .Initializers}}
 	di.AddInitializer({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Initializer{
 		PackageName: "{{$init.PackageName}}",
 		Do: func(ctx context.Context) error {
 			{{- if $init.Deps}}
-			return di.Instantiate(ctx,
-				{{- $opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Reference{Package: "{{$init.PackageName}}"},
-				func(ctx context.Context, v interface{}) (err error) {
+			return di.Instantiate(ctx, {{longProviderType $init.PackageName ""}}, func(ctx context.Context, v interface{}) (err error) {
 			{{end -}}
 			return {{$opts.Imports.MustGet .GoImportURL}}Prepare(ctx
 				{{- if $init.Deps}}, v.({{makeType $opts.Imports $init.Deps.GoImportURL $init.Deps.Typename}}){{end -}}
@@ -407,12 +402,11 @@ func RegisterDependencies(di *{{$opts.Imports.MustGet "namespacelabs.dev/foundat
 	{{end}}
 }
 
-func WireServices(ctx context.Context, srv {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/server"}}Server, depgraph *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}DependencyGraph) []error {
+func WireServices(ctx context.Context, srv {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/server"}}Server, depgraph {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Dependencies) []error {
 	var errs []error
 {{range $k, $v := .Services}}
-	if err := depgraph.Instantiate(ctx, {{- $opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Reference{Package: "{{$v.PackageName}}"},
-		func(ctx context.Context, v interface{}) error {
-			{{$opts.Imports.MustGet $v.GoImportURL}}WireService(ctx, srv.Scope("{{$v.PackageName}}"), v.({{makeType $opts.Imports $v.GoImportURL $v.Typename}}))
+	if err := depgraph.Instantiate(ctx, {{longProviderType $v.PackageName ""}}, func(ctx context.Context, v interface{}) error {
+			{{$opts.Imports.MustGet $v.GoImportURL}}WireService(ctx, srv.Scope({{longProviderType $v.PackageName ""}}.PackageName), v.({{makeType $opts.Imports $v.GoImportURL $v.Typename}}))
 			return nil
 		}); err != nil{
 			errs = append(errs, err)
@@ -446,8 +440,8 @@ func main() {
 	ctx := core.WithResources(context.Background(), resources)
 
 	depgraph := core.NewDependencyGraph()
-	RegisterDependencies(depgraph)
-	if err := depgraph.Init(ctx); err != nil {
+	RegisterInitializers(depgraph)
+	if err := depgraph.RunInitializers(ctx); err != nil {
 		log.Fatal(err)
 	}
 

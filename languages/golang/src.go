@@ -5,16 +5,25 @@
 package golang
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"text/template"
 
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/gosupport"
 )
 
 func generateGoSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, data interface{}) error {
 	return fnfs.WriteWorkspaceFile(ctx, fsfs, filePath, func(w io.Writer) error {
-		return gosupport.WriteGoSource(w, t, data)
+		if err := gosupport.WriteGoSource(w, t, data); err != nil {
+			var b bytes.Buffer
+			_ = t.Execute(&b, data)
+			fmt.Fprintln(console.Debug(ctx), b.String())
+			return err
+		}
+		return nil
 	})
 }
