@@ -15,13 +15,8 @@ import (
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 )
 
-type ServerDeps struct {
-	list list.ServiceDeps
-}
-
 // This code uses type assertions for now. When go 1.18 is more widely deployed, it will switch to generics.
-func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
-	di := core.MakeInitializer()
+func RegisterDependencies(di *core.DependencyGraph) {
 
 	di.Add(core.Provider{
 		Package: "namespacelabs.dev/foundation/std/go/grpc/metrics",
@@ -122,23 +117,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	server = &ServerDeps{}
-	di.AddInitializer(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/testdata/server/postgres",
-		Do: func(ctx context.Context) error {
-
-			err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/testdata/service/list"},
-				func(ctx context.Context, v interface{}) (err error) {
-					server.list = v.(list.ServiceDeps)
-					return nil
-				})
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-	})
 	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
@@ -159,10 +137,20 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	return server, di.Init(ctx)
 }
 
-func WireServices(ctx context.Context, srv server.Server, server *ServerDeps) {
-	list.WireService(ctx, srv.Scope("namespacelabs.dev/foundation/std/testdata/service/list"), server.list)
+func WireServices(ctx context.Context, srv server.Server, depgraph *core.DependencyGraph) []error {
+	var errs []error
+
+	if err := depgraph.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/testdata/service/list"},
+		func(ctx context.Context, v interface{}) error {
+			list.WireService(ctx, srv.Scope("namespacelabs.dev/foundation/std/testdata/service/list"), v.(list.ServiceDeps))
+			return nil
+		}); err != nil {
+		errs = append(errs, err)
+	}
+
 	srv.InternalRegisterGrpcGateway(list.RegisterListServiceHandler)
+
+	return errs
 }

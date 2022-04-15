@@ -20,19 +20,19 @@ const (
 )
 
 type Reference struct {
-	Package schema.PackageName
-	Scope   string
+	Package  schema.PackageName
+	Typename string
 }
 
 type Provider struct {
-	Package schema.PackageName
-	Scope   string
-	Do      func(context.Context) (interface{}, error)
+	Package  schema.PackageName
+	Typename string
+	Do       func(context.Context) (interface{}, error)
 }
 
 func (f *Provider) Desc() string {
-	if f.Scope != "" {
-		return fmt.Sprintf("%s/%s", f.Package, f.Scope)
+	if f.Typename != "" {
+		return fmt.Sprintf("%s/%s", f.Package, f.Typename)
 	}
 	return f.Package.String()
 }
@@ -42,24 +42,24 @@ type result struct {
 	err error
 }
 
-type depInitializer struct {
+type DependencyGraph struct {
 	providers  map[Reference]Provider
 	singletons map[Reference]result
 	inits      []Initializer
 }
 
-func MakeInitializer() *depInitializer {
-	return &depInitializer{
+func NewDependencyGraph() *DependencyGraph {
+	return &DependencyGraph{
 		providers:  map[Reference]Provider{},
 		singletons: map[Reference]result{},
 	}
 }
 
-func (di *depInitializer) Add(p Provider) {
-	di.providers[Reference{Package: p.Package, Scope: p.Scope}] = p
+func (di *DependencyGraph) Add(p Provider) {
+	di.providers[Reference{Package: p.Package, Typename: p.Typename}] = p
 }
 
-func (di *depInitializer) Instantiate(ctx context.Context, ref Reference, f func(context.Context, interface{}) error) error {
+func (di *DependencyGraph) Instantiate(ctx context.Context, ref Reference, f func(context.Context, interface{}) error) error {
 	if singleton, ok := di.singletons[ref]; ok {
 		if singleton.err != nil {
 			return singleton.err
@@ -68,12 +68,12 @@ func (di *depInitializer) Instantiate(ctx context.Context, ref Reference, f func
 	}
 
 	p, ok := di.providers[ref]
-	isSingleton := ref.Scope == ""
+	isSingleton := ref.Typename == ""
 	if !ok {
 		if isSingleton {
 			return fmt.Errorf("no singleton provider found for package %s", ref.Package)
 		}
-		return fmt.Errorf("no provider found for type %s in package %s", ref.Scope, ref.Package)
+		return fmt.Errorf("no provider found for type %s in package %s", ref.Typename, ref.Package)
 	}
 
 	var path *InstantiationPath
@@ -106,11 +106,11 @@ type Initializer struct {
 	Do          func(context.Context) error
 }
 
-func (di *depInitializer) AddInitializer(init Initializer) {
+func (di *DependencyGraph) AddInitializer(init Initializer) {
 	di.inits = append(di.inits, init)
 }
 
-func (di *depInitializer) Init(ctx context.Context) error {
+func (di *DependencyGraph) Init(ctx context.Context) error {
 	resources := ServerResourcesFrom(ctx)
 	if resources == nil {
 		return fmt.Errorf("missing server resources")

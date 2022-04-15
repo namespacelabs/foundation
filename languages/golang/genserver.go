@@ -316,19 +316,13 @@ import (
 	{{.Rename}} "{{.TypeURL}}"{{end}}
 )
 
-type ServerDeps struct {
-{{range $k, $v := .Services}}
-	{{$v.Name}} {{$opts.Imports.MustGet $v.GoImportURL}}ServiceDeps{{end}}
-}
-
 // This code uses type assertions for now. When go 1.18 is more widely deployed, it will switch to generics.
-func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) {
-	di := {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}MakeInitializer()
+func RegisterDependencies(di *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}DependencyGraph) {
 	{{range $k, $v := .Nodes}}
 		di.Add({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Provider{
 			Package: "{{$v.PackageName}}",
 			{{- if $v.Scope}}
-			Scope: "{{$v.Scope}}",{{end}}
+			Typename: "{{$v.Scope}}",{{end}}
 			Do: func(ctx context.Context) (interface{}, error) {
 				var deps {{makeType $opts.Imports $v.GoImportURL $v.Typename}}
 				var err error
@@ -347,7 +341,7 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 									err = {{end -}}
 							di.Instantiate(ctx, {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Reference{
 									Package: "{{$p.PackageName}}",
-									Scope: "{{$refs.Scoped.Scope}}"},
+									Typename: "{{$refs.Scoped.Scope}}"},
 								func(ctx context.Context, scoped interface{}) (err error) { 
 							{{end -}}
 							{{- if $p.SerializedMsg -}}
@@ -393,25 +387,6 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 		})
 	{{end}}
 
-	{{$opts.Server}} = &ServerDeps{}
-	di.AddInitializer({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Initializer{
-		PackageName: "{{$opts.PackageName}}",
-		Do: func(ctx context.Context) error {
-			{{range $k, $v := .Services}}
-			err = di.Instantiate(ctx,
-				{{- $opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Reference{Package: "{{$v.PackageName}}"},
-				func(ctx context.Context, v interface{}) (err error) {
-					{{$opts.Server}}.{{$v.Name}} = v.({{makeType $opts.Imports $v.GoImportURL $v.Typename}})
-					return nil
-				})
-			if err != nil {
-				return err
-			}
-			{{end}}
-			return nil
-		},
-	})
-
 	{{- range $k, $init := .Initializers}}
 	di.AddInitializer({{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Initializer{
 		PackageName: "{{$init.PackageName}}",
@@ -430,15 +405,24 @@ func PrepareDeps(ctx context.Context) ({{$opts.Server}} *ServerDeps, err error) 
 		},
 	})
 	{{end}}
-
-	return {{$opts.Server}}, di.Init(ctx)
 }
 
-func WireServices(ctx context.Context, srv {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/server"}}Server, server *ServerDeps) {
-{{range $k, $v := .Services}}{{$opts.Imports.MustGet $v.GoImportURL}}WireService(ctx, srv.Scope("{{$v.PackageName}}"), server.{{$v.Name}})
+func WireServices(ctx context.Context, srv {{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/server"}}Server, depgraph *{{$opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}DependencyGraph) []error {
+	var errs []error
+{{range $k, $v := .Services}}
+	if err := depgraph.Instantiate(ctx, {{- $opts.Imports.MustGet "namespacelabs.dev/foundation/std/go/core"}}Reference{Package: "{{$v.PackageName}}"},
+		func(ctx context.Context, v interface{}) error {
+			{{$opts.Imports.MustGet $v.GoImportURL}}WireService(ctx, srv.Scope("{{$v.PackageName}}"), v.({{makeType $opts.Imports $v.GoImportURL $v.Typename}}))
+			return nil
+		}); err != nil{
+			errs = append(errs, err)
+		}
+
 {{range $v.GrpcGatewayServices}}srv.InternalRegisterGrpcGateway({{$opts.Imports.MustGet $v.GoImportURL}}Register{{.}}Handler)
 {{end -}}
-{{end}}}
+{{end}}
+	return errs
+}
 {{end}}`))
 
 	mainTmpl = template.Must(template.New(ServerMainFilename).Parse(`// This file was automatically generated.
@@ -461,15 +445,21 @@ func main() {
 
 	ctx := core.WithResources(context.Background(), resources)
 
-	deps, err := PrepareDeps(ctx)
-	if err != nil {
+	depgraph := core.NewDependencyGraph()
+	RegisterDependencies(depgraph)
+	if err := depgraph.Init(ctx); err != nil {
 		log.Fatal(err)
 	}
 
 	server.InitializationDone()
 
 	server.Listen(ctx, func(srv server.Server) {
-		WireServices(ctx, srv, deps)
+		if errs := WireServices(ctx, srv, depgraph); len(errs) > 0 {
+			for _, err := range errs {
+				log.Println(err)
+			}
+			log.Fatalf("%d services failed to initialize.", len(errs))
+		}
 	})
 }
 `))

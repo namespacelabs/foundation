@@ -14,13 +14,8 @@ import (
 	"namespacelabs.dev/foundation/std/testdata/service/multicounter"
 )
 
-type ServerDeps struct {
-	multicounter multicounter.ServiceDeps
-}
-
 // This code uses type assertions for now. When go 1.18 is more widely deployed, it will switch to generics.
-func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
-	di := core.MakeInitializer()
+func RegisterDependencies(di *core.DependencyGraph) {
 
 	di.Add(core.Provider{
 		Package: "namespacelabs.dev/foundation/std/go/grpc/metrics",
@@ -51,8 +46,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 	})
 
 	di.Add(core.Provider{
-		Package: "namespacelabs.dev/foundation/std/testdata/counter",
-		Scope:   "Counter",
+		Package:  "namespacelabs.dev/foundation/std/testdata/counter",
+		Typename: "Counter",
 		Do: func(ctx context.Context) (interface{}, error) {
 			var deps counter.CounterDeps
 			var err error
@@ -72,8 +67,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			var err error
 
 			err = di.Instantiate(ctx, core.Reference{
-				Package: "namespacelabs.dev/foundation/std/testdata/counter",
-				Scope:   "Counter"},
+				Package:  "namespacelabs.dev/foundation/std/testdata/counter",
+				Typename: "Counter"},
 				func(ctx context.Context, scoped interface{}) (err error) {
 					// name: "one"
 					p := &counter.Input{}
@@ -89,8 +84,8 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 			}
 
 			err = di.Instantiate(ctx, core.Reference{
-				Package: "namespacelabs.dev/foundation/std/testdata/counter",
-				Scope:   "Counter"},
+				Package:  "namespacelabs.dev/foundation/std/testdata/counter",
+				Typename: "Counter"},
 				func(ctx context.Context, scoped interface{}) (err error) {
 					// name: "two"
 					p := &counter.Input{}
@@ -109,23 +104,6 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	server = &ServerDeps{}
-	di.AddInitializer(core.Initializer{
-		PackageName: "namespacelabs.dev/foundation/std/testdata/server/modeling",
-		Do: func(ctx context.Context) error {
-
-			err = di.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/testdata/service/multicounter"},
-				func(ctx context.Context, v interface{}) (err error) {
-					server.multicounter = v.(multicounter.ServiceDeps)
-					return nil
-				})
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-	})
 	di.AddInitializer(core.Initializer{
 		PackageName: "namespacelabs.dev/foundation/std/go/grpc/metrics",
 		Do: func(ctx context.Context) error {
@@ -146,9 +124,18 @@ func PrepareDeps(ctx context.Context) (server *ServerDeps, err error) {
 		},
 	})
 
-	return server, di.Init(ctx)
 }
 
-func WireServices(ctx context.Context, srv server.Server, server *ServerDeps) {
-	multicounter.WireService(ctx, srv.Scope("namespacelabs.dev/foundation/std/testdata/service/multicounter"), server.multicounter)
+func WireServices(ctx context.Context, srv server.Server, depgraph *core.DependencyGraph) []error {
+	var errs []error
+
+	if err := depgraph.Instantiate(ctx, core.Reference{Package: "namespacelabs.dev/foundation/std/testdata/service/multicounter"},
+		func(ctx context.Context, v interface{}) error {
+			multicounter.WireService(ctx, srv.Scope("namespacelabs.dev/foundation/std/testdata/service/multicounter"), v.(multicounter.ServiceDeps))
+			return nil
+		}); err != nil {
+		errs = append(errs, err)
+	}
+
+	return errs
 }
