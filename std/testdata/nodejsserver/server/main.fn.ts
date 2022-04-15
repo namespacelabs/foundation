@@ -1,7 +1,9 @@
 // This file was automatically generated.
 
+import 'source-map-support/register'
 import { Server, ServerCredentials } from "@grpc/grpc-js";
 import yargs from "yargs/yargs";
+
 
 
 interface Deps {

@@ -91,7 +91,11 @@ func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definit
 		return nil, err
 	}
 
-	return nil, generateServer(ctx, workspacePackages, loc, msg.Server, msg.LoadedNode, loc.Module.ReadWriteFS())
+	if err := generateServer(ctx, workspacePackages, loc, msg.Server, msg.LoadedNode, loc.Module.ReadWriteFS()); err != nil {
+		return nil, fnerrors.InternalError("failed to generate server: %w", err)
+	}
+
+	return nil, nil
 }
 
 type impl struct {
@@ -242,9 +246,12 @@ func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) er
 	// Create "tsconfig.json" if it doesn't exist.
 	tsconfigFn := filepath.Join(path, "tsconfig.json")
 	if _, err := updateJson(ctx, tsconfigFn, module.ReadWriteFS(),
-		func(packageJson map[string]interface{}, fileExisted bool) {
+		func(tsconfig map[string]interface{}, fileExisted bool) {
 			if !fileExisted {
-				packageJson["extends"] = "@tsconfig/node16/tsconfig.json"
+				tsconfig["extends"] = "@tsconfig/node16/tsconfig.json"
+				tsconfig["compilerOptions"] = map[string]interface{}{
+					"sourceMap": true,
+				}
 			}
 		}); err != nil {
 		return err

@@ -7,37 +7,26 @@ package shared
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
 
 // Prepare codegen data for a server.
-func PrepareServerData(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, nodes []*schema.Node) (ServerData, error) {
-	services := []EmbeddedServiceData{}
-	packageToNode := map[string]*schema.Node{}
-	for _, n := range nodes {
-		packageToNode[n.PackageName] = n
-	}
+func PrepareServerData(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server) (ServerData, error) {
+	var serverData ServerData
+
 	for _, ref := range srv.GetImportedPackages() {
-		referencedNode := packageToNode[ref.String()]
-		if referencedNode == nil {
-			return ServerData{}, fnerrors.InternalError("%s: package not loaded?", ref)
-		}
-
-		refLoc, err := loader.Resolve(ctx, ref)
+		pkg, err := loader.LoadByName(ctx, ref)
 		if err != nil {
-			return ServerData{}, err
+			return serverData, err
 		}
 
-		if referencedNode.GetKind() == schema.Node_SERVICE {
-			services = append(services, EmbeddedServiceData{
-				Location: refLoc,
+		if pkg.Node().GetKind() == schema.Node_SERVICE {
+			serverData.Services = append(serverData.Services, EmbeddedServiceData{
+				Location: pkg.Location,
 			})
 		}
 	}
 
-	return ServerData{
-		Services: services,
-	}, nil
+	return serverData, nil
 }

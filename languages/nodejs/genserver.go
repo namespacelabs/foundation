@@ -16,7 +16,7 @@ import (
 const ServerFilename = "main.fn.ts"
 
 func generateServer(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
-	serverData, err := shared.PrepareServerData(ctx, loader, loc, srv, nodes)
+	serverData, err := shared.PrepareServerData(ctx, loader, loc, srv)
 	if err != nil {
 		return err
 	}

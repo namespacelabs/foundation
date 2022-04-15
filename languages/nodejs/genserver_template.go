@@ -25,8 +25,10 @@ var (
 	serverTmpl = template.Must(template.New("template").Parse(
 		`// This file was automatically generated.
 
+import 'source-map-support/register'
 import { Server, ServerCredentials } from "@grpc/grpc-js";
 import yargs from "yargs/yargs";
+
 {{range .Imports}}
 import * as {{.Alias}} from "{{.Package}}"{{end}}
 
