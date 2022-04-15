@@ -7,6 +7,6 @@ server: fn.#Server & {
 
 	import: [
 		// TODO remove after this is implicit.
-		"namespacelabs.dev/foundation/std/nodejs/grpc"
+		"namespacelabs.dev/foundation/std/nodejs/grpc",
 	]
 }
