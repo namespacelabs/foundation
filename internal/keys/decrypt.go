@@ -20,7 +20,7 @@ type Reader interface {
 	io.ReaderAt
 }
 
-var ErrKeyGen = fnerrors.UsageError("Please run `fn key generate` to generate a new identity.", "Decryption requires that at least one identity to be configured.")
+var ErrKeyGen = fnerrors.UsageError("Please run `fn keys generate` to generate a new identity.", "Decryption requires that at least one identity to be configured.")
 
 func Decrypt(ctx context.Context, keyDir fs.FS, src io.Reader) ([]byte, error) {
 	var identities []age.Identity
