@@ -11,8 +11,8 @@ import (
 	"os"
 
 	"google.golang.org/grpc"
+	"namespacelabs.dev/foundation/internal/grpcstdio"
 	"namespacelabs.dev/foundation/internal/versions"
-	"namespacelabs.dev/foundation/provision/tool/grpcstdio"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 )
 
