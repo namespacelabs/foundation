@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
+	"namespacelabs.dev/foundation/std/go/core"
 )
 
 type Registrar interface {
@@ -22,7 +23,7 @@ type Registrar interface {
 
 type Server interface {
 	InternalRegisterGrpcGateway(reg func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error)
-	Scope(string) Registrar
+	Scope(*core.Package) Registrar
 }
 
 var _ Server = &ServerImpl{}
@@ -60,8 +61,8 @@ func (s *ServerImpl) PathPrefix(path string) *mux.Route {
 	return s.httpMux.PathPrefix(path)
 }
 
-func (s *ServerImpl) Scope(pkg string) Registrar {
-	return &scopedServer{parent: s, pkg: pkg}
+func (s *ServerImpl) Scope(pkg *core.Package) Registrar {
+	return &scopedServer{parent: s, pkg: pkg.PackageName}
 }
 
 type scopedServer struct {

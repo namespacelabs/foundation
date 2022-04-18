@@ -32,15 +32,6 @@ type singleImport struct {
 	Rename, TypeURL string
 }
 
-func (gi *GoImports) Has(typeUrl string) bool {
-	for _, u := range gi.urls {
-		if u == typeUrl {
-			return true
-		}
-	}
-	return false
-}
-
 func (gi *GoImports) ImportMap() []singleImport {
 	var imports []singleImport
 	for _, u := range gi.urls {
@@ -77,13 +68,13 @@ func (gi *GoImports) isValidAndNew(name string) bool {
 	return !ok
 }
 
-func (gi *GoImports) AddOrGet(typeUrl string) {
+func (gi *GoImports) Ensure(typeUrl string) string {
 	if typeUrl == gi.PkgName {
-		return
+		return ""
 	}
 
-	if _, ok := gi.urlmap[typeUrl]; ok {
-		return
+	if rename, ok := gi.urlmap[typeUrl]; ok {
+		return rename + "."
 	}
 
 	base := heuristicPackageName(typeUrl)
@@ -94,7 +85,7 @@ func (gi *GoImports) AddOrGet(typeUrl string) {
 		rename = base
 	}
 
-	if rename == "" && strings.HasPrefix(typeUrl, "namespacelabs.dev/foundation/") {
+	if rename == "" && strings.HasPrefix(typeUrl, "namespacelabs.dev/foundation/std/") {
 		base = "fn" + base
 
 		if gi.isValidAndNew(base) {
@@ -115,9 +106,10 @@ func (gi *GoImports) AddOrGet(typeUrl string) {
 
 	gi.urlmap[typeUrl] = rename
 	gi.urls = append(gi.urls, typeUrl) // Retain order.
+	return rename + "."
 }
 
-func (gi *GoImports) MustGet(typeUrl string) string {
+func (gi *GoImports) MustGet2(typeUrl string) string {
 	if typeUrl == gi.PkgName {
 		return ""
 	}

@@ -57,59 +57,34 @@ type typeProvider struct {
 	Dependencies []*typeProvider
 }
 
-func expandInstancedDeps(ctx context.Context, loader workspace.Packages, computedIncludes []schema.PackageName, nodes []*schema.Node) (instancedDepList, error) {
+func expandInstancedDeps(ctx context.Context, loader workspace.Packages, includes []schema.PackageName) (instancedDepList, error) {
 	var e instancedDepList
 
-	m := map[string]*schema.Node{}
-	for _, n := range nodes {
-		m[n.PackageName] = n
-	}
-
-	for _, ref := range computedIncludes {
-		referenced := m[ref.String()]
-		if referenced == nil {
-			return e, fnerrors.InternalError("%s: package not loaded?", ref)
-		}
-
-		refLoc, err := loader.Resolve(ctx, ref)
+	for _, ref := range includes {
+		pkg, err := loader.LoadByName(ctx, ref)
 		if err != nil {
 			return e, err
 		}
 
-		if err := expandNode(ctx, loader, refLoc, referenced, true, &e); err != nil {
+		referenced := pkg.Node()
+		if referenced == nil {
+			continue
+		}
+
+		if err := expandNode(ctx, loader, pkg.Location, referenced, true, &e); err != nil {
 			return e, err
 		}
 
 		if referenced.GetKind() == schema.Node_SERVICE {
-			e.services = append(e.services, nodeLoc{Location: refLoc, Node: referenced})
+			e.services = append(e.services, nodeLoc{Location: pkg.Location, Node: referenced})
 		}
 
 		if referenced.InitializerFor(schema.Framework_GO_GRPC) != nil {
-			e.initializers = append(e.initializers, nodeLoc{Location: refLoc, Node: referenced})
+			e.initializers = append(e.initializers, nodeLoc{Location: pkg.Location, Node: referenced})
 		}
 	}
 
 	return e, nil
-}
-
-func visitAllDeps(ctx context.Context, nodes []*schema.Node, includes []schema.PackageName, visitor func(*schema.Node) error) error {
-	m := map[string]*schema.Node{}
-	for _, n := range nodes {
-		m[n.PackageName] = n
-	}
-
-	for _, ref := range includes {
-		referenced := m[ref.String()]
-		if referenced == nil {
-			return fnerrors.InternalError("%s: package not loaded", ref)
-		}
-
-		if err := visitor(referenced); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func expandNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, produceSerialized bool, e *instancedDepList) error {

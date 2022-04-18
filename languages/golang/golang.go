@@ -64,7 +64,7 @@ func Register() {
 			return nil, err
 		}
 
-		return nil, generateServer(ctx, wenv, loc, x.Server, x.LoadedNode, loc.Module.ReadWriteFS())
+		return nil, generateServer(ctx, wenv, loc, x.Server, loc.Module.ReadWriteFS())
 	})
 }
 

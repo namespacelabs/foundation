@@ -24,17 +24,21 @@ type Reference struct {
 	Typename string
 }
 
-type Provider struct {
+type Package struct {
 	PackageName string
+}
+
+type Provider struct {
+	Package     *Package
 	Typename    string
 	Instantiate func(context.Context, Dependencies) (interface{}, error)
 }
 
 func (f Provider) key() string {
 	if f.Typename != "" {
-		return fmt.Sprintf("%s/%s", f.PackageName, f.Typename)
+		return fmt.Sprintf("%s/%s", f.Package.PackageName, f.Typename)
 	}
-	return f.PackageName
+	return f.Package.PackageName
 }
 
 type result struct {
@@ -44,7 +48,7 @@ type result struct {
 
 type DependencyGraph struct {
 	singletons map[string]result
-	inits      []Initializer
+	inits      []*Initializer
 }
 
 type Dependencies interface {
@@ -71,7 +75,7 @@ func (di *DependencyGraph) Instantiate(ctx context.Context, provider Provider, f
 	if !isSingleton {
 		path = InstantiationPathFromContext(ctx)
 	}
-	childctx := path.Append(schema.PackageName(provider.PackageName)).WithContext(ctx)
+	childctx := path.Append(schema.PackageName(provider.Package.PackageName)).WithContext(ctx)
 
 	start := time.Now()
 	res, err := provider.Instantiate(childctx, di)
@@ -93,12 +97,12 @@ func (di *DependencyGraph) Instantiate(ctx context.Context, provider Provider, f
 }
 
 type Initializer struct {
-	PackageName string
-	Do          func(context.Context) error
+	Package *Package
+	Do      func(context.Context, Dependencies) error
 }
 
-func (di *DependencyGraph) AddInitializer(init Initializer) {
-	di.inits = append(di.inits, init)
+func (di *DependencyGraph) AddInitializers(init ...*Initializer) {
+	di.inits = append(di.inits, init...)
 }
 
 // Init is deprecated; use RunInitializers.
@@ -118,14 +122,14 @@ func (di *DependencyGraph) RunInitializers(ctx context.Context) error {
 
 	for _, init := range di.inits {
 		if *debug {
-			Log.Printf("[init] initializing %s with %v deadline left", init.PackageName, time.Until(initializationDeadline))
+			Log.Printf("[init] initializing %s with %v deadline left", init.Package.PackageName, time.Until(initializationDeadline))
 		}
 
 		start := time.Now()
-		err := init.Do(ctx)
+		err := init.Do(ctx, di)
 		took := time.Since(start)
 		if took > maximumInitTime {
-			Log.Printf("[init] %s took %d (log thresh is %d)", init.PackageName, took, maximumInitTime)
+			Log.Printf("[init] %s took %d (log thresh is %d)", init.Package.PackageName, took, maximumInitTime)
 		}
 		if err != nil {
 			return err
