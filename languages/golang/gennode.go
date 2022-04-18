@@ -20,7 +20,6 @@ const (
 	depsFilename      = "deps.fn.go"
 	extensionDepsType = "ExtensionDeps"
 	serviceDepsType   = "ServiceDeps"
-	grpcServerPackage = "namespacelabs.dev/foundation/std/go/server"
 )
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {

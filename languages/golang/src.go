@@ -43,7 +43,9 @@ func generateGoSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath strin
 			}
 		}
 
-		body.WriteTo(&src)
+		if _, err := body.WriteTo(&src); err != nil {
+			return err
+		}
 
 		formatted, err := format.Source(src.Bytes())
 		if err != nil {
@@ -53,7 +55,7 @@ func generateGoSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath strin
 			return fnerrors.InternalError("failed to format generated Go file: %w", err)
 		}
 
-		w.Write(formatted)
-		return nil
+		_, err = w.Write(formatted)
+		return err
 	})
 }
