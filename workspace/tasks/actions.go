@@ -415,6 +415,7 @@ func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask 
 	}
 
 	if at != nil {
+		at.mu.Lock()
 		if at.resultData.items != nil {
 			for _, x := range at.items {
 				serialized, err := json.MarshalIndent(x.msg, "", "  ")
@@ -436,6 +437,7 @@ func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask 
 				ContentType: at.buffers[name.computed].contentType,
 			})
 		}
+		at.mu.Unlock()
 	}
 
 	return p
