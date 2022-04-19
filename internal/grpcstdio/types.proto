@@ -16,11 +16,9 @@ message HelloArgs {
 message DialArgs {
     StreamType stream_type  = 1;
     string     service_name = 2;
-    string     method_name  = 3;
 
     enum StreamType {
-        STREAM_TYPE_UNKNOWN     = 0;  // Defaults to gRPC.
-        STREAM_TYPE_GRPC        = 1;
-        STREAM_TYPE_DIRECT_CALL = 2;  // Handshake-less version of a request/response.
+        STREAM_TYPE_UNKNOWN = 0;  // Defaults to gRPC.
+        STREAM_TYPE_GRPC    = 1;
     }
 }

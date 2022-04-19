@@ -86,7 +86,10 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 			grpc.WithReadBufferSize(0),
 			grpc.WithWriteBufferSize(0),
 			grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
-				return session.Dial(&grpcstdio.DialArgs{})
+				return session.Dial(&grpcstdio.DialArgs{
+					StreamType:  grpcstdio.DialArgs_STREAM_TYPE_GRPC,
+					ServiceName: protocol.InvocationService_ServiceDesc.ServiceName,
+				})
 			}))
 		if err != nil {
 			return err
