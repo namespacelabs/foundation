@@ -94,7 +94,7 @@ func (defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Aut
 	if err := tasks.Action("gcloud.auth.print-access-token").Run(ctx, func(ctx context.Context) error {
 		cmd := exec.CommandContext(ctx, "gcloud", "auth", "print-access-token")
 		cmd.Stdout = &out
-		cmd.Stderr = console.TypedOutput(ctx, "gcloud", tasks.CatOutputTool)
+		cmd.Stderr = console.TypedOutput(ctx, "gcloud", console.CatOutputTool)
 		if err := cmd.Run(); err != nil {
 			return fnerrors.InvocationError("failed to obtain gcloud access token: %w", err)
 		}

@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type PortFwd struct {
@@ -108,12 +107,12 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 		if isFocus {
 			label = colors.Bold(label)
 		} else {
-			label = tasks.ColorFade.Apply(label)
+			label = colors.Faded(label)
 		}
 
 		url := urls[k]
 		if !isFocus {
-			url = tasks.ColorFade.Apply(url)
+			url = colors.Faded(url)
 		}
 
 		if isFocusEndpoint(focus, p.Endpoint) {
@@ -222,7 +221,7 @@ func domainSchema(domain *schema.Domain, localPort uint, endpoints ...*schema.En
 		if protocols.Strings()[0] == "grpc" {
 			schema, portLabel = grpcSchema(domain.Certificate != nil, localPort)
 			if domain.Certificate == nil {
-				suffix = tasks.ColorFade.Apply(" # not currently working, see #26")
+				suffix = colors.Faded(" # not currently working, see #26")
 			}
 		} else {
 			schema, portLabel = httpSchema(domain, localPort)
@@ -244,7 +243,7 @@ func checkbox(on, dimmed bool) string {
 		x = " [✓] "
 	}
 	if dimmed {
-		return tasks.ColorFade.Apply(x)
+		return colors.Faded(x)
 	}
 	return x
 }
@@ -344,7 +343,7 @@ func comment(str string) string {
 	if str == "" {
 		return ""
 	}
-	return tasks.ColorFade.Apply("# " + str)
+	return colors.Faded("# " + str)
 }
 
 func isIngress(endpoint *schema.Endpoint) bool {

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"gotest.tools/assert"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/internal/console/common"
 )
 
 func TestBuffers(t *testing.T) {
@@ -47,12 +47,12 @@ type bufferedLiner struct {
 }
 
 type bufferedEv struct {
-	id    tasks.IdAndHash
+	id    common.IdAndHash
 	name  string
 	lines [][]byte
 }
 
-func (w *bufferedLiner) WriteLines(id tasks.IdAndHash, name string, _ tasks.CatOutputType, lines [][]byte) {
+func (w *bufferedLiner) WriteLines(id common.IdAndHash, name string, _ common.CatOutputType, lines [][]byte) {
 	w.evs = append(w.evs, bufferedEv{id, name, lines})
 }
 

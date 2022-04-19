@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package tasks
+package consolesink
 
 import (
 	"bytes"
@@ -17,12 +17,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cespare/xxhash/v2"
 	"github.com/morikuni/aec"
 	"github.com/muesli/reflow/truncate"
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 var (
@@ -34,15 +35,6 @@ var (
 )
 
 const (
-	KnownStdout = "fn.console.stdout"
-	KnownStderr = "fn.console.stderr"
-
-	CatOutputTool     CatOutputType = "fn.output.tool"
-	CatOutputUs       CatOutputType = "fn.output.foundation"
-	CatOutputDebug    CatOutputType = "fn.output.debug"
-	CatOutputWarnings CatOutputType = "fn.output.warnings"
-	CatOutputErrors   CatOutputType = "fn.output.errors"
-
 	includeToolIDs = false
 
 	FPS = 60
@@ -80,22 +72,11 @@ func init() {
 	}
 }
 
-type CatOutputType string
-
 type consoleOutput struct {
-	id    IdAndHash
+	id    common.IdAndHash
 	name  string
-	cat   CatOutputType
+	cat   common.CatOutputType
 	lines [][]byte
-}
-
-type IdAndHash struct {
-	id     string
-	digest uint64
-}
-
-func IdAndHashFrom(id string) IdAndHash {
-	return IdAndHash{id: id, digest: xxhash.Sum64String(id)}
 }
 
 type consoleEvent struct {
@@ -105,10 +86,10 @@ type consoleEvent struct {
 		contents []byte
 	}
 
-	attachmentUpdatedForID string     // Set if we got an attachments updated message.
-	ev                     EventData  // Set on Start() and Done().
-	results                resultData // Set on Done() or AttachmentsUpdated().
-	progress               ActionProgress
+	attachmentUpdatedForID string           // Set if we got an attachments updated message.
+	ev                     tasks.EventData  // Set on Start() and Done().
+	results                tasks.ResultData // Set on Done() or AttachmentsUpdated().
+	progress               tasks.ActionProgress
 
 	renderingMode string        // One of "rendering", or "input". In "input", rendering is disabled.
 	onInput       chan struct{} // When the console enters the input mode, the console closes this channel.
@@ -152,12 +133,12 @@ type stickyContent struct {
 }
 
 type lineItem struct {
-	data       EventData // The original event data.
-	results    resultData
-	scope      []string       // List of packages this line item pertains to.
-	serialized []atom         // Pre-rendered arguments.
-	cached     bool           // Whether this item represents a cache hit.
-	progress   ActionProgress // This is not great, as we're using memory sharing here, but keeping it simple.
+	data       tasks.EventData // The original event data.
+	results    tasks.ResultData
+	scope      []string             // List of packages this line item pertains to.
+	serialized []atom               // Pre-rendered arguments.
+	cached     bool                 // Whether this item represents a cache hit.
+	progress   tasks.ActionProgress // This is not great, as we're using memory sharing here, but keeping it simple.
 }
 
 type node struct {
@@ -167,9 +148,9 @@ type node struct {
 	children    []string
 }
 
-var _ ActionSink = &ConsoleSink{}
+var _ tasks.ActionSink = &ConsoleSink{}
 
-func NewConsoleSink(out *os.File, maxLevel int) *ConsoleSink {
+func NewSink(out *os.File, maxLevel int) *ConsoleSink {
 	return &ConsoleSink{
 		out:       out,
 		outbuf:    bytes.NewBuffer(make([]byte, 4*1024)), // Start with 4k, enough to hold 20 lines of 100 bytes. bytes.Buffer will grow as needed.
@@ -286,8 +267,8 @@ loop:
 				}
 			}
 
-			if msg.ev.actionID != "" {
-				item := c.addOrGet(msg.ev.actionID, true)
+			if msg.ev.ActionID != "" {
+				item := c.addOrGet(msg.ev.ActionID, true)
 				item.data = msg.ev
 				item.results = msg.results
 				item.progress = msg.progress
@@ -307,7 +288,7 @@ loop:
 func (c *ConsoleSink) addOrGet(actionID string, addIfMissing bool) *lineItem {
 	index := -1
 	for k, r := range c.running {
-		if r.data.actionID == actionID {
+		if r.data.ActionID == actionID {
 			index = k
 		}
 	}
@@ -329,24 +310,24 @@ func (li *lineItem) precompute() {
 
 	var serialized []atom
 
-	if data.anchorID != "" {
-		serialized = append(serialized, atom{key: "anchor", value: data.anchorID})
+	if data.AnchorID != "" {
+		serialized = append(serialized, atom{key: "anchor", value: data.AnchorID})
 	}
 
-	li.scope = data.scope.PackageNamesAsString()
+	li.scope = data.Scope.PackageNamesAsString()
 
-	for _, arg := range data.arguments {
+	for _, arg := range data.Arguments {
 		var value string
 
 		switch arg.Name {
 		case "cached":
-			if b, ok := arg.msg.(bool); ok && b {
+			if b, ok := arg.Msg.(bool); ok && b {
 				li.cached = true
 			}
 
 		default:
-			if s, err := serialize(arg.msg); err == nil {
-				if b, err := serializeToBytes(s); err == nil {
+			if s, err := common.Serialize(arg.Msg); err == nil {
+				if b, err := common.SerializeToBytes(s); err == nil {
 					value = string(b)
 				} else {
 					value = fmt.Sprintf("failed to serialize to json: %v", err)
@@ -361,11 +342,11 @@ func (li *lineItem) precompute() {
 		}
 	}
 
-	for _, r := range li.results.items {
+	for _, r := range li.results.Items {
 		var value string
 
-		if s, err := serialize(r.msg); err == nil {
-			if b, err := serializeToBytes(s); err == nil {
+		if s, err := common.Serialize(r.Msg); err == nil {
+			if b, err := common.SerializeToBytes(s); err == nil {
 				value = string(b)
 			} else {
 				value = fmt.Sprintf("failed to serialize to json: %v", err)
@@ -389,34 +370,34 @@ func (c *ConsoleSink) recomputeTree() {
 
 	var runningCount int
 	for _, item := range c.running {
-		nodes[item.data.actionID] = &node{item: item}
-		if !item.data.indefinite {
+		nodes[item.data.ActionID] = &node{item: item}
+		if !item.data.Indefinite {
 			runningCount++
 		}
 	}
 
 	for _, item := range c.running {
 		r := item.data
-		parent := parentOf(root, nodes, r.parentID)
-		parent.children = append(parent.children, r.actionID)
+		parent := parentOf(root, nodes, r.ParentID)
+		parent.children = append(parent.children, r.ActionID)
 
-		if r.anchorID != "" && nodes[r.anchorID] != nil {
+		if r.AnchorID != "" && nodes[r.AnchorID] != nil {
 			// We used to replace "waiting" nodes with the lines they're waiting on.
 			// But that turned out to be confusing when there are multiple waiters,
 			// because it seems like we're doing the same work N times. So now we
 			// only do it once.
-			if !anchors[r.anchorID] {
-				nodes[r.actionID].replacement = nodes[r.anchorID]
-				anchors[r.anchorID] = true
+			if !anchors[r.AnchorID] {
+				nodes[r.ActionID].replacement = nodes[r.AnchorID]
+				anchors[r.AnchorID] = true
 			} else {
-				nodes[r.actionID].hidden = true
+				nodes[r.ActionID].hidden = true
 			}
 		}
 	}
 
 	// If a line item has at least one anchor, unattached from it's original root.
 	for anchorID := range anchors {
-		anchorParent := parentOf(root, nodes, nodes[anchorID].item.data.parentID)
+		anchorParent := parentOf(root, nodes, nodes[anchorID].item.data.ParentID)
 		anchorParent.children = without(anchorParent.children, anchorID)
 	}
 
@@ -449,7 +430,7 @@ func sortNodes(nodes map[string]*node, n *node) {
 		// If an action is anchored, use the anchor's start time for sorting purposes.
 		a := follow(nodes[n.children[i]])
 		b := follow(nodes[n.children[j]])
-		return a.item.data.started.Before(b.item.data.started)
+		return a.item.data.Started.Before(b.item.data.Started)
 	})
 
 	for _, id := range n.children {
@@ -482,23 +463,23 @@ func renderLine(w io.Writer, li *lineItem) {
 
 	base := aec.EmptyBuilder.ANSI
 
-	if data.state.IsDone() {
+	if data.State.IsDone() {
 		// XXX using UTC() here to be consistent with zerolog.ConsoleWriter.
-		t := data.completed.UTC().Format(logoutput.StampMilliTZ)
+		t := data.Completed.UTC().Format(logoutput.StampMilliTZ)
 		fmt.Fprint(w, base.With(aec.LightBlackF).Apply(t), " ")
 
 		if OutputActionID {
-			fmt.Fprint(w, aec.LightBlackF.Apply("["+data.actionID[:8]+"] "))
+			fmt.Fprint(w, aec.LightBlackF.Apply("["+data.ActionID[:8]+"] "))
 		}
 	}
 
-	if data.category != "" {
-		fmt.Fprint(w, base.With(aec.LightBlueF).Apply("("+data.category+") "))
+	if data.Category != "" {
+		fmt.Fprint(w, base.With(aec.LightBlueF).Apply("("+data.Category+") "))
 	}
 
-	name := data.humanReadable
+	name := data.HumanReadable
 	if name == "" {
-		name = data.name
+		name = data.Name
 	}
 
 	if li.cached {
@@ -507,13 +488,13 @@ func renderLine(w io.Writer, li *lineItem) {
 		fmt.Fprint(w, name)
 	}
 
-	if progress := li.progress; progress != nil && data.state == actionRunning {
+	if progress := li.progress; progress != nil && data.State == tasks.ActionRunning {
 		if p := progress.FormatProgress(); p != "" {
 			fmt.Fprint(w, " ", base.With(aec.LightBlackF).Apply(p))
 		}
 	}
 
-	if data.humanReadable == "" && len(li.scope) > 0 {
+	if data.HumanReadable == "" && len(li.scope) > 0 {
 		fmt.Fprint(w, " "+ColorPackage.String()+"[")
 		scope := li.scope
 		var origlen int
@@ -544,12 +525,12 @@ func renderLine(w io.Writer, li *lineItem) {
 		fmt.Fprint(w, " ", base.With(color).Apply(kv.key+"="), kv.value)
 	}
 
-	if data.err != nil {
-		t := errorType(data.err)
-		if t == errIsCancelled || t == errIsDependencyFailed {
+	if data.Err != nil {
+		t := tasks.ErrorType(data.Err)
+		if t == tasks.ErrTypeIsCancelled || t == tasks.ErrTypeIsDependencyFailed {
 			fmt.Fprint(w, " ", base.With(aec.BlueF).Apply(string(t)))
 		} else {
-			fmt.Fprint(w, " ", base.With(aec.RedF).Apply("err="), base.With(aec.RedF).Apply(data.err.Error()))
+			fmt.Fprint(w, " ", base.With(aec.RedF).Apply("err="), base.With(aec.RedF).Apply(data.Err.Error()))
 		}
 	}
 }
@@ -647,25 +628,25 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	var running, anchored, waiting, completed, completedAnchors int
 	var printableCompleted []*lineItem
 	for _, r := range c.running {
-		if r.data.state == actionRunning {
-			if !r.data.indefinite {
-				if r.data.anchorID != "" {
+		if r.data.State == tasks.ActionRunning {
+			if !r.data.Indefinite {
+				if r.data.AnchorID != "" {
 					anchored++
 				} else {
 					running++
 				}
 			}
-		} else if r.data.state == actionWaiting {
+		} else if r.data.State == tasks.ActionWaiting {
 			waiting++
 		} else {
-			hasError := (r.data.err != nil && errorType(r.data.err) == errIsRegular)
-			shouldLog := LogActions && (DisplayWaitingActions || r.data.anchorID == "")
+			hasError := (r.data.Err != nil && tasks.ErrorType(r.data.Err) == tasks.ErrTypeIsRegular)
+			shouldLog := LogActions && (DisplayWaitingActions || r.data.AnchorID == "")
 
-			if (shouldLog || hasError) && r.data.level <= c.maxLevel {
+			if (shouldLog || hasError) && r.data.Level <= c.maxLevel {
 				printableCompleted = append(printableCompleted, r)
 			}
 			completed++
-			if r.data.anchorID != "" {
+			if r.data.AnchorID != "" {
 				completedAnchors++
 			}
 		}
@@ -673,21 +654,21 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 	if LogActions && len(printableCompleted) > 0 {
 		sort.Slice(printableCompleted, func(i, j int) bool {
-			return printableCompleted[i].data.completed.Before(printableCompleted[j].data.completed)
+			return printableCompleted[i].data.Completed.Before(printableCompleted[j].data.Completed)
 		})
 
 		for _, r := range printableCompleted {
 			fmt.Fprint(raw, aec.EraseLine(aec.EraseModes.Tail))
 			renderLine(raw, r)
-			if !r.data.started.IsZero() && !r.cached {
-				if !r.data.started.Equal(r.data.created) {
-					d := r.data.started.Sub(r.data.created)
+			if !r.data.Started.IsZero() && !r.cached {
+				if !r.data.Started.Equal(r.data.Created) {
+					d := r.data.Started.Sub(r.data.Created)
 					if d >= 1*time.Microsecond {
 						fmt.Fprint(raw, " ", aec.LightBlackF.Apply("waited="), timefmt.Format(d))
 					}
 				}
 
-				d := r.data.completed.Sub(r.data.started)
+				d := r.data.Completed.Sub(r.data.Started)
 				fmt.Fprint(raw, " ", aec.LightBlackF.Apply("took="), timefmt.Format(d))
 			}
 			fmt.Fprintln(raw)
@@ -697,13 +678,13 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	// Drain any pending logging message.
 	var hdrBuf bytes.Buffer
 	for _, block := range c.buffer {
-		if block.name != "" && block.name != KnownStdout && block.name != KnownStderr {
-			if block.cat == CatOutputUs {
+		if block.name != "" && block.name != common.KnownStdout && block.name != common.KnownStderr {
+			if block.cat == common.CatOutputUs {
 				fmt.Fprint(&hdrBuf, usBar)
 			} else {
-				colorIndex := block.id.digest % uint64(len(toolBars))
+				colorIndex := block.id.Digest % uint64(len(toolBars))
 				if includeToolIDs {
-					fmt.Fprint(&hdrBuf, toolBars[colorIndex], ColorToolId.Apply(block.id.id)+" "+ColorToolName.Apply(block.name))
+					fmt.Fprint(&hdrBuf, toolBars[colorIndex], ColorToolId.Apply(block.id.ID)+" "+ColorToolName.Apply(block.name))
 				} else {
 					fmt.Fprint(&hdrBuf, toolBars[colorIndex], ColorToolName.Apply(block.name))
 				}
@@ -727,15 +708,15 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 		for _, r := range c.running {
 			var completed *time.Time
-			if r.data.state == actionDone {
-				completed = &r.data.completed
+			if r.data.State == tasks.ActionDone {
+				completed = &r.data.Completed
 			}
 
 			running = append(running, debugRunning{
-				ID:        r.data.actionID,
-				Name:      r.data.name,
-				Created:   r.data.created,
-				State:     string(r.data.state),
+				ID:        r.data.ActionID,
+				Name:      r.data.Name,
+				Created:   r.data.Created,
+				State:     string(r.data.State),
 				Completed: completed,
 			})
 		}
@@ -754,7 +735,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	if completed > 0 {
 		var newRunning []*lineItem
 		for _, r := range c.running {
-			if r.data.state.IsRunning() {
+			if r.data.State.IsRunning() {
 				newRunning = append(newRunning, r)
 			}
 		}
@@ -870,10 +851,10 @@ func (c *ConsoleSink) maxRenderDepth(n *node, currDepth, maxDepth uint) (uint, u
 	return depth, drawn
 }
 
-func skipRendering(data EventData, maxLevel int) bool {
-	skip := data.level > maxLevel
-	skip = skip || data.indefinite
-	skip = skip || (!DisplayWaitingActions && data.state == actionWaiting)
+func skipRendering(data tasks.EventData, maxLevel int) bool {
+	skip := data.Level > maxLevel
+	skip = skip || data.Indefinite
+	skip = skip || (!DisplayWaitingActions && data.State == tasks.ActionWaiting)
 	return skip
 }
 
@@ -902,7 +883,7 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 			lineb.Reset()
 
 			if OutputActionID {
-				fmt.Fprint(&lineb, aec.LightBlackF.Apply(" ["+data.actionID[:8]+"]"))
+				fmt.Fprint(&lineb, aec.LightBlackF.Apply(" ["+data.ActionID[:8]+"]"))
 			}
 
 			fmt.Fprint(&lineb, prefix)
@@ -910,10 +891,10 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 			renderLine(&lineb, child.item)
 
 			suffix := ""
-			if data.state == actionRunning {
-				d := t.Sub(data.started)
+			if data.State == tasks.ActionRunning {
+				d := t.Sub(data.Started)
 				suffix = " (" + timefmt.Seconds(d) + ") "
-			} else if data.state == actionWaiting {
+			} else if data.State == tasks.ActionWaiting {
 				suffix = " (waiting) "
 			}
 
@@ -929,29 +910,30 @@ func (c *ConsoleSink) writeLineWithMaxW(w io.Writer, width uint, line string, su
 	fmt.Fprintln(w, truncate.StringWithTail(line+suffix, width, " [...]"+suffix))
 }
 
-func (c *ConsoleSink) Waiting(ra *RunningAction) {
-	c.ch <- consoleEvent{ev: ra.data, progress: ra.progress}
+func (c *ConsoleSink) Waiting(ra *tasks.RunningAction) {
+	c.ch <- consoleEvent{ev: ra.Data, progress: ra.Progress}
 }
 
-func (c *ConsoleSink) Started(ra *RunningAction) {
-	c.ch <- consoleEvent{ev: ra.data, progress: ra.progress}
+func (c *ConsoleSink) Started(ra *tasks.RunningAction) {
+	c.ch <- consoleEvent{ev: ra.Data, progress: ra.Progress}
 }
 
-func (c *ConsoleSink) Done(ra *RunningAction) {
-	c.ch <- consoleEvent{ev: ra.data, results: ra.attachments.resultData}
+func (c *ConsoleSink) Done(ra *tasks.RunningAction) {
+	// XXX lock ResultData
+	c.ch <- consoleEvent{ev: ra.Data, results: ra.Attachments().ResultData}
 }
 
-func (c *ConsoleSink) Instant(ev *EventData) {
+func (c *ConsoleSink) Instant(ev *tasks.EventData) {
 	c.ch <- consoleEvent{ev: *ev}
 }
 
-func (c *ConsoleSink) AttachmentsUpdated(actionID string, data *resultData) {
+func (c *ConsoleSink) AttachmentsUpdated(actionID string, data *tasks.ResultData) {
 	if data != nil {
-		c.ch <- consoleEvent{attachmentUpdatedForID: actionID, results: *data, progress: data.progress}
+		c.ch <- consoleEvent{attachmentUpdatedForID: actionID, results: *data, progress: data.Progress}
 	}
 }
 
-func (c *ConsoleSink) WriteLines(id IdAndHash, name string, cat CatOutputType, lines [][]byte) {
+func (c *ConsoleSink) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, lines [][]byte) {
 	c.ch <- consoleEvent{output: consoleOutput{id: id, name: name, cat: cat, lines: lines}}
 }
 
@@ -959,48 +941,23 @@ func (c *ConsoleSink) AllocateConsoleId() uint64 {
 	return uint64(rand.Int63())
 }
 
-func SetIdleLabel(ctx context.Context, label string) func() {
-	if console := ConsoleOf(SinkFrom(ctx)); console != nil {
-		// XXX locking
-		was := console.idleLabel
-		console.idleLabel = label
-		return func() { console.idleLabel = was }
-	}
-
-	return func() {}
+func (c *ConsoleSink) SetIdleLabel(label string) func() {
+	// XXX locking
+	was := c.idleLabel
+	c.idleLabel = label
+	return func() { c.idleLabel = was }
 }
 
-func SetStickyContent(ctx context.Context, name string, content []byte) {
-	if console := ConsoleOf(SinkFrom(ctx)); console != nil {
-		var ev consoleEvent
-		ev.setSticky.name = name
-		ev.setSticky.contents = content
-		console.ch <- ev
-	}
-}
-
-func ConsoleOf(sink ActionSink) *ConsoleSink {
-	if sink != nil {
-		switch x := sink.(type) {
-		case *ConsoleSink:
-			return x
-		case *statefulState:
-			return ConsoleOf(x.parent)
-		}
-	}
-
-	return nil
+func (c *ConsoleSink) SetStickyContent(name string, content []byte) {
+	var ev consoleEvent
+	ev.setSticky.name = name
+	ev.setSticky.contents = content
+	c.ch <- ev
 }
 
 // Stops rendering actions. But only does so when an idle state is entered, and
 // blocks until that point.
-func EnterInputMode(ctx context.Context, prompt ...string) func() {
-	c := ConsoleOf(SinkFrom(ctx))
-	if c == nil {
-		// No console, nothing to do.
-		return func() {}
-	}
-
+func (c *ConsoleSink) EnterInputMode(ctx context.Context, prompt ...string) func() {
 	inputCh := make(chan struct{}) // The console closes this channel when it enters input mode.
 	c.ch <- consoleEvent{renderingMode: "input", onInput: inputCh}
 

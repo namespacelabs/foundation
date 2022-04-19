@@ -50,7 +50,7 @@ func NewLogsCmd() *cobra.Command {
 			streams := map[string]*logStream{}
 			var mu sync.Mutex
 
-			cancel := tasks.SetIdleLabel(ctx, "listening for deployment changes")
+			cancel := console.SetIdleLabel(ctx, "listening for deployment changes")
 			defer cancel()
 
 			return rt.Observe(ctx, server.Proto(), runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) error {

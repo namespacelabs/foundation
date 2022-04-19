@@ -99,12 +99,12 @@ func (s *statefulState) addToRunning(ra *RunningAction) []Observer {
 	p := ra.Proto()
 
 	s.mu.Lock()
-	if _, ok := s.protoIndex[ra.data.actionID]; !ok {
+	if _, ok := s.protoIndex[ra.Data.ActionID]; !ok {
 		s.running = append(s.running, ra)
-		s.allAttachments[ra.data.actionID] = ra.attachments
+		s.allAttachments[ra.Data.ActionID] = ra.attachments
 		index := len(s.allProtos)
 		s.allProtos = append(s.allProtos, p)
-		s.protoIndex[ra.data.actionID] = index
+		s.protoIndex[ra.Data.ActionID] = index
 	}
 	observers := s.observers
 	s.mu.Unlock()
@@ -142,7 +142,7 @@ func (s *statefulState) removeFromRunning(ra *RunningAction) {
 		}
 	}
 
-	if index, ok := s.protoIndex[ra.data.actionID]; ok {
+	if index, ok := s.protoIndex[ra.Data.ActionID]; ok {
 		s.allProtos[index] = p // Update with completed, etc.
 	}
 
@@ -166,7 +166,7 @@ func (s *statefulState) Instant(ev *EventData) {
 	}
 }
 
-func (s *statefulState) AttachmentsUpdated(actionID string, data *resultData) {
+func (s *statefulState) AttachmentsUpdated(actionID string, data *ResultData) {
 	if s.parent != nil {
 		s.parent.AttachmentsUpdated(actionID, data)
 	}
@@ -193,4 +193,8 @@ func (s *statefulState) AttachmentsUpdated(actionID string, data *resultData) {
 			obs.OnUpdate(r)
 		}
 	}
+}
+
+func (s *statefulState) Unwrap() ActionSink {
+	return s.parent
 }

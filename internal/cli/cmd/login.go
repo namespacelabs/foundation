@@ -14,7 +14,6 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const loginUrl = "https://signin.prod.namespacelabs.nscloud.dev/login"
@@ -32,7 +31,7 @@ func NewLoginCmd() *cobra.Command {
 			fmt.Fprintln(out, "  ", loginUrl)
 			fmt.Fprintln(out)
 
-			done := tasks.EnterInputMode(ctx, "Code: ")
+			done := console.EnterInputMode(ctx, "Code: ")
 			defer done()
 
 			scanner := bufio.NewScanner(os.Stdin)

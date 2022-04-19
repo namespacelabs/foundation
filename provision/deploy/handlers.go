@@ -23,8 +23,6 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const SnapshotKeys = "fn.keys"
-
 func computeHandlers(ctx context.Context, in *stack.Stack) ([]*tool.Definition, error) {
 	var handlers []*tool.Definition
 	for k, s := range in.ParsedServers {
@@ -138,7 +136,7 @@ func makeInvocation(ctx context.Context, env ops.Environment, serverLoc workspac
 		}
 
 		invocation.Snapshots = append(invocation.Snapshots, tool.Snapshot{
-			Name:     SnapshotKeys,
+			Name:     keys.SnapshotKeys,
 			Contents: keySnapshot,
 		})
 	}

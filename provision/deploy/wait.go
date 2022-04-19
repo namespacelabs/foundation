@@ -15,7 +15,6 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const maxDeployWait = 10 * time.Second
@@ -69,7 +68,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 				}
 
 			case <-t.C:
-				out := console.TypedOutput(ctx, "deploy", tasks.CatOutputUs)
+				out := console.TypedOutput(ctx, "deploy", console.CatOutputUs)
 				fmt.Fprintf(out, "Deploying is taking too long, fetching diagnostics of the pending containers:\n")
 
 				rt := runtime.For(env)

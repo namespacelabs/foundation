@@ -61,13 +61,13 @@ func NewStackState(ctx context.Context, sink *tasks.StatefulSink, localHostname 
 			out.Write(b)
 		}
 
-		tasks.SetStickyContent(ctx, "stack", out.Bytes())
+		console.SetStickyContent(ctx, "stack", out.Bytes())
 	}
 
 	setSticky(nil)
 
 	return &SessionState{
-		Console:       console.TypedOutput(ctx, "fn dev", tasks.CatOutputUs),
+		Console:       console.TypedOutput(ctx, "fn dev", console.CatOutputUs),
 		setSticky:     setSticky,
 		localHostname: localHostname,
 		obs:           NewObservers(ctx),

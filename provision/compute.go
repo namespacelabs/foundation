@@ -145,7 +145,7 @@ func (p *obsState) cancel() {
 }
 
 func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSnapshot)) (func(), error) {
-	logger := console.TypedOutput(ctx, "observepackages", tasks.CatOutputUs)
+	logger := console.TypedOutput(ctx, "observepackages", console.CatOutputUs)
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {

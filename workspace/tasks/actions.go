@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks/protocol"
@@ -30,21 +31,21 @@ type ActionSink interface {
 	Started(*RunningAction)
 	Done(*RunningAction)
 	Instant(*EventData)
-	AttachmentsUpdated(string, *resultData)
+	AttachmentsUpdated(string, *ResultData)
 }
 
-type actionState string
+type ActionState string
 
 const (
-	actionCreated = "fn.action.created"
-	actionWaiting = "fn.action.waiting"
-	actionRunning = "fn.action.running"
-	actionDone    = "fn.action.done"
-	actionInstant = "fn.action.instant"
+	ActionCreated = "fn.action.created"
+	ActionWaiting = "fn.action.waiting"
+	ActionRunning = "fn.action.running"
+	ActionDone    = "fn.action.done"
+	ActionInstant = "fn.action.instant"
 )
 
-func (a actionState) IsRunning() bool { return a == actionWaiting || a == actionRunning }
-func (a actionState) IsDone() bool    { return a == actionDone || a == actionInstant }
+func (a ActionState) IsRunning() bool { return a == ActionWaiting || a == ActionRunning }
+func (a ActionState) IsDone() bool    { return a == ActionDone || a == ActionInstant }
 
 type OnDoneFunc func(*protocol.Task)
 
@@ -56,21 +57,21 @@ const (
 )
 
 type EventData struct {
-	actionID      string
-	parentID      string
-	anchorID      string // This action represents "waiting" on the action represented by `anchorID`.
-	state         actionState
-	name          string
-	humanReadable string // If not set, name is used.
-	category      string
-	created       time.Time
-	started       time.Time
-	completed     time.Time
-	arguments     []actionArgument
-	scope         schema.PackageList
-	level         int
-	indefinite    bool
-	err           error
+	ActionID      string
+	ParentID      string
+	AnchorID      string // This action represents "waiting" on the action represented by `anchorID`.
+	State         ActionState
+	Name          string
+	HumanReadable string // If not set, name is used.
+	Category      string
+	Created       time.Time
+	Started       time.Time
+	Completed     time.Time
+	Arguments     []ActionArgument
+	Scope         schema.PackageList
+	Level         int
+	Indefinite    bool
+	Err           error
 }
 
 type ActionEvent struct {
@@ -91,9 +92,9 @@ type readerWriter interface {
 	Reader() io.ReadCloser
 }
 
-type resultData struct {
-	items    []*actionArgument
-	progress ActionProgress
+type ResultData struct {
+	Items    []*ActionArgument
+	Progress ActionProgress
 }
 
 type EventAttachments struct {
@@ -101,42 +102,25 @@ type EventAttachments struct {
 	sink     ActionSink
 
 	mu sync.Mutex // Protects below.
-	resultData
+	ResultData
 	// For the time being we just keep everything in memory for simplicity.
 	buffers        map[string]attachedBuffer
 	insertionOrder []OutputName
 }
 
 type RunningAction struct {
+	Data     EventData
+	Progress ActionProgress
+
 	sink        ActionSink
-	data        EventData
 	span        trace.Span
 	attachments *EventAttachments
-	progress    ActionProgress
 	onDone      OnDoneFunc
 }
 
-type actionArgument struct {
+type ActionArgument struct {
 	Name string
-	msg  interface{}
-}
-
-func serialize(msg interface{}) (interface{}, error) {
-	if s, ok := msg.(SerializableArgument); ok {
-		return s.SerializeAsJSON()
-	}
-	if s, ok := msg.(fmt.Stringer); ok {
-		return s.String(), nil
-	}
-	return msg, nil
-}
-
-func serializeToBytes(msg interface{}) ([]byte, error) {
-	return json.Marshal(msg)
-}
-
-type SerializableArgument interface {
-	SerializeAsJSON() (interface{}, error)
+	Msg  interface{}
 }
 
 func allocEvent() *ActionEvent {
@@ -145,22 +129,22 @@ func allocEvent() *ActionEvent {
 
 func Action(name string) *ActionEvent {
 	ev := allocEvent()
-	ev.data.name = name
-	ev.data.state = actionCreated
+	ev.data.Name = name
+	ev.data.State = ActionCreated
 	return ev
 }
 
 func (ev *ActionEvent) HumanReadablef(label string, args ...interface{}) *ActionEvent {
 	if len(args) == 0 {
-		ev.data.humanReadable = label
+		ev.data.HumanReadable = label
 	} else {
-		ev.data.humanReadable = fmt.Sprintf(label, args...)
+		ev.data.HumanReadable = fmt.Sprintf(label, args...)
 	}
 	return ev
 }
 
-func (ev *ActionEvent) Serializable(name string, msg SerializableArgument) *ActionEvent {
-	ev.data.arguments = append(ev.data.arguments, actionArgument{Name: name, msg: msg})
+func (ev *ActionEvent) Serializable(name string, msg common.SerializableArgument) *ActionEvent {
+	ev.data.Arguments = append(ev.data.Arguments, ActionArgument{Name: name, Msg: msg})
 	return ev
 }
 
@@ -170,32 +154,32 @@ func (ev *ActionEvent) OnDone(f OnDoneFunc) *ActionEvent {
 }
 
 func (ev *ActionEvent) ID(id string) *ActionEvent {
-	ev.data.actionID = id
+	ev.data.ActionID = id
 	return ev
 }
 
 func (ev *ActionEvent) Anchor(id string) *ActionEvent {
-	ev.data.anchorID = id
+	ev.data.AnchorID = id
 	return ev
 }
 
 func (ev *ActionEvent) StartTimestamp(ts time.Time) *ActionEvent {
-	ev.data.started = ts
+	ev.data.Started = ts
 	return ev
 }
 
 func (ev *ActionEvent) Category(category string) *ActionEvent {
-	ev.data.category = category
+	ev.data.Category = category
 	return ev
 }
 
 func (ev *ActionEvent) Parent(tid string) *ActionEvent {
-	ev.data.parentID = tid
+	ev.data.ParentID = tid
 	return ev
 }
 
 func (ev *ActionEvent) Scope(pkgs ...schema.PackageName) *ActionEvent {
-	ev.data.scope.AddMultiple(pkgs...)
+	ev.data.Scope.AddMultiple(pkgs...)
 	return ev
 }
 
@@ -211,20 +195,20 @@ func (ev *ActionEvent) WellKnown(key WellKnown, value string) *ActionEvent {
 func NewActionID() string { return ids.NewRandomBase62ID(16) }
 
 func (ev *ActionEvent) initMissing() {
-	if ev.data.actionID == "" {
-		ev.data.actionID = NewActionID()
+	if ev.data.ActionID == "" {
+		ev.data.ActionID = NewActionID()
 	}
-	ev.data.created = time.Now()
+	ev.data.Created = time.Now()
 }
 
 // Sets the level for this action (by default it's zero). The lower the level, the higher the importance.
 func (ev *ActionEvent) LogLevel(level int) *ActionEvent {
-	ev.data.level = level
+	ev.data.Level = level
 	return ev
 }
 
 func (ev *ActionEvent) Arg(name string, msg interface{}) *ActionEvent {
-	ev.data.arguments = append(ev.data.arguments, actionArgument{Name: name, msg: msg})
+	ev.data.Arguments = append(ev.data.Arguments, ActionArgument{Name: name, Msg: msg})
 	return ev
 }
 
@@ -238,7 +222,7 @@ func (ev *ActionEvent) Progress(p ActionProgress) *ActionEvent {
 }
 
 func (ev *ActionEvent) Indefinite() *ActionEvent {
-	ev.data.indefinite = true
+	ev.data.Indefinite = true
 	return ev
 }
 
@@ -247,17 +231,17 @@ func (ev *ActionEvent) Clone(makeName func(string) string) *ActionEvent {
 		data: ev.data,
 	}
 
-	name := copy.data.name
-	if copy.data.category != "" {
-		name = copy.data.category + "::" + name
-		copy.data.category = ""
+	name := copy.data.Name
+	if copy.data.Category != "" {
+		name = copy.data.Category + "::" + name
+		copy.data.Category = ""
 	}
 
-	copy.data.name = makeName(name)
+	copy.data.Name = makeName(name)
 	return copy
 }
 
-func (ev *ActionEvent) toAction(ctx context.Context, state actionState) *RunningAction {
+func (ev *ActionEvent) toAction(ctx context.Context, state ActionState) *RunningAction {
 	sink := SinkFrom(ctx)
 	if sink == nil {
 		return nil
@@ -267,27 +251,27 @@ func (ev *ActionEvent) toAction(ctx context.Context, state actionState) *Running
 	action := ctx.Value(_actionKey)
 	if action != nil {
 		parent = action.(*RunningAction)
-		ev.data.parentID = parent.data.actionID
+		ev.data.ParentID = parent.Data.ActionID
 	}
 
 	ev.initMissing()
 
-	ev.data.state = state
+	ev.data.State = state
 
 	span := startSpan(ctx, ev.data)
 
 	return &RunningAction{
 		sink:        sink,
-		data:        ev.data,
+		Data:        ev.data,
 		span:        span,
-		progress:    ev.progress,
-		attachments: &EventAttachments{actionID: ev.data.actionID, sink: sink},
+		Progress:    ev.progress,
+		attachments: &EventAttachments{actionID: ev.data.ActionID, sink: sink},
 		onDone:      ev.onDone,
 	}
 }
 
 func (ev *ActionEvent) Start(ctx context.Context) *RunningAction {
-	ra := ev.toAction(ctx, actionRunning)
+	ra := ev.toAction(ctx, ActionRunning)
 	ra.markStarted(ctx)
 	return ra
 }
@@ -298,7 +282,7 @@ type RunOptions struct {
 }
 
 func (ev *ActionEvent) CheckCacheRun(ctx context.Context, options RunOptions) error {
-	ra := ev.toAction(ctx, actionWaiting)
+	ra := ev.toAction(ctx, ActionWaiting)
 	ra.sink.Waiting(ra)
 
 	var wasCached bool
@@ -307,7 +291,7 @@ func (ev *ActionEvent) CheckCacheRun(ctx context.Context, options RunOptions) er
 			if ev.wellKnown == nil {
 				ev.wellKnown = map[WellKnown]string{}
 			}
-			ev.wellKnown[WkAction] = ev.data.name
+			ev.wellKnown[WkAction] = ev.data.Name
 		}
 
 		cached, err := options.Wait(ctx, ev.wellKnown)
@@ -326,12 +310,12 @@ func (ev *ActionEvent) CheckCacheRun(ctx context.Context, options RunOptions) er
 	}
 
 	if wasCached {
-		ra.data.arguments = append(ra.data.arguments, actionArgument{Name: "cached", msg: true})
+		ra.Data.Arguments = append(ra.Data.Arguments, ActionArgument{Name: "cached", Msg: true})
 		return ra.Done(nil)
 	}
 
 	// Our data model implies that the caller always owns data; and sinks should perform copies.
-	ra.data.started = time.Now()
+	ra.Data.Started = time.Now()
 	ra.markStarted(ctx)
 
 	return ra.Done(ra.Call(ctx, options.Run))
@@ -349,26 +333,26 @@ func (ev *ActionEvent) Log(ctx context.Context) {
 	}
 
 	ev.initMissing()
-	if ev.data.started.IsZero() {
-		ev.data.started = ev.data.created
+	if ev.data.Started.IsZero() {
+		ev.data.Started = ev.data.Created
 	}
-	ev.data.state = actionInstant
+	ev.data.State = ActionInstant
 	sink.Instant(&ev.data)
 }
 
 func makeProto(data *EventData, at *EventAttachments) *protocol.Task {
 	p := &protocol.Task{
-		Id:                 data.actionID,
-		Name:               data.name,
-		HumanReadableLabel: data.humanReadable,
-		CreatedTs:          data.started.UnixNano(),
-		Scope:              data.scope.PackageNamesAsString(),
+		Id:                 data.ActionID,
+		Name:               data.Name,
+		HumanReadableLabel: data.HumanReadable,
+		CreatedTs:          data.Started.UnixNano(),
+		Scope:              data.Scope.PackageNamesAsString(),
 	}
 
-	if data.state == actionDone {
-		p.CompletedTs = data.completed.UnixNano()
-		if data.err != nil {
-			p.ErrorMessage = data.err.Error()
+	if data.State == ActionDone {
+		p.CompletedTs = data.Completed.UnixNano()
+		if data.Err != nil {
+			p.ErrorMessage = data.Err.Error()
 		}
 	}
 
@@ -388,22 +372,22 @@ func makeProto(data *EventData, at *EventAttachments) *protocol.Task {
 
 func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask {
 	p := &protocol.StoredTask{
-		Id:                 data.actionID,
-		Name:               data.name,
-		HumanReadableLabel: data.humanReadable,
-		CreatedTs:          data.started.UnixNano(),
-		Scope:              data.scope.PackageNamesAsString(),
+		Id:                 data.ActionID,
+		Name:               data.Name,
+		HumanReadableLabel: data.HumanReadable,
+		CreatedTs:          data.Started.UnixNano(),
+		Scope:              data.Scope.PackageNamesAsString(),
 	}
 
-	if data.state == actionDone {
-		p.CompletedTs = data.completed.UnixNano()
-		if data.err != nil {
-			p.ErrorMessage = data.err.Error()
+	if data.State == ActionDone {
+		p.CompletedTs = data.Completed.UnixNano()
+		if data.Err != nil {
+			p.ErrorMessage = data.Err.Error()
 		}
 	}
 
-	for _, x := range data.arguments {
-		serialized, err := json.MarshalIndent(x.msg, "", "  ")
+	for _, x := range data.Arguments {
+		serialized, err := json.MarshalIndent(x.Msg, "", "  ")
 		if err != nil {
 			serialized = []byte("{\"error\": \"failed to serialize\"}")
 		}
@@ -416,9 +400,9 @@ func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask 
 
 	if at != nil {
 		at.mu.Lock()
-		if at.resultData.items != nil {
-			for _, x := range at.items {
-				serialized, err := json.MarshalIndent(x.msg, "", "  ")
+		if at.ResultData.Items != nil {
+			for _, x := range at.Items {
+				serialized, err := json.MarshalIndent(x.Msg, "", "  ")
 				if err != nil {
 					serialized = []byte("{\"error\": \"failed to serialize\"}")
 				}
@@ -443,41 +427,41 @@ func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask 
 	return p
 }
 
-func (af *RunningAction) ID() string                     { return af.data.actionID }
-func (af *RunningAction) Proto() *protocol.Task          { return makeProto(&af.data, af.attachments) }
+func (af *RunningAction) ID() string                     { return af.Data.ActionID }
+func (af *RunningAction) Proto() *protocol.Task          { return makeProto(&af.Data, af.attachments) }
 func (af *RunningAction) Attachments() *EventAttachments { return af.attachments }
 
 func startSpan(ctx context.Context, data EventData) trace.Span {
-	name := data.name
-	if data.category != "" {
-		name = data.category + "::" + name
+	name := data.Name
+	if data.Category != "" {
+		name = data.Category + "::" + name
 	}
 	_, span := otel.Tracer("fn").Start(ctx, name)
 
 	if span.IsRecording() {
-		span.SetAttributes(attribute.String("actionID", data.actionID))
-		if data.anchorID != "" {
-			span.SetAttributes(attribute.String("anchorID", data.anchorID))
+		span.SetAttributes(attribute.String("actionID", data.ActionID))
+		if data.AnchorID != "" {
+			span.SetAttributes(attribute.String("anchorID", data.AnchorID))
 		}
 
-		for _, arg := range data.arguments {
+		for _, arg := range data.Arguments {
 			// The stored value is serialized in a best-effort way.
-			be, _ := json.MarshalIndent(arg.msg, "", "  ")
+			be, _ := json.MarshalIndent(arg.Msg, "", "  ")
 			span.SetAttributes(attribute.String("arg."+arg.Name, string(be)))
 		}
 
-		if data.scope.Len() > 0 {
-			span.SetAttributes(attribute.StringSlice("scope", data.scope.PackageNamesAsString()))
+		if data.Scope.Len() > 0 {
+			span.SetAttributes(attribute.StringSlice("scope", data.Scope.PackageNamesAsString()))
 		}
 	}
 
 	return span
 }
 
-func endSpan(span trace.Span, r resultData, completed time.Time) {
-	for _, arg := range r.items {
+func endSpan(span trace.Span, r ResultData, completed time.Time) {
+	for _, arg := range r.Items {
 		// The stored value is serialized in a best-effort way.
-		be, _ := json.MarshalIndent(arg.msg, "", "  ")
+		be, _ := json.MarshalIndent(arg.Msg, "", "  ")
 		span.SetAttributes(attribute.String("result."+arg.Name, string(be)))
 	}
 	// XXX we should pass along the completed timeline, but we're sometimes seeing arbitrary values
@@ -487,26 +471,26 @@ func endSpan(span trace.Span, r resultData, completed time.Time) {
 }
 
 func (af *RunningAction) markStarted(ctx context.Context) {
-	if af.data.started.IsZero() {
-		af.data.started = af.data.created
+	if af.Data.Started.IsZero() {
+		af.Data.Started = af.Data.Created
 	}
-	af.data.state = actionRunning
+	af.Data.State = ActionRunning
 	af.sink.Started(af)
 }
 
 func (af *RunningAction) CustomDone(t time.Time, err error) bool {
-	if af != nil && af.data.state != actionDone {
+	if af != nil && af.Data.State != ActionDone {
 		if af.onDone != nil {
 			// Call onDone first, so it's execution time is accounted for to the action time.
 			af.onDone(af.Proto())
 		}
 
-		if af.data.completed.IsZero() {
-			af.data.completed = t
+		if af.Data.Completed.IsZero() {
+			af.Data.Completed = t
 		}
 
-		af.data.state = actionDone
-		af.data.err = err
+		af.Data.State = ActionDone
+		af.Data.Err = err
 
 		if af.attachments != nil {
 			af.attachments.seal()
@@ -517,7 +501,7 @@ func (af *RunningAction) CustomDone(t time.Time, err error) bool {
 				af.span.SetStatus(codes.Error, err.Error())
 			}
 
-			endSpan(af.span, af.attachments.resultData, af.data.completed)
+			endSpan(af.span, af.attachments.ResultData, af.Data.Completed)
 		}
 
 		af.sink.Done(af)
@@ -607,12 +591,12 @@ func (ev *EventAttachments) AttachSerializable(name, modifier string, body inter
 		panic("no running action")
 	}
 
-	msg, err := serialize(body)
+	msg, err := common.Serialize(body)
 	if err != nil {
 		panic(fmt.Sprintf("failed to serialize payload: %v", err))
 	}
 
-	bytes, err := serializeToBytes(msg)
+	bytes, err := common.SerializeToBytes(msg)
 	if err != nil {
 		panic(fmt.Sprintf("failed to serialize payload to bytes: %v", err))
 	}
@@ -625,20 +609,20 @@ func (ev *EventAttachments) AttachSerializable(name, modifier string, body inter
 	ev.Attach(Output(name, contentType), bytes)
 }
 
-func (ev *EventAttachments) addResult(key string, msg interface{}) resultData {
+func (ev *EventAttachments) addResult(key string, msg interface{}) ResultData {
 	ev.mu.Lock()
 	defer ev.mu.Unlock()
 
-	for _, item := range ev.items {
+	for _, item := range ev.Items {
 		if item.Name == key {
-			item.msg = msg
-			return ev.resultData
+			item.Msg = msg
+			return ev.ResultData
 		}
 	}
 
 	// Not found, add a new result.
-	ev.items = append(ev.items, &actionArgument{key, msg})
-	return ev.resultData
+	ev.Items = append(ev.Items, &ActionArgument{key, msg})
+	return ev.ResultData
 }
 
 func (ev *EventAttachments) AddResult(key string, msg interface{}) *EventAttachments {
@@ -655,8 +639,8 @@ func (ev *EventAttachments) AddResult(key string, msg interface{}) *EventAttachm
 func (ev *EventAttachments) SetProgress(p ActionProgress) *EventAttachments {
 	if ev != nil {
 		ev.mu.Lock()
-		ev.progress = p
-		copy := ev.resultData
+		ev.Progress = p
+		copy := ev.ResultData
 		ev.mu.Unlock()
 
 		ev.sink.AttachmentsUpdated(ev.actionID, &copy)
@@ -748,5 +732,5 @@ func Attachments(ctx context.Context) *EventAttachments {
 }
 
 func NameOf(ev *ActionEvent) (string, string) {
-	return ev.data.name, ev.data.humanReadable
+	return ev.data.Name, ev.data.HumanReadable
 }

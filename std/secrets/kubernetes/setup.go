@@ -15,13 +15,11 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/provision/configure"
-	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
@@ -55,7 +53,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		} else if err == nil {
 			defer archive.Close()
 
-			keyDir := r.Snapshots[deploy.SnapshotKeys]
+			keyDir := r.Snapshots[keys.SnapshotKeys]
 			if keyDir == nil {
 				return nil, fmt.Errorf("can't use encrypted secrets without keys")
 			}
@@ -101,7 +99,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		Name:        name,
 		Body: applycorev1.
 			Secret(name, namespace).
-			WithType(corev1.SecretTypeOpaque).
+			WithType(v1.SecretTypeOpaque).
 			WithAnnotations(kubedef.MakeAnnotations(r.Stack.GetServer(r.Focus.GetPackageName()))).
 			WithLabels(kubedef.MakeLabels(r.Env, r.Focus.Server)).
 			WithData(data),

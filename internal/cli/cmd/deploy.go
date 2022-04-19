@@ -21,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func NewDeployCmd() *cobra.Command {
@@ -119,7 +118,7 @@ func NewDeployCmd() *cobra.Command {
 				fmt.Fprintln(console.Stderr(ctx), "Failed to report on ingress:", err)
 			}
 
-			out := console.TypedOutput(ctx, "deploy", tasks.CatOutputUs)
+			out := console.TypedOutput(ctx, "deploy", console.CatOutputUs)
 
 			deploy.SortPorts(ports, focusServers)
 			deploy.SortIngresses(computed.IngressFragments)

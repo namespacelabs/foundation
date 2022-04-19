@@ -5,15 +5,19 @@
 package console
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"os"
-	"sync"
 
 	"github.com/kr/text"
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
+)
+
+const (
+	CatOutputTool = common.CatOutputTool
+	CatOutputUs   = common.CatOutputUs
 )
 
 var (
@@ -22,106 +26,65 @@ var (
 )
 
 func Stdout(ctx context.Context) io.Writer {
-	return Output(ctx, tasks.KnownStdout)
+	return Output(ctx, common.KnownStdout)
 }
 
 func Stderr(ctx context.Context) io.Writer {
-	return Output(ctx, tasks.KnownStderr)
+	return Output(ctx, common.KnownStderr)
 }
 
 func Output(ctx context.Context, name string) io.Writer {
-	return TypedOutput(ctx, name, tasks.CatOutputTool)
+	return TypedOutput(ctx, name, common.CatOutputTool)
 }
 
 func Debug(ctx context.Context) io.Writer {
 	if DebugToConsole {
-		return TypedOutput(ctx, "debug", tasks.CatOutputDebug)
+		return TypedOutput(ctx, "debug", common.CatOutputDebug)
 	} else {
-		return tasks.Attachments(ctx).Output(tasks.Output(string(tasks.CatOutputDebug), "text/plain"))
+		return tasks.Attachments(ctx).Output(tasks.Output(string(common.CatOutputDebug), "text/plain"))
 	}
 }
 
 func Warnings(ctx context.Context) io.Writer {
-	return TypedOutput(ctx, "warnings", tasks.CatOutputWarnings)
+	return TypedOutput(ctx, "warnings", common.CatOutputWarnings)
 }
 
 func Errors(ctx context.Context) io.Writer {
-	return TypedOutput(ctx, "errors", tasks.CatOutputErrors)
+	return TypedOutput(ctx, "errors", common.CatOutputErrors)
 }
 
-func TypedOutput(ctx context.Context, name string, cat tasks.CatOutputType) io.Writer {
+func TypedOutput(ctx context.Context, name string, cat common.CatOutputType) io.Writer {
 	console := consoleOutputFromCtx(ctx, name, cat)
 	stored := tasks.Attachments(ctx).Output(tasks.Output("console:"+name, "text/plain"))
 	return io.MultiWriter(console, stored)
 }
 
-func consoleOutputFromCtx(ctx context.Context, name string, cat tasks.CatOutputType) io.Writer {
-	console := tasks.ConsoleOf(tasks.SinkFrom(ctx))
-	if console == nil {
-		// If there's no console sink in context, pass along the original Stdout or Stderr.
-		if name == tasks.KnownStdout {
-			return os.Stdout
-		} else if name == tasks.KnownStderr {
-			return os.Stderr
+func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutputType) io.Writer {
+	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
+	if t, ok := unwrapped.(writerLiner); ok {
+		id := tasks.Attachments(ctx).ActionID()
+		if id == "" {
+			id = ids.NewRandomBase32ID(8)
 		}
-		return text.NewIndentWriter(os.Stdout, []byte(name+": "))
+
+		if len(id) > 6 {
+			id = id[:6]
+		}
+
+		return &consoleBuffer{actual: t, name: name, cat: cat, id: common.IdAndHashFrom(id)}
 	}
 
-	id := tasks.Attachments(ctx).ActionID()
-	if id == "" {
-		id = ids.NewRandomBase32ID(8)
+	// If there's no console sink in context, pass along the original Stdout or Stderr.
+	if name == common.KnownStdout {
+		return os.Stdout
+	} else if name == common.KnownStderr {
+		return os.Stderr
 	}
 
-	if len(id) > 6 {
-		id = id[:6]
-	}
-
-	return &consoleBuffer{actual: console, name: name, cat: cat, id: tasks.IdAndHashFrom(id)}
+	return text.NewIndentWriter(os.Stdout, []byte(name+": "))
 }
 
 // ConsoleOutput returns a writer, whose output will be managed by the specified ConsoleSink.
-func ConsoleOutput(console *tasks.ConsoleSink, name string) io.Writer {
+func ConsoleOutput(console writerLiner, name string) io.Writer {
 	return &consoleBuffer{actual: console, name: name}
-}
-
-type writerLiner interface {
-	WriteLines(tasks.IdAndHash, string, tasks.CatOutputType, [][]byte)
-}
-
-type consoleBuffer struct {
-	actual writerLiner
-	name   string
-	cat    tasks.CatOutputType
-	id     tasks.IdAndHash
-
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (w *consoleBuffer) Write(p []byte) (int, error) {
-	w.mu.Lock()
-	w.buf.Write(p)
-	var lines [][]byte
-	for {
-		if i := bytes.IndexByte(w.buf.Bytes(), '\n'); i >= 0 {
-			data := make([]byte, i+1)
-			_, _ = w.buf.Read(data)
-			line := dropCR(data[0 : len(data)-1]) // Drop the \n and the \r.
-			lines = append(lines, line)
-		} else {
-			break
-		}
-	}
-	w.mu.Unlock()
-	if len(lines) > 0 {
-		w.actual.WriteLines(w.id, w.name, w.cat, lines)
-	}
-	return len(p), nil
-}
-
-func dropCR(data []byte) []byte {
-	if len(data) > 0 && data[len(data)-1] == '\r' {
-		return data[0 : len(data)-1]
-	}
-	return data
 }

@@ -21,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/workspace/dirs"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func NewKeysCmd() *cobra.Command {
@@ -140,7 +139,7 @@ func NewKeysCmd() *cobra.Command {
 			}
 
 			if err := func() error {
-				done := tasks.EnterInputMode(ctx)
+				done := console.EnterInputMode(ctx)
 				defer done()
 
 				bash := exec.CommandContext(ctx, "bash")

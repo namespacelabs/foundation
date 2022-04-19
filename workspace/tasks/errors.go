@@ -13,16 +13,16 @@ import (
 
 type errType string
 
-const errIsCancelled errType = "CANCELLED"
-const errIsDependencyFailed errType = "DEPENDENCY FAILED"
-const errIsRegular errType = ""
+const ErrTypeIsCancelled errType = "CANCELLED"
+const ErrTypeIsDependencyFailed errType = "DEPENDENCY FAILED"
+const ErrTypeIsRegular errType = ""
 
-func errorType(err error) errType {
+func ErrorType(err error) errType {
 	if errors.Is(err, context.Canceled) {
-		return errIsCancelled
+		return ErrTypeIsCancelled
 	} else if fnerrors.IsDependencyFailed(err) {
-		return errIsDependencyFailed
+		return ErrTypeIsDependencyFailed
 	}
 
-	return errIsRegular
+	return ErrTypeIsRegular
 }

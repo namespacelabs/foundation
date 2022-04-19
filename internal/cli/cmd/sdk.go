@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
@@ -146,7 +147,7 @@ func newSdkShellCmd(selectedSdkList func() []sdk) *cobra.Command {
 				aec.LightGreenF.Apply("\\u"),
 				aec.LightBlackF.Apply("\\h"))
 
-			done := tasks.EnterInputMode(ctx)
+			done := console.EnterInputMode(ctx)
 			defer done()
 
 			cmd := exec.CommandContext(ctx, shell, "--login", "--noprofile")

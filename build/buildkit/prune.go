@@ -26,7 +26,7 @@ func Prune(ctx context.Context, devHost *schema.DevHost, targetPlatform specs.Pl
 		ch := make(chan client.UsageInfo)
 		defer close(ch)
 
-		log := console.TypedOutput(ctx, "buildkit", tasks.CatOutputTool)
+		log := console.TypedOutput(ctx, "buildkit", console.CatOutputTool)
 
 		go func() {
 			for du := range ch {

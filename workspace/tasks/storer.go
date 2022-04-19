@@ -34,12 +34,12 @@ func (st *Storer) Store(af *RunningAction) {
 }
 
 func (st *Storer) store(af *RunningAction) error {
-	target := filepath.Join(st.baseDir, af.data.actionID)
+	target := filepath.Join(st.baseDir, af.Data.ActionID)
 	if err := os.Mkdir(target, 0700); err != nil {
 		return err
 	}
 
-	pbytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(makeDebugProto(&af.data, af.attachments))
+	pbytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(makeDebugProto(&af.Data, af.attachments))
 	if err != nil {
 		return err
 	}

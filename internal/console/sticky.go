@@ -1,0 +1,49 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+package console
+
+import (
+	"context"
+
+	"namespacelabs.dev/foundation/workspace/tasks"
+)
+
+func SetIdleLabel(ctx context.Context, label string) func() {
+	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
+	if t, ok := unwrapped.(consoleLike); ok {
+		return t.SetIdleLabel(label)
+	}
+
+	return func() {}
+}
+
+func SetStickyContent(ctx context.Context, name string, content []byte) {
+	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
+	if t, ok := unwrapped.(consoleLike); ok {
+		t.SetStickyContent(name, content)
+	}
+}
+
+func EnterInputMode(ctx context.Context, params ...string) func() {
+	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
+	if t, ok := unwrapped.(consoleLike); ok {
+		return t.EnterInputMode(ctx, params...)
+	}
+	return func() {}
+}
+
+func IsConsoleLike(ctx context.Context) bool {
+	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
+	if _, ok := unwrapped.(consoleLike); ok {
+		return ok
+	}
+	return false
+}
+
+type consoleLike interface {
+	SetIdleLabel(string) func()
+	SetStickyContent(string, []byte)
+	EnterInputMode(context.Context, ...string) func()
+}

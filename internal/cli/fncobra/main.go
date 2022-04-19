@@ -31,6 +31,8 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	clrs "namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/common"
+	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -56,6 +58,7 @@ import (
 	src "namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/workspace/tasks/actiontracing"
 )
 
 func DoMain(name string, registerCommands func(*cobra.Command)) {
@@ -83,7 +86,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	var cleanupTracer func()
 	if tracerEndpoint := viper.GetString("jaeger_endpoint"); tracerEndpoint != "" && viper.GetBool("enable_tracing") {
-		ctx, cleanupTracer = tasks.SetupTracing(ctx, tracerEndpoint)
+		ctx, cleanupTracer = actiontracing.SetupTracing(ctx, tracerEndpoint)
 	}
 
 	out, colors := consoleFromFile()
@@ -136,7 +139,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		binary.BuildNix = genbinary.NixImage
 
 		// Setting up container registry logging, which is unfortunately global.
-		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", tasks.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
+		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
 
 		// Compute cacheables.
 		compute.RegisterProtoCacheable()
@@ -173,7 +176,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 		"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
-	rootCmd.PersistentFlags().BoolVar(&tasks.LogActions, "log_actions", tasks.LogActions,
+	rootCmd.PersistentFlags().BoolVar(&consolesink.LogActions, "log_actions", consolesink.LogActions,
 		"If set to true, each completed action is also output as a log message.")
 	rootCmd.PersistentFlags().BoolVar(&console.DebugToConsole, "debug_to_console", console.DebugToConsole,
 		"If set to true, we also output debug log messages to the console.")
@@ -396,9 +399,9 @@ func consoleToSink(out *os.File, colors bool) (*zerolog.Logger, tasks.ActionSink
 	logout := logoutput.OutputTo{Writer: out, WithColors: colors, OutputType: outputType()}
 
 	if colors && !viper.GetBool("console_no_colors") {
-		consoleSink := tasks.NewConsoleSink(out, viper.GetInt("console_log_level"))
+		consoleSink := consolesink.NewSink(out, viper.GetInt("console_log_level"))
 		cleanup := consoleSink.Start()
-		logout.Writer = console.ConsoleOutput(consoleSink, tasks.KnownStderr)
+		logout.Writer = console.ConsoleOutput(consoleSink, common.KnownStderr)
 
 		return logout.Logger(), consoleSink, cleanup
 	}

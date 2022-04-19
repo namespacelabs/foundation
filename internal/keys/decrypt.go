@@ -15,6 +15,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 )
 
+const SnapshotKeys = "fn.keys"
+
 type Reader interface {
 	io.Reader
 	io.ReaderAt

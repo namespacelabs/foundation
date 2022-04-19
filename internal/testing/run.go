@@ -86,7 +86,7 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle
 			defer cancel()
 
 			for k, failed := range e.FailedContainers {
-				out := console.TypedOutput(ctx, fmt.Sprintf("%s:%d", e.Name, k), tasks.CatOutputTool)
+				out := console.TypedOutput(ctx, fmt.Sprintf("%s:%d", e.Name, k), console.CatOutputTool)
 				if err := runtime.For(rt.Env).FetchLogsTo(ctx, out, failed, runtime.FetchLogsOpts{TailLines: 50}); err != nil {
 					fmt.Fprintf(console.Warnings(ctx), "failed to retrieve logs of %s: %v\n", e.Name, err)
 				}
