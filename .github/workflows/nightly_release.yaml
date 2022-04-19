@@ -1,9 +1,9 @@
 name: Nightly Release
 
 on:
-  schedule:
-    # On weekdays at 2am UTC
-    - cron: "0 2 * * 1-5"
+#  schedule:
+#     # On weekdays at 2am UTC
+#     - cron: "0 2 * * 1-5"
   workflow_dispatch:
 
 permissions:
