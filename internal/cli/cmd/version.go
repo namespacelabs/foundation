@@ -9,13 +9,14 @@ import (
 	"fmt"
 	"runtime"
 	"runtime/debug"
-	"strings"
 
+	"github.com/kr/text"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/versions"
 )
 
 func NewVersionCmd() *cobra.Command {
@@ -41,25 +42,25 @@ func NewVersionCmd() *cobra.Command {
 				return err
 			}
 
-			if v.Version == "" {
+			if v.GitCommit == "" {
 				return fnerrors.InternalError("binary does not include version information")
 			}
 
 			out := console.Stdout(ctx)
-			fmt.Fprintf(out, "fn version %s", v.Version)
+			fmt.Fprintf(out, "fn version %s (commit %s)\n", v.Version, v.GitCommit)
 
-			hints := []string{}
+			x := text.NewIndentWriter(out, []byte("  "))
+
 			if v.BuildTimeStr != "" {
-				hints = append(hints, fmt.Sprintf("built at %s", v.BuildTimeStr))
+				fmt.Fprintf(x, "commit date %s\n", v.BuildTimeStr)
 			}
 			if v.Modified {
-				hints = append(hints, "from a modified repo")
+				fmt.Fprintf(x, "built from modified repo\n")
 			}
-			hints = append(hints, fmt.Sprintf("on %s/%s", runtime.GOOS, runtime.GOARCH))
 
-			if len(hints) > 0 {
-				fmt.Fprintf(out, " (%s)\n", strings.Join(hints, " "))
-			}
+			fmt.Fprintf(x, "architecture %s/%s\n", runtime.GOOS, runtime.GOARCH)
+			fmt.Fprintf(x, "internal api %d (cache=%d tools=%d)\n", versions.APIVersion, versions.CacheVersion, versions.ToolAPIVersion)
+
 			return nil
 		}),
 	}

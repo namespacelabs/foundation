@@ -178,7 +178,7 @@ func buildRecordInvocationRequest(ctx context.Context, cmd *cobra.Command, c cli
 			}
 		} else {
 			req.Version = &binaryVersion{
-				Version:   v.Version,
+				Version:   v.GitCommit,
 				BuildTime: v.BuildTimeStr,
 				Modified:  false,
 			}

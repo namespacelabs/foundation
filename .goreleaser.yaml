@@ -8,6 +8,8 @@ builds:
     binary: fn
     flags:
       - -trimpath
+    ldflags:
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag={{.Version}}
     goos:
       - linux
     goarch:
@@ -21,6 +23,8 @@ builds:
     binary: fn
     flags:
       - -trimpath
+    ldflags:
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag={{.Version}}
     goos:
       - darwin
     goarch:

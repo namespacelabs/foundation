@@ -22,6 +22,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/binary/genbinary"
@@ -236,8 +237,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 				var messages []string
 
-				if status.TagName != "" {
-					messages = append(messages, fmt.Sprintf("New Foundation release %s is available.\nDownload: %s", status.TagName, downloadUrl(status.TagName)))
+				if status.NewVersion {
+					messages = append(messages, fmt.Sprintf("New Foundation release %s is available.\nDownload: %s", status.Version, downloadUrl(status.Version)))
 				}
 
 				if status.Message != "" {
@@ -276,10 +277,10 @@ func handleExitError(colors bool, err error) int {
 			ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			if status, err := FetchLatestRemoteStatus(ctxWithTimeout, versionCheckEndpoint, version.Version); err == nil && status.TagName != "" {
+			if status, err := FetchLatestRemoteStatus(ctxWithTimeout, versionCheckEndpoint, version.GitCommit); err == nil && status.Version != "" {
 				fmt.Fprintln(os.Stderr, indent.String(
 					wordwrap.String(
-						fmt.Sprintf("\nThe latest version of Foundation is %s, available at %s\n", clrs.Bold(status.TagName), downloadUrl(status.TagName)),
+						fmt.Sprintf("\nThe latest version of Foundation is %s, available at %s\n", clrs.Bold(status.Version), downloadUrl(status.Version)),
 						80),
 					2))
 			}
@@ -426,30 +427,28 @@ func cpuprofile(cpuprofile string) func() {
 func checkRemoteStatus(logger *zerolog.Logger, channel chan remoteStatus) {
 	defer close(channel)
 
-	version, err := version.Version()
+	ver, err := version.Version()
 	if err != nil {
 		logger.Debug().Err(err).Msg("failed to obtain version information")
 		return
 	}
 
-	if version.BuildTime == nil || version.Modified {
+	if ver.BuildTime == nil || ver.Version == version.DevelopmentBuildVersion {
 		return // Nothing to check.
 	}
 
-	logger.Debug().Stringer("binary_build_time", version.BuildTime).Msg("version check")
+	logger.Debug().Stringer("binary_build_time", ver.BuildTime).Msg("version check")
 
-	status, err := FetchLatestRemoteStatus(context.Background(), versionCheckEndpoint, version.Version)
+	status, err := FetchLatestRemoteStatus(context.Background(), versionCheckEndpoint, ver.GitCommit)
 	if err != nil {
 		logger.Debug().Err(err).Msg("version check failed")
 	} else {
 		logger.Debug().Stringer("latest_release_version", status.BuildTime).Msg("version check")
-		s := remoteStatus{
-			Message: status.Message,
+
+		if semver.Compare(status.Version, ver.Version) > 0 {
+			status.NewVersion = true
 		}
 
-		if status.BuildTime.After(*version.BuildTime) {
-			s.TagName = status.TagName
-		}
-		channel <- s
+		channel <- *status
 	}
 }
