@@ -139,7 +139,7 @@ func NewSession(ctx context.Context, r io.Reader, w io.Writer, opts ...NewSessio
 	go func() {
 		_, err := io.Copy(w, w_pr)
 		sess.debugf("leaving w->w_pr goroutine: %v", err)
-		w_pr.closeWithError(err)
+		_ = w_pr.closeWithError(err)
 	}()
 
 	go func() {
@@ -148,14 +148,14 @@ func NewSession(ctx context.Context, r io.Reader, w io.Writer, opts ...NewSessio
 		if err == nil {
 			err = io.EOF
 		}
-		r_pw.closeWithError(err)
+		_ = r_pw.closeWithError(err)
 	}()
 
 	go func() {
 		<-ctx.Done()
 		sess.debugf("context cancelled")
 		// On cancelation, close the reader with a cancelation error.
-		r_pw.closeWithError(ctx.Err())
+		_ = r_pw.closeWithError(ctx.Err())
 	}()
 
 	go sess.loop()
@@ -456,10 +456,10 @@ func (s *Session) quit(err error) {
 	s.ourStreams = nil
 	s.peerStreams = nil
 
-	s.r.closeWithError(err)
-	s.rwriter.closeWithError(err)
-	s.wreader.closeWithError(err)
-	s.w.closeWithError(err)
+	_ = s.r.closeWithError(err)
+	_ = s.rwriter.closeWithError(err)
+	_ = s.wreader.closeWithError(err)
+	_ = s.w.closeWithError(err)
 }
 
 func (s *Session) writeToStream(dir direction, id uint32, p []byte) (int, error) {
@@ -551,8 +551,8 @@ func (s *Stream) failed(err error) {
 }
 
 func (s *Stream) closePipes(err error) {
-	s.pr.closeWithError(err)
-	s.pw.closeWithError(err)
+	_ = s.pr.closeWithError(err)
+	_ = s.pw.closeWithError(err)
 }
 
 func (s *Stream) Read(p []byte) (int, error) {

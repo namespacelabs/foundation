@@ -19,7 +19,7 @@ func handle(ctx context.Context, h AllHandlers) error {
 	x, err := grpcstdio.NewSession(ctx, os.Stdin, os.Stdout, grpcstdio.WithCloseNotifier(func(_ *grpcstdio.Stream) {
 		// After we're done replying, shutdown the server, and then the binary.
 		// But we can't stop the server from this callback, as we're called with
-		// a grpcstdio locks held, and terminating the server will need to call
+		// grpcstdio locks held, and terminating the server will need to call
 		// Close on open connections, which would lead to a deadlock.
 		go s.Stop()
 	}))
