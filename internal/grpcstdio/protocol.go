@@ -139,6 +139,9 @@ func NewSession(ctx context.Context, r io.Reader, w io.Writer, opts ...NewSessio
 	go func() {
 		_, err := io.Copy(w, w_pr)
 		sess.debugf("leaving w->w_pr goroutine: %v", err)
+		if err == nil {
+			err = io.EOF
+		}
 		_ = w_pr.closeWithError(err)
 	}()
 
