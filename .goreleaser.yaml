@@ -9,7 +9,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag={{.Version}}
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
     goos:
       - linux
     goarch:
@@ -24,7 +24,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag={{.Version}}
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
     goos:
       - darwin
     goarch:
