@@ -33,7 +33,7 @@ import (
 	"namespacelabs.dev/foundation/internal/versions"
 )
 
-// The protocol uses variable-sized frames, emitted over either direction. Each
+// The protocol uses variable-sized frames, emitted in either direction. Each
 // frame follows the following structure:
 //
 // +---------+--------------+--------------+----------------+---------------+----------------+
@@ -72,7 +72,7 @@ type Session struct {
 	w       *bufferedPipeWriter
 	wreader *bufferedPipeReader // `w`'s pair.
 
-	debugf        func(string, ...any)
+	debugf        func(string, ...interface{})
 	onCloseStream func(*Stream)
 
 	mu           sync.Mutex
@@ -114,7 +114,7 @@ func NewSession(ctx context.Context, r io.Reader, w io.Writer, opts ...NewSessio
 		sessionAlloc: 1,
 		ourStreams:   map[uint32]*Stream{},
 		peerStreams:  map[uint32]*Stream{},
-		debugf:       func(s string, a ...any) {},
+		debugf:       func(s string, a ...interface{}) {},
 	}
 
 	for _, opt := range opts {
@@ -163,7 +163,7 @@ func NewSession(ctx context.Context, r io.Reader, w io.Writer, opts ...NewSessio
 	return sess, nil
 }
 
-func WithDebug(f func(string, ...any)) NewSessionOpt {
+func WithDebug(f func(string, ...interface{})) NewSessionOpt {
 	return func(s *Session) {
 		s.debugf = f
 	}
@@ -233,9 +233,12 @@ func (s *Session) Dial(dial *DialArgs) (*Stream, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// XXX check wrap around.
 	id := s.sessionAlloc
 	s.sessionAlloc++
+
+	if s.sessionAlloc > 0xffff {
+		panic("session allocation wrapped around")
+	}
 
 	stream, err := s.newStream(dirClient, id)
 	if err != nil {
@@ -463,6 +466,10 @@ func (s *Session) quit(err error) {
 }
 
 func (s *Session) writeToStream(dir direction, id uint32, p []byte) (int, error) {
+	if len(p) > 0x0fff_ffff {
+		return 0, errors.New("payload is too large")
+	}
+
 	op := opSendToServer
 	if dir == dirServer {
 		op = opSendToClient
