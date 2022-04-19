@@ -38,16 +38,16 @@ func newBufferedPipe() (*bufferedPipeReader, *bufferedPipeWriter) {
 }
 
 func (r *bufferedPipeReader) Read(data []byte) (int, error) {
+	if len(data) == 0 {
+		return 0, nil
+	}
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	for {
 		if r.readErr != nil {
 			return 0, r.readErr
-		}
-
-		if len(data) == 0 {
-			return 0, nil
 		}
 
 		n, _ := r.buf.Read(data)

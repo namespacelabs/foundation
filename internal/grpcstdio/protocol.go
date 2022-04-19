@@ -21,23 +21,23 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"log"
 	"net"
 	"sync"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/versions"
 )
 
 // The protocol uses variable-sized frames, emitted over either direction. Each
 // frame follows the following structure:
 //
 // +---------+--------------+--------------+----------------+---------------+----------------+
-// | Op (4b) | Length (28b) | Stream (16b) | Reserved (16b) | Payload (...) | Checksum (32b) |
+// | Op (4b) | Length (28b) | Stream (16b) | Reserved (16b) | Payload (...) | Checksum (64b) |
 // +---------+--------------+--------------+----------------+---------------+----------------+
 //
 // Each word is encoded in big-endian.
@@ -54,8 +54,6 @@ const (
 
 	dirServer direction = 1 // Accept'd
 	dirClient direction = 2 // Dial'd
-
-	emitDebug = false
 )
 
 type op int
@@ -64,16 +62,18 @@ type direction int
 type msg struct {
 	op_length       uint32
 	stream_reserved uint32
-	checksum        uint32
+	checksum        uint64
 	payload         []byte
 }
 
 type Session struct {
-	ctx     context.Context
 	r       *bufferedPipeReader
-	rwriter *bufferedPipeWriter
+	rwriter *bufferedPipeWriter // `r`'s pair.
 	w       *bufferedPipeWriter
-	wreader *bufferedPipeReader
+	wreader *bufferedPipeReader // `w`'s pair.
+
+	debugf        func(string, ...any)
+	onCloseStream func(*Stream)
 
 	mu           sync.Mutex
 	cond         *sync.Cond
@@ -85,8 +85,8 @@ type Session struct {
 }
 
 type DialedStream struct {
-	Stream *Stream
-	Args   *DialArgs
+	*Stream
+	Args *DialArgs
 }
 
 type Stream struct {
@@ -98,12 +98,13 @@ type Stream struct {
 	pr *bufferedPipeReader
 }
 
-func NewSession(ctx context.Context, r io.Reader, w io.Writer) (*Session, error) {
+type NewSessionOpt func(*Session)
+
+func NewSession(ctx context.Context, r io.Reader, w io.Writer, opts ...NewSessionOpt) (*Session, error) {
 	w_pr, w_pw := newBufferedPipe()
 	r_pr, r_pw := newBufferedPipe()
 
 	sess := &Session{
-		ctx:     ctx,
 		r:       r_pr,
 		rwriter: r_pw,
 		// A buffered writer is used, instead of the underlying writer, in order to not
@@ -113,11 +114,19 @@ func NewSession(ctx context.Context, r io.Reader, w io.Writer) (*Session, error)
 		sessionAlloc: 1,
 		ourStreams:   map[uint32]*Stream{},
 		peerStreams:  map[uint32]*Stream{},
+		debugf:       func(s string, a ...any) {},
+	}
+
+	for _, opt := range opts {
+		opt(sess)
 	}
 
 	sess.cond = sync.NewCond(&sess.mu)
 
-	hello := &HelloArgs{}
+	hello := &HelloArgs{
+		FnApiVersion:   versions.APIVersion,
+		ToolApiVersion: versions.ToolAPIVersion,
+	}
 	helloBytes, err := proto.Marshal(hello)
 	if err != nil {
 		return nil, err
@@ -128,20 +137,23 @@ func NewSession(ctx context.Context, r io.Reader, w io.Writer) (*Session, error)
 	}
 
 	go func() {
-		defer debug("left w->w_pr goroutine")
 		_, err := io.Copy(w, w_pr)
+		sess.debugf("leaving w->w_pr goroutine: %v", err)
 		w_pr.closeWithError(err)
 	}()
 
 	go func() {
-		defer debug("left r->r_pw goroutine")
 		_, err := io.Copy(r_pw, r)
+		sess.debugf("leaving r->r_pw goroutine: %v", err)
+		if err == nil {
+			err = io.EOF
+		}
 		r_pw.closeWithError(err)
 	}()
 
 	go func() {
 		<-ctx.Done()
-		debug("context cancelled")
+		sess.debugf("context cancelled")
 		// On cancelation, close the reader with a cancelation error.
 		r_pw.closeWithError(ctx.Err())
 	}()
@@ -149,6 +161,18 @@ func NewSession(ctx context.Context, r io.Reader, w io.Writer) (*Session, error)
 	go sess.loop()
 
 	return sess, nil
+}
+
+func WithDebug(f func(string, ...any)) NewSessionOpt {
+	return func(s *Session) {
+		s.debugf = f
+	}
+}
+
+func WithCloseNotifier(f func(*Stream)) NewSessionOpt {
+	return func(s *Session) {
+		s.onCloseStream = f
+	}
 }
 
 func (m msg) op() op {
@@ -163,7 +187,7 @@ func (m msg) streamID() uint32 {
 	return (m.stream_reserved >> 16) & 0xffff
 }
 
-func (m msg) serializeTo(w io.Writer) error {
+func (m msg) serializePayloadTo(w io.Writer) error {
 	if err := binary.Write(w, binary.BigEndian, m.op_length); err != nil {
 		return err
 	}
@@ -173,21 +197,34 @@ func (m msg) serializeTo(w io.Writer) error {
 	if _, err := w.Write(m.payload); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (m msg) serializeTo(w io.Writer) error {
+	if err := m.serializePayloadTo(w); err != nil {
+		return err
+	}
 	if err := binary.Write(w, binary.BigEndian, m.calculateChecksum()); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m msg) calculateChecksum() uint32 {
-	return 0 // XXX
+func (m msg) calculateChecksum() uint64 {
+	h := xxhash.New()
+
+	if err := m.serializePayloadTo(h); err != nil {
+		panic("failed to write hash")
+	}
+
+	return h.Sum64()
 }
 
 func (s *Session) Listener() net.Listener {
-	return &sessionListener{s}
+	return sessionListener{s}
 }
 
-func (s *Session) Dial(dial *DialArgs) (net.Conn, error) {
+func (s *Session) Dial(dial *DialArgs) (*Stream, error) {
 	dialBytes, err := proto.Marshal(dial)
 	if err != nil {
 		return nil, err
@@ -226,22 +263,12 @@ func (s *Session) readmsg() (msg, error) {
 		return msg, err
 	}
 
-	length := msg.length()
-	msg.payload = make([]byte, length)
-	n, err := s.r.Read(msg.payload)
-	if n < 0 {
-		panic("negative Read")
-	}
-
-	if uint32(n) < length {
-		return msg, fnerrors.InternalError("read was too short")
-	}
-
+	msg.payload, err = s.mustread(msg.length())
 	if err != nil {
 		return msg, err
 	}
 
-	msg.checksum, err = s.readword()
+	msg.checksum, err = s.readlongword()
 	if err != nil {
 		return msg, err
 	}
@@ -249,19 +276,38 @@ func (s *Session) readmsg() (msg, error) {
 	return msg, nil
 }
 
+func (s *Session) mustread(req uint32) ([]byte, error) {
+	block := make([]byte, req)
+	index := uint32(0)
+
+	for index < req {
+		n, err := s.r.Read(block[index:])
+		if err != nil {
+			return nil, err
+		}
+		if n < 0 {
+			panic("negative read")
+		}
+		index += uint32(n)
+	}
+
+	return block, nil
+}
+
 func (s *Session) readword() (uint32, error) {
-	word := make([]byte, 4)
-	n, err := s.r.Read(word)
+	word, err := s.mustread(4)
 	if err != nil {
 		return 0, err
 	}
-	if n < 4 {
-		return 0, fnerrors.InternalError("read too few bytes, wanted 4")
-	}
-	if err != nil && err != io.EOF {
+	return binary.BigEndian.Uint32(word), nil
+}
+
+func (s *Session) readlongword() (uint64, error) {
+	word, err := s.mustread(8)
+	if err != nil {
 		return 0, err
 	}
-	return binary.BigEndian.Uint32(word), nil
+	return binary.BigEndian.Uint64(word), nil
 }
 
 func (s *Session) loop() {
@@ -272,12 +318,17 @@ func (s *Session) loop() {
 			break
 		}
 
+		if msg.checksum != msg.calculateChecksum() {
+			s.quit(errors.New("bad checksum"))
+			break
+		}
+
 		s.handle(msg)
 	}
 }
 
 func (s *Session) handle(msg msg) {
-	debugf("handle op=%s sid=%d [%x %x]", msg.op(), msg.streamID(), msg.op_length, msg.stream_reserved)
+	s.debugf("handle op=%s sid=%d [%x %x]", msg.op(), msg.streamID(), msg.op_length, msg.stream_reserved)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -324,14 +375,12 @@ func (s *Session) handle(msg msg) {
 
 	case opCloseClientSide:
 		if stream, has := s.peerStreams[msg.streamID()]; has {
-			stream.closePipes(io.EOF)
-			delete(s.peerStreams, msg.streamID())
+			s.finStream(stream, io.EOF)
 		}
 
 	case opCloseServerSide:
 		if stream, has := s.ourStreams[msg.streamID()]; has {
-			stream.closePipes(io.EOF)
-			delete(s.ourStreams, msg.streamID())
+			s.finStream(stream, io.EOF)
 		}
 
 	case opServerError:
@@ -341,9 +390,8 @@ func (s *Session) handle(msg msg) {
 				st = status.New(codes.Internal, "unknown error").Proto()
 			}
 
-			debug("server error for stream", msg.streamID(), st)
-			stream.closePipes(status.FromProto(st).Err())
-			delete(s.ourStreams, msg.streamID())
+			s.debugf("server error for stream %x: %v", msg.streamID(), st)
+			s.finStream(stream, status.FromProto(st).Err())
 		}
 
 	case opClientError:
@@ -353,9 +401,8 @@ func (s *Session) handle(msg msg) {
 				st = status.New(codes.Internal, "unknown error").Proto()
 			}
 
-			debug("client error for stream", msg.streamID(), st)
-			stream.closePipes(status.FromProto(st).Err())
-			delete(s.peerStreams, msg.streamID())
+			s.debugf("client error for stream %x: %v", msg.streamID(), st)
+			s.finStream(stream, status.FromProto(st).Err())
 		}
 	}
 }
@@ -380,7 +427,7 @@ func (s *Session) sendRaw(m msg) error {
 	if err := m.serializeTo(&buf); err != nil {
 		return err
 	} else {
-		debugf("sendRaw op=%s %d bytes [%x %x]", m.op(), len(m.payload), m.op_length, m.stream_reserved)
+		s.debugf("sendRaw op=%s %d bytes [%x %x]", m.op(), len(m.payload), m.op_length, m.stream_reserved)
 		// Doesn't block to write to the actual destination, as `w` is a buffered pipe.
 		if _, err := buf.WriteTo(s.w); err != nil {
 			return err
@@ -391,7 +438,7 @@ func (s *Session) sendRaw(m msg) error {
 }
 
 func (s *Session) quit(err error) {
-	debug("quit", err)
+	s.debugf("quit: %v", err)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -439,14 +486,14 @@ func (s *Session) Accept() (*DialedStream, error) {
 
 	conn := s.pending[0]
 
-	debug("got connection", conn.Stream.direction, conn.Stream.id, conn.Args)
+	s.debugf("got connection %s %x %v", conn.Stream.direction, conn.Stream.id, conn.Args)
 
 	s.pending = s.pending[1:]
 	return conn, nil
 }
 
 func (s *Session) Shutdown() {
-	debug("close listener")
+	s.debugf("close listener")
 	s.quit(errors.New("listener closed"))
 }
 
@@ -462,19 +509,33 @@ func (s *Session) closeStreamUnsafe(stream *Stream) {
 			return
 		}
 
-		debug("close stream", stream.direction, stream.id)
-
-		delete(s.ourStreams, stream.id)
+		s.debugf("close stream %s %x", stream.direction, stream.id)
 		s.send(makeMsg(opCloseClientSide, stream.id, nil))
 	} else {
 		if _, ok := s.peerStreams[stream.id]; !ok {
 			return
 		}
 
-		debug("close stream", stream.direction, stream.id)
-
-		delete(s.peerStreams, stream.id)
+		s.debugf("close stream %s %x", stream.direction, stream.id)
 		s.send(makeMsg(opCloseServerSide, stream.id, nil))
+	}
+
+	s.finStream(stream, nil)
+}
+
+func (s *Session) finStream(stream *Stream, err error) {
+	if err != nil {
+		stream.closePipes(err)
+	}
+
+	if stream.direction == dirClient {
+		delete(s.ourStreams, stream.id)
+	} else {
+		delete(s.peerStreams, stream.id)
+	}
+
+	if s.onCloseStream != nil {
+		s.onCloseStream(stream)
 	}
 }
 
@@ -484,7 +545,7 @@ func (s *Stream) received(p []byte) error {
 }
 
 func (s *Stream) failed(err error) {
-	debug("stream failed", s.direction, s.id, err)
+	s.parent.debugf("stream failed %s %x: %v", s.direction, s.id, err)
 	s.closePipes(err)
 	s.parent.closeStreamUnsafe(s)
 }
@@ -503,6 +564,7 @@ func (s *Stream) Write(p []byte) (int, error) {
 }
 
 func (s *Stream) Close() error {
+	s.parent.debugf("stream.close %s %x", s.direction, s.id)
 	s.closePipes(errors.New("closed"))
 	s.parent.closeStream(s)
 	return nil
@@ -567,20 +629,16 @@ type sessionListener struct {
 	parent *Session
 }
 
-func (lis *sessionListener) Accept() (net.Conn, error) {
-	ds, err := lis.parent.Accept()
-	if err != nil {
-		return nil, err
-	}
-	return ds.Stream, nil
+func (lis sessionListener) Accept() (net.Conn, error) {
+	return lis.parent.Accept()
 }
 
-func (lis *sessionListener) Close() error {
+func (lis sessionListener) Close() error {
 	lis.parent.Shutdown()
 	return nil
 }
 
-func (lis *sessionListener) Addr() net.Addr {
+func (lis sessionListener) Addr() net.Addr {
 	return stdioAddr{"stdio", "listener"}
 }
 
@@ -615,17 +673,5 @@ func (dir direction) String() string {
 		return "server"
 	default:
 		return "unknown"
-	}
-}
-
-func debugf(format string, args ...any) {
-	if emitDebug {
-		log.Printf(format, args...)
-	}
-}
-
-func debug(args ...any) {
-	if emitDebug {
-		log.Println(args...)
 	}
 }

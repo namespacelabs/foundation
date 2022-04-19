@@ -6,18 +6,18 @@ package tools
 
 import (
 	"context"
+	"net"
 	"os"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/grpcstdio"
-	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
@@ -70,57 +70,32 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 
 	eg, wait := executor.New(ctx)
 
-	lis := grpcstdio.NewListener(ctx)
-	s := grpc.NewServer()
-
 	eg.Go(func(ctx context.Context) error {
-		defer s.Stop()
-		defer outr.Close() // Force read()s to fail, else the grpcserver may be forever stuck.
-
-		return Impl().RunWithOpts(ctx, opts, localexec.RunOpts{
-			OnStart: func() {
-				// Let grpc know there's a new connection, i.e. the process has spawned.
-				_ = lis.Ready(ctx, grpcstdio.NewConnection(inw, outr))
-			},
-		})
+		return Impl().Run(ctx, opts)
 	})
-
-	var helloCh chan (struct{})
-
-	// Some of these timeouts are aggressive for CI; just rely on total timeouts there.
-	if !environment.IsRunningInCI() {
-		// Closed by OnHello when we get an hello from the process.
-		helloCh = make(chan struct{})
-		eg.Go(func(ctx context.Context) error {
-			t := time.NewTimer(MaxHandshakeTime)
-			defer t.Stop()
-
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-t.C:
-				return fnerrors.InternalError("%s: did not handshake in time, waited %v", pkg, MaxHandshakeTime)
-			case <-helloCh:
-				return nil // All good
-			}
-		})
-	}
 
 	var resp *protocol.ToolResponse // XXX lock.
 	eg.Go(func(ctx context.Context) error {
-		protocol.RegisterInvocationServiceServer(s, service{
-			Request: req,
-			OnHello: func() {
-				// The worker process said hi, so it follows the protocol.
-				if helloCh != nil {
-					close(helloCh)
-				}
-			},
-			OnResponse: func(tr *protocol.ToolResponse) {
-				resp = tr
-			},
-		})
-		return s.Serve(lis)
+		session, err := grpcstdio.NewSession(ctx, outr, inw)
+		if err != nil {
+			return err
+		}
+
+		conn, err := grpc.DialContext(ctx, "stdio",
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithReadBufferSize(0),
+			grpc.WithWriteBufferSize(0),
+			grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+				return session.Dial(&grpcstdio.DialArgs{})
+			}))
+		if err != nil {
+			return err
+		}
+
+		defer conn.Close()
+
+		resp, err = protocol.NewInvocationServiceClient(conn).Invoke(ctx, req)
+		return err
 	})
 
 	if err := wait(); err != nil {
@@ -134,38 +109,4 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 	attachments.AttachSerializable("response.textpb", "", resp)
 
 	return resp, nil
-}
-
-type service struct {
-	Request    *protocol.ToolRequest
-	OnHello    func()
-	OnResponse func(*protocol.ToolResponse)
-}
-
-func (svc service) Worker(server protocol.InvocationService_WorkerServer) error {
-	for {
-		chunk, err := server.Recv()
-		if err != nil {
-			return err
-		}
-
-		if chunk.ClientHello != nil {
-			svc.OnHello()
-
-			if err := server.Send(&protocol.WorkerCoordinatorChunk{
-				ServerHello: &protocol.WorkerCoordinatorChunk_ServerHello{
-					FnApiVersion:   versions.APIVersion,
-					ToolApiVersion: versions.ToolAPIVersion,
-				},
-				ToolRequest: svc.Request,
-			}); err != nil {
-				return err
-			}
-		}
-
-		if chunk.ToolResponse != nil {
-			svc.OnResponse(chunk.ToolResponse)
-			return nil
-		}
-	}
 }

@@ -9,7 +9,18 @@ package foundation.internal.grpcstdio;
 option go_package = "namespacelabs.dev/foundation/internal/grpcstdio";
 
 message HelloArgs {
+    int32 fn_api_version   = 1;
+    int32 tool_api_version = 2;
 }
 
 message DialArgs {
+    StreamType stream_type  = 1;
+    string     service_name = 2;
+    string     method_name  = 3;
+
+    enum StreamType {
+        STREAM_TYPE_UNKNOWN     = 0;  // Defaults to gRPC.
+        STREAM_TYPE_GRPC        = 1;
+        STREAM_TYPE_DIRECT_CALL = 2;  // Handshake-less version of a request/response.
+    }
 }

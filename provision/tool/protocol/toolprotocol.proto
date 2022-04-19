@@ -92,6 +92,7 @@ message Snapshot {
 
 service InvocationService {
     rpc Worker(stream WorkerChunk) returns (stream WorkerCoordinatorChunk);
+    rpc Invoke(ToolRequest) returns (ToolResponse);
 }
 
 message WorkerChunk {
