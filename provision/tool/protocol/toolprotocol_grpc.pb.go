@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type InvocationServiceClient interface {
-	Worker(ctx context.Context, opts ...grpc.CallOption) (InvocationService_WorkerClient, error)
+	Invoke(ctx context.Context, in *ToolRequest, opts ...grpc.CallOption) (*ToolResponse, error)
 }
 
 type invocationServiceClient struct {
@@ -33,50 +33,28 @@ func NewInvocationServiceClient(cc grpc.ClientConnInterface) InvocationServiceCl
 	return &invocationServiceClient{cc}
 }
 
-func (c *invocationServiceClient) Worker(ctx context.Context, opts ...grpc.CallOption) (InvocationService_WorkerClient, error) {
-	stream, err := c.cc.NewStream(ctx, &InvocationService_ServiceDesc.Streams[0], "/foundation.provision.tool.protocol.InvocationService/Worker", opts...)
+func (c *invocationServiceClient) Invoke(ctx context.Context, in *ToolRequest, opts ...grpc.CallOption) (*ToolResponse, error) {
+	out := new(ToolResponse)
+	err := c.cc.Invoke(ctx, "/foundation.provision.tool.protocol.InvocationService/Invoke", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &invocationServiceWorkerClient{stream}
-	return x, nil
-}
-
-type InvocationService_WorkerClient interface {
-	Send(*WorkerChunk) error
-	Recv() (*WorkerCoordinatorChunk, error)
-	grpc.ClientStream
-}
-
-type invocationServiceWorkerClient struct {
-	grpc.ClientStream
-}
-
-func (x *invocationServiceWorkerClient) Send(m *WorkerChunk) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *invocationServiceWorkerClient) Recv() (*WorkerCoordinatorChunk, error) {
-	m := new(WorkerCoordinatorChunk)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 // InvocationServiceServer is the server API for InvocationService service.
 // All implementations should embed UnimplementedInvocationServiceServer
 // for forward compatibility
 type InvocationServiceServer interface {
-	Worker(InvocationService_WorkerServer) error
+	Invoke(context.Context, *ToolRequest) (*ToolResponse, error)
 }
 
 // UnimplementedInvocationServiceServer should be embedded to have forward compatible implementations.
 type UnimplementedInvocationServiceServer struct {
 }
 
-func (UnimplementedInvocationServiceServer) Worker(InvocationService_WorkerServer) error {
-	return status.Errorf(codes.Unimplemented, "method Worker not implemented")
+func (UnimplementedInvocationServiceServer) Invoke(context.Context, *ToolRequest) (*ToolResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Invoke not implemented")
 }
 
 // UnsafeInvocationServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -90,30 +68,22 @@ func RegisterInvocationServiceServer(s grpc.ServiceRegistrar, srv InvocationServ
 	s.RegisterService(&InvocationService_ServiceDesc, srv)
 }
 
-func _InvocationService_Worker_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(InvocationServiceServer).Worker(&invocationServiceWorkerServer{stream})
-}
-
-type InvocationService_WorkerServer interface {
-	Send(*WorkerCoordinatorChunk) error
-	Recv() (*WorkerChunk, error)
-	grpc.ServerStream
-}
-
-type invocationServiceWorkerServer struct {
-	grpc.ServerStream
-}
-
-func (x *invocationServiceWorkerServer) Send(m *WorkerCoordinatorChunk) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *invocationServiceWorkerServer) Recv() (*WorkerChunk, error) {
-	m := new(WorkerChunk)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _InvocationService_Invoke_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ToolRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(InvocationServiceServer).Invoke(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/foundation.provision.tool.protocol.InvocationService/Invoke",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InvocationServiceServer).Invoke(ctx, req.(*ToolRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 // InvocationService_ServiceDesc is the grpc.ServiceDesc for InvocationService service.
@@ -122,14 +92,12 @@ func (x *invocationServiceWorkerServer) Recv() (*WorkerChunk, error) {
 var InvocationService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "foundation.provision.tool.protocol.InvocationService",
 	HandlerType: (*InvocationServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams: []grpc.StreamDesc{
+	Methods: []grpc.MethodDesc{
 		{
-			StreamName:    "Worker",
-			Handler:       _InvocationService_Worker_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "Invoke",
+			Handler:    _InvocationService_Invoke_Handler,
 		},
 	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "provision/tool/protocol/toolprotocol.proto",
 }

@@ -1,0 +1,16 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.internal.grpcstdio.testdata;
+
+option go_package = "namespacelabs.dev/foundation/internal/grpcstdio/testdata";
+
+service TestService {
+    rpc Make(Request) returns (Response);
+}
+
+message Request {}
+message Response {}
