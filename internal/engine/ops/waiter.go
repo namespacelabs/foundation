@@ -28,7 +28,8 @@ type Event struct {
 	AlreadyExisted bool
 	ImplMetadata   interface{} // JSON serializable implementation-specific metadata.
 
-	WaitStatus []WaitStatus
+	WaitStatus  []WaitStatus
+	WaitDetails string
 
 	AllDone bool // True when WaitUntilReady returns.
 }

@@ -5,8 +5,10 @@
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/kr/text"
@@ -17,7 +19,10 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-const maxDeployWait = 10 * time.Second
+const (
+	maxDeployWait      = 10 * time.Second
+	tailLinesOnFailure = 10
+)
 
 func Wait(ctx context.Context, env ops.Environment, servers []*schema.Server, waiters []ops.Waiter) error {
 	rwb := renderwait.NewBlock(ctx, "deploy")
@@ -35,7 +40,8 @@ func Wait(ctx context.Context, env ops.Environment, servers []*schema.Server, wa
 
 func observeContainers(ctx context.Context, env ops.Environment, parent chan ops.Event) chan ops.Event {
 	ch := make(chan ops.Event)
-	t := time.NewTimer(maxDeployWait)
+	t := time.NewTicker(maxDeployWait)
+	firsttick := true // After the first tick, we tick twice as fast.
 
 	go func() {
 		defer close(parent)
@@ -68,41 +74,60 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 				}
 
 			case <-t.C:
-				out := console.TypedOutput(ctx, "deploy", console.CatOutputUs)
-				fmt.Fprintf(out, "Deploying is taking too long, fetching diagnostics of the pending containers:\n")
+				if firsttick {
+					firsttick = false
+					t.Reset(maxDeployWait / 2)
+				}
 
 				rt := runtime.For(env)
-				for _, wslist := range pending {
+				for resourceID, wslist := range pending {
+					all := []runtime.ContainerUnitWaitStatus{}
 					for _, w := range wslist {
-						all := []runtime.ContainerUnitWaitStatus{}
 						all = append(all, w.Containers...)
 						all = append(all, w.Initializers...)
-						for _, ws := range all {
-							diagnostics, err := rt.FetchDiagnostics(ctx, ws.Reference)
-							if err != nil {
-								fmt.Fprintf(out, "Failed to retrieve diagnostics for %s: %v\n", ws.Reference.HumanReference(), err)
-								continue
+					}
+					if len(all) == 0 {
+						// No containers are present yet, should still produce pod diagnostics.
+						continue
+					}
+
+					buf := bytes.NewBuffer(nil)
+					out := io.MultiWriter(buf, console.Debug(ctx))
+					fmt.Fprintf(out, "Diagnostics, retrieved at %v:\n", time.Now())
+
+					// XXX fetching diagnostics should not block forwarding events (above).
+					for _, ws := range all {
+						diagnostics, err := rt.FetchDiagnostics(ctx, ws.Reference)
+						if err != nil {
+							fmt.Fprintf(out, "Failed to retrieve diagnostics for %s: %v\n", ws.Reference.HumanReference(), err)
+							continue
+						}
+
+						fmt.Fprintf(out, "%s:\n", ws.Reference.HumanReference())
+
+						switch {
+						case diagnostics.Running:
+							fmt.Fprintf(out, "  Running, logs (last %d lines):\n", tailLinesOnFailure)
+							if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure}); err != nil {
+								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference(), err)
 							}
 
-							fmt.Fprintf(out, "%s:\n", ws.Reference.HumanReference())
+						case diagnostics.Waiting:
+							fmt.Fprintf(out, "  Waiting: %s\n", diagnostics.WaitingReason)
 
-							switch {
-							case diagnostics.Running:
-								fmt.Fprintf(out, "  Log tail:\n")
-								if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: 20}); err != nil {
-									fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference(), err)
-								}
-
-							case diagnostics.Waiting:
-								fmt.Fprintf(out, "  Waiting: %s\n", diagnostics.WaitingReason)
-
-							case diagnostics.Terminated:
-								fmt.Fprintf(out, "  Failed: %s (exit code %d), last log tail:\n", diagnostics.TerminatedReason, diagnostics.ExitCode)
-								if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: 20, FetchLastFailure: true}); err != nil {
+						case diagnostics.Terminated:
+							if diagnostics.ExitCode > 0 {
+								fmt.Fprintf(out, "  Failed: %s (exit code %d), logs (last %d lines):\n", diagnostics.TerminatedReason, diagnostics.ExitCode, tailLinesOnFailure)
+								if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
 									fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference(), err)
 								}
 							}
 						}
+					}
+
+					parent <- ops.Event{
+						ResourceID:  resourceID,
+						WaitDetails: buf.String(),
 					}
 				}
 			}
