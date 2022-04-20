@@ -160,3 +160,50 @@ fn dev -H 0.0.0.0:4001 --devweb std/testdata/server/gogrpc
 
 Use `-H` to change the listening hostname/port, in case you're running `fn dev` in a machine or VM
 different from your workstation.
+
+### Using `age` for simple secret management
+
+When a server has secrets required for deployment, sharing those secrets between different users
+can sometimes be challenging. Foundation includes a simple solution for it, building on `age`.
+
+You generate a pub/private identity using `fn keys generate`, which can then be
+used to encrypt a payload that can be submitted back into a repository. Access
+to the payload is determined by the keys which have been added as receipients to
+the encrypted payload. This list of keys can be public, and kept in the
+repository.
+
+```
+fn keys generate
+Created age1kacjakcg8dqyxzdwldemrx4pt79ructa6z0mgw7nk03mgxl3vqsslph4fz
+```
+
+
+```
+mkdir server/secrets/
+echo age1kacjakcg8dqyxzdwldemrx4pt79ructa6z0mgw7nk03mgxl3vqsslph4fz >> server/secrets/contents.tar.keys
+fn keys encrypt server/secrets
+```
+
+A `server/secrets/contents.tar.age` will be generated which can be submitted to the repository. 
+
+To grant access to the encrypted file, merely have your teammate generate a key (see above), add it to
+the keys file, and run:
+
+```
+fn keys encrypt --reencrypt server/secrets
+```
+
+The resulting files should now be submitted to the repository.
+
+To perform other changes, simply do:
+
+```
+fn keys shell server/secrets/
+```
+
+And you'll be dropped to a shell where the secrets have been decrypted, and will be re-encrypted when you leave
+the shell.
+
+Note: this mechanism for secret management does not handle revocations. If a key has been issued which should
+no longer have access to the contents, all secret values should be considered compromised and replaced (as the
+person with private key can read the values from any previous repository commit).
