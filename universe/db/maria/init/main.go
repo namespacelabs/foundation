@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/dustin/go-humanize"
 	"namespacelabs.dev/foundation/universe/db/maria"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -29,8 +30,10 @@ var (
 
 func connect(ctx context.Context, password string, address string, port uint32) (db *sql.DB, err error) {
 	connString := fmt.Sprintf("root:%s@tcp(%s:%d)/", password, address, port)
+	count := 0
 	err = backoff.Retry(func() error {
-		log.Printf("Connecting to MariaDB.")
+		count++
+		log.Printf("Attempting to connect to MariaDB (%s try).", humanize.Ordinal(count))
 		db, err = sql.Open("mysql", connString)
 		if err != nil {
 			log.Printf("Failed to connect to MariaDB: %v", err)
