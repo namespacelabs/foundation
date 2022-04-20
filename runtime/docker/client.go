@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	configtypes "github.com/docker/cli/cli/config/types"
+	"github.com/docker/cli/cli/connhelper"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
@@ -45,7 +46,31 @@ func clientConfiguration() *Configuration {
 func NewClient() (Client, error) {
 	config := clientConfiguration()
 
-	opts := []client.Opt{client.WithHost(config.Host), client.WithAPIVersionNegotiation()}
+	var opts []client.Opt
+
+	helper, err := connhelper.GetConnectionHelper(config.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	if helper == nil {
+		opts = append(opts, client.WithHost(config.Host))
+	} else {
+		httpClient := &http.Client{
+			// No tls
+			// No proxy
+			Transport: &http.Transport{
+				DialContext: helper.Dialer,
+			},
+		}
+		opts = append(opts,
+			client.WithHTTPClient(httpClient),
+			client.WithHost(helper.Host),
+			client.WithDialContext(helper.Dialer),
+		)
+	}
+
+	opts = append(opts, client.WithAPIVersionNegotiation())
 
 	if config.CertPath != "" {
 		options := tlsconfig.Options{
