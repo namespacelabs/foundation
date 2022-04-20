@@ -78,7 +78,7 @@ func NewTestCmd() *cobra.Command {
 
 			for _, loc := range locs {
 				// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
-				env := testing.PrepareEnvFrom(devEnv)
+				env := testing.PrepareEnvFrom(devEnv, !testOpts.KeepRuntime)
 
 				test, err := testing.PrepareTest(ctx, pl, env, loc.AsPackageName(), testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
 					var suts []provision.Server

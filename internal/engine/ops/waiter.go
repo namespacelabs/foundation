@@ -30,6 +30,8 @@ type Event struct {
 
 	WaitStatus  []WaitStatus
 	WaitDetails string
+	// XXX move to a runtime/ specific type.
+	RuntimeSpecificHelp string // Something like `kubectl -n foobar describe pod quux`
 
 	AllDone bool // True when WaitUntilReady returns.
 }

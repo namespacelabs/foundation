@@ -47,9 +47,10 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 	return tasks.Action(runtime.TaskServerStart).Scope(w.scope).Run(ctx,
 		func(ctx context.Context) error {
 			ev := ops.Event{
-				ResourceID: fmt.Sprintf("%s/%s", w.apply.Namespace, w.apply.Name),
-				Kind:       w.apply.Resource,
-				Scope:      w.scope,
+				ResourceID:          fmt.Sprintf("%s/%s", w.apply.Namespace, w.apply.Name),
+				Kind:                w.apply.Resource,
+				Scope:               w.scope,
+				RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.apply.Namespace, w.apply.Resource, w.apply.Name),
 			}
 
 			switch w.resource {

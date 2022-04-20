@@ -49,6 +49,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 
 		// Keep track of the pending ContainerWaitStatus per resource type.
 		pending := map[string][]runtime.ContainerWaitStatus{}
+		helps := map[string]string{}
 
 		for {
 			select {
@@ -64,6 +65,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 
 				if ev.Ready != ops.Ready {
 					pending[ev.ResourceID] = nil
+					helps[ev.ResourceID] = ev.RuntimeSpecificHelp
 					for _, w := range ev.WaitStatus {
 						if cws, ok := w.(runtime.ContainerWaitStatus); ok {
 							pending[ev.ResourceID] = append(pending[ev.ResourceID], cws)
@@ -93,6 +95,11 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 
 					buf := bytes.NewBuffer(nil)
 					out := io.MultiWriter(buf, console.Debug(ctx))
+
+					if help, ok := helps[resourceID]; ok && !env.Proto().GetEphemeral() {
+						fmt.Fprintf(out, "For more information, run:\n  %s\n", help)
+					}
+
 					fmt.Fprintf(out, "Diagnostics, retrieved at %v:\n", time.Now())
 
 					// XXX fetching diagnostics should not block forwarding events (above).
@@ -103,7 +110,11 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 							continue
 						}
 
-						fmt.Fprintf(out, "%s:\n", ws.Reference.HumanReference())
+						fmt.Fprintf(out, "%s", ws.Reference.HumanReference())
+						if diagnostics.RestartCount > 0 {
+							fmt.Fprintf(out, " (restarted %d times)", diagnostics.RestartCount)
+						}
+						fmt.Fprintln(out, ":")
 
 						switch {
 						case diagnostics.Running:

@@ -133,12 +133,13 @@ func RegisterGraphHandlers() {
 						WaitForPodConditition(fetchPod(apply.Namespace, apply.Name),
 							func(ps v1.PodStatus) (bool, error) {
 								ev := ops.Event{
-									ResourceID:   fmt.Sprintf("%s/%s", apply.Namespace, apply.Name),
-									Kind:         apply.Resource,
-									Category:     "Servers deployed",
-									Scope:        sc,
-									Ready:        ops.NotReady,
-									ImplMetadata: ps,
+									ResourceID:          fmt.Sprintf("%s/%s", apply.Namespace, apply.Name),
+									Kind:                apply.Resource,
+									Category:            "Servers deployed",
+									Scope:               sc,
+									Ready:               ops.NotReady,
+									ImplMetadata:        ps,
+									RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", apply.Namespace, apply.Name),
 								}
 
 								ev.WaitStatus = append(ev.WaitStatus, waiterFromPodStatus(apply.Namespace, apply.Name, ps))
