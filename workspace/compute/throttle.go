@@ -8,9 +8,11 @@ import (
 	"context"
 	"embed"
 	"io/fs"
+	"os"
 	"sync"
 
 	"google.golang.org/protobuf/encoding/prototext"
+	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -33,7 +35,17 @@ type throttleCapacity struct {
 }
 
 func parseThrottleConfig() (*ThrottleConfigurations, error) {
-	bytes, err := fs.ReadFile(embeddedConfig, "throttle.textpb")
+	if dir, err := dirs.Config(); err == nil {
+		if cfg, err := parseThrottleConfigFrom(os.DirFS(dir)); err == nil {
+			return cfg, nil
+		}
+	}
+
+	return parseThrottleConfigFrom(embeddedConfig)
+}
+
+func parseThrottleConfigFrom(fsys fs.FS) (*ThrottleConfigurations, error) {
+	bytes, err := fs.ReadFile(fsys, "throttle.textpb")
 	if err != nil {
 		return nil, err
 	}
