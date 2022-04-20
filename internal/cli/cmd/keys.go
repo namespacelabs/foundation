@@ -5,15 +5,18 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"filippo.io/age"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -82,9 +85,18 @@ func NewKeysCmd() *cobra.Command {
 		Use:   "encrypt",
 		Short: "Encrypt a directory (e.g. secrets).",
 		Args:  cobra.ExactArgs(1),
-
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			return enc(ctx, args[0], fnfs.ReadWriteLocalFS(args[0]), reencrypt)
+		}),
+	}
+
+	importCmd := &cobra.Command{
+		Use:   "import [public-key]",
+		Short: "Import an existing public/private key pair.",
+		Args:  cobra.ExactArgs(1),
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			return importImpl(ctx, args[0])
 		}),
 	}
 
@@ -176,6 +188,7 @@ func NewKeysCmd() *cobra.Command {
 
 	cmd.AddCommand(generate)
 	cmd.AddCommand(encrypt)
+	cmd.AddCommand(importCmd)
 	cmd.AddCommand(shell)
 
 	return cmd
@@ -195,5 +208,48 @@ func enc(ctx context.Context, dir string, src fs.FS, reencrypt bool) error {
 	}
 
 	fmt.Fprintf(console.Stdout(ctx), "Updated %s\n", filepath.Join(dir, keys.EncryptedFile))
+	return nil
+}
+
+func readPassword(ctx context.Context) ([]byte, error) {
+	done := console.EnterInputMode(ctx)
+	defer done()
+	return term.ReadPassword(0)
+}
+
+func importImpl(ctx context.Context, publicKey string) error {
+	if _, err := age.ParseRecipients(strings.NewReader(publicKey)); err != nil {
+		return fnerrors.BadInputError("key %q is not valid: %w", publicKey, err)
+	}
+	keyDir, err := keys.EnsureKeysDir(ctx)
+	if err != nil {
+		return fnerrors.InternalError("failed to fetch keydir: %w", err)
+	}
+	// Check if a given key already exists. We should probably ask if overwrite is intended. As for now, bail out.
+	if err := keys.Visit(ctx, keyDir, func(xid *age.X25519Identity) error {
+		if xid.Recipient().String() == publicKey {
+			return fmt.Errorf("Key %q already exists. I will not overwrite.", publicKey)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Ask for the input and store it in a file.
+	fmt.Fprintf(console.Stdout(ctx), "Please paste the private key (the input will not be echo-ed):\n>\n")
+	pass, err := readPassword(ctx)
+	if err != nil {
+		return err
+	}
+	if identities, err := age.ParseIdentities(bytes.NewReader(pass)); err != nil {
+		return err
+	} else if len(identities) != 1 {
+		return fmt.Errorf("Expecting one key to be present. Got %d", len(identities))
+	}
+	if err := fnfs.WriteFile(ctx, keyDir, publicKey+".txt", append(pass, '\n'), 0600); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(console.Stdout(ctx), "Successfully imported key %q\n", publicKey)
 	return nil
 }
