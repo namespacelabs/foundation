@@ -1764,8 +1764,9 @@ type Provides_AvailableIn struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Go  *Provides_AvailableIn_Go  `protobuf:"bytes,1,opt,name=go,proto3" json:"go,omitempty"`
-	Web *Provides_AvailableIn_Web `protobuf:"bytes,2,opt,name=web,proto3" json:"web,omitempty"`
+	Go     *Provides_AvailableIn_Go     `protobuf:"bytes,1,opt,name=go,proto3" json:"go,omitempty"`
+	Web    *Provides_AvailableIn_Web    `protobuf:"bytes,2,opt,name=web,proto3" json:"web,omitempty"`
+	Nodejs *Provides_AvailableIn_NodeJs `protobuf:"bytes,3,opt,name=nodejs,proto3" json:"nodejs,omitempty"`
 }
 
 func (x *Provides_AvailableIn) Reset() {
@@ -1810,6 +1811,13 @@ func (x *Provides_AvailableIn) GetGo() *Provides_AvailableIn_Go {
 func (x *Provides_AvailableIn) GetWeb() *Provides_AvailableIn_Web {
 	if x != nil {
 		return x.Web
+	}
+	return nil
+}
+
+func (x *Provides_AvailableIn) GetNodejs() *Provides_AvailableIn_NodeJs {
+	if x != nil {
+		return x.Nodejs
 	}
 	return nil
 }
@@ -1907,6 +1915,61 @@ func (*Provides_AvailableIn_Web) Descriptor() ([]byte, []int) {
 	return file_schema_schema_proto_rawDescGZIP(), []int{6, 0, 1}
 }
 
+type Provides_AvailableIn_NodeJs struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Package string `protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
+	Type    string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+}
+
+func (x *Provides_AvailableIn_NodeJs) Reset() {
+	*x = Provides_AvailableIn_NodeJs{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_schema_schema_proto_msgTypes[23]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Provides_AvailableIn_NodeJs) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Provides_AvailableIn_NodeJs) ProtoMessage() {}
+
+func (x *Provides_AvailableIn_NodeJs) ProtoReflect() protoreflect.Message {
+	mi := &file_schema_schema_proto_msgTypes[23]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Provides_AvailableIn_NodeJs.ProtoReflect.Descriptor instead.
+func (*Provides_AvailableIn_NodeJs) Descriptor() ([]byte, []int) {
+	return file_schema_schema_proto_rawDescGZIP(), []int{6, 0, 2}
+}
+
+func (x *Provides_AvailableIn_NodeJs) GetPackage() string {
+	if x != nil {
+		return x.Package
+	}
+	return ""
+}
+
+func (x *Provides_AvailableIn_NodeJs) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
 type Server_Binary struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1919,7 +1982,7 @@ type Server_Binary struct {
 func (x *Server_Binary) Reset() {
 	*x = Server_Binary{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[23]
+		mi := &file_schema_schema_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1932,7 +1995,7 @@ func (x *Server_Binary) String() string {
 func (*Server_Binary) ProtoMessage() {}
 
 func (x *Server_Binary) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[23]
+	mi := &file_schema_schema_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1976,7 +2039,7 @@ type Server_ServiceSpec struct {
 func (x *Server_ServiceSpec) Reset() {
 	*x = Server_ServiceSpec{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[24]
+		mi := &file_schema_schema_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1989,7 +2052,7 @@ func (x *Server_ServiceSpec) String() string {
 func (*Server_ServiceSpec) ProtoMessage() {}
 
 func (x *Server_ServiceSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[24]
+	mi := &file_schema_schema_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2047,7 +2110,7 @@ type Server_URLMapEntry struct {
 func (x *Server_URLMapEntry) Reset() {
 	*x = Server_URLMapEntry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[25]
+		mi := &file_schema_schema_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2060,7 +2123,7 @@ func (x *Server_URLMapEntry) String() string {
 func (*Server_URLMapEntry) ProtoMessage() {}
 
 func (x *Server_URLMapEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[25]
+	mi := &file_schema_schema_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2124,7 +2187,7 @@ type Allocation_Instance struct {
 func (x *Allocation_Instance) Reset() {
 	*x = Allocation_Instance{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[26]
+		mi := &file_schema_schema_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2137,7 +2200,7 @@ func (x *Allocation_Instance) String() string {
 func (*Allocation_Instance) ProtoMessage() {}
 
 func (x *Allocation_Instance) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[26]
+	mi := &file_schema_schema_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2311,7 +2374,7 @@ var file_schema_schema_proto_rawDesc = []byte{
 	0x65, 0x64, 0x2e, 0x50, 0x6f, 0x72, 0x74, 0x48, 0x00, 0x52, 0x04, 0x70, 0x6f, 0x72, 0x74, 0x1a,
 	0x1a, 0x0a, 0x04, 0x50, 0x6f, 0x72, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18,
 	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x42, 0x06, 0x0a, 0x04, 0x74,
-	0x79, 0x70, 0x65, 0x22, 0xa2, 0x03, 0x0a, 0x08, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x73,
+	0x79, 0x70, 0x65, 0x22, 0xa2, 0x04, 0x0a, 0x08, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x73,
 	0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04,
 	0x6e, 0x61, 0x6d, 0x65, 0x12, 0x2e, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01,
 	0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e,
@@ -2325,7 +2388,7 @@ var file_schema_schema_proto_rawDesc = []byte{
 	0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69,
 	0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6e,
 	0x74, 0x69, 0x61, 0x74, 0x65, 0x52, 0x0b, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x69, 0x61,
-	0x74, 0x65, 0x1a, 0xc3, 0x01, 0x0a, 0x0b, 0x41, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62, 0x6c, 0x65,
+	0x74, 0x65, 0x1a, 0xc3, 0x02, 0x0a, 0x0b, 0x41, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62, 0x6c, 0x65,
 	0x49, 0x6e, 0x12, 0x3a, 0x0a, 0x02, 0x67, 0x6f, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a,
 	0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65,
 	0x6d, 0x61, 0x2e, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x73, 0x2e, 0x41, 0x76, 0x61, 0x69,
@@ -2333,11 +2396,19 @@ var file_schema_schema_proto_rawDesc = []byte{
 	0x0a, 0x03, 0x77, 0x65, 0x62, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2b, 0x2e, 0x66, 0x6f,
 	0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e,
 	0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x73, 0x2e, 0x41, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62,
-	0x6c, 0x65, 0x49, 0x6e, 0x2e, 0x57, 0x65, 0x62, 0x52, 0x03, 0x77, 0x65, 0x62, 0x1a, 0x32, 0x0a,
-	0x02, 0x47, 0x6f, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x12, 0x12, 0x0a,
-	0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70,
-	0x65, 0x1a, 0x05, 0x0a, 0x03, 0x57, 0x65, 0x62, 0x22, 0x3d, 0x0a, 0x07, 0x54, 0x79, 0x70, 0x65,
+	0x6c, 0x65, 0x49, 0x6e, 0x2e, 0x57, 0x65, 0x62, 0x52, 0x03, 0x77, 0x65, 0x62, 0x12, 0x46, 0x0a,
+	0x06, 0x6e, 0x6f, 0x64, 0x65, 0x6a, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2e, 0x2e,
+	0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d,
+	0x61, 0x2e, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x73, 0x2e, 0x41, 0x76, 0x61, 0x69, 0x6c,
+	0x61, 0x62, 0x6c, 0x65, 0x49, 0x6e, 0x2e, 0x4e, 0x6f, 0x64, 0x65, 0x4a, 0x73, 0x52, 0x06, 0x6e,
+	0x6f, 0x64, 0x65, 0x6a, 0x73, 0x1a, 0x32, 0x0a, 0x02, 0x47, 0x6f, 0x12, 0x18, 0x0a, 0x07, 0x70,
+	0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x70, 0x61,
+	0x63, 0x6b, 0x61, 0x67, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x1a, 0x05, 0x0a, 0x03, 0x57, 0x65, 0x62,
+	0x1a, 0x36, 0x0a, 0x06, 0x4e, 0x6f, 0x64, 0x65, 0x4a, 0x73, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x61,
+	0x63, 0x6b, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x70, 0x61, 0x63,
+	0x6b, 0x61, 0x67, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x22, 0x3d, 0x0a, 0x07, 0x54, 0x79, 0x70, 0x65,
 	0x44, 0x65, 0x66, 0x12, 0x1a, 0x0a, 0x08, 0x74, 0x79, 0x70, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x18,
 	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x74, 0x79, 0x70, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x12,
 	0x16, 0x0a, 0x06, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52,
@@ -2540,65 +2611,66 @@ func file_schema_schema_proto_rawDescGZIP() []byte {
 }
 
 var file_schema_schema_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_schema_schema_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_schema_schema_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_schema_schema_proto_goTypes = []interface{}{
-	(Framework)(0),                   // 0: foundation.schema.Framework
-	(Node_Kind)(0),                   // 1: foundation.schema.Node.Kind
-	(Reference_Kind)(0),              // 2: foundation.schema.Reference.Kind
-	(Environment_Purpose)(0),         // 3: foundation.schema.Environment.Purpose
-	(*Schema)(nil),                   // 4: foundation.schema.Schema
-	(*Stack)(nil),                    // 5: foundation.schema.Stack
-	(*Node)(nil),                     // 6: foundation.schema.Node
-	(*NodeInitializer)(nil),          // 7: foundation.schema.NodeInitializer
-	(*HttpPath)(nil),                 // 8: foundation.schema.HttpPath
-	(*Need)(nil),                     // 9: foundation.schema.Need
-	(*Provides)(nil),                 // 10: foundation.schema.Provides
-	(*TypeDef)(nil),                  // 11: foundation.schema.TypeDef
-	(*GrpcExportService)(nil),        // 12: foundation.schema.GrpcExportService
-	(*Reference)(nil),                // 13: foundation.schema.Reference
-	(*Server)(nil),                   // 14: foundation.schema.Server
-	(*Allocation)(nil),               // 15: foundation.schema.Allocation
-	(*Instantiate)(nil),              // 16: foundation.schema.Instantiate
-	(*Environment)(nil),              // 17: foundation.schema.Environment
-	(*Platform)(nil),                 // 18: foundation.schema.Platform
-	(*HttpExportedService)(nil),      // 19: foundation.schema.HttpExportedService
-	(*RequiredStorage)(nil),          // 20: foundation.schema.RequiredStorage
-	(*Naming)(nil),                   // 21: foundation.schema.Naming
-	(*Stack_Entry)(nil),              // 22: foundation.schema.Stack.Entry
-	(*Need_Port)(nil),                // 23: foundation.schema.Need.Port
-	(*Provides_AvailableIn)(nil),     // 24: foundation.schema.Provides.AvailableIn
-	(*Provides_AvailableIn_Go)(nil),  // 25: foundation.schema.Provides.AvailableIn.Go
-	(*Provides_AvailableIn_Web)(nil), // 26: foundation.schema.Provides.AvailableIn.Web
-	(*Server_Binary)(nil),            // 27: foundation.schema.Server.Binary
-	(*Server_ServiceSpec)(nil),       // 28: foundation.schema.Server.ServiceSpec
-	(*Server_URLMapEntry)(nil),       // 29: foundation.schema.Server.URLMapEntry
-	(*Allocation_Instance)(nil),      // 30: foundation.schema.Allocation.Instance
-	(*Endpoint)(nil),                 // 31: foundation.schema.Endpoint
-	(*InternalEndpoint)(nil),         // 32: foundation.schema.InternalEndpoint
-	(Endpoint_Type)(0),               // 33: foundation.schema.Endpoint.Type
-	(*anypb.Any)(nil),                // 34: google.protobuf.Any
-	(*BinaryConfig_Entry)(nil),       // 35: foundation.schema.BinaryConfig.Entry
-	(*Endpoint_Port)(nil),            // 36: foundation.schema.Endpoint.Port
-	(*ServiceMetadata)(nil),          // 37: foundation.schema.ServiceMetadata
+	(Framework)(0),                      // 0: foundation.schema.Framework
+	(Node_Kind)(0),                      // 1: foundation.schema.Node.Kind
+	(Reference_Kind)(0),                 // 2: foundation.schema.Reference.Kind
+	(Environment_Purpose)(0),            // 3: foundation.schema.Environment.Purpose
+	(*Schema)(nil),                      // 4: foundation.schema.Schema
+	(*Stack)(nil),                       // 5: foundation.schema.Stack
+	(*Node)(nil),                        // 6: foundation.schema.Node
+	(*NodeInitializer)(nil),             // 7: foundation.schema.NodeInitializer
+	(*HttpPath)(nil),                    // 8: foundation.schema.HttpPath
+	(*Need)(nil),                        // 9: foundation.schema.Need
+	(*Provides)(nil),                    // 10: foundation.schema.Provides
+	(*TypeDef)(nil),                     // 11: foundation.schema.TypeDef
+	(*GrpcExportService)(nil),           // 12: foundation.schema.GrpcExportService
+	(*Reference)(nil),                   // 13: foundation.schema.Reference
+	(*Server)(nil),                      // 14: foundation.schema.Server
+	(*Allocation)(nil),                  // 15: foundation.schema.Allocation
+	(*Instantiate)(nil),                 // 16: foundation.schema.Instantiate
+	(*Environment)(nil),                 // 17: foundation.schema.Environment
+	(*Platform)(nil),                    // 18: foundation.schema.Platform
+	(*HttpExportedService)(nil),         // 19: foundation.schema.HttpExportedService
+	(*RequiredStorage)(nil),             // 20: foundation.schema.RequiredStorage
+	(*Naming)(nil),                      // 21: foundation.schema.Naming
+	(*Stack_Entry)(nil),                 // 22: foundation.schema.Stack.Entry
+	(*Need_Port)(nil),                   // 23: foundation.schema.Need.Port
+	(*Provides_AvailableIn)(nil),        // 24: foundation.schema.Provides.AvailableIn
+	(*Provides_AvailableIn_Go)(nil),     // 25: foundation.schema.Provides.AvailableIn.Go
+	(*Provides_AvailableIn_Web)(nil),    // 26: foundation.schema.Provides.AvailableIn.Web
+	(*Provides_AvailableIn_NodeJs)(nil), // 27: foundation.schema.Provides.AvailableIn.NodeJs
+	(*Server_Binary)(nil),               // 28: foundation.schema.Server.Binary
+	(*Server_ServiceSpec)(nil),          // 29: foundation.schema.Server.ServiceSpec
+	(*Server_URLMapEntry)(nil),          // 30: foundation.schema.Server.URLMapEntry
+	(*Allocation_Instance)(nil),         // 31: foundation.schema.Allocation.Instance
+	(*Endpoint)(nil),                    // 32: foundation.schema.Endpoint
+	(*InternalEndpoint)(nil),            // 33: foundation.schema.InternalEndpoint
+	(Endpoint_Type)(0),                  // 34: foundation.schema.Endpoint.Type
+	(*anypb.Any)(nil),                   // 35: google.protobuf.Any
+	(*BinaryConfig_Entry)(nil),          // 36: foundation.schema.BinaryConfig.Entry
+	(*Endpoint_Port)(nil),               // 37: foundation.schema.Endpoint.Port
+	(*ServiceMetadata)(nil),             // 38: foundation.schema.ServiceMetadata
 }
 var file_schema_schema_proto_depIdxs = []int32{
 	6,  // 0: foundation.schema.Schema.service:type_name -> foundation.schema.Node
 	6,  // 1: foundation.schema.Schema.extension:type_name -> foundation.schema.Node
 	14, // 2: foundation.schema.Schema.server:type_name -> foundation.schema.Server
 	22, // 3: foundation.schema.Stack.entry:type_name -> foundation.schema.Stack.Entry
-	31, // 4: foundation.schema.Stack.endpoint:type_name -> foundation.schema.Endpoint
-	32, // 5: foundation.schema.Stack.internal_endpoint:type_name -> foundation.schema.InternalEndpoint
+	32, // 4: foundation.schema.Stack.endpoint:type_name -> foundation.schema.Endpoint
+	33, // 5: foundation.schema.Stack.internal_endpoint:type_name -> foundation.schema.InternalEndpoint
 	1,  // 6: foundation.schema.Node.kind:type_name -> foundation.schema.Node.Kind
 	16, // 7: foundation.schema.Node.instantiate:type_name -> foundation.schema.Instantiate
 	9,  // 8: foundation.schema.Node.need:type_name -> foundation.schema.Need
 	10, // 9: foundation.schema.Node.provides:type_name -> foundation.schema.Provides
 	12, // 10: foundation.schema.Node.export_service:type_name -> foundation.schema.GrpcExportService
 	8,  // 11: foundation.schema.Node.export_http:type_name -> foundation.schema.HttpPath
-	33, // 12: foundation.schema.Node.ingress:type_name -> foundation.schema.Endpoint.Type
+	34, // 12: foundation.schema.Node.ingress:type_name -> foundation.schema.Endpoint.Type
 	7,  // 13: foundation.schema.Node.initializers:type_name -> foundation.schema.NodeInitializer
 	0,  // 14: foundation.schema.Node.service_framework:type_name -> foundation.schema.Framework
 	13, // 15: foundation.schema.Node.reference:type_name -> foundation.schema.Reference
-	34, // 16: foundation.schema.Node.ext:type_name -> google.protobuf.Any
+	35, // 16: foundation.schema.Node.ext:type_name -> google.protobuf.Any
 	20, // 17: foundation.schema.Node.required_storage:type_name -> foundation.schema.RequiredStorage
 	0,  // 18: foundation.schema.NodeInitializer.framework:type_name -> foundation.schema.Framework
 	23, // 19: foundation.schema.Need.port:type_name -> foundation.schema.Need.Port
@@ -2606,34 +2678,35 @@ var file_schema_schema_proto_depIdxs = []int32{
 	24, // 21: foundation.schema.Provides.available_in:type_name -> foundation.schema.Provides.AvailableIn
 	16, // 22: foundation.schema.Provides.instantiate:type_name -> foundation.schema.Instantiate
 	2,  // 23: foundation.schema.Reference.kind:type_name -> foundation.schema.Reference.Kind
-	34, // 24: foundation.schema.Server.ext:type_name -> google.protobuf.Any
+	35, // 24: foundation.schema.Server.ext:type_name -> google.protobuf.Any
 	15, // 25: foundation.schema.Server.allocation:type_name -> foundation.schema.Allocation
 	0,  // 26: foundation.schema.Server.framework:type_name -> foundation.schema.Framework
-	27, // 27: foundation.schema.Server.binary:type_name -> foundation.schema.Server.Binary
-	28, // 28: foundation.schema.Server.service:type_name -> foundation.schema.Server.ServiceSpec
-	28, // 29: foundation.schema.Server.ingress:type_name -> foundation.schema.Server.ServiceSpec
+	28, // 27: foundation.schema.Server.binary:type_name -> foundation.schema.Server.Binary
+	29, // 28: foundation.schema.Server.service:type_name -> foundation.schema.Server.ServiceSpec
+	29, // 29: foundation.schema.Server.ingress:type_name -> foundation.schema.Server.ServiceSpec
 	13, // 30: foundation.schema.Server.reference:type_name -> foundation.schema.Reference
-	35, // 31: foundation.schema.Server.static_env:type_name -> foundation.schema.BinaryConfig.Entry
-	29, // 32: foundation.schema.Server.url_map:type_name -> foundation.schema.Server.URLMapEntry
-	36, // 33: foundation.schema.Server.static_port:type_name -> foundation.schema.Endpoint.Port
+	36, // 31: foundation.schema.Server.static_env:type_name -> foundation.schema.BinaryConfig.Entry
+	30, // 32: foundation.schema.Server.url_map:type_name -> foundation.schema.Server.URLMapEntry
+	37, // 33: foundation.schema.Server.static_port:type_name -> foundation.schema.Endpoint.Port
 	20, // 34: foundation.schema.Server.required_storage:type_name -> foundation.schema.RequiredStorage
-	30, // 35: foundation.schema.Allocation.instance:type_name -> foundation.schema.Allocation.Instance
-	34, // 36: foundation.schema.Instantiate.constructor:type_name -> google.protobuf.Any
+	31, // 35: foundation.schema.Allocation.instance:type_name -> foundation.schema.Allocation.Instance
+	35, // 36: foundation.schema.Instantiate.constructor:type_name -> google.protobuf.Any
 	3,  // 37: foundation.schema.Environment.purpose:type_name -> foundation.schema.Environment.Purpose
 	14, // 38: foundation.schema.Stack.Entry.server:type_name -> foundation.schema.Server
 	21, // 39: foundation.schema.Stack.Entry.server_naming:type_name -> foundation.schema.Naming
 	6,  // 40: foundation.schema.Stack.Entry.node:type_name -> foundation.schema.Node
 	25, // 41: foundation.schema.Provides.AvailableIn.go:type_name -> foundation.schema.Provides.AvailableIn.Go
 	26, // 42: foundation.schema.Provides.AvailableIn.web:type_name -> foundation.schema.Provides.AvailableIn.Web
-	37, // 43: foundation.schema.Server.ServiceSpec.metadata:type_name -> foundation.schema.ServiceMetadata
-	36, // 44: foundation.schema.Server.ServiceSpec.port:type_name -> foundation.schema.Endpoint.Port
-	16, // 45: foundation.schema.Allocation.Instance.instantiated:type_name -> foundation.schema.Instantiate
-	15, // 46: foundation.schema.Allocation.Instance.downstream_allocation:type_name -> foundation.schema.Allocation
-	47, // [47:47] is the sub-list for method output_type
-	47, // [47:47] is the sub-list for method input_type
-	47, // [47:47] is the sub-list for extension type_name
-	47, // [47:47] is the sub-list for extension extendee
-	0,  // [0:47] is the sub-list for field type_name
+	27, // 43: foundation.schema.Provides.AvailableIn.nodejs:type_name -> foundation.schema.Provides.AvailableIn.NodeJs
+	38, // 44: foundation.schema.Server.ServiceSpec.metadata:type_name -> foundation.schema.ServiceMetadata
+	37, // 45: foundation.schema.Server.ServiceSpec.port:type_name -> foundation.schema.Endpoint.Port
+	16, // 46: foundation.schema.Allocation.Instance.instantiated:type_name -> foundation.schema.Instantiate
+	15, // 47: foundation.schema.Allocation.Instance.downstream_allocation:type_name -> foundation.schema.Allocation
+	48, // [48:48] is the sub-list for method output_type
+	48, // [48:48] is the sub-list for method input_type
+	48, // [48:48] is the sub-list for extension type_name
+	48, // [48:48] is the sub-list for extension extendee
+	0,  // [0:48] is the sub-list for field type_name
 }
 
 func init() { file_schema_schema_proto_init() }
@@ -2921,7 +2994,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Binary); i {
+			switch v := v.(*Provides_AvailableIn_NodeJs); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2933,7 +3006,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_ServiceSpec); i {
+			switch v := v.(*Server_Binary); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2945,7 +3018,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_URLMapEntry); i {
+			switch v := v.(*Server_ServiceSpec); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2957,6 +3030,18 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Server_URLMapEntry); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_schema_schema_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Allocation_Instance); i {
 			case 0:
 				return &v.state
@@ -2978,7 +3063,7 @@ func file_schema_schema_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_schema_proto_rawDesc,
 			NumEnums:      4,
-			NumMessages:   27,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -67,6 +67,9 @@ func (n *Node) ProvidedInFrameworks() map[Framework]bool {
 			if a.Web != nil {
 				fmwksSet[Framework_WEB] = true
 			}
+			if a.Nodejs != nil {
+				fmwksSet[Framework_NODEJS] = true
+			}
 		}
 	}
 	return fmwksSet
