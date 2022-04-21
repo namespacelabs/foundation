@@ -7,6 +7,7 @@ package shared
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
@@ -35,7 +36,35 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 	var nodeData NodeData
 
 	if n.ExportService != nil {
-		nodeData.Service = &ServiceData{}
+		deps := []DependencyData{}
+		for _, dep := range n.GetInstantiate() {
+			pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
+			if err != nil {
+				return NodeData{}, fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
+			}
+
+			_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
+			if p == nil {
+				return NodeData{}, fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
+			}
+
+			var provider *schema.Provides_AvailableIn
+			for _, prov := range p.AvailableIn {
+				if prov.ProvidedInFrameworks()[fmwk] {
+					provider = prov
+					break
+				}
+			}
+
+			deps = append(deps, DependencyData{
+				Name:         dep.Name,
+				ProviderType: provider,
+			})
+		}
+
+		nodeData.Service = &ServiceData{
+			Deps: deps,
+		}
 	}
 	for _, p := range n.Provides {
 		for _, a := range p.AvailableIn {

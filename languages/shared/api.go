@@ -23,10 +23,16 @@ type NodeData struct {
 }
 
 type ServiceData struct {
+	Deps []DependencyData
 }
 
 type ProviderData struct {
 	Name         string
 	InputType    *schema.TypeDef
+	ProviderType *schema.Provides_AvailableIn
+}
+
+type DependencyData struct {
+	Name         string
 	ProviderType *schema.Provides_AvailableIn
 }

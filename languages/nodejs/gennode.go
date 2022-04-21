@@ -27,19 +27,33 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 func convertNodeDataToTmplOptions(nodeData shared.NodeData) nodeTmplOptions {
 	ic := NewImportCollector()
 
-	providers := []provider{}
+	providers := []tmplProvider{}
 	for _, p := range nodeData.Providers {
-		providers = append(providers, provider{
+		providers = append(providers, tmplProvider{
 			Name:       p.Name,
 			InputType:  convertType(ic, p.InputType),
 			OutputType: convertAvailableIn(ic, p.ProviderType.Nodejs),
 		})
 	}
 
+	var service *tmplService
+	if nodeData.Service != nil {
+		deps := []tmplDependency{}
+		for _, d := range nodeData.Service.Deps {
+			deps = append(deps, tmplDependency{
+				Name: d.Name,
+				Type: convertAvailableIn(ic, d.ProviderType.Nodejs),
+			})
+		}
+
+		service = &tmplService{
+			Deps: deps,
+		}
+	}
+
 	return nodeTmplOptions{
-		Imports:        ic.imports(),
-		NeedsDepsType:  nodeData.Service != nil || len(nodeData.Providers) != 0,
-		HasGrpcService: nodeData.Service != nil,
-		Providers:      providers,
+		Imports:   ic.imports(),
+		Service:   service,
+		Providers: providers,
 	}
 }

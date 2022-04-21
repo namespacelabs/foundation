@@ -47,16 +47,16 @@ func convertPackageToImport(pkg string) string {
 	return pkg
 }
 
-func convertType(ic *importCollector, t *schema.TypeDef) importedType {
+func convertType(ic *importCollector, t *schema.TypeDef) tmplImportedType {
 	nameParts := strings.Split(t.Typename, ".")
-	return importedType{
+	return tmplImportedType{
 		Name:        nameParts[len(nameParts)-1],
 		ImportAlias: ic.add(convertPackageToImport(t.Source[0])),
 	}
 }
 
-func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_NodeJs) importedType {
-	return importedType{
+func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_NodeJs) tmplImportedType {
+	return tmplImportedType{
 		Name:        a.Type,
 		ImportAlias: ic.add(a.Import),
 	}
@@ -64,13 +64,13 @@ func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_Node
 
 type importCollector struct {
 	// Key: pkg
-	pkgToImport map[string]singleImport
+	pkgToImport map[string]tmplSingleImport
 	aliasIndex  int
 }
 
 func NewImportCollector() *importCollector {
 	return &importCollector{
-		pkgToImport: make(map[string]singleImport),
+		pkgToImport: make(map[string]tmplSingleImport),
 	}
 }
 
@@ -82,7 +82,7 @@ func (ic *importCollector) add(pkg string) string {
 	} else {
 		alias = fmt.Sprintf("i%d", ic.aliasIndex)
 		ic.aliasIndex++
-		ic.pkgToImport[pkg] = singleImport{
+		ic.pkgToImport[pkg] = tmplSingleImport{
 			Alias:   alias,
 			Package: pkg,
 		}
@@ -91,8 +91,8 @@ func (ic *importCollector) add(pkg string) string {
 	return alias
 }
 
-func (ic *importCollector) imports() []singleImport {
-	imports := make([]singleImport, 0, len(ic.pkgToImport))
+func (ic *importCollector) imports() []tmplSingleImport {
+	imports := make([]tmplSingleImport, 0, len(ic.pkgToImport))
 	for _, imp := range ic.pkgToImport {
 		imports = append(imports, imp)
 	}
