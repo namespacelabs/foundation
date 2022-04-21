@@ -162,7 +162,12 @@ func Collect(server *schema.Server) (*Collection, error) {
 }
 
 func FillData(ctx context.Context, col *Collection, openContents func() (fs.FS, error)) (map[string][]byte, error) {
-	if len(col.UserManaged) == 0 {
+	var count int
+	for _, userManaged := range col.UserManaged {
+		count += len(userManaged)
+	}
+
+	if count == 0 {
 		return nil, nil
 	}
 
@@ -173,6 +178,10 @@ func FillData(ctx context.Context, col *Collection, openContents func() (fs.FS, 
 
 	data := map[string][]byte{}
 	for k, userManaged := range col.UserManaged {
+		if len(userManaged) == 0 {
+			continue
+		}
+
 		m, err := provideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
 		if err != nil {
 			return nil, err
