@@ -113,7 +113,8 @@ func NewKeysCmd() *cobra.Command {
 				return fnerrors.InternalError("failed to fetch keydir: %w", err)
 			}
 
-			archive, err := os.Open(filepath.Join(args[0], keys.EncryptedFile))
+			origSecretsDir := args[0]
+			archive, err := os.Open(filepath.Join(origSecretsDir, keys.EncryptedFile))
 			if err != nil {
 				return fnerrors.InternalError("failed to open encrypted file: %w", err)
 			}
@@ -130,24 +131,24 @@ func NewKeysCmd() *cobra.Command {
 			}
 
 			// XXX guarantee in-memory?
-			dir, err := dirs.CreateUserTempDir(args[0], "keys-shell")
+			tmpDirPath, err := dirs.CreateUserTempDir(origSecretsDir, "keys-shell")
 			if err != nil {
 				return fnerrors.InternalError("failed to create tempdir: %w", err)
 			}
 
-			defer os.RemoveAll(dir)
+			defer os.RemoveAll(tmpDirPath)
 
-			dst := fnfs.ReadWriteLocalFS(dir)
+			tmpDir := fnfs.ReadWriteLocalFS(tmpDirPath)
 
 			if err := fnfs.VisitFiles(ctx, fsys, func(path string, contents []byte, dirent fs.DirEntry) error {
 				d := filepath.Dir(path)
 				if d != "." {
-					if err := os.Mkdir(filepath.Join(dir, d), 0700); err != nil {
+					if err := os.Mkdir(filepath.Join(tmpDirPath, d), 0700); err != nil {
 						return fnerrors.InternalError("%s: failed to mkdir: %w", path, err)
 					}
 				}
 
-				return fnfs.WriteFile(ctx, dst, path, contents, 0600)
+				return fnfs.WriteFile(ctx, tmpDir, path, contents, 0600)
 			}); err != nil {
 				return fnerrors.InternalError("visitfiles failed: %w", err)
 			}
@@ -160,14 +161,14 @@ func NewKeysCmd() *cobra.Command {
 				bash.Stdout = os.Stdout
 				bash.Stderr = os.Stderr
 				bash.Stdin = os.Stdin
-				bash.Dir = dir
+				bash.Dir = tmpDirPath
 
 				return bash.Run()
 			}(); err != nil {
 				return err
 			}
 
-			changedDigest, err := digestfs.Digest(ctx, dst, nil, nil)
+			changedDigest, err := digestfs.Digest(ctx, tmpDir, nil, nil)
 			if err == nil {
 				// If we fail to compute the digest, it's ok, just go ahead and rewrite the contents.
 				if changedDigest == originalDigest {
@@ -176,11 +177,11 @@ func NewKeysCmd() *cobra.Command {
 				}
 			}
 
-			if err := keys.EncryptLocal(ctx, fnfs.ReadWriteLocalFS(dir), dst); err != nil {
+			if err := keys.EncryptLocal(ctx, fnfs.ReadWriteLocalFS(origSecretsDir), tmpDir); err != nil {
 				return err
 			}
 
-			fmt.Fprintf(console.Stdout(ctx), "Updated %s.\n", archive.Name())
+			fmt.Fprintf(console.Stdout(ctx), "Updated %q.\n", archive.Name())
 
 			return nil
 		}),
