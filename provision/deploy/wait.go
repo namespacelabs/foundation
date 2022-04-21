@@ -100,7 +100,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 						fmt.Fprintf(out, "For more information, run:\n  %s\n", help)
 					}
 
-					fmt.Fprintf(out, "Diagnostics, retrieved at %v:\n", time.Now())
+					fmt.Fprintf(out, "Diagnostics retrieved at %s:\n", time.Now().Format("2006-01-02 15:04:05.000"))
 
 					// XXX fetching diagnostics should not block forwarding events (above).
 					for _, ws := range all {
