@@ -91,7 +91,7 @@ func SnapshotContents(ctx context.Context, modulePath, rel string) (fsys *memfs.
 func verifyDir(path string) error {
 	if st, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return fnerrors.InternalError("%s: requested module absolute path to snapshot does not exist", path)
+			return err
 		}
 		return fnerrors.UserError(nil, "%s: accessing the path failed: %v", path, err)
 	} else if !st.IsDir() {

@@ -200,7 +200,10 @@ _#ConfigureBase: {
 	args:       #Args
 	workingDir: *"/" | string
 	mount: [string]: {fromWorkspace: string}
-	snapshot: [string]: {fromWorkspace: string}
+	snapshot: [string]: {
+		fromWorkspace: string
+		optional:      *false | true
+	}
 	noCache:      *false | true
 	requiresKeys: *false | true
 }

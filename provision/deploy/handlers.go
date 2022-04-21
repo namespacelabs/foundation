@@ -6,6 +6,8 @@ package deploy
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -114,6 +116,14 @@ func makeInvocation(ctx context.Context, env ops.Environment, serverLoc workspac
 	for k, v := range with.Snapshots {
 		if v.FromWorkspace == "" {
 			return nil, fnerrors.UserError(serverLoc, "fromSnapshot can't be empty")
+		}
+
+		if _, err := os.Stat(filepath.Join(serverLoc.Module.Abs(), v.FromWorkspace)); os.IsNotExist(err) {
+			if v.Optional {
+				continue
+			}
+
+			return nil, fnerrors.UserError(serverLoc, "required location %q does not exist", v.FromWorkspace)
 		}
 
 		fsys, err := serverLoc.Module.SnapshotContents(ctx, v.FromWorkspace)
