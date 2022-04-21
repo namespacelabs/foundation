@@ -215,8 +215,7 @@ func enc(ctx context.Context, dir string, src fs.FS, reencrypt bool) error {
 
 func readPassword(ctx context.Context, prompt string) ([]byte, error) {
 	if term.IsTerminal(syscall.Stdin) {
-		fmt.Fprintf(console.Stdout(ctx), prompt)
-		done := console.EnterInputMode(ctx)
+		done := console.EnterInputMode(ctx, prompt)
 		defer done()
 		pass, err := term.ReadPassword(syscall.Stdin)
 		if err != nil {
@@ -252,7 +251,7 @@ func importImpl(ctx context.Context, publicKey string) error {
 		return err
 	}
 
-	pass, err := readPassword(ctx, "Please paste the private key (the input will not be echo-ed):\n>\n")
+	pass, err := readPassword(ctx, "Please paste the private key (the input will not be echo-ed):\n")
 	if err != nil {
 		return err
 	}
