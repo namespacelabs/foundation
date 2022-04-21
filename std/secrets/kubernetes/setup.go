@@ -81,6 +81,10 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return err
 	}
 
+	if data == nil {
+		data = map[string][]byte{}
+	}
+
 	// We do something funky here, we keep the mapping as a secret, so that
 	// k8s also maps it to the container's namespace, and we can load it
 	// using our regular mechanisms. Within that dev map, we map each
