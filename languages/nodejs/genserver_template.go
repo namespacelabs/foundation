@@ -10,10 +10,10 @@ import (
 
 type serverTmplOptions struct {
 	Imports  []singleImport
-	Services []service
+	Services []importedType
 }
 
-type service struct {
+type importedType struct {
 	ImportAlias, Name string
 }
 

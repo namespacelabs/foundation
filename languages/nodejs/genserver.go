@@ -21,26 +21,23 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 		return err
 	}
 
-	tplImports := []singleImport{}
-	tplServices := []service{}
+	ic := NewImportCollector()
+	tplServices := []importedType{}
 	for _, srv := range serverData.Services {
 		nodejsLoc, err := nodejsLocationFrom(srv.Location.PackageName)
 		if err != nil {
 			return err
 		}
 
-		tplServices = append(tplServices, service{
+		alias := ic.add(nodejsServiceDepsImport(nodejsLoc.NpmPackage))
+		tplServices = append(tplServices, importedType{
 			Name:        nodejsLoc.Name,
-			ImportAlias: nodejsLoc.Name,
-		})
-		tplImports = append(tplImports, singleImport{
-			Alias:   nodejsLoc.Name,
-			Package: nodejsServiceDepsImport(nodejsLoc.NpmPackage),
+			ImportAlias: alias,
 		})
 	}
 
 	return generateSource(ctx, fs, loc.Rel(ServerFilename), serverTmpl, serverTmplOptions{
-		Imports:  tplImports,
+		Imports:  ic.imports(),
 		Services: tplServices,
 	})
 }

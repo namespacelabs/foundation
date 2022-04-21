@@ -30,3 +30,24 @@ func PrepareServerData(ctx context.Context, loader workspace.Packages, loc works
 
 	return serverData, nil
 }
+
+func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, fmwk schema.Framework) (NodeData, error) {
+	var nodeData NodeData
+
+	if n.ExportService != nil {
+		nodeData.Service = &ServiceData{}
+	}
+	for _, p := range n.Provides {
+		for _, a := range p.AvailableIn {
+			if a.ProvidedInFrameworks()[fmwk] {
+				nodeData.Providers = append(nodeData.Providers, ProviderData{
+					Name:         p.Name,
+					InputType:    p.Type,
+					ProviderType: a,
+				})
+			}
+		}
+	}
+
+	return nodeData, nil
+}
