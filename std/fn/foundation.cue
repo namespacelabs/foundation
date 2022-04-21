@@ -168,7 +168,7 @@ _#ConfigureBase: {
 	}
 
 	#Startup: {
-		args?: #Args
+		args?: #Args | [...string]
 		env: [string]: string
 	}
 
