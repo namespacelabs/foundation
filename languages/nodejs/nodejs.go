@@ -288,8 +288,8 @@ func updateYarnRootPackageJson(ctx context.Context, path string, fs fnfs.ReadWri
 	return yarnHasCorrectVersion, err
 }
 
-func (impl) TidyNode(ctx context.Context, pl *workspace.PackageLoader, p *workspace.Package) error {
-	err := tidyPackageJson(ctx, pl, p.Location, p.Node().Import)
+func (impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
+	err := tidyPackageJson(ctx, pkgs, p.Location, p.Node().Import)
 	if err != nil {
 		return err
 	}
@@ -342,11 +342,11 @@ func fileNameForService(srvName string, descriptors []*descriptorpb.FileDescript
 	return "", fnerrors.InternalError("Couldn't find service %s in the generated proto descriptors.", srvName)
 }
 
-func (impl) TidyServer(ctx context.Context, pl *workspace.PackageLoader, loc workspace.Location, server *schema.Server) error {
-	return tidyPackageJson(ctx, pl, loc, server.Import)
+func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, server *schema.Server) error {
+	return tidyPackageJson(ctx, pkgs, loc, server.Import)
 }
 
-func tidyPackageJson(ctx context.Context, pl *workspace.PackageLoader, loc workspace.Location, imports []string) error {
+func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, imports []string) error {
 	nodejsLoc, err := nodejsLocationFrom(loc.PackageName)
 	if err != nil {
 		return err
@@ -357,7 +357,7 @@ func tidyPackageJson(ctx context.Context, pl *workspace.PackageLoader, loc works
 		dependencies[key] = value
 	}
 	for _, importName := range imports {
-		pkg, err := pl.LoadByName(ctx, schema.PackageName(importName))
+		pkg, err := pkgs.LoadByName(ctx, schema.PackageName(importName))
 		if err != nil {
 			return err
 		}

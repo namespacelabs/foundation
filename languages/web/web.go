@@ -270,7 +270,7 @@ func useDevBuild(env *schema.Environment) bool {
 	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
-func (i impl) TidyNode(ctx context.Context, pl *workspace.PackageLoader, p *workspace.Package) error {
+func (i impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
 	if p.Node().Kind != schema.Node_SERVICE {
 		return nil
 	}
