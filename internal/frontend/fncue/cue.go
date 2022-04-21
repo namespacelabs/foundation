@@ -195,7 +195,6 @@ func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 		info, _ := astutil.ParseImportSpec(ast.NewImport(nil, pkgname))
 		p := ev.buildAndCacheInstance(ctx, pkg, info, collectedImports)
 		vv := ev.cuectx.BuildInstance(p)
-
 		if vv.Err() != nil {
 			return nil, vv.Err()
 		}

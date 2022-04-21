@@ -40,7 +40,7 @@ func LoadMessageByName(src *FileDescriptorSetAndDeps, name string) (*protoregist
 func LoadMessageAtLocation(fsys fs.FS, loc Location, sources []string, name string) (protoreflect.MessageDescriptor, error) {
 	parsed, err := ParseAtLocation(fsys, loc, sources)
 	if err != nil {
-		return nil, fnerrors.BadInputError("failed to parse %v: %w", sources, err)
+		return nil, fnerrors.BadInputError("failed to parse proto sources %v: %w", sources, err)
 	}
 
 	_, msgdesc, err := LoadMessageByName(parsed, name)

@@ -39,7 +39,7 @@ configure: fn.#Configure & {
 		append: [$redisServer]
 	}
 
-	if $env.runtime == "kubernetes" { // XXX remove if-statement.
+	if $redisServer.$addressMap.redis != _|_ {
 		startup: {
 			args: {
 				redis_endpoint: $redisServer.$addressMap.redis
