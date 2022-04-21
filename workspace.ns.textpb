@@ -29,7 +29,7 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/secrets/kubernetes"
-  digest: "sha256:095d035b6f5673701bee68c4b2fd894f6e12ea5307dbef8e46f89bf00ae2c971"
+  digest: "sha256:afb4545ce81a02651c6049e2bc3b4cf814bd9fd949cb8f738741f65db369ef66"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/startup/testdriver"
