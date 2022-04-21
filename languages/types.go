@@ -24,8 +24,8 @@ type Integration interface {
 
 	// Called on `fn tidy`
 	TidyWorkspace(context.Context, []*workspace.Package) error
-	TidyNode(context.Context, *workspace.Package) error
-	TidyServer(context.Context, workspace.Location, *schema.Server) error
+	TidyNode(context.Context, *workspace.PackageLoader, *workspace.Package) error
+	TidyServer(context.Context, *workspace.PackageLoader, workspace.Location, *schema.Server) error
 
 	// Called on `fn generate`.
 	GenerateNode(*workspace.Package, []*schema.Node) ([]*schema.Definition, error)
@@ -81,11 +81,11 @@ func (MaybeTidy) TidyWorkspace(context.Context, []*workspace.Package) error {
 	return nil
 }
 
-func (MaybeTidy) TidyNode(ctx context.Context, p *workspace.Package) error {
+func (MaybeTidy) TidyNode(ctx context.Context, pl *workspace.PackageLoader, p *workspace.Package) error {
 	return nil
 }
 
-func (MaybeTidy) TidyServer(ctx context.Context, loc workspace.Location, server *schema.Server) error {
+func (MaybeTidy) TidyServer(ctx context.Context, pl *workspace.PackageLoader, loc workspace.Location, server *schema.Server) error {
 	return nil
 }
 

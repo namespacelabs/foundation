@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/build"
@@ -196,7 +197,7 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 	yarnRoots := map[string]*workspace.Module{}
 	for _, pkg := range packages {
 		if (pkg.Server != nil && pkg.Server.Framework == schema.Framework_NODEJS) ||
-			(pkg.Node() != nil && pkg.Node().ServiceFramework == schema.Framework_NODEJS) {
+			(pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS)) {
 			yarnRoot, err := findYarnRoot(pkg.Location)
 			if err != nil {
 				// If we can't find yarn root, using the workspace root.
@@ -287,8 +288,8 @@ func updateYarnRootPackageJson(ctx context.Context, path string, fs fnfs.ReadWri
 	return yarnHasCorrectVersion, err
 }
 
-func (impl) TidyNode(ctx context.Context, p *workspace.Package) error {
-	err := tidyPackageJson(ctx, p.Location, p.Node().Import)
+func (impl) TidyNode(ctx context.Context, pl *workspace.PackageLoader, p *workspace.Package) error {
+	err := tidyPackageJson(ctx, pl, p.Location, p.Node().Import)
 	if err != nil {
 		return err
 	}
@@ -341,11 +342,11 @@ func fileNameForService(srvName string, descriptors []*descriptorpb.FileDescript
 	return "", fnerrors.InternalError("Couldn't find service %s in the generated proto descriptors.", srvName)
 }
 
-func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *schema.Server) error {
-	return tidyPackageJson(ctx, loc, server.Import)
+func (impl) TidyServer(ctx context.Context, pl *workspace.PackageLoader, loc workspace.Location, server *schema.Server) error {
+	return tidyPackageJson(ctx, pl, loc, server.Import)
 }
 
-func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []string) error {
+func tidyPackageJson(ctx context.Context, pl *workspace.PackageLoader, loc workspace.Location, imports []string) error {
 	nodejsLoc, err := nodejsLocationFrom(loc.PackageName)
 	if err != nil {
 		return err
@@ -356,11 +357,18 @@ func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []stri
 		dependencies[key] = value
 	}
 	for _, importName := range imports {
-		loc, err := nodejsLocationFrom(schema.Name(importName))
+		pkg, err := pl.LoadByName(ctx, schema.PackageName(importName))
 		if err != nil {
 			return err
 		}
-		dependencies[loc.NpmPackage] = yarnWorkspaceVersion
+
+		if pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS) {
+			loc, err := nodejsLocationFrom(schema.Name(importName))
+			if err != nil {
+				return err
+			}
+			dependencies[loc.NpmPackage] = yarnWorkspaceVersion
+		}
 	}
 
 	_, err = updatePackageJson(ctx, loc.Rel(), loc.Module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
