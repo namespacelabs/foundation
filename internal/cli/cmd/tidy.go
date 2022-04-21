@@ -68,14 +68,14 @@ func NewTidyCmd() *cobra.Command {
 				switch {
 				case pkg.Server != nil:
 					lang := languages.IntegrationFor(pkg.Server.Framework)
-					if err := lang.TidyServer(ctx, pkg.Location, pkg.Server); err != nil {
+					if err := lang.TidyServer(ctx, pl, pkg.Location, pkg.Server); err != nil {
 						errs = append(errs, err)
 					}
 
 				case pkg.Node() != nil:
 					if pkg.Node().Kind == schema.Node_SERVICE {
 						lang := languages.IntegrationFor(pkg.Node().ServiceFramework)
-						if err := lang.TidyNode(ctx, pkg); err != nil {
+						if err := lang.TidyNode(ctx, pl, pkg); err != nil {
 							errs = append(errs, err)
 						}
 					}

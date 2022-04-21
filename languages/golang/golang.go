@@ -101,7 +101,7 @@ func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.Ser
 	return nil
 }
 
-func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *schema.Server) error {
+func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, server *schema.Server) error {
 	ext := &FrameworkExt{}
 	if err := workspace.MustExtension(server.Ext, ext); err != nil {
 		return fnerrors.Wrap(loc, err)
