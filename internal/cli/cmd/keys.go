@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"filippo.io/age"
 	"github.com/spf13/cobra"
@@ -211,10 +213,24 @@ func enc(ctx context.Context, dir string, src fs.FS, reencrypt bool) error {
 	return nil
 }
 
-func readPassword(ctx context.Context) ([]byte, error) {
-	done := console.EnterInputMode(ctx)
-	defer done()
-	return term.ReadPassword(0)
+func readPassword(ctx context.Context, prompt string) ([]byte, error) {
+	if term.IsTerminal(syscall.Stdin) {
+		done := console.EnterInputMode(ctx, prompt)
+		defer done()
+		pass, err := term.ReadPassword(syscall.Stdin)
+		if err != nil {
+			return nil, err
+		}
+		return pass, nil
+	} else {
+		reader := bufio.NewReader(os.Stdin)
+		// Read until (required) newline.
+		s, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+		return []byte(s), nil
+	}
 }
 
 func importImpl(ctx context.Context, publicKey string) error {
@@ -235,9 +251,7 @@ func importImpl(ctx context.Context, publicKey string) error {
 		return err
 	}
 
-	// Ask for the input and store it in a file.
-	fmt.Fprintf(console.Stdout(ctx), "Please paste the private key (the input will not be echo-ed):\n>\n")
-	pass, err := readPassword(ctx)
+	pass, err := readPassword(ctx, "Please paste the private key (the input will not be echo-ed):\n")
 	if err != nil {
 		return err
 	}
