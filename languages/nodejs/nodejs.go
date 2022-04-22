@@ -364,7 +364,7 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 		}
 
 		if pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS) {
-			importNpmPackage, err := toNpmPackage(loc.PackageName)
+			importNpmPackage, err := toNpmPackage(pkg.PackageName())
 			if err != nil {
 				return err
 			}
