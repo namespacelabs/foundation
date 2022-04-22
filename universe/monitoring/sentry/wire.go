@@ -11,9 +11,14 @@ import (
 )
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	return sentry.Init(sentry.ClientOptions{
+	if err := sentry.Init(sentry.ClientOptions{
 		Dsn:         string(deps.Dsn.MustValue()),
 		ServerName:  deps.ServerInfo.ServerName,
 		Environment: deps.ServerInfo.EnvName,
-	})
+		Release:     deps.ServerInfo.GetVcs().GetRevision(),
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
