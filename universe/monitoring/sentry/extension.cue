@@ -12,7 +12,7 @@ extension: fn.#Extension & {
 		dsn: secrets.#Exports.Secret & {
 			name: "sentry-dsn"
 		}
-		serverInfo: core.#Exports.ServerInfo
+		serverInfo:     core.#Exports.ServerInfo
 		"interceptors": interceptors.#Exports.InterceptorRegistration
 	}
 }
