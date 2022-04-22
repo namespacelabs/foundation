@@ -62,7 +62,7 @@ func NewActionBundles() (*Bundles, error) {
 
 // Returns a new Bundle with the current timestamp.
 func (b *Bundles) NewBundle() (*Bundle, error) {
-	t := time.Now()
+	t := time.Now().UTC()
 	ts := t.Format(BundleTimeFormat)
 	bundleDir := fmt.Sprintf("%s-%s", b.namePrefix, ts)
 
@@ -122,7 +122,7 @@ func (b *Bundles) DeleteOldBundles() error {
 		bundles = bundles[:b.maxBundles]
 	}
 	if b.maxAge > 0 {
-		cutoff := time.Now().Add(-1 * b.maxAge)
+		cutoff := time.Now().UTC().Add(-1 * b.maxAge)
 		for _, bundle := range bundles {
 			if bundle.timestamp.Before(cutoff) {
 				remove = append(remove, bundle)
