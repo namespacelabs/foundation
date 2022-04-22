@@ -11,7 +11,7 @@ import (
 	"log"
 
 	awss3 "namespacelabs.dev/foundation/universe/aws/s3"
-	"namespacelabs.dev/foundation/universe/aws/s3/managebuckets"
+	"namespacelabs.dev/foundation/universe/aws/s3/internal/managebuckets"
 )
 
 var (

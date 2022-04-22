@@ -20,7 +20,7 @@ import (
 const (
 	// Bucket type name provided by the aws/s3 package.
 	bucketTypeName           = "Bucket"
-	initContainerToConfigure = "namespacelabs.dev/foundation/universe/aws/s3/managebuckets/binary"
+	initContainerToConfigure = "namespacelabs.dev/foundation/universe/aws/s3/internal/managebuckets/init"
 )
 
 type tool struct{}
