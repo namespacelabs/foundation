@@ -21,17 +21,27 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		return err
 	}
 
-	return generateSource(ctx, fs, loc.Rel(DepsFilename), serviceTmpl, convertNodeDataToTmplOptions(nodeData))
+	tmplOptions, err := convertNodeDataToTmplOptions(nodeData)
+	if err != nil {
+		return err
+	}
+
+	return generateSource(ctx, fs, loc.Rel(DepsFilename), serviceTmpl, tmplOptions)
 }
 
-func convertNodeDataToTmplOptions(nodeData shared.NodeData) nodeTmplOptions {
+func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, error) {
 	ic := NewImportCollector()
 
 	providers := []tmplProvider{}
 	for _, p := range nodeData.Providers {
+		inputType, err := convertType(ic, p.InputType)
+		if err != nil {
+			return nodeTmplOptions{}, err
+		}
+
 		providers = append(providers, tmplProvider{
 			Name:       p.Name,
-			InputType:  convertType(ic, p.InputType),
+			InputType:  inputType,
 			OutputType: convertAvailableIn(ic, p.ProviderType.Nodejs),
 		})
 	}
@@ -40,9 +50,26 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) nodeTmplOptions {
 	if nodeData.Service != nil {
 		deps := []tmplDependency{}
 		for _, d := range nodeData.Service.Deps {
+			npmPackage, err := toNpmPackage(d.ProviderLocation.PackageName)
+			if err != nil {
+				return nodeTmplOptions{}, err
+			}
+			alias := ic.add(nodeDepsNpmImport(npmPackage))
+
+			inputType, err := convertType(ic, d.Provider.InputType)
+			if err != nil {
+				return nodeTmplOptions{}, err
+			}
+
 			deps = append(deps, tmplDependency{
 				Name: d.Name,
-				Type: convertAvailableIn(ic, d.ProviderType.Nodejs),
+				Type: convertAvailableIn(ic, d.Provider.ProviderType.Nodejs),
+				Provider: tmplImportedType{
+					Name:        d.Provider.Name,
+					ImportAlias: alias,
+				},
+				ProviderInputType: inputType,
+				ProviderInput:     d.ProviderInput,
 			})
 		}
 
@@ -55,5 +82,5 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) nodeTmplOptions {
 		Imports:   ic.imports(),
 		Service:   service,
 		Providers: providers,
-	}
+	}, nil
 }

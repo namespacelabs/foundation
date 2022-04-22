@@ -348,7 +348,7 @@ func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspa
 }
 
 func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, imports []string) error {
-	nodejsLoc, err := nodejsLocationFrom(loc.PackageName)
+	npmPackage, err := toNpmPackage(loc.PackageName)
 	if err != nil {
 		return err
 	}
@@ -364,16 +364,16 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 		}
 
 		if pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS) {
-			loc, err := nodejsLocationFrom(schema.Name(importName))
+			importNpmPackage, err := toNpmPackage(loc.PackageName)
 			if err != nil {
 				return err
 			}
-			dependencies[loc.NpmPackage] = yarnWorkspaceVersion
+			dependencies[string(importNpmPackage)] = yarnWorkspaceVersion
 		}
 	}
 
 	_, err = updatePackageJson(ctx, loc.Rel(), loc.Module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
-		packageJson["name"] = nodejsLoc.NpmPackage
+		packageJson["name"] = npmPackage
 		packageJson["private"] = true
 		packageJson["version"] = yarnWorkspaceVersion
 

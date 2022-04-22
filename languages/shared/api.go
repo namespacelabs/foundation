@@ -26,13 +26,26 @@ type ServiceData struct {
 	Deps []DependencyData
 }
 
+type TypeData struct {
+	Name           string
+	SourceFileName string
+	PackageName    schema.PackageName
+}
+
 type ProviderData struct {
 	Name         string
-	InputType    *schema.TypeDef
+	InputType    TypeData
 	ProviderType *schema.Provides_AvailableIn
 }
 
 type DependencyData struct {
-	Name         string
-	ProviderType *schema.Provides_AvailableIn
+	Name             string
+	Provider         ProviderData
+	ProviderLocation workspace.Location
+	ProviderInput    SerializedProto
+}
+
+type SerializedProto struct {
+	Base64Content string
+	Comments      []string
 }

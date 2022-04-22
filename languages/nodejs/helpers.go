@@ -9,50 +9,56 @@ import (
 	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
 )
 
-func nodejsLocationFrom(pkgName schema.PackageName) (nodejsLocation, error) {
+type NpmPackage string
+
+func toNpmPackage(pkgName schema.PackageName) (NpmPackage, error) {
 	pkgComponents := strings.Split(string(pkgName), "/")
 	if len(pkgComponents) < 2 {
-		return nodejsLocation{}, fnerrors.InternalError("Invalid package name: %s", pkgName)
+		return "", fnerrors.InternalError("Invalid package name: %s", pkgName)
 	}
 	npmName := strings.Join(pkgComponents[1:], "_")
-	return nodejsLocation{
-		Name:       pkgComponents[len(pkgComponents)-1],
-		NpmPackage: fmt.Sprintf("@%s/%s", pkgComponents[0], npmName),
-	}, nil
+	return NpmPackage(fmt.Sprintf("@%s/%s", pkgComponents[0], npmName)), nil
 }
 
-func nodejsServiceDepsImport(npmPackage string) string {
-	return fmt.Sprintf("%s/deps.fn", npmPackage)
+func npmImport(npmPackage NpmPackage, moduleName string) string {
+	return fmt.Sprintf("%s/%s", npmPackage, moduleName)
 }
 
-type nodejsLocation struct {
-	Name       string
-	NpmPackage string
+func nodeDepsNpmImport(npmPackage NpmPackage) string {
+	return npmImport(npmPackage, "deps.fn")
 }
 
-func convertPackageToImport(pkg string) string {
-	if strings.HasSuffix(pkg, ".proto") {
+func convertPackageToImport(pkg schema.PackageName, filename string) (string, error) {
+	moduleName := filename
+
+	if strings.HasSuffix(filename, ".proto") {
 		// strip suffix
-		pkg = strings.TrimSuffix(pkg, ".proto") + "_pb"
+		moduleName = strings.TrimSuffix(moduleName, ".proto") + "_pb"
 	}
 
-	// Local paths
-	if !strings.Contains(pkg, "/") {
-		pkg = "./" + pkg
+	npmPackage, err := toNpmPackage(pkg)
+	if err != nil {
+		return "", err
 	}
 
-	return pkg
+	return npmImport(npmPackage, moduleName), nil
 }
 
-func convertType(ic *importCollector, t *schema.TypeDef) tmplImportedType {
-	nameParts := strings.Split(t.Typename, ".")
-	return tmplImportedType{
-		Name:        nameParts[len(nameParts)-1],
-		ImportAlias: ic.add(convertPackageToImport(t.Source[0])),
+func convertType(ic *importCollector, t shared.TypeData) (tmplImportedType, error) {
+	// TODO(@nicolasalt): handle the case when the source type is not in the same package.
+	npmImport, err := convertPackageToImport(t.PackageName, t.SourceFileName)
+	if err != nil {
+		return tmplImportedType{}, err
 	}
+
+	return tmplImportedType{
+		Name:        t.Name,
+		ImportAlias: ic.add(npmImport),
+	}, nil
 }
 
 func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_NodeJs) tmplImportedType {
@@ -75,16 +81,16 @@ func NewImportCollector() *importCollector {
 }
 
 // Returns assigned alias
-func (ic *importCollector) add(pkg string) string {
+func (ic *importCollector) add(npmImport string) string {
 	var alias string
-	if im, ok := ic.pkgToImport[pkg]; ok {
+	if im, ok := ic.pkgToImport[npmImport]; ok {
 		alias = im.Alias
 	} else {
 		alias = fmt.Sprintf("i%d", ic.aliasIndex)
 		ic.aliasIndex++
-		ic.pkgToImport[pkg] = tmplSingleImport{
+		ic.pkgToImport[npmImport] = tmplSingleImport{
 			Alias:   alias,
-			Package: pkg,
+			Package: npmImport,
 		}
 	}
 

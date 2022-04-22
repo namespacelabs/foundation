@@ -6,6 +6,8 @@ package nodejs
 
 import (
 	"text/template"
+
+	"namespacelabs.dev/foundation/languages/shared"
 )
 
 type nodeTmplOptions struct {
@@ -34,8 +36,11 @@ type tmplService struct {
 }
 
 type tmplDependency struct {
-	Name string
-	Type tmplImportedType
+	Name              string
+	Type              tmplImportedType
+	Provider          tmplImportedType
+	ProviderInputType tmplImportedType
+	ProviderInput     shared.SerializedProto
 }
 
 type tmplImportedType struct {
@@ -63,6 +68,15 @@ export interface ServiceDeps {
 {{range .Service.Deps}}
 	{{.Name}}: {{.Type.ImportAlias}}.{{.Type.Name}};{{end}}
 }
+
+export const makeServiceDeps = (): ServiceDeps => ({
+	{{range .Service.Deps}}
+	  {{range .ProviderInput.Comments}}
+		// {{.}}{{end}}
+		{{.Name}}: {{.Provider.ImportAlias}}.provide{{.Provider.Name}}(
+			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name}}.deserializeBinary(
+				Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))),{{end}}
+});
 
 export type WireService = (deps: ServiceDeps, server: Server) => void;
 export const wireService: WireService = impl.wireService;
