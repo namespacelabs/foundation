@@ -1978,8 +1978,6 @@ k8s.io/utils v0.0.0-20211203121628-587287796c64 h1:EzpFOlqWaj9Qbd/q4TqWSSpaQ/3p3
 k8s.io/utils v0.0.0-20211203121628-587287796c64/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
 namespacelabs.dev/go-ids v0.0.0-20220216144417-79021816502e h1:crQthT7TnDNKEtZLcOZ2eHsiLqlzoETD8cwAuHKgUsg=
 namespacelabs.dev/go-ids v0.0.0-20220216144417-79021816502e/go.mod h1:J+Sd+ngeffnCsaO/M7zgs2bR8Klq/ZBhS0+bbnDEH2M=
-namespacelabs.dev/internal v0.0.0-20220421204308-537c921bdd43 h1:dix5RObaMiKeVyk2t3/A1gagi9JOAR2IDl8HPIGHOAM=
-namespacelabs.dev/internal v0.0.0-20220421204308-537c921bdd43/go.mod h1:UNBywBt3IQlBmL+nF6XZQJWI2++OE4oS7J0Jd9HcZhk=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
 rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=
 rsc.io/sampler v1.3.0/go.mod h1:T1hPZKmBbMNahiBKFy5HrXp6adAjACjK9JXDnKaTXpA=
