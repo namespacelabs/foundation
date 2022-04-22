@@ -38,4 +38,16 @@ package core
 			}
 		}
 	}
+	ServerInfo: {
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/go/core"
+			type:        "ServerInfo"
+			typeDefinition: {
+				"typename": "foundation.std.go.core.ServerInfoArgs"
+				"source": [
+					"coretypes.proto",
+				]
+			}
+		}
+	}
 }

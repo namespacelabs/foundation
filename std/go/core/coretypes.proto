@@ -11,3 +11,9 @@ option go_package = "namespacelabs.dev/foundation/std/go/core";
 message LivenessCheckArgs {}
 message ReadinessCheckArgs {}
 message DebugHandlerArgs {}
+message ServerInfoArgs {}
+
+message ServerInfo {
+    string server_name = 1;
+    string env_name    = 2;
+}
