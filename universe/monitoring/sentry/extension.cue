@@ -5,12 +5,12 @@ import (
 )
 
 extension: fn.#Extension & {
-    hasInitializerIn: "GO_GRPC"
+	hasInitializerIn: "GO_GRPC"
 
 	instantiate: {
 		dsn: secrets.#Exports.Secret & {
 			name: "sentry-dsn"
 		}
-        serverInfo: core.#Exports.ServerInfo
+		serverInfo: core.#Exports.ServerInfo
 	}
 }
