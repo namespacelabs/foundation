@@ -220,7 +220,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
 
-	rootCmd.ExecuteContext(ctxWithSink)
+	err := rootCmd.ExecuteContext(ctxWithSink)
 
 	if flushLogs != nil {
 		flushLogs()
