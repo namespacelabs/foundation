@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"strings"
 
@@ -82,6 +81,7 @@ func NewSecretsCmd() *cobra.Command {
 	}
 
 	var secretKey, keyID string
+	var rawtext bool
 
 	set := &cobra.Command{
 		Use:   "set",
@@ -111,7 +111,7 @@ func NewSecretsCmd() *cobra.Command {
 
 			bundle.Set(packageName, key, []byte(value))
 
-			return writeBundle(ctx, loc, bundle)
+			return writeBundle(ctx, loc, bundle, !rawtext)
 		}),
 	}
 
@@ -134,7 +134,7 @@ func NewSecretsCmd() *cobra.Command {
 				return errors.New("no such key")
 			}
 
-			return writeBundle(ctx, loc, bundle)
+			return writeBundle(ctx, loc, bundle, !rawtext)
 		}),
 	}
 
@@ -152,25 +152,22 @@ func NewSecretsCmd() *cobra.Command {
 				return err
 			}
 
-			return writeBundle(ctx, loc, bundle)
+			return writeBundle(ctx, loc, bundle, !rawtext)
 		}),
 	}
 
 	set.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
 	set.Flags().StringVar(&keyID, "key", "", "Use this specific key identity when creating a new bundle.")
-	if err := set.MarkFlagRequired("secret"); err != nil {
-		log.Fatal(err)
-	}
+	set.Flags().BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
+	_ = set.MarkFlagRequired("secret")
 
 	delete.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
-	if err := delete.MarkFlagRequired("secret"); err != nil {
-		log.Fatal(err)
-	}
+	delete.Flags().BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
+	_ = delete.MarkFlagRequired("secret")
 
 	addReader.Flags().StringVar(&keyID, "key", "", "The key to add to the bundle.")
-	if err := addReader.MarkFlagRequired("key"); err != nil {
-		log.Fatal(err)
-	}
+	addReader.Flags().BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
+	_ = addReader.MarkFlagRequired("key")
 
 	cmd.AddCommand(list)
 	cmd.AddCommand(set)
@@ -242,8 +239,8 @@ func parseKey(v string) (string, string, error) {
 	return parts[0], parts[1], nil
 }
 
-func writeBundle(ctx context.Context, loc *location, bundle *secrets.Bundle) error {
+func writeBundle(ctx context.Context, loc *location, bundle *secrets.Bundle, encrypt bool) error {
 	return fnfs.WriteWorkspaceFile(ctx, loc.root.FS(), loc.loc.Rel(bundleName), func(w io.Writer) error {
-		return bundle.SerializeTo(ctx, w)
+		return bundle.SerializeTo(ctx, w, encrypt)
 	})
 }

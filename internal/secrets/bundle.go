@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"io/ioutil"
 	"os"
 
 	"filippo.io/age"
@@ -31,12 +32,13 @@ import (
 type Bundle struct {
 	m *Manifest
 
-	encrypted []encValues // Must follow same indexing as m.Encrypted.
+	values []valueDatabase
 }
 
-type encValues struct {
-	m     *EncryptedManifest
-	files *memfs.FS
+type valueDatabase struct {
+	filename string
+	m        *ValueDatabase
+	files    *memfs.FS
 }
 
 func (b *Bundle) Readers() []*Manifest_Reader {
@@ -50,7 +52,7 @@ func (b *Bundle) Definitions() []*Manifest_Definition {
 func (b *Bundle) Set(packageName, key string, value []byte) {
 	var hasDef bool
 
-	for _, sec := range b.encrypted {
+	for _, sec := range b.values {
 		for _, v := range sec.m.Value {
 			if isKey(v.Key, packageName, key) {
 				v.Value = value
@@ -62,26 +64,22 @@ func (b *Bundle) Set(packageName, key string, value []byte) {
 	}
 
 	if !hasDef {
-		if len(b.encrypted) == 0 {
-			b.encrypted = append(b.encrypted, encValues{
-				m:     &EncryptedManifest{},
-				files: &memfs.FS{},
-			})
-
-			b.m.Encrypted = append(b.m.Encrypted, &Manifest_EncryptedBundle{
-				Filename: fmt.Sprintf("%d.encrypted", len(b.encrypted)-1),
+		if len(b.values) == 0 {
+			b.values = append(b.values, valueDatabase{
+				filename: fmt.Sprintf("values/%d.values", len(b.values)),
+				m:        &ValueDatabase{},
+				files:    &memfs.FS{},
 			})
 		}
 
-		enc := b.encrypted[len(b.encrypted)-1]
-		enc.m.Value = append(enc.m.Value, &EncryptedManifest_Value{
+		enc := b.values[len(b.values)-1]
+		enc.m.Value = append(enc.m.Value, &ValueDatabase_Value{
 			Key: &ValueKey{
 				PackageName: packageName,
 				Key:         key,
 			},
 			Value: value,
 		})
-
 	}
 
 	// Always re-generate definitions.
@@ -90,9 +88,9 @@ func (b *Bundle) Set(packageName, key string, value []byte) {
 
 func (b *Bundle) Delete(packageName, key string) bool {
 	var deleted int
-	for _, sec := range b.encrypted {
+	for _, sec := range b.values {
 		for {
-			index := slices.IndexFunc(sec.m.Value, func(e *EncryptedManifest_Value) bool {
+			index := slices.IndexFunc(sec.m.Value, func(e *ValueDatabase_Value) bool {
 				return isKey(e.Key, packageName, key)
 			})
 			if index < 0 {
@@ -113,7 +111,7 @@ func (b *Bundle) Delete(packageName, key string) bool {
 }
 
 func (b *Bundle) Lookup(ctx context.Context, packageName, key string) ([]byte, error) {
-	for _, sec := range b.encrypted {
+	for _, sec := range b.values {
 		for _, v := range sec.m.Value {
 			if isKey(v.Key, packageName, key) {
 				if v.FromPath != "" {
@@ -146,7 +144,7 @@ func (b *Bundle) EnsureReader(pubkey string) error {
 
 func (b *Bundle) regen() {
 	b.m.Definition = nil
-	for _, enc := range b.encrypted {
+	for _, enc := range b.values {
 		for _, v := range enc.m.Value {
 			b.m.Definition = append(b.m.Definition, &Manifest_Definition{
 				Key: v.Key,
@@ -155,7 +153,7 @@ func (b *Bundle) regen() {
 	}
 }
 
-func (b *Bundle) SerializeTo(ctx context.Context, w io.Writer) error {
+func (b *Bundle) SerializeTo(ctx context.Context, w io.Writer, encrypt bool) error {
 	var serialized memfs.FS
 
 	serialized.Add("README.txt", []byte("This is a secret bundle managed by Foundation. A list of included secrets is always visible, but their values are encrypted."))
@@ -170,14 +168,26 @@ func (b *Bundle) SerializeTo(ctx context.Context, w io.Writer) error {
 		recipients = append(recipients, xid)
 	}
 
-	manifestBytes, err := protojson.Marshal(b.m)
+	m := &Manifest{
+		Definition: b.m.Definition,
+		Reader:     b.m.Reader,
+	}
+
+	for _, enc := range b.values {
+		m.Values = append(m.Values, &Manifest_BundleReference{
+			Filename: enc.filename,
+			RawText:  !encrypt,
+		})
+	}
+
+	manifestBytes, err := protojson.Marshal(m)
 	if err != nil {
 		return fnerrors.InternalError("failed to serialize manifest: %w", err)
 	}
 
 	serialized.Add("manifest.json", manifestBytes)
 
-	for k, enc := range b.encrypted {
+	for _, enc := range b.values {
 		manifestBytes, err := protojson.Marshal(enc.m)
 		if err != nil {
 			return fnerrors.InternalError("failed to serialize manifest: %w", err)
@@ -193,20 +203,26 @@ func (b *Bundle) SerializeTo(ctx context.Context, w io.Writer) error {
 		encFS.Add("manifest.json", manifestBytes)
 
 		var buf bytes.Buffer
-		encryptedWriter, encErr := age.Encrypt(&buf, recipients...)
-		if encErr != nil {
-			return fnerrors.InternalError("failed to encrypt values: %w", err)
+		if encrypt {
+			encryptedWriter, encErr := age.Encrypt(&buf, recipients...)
+			if encErr != nil {
+				return fnerrors.InternalError("failed to encrypt values: %w", err)
+			}
+
+			if err := maketarfs.TarFS(ctx, encryptedWriter, encFS, nil, nil); err != nil {
+				return fnerrors.InternalError("failed to create encrypted bundle: %w", err)
+			}
+
+			if err := encryptedWriter.Close(); err != nil {
+				return fnerrors.InternalError("failed to encrypted bundle: %w", err)
+			}
+		} else {
+			if err := maketarfs.TarFS(ctx, &buf, encFS, nil, nil); err != nil {
+				return fnerrors.InternalError("failed to create encrypted bundle: %w", err)
+			}
 		}
 
-		if err := maketarfs.TarFS(ctx, encryptedWriter, encFS, nil, nil); err != nil {
-			return fnerrors.InternalError("failed to create encrypted bundle: %w", err)
-		}
-
-		if err := encryptedWriter.Close(); err != nil {
-			return fnerrors.InternalError("failed to encrypted bundle: %w", err)
-		}
-
-		serialized.Add(b.m.Encrypted[k].Filename, buf.Bytes())
+		serialized.Add(enc.filename, buf.Bytes())
 	}
 
 	return maketarfs.TarFS(ctx, w, &serialized, nil, nil)
@@ -239,13 +255,13 @@ func LoadBundle(ctx context.Context, keyDir fs.FS, contents []byte) (*Bundle, er
 	}
 
 	m := &Manifest{}
-	if err := readManifest(fsys, m); err != nil {
+	if err := readManifest("bundle", fsys, m); err != nil {
 		return nil, err
 	}
 
 	bundle := &Bundle{m: m}
 
-	for _, enc := range m.Encrypted {
+	for _, enc := range m.Values {
 		encFile, err := fsys.Open(enc.Filename)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -256,17 +272,35 @@ func LoadBundle(ctx context.Context, keyDir fs.FS, contents []byte) (*Bundle, er
 
 		defer encFile.Close()
 
-		encFS, err := keys.DecryptAsFS(ctx, keyDir, encFile)
-		if err != nil {
+		var archiveBytes []byte
+		if !enc.RawText {
+			archiveBytes, err = keys.Decrypt(ctx, keyDir, encFile)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			archiveBytes, err = ioutil.ReadAll(encFile)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		encFS := tarfs.FS{
+			TarStream: func() (io.ReadCloser, error) {
+				return io.NopCloser(bytes.NewReader(archiveBytes)), nil
+			},
+		}
+
+		encm := &ValueDatabase{}
+		if err := readManifest("value bundle", encFS, encm); err != nil {
 			return nil, err
 		}
 
-		encm := &EncryptedManifest{}
-		if err := readManifest(encFS, encm); err != nil {
-			return nil, err
+		encbundle := valueDatabase{
+			filename: enc.Filename,
+			m:        encm,
+			files:    &memfs.FS{},
 		}
-
-		encbundle := encValues{m: encm, files: &memfs.FS{}}
 
 		for _, value := range encm.Value {
 			if value.FromPath != "" {
@@ -279,23 +313,23 @@ func LoadBundle(ctx context.Context, keyDir fs.FS, contents []byte) (*Bundle, er
 			}
 		}
 
-		bundle.encrypted = append(bundle.encrypted, encbundle)
+		bundle.values = append(bundle.values, encbundle)
 	}
 
 	return bundle, nil
 }
 
-func readManifest(fsys fs.FS, m proto.Message) error {
+func readManifest(what string, fsys fs.FS, m proto.Message) error {
 	manifestBytes, err := fs.ReadFile(fsys, "manifest.json")
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fnerrors.BadInputError("invalid bundle: manifest.json is missing")
+			return fnerrors.BadInputError("invalid %s: manifest.json is missing", what)
 		}
 		return err
 	}
 
 	if err := protojson.Unmarshal(manifestBytes, m); err != nil {
-		return fnerrors.BadInputError("invalid bundle: manifest.json is invalid: %w", err)
+		return fnerrors.BadInputError("invalid %s: manifest.json is invalid: %w", what, err)
 	}
 
 	return nil
