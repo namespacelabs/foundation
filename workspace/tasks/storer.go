@@ -29,8 +29,10 @@ func (st *Storer) Store(af *RunningAction) {
 }
 
 func (st *Storer) store(af *RunningAction) error {
+	actionId := af.Data.ActionID
+	
 	if mkdirfs, ok := st.bundle.fsys.(fnfs.MkdirFS); ok {
-		err := mkdirfs.MkdirAll(af.Data.ActionID, 0700)
+		err := mkdirfs.MkdirAll(actionId, 0700)
 		if err != nil {
 			return err
 		}
@@ -41,7 +43,7 @@ func (st *Storer) store(af *RunningAction) error {
 		return err
 	}
 
-	if err := fnfs.WriteFile(context.Background(), st.bundle.fsys, "action.textpb", pbytes, 0600); err != nil {
+	if err := fnfs.WriteFile(context.Background(), st.bundle.fsys, filepath.Join(actionId, "action.textpb"), pbytes, 0600); err != nil {
 		return err
 	}
 	
@@ -54,7 +56,7 @@ func (st *Storer) store(af *RunningAction) error {
 			return err
 		}
 
-		if err := fnfs.WriteFile(context.Background(), st.bundle.fsys, id+filepath.Ext(buf.name), out, 0600); err != nil {
+		if err := fnfs.WriteFile(context.Background(), st.bundle.fsys, filepath.Join(actionId, id+filepath.Ext(buf.name)), out, 0600); err != nil {
 			return err
 		}
 	}
