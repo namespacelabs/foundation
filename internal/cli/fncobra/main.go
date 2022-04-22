@@ -223,8 +223,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if cleanupTracer != nil {
 		cleanupTracer()
 	}
-	bundles.DeleteOldBundles()
-
+	if err := bundles.DeleteOldBundles(); err != nil {
+		log.Printf("Failed to delete old bundles: %v", err)
+	}
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
 	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
 		// Printing the new version message if any.
