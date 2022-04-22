@@ -18,6 +18,9 @@ import (
 func KeysDir() (fnfs.LocalFS, error) {
 	cfg, err := dirs.Config()
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrKeyGen
+		}
 		return nil, err
 	}
 

@@ -30,7 +30,11 @@ import (
 
 func NewKeysCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "keys",
+		Use: "keys",
+	}
+
+	list := &cobra.Command{
+		Use:   "list",
 		Short: "Displays the configured public keys used for local secret management.",
 		Args:  cobra.NoArgs,
 
@@ -189,6 +193,7 @@ func NewKeysCmd() *cobra.Command {
 
 	encrypt.Flags().BoolVar(&reencrypt, "reencrypt", reencrypt, "Use re-encryption instead.")
 
+	cmd.AddCommand(list)
 	cmd.AddCommand(generate)
 	cmd.AddCommand(encrypt)
 	cmd.AddCommand(importCmd)
@@ -245,7 +250,7 @@ func importImpl(ctx context.Context, publicKey string) error {
 	// Check if a given key already exists. We should probably ask if overwrite is intended. As for now, bail out.
 	if err := keys.Visit(ctx, keyDir, func(xid *age.X25519Identity) error {
 		if xid.Recipient().String() == publicKey {
-			return fmt.Errorf("Key %q already exists. I will not overwrite.", publicKey)
+			return fmt.Errorf("key %q already exists, won't be overwritten", publicKey)
 		}
 		return nil
 	}); err != nil {
@@ -259,7 +264,7 @@ func importImpl(ctx context.Context, publicKey string) error {
 	if identities, err := age.ParseIdentities(bytes.NewReader(pass)); err != nil {
 		return err
 	} else if len(identities) != 1 {
-		return fmt.Errorf("Expecting one key to be present. Got %d", len(identities))
+		return fmt.Errorf("expecting one key to be present, got %d", len(identities))
 	}
 	if err := fnfs.WriteFile(ctx, keyDir, publicKey+".txt", append(pass, '\n'), 0600); err != nil {
 		return err
