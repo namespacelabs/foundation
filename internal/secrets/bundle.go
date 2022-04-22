@@ -112,6 +112,22 @@ func (b *Bundle) Delete(packageName, key string) bool {
 	return false
 }
 
+func (b *Bundle) Lookup(ctx context.Context, packageName, key string) ([]byte, error) {
+	for _, sec := range b.encrypted {
+		for _, v := range sec.m.Value {
+			if isKey(v.Key, packageName, key) {
+				if v.FromPath != "" {
+					return fs.ReadFile(sec.files, v.FromPath)
+				}
+
+				return v.Value, nil
+			}
+		}
+	}
+
+	return nil, nil
+}
+
 func (b *Bundle) EnsureReader(pubkey string) error {
 	xid, err := age.ParseX25519Recipient(pubkey)
 	if err != nil {
@@ -215,12 +231,7 @@ func NewBundle(ctx context.Context, keyID string) (*Bundle, error) {
 	}, nil
 }
 
-func LoadBundle(ctx context.Context, contents []byte) (*Bundle, error) {
-	keyDir, err := keys.KeysDir()
-	if err != nil {
-		return nil, err
-	}
-
+func LoadBundle(ctx context.Context, keyDir fs.FS, contents []byte) (*Bundle, error) {
 	fsys := tarfs.FS{
 		TarStream: func() (io.ReadCloser, error) {
 			return io.NopCloser(bytes.NewReader(contents)), nil

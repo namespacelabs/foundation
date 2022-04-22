@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -204,7 +205,12 @@ func loadBundleFromArgs(ctx context.Context, args []string, createIfMissing crea
 		return nil, nil, err
 	}
 
-	bundle, err := secrets.LoadBundle(ctx, contents)
+	keyDir, err := keys.KeysDir()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	bundle, err := secrets.LoadBundle(ctx, keyDir, contents)
 	return &location{root, loc}, bundle, err
 }
 

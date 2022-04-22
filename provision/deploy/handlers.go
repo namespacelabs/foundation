@@ -142,7 +142,7 @@ func makeInvocation(ctx context.Context, env ops.Environment, serverLoc workspac
 		} else {
 			contents, err := fs.ReadFile(serverLoc.Module.ReadWriteFS(), v.FromWorkspace)
 			if err != nil {
-				return nil, fnerrors.UserError(serverLoc, "failed to read contents: %v", err)
+				return nil, fnerrors.UserError(serverLoc, "failed to read file contents: %v", err)
 			}
 
 			m := &memfs.FS{}
