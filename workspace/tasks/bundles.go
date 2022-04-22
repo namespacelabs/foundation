@@ -130,8 +130,11 @@ func (b *Bundles) DeleteOldBundles() error {
 		}
 	}
 	for _, bundle := range remove {
-		if err := b.fsys.Remove(bundle.root); err != nil {
-			return fnerrors.InternalError("failed to delete bundle with root %q: %w", bundle.root, err)
+		if rmdirfs, ok := b.fsys.(fnfs.RmdirFS); ok {
+			err := rmdirfs.RemoveAll(bundle.root)
+			if err != nil {
+				return fnerrors.InternalError("failed to delete bundle with root %q: %w", bundle.root, err)
+			}
 		}
 	}
 	return nil
