@@ -91,7 +91,7 @@ func SnapshotContents(ctx context.Context, modulePath, rel string) (fsys *memfs.
 func verifyDir(path string) error {
 	if st, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return fnerrors.InternalError("%s: requested module absolute path to snapshot does not exist", path)
+			return err
 		}
 		return fnerrors.UserError(nil, "%s: accessing the path failed: %v", path, err)
 	} else if !st.IsDir() {
@@ -394,13 +394,13 @@ func AggregateFSEvents(watcher *fsnotify.Watcher, logger io.Writer, bufferCh cha
 }
 
 func handleEvents(ctx context.Context, logger io.Writer, absPath string, fsys fnfs.ReadWriteFS, onNewSnapshot OnNewSnapshopFunc, buffer []fsnotify.Event) (fnfs.ReadWriteFS, bool, error) {
-	// Coallesce multiple changes.
+	// Coalesce multiple changes.
 	var dirtyPaths uniquestrings.List
 	for _, ev := range buffer {
 		dirtyPaths.Add(ev.Name)
 	}
 
-	fmt.Fprintf(logger, "Coallesced: %v\n", dirtyPaths.Strings())
+	fmt.Fprintf(logger, "Coalesced: %v\n", dirtyPaths.Strings())
 
 	var actions []*FileEvent
 	for _, p := range dirtyPaths.Strings() {

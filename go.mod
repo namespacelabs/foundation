@@ -6,9 +6,10 @@ require (
 	cuelang.org/go v0.4.2
 	filippo.io/age v1.0.0
 	github.com/andybalholm/brotli v1.0.4
-	github.com/aws/aws-sdk-go-v2 v1.16.1
+	github.com/aws/aws-sdk-go-v2 v1.16.2
 	github.com/aws/aws-sdk-go-v2/config v1.15.2
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.14.0
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.21.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.2
 	github.com/cenkalti/backoff/v4 v4.1.2
 	github.com/cespare/xxhash/v2 v2.1.2
@@ -18,6 +19,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fsnotify/fsnotify v1.5.1
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.7
@@ -82,12 +84,15 @@ require (
 	cloud.google.com/go v0.99.0 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.11.1 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.8 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.5.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.9.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.11.2 // indirect
 	github.com/aws/smithy-go v1.11.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -101,6 +106,7 @@ require (
 	github.com/containerd/ttrpc v1.1.0 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/docker/distribution v2.8.0+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
 	github.com/docker/go-connections v0.4.0

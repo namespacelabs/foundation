@@ -166,43 +166,48 @@ different from your workstation.
 When a server has secrets required for deployment, sharing those secrets between different users
 can sometimes be challenging. Foundation includes a simple solution for it, building on `age`.
 
-You generate a pub/private identity using `fn keys generate`, which can then be
-used to encrypt a payload that can be submitted back into a repository. Access
+Users generate pub/private identities using `fn keys generate`, which can then be
+used to encrypt "secret bundles" which are submittable into the repository. Access
 to the payload is determined by the keys which have been added as receipients to
-the encrypted payload. This list of keys can be public, and kept in the
-repository.
+the encrypted payload. This list of keys is public, and kept in the repository as
+part of the bundle.
 
 ```
-fn keys generate
+$ fn keys generate
 Created age1kacjakcg8dqyxzdwldemrx4pt79ructa6z0mgw7nk03mgxl3vqsslph4fz
 ```
 
-
 ```
-mkdir server/secrets/
-echo age1kacjakcg8dqyxzdwldemrx4pt79ructa6z0mgw7nk03mgxl3vqsslph4fz >> server/secrets/contents.tar.keys
-fn keys encrypt server/secrets
-```
+$ fn secrets set std/testdata/server/gogrpc --secret namespacelabs.dev/foundation/std/testdata/datastore:cert
 
-A `server/secrets/contents.tar.age` will be generated which can be submitted to the repository. 
+Specify a value for "cert" in namespacelabs.dev/foundation/std/testdata/datastore.
 
-To grant access to the encrypted file, merely have your teammate generate a key (see above), add it to
-the keys file, and run:
+Value: <value>
 
-```
-fn keys encrypt --reencrypt server/secrets
+Wrote std/testdata/server/gogrpc/server.secrets
 ```
 
-The resulting files should now be submitted to the repository.
 
-To perform other changes, simply do:
+A `server.secrets` will be produced which can be submitted to the repository, as the secret values are encrypted.
+
+To grant access to the encrypted file, merely have your teammate generate a key (see above), add run:
 
 ```
-fn keys shell server/secrets/
+$ fn secrets add-reader std/testdata/server/gogrpc --key <pubkey>
+Wrote std/testdata/server/gogrpc/server.secrets
 ```
 
-And you'll be dropped to a shell where the secrets have been decrypted, and will be re-encrypted when you leave
-the shell.
+The resulting file can then be submitted to the repository.
+
+To inspect who has access to the bundle, and which secrets are stored, run:
+
+```
+$ fn secrets info std/testdata/server/gogrpc
+Readers:
+  age1mlefr5zhnesgzfl7aefy95qlem0feuyfpdpmee6lk50x4h6mlskqdffjxv
+Definitions:
+  namespacelabs.dev/foundation/std/testdata/datastore:cert
+```
 
 Note: this mechanism for secret management does not handle revocations. If a key has been issued which should
 no longer have access to the contents, all secret values should be considered compromised and replaced (as the

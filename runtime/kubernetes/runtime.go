@@ -400,6 +400,7 @@ func statusToDiagnostic(status v1.ContainerStatus) (runtime.Diagnostics, error) 
 	case status.State.Waiting != nil:
 		diag.Waiting = true
 		diag.WaitingReason = status.State.Waiting.Reason
+		diag.Crashed = status.State.Waiting.Reason == "CrashLoopBackOff"
 	case status.State.Terminated != nil:
 		diag.Terminated = true
 		diag.TerminatedReason = status.State.Terminated.Reason

@@ -5,7 +5,6 @@
 package secrets
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/base64"
@@ -161,33 +160,6 @@ func Collect(server *schema.Server) (*Collection, error) {
 	return col, nil
 }
 
-func FillData(ctx context.Context, col *Collection, openContents func() (fs.FS, error)) (map[string][]byte, error) {
-	if len(col.UserManaged) == 0 {
-		return nil, nil
-	}
-
-	contents, err := openContents()
-	if err != nil {
-		return nil, err
-	}
-
-	data := map[string][]byte{}
-	for k, userManaged := range col.UserManaged {
-		m, err := provideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
-		if err != nil {
-			return nil, err
-		}
-
-		names := col.Names[k]
-		for j, sec := range userManaged {
-			name := names[j]
-			data[name] = m[sec.Name]
-		}
-	}
-
-	return data, nil
-}
-
 func (col *Collection) SecretsOf(packageName string) []*SecretDevMap_SecretSpec {
 	for _, conf := range col.DevMap.Configure {
 		if conf.PackageName == packageName {
@@ -198,46 +170,7 @@ func (col *Collection) SecretsOf(packageName string) []*SecretDevMap_SecretSpec 
 	return nil
 }
 
-func provideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userManaged ...*Secret) (map[string][]byte, error) {
-	sdm, err := loadDevMap(src)
-	if err != nil {
-		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
-	}
-
-	cfg := lookupConfig(sdm, caller)
-	if cfg == nil {
-		return nil, fmt.Errorf("%v: no secret configuration definition in map.textpb", caller)
-	}
-
-	result := map[string][]byte{}
-	for _, s := range userManaged {
-		spec := lookupSecret(cfg, s.Name)
-		if spec == nil {
-			return nil, fmt.Errorf("no secret configuration for %s of %q in map.textpb", s.Name, caller)
-		}
-
-		if spec.FromPath != "" {
-			var contents []byte
-			var err error
-
-			if filepath.IsAbs(spec.FromPath) {
-				return nil, fmt.Errorf("%s: %s: absolute paths are not supported in devmaps", caller, s.Name)
-			}
-
-			contents, err = fs.ReadFile(src, spec.FromPath)
-			if err != nil {
-				return nil, fmt.Errorf("failed while reading secret %s: %w", s.Name, err)
-			}
-			result[s.Name] = []byte(strings.TrimSpace(string(contents)))
-		} else {
-			result[s.Name] = []byte(spec.Value)
-		}
-	}
-
-	return result, nil
-}
-
-func loadDevMap(src fs.FS) (*SecretDevMap, error) {
+func LoadDevMap(src fs.FS) (*SecretDevMap, error) {
 	mapContents, err := fs.ReadFile(src, "map.textpb")
 	if err != nil {
 		return nil, err
@@ -251,20 +184,10 @@ func loadDevMap(src fs.FS) (*SecretDevMap, error) {
 	return sdm, nil
 }
 
-func lookupConfig(sdm *SecretDevMap, caller string) *SecretDevMap_Configure {
+func LookupConfig(sdm *SecretDevMap, caller string) *SecretDevMap_Configure {
 	for _, c := range sdm.Configure {
 		if c.PackageName == caller {
 			return c
-		}
-	}
-
-	return nil
-}
-
-func lookupSecret(c *SecretDevMap_Configure, name string) *SecretDevMap_SecretSpec {
-	for _, s := range c.Secret {
-		if s.Name == name {
-			return s
 		}
 	}
 

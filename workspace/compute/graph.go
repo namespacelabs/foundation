@@ -463,7 +463,7 @@ func Do(parent context.Context, do func(context.Context) error) error {
 		}
 	}
 
-	tconf, err := parseThrottleConfig()
+	tconf, err := parseThrottleConfig(parent)
 	if err != nil {
 		return fnerrors.InternalError("failed to parse throttle configuration: %v", err)
 	}

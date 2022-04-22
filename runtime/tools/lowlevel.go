@@ -26,8 +26,7 @@ import (
 )
 
 const (
-	MaxHandshakeTime      = 10 * time.Second // Maximum amount of time we'll wait for a Hello from a worker.
-	MaxInvocationDuration = 30 * time.Second
+	MaxInvocationDuration = 1 * time.Minute
 )
 
 func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.RunToolOpts, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {

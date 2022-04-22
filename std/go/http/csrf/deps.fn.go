@@ -39,9 +39,9 @@ var (
 func makeDeps__hfr5jb(ctx context.Context, di core.Dependencies) (interface{}, error) {
 	var deps ExtensionDeps
 	var err error
-	// name: "http_csrf_token"
+	// name: "http-csrf-token"
 	p := &secrets.Secret{}
-	core.MustUnwrapProto("Cg9odHRwX2NzcmZfdG9rZW4=", p)
+	core.MustUnwrapProto("Cg9odHRwLWNzcmYtdG9rZW4=", p)
 
 	if deps.Token, err = secrets.ProvideSecret(ctx, p); err != nil {
 		return nil, err

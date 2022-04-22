@@ -142,8 +142,9 @@ message Provides {
     repeated AvailableIn available_in = 3;
 
     message AvailableIn {
-        Go  go  = 1;
-        Web web = 2;
+        Go     go     = 1;
+        Web    web    = 2;
+        NodeJs nodejs = 3;
 
         message Go {
             string package = 1;
@@ -151,6 +152,11 @@ message Provides {
         }
 
         message Web {}
+
+        message NodeJs {
+            string import = 1;
+            string type   = 2;
+        }
     }
 
     // Scoped dependencies instantiated for this provided type.

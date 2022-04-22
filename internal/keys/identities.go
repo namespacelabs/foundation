@@ -51,25 +51,48 @@ func validateKey(xids []age.Identity, err error) (*age.X25519Identity, error) {
 	}
 }
 
-func Key(key string) (age.Identity, error) {
-	cfg, err := dirs.Config()
+func Key(key string) (*age.X25519Identity, error) {
+	keyDir, err := KeysDir()
 	if err != nil {
 		return nil, err
 	}
 
-	keyFile := filepath.Join(cfg, "keys", key+".txt")
-	f, err := os.Open(keyFile)
+	f, err := keyDir.Open(key + ".txt")
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fnerrors.BadInputError("%s: no such key", key)
+		}
 		return nil, err
 	}
 	defer f.Close()
 
 	xid, err := validateKey(age.ParseIdentities(f))
 	if err != nil {
-		return nil, fnerrors.BadInputError("%s: %w", keyFile, err)
+		return nil, fnerrors.BadInputError("%s: %w", key, err)
 	}
 
 	return xid, nil
+}
+
+func Select(ctx context.Context, key string) (*age.X25519Identity, error) {
+	if key != "" {
+		return Key(key)
+	}
+
+	keyDir, err := KeysDir()
+	if err != nil {
+		return nil, err
+	}
+
+	var selected *age.X25519Identity
+	if err := Visit(ctx, keyDir, func(xi *age.X25519Identity) error {
+		selected = xi
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return selected, nil
 }
 
 func Collect(ctx context.Context) (*memfs.FS, error) {

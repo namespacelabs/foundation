@@ -250,7 +250,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 
 		parsed, err := protos.ParseAtLocation(fsys, loc, svc.Sources)
 		if err != nil {
-			return fnerrors.UserError(loc, "failed to parse %v: %v", svc.Sources, err)
+			return fnerrors.UserError(loc, "failed to parse proto sources %v: %v", svc.Sources, err)
 		}
 
 		_, desc, err := protos.LoadDescriptorByName(parsed, svc.Typename)
@@ -375,7 +375,7 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 
 		parsed, err := protos.ParseAtLocation(fsys, loc, p.Type.Source)
 		if err != nil {
-			return fnerrors.UserError(loc, "failed to parse %v: %v", p.Type.Source, err)
+			return fnerrors.UserError(loc, "failed to parse proto sources %v: %v", p.Type.Source, err)
 		}
 
 		if _, _, err := protos.LoadMessageByName(parsed, p.Type.Typename); err != nil {
@@ -408,6 +408,18 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 						Web: &schema.Provides_AvailableIn_Web{},
 					})
 				}
+			case "nodejs":
+				proto := &schema.Provides_AvailableIn_NodeJs{}
+				remarshal, err := json.Marshal(m)
+				if err != nil {
+					return fnerrors.UserError(loc, "failed to marshal: %w", err)
+				}
+				if err := json.Unmarshal(remarshal, proto); err != nil {
+					return fnerrors.UserError(loc, "failed to unmarshal: %w", err)
+				}
+				p.AvailableIn = append(p.AvailableIn, &schema.Provides_AvailableIn{
+					Nodejs: proto,
+				})
 			}
 		}
 

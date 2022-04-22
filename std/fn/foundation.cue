@@ -168,7 +168,7 @@ _#ConfigureBase: {
 	}
 
 	#Startup: {
-		args?: #Args
+		args?: #Args | [...string]
 		env: [string]: string
 	}
 
@@ -200,7 +200,11 @@ _#ConfigureBase: {
 	args:       #Args
 	workingDir: *"/" | string
 	mount: [string]: {fromWorkspace: string}
-	snapshot: [string]: {fromWorkspace: string}
+	snapshot: [string]: {
+		fromWorkspace: string
+		optional:      *false | true
+		requireFile:   *false | true
+	}
 	noCache:      *false | true
 	requiresKeys: *false | true
 }

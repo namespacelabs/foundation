@@ -29,9 +29,18 @@ configure: fn.#Configure & {
 		// driven by the local configuration.
 		with: {
 			binary: $tool
-			snapshot: secrets: {
-				// XXX we need a validation step that is more understandable to users.
-				fromWorkspace: path.Join([$workspace.serverPath, "secrets"])
+			snapshot: {
+				secrets: {
+					// XXX we need a validation step that is more understandable to users.
+					fromWorkspace: path.Join([$workspace.serverPath, "secrets"])
+					optional:      true
+				}
+				serverSecrets: {
+					// XXX we need a validation step that is more understandable to users.
+					fromWorkspace: path.Join([$workspace.serverPath, "server.secrets"])
+					optional:      true
+					requireFile:   true
+				}
 			}
 			noCache:      true // We don't want secret values to end up in the cache.
 			requiresKeys: true // This is temporary while we don't pipe a keys service to tools.

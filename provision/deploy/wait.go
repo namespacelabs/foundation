@@ -100,7 +100,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 						fmt.Fprintf(out, "For more information, run:\n  %s\n", help)
 					}
 
-					fmt.Fprintf(out, "Diagnostics, retrieved at %v:\n", time.Now())
+					fmt.Fprintf(out, "Diagnostics retrieved at %s:\n", time.Now().Format("2006-01-02 15:04:05.000"))
 
 					// XXX fetching diagnostics should not block forwarding events (above).
 					for _, ws := range all {
@@ -125,6 +125,11 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 
 						case diagnostics.Waiting:
 							fmt.Fprintf(out, "  Waiting: %s\n", diagnostics.WaitingReason)
+							if diagnostics.Crashed {
+								if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
+									fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference(), err)
+								}
+							}
 
 						case diagnostics.Terminated:
 							if diagnostics.ExitCode > 0 {

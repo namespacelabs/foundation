@@ -254,6 +254,7 @@ type Diagnostics struct {
 
 	Waiting       bool
 	WaitingReason string
+	Crashed       bool
 
 	Terminated       bool
 	TerminatedReason string
