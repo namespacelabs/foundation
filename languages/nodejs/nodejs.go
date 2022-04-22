@@ -312,7 +312,7 @@ func maybeGenerateImplStub(ctx context.Context, p *workspace.Package) error {
 		return nil
 	}
 
-	tmplOptions := nodeimplTmplOptions{}
+	tmplOptions := nodeImplTmplOptions{}
 	for key, srv := range p.Services {
 		srvNameParts := strings.Split(key, ".")
 		srvName := srvNameParts[len(srvNameParts)-1]

@@ -15,14 +15,13 @@ type nodeTmplOptions struct {
 	Service   *tmplService
 	Providers []tmplProvider
 }
-
-type nodeimplTmplOptions struct {
-	ServiceServerName, ServiceName, ServiceFileName string
-}
-
 type serverTmplOptions struct {
 	Imports  []tmplSingleImport
 	Services []tmplImportedType
+}
+
+type nodeImplTmplOptions struct {
+	ServiceServerName, ServiceName, ServiceFileName string
 }
 
 type tmplProvider struct {
@@ -101,10 +100,13 @@ import * as {{.Alias}} from "{{.Package}}"{{end}}
 
 interface Deps {
 {{range $.Services}}
-{{.Name}}?: {{.ImportAlias}}.ServiceDeps;{{end}}
+{{.Name}}: {{.ImportAlias}}.ServiceDeps;{{end}}
 }
 
-const prepareDeps = (): Deps => ({});
+const prepareDeps = (): Deps => ({
+	{{range $.Services}}
+	{{.Name}}: {{.ImportAlias}}.makeServiceDeps(),{{end}}
+});
 
 const wireServices = (server: Server, deps: Deps): void => {
 {{range $.Services}}
