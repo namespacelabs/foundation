@@ -6,6 +6,7 @@ package deploy
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -14,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/stack"
@@ -118,7 +120,8 @@ func makeInvocation(ctx context.Context, env ops.Environment, serverLoc workspac
 			return nil, fnerrors.UserError(serverLoc, "fromSnapshot can't be empty")
 		}
 
-		if _, err := os.Stat(filepath.Join(serverLoc.Module.Abs(), v.FromWorkspace)); os.IsNotExist(err) {
+		st, err := os.Stat(filepath.Join(serverLoc.Module.Abs(), v.FromWorkspace))
+		if os.IsNotExist(err) {
 			if v.Optional {
 				continue
 			}
@@ -126,9 +129,25 @@ func makeInvocation(ctx context.Context, env ops.Environment, serverLoc workspac
 			return nil, fnerrors.UserError(serverLoc, "required location %q does not exist", v.FromWorkspace)
 		}
 
-		fsys, err := serverLoc.Module.SnapshotContents(ctx, v.FromWorkspace)
-		if err != nil {
-			return nil, fnerrors.UserError(serverLoc, "failed to read contents: %v", err)
+		var fsys fs.FS
+		if st.IsDir() {
+			if v.RequireFile {
+				return nil, fnerrors.UserError(serverLoc, "%s: must be a file, not a directory", v.FromWorkspace)
+			}
+
+			fsys, err = serverLoc.Module.SnapshotContents(ctx, v.FromWorkspace)
+			if err != nil {
+				return nil, fnerrors.UserError(serverLoc, "failed to read contents: %v", err)
+			}
+		} else {
+			contents, err := fs.ReadFile(serverLoc.Module.ReadWriteFS(), v.FromWorkspace)
+			if err != nil {
+				return nil, fnerrors.UserError(serverLoc, "failed to read contents: %v", err)
+			}
+
+			m := &memfs.FS{}
+			m.Add(st.Name(), contents)
+			fsys = m
 		}
 
 		invocation.Snapshots = append(invocation.Snapshots, tool.Snapshot{

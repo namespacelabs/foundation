@@ -203,6 +203,7 @@ _#ConfigureBase: {
 	snapshot: [string]: {
 		fromWorkspace: string
 		optional:      *false | true
+		requireFile:   *false | true
 	}
 	noCache:      *false | true
 	requiresKeys: *false | true

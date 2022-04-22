@@ -63,6 +63,7 @@ type InvocationMount struct {
 type InvocationSnapshot struct {
 	FromWorkspace string `json:"fromWorkspace"`
 	Optional      bool   `json:"optional"`
+	RequireFile   bool   `json:"requireFile"`
 }
 
 type Container struct {
