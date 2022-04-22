@@ -55,7 +55,6 @@ func (wl *writeLocal) Compute(ctx context.Context, deps compute.Resolved) (strin
 	if err := fnfs.WriteFileExtended(ctx, fnfs.ReadWriteLocalFS(dir), name, wl.perm,
 		fnfs.WriteFileExtendedOpts{
 			ContentsDigest: download.Digest(),
-			AddProgress:    true,
 			EnsureFileMode: true,
 		},
 		func(w io.Writer) error {
@@ -65,7 +64,10 @@ func (wl *writeLocal) Compute(ctx context.Context, deps compute.Resolved) (strin
 			}
 			defer r.Close()
 
-			if _, err := io.Copy(w, r); err != nil {
+			p := artifacts.NewProgressWriter(0, nil)
+			tasks.Attachments(ctx).SetProgress(p)
+
+			if _, err := io.Copy(io.MultiWriter(w, p), r); err != nil {
 				return err
 			}
 

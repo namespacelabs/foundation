@@ -15,10 +15,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type ReadWriteFS interface {
@@ -49,7 +47,6 @@ type WriteFileExtendedOpts struct {
 	FailOverwrite   bool
 	EnsureFileMode  bool
 	AnnounceWrite   bool
-	AddProgress     bool
 }
 
 func WriteFileExtended(ctx context.Context, dst ReadWriteFS, filePath string, mode fs.FileMode, opts WriteFileExtendedOpts, writeContents func(io.Writer) error) error {
@@ -104,13 +101,6 @@ write:
 		return fmt.Errorf("%s: would have been rewritten", filePath)
 	}
 
-	var wp io.Writer
-	if opts.AddProgress {
-		p := artifacts.NewProgressWriter(0, nil)
-		wp = p
-		tasks.Attachments(ctx).SetProgress(p)
-	}
-
 	if mkfs, ok := dst.(MkdirFS); ok {
 		if err := mkfs.MkdirAll(filepath.Dir(filePath), addExecToRead(mode)); err != nil {
 			return err
@@ -122,13 +112,7 @@ write:
 		return err
 	}
 
-	if wp != nil {
-		wp = io.MultiWriter(f, wp)
-	} else {
-		wp = f
-	}
-
-	err = writeContents(wp)
+	err = writeContents(f)
 	if err1 := f.Close(); err1 != nil && err == nil {
 		err = err1
 	}
