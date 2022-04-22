@@ -461,7 +461,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 		return err
 	}
 
-	merged, err := startup.ComputeConfig(ctx, stack.GetParsed(s.PackageName()), frontend.StartupInputs{
+	merged, err := startup.ComputeConfig(ctx, s.Env(), stack.GetParsed(s.PackageName()), frontend.StartupInputs{
 		Stack:       stack.Proto(),
 		Server:      s.Proto(),
 		ServerImage: imgs.Binary.ImageRef(),

@@ -13,10 +13,11 @@ import (
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
-func Shutdown(ctx context.Context, env ops.WorkspaceEnvironment, servers []provision.Server) error {
+func Shutdown(ctx context.Context, env workspace.WorkspaceEnvironment, servers []provision.Server) error {
 	stack, defs0, err := computeShutdown(ctx, env, servers)
 	if err != nil {
 		return err

@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -326,9 +327,9 @@ func RegisterGraphHandlers() {
 	})
 
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, create *kubedef.OpCreateSecretConditionally) (*ops.DispatcherResult, error) {
-		wenv, ok := env.(ops.WorkspaceEnvironment)
+		wenv, ok := env.(workspace.WorkspaceEnvironment)
 		if !ok {
-			return nil, fnerrors.InternalError("expected a ops.WorkspaceEnvironment")
+			return nil, fnerrors.InternalError("expected a workspace.WorkspaceEnvironment")
 		}
 
 		if create.Name == "" {

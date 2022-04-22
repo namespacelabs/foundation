@@ -46,7 +46,7 @@ type statefulGen struct{}
 var _ ops.HasStartSession[*OpProtoGen] = statefulGen{}
 
 func (statefulGen) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.DispatcherResult, error) {
-	wenv, ok := env.(ops.MutableWorkspaceEnvironment)
+	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
 	if !ok {
 		return nil, errors.New("WorkspaceEnvironment required")
 	}
@@ -63,7 +63,7 @@ func (statefulGen) Run(ctx context.Context, env ops.Environment, _ *schema.Defin
 }
 
 func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Session[*OpProtoGen] {
-	wenv, ok := env.(ops.MutableWorkspaceEnvironment)
+	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
 	if !ok {
 		// An error will then be returned in Close().
 		wenv = nil
@@ -75,7 +75,7 @@ func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Se
 type multiGen struct {
 	ctx  context.Context
 	buf  compute.Computable[oci.Image]
-	wenv ops.MutableWorkspaceEnvironment
+	wenv workspace.MutableWorkspaceEnvironment
 
 	mu    sync.Mutex
 	locs  []workspace.Location

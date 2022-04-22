@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strings"
 
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/schema"
@@ -27,7 +26,7 @@ type Server struct {
 }
 
 type ServerEnv interface {
-	ops.Environment
+	workspace.WorkspaceEnvironment
 	workspace.SealedPackages
 }
 

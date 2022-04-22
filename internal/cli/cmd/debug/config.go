@@ -52,7 +52,7 @@ func newComputeConfigCmd() *cobra.Command {
 
 			evald := stack.GetParsed(s.PackageName())
 
-			c, err := startup.ComputeConfig(ctx, evald, sargs)
+			c, err := startup.ComputeConfig(ctx, s.Env(), evald, sargs)
 			if err != nil {
 				return err
 			}

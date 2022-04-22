@@ -83,30 +83,36 @@ func simpleName(serviceProtoType string) string {
 	return parts[len(parts)-1]
 }
 
-func FetchServer(stack *schema.Stack) FetcherFunc {
+func FetchServer(packages workspace.Packages, stack *schema.Stack) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		var server cueServerReference
 		if err := v.Decode(&server); err != nil {
 			return nil, err
 		}
 
-		pkg := schema.PackageName(server.PackageName)
-		s := stack.GetServer(pkg)
-		if s == nil {
-			return nil, fnerrors.UserError(nil, "%s: server not part of the current stack", server.PackageName)
+		pkg, err := packages.LoadByName(ctx, schema.PackageName(server.PackageName))
+		if err != nil {
+			return nil, err
 		}
 
-		server.Id = s.Server.Id
-		server.Name = s.Server.Name
+		if pkg.Server == nil {
+			return nil, fnerrors.BadInputError("%s: expected a server", pkg.PackageName())
+		}
+
+		server.Id = pkg.Server.Id
+		server.Name = pkg.Server.Name
 		server.Endpoints = []cueEndpoint{}
 
-		for _, endpoint := range stack.EndpointsBy(pkg) {
-			server.Endpoints = append(server.Endpoints, cueEndpoint{
-				Type:          endpoint.Type.String(),
-				ServiceName:   endpoint.ServiceName,
-				AllocatedName: endpoint.AllocatedName,
-				ContainerPort: endpoint.GetPort().GetContainerPort(),
-			})
+		s := stack.GetServer(pkg.PackageName())
+		if s != nil {
+			for _, endpoint := range stack.EndpointsBy(pkg.PackageName()) {
+				server.Endpoints = append(server.Endpoints, cueEndpoint{
+					Type:          endpoint.Type.String(),
+					ServiceName:   endpoint.ServiceName,
+					AllocatedName: endpoint.AllocatedName,
+					ContainerPort: endpoint.GetPort().GetContainerPort(),
+				})
+			}
 		}
 
 		return server, nil
@@ -263,12 +269,13 @@ func FetchFocusServer(serverImageRef string, srv *schema.Server) FetcherFunc {
 
 func FetchEnv(env *schema.Environment) FetcherFunc {
 	return func(context.Context, cue.Value) (interface{}, error) {
-		return cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String()}, nil
+		return cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String(), Ephemeral: env.Ephemeral}, nil
 	}
 }
 
 type cueEnv struct {
-	Name    string `json:"name"`
-	Runtime string `json:"runtime"`
-	Purpose string `json:"purpose"`
+	Name      string `json:"name"`
+	Runtime   string `json:"runtime"`
+	Purpose   string `json:"purpose"`
+	Ephemeral bool   `json:"ephemeral"`
 }

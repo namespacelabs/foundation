@@ -77,7 +77,7 @@ type genEnv struct {
 	r    workspace.Packages
 }
 
-var _ ops.WorkspaceEnvironment = genEnv{}
+var _ workspace.WorkspaceEnvironment = genEnv{}
 
 func (g genEnv) ErrorLocation() string        { return g.root.ErrorLocation() }
 func (g genEnv) OutputFS() fnfs.ReadWriteFS   { return g.root.FS() }
