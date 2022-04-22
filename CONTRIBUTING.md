@@ -193,7 +193,8 @@ A `server.secrets` will be produced which can be submitted to the repository, as
 To grant access to the encrypted file, merely have your teammate generate a key (see above), add run:
 
 ```
-fn secrets add-reader std/testdata/server/gogrpc --key <pubkey>
+$ fn secrets add-reader std/testdata/server/gogrpc --key <pubkey>
+Wrote std/testdata/server/gogrpc/server.secrets
 ```
 
 The resulting file can then be submitted to the repository.
@@ -201,7 +202,11 @@ The resulting file can then be submitted to the repository.
 To inspect who has access to the bundle, and which secrets are stored, run:
 
 ```
-fn secrets info std/testdata/server/gogrpc
+$ fn secrets info std/testdata/server/gogrpc
+Readers:
+  age1mlefr5zhnesgzfl7aefy95qlem0feuyfpdpmee6lk50x4h6mlskqdffjxv
+Definitions:
+  namespacelabs.dev/foundation/std/testdata/datastore:cert
 ```
 
 Note: this mechanism for secret management does not handle revocations. If a key has been issued which should
