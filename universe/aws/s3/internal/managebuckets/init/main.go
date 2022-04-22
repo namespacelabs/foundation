@@ -10,8 +10,7 @@ import (
 	"flag"
 	"log"
 
-	awss3 "namespacelabs.dev/foundation/universe/aws/s3"
-	"namespacelabs.dev/foundation/universe/aws/s3/internal/managebuckets"
+	"namespacelabs.dev/foundation/universe/aws/s3"
 )
 
 var (
@@ -27,19 +26,19 @@ func main() {
 	ctx := context.Background()
 	// BucketConfigs are passed as additional arguments without flag names.
 	for _, jsonBucketConfig := range flag.Args() {
-		bc := &awss3.BucketConfig{}
+		bc := &s3.BucketConfig{}
 		if err := json.Unmarshal([]byte(jsonBucketConfig), bc); err != nil {
 			log.Fatalf("Failed to unmarshal bucket config with error: %s", err)
 		}
 
-		s3client, err := awss3.CreateExternalS3Client(ctx, awss3.AwsConfig{
+		s3client, err := s3.CreateExternalS3Client(ctx, s3.AwsConfig{
 			Region:          bc.Region,
 			CredentialsPath: *awsCredentialsFile,
 		})
 		if err != nil {
 			log.Fatalf("Failed to create s3 client with: %s", err)
 		}
-		if err = managebuckets.EnsureBucketExists(ctx, s3client, bc); err != nil {
+		if err = s3.EnsureBucketExists(ctx, s3client, bc); err != nil {
 			log.Fatalf("Failed to create s3 bucket with: %s", err)
 		}
 	}

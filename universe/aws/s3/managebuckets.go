@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package managebuckets
+package s3
 
 import (
 	"context"
@@ -14,13 +14,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/cenkalti/backoff/v4"
-	fns3 "namespacelabs.dev/foundation/universe/aws/s3"
 )
 
 const connBackoff = 500 * time.Millisecond
 
 // EnsureBucketExists creates the requested bucket before it is used.
-func EnsureBucketExists(ctx context.Context, s3client *s3.Client, bc *fns3.BucketConfig) error {
+func EnsureBucketExists(ctx context.Context, s3client *s3.Client, bc *BucketConfig) error {
 	log.Printf("Creating bucket %s in region: %s\n", bc.BucketName, bc.Region)
 	err := backoff.Retry(func() error {
 		log.Printf("Connecting to S3 stack.")
