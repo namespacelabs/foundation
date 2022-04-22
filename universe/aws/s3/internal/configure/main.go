@@ -20,7 +20,6 @@ import (
 const (
 	// Bucket type name provided by the aws/s3 package.
 	bucketTypeName           = "Bucket"
-	localstackServiceName    = "api"
 	initContainerToConfigure = "namespacelabs.dev/foundation/universe/aws/s3/managebuckets/binary"
 )
 
