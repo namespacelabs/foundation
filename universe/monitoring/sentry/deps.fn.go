@@ -6,13 +6,15 @@ package sentry
 import (
 	"context"
 	"namespacelabs.dev/foundation/std/go/core"
+	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
-	Dsn        *secrets.Value
-	ServerInfo *core.ServerInfo
+	Dsn          *secrets.Value
+	Interceptors interceptors.Registration
+	ServerInfo   *core.ServerInfo
 }
 
 var (
@@ -45,6 +47,12 @@ func makeDeps__efmlf2(ctx context.Context, di core.Dependencies) (interface{}, e
 		core.MustUnwrapProto("CgpzZW50cnktZHNu", p)
 
 		if deps.Dsn, err = secrets.ProvideSecret(ctx, p); err != nil {
+			return nil, err
+		}
+	}
+
+	{
+		if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
 			return nil, err
 		}
 	}
