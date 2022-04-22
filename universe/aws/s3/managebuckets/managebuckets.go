@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/cenkalti/backoff/v4"
-	fns3 "namespacelabs.dev/internal/aws/s3"
+	fns3 "namespacelabs.dev/foundation/universe/aws/s3"
 )
 
 const connBackoff = 500 * time.Millisecond
@@ -27,7 +27,7 @@ func EnsureBucketExists(ctx context.Context, s3client *s3.Client, bc *fns3.Bucke
 		return err
 	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx))
 	if err != nil {
-		return fmt.Errorf("Failed to connect to S3 stack with error: %v", err)
+		return fmt.Errorf("failed to connect to S3 stack with error: %w", err)
 	}
 
 	_, err = s3client.CreateBucket(ctx, &s3.CreateBucketInput{
@@ -39,7 +39,7 @@ func EnsureBucketExists(ctx context.Context, s3client *s3.Client, bc *fns3.Bucke
 	if err != nil {
 		var e *types.BucketAlreadyOwnedByYou
 		if !errors.As(err, &e) {
-			return fmt.Errorf("Failed to create bucket: %v", err)
+			return fmt.Errorf("failed to create bucket: %w", err)
 		}
 	}
 	return nil

@@ -76,7 +76,6 @@ require (
 	k8s.io/apimachinery v0.23.3
 	k8s.io/client-go v0.23.3
 	namespacelabs.dev/go-ids v0.0.0-20220216144417-79021816502e
-	namespacelabs.dev/internal v0.0.0-20220421204308-537c921bdd43
 	sigs.k8s.io/yaml v1.3.0
 	tailscale.com v1.22.2
 )

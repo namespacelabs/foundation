@@ -6,8 +6,8 @@ import (
 	"flag"
 	"log"
 
-	awss3 "namespacelabs.dev/internal/aws/s3"
-	"namespacelabs.dev/internal/aws/s3/managebuckets"
+	awss3 "namespacelabs.dev/foundation/universe/aws/s3"
+	"namespacelabs.dev/foundation/universe/aws/s3/managebuckets"
 )
 
 var (
@@ -33,10 +33,10 @@ func main() {
 			CredentialsPath: *awsCredentialsFile,
 		})
 		if err != nil {
-			log.Fatalf("Failed to create s3 client with: %v", err)
+			log.Fatalf("Failed to create s3 client with: %s", err)
 		}
 		if err = managebuckets.EnsureBucketExists(ctx, s3client, bc); err != nil {
-			log.Fatalf("Failed to create s3 bucket with: %v", err)
+			log.Fatalf("Failed to create s3 bucket with: %s", err)
 		}
 	}
 }
