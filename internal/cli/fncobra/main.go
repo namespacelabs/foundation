@@ -109,9 +109,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	bundles, err := tasks.NewActionBundles()
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
-		if err != nil {
-			return err
-		}
 		if storeActions {
 			bundle, err := bundles.NewBundle()
 			if err != nil {
