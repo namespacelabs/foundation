@@ -125,6 +125,11 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 
 						case diagnostics.Waiting:
 							fmt.Fprintf(out, "  Waiting: %s\n", diagnostics.WaitingReason)
+							if diagnostics.Crashed {
+								if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
+									fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference(), err)
+								}
+							}
 
 						case diagnostics.Terminated:
 							if diagnostics.ExitCode > 0 {
