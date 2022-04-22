@@ -26,11 +26,6 @@ var (
 	MountPath       = filepath.Join(ScopedMountPath, "server")
 )
 
-type Collection2 struct {
-	DevMap *SecretDevMap
-	Data   map[string][]byte // User managed data; only present if contents were provided.
-}
-
 type Collection struct {
 	DevMap         *SecretDevMap
 	UserManaged    [][]*Secret // Indexing is the same as `DevMap.Configure`.
