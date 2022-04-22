@@ -12,7 +12,7 @@ import (
 )
 
 type PreProvision interface {
-	EvalProvision(context.Context, ProvisionInputs) (ProvisionPlan, error)
+	EvalProvision(context.Context, ops.Environment, ProvisionInputs) (ProvisionPlan, error)
 }
 
 type PreStartup interface {
@@ -24,7 +24,6 @@ type Location interface {
 }
 
 type ProvisionInputs struct {
-	Env            *schema.Environment
 	Workspace      *schema.Workspace
 	ServerLocation Location
 }

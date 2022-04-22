@@ -145,7 +145,7 @@ func buildWebApps(ctx context.Context, endpoints languages.Endpoints, srv provis
 
 		var extra []*memfs.FS
 		if len(backends) > 0 {
-			resolveFunc := resolveBackend(srv.Env(), srv.Env().Proto(), endpoints)
+			resolveFunc := resolveBackend(srv.Env(), endpoints)
 			backend := &OpGenHttpBackend{Backend: backends}
 			fsys, err := generateBackendConf(ctx, dep.Location, backend, resolveFunc, false)
 			if err != nil {
