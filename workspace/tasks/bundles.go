@@ -24,8 +24,8 @@ const (
 
 // Bundle is a local fs with an associated timestamp.
 type Bundle struct {
-	root string
-	fsys fnfs.LocalFS
+	root      string
+	fsys      fnfs.LocalFS
 	timestamp time.Time
 }
 
@@ -118,7 +118,7 @@ func (b *Bundles) DeleteOldBundles() error {
 	}
 	var remove []*Bundle
 	if b.maxBundles > 0 && len(bundles) > b.maxBundles {
-		remove = bundles[len(bundles):]
+		remove = bundles[b.maxBundles:]
 		bundles = bundles[:b.maxBundles]
 	}
 	if b.maxAge > 0 {
@@ -131,7 +131,7 @@ func (b *Bundles) DeleteOldBundles() error {
 	}
 	for _, bundle := range remove {
 		if err := b.fsys.Remove(bundle.root); err != nil {
-			return fnerrors.InternalError("failed to delete bundle with root %b: %w", bundle.root, err)
+			return fnerrors.InternalError("failed to delete bundle with root %q: %w", bundle.root, err)
 		}
 	}
 	return nil
