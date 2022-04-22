@@ -394,13 +394,13 @@ func AggregateFSEvents(watcher *fsnotify.Watcher, logger io.Writer, bufferCh cha
 }
 
 func handleEvents(ctx context.Context, logger io.Writer, absPath string, fsys fnfs.ReadWriteFS, onNewSnapshot OnNewSnapshopFunc, buffer []fsnotify.Event) (fnfs.ReadWriteFS, bool, error) {
-	// Coallesce multiple changes.
+	// Coalesce multiple changes.
 	var dirtyPaths uniquestrings.List
 	for _, ev := range buffer {
 		dirtyPaths.Add(ev.Name)
 	}
 
-	fmt.Fprintf(logger, "Coallesced: %v\n", dirtyPaths.Strings())
+	fmt.Fprintf(logger, "Coalesced: %v\n", dirtyPaths.Strings())
 
 	var actions []*FileEvent
 	for _, p := range dirtyPaths.Strings() {
