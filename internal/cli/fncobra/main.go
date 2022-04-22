@@ -107,12 +107,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	var storeActions bool
 
+	bundles, err := tasks.NewActionBundles()
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
-		bundles, err := tasks.NewActionBundles()
 		if err != nil {
 			return err
 		}
-		bundles.DeleteOldBundles()
 		if storeActions {
 			bundle, err := bundles.NewBundle()
 			if err != nil {
@@ -221,7 +220,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
 
-	err := rootCmd.ExecuteContext(ctxWithSink)
+	rootCmd.ExecuteContext(ctxWithSink)
 
 	if flushLogs != nil {
 		flushLogs()
@@ -234,6 +233,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if tasks.ActionStorer != nil {
 		tasks.ActionStorer.Flush(os.Stderr)
 	}
+	bundles.DeleteOldBundles()
 
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
 	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
