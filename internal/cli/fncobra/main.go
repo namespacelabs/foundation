@@ -108,6 +108,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	var storeActions bool
 
 	bundles, err := tasks.NewActionBundles()
+	if err != nil {
+		log.Fatalf("failed to create action bundles: %v", err)
+	}
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
 		if storeActions {
 			bundle, err := bundles.NewBundle()
@@ -217,7 +220,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
 
-	err := rootCmd.ExecuteContext(ctxWithSink)
+	err = rootCmd.ExecuteContext(ctxWithSink)
 
 	if flushLogs != nil {
 		flushLogs()
