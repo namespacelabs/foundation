@@ -108,9 +108,17 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	var storeActions bool
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
+		bundles, err := tasks.NewActionBundles()
+		if err != nil {
+			return err
+		}
+		bundles.DeleteOldBundles()
 		if storeActions {
-			var err error
-			tasks.ActionStorer, err = tasks.NewStorer(cmd.Context())
+			bundle, err := bundles.NewBundle()
+			if err != nil {
+				return err
+			}
+			tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundle)
 			if err != nil {
 				return err
 			}

@@ -9,21 +9,16 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 
 	"google.golang.org/protobuf/encoding/prototext"
+	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
-type Storer struct{ baseDir string }
+type Storer struct{ bundle *Bundle }
 
-func NewStorer(ctx context.Context) (*Storer, error) {
-	t, err := os.MkdirTemp("", "fn-actions")
-	if err != nil {
-		return nil, err
-	}
-
-	return &Storer{t}, nil
+func NewStorer(ctx context.Context, bundle *Bundle) (*Storer, error) {
+	return &Storer{bundle}, nil
 }
 
 func (st *Storer) Store(af *RunningAction) {
@@ -34,9 +29,11 @@ func (st *Storer) Store(af *RunningAction) {
 }
 
 func (st *Storer) store(af *RunningAction) error {
-	target := filepath.Join(st.baseDir, af.Data.ActionID)
-	if err := os.Mkdir(target, 0700); err != nil {
-		return err
+	if mkdirfs, ok := st.bundle.fsys.(fnfs.MkdirFS); ok {
+		err := mkdirfs.MkdirAll(af.Data.ActionID, 0700)
+		if err != nil {
+			return err
+		}
 	}
 
 	pbytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(makeDebugProto(&af.Data, af.attachments))
@@ -44,10 +41,10 @@ func (st *Storer) store(af *RunningAction) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(target, "action.textpb"), pbytes, 0600); err != nil {
+	if err := fnfs.WriteFile(context.Background(), st.bundle.fsys, "action.textpb", pbytes, 0600); err != nil {
 		return err
 	}
-
+	
 	for k, name := range af.attachments.insertionOrder {
 		id := fmt.Sprintf("%d", k)
 		buf := af.attachments.buffers[name.computed]
@@ -57,7 +54,7 @@ func (st *Storer) store(af *RunningAction) error {
 			return err
 		}
 
-		if err := ioutil.WriteFile(filepath.Join(target, id+filepath.Ext(buf.name)), out, 0600); err != nil {
+		if err := fnfs.WriteFile(context.Background(), st.bundle.fsys, id+filepath.Ext(buf.name), out, 0600); err != nil {
 			return err
 		}
 	}
@@ -66,5 +63,5 @@ func (st *Storer) store(af *RunningAction) error {
 }
 
 func (st *Storer) Flush(w io.Writer) {
-	fmt.Fprintf(w, "Stored actions at: %s\n", st.baseDir)
+	fmt.Fprintf(w, "Stored actions at: %s\n", st.bundle.root)
 }
