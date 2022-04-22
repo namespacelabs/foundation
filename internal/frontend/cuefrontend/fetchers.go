@@ -269,13 +269,7 @@ func FetchFocusServer(serverImageRef string, srv *schema.Server) FetcherFunc {
 
 func FetchEnv(env *schema.Environment, workspace *schema.Workspace) FetcherFunc {
 	return func(context.Context, cue.Value) (interface{}, error) {
-		e := cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String()}
-		// Before 26, ephemeral was not a field.
-		if workspace.GetFoundation().GetMinimumApi() > 26 {
-			ephemeral := env.Ephemeral
-			e.Ephemeral = &ephemeral
-		}
-		return e, nil
+		return cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String(), Ephemeral: env.Ephemeral}, nil
 	}
 }
 
@@ -283,5 +277,5 @@ type cueEnv struct {
 	Name      string `json:"name"`
 	Runtime   string `json:"runtime"`
 	Purpose   string `json:"purpose"`
-	Ephemeral *bool  `json:"ephemeral,omitempty"`
+	Ephemeral bool   `json:"ephemeral"`
 }
