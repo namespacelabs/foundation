@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package foundation.universe.aws.s3;
+
+option go_package = "namespacelabs.dev/foundation/universe/aws/s3";
+
+message BucketConfig {
+  string region = 1;
+  string bucket_name = 2;
+}

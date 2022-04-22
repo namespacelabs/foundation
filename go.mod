@@ -6,9 +6,10 @@ require (
 	cuelang.org/go v0.4.2
 	filippo.io/age v1.0.0
 	github.com/andybalholm/brotli v1.0.4
-	github.com/aws/aws-sdk-go-v2 v1.16.1
+	github.com/aws/aws-sdk-go-v2 v1.16.2
 	github.com/aws/aws-sdk-go-v2/config v1.15.2
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.14.0
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.21.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.2
 	github.com/cenkalti/backoff/v4 v4.1.2
 	github.com/cespare/xxhash/v2 v2.1.2
@@ -75,8 +76,15 @@ require (
 	k8s.io/apimachinery v0.23.3
 	k8s.io/client-go v0.23.3
 	namespacelabs.dev/go-ids v0.0.0-20220216144417-79021816502e
+	namespacelabs.dev/internal v0.0.0-20220421204308-537c921bdd43
 	sigs.k8s.io/yaml v1.3.0
 	tailscale.com v1.22.2
+)
+
+require (
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.0.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.5.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.9.2 // indirect
 )
 
 require (
