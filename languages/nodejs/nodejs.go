@@ -109,7 +109,7 @@ type impl struct {
 func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server provision.Server, isFocus bool) (build.Spec, error) {
 	deps := []workspace.Location{}
 	for _, dep := range server.Deps() {
-		if dep.Node() != nil && dep.Node().ServiceFramework == schema.Framework_NODEJS {
+		if dep.Node() != nil && slices.Contains(dep.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS) {
 			deps = append(deps, dep.Location)
 		}
 	}
@@ -290,7 +290,14 @@ func updateYarnRootPackageJson(ctx context.Context, path string, fs fnfs.ReadWri
 }
 
 func (impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
-	err := tidyPackageJson(ctx, pkgs, p.Location, p.Node().Import)
+	depPkgNames := []string{}
+	for _, ref := range p.Node().Reference {
+		if ref.PackageName != "" {
+			depPkgNames = append(depPkgNames, ref.PackageName)
+		}
+	}
+
+	err := tidyPackageJson(ctx, pkgs, p.Location, depPkgNames)
 	if err != nil {
 		return err
 	}
@@ -347,7 +354,7 @@ func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspa
 	return tidyPackageJson(ctx, pkgs, loc, server.Import)
 }
 
-func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, imports []string) error {
+func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, depPkgNames []string) error {
 	npmPackage, err := toNpmPackage(loc.PackageName)
 	if err != nil {
 		return err
@@ -357,7 +364,7 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 	for key, value := range builtin().Dependencies {
 		dependencies[key] = value
 	}
-	for _, importName := range imports {
+	for _, importName := range depPkgNames {
 		pkg, err := pkgs.LoadByName(ctx, schema.PackageName(importName))
 		if err != nil {
 			return err
