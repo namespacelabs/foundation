@@ -13,20 +13,20 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 type updateCluster struct {
 	obs       *stackState
 	localAddr string
-	env       ops.WorkspaceEnvironment
+	env       workspace.WorkspaceEnvironment
 	stack     *schema.Stack
 	servers   []provision.Server
 	focus     []schema.PackageName

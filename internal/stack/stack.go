@@ -211,8 +211,7 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 	// We need to make sure that `env` is available before we read extend.stack, as env is often used
 	// for branching.
 
-	pdata, err := n.Parsed.EvalProvision(ctx, frontend.ProvisionInputs{
-		Env:            server.Env().Proto(),
+	pdata, err := n.Parsed.EvalProvision(ctx, server.Env(), frontend.ProvisionInputs{
 		Workspace:      server.Module().Workspace,
 		ServerLocation: server.Location,
 	})

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
@@ -49,8 +50,12 @@ type cueContainer struct {
 	Args   *argsListOrMap `json:"args"`
 }
 
-func (p1 phase1plan) EvalProvision(ctx context.Context, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
-	vv, left, err := applyInputs(ctx, provisionFuncs(inputs), p1.Value, p1.Left)
+func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
+	if env.Proto() == nil {
+		return frontend.ProvisionPlan{}, fnerrors.InternalError("env is missing .. env")
+	}
+
+	vv, left, err := applyInputs(ctx, provisionFuncs(env.Proto(), inputs), p1.Value, p1.Left)
 	if err != nil {
 		return frontend.ProvisionPlan{}, err
 	}
@@ -179,8 +184,8 @@ func lookupTransition(vv *fncue.CueV, name string) *fncue.CueV {
 	return vv.LookupPath("extend." + name)
 }
 
-func provisionFuncs(inputs frontend.ProvisionInputs) *EvalFuncs {
+func provisionFuncs(env *schema.Environment, inputs frontend.ProvisionInputs) *EvalFuncs {
 	return newFuncs().
 		WithFetcher(fncue.WorkspaceIKw, FetchServerWorkspace(inputs.Workspace, inputs.ServerLocation)).
-		WithFetcher(fncue.EnvIKw, FetchEnv(inputs.Env))
+		WithFetcher(fncue.EnvIKw, FetchEnv(env))
 }

@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -28,7 +29,7 @@ import (
 var errTestFailed = errors.New("test failed")
 
 type testRun struct {
-	Env ops.WorkspaceEnvironment // Doesn't affect the output.
+	Env workspace.WorkspaceEnvironment // Doesn't affect the output.
 
 	TestName       string
 	TestBinPkg     schema.PackageName

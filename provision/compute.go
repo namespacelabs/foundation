@@ -15,7 +15,6 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/wscontents"
@@ -95,7 +94,7 @@ start:
 	return servers, nil
 }
 
-func (snap *ServerSnapshot) Env() ops.WorkspaceEnvironment {
+func (snap *ServerSnapshot) Env() workspace.WorkspaceEnvironment {
 	return snap.env.BindWith(snap.sealed)
 }
 

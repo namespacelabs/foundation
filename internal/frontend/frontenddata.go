@@ -7,15 +7,16 @@ package frontend
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/schema"
 )
 
 type PreProvision interface {
-	EvalProvision(context.Context, ProvisionInputs) (ProvisionPlan, error)
+	EvalProvision(context.Context, ops.Environment, ProvisionInputs) (ProvisionPlan, error)
 }
 
 type PreStartup interface {
-	EvalStartup(context.Context, StartupInputs, []ValueWithPath) (StartupPlan, error)
+	EvalStartup(context.Context, ops.Environment, StartupInputs, []ValueWithPath) (StartupPlan, error)
 }
 
 type Location interface {
@@ -23,7 +24,6 @@ type Location interface {
 }
 
 type ProvisionInputs struct {
-	Env            *schema.Environment
 	Workspace      *schema.Workspace
 	ServerLocation Location
 }
