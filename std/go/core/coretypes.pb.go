@@ -138,6 +138,99 @@ func (*DebugHandlerArgs) Descriptor() ([]byte, []int) {
 	return file_std_go_core_coretypes_proto_rawDescGZIP(), []int{2}
 }
 
+type ServerInfoArgs struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *ServerInfoArgs) Reset() {
+	*x = ServerInfoArgs{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_std_go_core_coretypes_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ServerInfoArgs) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServerInfoArgs) ProtoMessage() {}
+
+func (x *ServerInfoArgs) ProtoReflect() protoreflect.Message {
+	mi := &file_std_go_core_coretypes_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServerInfoArgs.ProtoReflect.Descriptor instead.
+func (*ServerInfoArgs) Descriptor() ([]byte, []int) {
+	return file_std_go_core_coretypes_proto_rawDescGZIP(), []int{3}
+}
+
+type ServerInfo struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ServerName string `protobuf:"bytes,1,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`
+	EnvName    string `protobuf:"bytes,2,opt,name=env_name,json=envName,proto3" json:"env_name,omitempty"`
+}
+
+func (x *ServerInfo) Reset() {
+	*x = ServerInfo{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_std_go_core_coretypes_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ServerInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServerInfo) ProtoMessage() {}
+
+func (x *ServerInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_std_go_core_coretypes_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServerInfo.ProtoReflect.Descriptor instead.
+func (*ServerInfo) Descriptor() ([]byte, []int) {
+	return file_std_go_core_coretypes_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ServerInfo) GetServerName() string {
+	if x != nil {
+		return x.ServerName
+	}
+	return ""
+}
+
+func (x *ServerInfo) GetEnvName() string {
+	if x != nil {
+		return x.EnvName
+	}
+	return ""
+}
+
 var File_std_go_core_coretypes_proto protoreflect.FileDescriptor
 
 var file_std_go_core_coretypes_proto_rawDesc = []byte{
@@ -148,10 +241,16 @@ var file_std_go_core_coretypes_proto_rawDesc = []byte{
 	0x73, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x41, 0x72, 0x67, 0x73, 0x22, 0x14, 0x0a, 0x12, 0x52, 0x65,
 	0x61, 0x64, 0x69, 0x6e, 0x65, 0x73, 0x73, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x41, 0x72, 0x67, 0x73,
 	0x22, 0x12, 0x0a, 0x10, 0x44, 0x65, 0x62, 0x75, 0x67, 0x48, 0x61, 0x6e, 0x64, 0x6c, 0x65, 0x72,
-	0x41, 0x72, 0x67, 0x73, 0x42, 0x2a, 0x5a, 0x28, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63,
-	0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61,
-	0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x74, 0x64, 0x2f, 0x67, 0x6f, 0x2f, 0x63, 0x6f, 0x72, 0x65,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x41, 0x72, 0x67, 0x73, 0x22, 0x10, 0x0a, 0x0e, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x49, 0x6e,
+	0x66, 0x6f, 0x41, 0x72, 0x67, 0x73, 0x22, 0x48, 0x0a, 0x0a, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72,
+	0x49, 0x6e, 0x66, 0x6f, 0x12, 0x1f, 0x0a, 0x0b, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x5f, 0x6e,
+	0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x73, 0x65, 0x72, 0x76, 0x65,
+	0x72, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x19, 0x0a, 0x08, 0x65, 0x6e, 0x76, 0x5f, 0x6e, 0x61, 0x6d,
+	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x65, 0x6e, 0x76, 0x4e, 0x61, 0x6d, 0x65,
+	0x42, 0x2a, 0x5a, 0x28, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62,
+	0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x2f, 0x73, 0x74, 0x64, 0x2f, 0x67, 0x6f, 0x2f, 0x63, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -166,11 +265,13 @@ func file_std_go_core_coretypes_proto_rawDescGZIP() []byte {
 	return file_std_go_core_coretypes_proto_rawDescData
 }
 
-var file_std_go_core_coretypes_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_std_go_core_coretypes_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_std_go_core_coretypes_proto_goTypes = []interface{}{
 	(*LivenessCheckArgs)(nil),  // 0: foundation.std.go.core.LivenessCheckArgs
 	(*ReadinessCheckArgs)(nil), // 1: foundation.std.go.core.ReadinessCheckArgs
 	(*DebugHandlerArgs)(nil),   // 2: foundation.std.go.core.DebugHandlerArgs
+	(*ServerInfoArgs)(nil),     // 3: foundation.std.go.core.ServerInfoArgs
+	(*ServerInfo)(nil),         // 4: foundation.std.go.core.ServerInfo
 }
 var file_std_go_core_coretypes_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -222,6 +323,30 @@ func file_std_go_core_coretypes_proto_init() {
 				return nil
 			}
 		}
+		file_std_go_core_coretypes_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ServerInfoArgs); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_std_go_core_coretypes_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ServerInfo); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -229,7 +354,7 @@ func file_std_go_core_coretypes_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_std_go_core_coretypes_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

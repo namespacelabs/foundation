@@ -30,6 +30,13 @@ extension: fn.#Extension & {
 				go: type: "DebugHandler"
 			}
 		}
+
+		ServerInfo: {
+			input: $coreTypesProto.types.ServerInfoArgs
+			availableIn: {
+				go: type: "*ServerInfo"
+			}
+		}
 	}
 }
 

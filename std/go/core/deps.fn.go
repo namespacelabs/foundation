@@ -19,6 +19,10 @@ type _checkProvideReadinessCheck func(context.Context, *ReadinessCheckArgs) (Che
 
 var _ _checkProvideReadinessCheck = ProvideReadinessCheck
 
+type _checkProvideServerInfo func(context.Context, *ServerInfoArgs) (*ServerInfo, error)
+
+var _ _checkProvideServerInfo = ProvideServerInfo
+
 var (
 	Package__u30kfm = &Package{
 		PackageName: "namespacelabs.dev/foundation/std/go/core",

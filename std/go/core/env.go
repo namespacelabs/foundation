@@ -48,6 +48,13 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 	return &ServerResources{startupTime: time.Now()}
 }
 
+func ProvideServerInfo(ctx context.Context, _ *ServerInfoArgs) (*ServerInfo, error) {
+	return &ServerInfo{
+		ServerName: serverName,
+		EnvName:    env.Name,
+	}, nil
+}
+
 func EnvIs(purpose schema.Environment_Purpose) bool {
 	return env.Purpose == purpose
 }
