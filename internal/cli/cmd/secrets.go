@@ -209,7 +209,7 @@ func parseKey(v string) (string, string, error) {
 }
 
 func writeBundle(ctx context.Context, loc *location, bundle *secrets.Bundle, encrypt bool) error {
-	return fnfs.WriteWorkspaceFile(ctx, loc.root.FS(), loc.loc.Rel(bundleName), func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), loc.root.FS(), loc.loc.Rel(bundleName), func(w io.Writer) error {
 		return bundle.SerializeTo(ctx, w, encrypt)
 	})
 }

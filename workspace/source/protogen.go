@@ -206,7 +206,7 @@ func generateProtoSrcs(ctx context.Context, buf compute.Computable[oci.Image], m
 		return err
 	}
 
-	if err := fnfs.WriteFSToWorkspace(ctx, out, merged.Value); err != nil {
+	if err := fnfs.WriteFSToWorkspace(ctx, console.Stdout(ctx), out, merged.Value); err != nil {
 		return err
 	}
 

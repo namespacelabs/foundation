@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/fs"
 
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -51,7 +52,7 @@ func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definit
 
 		return fnfs.WriteFileExtended(ctx, out, loc.Rel(path), info.Mode(), fnfs.WriteFileExtendedOpts{
 			CompareContents: true,
-			AnnounceWrite:   true,
+			AnnounceWrite:   console.Stdout(ctx),
 		}, func(w io.Writer) error {
 			_, err := w.Write(contents)
 			return err

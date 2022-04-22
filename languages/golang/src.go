@@ -20,7 +20,7 @@ import (
 )
 
 func generateGoSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, imports *gosupport.GoImports, t *template.Template, data interface{}) error {
-	return fnfs.WriteWorkspaceFile(ctx, fsfs, filePath, func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsfs, filePath, func(w io.Writer) error {
 		var body bytes.Buffer
 
 		if err := t.Execute(&body, data); err != nil {

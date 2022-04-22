@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -219,7 +220,7 @@ func RewriteWith(ctx context.Context, root *workspace.Root, devhost *schema.DevH
 		return err
 	}
 
-	if err := fnfs.WriteWorkspaceFile(ctx, root.FS(), DevHostFilename, func(w io.Writer) error {
+	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), DevHostFilename, func(w io.Writer) error {
 		_, err := w.Write(serialized)
 		return err
 	}); err != nil {
