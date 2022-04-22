@@ -66,7 +66,8 @@ func (s phase2plan) evalStartupStage(ctx context.Context, env ops.Environment, i
 
 	inputs := newFuncs().
 		WithFetcher(fncue.ServerDepIKw, FetchServer(wenv, info.Stack)).
-		WithFetcher(fncue.FocusServerIKw, FetchFocusServer(info.ServerImage, info.Server))
+		WithFetcher(fncue.FocusServerIKw, FetchFocusServer(info.ServerImage, info.Server)).
+		WithFetcher(fncue.VCSIKw, FetchVCS(info.ServerRootAbs))
 
 	vv, left, err := applyInputs(ctx, inputs, s.Value, s.Left)
 	if err != nil {

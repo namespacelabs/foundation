@@ -29,9 +29,10 @@ type ProvisionInputs struct {
 }
 
 type StartupInputs struct {
-	ServerImage string // Result of imageID.ImageRef(), not oci.ImageID to avoid cycles.
-	Stack       *schema.Stack
-	Server      *schema.Server
+	ServerImage   string // Result of imageID.ImageRef(), not oci.ImageID to avoid cycles.
+	Stack         *schema.Stack
+	Server        *schema.Server
+	ServerRootAbs string
 }
 
 type ValueWithPath struct {

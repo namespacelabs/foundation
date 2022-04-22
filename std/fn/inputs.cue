@@ -88,3 +88,10 @@ import fntypes "namespacelabs.dev/foundation/std/fn:types"
 	@fn(input=resource)
 	fntypes.#Resource
 }
+
+#VCS: {
+	@fn(input=vcs)
+	revision:    string
+	commitTime:  string
+	uncommitted: bool
+}

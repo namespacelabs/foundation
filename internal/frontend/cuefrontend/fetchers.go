@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"io/fs"
 	"strings"
+	"time"
 
 	"cuelang.org/go/cue"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -278,4 +280,21 @@ type cueEnv struct {
 	Runtime   string `json:"runtime"`
 	Purpose   string `json:"purpose"`
 	Ephemeral bool   `json:"ephemeral"`
+}
+
+func FetchVCS(rootDir string) FetcherFunc {
+	return func(ctx context.Context, v cue.Value) (interface{}, error) {
+		status, err := git.FetchStatus(ctx, rootDir)
+		if err != nil {
+			return nil, err
+		}
+
+		return cueVCS{Revision: status.Revision, CommitTime: status.CommitTime, Uncommitted: status.Uncommitted}, nil
+	}
+}
+
+type cueVCS struct {
+	Revision    string    `json:"revision"`
+	CommitTime  time.Time `json:"commitTime"`
+	Uncommitted bool      `json:"uncommitted"`
 }

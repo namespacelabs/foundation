@@ -42,6 +42,7 @@ extension: fn.#Extension & {
 
 $inputs: {
 	env:   inputs.#Environment
+	vcs:   inputs.#VCS
 	focus: inputs.#FocusServer
 }
 
@@ -49,6 +50,7 @@ configure: fn.#Configure & {
 	startup: {
 		args: {
 			env_json:      json.Marshal($inputs.env)
+			vcs_json:      json.Marshal($inputs.vcs)
 			image_version: $inputs.focus.image
 		}
 	}
