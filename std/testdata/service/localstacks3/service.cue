@@ -18,7 +18,6 @@ service: fn.#Service & {
 		}
 	}
 
-	exportService:        $proto.services.S3DemoService
-	exportServicesAsHttp: true
-	ingress:              "INTERNET_FACING"
+	exportService: $proto.services.S3DemoService
+	ingress:       "INTERNET_FACING"
 }

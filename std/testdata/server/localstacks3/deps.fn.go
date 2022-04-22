@@ -27,7 +27,5 @@ func WireServices(ctx context.Context, srv server.Server, depgraph core.Dependen
 		errs = append(errs, err)
 	}
 
-	srv.InternalRegisterGrpcGateway(localstacks3.RegisterS3DemoServiceHandler)
-
 	return errs
 }

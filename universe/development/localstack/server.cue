@@ -8,6 +8,7 @@ server: fn.#OpaqueServer & {
 
 	isStateful: true
 
+	// TODO pin the localstack version.
 	binary: image: "localstack/localstack"
 
 	// Export the service so it its endpoint is discoverable by clients.

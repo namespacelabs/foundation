@@ -21,7 +21,7 @@ const (
 	bucketTypeName           = "Bucket"
 	localstackPackageName    = "namespacelabs.dev/foundation/universe/development/localstack"
 	localstackServiceName    = "api"
-	initContainerToConfigure = "namespacelabs.dev/foundation/universe/development/localstack/s3/managebuckets/init"
+	initContainerToConfigure = "namespacelabs.dev/foundation/universe/development/localstack/s3/internal/managebuckets/init"
 )
 
 type tool struct{}

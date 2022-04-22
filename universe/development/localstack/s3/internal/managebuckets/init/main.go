@@ -1,3 +1,7 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
 package main
 
 import (
@@ -6,8 +10,8 @@ import (
 	"flag"
 	"log"
 
-	managebuckets "namespacelabs.dev/foundation/universe/aws/s3"
 	devs3 "namespacelabs.dev/foundation/universe/development/localstack/s3"
+	"namespacelabs.dev/foundation/universe/aws/s3"
 )
 
 var (
@@ -33,6 +37,8 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to create s3 client with: %v", err)
 		}
-		managebuckets.EnsureBucketExists(ctx, s3client, bc)
+		if err := s3.EnsureBucketExists(ctx, s3client, bc); err != nil {
+			log.Fatalf("Failed to create s3 bucket: %v", err)
+		}
 	}
 }
