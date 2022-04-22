@@ -44,38 +44,7 @@ func NewSecretsCmd() *cobra.Command {
 				return err
 			}
 
-			out := console.Stdout(ctx)
-
-			switch len(bundle.Readers()) {
-			case 0:
-				fmt.Fprintln(out, "No readers.")
-
-			default:
-				fmt.Fprintln(out, "Readers:")
-				for _, r := range bundle.Readers() {
-					fmt.Fprintf(out, "  %s", r.PublicKey)
-					if r.Description != "" {
-						fmt.Fprintf(out, "  # %s", r.Description)
-					}
-					fmt.Fprintln(out)
-				}
-			}
-
-			switch len(bundle.Definitions()) {
-			case 0:
-				fmt.Fprintln(out, "No definitions.")
-
-			default:
-				fmt.Fprintln(out, "Definitions:")
-				for _, def := range bundle.Definitions() {
-					fmt.Fprintf(out, "  %s:%s", def.Key.PackageName, def.Key.Key)
-					if def.Key.SecondaryKey != "" {
-						fmt.Fprintf(out, " (%s)", def.Key.SecondaryKey)
-					}
-					fmt.Fprintln(out)
-				}
-			}
-
+			bundle.DescribeTo(console.Stdout(ctx))
 			return nil
 		}),
 	}

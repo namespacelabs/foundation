@@ -6,7 +6,10 @@ package secrets
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -14,6 +17,7 @@ import (
 	"os"
 
 	"filippo.io/age"
+	"github.com/muesli/reflow/wordwrap"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -22,6 +26,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/internal/keys"
+)
+
+const (
+	guardBegin = "BEGIN FOUNDATION SECRET BUNDLE"
+	guardEnd   = "END FOUNDATION SECRET BUNDLE"
 )
 
 // A secrets bundle is a tar file which includes:
@@ -154,9 +163,23 @@ func (b *Bundle) regen() {
 }
 
 func (b *Bundle) SerializeTo(ctx context.Context, w io.Writer, encrypt bool) error {
-	var serialized memfs.FS
+	ww := wordwrap.NewWriter(80)
 
-	serialized.Add("README.txt", []byte("This is a secret bundle managed by Foundation. A list of included secrets is always visible, but their values are encrypted."))
+	fmt.Fprintf(ww, "This is a secrets bundle managed by Foundation. You can use `fn secrets` to modify this file.\n\nNOTE: Any changes made before %q are ignored.\n\n", guardBegin)
+	b.DescribeTo(ww)
+	fmt.Fprintln(ww)
+
+	if err := ww.Close(); err != nil {
+		return err
+	}
+
+	if _, err := w.Write(ww.Bytes()); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(w, "-----%s-----\n", guardBegin)
+
+	var serialized memfs.FS
 
 	var recipients []age.Recipient
 	for _, reader := range b.m.Reader {
@@ -225,7 +248,65 @@ func (b *Bundle) SerializeTo(ctx context.Context, w io.Writer, encrypt bool) err
 		serialized.Add(enc.filename, buf.Bytes())
 	}
 
-	return maketarfs.TarFS(ctx, w, &serialized, nil, nil)
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if err := maketarfs.TarFS(ctx, gz, &serialized, nil, nil); err != nil {
+		return err
+	}
+
+	if err := gz.Close(); err != nil {
+		return err
+	}
+
+	var breaker lineBreaker
+	breaker.out = w
+
+	b64 := base64.NewEncoder(base64.StdEncoding, &breaker)
+	if _, err := b64.Write(buf.Bytes()); err != nil {
+		return err
+	}
+	if err := b64.Close(); err != nil {
+		return err
+	}
+	if err := breaker.Close(); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(w, "-----%s-----\n", guardEnd)
+
+	return err
+}
+
+func (b *Bundle) DescribeTo(out io.Writer) {
+	switch len(b.Readers()) {
+	case 0:
+		fmt.Fprintln(out, "No readers.")
+
+	default:
+		fmt.Fprintln(out, "Readers:")
+		for _, r := range b.Readers() {
+			fmt.Fprintf(out, "  %s", r.PublicKey)
+			if r.Description != "" {
+				fmt.Fprintf(out, "  # %s", r.Description)
+			}
+			fmt.Fprintln(out)
+		}
+	}
+
+	switch len(b.Definitions()) {
+	case 0:
+		fmt.Fprintln(out, "No definitions.")
+
+	default:
+		fmt.Fprintln(out, "Definitions:")
+		for _, def := range b.Definitions() {
+			fmt.Fprintf(out, "  %s:%s", def.Key.PackageName, def.Key.Key)
+			if def.Key.SecondaryKey != "" {
+				fmt.Fprintf(out, " (%s)", def.Key.SecondaryKey)
+			}
+			fmt.Fprintln(out)
+		}
+	}
 }
 
 func isKey(k *ValueKey, packageName, key string) bool {
@@ -247,10 +328,15 @@ func NewBundle(ctx context.Context, keyID string) (*Bundle, error) {
 	}, nil
 }
 
-func LoadBundle(ctx context.Context, keyDir fs.FS, contents []byte) (*Bundle, error) {
+func LoadBundle(ctx context.Context, keyDir fs.FS, raw []byte) (*Bundle, error) {
+	contents, err := detect(raw)
+	if err != nil {
+		return nil, err
+	}
+
 	fsys := tarfs.FS{
 		TarStream: func() (io.ReadCloser, error) {
-			return io.NopCloser(bytes.NewReader(contents)), nil
+			return gzip.NewReader(bytes.NewReader(contents))
 		},
 	}
 
@@ -319,6 +405,23 @@ func LoadBundle(ctx context.Context, keyDir fs.FS, contents []byte) (*Bundle, er
 	return bundle, nil
 }
 
+func detect(raw []byte) ([]byte, error) {
+	guard := []byte(fmt.Sprintf("-----%s-----\n", guardBegin))
+	idx := bytes.Index(raw, guard)
+	if idx < 0 {
+		return nil, errors.New("invalid bundle: missing begin guard")
+	}
+
+	rawLeft := raw[(idx + len(guard)):]
+
+	endIdx := bytes.Index(rawLeft, []byte(fmt.Sprintf("-----%s-----", guardEnd)))
+	if endIdx < 0 {
+		return nil, errors.New("invalid bundle: missing end guard")
+	}
+
+	return ioutil.ReadAll(base64.NewDecoder(base64.StdEncoding, bytes.NewReader(rawLeft[:endIdx])))
+}
+
 func readManifest(what string, fsys fs.FS, m proto.Message) error {
 	manifestBytes, err := fs.ReadFile(fsys, "manifest.json")
 	if err != nil {
@@ -333,4 +436,54 @@ func readManifest(what string, fsys fs.FS, m proto.Message) error {
 	}
 
 	return nil
+}
+
+// From Go's pem library.
+const blockLineLength = 80
+
+type lineBreaker struct {
+	line [blockLineLength]byte
+	used int
+	out  io.Writer
+}
+
+var nl = []byte{'\n'}
+
+func (l *lineBreaker) Write(b []byte) (n int, err error) {
+	if l.used+len(b) < blockLineLength {
+		copy(l.line[l.used:], b)
+		l.used += len(b)
+		return len(b), nil
+	}
+
+	n, err = l.out.Write(l.line[0:l.used])
+	if err != nil {
+		return
+	}
+	excess := blockLineLength - l.used
+	l.used = 0
+
+	n, err = l.out.Write(b[0:excess])
+	if err != nil {
+		return
+	}
+
+	n, err = l.out.Write(nl)
+	if err != nil {
+		return
+	}
+
+	return l.Write(b[excess:])
+}
+
+func (l *lineBreaker) Close() (err error) {
+	if l.used > 0 {
+		_, err = l.out.Write(l.line[0:l.used])
+		if err != nil {
+			return
+		}
+		_, err = l.out.Write(nl)
+	}
+
+	return
 }
