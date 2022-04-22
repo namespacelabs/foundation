@@ -37,7 +37,7 @@ func NewFmtCmd() *cobra.Command {
 			}
 
 			opts := fnfs.WriteFileExtendedOpts{
-				AnnounceWrite: true,
+				AnnounceWrite: console.Stdout(ctx),
 				FailOverwrite: check,
 			}
 

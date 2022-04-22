@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -237,7 +238,7 @@ func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) er
 	}
 
 	// Write .yarnrc.yml with the correct nodeLinker.
-	if err := fnfs.WriteWorkspaceFile(ctx, module.ReadWriteFS(), filepath.Join(path, yarnRcFn), func(w io.Writer) error {
+	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), module.ReadWriteFS(), filepath.Join(path, yarnRcFn), func(w io.Writer) error {
 		_, err := io.WriteString(w, yarnRcContent())
 		return err
 	}); err != nil {
@@ -436,10 +437,14 @@ func updateJson(ctx context.Context, filepath string, fsys fnfs.ReadWriteFS, cal
 	// so for idempotency we do the same.
 	updatedJsonRaw = append(updatedJsonRaw, '\n')
 
-	return parsedJson, fnfs.WriteWorkspaceFile(ctx, fsys, filepath, func(w io.Writer) error {
+	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsys, filepath, func(w io.Writer) error {
 		_, err := w.Write(updatedJsonRaw)
 		return err
-	})
+	}); err != nil {
+		return nil, err
+	}
+
+	return parsedJson, nil
 }
 
 func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
