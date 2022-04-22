@@ -7,7 +7,6 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"path/filepath"
 
@@ -30,7 +29,6 @@ func (st *Storer) Store(af *RunningAction) {
 
 func (st *Storer) store(af *RunningAction) error {
 	actionId := af.Data.ActionID
-	
 	if mkdirfs, ok := st.bundle.fsys.(fnfs.MkdirFS); ok {
 		err := mkdirfs.MkdirAll(actionId, 0700)
 		if err != nil {
@@ -46,7 +44,7 @@ func (st *Storer) store(af *RunningAction) error {
 	if err := fnfs.WriteFile(context.Background(), st.bundle.fsys, filepath.Join(actionId, "action.textpb"), pbytes, 0600); err != nil {
 		return err
 	}
-	
+
 	for k, name := range af.attachments.insertionOrder {
 		id := fmt.Sprintf("%d", k)
 		buf := af.attachments.buffers[name.computed]
@@ -62,8 +60,4 @@ func (st *Storer) store(af *RunningAction) error {
 	}
 
 	return nil
-}
-
-func (st *Storer) Flush(w io.Writer) {
-	fmt.Fprintf(w, "Stored actions at: %s\n", st.bundle.root)
 }

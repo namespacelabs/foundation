@@ -50,10 +50,10 @@ func NewActionBundles() (*Bundles, error) {
 	if err != nil {
 		return nil, err
 	}
-	root := "action-bundles"
+	root := filepath.Join(cacheDir, "action-bundles")
 	return &Bundles{
 		root:       root,
-		fsys:       fnfs.ReadWriteLocalFS(filepath.Join(cacheDir, root)),
+		fsys:       fnfs.ReadWriteLocalFS(root),
 		namePrefix: "actions",
 		maxBundles: DefaultBundlesToKeep,
 		maxAge:     DefaultBundleDuration,

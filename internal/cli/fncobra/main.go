@@ -105,22 +105,18 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		go checkRemoteStatus(logger, remoteStatusChan)
 	}
 
-	var storeActions bool
-
 	bundles, err := tasks.NewActionBundles()
 	if err != nil {
 		log.Fatalf("failed to create action bundles: %v", err)
 	}
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
-		if storeActions {
-			bundle, err := bundles.NewBundle()
-			if err != nil {
-				return err
-			}
-			tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundle)
-			if err != nil {
-				return err
-			}
+		bundle, err := bundles.NewBundle()
+		if err != nil {
+			return err
+		}
+		tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundle)
+		if err != nil {
+			return err
 		}
 
 		// Used for devhost/environment validation.
@@ -189,8 +185,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, we also output debug log messages to the console.")
 	rootCmd.PersistentFlags().BoolVar(&compute.CachingEnabled, "caching", compute.CachingEnabled,
 		"If set to false, compute caching is disabled.")
-	rootCmd.PersistentFlags().BoolVar(&storeActions, "store_actions", storeActions,
-		"If set to true, each completed action and its attachments are also persisted into storage.")
 	rootCmd.PersistentFlags().BoolVar(&git.AssumeSSHAuth, "git_ssh_auth", git.AssumeSSHAuth,
 		"If set to true, assume that you use SSH authentication with git (this enables us to properly instruct git when downloading private repositories).")
 
@@ -228,10 +222,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	if cleanupTracer != nil {
 		cleanupTracer()
-	}
-
-	if tasks.ActionStorer != nil {
-		tasks.ActionStorer.Flush(os.Stderr)
 	}
 	bundles.DeleteOldBundles()
 
