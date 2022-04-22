@@ -25,16 +25,13 @@ const (
 // Bundle is a local fs with an associated timestamp.
 type Bundle struct {
 	root string
-
 	fsys fnfs.LocalFS
-
 	timestamp time.Time
 }
 
 // Bundles manages creation and rolling of subdirectory `Bundle`s in a local fs.
 type Bundles struct {
 	root string
-
 	fsys fnfs.LocalFS
 
 	// Prefix for timestamped bundle subdirs.
@@ -68,6 +65,7 @@ func (b *Bundles) NewBundle() (*Bundle, error) {
 	t := time.Now()
 	ts := t.Format(BundleTimeFormat)
 	bundleDir := fmt.Sprintf("%s-%s", b.namePrefix, ts)
+
 	if mkdirfs, ok := b.fsys.(fnfs.MkdirFS); ok {
 		err := mkdirfs.MkdirAll(bundleDir, 0700)
 		if err != nil {
@@ -100,7 +98,7 @@ func (b *Bundles) ReadBundles() ([]*Bundle, error) {
 		if t, err := b.timeFromName(f.Name()); err == nil {
 			bundle := &Bundle{
 				root:      f.Name(),
-				fsys:      fnfs.ReadWriteLocalFS(f.Name()),
+				fsys:      fnfs.ReadWriteLocalFS(filepath.Join(b.root, f.Name())),
 				timestamp: t,
 			}
 			bundles = append(bundles, bundle)
@@ -111,9 +109,12 @@ func (b *Bundles) ReadBundles() ([]*Bundle, error) {
 }
 
 func (b *Bundles) DeleteOldBundles() error {
+	if b.maxAge == 0 && b.maxBundles == 0 {
+		return nil
+	}
 	bundles, err := b.ReadBundles()
 	if err != nil {
-		return fnerrors.InternalError("Failed to list bundles: %w", err)
+		return fnerrors.InternalError("failed to read bundles: %w", err)
 	}
 	var remove []*Bundle
 	if b.maxBundles > 0 && len(bundles) > b.maxBundles {
@@ -130,7 +131,7 @@ func (b *Bundles) DeleteOldBundles() error {
 	}
 	for _, bundle := range remove {
 		if err := b.fsys.Remove(bundle.root); err != nil {
-			return err
+			return fnerrors.InternalError("failed to delete bundle with root %b: %w", bundle.root, err)
 		}
 	}
 	return nil
