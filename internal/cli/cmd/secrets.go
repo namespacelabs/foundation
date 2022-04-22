@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"strings"
 
@@ -157,13 +158,19 @@ func NewSecretsCmd() *cobra.Command {
 
 	set.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
 	set.Flags().StringVar(&keyID, "key", "", "Use this specific key identity when creating a new bundle.")
-	set.MarkFlagRequired("secret")
+	if err := set.MarkFlagRequired("secret"); err != nil {
+		log.Fatal(err)
+	}
 
 	delete.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
-	delete.MarkFlagRequired("secret")
+	if err := delete.MarkFlagRequired("secret"); err != nil {
+		log.Fatal(err)
+	}
 
 	addReader.Flags().StringVar(&keyID, "key", "", "The key to add to the bundle.")
-	addReader.MarkFlagRequired("key")
+	if err := addReader.MarkFlagRequired("key"); err != nil {
+		log.Fatal(err)
+	}
 
 	cmd.AddCommand(list)
 	cmd.AddCommand(set)
