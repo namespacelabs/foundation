@@ -1,0 +1,14 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.universe.aws.s3;
+
+option go_package = "namespacelabs.dev/foundation/universe/aws/s3";
+
+message BucketConfig {
+  string region = 1;
+  string bucket_name = 2;
+}
