@@ -65,6 +65,11 @@ func ProvideServerInfo(ctx context.Context, _ *ServerInfoArgs) (*ServerInfo, err
 	return &ServerInfo{
 		ServerName: serverName,
 		EnvName:    env.Name,
+		Vcs: &ServerInfo_VCS{
+			Revision:    vcs.Revision,
+			CommitTime:  vcs.CommitTime.String(),
+			Uncommitted: vcs.Uncommitted,
+		},
 	}, nil
 }
 
