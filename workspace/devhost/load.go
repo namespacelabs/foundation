@@ -43,21 +43,6 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 		}
 	}
 
-	if root.Workspace.Env == nil {
-		root.Workspace.Env = []*schema.Environment{
-			{
-				Name:    "dev",
-				Runtime: "kubernetes", // XXX
-				Purpose: schema.Environment_DEVELOPMENT,
-			},
-			{
-				Name:    "prod",
-				Runtime: "kubernetes",
-				Purpose: schema.Environment_PRODUCTION,
-			},
-		}
-	}
-
 	for _, env := range root.Workspace.Env {
 		if !HasRuntime(root.Workspace, env, root.DevHost) {
 			return fnerrors.InternalError("%s is not a supported runtime type", env.Runtime)
