@@ -78,13 +78,19 @@ func (b *Bundles) NewBundle() (*Bundle, error) {
 }
 
 func (b *Bundles) timeFromName(bundleName string) (time.Time, error) {
-	if !strings.HasPrefix(bundleName, b.namePrefix) {
-		return time.Time{}, fnerrors.InternalError("expected prefix %q in name %q", bundleName, b.namePrefix)
+	expectedPrefix := b.namePrefix + "-"
+	if !strings.HasPrefix(bundleName, expectedPrefix) {
+		return time.Time{}, fnerrors.InternalError("expected prefix %q in name %q", expectedPrefix, bundleName)
 	}
-	ts := bundleName[len(b.namePrefix)+1:]
-	return time.Parse(BundleTimeFormat, ts)
+	ts := bundleName[len(expectedPrefix):]
+	t, err := time.Parse(BundleTimeFormat, ts)
+	if err != nil {
+		return time.Time{}, fnerrors.InternalError("failed to parse timestamp from name %q: %w", bundleName, err)
+	}
+	return t, nil
 }
 
+// Returns bundles ordered by the newest timestamp.
 func (b *Bundles) ReadBundles() ([]*Bundle, error) {
 	files, err := b.fsys.ReadDir(".")
 	if err != nil {
@@ -93,19 +99,23 @@ func (b *Bundles) ReadBundles() ([]*Bundle, error) {
 	bundles := []*Bundle{}
 	for _, f := range files {
 		baseName := filepath.Base(f.Name())
-		if t, err := b.timeFromName(baseName); err == nil {
-			bundle := &Bundle{
-				fsys:      fnfs.ReadWriteLocalFS(filepath.Join(b.root, baseName)),
-				timestamp: t,
-			}
-			bundles = append(bundles, bundle)
+		t, err := b.timeFromName(baseName)
+		if err != nil {
+			return nil, err
 		}
+		bundle := &Bundle{
+			fsys:      fnfs.ReadWriteLocalFS(filepath.Join(b.root, baseName)),
+			timestamp: t,
+		}
+		bundles = append(bundles, bundle)
 	}
 	sort.Sort(byFormatTime(bundles))
 	return bundles, nil
 }
 
-func (b *Bundles) DeleteOldBundles() error {
+// Removes bundles which are older than `b.maxAge` or if we exceed
+// `b.maxBundles.`
+func (b *Bundles) RemoveStaleBundles() error {
 	if b.maxAge == 0 && b.maxBundles == 0 {
 		return nil
 	}
