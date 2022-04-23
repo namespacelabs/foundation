@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -49,7 +50,7 @@ func NewSecretsCmd() *cobra.Command {
 		}),
 	}
 
-	var secretKey, keyID string
+	var secretKey, keyID, fromFile string
 	var rawtext bool
 
 	set := &cobra.Command{
@@ -73,12 +74,21 @@ func NewSecretsCmd() *cobra.Command {
 				return err
 			}
 
-			value := readLine(ctx, fmt.Sprintf("Specify a value for %q in %s.\n\nValue: ", key, packageName))
-			if value == "" {
-				return errors.New("no value provided, skipping")
+			var value []byte
+			if fromFile != "" {
+				value, err = ioutil.ReadFile(fromFile)
+				if err != nil {
+					return fnerrors.BadInputError("%s: failed to load: %w", fromFile, err)
+				}
+			} else {
+				valueStr := readLine(ctx, fmt.Sprintf("Specify a value for %q in %s.\n\nValue: ", key, packageName))
+				if valueStr == "" {
+					return errors.New("no value provided, skipping")
+				}
+				value = []byte(valueStr)
 			}
 
-			bundle.Set(packageName, key, []byte(value))
+			bundle.Set(packageName, key, value)
 
 			return writeBundle(ctx, loc, bundle, !rawtext)
 		}),
@@ -127,6 +137,7 @@ func NewSecretsCmd() *cobra.Command {
 
 	set.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
 	set.Flags().StringVar(&keyID, "key", "", "Use this specific key identity when creating a new bundle.")
+	set.Flags().StringVar(&fromFile, "from_file", "", "Load the file contents as the secret value.")
 	set.Flags().BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
 	_ = set.MarkFlagRequired("secret")
 

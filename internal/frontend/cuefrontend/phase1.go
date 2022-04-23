@@ -187,5 +187,5 @@ func lookupTransition(vv *fncue.CueV, name string) *fncue.CueV {
 func provisionFuncs(env *schema.Environment, inputs frontend.ProvisionInputs) *EvalFuncs {
 	return newFuncs().
 		WithFetcher(fncue.WorkspaceIKw, FetchServerWorkspace(inputs.Workspace, inputs.ServerLocation)).
-		WithFetcher(fncue.EnvIKw, FetchEnv(env))
+		WithFetcher(fncue.EnvIKw, FetchEnv(env, inputs.Workspace))
 }

@@ -462,9 +462,10 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 	}
 
 	merged, err := startup.ComputeConfig(ctx, s.Env(), stack.GetParsed(s.PackageName()), frontend.StartupInputs{
-		Stack:       stack.Proto(),
-		Server:      s.Proto(),
-		ServerImage: imgs.Binary.ImageRef(),
+		Stack:         stack.Proto(),
+		Server:        s.Proto(),
+		ServerImage:   imgs.Binary.ImageRef(),
+		ServerRootAbs: s.Location.Abs(),
 	})
 	if err != nil {
 		return err
