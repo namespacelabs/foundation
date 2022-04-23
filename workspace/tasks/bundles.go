@@ -24,7 +24,6 @@ const (
 
 // Bundle is a local fs with an associated timestamp.
 type Bundle struct {
-	root      string
 	fsys      fnfs.LocalFS
 	timestamp time.Time
 }
@@ -73,14 +72,12 @@ func (b *Bundles) NewBundle() (*Bundle, error) {
 		}
 	}
 	return &Bundle{
-		root:      bundleDir,
 		fsys:      fnfs.ReadWriteLocalFS(filepath.Join(b.root, bundleDir)),
 		timestamp: t,
 	}, nil
 }
 
 func (b *Bundles) timeFromName(bundleName string) (time.Time, error) {
-	bundleName = filepath.Base(bundleName)
 	if !strings.HasPrefix(bundleName, b.namePrefix) {
 		return time.Time{}, fnerrors.InternalError("expected prefix %q in name %q", bundleName, b.namePrefix)
 	}
@@ -95,10 +92,10 @@ func (b *Bundles) ReadBundles() ([]*Bundle, error) {
 	}
 	bundles := []*Bundle{}
 	for _, f := range files {
-		if t, err := b.timeFromName(f.Name()); err == nil {
+		baseName := filepath.Base(f.Name())
+		if t, err := b.timeFromName(baseName); err == nil {
 			bundle := &Bundle{
-				root:      f.Name(),
-				fsys:      fnfs.ReadWriteLocalFS(filepath.Join(b.root, f.Name())),
+				fsys:      fnfs.ReadWriteLocalFS(filepath.Join(b.root, baseName)),
 				timestamp: t,
 			}
 			bundles = append(bundles, bundle)
@@ -130,10 +127,10 @@ func (b *Bundles) DeleteOldBundles() error {
 		}
 	}
 	for _, bundle := range remove {
-		if rmdirfs, ok := b.fsys.(fnfs.RmdirFS); ok {
-			err := rmdirfs.RemoveAll(bundle.root)
+		if rmdirfs, ok := bundle.fsys.(fnfs.RmdirFS); ok {
+			err := rmdirfs.RemoveAll(".")
 			if err != nil {
-				return fnerrors.InternalError("failed to delete bundle with root %q: %w", bundle.root, err)
+				return fnerrors.InternalError("failed to delete bundle: %w", err)
 			}
 		}
 	}
