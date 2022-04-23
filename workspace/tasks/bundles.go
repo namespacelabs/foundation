@@ -30,6 +30,7 @@ type Bundle struct {
 
 // Bundles manages creation and rolling of subdirectory `Bundle`s in a local fs.
 type Bundles struct {
+	// absolute path to the root directory of this local fs.
 	root string
 	fsys fnfs.LocalFS
 
