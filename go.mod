@@ -3,7 +3,7 @@ module namespacelabs.dev/foundation
 go 1.18
 
 require (
-	cuelang.org/go v0.4.2
+	cuelang.org/go v0.4.3
 	filippo.io/age v1.0.0
 	github.com/andybalholm/brotli v1.0.4
 	github.com/aws/aws-sdk-go-v2 v1.16.2
@@ -51,7 +51,7 @@ require (
 	github.com/protocolbuffers/txtpbfmt v0.0.0-20201118171849-f6a6b3f636fc
 	github.com/rs/zerolog v1.26.1
 	github.com/soheilhy/cmux v0.1.5
-	github.com/spf13/cobra v1.3.0
+	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.1
 	github.com/tailscale/depaware v0.0.0-20210622194025-720c4b409502
@@ -60,14 +60,14 @@ require (
 	go.opentelemetry.io/otel/exporters/jaeger v1.4.1
 	go.opentelemetry.io/otel/sdk v1.4.1
 	go.opentelemetry.io/otel/trace v1.4.1
-	golang.org/x/exp v0.0.0-20220328175248-053ad81199eb
-	golang.org/x/mod v0.6.0-dev.0.20211013180041-c96bc1413d57
+	golang.org/x/exp v0.0.0-20220414153411-bcd21879b8fd
+	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220408201424-a24fb2fb8a0f
+	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
-	golang.org/x/tools v0.1.9
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
+	golang.org/x/tools v0.1.10
+	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f
 	google.golang.org/api v0.63.0
 	google.golang.org/genproto v0.0.0-20220118154757-00ab72f36ad5
 	google.golang.org/grpc v1.44.0
