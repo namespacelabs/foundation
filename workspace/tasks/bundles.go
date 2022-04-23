@@ -81,12 +81,12 @@ func (b *Bundles) NewBundle() (*Bundle, error) {
 func (b *Bundles) timeFromName(bundleName string) (time.Time, error) {
 	expectedPrefix := b.namePrefix + "-"
 	if !strings.HasPrefix(bundleName, expectedPrefix) {
-		return time.Time{}, fnerrors.InternalError("expected prefix %q in name %q", expectedPrefix, bundleName)
+		return time.Time{}, fnerrors.BadInputError("expected prefix %q in name %q", expectedPrefix, bundleName)
 	}
 	ts := bundleName[len(expectedPrefix):]
 	t, err := time.Parse(BundleTimeFormat, ts)
 	if err != nil {
-		return time.Time{}, fnerrors.InternalError("failed to parse timestamp from name %q: %w", bundleName, err)
+		return time.Time{}, fnerrors.BadInputError("failed to parse timestamp from name %q: %w", bundleName, err)
 	}
 	return t, nil
 }
