@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/getsentry/sentry-go"
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"google.golang.org/grpc"
 )
 
@@ -23,6 +24,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	}
 
 	deps.Interceptors.Add(unaryInterceptor, streamInterceptor)
+	deps.Middleware.Add(sentryhttp.New(sentryhttp.Options{}).Handle)
 
 	return nil
 }
