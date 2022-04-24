@@ -160,11 +160,7 @@ func generateForSrv(ns string, env *schema.Environment, srv *schema.Server, name
 
 		var paths []*applynetworkingv1.HTTPIngressPathApplyConfiguration
 		for _, p := range ng.HttpPath {
-			if p.Kind == "grpc" {
-				grpcCount++
-			} else {
-				nonGrpcCount++
-			}
+			nonGrpcCount++
 
 			if p.Port == nil {
 				return nil, nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.Path, p.Service))
@@ -173,6 +169,22 @@ func generateForSrv(ns string, env *schema.Environment, srv *schema.Server, name
 			// XXX validate ports.
 			paths = append(paths, applynetworkingv1.HTTPIngressPath().
 				WithPath(p.Path).
+				WithPathType(netv1.PathTypePrefix).
+				WithBackend(
+					applynetworkingv1.IngressBackend().WithService(
+						applynetworkingv1.IngressServiceBackend().WithName(p.Service).WithPort(
+							applynetworkingv1.ServiceBackendPort().WithNumber(p.Port.ContainerPort)))))
+		}
+
+		for _, p := range ng.GrpcService {
+			grpcCount++
+
+			if p.Port == nil {
+				return nil, nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.GrpcService, p.Service))
+			}
+
+			paths = append(paths, applynetworkingv1.HTTPIngressPath().
+				WithPath("/"+p.GrpcService).
 				WithPathType(netv1.PathTypePrefix).
 				WithBackend(
 					applynetworkingv1.IngressBackend().WithService(

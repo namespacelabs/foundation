@@ -278,7 +278,10 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 		}
 
 		var paths []*schema.IngressFragment_IngressHttpPath
-		if *protocol == "http" {
+		var grpc []*schema.IngressFragment_IngressGrpcService
+
+		switch *protocol {
+		case "http":
 			for _, details := range protocolDetails {
 				p := &schema.HttpUrlMap{}
 				if err := details.UnmarshalTo(p); err != nil {
@@ -294,21 +297,37 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 					})
 				}
 			}
-		}
 
-		if len(paths) == 0 {
-			paths = []*schema.IngressFragment_IngressHttpPath{
-				{Path: "/", Kind: kind, Owner: endpoint.EndpointOwner, Service: endpoint.AllocatedName, Port: endpoint.Port},
+			// XXX still relevant? We used to do this when grpc followed the http path.
+			if len(paths) == 0 {
+				paths = []*schema.IngressFragment_IngressHttpPath{
+					{Path: "/", Kind: kind, Owner: endpoint.EndpointOwner, Service: endpoint.AllocatedName, Port: endpoint.Port},
+				}
+			}
+
+		case "grpc":
+			for _, details := range protocolDetails {
+				p := &schema.GrpcExportService{}
+				if err := details.UnmarshalTo(p); err != nil {
+					return nil, err
+				}
+				grpc = append(grpc, &schema.IngressFragment_IngressGrpcService{
+					GrpcService: p.ProtoTypename,
+					Owner:       endpoint.EndpointOwner,
+					Service:     endpoint.AllocatedName,
+					Port:        endpoint.Port,
+				})
 			}
 		}
 
 		// XXX security this exposes all services registered at port: #102.
 		f, err := makeFragment(&schema.IngressFragment{
-			Name:      endpoint.ServiceName,
-			Owner:     endpoint.ServerOwner,
-			Endpoint:  endpoint,
-			Extension: extensions,
-			HttpPath:  paths,
+			Name:        endpoint.ServiceName,
+			Owner:       endpoint.ServerOwner,
+			Endpoint:    endpoint,
+			Extension:   extensions,
+			HttpPath:    paths,
+			GrpcService: grpc,
 		}, makeDomains(ctx, env, sch.Server, sch.ServerNaming, endpoint.AllocatedName))
 		if err != nil {
 			return nil, err
