@@ -432,34 +432,47 @@ func makeDomains(ctx context.Context, env *schema.Environment, srv *schema.Serve
 			domains = append(domains, allocated)
 		}
 
-		if domainName := naming.GetTlsManagedDomainName(); domainName != "" {
-			domain, err := allocateName(ctx, srv, naming, fnapi.AllocateOpts{FQDN: domainName}, schema.Domain_USER_SPECIFIED_TLS_MANAGED, domainName+".specific")
-			if err != nil {
-				return nil, err
-			}
+		for _, d := range naming.AdditionalTlsManaged {
+			if d.AllocatedName == allocatedName {
+				domain, err := allocateName(ctx, srv, naming, fnapi.AllocateOpts{FQDN: d.Fqdn}, schema.Domain_USER_SPECIFIED_TLS_MANAGED, d.Fqdn+".specific")
+				if err != nil {
+					return nil, err
+				}
 
-			domains = append(domains, domain)
-		} else if domainName := naming.GetDomainName(); domainName != "" {
-			domains = append(domains, &schema.Domain{Fqdn: domainName, Managed: schema.Domain_USER_SPECIFIED})
+				domains = append(domains, domain)
+			}
+		}
+
+		for _, d := range naming.AdditionalUserSpecified {
+			if d.AllocatedName == allocatedName {
+				domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED})
+			}
 		}
 
 		return domains, nil
 	}
 }
 
-func GuessDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, name string) ([]*schema.Domain, error) {
+func GuessDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) ([]*schema.Domain, error) {
 	var domains []*schema.Domain
-	d, err := GuessAllocatedName(env, srv, naming, name)
+	d, err := GuessAllocatedName(env, srv, naming, allocatedName)
 	if err != nil {
 		return nil, err
 	}
 
 	domains = append(domains, d)
 
-	if domainName := naming.GetTlsManagedDomainName(); domainName != "" {
-		domains = append(domains, &schema.Domain{Fqdn: domainName, Managed: schema.Domain_USER_SPECIFIED_TLS_MANAGED})
-	} else if domainName := naming.GetDomainName(); domainName != "" {
-		domains = append(domains, &schema.Domain{Fqdn: domainName, Managed: schema.Domain_USER_SPECIFIED})
+	for _, d := range naming.AdditionalTlsManaged {
+		if d.AllocatedName == allocatedName {
+			domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED_TLS_MANAGED})
+
+		}
+	}
+
+	for _, d := range naming.AdditionalUserSpecified {
+		if d.AllocatedName == allocatedName {
+			domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED})
+		}
 	}
 
 	return domains, nil

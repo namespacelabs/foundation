@@ -19,8 +19,6 @@ server: fn.#Server & {
 $env:      inputs.#Environment
 configure: fn.#Configure & {
 	naming: {
-		if $env.purpose == "PRODUCTION" {
-			domainName: "test.namespacelabs.net"
-		}
+		domainName: "grpc-gateway-7hzne001dff2rpdxav703bwqwc": "test.namespacelabs.net"
 	}
 }

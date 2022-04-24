@@ -8,7 +8,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
@@ -40,9 +42,9 @@ type cueInvocation struct {
 }
 
 type cueNaming struct {
-	DomainName           string `json:"domainName"`
-	TLSManagedDomainName string `json:"tlsManagedDomainName"`
-	WithOrg              string `json:"withOrg"`
+	DomainName           map[string]string `json:"domainName"`
+	TLSManagedDomainName map[string]string `json:"tlsManagedDomainName"`
+	WithOrg              string            `json:"withOrg"`
 }
 
 type cueContainer struct {
@@ -128,16 +130,36 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 			return pdata, err
 		}
 
-		if data.DomainName != "" || data.WithOrg != "" {
-			pdata.Naming = &schema.Naming{
-				DomainName:           data.DomainName,
-				TlsManagedDomainName: data.TLSManagedDomainName,
-				WithOrg:              data.WithOrg,
-			}
+		pdata.Naming = &schema.Naming{
+			WithOrg: data.WithOrg,
 		}
+
+		for k, v := range data.DomainName {
+			pdata.Naming.AdditionalUserSpecified = append(pdata.Naming.AdditionalUserSpecified, &schema.Naming_AdditionalDomainName{
+				AllocatedName: k,
+				Fqdn:          v,
+			})
+		}
+
+		for k, v := range data.TLSManagedDomainName {
+			pdata.Naming.AdditionalTlsManaged = append(pdata.Naming.AdditionalTlsManaged, &schema.Naming_AdditionalDomainName{
+				AllocatedName: k,
+				Fqdn:          v,
+			})
+		}
+
+		slices.SortFunc(pdata.Naming.AdditionalUserSpecified, sortAdditional)
+		slices.SortFunc(pdata.Naming.AdditionalTlsManaged, sortAdditional)
 	}
 
 	return pdata, nil
+}
+
+func sortAdditional(a, b *schema.Naming_AdditionalDomainName) bool {
+	if a.AllocatedName == b.AllocatedName {
+		return strings.Compare(a.Fqdn, b.Fqdn) < 0
+	}
+	return strings.Compare(a.AllocatedName, b.AllocatedName) < 0
 }
 
 type argsListOrMap struct {
