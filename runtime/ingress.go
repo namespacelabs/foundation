@@ -432,7 +432,7 @@ func makeDomains(ctx context.Context, env *schema.Environment, srv *schema.Serve
 			domains = append(domains, allocated)
 		}
 
-		for _, d := range naming.AdditionalTlsManaged {
+		for _, d := range naming.GetAdditionalTlsManaged() {
 			if d.AllocatedName == allocatedName {
 				domain, err := allocateName(ctx, srv, naming, fnapi.AllocateOpts{FQDN: d.Fqdn}, schema.Domain_USER_SPECIFIED_TLS_MANAGED, d.Fqdn+".specific")
 				if err != nil {
@@ -443,7 +443,7 @@ func makeDomains(ctx context.Context, env *schema.Environment, srv *schema.Serve
 			}
 		}
 
-		for _, d := range naming.AdditionalUserSpecified {
+		for _, d := range naming.GetAdditionalUserSpecified() {
 			if d.AllocatedName == allocatedName {
 				domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED})
 			}
@@ -462,14 +462,14 @@ func GuessDomains(env *schema.Environment, srv *schema.Server, naming *schema.Na
 
 	domains = append(domains, d)
 
-	for _, d := range naming.AdditionalTlsManaged {
+	for _, d := range naming.GetAdditionalTlsManaged() {
 		if d.AllocatedName == allocatedName {
 			domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED_TLS_MANAGED})
 
 		}
 	}
 
-	for _, d := range naming.AdditionalUserSpecified {
+	for _, d := range naming.GetAdditionalUserSpecified() {
 		if d.AllocatedName == allocatedName {
 			domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED})
 		}
