@@ -20,35 +20,35 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const version = "1.13.5"
+const version = "1.23.6"
 
 var Pins = map[string]artifacts.Reference{
 	"linux/amd64": {
 		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/linux/amd64/kubectl", version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "3b0ddcde72fd6ec30675f2d0500b3aff43a0bfd580602bb1c5c75c4072242f35",
+			Hex:       "703a06354bab9f45c80102abff89f1a62cbc2c6d80678fd3973a014acc7c500a",
 		},
 	},
 	"linux/arm64": {
 		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/linux/arm64/kubectl", version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "46298ad006f76aa3a07338dcd3c24fa9704571ccfcd7cefc0cdb67ece0822a2a",
+			Hex:       "4be771c8e6a082ba61f0367077f480237f9858ef5efe14b1dbbfc05cd42fc360",
 		},
 	},
 	"darwin/arm64": {
 		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/darwin/arm64/kubectl", version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "74b5db42979c6ba6c25dfc433509b39221788dc4e0644f218c7549a42405b073",
+			Hex:       "d03e1f6b88443e46c11f5940a1fa935c91a0d67f5cc4ffeec35083b7e054034d",
 		},
 	},
 	"darwin/amd64": {
 		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/darwin/amd64/kubectl", version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "b5980f5a719166ef414455b7f8e9462a3a81c72ef59018cdfca00438af7f3378",
+			Hex:       "dedb7784744f581dc7157b0a6589c7e15d4d14a1bcd25dc5876548805034dffe",
 		},
 	},
 }
