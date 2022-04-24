@@ -42,9 +42,9 @@ type cueInvocation struct {
 }
 
 type cueNaming struct {
-	DomainName           map[string]string `json:"domainName"`
-	TLSManagedDomainName map[string]string `json:"tlsManagedDomainName"`
-	WithOrg              string            `json:"withOrg"`
+	DomainName           map[string][]string `json:"domainName"`
+	TLSManagedDomainName map[string][]string `json:"tlsManagedDomainName"`
+	WithOrg              string              `json:"withOrg"`
 }
 
 type cueContainer struct {
@@ -135,17 +135,21 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 		}
 
 		for k, v := range data.DomainName {
-			pdata.Naming.AdditionalUserSpecified = append(pdata.Naming.AdditionalUserSpecified, &schema.Naming_AdditionalDomainName{
-				AllocatedName: k,
-				Fqdn:          v,
-			})
+			for _, fqdn := range v {
+				pdata.Naming.AdditionalUserSpecified = append(pdata.Naming.AdditionalUserSpecified, &schema.Naming_AdditionalDomainName{
+					AllocatedName: k,
+					Fqdn:          fqdn,
+				})
+			}
 		}
 
 		for k, v := range data.TLSManagedDomainName {
-			pdata.Naming.AdditionalTlsManaged = append(pdata.Naming.AdditionalTlsManaged, &schema.Naming_AdditionalDomainName{
-				AllocatedName: k,
-				Fqdn:          v,
-			})
+			for _, fqdn := range v {
+				pdata.Naming.AdditionalTlsManaged = append(pdata.Naming.AdditionalTlsManaged, &schema.Naming_AdditionalDomainName{
+					AllocatedName: k,
+					Fqdn:          fqdn,
+				})
+			}
 		}
 
 		slices.SortFunc(pdata.Naming.AdditionalUserSpecified, sortAdditional)

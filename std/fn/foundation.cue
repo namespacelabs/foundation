@@ -179,7 +179,7 @@ _#ConfigureBase: {
 
 	#Naming: {
 		withOrg?: string
-		*{} | {domainName: [string]: string} | {tlsManagedDomainName: [string]: string}
+		*{} | {domainName: [string]: [...string]} | {tlsManagedDomainName: [string]: [...string]}
 	}
 }
 
