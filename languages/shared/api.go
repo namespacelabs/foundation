@@ -38,13 +38,14 @@ type ProviderData struct {
 }
 
 type DependencyData struct {
-	Name                  string
-	ProviderName          string
-	ProviderInputType     TypeData
-	ProviderType          *schema.Provides_AvailableIn
-	ProviderLocation      workspace.Location
-	ProviderInput         SerializedProto
-	ProviderHasScopedDeps bool
+	Name                     string
+	ProviderName             string
+	ProviderInputType        TypeData
+	ProviderType             *schema.Provides_AvailableIn
+	ProviderLocation         workspace.Location
+	ProviderInput            SerializedProto
+	ProviderHasScopedDeps    bool
+	ProviderHasSingletonDeps bool
 }
 
 type SerializedProto struct {

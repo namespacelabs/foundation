@@ -42,6 +42,7 @@ type tmplDependency struct {
 	ProviderInputType tmplImportedType
 	ProviderInput     tmplSerializedProto
 	HasScopedDeps     bool
+	HasSingletonDeps  bool
 }
 type tmplSerializedProto struct {
 	Base64Content string
@@ -76,6 +77,9 @@ export const make{{.Name}}Deps = (): {{.Name}}Deps => ({
 		{{.Name}}: {{.Provider.ImportAlias}}.provide{{.Provider.Name}}(
 			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name}}.deserializeBinary(
 				Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
+		{{- if .HasSingletonDeps}},
+		  {{.Provider.ImportAlias}}.make` + singletonNameBase + `Deps()
+		{{- end}}
 		{{- if .HasScopedDeps}},
 		  {{.Provider.ImportAlias}}.make{{.Provider.Name}}Deps()
 		{{- end}}),
@@ -90,7 +94,7 @@ import * as {{.Alias}} from "{{.Package}}"
 {{end}}` +
 
 			// Node template
-			`{{define "Node"}}// This file was automatically generated.
+			`{{define "Node"}}{{with $opts := .}}// This file was automatically generated.
 
 {{if .HasService}}
 import { Server } from "@grpc/grpc-js";
@@ -119,9 +123,11 @@ export const wireService: WireService = impl.wireService;
 {{- end}}
 
 export type Provide{{.Name}} = (input: {{.InputType.ImportAlias}}.{{.InputType.Name}}
-	  {{- if .ScopedDeps}}, deps: {{.Name}}Deps{{end}}) =>
+	  {{- if $opts.SingletonDeps}}, singletonDeps: {{$opts.SingletonDeps.Name}}Deps{{end -}}
+	  {{- if .ScopedDeps}}, scopedDeps: {{.Name}}Deps{{end}}) =>
 		{{.OutputType.ImportAlias}}.{{.OutputType.Name}};
 export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
+{{- end}}
 {{- end}}
 {{end}}` +
 
@@ -136,13 +142,13 @@ import yargs from "yargs/yargs";
 
 interface Deps {
 {{- range $.Services}}
-  {{.Name}}: {{.ImportAlias}}.` + nodeName + `Deps;
+  {{.Name}}: {{.ImportAlias}}.` + singletonNameBase + `Deps;
 {{- end}}
 }
 
 const prepareDeps = (): Deps => ({
 {{- range $.Services}}
-	{{.Name}}: {{.ImportAlias}}.make` + nodeName + `Deps(),
+	{{.Name}}: {{.ImportAlias}}.make` + singletonNameBase + `Deps(),
 {{- end}}
 });
 
