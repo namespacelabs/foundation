@@ -6,6 +6,7 @@ package sentry
 
 import (
 	"context"
+	"time"
 
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -39,6 +40,8 @@ func unaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServ
 	span := sentry.StartSpan(ctx, "grpc.server", sentry.TransactionName(info.FullMethod))
 	defer span.Finish()
 
+	defer recoverAndReport(ctx, hub)
+
 	result, err = handler(ctx, req)
 	if err != nil {
 		hub.CaptureException(err)
@@ -58,10 +61,31 @@ func streamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamS
 	span := sentry.StartSpan(ctx, "grpc.server", sentry.TransactionName(info.FullMethod))
 	defer span.Finish()
 
-	err := handler(srv, ss)
+	defer recoverAndReport(ctx, hub)
+
+	err := handler(srv, &serverStream{ServerStream: ss, ctx: ctx})
 	if err != nil {
 		hub.CaptureException(err)
 	}
 
 	return err
+}
+
+func recoverAndReport(ctx context.Context, hub *sentry.Hub) {
+	if err := recover(); err != nil {
+		eventID := hub.RecoverWithContext(ctx, err)
+		if eventID != nil {
+			hub.Flush(2 * time.Second)
+		}
+		panic(err)
+	}
+}
+
+type serverStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (w *serverStream) Context() context.Context {
+	return w.ctx
 }
