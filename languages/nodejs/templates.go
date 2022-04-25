@@ -69,7 +69,7 @@ export interface {{.Name}}Deps {
 {{- end}}
 }
 
-export const make{{.Name}}Deps = (): {{.Name}}Deps => ({
+export const make{{.Name}}Deps = (dg: DependencyGraph): {{.Name}}Deps => ({
 	{{- range .Deps}}
 	  {{- range .ProviderInput.Comments}}
 		// {{.}}
@@ -78,10 +78,10 @@ export const make{{.Name}}Deps = (): {{.Name}}Deps => ({
 			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name}}.deserializeBinary(
 				Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
 		{{- if .HasSingletonDeps}},
-		  {{.Provider.ImportAlias}}.make` + singletonNameBase + `Deps()
+		  {{.Provider.ImportAlias}}.make` + singletonNameBase + `Deps(dg)
 		{{- end}}
 		{{- if .HasScopedDeps}},
-		  {{.Provider.ImportAlias}}.make{{.Provider.Name}}Deps()
+		  {{.Provider.ImportAlias}}.make{{.Provider.Name}}Deps(dg)
 		{{- end}}),
 	{{- end}}
 });
@@ -100,6 +100,7 @@ import * as {{.Alias}} from "{{.Package}}"
 import { Server } from "@grpc/grpc-js";
 {{- end}}
 import * as impl from "./impl";
+import { DependencyGraph } from "foundation-runtime";
 
 {{- template "Imports" . -}}
 
@@ -134,9 +135,10 @@ export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
 			// Server template
 			`{{define "Server"}}// This file was automatically generated.
 
-import 'source-map-support/register'
+import "source-map-support/register"
 import { Server, ServerCredentials } from "@grpc/grpc-js";
 import yargs from "yargs/yargs";
+import { DependencyGraph } from "foundation-runtime";
 
 {{- template "Imports" . -}}
 
@@ -146,9 +148,9 @@ interface Deps {
 {{- end}}
 }
 
-const prepareDeps = (): Deps => ({
+const prepareDeps = (dg: DependencyGraph): Deps => ({
 {{- range $.Services}}
-	{{.Name}}: {{.ImportAlias}}.make` + singletonNameBase + `Deps(),
+	{{.Name}}: {{.ImportAlias}}.make` + singletonNameBase + `Deps(dg),
 {{- end}}
 });
 
@@ -166,7 +168,8 @@ const argv = yargs(process.argv.slice(2))
 		.parse();
 
 const server = new Server();
-wireServices(server, prepareDeps());
+const dg = new DependencyGraph();
+wireServices(server, prepareDeps(dg));
 
 console.log(` + "`" + `Starting the server on ${argv.listen_hostname}:${argv.port}` + "`" + `);
 
