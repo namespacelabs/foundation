@@ -6,6 +6,7 @@ package nodejs
 
 import (
 	"context"
+	"encoding/base64"
 
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/languages/shared"
@@ -30,7 +31,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 }
 
 func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, error) {
-	ic := NewImportCollector()
+	ic := newImportCollector()
 
 	providers := []tmplProvider{}
 	for _, p := range nodeData.Providers {
@@ -69,7 +70,10 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 					ImportAlias: alias,
 				},
 				ProviderInputType: inputType,
-				ProviderInput:     d.ProviderInput,
+				ProviderInput: tmplSerializedProto{
+					Base64Content: base64.StdEncoding.EncodeToString(d.ProviderInput.Content),
+					Comments:      d.ProviderInput.Comments,
+				},
 			})
 		}
 

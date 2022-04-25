@@ -46,6 +46,6 @@ type DependencyData struct {
 }
 
 type SerializedProto struct {
-	Base64Content string
-	Comments      []string
+	Content  []byte
+	Comments []string
 }

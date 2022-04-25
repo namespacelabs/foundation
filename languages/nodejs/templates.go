@@ -6,8 +6,6 @@ package nodejs
 
 import (
 	"text/template"
-
-	"namespacelabs.dev/foundation/languages/shared"
 )
 
 type nodeTmplOptions struct {
@@ -39,7 +37,11 @@ type tmplDependency struct {
 	Type              tmplImportedType
 	Provider          tmplImportedType
 	ProviderInputType tmplImportedType
-	ProviderInput     shared.SerializedProto
+	ProviderInput     tmplSerializedProto
+}
+type tmplSerializedProto struct {
+	Base64Content string
+	Comments      []string
 }
 
 type tmplImportedType struct {

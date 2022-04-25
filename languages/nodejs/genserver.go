@@ -22,7 +22,7 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 		return err
 	}
 
-	ic := NewImportCollector()
+	ic := newImportCollector()
 	tplServices := []tmplImportedType{}
 	for _, srv := range serverData.Services {
 		npmPackage, err := toNpmPackage(srv.Location.PackageName)

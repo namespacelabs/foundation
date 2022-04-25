@@ -74,7 +74,7 @@ type importCollector struct {
 	aliasIndex  int
 }
 
-func NewImportCollector() *importCollector {
+func newImportCollector() *importCollector {
 	return &importCollector{
 		pkgToImport: make(map[string]tmplSingleImport),
 	}

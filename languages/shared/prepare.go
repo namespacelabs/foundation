@@ -6,7 +6,6 @@ package shared
 
 import (
 	"context"
-	"encoding/base64"
 	"strings"
 
 	"github.com/protocolbuffers/txtpbfmt/parser"
@@ -138,7 +137,7 @@ func serializeProto(ctx context.Context, pkg *workspace.Package, provides *schem
 		return nil, fnerrors.InternalError("failed to marshal depvar: %w", err)
 	}
 
-	serializedProto.Base64Content = base64.StdEncoding.EncodeToString(deterministicBytes)
+	serializedProto.Content = deterministicBytes
 
 	resolver, err := protos.AsResolver(files)
 	if err != nil {
