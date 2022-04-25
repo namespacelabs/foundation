@@ -1,0 +1,7 @@
+{
+	"name": "runtime",
+	"version": "0.1.0",
+	"description": "Runtime Node.js libraries for Foundation",
+	"main": "depgraph.ts",
+	"license": "https://github.com/namespacelabs/foundation/blob/main/LICENSE"
+}
