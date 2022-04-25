@@ -1,0 +1,78 @@
+name: e2e on examples/ repo
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # trigger manually
+
+permissions:
+  packages: read
+  contents: read
+
+jobs:
+  build_fn:
+    name: build foundation
+    strategy:
+      matrix:
+        os: [ubuntu-18.04] # add macos-11 when e2e tests work (macos images dont include docker)
+    runs-on: ${{ matrix.os }}
+    env:
+      GOPRIVATE: namespacelabs.dev/*
+      NSL_GH_SERVICE: ${{ secrets.NSL_GH_SERVICE }}
+    steps:
+      - name: check out
+        uses: actions/checkout@v3
+        with:
+          path: foundation
+
+      - name: set up go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+
+      - name: Setup cross-invocation caching (Go)
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-fnrun-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-go-fnrun-
+
+      - name: build fn
+        env:
+          CGO_ENABLED: 0
+        run: cd ./foundation/ && go install ./cmd/fn
+
+      - name: checkout examples repo
+        uses: actions/checkout@v3
+        with:
+          repository: namespacelabs/examples
+          path: examples
+          token: ${{ secrets.NSL_GH_SERVICE }}
+
+      - name: configure Git
+        run: git config --global url.https://$NSL_GH_SERVICE@github.com/.insteadOf https://github.com/
+
+      - name: prepare dev environment
+        run: cd ./examples/todos && fn prepare
+
+      - name: print kubectl cluster-info
+        run: kubectl cluster-info
+
+      # Required by buildkit gha cache.
+      - name: Expose GitHub Runtime
+        uses: crazy-max/ghaction-github-runtime@v1
+
+      - name: Run all tests
+        run: |
+          ls -la;
+          cd ./examples/todos;
+          fn test \
+            --buildkit_import_cache=type=gha \
+            --buildkit_export_cache=type=gha,mode=max \
+            --use_prebuilts=true \
+            --golang_use_buildkit=false \
+            --include_servers
