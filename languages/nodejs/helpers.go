@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
@@ -102,6 +103,9 @@ func (ic *importCollector) imports() []tmplSingleImport {
 	for _, imp := range ic.pkgToImport {
 		imports = append(imports, imp)
 	}
+	slices.SortFunc(imports, func(i1, i2 tmplSingleImport) bool {
+		return i1.Alias < i2.Alias
+	})
 
 	return imports
 }
