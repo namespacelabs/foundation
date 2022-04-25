@@ -47,7 +47,7 @@ func ProvideBucket(ctx context.Context, config *BucketConfig, deps ExtensionDeps
 		return nil, err
 	}
 
-	// Asynchronously wait until a database connection is ready.
+	// Asynchronously wait until the bucket is available.
 	deps.ReadinessCheck.RegisterFunc(
 		fmt.Sprintf("readiness:%s", core.InstantiationPathFromContext(ctx)),
 		func(ctx context.Context) error {
