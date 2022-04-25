@@ -278,7 +278,10 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 		}
 
 		var paths []*schema.IngressFragment_IngressHttpPath
-		if *protocol == "http" {
+		var grpc []*schema.IngressFragment_IngressGrpcService
+
+		switch *protocol {
+		case "http":
 			for _, details := range protocolDetails {
 				p := &schema.HttpUrlMap{}
 				if err := details.UnmarshalTo(p); err != nil {
@@ -294,21 +297,37 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 					})
 				}
 			}
-		}
 
-		if len(paths) == 0 {
-			paths = []*schema.IngressFragment_IngressHttpPath{
-				{Path: "/", Kind: kind, Owner: endpoint.EndpointOwner, Service: endpoint.AllocatedName, Port: endpoint.Port},
+			// XXX still relevant? We used to do this when grpc followed the http path.
+			if len(paths) == 0 {
+				paths = []*schema.IngressFragment_IngressHttpPath{
+					{Path: "/", Kind: kind, Owner: endpoint.EndpointOwner, Service: endpoint.AllocatedName, Port: endpoint.Port},
+				}
+			}
+
+		case "grpc":
+			for _, details := range protocolDetails {
+				p := &schema.GrpcExportService{}
+				if err := details.UnmarshalTo(p); err != nil {
+					return nil, err
+				}
+				grpc = append(grpc, &schema.IngressFragment_IngressGrpcService{
+					GrpcService: p.ProtoTypename,
+					Owner:       endpoint.EndpointOwner,
+					Service:     endpoint.AllocatedName,
+					Port:        endpoint.Port,
+				})
 			}
 		}
 
 		// XXX security this exposes all services registered at port: #102.
 		f, err := makeFragment(&schema.IngressFragment{
-			Name:      endpoint.ServiceName,
-			Owner:     endpoint.ServerOwner,
-			Endpoint:  endpoint,
-			Extension: extensions,
-			HttpPath:  paths,
+			Name:        endpoint.ServiceName,
+			Owner:       endpoint.ServerOwner,
+			Endpoint:    endpoint,
+			Extension:   extensions,
+			HttpPath:    paths,
+			GrpcService: grpc,
 		}, makeDomains(ctx, env, sch.Server, sch.ServerNaming, endpoint.AllocatedName))
 		if err != nil {
 			return nil, err
@@ -413,34 +432,47 @@ func makeDomains(ctx context.Context, env *schema.Environment, srv *schema.Serve
 			domains = append(domains, allocated)
 		}
 
-		if domainName := naming.GetTlsManagedDomainName(); domainName != "" {
-			domain, err := allocateName(ctx, srv, naming, fnapi.AllocateOpts{FQDN: domainName}, schema.Domain_USER_SPECIFIED_TLS_MANAGED, domainName+".specific")
-			if err != nil {
-				return nil, err
-			}
+		for _, d := range naming.GetAdditionalTlsManaged() {
+			if d.AllocatedName == allocatedName {
+				domain, err := allocateName(ctx, srv, naming, fnapi.AllocateOpts{FQDN: d.Fqdn}, schema.Domain_USER_SPECIFIED_TLS_MANAGED, d.Fqdn+".specific")
+				if err != nil {
+					return nil, err
+				}
 
-			domains = append(domains, domain)
-		} else if domainName := naming.GetDomainName(); domainName != "" {
-			domains = append(domains, &schema.Domain{Fqdn: domainName, Managed: schema.Domain_USER_SPECIFIED})
+				domains = append(domains, domain)
+			}
+		}
+
+		for _, d := range naming.GetAdditionalUserSpecified() {
+			if d.AllocatedName == allocatedName {
+				domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED})
+			}
 		}
 
 		return domains, nil
 	}
 }
 
-func GuessDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, name string) ([]*schema.Domain, error) {
+func GuessDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) ([]*schema.Domain, error) {
 	var domains []*schema.Domain
-	d, err := GuessAllocatedName(env, srv, naming, name)
+	d, err := GuessAllocatedName(env, srv, naming, allocatedName)
 	if err != nil {
 		return nil, err
 	}
 
 	domains = append(domains, d)
 
-	if domainName := naming.GetTlsManagedDomainName(); domainName != "" {
-		domains = append(domains, &schema.Domain{Fqdn: domainName, Managed: schema.Domain_USER_SPECIFIED_TLS_MANAGED})
-	} else if domainName := naming.GetDomainName(); domainName != "" {
-		domains = append(domains, &schema.Domain{Fqdn: domainName, Managed: schema.Domain_USER_SPECIFIED})
+	for _, d := range naming.GetAdditionalTlsManaged() {
+		if d.AllocatedName == allocatedName {
+			domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED_TLS_MANAGED})
+
+		}
+	}
+
+	for _, d := range naming.GetAdditionalUserSpecified() {
+		if d.AllocatedName == allocatedName {
+			domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED})
+		}
 	}
 
 	return domains, nil

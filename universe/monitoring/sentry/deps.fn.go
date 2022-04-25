@@ -7,6 +7,7 @@ import (
 	"context"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
+	"namespacelabs.dev/foundation/std/go/http/middleware"
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
@@ -14,6 +15,7 @@ import (
 type ExtensionDeps struct {
 	Dsn          *secrets.Value
 	Interceptors interceptors.Registration
+	Middleware   middleware.Middleware
 	ServerInfo   *core.ServerInfo
 }
 
@@ -53,6 +55,12 @@ func makeDeps__efmlf2(ctx context.Context, di core.Dependencies) (interface{}, e
 
 	{
 		if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+
+	{
+		if deps.Middleware, err = middleware.ProvideMiddleware(ctx, nil); err != nil {
 			return nil, err
 		}
 	}

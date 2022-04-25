@@ -47,7 +47,7 @@ func NewTelemetry() *Telemetry {
 	return &Telemetry{
 		UseTelemetry:   true,
 		errorLogging:   false,
-		backendAddress: "https://grpc-gateway-g793omo8v6okrjjo0v60.prod.namespacelabs.nscloud.dev",
+		backendAddress: "https://api.namespacelabs.net",
 		makeClientID:   generateClientIDAndSalt,
 	}
 }

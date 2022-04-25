@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
+	"namespacelabs.dev/foundation/std/go/http/middleware"
 )
 
 var (
@@ -60,6 +61,7 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 	reflection.Register(grpcServer)
 
 	httpMux := mux.NewRouter()
+	httpMux.Use(middleware.Consume()...)
 	httpMux.Use(proxyHeaders)
 	httpMux.Use(func(h http.Handler) http.Handler {
 		return handlers.CombinedLoggingHandler(os.Stdout, h)

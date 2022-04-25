@@ -3,6 +3,7 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
+	"namespacelabs.dev/foundation/std/go/http/middleware"
 )
 
 extension: fn.#Extension & {
@@ -14,5 +15,6 @@ extension: fn.#Extension & {
 		}
 		serverInfo:     core.#Exports.ServerInfo
 		"interceptors": interceptors.#Exports.InterceptorRegistration
+		"middleware":   middleware.#Exports.Middleware
 	}
 }

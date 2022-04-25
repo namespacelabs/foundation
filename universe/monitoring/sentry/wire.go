@@ -8,20 +8,23 @@ import (
 	"context"
 
 	"github.com/getsentry/sentry-go"
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"google.golang.org/grpc"
 )
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:         string(deps.Dsn.MustValue()),
-		ServerName:  deps.ServerInfo.ServerName,
-		Environment: deps.ServerInfo.EnvName,
-		Release:     deps.ServerInfo.GetVcs().GetRevision(),
+		Dsn:              string(deps.Dsn.MustValue()),
+		ServerName:       deps.ServerInfo.ServerName,
+		Environment:      deps.ServerInfo.EnvName,
+		Release:          deps.ServerInfo.GetVcs().GetRevision(),
+		TracesSampleRate: 1.0, // XXX should be configurable.
 	}); err != nil {
 		return err
 	}
 
 	deps.Interceptors.Add(unaryInterceptor, streamInterceptor)
+	deps.Middleware.Add(sentryhttp.New(sentryhttp.Options{}).Handle)
 
 	return nil
 }
