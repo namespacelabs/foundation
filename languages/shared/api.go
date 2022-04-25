@@ -18,12 +18,9 @@ type EmbeddedServiceData struct {
 }
 
 type NodeData struct {
-	Service   *ServiceData
-	Providers []ProviderData
-}
-
-type ServiceData struct {
-	Deps []DependencyData
+	HasService    bool
+	SingletonDeps []DependencyData
+	Providers     []ProviderData
 }
 
 type TypeData struct {
@@ -36,6 +33,7 @@ type ProviderData struct {
 	Name         string
 	InputType    TypeData
 	ProviderType *schema.Provides_AvailableIn
+	IsSingleton  bool
 	ScopedDeps   []DependencyData
 }
 

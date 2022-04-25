@@ -9,9 +9,10 @@ import (
 )
 
 type nodeTmplOptions struct {
-	Imports   []tmplSingleImport
-	Service   *tmplDeps
-	Providers []tmplProvider
+	Imports       []tmplSingleImport
+	HasService    bool
+	SingletonDeps *tmplDeps
+	Providers     []tmplProvider
 }
 type serverTmplOptions struct {
 	Imports  []tmplSingleImport
@@ -91,17 +92,22 @@ import * as {{.Alias}} from "{{.Package}}"
 			// Node template
 			`{{define "Node"}}// This file was automatically generated.
 
-{{if .Service}}
+{{if .HasService}}
 import { Server } from "@grpc/grpc-js";
 {{- end}}
 import * as impl from "./impl";
 
 {{- template "Imports" . -}}
 
-{{if .Service}}
-{{- template "Deps" .Service}}
+{{if .SingletonDeps}}
+{{- template "Deps" .SingletonDeps}}
+{{- end}}
 
-export type WireService = (deps: {{.Service.Name}}Deps, server: Server) => void;
+{{- if .HasService}}
+
+export type WireService = (
+	{{- if .SingletonDeps}}deps: {{.SingletonDeps.Name}}Deps, {{end -}}
+	server: Server) => void;
 export const wireService: WireService = impl.wireService;
 {{- end}}
 
@@ -113,7 +119,7 @@ export const wireService: WireService = impl.wireService;
 {{- end}}
 
 export type Provide{{.Name}} = (input: {{.InputType.ImportAlias}}.{{.InputType.Name}}
-	  {{if .ScopedDeps}}, deps: {{.Name}}Deps{{end}}) =>
+	  {{- if .ScopedDeps}}, deps: {{.Name}}Deps{{end}}) =>
 		{{.OutputType.ImportAlias}}.{{.OutputType.Name}};
 export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
 {{- end}}

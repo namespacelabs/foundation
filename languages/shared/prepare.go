@@ -41,16 +41,15 @@ func PrepareServerData(ctx context.Context, loader workspace.Packages, loc works
 func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, fmwk schema.Framework) (NodeData, error) {
 	var nodeData NodeData
 
-	if n.ExportService != nil {
+	if len(n.Instantiate) > 0 {
 		deps, err := prepareDeps(ctx, loader, fmwk, n.Instantiate)
 		if err != nil {
 			return NodeData{}, err
 		}
 
-		nodeData.Service = &ServiceData{
-			Deps: deps,
-		}
+		nodeData.SingletonDeps = deps
 	}
+	nodeData.HasService = n.ExportService != nil
 
 	for _, p := range n.Provides {
 		for _, a := range p.AvailableIn {
@@ -64,7 +63,9 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 					Name:         p.Name,
 					InputType:    convertType(p.Type, schema.PackageName(n.PackageName)),
 					ProviderType: a,
-					ScopedDeps:   scopeDeps,
+					// TODO(@nicolasalt): consider using an explicit syntax for singletones.
+					IsSingleton: len(scopeDeps) == 0,
+					ScopedDeps:  scopeDeps,
 				})
 			}
 		}

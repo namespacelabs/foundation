@@ -58,20 +58,21 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		})
 	}
 
-	var service *tmplDeps
-	if nodeData.Service != nil {
-		deps, err := convertDependencies(ic, nodeName, nodeData.Service.Deps)
+	var singletonDeps *tmplDeps
+	if len(nodeData.SingletonDeps) > 0 {
+		deps, err := convertDependencies(ic, nodeName, nodeData.SingletonDeps)
 		if err != nil {
 			return nodeTmplOptions{}, err
 		}
 
-		service = deps
+		singletonDeps = deps
 	}
 
 	return nodeTmplOptions{
-		Imports:   ic.imports(),
-		Service:   service,
-		Providers: providers,
+		Imports:       ic.imports(),
+		SingletonDeps: singletonDeps,
+		Providers:     providers,
+		HasService:    nodeData.HasService,
 	}, nil
 }
 
