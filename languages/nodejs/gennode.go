@@ -8,6 +8,8 @@ import (
 	"context"
 	"encoding/base64"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
@@ -15,6 +17,8 @@ import (
 )
 
 const DepsFilename = "deps.fn.ts"
+
+var capitalCaser = cases.Title(language.AmericanEnglish)
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
 	nodeData, err := shared.PrepareNodeData(ctx, loader, loc, n, schema.Framework_NODEJS)
@@ -41,7 +45,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		}
 
 		providers = append(providers, tmplProvider{
-			Name:       p.Name,
+			Name:       capitalCaser.String(p.Name),
 			InputType:  inputType,
 			OutputType: convertAvailableIn(ic, p.ProviderType.Nodejs),
 		})
