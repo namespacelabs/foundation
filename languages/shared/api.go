@@ -36,6 +36,7 @@ type ProviderData struct {
 	Name         string
 	InputType    TypeData
 	ProviderType *schema.Provides_AvailableIn
+	ScopedDeps   []DependencyData
 }
 
 type DependencyData struct {

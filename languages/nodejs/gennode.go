@@ -44,41 +44,24 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 			return nodeTmplOptions{}, err
 		}
 
+		scopeDeps, err := convertDependencies(ic, p.ScopedDeps)
+		if err != nil {
+			return nodeTmplOptions{}, err
+		}
+
 		providers = append(providers, tmplProvider{
 			Name:       capitalCaser.String(p.Name),
 			InputType:  inputType,
 			OutputType: convertAvailableIn(ic, p.ProviderType.Nodejs),
+			ScopedDeps: scopeDeps,
 		})
 	}
 
 	var service *tmplService
 	if nodeData.Service != nil {
-		deps := []tmplDependency{}
-		for _, d := range nodeData.Service.Deps {
-			npmPackage, err := toNpmPackage(d.ProviderLocation.PackageName)
-			if err != nil {
-				return nodeTmplOptions{}, err
-			}
-			alias := ic.add(nodeDepsNpmImport(npmPackage))
-
-			inputType, err := convertType(ic, d.Provider.InputType)
-			if err != nil {
-				return nodeTmplOptions{}, err
-			}
-
-			deps = append(deps, tmplDependency{
-				Name: d.Name,
-				Type: convertAvailableIn(ic, d.Provider.ProviderType.Nodejs),
-				Provider: tmplImportedType{
-					Name:        d.Provider.Name,
-					ImportAlias: alias,
-				},
-				ProviderInputType: inputType,
-				ProviderInput: tmplSerializedProto{
-					Base64Content: base64.StdEncoding.EncodeToString(d.ProviderInput.Content),
-					Comments:      d.ProviderInput.Comments,
-				},
-			})
+		deps, err := convertDependencies(ic, nodeData.Service.Deps)
+		if err != nil {
+			return nodeTmplOptions{}, err
 		}
 
 		service = &tmplService{
@@ -91,4 +74,45 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		Service:   service,
 		Providers: providers,
 	}, nil
+}
+
+func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDependency, error) {
+	npmPackage, err := toNpmPackage(dep.ProviderLocation.PackageName)
+	if err != nil {
+		return tmplDependency{}, err
+	}
+	alias := ic.add(nodeDepsNpmImport(npmPackage))
+
+	inputType, err := convertType(ic, dep.Provider.InputType)
+	if err != nil {
+		return tmplDependency{}, err
+	}
+
+	return tmplDependency{
+		Name: dep.Name,
+		Type: convertAvailableIn(ic, dep.Provider.ProviderType.Nodejs),
+		Provider: tmplImportedType{
+			Name:        capitalCaser.String(dep.Provider.Name),
+			ImportAlias: alias,
+		},
+		ProviderInputType: inputType,
+		ProviderInput: tmplSerializedProto{
+			Base64Content: base64.StdEncoding.EncodeToString(dep.ProviderInput.Content),
+			Comments:      dep.ProviderInput.Comments,
+		},
+	}, nil
+}
+
+func convertDependencies(ic *importCollector, deps []shared.DependencyData) ([]tmplDependency, error) {
+	result := []tmplDependency{}
+	for _, d := range deps {
+		dep, err := convertDependency(ic, d)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, dep)
+	}
+
+	return result, nil
 }

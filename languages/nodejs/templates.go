@@ -26,6 +26,7 @@ type tmplProvider struct {
 	Name       string
 	InputType  tmplImportedType
 	OutputType tmplImportedType
+	ScopedDeps []tmplDependency
 }
 
 type tmplService struct {
@@ -84,7 +85,26 @@ export const wireService: WireService = impl.wireService;
 {{end}}
 
 {{range $.Providers}}
-export type Provide{{.Name}} = (input: {{.InputType.ImportAlias}}.{{.InputType.Name}}) =>
+
+{{if .ScopedDeps}}
+// Scoped dependencies that are instantiated for each call to Provide{{.Name}}.
+export interface {{.Name}}Deps {
+{{range .ScopedDeps}}
+	{{.Name}}: {{.Type.ImportAlias}}.{{.Type.Name}};{{end}}
+}
+
+export const make{{.Name}}Deps = (): {{.Name}}Deps => ({
+	{{range .ScopedDeps}}
+	  {{range .ProviderInput.Comments}}
+		// {{.}}{{end}}
+		{{.Name}}: {{.Provider.ImportAlias}}.provide{{.Provider.Name}}(
+			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name}}.deserializeBinary(
+				Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))),{{end}}
+});
+{{end}}
+
+export type Provide{{.Name}} = (input: {{.InputType.ImportAlias}}.{{.InputType.Name}}
+	  {{if .ScopedDeps}}, deps: {{.Name}}Deps{{end}}) =>
 		{{.OutputType.ImportAlias}}.{{.OutputType.Name}};
 export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
 {{end}}

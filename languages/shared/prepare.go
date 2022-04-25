@@ -42,60 +42,75 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 	var nodeData NodeData
 
 	if n.ExportService != nil {
-		deps := []DependencyData{}
-		for _, dep := range n.GetInstantiate() {
-			pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
-			if err != nil {
-				return NodeData{}, fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
-			}
-
-			_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
-			if p == nil {
-				return NodeData{}, fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
-			}
-
-			var provider *schema.Provides_AvailableIn
-			for _, prov := range p.AvailableIn {
-				if prov.ProvidedInFrameworks()[fmwk] {
-					provider = prov
-					break
-				}
-			}
-
-			providerInput, err := serializeProto(ctx, pkg, p, dep)
-			if err != nil {
-				return NodeData{}, err
-			}
-
-			deps = append(deps, DependencyData{
-				Name: dep.Name,
-				Provider: ProviderData{
-					Name:         p.Name,
-					InputType:    convertType(p.Type, schema.PackageName(dep.PackageName)),
-					ProviderType: provider,
-				},
-				ProviderLocation: pkg.Location,
-				ProviderInput:    *providerInput,
-			})
+		deps, err := prepareDeps(ctx, loader, fmwk, n.Instantiate)
+		if err != nil {
+			return NodeData{}, err
 		}
 
 		nodeData.Service = &ServiceData{
 			Deps: deps,
 		}
 	}
+
 	for _, p := range n.Provides {
 		for _, a := range p.AvailableIn {
 			if a.ProvidedInFrameworks()[fmwk] {
+				scopeDeps, err := prepareDeps(ctx, loader, fmwk, p.Instantiate)
+				if err != nil {
+					return NodeData{}, err
+				}
+
 				nodeData.Providers = append(nodeData.Providers, ProviderData{
 					Name:         p.Name,
 					InputType:    convertType(p.Type, schema.PackageName(n.PackageName)),
 					ProviderType: a,
+					ScopedDeps:   scopeDeps,
 				})
 			}
 		}
 	}
 
 	return nodeData, nil
+}
+
+func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Framework, instantiates []*schema.Instantiate) ([]DependencyData, error) {
+	deps := []DependencyData{}
+	for _, dep := range instantiates {
+		pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
+		if err != nil {
+			return nil, fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
+		}
+
+		_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
+		if p == nil {
+			return nil, fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
+		}
+
+		var provider *schema.Provides_AvailableIn
+		for _, prov := range p.AvailableIn {
+			if prov.ProvidedInFrameworks()[fmwk] {
+				provider = prov
+				break
+			}
+		}
+
+		providerInput, err := serializeProto(ctx, pkg, p, dep)
+		if err != nil {
+			return nil, err
+		}
+
+		deps = append(deps, DependencyData{
+			Name: dep.Name,
+			Provider: ProviderData{
+				Name:         p.Name,
+				InputType:    convertType(p.Type, schema.PackageName(dep.PackageName)),
+				ProviderType: provider,
+			},
+			ProviderLocation: pkg.Location,
+			ProviderInput:    *providerInput,
+		})
+	}
+	return deps, nil
 }
 
 func convertType(t *schema.TypeDef, pkgName schema.PackageName) TypeData {
