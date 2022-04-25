@@ -6,7 +6,7 @@
 		"@grpc/grpc-js": "1.5.7",
 		"yargs": "16.x",
 		"source-map-support": "0.5.21",
-		"foundation-runtime": "git+ssh://git@github.com:namespacelabs/nodejs-runtime.git"
+		"foundation-runtime": "git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#37e19846559fb73ac612fe7cf4d09d31653a8818"
 	},
 
 	"devDependencies": {
