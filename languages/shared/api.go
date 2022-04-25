@@ -4,7 +4,10 @@
 
 package shared
 
-import "namespacelabs.dev/foundation/workspace"
+import (
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
+)
 
 type ServerData struct {
 	Services []EmbeddedServiceData
@@ -12,4 +15,37 @@ type ServerData struct {
 
 type EmbeddedServiceData struct {
 	Location workspace.Location
+}
+
+type NodeData struct {
+	Service   *ServiceData
+	Providers []ProviderData
+}
+
+type ServiceData struct {
+	Deps []DependencyData
+}
+
+type TypeData struct {
+	Name           string
+	SourceFileName string
+	PackageName    schema.PackageName
+}
+
+type ProviderData struct {
+	Name         string
+	InputType    TypeData
+	ProviderType *schema.Provides_AvailableIn
+}
+
+type DependencyData struct {
+	Name             string
+	Provider         ProviderData
+	ProviderLocation workspace.Location
+	ProviderInput    SerializedProto
+}
+
+type SerializedProto struct {
+	Content  []byte
+	Comments []string
 }
