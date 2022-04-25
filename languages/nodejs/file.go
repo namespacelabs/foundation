@@ -21,17 +21,17 @@ import (
 
 const yarnLockFn = "yarn.lock"
 
-func generateSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, data interface{}) error {
+func generateSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, templateName string, data interface{}) error {
 	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsfs, filePath, func(w io.Writer) error {
 		// TODO(@nicolasalt): format the file.
-		return writeSource(w, t, data)
+		return writeSource(w, t, templateName, data)
 	})
 }
 
-func writeSource(w io.Writer, t *template.Template, data interface{}) error {
+func writeSource(w io.Writer, t *template.Template, templateName string, data interface{}) error {
 	var b bytes.Buffer
 
-	if err := t.Execute(&b, data); err != nil {
+	if err := t.ExecuteTemplate(&b, templateName, data); err != nil {
 		return fnerrors.InternalError("failed to apply template: %w", err)
 	}
 

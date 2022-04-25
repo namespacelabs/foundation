@@ -10,7 +10,7 @@ import (
 
 type nodeTmplOptions struct {
 	Imports   []tmplSingleImport
-	Service   *tmplService
+	Service   *tmplDeps
 	Providers []tmplProvider
 }
 type serverTmplOptions struct {
@@ -26,10 +26,11 @@ type tmplProvider struct {
 	Name       string
 	InputType  tmplImportedType
 	OutputType tmplImportedType
-	ScopedDeps []tmplDependency
+	ScopedDeps *tmplDeps
 }
 
-type tmplService struct {
+type tmplDeps struct {
+	Name string
 	Deps []tmplDependency
 }
 
@@ -54,8 +55,27 @@ type tmplSingleImport struct {
 }
 
 var (
-	serviceTmpl = template.Must(template.New("template").Parse(
-		`// This file was automatically generated.
+	tmpl = template.Must(template.New("template").Parse(
+		// Helper templates
+		`		
+{{define "Deps"}}
+export interface {{.Name}}Deps {
+{{range .Deps}}
+	{{.Name}}: {{.Type.ImportAlias}}.{{.Type.Name}};{{end}}
+}
+
+export const make{{.Name}}Deps = (): {{.Name}}Deps => ({
+	{{range .Deps}}
+	  {{range .ProviderInput.Comments}}
+		// {{.}}{{end}}
+		{{.Name}}: {{.Provider.ImportAlias}}.provide{{.Provider.Name}}(
+			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name}}.deserializeBinary(
+				Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))),{{end}}
+});
+{{end}}` +
+
+			// Node template
+			`{{define "Node"}}// This file was automatically generated.
 
 {{if .Service}}
 import { Server } from "@grpc/grpc-js";
@@ -66,21 +86,9 @@ import * as impl from "./impl";
 import * as {{.Alias}} from "{{.Package}}"{{end}}
 
 {{if .Service}}
-export interface ServiceDeps {
-{{range .Service.Deps}}
-	{{.Name}}: {{.Type.ImportAlias}}.{{.Type.Name}};{{end}}
-}
+{{template "Deps" .Service}}
 
-export const makeServiceDeps = (): ServiceDeps => ({
-	{{range .Service.Deps}}
-	  {{range .ProviderInput.Comments}}
-		// {{.}}{{end}}
-		{{.Name}}: {{.Provider.ImportAlias}}.provide{{.Provider.Name}}(
-			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name}}.deserializeBinary(
-				Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))),{{end}}
-});
-
-export type WireService = (deps: ServiceDeps, server: Server) => void;
+export type WireService = (deps: {{.Service.Name}}Deps, server: Server) => void;
 export const wireService: WireService = impl.wireService;
 {{end}}
 
@@ -88,30 +96,17 @@ export const wireService: WireService = impl.wireService;
 
 {{if .ScopedDeps}}
 // Scoped dependencies that are instantiated for each call to Provide{{.Name}}.
-export interface {{.Name}}Deps {
-{{range .ScopedDeps}}
-	{{.Name}}: {{.Type.ImportAlias}}.{{.Type.Name}};{{end}}
-}
-
-export const make{{.Name}}Deps = (): {{.Name}}Deps => ({
-	{{range .ScopedDeps}}
-	  {{range .ProviderInput.Comments}}
-		// {{.}}{{end}}
-		{{.Name}}: {{.Provider.ImportAlias}}.provide{{.Provider.Name}}(
-			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name}}.deserializeBinary(
-				Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))),{{end}}
-});
+{{template "Deps" .ScopedDeps}}
 {{end}}
 
 export type Provide{{.Name}} = (input: {{.InputType.ImportAlias}}.{{.InputType.Name}}
 	  {{if .ScopedDeps}}, deps: {{.Name}}Deps{{end}}) =>
 		{{.OutputType.ImportAlias}}.{{.OutputType.Name}};
 export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
-{{end}}
-`))
+{{end}}{{end}}` +
 
-	serverTmpl = template.Must(template.New("template").Parse(
-		`// This file was automatically generated.
+			// Server template
+			`{{define "Server"}}// This file was automatically generated.
 
 import 'source-map-support/register'
 import { Server, ServerCredentials } from "@grpc/grpc-js";
@@ -151,10 +146,10 @@ server.bindAsync(` + "`" + `${argv.listen_hostname}:${argv.port}` + "`" + `, Ser
 server.start();
 
 console.log(` + "`" + `Server started.` + "`" + `);
-});`))
+});{{end}}` +
 
-	nodeimplTmpl = template.Must(template.New("template").Parse(
-		`import { Server } from "@grpc/grpc-js";
+			// Node stub template
+			`{{define "Node stub"}}import { Server } from "@grpc/grpc-js";
 import { Deps, WireService } from "./deps.fn";
 import { {{.ServiceServerName}}, {{.ServiceName}} } from "./{{.ServiceFileName}}_grpc_pb";
 
@@ -164,5 +159,5 @@ const service: {{.ServiceServerName}} = {
 };
 
 server.addService({{.ServiceName}}, service);
-};`))
+};{{end}}`))
 )

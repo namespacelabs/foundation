@@ -16,7 +16,8 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const DepsFilename = "deps.fn.ts"
+const depsFilename = "deps.fn.ts"
+const singletonName = "Singleton"
 
 var capitalCaser = cases.Title(language.AmericanEnglish)
 
@@ -31,7 +32,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		return err
 	}
 
-	return generateSource(ctx, fs, loc.Rel(DepsFilename), serviceTmpl, tmplOptions)
+	return generateSource(ctx, fs, loc.Rel(depsFilename), tmpl, "Node", tmplOptions)
 }
 
 func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, error) {
@@ -44,7 +45,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 			return nodeTmplOptions{}, err
 		}
 
-		scopeDeps, err := convertDependencies(ic, p.ScopedDeps)
+		scopeDeps, err := convertDependencies(ic, p.Name, p.ScopedDeps)
 		if err != nil {
 			return nodeTmplOptions{}, err
 		}
@@ -57,16 +58,14 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		})
 	}
 
-	var service *tmplService
+	var service *tmplDeps
 	if nodeData.Service != nil {
-		deps, err := convertDependencies(ic, nodeData.Service.Deps)
+		deps, err := convertDependencies(ic, singletonName, nodeData.Service.Deps)
 		if err != nil {
 			return nodeTmplOptions{}, err
 		}
 
-		service = &tmplService{
-			Deps: deps,
-		}
+		service = deps
 	}
 
 	return nodeTmplOptions{
@@ -103,16 +102,24 @@ func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDepe
 	}, nil
 }
 
-func convertDependencies(ic *importCollector, deps []shared.DependencyData) ([]tmplDependency, error) {
-	result := []tmplDependency{}
+// Returns nil if the input list is empty.
+func convertDependencies(ic *importCollector, name string, deps []shared.DependencyData) (*tmplDeps, error) {
+	if len(deps) == 0 {
+		return nil, nil
+	}
+
+	convertedDeps := []tmplDependency{}
 	for _, d := range deps {
 		dep, err := convertDependency(ic, d)
 		if err != nil {
 			return nil, err
 		}
 
-		result = append(result, dep)
+		convertedDeps = append(convertedDeps, dep)
 	}
 
-	return result, nil
+	return &tmplDeps{
+		Name: name,
+		Deps: convertedDeps,
+	}, nil
 }

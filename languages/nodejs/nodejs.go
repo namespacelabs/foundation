@@ -336,7 +336,7 @@ func maybeGenerateImplStub(ctx context.Context, p *workspace.Package) error {
 		break
 	}
 
-	return generateSource(ctx, p.Location.Module.ReadWriteFS(), implFn, nodeimplTmpl, tmplOptions)
+	return generateSource(ctx, p.Location.Module.ReadWriteFS(), implFn, tmpl, "Node stub", tmplOptions)
 }
 
 func fileNameForService(srvName string, descriptors []*descriptorpb.FileDescriptorProto) (string, error) {
