@@ -100,14 +100,13 @@ func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Fra
 		}
 
 		deps = append(deps, DependencyData{
-			Name: dep.Name,
-			Provider: ProviderData{
-				Name:         p.Name,
-				InputType:    convertType(p.Type, schema.PackageName(dep.PackageName)),
-				ProviderType: provider,
-			},
-			ProviderLocation: pkg.Location,
-			ProviderInput:    *providerInput,
+			Name:                  dep.Name,
+			ProviderName:          p.Name,
+			ProviderInputType:     convertType(p.Type, schema.PackageName(dep.PackageName)),
+			ProviderType:          provider,
+			ProviderHasScopedDeps: len(p.Instantiate) > 0,
+			ProviderLocation:      pkg.Location,
+			ProviderInput:         *providerInput,
 		})
 	}
 	return deps, nil

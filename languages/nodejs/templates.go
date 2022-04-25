@@ -40,6 +40,7 @@ type tmplDependency struct {
 	Provider          tmplImportedType
 	ProviderInputType tmplImportedType
 	ProviderInput     tmplSerializedProto
+	HasScopedDeps     bool
 }
 type tmplSerializedProto struct {
 	Base64Content string
@@ -57,7 +58,8 @@ type tmplSingleImport struct {
 var (
 	tmpl = template.Must(template.New("template").Parse(
 		// Helper templates
-		`		
+		`
+// Input: tmplDeps				
 {{define "Deps"}}
 export interface {{.Name}}Deps {
 {{- range .Deps}}
@@ -72,7 +74,10 @@ export const make{{.Name}}Deps = (): {{.Name}}Deps => ({
 		{{- end}}
 		{{.Name}}: {{.Provider.ImportAlias}}.provide{{.Provider.Name}}(
 			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name}}.deserializeBinary(
-				Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))),
+				Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
+		{{- if .HasScopedDeps}},
+		  {{.Provider.ImportAlias}}.make{{.Provider.Name}}Deps()
+		{{- end}}),
 	{{- end}}
 });
 {{- end}}
@@ -125,19 +130,19 @@ import yargs from "yargs/yargs";
 
 interface Deps {
 {{- range $.Services}}
-  {{.Name}}: {{.ImportAlias}}.ServiceDeps;
+  {{.Name}}: {{.ImportAlias}}.SingletonDeps;
 {{- end}}
 }
 
 const prepareDeps = (): Deps => ({
 {{- range $.Services}}
-	{{.Name}}: {{.ImportAlias}}.makeServiceDeps(),
+	{{.Name}}: {{.ImportAlias}}.makeSingletonDeps(),
 {{- end}}
 });
 
 const wireServices = (server: Server, deps: Deps): void => {
 {{- range $.Services}}
-  {{.ImportAlias}}.wireService(deps.{{.Name}}!, server);
+  {{.ImportAlias}}.wireService(deps.{{.Name}}, server);
 {{- end}}
 };
 

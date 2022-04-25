@@ -40,10 +40,13 @@ type ProviderData struct {
 }
 
 type DependencyData struct {
-	Name             string
-	Provider         ProviderData
-	ProviderLocation workspace.Location
-	ProviderInput    SerializedProto
+	Name                  string
+	ProviderName          string
+	ProviderInputType     TypeData
+	ProviderType          *schema.Provides_AvailableIn
+	ProviderLocation      workspace.Location
+	ProviderInput         SerializedProto
+	ProviderHasScopedDeps bool
 }
 
 type SerializedProto struct {

@@ -82,16 +82,16 @@ func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDepe
 	}
 	alias := ic.add(nodeDepsNpmImport(npmPackage))
 
-	inputType, err := convertType(ic, dep.Provider.InputType)
+	inputType, err := convertType(ic, dep.ProviderInputType)
 	if err != nil {
 		return tmplDependency{}, err
 	}
 
 	return tmplDependency{
 		Name: dep.Name,
-		Type: convertAvailableIn(ic, dep.Provider.ProviderType.Nodejs),
+		Type: convertAvailableIn(ic, dep.ProviderType.Nodejs),
 		Provider: tmplImportedType{
-			Name:        capitalCaser.String(dep.Provider.Name),
+			Name:        capitalCaser.String(dep.ProviderName),
 			ImportAlias: alias,
 		},
 		ProviderInputType: inputType,
@@ -99,6 +99,7 @@ func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDepe
 			Base64Content: base64.StdEncoding.EncodeToString(dep.ProviderInput.Content),
 			Comments:      dep.ProviderInput.Comments,
 		},
+		HasScopedDeps: dep.ProviderHasScopedDeps,
 	}, nil
 }
 
