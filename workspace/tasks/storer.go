@@ -55,12 +55,11 @@ func (st *Storer) store(af *RunningAction) error {
 			if err != nil {
 				return err
 			}
-
-		if err := fnfs.WriteFile(context.Background(), st.bundle.fsys, filepath.Join(actionId, id+filepath.Ext(buf.name)), out, 0600); err != nil {
-			return err
+			if err := fnfs.WriteFile(context.Background(), st.bundle.fsys, filepath.Join(actionId, id+filepath.Ext(buf.name)), out, 0600); err != nil {
+				return err
+			}
 		}
 		af.attachments.mu.Unlock()
 	}
-
 	return nil
 }
