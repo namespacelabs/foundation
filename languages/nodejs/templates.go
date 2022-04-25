@@ -130,13 +130,13 @@ import yargs from "yargs/yargs";
 
 interface Deps {
 {{- range $.Services}}
-  {{.Name}}: {{.ImportAlias}}.SingletonDeps;
+  {{.Name}}: {{.ImportAlias}}.` + nodeName + `Deps;
 {{- end}}
 }
 
 const prepareDeps = (): Deps => ({
 {{- range $.Services}}
-	{{.Name}}: {{.ImportAlias}}.makeSingletonDeps(),
+	{{.Name}}: {{.ImportAlias}}.make` + nodeName + `Deps(),
 {{- end}}
 });
 

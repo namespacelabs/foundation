@@ -17,7 +17,7 @@ import (
 )
 
 const depsFilename = "deps.fn.ts"
-const singletonName = "Singleton"
+const nodeName = "Node"
 
 var capitalCaser = cases.Title(language.AmericanEnglish)
 
@@ -60,7 +60,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 
 	var service *tmplDeps
 	if nodeData.Service != nil {
-		deps, err := convertDependencies(ic, singletonName, nodeData.Service.Deps)
+		deps, err := convertDependencies(ic, nodeName, nodeData.Service.Deps)
 		if err != nil {
 			return nodeTmplOptions{}, err
 		}
