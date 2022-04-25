@@ -45,18 +45,21 @@ func (st *Storer) store(af *RunningAction) error {
 		return err
 	}
 
-	for k, name := range af.attachments.insertionOrder {
-		id := fmt.Sprintf("%d", k)
-		buf := af.attachments.buffers[name.computed]
+	if af.attachments != nil {
+		af.attachments.mu.Lock()
+		for k, name := range af.attachments.insertionOrder {
+			id := fmt.Sprintf("%d", k)
+			buf := af.attachments.buffers[name.computed]
 
-		out, err := ioutil.ReadAll(buf.buffer.Reader())
-		if err != nil {
-			return err
-		}
+			out, err := ioutil.ReadAll(buf.buffer.Reader())
+			if err != nil {
+				return err
+			}
 
 		if err := fnfs.WriteFile(context.Background(), st.bundle.fsys, filepath.Join(actionId, id+filepath.Ext(buf.name)), out, 0600); err != nil {
 			return err
 		}
+		af.attachments.mu.Unlock()
 	}
 
 	return nil
