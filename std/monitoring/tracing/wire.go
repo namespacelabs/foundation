@@ -7,9 +7,12 @@ package tracing
 import (
 	"context"
 	"flag"
+	"fmt"
+	"net/http"
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"namespacelabs.dev/foundation/schema"
@@ -57,6 +60,12 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 
 	deps.Interceptors.Add(otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(tp)),
 		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(tp)))
+
+	deps.Middleware.Add(func(h http.Handler) http.Handler {
+		return otelhttp.NewHandler(h, "", otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+			return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
+		}))
+	})
 
 	return nil
 }

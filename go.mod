@@ -56,6 +56,7 @@ require (
 	github.com/spf13/viper v1.10.1
 	github.com/tailscale/depaware v0.0.0-20210622194025-720c4b409502
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.29.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.29.0
 	go.opentelemetry.io/otel v1.4.1
 	go.opentelemetry.io/otel/exporters/jaeger v1.4.1
 	go.opentelemetry.io/otel/sdk v1.4.1
@@ -86,7 +87,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.0.0 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.11.1 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.11.1
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.8 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.2 // indirect
@@ -113,6 +114,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/envoyproxy/go-control-plane v0.10.1 // indirect
 	github.com/envoyproxy/protoc-gen-validate v0.6.2 // indirect
+	github.com/felixge/httpsnoop v1.0.2 // indirect
 	github.com/go-logr/logr v1.2.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
@@ -171,6 +173,8 @@ require (
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.4.1 // indirect
+	go.opentelemetry.io/otel/internal/metric v0.27.0 // indirect
+	go.opentelemetry.io/otel/metric v0.27.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.12.0 // indirect
 	go.uber.org/atomic v1.9.0
 	go.uber.org/automaxprocs v1.5.1
