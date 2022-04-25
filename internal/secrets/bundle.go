@@ -237,7 +237,7 @@ func (b *Bundle) SerializeTo(ctx context.Context, w io.Writer, encrypt bool) err
 			}
 
 			if err := encryptedWriter.Close(); err != nil {
-				return fnerrors.InternalError("failed to encrypted bundle: %w", err)
+				return fnerrors.InternalError("failed to close encrypted bundle: %w", err)
 			}
 		} else {
 			if err := maketarfs.TarFS(ctx, &buf, encFS, nil, nil); err != nil {
