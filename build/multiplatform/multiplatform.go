@@ -7,8 +7,10 @@ package multiplatform
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/engine/ops"
@@ -112,6 +114,12 @@ func prepareMultiPlatformPlan(ctx context.Context, plan build.Plan, platforms []
 			platformIndex = append(platformIndex, 0) // All platforms point to single build.
 		}
 	} else {
+		// Sort platforms, so we yield a stable image order.
+		platforms := slices.Clone(platforms)
+		slices.SortFunc(platforms, func(a, b specs.Platform) bool {
+			return strings.Compare(devhost.FormatPlatform(a), devhost.FormatPlatform(b)) < 0
+		})
+
 		for _, plat := range platforms {
 			label := plan.SourceLabel
 			if len(platforms) > 1 {
