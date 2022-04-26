@@ -18,6 +18,7 @@ import (
 
 const depsFilename = "deps.fn.ts"
 const singletonNameBase = "Singleton"
+const runtimeNpmPackage = "foundation-runtime"
 
 var capitalCaser = cases.Title(language.AmericanEnglish)
 
@@ -122,7 +123,8 @@ func convertDependencies(ic *importCollector, name string, deps []shared.Depende
 	}
 
 	return &tmplDeps{
-		Name: name,
-		Deps: convertedDeps,
+		Name:                name,
+		DepGraphImportAlias: ic.add(runtimeNpmPackage),
+		Deps:                convertedDeps,
 	}, nil
 }

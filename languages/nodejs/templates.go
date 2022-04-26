@@ -31,8 +31,9 @@ type tmplProvider struct {
 }
 
 type tmplDeps struct {
-	Name string
-	Deps []tmplDependency
+	Name                string
+	DepGraphImportAlias string
+	Deps                []tmplDependency
 }
 
 type tmplDependency struct {
@@ -69,7 +70,7 @@ export interface {{.Name}}Deps {
 {{- end}}
 }
 
-export const make{{.Name}}Deps = (dg: DependencyGraph): {{.Name}}Deps => ({
+export const make{{.Name}}Deps = (dg: {{.DepGraphImportAlias}}.DependencyGraph): {{.Name}}Deps => ({
 	{{- range .Deps}}
 	  {{- range .ProviderInput.Comments}}
 		// {{.}}
@@ -100,7 +101,6 @@ import * as {{.Alias}} from "{{.Package}}"
 import { Server } from "@grpc/grpc-js";
 {{- end}}
 import * as impl from "./impl";
-import { DependencyGraph } from "foundation-runtime";
 
 {{- template "Imports" . -}}
 
@@ -135,10 +135,10 @@ export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
 			// Server template
 			`{{define "Server"}}// This file was automatically generated.
 
-import "source-map-support/register"
 import { Server, ServerCredentials } from "@grpc/grpc-js";
-import yargs from "yargs/yargs";
 import { DependencyGraph } from "foundation-runtime";
+import "source-map-support/register"
+import yargs from "yargs/yargs";
 
 {{- template "Imports" . -}}
 
