@@ -78,7 +78,7 @@ func NewBundlesCmd() *cobra.Command {
 			if err := bundle.EncryptTo(ctx, file); err != nil {
 				return err
 			}
-			fmt.Fprintf(console.Stdout(ctx), "\nSuccessfully wrote encrypted bundle to %s", file.Name())
+			fmt.Fprintf(console.Stdout(ctx), "\nSuccessfully wrote encrypted bundle to %s\n", file.Name())
 			return nil
 		}),
 	}

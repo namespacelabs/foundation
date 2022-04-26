@@ -57,13 +57,11 @@ func NewActionBundler() (*Bundler, error) {
 }
 
 // Returns a new Bundle wrapping a memfs.FS with the current timestamp.
-func (b *Bundler) NewInMemoryBundle() (*Bundle, error) {
-	t := time.Now().UTC()
-
+func (b *Bundler) NewInMemoryBundle() *Bundle {
 	return &Bundle{
 		fsys:      &memfs.FS{},
-		Timestamp: t,
-	}, nil
+		Timestamp: time.Now().UTC(),
+	}
 }
 
 func (b *Bundler) Flush(ctx context.Context, bundle *Bundle) error {

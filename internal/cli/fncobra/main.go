@@ -111,10 +111,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			return err
 		}
 		defer bundler.RemoveStaleBundles()
-		bundle, err := bundler.NewInMemoryBundle()
-		if err != nil {
-			return err
-		}
+
+		bundle := bundler.NewInMemoryBundle()
 		if err := bundle.WriteInvocationInfo(cmd.Context(), cmd, args); err != nil {
 			return err
 		}
