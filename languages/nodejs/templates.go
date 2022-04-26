@@ -35,7 +35,9 @@ type tmplProvider struct {
 }
 
 type tmplDeps struct {
-	Name                string
+	Name string
+	// Key for this dependency list, globally unique.
+	Key                 string
 	DepGraphImportAlias string
 	Deps                []tmplDependency
 }
@@ -67,7 +69,7 @@ var (
 		// Helper templates
 		`
 // Input: tmplDeps				
-{{define "Deps"}}
+{{define "DepsFactory"}}
 export interface {{.Name}}Deps {
 {{- range .Deps}}
 	{{.Name}}: {{.Type.ImportAlias}}.{{.Type.Name}};
@@ -75,7 +77,7 @@ export interface {{.Name}}Deps {
 }
 
 export const {{.Name}}DepsFactory = {
-	key: "",
+	key: "{{.Key}}",
   instantiate: (dg: {{.DepGraphImportAlias}}.DependencyGraph): {{.Name}}Deps => ({
 		{{- range .Deps}}
 			{{- range .ProviderInput.Comments}}
@@ -119,7 +121,7 @@ import * as impl from "./impl";
 
 {{if .SingletonDeps}}
 // Singleton dependencies are instantiated at most once.
-{{- template "Deps" .SingletonDeps}}
+{{- template "DepsFactory" .SingletonDeps}}
 {{- end}}
 
 {{- if .Service}}
@@ -134,7 +136,7 @@ export const wireService: WireService = impl.wireService;
 
 {{if .ScopedDeps}}
 // Scoped dependencies that are instantiated for each call to Provide{{.Name}}.
-{{template "Deps" .ScopedDeps}}
+{{template "DepsFactory" .ScopedDeps}}
 {{- end}}
 
 export type Provide{{.Name}} = (input: {{.InputType.ImportAlias}}.{{.InputType.Name}}

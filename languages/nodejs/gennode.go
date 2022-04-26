@@ -49,7 +49,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 			return nodeTmplOptions{}, err
 		}
 
-		scopeDeps, err := convertDependencies(ic, p.Name, p.ScopedDeps)
+		scopeDeps, err := convertDependencyList(ic, p.Name, p.ScopedDeps)
 		if err != nil {
 			return nodeTmplOptions{}, err
 		}
@@ -62,14 +62,9 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		})
 	}
 
-	var singletonDeps *tmplDeps
-	if len(nodeData.SingletonDeps) > 0 {
-		deps, err := convertDependencies(ic, singletonNameBase, nodeData.SingletonDeps)
-		if err != nil {
-			return nodeTmplOptions{}, err
-		}
-
-		singletonDeps = deps
+	singletonDeps, err := convertDependencyList(ic, singletonNameBase, nodeData.SingletonDeps)
+	if err != nil {
+		return nodeTmplOptions{}, err
 	}
 
 	var service *tmplService
@@ -119,13 +114,13 @@ func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDepe
 }
 
 // Returns nil if the input list is empty.
-func convertDependencies(ic *importCollector, name string, deps []shared.DependencyData) (*tmplDeps, error) {
-	if len(deps) == 0 {
+func convertDependencyList(ic *importCollector, name string, depList *shared.DependencyList) (*tmplDeps, error) {
+	if depList == nil {
 		return nil, nil
 	}
 
 	convertedDeps := []tmplDependency{}
-	for _, d := range deps {
+	for _, d := range depList.Deps {
 		dep, err := convertDependency(ic, d)
 		if err != nil {
 			return nil, err
@@ -136,6 +131,7 @@ func convertDependencies(ic *importCollector, name string, deps []shared.Depende
 
 	return &tmplDeps{
 		Name:                name,
+		Key:                 depList.Key,
 		DepGraphImportAlias: ic.add(runtimeNpmPackage),
 		Deps:                convertedDeps,
 	}, nil
