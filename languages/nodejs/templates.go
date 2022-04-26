@@ -10,7 +10,7 @@ import (
 
 type nodeTmplOptions struct {
 	Imports       []tmplSingleImport
-	HasService    bool
+	Service       *tmplService
 	SingletonDeps *tmplDeps
 	Providers     []tmplProvider
 }
@@ -21,6 +21,10 @@ type serverTmplOptions struct {
 
 type nodeImplTmplOptions struct {
 	ServiceServerName, ServiceName, ServiceFileName string
+}
+
+type tmplService struct {
+	GrpcServerImportAlias string
 }
 
 type tmplProvider struct {
@@ -97,22 +101,20 @@ import * as {{.Alias}} from "{{.Package}}"
 			// Node template
 			`{{define "Node"}}{{with $opts := .}}// This file was automatically generated.
 
-{{if .HasService}}
-import { Server } from "@grpc/grpc-js";
-{{- end}}
 import * as impl from "./impl";
 
 {{- template "Imports" . -}}
 
 {{if .SingletonDeps}}
+// Singleton dependencies are instantiated at most once.
 {{- template "Deps" .SingletonDeps}}
 {{- end}}
 
-{{- if .HasService}}
+{{- if .Service}}
 
 export type WireService = (
 	{{- if .SingletonDeps}}deps: {{.SingletonDeps.Name}}Deps, {{end -}}
-	server: Server) => void;
+	server: {{.Service.GrpcServerImportAlias}}.Server) => void;
 export const wireService: WireService = impl.wireService;
 {{- end}}
 

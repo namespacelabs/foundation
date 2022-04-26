@@ -16,9 +16,12 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const depsFilename = "deps.fn.ts"
-const singletonNameBase = "Singleton"
-const runtimeNpmPackage = "foundation-runtime"
+const (
+	depsFilename      = "deps.fn.ts"
+	singletonNameBase = "Singleton"
+	runtimeNpmPackage = "foundation-runtime"
+	grpcNpmPackage    = "@grpc/grpc-js"
+)
 
 var capitalCaser = cases.Title(language.AmericanEnglish)
 
@@ -69,11 +72,20 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		singletonDeps = deps
 	}
 
+	var service *tmplService
+	if nodeData.HasService {
+		service = &tmplService{
+			GrpcServerImportAlias: ic.add(grpcNpmPackage),
+		}
+	} else {
+		service = nil
+	}
+
 	return nodeTmplOptions{
 		Imports:       ic.imports(),
 		SingletonDeps: singletonDeps,
 		Providers:     providers,
-		HasService:    nodeData.HasService,
+		Service:       service,
 	}, nil
 }
 
