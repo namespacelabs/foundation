@@ -5,14 +5,16 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
@@ -54,22 +56,26 @@ func NewActionBundler() (*Bundler, error) {
 	}, nil
 }
 
-// Returns a new Bundle with the current timestamp.
-func (b *Bundler) NewBundle() (*Bundle, error) {
+// Returns a new Bundle wrapping a memfs.FS with the current timestamp.
+func (b *Bundler) NewInMemoryBundle() (*Bundle, error) {
 	t := time.Now().UTC()
-	ts := t.Format(bundleTimeFormat)
-	bundleDir := fmt.Sprintf("%s-%s", b.namePrefix, ts)
 
-	if mkdirfs, ok := b.fsys.(fnfs.MkdirFS); ok {
-		err := mkdirfs.MkdirAll(bundleDir, 0700)
-		if err != nil {
-			return nil, fnerrors.InternalError("failed to create timestamped bundle dir: %w", err)
-		}
-	}
 	return &Bundle{
-		fsys:      fnfs.ReadWriteLocalFS(filepath.Join(b.root, bundleDir)),
+		fsys:      &memfs.FS{},
 		Timestamp: t,
 	}, nil
+}
+
+func (b *Bundler) Flush(ctx context.Context, bundle *Bundle) error {
+	ts := bundle.Timestamp.Format(bundleTimeFormat)
+	bundleDir := fmt.Sprintf("%s-%s", b.namePrefix, ts)
+	root := filepath.Join(b.root, bundleDir)
+	dstfs := fnfs.ReadWriteLocalFS(root)
+
+	if err := fnfs.CopyTo(ctx, dstfs, ".", bundle.fsys); err != nil {
+		return fnerrors.InternalError("failed to copy bundle to %q: %w", root, err)
+	}
+	return nil
 }
 
 func (b *Bundler) timeFromName(bundleName string) (time.Time, error) {
@@ -104,7 +110,9 @@ func (b *Bundler) ReadBundles() ([]*Bundle, error) {
 		}
 		bundles = append(bundles, bundle)
 	}
-	sort.Sort(byFormatTime(bundles))
+	slices.SortFunc(bundles, func(a, b *Bundle) bool {
+		return a.Timestamp.After(b.Timestamp)
+	})
 	return bundles, nil
 }
 

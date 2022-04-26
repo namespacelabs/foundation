@@ -10,10 +10,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"filippo.io/age"
@@ -32,10 +34,13 @@ const (
 	publicKey = "age1ngp9m4wrhq4zvc2redr7jm8gat0qnkue4dfsklqdxg5yn7w0xsqqwp3jgw"
 )
 
-// Bundle is a local fs with an associated timestamp.
+// Bundle is a fs with an associated timestamp.
 type Bundle struct {
-	fsys      fnfs.LocalFS
+	fsys      fnfs.ReadWriteFS
 	Timestamp time.Time
+
+	// Guards writes to the bundle.
+	mu sync.Mutex
 }
 
 // Invocation information associated with a bundle.
@@ -76,10 +81,17 @@ func (b *Bundle) WriteInvocationInfo(ctx context.Context, cmd *cobra.Command, ar
 	if err != nil {
 		return fnerrors.InternalError("failed to marshal `InvocationInfo` as JSON: %w", err)
 	}
-	if err := fnfs.WriteFile(ctx, b.fsys, "invocation_info.json", encodedInfo, 0600); err != nil {
+	if err := b.WriteFile(ctx, "invocation_info.json", encodedInfo, 0600); err != nil {
 		return fnerrors.InternalError("failed to write `InvocationInfo` to `invocation_info.json`: %w", err)
 	}
 	return nil
+}
+
+// Guards access to file writes in the bundle.
+func (b *Bundle) WriteFile(ctx context.Context, path string, contents []byte, mode fs.FileMode) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return fnfs.WriteFile(ctx, b.fsys, path, contents, mode)
 }
 
 func (b *Bundle) ReadInvocationInfo(ctx context.Context) (*InvocationInfo, error) {
@@ -113,19 +125,4 @@ func (b *Bundle) EncryptTo(ctx context.Context, dst io.Writer) error {
 		return fnerrors.InternalError("failed to create encrypted bundle: %w", err)
 	}
 	return nil
-}
-
-// byFormatTime sorts by newest time formatted in the name.
-type byFormatTime []*Bundle
-
-func (b byFormatTime) Less(i, j int) bool {
-	return b[i].Timestamp.After(b[j].Timestamp)
-}
-
-func (b byFormatTime) Swap(i, j int) {
-	b[i], b[j] = b[j], b[i]
-}
-
-func (b byFormatTime) Len() int {
-	return len(b)
 }

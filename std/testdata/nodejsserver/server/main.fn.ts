@@ -11,7 +11,7 @@ interface Deps {
 }
 
 const prepareDeps = (): Deps => ({
-
+	
 });
 
 const wireServices = (server: Server, deps: Deps): void => {
@@ -19,11 +19,11 @@ const wireServices = (server: Server, deps: Deps): void => {
 };
 
 const argv = yargs(process.argv.slice(2))
-	.options({
-		listen_hostname: { type: "string" },
-		port: { type: "number" },
-	})
-	.parse();
+.options({
+	listen_hostname: { type: "string" },
+	port: { type: "number" },
+})
+.parse();
 
 const server = new Server();
 wireServices(server, prepareDeps());
@@ -31,7 +31,7 @@ wireServices(server, prepareDeps());
 console.log(`Starting the server on ${argv.listen_hostname}:${argv.port}`);
 
 server.bindAsync(`${argv.listen_hostname}:${argv.port}`, ServerCredentials.createInsecure(), () => {
-	server.start();
+server.start();
 
-	console.log(`Server started.`);
+console.log(`Server started.`);
 });

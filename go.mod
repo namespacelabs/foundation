@@ -44,7 +44,6 @@ require (
 	github.com/moby/buildkit v0.10.0
 	github.com/morikuni/aec v1.0.0
 	github.com/muesli/reflow v0.3.0
-	github.com/olekukonko/tablewriter v0.0.5
 	github.com/opencontainers/image-spec v1.0.2
 	github.com/prometheus/client_golang v1.12.1
 	github.com/prometheus/client_model v0.2.0

@@ -105,12 +105,13 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		go checkRemoteStatus(logger, remoteStatusChan)
 	}
 
-	bundler, err := tasks.NewActionBundler()
-	if err != nil {
-		log.Fatalf("failed to create action bundler %v", err)
-	}
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
-		bundle, err := bundler.NewBundle()
+		bundler, err := tasks.NewActionBundler()
+		if err != nil {
+			return err
+		}
+		defer bundler.RemoveStaleBundles()
+		bundle, err := bundler.NewInMemoryBundle()
 		if err != nil {
 			return err
 		}
@@ -173,6 +174,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		kubernetes.Register()
 		kubernetes.RegisterGraphHandlers()
 
+		// Commit the bundle to the filesystem.
+		if err := bundler.Flush(cmd.Context(), bundle); err != nil {
+			fmt.Println(err)
+		}
+
 		// Telemetry.
 		tel.RecordInvocation(ctxWithSink, cmd, args)
 		return nil
@@ -217,7 +223,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
 
-	err = rootCmd.ExecuteContext(ctxWithSink)
+	err := rootCmd.ExecuteContext(ctxWithSink)
 
 	if flushLogs != nil {
 		flushLogs()
@@ -257,7 +263,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		default:
 		}
 	}
-	defer bundler.RemoveStaleBundles()
 	if err != nil {
 		exitCode := handleExitError(colors, err)
 		// Record errors only after the user sees them to hide potential latency implications.
