@@ -19,6 +19,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	fnsecrets "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/provision/configure"
@@ -43,7 +45,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return err
 	}
 
-	data, err := fillData(ctx, collection, r)
+	data, err := fillData(ctx, r.Focus.Server, collection, r)
 	if err != nil {
 		return err
 	}
@@ -197,7 +199,7 @@ func serverSecretName(srv *schema.Server) string {
 	return strings.Join([]string{srv.Name, srv.Id}, "-") + ".managed.namespacelabs.dev"
 }
 
-func fillData(ctx context.Context, col *secrets.Collection, r configure.StackRequest) (map[string][]byte, error) {
+func fillData(ctx context.Context, server *schema.Server, col *secrets.Collection, r configure.StackRequest) (map[string][]byte, error) {
 	var count int
 	for _, userManaged := range col.UserManaged {
 		count += len(userManaged)
@@ -207,39 +209,27 @@ func fillData(ctx context.Context, col *secrets.Collection, r configure.StackReq
 		return nil, nil
 	}
 
-	data := map[string][]byte{}
-	if fsys := r.Snapshots["serverSecrets"]; fsys != nil {
-		serverSecrets, err := fs.ReadFile(fsys, "server.secrets")
+	snapshotKeys := r.Snapshots[keys.SnapshotKeys]
+
+	contentSnapshots := map[string]fs.FS{}
+	for key, snapshot := range r.Snapshots {
+		if key != keys.SnapshotKeys {
+			contentSnapshots[key] = snapshot
+		}
+	}
+
+	// Legacy path.
+	if secrets, ok := contentSnapshots["secrets"]; ok {
+		if len(contentSnapshots) > 1 {
+			return nil, fnerrors.UserError(nil, "use of old-style secrets/ directory and secret bundles are mutually exclusive")
+		}
+
+		contents, err := loadSnapshot(ctx, secrets, snapshotKeys)
 		if err != nil {
 			return nil, err
 		}
 
-		keyDir := r.Snapshots[keys.SnapshotKeys]
-		if keyDir == nil {
-			return nil, fmt.Errorf("can't use encrypted secrets without keys")
-		}
-
-		bundle, err := fnsecrets.LoadBundle(ctx, keyDir, serverSecrets)
-		if err != nil {
-			return nil, err
-		}
-
-		for k, userManaged := range col.UserManaged {
-			for j, secret := range userManaged {
-				value, err := bundle.Lookup(ctx, col.InstanceOwners[k], secret.Name)
-				if err != nil {
-					return nil, err
-				}
-
-				data[col.Names[k][j]] = value
-			}
-		}
-	} else {
-		contents, err := loadSnapshot(ctx, r)
-		if err != nil {
-			return nil, err
-		}
-
+		data := map[string][]byte{}
 		for k, userManaged := range col.UserManaged {
 			if len(userManaged) == 0 {
 				continue
@@ -256,24 +246,90 @@ func fillData(ctx context.Context, col *secrets.Collection, r configure.StackReq
 				data[name] = m[sec.Name]
 			}
 		}
+
+		return data, nil
+	}
+
+	var bundles []*fnsecrets.Bundle
+	var bundleNames []string
+
+	for _, snapshot := range contentSnapshots {
+		if err := fnfs.VisitFiles(ctx, snapshot, func(path string, contents []byte, de fs.DirEntry) error {
+			if filepath.Ext(path) != ".secrets" {
+				return nil
+			}
+
+			if snapshotKeys == nil {
+				return fmt.Errorf("can't use encrypted secrets without keys")
+			}
+
+			bundle, err := fnsecrets.LoadBundle(ctx, snapshotKeys, contents)
+			if err != nil {
+				return err
+			}
+
+			bundles = append(bundles, bundle)
+			if sliceContains(bundleNames, path) {
+				return fnerrors.InternalError("multiple secret bundles with the same name? saw: %s", strings.Join(bundleNames, "; "))
+			}
+
+			bundleNames = append(bundleNames, path)
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	data := map[string][]byte{}
+	for k, userManaged := range col.UserManaged {
+		for j, secret := range userManaged {
+			var foundValue []byte
+			var foundIn []string
+
+			for idx, bundle := range bundles {
+				value, err := bundle.Lookup(ctx, col.InstanceOwners[k], secret.Name)
+				if err != nil {
+					return nil, err
+				}
+				if value != nil {
+					foundValue = value
+					foundIn = append(foundIn, bundleNames[idx])
+				}
+			}
+
+			switch len(foundIn) {
+			case 0:
+				return nil, fnerrors.UsageError(
+					fmt.Sprintf("Try running `fn secrets set %s --secret %s:%s`", server.PackageName, col.InstanceOwners[k], secret.Name),
+					"secret %q required by %q not specified", secret.Name, col.InstanceOwners[k])
+			case 1:
+				data[col.Names[k][j]] = foundValue
+			default:
+				return nil, fnerrors.UserError(server, "%s: secret %s:%s found in multiple files: %s",
+					server.PackageName, col.InstanceOwners[k], secret.Name, strings.Join(foundIn, "; "))
+			}
+		}
 	}
 
 	return data, nil
 }
 
-func loadSnapshot(ctx context.Context, r configure.StackRequest) (fs.FS, error) {
-	contents := r.Snapshots["secrets"]
-	if contents == nil {
-		return nil, fmt.Errorf("secrets snapshot is missing from input")
+func sliceContains(strs []string, str string) bool {
+	for _, s := range strs {
+		if s == str {
+			return true
+		}
 	}
+	return false
+}
 
+func loadSnapshot(ctx context.Context, contents, keyDir fs.FS) (fs.FS, error) {
 	archive, err := contents.Open(keys.EncryptedFile)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	} else if err == nil {
 		defer archive.Close()
 
-		keyDir := r.Snapshots[keys.SnapshotKeys]
 		if keyDir == nil {
 			return nil, fmt.Errorf("can't use encrypted secrets without keys")
 		}
