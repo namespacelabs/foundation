@@ -14,6 +14,7 @@ import (
 type ExtensionDeps struct {
 	Interceptors interceptors.Registration
 	Middleware   middleware.Middleware
+	ServerInfo   *core.ServerInfo
 }
 
 type _checkProvideTraceProvider func(context.Context, *TraceProviderArgs, ExtensionDeps) (TraceProvider, error)
@@ -42,6 +43,12 @@ func makeDeps__70o2mm(ctx context.Context, di core.Dependencies) (interface{}, e
 
 	{
 		if deps.Middleware, err = middleware.ProvideMiddleware(ctx, nil); err != nil {
+			return nil, err
+		}
+	}
+
+	{
+		if deps.ServerInfo, err = core.ProvideServerInfo(ctx, nil); err != nil {
 			return nil, err
 		}
 	}

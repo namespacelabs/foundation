@@ -13,7 +13,7 @@ extension: fn.#Extension & {
 			name: "x-honeycomb-team"
 		}
 		openTelemetry: tracing.#Exports.TraceProvider & {
-            name: "honeycomb"
-        }
+			name: "honeycomb"
+		}
 	}
 }

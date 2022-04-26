@@ -9,8 +9,8 @@ extension: fn.#Extension & {
 
 	instantiate: {
 		openTelemetry: tracing.#Exports.TraceProvider & {
-            name: "jaeger"
-        }
+			name: "jaeger"
+		}
 	}
 }
 

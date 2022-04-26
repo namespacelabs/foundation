@@ -3,6 +3,7 @@ import (
 	"namespacelabs.dev/foundation/std/fn:inputs"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/http/middleware"
+	"namespacelabs.dev/foundation/std/go/core"
 )
 
 $typesProto: inputs.#Proto & {
@@ -20,6 +21,7 @@ extension: fn.#Extension & {
 	}
 
 	instantiate: {
+		serverInfo:     core.#Exports.ServerInfo
 		"interceptors": interceptors.#Exports.InterceptorRegistration
 		"middleware":   middleware.#Exports.Middleware
 	}
