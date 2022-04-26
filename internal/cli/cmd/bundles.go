@@ -74,7 +74,7 @@ func NewBundlesCmd() *cobra.Command {
 			// address lack of binary uploads in gRPC gateway as described in
 			// https://github.com/grpc-ecosystem/grpc-gateway/issues/500.
 			file, _ := dirs.CreateUserTemp("action-bundles", "actions-*.tar.gz.age")
-			bundle := bundles[idx]
+			bundle := bundles[idx-1]
 			if err := bundle.EncryptTo(ctx, file); err != nil {
 				return err
 			}
