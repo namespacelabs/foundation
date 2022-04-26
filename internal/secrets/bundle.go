@@ -164,8 +164,6 @@ func (b *Bundle) SerializeTo(ctx context.Context, w io.Writer, encrypt bool) err
 	ww := wordwrap.NewWriter(80)
 
 	fmt.Fprintf(ww, "This is a secrets bundle managed by Foundation. You can use `fn secrets` to modify this file.\n\nNOTE: Any changes made before %q are ignored.\n\n", guardBegin)
-	b.DescribeTo(ww)
-	fmt.Fprintln(ww)
 
 	if err := ww.Close(); err != nil {
 		return err
@@ -174,6 +172,9 @@ func (b *Bundle) SerializeTo(ctx context.Context, w io.Writer, encrypt bool) err
 	if _, err := w.Write(ww.Bytes()); err != nil {
 		return err
 	}
+
+	b.DescribeTo(w)
+	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "-----%s-----\n", guardBegin)
 
