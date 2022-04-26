@@ -21,6 +21,10 @@ type _checkProvideExporter func(context.Context, *ExporterArgs, ExtensionDeps) (
 
 var _ _checkProvideExporter = ProvideExporter
 
+type _checkProvideTracerProvider func(context.Context, *TracerProviderArgs, ExtensionDeps) (DeferredTracerProvider, error)
+
+var _ _checkProvideTracerProvider = ProvideTracerProvider
+
 var (
 	Package__70o2mm = &core.Package{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",

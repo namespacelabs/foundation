@@ -4,12 +4,8 @@
 
 syntax = "proto3";
 
-package foundation.std.monitoring.tracing;
+package foundation.universe.aws.client;
 
-option go_package = "namespacelabs.dev/foundation/std/monitoring/tracing";
+option go_package = "namespacelabs.dev/foundation/universe/aws/client";
 
-message ExporterArgs {
-    string name = 1;
-}
-
-message TracerProviderArgs {}
+message ClientFactoryArgs {}

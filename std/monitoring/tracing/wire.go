@@ -19,6 +19,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	t "go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
 )
@@ -130,4 +131,21 @@ func (c close) Close(ctx context.Context) error {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, *tracingShutdownTimeout)
 	defer cancel()
 	return c.tp.Shutdown(ctxWithTimeout)
+}
+
+type DeferredTracerProvider struct{}
+
+func (DeferredTracerProvider) GetTracerProvider() (t.TracerProvider, error) {
+	global.mu.Lock()
+	defer global.mu.Unlock()
+
+	if !global.initialized || global.tracerProvider == nil {
+		return nil, errors.New("tried to get a non-initialized TracerProvider; you need to use initializeAfter")
+	}
+
+	return global.tracerProvider, nil
+}
+
+func ProvideTracerProvider(context.Context, *TracerProviderArgs, ExtensionDeps) (DeferredTracerProvider, error) {
+	return DeferredTracerProvider{}, nil
 }

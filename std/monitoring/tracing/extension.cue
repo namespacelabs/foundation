@@ -20,6 +20,14 @@ extension: fn.#Extension & {
 				go: type: "Exporter"
 			}
 		}
+		TracerProvider: {
+			input: $typesProto.types.TracerProviderArgs
+			availableIn: {
+				go: {
+					type: "DeferredTracerProvider"
+				}
+			}
+		}
 	}
 
 	instantiate: {
