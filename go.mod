@@ -59,11 +59,11 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.31.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.29.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.29.0
-	go.opentelemetry.io/otel v1.6.1
+	go.opentelemetry.io/otel v1.6.3
 	go.opentelemetry.io/otel/exporters/jaeger v1.4.1
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.4.1
 	go.opentelemetry.io/otel/sdk v1.4.1
-	go.opentelemetry.io/otel/trace v1.6.1
+	go.opentelemetry.io/otel/trace v1.6.3
 	golang.org/x/exp v0.0.0-20220414153411-bcd21879b8fd
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
