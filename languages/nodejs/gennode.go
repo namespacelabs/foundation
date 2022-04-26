@@ -8,8 +8,7 @@ import (
 	"context"
 	"encoding/base64"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	"github.com/iancoleman/strcase"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
@@ -22,8 +21,6 @@ const (
 	runtimeNpmPackage = "foundation-runtime"
 	grpcNpmPackage    = "@grpc/grpc-js"
 )
-
-var capitalCaser = cases.Title(language.AmericanEnglish)
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
 	nodeData, err := shared.PrepareNodeData(ctx, loader, loc, n, schema.Framework_NODEJS)
@@ -55,7 +52,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		}
 
 		providers = append(providers, tmplProvider{
-			Name:       capitalCaser.String(p.Name),
+			Name:       strcase.ToCamel(p.Name),
 			InputType:  inputType,
 			OutputType: convertAvailableIn(ic, p.ProviderType.Nodejs),
 			ScopedDeps: scopeDeps,
@@ -100,7 +97,7 @@ func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDepe
 		Name: dep.Name,
 		Type: convertAvailableIn(ic, dep.ProviderType.Nodejs),
 		Provider: tmplImportedType{
-			Name:        capitalCaser.String(dep.ProviderName),
+			Name:        strcase.ToCamel(dep.ProviderName),
 			ImportAlias: alias,
 		},
 		ProviderInputType: inputType,
