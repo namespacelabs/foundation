@@ -58,12 +58,12 @@ func (b *Bundle) Definitions() []*Manifest_Definition {
 	return b.m.Definition
 }
 
-func (b *Bundle) Set(packageName, key string, value []byte) {
+func (b *Bundle) Set(k *ValueKey, value []byte) {
 	var hasDef bool
 
 	for _, sec := range b.values {
 		for _, v := range sec.m.Value {
-			if isKey(v.Key, packageName, key) {
+			if equalKey(v.Key, k) {
 				v.Value = value
 				v.FromPath = ""
 				hasDef = true
@@ -83,10 +83,7 @@ func (b *Bundle) Set(packageName, key string, value []byte) {
 
 		enc := b.values[len(b.values)-1]
 		enc.m.Value = append(enc.m.Value, &ValueDatabase_Value{
-			Key: &ValueKey{
-				PackageName: packageName,
-				Key:         key,
-			},
+			Key:   k,
 			Value: value,
 		})
 	}
@@ -100,7 +97,8 @@ func (b *Bundle) Delete(packageName, key string) bool {
 	for _, sec := range b.values {
 		for {
 			index := slices.IndexFunc(sec.m.Value, func(e *ValueDatabase_Value) bool {
-				return isKey(e.Key, packageName, key)
+				// Delete all {packageName, key} pairs, regardless of environment.
+				return e.Key.GetPackageName() == packageName && e.Key.GetKey() == key
 			})
 			if index < 0 {
 				break
@@ -119,10 +117,10 @@ func (b *Bundle) Delete(packageName, key string) bool {
 	return false
 }
 
-func (b *Bundle) Lookup(ctx context.Context, packageName, key string) ([]byte, error) {
+func (b *Bundle) Lookup(ctx context.Context, key *ValueKey) ([]byte, error) {
 	for _, sec := range b.values {
 		for _, v := range sec.m.Value {
-			if isKey(v.Key, packageName, key) {
+			if keyMatches(v.Key, key) {
 				if v.FromPath != "" {
 					return fs.ReadFile(sec.files, v.FromPath)
 				}
@@ -301,16 +299,20 @@ func (b *Bundle) DescribeTo(out io.Writer) {
 		fmt.Fprintln(out, "Definitions:")
 		for _, def := range b.Definitions() {
 			fmt.Fprintf(out, "  %s:%s", def.Key.PackageName, def.Key.Key)
-			if def.Key.SecondaryKey != "" {
-				fmt.Fprintf(out, " (%s)", def.Key.SecondaryKey)
+			if def.Key.EnvironmentName != "" {
+				fmt.Fprintf(out, " (%s)", def.Key.EnvironmentName)
 			}
 			fmt.Fprintln(out)
 		}
 	}
 }
 
-func isKey(k *ValueKey, packageName, key string) bool {
-	return k.PackageName == packageName && k.Key == key && k.SecondaryKey == ""
+func equalKey(a, b *ValueKey) bool {
+	return a.PackageName == b.PackageName && a.Key == b.Key && a.EnvironmentName == b.EnvironmentName
+}
+
+func keyMatches(a, b *ValueKey) bool {
+	return a.PackageName == b.PackageName && a.Key == b.Key && (a.EnvironmentName == "" || a.EnvironmentName == b.EnvironmentName)
 }
 
 func NewBundle(ctx context.Context, keyID string) (*Bundle, error) {

@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -50,7 +51,7 @@ func NewSecretsCmd() *cobra.Command {
 		}),
 	}
 
-	var secretKey, keyID, fromFile string
+	var secretKey, keyID, fromFile, specificEnv string
 	var rawtext bool
 
 	set := &cobra.Command{
@@ -65,12 +66,20 @@ func NewSecretsCmd() *cobra.Command {
 				return err
 			}
 
-			packageName, key, err := parseKey(secretKey)
+			key, err := parseKey(secretKey)
 			if err != nil {
 				return err
 			}
 
-			if _, err := workspace.NewPackageLoader(loc.root).LoadByName(ctx, schema.PackageName(packageName)); err != nil {
+			if specificEnv != "" {
+				if _, err := provision.RequireEnv(loc.root, specificEnv); err != nil {
+					return err
+				}
+
+				key.EnvironmentName = specificEnv
+			}
+
+			if _, err := workspace.NewPackageLoader(loc.root).LoadByName(ctx, schema.PackageName(key.PackageName)); err != nil {
 				return err
 			}
 
@@ -81,14 +90,14 @@ func NewSecretsCmd() *cobra.Command {
 					return fnerrors.BadInputError("%s: failed to load: %w", fromFile, err)
 				}
 			} else {
-				valueStr := readLine(ctx, fmt.Sprintf("Specify a value for %q in %s.\n\nValue: ", key, packageName))
+				valueStr := readLine(ctx, fmt.Sprintf("Specify a value for %q in %s.\n\nValue: ", key.Key, key.PackageName))
 				if valueStr == "" {
 					return errors.New("no value provided, skipping")
 				}
 				value = []byte(valueStr)
 			}
 
-			bundle.Set(packageName, key, value)
+			bundle.Set(key, value)
 
 			return writeBundle(ctx, loc, bundle, !rawtext)
 		}),
@@ -104,12 +113,12 @@ func NewSecretsCmd() *cobra.Command {
 				return err
 			}
 
-			packageName, key, err := parseKey(secretKey)
+			key, err := parseKey(secretKey)
 			if err != nil {
 				return err
 			}
 
-			if !bundle.Delete(packageName, key) {
+			if !bundle.Delete(key.PackageName, key.Key) {
 				return errors.New("no such key")
 			}
 
@@ -139,6 +148,7 @@ func NewSecretsCmd() *cobra.Command {
 	set.Flags().StringVar(&keyID, "key", "", "Use this specific key identity when creating a new bundle.")
 	set.Flags().StringVar(&fromFile, "from_file", "", "Load the file contents as the secret value.")
 	set.Flags().BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
+	set.Flags().StringVar(&specificEnv, "env", "", "If set, only sets the specified secret for the named environment (e.g. dev, or prod).")
 	_ = set.MarkFlagRequired("secret")
 
 	delete.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
@@ -210,13 +220,13 @@ func readLine(ctx context.Context, prompt string) string {
 	return ""
 }
 
-func parseKey(v string) (string, string, error) {
+func parseKey(v string) (*secrets.ValueKey, error) {
 	parts := strings.SplitN(v, ":", 2)
 	if len(parts) < 2 {
-		return "", "", fnerrors.BadInputError("invalid secret key definition, expected {package_name}:{name}")
+		return nil, fnerrors.BadInputError("invalid secret key definition, expected {package_name}:{name}")
 	}
 
-	return parts[0], parts[1], nil
+	return &secrets.ValueKey{PackageName: parts[0], Key: parts[1]}, nil
 }
 
 func writeBundle(ctx context.Context, loc *location, bundle *secrets.Bundle, encrypt bool) error {

@@ -45,7 +45,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return err
 	}
 
-	data, err := fillData(ctx, r.Focus.Server, collection, r)
+	data, err := fillData(ctx, r.Focus.Server, r.Env, collection, r)
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func serverSecretName(srv *schema.Server) string {
 	return strings.Join([]string{srv.Name, srv.Id}, "-") + ".managed.namespacelabs.dev"
 }
 
-func fillData(ctx context.Context, server *schema.Server, col *secrets.Collection, r configure.StackRequest) (map[string][]byte, error) {
+func fillData(ctx context.Context, server *schema.Server, env *schema.Environment, col *secrets.Collection, r configure.StackRequest) (map[string][]byte, error) {
 	var count int
 	for _, userManaged := range col.UserManaged {
 		count += len(userManaged)
@@ -286,8 +286,10 @@ func fillData(ctx context.Context, server *schema.Server, col *secrets.Collectio
 			var foundValue []byte
 			var foundIn []string
 
+			key := &fnsecrets.ValueKey{PackageName: col.InstanceOwners[k], Key: secret.Name, EnvironmentName: env.Name}
+
 			for idx, bundle := range bundles {
-				value, err := bundle.Lookup(ctx, col.InstanceOwners[k], secret.Name)
+				value, err := bundle.Lookup(ctx, key)
 				if err != nil {
 					return nil, err
 				}
@@ -300,13 +302,13 @@ func fillData(ctx context.Context, server *schema.Server, col *secrets.Collectio
 			switch len(foundIn) {
 			case 0:
 				return nil, fnerrors.UsageError(
-					fmt.Sprintf("Try running `fn secrets set %s --secret %s:%s`", server.PackageName, col.InstanceOwners[k], secret.Name),
-					"secret %q required by %q not specified", secret.Name, col.InstanceOwners[k])
+					fmt.Sprintf("Try running `fn secrets set %s --secret %s:%s`", server.PackageName, key.PackageName, key.Key),
+					"secret %q required by %q not specified", key.Key, key.PackageName)
 			case 1:
 				data[col.Names[k][j]] = foundValue
 			default:
 				return nil, fnerrors.UserError(server, "%s: secret %s:%s found in multiple files: %s",
-					server.PackageName, col.InstanceOwners[k], secret.Name, strings.Join(foundIn, "; "))
+					server.PackageName, key.PackageName, key.Key, strings.Join(foundIn, "; "))
 			}
 		}
 	}
