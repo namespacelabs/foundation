@@ -74,22 +74,34 @@ export interface {{.Name}}Deps {
 {{- end}}
 }
 
-export const make{{.Name}}Deps = (dg: {{.DepGraphImportAlias}}.DependencyGraph): {{.Name}}Deps => ({
-	{{- range .Deps}}
-	  {{- range .ProviderInput.Comments}}
-		// {{.}}
+export const {{.Name}}DepsFactory = {
+	key: "",
+  instantiate: (dg: {{.DepGraphImportAlias}}.DependencyGraph): {{.Name}}Deps => ({
+		{{- range .Deps}}
+			{{- range .ProviderInput.Comments}}
+			// {{.}}
+			{{- end}}
+			{{.Name}}: dg.instantiate({
+				{{- if .HasSingletonDeps}}
+				singletonDepsFactory: {{.Provider.ImportAlias}}.` + singletonNameBase + `DepsFactory,
+				{{- end}}
+				{{- if .HasScopedDeps}}
+				scopedDepsFactory: {{.Provider.ImportAlias}}.{{.Provider.Name}}DepsFactory,
+				{{- end}}
+				providerFn: (params) =>			
+					{{.Provider.ImportAlias}}.provide{{.Provider.Name}}(
+						{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name -}}
+						.deserializeBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
+					{{- if .HasSingletonDeps}},
+					  params.singletonDeps!
+					{{- end}}
+					{{- if .HasScopedDeps}},
+					  params.scopedDeps!
+					{{- end}})
+			}),
 		{{- end}}
-		{{.Name}}: {{.Provider.ImportAlias}}.provide{{.Provider.Name}}(
-			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name}}.deserializeBinary(
-				Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
-		{{- if .HasSingletonDeps}},
-		  {{.Provider.ImportAlias}}.make` + singletonNameBase + `Deps(dg)
-		{{- end}}
-		{{- if .HasScopedDeps}},
-		  {{.Provider.ImportAlias}}.make{{.Provider.Name}}Deps(dg)
-		{{- end}}),
-	{{- end}}
-});
+	})
+};
 {{- end}}
 
 {{define "Imports"}}
@@ -144,21 +156,12 @@ import yargs from "yargs/yargs";
 
 {{- template "Imports" . -}}
 
-interface Deps {
+const wireServices = (server: Server, dg: DependencyGraph): void => {
 {{- range $.Services}}
-  {{.Name}}: {{.ImportAlias}}.` + singletonNameBase + `Deps;
-{{- end}}
-}
-
-const prepareDeps = (dg: DependencyGraph): Deps => ({
-{{- range $.Services}}
-	{{.Name}}: {{.ImportAlias}}.make` + singletonNameBase + `Deps(dg),
-{{- end}}
-});
-
-const wireServices = (server: Server, deps: Deps): void => {
-{{- range $.Services}}
-  {{.ImportAlias}}.wireService(deps.{{.Name}}, server);
+  dg.instantiate({
+    singletonDepsFactory: {{.ImportAlias}}.` + singletonNameBase + `DepsFactory,
+    providerFn: (params) => {{.ImportAlias}}.wireService(params.singletonDeps!, server),
+  })
 {{- end}}
 };
 
@@ -171,7 +174,7 @@ const argv = yargs(process.argv.slice(2))
 
 const server = new Server();
 const dg = new DependencyGraph();
-wireServices(server, prepareDeps(dg));
+wireServices(server, dg);
 
 console.log(` + "`" + `Starting the server on ${argv.listen_hostname}:${argv.port}` + "`" + `);
 
