@@ -13,32 +13,25 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
+	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
+	"namespacelabs.dev/foundation/std/go/http/middleware"
 )
-
-// XXX we're coupling two things in this node that should be separate: the
-// grpc<->tracing binding, and the initialization of a tracer. The latter
-// should be really in a "jeager" node, which provides a tracer that would
-// then be consumed by this node.
 
 var (
-	jaegerEndpoint        = flag.String("jaeger_collector_endpoint", "", "Where to push jaeger data to.")
-	jaegerShutdownTimeout = flag.Duration("jaeger_shutdown_timeout", 5*time.Second, "How long to wait for the tracer to shutdown.")
+	tracingShutdownTimeout = flag.Duration("tracing_shutdown_timeout", 5*time.Second, "How long to wait for the tracer to shutdown.")
 )
 
-func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	if *jaegerEndpoint == "" {
-		return nil
-	}
+type TraceProvider struct {
+	name            string
+	serverResources *core.ServerResources
+	interceptors    interceptors.Registration
+	middleware      middleware.Middleware
+}
 
-	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(*jaegerEndpoint)))
-	if err != nil {
-		return err
-	}
-
+func (tp TraceProvider) Setup(exp trace.SpanExporter) error {
 	var opts []trace.TracerProviderOption
 
 	// Record information about this application in an Resource.
@@ -54,20 +47,27 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		opts = append(opts, trace.WithSyncer(exp))
 	}
 
-	tp := trace.NewTracerProvider(opts...)
+	provider := trace.NewTracerProvider(opts...)
+	tp.serverResources.Add(close{provider})
 
-	core.ServerResourcesFrom(ctx).Add(close{tp})
+	tp.interceptors.Add(otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider)),
+		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider)))
 
-	deps.Interceptors.Add(otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(tp)),
-		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(tp)))
-
-	deps.Middleware.Add(func(h http.Handler) http.Handler {
-		return otelhttp.NewHandler(h, "", otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
-			return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
-		}))
+	tp.middleware.Add(func(h http.Handler) http.Handler {
+		return otelhttp.NewHandler(h, "",
+			otelhttp.WithTracerProvider(provider),
+			otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+				return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
+			}))
 	})
 
 	return nil
+}
+
+func ProvideTraceProvider(ctx context.Context, args *TraceProviderArgs, deps ExtensionDeps) (TraceProvider, error) {
+	serverResources := core.ServerResourcesFrom(ctx)
+
+	return TraceProvider{args.Name, serverResources, deps.Interceptors, deps.Middleware}, nil
 }
 
 type close struct {
@@ -75,7 +75,7 @@ type close struct {
 }
 
 func (c close) Close(ctx context.Context) error {
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, *jaegerShutdownTimeout)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, *tracingShutdownTimeout)
 	defer cancel()
 	return c.tp.Shutdown(ctxWithTimeout)
 }

@@ -16,6 +16,10 @@ type ExtensionDeps struct {
 	Middleware   middleware.Middleware
 }
 
+type _checkProvideTraceProvider func(context.Context, *TraceProviderArgs, ExtensionDeps) (TraceProvider, error)
+
+var _ _checkProvideTraceProvider = ProvideTraceProvider
+
 var (
 	Package__70o2mm = &core.Package{
 		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing",
@@ -24,17 +28,6 @@ var (
 	Provider__70o2mm = core.Provider{
 		Package:     Package__70o2mm,
 		Instantiate: makeDeps__70o2mm,
-	}
-
-	Initializers__70o2mm = []*core.Initializer{
-		{
-			Package: Package__70o2mm,
-			Do: func(ctx context.Context, di core.Dependencies) error {
-				return di.Instantiate(ctx, Provider__70o2mm, func(ctx context.Context, v interface{}) error {
-					return Prepare(ctx, v.(ExtensionDeps))
-				})
-			},
-		},
 	}
 )
 

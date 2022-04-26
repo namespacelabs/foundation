@@ -5,30 +5,22 @@ import (
 	"namespacelabs.dev/foundation/std/go/http/middleware"
 )
 
+$typesProto: inputs.#Proto & {
+	source: "types.proto"
+}
+
 extension: fn.#Extension & {
-	hasInitializerIn: "GO_GRPC"
+	provides: {
+		TraceProvider: {
+			input: $typesProto.types.TraceProviderArgs
+			availableIn: {
+				go: type: "TraceProvider"
+			}
+		}
+	}
 
 	instantiate: {
 		"interceptors": interceptors.#Exports.InterceptorRegistration
 		"middleware":   middleware.#Exports.Middleware
-	}
-}
-
-$env:          inputs.#Environment
-$jaegerServer: inputs.#Server & {
-	packageName: "namespacelabs.dev/foundation/std/monitoring/jaeger"
-}
-
-configure: fn.#Configure & {
-	if $env.runtime == "kubernetes" {
-		stack: {
-			append: [$jaegerServer]
-		}
-
-		startup: {
-			args: {
-				jaeger_collector_endpoint: "http://\($jaegerServer.$addressMap.collector)/api/traces"
-			}
-		}
 	}
 }
