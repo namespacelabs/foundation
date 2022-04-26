@@ -7,7 +7,9 @@ package golang
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
+	"strings"
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build"
@@ -115,6 +117,20 @@ func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspa
 	localSDK, err := compute.Get(ctx, sdk)
 	if err != nil {
 		return err
+	}
+
+	for _, dep := range loc.Module.Workspace.Dep {
+		if dep.ModuleName == "namespacelabs.dev/foundation" {
+			var cmd localexec.Command
+			cmd.Command = localSDK.Value.GoBin()
+			cmd.Args = []string{"get", "-u", fmt.Sprintf("%s@%s", dep.ModuleName, dep.Version)}
+			cmd.AdditionalEnv = []string{localSDK.Value.GoRootEnv(), goPrivate()}
+			cmd.Dir = loc.Abs()
+			cmd.Label = "go " + strings.Join(cmd.Args, " ")
+			if err := cmd.Run(ctx); err != nil {
+				return err
+			}
+		}
 	}
 
 	var cmd localexec.Command
