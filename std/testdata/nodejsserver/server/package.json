@@ -1,7 +1,7 @@
 {
 	"dependencies": {
 		"@grpc/grpc-js": "1.5.7",
-		"foundation-runtime": "git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#37e19846559fb73ac612fe7cf4d09d31653a8818",
+		"foundation-runtime": "git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#f9123b50a4af880cc4d7c3edf28aa4dfce9a3e6d",
 		"google-protobuf": "^3.20.0",
 		"source-map-support": "0.5.21",
 		"ts-node": "10.7.x",

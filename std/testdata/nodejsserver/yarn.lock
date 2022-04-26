@@ -55,7 +55,7 @@ __metadata:
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
     "@types/yargs": 16.x
-    foundation-runtime: "git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#37e19846559fb73ac612fe7cf4d09d31653a8818"
+    foundation-runtime: "git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#f9123b50a4af880cc4d7c3edf28aa4dfce9a3e6d"
     google-protobuf: ^3.20.0
     source-map-support: 0.5.21
     ts-node: 10.7.x
@@ -310,12 +310,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"foundation-runtime@git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#37e19846559fb73ac612fe7cf4d09d31653a8818":
+"foundation-runtime@git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#f9123b50a4af880cc4d7c3edf28aa4dfce9a3e6d":
   version: 0.1.0
-  resolution: "foundation-runtime@git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#commit=37e19846559fb73ac612fe7cf4d09d31653a8818"
+  resolution: "foundation-runtime@git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#commit=f9123b50a4af880cc4d7c3edf28aa4dfce9a3e6d"
   dependencies:
     typescript: 4.6.2
-  checksum: 8848df63f762ff2377d0dbd84fb622cd66d83d88a7a13a8cea518f89b6cecb6a68d4cd9360eddffd0a5c3bb319b4b7c114173c571eeda6f87dbd578026ab3a03
+  checksum: 38732e9cfbc8e1d248e85d63691134f94c7aab44dc7a6f372e7b38c131673fa2e5feb86793d384165928c7342e82e6ab092f1a35dfcb04f0d95679bf5ab08160
   languageName: node
   linkType: hard
 

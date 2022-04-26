@@ -158,12 +158,19 @@ import yargs from "yargs/yargs";
 
 {{- template "Imports" . -}}
 
-const wireServices = (server: Server, dg: DependencyGraph): void => {
+// Returns a list of initialization errors.
+const wireServices = (server: Server, dg: DependencyGraph): unknown[] => {
+	const errors  = [];
 {{- range $.Services}}
-  dg.instantiate({
-    singletonDepsFactory: {{.ImportAlias}}.` + singletonNameBase + `DepsFactory,
-    providerFn: (params) => {{.ImportAlias}}.wireService(params.singletonDeps!, server),
-  })
+  try {
+		dg.instantiate({
+			singletonDepsFactory: {{.ImportAlias}}.` + singletonNameBase + `DepsFactory,
+			providerFn: (params) => {{.ImportAlias}}.wireService(params.singletonDeps!, server),
+		})
+	} catch (e) {
+		errors.push(e);
+	}
+	return errors;
 {{- end}}
 };
 
@@ -175,8 +182,14 @@ const argv = yargs(process.argv.slice(2))
 		.parse();
 
 const server = new Server();
+
 const dg = new DependencyGraph();
-wireServices(server, dg);
+const errors = wireServices(server, dg);
+if (errors.length > 0) {
+	errors.forEach((e) => console.error(e));
+	console.error("%d services failed to initialize.", errors.length)
+	process.exit(1);
+}
 
 console.log(` + "`" + `Starting the server on ${argv.listen_hostname}:${argv.port}` + "`" + `);
 
