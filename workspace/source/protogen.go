@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -224,7 +225,15 @@ type genGoProtosAtLoc struct {
 var _ compute.Computable[fs.FS] = &genGoProtosAtLoc{}
 
 func (g *genGoProtosAtLoc) Action() *tasks.ActionEvent {
-	return tasks.Action("proto.generate")
+	var files []string
+	for _, fds := range g.fileDescSet.File {
+		files = append(files, fds.GetName())
+	}
+
+	return tasks.Action("proto.generate").
+		Arg("http_gateway", g.opts.HTTPGateway).
+		Arg("framework", strings.ToLower(g.opts.Framework.String())).
+		Arg("files", files)
 }
 
 func (g *genGoProtosAtLoc) Inputs() *compute.In {
