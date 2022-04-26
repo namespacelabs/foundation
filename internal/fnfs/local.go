@@ -55,6 +55,7 @@ type local struct {
 }
 
 var _ MkdirFS = local{}
+var _ RmdirFS = local{}
 
 func (l local) Open(path string) (fs.File, error) {
 	return os.DirFS(l.root).Open(path)
@@ -96,6 +97,14 @@ func (l local) Remove(path string) error {
 	}
 
 	return os.Remove(filepath.Join(l.root, path))
+}
+
+func (l local) RemoveAll(path string) error {
+	if !fs.ValidPath(path) {
+		return &fs.PathError{Op: "removeAll", Path: path, Err: errors.New("invalid name")}
+	}
+
+	return os.RemoveAll(filepath.Join(l.root, path))
 }
 
 func (l local) MkdirAll(path string, mode fs.FileMode) error {
