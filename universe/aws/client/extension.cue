@@ -16,7 +16,7 @@ extension: fn.#Extension & {
 		"credentials": secrets.#Exports.Secret & {
 			name: "aws_credentials_file"
 		}
-        openTelemetry: tracing.#Exports.TracerProvider
+		openTelemetry: tracing.#Exports.TracerProvider
 	}
 
 	provides: {
@@ -24,7 +24,7 @@ extension: fn.#Extension & {
 			input: $typesProto.types.ClientFactoryArgs
 			availableIn: {
 				go: {
-					type:    "ClientFactory"
+					type: "ClientFactory"
 				}
 			}
 		}
