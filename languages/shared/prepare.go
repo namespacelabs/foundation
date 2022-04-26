@@ -63,9 +63,7 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 					Name:         p.Name,
 					InputType:    convertType(p.Type, schema.PackageName(n.PackageName)),
 					ProviderType: a,
-					// TODO(@nicolasalt): consider using an explicit syntax for singletones.
-					IsSingleton: len(scopeDeps) == 0,
-					ScopedDeps:  scopeDeps,
+					ScopedDeps:   scopeDeps,
 				})
 			}
 		}

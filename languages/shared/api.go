@@ -33,7 +33,6 @@ type ProviderData struct {
 	Name         string
 	InputType    TypeData
 	ProviderType *schema.Provides_AvailableIn
-	IsSingleton  bool
 	ScopedDeps   []DependencyData
 }
 
