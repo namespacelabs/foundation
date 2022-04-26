@@ -13,6 +13,7 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
@@ -28,7 +29,7 @@ var (
 
 type TraceProvider struct {
 	name            string
-	serverInfo      *core.ServerInfo
+	resource        *resource.Resource
 	serverResources *core.ServerResources
 	interceptors    interceptors.Registration
 	middleware      middleware.Middleware
@@ -50,13 +51,7 @@ func (tp TraceProvider) Setup(exp trace.SpanExporter) error {
 		opts = append(opts, trace.WithSyncer(exp))
 	}
 
-	resource :=
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(tp.serverInfo.ServerName),
-		)
-
-	opts = append(opts, trace.WithResource(resource))
+	opts = append(opts, trace.WithResource(tp.resource))
 
 	provider := trace.NewTracerProvider(opts...)
 	tp.serverResources.Add(close{provider})
@@ -78,7 +73,23 @@ func (tp TraceProvider) Setup(exp trace.SpanExporter) error {
 func ProvideTraceProvider(ctx context.Context, args *TraceProviderArgs, deps ExtensionDeps) (TraceProvider, error) {
 	serverResources := core.ServerResourcesFrom(ctx)
 
-	return TraceProvider{args.Name, deps.ServerInfo, serverResources, deps.Interceptors, deps.Middleware}, nil
+	resource, err :=
+		resource.New(ctx,
+			resource.WithSchemaURL(semconv.SchemaURL),
+			resource.WithOS(),
+			resource.WithProcess(),
+			resource.WithAttributes(
+				semconv.ServiceNameKey.String(deps.ServerInfo.ServerName),
+				attribute.String("environment", deps.ServerInfo.EnvName),
+				attribute.String("vcs.commit", deps.ServerInfo.GetVcs().GetRevision()),
+			),
+		)
+
+	if err != nil {
+		return TraceProvider{}, err
+	}
+
+	return TraceProvider{args.Name, resource, serverResources, deps.Interceptors, deps.Middleware}, nil
 }
 
 type close struct {
