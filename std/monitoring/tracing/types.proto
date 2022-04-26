@@ -8,6 +8,6 @@ package foundation.std.monitoring.tracing;
 
 option go_package = "namespacelabs.dev/foundation/std/monitoring/tracing";
 
-message TraceProviderArgs {
+message ExporterArgs {
     string name = 1;
 }

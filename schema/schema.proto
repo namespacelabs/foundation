@@ -102,7 +102,9 @@ message Node {
 }
 
 message NodeInitializer {
-    Framework framework = 1;
+    Framework       framework         = 1;
+    repeated string initialize_before = 2;  // Package name.
+    repeated string initialize_after  = 3;  // Package name.
 }
 
 enum Framework {

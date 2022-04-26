@@ -45,6 +45,7 @@ require (
 	github.com/morikuni/aec v1.0.0
 	github.com/muesli/reflow v0.3.0
 	github.com/opencontainers/image-spec v1.0.2
+	github.com/philopon/go-toposort v0.0.0-20170620085441-9be86dbd762f
 	github.com/prometheus/client_golang v1.12.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.32.1

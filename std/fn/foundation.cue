@@ -33,6 +33,8 @@ _#Node: {
 	_#Node
 
 	hasInitializerIn?: #Framework | [...#Framework]
+	initializeBefore: [...inputs.#Package]
+	initializeAfter: [...inputs.#Package]
 
 	provides?: #Provides
 

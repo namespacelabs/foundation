@@ -17,9 +17,9 @@ type ExtensionDeps struct {
 	ServerInfo   *core.ServerInfo
 }
 
-type _checkProvideTraceProvider func(context.Context, *TraceProviderArgs, ExtensionDeps) (TraceProvider, error)
+type _checkProvideExporter func(context.Context, *ExporterArgs, ExtensionDeps) (Exporter, error)
 
-var _ _checkProvideTraceProvider = ProvideTraceProvider
+var _ _checkProvideExporter = ProvideExporter
 
 var (
 	Package__70o2mm = &core.Package{
@@ -29,6 +29,17 @@ var (
 	Provider__70o2mm = core.Provider{
 		Package:     Package__70o2mm,
 		Instantiate: makeDeps__70o2mm,
+	}
+
+	Initializers__70o2mm = []*core.Initializer{
+		{
+			Package: Package__70o2mm,
+			Do: func(ctx context.Context, di core.Dependencies) error {
+				return di.Instantiate(ctx, Provider__70o2mm, func(ctx context.Context, v interface{}) error {
+					return Prepare(ctx, v.(ExtensionDeps))
+				})
+			},
+		},
 	}
 )
 

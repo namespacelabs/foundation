@@ -27,5 +27,5 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		return err
 	}
 
-	return deps.OpenTelemetry.Setup(exporter)
+	return deps.OpenTelemetry.Register(exporter)
 }

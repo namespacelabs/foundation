@@ -118,9 +118,11 @@ func prepareGenerate(ctx context.Context, loader workspace.Packages, imports []s
 			return err
 		}
 
-		i := initializer{
-			PackageName: schema.PackageName(init.Node.PackageName),
-			GoImportURL: pkg,
+		i := goInitializer{
+			PackageName:      schema.PackageName(init.Node.PackageName),
+			GoImportURL:      pkg,
+			InitializeBefore: init.initializeBefore,
+			InitializeAfter:  init.initializeAfter,
 		}
 
 		for _, node := range opts.Nodes {
@@ -250,10 +252,12 @@ type goPackage struct {
 	GoImportURL string
 }
 
-type initializer struct {
-	PackageName schema.PackageName
-	GoImportURL string
-	Deps        Ref
+type goInitializer struct {
+	PackageName      schema.PackageName
+	GoImportURL      string
+	Deps             Ref
+	InitializeBefore []string
+	InitializeAfter  []string
 }
 
 type Ref struct {
@@ -284,7 +288,7 @@ type genTmplOptions struct {
 	Imports      *gosupport.GoImports
 	Nodes        []*nodeWithDeps
 	Services     []*nodeWithDeps
-	Initializers []initializer
+	Initializers []goInitializer
 }
 
 type mainTmplOptions struct {

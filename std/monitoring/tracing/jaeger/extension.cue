@@ -6,9 +6,10 @@ import (
 
 extension: fn.#Extension & {
 	hasInitializerIn: "GO_GRPC"
+	initializeBefore: ["namespacelabs.dev/foundation/std/monitoring/tracing"]
 
 	instantiate: {
-		openTelemetry: tracing.#Exports.TraceProvider & {
+		openTelemetry: tracing.#Exports.Exporter & {
 			name: "jaeger"
 		}
 	}

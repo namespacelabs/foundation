@@ -46,7 +46,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		}
 	}
 
-	var initializers []initializer
+	var initializers []goInitializer
 	for _, n := range g.Initializers {
 		if n.PackageName == loc.PackageName {
 			initializers = append(initializers, n)
@@ -171,7 +171,7 @@ type nodeTmplOptions struct {
 	NeedsSingleton bool
 
 	Providers    []*nodeWithDeps
-	Initializers []initializer
+	Initializers []goInitializer
 }
 
 var (
@@ -258,7 +258,9 @@ var (
 {{if $opts.Initializers -}}
 {{longInitializerType $opts.PackageName}} = []*{{$opts.Imports.Ensure "namespacelabs.dev/foundation/std/go/core"}}Initializer{
 {{range $k, $init := .Initializers}} {
-		Package: {{longPackageType $opts.PackageName}},
+		Package: {{longPackageType $opts.PackageName}},{{if $init.InitializeBefore}}
+		Before: []string{ {{range $init.InitializeBefore}}"{{.}}",{{end}}  },{{end}} {{if $init.InitializeAfter}}
+		After: []string{ {{range $init.InitializeAfter}}"{{.}}",{{end}}  },{{end}}
 	Do: func(ctx context.Context, di {{$opts.Imports.Ensure "namespacelabs.dev/foundation/std/go/core"}}Dependencies) error {
 		{{- if $init.Deps}}
 		return di.Instantiate(ctx, {{$opts.Imports.Ensure $init.GoImportURL}}{{longProviderType $init.PackageName ""}}, func(ctx context.Context, v interface{}) error {

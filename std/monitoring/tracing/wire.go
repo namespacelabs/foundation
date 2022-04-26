@@ -6,9 +6,11 @@ package tracing
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -19,47 +21,84 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
-	"namespacelabs.dev/foundation/std/go/http/middleware"
 )
 
 var (
 	tracingShutdownTimeout = flag.Duration("tracing_shutdown_timeout", 5*time.Second, "How long to wait for the tracer to shutdown.")
+
+	global struct {
+		mu             sync.Mutex
+		initialized    bool
+		exporters      []trace.SpanExporter
+		tracerProvider *trace.TracerProvider // We don't use otel's global, to ensure that dependency order is respected.
+	}
 )
 
-type TraceProvider struct {
-	name            string
-	resource        *resource.Resource
-	serverResources *core.ServerResources
-	interceptors    interceptors.Registration
-	middleware      middleware.Middleware
+type Exporter struct {
+	name string
 }
 
-func (tp TraceProvider) Setup(exp trace.SpanExporter) error {
-	var opts []trace.TracerProviderOption
+func (e Exporter) Register(exp trace.SpanExporter) error {
+	global.mu.Lock()
+	defer global.mu.Unlock()
 
-	// Record information about this application in an Resource.
-	// opts = append(opts,
-	// 	tracesdk.WithResource(resource.NewWithAttributes(
-	// 		attribute.String("environment", environment),
-	// 		attribute.Int64("ID", id),
-	// 	)))
-
-	if core.EnvIs(schema.Environment_PRODUCTION) {
-		opts = append(opts, trace.WithBatcher(exp, trace.WithBatchTimeout(10*time.Second)))
-	} else {
-		opts = append(opts, trace.WithSyncer(exp))
+	if global.initialized {
+		return errors.New("Exporter.Register after initialization was complete")
 	}
 
-	opts = append(opts, trace.WithResource(tp.resource))
+	global.exporters = append(global.exporters, exp)
+	return nil
+}
+
+func ProvideExporter(_ context.Context, args *ExporterArgs, _ ExtensionDeps) (Exporter, error) {
+	return Exporter{args.Name}, nil
+}
+
+func Prepare(ctx context.Context, deps ExtensionDeps) error {
+	var opts []trace.TracerProviderOption
+
+	exporters := consumeExporters()
+	if len(exporters) == 0 {
+		return errors.New("tracing: no exporter")
+	}
+
+	for _, exp := range exporters {
+		if core.EnvIs(schema.Environment_PRODUCTION) {
+			opts = append(opts, trace.WithBatcher(exp, trace.WithBatchTimeout(10*time.Second)))
+		} else {
+			opts = append(opts, trace.WithSyncer(exp))
+		}
+	}
+
+	serverResources := core.ServerResourcesFrom(ctx)
+
+	resource, err :=
+		resource.New(ctx,
+			resource.WithSchemaURL(semconv.SchemaURL),
+			resource.WithOS(),
+			resource.WithProcessRuntimeName(),
+			resource.WithProcessRuntimeVersion(),
+			resource.WithProcessRuntimeDescription(),
+			resource.WithAttributes(
+				semconv.ServiceNameKey.String(deps.ServerInfo.ServerName),
+				attribute.String("environment", deps.ServerInfo.EnvName),
+				attribute.String("vcs.commit", deps.ServerInfo.GetVcs().GetRevision()),
+			),
+		)
+	if err != nil {
+		return err
+	}
+
+	opts = append(opts, trace.WithResource(resource))
 
 	provider := trace.NewTracerProvider(opts...)
-	tp.serverResources.Add(close{provider})
+	serverResources.Add(close{provider})
 
-	tp.interceptors.Add(otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider)),
+	deps.Interceptors.Add(
+		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider)),
 		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider)))
 
-	tp.middleware.Add(func(h http.Handler) http.Handler {
+	deps.Middleware.Add(func(h http.Handler) http.Handler {
 		return otelhttp.NewHandler(h, "",
 			otelhttp.WithTracerProvider(provider),
 			otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
@@ -67,29 +106,20 @@ func (tp TraceProvider) Setup(exp trace.SpanExporter) error {
 			}))
 	})
 
+	global.mu.Lock()
+	global.tracerProvider = provider
+	global.mu.Unlock()
+
 	return nil
 }
 
-func ProvideTraceProvider(ctx context.Context, args *TraceProviderArgs, deps ExtensionDeps) (TraceProvider, error) {
-	serverResources := core.ServerResourcesFrom(ctx)
+func consumeExporters() []trace.SpanExporter {
+	global.mu.Lock()
+	defer global.mu.Unlock()
 
-	resource, err :=
-		resource.New(ctx,
-			resource.WithSchemaURL(semconv.SchemaURL),
-			resource.WithOS(),
-			resource.WithProcess(),
-			resource.WithAttributes(
-				semconv.ServiceNameKey.String(deps.ServerInfo.ServerName),
-				attribute.String("environment", deps.ServerInfo.EnvName),
-				attribute.String("vcs.commit", deps.ServerInfo.GetVcs().GetRevision()),
-			),
-		)
-
-	if err != nil {
-		return TraceProvider{}, err
-	}
-
-	return TraceProvider{args.Name, resource, serverResources, deps.Interceptors, deps.Middleware}, nil
+	exporters := global.exporters
+	global.initialized = true
+	return exporters
 }
 
 type close struct {

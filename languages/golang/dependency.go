@@ -28,10 +28,16 @@ type nodeLoc struct {
 	Node     *schema.Node
 }
 
+type initializer struct {
+	nodeLoc
+	initializeBefore []string
+	initializeAfter  []string
+}
+
 type instancedDepList struct {
 	services     []nodeLoc
 	instances    []*instancedDep
-	initializers []nodeLoc
+	initializers []initializer
 }
 
 type instancedDep struct {
@@ -79,8 +85,12 @@ func expandInstancedDeps(ctx context.Context, loader workspace.Packages, include
 			e.services = append(e.services, nodeLoc{Location: pkg.Location, Node: referenced})
 		}
 
-		if referenced.InitializerFor(schema.Framework_GO_GRPC) != nil {
-			e.initializers = append(e.initializers, nodeLoc{Location: pkg.Location, Node: referenced})
+		if x := referenced.InitializerFor(schema.Framework_GO_GRPC); x != nil {
+			e.initializers = append(e.initializers, initializer{
+				nodeLoc:          nodeLoc{Location: pkg.Location, Node: referenced},
+				initializeBefore: x.InitializeBefore,
+				initializeAfter:  x.InitializeAfter,
+			})
 		}
 	}
 

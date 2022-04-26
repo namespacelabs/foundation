@@ -107,6 +107,20 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		out.ServiceFramework = fmwk
 	}
 
+	var initializeBefore []string
+	if beforeValue := v.LookupPath("initializeBefore"); beforeValue.Exists() {
+		if err := beforeValue.Val.Decode(&initializeBefore); err != nil {
+			return err
+		}
+	}
+
+	var initializeAfter []string
+	if afterValue := v.LookupPath("initializeAfter"); afterValue.Exists() {
+		if err := afterValue.Val.Decode(&initializeAfter); err != nil {
+			return err
+		}
+	}
+
 	var initializeInFrameworks []string
 	if initializers := v.LookupPath("hasInitializerIn"); initializers.Exists() {
 		if err := initializers.Val.Decode(&initializeInFrameworks); err != nil {
@@ -114,18 +128,32 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			if err != nil {
 				return err
 			}
+
 			initializeInFrameworks = []string{fmwkStr}
 		}
-		uniqFrameworks := uniquestrings.List{}
+
+		frameworks := uniquestrings.List{}
 		for _, fmwkStr := range initializeInFrameworks {
-			if !uniqFrameworks.Add(fmwkStr) {
+			if !frameworks.Add(fmwkStr) {
 				return fnerrors.UserError(loc, "Duplicate initialization framework value: %s", fmwkStr)
 			}
+
 			v, err := parseFramework(loc, fmwkStr)
 			if err != nil {
 				return err
 			}
-			out.Initializers = append(out.Initializers, &schema.NodeInitializer{Framework: schema.Framework(v)})
+
+			out.Initializers = append(out.Initializers, &schema.NodeInitializer{
+				Framework:        schema.Framework(v),
+				InitializeBefore: initializeBefore,
+			})
+		}
+	} else {
+		if len(initializeBefore) > 0 {
+			return fnerrors.UserError(loc, "initializeBefore can only be set when hasInitializerIn is also set")
+		}
+		if len(initializeAfter) > 0 {
+			return fnerrors.UserError(loc, "initializeAfter can only be set when hasInitializerIn is also set")
 		}
 	}
 

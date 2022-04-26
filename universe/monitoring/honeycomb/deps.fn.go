@@ -13,7 +13,7 @@ import (
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
 	HoneycombTeam *secrets.Value
-	OpenTelemetry tracing.TraceProvider
+	OpenTelemetry tracing.Exporter
 }
 
 var (
@@ -29,6 +29,7 @@ var (
 	Initializers__e1uscp = []*core.Initializer{
 		{
 			Package: Package__e1uscp,
+			Before:  []string{"namespacelabs.dev/foundation/std/monitoring/tracing"},
 			Do: func(ctx context.Context, di core.Dependencies) error {
 				return di.Instantiate(ctx, Provider__e1uscp, func(ctx context.Context, v interface{}) error {
 					return Prepare(ctx, v.(ExtensionDeps))
@@ -51,10 +52,10 @@ func makeDeps__e1uscp(ctx context.Context, di core.Dependencies) (interface{}, e
 	}
 
 	err = di.Instantiate(ctx, tracing.Provider__70o2mm, func(ctx context.Context, v interface{}) (err error) { // name: "honeycomb"
-		p := &tracing.TraceProviderArgs{}
+		p := &tracing.ExporterArgs{}
 		core.MustUnwrapProto("Cglob25leWNvbWI=", p)
 
-		if deps.OpenTelemetry, err = tracing.ProvideTraceProvider(ctx, p, v.(tracing.ExtensionDeps)); err != nil {
+		if deps.OpenTelemetry, err = tracing.ProvideExporter(ctx, p, v.(tracing.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil

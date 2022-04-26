@@ -7,9 +7,11 @@ package core
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"time"
 
+	toposort "github.com/philopon/go-toposort"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -98,6 +100,8 @@ func (di *DependencyGraph) Instantiate(ctx context.Context, provider Provider, f
 
 type Initializer struct {
 	Package *Package
+	Before  []string
+	After   []string
 	Do      func(context.Context, Dependencies) error
 }
 
@@ -120,7 +124,12 @@ func (di *DependencyGraph) RunInitializers(ctx context.Context) error {
 	ctx, cancel := context.WithDeadline(ctx, initializationDeadline)
 	defer cancel()
 
-	for _, init := range di.inits {
+	inits, err := enforceOrder(di.inits)
+	if err != nil {
+		return err
+	}
+
+	for _, init := range inits {
 		if *debug {
 			Log.Printf("[init] initializing %s with %v deadline left", init.Package.PackageName, time.Until(initializationDeadline))
 		}
@@ -135,7 +144,74 @@ func (di *DependencyGraph) RunInitializers(ctx context.Context) error {
 			return err
 		}
 	}
+
 	return nil
+}
+
+func enforceOrder(inits []*Initializer) ([]*Initializer, error) {
+	graph := toposort.NewGraph(len(inits))
+
+	m := map[string]struct{}{}
+	for _, init := range inits {
+		m[init.Package.PackageName] = struct{}{}
+		for _, before := range init.Before {
+			m[before] = struct{}{}
+		}
+		for _, after := range init.After {
+			m[after] = struct{}{}
+		}
+	}
+
+	for n := range m {
+		graph.AddNode(n)
+	}
+
+	for _, init := range inits {
+		for _, before := range init.Before {
+			graph.AddEdge(init.Package.PackageName, before)
+		}
+		for _, after := range init.After {
+			graph.AddEdge(after, init.Package.PackageName)
+		}
+	}
+
+	sortedPackages, ok := graph.Toposort()
+	if !ok {
+		return nil, errors.New("internal failure: initializer order not fulfillable")
+	}
+
+	// XXX O(n^2)
+	var sorted []*Initializer
+	for _, pkg := range sortedPackages {
+		for _, init := range inits {
+			if init.Package.PackageName == pkg {
+				sorted = append(sorted, init)
+			}
+		}
+	}
+
+	if len(sorted) != len(inits) {
+		return nil, errors.New("internal failure: did not yield the same number of inits")
+	}
+
+	for i, init := range sorted {
+		for _, before := range init.Before {
+			for k := 0; k < i; k++ {
+				if sorted[k].Package.PackageName == before {
+					return nil, errors.New("internal failure: before: initializer order not guaranteed (verification)")
+				}
+			}
+		}
+		for _, after := range init.After {
+			for k := i + 1; k < len(sorted); k++ {
+				if sorted[k].Package.PackageName == after {
+					return nil, errors.New("internal failure: after: initializer order not guaranteed (verification)")
+				}
+			}
+		}
+	}
+
+	return sorted, nil
 }
 
 // MustUnwrapProto unserializes a proto from a base64 string. This is used to

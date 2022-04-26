@@ -11,11 +11,13 @@ $typesProto: inputs.#Proto & {
 }
 
 extension: fn.#Extension & {
+	hasInitializerIn: "GO_GRPC"
+
 	provides: {
-		TraceProvider: {
-			input: $typesProto.types.TraceProviderArgs
+		Exporter: {
+			input: $typesProto.types.ExporterArgs
 			availableIn: {
-				go: type: "TraceProvider"
+				go: type: "Exporter"
 			}
 		}
 	}

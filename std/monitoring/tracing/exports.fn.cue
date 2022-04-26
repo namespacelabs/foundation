@@ -2,14 +2,14 @@
 package tracing
 
 #Exports: {
-	TraceProvider: {
+	Exporter: {
 		name?: string
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/std/monitoring/tracing"
-			type:        "TraceProvider"
+			type:        "Exporter"
 			typeDefinition: {
-				"typename": "foundation.std.monitoring.tracing.TraceProviderArgs"
+				"typename": "foundation.std.monitoring.tracing.ExporterArgs"
 				"source": [
 					"types.proto",
 				]
