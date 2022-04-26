@@ -29,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/protos"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const (
@@ -114,32 +115,32 @@ func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspa
 		return err
 	}
 
-	localSDK, err := compute.Get(ctx, sdk)
+	localSDK, err := compute.GetValue(ctx, sdk)
 	if err != nil {
 		return err
 	}
 
 	for _, dep := range loc.Module.Workspace.Dep {
 		if dep.ModuleName == "namespacelabs.dev/foundation" {
-			var cmd localexec.Command
-			cmd.Command = localSDK.Value.GoBin()
-			cmd.Args = []string{"get", "-u", fmt.Sprintf("%s@%s", dep.ModuleName, dep.Version)}
-			cmd.AdditionalEnv = []string{localSDK.Value.GoRootEnv(), goPrivate()}
-			cmd.Dir = loc.Abs()
-			cmd.Label = "go " + strings.Join(cmd.Args, " ")
-			if err := cmd.Run(ctx); err != nil {
+			if err := execGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", dep.ModuleName, dep.Version)); err != nil {
 				return err
 			}
 		}
 	}
 
-	var cmd localexec.Command
-	cmd.Command = localSDK.Value.GoBin()
-	cmd.Args = []string{"mod", "tidy"}
-	cmd.AdditionalEnv = []string{localSDK.Value.GoRootEnv(), goPrivate()}
-	cmd.Dir = loc.Abs()
-	cmd.Label = "go mod tidy"
-	return cmd.Run(ctx)
+	return execGo(ctx, loc, localSDK, "mod", "tidy")
+}
+
+func execGo(ctx context.Context, loc workspace.Location, sdk golang.LocalSDK, args ...string) error {
+	return tasks.Action("go.run").HumanReadablef("go "+strings.Join(args, " ")).Run(ctx, func(ctx context.Context) error {
+		var cmd localexec.Command
+		cmd.Command = sdk.GoBin()
+		cmd.Args = args
+		cmd.AdditionalEnv = []string{sdk.GoRootEnv(), goPrivate()}
+		cmd.Dir = loc.Abs()
+		cmd.Label = "go " + strings.Join(cmd.Args, " ")
+		return cmd.Run(ctx)
+	})
 }
 
 func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
