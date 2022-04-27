@@ -160,7 +160,7 @@ import yargs from "yargs/yargs";
 
 // Returns a list of initialization errors.
 const wireServices = (server: Server, dg: DependencyGraph): unknown[] => {
-	const errors  = [];
+	const errors: unknown[] = [];
 {{- range $.Services}}
   try {
 		dg.instantiate({
@@ -170,8 +170,8 @@ const wireServices = (server: Server, dg: DependencyGraph): unknown[] => {
 	} catch (e) {
 		errors.push(e);
 	}
-	return errors;
 {{- end}}
+  return errors;
 };
 
 const argv = yargs(process.argv.slice(2))
