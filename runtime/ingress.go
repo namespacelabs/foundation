@@ -317,23 +317,39 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 					Service:     endpoint.AllocatedName,
 					Port:        endpoint.Port,
 				})
+				// XXX rethink this.
+				grpc = append(grpc, &schema.IngressFragment_IngressGrpcService{
+					GrpcService: "grpc.reflection.v1alpha.ServerReflection",
+					Owner:       endpoint.EndpointOwner,
+					Service:     endpoint.AllocatedName,
+					Port:        endpoint.Port,
+				})
 			}
 		}
 
-		// XXX security this exposes all services registered at port: #102.
-		f, err := makeFragment(&schema.IngressFragment{
-			Name:        endpoint.ServiceName,
-			Owner:       endpoint.ServerOwner,
-			Endpoint:    endpoint,
-			Extension:   extensions,
-			HttpPath:    paths,
-			GrpcService: grpc,
-		}, makeDomains(ctx, env, sch.Server, sch.ServerNaming, endpoint.AllocatedName))
+		domains, err := makeDomains(ctx, env, sch.Server, sch.ServerNaming, endpoint.AllocatedName)
 		if err != nil {
 			return nil, err
 		}
 
-		ingresses = append(ingresses, f...)
+		for _, domain := range domains {
+			// XXX security this exposes all services registered at port: #102.
+			t := &schema.IngressFragment{
+				Domain:      domain,
+				Name:        endpoint.ServiceName,
+				Owner:       endpoint.ServerOwner,
+				Endpoint:    endpoint,
+				Extension:   extensions,
+				HttpPath:    paths,
+				GrpcService: grpc,
+			}
+
+			if t.Domain.Managed == schema.Domain_CLOUD_MANAGED || t.Domain.Managed == schema.Domain_LOCAL_MANAGED {
+				t.Name += "-managed"
+			}
+
+			ingresses = append(ingresses, t)
+		}
 	}
 
 	// Handle HTTP.
@@ -381,76 +397,61 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 				})
 			}
 
-			f, err := makeFragment(&schema.IngressFragment{
-				Name:     serverScoped(sch.Server, name),
-				Owner:    string(sch.GetPackageName()),
-				HttpPath: paths,
-			}, makeDomains(ctx, env, sch.Server, sch.ServerNaming, name))
+			domains, err := makeDomains(ctx, env, sch.Server, sch.ServerNaming, name)
 			if err != nil {
 				return nil, err
 			}
 
-			ingresses = append(ingresses, f...)
+			for _, domain := range domains {
+				t := &schema.IngressFragment{
+					Domain:   domain,
+					Name:     serverScoped(sch.Server, name),
+					Owner:    sch.GetPackageName().String(),
+					HttpPath: paths,
+				}
+
+				if t.Domain.Managed == schema.Domain_CLOUD_MANAGED || t.Domain.Managed == schema.Domain_LOCAL_MANAGED {
+					t.Name += "-managed"
+				}
+
+				ingresses = append(ingresses, t)
+			}
 		}
 	}
 
 	return ingresses, nil
 }
 
-func makeFragment(tmpl *schema.IngressFragment, makeDomains func() ([]*schema.Domain, error)) ([]*schema.IngressFragment, error) {
-	var fragments []*schema.IngressFragment
-
-	domains, err := makeDomains()
+func makeDomains(ctx context.Context, env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) ([]*schema.Domain, error) {
+	// XXX pass in auth.
+	allocated, err := allocateWildcard(ctx, env, srv, naming, allocatedName)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, domain := range domains {
-		t := proto.Clone(tmpl).(*schema.IngressFragment)
-		t.Domain = domain
-		if t.Domain.Managed == schema.Domain_CLOUD_MANAGED || t.Domain.Managed == schema.Domain_LOCAL_MANAGED {
-			t.Name += "-managed"
-		}
-
-		fragments = append(fragments, t)
+	var domains []*schema.Domain
+	if allocated.GetFqdn() != "" {
+		domains = append(domains, allocated)
 	}
 
-	return fragments, nil
-}
-
-func makeDomains(ctx context.Context, env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) func() ([]*schema.Domain, error) {
-	return func() ([]*schema.Domain, error) {
-		// XXX pass in auth.
-
-		allocated, err := allocateWildcard(ctx, env, srv, naming, allocatedName)
-		if err != nil {
-			return nil, err
-		}
-
-		var domains []*schema.Domain
-		if allocated.GetFqdn() != "" {
-			domains = append(domains, allocated)
-		}
-
-		for _, d := range naming.GetAdditionalTlsManaged() {
-			if d.AllocatedName == allocatedName {
-				domain, err := allocateName(ctx, srv, naming, fnapi.AllocateOpts{FQDN: d.Fqdn}, schema.Domain_USER_SPECIFIED_TLS_MANAGED, d.Fqdn+".specific")
-				if err != nil {
-					return nil, err
-				}
-
-				domains = append(domains, domain)
+	for _, d := range naming.GetAdditionalTlsManaged() {
+		if d.AllocatedName == allocatedName {
+			domain, err := allocateName(ctx, srv, naming, fnapi.AllocateOpts{FQDN: d.Fqdn}, schema.Domain_USER_SPECIFIED_TLS_MANAGED, d.Fqdn+".specific")
+			if err != nil {
+				return nil, err
 			}
-		}
 
-		for _, d := range naming.GetAdditionalUserSpecified() {
-			if d.AllocatedName == allocatedName {
-				domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED})
-			}
+			domains = append(domains, domain)
 		}
-
-		return domains, nil
 	}
+
+	for _, d := range naming.GetAdditionalUserSpecified() {
+		if d.AllocatedName == allocatedName {
+			domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED})
+		}
+	}
+
+	return domains, nil
 }
 
 func GuessDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) ([]*schema.Domain, error) {
