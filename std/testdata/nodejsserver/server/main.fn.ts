@@ -1,7 +1,7 @@
 // This file was automatically generated.
 
 import { Server, ServerCredentials } from "@grpc/grpc-js";
-import { DependencyGraph } from "foundation-runtime";
+import { DependencyGraph } from "@namespacelabs/foundation";
 import "source-map-support/register"
 import yargs from "yargs/yargs";
 

@@ -51,11 +51,11 @@ __metadata:
   resolution: "@namespacelabs.dev/foundation_std_testdata_nodejsserver_server@workspace:server"
   dependencies:
     "@grpc/grpc-js": 1.5.7
+    "@namespacelabs/foundation": ^0.1.18
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
     "@types/yargs": 16.x
-    foundation-runtime: "git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#f9123b50a4af880cc4d7c3edf28aa4dfce9a3e6d"
     google-protobuf: ^3.20.0
     source-map-support: 0.5.21
     ts-node: 10.7.x
@@ -63,6 +63,15 @@ __metadata:
     yargs: 16.x
   languageName: unknown
   linkType: soft
+
+"@namespacelabs/foundation@npm:^0.1.18":
+  version: 0.1.18
+  resolution: "@namespacelabs/foundation@npm:0.1.18::__archiveUrl=https%3A%2F%2Fus-npm.pkg.dev%2Ffoundation-344819%2Fnpm-prebuilts%2F%40namespacelabs%2Ffoundation%2F-%2F%40namespacelabs%2Ffoundation-0.1.18.tgz"
+  dependencies:
+    typescript: 4.6.2
+  checksum: 85050160474f4959d451fb2ffd8a54794352c5861e4eba1a7a7d47321691d5f4f2230a125a7b61e87f2cd36eb49fe9cf21674fda78640cef0170ad4766b81390
+  languageName: node
+  linkType: hard
 
 "@protobufjs/aspromise@npm:^1.1.1, @protobufjs/aspromise@npm:^1.1.2":
   version: 1.1.2
@@ -307,15 +316,6 @@ __metadata:
   version: 3.1.1
   resolution: "escalade@npm:3.1.1"
   checksum: a3e2a99f07acb74b3ad4989c48ca0c3140f69f923e56d0cba0526240ee470b91010f9d39001f2a4a313841d237ede70a729e92125191ba5d21e74b106800b133
-  languageName: node
-  linkType: hard
-
-"foundation-runtime@git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#f9123b50a4af880cc4d7c3edf28aa4dfce9a3e6d":
-  version: 0.1.0
-  resolution: "foundation-runtime@git+ssh://git@github.com:namespacelabs/nodejs-runtime.git#commit=f9123b50a4af880cc4d7c3edf28aa4dfce9a3e6d"
-  dependencies:
-    typescript: 4.6.2
-  checksum: 38732e9cfbc8e1d248e85d63691134f94c7aab44dc7a6f372e7b38c131673fa2e5feb86793d384165928c7342e82e6ab092f1a35dfcb04f0d95679bf5ab08160
   languageName: node
   linkType: hard
 

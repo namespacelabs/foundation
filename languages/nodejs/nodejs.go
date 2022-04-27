@@ -272,6 +272,10 @@ func yarnRcContent() string {
 	return fmt.Sprintf(
 		`nodeLinker: node-modules
 
+npmScopes: 
+  namespacelabs:
+    npmRegistryServer: "https://us-npm.pkg.dev/foundation-344819/npm-prebuilts/"
+
 yarnPath: .yarn/releases/yarn-%s.cjs
 `, yarnVersion)
 }

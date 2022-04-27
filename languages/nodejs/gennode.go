@@ -18,7 +18,7 @@ import (
 const (
 	depsFilename      = "deps.fn.ts"
 	singletonNameBase = "Singleton"
-	runtimeNpmPackage = "foundation-runtime"
+	runtimeNpmPackage = "@namespacelabs/foundation"
 	grpcNpmPackage    = "@grpc/grpc-js"
 )
 
