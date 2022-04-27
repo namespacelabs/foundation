@@ -217,6 +217,7 @@ func (g *Runner) apply(ctx context.Context, env Environment, parallel bool) ([]W
 			ordered = append(ordered, commit)
 			orderedTypeUrls = append(orderedTypeUrls, typeUrl)
 			delete(sessions, typeUrl)
+			delete(commits, typeUrl)
 		}
 	}
 
