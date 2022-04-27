@@ -5,18 +5,18 @@ package incluster
 
 import (
 	"context"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/std/go/core"
+	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
-	Creds          *creds.Creds
-	ReadinessCheck core.Check
+	Creds *creds.Creds
+	Wire  postgres.WireDatabase
 }
 
-type _checkProvideDatabase func(context.Context, *Database, ExtensionDeps) (*pgxpool.Pool, error)
+type _checkProvideDatabase func(context.Context, *Database, ExtensionDeps) (*postgres.DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase
 
@@ -43,7 +43,12 @@ func makeDeps__udoubi(ctx context.Context, di core.Dependencies) (_ interface{},
 		return nil, err
 	}
 
-	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
+	if err := di.Instantiate(ctx, postgres.Provider__sfr1nt, func(ctx context.Context, v interface{}) (err error) {
+		if deps.Wire, err = postgres.ProvideWireDatabase(ctx, nil, v.(postgres.ExtensionDeps)); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 

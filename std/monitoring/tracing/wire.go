@@ -31,7 +31,7 @@ var (
 		mu             sync.Mutex
 		initialized    bool
 		exporters      []trace.SpanExporter
-		tracerProvider *trace.TracerProvider // We don't use otel's global, to ensure that dependency order is respected.
+		tracerProvider t.TracerProvider // We don't use otel's global, to ensure that dependency order is respected.
 	}
 )
 
@@ -60,7 +60,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 
 	exporters := consumeExporters()
 	if len(exporters) == 0 {
-		return errors.New("tracing: no exporter")
+		return nil
 	}
 
 	for _, exp := range exporters {
@@ -139,7 +139,7 @@ func (DeferredTracerProvider) GetTracerProvider() (t.TracerProvider, error) {
 	global.mu.Lock()
 	defer global.mu.Unlock()
 
-	if !global.initialized || global.tracerProvider == nil {
+	if !global.initialized {
 		return nil, errors.New("tried to get a non-initialized TracerProvider; you need to use initializeAfter")
 	}
 

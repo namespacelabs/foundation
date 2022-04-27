@@ -5,15 +5,15 @@ package list
 
 import (
 	"context"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
 )
 
 // Dependencies that are instantiated once for the lifetime of the service.
 type ServiceDeps struct {
-	Db *pgxpool.Pool
+	Db *postgres.DB
 }
 
 // Verify that WireService is present and has the appropriate type.

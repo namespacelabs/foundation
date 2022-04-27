@@ -2,8 +2,8 @@ import (
 	"encoding/json"
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
+	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
-	"namespacelabs.dev/foundation/std/go/core"
 )
 
 $providerProto: inputs.#Proto & {
@@ -11,14 +11,10 @@ $providerProto: inputs.#Proto & {
 }
 
 extension: fn.#Extension & {
-	import: [
-		"namespacelabs.dev/foundation/universe/db/postgres",
-	]
-
 	instantiate: {
 		// TODO: Move creds instantiation into provides when the server supports multiple users
-		"creds":        creds.#Exports.Creds
-		readinessCheck: core.#Exports.ReadinessCheck
+		"creds": creds.#Exports.Creds
+		wire:    postgres.#Exports.WireDatabase
 	}
 
 	provides: {
@@ -27,8 +23,8 @@ extension: fn.#Extension & {
 
 			availableIn: {
 				go: {
-					package: "github.com/jackc/pgx/v4/pgxpool"
-					type:    "*Pool"
+					package: "namespacelabs.dev/foundation/universe/db/postgres"
+					type:    "*DB"
 				}
 			}
 		}

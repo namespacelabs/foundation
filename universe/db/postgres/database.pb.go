@@ -144,6 +144,44 @@ func (x *Database) GetHostedAt() *Endpoint {
 	return nil
 }
 
+type WireDatabaseArgs struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *WireDatabaseArgs) Reset() {
+	*x = WireDatabaseArgs{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_universe_db_postgres_database_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *WireDatabaseArgs) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WireDatabaseArgs) ProtoMessage() {}
+
+func (x *WireDatabaseArgs) ProtoReflect() protoreflect.Message {
+	mi := &file_universe_db_postgres_database_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WireDatabaseArgs.ProtoReflect.Descriptor instead.
+func (*WireDatabaseArgs) Descriptor() ([]byte, []int) {
+	return file_universe_db_postgres_database_proto_rawDescGZIP(), []int{2}
+}
+
 var File_universe_db_postgres_database_proto protoreflect.FileDescriptor
 
 var file_universe_db_postgres_database_proto_rawDesc = []byte{
@@ -169,10 +207,12 @@ var file_universe_db_postgres_database_proto_rawDesc = []byte{
 	0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x75, 0x6e, 0x69, 0x76,
 	0x65, 0x72, 0x73, 0x65, 0x2e, 0x64, 0x62, 0x2e, 0x70, 0x6f, 0x73, 0x74, 0x67, 0x72, 0x65, 0x73,
 	0x2e, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x52, 0x08, 0x68, 0x6f, 0x73, 0x74, 0x65,
-	0x64, 0x41, 0x74, 0x42, 0x33, 0x5a, 0x31, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65,
-	0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x2f, 0x75, 0x6e, 0x69, 0x76, 0x65, 0x72, 0x73, 0x65, 0x2f, 0x64, 0x62, 0x2f,
-	0x70, 0x6f, 0x73, 0x74, 0x67, 0x72, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x64, 0x41, 0x74, 0x22, 0x12, 0x0a, 0x10, 0x57, 0x69, 0x72, 0x65, 0x44, 0x61, 0x74, 0x61, 0x62,
+	0x61, 0x73, 0x65, 0x41, 0x72, 0x67, 0x73, 0x42, 0x33, 0x5a, 0x31, 0x6e, 0x61, 0x6d, 0x65, 0x73,
+	0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75,
+	0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x75, 0x6e, 0x69, 0x76, 0x65, 0x72, 0x73, 0x65,
+	0x2f, 0x64, 0x62, 0x2f, 0x70, 0x6f, 0x73, 0x74, 0x67, 0x72, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -187,14 +227,15 @@ func file_universe_db_postgres_database_proto_rawDescGZIP() []byte {
 	return file_universe_db_postgres_database_proto_rawDescData
 }
 
-var file_universe_db_postgres_database_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_universe_db_postgres_database_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_universe_db_postgres_database_proto_goTypes = []interface{}{
-	(*Endpoint)(nil),       // 0: foundation.universe.db.postgres.Endpoint
-	(*Database)(nil),       // 1: foundation.universe.db.postgres.Database
-	(*types.Resource)(nil), // 2: foundation.std.types.Resource
+	(*Endpoint)(nil),         // 0: foundation.universe.db.postgres.Endpoint
+	(*Database)(nil),         // 1: foundation.universe.db.postgres.Database
+	(*WireDatabaseArgs)(nil), // 2: foundation.universe.db.postgres.WireDatabaseArgs
+	(*types.Resource)(nil),   // 3: foundation.std.types.Resource
 }
 var file_universe_db_postgres_database_proto_depIdxs = []int32{
-	2, // 0: foundation.universe.db.postgres.Database.schema_file:type_name -> foundation.std.types.Resource
+	3, // 0: foundation.universe.db.postgres.Database.schema_file:type_name -> foundation.std.types.Resource
 	0, // 1: foundation.universe.db.postgres.Database.hosted_at:type_name -> foundation.universe.db.postgres.Endpoint
 	2, // [2:2] is the sub-list for method output_type
 	2, // [2:2] is the sub-list for method input_type
@@ -233,6 +274,18 @@ func file_universe_db_postgres_database_proto_init() {
 				return nil
 			}
 		}
+		file_universe_db_postgres_database_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*WireDatabaseArgs); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -240,7 +293,7 @@ func file_universe_db_postgres_database_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_universe_db_postgres_database_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

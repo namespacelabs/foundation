@@ -10,18 +10,18 @@ import (
 	"log"
 	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
 type Service struct {
-	db *pgxpool.Pool
+	db *postgres.DB
 }
 
 const postgresTimeout = 2 * time.Second
 
-func add(ctx context.Context, db *pgxpool.Pool, item string) error {
+func add(ctx context.Context, db *postgres.DB, item string) error {
 	ctx, cancel := context.WithTimeout(ctx, postgresTimeout)
 	defer cancel()
 
@@ -40,7 +40,7 @@ func (svc *Service) Add(ctx context.Context, req *AddRequest) (*emptypb.Empty, e
 	return response, nil
 }
 
-func list(ctx context.Context, db *pgxpool.Pool) ([]string, error) {
+func list(ctx context.Context, db *postgres.DB) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, postgresTimeout)
 	defer cancel()
 

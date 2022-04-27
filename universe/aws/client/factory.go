@@ -32,7 +32,9 @@ func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOpti
 		return aws.Config{}, err
 	}
 
-	otelaws.AppendMiddlewares(&cfg.APIOptions, otelaws.WithTracerProvider(provider))
+	if provider != nil {
+		otelaws.AppendMiddlewares(&cfg.APIOptions, otelaws.WithTracerProvider(provider))
+	}
 
 	return cfg, nil
 }

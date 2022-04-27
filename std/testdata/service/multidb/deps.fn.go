@@ -6,17 +6,17 @@ package multidb
 import (
 	"context"
 	"database/sql"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/universe/db/maria/incluster"
+	"namespacelabs.dev/foundation/universe/db/postgres"
 	incluster1 "namespacelabs.dev/foundation/universe/db/postgres/incluster"
 )
 
 // Dependencies that are instantiated once for the lifetime of the service.
 type ServiceDeps struct {
 	Maria    *sql.DB
-	Postgres *pgxpool.Pool
+	Postgres *postgres.DB
 }
 
 // Verify that WireService is present and has the appropriate type.

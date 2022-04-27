@@ -9,9 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 
-	"github.com/jackc/pgx/v4/pgxpool"
-	"golang.org/x/xerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
@@ -27,13 +26,13 @@ func getEndpoint() (*schema.Endpoint, error) {
 
 	var endpoint schema.Endpoint
 	if err := json.Unmarshal([]byte(*postgresqlEndpoint), &endpoint); err != nil {
-		return nil, xerrors.Errorf("failed to parse postgresql endpoint configuration: %w", err)
+		return nil, fmt.Errorf("failed to parse postgresql endpoint configuration: %w", err)
 	}
 
 	return &endpoint, nil
 }
 
-func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*pgxpool.Pool, error) {
+func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*postgres.DB, error) {
 	endpoint, err := getEndpoint()
 	if err != nil {
 		return nil, err
@@ -48,5 +47,5 @@ func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*pg
 		},
 	}
 
-	return postgres.ProvideDatabase(ctx, base, "postgres", deps.Creds.Password, deps.ReadinessCheck)
+	return deps.Wire.ProvideDatabase(ctx, base, "postgres", deps.Creds.Password)
 }

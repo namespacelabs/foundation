@@ -5,14 +5,14 @@ package opaque
 
 import (
 	"context"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/std/go/core"
+	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/opaque/creds"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
-	ReadinessCheck core.Check
+	Wire postgres.WireDatabase
 }
 
 // Scoped dependencies that are instantiated for each call to ProvideDatabase.
@@ -20,7 +20,7 @@ type DatabaseDeps struct {
 	Creds *creds.Creds
 }
 
-type _checkProvideDatabase func(context.Context, *Database, ExtensionDeps, DatabaseDeps) (*pgxpool.Pool, error)
+type _checkProvideDatabase func(context.Context, *Database, ExtensionDeps, DatabaseDeps) (*postgres.DB, error)
 
 var _ _checkProvideDatabase = ProvideDatabase
 
@@ -43,7 +43,12 @@ var (
 func makeDeps__pj9age(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
-	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
+	if err := di.Instantiate(ctx, postgres.Provider__sfr1nt, func(ctx context.Context, v interface{}) (err error) {
+		if deps.Wire, err = postgres.ProvideWireDatabase(ctx, nil, v.(postgres.ExtensionDeps)); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 
