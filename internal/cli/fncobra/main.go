@@ -107,7 +107,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	bundler := tasks.NewActionBundler()
 	// Delete stale bundles asynchronously on startup.
-	defer bundler.RemoveStaleBundles()
+	defer func() {
+		_ = bundler.RemoveStaleBundles()
+	}()
 
 	// Create a new in-memory bundle to track actions. The bundle
 	// is flushed at the end of command invocation.
