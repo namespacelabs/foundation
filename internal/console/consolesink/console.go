@@ -564,23 +564,27 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 		height = uint(w.Height)
 	}
 
-	// Hide the cursor while re-rendering.
-	fmt.Fprint(c.out, aec.Hide)
-	defer fmt.Fprint(c.out, aec.Show)
-
 	previousLines := c.previousLines
 
-	alreadyReset := false
+	cursorWasReset := false
 	resetCursorOnce := func() {
-		if !alreadyReset {
+		if !cursorWasReset {
+			// Hide the cursor while re-rendering.
+			fmt.Fprint(c.out, aec.Hide)
 			if !DebugConsoleOutput {
 				if x := uint(len(previousLines)); x > 0 {
 					fmt.Fprint(c.out, aec.Up(x))
 				}
 			}
-			alreadyReset = true
+			cursorWasReset = true
 		}
 	}
+
+	defer func() {
+		if cursorWasReset {
+			fmt.Fprint(c.out, aec.Show)
+		}
+	}()
 
 	rawOut := checkDirtyWriter{out: c.out, onFirstWrite: func() {
 		resetCursorOnce()
