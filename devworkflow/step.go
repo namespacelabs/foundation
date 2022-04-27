@@ -41,7 +41,7 @@ func doWorkspace(ctx context.Context, set *DevWorkflowRequest_SetWorkspace, obs 
 }
 
 func step(ctx context.Context, set *DevWorkflowRequest_SetWorkspace, obs *stackState) error {
-	done := tasks.SetIdleLabel(ctx, "waiting for workspace changes")
+	done := console.SetIdleLabel(ctx, "waiting for workspace changes")
 	defer done()
 
 	// Re-create loc/root here, to dump the cache.

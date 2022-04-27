@@ -61,11 +61,8 @@ func (n *Node) ProvidedInFrameworks() map[Framework]bool {
 	fmwksSet := map[Framework]bool{}
 	for _, p := range n.Provides {
 		for _, a := range p.AvailableIn {
-			if a.Go != nil {
-				fmwksSet[Framework_GO_GRPC] = true
-			}
-			if a.Web != nil {
-				fmwksSet[Framework_WEB] = true
+			for k, v := range a.ProvidedInFrameworks() {
+				fmwksSet[k] = v
 			}
 		}
 	}
@@ -175,4 +172,18 @@ func (e *Endpoint) HasKind(str string) bool {
 		}
 	}
 	return false
+}
+
+func (p *Provides_AvailableIn) ProvidedInFrameworks() map[Framework]bool {
+	fmwksSet := map[Framework]bool{}
+	if p.Go != nil {
+		fmwksSet[Framework_GO_GRPC] = true
+	}
+	if p.Web != nil {
+		fmwksSet[Framework_WEB] = true
+	}
+	if p.Nodejs != nil {
+		fmwksSet[Framework_NODEJS] = true
+	}
+	return fmwksSet
 }

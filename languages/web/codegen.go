@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/fs"
 
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -51,7 +52,7 @@ func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definit
 
 		return fnfs.WriteFileExtended(ctx, out, loc.Rel(path), info.Mode(), fnfs.WriteFileExtendedOpts{
 			CompareContents: true,
-			AnnounceWrite:   true,
+			AnnounceWrite:   console.Stdout(ctx),
 		}, func(w io.Writer) error {
 			_, err := w.Write(contents)
 			return err
@@ -76,11 +77,11 @@ func generatePlaceholder(loader workspace.Packages) genFunc {
 	}
 }
 
-func resolveBackend(loader workspace.Packages, env *schema.Environment, endpoints languages.Endpoints) genFunc {
+func resolveBackend(wenv workspace.WorkspaceEnvironment, endpoints languages.Endpoints) genFunc {
 	return func(ctx context.Context, loc workspace.Location, backend *OpGenHttpBackend_Backend) (*backendDefinition, error) {
 		for _, endpoint := range endpoints.GetEndpoints() {
 			if endpoint.EndpointOwner == backend.EndpointOwner && endpoint.ServiceName == backend.ServiceName {
-				pkg, err := loader.LoadByName(ctx, schema.PackageName(endpoint.EndpointOwner))
+				pkg, err := wenv.LoadByName(ctx, schema.PackageName(endpoint.EndpointOwner))
 				if err != nil {
 					return nil, fnerrors.Wrapf(loc, err, "failed to load dependency")
 				}
@@ -89,12 +90,12 @@ func resolveBackend(loader workspace.Packages, env *schema.Environment, endpoint
 					return nil, fnerrors.InternalError("expected %q to be a server", endpoint.EndpointOwner)
 				}
 
-				plan, err := pkg.Parsed.EvalProvision(ctx, frontend.ProvisionInputs{Env: env, ServerLocation: pkg.Location})
+				plan, err := pkg.Parsed.EvalProvision(ctx, wenv, frontend.ProvisionInputs{ServerLocation: pkg.Location})
 				if err != nil {
 					return nil, fnerrors.InternalError("%s: failed to determine naming configuration: %w", pkg.Location.PackageName, err)
 				}
 
-				domains, err := runtime.GuessDomains(env, pkg.Server, plan.Naming, endpoint.AllocatedName)
+				domains, err := runtime.GuessDomains(wenv.Proto(), pkg.Server, plan.Naming, endpoint.AllocatedName)
 				if err != nil {
 					return nil, fnerrors.Wrapf(loc, err, "failed to compute domains")
 				}

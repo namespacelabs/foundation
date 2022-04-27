@@ -22,9 +22,11 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewLogsCmd())
 	root.AddCommand(NewLoginCmd())
 	root.AddCommand(NewKeysCmd())
+	root.AddCommand(NewSecretsCmd())
 	root.AddCommand(NewTestCmd())
 	root.AddCommand(NewDebugShellCmd())
 	root.AddCommand(NewModCmd())
 	root.AddCommand(NewSdkCmd())
 	root.AddCommand(NewVersionCmd())
+	root.AddCommand(NewBundlesCmd())
 }

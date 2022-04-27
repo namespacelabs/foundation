@@ -5,15 +5,20 @@
 package cmd
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"syscall"
 
 	"filippo.io/age"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -21,12 +26,15 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/workspace/dirs"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func NewKeysCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "keys",
+		Use: "keys",
+	}
+
+	list := &cobra.Command{
+		Use:   "list",
 		Short: "Displays the configured public keys used for local secret management.",
 		Args:  cobra.NoArgs,
 
@@ -83,9 +91,18 @@ func NewKeysCmd() *cobra.Command {
 		Use:   "encrypt",
 		Short: "Encrypt a directory (e.g. secrets).",
 		Args:  cobra.ExactArgs(1),
-
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			return enc(ctx, args[0], fnfs.ReadWriteLocalFS(args[0]), reencrypt)
+		}),
+	}
+
+	importCmd := &cobra.Command{
+		Use:   "import [public-key]",
+		Short: "Import an existing public/private key pair.",
+		Args:  cobra.ExactArgs(1),
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			return importImpl(ctx, args[0])
 		}),
 	}
 
@@ -100,7 +117,8 @@ func NewKeysCmd() *cobra.Command {
 				return fnerrors.InternalError("failed to fetch keydir: %w", err)
 			}
 
-			archive, err := os.Open(filepath.Join(args[0], keys.EncryptedFile))
+			origSecretsDir := args[0]
+			archive, err := os.Open(filepath.Join(origSecretsDir, keys.EncryptedFile))
 			if err != nil {
 				return fnerrors.InternalError("failed to open encrypted file: %w", err)
 			}
@@ -117,44 +135,44 @@ func NewKeysCmd() *cobra.Command {
 			}
 
 			// XXX guarantee in-memory?
-			dir, err := dirs.CreateUserTempDir(args[0], "keys-shell")
+			tmpDirPath, err := dirs.CreateUserTempDir(origSecretsDir, "keys-shell")
 			if err != nil {
 				return fnerrors.InternalError("failed to create tempdir: %w", err)
 			}
 
-			defer os.RemoveAll(dir)
+			defer os.RemoveAll(tmpDirPath)
 
-			dst := fnfs.ReadWriteLocalFS(dir)
+			tmpDir := fnfs.ReadWriteLocalFS(tmpDirPath)
 
 			if err := fnfs.VisitFiles(ctx, fsys, func(path string, contents []byte, dirent fs.DirEntry) error {
 				d := filepath.Dir(path)
 				if d != "." {
-					if err := os.Mkdir(filepath.Join(dir, d), 0700); err != nil {
+					if err := os.Mkdir(filepath.Join(tmpDirPath, d), 0700); err != nil {
 						return fnerrors.InternalError("%s: failed to mkdir: %w", path, err)
 					}
 				}
 
-				return fnfs.WriteFile(ctx, dst, path, contents, 0600)
+				return fnfs.WriteFile(ctx, tmpDir, path, contents, 0600)
 			}); err != nil {
 				return fnerrors.InternalError("visitfiles failed: %w", err)
 			}
 
 			if err := func() error {
-				done := tasks.EnterInputMode(ctx)
+				done := console.EnterInputMode(ctx)
 				defer done()
 
 				bash := exec.CommandContext(ctx, "bash")
 				bash.Stdout = os.Stdout
 				bash.Stderr = os.Stderr
 				bash.Stdin = os.Stdin
-				bash.Dir = dir
+				bash.Dir = tmpDirPath
 
 				return bash.Run()
 			}(); err != nil {
 				return err
 			}
 
-			changedDigest, err := digestfs.Digest(ctx, dst, nil, nil)
+			changedDigest, err := digestfs.Digest(ctx, tmpDir, nil, nil)
 			if err == nil {
 				// If we fail to compute the digest, it's ok, just go ahead and rewrite the contents.
 				if changedDigest == originalDigest {
@@ -163,11 +181,11 @@ func NewKeysCmd() *cobra.Command {
 				}
 			}
 
-			if err := keys.EncryptLocal(ctx, fnfs.ReadWriteLocalFS(dir), dst); err != nil {
+			if err := keys.EncryptLocal(ctx, fnfs.ReadWriteLocalFS(origSecretsDir), tmpDir); err != nil {
 				return err
 			}
 
-			fmt.Fprintf(console.Stdout(ctx), "Updated %s.\n", archive.Name())
+			fmt.Fprintf(console.Stdout(ctx), "Updated %q.\n", archive.Name())
 
 			return nil
 		}),
@@ -175,8 +193,10 @@ func NewKeysCmd() *cobra.Command {
 
 	encrypt.Flags().BoolVar(&reencrypt, "reencrypt", reencrypt, "Use re-encryption instead.")
 
+	cmd.AddCommand(list)
 	cmd.AddCommand(generate)
 	cmd.AddCommand(encrypt)
+	cmd.AddCommand(importCmd)
 	cmd.AddCommand(shell)
 
 	return cmd
@@ -196,5 +216,60 @@ func enc(ctx context.Context, dir string, src fs.FS, reencrypt bool) error {
 	}
 
 	fmt.Fprintf(console.Stdout(ctx), "Updated %s\n", filepath.Join(dir, keys.EncryptedFile))
+	return nil
+}
+
+func readPassword(ctx context.Context, prompt string) ([]byte, error) {
+	if term.IsTerminal(syscall.Stdin) {
+		done := console.EnterInputMode(ctx, prompt)
+		defer done()
+		pass, err := term.ReadPassword(syscall.Stdin)
+		if err != nil {
+			return nil, err
+		}
+		return pass, nil
+	} else {
+		reader := bufio.NewReader(os.Stdin)
+		// Read until (required) newline.
+		s, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+		return []byte(s), nil
+	}
+}
+
+func importImpl(ctx context.Context, publicKey string) error {
+	if _, err := age.ParseRecipients(strings.NewReader(publicKey)); err != nil {
+		return fnerrors.BadInputError("key %q is not valid: %w", publicKey, err)
+	}
+	keyDir, err := keys.EnsureKeysDir(ctx)
+	if err != nil {
+		return fnerrors.InternalError("failed to fetch keydir: %w", err)
+	}
+	// Check if a given key already exists. We should probably ask if overwrite is intended. As for now, bail out.
+	if err := keys.Visit(ctx, keyDir, func(xid *age.X25519Identity) error {
+		if xid.Recipient().String() == publicKey {
+			return fmt.Errorf("key %q already exists, won't be overwritten", publicKey)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	pass, err := readPassword(ctx, "Please paste the private key (the input will not be echo-ed):\n")
+	if err != nil {
+		return err
+	}
+	if identities, err := age.ParseIdentities(bytes.NewReader(pass)); err != nil {
+		return err
+	} else if len(identities) != 1 {
+		return fmt.Errorf("expecting one key to be present, got %d", len(identities))
+	}
+	if err := fnfs.WriteFile(ctx, keyDir, publicKey+".txt", append(pass, '\n'), 0600); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(console.Stdout(ctx), "Successfully imported key %q\n", publicKey)
 	return nil
 }

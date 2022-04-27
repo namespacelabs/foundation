@@ -102,7 +102,9 @@ message Node {
 }
 
 message NodeInitializer {
-    Framework framework = 1;
+    Framework       framework         = 1;
+    repeated string initialize_before = 2;  // Package name.
+    repeated string initialize_after  = 3;  // Package name.
 }
 
 enum Framework {
@@ -142,8 +144,9 @@ message Provides {
     repeated AvailableIn available_in = 3;
 
     message AvailableIn {
-        Go  go  = 1;
-        Web web = 2;
+        Go     go     = 1;
+        Web    web    = 2;
+        NodeJs nodejs = 3;
 
         message Go {
             string package = 1;
@@ -151,6 +154,11 @@ message Provides {
         }
 
         message Web {}
+
+        message NodeJs {
+            string import = 1;
+            string type   = 2;
+        }
     }
 
     // Scoped dependencies instantiated for this provided type.
@@ -297,6 +305,8 @@ message Environment {
     string  name    = 1;
     string  runtime = 2;  // E.g. kubernetes
     Purpose purpose = 3;
+    // Typically only set for tests. Signals that this environment is single-use and not meant to be user serviceable.
+    bool ephemeral = 4;
 
     enum Purpose {
         PURPOSE_UNKNOWN = 0;
@@ -329,7 +339,12 @@ message RequiredStorage {
 }
 
 message Naming {
-    string with_org                = 1;  // Allocate with the following organization.
-    string domain_name             = 2;  // If set, also configures the ingress with this domain.
-    string tls_managed_domain_name = 3;  // If set, both configures an ingress with this domain, and requests TLS certificate from Foundation.
+    string                        with_org                  = 1;  // Allocate with the following organization.
+    repeated AdditionalDomainName additional_user_specified = 2;  // If set, also configures the ingress with these domains.
+    repeated AdditionalDomainName additional_tls_managed    = 3;  // If set, both configures an ingress with these domains, and requests TLS certificate from Foundation.
+
+    message AdditionalDomainName {
+        string allocated_name = 1;
+        string fqdn           = 2;
+    }
 }

@@ -19,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -39,6 +40,8 @@ func RegisterGraphHandlers() {
 		if err != nil {
 			return nil, err
 		}
+
+		fmt.Fprintf(console.Debug(ctx), "kubernetes: using configuration: %+v\n", cfg)
 
 		cli, err := client.NewClientFromHostEnv(cfg)
 		if err != nil {

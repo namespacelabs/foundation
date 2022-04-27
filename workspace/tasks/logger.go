@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog"
+	"namespacelabs.dev/foundation/internal/console/common"
 )
 
 func NewLoggerSink(logger *zerolog.Logger) ActionSink { return &sinkLogger{logger} }
@@ -15,17 +16,17 @@ func NewLoggerSink(logger *zerolog.Logger) ActionSink { return &sinkLogger{logge
 type sinkLogger struct{ logger *zerolog.Logger }
 
 func (sl *sinkLogger) start(ev EventData, withArgs bool) *zerolog.Event {
-	e := sl.logger.Info().Str("action_id", ev.actionID).Str("name", ev.name).Int("log_level", ev.level)
-	if ev.parentID != "" {
-		e = e.Str("parent_id", ev.parentID)
+	e := sl.logger.Info().Str("action_id", ev.ActionID).Str("name", ev.Name).Int("log_level", ev.Level)
+	if ev.ParentID != "" {
+		e = e.Str("parent_id", ev.ParentID)
 	}
 	if withArgs {
-		if ev.scope.Len() > 0 {
-			e = e.Strs("scope", ev.scope.PackageNamesAsString())
+		if ev.Scope.Len() > 0 {
+			e = e.Strs("scope", ev.Scope.PackageNamesAsString())
 		}
 
-		for _, arg := range ev.arguments {
-			res, err := serialize(arg.msg)
+		for _, arg := range ev.Arguments {
+			res, err := common.Serialize(arg.Msg)
 			if err != nil {
 				e = e.Interface(arg.Name, fmt.Sprintf("failed to serialize: %v", err))
 			} else {
@@ -41,26 +42,26 @@ func (sl *sinkLogger) Waiting(ra *RunningAction) {
 }
 
 func (sl *sinkLogger) Started(ra *RunningAction) {
-	sl.start(ra.data, true).Msg("start")
+	sl.start(ra.Data, true).Msg("start")
 }
 
 func (sl *sinkLogger) Done(ra *RunningAction) {
-	ev := sl.start(ra.data, true)
-	if ra.data.err != nil {
-		t := errorType(ra.data.err)
+	ev := sl.start(ra.Data, true)
+	if ra.Data.Err != nil {
+		t := ErrorType(ra.Data.Err)
 		switch t {
-		case errIsCancelled, errIsDependencyFailed:
+		case ErrTypeIsCancelled, ErrTypeIsDependencyFailed:
 			ev.Msg(string(t))
 			return
 		default:
-			ev = ev.Stack().Err(ra.data.err)
+			ev = ev.Stack().Err(ra.Data.Err)
 		}
 	}
-	ev.Dur("took", ra.data.completed.Sub(ra.data.started)).Msg("done")
+	ev.Dur("took", ra.Data.Completed.Sub(ra.Data.Started)).Msg("done")
 }
 
 func (sl *sinkLogger) Instant(ev *EventData) {
-	sl.start(*ev, true).Msg(ev.name)
+	sl.start(*ev, true).Msg(ev.Name)
 }
 
-func (sl *sinkLogger) AttachmentsUpdated(string, *resultData) { /* nothing to do */ }
+func (sl *sinkLogger) AttachmentsUpdated(string, *ResultData) { /* nothing to do */ }

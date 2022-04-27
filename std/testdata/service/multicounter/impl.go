@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/types/known/emptypb"
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/std/testdata/counter"
 )
 
@@ -38,7 +38,7 @@ func (svc *Service) Get(ctx context.Context, req *GetRequest) (*GetResponse, err
 	return nil, fmt.Errorf("unknown counter %s", req.Name)
 }
 
-func WireService(ctx context.Context, srv *server.Grpc, deps ServiceDeps) {
+func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	svc := &Service{counters: []counter.Counter{*deps.One, *deps.Two}}
 	RegisterMulticounterServiceServer(srv, svc)
 }

@@ -9,9 +9,9 @@ import (
 	"os/exec"
 
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/runtime/rtypes"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func (r boundEnv) Kubectl(ctx context.Context, io rtypes.IO, args ...string) error {
@@ -20,7 +20,7 @@ func (r boundEnv) Kubectl(ctx context.Context, io rtypes.IO, args ...string) err
 		return err
 	}
 
-	done := tasks.EnterInputMode(ctx)
+	done := console.EnterInputMode(ctx)
 	defer done()
 
 	kubectl := exec.CommandContext(ctx, string(kubectlBin),

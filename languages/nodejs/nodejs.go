@@ -15,9 +15,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -91,7 +93,11 @@ func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definit
 		return nil, err
 	}
 
-	return nil, generateServer(ctx, workspacePackages, loc, msg.Server, msg.LoadedNode, loc.Module.ReadWriteFS())
+	if err := generateServer(ctx, workspacePackages, loc, msg.Server, msg.LoadedNode, loc.Module.ReadWriteFS()); err != nil {
+		return nil, fnerrors.InternalError("failed to generate server: %w", err)
+	}
+
+	return nil, nil
 }
 
 type impl struct {
@@ -103,7 +109,7 @@ type impl struct {
 func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server provision.Server, isFocus bool) (build.Spec, error) {
 	deps := []workspace.Location{}
 	for _, dep := range server.Deps() {
-		if dep.Node() != nil && dep.Node().ServiceFramework == schema.Framework_NODEJS {
+		if dep.Node() != nil && slices.Contains(dep.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS) {
 			deps = append(deps, dep.Location)
 		}
 	}
@@ -192,7 +198,7 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 	yarnRoots := map[string]*workspace.Module{}
 	for _, pkg := range packages {
 		if (pkg.Server != nil && pkg.Server.Framework == schema.Framework_NODEJS) ||
-			(pkg.Node() != nil && pkg.Node().ServiceFramework == schema.Framework_NODEJS) {
+			(pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS)) {
 			yarnRoot, err := findYarnRoot(pkg.Location)
 			if err != nil {
 				// If we can't find yarn root, using the workspace root.
@@ -232,7 +238,7 @@ func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) er
 	}
 
 	// Write .yarnrc.yml with the correct nodeLinker.
-	if err := fnfs.WriteWorkspaceFile(ctx, module.ReadWriteFS(), filepath.Join(path, yarnRcFn), func(w io.Writer) error {
+	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), module.ReadWriteFS(), filepath.Join(path, yarnRcFn), func(w io.Writer) error {
 		_, err := io.WriteString(w, yarnRcContent())
 		return err
 	}); err != nil {
@@ -242,9 +248,12 @@ func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) er
 	// Create "tsconfig.json" if it doesn't exist.
 	tsconfigFn := filepath.Join(path, "tsconfig.json")
 	if _, err := updateJson(ctx, tsconfigFn, module.ReadWriteFS(),
-		func(packageJson map[string]interface{}, fileExisted bool) {
+		func(tsconfig map[string]interface{}, fileExisted bool) {
 			if !fileExisted {
-				packageJson["extends"] = "@tsconfig/node16/tsconfig.json"
+				tsconfig["extends"] = "@tsconfig/node16/tsconfig.json"
+				tsconfig["compilerOptions"] = map[string]interface{}{
+					"sourceMap": true,
+				}
 			}
 		}); err != nil {
 		return err
@@ -280,8 +289,15 @@ func updateYarnRootPackageJson(ctx context.Context, path string, fs fnfs.ReadWri
 	return yarnHasCorrectVersion, err
 }
 
-func (impl) TidyNode(ctx context.Context, p *workspace.Package) error {
-	err := tidyPackageJson(ctx, p.Location, p.Node().Import)
+func (impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
+	depPkgNames := []string{}
+	for _, ref := range p.Node().Reference {
+		if ref.PackageName != "" {
+			depPkgNames = append(depPkgNames, ref.PackageName)
+		}
+	}
+
+	err := tidyPackageJson(ctx, pkgs, p.Location, depPkgNames)
 	if err != nil {
 		return err
 	}
@@ -303,7 +319,7 @@ func maybeGenerateImplStub(ctx context.Context, p *workspace.Package) error {
 		return nil
 	}
 
-	tmplOptions := nodeimplTmplOptions{}
+	tmplOptions := nodeImplTmplOptions{}
 	for key, srv := range p.Services {
 		srvNameParts := strings.Split(key, ".")
 		srvName := srvNameParts[len(srvNameParts)-1]
@@ -334,12 +350,12 @@ func fileNameForService(srvName string, descriptors []*descriptorpb.FileDescript
 	return "", fnerrors.InternalError("Couldn't find service %s in the generated proto descriptors.", srvName)
 }
 
-func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *schema.Server) error {
-	return tidyPackageJson(ctx, loc, server.Import)
+func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, server *schema.Server) error {
+	return tidyPackageJson(ctx, pkgs, loc, server.Import)
 }
 
-func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []string) error {
-	nodejsLoc, err := nodejsLocationFrom(loc.PackageName)
+func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, depPkgNames []string) error {
+	npmPackage, err := toNpmPackage(loc.PackageName)
 	if err != nil {
 		return err
 	}
@@ -348,16 +364,23 @@ func tidyPackageJson(ctx context.Context, loc workspace.Location, imports []stri
 	for key, value := range builtin().Dependencies {
 		dependencies[key] = value
 	}
-	for _, importName := range imports {
-		loc, err := nodejsLocationFrom(schema.Name(importName))
+	for _, importName := range depPkgNames {
+		pkg, err := pkgs.LoadByName(ctx, schema.PackageName(importName))
 		if err != nil {
 			return err
 		}
-		dependencies[loc.NpmPackage] = yarnWorkspaceVersion
+
+		if pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS) {
+			importNpmPackage, err := toNpmPackage(pkg.PackageName())
+			if err != nil {
+				return err
+			}
+			dependencies[string(importNpmPackage)] = yarnWorkspaceVersion
+		}
 	}
 
 	_, err = updatePackageJson(ctx, loc.Rel(), loc.Module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
-		packageJson["name"] = nodejsLoc.NpmPackage
+		packageJson["name"] = npmPackage
 		packageJson["private"] = true
 		packageJson["version"] = yarnWorkspaceVersion
 
@@ -421,10 +444,14 @@ func updateJson(ctx context.Context, filepath string, fsys fnfs.ReadWriteFS, cal
 	// so for idempotency we do the same.
 	updatedJsonRaw = append(updatedJsonRaw, '\n')
 
-	return parsedJson, fnfs.WriteWorkspaceFile(ctx, fsys, filepath, func(w io.Writer) error {
+	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsys, filepath, func(w io.Writer) error {
 		_, err := w.Write(updatedJsonRaw)
 		return err
-	})
+	}); err != nil {
+		return nil, err
+	}
+
+	return parsedJson, nil
 }
 
 func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {

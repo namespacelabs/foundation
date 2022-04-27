@@ -8,6 +8,8 @@ builds:
     binary: fn
     flags:
       - -trimpath
+    ldflags:
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
     goos:
       - linux
     goarch:
@@ -21,28 +23,30 @@ builds:
     binary: fn
     flags:
       - -trimpath
+    ldflags:
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
     goos:
       - darwin
     goarch:
       - amd64
       - arm64
 
-signs:
-  - signature: "${artifact}_macos.dmg"
-    ids:
-      - macos
-    cmd: gon
-    args:
-      - cmd/fn/gon.hcl
-    artifacts: all
+# signs:
+#   - signature: "${artifact}_macos.dmg"
+#     ids:
+#       - macos
+#     cmd: gon
+#     args:
+#       - cmd/fn/gon.hcl
+#     artifacts: all
 
 release:
   github:
     owner: namespacelabs
     name: foundation
-  extra_files:
-    - glob: ./dist/fn_macos.dmg
-    - glob: ./dist/fn_macos.zip
+  # extra_files:
+  #   - glob: ./dist/fn_macos.dmg
+  #   - glob: ./dist/fn_macos.zip
 
 checksum:
   name_template: "checksums.txt"

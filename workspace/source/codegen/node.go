@@ -20,6 +20,7 @@ import (
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -156,7 +157,7 @@ func generateNode(ctx context.Context, loc workspace.Location, n *schema.Node, p
 
 	_, _ = out.WriteTo(&final)
 
-	return fnfs.WriteWorkspaceFile(ctx, fs, loc.Rel("exports.fn.cue"), func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fs, loc.Rel("exports.fn.cue"), func(w io.Writer) error {
 		formatted, err := format.Source(final.Bytes())
 		if err != nil {
 			return err

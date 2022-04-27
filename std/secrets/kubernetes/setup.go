@@ -11,17 +11,19 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
+	fnsecrets "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/provision/configure"
-	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
@@ -43,31 +45,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return err
 	}
 
-	data, err := secrets.FillData(ctx, collection, func() (fs.FS, error) {
-		contents := r.Snapshots["secrets"]
-		if contents == nil {
-			return nil, fmt.Errorf("secrets snapshot is missing from input")
-		}
-
-		archive, err := contents.Open(keys.EncryptedFile)
-		if err != nil && !os.IsNotExist(err) {
-			return nil, err
-		} else if err == nil {
-			defer archive.Close()
-
-			keyDir := r.Snapshots[deploy.SnapshotKeys]
-			if keyDir == nil {
-				return nil, fmt.Errorf("can't use encrypted secrets without keys")
-			}
-
-			contents, err = keys.DecryptAsFS(ctx, keyDir, archive)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decrypt: %w", err)
-			}
-		}
-
-		return contents, nil
-	})
+	data, err := fillData(ctx, r.Focus.Server, r.Env, collection, r)
 	if err != nil {
 		return err
 	}
@@ -81,6 +59,10 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	devMapJSON, err := protojson.Marshal(collection.DevMap)
 	if err != nil {
 		return err
+	}
+
+	if data == nil {
+		data = map[string][]byte{}
 	}
 
 	// We do something funky here, we keep the mapping as a secret, so that
@@ -101,7 +83,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		Name:        name,
 		Body: applycorev1.
 			Secret(name, namespace).
-			WithType(corev1.SecretTypeOpaque).
+			WithType(v1.SecretTypeOpaque).
 			WithAnnotations(kubedef.MakeAnnotations(r.Stack.GetServer(r.Focus.GetPackageName()))).
 			WithLabels(kubedef.MakeLabels(r.Env, r.Focus.Server)).
 			WithData(data),
@@ -215,4 +197,199 @@ func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure
 
 func serverSecretName(srv *schema.Server) string {
 	return strings.Join([]string{srv.Name, srv.Id}, "-") + ".managed.namespacelabs.dev"
+}
+
+func fillData(ctx context.Context, server *schema.Server, env *schema.Environment, col *secrets.Collection, r configure.StackRequest) (map[string][]byte, error) {
+	var count int
+	for _, userManaged := range col.UserManaged {
+		count += len(userManaged)
+	}
+
+	if count == 0 {
+		return nil, nil
+	}
+
+	snapshotKeys := r.Snapshots[keys.SnapshotKeys]
+
+	contentSnapshots := map[string]fs.FS{}
+	for key, snapshot := range r.Snapshots {
+		if key != keys.SnapshotKeys {
+			contentSnapshots[key] = snapshot
+		}
+	}
+
+	// Legacy path.
+	if secrets, ok := contentSnapshots["secrets"]; ok {
+		if len(contentSnapshots) > 1 {
+			return nil, fnerrors.UserError(nil, "use of old-style secrets/ directory and secret bundles are mutually exclusive")
+		}
+
+		contents, err := loadSnapshot(ctx, secrets, snapshotKeys)
+		if err != nil {
+			return nil, err
+		}
+
+		data := map[string][]byte{}
+		for k, userManaged := range col.UserManaged {
+			if len(userManaged) == 0 {
+				continue
+			}
+
+			m, err := provideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
+			if err != nil {
+				return nil, err
+			}
+
+			names := col.Names[k]
+			for j, sec := range userManaged {
+				name := names[j]
+				data[name] = m[sec.Name]
+			}
+		}
+
+		return data, nil
+	}
+
+	var bundles []*fnsecrets.Bundle
+	var bundleNames []string
+
+	for _, snapshot := range contentSnapshots {
+		if err := fnfs.VisitFiles(ctx, snapshot, func(path string, contents []byte, de fs.DirEntry) error {
+			if filepath.Ext(path) != ".secrets" {
+				return nil
+			}
+
+			if snapshotKeys == nil {
+				return fmt.Errorf("can't use encrypted secrets without keys")
+			}
+
+			bundle, err := fnsecrets.LoadBundle(ctx, snapshotKeys, contents)
+			if err != nil {
+				return err
+			}
+
+			bundles = append(bundles, bundle)
+			if sliceContains(bundleNames, path) {
+				return fnerrors.InternalError("multiple secret bundles with the same name? saw: %s", strings.Join(bundleNames, "; "))
+			}
+
+			bundleNames = append(bundleNames, path)
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	data := map[string][]byte{}
+	for k, userManaged := range col.UserManaged {
+		for j, secret := range userManaged {
+			var foundValue []byte
+			var foundIn []string
+
+			key := &fnsecrets.ValueKey{PackageName: col.InstanceOwners[k], Key: secret.Name, EnvironmentName: env.Name}
+
+			for idx, bundle := range bundles {
+				value, err := bundle.Lookup(ctx, key)
+				if err != nil {
+					return nil, err
+				}
+				if value != nil {
+					foundValue = value
+					foundIn = append(foundIn, bundleNames[idx])
+				}
+			}
+
+			switch len(foundIn) {
+			case 0:
+				return nil, fnerrors.UsageError(
+					fmt.Sprintf("Try running `fn secrets set %s --secret %s:%s`", server.PackageName, key.PackageName, key.Key),
+					"secret %q required by %q not specified", key.Key, key.PackageName)
+			case 1:
+				data[col.Names[k][j]] = foundValue
+			default:
+				return nil, fnerrors.UserError(server, "%s: secret %s:%s found in multiple files: %s",
+					server.PackageName, key.PackageName, key.Key, strings.Join(foundIn, "; "))
+			}
+		}
+	}
+
+	return data, nil
+}
+
+func sliceContains(strs []string, str string) bool {
+	for _, s := range strs {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}
+
+func loadSnapshot(ctx context.Context, contents, keyDir fs.FS) (fs.FS, error) {
+	archive, err := contents.Open(keys.EncryptedFile)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	} else if err == nil {
+		defer archive.Close()
+
+		if keyDir == nil {
+			return nil, fmt.Errorf("can't use encrypted secrets without keys")
+		}
+
+		contents, err = keys.DecryptAsFS(ctx, keyDir, archive)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt: %w", err)
+		}
+	}
+
+	return contents, nil
+}
+
+func provideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userManaged ...*secrets.Secret) (map[string][]byte, error) {
+	sdm, err := secrets.LoadDevMap(src)
+	if err != nil {
+		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
+	}
+
+	cfg := secrets.LookupConfig(sdm, caller)
+	if cfg == nil {
+		return nil, fmt.Errorf("%v: no secret configuration definition in map.textpb", caller)
+	}
+
+	result := map[string][]byte{}
+	for _, s := range userManaged {
+		spec := lookupSecret(cfg, s.Name)
+		if spec == nil {
+			return nil, fmt.Errorf("no secret configuration for %s of %q in map.textpb", s.Name, caller)
+		}
+
+		if spec.FromPath != "" {
+			var contents []byte
+			var err error
+
+			if filepath.IsAbs(spec.FromPath) {
+				return nil, fmt.Errorf("%s: %s: absolute paths are not supported in devmaps", caller, s.Name)
+			}
+
+			contents, err = fs.ReadFile(src, spec.FromPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed while reading secret %s: %w", s.Name, err)
+			}
+			result[s.Name] = []byte(strings.TrimSpace(string(contents)))
+		} else {
+			result[s.Name] = []byte(spec.Value)
+		}
+	}
+
+	return result, nil
+}
+
+func lookupSecret(c *secrets.SecretDevMap_Configure, name string) *secrets.SecretDevMap_SecretSpec {
+	for _, s := range c.Secret {
+		if s.Name == name {
+			return s
+		}
+	}
+
+	return nil
 }

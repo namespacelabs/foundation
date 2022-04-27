@@ -6,71 +6,37 @@ package configure
 
 import (
 	"context"
-	"io"
-	"net"
 	"os"
 
 	"google.golang.org/grpc"
-	"namespacelabs.dev/foundation/internal/versions"
-	"namespacelabs.dev/foundation/provision/tool/grpcstdio"
+	"namespacelabs.dev/foundation/internal/grpcstdio"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 )
 
 func handle(ctx context.Context, h AllHandlers) error {
-	conn, err := grpc.DialContext(ctx, "stdio",
-		grpc.WithInsecure(),
-		grpc.WithReadBufferSize(0),
-		grpc.WithWriteBufferSize(0),
-		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
-			return grpcstdio.NewConnection(os.Stdout, os.Stdin), nil
-		}))
+	s := grpc.NewServer()
+
+	x, err := grpcstdio.NewSession(ctx, os.Stdin, os.Stdout, grpcstdio.WithCloseNotifier(func(_ *grpcstdio.Stream) {
+		// After we're done replying, shutdown the server, and then the binary.
+		// But we can't stop the server from this callback, as we're called with
+		// grpcstdio locks held, and terminating the server will need to call
+		// Close on open connections, which would lead to a deadlock.
+		go s.Stop()
+	}))
 	if err != nil {
 		return err
 	}
 
-	defer conn.Close()
+	protocol.RegisterInvocationServiceServer(s, impl{h: h})
 
-	cli := protocol.NewInvocationServiceClient(conn)
-	stream, err := cli.Worker(ctx)
-	if err != nil {
-		return err
-	}
+	return s.Serve(x.Listener())
+}
 
-	if err := stream.Send(&protocol.WorkerChunk{ClientHello: &protocol.WorkerChunk_ClientHello{
-		FnApiVersion:   versions.APIVersion,
-		ToolApiVersion: versions.ToolAPIVersion,
-	}}); err != nil {
-		return err
-	}
+type impl struct {
+	protocol.UnimplementedInvocationServiceServer
+	h AllHandlers
+}
 
-	for {
-		msg, err := stream.Recv()
-		if err != nil {
-			return err
-		}
-
-		if msg.ToolRequest != nil {
-			response, err := handleRequest(ctx, msg.ToolRequest, h)
-			if err != nil {
-				return err
-			}
-
-			if err := stream.Send(&protocol.WorkerChunk{ToolResponse: response}); err != nil {
-				return err
-			}
-
-			if err := stream.CloseSend(); err != nil {
-				return err
-			}
-
-			// Make sure that the send was received.
-			if _, err := stream.Recv(); err != nil {
-				if err != io.EOF {
-					return err
-				}
-			}
-
-			return nil
-		}
-	}
+func (i impl) Invoke(ctx context.Context, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {
+	return handleRequest(ctx, req, i.h)
 }

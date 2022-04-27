@@ -156,7 +156,10 @@ type reqToImage struct {
 }
 
 func (l *reqToImage) Action() *tasks.ActionEvent {
-	return tasks.Action("buildkit.build-image").Arg("platform", devhost.FormatPlatform(l.targetPlatform)).WellKnown(tasks.WkAction, "build")
+	return tasks.Action("buildkit.build-image").
+		Arg("platform", devhost.FormatPlatform(l.targetPlatform)).
+		WellKnown(tasks.WkCategory, "build").
+		WellKnown(tasks.WkRuntime, "docker")
 }
 func (l *reqToImage) Inputs() *compute.In {
 	return l.buildInputs()

@@ -28,7 +28,10 @@ type Event struct {
 	AlreadyExisted bool
 	ImplMetadata   interface{} // JSON serializable implementation-specific metadata.
 
-	WaitStatus []WaitStatus
+	WaitStatus  []WaitStatus
+	WaitDetails string
+	// XXX move to a runtime/ specific type.
+	RuntimeSpecificHelp string // Something like `kubectl -n foobar describe pod quux`
 
 	AllDone bool // True when WaitUntilReady returns.
 }

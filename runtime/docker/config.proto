@@ -1,0 +1,16 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package runtime.docker;
+
+option go_package = "namespacelabs.dev/foundation/runtime/docker";
+
+message Configuration {
+    string host       = 1;
+    string version    = 2;
+    string cert_path  = 3;
+    bool   verify_tls = 4;
+}

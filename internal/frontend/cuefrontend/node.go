@@ -107,6 +107,20 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		out.ServiceFramework = fmwk
 	}
 
+	var initializeBefore []string
+	if beforeValue := v.LookupPath("initializeBefore"); beforeValue.Exists() {
+		if err := beforeValue.Val.Decode(&initializeBefore); err != nil {
+			return err
+		}
+	}
+
+	var initializeAfter []string
+	if afterValue := v.LookupPath("initializeAfter"); afterValue.Exists() {
+		if err := afterValue.Val.Decode(&initializeAfter); err != nil {
+			return err
+		}
+	}
+
 	var initializeInFrameworks []string
 	if initializers := v.LookupPath("hasInitializerIn"); initializers.Exists() {
 		if err := initializers.Val.Decode(&initializeInFrameworks); err != nil {
@@ -114,18 +128,32 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			if err != nil {
 				return err
 			}
+
 			initializeInFrameworks = []string{fmwkStr}
 		}
-		uniqFrameworks := uniquestrings.List{}
+
+		frameworks := uniquestrings.List{}
 		for _, fmwkStr := range initializeInFrameworks {
-			if !uniqFrameworks.Add(fmwkStr) {
+			if !frameworks.Add(fmwkStr) {
 				return fnerrors.UserError(loc, "Duplicate initialization framework value: %s", fmwkStr)
 			}
+
 			v, err := parseFramework(loc, fmwkStr)
 			if err != nil {
 				return err
 			}
-			out.Initializers = append(out.Initializers, &schema.NodeInitializer{Framework: schema.Framework(v)})
+
+			out.Initializers = append(out.Initializers, &schema.NodeInitializer{
+				Framework:        schema.Framework(v),
+				InitializeBefore: initializeBefore,
+			})
+		}
+	} else {
+		if len(initializeBefore) > 0 {
+			return fnerrors.UserError(loc, "initializeBefore can only be set when hasInitializerIn is also set")
+		}
+		if len(initializeAfter) > 0 {
+			return fnerrors.UserError(loc, "initializeAfter can only be set when hasInitializerIn is also set")
 		}
 	}
 
@@ -250,7 +278,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 
 		parsed, err := protos.ParseAtLocation(fsys, loc, svc.Sources)
 		if err != nil {
-			return fnerrors.UserError(loc, "failed to parse %v: %v", svc.Sources, err)
+			return fnerrors.UserError(loc, "failed to parse proto sources %v: %v", svc.Sources, err)
 		}
 
 		_, desc, err := protos.LoadDescriptorByName(parsed, svc.Typename)
@@ -375,7 +403,7 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 
 		parsed, err := protos.ParseAtLocation(fsys, loc, p.Type.Source)
 		if err != nil {
-			return fnerrors.UserError(loc, "failed to parse %v: %v", p.Type.Source, err)
+			return fnerrors.UserError(loc, "failed to parse proto sources %v: %v", p.Type.Source, err)
 		}
 
 		if _, _, err := protos.LoadMessageByName(parsed, p.Type.Typename); err != nil {
@@ -408,6 +436,18 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 						Web: &schema.Provides_AvailableIn_Web{},
 					})
 				}
+			case "nodejs":
+				proto := &schema.Provides_AvailableIn_NodeJs{}
+				remarshal, err := json.Marshal(m)
+				if err != nil {
+					return fnerrors.UserError(loc, "failed to marshal: %w", err)
+				}
+				if err := json.Unmarshal(remarshal, proto); err != nil {
+					return fnerrors.UserError(loc, "failed to unmarshal: %w", err)
+				}
+				p.AvailableIn = append(p.AvailableIn, &schema.Provides_AvailableIn{
+					Nodejs: proto,
+				})
 			}
 		}
 

@@ -22,6 +22,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/binary/genbinary"
@@ -30,6 +31,8 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	clrs "namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/common"
+	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -55,6 +58,7 @@ import (
 	src "namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/workspace/tasks/actiontracing"
 )
 
 func DoMain(name string, registerCommands func(*cobra.Command)) {
@@ -82,7 +86,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	var cleanupTracer func()
 	if tracerEndpoint := viper.GetString("jaeger_endpoint"); tracerEndpoint != "" && viper.GetBool("enable_tracing") {
-		ctx, cleanupTracer = tasks.SetupTracing(ctx, tracerEndpoint)
+		ctx, cleanupTracer = actiontracing.SetupTracing(ctx, tracerEndpoint)
 	}
 
 	out, colors := consoleFromFile()
@@ -101,17 +105,25 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		go checkRemoteStatus(logger, remoteStatusChan)
 	}
 
-	var storeActions bool
+	bundler := tasks.NewActionBundler()
+	// Delete stale bundles asynchronously on startup.
+	defer func() {
+		_ = bundler.RemoveStaleBundles()
+	}()
+
+	// Create a new in-memory bundle to track actions. The bundle
+	// is flushed at the end of command invocation.
+	bundle := bundler.NewInMemoryBundle()
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
-		if storeActions {
-			var err error
-			tasks.ActionStorer, err = tasks.NewStorer(cmd.Context())
-			if err != nil {
-				return err
-			}
+		err := bundle.WriteInvocationInfo(cmd.Context(), cmd, args)
+		if err != nil {
+			return err
 		}
-
+		tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundle)
+		if err != nil {
+			return err
+		}
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = func(w *schema.Workspace, e *schema.Environment, dh *schema.DevHost) bool {
 			return runtime.ForProto(w, e, dh) != nil
@@ -135,7 +147,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		binary.BuildNix = genbinary.NixImage
 
 		// Setting up container registry logging, which is unfortunately global.
-		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", tasks.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
+		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
 
 		// Compute cacheables.
 		compute.RegisterProtoCacheable()
@@ -172,14 +184,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 		"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
-	rootCmd.PersistentFlags().BoolVar(&tasks.LogActions, "log_actions", tasks.LogActions,
+	rootCmd.PersistentFlags().BoolVar(&consolesink.LogActions, "log_actions", consolesink.LogActions,
 		"If set to true, each completed action is also output as a log message.")
-	rootCmd.PersistentFlags().BoolVar(&tasks.LogActions, "debug_to_console", console.DebugToConsole,
+	rootCmd.PersistentFlags().BoolVar(&console.DebugToConsole, "debug_to_console", console.DebugToConsole,
 		"If set to true, we also output debug log messages to the console.")
 	rootCmd.PersistentFlags().BoolVar(&compute.CachingEnabled, "caching", compute.CachingEnabled,
 		"If set to false, compute caching is disabled.")
-	rootCmd.PersistentFlags().BoolVar(&storeActions, "store_actions", storeActions,
-		"If set to true, each completed action and its attachments are also persisted into storage.")
 	rootCmd.PersistentFlags().BoolVar(&git.AssumeSSHAuth, "git_ssh_auth", git.AssumeSSHAuth,
 		"If set to true, assume that you use SSH authentication with git (this enables us to properly instruct git when downloading private repositories).")
 
@@ -219,9 +229,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		cleanupTracer()
 	}
 
-	if tasks.ActionStorer != nil {
-		tasks.ActionStorer.Flush(os.Stderr)
-	}
+	// Commit the bundle to the filesystem.
+	_ = bundler.Flush(ctxWithSink, bundle)
 
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
 	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
@@ -236,8 +245,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 				var messages []string
 
-				if status.TagName != "" {
-					messages = append(messages, fmt.Sprintf("New Foundation release %s is available.\nDownload: %s", status.TagName, downloadUrl(status.TagName)))
+				if status.NewVersion {
+					messages = append(messages, fmt.Sprintf("New Foundation release %s is available.\nDownload: %s", status.Version, downloadUrl(status.Version)))
 				}
 
 				if status.Message != "" {
@@ -254,7 +263,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		default:
 		}
 	}
-
 	if err != nil {
 		exitCode := handleExitError(colors, err)
 		// Record errors only after the user sees them to hide potential latency implications.
@@ -276,10 +284,10 @@ func handleExitError(colors bool, err error) int {
 			ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			if status, err := FetchLatestRemoteStatus(ctxWithTimeout, versionCheckEndpoint, version.Version); err == nil && status.TagName != "" {
+			if status, err := FetchLatestRemoteStatus(ctxWithTimeout, versionCheckEndpoint, version.GitCommit); err == nil && status.Version != "" {
 				fmt.Fprintln(os.Stderr, indent.String(
 					wordwrap.String(
-						fmt.Sprintf("\nThe latest version of Foundation is %s, available at %s\n", clrs.Bold(status.TagName), downloadUrl(status.TagName)),
+						fmt.Sprintf("\nThe latest version of Foundation is %s, available at %s\n", clrs.Bold(status.Version), downloadUrl(status.Version)),
 						80),
 					2))
 			}
@@ -395,9 +403,9 @@ func consoleToSink(out *os.File, colors bool) (*zerolog.Logger, tasks.ActionSink
 	logout := logoutput.OutputTo{Writer: out, WithColors: colors, OutputType: outputType()}
 
 	if colors && !viper.GetBool("console_no_colors") {
-		consoleSink := tasks.NewConsoleSink(out, viper.GetInt("console_log_level"))
+		consoleSink := consolesink.NewSink(out, viper.GetInt("console_log_level"))
 		cleanup := consoleSink.Start()
-		logout.Writer = console.ConsoleOutput(consoleSink, tasks.KnownStderr)
+		logout.Writer = console.ConsoleOutput(consoleSink, common.KnownStderr)
 
 		return logout.Logger(), consoleSink, cleanup
 	}
@@ -426,30 +434,28 @@ func cpuprofile(cpuprofile string) func() {
 func checkRemoteStatus(logger *zerolog.Logger, channel chan remoteStatus) {
 	defer close(channel)
 
-	version, err := version.Version()
+	ver, err := version.Version()
 	if err != nil {
 		logger.Debug().Err(err).Msg("failed to obtain version information")
 		return
 	}
 
-	if version.BuildTime == nil || version.Modified {
+	if ver.BuildTime == nil || ver.Version == version.DevelopmentBuildVersion {
 		return // Nothing to check.
 	}
 
-	logger.Debug().Stringer("binary_build_time", version.BuildTime).Msg("version check")
+	logger.Debug().Stringer("binary_build_time", ver.BuildTime).Msg("version check")
 
-	status, err := FetchLatestRemoteStatus(context.Background(), versionCheckEndpoint, version.Version)
+	status, err := FetchLatestRemoteStatus(context.Background(), versionCheckEndpoint, ver.GitCommit)
 	if err != nil {
 		logger.Debug().Err(err).Msg("version check failed")
 	} else {
 		logger.Debug().Stringer("latest_release_version", status.BuildTime).Msg("version check")
-		s := remoteStatus{
-			Message: status.Message,
+
+		if semver.Compare(status.Version, ver.Version) > 0 {
+			status.NewVersion = true
 		}
 
-		if status.BuildTime.After(*version.BuildTime) {
-			s.TagName = status.TagName
-		}
-		channel <- s
+		channel <- *status
 	}
 }

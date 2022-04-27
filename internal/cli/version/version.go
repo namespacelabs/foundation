@@ -11,8 +11,14 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
+const DevelopmentBuildVersion = "dev"
+
+// Set by goreleaser to the tag being released.
+var Tag = DevelopmentBuildVersion
+
 type BinaryVersion struct {
 	Version      string
+	GitCommit    string
 	BuildTimeStr string
 	BuildTime    *time.Time
 	Modified     bool
@@ -47,7 +53,8 @@ func VersionFrom(info *debug.BuildInfo) (*BinaryVersion, error) {
 	}
 
 	v := &BinaryVersion{
-		Version:      revision,
+		Version:      Tag,
+		GitCommit:    revision,
 		BuildTimeStr: buildtime,
 		Modified:     modified,
 	}

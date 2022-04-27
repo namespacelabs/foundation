@@ -11,19 +11,19 @@ import (
 	"log"
 	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"namespacelabs.dev/foundation/std/go/grpc/server"
+	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
 type Service struct {
 	maria    *sql.DB
-	postgres *pgxpool.Pool
+	postgres *postgres.DB
 }
 
 const timeout = 2 * time.Second
 
-func addPostgres(ctx context.Context, db *pgxpool.Pool, item string) error {
+func addPostgres(ctx context.Context, db *postgres.DB, item string) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -61,7 +61,7 @@ func (svc *Service) AddMaria(ctx context.Context, req *AddRequest) (*emptypb.Emp
 	return response, nil
 }
 
-func listPostgres(ctx context.Context, db *pgxpool.Pool) ([]string, error) {
+func listPostgres(ctx context.Context, db *postgres.DB) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -124,7 +124,7 @@ func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*ListResponse, 
 	return response, nil
 }
 
-func WireService(ctx context.Context, srv *server.Grpc, deps ServiceDeps) {
+func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	svc := &Service{
 		maria:    deps.Maria,
 		postgres: deps.Postgres,

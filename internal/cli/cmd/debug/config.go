@@ -45,14 +45,15 @@ func newComputeConfigCmd() *cobra.Command {
 			}
 
 			sargs := frontend.StartupInputs{
-				Stack:       stack.Proto(),
-				Server:      t.Proto(),
-				ServerImage: "imageversion",
+				Stack:         stack.Proto(),
+				Server:        t.Proto(),
+				ServerImage:   "imageversion",
+				ServerRootAbs: t.Location.Abs(),
 			}
 
 			evald := stack.GetParsed(s.PackageName())
 
-			c, err := startup.ComputeConfig(ctx, evald, sargs)
+			c, err := startup.ComputeConfig(ctx, s.Env(), evald, sargs)
 			if err != nil {
 				return err
 			}

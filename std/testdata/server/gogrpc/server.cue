@@ -12,14 +12,16 @@ server: fn.#Server & {
 		"namespacelabs.dev/foundation/std/go/grpc/gateway",
 		"namespacelabs.dev/foundation/std/testdata/service/post",
 		"namespacelabs.dev/foundation/std/grpc/logging",
+		"namespacelabs.dev/foundation/std/monitoring/tracing/jaeger",
+		"namespacelabs.dev/foundation/universe/go/panicparse",
 	]
 }
 
 $env:      inputs.#Environment
 configure: fn.#Configure & {
 	naming: {
-		if $env.purpose == "PRODUCTION" {
-			domainName: "test.namespacelabs.net"
+		if $env.purpose != "TESTING" {
+			domainName: "grpc-gateway-7hzne001dff2rpdxav703bwqwc": ["test.namespacelabs.net"]
 		}
 	}
 }

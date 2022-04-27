@@ -8,9 +8,10 @@ package foundation.universe.db.maria.incluster;
 
 option go_package = "namespacelabs.dev/foundation/universe/db/maria/incluster";
 
+import "std/proto/options.proto";
 import "std/types/resource.proto";
 
 message Database {
     string                        name        = 1;
-    foundation.std.types.Resource schema_file = 2;
+    foundation.std.types.Resource schema_file = 2 [(foundation.std.proto.provision_only) = true];
 }

@@ -52,20 +52,25 @@ func callAPI(ctx context.Context, endpoint string, method string, req interface{
 
 	if response.StatusCode == http.StatusOK {
 		return handle(dec)
-	} else if response.StatusCode == http.StatusInternalServerError {
-		st := &spb.Status{}
-		if err := dec.Decode(st); err == nil {
-			if st.Code == int32(codes.Unauthenticated) {
-				return ErrRelogin
-			}
+	}
 
-			return status.ErrorProto(st)
+	st := &spb.Status{}
+	if err := dec.Decode(st); err == nil {
+		if st.Code == int32(codes.Unauthenticated) {
+			return ErrRelogin
 		}
 
+		return status.ErrorProto(st)
+	}
+
+	switch response.StatusCode {
+	case http.StatusInternalServerError:
 		return fnerrors.InvocationError("internal server error, and wasn't able to parse error response")
-	} else if response.StatusCode == http.StatusUnauthorized {
+	case http.StatusForbidden:
+		return fnerrors.InvocationError("forbidden")
+	case http.StatusUnauthorized:
 		return ErrRelogin
-	} else {
+	default:
 		return fnerrors.InvocationError("unexpected %d error reaching %q: %s", response.StatusCode, endpoint, response.Status)
 	}
 }

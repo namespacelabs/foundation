@@ -11,16 +11,17 @@ import (
 	"namespacelabs.dev/go-ids"
 )
 
-func PrepareEnvFrom(env provision.Env) provision.Env {
+func PrepareEnvFrom(env provision.Env, ephemeral bool) provision.Env {
 	slice := devhost.ConfigurationForEnv(env)
 
 	env.Root().DevHost.Configure = slice.WithoutConstraints()
 
 	testInv := ids.NewRandomBase32ID(8)
 	testEnv := &schema.Environment{
-		Name:    "test-" + testInv,
-		Purpose: schema.Environment_TESTING,
-		Runtime: "kubernetes",
+		Name:      "test-" + testInv,
+		Purpose:   schema.Environment_TESTING,
+		Runtime:   "kubernetes",
+		Ephemeral: ephemeral,
 	}
 
 	return provision.MakeEnv(env.Root(), testEnv)

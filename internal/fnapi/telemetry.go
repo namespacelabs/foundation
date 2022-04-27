@@ -27,7 +27,6 @@ import (
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/dirs"
-	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -48,7 +47,7 @@ func NewTelemetry() *Telemetry {
 	return &Telemetry{
 		UseTelemetry:   true,
 		errorLogging:   false,
-		backendAddress: "https://grpc-gateway-g793omo8v6okrjjo0v60.prod.namespacelabs.nscloud.dev",
+		backendAddress: "https://api.namespacelabs.net",
 		makeClientID:   generateClientIDAndSalt,
 	}
 }
@@ -178,7 +177,7 @@ func buildRecordInvocationRequest(ctx context.Context, cmd *cobra.Command, c cli
 			}
 		} else {
 			req.Version = &binaryVersion{
-				Version:   v.Version,
+				Version:   v.GitCommit,
 				BuildTime: v.BuildTimeStr,
 				Modified:  false,
 			}
@@ -218,7 +217,7 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 	if created {
 		// First fn invocation with Telemetry. Add hint about early access plain text logging.
 		// TODO remove before public release.
-		out := console.TypedOutput(ctx, "telemetry", tasks.CatOutputUs)
+		out := console.TypedOutput(ctx, "telemetry", console.CatOutputUs)
 		fmt.Fprint(out, "During early access, errors are uploaded to our servers for debugging purposes.\n")
 		fmt.Fprint(out, "This default behavior will change ahead of release, but helps us understand what\nissues you may be hitting.\n\n")
 		fmt.Fprintf(out, "If you'd like to disable this behavior, set %s or\n%s at %s.\n",

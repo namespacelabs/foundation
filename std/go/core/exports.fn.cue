@@ -2,12 +2,24 @@
 package core
 
 #Exports: {
+	DebugHandler: {
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/go/core"
+			type:        "DebugHandler"
+			typeDefinition: {
+				"typename": "foundation.std.go.core.DebugHandlerArgs"
+				"source": [
+					"coretypes.proto",
+				]
+			}
+		}
+	}
 	LivenessCheck: {
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/std/go/core"
 			type:        "LivenessCheck"
 			typeDefinition: {
-				"typename": "foundation.std.go.core.LivenessCheck"
+				"typename": "foundation.std.go.core.LivenessCheckArgs"
 				"source": [
 					"coretypes.proto",
 				]
@@ -19,7 +31,19 @@ package core
 			packageName: "namespacelabs.dev/foundation/std/go/core"
 			type:        "ReadinessCheck"
 			typeDefinition: {
-				"typename": "foundation.std.go.core.ReadinessCheck"
+				"typename": "foundation.std.go.core.ReadinessCheckArgs"
+				"source": [
+					"coretypes.proto",
+				]
+			}
+		}
+	}
+	ServerInfo: {
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/go/core"
+			type:        "ServerInfo"
+			typeDefinition: {
+				"typename": "foundation.std.go.core.ServerInfoArgs"
 				"source": [
 					"coretypes.proto",
 				]

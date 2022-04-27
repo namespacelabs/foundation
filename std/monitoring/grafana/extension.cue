@@ -12,7 +12,7 @@ $grafanaServer: inputs.#Server & {
 $tool: inputs.#Package & "namespacelabs.dev/foundation/std/monitoring/grafana/tool"
 
 configure: fn.#Configure & {
-	if $env.runtime == "kubernetes" {
+	if $env.runtime == "kubernetes" && !$env.ephemeral {
 		stack: {
 			append: [$grafanaServer]
 		}

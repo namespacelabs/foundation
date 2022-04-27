@@ -66,6 +66,10 @@ func FormatWorkspace(w io.Writer, ws *schema.Workspace) error {
 		writeTextMessage(&buf, &schema.Workspace{Replace: ws.Replace})
 	}
 
+	if len(ws.Env) > 0 {
+		writeTextMessage(&buf, &schema.Workspace{Env: ws.Env})
+	}
+
 	if len(ws.PrebuiltBinary) > 0 {
 		sorted := slices.Clone(ws.PrebuiltBinary)
 		slices.SortFunc(sorted, func(a, b *schema.Workspace_BinaryDigest) bool {

@@ -8,7 +8,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
+	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
@@ -39,9 +42,9 @@ type cueInvocation struct {
 }
 
 type cueNaming struct {
-	DomainName           string `json:"domainName"`
-	TLSManagedDomainName string `json:"tlsManagedDomainName"`
-	WithOrg              string `json:"withOrg"`
+	DomainName           map[string][]string `json:"domainName"`
+	TLSManagedDomainName map[string][]string `json:"tlsManagedDomainName"`
+	WithOrg              string              `json:"withOrg"`
 }
 
 type cueContainer struct {
@@ -49,8 +52,12 @@ type cueContainer struct {
 	Args   *argsListOrMap `json:"args"`
 }
 
-func (p1 phase1plan) EvalProvision(ctx context.Context, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
-	vv, left, err := applyInputs(ctx, provisionFuncs(inputs), p1.Value, p1.Left)
+func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
+	if env.Proto() == nil {
+		return frontend.ProvisionPlan{}, fnerrors.InternalError("env is missing .. env")
+	}
+
+	vv, left, err := applyInputs(ctx, provisionFuncs(env.Proto(), inputs), p1.Value, p1.Left)
 	if err != nil {
 		return frontend.ProvisionPlan{}, err
 	}
@@ -123,16 +130,40 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, inputs frontend.Provisio
 			return pdata, err
 		}
 
-		if data.DomainName != "" || data.WithOrg != "" {
-			pdata.Naming = &schema.Naming{
-				DomainName:           data.DomainName,
-				TlsManagedDomainName: data.TLSManagedDomainName,
-				WithOrg:              data.WithOrg,
+		pdata.Naming = &schema.Naming{
+			WithOrg: data.WithOrg,
+		}
+
+		for k, v := range data.DomainName {
+			for _, fqdn := range v {
+				pdata.Naming.AdditionalUserSpecified = append(pdata.Naming.AdditionalUserSpecified, &schema.Naming_AdditionalDomainName{
+					AllocatedName: k,
+					Fqdn:          fqdn,
+				})
 			}
 		}
+
+		for k, v := range data.TLSManagedDomainName {
+			for _, fqdn := range v {
+				pdata.Naming.AdditionalTlsManaged = append(pdata.Naming.AdditionalTlsManaged, &schema.Naming_AdditionalDomainName{
+					AllocatedName: k,
+					Fqdn:          fqdn,
+				})
+			}
+		}
+
+		slices.SortFunc(pdata.Naming.AdditionalUserSpecified, sortAdditional)
+		slices.SortFunc(pdata.Naming.AdditionalTlsManaged, sortAdditional)
 	}
 
 	return pdata, nil
+}
+
+func sortAdditional(a, b *schema.Naming_AdditionalDomainName) bool {
+	if a.AllocatedName == b.AllocatedName {
+		return strings.Compare(a.Fqdn, b.Fqdn) < 0
+	}
+	return strings.Compare(a.AllocatedName, b.AllocatedName) < 0
 }
 
 type argsListOrMap struct {
@@ -179,8 +210,8 @@ func lookupTransition(vv *fncue.CueV, name string) *fncue.CueV {
 	return vv.LookupPath("extend." + name)
 }
 
-func provisionFuncs(inputs frontend.ProvisionInputs) *EvalFuncs {
+func provisionFuncs(env *schema.Environment, inputs frontend.ProvisionInputs) *EvalFuncs {
 	return newFuncs().
 		WithFetcher(fncue.WorkspaceIKw, FetchServerWorkspace(inputs.Workspace, inputs.ServerLocation)).
-		WithFetcher(fncue.EnvIKw, FetchEnv(inputs.Env))
+		WithFetcher(fncue.EnvIKw, FetchEnv(env, inputs.Workspace))
 }

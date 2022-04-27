@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -46,7 +47,7 @@ type statefulGen struct{}
 var _ ops.HasStartSession[*OpProtoGen] = statefulGen{}
 
 func (statefulGen) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.DispatcherResult, error) {
-	wenv, ok := env.(ops.MutableWorkspaceEnvironment)
+	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
 	if !ok {
 		return nil, errors.New("WorkspaceEnvironment required")
 	}
@@ -63,7 +64,7 @@ func (statefulGen) Run(ctx context.Context, env ops.Environment, _ *schema.Defin
 }
 
 func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Session[*OpProtoGen] {
-	wenv, ok := env.(ops.MutableWorkspaceEnvironment)
+	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
 	if !ok {
 		// An error will then be returned in Close().
 		wenv = nil
@@ -75,7 +76,7 @@ func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Se
 type multiGen struct {
 	ctx  context.Context
 	buf  compute.Computable[oci.Image]
-	wenv ops.MutableWorkspaceEnvironment
+	wenv workspace.MutableWorkspaceEnvironment
 
 	mu    sync.Mutex
 	locs  []workspace.Location
@@ -206,7 +207,7 @@ func generateProtoSrcs(ctx context.Context, buf compute.Computable[oci.Image], m
 		return err
 	}
 
-	if err := fnfs.WriteFSToWorkspace(ctx, out, merged.Value); err != nil {
+	if err := fnfs.WriteFSToWorkspace(ctx, console.Stdout(ctx), out, merged.Value); err != nil {
 		return err
 	}
 
@@ -224,7 +225,15 @@ type genGoProtosAtLoc struct {
 var _ compute.Computable[fs.FS] = &genGoProtosAtLoc{}
 
 func (g *genGoProtosAtLoc) Action() *tasks.ActionEvent {
-	return tasks.Action("proto.generate")
+	var files []string
+	for _, fds := range g.fileDescSet.File {
+		files = append(files, fds.GetName())
+	}
+
+	return tasks.Action("proto.generate").
+		Arg("http_gateway", g.opts.HTTPGateway).
+		Arg("framework", strings.ToLower(g.opts.Framework.String())).
+		Arg("files", files)
 }
 
 func (g *genGoProtosAtLoc) Inputs() *compute.In {

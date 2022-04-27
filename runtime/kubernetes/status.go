@@ -50,7 +50,7 @@ func containerStateLabel(ps *v1.PodStatus, st v1.ContainerState) string {
 		label := "Running"
 		if ps != nil {
 			if !matchPodCondition(*ps, v1.PodReady) {
-				label += " (Not ready)"
+				label += " (not ready)"
 			}
 		}
 		return label

@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/tasks"
 	"tailscale.com/util/multierr"
 )
 
@@ -38,7 +37,7 @@ type FileSyncDevObserver struct {
 func NewFileSyncDevObserver(ctx context.Context, srv provision.Server, fileSyncPort int32) *FileSyncDevObserver {
 	return &FileSyncDevObserver{
 		ctx:          ctx,
-		log:          console.TypedOutput(ctx, "hot reload", tasks.CatOutputUs),
+		log:          console.TypedOutput(ctx, "hot reload", console.CatOutputUs),
 		server:       srv.Proto(),
 		rt:           runtime.For(srv.Env()),
 		fileSyncPort: fileSyncPort,

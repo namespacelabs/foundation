@@ -21,3 +21,5 @@ message Database {
     foundation.std.types.Resource schema_file = 2 [(foundation.std.proto.provision_only) = true];
     Endpoint                      hosted_at   = 3;
 }
+
+message WireDatabaseArgs {}

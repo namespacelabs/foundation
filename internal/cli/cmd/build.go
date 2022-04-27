@@ -70,7 +70,7 @@ func NewBuildCmd() *cobra.Command {
 			}
 
 			if continuously {
-				done := tasks.SetIdleLabel(ctx, "waiting for workspace changes")
+				done := console.SetIdleLabel(ctx, "waiting for workspace changes")
 				defer done()
 				return compute.Continuously(ctx, continuousBuild{allImages: buildAll})
 			}
@@ -94,7 +94,7 @@ func NewBuildCmd() *cobra.Command {
 }
 
 func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[oci.ImageID]) {
-	out := console.TypedOutput(ctx, "build", tasks.CatOutputUs)
+	out := console.TypedOutput(ctx, "build", console.CatOutputUs)
 
 	sort.Slice(results, func(i, j int) bool {
 		if results[i].Timestamp.Equal(results[j].Timestamp) {

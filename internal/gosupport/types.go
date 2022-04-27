@@ -20,10 +20,6 @@ func MakeType(imports *GoImports, pkg, typeName string) string {
 		return typeName
 	}
 
-	if pkg == imports.PkgName {
-		return typeName
-	}
-
 	// If there's a type qualifier (pointer, slice) present, split it from the type name,
 	// so we can move it to be before the package name below.
 	qual := ""
@@ -34,7 +30,7 @@ func MakeType(imports *GoImports, pkg, typeName string) string {
 		}
 	}
 
-	return fmt.Sprintf("%s%s%s", qual, imports.MustGet(pkg), typeName)
+	return fmt.Sprintf("%s%s%s", qual, imports.Ensure(pkg), typeName)
 }
 
 func (dp TypeDef) MakeType(imports *GoImports) string {

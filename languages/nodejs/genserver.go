@@ -6,6 +6,7 @@ package nodejs
 
 import (
 	"context"
+	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/languages/shared"
@@ -16,31 +17,30 @@ import (
 const ServerFilename = "main.fn.ts"
 
 func generateServer(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
-	serverData, err := shared.PrepareServerData(ctx, loader, loc, srv, nodes)
+	serverData, err := shared.PrepareServerData(ctx, loader, loc, srv)
 	if err != nil {
 		return err
 	}
 
-	tplImports := []singleImport{}
-	tplServices := []service{}
+	ic := newImportCollector()
+	tplServices := []tmplImportedType{}
 	for _, srv := range serverData.Services {
-		nodejsLoc, err := nodejsLocationFrom(srv.Location.PackageName)
+		npmPackage, err := toNpmPackage(srv.Location.PackageName)
 		if err != nil {
 			return err
 		}
 
-		tplServices = append(tplServices, service{
-			Name:        nodejsLoc.Name,
-			ImportAlias: nodejsLoc.Name,
-		})
-		tplImports = append(tplImports, singleImport{
-			Alias:   nodejsLoc.Name,
-			Package: nodejsServiceDepsImport(nodejsLoc.NpmPackage),
+		pkgComponents := strings.Split(string(srv.Location.PackageName), "/")
+		srvName := pkgComponents[len(pkgComponents)-1]
+
+		tplServices = append(tplServices, tmplImportedType{
+			Name:        srvName,
+			ImportAlias: ic.add(nodeDepsNpmImport(npmPackage)),
 		})
 	}
 
 	return generateSource(ctx, fs, loc.Rel(ServerFilename), serverTmpl, serverTmplOptions{
-		Imports:  tplImports,
+		Imports:  ic.imports(),
 		Services: tplServices,
 	})
 }

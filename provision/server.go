@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strings"
 
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/schema"
@@ -27,7 +26,7 @@ type Server struct {
 }
 
 type ServerEnv interface {
-	ops.Environment
+	workspace.WorkspaceEnvironment
 	workspace.SealedPackages
 }
 
@@ -71,8 +70,7 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 	t.entry = sealed.Proto
 	t.deps = sealed.Deps
 
-	pdata, err := t.Package.Parsed.EvalProvision(ctx, frontend.ProvisionInputs{
-		Env:            t.Env().Proto(),
+	pdata, err := t.Package.Parsed.EvalProvision(ctx, t.Env(), frontend.ProvisionInputs{
 		Workspace:      t.Module().Workspace,
 		ServerLocation: t.Location,
 	})

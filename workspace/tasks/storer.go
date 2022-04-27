@@ -7,23 +7,16 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
-type Storer struct{ baseDir string }
+type Storer struct{ bundle *Bundle }
 
-func NewStorer(ctx context.Context) (*Storer, error) {
-	t, err := os.MkdirTemp("", "fn-actions")
-	if err != nil {
-		return nil, err
-	}
-
-	return &Storer{t}, nil
+func NewStorer(ctx context.Context, bundle *Bundle) (*Storer, error) {
+	return &Storer{bundle}, nil
 }
 
 func (st *Storer) Store(af *RunningAction) {
@@ -34,37 +27,32 @@ func (st *Storer) Store(af *RunningAction) {
 }
 
 func (st *Storer) store(af *RunningAction) error {
-	target := filepath.Join(st.baseDir, af.data.actionID)
-	if err := os.Mkdir(target, 0700); err != nil {
-		return err
-	}
+	actionId := af.Data.ActionID
 
-	pbytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(makeDebugProto(&af.data, af.attachments))
+	pbytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(makeDebugProto(&af.Data, af.attachments))
 	if err != nil {
 		return err
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(target, "action.textpb"), pbytes, 0600); err != nil {
+	if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId, "action.textpb"), pbytes, 0600); err != nil {
 		return err
 	}
 
-	for k, name := range af.attachments.insertionOrder {
-		id := fmt.Sprintf("%d", k)
-		buf := af.attachments.buffers[name.computed]
+	if af.attachments != nil {
+		af.attachments.mu.Lock()
+		for k, name := range af.attachments.insertionOrder {
+			id := fmt.Sprintf("%d", k)
+			buf := af.attachments.buffers[name.computed]
 
-		out, err := ioutil.ReadAll(buf.buffer.Reader())
-		if err != nil {
-			return err
+			out, err := ioutil.ReadAll(buf.buffer.Reader())
+			if err != nil {
+				return err
+			}
+			if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId, id+filepath.Ext(buf.name)), out, 0600); err != nil {
+				return err
+			}
 		}
-
-		if err := ioutil.WriteFile(filepath.Join(target, id+filepath.Ext(buf.name)), out, 0600); err != nil {
-			return err
-		}
+		af.attachments.mu.Unlock()
 	}
-
 	return nil
-}
-
-func (st *Storer) Flush(w io.Writer) {
-	fmt.Fprintf(w, "Stored actions at: %s\n", st.baseDir)
 }

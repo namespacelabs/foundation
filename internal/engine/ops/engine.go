@@ -12,9 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"tailscale.com/util/multierr"
 )
@@ -41,16 +39,6 @@ type Environment interface {
 	Workspace() *schema.Workspace
 	DevHost() *schema.DevHost
 	Proto() *schema.Environment // Will be nil if not in a build or deployment phase.
-}
-
-type WorkspaceEnvironment interface {
-	Environment
-	workspace.Packages
-}
-
-type MutableWorkspaceEnvironment interface {
-	WorkspaceEnvironment
-	OutputFS() fnfs.ReadWriteFS
 }
 
 type Runner struct {
@@ -149,7 +137,7 @@ func (g *Runner) Add(defs ...*schema.Definition) error {
 	return nil
 }
 
-func (g *Runner) Apply(ctx context.Context, name string, env WorkspaceEnvironment) (waiters []Waiter, err error) {
+func (g *Runner) Apply(ctx context.Context, name string, env Environment) (waiters []Waiter, err error) {
 	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, false)
@@ -158,7 +146,7 @@ func (g *Runner) Apply(ctx context.Context, name string, env WorkspaceEnvironmen
 	return
 }
 
-func (g *Runner) ApplyParallel(ctx context.Context, name string, env WorkspaceEnvironment) (waiters []Waiter, err error) {
+func (g *Runner) ApplyParallel(ctx context.Context, name string, env Environment) (waiters []Waiter, err error) {
 	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, true)
@@ -229,6 +217,7 @@ func (g *Runner) apply(ctx context.Context, env Environment, parallel bool) ([]W
 			ordered = append(ordered, commit)
 			orderedTypeUrls = append(orderedTypeUrls, typeUrl)
 			delete(sessions, typeUrl)
+			delete(commits, typeUrl)
 		}
 	}
 

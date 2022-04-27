@@ -28,6 +28,7 @@ const (
 
 type Endpoint = postgres.Endpoint
 type Database = postgres.Database
+type WireDatabaseArgs = postgres.WireDatabaseArgs
 
 var File_universe_db_postgres_opaque_provider_proto protoreflect.FileDescriptor
 

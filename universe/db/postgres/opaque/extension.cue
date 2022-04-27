@@ -1,8 +1,8 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
+	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/opaque/creds"
-	"namespacelabs.dev/foundation/std/go/core"
 )
 
 $providerProto: inputs.#Proto & {
@@ -13,12 +13,8 @@ $providerProto: inputs.#Proto & {
 }
 
 extension: fn.#Extension & {
-	import: [
-		"namespacelabs.dev/foundation/universe/db/postgres",
-	]
-
 	instantiate: {
-		readinessCheck: core.#Exports.ReadinessCheck
+		wire: postgres.#Exports.WireDatabase
 	}
 
 	provides: {
@@ -27,8 +23,8 @@ extension: fn.#Extension & {
 
 			availableIn: {
 				go: {
-					package: "github.com/jackc/pgx/v4/pgxpool"
-					type:    "*Pool"
+					package: "namespacelabs.dev/foundation/universe/db/postgres"
+					type:    "*DB"
 				}
 			}
 			instantiate: {

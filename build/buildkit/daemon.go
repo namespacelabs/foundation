@@ -50,7 +50,7 @@ func EnsureBuildkitd(ctx context.Context, containerName string) (*Instance, erro
 		UseHostNetworking: true, // we need to be able to access APIs that are hosted by the host.
 	}
 
-	if err := spec.Ensure(ctx, console.TypedOutput(ctx, "docker", tasks.CatOutputTool)); err != nil {
+	if err := spec.Ensure(ctx, console.TypedOutput(ctx, "docker", console.CatOutputTool)); err != nil {
 		return nil, err
 	}
 

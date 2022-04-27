@@ -9,10 +9,12 @@ import (
 	"strings"
 
 	"cuelang.org/go/cue"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
+	"namespacelabs.dev/foundation/workspace"
 )
 
 type phase2plan struct {
@@ -27,10 +29,10 @@ type cueStartupPlan struct {
 
 var _ frontend.PreStartup = phase2plan{}
 
-func (s phase2plan) EvalStartup(ctx context.Context, info frontend.StartupInputs, allocs []frontend.ValueWithPath) (frontend.StartupPlan, error) {
+func (s phase2plan) EvalStartup(ctx context.Context, env ops.Environment, info frontend.StartupInputs, allocs []frontend.ValueWithPath) (frontend.StartupPlan, error) {
 	var plan frontend.StartupPlan
 
-	res, _, err := s.evalStartupStage(ctx, info)
+	res, _, err := s.evalStartupStage(ctx, env, info)
 	if err != nil {
 		return plan, err
 	}
@@ -56,10 +58,16 @@ func (s phase2plan) EvalStartup(ctx context.Context, info frontend.StartupInputs
 	return plan, nil
 }
 
-func (s phase2plan) evalStartupStage(ctx context.Context, info frontend.StartupInputs) (*fncue.CueV, []fncue.KeyAndPath, error) {
+func (s phase2plan) evalStartupStage(ctx context.Context, env ops.Environment, info frontend.StartupInputs) (*fncue.CueV, []fncue.KeyAndPath, error) {
+	wenv, ok := env.(workspace.WorkspaceEnvironment)
+	if !ok {
+		return nil, nil, fnerrors.InternalError("expected a WorkspaceEnvironment")
+	}
+
 	inputs := newFuncs().
-		WithFetcher(fncue.ServerDepIKw, FetchServer(info.Stack)).
-		WithFetcher(fncue.FocusServerIKw, FetchFocusServer(info.ServerImage, info.Server))
+		WithFetcher(fncue.ServerDepIKw, FetchServer(wenv, info.Stack)).
+		WithFetcher(fncue.FocusServerIKw, FetchFocusServer(info.ServerImage, info.Server)).
+		WithFetcher(fncue.VCSIKw, FetchVCS(info.ServerRootAbs))
 
 	vv, left, err := applyInputs(ctx, inputs, s.Value, s.Left)
 	if err != nil {

@@ -145,7 +145,7 @@ func buildWebApps(ctx context.Context, endpoints languages.Endpoints, srv provis
 
 		var extra []*memfs.FS
 		if len(backends) > 0 {
-			resolveFunc := resolveBackend(srv.Env(), srv.Env().Proto(), endpoints)
+			resolveFunc := resolveBackend(srv.Env(), endpoints)
 			backend := &OpGenHttpBackend{Backend: backends}
 			fsys, err := generateBackendConf(ctx, dep.Location, backend, resolveFunc, false)
 			if err != nil {
@@ -270,7 +270,7 @@ func useDevBuild(env *schema.Environment) bool {
 	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
-func (i impl) TidyNode(ctx context.Context, p *workspace.Package) error {
+func (i impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
 	if p.Node().Kind != schema.Node_SERVICE {
 		return nil
 	}

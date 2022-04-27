@@ -47,9 +47,10 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 	return tasks.Action(runtime.TaskServerStart).Scope(w.scope).Run(ctx,
 		func(ctx context.Context) error {
 			ev := ops.Event{
-				ResourceID: fmt.Sprintf("%s/%s", w.apply.Namespace, w.apply.Name),
-				Kind:       w.apply.Resource,
-				Scope:      w.scope,
+				ResourceID:          fmt.Sprintf("%s/%s", w.apply.Namespace, w.apply.Name),
+				Kind:                w.apply.Resource,
+				Scope:               w.scope,
+				RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.apply.Namespace, w.apply.Resource, w.apply.Name),
 			}
 
 			switch w.resource {
@@ -232,14 +233,14 @@ type containerPodReference struct {
 }
 
 func (cpr containerPodReference) UniqueID() string {
-	return cpr.HumanReference()
-}
-
-func (cpr containerPodReference) HumanReference() string {
 	if cpr.Container == "" {
 		return fmt.Sprintf("%s/%s", cpr.Namespace, cpr.Name)
 	}
 	return fmt.Sprintf("%s/%s/%s", cpr.Namespace, cpr.Name, cpr.Container)
+}
+
+func (cpr containerPodReference) HumanReference() string {
+	return cpr.Container
 }
 
 func WaitForPodConditition(selector func(context.Context, *k8s.Clientset) ([]corev1.Pod, error), isOk func(corev1.PodStatus) (bool, error)) ConditionWaiter {

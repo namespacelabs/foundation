@@ -7,9 +7,11 @@ package core
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"time"
 
+	toposort "github.com/philopon/go-toposort"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -20,21 +22,25 @@ const (
 )
 
 type Reference struct {
-	Package schema.PackageName
-	Scope   string
+	Package  schema.PackageName
+	Typename string
+}
+
+type Package struct {
+	PackageName string
 }
 
 type Provider struct {
-	Package schema.PackageName
-	Scope   string
-	Do      func(context.Context) (interface{}, error)
+	Package     *Package
+	Typename    string
+	Instantiate func(context.Context, Dependencies) (interface{}, error)
 }
 
-func (f *Provider) Desc() string {
-	if f.Scope != "" {
-		return fmt.Sprintf("%s/%s", f.Package, f.Scope)
+func (f Provider) key() string {
+	if f.Typename != "" {
+		return fmt.Sprintf("%s/%s", f.Package.PackageName, f.Typename)
 	}
-	return f.Package.String()
+	return f.Package.PackageName
 }
 
 type result struct {
@@ -42,50 +48,41 @@ type result struct {
 	err error
 }
 
-type depInitializer struct {
-	providers  map[Reference]Provider
-	singletons map[Reference]result
-	inits      []Initializer
+type DependencyGraph struct {
+	singletons map[string]result
+	inits      []*Initializer
 }
 
-func MakeInitializer() *depInitializer {
-	return &depInitializer{
-		providers:  map[Reference]Provider{},
-		singletons: map[Reference]result{},
+type Dependencies interface {
+	Instantiate(ctx context.Context, provider Provider, f func(context.Context, interface{}) error) error
+}
+
+func NewDependencyGraph() *DependencyGraph {
+	return &DependencyGraph{
+		singletons: map[string]result{},
 	}
 }
 
-func (di *depInitializer) Add(p Provider) {
-	di.providers[Reference{Package: p.Package, Scope: p.Scope}] = p
-}
-
-func (di *depInitializer) Instantiate(ctx context.Context, ref Reference, f func(context.Context, interface{}) error) error {
-	if singleton, ok := di.singletons[ref]; ok {
+func (di *DependencyGraph) Instantiate(ctx context.Context, provider Provider, f func(context.Context, interface{}) error) error {
+	if singleton, ok := di.singletons[provider.key()]; ok {
 		if singleton.err != nil {
 			return singleton.err
 		}
 		return f(ctx, singleton.res)
 	}
 
-	p, ok := di.providers[ref]
-	isSingleton := ref.Scope == ""
-	if !ok {
-		if isSingleton {
-			return fmt.Errorf("No singleton provider found for package %s.", ref.Package)
-		}
-		return fmt.Errorf("No provider found for type %s in package %s.", ref.Scope, ref.Package)
-	}
+	isSingleton := provider.Typename == ""
 
 	var path *InstantiationPath
 	if !isSingleton {
 		path = InstantiationPathFromContext(ctx)
 	}
-	childctx := path.Append(ref.Package).WithContext(ctx)
+	childctx := path.Append(schema.PackageName(provider.Package.PackageName)).WithContext(ctx)
 
 	start := time.Now()
-	res, err := p.Do(childctx)
+	res, err := provider.Instantiate(childctx, di)
 	if isSingleton {
-		di.singletons[ref] = result{
+		di.singletons[provider.key()] = result{
 			res: res,
 			err: err,
 		}
@@ -95,22 +92,29 @@ func (di *depInitializer) Instantiate(ctx context.Context, ref Reference, f func
 	}
 	took := time.Since(start)
 	if took > maximumInitTime {
-		Log.Printf("[provider] %s took %d (log thresh is %d)", p.Desc(), took, maximumInitTime)
+		Log.Printf("[provider] %s took %d (log thresh is %d)", provider.key(), took, maximumInitTime)
 	}
 
 	return f(ctx, res)
 }
 
 type Initializer struct {
-	PackageName string
-	Do          func(context.Context) error
+	Package *Package
+	Before  []string
+	After   []string
+	Do      func(context.Context, Dependencies) error
 }
 
-func (di *depInitializer) AddInitializer(init Initializer) {
-	di.inits = append(di.inits, init)
+func (di *DependencyGraph) AddInitializers(init ...*Initializer) {
+	di.inits = append(di.inits, init...)
 }
 
-func (di *depInitializer) Init(ctx context.Context) error {
+// Init is deprecated; use RunInitializers.
+func (di *DependencyGraph) Init(ctx context.Context) error {
+	return di.RunInitializers(ctx)
+}
+
+func (di *DependencyGraph) RunInitializers(ctx context.Context) error {
 	resources := ServerResourcesFrom(ctx)
 	if resources == nil {
 		return fmt.Errorf("missing server resources")
@@ -120,27 +124,99 @@ func (di *depInitializer) Init(ctx context.Context) error {
 	ctx, cancel := context.WithDeadline(ctx, initializationDeadline)
 	defer cancel()
 
-	for _, init := range di.inits {
+	inits, err := enforceOrder(di.inits)
+	if err != nil {
+		return err
+	}
+
+	for _, init := range inits {
 		if *debug {
-			Log.Printf("[init] initializing %s with %v deadline left", init.PackageName, time.Until(initializationDeadline))
+			Log.Printf("[init] initializing %s with %v deadline left", init.Package.PackageName, time.Until(initializationDeadline))
 		}
 
 		start := time.Now()
-		err := init.Do(ctx)
+		err := init.Do(ctx, di)
 		took := time.Since(start)
 		if took > maximumInitTime {
-			Log.Printf("[init] %s took %d (log thresh is %d)", init.PackageName, took, maximumInitTime)
+			Log.Printf("[init] %s took %d (log thresh is %d)", init.Package.PackageName, took, maximumInitTime)
 		}
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
+}
+
+func enforceOrder(inits []*Initializer) ([]*Initializer, error) {
+	graph := toposort.NewGraph(len(inits))
+
+	m := map[string]struct{}{}
+	for _, init := range inits {
+		m[init.Package.PackageName] = struct{}{}
+		for _, before := range init.Before {
+			m[before] = struct{}{}
+		}
+		for _, after := range init.After {
+			m[after] = struct{}{}
+		}
+	}
+
+	for n := range m {
+		graph.AddNode(n)
+	}
+
+	for _, init := range inits {
+		for _, before := range init.Before {
+			graph.AddEdge(init.Package.PackageName, before)
+		}
+		for _, after := range init.After {
+			graph.AddEdge(after, init.Package.PackageName)
+		}
+	}
+
+	sortedPackages, ok := graph.Toposort()
+	if !ok {
+		return nil, errors.New("internal failure: initializer order not fulfillable")
+	}
+
+	// XXX O(n^2)
+	var sorted []*Initializer
+	for _, pkg := range sortedPackages {
+		for _, init := range inits {
+			if init.Package.PackageName == pkg {
+				sorted = append(sorted, init)
+			}
+		}
+	}
+
+	if len(sorted) != len(inits) {
+		return nil, errors.New("internal failure: did not yield the same number of inits")
+	}
+
+	for i, init := range sorted {
+		for _, before := range init.Before {
+			for k := 0; k < i; k++ {
+				if sorted[k].Package.PackageName == before {
+					return nil, errors.New("internal failure: before: initializer order not guaranteed (verification)")
+				}
+			}
+		}
+		for _, after := range init.After {
+			for k := i + 1; k < len(sorted); k++ {
+				if sorted[k].Package.PackageName == after {
+					return nil, errors.New("internal failure: after: initializer order not guaranteed (verification)")
+				}
+			}
+		}
+	}
+
+	return sorted, nil
 }
 
 // MustUnwrapProto unserializes a proto from a base64 string. This is used to
 // pack pre-computed protos into a binary, and is never expected to fail.
-func MustUnwrapProto(b64 string, m proto.Message) {
+func MustUnwrapProto(b64 string, m proto.Message) proto.Message {
 	data, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
 		panic(err)
@@ -148,4 +224,5 @@ func MustUnwrapProto(b64 string, m proto.Message) {
 	if err := proto.Unmarshal(data, m); err != nil {
 		panic(err)
 	}
+	return m
 }

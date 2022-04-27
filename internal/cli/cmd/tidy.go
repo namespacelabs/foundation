@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
@@ -68,14 +69,14 @@ func NewTidyCmd() *cobra.Command {
 				switch {
 				case pkg.Server != nil:
 					lang := languages.IntegrationFor(pkg.Server.Framework)
-					if err := lang.TidyServer(ctx, pkg.Location, pkg.Server); err != nil {
+					if err := lang.TidyServer(ctx, pl, pkg.Location, pkg.Server); err != nil {
 						errs = append(errs, err)
 					}
 
 				case pkg.Node() != nil:
-					if pkg.Node().Kind == schema.Node_SERVICE {
-						lang := languages.IntegrationFor(pkg.Node().ServiceFramework)
-						if err := lang.TidyNode(ctx, pkg); err != nil {
+					for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
+						lang := languages.IntegrationFor(fmwk)
+						if err := lang.TidyNode(ctx, pl, pkg); err != nil {
 							errs = append(errs, err)
 						}
 					}
@@ -171,7 +172,7 @@ func rewriteWorkspace(ctx context.Context, root *workspace.Root, ws *schema.Work
 	})
 
 	// Write an updated workspace.ns.textpb before continuing.
-	return fnfs.WriteWorkspaceFile(ctx, root.FS(), workspace.WorkspaceFilename, func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), workspace.WorkspaceFilename, func(w io.Writer) error {
 		return workspace.FormatWorkspace(w, ws)
 	})
 }

@@ -10,9 +10,24 @@ import (
 )
 
 func RegisterDebugEndpoints(mux *mux.Router) {
-	registerPprofEndpoints(mux)
+	var endpoints []string
+
+	pprofEndpoint := registerPprofEndpoints(mux)
+	endpoints = append(endpoints, pprofEndpoint)
+
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.Handle("/livez", livezEndpoint())
 	mux.Handle("/readyz", readyzEndpoint())
-	mux.Handle("/", StatusHandler())
+
+	endpoints = append(endpoints, "/metrics", "/livez", "/readyz")
+
+	debugHandlers.mu.RLock()
+	defer debugHandlers.mu.RUnlock()
+	for pkg, handler := range debugHandlers.handlers {
+		endpoint := "/debug/" + pkg + "/"
+		mux.Handle(endpoint, handler)
+		endpoints = append(endpoints, endpoint)
+	}
+
+	mux.Handle("/", StatusHandler(endpoints))
 }

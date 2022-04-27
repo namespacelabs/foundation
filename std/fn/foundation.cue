@@ -33,6 +33,8 @@ _#Node: {
 	_#Node
 
 	hasInitializerIn?: #Framework | [...#Framework]
+	initializeBefore: [...inputs.#Package]
+	initializeAfter: [...inputs.#Package]
 
 	provides?: #Provides
 
@@ -168,7 +170,7 @@ _#ConfigureBase: {
 	}
 
 	#Startup: {
-		args?: #Args
+		args?: #Args | [...string]
 		env: [string]: string
 	}
 
@@ -179,7 +181,7 @@ _#ConfigureBase: {
 
 	#Naming: {
 		withOrg?: string
-		*{} | {domainName: string} | {tlsManagedDomainName: string}
+		*{} | {domainName: [string]: [...string]} | {tlsManagedDomainName: [string]: [...string]}
 	}
 }
 
@@ -200,7 +202,11 @@ _#ConfigureBase: {
 	args:       #Args
 	workingDir: *"/" | string
 	mount: [string]: {fromWorkspace: string}
-	snapshot: [string]: {fromWorkspace: string}
+	snapshot: [string]: {
+		fromWorkspace: string
+		optional:      *false | true
+		requireFile:   *false | true
+	}
 	noCache:      *false | true
 	requiresKeys: *false | true
 }

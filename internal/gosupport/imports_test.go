@@ -12,11 +12,11 @@ import (
 
 func TestImports(t *testing.T) {
 	x := NewGoImports("foobar")
-	x.AddOrGet("foobar/quux")
-	x.AddOrGet("google.golang.org/grpc")
-	x.AddOrGet("namespacelabs.dev/foundation/std/go/grpc")
-	x.AddOrGet("namespacelabs.dev/foundation/std/server/tracing")
-	x.AddOrGet("superduper/grpc")
+	x.Ensure("foobar/quux")
+	x.Ensure("google.golang.org/grpc")
+	x.Ensure("namespacelabs.dev/foundation/std/go/grpc")
+	x.Ensure("namespacelabs.dev/foundation/std/server/tracing")
+	x.Ensure("superduper/grpc")
 
 	x.ImportMap()
 

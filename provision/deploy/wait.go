@@ -5,8 +5,10 @@
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/kr/text"
@@ -15,10 +17,12 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const maxDeployWait = 10 * time.Second
+const (
+	maxDeployWait      = 10 * time.Second
+	tailLinesOnFailure = 10
+)
 
 func Wait(ctx context.Context, env ops.Environment, servers []*schema.Server, waiters []ops.Waiter) error {
 	rwb := renderwait.NewBlock(ctx, "deploy")
@@ -36,14 +40,16 @@ func Wait(ctx context.Context, env ops.Environment, servers []*schema.Server, wa
 
 func observeContainers(ctx context.Context, env ops.Environment, parent chan ops.Event) chan ops.Event {
 	ch := make(chan ops.Event)
-	t := time.NewTimer(maxDeployWait)
+	t := time.NewTicker(maxDeployWait)
+	firsttick := true // After the first tick, we tick twice as fast.
 
 	go func() {
 		defer close(parent)
 		defer t.Stop()
 
 		// Keep track of the pending ContainerWaitStatus per resource type.
-		m := map[string][]runtime.ContainerWaitStatus{}
+		pending := map[string][]runtime.ContainerWaitStatus{}
+		helps := map[string]string{}
 
 		for {
 			select {
@@ -57,50 +63,87 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 
 				parent <- ev
 
-				m[ev.ResourceID] = nil
-
-				for _, w := range ev.WaitStatus {
-					if cws, ok := w.(runtime.ContainerWaitStatus); ok {
-						m[ev.ResourceID] = append(m[ev.ResourceID], cws)
+				if ev.Ready != ops.Ready {
+					pending[ev.ResourceID] = nil
+					helps[ev.ResourceID] = ev.RuntimeSpecificHelp
+					for _, w := range ev.WaitStatus {
+						if cws, ok := w.(runtime.ContainerWaitStatus); ok {
+							pending[ev.ResourceID] = append(pending[ev.ResourceID], cws)
+						}
 					}
+				} else {
+					delete(pending, ev.ResourceID)
 				}
 
 			case <-t.C:
-				out := console.TypedOutput(ctx, "deploy", tasks.CatOutputUs)
-				fmt.Fprintf(out, "Deploying is taking too long, fetching diagnostics of the pending containers:\n")
+				if firsttick {
+					firsttick = false
+					t.Reset(maxDeployWait / 2)
+				}
 
 				rt := runtime.For(env)
-				for _, wslist := range m {
+				for resourceID, wslist := range pending {
+					all := []runtime.ContainerUnitWaitStatus{}
 					for _, w := range wslist {
-						all := []runtime.ContainerUnitWaitStatus{}
 						all = append(all, w.Containers...)
 						all = append(all, w.Initializers...)
-						for _, ws := range all {
-							diagnostics, err := rt.FetchDiagnostics(ctx, ws.Reference)
-							if err != nil {
-								fmt.Fprintf(out, "Failed to retrieve diagnostics for %s: %v\n", ws.Reference.HumanReference(), err)
-								continue
+					}
+					if len(all) == 0 {
+						// No containers are present yet, should still produce pod diagnostics.
+						continue
+					}
+
+					buf := bytes.NewBuffer(nil)
+					out := io.MultiWriter(buf, console.Debug(ctx))
+
+					if help, ok := helps[resourceID]; ok && !env.Proto().GetEphemeral() {
+						fmt.Fprintf(out, "For more information, run:\n  %s\n", help)
+					}
+
+					fmt.Fprintf(out, "Diagnostics retrieved at %s:\n", time.Now().Format("2006-01-02 15:04:05.000"))
+
+					// XXX fetching diagnostics should not block forwarding events (above).
+					for _, ws := range all {
+						diagnostics, err := rt.FetchDiagnostics(ctx, ws.Reference)
+						if err != nil {
+							fmt.Fprintf(out, "Failed to retrieve diagnostics for %s: %v\n", ws.Reference.HumanReference(), err)
+							continue
+						}
+
+						fmt.Fprintf(out, "%s", ws.Reference.HumanReference())
+						if diagnostics.RestartCount > 0 {
+							fmt.Fprintf(out, " (restarted %d times)", diagnostics.RestartCount)
+						}
+						fmt.Fprintln(out, ":")
+
+						switch {
+						case diagnostics.Running:
+							fmt.Fprintf(out, "  Running, logs (last %d lines):\n", tailLinesOnFailure)
+							if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure}); err != nil {
+								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference(), err)
 							}
 
-							wout := console.TypedOutput(ctx, ws.Reference.HumanReference(), tasks.CatOutputTool)
-
-							switch {
-							case diagnostics.Running:
-								fmt.Fprintf(wout, "Log tail:\n")
-								if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(wout, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: 20}); err != nil {
+						case diagnostics.Waiting:
+							fmt.Fprintf(out, "  Waiting: %s\n", diagnostics.WaitingReason)
+							if diagnostics.Crashed {
+								if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
 									fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference(), err)
 								}
+							}
 
-							case diagnostics.Waiting:
-								fmt.Fprintf(wout, "Waiting: %s\n", diagnostics.WaitingReason)
-
-							case diagnostics.Terminated:
-								fmt.Fprintf(wout, "Failed: %s (exit code %d), last log tail:\n", diagnostics.TerminatedReason, diagnostics.ExitCode)
-								if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(wout, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: 20, FetchLastFailure: true}); err != nil {
+						case diagnostics.Terminated:
+							if diagnostics.ExitCode > 0 {
+								fmt.Fprintf(out, "  Failed: %s (exit code %d), logs (last %d lines):\n", diagnostics.TerminatedReason, diagnostics.ExitCode, tailLinesOnFailure)
+								if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
 									fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference(), err)
 								}
 							}
 						}
+					}
+
+					parent <- ops.Event{
+						ResourceID:  resourceID,
+						WaitDetails: buf.String(),
 					}
 				}
 			}

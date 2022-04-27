@@ -7,10 +7,14 @@ package compute
 import (
 	"context"
 	"embed"
+	"fmt"
 	"io/fs"
+	"os"
 	"sync"
 
 	"google.golang.org/protobuf/encoding/prototext"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -32,8 +36,19 @@ type throttleCapacity struct {
 	used map[string]int32 // Total amount of capacity used per value.
 }
 
-func parseThrottleConfig() (*ThrottleConfigurations, error) {
-	bytes, err := fs.ReadFile(embeddedConfig, "throttle.textpb")
+func parseThrottleConfig(ctx context.Context) (*ThrottleConfigurations, error) {
+	if dir, err := dirs.Config(); err == nil {
+		if cfg, err := parseThrottleConfigFrom(os.DirFS(dir)); err == nil {
+			fmt.Fprintf(console.Debug(ctx), "Using user-provided throttle configuration (loaded from %s).\n", dir)
+			return cfg, nil
+		}
+	}
+
+	return parseThrottleConfigFrom(embeddedConfig)
+}
+
+func parseThrottleConfigFrom(fsys fs.FS) (*ThrottleConfigurations, error) {
+	bytes, err := fs.ReadFile(fsys, "throttle.textpb")
 	if err != nil {
 		return nil, err
 	}

@@ -1,3 +1,6 @@
 {
+	"compilerOptions": {
+		"sourceMap": true
+	},
 	"extends": "@tsconfig/node16/tsconfig.json"
 }

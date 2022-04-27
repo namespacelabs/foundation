@@ -22,6 +22,10 @@ type MkdirFS interface {
 	MkdirAll(path string, mode fs.FileMode) error
 }
 
+type RmdirFS interface {
+	RemoveAll(path string) error
+}
+
 type ChmodFS interface {
 	Chmod(path string, mode fs.FileMode) error
 }

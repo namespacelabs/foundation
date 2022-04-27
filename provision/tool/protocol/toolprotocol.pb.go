@@ -736,116 +736,6 @@ func (x *Snapshot) GetEntry() []*Snapshot_FileEntry {
 	return nil
 }
 
-type WorkerChunk struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	ClientHello  *WorkerChunk_ClientHello `protobuf:"bytes,1,opt,name=client_hello,json=clientHello,proto3" json:"client_hello,omitempty"`
-	ToolResponse *ToolResponse            `protobuf:"bytes,2,opt,name=tool_response,json=toolResponse,proto3" json:"tool_response,omitempty"`
-}
-
-func (x *WorkerChunk) Reset() {
-	*x = WorkerChunk{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[11]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *WorkerChunk) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WorkerChunk) ProtoMessage() {}
-
-func (x *WorkerChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[11]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WorkerChunk.ProtoReflect.Descriptor instead.
-func (*WorkerChunk) Descriptor() ([]byte, []int) {
-	return file_provision_tool_protocol_toolprotocol_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *WorkerChunk) GetClientHello() *WorkerChunk_ClientHello {
-	if x != nil {
-		return x.ClientHello
-	}
-	return nil
-}
-
-func (x *WorkerChunk) GetToolResponse() *ToolResponse {
-	if x != nil {
-		return x.ToolResponse
-	}
-	return nil
-}
-
-type WorkerCoordinatorChunk struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	ServerHello *WorkerCoordinatorChunk_ServerHello `protobuf:"bytes,1,opt,name=server_hello,json=serverHello,proto3" json:"server_hello,omitempty"`
-	ToolRequest *ToolRequest                        `protobuf:"bytes,2,opt,name=tool_request,json=toolRequest,proto3" json:"tool_request,omitempty"`
-}
-
-func (x *WorkerCoordinatorChunk) Reset() {
-	*x = WorkerCoordinatorChunk{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[12]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *WorkerCoordinatorChunk) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WorkerCoordinatorChunk) ProtoMessage() {}
-
-func (x *WorkerCoordinatorChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[12]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WorkerCoordinatorChunk.ProtoReflect.Descriptor instead.
-func (*WorkerCoordinatorChunk) Descriptor() ([]byte, []int) {
-	return file_provision_tool_protocol_toolprotocol_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *WorkerCoordinatorChunk) GetServerHello() *WorkerCoordinatorChunk_ServerHello {
-	if x != nil {
-		return x.ServerHello
-	}
-	return nil
-}
-
-func (x *WorkerCoordinatorChunk) GetToolRequest() *ToolRequest {
-	if x != nil {
-		return x.ToolRequest
-	}
-	return nil
-}
-
 type Snapshot_FileEntry struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -858,7 +748,7 @@ type Snapshot_FileEntry struct {
 func (x *Snapshot_FileEntry) Reset() {
 	*x = Snapshot_FileEntry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[13]
+		mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -871,7 +761,7 @@ func (x *Snapshot_FileEntry) String() string {
 func (*Snapshot_FileEntry) ProtoMessage() {}
 
 func (x *Snapshot_FileEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[13]
+	mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -899,116 +789,6 @@ func (x *Snapshot_FileEntry) GetContents() []byte {
 		return x.Contents
 	}
 	return nil
-}
-
-type WorkerChunk_ClientHello struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	FnApiVersion   int32 `protobuf:"varint,1,opt,name=fn_api_version,json=fnApiVersion,proto3" json:"fn_api_version,omitempty"`
-	ToolApiVersion int32 `protobuf:"varint,2,opt,name=tool_api_version,json=toolApiVersion,proto3" json:"tool_api_version,omitempty"`
-}
-
-func (x *WorkerChunk_ClientHello) Reset() {
-	*x = WorkerChunk_ClientHello{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[14]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *WorkerChunk_ClientHello) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WorkerChunk_ClientHello) ProtoMessage() {}
-
-func (x *WorkerChunk_ClientHello) ProtoReflect() protoreflect.Message {
-	mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[14]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WorkerChunk_ClientHello.ProtoReflect.Descriptor instead.
-func (*WorkerChunk_ClientHello) Descriptor() ([]byte, []int) {
-	return file_provision_tool_protocol_toolprotocol_proto_rawDescGZIP(), []int{11, 0}
-}
-
-func (x *WorkerChunk_ClientHello) GetFnApiVersion() int32 {
-	if x != nil {
-		return x.FnApiVersion
-	}
-	return 0
-}
-
-func (x *WorkerChunk_ClientHello) GetToolApiVersion() int32 {
-	if x != nil {
-		return x.ToolApiVersion
-	}
-	return 0
-}
-
-type WorkerCoordinatorChunk_ServerHello struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	FnApiVersion   int32 `protobuf:"varint,1,opt,name=fn_api_version,json=fnApiVersion,proto3" json:"fn_api_version,omitempty"`
-	ToolApiVersion int32 `protobuf:"varint,2,opt,name=tool_api_version,json=toolApiVersion,proto3" json:"tool_api_version,omitempty"`
-}
-
-func (x *WorkerCoordinatorChunk_ServerHello) Reset() {
-	*x = WorkerCoordinatorChunk_ServerHello{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[15]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *WorkerCoordinatorChunk_ServerHello) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WorkerCoordinatorChunk_ServerHello) ProtoMessage() {}
-
-func (x *WorkerCoordinatorChunk_ServerHello) ProtoReflect() protoreflect.Message {
-	mi := &file_provision_tool_protocol_toolprotocol_proto_msgTypes[15]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WorkerCoordinatorChunk_ServerHello.ProtoReflect.Descriptor instead.
-func (*WorkerCoordinatorChunk_ServerHello) Descriptor() ([]byte, []int) {
-	return file_provision_tool_protocol_toolprotocol_proto_rawDescGZIP(), []int{12, 0}
-}
-
-func (x *WorkerCoordinatorChunk_ServerHello) GetFnApiVersion() int32 {
-	if x != nil {
-		return x.FnApiVersion
-	}
-	return 0
-}
-
-func (x *WorkerCoordinatorChunk_ServerHello) GetToolApiVersion() int32 {
-	if x != nil {
-		return x.ToolApiVersion
-	}
-	return 0
 }
 
 var File_provision_tool_protocol_toolprotocol_proto protoreflect.FileDescriptor
@@ -1139,62 +919,23 @@ var file_provision_tool_protocol_toolprotocol_proto_rawDesc = []byte{
 	0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74, 0x68, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61, 0x74, 0x68, 0x12, 0x1a, 0x0a, 0x08, 0x63, 0x6f, 0x6e,
 	0x74, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x08, 0x63, 0x6f, 0x6e,
-	0x74, 0x65, 0x6e, 0x74, 0x73, 0x22, 0xa3, 0x02, 0x0a, 0x0b, 0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72,
-	0x43, 0x68, 0x75, 0x6e, 0x6b, 0x12, 0x5e, 0x0a, 0x0c, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x5f,
-	0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x3b, 0x2e, 0x66, 0x6f,
-	0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x73, 0x69,
-	0x6f, 0x6e, 0x2e, 0x74, 0x6f, 0x6f, 0x6c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c,
-	0x2e, 0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x2e, 0x43, 0x6c, 0x69,
-	0x65, 0x6e, 0x74, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x52, 0x0b, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74,
-	0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x12, 0x55, 0x0a, 0x0d, 0x74, 0x6f, 0x6f, 0x6c, 0x5f, 0x72, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x30, 0x2e, 0x66,
-	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x73,
-	0x69, 0x6f, 0x6e, 0x2e, 0x74, 0x6f, 0x6f, 0x6c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f,
-	0x6c, 0x2e, 0x54, 0x6f, 0x6f, 0x6c, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x0c,
-	0x74, 0x6f, 0x6f, 0x6c, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x1a, 0x5d, 0x0a, 0x0b,
-	0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x12, 0x24, 0x0a, 0x0e, 0x66,
-	0x6e, 0x5f, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x05, 0x52, 0x0c, 0x66, 0x6e, 0x41, 0x70, 0x69, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f,
-	0x6e, 0x12, 0x28, 0x0a, 0x10, 0x74, 0x6f, 0x6f, 0x6c, 0x5f, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65,
-	0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0e, 0x74, 0x6f, 0x6f,
-	0x6c, 0x41, 0x70, 0x69, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x22, 0xb6, 0x02, 0x0a, 0x16,
-	0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x43, 0x6f, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x74, 0x6f,
-	0x72, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x12, 0x69, 0x0a, 0x0c, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72,
-	0x5f, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x46, 0x2e, 0x66,
-	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x73,
-	0x69, 0x6f, 0x6e, 0x2e, 0x74, 0x6f, 0x6f, 0x6c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f,
-	0x6c, 0x2e, 0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x43, 0x6f, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x61,
-	0x74, 0x6f, 0x72, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x2e, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x48,
-	0x65, 0x6c, 0x6c, 0x6f, 0x52, 0x0b, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x48, 0x65, 0x6c, 0x6c,
-	0x6f, 0x12, 0x52, 0x0a, 0x0c, 0x74, 0x6f, 0x6f, 0x6c, 0x5f, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2f, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61,
+	0x74, 0x65, 0x6e, 0x74, 0x73, 0x2a, 0x3f, 0x0a, 0x09, 0x4c, 0x69, 0x66, 0x65, 0x63, 0x79, 0x63,
+	0x6c, 0x65, 0x12, 0x15, 0x0a, 0x11, 0x4c, 0x49, 0x46, 0x45, 0x43, 0x59, 0x43, 0x4c, 0x45, 0x5f,
+	0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x00, 0x12, 0x0d, 0x0a, 0x09, 0x50, 0x52, 0x4f,
+	0x56, 0x49, 0x53, 0x49, 0x4f, 0x4e, 0x10, 0x01, 0x12, 0x0c, 0x0a, 0x08, 0x53, 0x48, 0x55, 0x54,
+	0x44, 0x4f, 0x57, 0x4e, 0x10, 0x02, 0x32, 0x80, 0x01, 0x0a, 0x11, 0x49, 0x6e, 0x76, 0x6f, 0x63,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x6b, 0x0a, 0x06,
+	0x49, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x12, 0x2f, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x2e, 0x74, 0x6f,
+	0x6f, 0x6c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x2e, 0x54, 0x6f, 0x6f, 0x6c,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x30, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61,
 	0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x2e, 0x74,
 	0x6f, 0x6f, 0x6c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x2e, 0x54, 0x6f, 0x6f,
-	0x6c, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x0b, 0x74, 0x6f, 0x6f, 0x6c, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x5d, 0x0a, 0x0b, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x48,
-	0x65, 0x6c, 0x6c, 0x6f, 0x12, 0x24, 0x0a, 0x0e, 0x66, 0x6e, 0x5f, 0x61, 0x70, 0x69, 0x5f, 0x76,
-	0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0c, 0x66, 0x6e,
-	0x41, 0x70, 0x69, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x28, 0x0a, 0x10, 0x74, 0x6f,
-	0x6f, 0x6c, 0x5f, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x05, 0x52, 0x0e, 0x74, 0x6f, 0x6f, 0x6c, 0x41, 0x70, 0x69, 0x56, 0x65, 0x72,
-	0x73, 0x69, 0x6f, 0x6e, 0x2a, 0x3f, 0x0a, 0x09, 0x4c, 0x69, 0x66, 0x65, 0x63, 0x79, 0x63, 0x6c,
-	0x65, 0x12, 0x15, 0x0a, 0x11, 0x4c, 0x49, 0x46, 0x45, 0x43, 0x59, 0x43, 0x4c, 0x45, 0x5f, 0x55,
-	0x4e, 0x4b, 0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x00, 0x12, 0x0d, 0x0a, 0x09, 0x50, 0x52, 0x4f, 0x56,
-	0x49, 0x53, 0x49, 0x4f, 0x4e, 0x10, 0x01, 0x12, 0x0c, 0x0a, 0x08, 0x53, 0x48, 0x55, 0x54, 0x44,
-	0x4f, 0x57, 0x4e, 0x10, 0x02, 0x32, 0x8e, 0x01, 0x0a, 0x11, 0x49, 0x6e, 0x76, 0x6f, 0x63, 0x61,
-	0x74, 0x69, 0x6f, 0x6e, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x79, 0x0a, 0x06, 0x57,
-	0x6f, 0x72, 0x6b, 0x65, 0x72, 0x12, 0x2f, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x2e, 0x74, 0x6f, 0x6f,
-	0x6c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x2e, 0x57, 0x6f, 0x72, 0x6b, 0x65,
-	0x72, 0x43, 0x68, 0x75, 0x6e, 0x6b, 0x1a, 0x3a, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x2e, 0x74, 0x6f,
-	0x6f, 0x6c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x2e, 0x57, 0x6f, 0x72, 0x6b,
-	0x65, 0x72, 0x43, 0x6f, 0x6f, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x74, 0x6f, 0x72, 0x43, 0x68, 0x75,
-	0x6e, 0x6b, 0x28, 0x01, 0x30, 0x01, 0x42, 0x36, 0x5a, 0x34, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70,
-	0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e,
-	0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e,
-	0x2f, 0x74, 0x6f, 0x6f, 0x6c, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x62, 0x06,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6c, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x36, 0x5a, 0x34, 0x6e, 0x61, 0x6d,
+	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66,
+	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x73,
+	0x69, 0x6f, 0x6e, 0x2f, 0x74, 0x6f, 0x6f, 0x6c, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f,
+	0x6c, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1210,63 +951,55 @@ func file_provision_tool_protocol_toolprotocol_proto_rawDescGZIP() []byte {
 }
 
 var file_provision_tool_protocol_toolprotocol_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_provision_tool_protocol_toolprotocol_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_provision_tool_protocol_toolprotocol_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_provision_tool_protocol_toolprotocol_proto_goTypes = []interface{}{
-	(Lifecycle)(0),                             // 0: foundation.provision.tool.protocol.Lifecycle
-	(*ToolRequest)(nil),                        // 1: foundation.provision.tool.protocol.ToolRequest
-	(*StackRelated)(nil),                       // 2: foundation.provision.tool.protocol.StackRelated
-	(*ToolResponse)(nil),                       // 3: foundation.provision.tool.protocol.ToolResponse
-	(*ApplyRequest)(nil),                       // 4: foundation.provision.tool.protocol.ApplyRequest
-	(*ApplyResponse)(nil),                      // 5: foundation.provision.tool.protocol.ApplyResponse
-	(*DeleteRequest)(nil),                      // 6: foundation.provision.tool.protocol.DeleteRequest
-	(*DeleteResponse)(nil),                     // 7: foundation.provision.tool.protocol.DeleteResponse
-	(*InvokeRequest)(nil),                      // 8: foundation.provision.tool.protocol.InvokeRequest
-	(*InvokeResponse)(nil),                     // 9: foundation.provision.tool.protocol.InvokeResponse
-	(*CacheKey)(nil),                           // 10: foundation.provision.tool.protocol.CacheKey
-	(*Snapshot)(nil),                           // 11: foundation.provision.tool.protocol.Snapshot
-	(*WorkerChunk)(nil),                        // 12: foundation.provision.tool.protocol.WorkerChunk
-	(*WorkerCoordinatorChunk)(nil),             // 13: foundation.provision.tool.protocol.WorkerCoordinatorChunk
-	(*Snapshot_FileEntry)(nil),                 // 14: foundation.provision.tool.protocol.Snapshot.FileEntry
-	(*WorkerChunk_ClientHello)(nil),            // 15: foundation.provision.tool.protocol.WorkerChunk.ClientHello
-	(*WorkerCoordinatorChunk_ServerHello)(nil), // 16: foundation.provision.tool.protocol.WorkerCoordinatorChunk.ServerHello
-	(*anypb.Any)(nil),                          // 17: google.protobuf.Any
-	(*schema.Environment)(nil),                 // 18: foundation.schema.Environment
-	(*schema.Stack)(nil),                       // 19: foundation.schema.Stack
-	(*schema.DefExtension)(nil),                // 20: foundation.schema.DefExtension
-	(*schema.Definition)(nil),                  // 21: foundation.schema.Definition
+	(Lifecycle)(0),              // 0: foundation.provision.tool.protocol.Lifecycle
+	(*ToolRequest)(nil),         // 1: foundation.provision.tool.protocol.ToolRequest
+	(*StackRelated)(nil),        // 2: foundation.provision.tool.protocol.StackRelated
+	(*ToolResponse)(nil),        // 3: foundation.provision.tool.protocol.ToolResponse
+	(*ApplyRequest)(nil),        // 4: foundation.provision.tool.protocol.ApplyRequest
+	(*ApplyResponse)(nil),       // 5: foundation.provision.tool.protocol.ApplyResponse
+	(*DeleteRequest)(nil),       // 6: foundation.provision.tool.protocol.DeleteRequest
+	(*DeleteResponse)(nil),      // 7: foundation.provision.tool.protocol.DeleteResponse
+	(*InvokeRequest)(nil),       // 8: foundation.provision.tool.protocol.InvokeRequest
+	(*InvokeResponse)(nil),      // 9: foundation.provision.tool.protocol.InvokeResponse
+	(*CacheKey)(nil),            // 10: foundation.provision.tool.protocol.CacheKey
+	(*Snapshot)(nil),            // 11: foundation.provision.tool.protocol.Snapshot
+	(*Snapshot_FileEntry)(nil),  // 12: foundation.provision.tool.protocol.Snapshot.FileEntry
+	(*anypb.Any)(nil),           // 13: google.protobuf.Any
+	(*schema.Environment)(nil),  // 14: foundation.schema.Environment
+	(*schema.Stack)(nil),        // 15: foundation.schema.Stack
+	(*schema.DefExtension)(nil), // 16: foundation.schema.DefExtension
+	(*schema.Definition)(nil),   // 17: foundation.schema.Definition
 }
 var file_provision_tool_protocol_toolprotocol_proto_depIdxs = []int32{
-	17, // 0: foundation.provision.tool.protocol.ToolRequest.input:type_name -> google.protobuf.Any
+	13, // 0: foundation.provision.tool.protocol.ToolRequest.input:type_name -> google.protobuf.Any
 	11, // 1: foundation.provision.tool.protocol.ToolRequest.snapshot:type_name -> foundation.provision.tool.protocol.Snapshot
-	18, // 2: foundation.provision.tool.protocol.ToolRequest.env:type_name -> foundation.schema.Environment
-	19, // 3: foundation.provision.tool.protocol.ToolRequest.stack:type_name -> foundation.schema.Stack
+	14, // 2: foundation.provision.tool.protocol.ToolRequest.env:type_name -> foundation.schema.Environment
+	15, // 3: foundation.provision.tool.protocol.ToolRequest.stack:type_name -> foundation.schema.Stack
 	4,  // 4: foundation.provision.tool.protocol.ToolRequest.apply_request:type_name -> foundation.provision.tool.protocol.ApplyRequest
 	6,  // 5: foundation.provision.tool.protocol.ToolRequest.delete_request:type_name -> foundation.provision.tool.protocol.DeleteRequest
 	8,  // 6: foundation.provision.tool.protocol.ToolRequest.invoke_request:type_name -> foundation.provision.tool.protocol.InvokeRequest
-	18, // 7: foundation.provision.tool.protocol.StackRelated.env:type_name -> foundation.schema.Environment
-	19, // 8: foundation.provision.tool.protocol.StackRelated.stack:type_name -> foundation.schema.Stack
+	14, // 7: foundation.provision.tool.protocol.StackRelated.env:type_name -> foundation.schema.Environment
+	15, // 8: foundation.provision.tool.protocol.StackRelated.stack:type_name -> foundation.schema.Stack
 	5,  // 9: foundation.provision.tool.protocol.ToolResponse.apply_response:type_name -> foundation.provision.tool.protocol.ApplyResponse
 	7,  // 10: foundation.provision.tool.protocol.ToolResponse.delete_response:type_name -> foundation.provision.tool.protocol.DeleteResponse
 	9,  // 11: foundation.provision.tool.protocol.ToolResponse.invoke_response:type_name -> foundation.provision.tool.protocol.InvokeResponse
 	2,  // 12: foundation.provision.tool.protocol.ApplyRequest.header:type_name -> foundation.provision.tool.protocol.StackRelated
-	20, // 13: foundation.provision.tool.protocol.ApplyResponse.extension:type_name -> foundation.schema.DefExtension
-	21, // 14: foundation.provision.tool.protocol.ApplyResponse.definition:type_name -> foundation.schema.Definition
+	16, // 13: foundation.provision.tool.protocol.ApplyResponse.extension:type_name -> foundation.schema.DefExtension
+	17, // 14: foundation.provision.tool.protocol.ApplyResponse.definition:type_name -> foundation.schema.Definition
 	10, // 15: foundation.provision.tool.protocol.ApplyResponse.cache_key:type_name -> foundation.provision.tool.protocol.CacheKey
 	2,  // 16: foundation.provision.tool.protocol.DeleteRequest.header:type_name -> foundation.provision.tool.protocol.StackRelated
-	21, // 17: foundation.provision.tool.protocol.DeleteResponse.definition:type_name -> foundation.schema.Definition
-	17, // 18: foundation.provision.tool.protocol.InvokeResponse.output:type_name -> google.protobuf.Any
-	14, // 19: foundation.provision.tool.protocol.Snapshot.entry:type_name -> foundation.provision.tool.protocol.Snapshot.FileEntry
-	15, // 20: foundation.provision.tool.protocol.WorkerChunk.client_hello:type_name -> foundation.provision.tool.protocol.WorkerChunk.ClientHello
-	3,  // 21: foundation.provision.tool.protocol.WorkerChunk.tool_response:type_name -> foundation.provision.tool.protocol.ToolResponse
-	16, // 22: foundation.provision.tool.protocol.WorkerCoordinatorChunk.server_hello:type_name -> foundation.provision.tool.protocol.WorkerCoordinatorChunk.ServerHello
-	1,  // 23: foundation.provision.tool.protocol.WorkerCoordinatorChunk.tool_request:type_name -> foundation.provision.tool.protocol.ToolRequest
-	12, // 24: foundation.provision.tool.protocol.InvocationService.Worker:input_type -> foundation.provision.tool.protocol.WorkerChunk
-	13, // 25: foundation.provision.tool.protocol.InvocationService.Worker:output_type -> foundation.provision.tool.protocol.WorkerCoordinatorChunk
-	25, // [25:26] is the sub-list for method output_type
-	24, // [24:25] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	17, // 17: foundation.provision.tool.protocol.DeleteResponse.definition:type_name -> foundation.schema.Definition
+	13, // 18: foundation.provision.tool.protocol.InvokeResponse.output:type_name -> google.protobuf.Any
+	12, // 19: foundation.provision.tool.protocol.Snapshot.entry:type_name -> foundation.provision.tool.protocol.Snapshot.FileEntry
+	1,  // 20: foundation.provision.tool.protocol.InvocationService.Invoke:input_type -> foundation.provision.tool.protocol.ToolRequest
+	3,  // 21: foundation.provision.tool.protocol.InvocationService.Invoke:output_type -> foundation.provision.tool.protocol.ToolResponse
+	21, // [21:22] is the sub-list for method output_type
+	20, // [20:21] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_provision_tool_protocol_toolprotocol_proto_init() }
@@ -1408,55 +1141,7 @@ func file_provision_tool_protocol_toolprotocol_proto_init() {
 			}
 		}
 		file_provision_tool_protocol_toolprotocol_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WorkerChunk); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_provision_tool_protocol_toolprotocol_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WorkerCoordinatorChunk); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_provision_tool_protocol_toolprotocol_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Snapshot_FileEntry); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_provision_tool_protocol_toolprotocol_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WorkerChunk_ClientHello); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_provision_tool_protocol_toolprotocol_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WorkerCoordinatorChunk_ServerHello); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1479,7 +1164,7 @@ func file_provision_tool_protocol_toolprotocol_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_provision_tool_protocol_toolprotocol_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   16,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

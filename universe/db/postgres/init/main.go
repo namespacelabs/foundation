@@ -15,11 +15,12 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/dustin/go-humanize"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
-const connBackoff = 3 * time.Second
+const connBackoff = 500 * time.Millisecond
 
 var (
 	userFile     = flag.String("postgres_user_file", "", "location of the user secret")
@@ -38,8 +39,10 @@ func existsDb(ctx context.Context, conn *pgxpool.Pool, dbName string) (bool, err
 
 func connect(ctx context.Context, user string, password string, address string, port uint32, db string) (conn *pgxpool.Pool, err error) {
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", user, password, address, port, db)
+	count := 0
 	err = backoff.Retry(func() error {
-		log.Printf("Connecting to postgres with `%s`.", connString)
+		count++
+		log.Printf("Connecting to postgres (%s try), address is `%s:%d`.", humanize.Ordinal(count), address, port)
 		conn, err = pgxpool.Connect(ctx, connString)
 		if err != nil {
 			log.Printf("Failed to connect to postgres: %v", err)
@@ -78,7 +81,7 @@ func ensureDb(ctx context.Context, db *postgres.Database, user string, password 
 	// https://www.postgresql.org/docs/9.5/xfunc-sql.html
 	// As we need to use Sprintf instead, let's do some basic sanity checking (whitespaces are forbidden).
 	if len(strings.Fields(db.Name)) > 1 {
-		return fmt.Errorf("Invalid database name: %s", db.Name)
+		return fmt.Errorf("invalid database name: %s", db.Name)
 	}
 	_, err = conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s;", db.Name))
 	if err != nil {

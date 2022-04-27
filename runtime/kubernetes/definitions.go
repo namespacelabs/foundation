@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -133,12 +134,13 @@ func RegisterGraphHandlers() {
 						WaitForPodConditition(fetchPod(apply.Namespace, apply.Name),
 							func(ps v1.PodStatus) (bool, error) {
 								ev := ops.Event{
-									ResourceID:   fmt.Sprintf("%s/%s", apply.Namespace, apply.Name),
-									Kind:         apply.Resource,
-									Category:     "Servers deployed",
-									Scope:        sc,
-									Ready:        ops.NotReady,
-									ImplMetadata: ps,
+									ResourceID:          fmt.Sprintf("%s/%s", apply.Namespace, apply.Name),
+									Kind:                apply.Resource,
+									Category:            "Servers deployed",
+									Scope:               sc,
+									Ready:               ops.NotReady,
+									ImplMetadata:        ps,
+									RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", apply.Namespace, apply.Name),
 								}
 
 								ev.WaitStatus = append(ev.WaitStatus, waiterFromPodStatus(apply.Namespace, apply.Name, ps))
@@ -325,9 +327,9 @@ func RegisterGraphHandlers() {
 	})
 
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, create *kubedef.OpCreateSecretConditionally) (*ops.DispatcherResult, error) {
-		wenv, ok := env.(ops.WorkspaceEnvironment)
+		wenv, ok := env.(workspace.WorkspaceEnvironment)
 		if !ok {
-			return nil, fnerrors.InternalError("expected a ops.WorkspaceEnvironment")
+			return nil, fnerrors.InternalError("expected a workspace.WorkspaceEnvironment")
 		}
 
 		if create.Name == "" {

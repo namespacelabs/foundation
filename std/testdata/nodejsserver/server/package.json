@@ -2,6 +2,7 @@
 	"dependencies": {
 		"@grpc/grpc-js": "1.5.7",
 		"google-protobuf": "^3.20.0",
+		"source-map-support": "0.5.21",
 		"ts-node": "10.7.x",
 		"typescript": "4.6.2",
 		"yargs": "16.x"

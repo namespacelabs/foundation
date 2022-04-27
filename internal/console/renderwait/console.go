@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kr/text"
 	"github.com/morikuni/aec"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
@@ -33,6 +34,7 @@ type blockState struct {
 	AlreadyExisted bool
 	Start, End     time.Time
 	WaitStatus     []ops.WaitStatus
+	WaitDetails    string
 }
 
 func (rwb consRenderer) Ch() chan ops.Event { return rwb.ch }
@@ -84,6 +86,10 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 			m[ev.ResourceID].WaitStatus = ev.WaitStatus
 			if m[ev.ResourceID].Ready {
 				m[ev.ResourceID].End = time.Now()
+			} else {
+				if ev.WaitDetails != "" {
+					m[ev.ResourceID].WaitDetails = ev.WaitDetails
+				}
 			}
 
 			rwb.setSticky(render(m, ids, false))
@@ -115,13 +121,13 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 			fmt.Fprintln(&b)
 		}
 
-		c := perCat[cat]
-		if len(c) == 0 {
+		blocks := perCat[cat]
+		if len(blocks) == 0 {
 			continue
 		}
 
 		fmt.Fprintf(&b, " %s:\n\n", cat)
-		for _, blk := range c {
+		for _, blk := range blocks {
 			var icon, took string
 			if blk.AlreadyExisted && !blk.Ready {
 				icon = "[ ]"
@@ -140,6 +146,9 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 				}
 			}
 			fmt.Fprintf(&b, "  %s %s %s\n", icon, blk.Scope, aec.LightBlackF.Apply(took))
+			if details := blk.WaitDetails; details != "" {
+				fmt.Fprint(text.NewIndentWriter(&b, []byte("      ")), details)
+			}
 		}
 	}
 

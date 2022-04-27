@@ -13,6 +13,7 @@ const (
 	FocusServerIKw    = "focus_server"
 	ImageIKw          = "image"
 	EnvIKw            = "env"
+	VCSIKw            = "vcs"
 	WorkspaceIKw      = "workspace"
 	ProtoloadIKw      = "protoload"
 	ServerPortAllocKw = "port"
@@ -20,6 +21,6 @@ const (
 )
 
 var (
-	knownInputs = []string{ServerDepIKw, ServiceIKw, ImageIKw, EnvIKw, WorkspaceIKw, ProtoloadIKw, FocusServerIKw, ResourceIKw, PackageIKW}
+	knownInputs = []string{ServerDepIKw, ServiceIKw, ImageIKw, EnvIKw, WorkspaceIKw, ProtoloadIKw, FocusServerIKw, ResourceIKw, PackageIKW, VCSIKw}
 	knownAllocs = []string{ServerPortAllocKw}
 )

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -21,7 +22,7 @@ import (
 const yarnLockFn = "yarn.lock"
 
 func generateSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, data interface{}) error {
-	return fnfs.WriteWorkspaceFile(ctx, fsfs, filePath, func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsfs, filePath, func(w io.Writer) error {
 		// TODO(@nicolasalt): format the file.
 		return writeSource(w, t, data)
 	})

@@ -15,10 +15,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"namespacelabs.dev/foundation/internal/artifacts"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type ReadWriteFS interface {
@@ -26,17 +23,17 @@ type ReadWriteFS interface {
 	WriteFS
 }
 
-func WriteWorkspaceFile(ctx context.Context, vfs ReadWriteFS, filePath string, h func(io.Writer) error) error {
+func WriteWorkspaceFile(ctx context.Context, log io.Writer, vfs ReadWriteFS, filePath string, h func(io.Writer) error) error {
 	return WriteFileExtended(ctx, vfs, filePath, 0644, WriteFileExtendedOpts{
 		CompareContents: true,
-		AnnounceWrite:   true,
+		AnnounceWrite:   log,
 		EnsureFileMode:  false,
 	}, h)
 }
 
-func WriteFSToWorkspace(ctx context.Context, vfs ReadWriteFS, src fs.FS) error {
+func WriteFSToWorkspace(ctx context.Context, log io.Writer, vfs ReadWriteFS, src fs.FS) error {
 	return VisitFiles(ctx, src, func(path string, contents []byte, dirent fs.DirEntry) error {
-		return WriteWorkspaceFile(ctx, vfs, path, func(w io.Writer) error {
+		return WriteWorkspaceFile(ctx, log, vfs, path, func(w io.Writer) error {
 			_, err := w.Write(contents)
 			return err
 		})
@@ -48,8 +45,7 @@ type WriteFileExtendedOpts struct {
 	CompareContents bool
 	FailOverwrite   bool
 	EnsureFileMode  bool
-	AnnounceWrite   bool
-	AddProgress     bool
+	AnnounceWrite   io.Writer
 }
 
 func WriteFileExtended(ctx context.Context, dst ReadWriteFS, filePath string, mode fs.FileMode, opts WriteFileExtendedOpts, writeContents func(io.Writer) error) error {
@@ -104,13 +100,6 @@ write:
 		return fmt.Errorf("%s: would have been rewritten", filePath)
 	}
 
-	var wp io.Writer
-	if opts.AddProgress {
-		p := artifacts.NewProgressWriter(0, nil)
-		wp = p
-		tasks.Attachments(ctx).SetProgress(p)
-	}
-
 	if mkfs, ok := dst.(MkdirFS); ok {
 		if err := mkfs.MkdirAll(filepath.Dir(filePath), addExecToRead(mode)); err != nil {
 			return err
@@ -122,13 +111,7 @@ write:
 		return err
 	}
 
-	if wp != nil {
-		wp = io.MultiWriter(f, wp)
-	} else {
-		wp = f
-	}
-
-	err = writeContents(wp)
+	err = writeContents(f)
 	if err1 := f.Close(); err1 != nil && err == nil {
 		err = err1
 	}
@@ -137,9 +120,8 @@ write:
 		return err
 	}
 
-	if opts.AnnounceWrite {
-		stdout := console.Stdout(ctx)
-		fmt.Fprintf(stdout, "Wrote %s\n", filePath)
+	if opts.AnnounceWrite != nil {
+		fmt.Fprintf(opts.AnnounceWrite, "Wrote %s\n", filePath)
 	}
 
 	if opts.EnsureFileMode {

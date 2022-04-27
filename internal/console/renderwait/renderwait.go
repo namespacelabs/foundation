@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type Consumer interface {
@@ -19,7 +18,7 @@ type Consumer interface {
 }
 
 func NewBlock(ctx context.Context, name string) Consumer {
-	if tasks.ConsoleOf(tasks.SinkFrom(ctx)) == nil {
+	if !console.IsConsoleLike(ctx) {
 		rwb := logRenderer{
 			ch:     make(chan ops.Event),
 			done:   make(chan struct{}),
@@ -33,9 +32,9 @@ func NewBlock(ctx context.Context, name string) Consumer {
 		ch:   make(chan ops.Event),
 		done: make(chan struct{}),
 		setSticky: func(b []byte) {
-			tasks.SetStickyContent(ctx, name, b)
+			console.SetStickyContent(ctx, name, b)
 		},
-		flushLog: console.TypedOutput(ctx, "dev", tasks.CatOutputUs),
+		flushLog: console.TypedOutput(ctx, "dev", console.CatOutputUs),
 	}
 	go rwb.Loop(ctx)
 	return rwb

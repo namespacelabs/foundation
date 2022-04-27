@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -39,21 +40,6 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 	} else {
 		if err := prototext.Unmarshal(devHostBytes, root.DevHost); err != nil {
 			return fnerrors.BadInputError("Failed to parse %q. If you changed it manually, try to undo your changes.", DevHostFilename)
-		}
-	}
-
-	if root.Workspace.Env == nil {
-		root.Workspace.Env = []*schema.Environment{
-			{
-				Name:    "dev",
-				Runtime: "kubernetes", // XXX
-				Purpose: schema.Environment_DEVELOPMENT,
-			},
-			{
-				Name:    "prod",
-				Runtime: "kubernetes",
-				Purpose: schema.Environment_PRODUCTION,
-			},
 		}
 	}
 
@@ -219,7 +205,7 @@ func RewriteWith(ctx context.Context, root *workspace.Root, devhost *schema.DevH
 		return err
 	}
 
-	if err := fnfs.WriteWorkspaceFile(ctx, root.FS(), DevHostFilename, func(w io.Writer) error {
+	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), DevHostFilename, func(w io.Writer) error {
 		_, err := w.Write(serialized)
 		return err
 	}); err != nil {

@@ -7,7 +7,9 @@ package golang
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
+	"strings"
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build"
@@ -27,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/protos"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const (
@@ -64,7 +67,7 @@ func Register() {
 			return nil, err
 		}
 
-		return nil, generateServer(ctx, wenv, loc, x.Server, x.LoadedNode, loc.Module.ReadWriteFS())
+		return nil, generateServer(ctx, wenv, loc, x.Server, loc.Module.ReadWriteFS())
 	})
 }
 
@@ -101,7 +104,7 @@ func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.Ser
 	return nil
 }
 
-func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *schema.Server) error {
+func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, server *schema.Server) error {
 	ext := &FrameworkExt{}
 	if err := workspace.MustExtension(server.Ext, ext); err != nil {
 		return fnerrors.Wrap(loc, err)
@@ -112,18 +115,32 @@ func (impl) TidyServer(ctx context.Context, loc workspace.Location, server *sche
 		return err
 	}
 
-	localSDK, err := compute.Get(ctx, sdk)
+	localSDK, err := compute.GetValue(ctx, sdk)
 	if err != nil {
 		return err
 	}
 
-	var cmd localexec.Command
-	cmd.Command = localSDK.Value.GoBin()
-	cmd.Args = []string{"mod", "tidy"}
-	cmd.AdditionalEnv = []string{localSDK.Value.GoRootEnv(), goPrivate()}
-	cmd.Dir = loc.Abs()
-	cmd.Label = "go mod tidy"
-	return cmd.Run(ctx)
+	for _, dep := range loc.Module.Workspace.Dep {
+		if dep.ModuleName == "namespacelabs.dev/foundation" {
+			if err := execGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", dep.ModuleName, dep.Version)); err != nil {
+				return err
+			}
+		}
+	}
+
+	return execGo(ctx, loc, localSDK, "mod", "tidy")
+}
+
+func execGo(ctx context.Context, loc workspace.Location, sdk golang.LocalSDK, args ...string) error {
+	return tasks.Action("go.run").HumanReadablef("go "+strings.Join(args, " ")).Run(ctx, func(ctx context.Context) error {
+		var cmd localexec.Command
+		cmd.Command = sdk.GoBin()
+		cmd.Args = args
+		cmd.AdditionalEnv = []string{sdk.GoRootEnv(), goPrivate()}
+		cmd.Dir = loc.Abs()
+		cmd.Label = "go " + strings.Join(cmd.Args, " ")
+		return cmd.Run(ctx)
+	})
 }
 
 func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {

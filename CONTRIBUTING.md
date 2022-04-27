@@ -160,3 +160,55 @@ fn dev -H 0.0.0.0:4001 --devweb std/testdata/server/gogrpc
 
 Use `-H` to change the listening hostname/port, in case you're running `fn dev` in a machine or VM
 different from your workstation.
+
+### Using `age` for simple secret management
+
+When a server has secrets required for deployment, sharing those secrets between different users
+can sometimes be challenging. Foundation includes a simple solution for it, building on `age`.
+
+Users generate pub/private identities using `fn keys generate`, which can then be
+used to encrypt "secret bundles" which are submittable into the repository. Access
+to the payload is determined by the keys which have been added as receipients to
+the encrypted payload. This list of keys is public, and kept in the repository as
+part of the bundle.
+
+```
+$ fn keys generate
+Created age1kacjakcg8dqyxzdwldemrx4pt79ructa6z0mgw7nk03mgxl3vqsslph4fz
+```
+
+```
+$ fn secrets set std/testdata/server/gogrpc --secret namespacelabs.dev/foundation/std/testdata/datastore:cert
+
+Specify a value for "cert" in namespacelabs.dev/foundation/std/testdata/datastore.
+
+Value: <value>
+
+Wrote std/testdata/server/gogrpc/server.secrets
+```
+
+
+A `server.secrets` will be produced which can be submitted to the repository, as the secret values are encrypted.
+
+To grant access to the encrypted file, merely have your teammate generate a key (see above), add run:
+
+```
+$ fn secrets add-reader std/testdata/server/gogrpc --key <pubkey>
+Wrote std/testdata/server/gogrpc/server.secrets
+```
+
+The resulting file can then be submitted to the repository.
+
+To inspect who has access to the bundle, and which secrets are stored, run:
+
+```
+$ fn secrets info std/testdata/server/gogrpc
+Readers:
+  age1mlefr5zhnesgzfl7aefy95qlem0feuyfpdpmee6lk50x4h6mlskqdffjxv
+Definitions:
+  namespacelabs.dev/foundation/std/testdata/datastore:cert
+```
+
+Note: this mechanism for secret management does not handle revocations. If a key has been issued which should
+no longer have access to the contents, all secret values should be considered compromised and replaced (as the
+person with private key can read the values from any previous repository commit).
