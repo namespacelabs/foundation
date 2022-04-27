@@ -570,13 +570,20 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 
 	previousLines := c.previousLines
 
-	if !DebugConsoleOutput {
-		if x := uint(len(previousLines)); x > 0 {
-			fmt.Fprint(c.out, aec.Up(x))
+	alreadyReset := false
+	resetCursorOnce := func() {
+		if !alreadyReset {
+			if !DebugConsoleOutput {
+				if x := uint(len(previousLines)); x > 0 {
+					fmt.Fprint(c.out, aec.Up(x))
+				}
+			}
+			alreadyReset = true
 		}
 	}
 
-	rawOut := checkDirtyWriter{out: c.out, onDirty: func() {
+	rawOut := checkDirtyWriter{out: c.out, onFirstWrite: func() {
+		resetCursorOnce()
 		// If anything is trying to write directly, clear the screen first.
 		fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
 	}}
@@ -588,6 +595,15 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 
 	newLines := bytes.Split(bytes.TrimSpace(newFrame), []byte("\n"))
 	c.previousLines = newLines
+
+	// If there was no console buffer output, check if perhaps we're emitting exactly the same.
+	// If that's the case, then skip re-rendering, to avoid moving the cursor around.
+	if !rawOut.dirty && linesEqual(previousLines, newLines) {
+		return
+	}
+
+	// Only reset the cursor if there's something to render.
+	resetCursorOnce()
 
 	for k, line := range newLines {
 		if !rawOut.dirty && k < len(previousLines) && bytes.Equal(line, previousLines[k]) {
@@ -608,17 +624,29 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 	fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
 }
 
+func linesEqual(a, b [][]byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, aline := range a {
+		if !bytes.Equal(aline, b[k]) {
+			return false
+		}
+	}
+	return true
+}
+
 type checkDirtyWriter struct {
-	out     io.Writer
-	dirty   bool
-	onDirty func()
+	out          io.Writer
+	dirty        bool
+	onFirstWrite func()
 }
 
 func (c *checkDirtyWriter) Write(p []byte) (int, error) {
 	if !c.dirty {
 		c.dirty = true
-		if c.onDirty != nil {
-			c.onDirty()
+		if c.onFirstWrite != nil {
+			c.onFirstWrite()
 		}
 	}
 	return c.out.Write(p)
