@@ -14,7 +14,9 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"unicode/utf8"
 
+	"github.com/kr/text"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -126,6 +128,56 @@ func NewSecretsCmd() *cobra.Command {
 		}),
 	}
 
+	reveal := &cobra.Command{
+		Use:   "reveal",
+		Short: "Reveals the specified secret value.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			_, bundle, err := loadBundleFromArgs(ctx, args, nil)
+			if err != nil {
+				return err
+			}
+
+			key, err := parseKey(secretKey)
+			if err != nil {
+				return err
+			}
+
+			key.EnvironmentName = specificEnv
+
+			results, err := bundle.LookupValues(ctx, key)
+			if err != nil {
+				return err
+			}
+
+			out := console.Stdout(ctx)
+
+			if len(results) == 1 && utf8.Valid(results[0].Value) {
+				fmt.Fprintf(out, "%s\n", results[0].Value)
+				return nil
+			}
+
+			for k, result := range results {
+				if k > 0 {
+					fmt.Fprintln(out)
+				}
+
+				secrets.DescribeKey(out, result.Key)
+
+				if utf8.Valid(result.Value) {
+					fmt.Fprintf(out, "\n\n  %s\n", result.Value)
+				} else {
+					fmt.Fprintf(out, " raw value:\n\n")
+					if err := secrets.OutputBase64(text.NewIndentWriter(out, []byte("  ")), result.Value); err != nil {
+						return err
+					}
+				}
+			}
+
+			return nil
+		}),
+	}
+
 	addReader := &cobra.Command{
 		Use:   "add-reader",
 		Short: "Adds a receipient to a secret bundle.",
@@ -155,6 +207,10 @@ func NewSecretsCmd() *cobra.Command {
 	delete.Flags().BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
 	_ = delete.MarkFlagRequired("secret")
 
+	reveal.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
+	reveal.Flags().StringVar(&specificEnv, "env", "", "If set, matches specified secret with the named environment (e.g. dev, or prod).")
+	_ = reveal.MarkFlagRequired("secret")
+
 	addReader.Flags().StringVar(&keyID, "key", "", "The key to add to the bundle.")
 	addReader.Flags().BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
 	_ = addReader.MarkFlagRequired("key")
@@ -162,6 +218,7 @@ func NewSecretsCmd() *cobra.Command {
 	cmd.AddCommand(list)
 	cmd.AddCommand(set)
 	cmd.AddCommand(delete)
+	cmd.AddCommand(reveal)
 	cmd.AddCommand(addReader)
 
 	return cmd
