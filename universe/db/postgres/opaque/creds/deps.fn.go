@@ -31,25 +31,17 @@ var (
 	}
 )
 
-func makeDeps__n7tan5__Creds(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__n7tan5__Creds(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps CredsDeps
-	var err error
-	{ // name: "postgres-user-file"
-		p := &secrets.Secret{}
-		core.MustUnwrapProto("ChJwb3N0Z3Jlcy11c2VyLWZpbGU=", p)
 
-		if deps.User, err = secrets.ProvideSecret(ctx, p); err != nil {
-			return nil, err
-		}
+	// name: "postgres-user-file"
+	if deps.User, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChJwb3N0Z3Jlcy11c2VyLWZpbGU=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+		return nil, err
 	}
 
-	{ // name: "postgres-password-file"
-		p := &secrets.Secret{}
-		core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
-
-		if deps.Password, err = secrets.ProvideSecret(ctx, p); err != nil {
-			return nil, err
-		}
+	// name: "postgres-password-file"
+	if deps.Password, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+		return nil, err
 	}
 
 	return deps, nil

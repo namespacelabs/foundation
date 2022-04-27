@@ -37,20 +37,16 @@ var (
 	}
 )
 
-func makeDeps__33brri(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__33brri(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
 
-	err = di.Instantiate(ctx, tracing.Provider__70o2mm, func(ctx context.Context, v interface{}) (err error) { // name: "jaeger"
-		p := &tracing.ExporterArgs{}
-		core.MustUnwrapProto("CgZqYWVnZXI=", p)
-
-		if deps.OpenTelemetry, err = tracing.ProvideExporter(ctx, p, v.(tracing.ExtensionDeps)); err != nil {
+	if err := di.Instantiate(ctx, tracing.Provider__70o2mm, func(ctx context.Context, v interface{}) (err error) {
+		// name: "jaeger"
+		if deps.OpenTelemetry, err = tracing.ProvideExporter(ctx, core.MustUnwrapProto("CgZqYWVnZXI=", &tracing.ExporterArgs{}).(*tracing.ExporterArgs), v.(tracing.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 

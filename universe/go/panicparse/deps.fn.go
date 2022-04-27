@@ -35,9 +35,8 @@ var (
 	}
 )
 
-func makeDeps__99b5nh(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__99b5nh(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
 
 	if deps.DebugHandler, err = core.ProvideDebugHandler(ctx, nil); err != nil {
 		return nil, err

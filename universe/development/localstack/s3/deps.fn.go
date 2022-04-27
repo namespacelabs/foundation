@@ -29,9 +29,8 @@ var (
 	}
 )
 
-func makeDeps__tcv5qc(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__tcv5qc(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
 
 	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
 		return nil, err

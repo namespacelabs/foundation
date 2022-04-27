@@ -47,25 +47,19 @@ var (
 	}
 )
 
-func makeDeps__70o2mm(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__70o2mm(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
-	{
-		if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
-			return nil, err
-		}
+
+	if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+		return nil, err
 	}
 
-	{
-		if deps.Middleware, err = middleware.ProvideMiddleware(ctx, nil); err != nil {
-			return nil, err
-		}
+	if deps.Middleware, err = middleware.ProvideMiddleware(ctx, nil); err != nil {
+		return nil, err
 	}
 
-	{
-		if deps.ServerInfo, err = core.ProvideServerInfo(ctx, nil); err != nil {
-			return nil, err
-		}
+	if deps.ServerInfo, err = core.ProvideServerInfo(ctx, nil); err != nil {
+		return nil, err
 	}
 
 	return deps, nil

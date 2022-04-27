@@ -29,14 +29,11 @@ var (
 	}
 )
 
-func makeDeps__9gpcgr(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__9gpcgr(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
-	// name: "postgres-password-file"
-	p := &secrets.Secret{}
-	core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", p)
 
-	if deps.Password, err = secrets.ProvideSecret(ctx, p); err != nil {
+	// name: "postgres-password-file"
+	if deps.Password, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", &secrets.Secret{}).(*secrets.Secret)); err != nil {
 		return nil, err
 	}
 

@@ -38,55 +38,43 @@ var (
 	}
 )
 
-func makeDeps__j7h7h5(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__j7h7h5(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ServiceDeps
-	var err error
 
-	err = di.Instantiate(ctx, deadlines.Provider__vbko45, func(ctx context.Context, v interface{}) (err error) { // configuration: {
+	if err := di.Instantiate(ctx, deadlines.Provider__vbko45, func(ctx context.Context, v interface{}) (err error) {
+		// configuration: {
 		//   service_name: "PostService"
 		//   method_name: "*"
 		//   maximum_deadline: 5
 		// }
-		p := &deadlines.Deadline{}
-		core.MustUnwrapProto("ChUKC1Bvc3RTZXJ2aWNlEgEqHQAAoEA=", p)
-
-		if deps.Dl, err = deadlines.ProvideDeadlines(ctx, p, v.(deadlines.ExtensionDeps)); err != nil {
+		if deps.Dl, err = deadlines.ProvideDeadlines(ctx, core.MustUnwrapProto("ChUKC1Bvc3RTZXJ2aWNlEgEqHQAAoEA=", &deadlines.Deadline{}).(*deadlines.Deadline), v.(deadlines.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
-	err = di.Instantiate(ctx, datastore.Provider__38f4mh, func(ctx context.Context, v interface{}) (err error) { // name: "main"
+	if err := di.Instantiate(ctx, datastore.Provider__38f4mh, func(ctx context.Context, v interface{}) (err error) {
+		// name: "main"
 		// schema_file: {
 		//   path: "schema.txt"
 		//   contents: "just a test file"
 		// }
-		p := &datastore.Database{}
-		core.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", p)
-
-		if deps.Main, err = datastore.ProvideDatabase(ctx, p, v.(datastore.ExtensionDeps)); err != nil {
+		if deps.Main, err = datastore.ProvideDatabase(ctx, core.MustUnwrapProto("CgRtYWluEh4KCnNjaGVtYS50eHQSEGp1c3QgYSB0ZXN0IGZpbGU=", &datastore.Database{}).(*datastore.Database), v.(datastore.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
-	{ // package_name: "namespacelabs.dev/foundation/std/testdata/service/simple"
-		p := &fngrpc.Backend{}
-		core.MustUnwrapProto("CjhuYW1lc3BhY2VsYWJzLmRldi9mb3VuZGF0aW9uL3N0ZC90ZXN0ZGF0YS9zZXJ2aWNlL3NpbXBsZQ==", p)
-
-		if deps.SimpleConn, err = fngrpc.ProvideConn(ctx, p); err != nil {
-			return nil, err
-		}
-
-		deps.Simple = simple.NewEmptyServiceClient(deps.SimpleConn)
-
+	// package_name: "namespacelabs.dev/foundation/std/testdata/service/simple"
+	if deps.SimpleConn, err = fngrpc.ProvideConn(ctx, core.MustUnwrapProto("CjhuYW1lc3BhY2VsYWJzLmRldi9mb3VuZGF0aW9uL3N0ZC90ZXN0ZGF0YS9zZXJ2aWNlL3NpbXBsZQ==", &fngrpc.Backend{}).(*fngrpc.Backend)); err != nil {
+		return nil, err
 	}
+
+	deps.Simple = simple.NewEmptyServiceClient(deps.SimpleConn)
 
 	return deps, nil
 }

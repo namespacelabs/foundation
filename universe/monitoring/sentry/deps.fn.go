@@ -41,34 +41,24 @@ var (
 	}
 )
 
-func makeDeps__efmlf2(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__efmlf2(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
-	{ // name: "sentry-dsn"
-		p := &secrets.Secret{}
-		core.MustUnwrapProto("CgpzZW50cnktZHNu", p)
 
-		if deps.Dsn, err = secrets.ProvideSecret(ctx, p); err != nil {
-			return nil, err
-		}
+	// name: "sentry-dsn"
+	if deps.Dsn, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("CgpzZW50cnktZHNu", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+		return nil, err
 	}
 
-	{
-		if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
-			return nil, err
-		}
+	if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+		return nil, err
 	}
 
-	{
-		if deps.Middleware, err = middleware.ProvideMiddleware(ctx, nil); err != nil {
-			return nil, err
-		}
+	if deps.Middleware, err = middleware.ProvideMiddleware(ctx, nil); err != nil {
+		return nil, err
 	}
 
-	{
-		if deps.ServerInfo, err = core.ProvideServerInfo(ctx, nil); err != nil {
-			return nil, err
-		}
+	if deps.ServerInfo, err = core.ProvideServerInfo(ctx, nil); err != nil {
+		return nil, err
 	}
 
 	return deps, nil

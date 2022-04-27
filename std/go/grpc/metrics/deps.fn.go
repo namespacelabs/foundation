@@ -36,9 +36,8 @@ var (
 	}
 )
 
-func makeDeps__so2f3v(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__so2f3v(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
 
 	if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
 		return nil, err

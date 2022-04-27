@@ -39,28 +39,21 @@ var (
 	}
 )
 
-func makeDeps__e1uscp(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__e1uscp(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
-	{ // name: "x-honeycomb-team"
-		p := &secrets.Secret{}
-		core.MustUnwrapProto("ChB4LWhvbmV5Y29tYi10ZWFt", p)
 
-		if deps.HoneycombTeam, err = secrets.ProvideSecret(ctx, p); err != nil {
-			return nil, err
-		}
+	// name: "x-honeycomb-team"
+	if deps.HoneycombTeam, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChB4LWhvbmV5Y29tYi10ZWFt", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+		return nil, err
 	}
 
-	err = di.Instantiate(ctx, tracing.Provider__70o2mm, func(ctx context.Context, v interface{}) (err error) { // name: "honeycomb"
-		p := &tracing.ExporterArgs{}
-		core.MustUnwrapProto("Cglob25leWNvbWI=", p)
-
-		if deps.OpenTelemetry, err = tracing.ProvideExporter(ctx, p, v.(tracing.ExtensionDeps)); err != nil {
+	if err := di.Instantiate(ctx, tracing.Provider__70o2mm, func(ctx context.Context, v interface{}) (err error) {
+		// name: "honeycomb"
+		if deps.OpenTelemetry, err = tracing.ProvideExporter(ctx, core.MustUnwrapProto("Cglob25leWNvbWI=", &tracing.ExporterArgs{}).(*tracing.ExporterArgs), v.(tracing.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 

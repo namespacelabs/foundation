@@ -32,20 +32,16 @@ var (
 	}
 )
 
-func makeDeps__ffkppv(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__ffkppv(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ServiceDeps
-	var err error
 
-	err = di.Instantiate(ctx, incluster.Provider__udoubi, func(ctx context.Context, v interface{}) (err error) { // name: "list"
-		p := &incluster.Database{}
-		core.MustUnwrapProto("CgRsaXN0", p)
-
-		if deps.Db, err = incluster.ProvideDatabase(ctx, p, v.(incluster.ExtensionDeps)); err != nil {
+	if err := di.Instantiate(ctx, incluster.Provider__udoubi, func(ctx context.Context, v interface{}) (err error) {
+		// name: "list"
+		if deps.Db, err = incluster.ProvideDatabase(ctx, core.MustUnwrapProto("CgRsaXN0", &incluster.Database{}).(*incluster.Database), v.(incluster.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 

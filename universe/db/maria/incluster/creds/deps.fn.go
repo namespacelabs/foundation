@@ -29,14 +29,11 @@ var (
 	}
 )
 
-func makeDeps__bihnv9(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__bihnv9(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
-	// name: "mariadb-password-file"
-	p := &secrets.Secret{}
-	core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGU=", p)
 
-	if deps.Password, err = secrets.ProvideSecret(ctx, p); err != nil {
+	// name: "mariadb-password-file"
+	if deps.Password, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGU=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
 		return nil, err
 	}
 

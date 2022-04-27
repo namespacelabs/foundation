@@ -30,22 +30,16 @@ var (
 	}
 )
 
-func makeDeps__eoj2dq(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__eoj2dq(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
-	{ // name: "aws_credentials_file"
-		p := &secrets.Secret{}
-		core.MustUnwrapProto("ChRhd3NfY3JlZGVudGlhbHNfZmlsZQ==", p)
 
-		if deps.Credentials, err = secrets.ProvideSecret(ctx, p); err != nil {
-			return nil, err
-		}
+	// name: "aws_credentials_file"
+	if deps.Credentials, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChRhd3NfY3JlZGVudGlhbHNfZmlsZQ==", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+		return nil, err
 	}
 
-	{
-		if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
-			return nil, err
-		}
+	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
+		return nil, err
 	}
 
 	return deps, nil

@@ -40,9 +40,8 @@ var (
 	}
 )
 
-func makeDeps__pj9age(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__pj9age(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
 
 	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
 		return nil, err
@@ -51,18 +50,16 @@ func makeDeps__pj9age(ctx context.Context, di core.Dependencies) (interface{}, e
 	return deps, nil
 }
 
-func makeDeps__pj9age__Database(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__pj9age__Database(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps DatabaseDeps
-	var err error
 
-	err = di.Instantiate(ctx, creds.Provider__n7tan5__Creds, func(ctx context.Context, scoped interface{}) (err error) {
+	if err := di.Instantiate(ctx, creds.Provider__n7tan5__Creds, func(ctx context.Context, scoped interface{}) (err error) {
 
 		if deps.Creds, err = creds.ProvideCreds(ctx, nil, scoped.(creds.CredsDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 

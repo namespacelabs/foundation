@@ -32,21 +32,17 @@ var (
 	}
 )
 
-func makeDeps__g72tjm(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__g72tjm(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ServiceDeps
-	var err error
 
-	err = di.Instantiate(ctx, s31.Provider__tcv5qc, func(ctx context.Context, v interface{}) (err error) { // region: "us-east-2"
+	if err := di.Instantiate(ctx, s31.Provider__tcv5qc, func(ctx context.Context, v interface{}) (err error) {
+		// region: "us-east-2"
 		// bucket_name: "test-foo-bucket"
-		p := &s31.BucketConfig{}
-		core.MustUnwrapProto("Cgl1cy1lYXN0LTISD3Rlc3QtZm9vLWJ1Y2tldA==", p)
-
-		if deps.Bucket, err = s31.ProvideBucket(ctx, p, v.(s31.ExtensionDeps)); err != nil {
+		if deps.Bucket, err = s31.ProvideBucket(ctx, core.MustUnwrapProto("Cgl1cy1lYXN0LTISD3Rlc3QtZm9vLWJ1Y2tldA==", &s31.BucketConfig{}).(*s31.BucketConfig), v.(s31.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 

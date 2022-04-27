@@ -36,14 +36,11 @@ var (
 	}
 )
 
-func makeDeps__hfr5jb(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__hfr5jb(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
-	// name: "http-csrf-token"
-	p := &secrets.Secret{}
-	core.MustUnwrapProto("Cg9odHRwLWNzcmYtdG9rZW4=", p)
 
-	if deps.Token, err = secrets.ProvideSecret(ctx, p); err != nil {
+	// name: "http-csrf-token"
+	if deps.Token, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("Cg9odHRwLWNzcmYtdG9rZW4=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
 		return nil, err
 	}
 

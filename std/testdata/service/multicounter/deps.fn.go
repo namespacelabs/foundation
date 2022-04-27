@@ -32,35 +32,28 @@ var (
 	}
 )
 
-func makeDeps__n4bhfe(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__n4bhfe(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ServiceDeps
-	var err error
 
-	err = di.Instantiate(ctx, counter.Provider__2mbd4q__Counter, func(ctx context.Context, scoped interface{}) (err error) {
+	if err := di.Instantiate(ctx, counter.Provider__2mbd4q__Counter, func(ctx context.Context, scoped interface{}) (err error) {
+
 		// name: "one"
-		p := &counter.Input{}
-		core.MustUnwrapProto("CgNvbmU=", p)
-
-		if deps.One, err = counter.ProvideCounter(ctx, p, scoped.(counter.CounterDeps)); err != nil {
+		if deps.One, err = counter.ProvideCounter(ctx, core.MustUnwrapProto("CgNvbmU=", &counter.Input{}).(*counter.Input), scoped.(counter.CounterDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
-	err = di.Instantiate(ctx, counter.Provider__2mbd4q__Counter, func(ctx context.Context, scoped interface{}) (err error) {
-		// name: "two"
-		p := &counter.Input{}
-		core.MustUnwrapProto("CgN0d28=", p)
+	if err := di.Instantiate(ctx, counter.Provider__2mbd4q__Counter, func(ctx context.Context, scoped interface{}) (err error) {
 
-		if deps.Two, err = counter.ProvideCounter(ctx, p, scoped.(counter.CounterDeps)); err != nil {
+		// name: "two"
+		if deps.Two, err = counter.ProvideCounter(ctx, core.MustUnwrapProto("CgN0d28=", &counter.Input{}).(*counter.Input), scoped.(counter.CounterDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 

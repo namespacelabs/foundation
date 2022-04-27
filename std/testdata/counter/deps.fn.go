@@ -30,9 +30,8 @@ var (
 	}
 )
 
-func makeDeps__2mbd4q__Counter(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__2mbd4q__Counter(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps CounterDeps
-	var err error
 
 	if deps.Data, err = data.ProvideData(ctx, nil); err != nil {
 		return nil, err

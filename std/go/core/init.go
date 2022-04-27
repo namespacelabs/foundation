@@ -216,7 +216,7 @@ func enforceOrder(inits []*Initializer) ([]*Initializer, error) {
 
 // MustUnwrapProto unserializes a proto from a base64 string. This is used to
 // pack pre-computed protos into a binary, and is never expected to fail.
-func MustUnwrapProto(b64 string, m proto.Message) {
+func MustUnwrapProto(b64 string, m proto.Message) proto.Message {
 	data, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
 		panic(err)
@@ -224,4 +224,5 @@ func MustUnwrapProto(b64 string, m proto.Message) {
 	if err := proto.Unmarshal(data, m); err != nil {
 		panic(err)
 	}
+	return m
 }

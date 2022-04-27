@@ -31,25 +31,20 @@ var (
 	}
 )
 
-func makeDeps__hva50k(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__hva50k(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
-	{ // name: "aws_credentials_file"
-		p := &secrets.Secret{}
-		core.MustUnwrapProto("ChRhd3NfY3JlZGVudGlhbHNfZmlsZQ==", p)
 
-		if deps.Credentials, err = secrets.ProvideSecret(ctx, p); err != nil {
-			return nil, err
-		}
+	// name: "aws_credentials_file"
+	if deps.Credentials, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChRhd3NfY3JlZGVudGlhbHNfZmlsZQ==", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+		return nil, err
 	}
 
-	err = di.Instantiate(ctx, tracing.Provider__70o2mm, func(ctx context.Context, v interface{}) (err error) {
+	if err := di.Instantiate(ctx, tracing.Provider__70o2mm, func(ctx context.Context, v interface{}) (err error) {
 		if deps.OpenTelemetry, err = tracing.ProvideTracerProvider(ctx, nil, v.(tracing.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 

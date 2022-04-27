@@ -32,40 +32,26 @@ var (
 	}
 )
 
-func makeDeps__38f4mh(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__38f4mh(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
-	{ // name: "cert"
-		p := &secrets.Secret{}
-		core.MustUnwrapProto("CgRjZXJ0", p)
 
-		if deps.Cert, err = secrets.ProvideSecret(ctx, p); err != nil {
-			return nil, err
-		}
+	// name: "cert"
+	if deps.Cert, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("CgRjZXJ0", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+		return nil, err
 	}
 
-	{ // name: "gen"
-		p := &secrets.Secret{}
-		core.MustUnwrapProto("CgNnZW4=", p)
-
-		if deps.Gen, err = secrets.ProvideSecret(ctx, p); err != nil {
-			return nil, err
-		}
+	// name: "gen"
+	if deps.Gen, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("CgNnZW4=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+		return nil, err
 	}
 
-	{ // name: "keygen"
-		p := &secrets.Secret{}
-		core.MustUnwrapProto("CgZrZXlnZW4=", p)
-
-		if deps.Keygen, err = secrets.ProvideSecret(ctx, p); err != nil {
-			return nil, err
-		}
+	// name: "keygen"
+	if deps.Keygen, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("CgZrZXlnZW4=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+		return nil, err
 	}
 
-	{
-		if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
-			return nil, err
-		}
+	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
+		return nil, err
 	}
 
 	return deps, nil

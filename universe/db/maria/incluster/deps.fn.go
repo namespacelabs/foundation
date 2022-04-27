@@ -31,24 +31,20 @@ var (
 	}
 )
 
-func makeDeps__r7qsle(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__r7qsle(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-	var err error
 
-	err = di.Instantiate(ctx, creds.Provider__bihnv9, func(ctx context.Context, v interface{}) (err error) {
+	if err := di.Instantiate(ctx, creds.Provider__bihnv9, func(ctx context.Context, v interface{}) (err error) {
 		if deps.Creds, err = creds.ProvideCreds(ctx, nil, v.(creds.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
-	{
-		if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
-			return nil, err
-		}
+	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
+		return nil, err
 	}
 
 	return deps, nil

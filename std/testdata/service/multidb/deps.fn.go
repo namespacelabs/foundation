@@ -35,37 +35,30 @@ var (
 	}
 )
 
-func makeDeps__7cco3b(ctx context.Context, di core.Dependencies) (interface{}, error) {
+func makeDeps__7cco3b(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ServiceDeps
-	var err error
 
-	err = di.Instantiate(ctx, incluster.Provider__r7qsle, func(ctx context.Context, v interface{}) (err error) { // name: "mariadblist"
+	if err := di.Instantiate(ctx, incluster.Provider__r7qsle, func(ctx context.Context, v interface{}) (err error) {
+		// name: "mariadblist"
 		// schema_file: {
 		//   path: "schema_maria.sql"
 		//   contents: "CREATE TABLE IF NOT EXISTS list (\n    Id INT NOT NULL AUTO_INCREMENT,\n    Item varchar(255) NOT NULL,\n    PRIMARY KEY(Id)\n);"
 		// }
-		p := &incluster.Database{}
-		core.MustUnwrapProto("CgttYXJpYWRibGlzdBKQAQoQc2NoZW1hX21hcmlhLnNxbBJ8Q1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgbGlzdCAoCiAgICBJZCBJTlQgTk9UIE5VTEwgQVVUT19JTkNSRU1FTlQsCiAgICBJdGVtIHZhcmNoYXIoMjU1KSBOT1QgTlVMTCwKICAgIFBSSU1BUlkgS0VZKElkKQopOw==", p)
-
-		if deps.Maria, err = incluster.ProvideDatabase(ctx, p, v.(incluster.ExtensionDeps)); err != nil {
+		if deps.Maria, err = incluster.ProvideDatabase(ctx, core.MustUnwrapProto("CgttYXJpYWRibGlzdBKQAQoQc2NoZW1hX21hcmlhLnNxbBJ8Q1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgbGlzdCAoCiAgICBJZCBJTlQgTk9UIE5VTEwgQVVUT19JTkNSRU1FTlQsCiAgICBJdGVtIHZhcmNoYXIoMjU1KSBOT1QgTlVMTCwKICAgIFBSSU1BUlkgS0VZKElkKQopOw==", &incluster.Database{}).(*incluster.Database), v.(incluster.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
-	err = di.Instantiate(ctx, incluster1.Provider__udoubi, func(ctx context.Context, v interface{}) (err error) { // name: "postgreslist"
-		p := &incluster1.Database{}
-		core.MustUnwrapProto("Cgxwb3N0Z3Jlc2xpc3Q=", p)
-
-		if deps.Postgres, err = incluster1.ProvideDatabase(ctx, p, v.(incluster1.ExtensionDeps)); err != nil {
+	if err := di.Instantiate(ctx, incluster1.Provider__udoubi, func(ctx context.Context, v interface{}) (err error) {
+		// name: "postgreslist"
+		if deps.Postgres, err = incluster1.ProvideDatabase(ctx, core.MustUnwrapProto("Cgxwb3N0Z3Jlc2xpc3Q=", &incluster1.Database{}).(*incluster1.Database), v.(incluster1.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 

@@ -279,31 +279,24 @@ var (
 )
 
 {{range $k, $v := $opts.Providers}}
-func {{longMakeDeps $v.PackageName $v.Scope}}(ctx context.Context, di {{$opts.Imports.Ensure "namespacelabs.dev/foundation/std/go/core"}}Dependencies) (interface{}, error) {
+func {{longMakeDeps $v.PackageName $v.Scope}}(ctx context.Context, di {{$opts.Imports.Ensure "namespacelabs.dev/foundation/std/go/core"}}Dependencies) (_ interface{}, err error) {
 	var deps {{makeType $opts.Imports $v.GoImportURL $v.Typename}}
 	{{if $v.Provisioned -}}
-	var err error
 	{{- range $k2, $p := $v.Provisioned}}
 		{{if $p -}}
 			{{with $refs := index $v.Refs $k2}}
-				{{- if and (not $refs.Single) (not $refs.Scoped) (gt (len $v.Provisioned) 1)}} { {{end}}
 				{{- if $refs.Single}}
-				err = di.Instantiate(ctx, {{$opts.Imports.Ensure $p.PackageName.String}}{{longProviderType $p.PackageName ""}}, func(ctx context.Context, v interface{}) (err error) {
+				if err := di.Instantiate(ctx, {{$opts.Imports.Ensure $p.PackageName.String}}{{longProviderType $p.PackageName ""}}, func(ctx context.Context, v interface{}) (err error) {
 				{{- end}}
 				{{- if $refs.Scoped}}
 					{{- if $refs.Single}}return {{else}}
-						err = {{end -}}
+						if err := {{end -}}
 				di.Instantiate(ctx, {{$opts.Imports.Ensure $p.PackageName.String}}{{longProviderType $p.PackageName $refs.Scoped.Scope}}, func(ctx context.Context, scoped interface{}) (err error) { 
-				{{end -}}
-				{{- if $p.SerializedMsg -}}
-				{{$p.ProtoComments -}}
-				p := &{{$opts.Imports.Ensure $p.GoPackage}}{{makeProvisionProtoName $p}}{}
-				{{$opts.Imports.Ensure "namespacelabs.dev/foundation/std/go/core"}}MustUnwrapProto("{{$p.SerializedMsg}}", p)
-
 				{{end}}
+				{{$p.ProtoComments -}}
 				{{range $p.DepVars -}}
 				if deps.{{.GoName}}, err = {{$opts.Imports.Ensure $p.GoPackage}}{{$p.Method}}(ctx,
-					{{- if $p.SerializedMsg}}p{{else}}nil{{end -}}
+					{{- if $p.SerializedMsg}} {{$opts.Imports.Ensure "namespacelabs.dev/foundation/std/go/core"}}MustUnwrapProto("{{$p.SerializedMsg}}", &{{$opts.Imports.Ensure $p.GoPackage}}{{makeProvisionProtoName $p}}{}).(*{{$opts.Imports.Ensure $p.GoPackage}}{{makeProvisionProtoName $p}})  {{else}}nil{{end -}}
 					{{if $refs.Single}}, v.({{makeType $opts.Imports $refs.Single.GoImportURL $refs.Single.Typename}}){{end -}}
 					{{if $refs.Scoped}}, scoped.({{makeType $opts.Imports $refs.Scoped.GoImportURL $refs.Scoped.Typename}}){{end -}}
 					); err != nil {
@@ -317,19 +310,15 @@ func {{longMakeDeps $v.PackageName $v.Scope}}(ctx context.Context, di {{$opts.Im
 				{{end}}
 				{{if or $refs.Single $refs.Scoped}}return nil{{end}}
 				{{- if $refs.Scoped}}
-					})
-					{{- if not $refs.Single}}
-					if err != nil {
+					}) {{- if not $refs.Single -}} ; err != nil {
 						return nil, err
 					} {{end -}}
 				{{end -}}
 				{{- if $refs.Single}}
-					})
-					if err != nil {
+					}) ; err != nil {
 						return nil, err
 					}
 				{{end}}
-				{{- if and (not $refs.Single) (not $refs.Scoped) (gt (len $v.Provisioned) 1)}} } {{end}}
 			{{end -}}
 		{{end -}}
 	{{end}}{{end}}
