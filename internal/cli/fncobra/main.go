@@ -105,17 +105,23 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		go checkRemoteStatus(logger, remoteStatusChan)
 	}
 
-	var storeActions bool
+	bundler := tasks.NewActionBundler()
+	// Delete stale bundles asynchronously on startup.
+	defer bundler.RemoveStaleBundles()
+
+	// Create a new in-memory bundle to track actions. The bundle
+	// is flushed at the end of command invocation.
+	bundle := bundler.NewInMemoryBundle()
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
-		if storeActions {
-			var err error
-			tasks.ActionStorer, err = tasks.NewStorer(cmd.Context())
-			if err != nil {
-				return err
-			}
+		err := bundle.WriteInvocationInfo(cmd.Context(), cmd, args)
+		if err != nil {
+			return err
 		}
-
+		tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundle)
+		if err != nil {
+			return err
+		}
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = func(w *schema.Workspace, e *schema.Environment, dh *schema.DevHost) bool {
 			return runtime.ForProto(w, e, dh) != nil
@@ -182,8 +188,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, we also output debug log messages to the console.")
 	rootCmd.PersistentFlags().BoolVar(&compute.CachingEnabled, "caching", compute.CachingEnabled,
 		"If set to false, compute caching is disabled.")
-	rootCmd.PersistentFlags().BoolVar(&storeActions, "store_actions", storeActions,
-		"If set to true, each completed action and its attachments are also persisted into storage.")
 	rootCmd.PersistentFlags().BoolVar(&git.AssumeSSHAuth, "git_ssh_auth", git.AssumeSSHAuth,
 		"If set to true, assume that you use SSH authentication with git (this enables us to properly instruct git when downloading private repositories).")
 
@@ -223,9 +227,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		cleanupTracer()
 	}
 
-	if tasks.ActionStorer != nil {
-		tasks.ActionStorer.Flush(os.Stderr)
-	}
+	// Commit the bundle to the filesystem.
+	_ = bundler.Flush(ctxWithSink, bundle)
 
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
 	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
@@ -258,7 +261,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		default:
 		}
 	}
-
 	if err != nil {
 		exitCode := handleExitError(colors, err)
 		// Record errors only after the user sees them to hide potential latency implications.
