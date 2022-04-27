@@ -143,15 +143,9 @@ func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.Configuration) (llb.State,
 func prepareYarnWithWorkspaces(workspacePaths []string, yarnRoot string, isDevBuild bool, nodejsBase string, src llb.State, platform specs.Platform) llb.State {
 	base := llbutil.Image(nodejsBase, platform)
 	targetYarnRoot := filepath.Join(appRootPath, yarnRoot)
-	// git+ssh are needed temporarily, while the nodejs runtime is fetched from github.
-	// See https://github.com/namespacelabs/nodejs-runtime/blob/main/README.md
-	buildBase := base.Run(llb.Shlex("apk add --no-cache python2 make g++ git openssh")).
+	buildBase := base.Run(llb.Shlex("apk add --no-cache python2 make g++")).
 		Root().
-		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn").
-		Run(
-			llb.Shlex(`sh -c 'mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts'`),
-			llb.AddSSHSocket()).
-		Root()
+		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn")
 	if isDevBuild {
 		// Nodemon is used to watch for changes in the source code within a container and restart the "ts-node" server.
 		buildBase = buildBase.Run(llb.Shlex("yarn global add nodemon@2.0.15"), llb.Dir(yarnRoot)).Root()
@@ -164,7 +158,7 @@ func prepareYarnWithWorkspaces(workspacePaths []string, yarnRoot string, isDevBu
 		buildBase = buildBase.With(llbutil.CopyFrom(src, path, filepath.Join(appRootPath, path)))
 	}
 
-	yarnInstall := buildBase.Run(llb.Shlex("yarn install --immutable"), llb.AddSSHSocket(), llb.Dir(targetYarnRoot))
+	yarnInstall := buildBase.Run(llb.Shlex("yarn install --immutable"), llb.Dir(targetYarnRoot))
 	yarnInstall.AddMount("/cache/yarn", llb.Scratch(), llb.AsPersistentCacheDir(
 		"yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
 	out := yarnInstall.Root()
