@@ -6,11 +6,14 @@ package sentry
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
@@ -25,7 +28,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	}
 
 	deps.Interceptors.Add(unaryInterceptor, streamInterceptor)
-	deps.Middleware.Add(sentryhttp.New(sentryhttp.Options{}).Handle)
+	deps.Middleware.Add(sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle)
 
 	return nil
 }
@@ -42,11 +45,8 @@ func unaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServ
 
 	defer recoverAndReport(ctx, hub)
 
-	result, err = handler(ctx, req)
-	if err != nil {
-		hub.CaptureException(err)
-	}
-
+	result, err = handler(span.Context(), req)
+	finalizeSpan(hub, span, err)
 	return result, err
 }
 
@@ -63,12 +63,62 @@ func streamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamS
 
 	defer recoverAndReport(ctx, hub)
 
-	err := handler(srv, &serverStream{ServerStream: ss, ctx: ctx})
+	err := handler(srv, &serverStream{ServerStream: ss, ctx: span.Context()})
+	finalizeSpan(hub, span, err)
+	return err
+}
+
+func finalizeSpan(hub *sentry.Hub, span *sentry.Span, err error) {
 	if err != nil {
 		hub.CaptureException(err)
+
+		if errors.Is(err, context.Canceled) {
+			span.Status = sentry.SpanStatusCanceled
+		} else if st, ok := status.FromError(err); ok {
+			span.Status = statusFromGrpc(st.Code())
+		} else {
+			span.Status = sentry.SpanStatusUnknown
+		}
+	} else {
+		span.Status = sentry.SpanStatusOK
+	}
+}
+
+func statusFromGrpc(code codes.Code) sentry.SpanStatus {
+	switch code {
+	case codes.OK:
+		return sentry.SpanStatusOK
+	case codes.InvalidArgument:
+		return sentry.SpanStatusInvalidArgument
+	case codes.DeadlineExceeded:
+		return sentry.SpanStatusDeadlineExceeded
+	case codes.NotFound:
+		return sentry.SpanStatusNotFound
+	case codes.AlreadyExists:
+		return sentry.SpanStatusAlreadyExists
+	case codes.PermissionDenied:
+		return sentry.SpanStatusPermissionDenied
+	case codes.ResourceExhausted:
+		return sentry.SpanStatusResourceExhausted
+	case codes.FailedPrecondition:
+		return sentry.SpanStatusFailedPrecondition
+	case codes.Aborted:
+		return sentry.SpanStatusAborted
+	case codes.OutOfRange:
+		return sentry.SpanStatusOutOfRange
+	case codes.Unimplemented:
+		return sentry.SpanStatusUnimplemented
+	case codes.Internal:
+		return sentry.SpanStatusInternalError
+	case codes.Unavailable:
+		return sentry.SpanStatusUnavailable
+	case codes.DataLoss:
+		return sentry.SpanStatusDataLoss
+	case codes.Unauthenticated:
+		return sentry.SpanStatusUnauthenticated
 	}
 
-	return err
+	return sentry.SpanStatusUnknown
 }
 
 func recoverAndReport(ctx context.Context, hub *sentry.Hub) {
