@@ -105,22 +105,23 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		go checkRemoteStatus(logger, remoteStatusChan)
 	}
 
-	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
-		bundler, err := tasks.NewActionBundler()
-		if err != nil {
-			return err
-		}
-		defer bundler.RemoveStaleBundles()
+	bundler := tasks.NewActionBundler()
+	// Delete stale bundles asynchronously on startup.
+	defer bundler.RemoveStaleBundles()
 
-		bundle := bundler.NewInMemoryBundle()
-		if err := bundle.WriteInvocationInfo(cmd.Context(), cmd, args); err != nil {
+	// Create a new in-memory bundle to track actions. The bundle
+	// is flushed at the end of command invocation.
+	bundle := bundler.NewInMemoryBundle()
+
+	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
+		err := bundle.WriteInvocationInfo(cmd.Context(), cmd, args)
+		if err != nil {
 			return err
 		}
 		tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundle)
 		if err != nil {
 			return err
 		}
-
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = func(w *schema.Workspace, e *schema.Environment, dh *schema.DevHost) bool {
 			return runtime.ForProto(w, e, dh) != nil
@@ -171,11 +172,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Runtimes.
 		kubernetes.Register()
 		kubernetes.RegisterGraphHandlers()
-
-		// Commit the bundle to the filesystem.
-		if err := bundler.Flush(cmd.Context(), bundle); err != nil {
-			fmt.Println(err)
-		}
 
 		// Telemetry.
 		tel.RecordInvocation(ctxWithSink, cmd, args)
@@ -230,6 +226,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if cleanupTracer != nil {
 		cleanupTracer()
 	}
+
+	// Commit the bundle to the filesystem.
+	_ = bundler.Flush(ctxWithSink, bundle)
+
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
 	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
 		// Printing the new version message if any.

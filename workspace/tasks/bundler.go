@@ -7,6 +7,7 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 	"time"
@@ -41,10 +42,10 @@ type Bundler struct {
 }
 
 // Returns a new instance of Bundler with default values.
-func NewActionBundler() (*Bundler, error) {
+func NewActionBundler() *Bundler {
 	cacheDir, err := dirs.Cache()
 	if err != nil {
-		return nil, err
+		log.Fatalf("unexpected failure accessing the user cache: %v", err)
 	}
 	root := filepath.Join(cacheDir, "action-bundles")
 	return &Bundler{
@@ -53,7 +54,7 @@ func NewActionBundler() (*Bundler, error) {
 		namePrefix: "actions",
 		maxBundles: defaultBundlesToKeep,
 		maxAge:     defaultBundleDuration,
-	}, nil
+	}
 }
 
 // Returns a new Bundle wrapping a memfs.FS with the current timestamp.

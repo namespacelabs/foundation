@@ -34,10 +34,8 @@ func NewBundlesCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(0),
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			bundler, err := tasks.NewActionBundler()
-			if err != nil {
-				return err
-			}
+			bundler := tasks.NewActionBundler()
+
 			bundles, err := bundler.ReadBundles()
 			if err != nil {
 				return err
@@ -55,10 +53,8 @@ func NewBundlesCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(0),
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			bundler, err := tasks.NewActionBundler()
-			if err != nil {
-				return err
-			}
+			bundler := tasks.NewActionBundler()
+
 			bundles, err := bundler.ReadBundles()
 			if err != nil {
 				return err

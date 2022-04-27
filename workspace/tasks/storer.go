@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"google.golang.org/protobuf/encoding/prototext"
-	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
 type Storer struct{ bundle *Bundle }
@@ -29,12 +28,6 @@ func (st *Storer) Store(af *RunningAction) {
 
 func (st *Storer) store(af *RunningAction) error {
 	actionId := af.Data.ActionID
-	if mkdirfs, ok := st.bundle.fsys.(fnfs.MkdirFS); ok {
-		err := mkdirfs.MkdirAll(actionId, 0700)
-		if err != nil {
-			return err
-		}
-	}
 
 	pbytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(makeDebugProto(&af.Data, af.attachments))
 	if err != nil {
