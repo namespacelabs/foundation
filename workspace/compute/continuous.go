@@ -430,30 +430,16 @@ func (o *observable) doUpdate(result ResultWithTimestamp[any]) func() {
 
 	// This func should be called without holding `mu`.
 	return func() {
-		var removed []onResult
-
+		var handledObservers []onResult
 		for _, f := range observers {
-			if !f.Handle(result) {
-				removed = append(removed, f)
+			if f.Handle(result) {
+				handledObservers = append(handledObservers, f)
 			}
 		}
-
-		if len(removed) > 0 {
+		// We update observers if any `Handle` func returned false.
+		if len(handledObservers) != len(observers) {
 			o.mu.Lock()
-			var newObservers []onResult
-			for _, obs := range o.observers {
-				needed := true
-				for _, r := range removed {
-					if r.ID == obs.ID {
-						needed = false
-						break
-					}
-				}
-				if needed {
-					newObservers = append(newObservers, obs)
-				}
-			}
-			o.observers = newObservers
+			o.observers = handledObservers
 			if len(o.observers) == 0 && o.listenerCancel != nil {
 				// No more observers, cancel the listener.
 				o.listenerCancel()
