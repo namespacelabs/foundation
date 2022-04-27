@@ -40,11 +40,7 @@ func makeDeps__7cco3b(ctx context.Context, di core.Dependencies) (_ interface{},
 
 	if err := di.Instantiate(ctx, incluster.Provider__r7qsle, func(ctx context.Context, v interface{}) (err error) {
 		// name: "mariadblist"
-		// schema_file: {
-		//   path: "schema_maria.sql"
-		//   contents: "CREATE TABLE IF NOT EXISTS list (\n    Id INT NOT NULL AUTO_INCREMENT,\n    Item varchar(255) NOT NULL,\n    PRIMARY KEY(Id)\n);"
-		// }
-		if deps.Maria, err = incluster.ProvideDatabase(ctx, core.MustUnwrapProto("CgttYXJpYWRibGlzdBKQAQoQc2NoZW1hX21hcmlhLnNxbBJ8Q1JFQVRFIFRBQkxFIElGIE5PVCBFWElTVFMgbGlzdCAoCiAgICBJZCBJTlQgTk9UIE5VTEwgQVVUT19JTkNSRU1FTlQsCiAgICBJdGVtIHZhcmNoYXIoMjU1KSBOT1QgTlVMTCwKICAgIFBSSU1BUlkgS0VZKElkKQopOw==", &incluster.Database{}).(*incluster.Database), v.(incluster.ExtensionDeps)); err != nil {
+		if deps.Maria, err = incluster.ProvideDatabase(ctx, core.MustUnwrapProto("CgttYXJpYWRibGlzdA==", &incluster.Database{}).(*incluster.Database), v.(incluster.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
