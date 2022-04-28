@@ -228,6 +228,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if cleanupTracer != nil {
 		cleanupTracer()
 	}
+	// Capture runtime memory stats in the bundle.
+	_ = bundle.WriteMemStats(ctxWithSink)
 
 	// Commit the bundle to the filesystem.
 	_ = bundler.Flush(ctxWithSink, bundle)
