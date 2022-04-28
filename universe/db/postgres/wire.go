@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
@@ -87,8 +86,8 @@ func (db DB) withSpan(ctx context.Context, name, sql string, f func(context.Cont
 }
 
 type WireDatabase struct {
-	ready core.Check
-	otel  trace.TracerProvider
+	ready          core.Check
+	tracerProvider trace.TracerProvider
 }
 
 func logf(message string, args ...interface{}) {
@@ -122,8 +121,8 @@ func (w WireDatabase) ProvideDatabase(ctx context.Context, db *Database, usernam
 	})
 
 	var tracer trace.Tracer
-	if w.otel != nil {
-		tracer = otel.Tracer(Package__sfr1nt.PackageName)
+	if w.tracerProvider != nil {
+		tracer = w.tracerProvider.Tracer(Package__sfr1nt.PackageName)
 	}
 
 	return &DB{conn, tracer}, nil
