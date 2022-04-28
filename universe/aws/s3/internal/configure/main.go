@@ -59,7 +59,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 
 	// TODO: creds should be definable per db instance #217
 	args := []string{}
-	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/aws/s3") {
+	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/aws/client") {
 		switch secret.Name {
 		case "aws_credentials_file":
 			args = append(args, fmt.Sprintf("--aws_credentials_file=%s", secret.FromPath))
