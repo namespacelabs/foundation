@@ -18,7 +18,7 @@ type EmbeddedServiceData struct {
 }
 
 type NodeData struct {
-	HasService    bool
+	Kind          schema.Node_Kind
 	SingletonDeps *DependencyList
 	Providers     []ProviderData
 }

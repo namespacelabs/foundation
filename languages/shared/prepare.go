@@ -54,7 +54,7 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 
 		nodeData.SingletonDeps = deps
 	}
-	nodeData.HasService = n.ExportService != nil
+	nodeData.Kind = n.Kind
 
 	for _, p := range n.Provides {
 		for _, a := range p.AvailableIn {

@@ -16,10 +16,11 @@ import (
 )
 
 const (
-	depsFilename      = "deps.fn.ts"
-	singletonNameBase = "Singleton"
-	runtimeNpmPackage = "@namespacelabs/foundation"
-	grpcNpmPackage    = "@grpc/grpc-js"
+	depsFilename             = "deps.fn.ts"
+	packageServiceBaseName   = "Service"
+	packageExtensionBaseName = "Extension"
+	runtimeNpmPackage        = "@namespacelabs/foundation"
+	grpcNpmPackage           = "@grpc/grpc-js"
 )
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
@@ -59,13 +60,20 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		})
 	}
 
-	singletonDeps, err := convertDependencyList(ic, singletonNameBase, nodeData.SingletonDeps)
+	var packageBaseName string
+	if nodeData.Kind == schema.Node_SERVICE {
+		packageBaseName = packageServiceBaseName
+	} else {
+		packageBaseName = packageExtensionBaseName
+	}
+
+	singletonDeps, err := convertDependencyList(ic, packageBaseName, nodeData.SingletonDeps)
 	if err != nil {
 		return nodeTmplOptions{}, err
 	}
 
 	var service *tmplService
-	if nodeData.HasService {
+	if nodeData.Kind == schema.Node_SERVICE {
 		service = &tmplService{
 			GrpcServerImportAlias: ic.add(grpcNpmPackage),
 		}

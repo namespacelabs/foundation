@@ -85,7 +85,7 @@ export const {{.Name}}DepsFactory = {
 			{{- end}}
 			{{.Name}}: dg.instantiate({
 				{{- if .HasSingletonDeps}}
-				singletonDepsFactory: {{.Provider.ImportAlias}}.` + singletonNameBase + `DepsFactory,
+				singletonDepsFactory: {{.Provider.ImportAlias}}.ExtensionDepsFactory,
 				{{- end}}
 				{{- if .HasScopedDeps}}
 				scopedDepsFactory: {{.Provider.ImportAlias}}.{{.Provider.Name}}DepsFactory,
@@ -164,7 +164,7 @@ const wireServices = (server: Server, dg: DependencyGraph): unknown[] => {
 {{- range $.Services}}
   try {
 		dg.instantiate({
-			singletonDepsFactory: {{.ImportAlias}}.` + singletonNameBase + `DepsFactory,
+			singletonDepsFactory: {{.ImportAlias}}.` + packageServiceBaseName + `DepsFactory,
 			providerFn: (params) => {{.ImportAlias}}.wireService(params.singletonDeps!, server),
 		})
 	} catch (e) {
