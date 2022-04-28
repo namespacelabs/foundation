@@ -33,6 +33,7 @@ export function StackObserver(props: { children: React.ReactNode }) {
           abs_root: stackUpdate.abs_root,
           workspace: stackUpdate.workspace,
           env: stackUpdate.env,
+          available_env: stackUpdate.available_env,
           stack: sortStack(
             stackUpdate.current.server.package_name,
             stackUpdate.stack

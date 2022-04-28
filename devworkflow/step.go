@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sync"
 
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/stack"
@@ -223,10 +224,18 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 }
 
 func computeFirstStack(env provision.Env, t provision.Server) *Stack {
+	workspace := proto.Clone(env.Root().Workspace).(*schema.Workspace)
+
+	// XXX handling broken web ui builds.
+	if workspace.Env == nil {
+		workspace.Env = provision.EnvsOrDefault(workspace)
+	}
+
 	return &Stack{
-		AbsRoot:   env.Root().Abs(),
-		Env:       env.Proto(),
-		Workspace: env.Root().Workspace,
-		Current:   t.StackEntry(),
+		AbsRoot:      env.Root().Abs(),
+		Env:          env.Proto(),
+		Workspace:    workspace,
+		AvailableEnv: workspace.Env,
+		Current:      t.StackEntry(),
 	}
 }

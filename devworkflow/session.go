@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog"
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logoutput"
@@ -275,12 +274,6 @@ func (do *stackState) updateStack(f func(stack *Stack) *Stack) {
 	defer do.parent.mu.Unlock()
 	do.current = f(do.current)
 	do.pushUpdate()
-}
-
-func (do *stackState) copyStack() *Stack {
-	do.parent.mu.Lock()
-	defer do.parent.mu.Unlock()
-	return proto.Clone(do.current).(*Stack)
 }
 
 func (do *stackState) pushUpdate() {

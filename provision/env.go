@@ -74,25 +74,27 @@ func (e boundEnv) Sources() []workspace.ModuleSources {
 	return e.sp.Sources()
 }
 
-func RequireEnv(root *workspace.Root, name string) (Env, error) {
-	available := root.Workspace.Env
-
-	if available == nil {
-		available = []*schema.Environment{
-			{
-				Name:    "dev",
-				Runtime: "kubernetes", // XXX
-				Purpose: schema.Environment_DEVELOPMENT,
-			},
-			{
-				Name:    "prod",
-				Runtime: "kubernetes",
-				Purpose: schema.Environment_PRODUCTION,
-			},
-		}
+func EnvsOrDefault(workspace *schema.Workspace) []*schema.Environment {
+	if workspace.Env != nil {
+		return workspace.Env
 	}
 
-	for _, env := range available {
+	return []*schema.Environment{
+		{
+			Name:    "dev",
+			Runtime: "kubernetes", // XXX
+			Purpose: schema.Environment_DEVELOPMENT,
+		},
+		{
+			Name:    "prod",
+			Runtime: "kubernetes",
+			Purpose: schema.Environment_PRODUCTION,
+		},
+	}
+}
+
+func RequireEnv(root *workspace.Root, name string) (Env, error) {
+	for _, env := range EnvsOrDefault(root.Workspace) {
 		if env.Name == name {
 			return MakeEnv(root, env), nil
 		}
