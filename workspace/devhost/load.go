@@ -7,9 +7,9 @@ package devhost
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"io/fs"
-	"os"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -34,7 +34,7 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 
 	devHostBytes, err := fs.ReadFile(root.FS(), DevHostFilename)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
 	} else {
