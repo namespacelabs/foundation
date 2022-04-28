@@ -75,14 +75,12 @@ func (db DB) withSpan(ctx context.Context, name, sql string, f func(context.Cont
 	ctx, span := db.tracer.Start(ctx, name,
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(semconv.DBStatementKey.String(sql)))
-	err := f(ctx)
-	span.End()
+	defer span.End()
 
-	if span.IsRecording() {
-		if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, pgx.ErrNoRows) {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
+	err := f(ctx)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, pgx.ErrNoRows) {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 	}
 
 	return err
