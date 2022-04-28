@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"namespacelabs.dev/foundation/std/go/core"
@@ -18,34 +17,12 @@ type AwsConfig struct {
 	Region, CredentialsPath string
 }
 
-func createExternalConfig(ctx context.Context, c AwsConfig) (aws.Config, error) {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithSharedCredentialsFiles(
-			[]string{c.CredentialsPath},
-		),
-		config.WithRegion(c.Region))
-	if err != nil {
-		return aws.Config{}, fmt.Errorf("Failed to load AWS config with error: %v, for config %#v", err, c)
-	}
-	return cfg, nil
-}
-
-func CreateExternalS3Client(ctx context.Context, c AwsConfig) (*s3.Client, error) {
-	cfg, err := createExternalConfig(ctx, c)
+func ProvideBucket(ctx context.Context, bc *BucketConfig, deps ExtensionDeps) (*Bucket, error) {
+	cfg, err := deps.ClientFactory.New(ctx, config.WithRegion(bc.Region))
 	if err != nil {
 		return nil, err
 	}
 	s3client := s3.NewFromConfig(cfg)
-	return s3client, nil
-}
-
-func ProvideBucket(ctx context.Context, config *BucketConfig, deps ExtensionDeps) (*Bucket, error) {
-	s3client, err := CreateExternalS3Client(ctx, AwsConfig{
-		Region:          config.Region,
-		CredentialsPath: deps.Credentials.Path})
-	if err != nil {
-		return nil, err
-	}
 
 	// Asynchronously wait until the bucket is available.
 	deps.ReadinessCheck.RegisterFunc(
@@ -56,7 +33,7 @@ func ProvideBucket(ctx context.Context, config *BucketConfig, deps ExtensionDeps
 		})
 
 	return &Bucket{
-		BucketName: config.BucketName,
+		BucketName: bc.BucketName,
 		S3Client:   s3client,
 	}, nil
 }

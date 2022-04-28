@@ -10,6 +10,8 @@ import (
 	"flag"
 	"log"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"namespacelabs.dev/foundation/universe/aws/s3"
 )
 
@@ -31,13 +33,13 @@ func main() {
 			log.Fatalf("Failed to unmarshal bucket config with error: %s", err)
 		}
 
-		s3client, err := s3.CreateExternalS3Client(ctx, s3.AwsConfig{
-			Region:          bc.Region,
-			CredentialsPath: *awsCredentialsFile,
-		})
+		awsCfg, err := config.LoadDefaultConfig(ctx,
+			config.WithRegion(bc.Region),
+			config.WithSharedCredentialsFiles([]string{*awsCredentialsFile}))
 		if err != nil {
 			log.Fatalf("Failed to create s3 client with: %s", err)
 		}
+		s3client := awss3.NewFromConfig(awsCfg)
 		if err = s3.EnsureBucketExists(ctx, s3client, bc); err != nil {
 			log.Fatalf("Failed to create s3 bucket with: %s", err)
 		}
