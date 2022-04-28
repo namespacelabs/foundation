@@ -87,6 +87,20 @@ func (b *Bundle) WriteInvocationInfo(ctx context.Context, cmd *cobra.Command, ar
 	return nil
 }
 
+func (b *Bundle) WriteMemStats(ctx context.Context) error {
+	var mstats runtime.MemStats
+	runtime.ReadMemStats(&mstats)
+
+	encmstats, err := json.Marshal(mstats)
+	if err != nil {
+		return fnerrors.InternalError("failed to marshal `runtime.MemStats` as JSON: %w", err)
+	}
+	if err := b.WriteFile(ctx, "memstats.json", encmstats, 0600); err != nil {
+		return fnerrors.InternalError("failed to write `runtime.MemStats` to `memstats`: %w", err)
+	}
+	return nil
+}
+
 // Guards access to file writes in the bundle.
 func (b *Bundle) WriteFile(ctx context.Context, path string, contents []byte, mode fs.FileMode) error {
 	b.mu.Lock()
