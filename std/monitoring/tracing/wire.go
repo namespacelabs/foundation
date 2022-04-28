@@ -133,9 +133,7 @@ func (c close) Close(ctx context.Context) error {
 	return c.tp.Shutdown(ctxWithTimeout)
 }
 
-type DeferredTracerProvider struct{}
-
-func (DeferredTracerProvider) GetTracerProvider() (t.TracerProvider, error) {
+func getTracerProvider() (t.TracerProvider, error) {
 	global.mu.Lock()
 	defer global.mu.Unlock()
 
@@ -146,6 +144,12 @@ func (DeferredTracerProvider) GetTracerProvider() (t.TracerProvider, error) {
 	return global.tracerProvider, nil
 }
 
-func ProvideTracerProvider(context.Context, *TracerProviderArgs, ExtensionDeps) (DeferredTracerProvider, error) {
+type DeferredTracerProvider struct{}
+
+func (DeferredTracerProvider) GetTracerProvider() (t.TracerProvider, error) {
+	return getTracerProvider()
+}
+
+func ProvideTracerProvider(context.Context, *NoArgs, ExtensionDeps) (DeferredTracerProvider, error) {
 	return DeferredTracerProvider{}, nil
 }

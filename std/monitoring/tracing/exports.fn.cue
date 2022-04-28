@@ -16,12 +16,24 @@ package tracing
 			}
 		}
 	}
+	HttpClientProvider: {
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/monitoring/tracing"
+			type:        "HttpClientProvider"
+			typeDefinition: {
+				"typename": "foundation.std.monitoring.tracing.NoArgs"
+				"source": [
+					"types.proto",
+				]
+			}
+		}
+	}
 	TracerProvider: {
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/std/monitoring/tracing"
 			type:        "TracerProvider"
 			typeDefinition: {
-				"typename": "foundation.std.monitoring.tracing.TracerProviderArgs"
+				"typename": "foundation.std.monitoring.tracing.NoArgs"
 				"source": [
 					"types.proto",
 				]

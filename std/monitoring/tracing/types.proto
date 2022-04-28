@@ -12,4 +12,4 @@ message ExporterArgs {
     string name = 1;
 }
 
-message TracerProviderArgs {}
+message NoArgs {}
