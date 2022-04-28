@@ -53,6 +53,12 @@ func prepareImage(ctx context.Context, env ops.Environment, p build.Plan) (compu
 		return nil, fnerrors.InternalError("no platform specified?")
 	}
 
+	// Sort platforms, so we yield a stable image order.
+	platforms = slices.Clone(platforms)
+	slices.SortFunc(platforms, func(a, b specs.Platform) bool {
+		return strings.Compare(devhost.FormatPlatform(a), devhost.FormatPlatform(b)) < 0
+	})
+
 	r, err := prepareMultiPlatformPlan(ctx, p, platforms)
 	if err != nil {
 		return nil, err
@@ -114,12 +120,6 @@ func prepareMultiPlatformPlan(ctx context.Context, plan build.Plan, platforms []
 			platformIndex = append(platformIndex, 0) // All platforms point to single build.
 		}
 	} else {
-		// Sort platforms, so we yield a stable image order.
-		platforms := slices.Clone(platforms)
-		slices.SortFunc(platforms, func(a, b specs.Platform) bool {
-			return strings.Compare(devhost.FormatPlatform(a), devhost.FormatPlatform(b)) < 0
-		})
-
 		for _, plat := range platforms {
 			label := plan.SourceLabel
 			if len(platforms) > 1 {
