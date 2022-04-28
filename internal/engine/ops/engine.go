@@ -6,10 +6,12 @@ package ops
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -156,7 +158,10 @@ func (g *Runner) ApplyParallel(ctx context.Context, name string, env Environment
 }
 
 func (g *Runner) apply(ctx context.Context, env Environment, parallel bool) ([]Waiter, error) {
-	tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
+	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
+	if err != nil {
+		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)
+	}
 
 	sessions := map[string]dispatcherFunc{}
 	commits := map[string]commitSessionFunc{}

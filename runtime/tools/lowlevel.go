@@ -6,6 +6,7 @@ package tools
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"time"
@@ -36,7 +37,10 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 	if attachments.IsRecording() {
 		reqcopy := proto.Clone(req).(*protocol.ToolRequest)
 		reqcopy.Snapshot = nil
-		attachments.AttachSerializable("request.textpb", "", reqcopy)
+		err := attachments.AttachSerializable("request.textpb", "", reqcopy)
+		if err != nil {
+			fmt.Fprintf(console.Debug(ctx), "failed to serialize request: %v", err)
+		}
 	}
 
 	// os.Pipe is used instead of io.Pipe, as exec.Command will anyway behind the scenes
@@ -114,7 +118,10 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 		return nil, fnerrors.InternalError("never produced a response")
 	}
 
-	attachments.AttachSerializable("response.textpb", "", resp)
+	err = attachments.AttachSerializable("response.textpb", "", resp)
+	if err != nil {
+		fmt.Fprintf(console.Debug(ctx), "failed to serialize response: %v", err)
+	}
 
 	return resp, nil
 }
