@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/internal/console/common"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks/protocol"
@@ -588,19 +589,19 @@ func (ev *EventAttachments) Attach(name OutputName, body []byte) {
 	}
 }
 
-func (ev *EventAttachments) AttachSerializable(name, modifier string, body interface{}) {
+func (ev *EventAttachments) AttachSerializable(name, modifier string, body interface{}) error {
 	if ev == nil {
-		panic("no running action")
+		return fnerrors.InternalError("no running action while attaching serializable %q", name)
 	}
 
 	msg, err := common.Serialize(body)
 	if err != nil {
-		panic(fmt.Sprintf("failed to serialize payload: %v", err))
+		return fnerrors.BadInputError("failed to serialize payload: %w", err)
 	}
 
 	bytes, err := common.SerializeToBytes(msg)
 	if err != nil {
-		panic(fmt.Sprintf("failed to serialize payload to bytes: %v", err))
+		return fnerrors.BadInputError("failed to serialize payload to bytes: %w", err)
 	}
 
 	contentType := "application/json"
@@ -609,6 +610,7 @@ func (ev *EventAttachments) AttachSerializable(name, modifier string, body inter
 	}
 
 	ev.Attach(Output(name, contentType), bytes)
+	return nil
 }
 
 func (ev *EventAttachments) addResult(key string, msg interface{}) ResultData {
