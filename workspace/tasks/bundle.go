@@ -96,7 +96,7 @@ func (b *Bundle) WriteMemStats(ctx context.Context) error {
 		return fnerrors.InternalError("failed to marshal `runtime.MemStats` as JSON: %w", err)
 	}
 	if err := b.WriteFile(ctx, "memstats.json", encmstats, 0600); err != nil {
-		return fnerrors.InternalError("failed to write `runtime.MemStats` to `memstats`: %w", err)
+		return fnerrors.InternalError("failed to write `runtime.MemStats` to `memstats.json`: %w", err)
 	}
 	return nil
 }
