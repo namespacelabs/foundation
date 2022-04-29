@@ -280,7 +280,6 @@ func writeExitInfo(ctx context.Context, bundle *tasks.Bundle) error {
 	if err != nil {
 		return err
 	}
-
 	client, err := docker.NewClient()
 	if err != nil {
 		return err
