@@ -1,15 +1,24 @@
 // This file was automatically generated.
 
 import { Server, ServerCredentials } from "@grpc/grpc-js";
-import { DependencyGraph } from "@namespacelabs/foundation";
+import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 import "source-map-support/register"
 import yargs from "yargs/yargs";
+import * as i0 from "@namespacelabs.dev/foundation_languages_nodejs_testdata_services_simple/deps.fn"
 
 // Returns a list of initialization errors.
 const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
 	const errors: unknown[] = [];
+  try {
+		i0.wireService(server);
+	} catch (e) {
+		errors.push(e);
+	}
   return errors;
 };
+
+const TransitiveInitializers: Initializer[] = [
+];
 
 const argv = yargs(process.argv.slice(2))
 		.options({
@@ -21,10 +30,11 @@ const argv = yargs(process.argv.slice(2))
 const server = new Server();
 
 const graph = new DependencyGraph();
+graph.runInitializers(TransitiveInitializers);
 const errors = wireServices(server, graph);
 if (errors.length > 0) {
 	errors.forEach((e) => console.error(e));
-	console.error("%d services failed to initialize.", errors.length)
+	console.error("%d services failed to start.", errors.length)
 	process.exit(1);
 }
 

@@ -1,10 +1,10 @@
 {
 	"dependencies": {
 		"@grpc/grpc-js": "1.5.7",
-		"@namespacelabs/foundation": "0.1.22",
+		"@namespacelabs.dev/foundation_languages_nodejs_testdata_services_simple": "0.0.0",
+		"@namespacelabs/foundation": "0.1.27",
 		"google-protobuf": "^3.20.0",
 		"source-map-support": "0.5.21",
-		"ts-node": "10.7.x",
 		"typescript": "4.6.2",
 		"yargs": "16.x"
 	},
@@ -14,7 +14,7 @@
 		"@types/node": "16.x",
 		"@types/yargs": "16.x"
 	},
-	"name": "@namespacelabs.dev/foundation_std_testdata_nodejsserver_server",
+	"name": "@namespacelabs.dev/foundation_languages_nodejs_testdata_server",
 	"private": true,
 	"version": "0.0.0"
 }
