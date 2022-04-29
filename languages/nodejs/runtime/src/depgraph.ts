@@ -12,12 +12,12 @@ export interface Package<PackageDepsT> {
 	instantiateDeps?: (dg: DependencyGraph) => PackageDepsT;
 }
 
-export interface Initializer<PackageDepsT> {
-	package: Package<PackageDepsT>;
+export interface Initializer {
+	package: Package<any>;
 	// List of packages that need to be initialized before this package. Enforced at runtime.
 	before?: string[];
 	after?: string[];
-	initialize: (deps: PackageDepsT) => void;
+	initialize: (deps: any) => void;
 }
 
 export class DependencyGraph {
@@ -43,19 +43,19 @@ export class DependencyGraph {
 		);
 	}
 
-	runInitializers(initializers: unknown[]) {
+	runInitializers(initializers: Initializer[]) {
 		const dedupedInitializers = new Set(initializers);
 
 		try {
 			// TODO: take before/after into account
-			dedupedInitializers.forEach((i) => this.#runInitializer(i as Initializer<unknown>));
+			dedupedInitializers.forEach((i) => this.#runInitializer(i));
 		} catch (e) {
 			console.error(`Error running initializers: ${e}`);
 			process.exit(1);
 		}
 	}
 
-	#runInitializer<PackageDepsT>(initializer: Initializer<PackageDepsT>) {
+	#runInitializer(initializer: Initializer) {
 		this.#profileCall(`Initializing ${initializer.package.name}`, () => {
 			initializer.initialize(this.instantiatePackageDeps(initializer.package));
 		});

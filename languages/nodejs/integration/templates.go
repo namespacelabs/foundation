@@ -56,7 +56,7 @@ export const Package = {
 // Input: tmplPackage
 {{define "TransitiveInitializersDef"}}
 
-export const TransitiveInitializers = [
+export const TransitiveInitializers: Initializer[] = [
 	{{- if .Initializer}}
 	Initializer,
 	{{- end}}
@@ -123,7 +123,7 @@ import * as {{.Alias}} from "{{.Package}}"
 			`{{define "Node"}}{{with $opts := .}}// This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph } from "@namespacelabs/foundation";
+import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 
 {{- template "Imports" . -}}
 
@@ -154,7 +154,7 @@ export const wireService: WireService = impl.wireService;
 			`{{define "Server"}}// This file was automatically generated.
 
 import { Server, ServerCredentials } from "@grpc/grpc-js";
-import { DependencyGraph } from "@namespacelabs/foundation";
+import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 import "source-map-support/register"
 import yargs from "yargs/yargs";
 
@@ -173,7 +173,7 @@ const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
   return errors;
 };
 
-const TransitiveInitializers = [
+const TransitiveInitializers: Initializer[] = [
 	{{- range .ImportedInitializersAliases}}
 	...{{.}}.TransitiveInitializers,
 	{{- end}}

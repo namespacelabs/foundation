@@ -1,6 +1,6 @@
 {
 	"name": "@namespacelabs/foundation",
-	"version": "0.1.26",
+	"version": "0.1.27",
 	"description": "Runtime Node.js libraries for Foundation",
 	"main": "dist/depgraph.js",
 	"types": "dist/depgraph.d.ts",
