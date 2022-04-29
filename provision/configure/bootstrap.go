@@ -7,16 +7,13 @@ package configure
 import (
 	"context"
 	"errors"
-	"flag"
 	"io/fs"
 	"log"
-	"os"
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 )
 
@@ -60,10 +57,6 @@ func (p Request) PackageOwner() string {
 }
 
 func run(ctx context.Context, h AllHandlers) {
-	flag.Parse()
-
-	ctx = logoutput.WithOutput(ctx, logoutput.OutputTo{Writer: os.Stderr})
-
 	if err := handle(ctx, h); err != nil {
 		log.Fatal(err)
 	}

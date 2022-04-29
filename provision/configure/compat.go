@@ -13,23 +13,23 @@ import (
 )
 
 func RunTool(t Tool) {
-	run(context.Background(), handlerCompat{t})
+	run(context.Background(), HandlerCompat{t})
 }
 
-type handlerCompat struct {
-	tool Tool
+type HandlerCompat struct {
+	Tool Tool
 }
 
-var _ AllHandlers = handlerCompat{}
+var _ AllHandlers = HandlerCompat{}
 
-func (h handlerCompat) Apply(ctx context.Context, req StackRequest, output *ApplyOutput) error {
-	return h.tool.Apply(ctx, req, output)
+func (h HandlerCompat) Apply(ctx context.Context, req StackRequest, output *ApplyOutput) error {
+	return h.Tool.Apply(ctx, req, output)
 }
 
-func (h handlerCompat) Delete(ctx context.Context, req StackRequest, output *DeleteOutput) error {
-	return h.tool.Delete(ctx, req, output)
+func (h HandlerCompat) Delete(ctx context.Context, req StackRequest, output *DeleteOutput) error {
+	return h.Tool.Delete(ctx, req, output)
 }
 
-func (h handlerCompat) Invoke(context.Context, Request) (*protocol.InvokeResponse, error) {
+func (h HandlerCompat) Invoke(context.Context, Request) (*protocol.InvokeResponse, error) {
 	return nil, status.Error(codes.Unavailable, "invoke not supported")
 }

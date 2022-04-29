@@ -6,14 +6,18 @@ package configure
 
 import (
 	"context"
+	"flag"
 	"os"
 
 	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/internal/grpcstdio"
+	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 )
 
-func handle(ctx context.Context, h AllHandlers) error {
+func RunServer(ctx context.Context, register func(grpc.ServiceRegistrar)) error {
+	flag.Parse()
+
 	s := grpc.NewServer()
 
 	x, err := grpcstdio.NewSession(ctx, os.Stdin, os.Stdout, grpcstdio.WithCloseNotifier(func(_ *grpcstdio.Stream) {
@@ -27,16 +31,21 @@ func handle(ctx context.Context, h AllHandlers) error {
 		return err
 	}
 
-	protocol.RegisterInvocationServiceServer(s, impl{h: h})
+	register(s)
 
 	return s.Serve(x.Listener())
 }
 
-type impl struct {
-	protocol.UnimplementedInvocationServiceServer
-	h AllHandlers
+func handle(ctx context.Context, h AllHandlers) error {
+	return RunServer(ctx, func(sr grpc.ServiceRegistrar) {
+		protocol.RegisterInvocationServiceServer(sr, ProtocolHandler{Handlers: h})
+	})
 }
 
-func (i impl) Invoke(ctx context.Context, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {
-	return handleRequest(ctx, req, i.h)
+type ProtocolHandler struct {
+	Handlers AllHandlers
+}
+
+func (i ProtocolHandler) Invoke(ctx context.Context, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {
+	return handleRequest(logoutput.WithOutput(ctx, logoutput.OutputTo{Writer: os.Stderr}), req, i.Handlers)
 }
