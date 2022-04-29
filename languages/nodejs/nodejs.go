@@ -27,8 +27,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/hotreload"
-	"namespacelabs.dev/foundation/internal/hotreload/yarn"
 	"namespacelabs.dev/foundation/internal/production"
+	"namespacelabs.dev/foundation/internal/yarn"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -227,7 +227,7 @@ func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) er
 
 	// Install Yarn 3+ if needed
 	if !yarnHasCorrectVersion {
-		if err := RunYarn(ctx, path, []string{"set", "version", yarnVersion}); err != nil {
+		if err := yarn.RunYarn(ctx, path, []string{"set", "version", yarnVersion}); err != nil {
 			return err
 		}
 		// Yarn adds "packageManager" field to the end of package.json, re-format it in alphapetical order
@@ -261,7 +261,7 @@ func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) er
 
 	// `fn tidy` could update dependencies of some nodes/servers, running `yarn install` to update
 	// `node_modules`.
-	if err := RunYarn(ctx, path, []string{"install"}); err != nil {
+	if err := yarn.RunYarn(ctx, path, []string{"install"}); err != nil {
 		return err
 	}
 
