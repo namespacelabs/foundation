@@ -9,13 +9,13 @@ $inputProto: inputs.#Proto & {
 
 // Simple extension that allows to format numbers.
 
-extension: fn.#Extension & {  
+extension: fn.#Extension & {
 	provides: {
 		fmt: {
 			input: $inputProto.types.FormattingSettings
 			availableIn: {
 				nodejs: {
-          import: "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_numberformatter/formatter"
+					import: "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_numberformatter/formatter"
 					type:   "NumberFormatter"
 				}
 			}

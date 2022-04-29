@@ -1,7 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-  "namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/numberformatter"
+	"namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/numberformatter"
 )
 
 $proto: inputs.#Proto & {
@@ -11,13 +11,13 @@ $proto: inputs.#Proto & {
 // A service that uses the "numberformatter" extension.
 
 service: fn.#Service & {
-  framework: "NODEJS"
-  
-  instantiate: {
-    fmt: numberformatter.#Exports.fmt & {
-      precision: 3
-    }
-  }
+	framework: "NODEJS"
 
-	exportService:        $proto.services.FormatService
+	instantiate: {
+		fmt: numberformatter.#Exports.fmt & {
+			precision: 3
+		}
+	}
+
+	exportService: $proto.services.FormatService
 }
