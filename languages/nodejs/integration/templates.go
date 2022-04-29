@@ -58,7 +58,7 @@ export const Package = {
 
 export const TransitiveInitializers: Initializer[] = [
 	{{- if .Initializer}}
-	Initializer,
+	initializer,
 	{{- end}}
 	{{- range .DepsImportAliases}}
 	...{{.}}.TransitiveInitializers,
@@ -68,7 +68,7 @@ export const TransitiveInitializers: Initializer[] = [
 
 // Input: tmplInitializer
 {{define "InitializerDef" -}}
-export const Initializer = {
+const initializer = {
   package: Package,
 	initialize: impl.initialize, 
 	
