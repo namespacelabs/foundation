@@ -203,6 +203,7 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	initArgs := map[schema.PackageName][]string{}
 
 	var serviceAccount string // May be specified by a SpecExtension.
+	var createServiceAccount bool
 	for _, input := range server.Extensions {
 		specExt := &kubedef.SpecExtension{}
 		containerExt := &kubedef.ContainerExtension{}
@@ -230,11 +231,20 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 				tmpl = tmpl.WithAnnotations(m)
 			}
 
-			if serviceAccount != "" && serviceAccount != specExt.ServiceAccount {
-				return fnerrors.UserError(server.Server.Location, "incompatible service accounts defined, %q vs %q", serviceAccount, specExt.ServiceAccount)
+			specifiedAccount := specExt.ServiceAccount
+
+			if specExt.EnsureServiceAccount {
+				createServiceAccount = true
+				if specifiedAccount == "" {
+					specifiedAccount = kubedef.MakeDeploymentId(srv.Proto())
+				}
 			}
 
-			serviceAccount = specExt.ServiceAccount
+			if serviceAccount != "" && serviceAccount != specifiedAccount {
+				return fnerrors.UserError(server.Server.Location, "incompatible service accounts defined, %q vs %q", serviceAccount, specifiedAccount)
+			}
+
+			serviceAccount = specifiedAccount
 
 		case input.Impl.MessageIs(containerExt):
 			if err := input.Impl.UnmarshalTo(containerExt); err != nil {
@@ -379,6 +389,16 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	// Only mutate `annotations` after all other uses above.
 	if server.ConfigImage != nil {
 		annotations[kubedef.K8sConfigImage] = server.ConfigImage.RepoAndDigest()
+	}
+
+	if createServiceAccount {
+		s.declarations = append(s.declarations, kubedef.Apply{
+			Description: "Service Account",
+			Resource:    "serviceaccounts",
+			Namespace:   r.ns(),
+			Name:        serviceAccount,
+			Body:        applycorev1.ServiceAccount(serviceAccount, r.ns()).WithLabels(labels),
+		})
 	}
 
 	// We don't deploy managed deployments or statefulsets in tests, as these are one-shot
