@@ -72,6 +72,6 @@ func logHeader(ctx context.Context, what, fullMethod string, req interface{}) st
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	var interceptor interceptor
-	deps.Interceptors.Add(interceptor.unary, interceptor.streaming)
+	deps.Interceptors.ForServer(interceptor.unary, interceptor.streaming)
 	return nil
 }

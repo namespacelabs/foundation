@@ -11,7 +11,9 @@ import (
 	"strings"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"namespacelabs.dev/foundation/std/go/core"
+	"namespacelabs.dev/foundation/std/go/grpc/client"
 	"namespacelabs.dev/foundation/std/go/server"
 )
 
@@ -30,7 +32,7 @@ func ProvideConn(ctx context.Context, req *Backend) (*grpc.ClientConn, error) {
 
 	// XXX ServerResource wrapping is missing.
 
-	return grpc.DialContext(ctx, endpoint, grpc.WithInsecure()) ///  XXX mTLS etc.
+	return client.Dial(ctx, endpoint, grpc.WithTransportCredentials(insecure.NewCredentials())) ///  XXX mTLS etc.
 }
 
 func connMapFromArgs() map[string]string {

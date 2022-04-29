@@ -12,38 +12,64 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 )
 
-var interceptors struct {
-	mu            sync.Mutex
-	registrations []Registration // Each index of `unary` and `streaming` maps back to the same index `Registration`.
-	unary         []grpc.UnaryServerInterceptor
-	streaming     []grpc.StreamServerInterceptor
-}
+var (
+	interceptorsMu sync.RWMutex
+
+	serverInterceptors struct {
+		registrations []Registration // Each index of `unary` and `streaming` maps back to the same index `Registration`.
+		unary         []grpc.UnaryServerInterceptor
+		streaming     []grpc.StreamServerInterceptor
+	}
+
+	clientInterceptors struct {
+		registrations []Registration // Each index of `unary` and `streaming` maps back to the same index `Registration`.
+		unary         []grpc.UnaryClientInterceptor
+		streaming     []grpc.StreamClientInterceptor
+	}
+)
 
 type Registration struct {
 	owner *core.InstantiationPath
 	name  string
 }
 
-func (r Registration) Add(u grpc.UnaryServerInterceptor, s grpc.StreamServerInterceptor) {
+func (r Registration) ForClient(u grpc.UnaryClientInterceptor, s grpc.StreamClientInterceptor) {
 	core.AssertNotRunning("AddServerInterceptor")
 
-	interceptors.mu.Lock()
-	defer interceptors.mu.Unlock()
+	interceptorsMu.Lock()
+	defer interceptorsMu.Unlock()
 
-	interceptors.registrations = append(interceptors.registrations, r)
-	interceptors.unary = append(interceptors.unary, u)
-	interceptors.streaming = append(interceptors.streaming, s)
+	clientInterceptors.registrations = append(clientInterceptors.registrations, r)
+	clientInterceptors.unary = append(clientInterceptors.unary, u)
+	clientInterceptors.streaming = append(clientInterceptors.streaming, s)
 }
 
-func Consume() ([]grpc.UnaryServerInterceptor, []grpc.StreamServerInterceptor) {
-	interceptors.mu.Lock()
-	defer interceptors.mu.Unlock()
+func (r Registration) ForServer(u grpc.UnaryServerInterceptor, s grpc.StreamServerInterceptor) {
+	core.AssertNotRunning("AddServerInterceptor")
 
-	unary := interceptors.unary
-	streaming := interceptors.streaming
-	interceptors.registrations = nil
-	interceptors.unary = nil
-	interceptors.streaming = nil
+	interceptorsMu.Lock()
+	defer interceptorsMu.Unlock()
+
+	serverInterceptors.registrations = append(serverInterceptors.registrations, r)
+	serverInterceptors.unary = append(serverInterceptors.unary, u)
+	serverInterceptors.streaming = append(serverInterceptors.streaming, s)
+}
+
+func ServerInterceptors() ([]grpc.UnaryServerInterceptor, []grpc.StreamServerInterceptor) {
+	interceptorsMu.RLock()
+	defer interceptorsMu.RUnlock()
+
+	unary := serverInterceptors.unary
+	streaming := serverInterceptors.streaming
+	return unary, streaming
+}
+
+func ClientInterceptors() ([]grpc.UnaryClientInterceptor, []grpc.StreamClientInterceptor) {
+	interceptorsMu.RLock()
+	defer interceptorsMu.RUnlock()
+
+	unary := clientInterceptors.unary
+	streaming := clientInterceptors.streaming
 	return unary, streaming
 }
 

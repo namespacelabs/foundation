@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"namespacelabs.dev/foundation/std/go/core"
+	"namespacelabs.dev/foundation/std/go/grpc/client"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/http/middleware"
 )
@@ -105,7 +106,7 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 	}
 
 	if *gatewayPort != 0 {
-		loopback, err := grpc.Dial(fmt.Sprintf("127.0.0.1:%d", *port), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		loopback, err := client.Dial(context.Background(), fmt.Sprintf("127.0.0.1:%d", *port), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return fmt.Errorf("grpc-gateway loopback connection failed: %w", err)
 		}
@@ -133,7 +134,7 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 }
 
 func interceptorsAsOpts() []grpc.ServerOption {
-	unary, streaming := interceptors.Consume()
+	unary, streaming := interceptors.ServerInterceptors()
 
 	return []grpc.ServerOption{
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(streaming...)),

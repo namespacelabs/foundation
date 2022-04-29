@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
@@ -33,6 +34,8 @@ var (
 		exporters      []trace.SpanExporter
 		tracerProvider t.TracerProvider // We don't use otel's global, to ensure that dependency order is respected.
 	}
+
+	propagators = propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
 )
 
 type Exporter struct {
@@ -95,9 +98,14 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	provider := trace.NewTracerProvider(opts...)
 	serverResources.Add(close{provider})
 
-	deps.Interceptors.Add(
-		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider)),
-		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider)))
+	deps.Interceptors.ForServer(
+		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators)),
+		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators)))
+
+	deps.Interceptors.ForClient(
+		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators)),
+		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators)),
+	)
 
 	deps.Middleware.Add(func(h http.Handler) http.Handler {
 		return otelhttp.NewHandler(h, "",

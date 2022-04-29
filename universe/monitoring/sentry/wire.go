@@ -27,7 +27,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		return err
 	}
 
-	deps.Interceptors.Add(unaryInterceptor, streamInterceptor)
+	deps.Interceptors.ForServer(unaryInterceptor, streamInterceptor)
 	deps.Middleware.Add(sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle)
 
 	return nil
