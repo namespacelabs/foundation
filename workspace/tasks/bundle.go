@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"filippo.io/age"
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/version"
@@ -83,6 +84,20 @@ func (b *Bundle) WriteInvocationInfo(ctx context.Context, cmd *cobra.Command, ar
 	}
 	if err := b.WriteFile(ctx, "invocation_info.json", encodedInfo, 0600); err != nil {
 		return fnerrors.InternalError("failed to write `InvocationInfo` to `invocation_info.json`: %w", err)
+	}
+	return nil
+}
+
+func (b *Bundle) WriteDockerInfo(ctx context.Context, dockerInfo *dockertypes.Info) error {
+	if dockerInfo == nil {
+		return nil
+	}
+	encodedInfo, err := json.Marshal(dockerInfo)
+	if err != nil {
+		return fnerrors.InternalError("failed to marshal docker `types.Info` as JSON: %w", err)
+	}
+	if err := b.WriteFile(ctx, "docker_info.json", encodedInfo, 0600); err != nil {
+		return fnerrors.InternalError("failed to write docker `types.Info` to `docker_info.json`: %w", err)
 	}
 	return nil
 }

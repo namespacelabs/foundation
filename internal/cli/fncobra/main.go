@@ -49,6 +49,7 @@ import (
 	artifactregistry "namespacelabs.dev/foundation/providers/gcp/registry"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -225,8 +226,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if cleanupTracer != nil {
 		cleanupTracer()
 	}
-	// Capture runtime memory stats in the bundle.
-	_ = bundle.WriteMemStats(ctxWithSink)
+	// Capture useful information about the environment helpful for diagnostics in the bundle.
+	_ = writeExitInfo(ctxWithSink, bundle)
 
 	// Commit the bundle to the filesystem.
 	_ = bundler.Flush(ctxWithSink, bundle)
@@ -269,6 +270,22 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		tel.RecordError(ctx, err)
 		os.Exit(exitCode)
 	}
+}
+
+func writeExitInfo(ctx context.Context, bundle *tasks.Bundle) error {
+	err := bundle.WriteMemStats(ctx)
+	if err != nil {
+		return err
+	}
+	client, err := docker.NewClient()
+	if err != nil {
+		return err
+	}
+	dockerInfo, err := client.Info(ctx)
+	if err != nil {
+		return err
+	}
+	return bundle.WriteDockerInfo(ctx, &dockerInfo)
 }
 
 func handleExitError(colors bool, err error) int {
