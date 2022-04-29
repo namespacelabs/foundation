@@ -146,6 +146,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			out.Initializers = append(out.Initializers, &schema.NodeInitializer{
 				Framework:        schema.Framework(v),
 				InitializeBefore: initializeBefore,
+				InitializeAfter:  initializeAfter,
 			})
 		}
 	} else {
