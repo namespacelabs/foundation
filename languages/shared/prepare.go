@@ -31,6 +31,7 @@ func PrepareServerData(ctx context.Context, loader workspace.Packages, loc works
 		if pkg.Node().GetKind() == schema.Node_SERVICE {
 			serverData.Services = append(serverData.Services, EmbeddedServiceData{
 				Location: pkg.Location,
+				HasDeps:  len(pkg.Node().GetInstantiate()) > 0,
 			})
 		}
 

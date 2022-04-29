@@ -86,9 +86,9 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		})
 	}
 
-	var service *tmplService
+	var service *tmplNodeService
 	if nodeData.Kind == schema.Node_SERVICE {
-		service = &tmplService{
+		service = &tmplNodeService{
 			GrpcServerImportAlias: ic.add(grpcNpmPackage),
 		}
 	} else {

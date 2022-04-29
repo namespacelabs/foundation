@@ -6,14 +6,14 @@ package integration
 
 type nodeTmplOptions struct {
 	Imports   []tmplSingleImport
-	Service   *tmplService
+	Service   *tmplNodeService
 	Package   tmplPackage
 	Providers []tmplProvider
 }
 
 type serverTmplOptions struct {
 	Imports                     []tmplSingleImport
-	Services                    []tmplImportedType
+	Services                    []tmplServerService
 	ImportedInitializersAliases []string
 }
 
@@ -21,7 +21,12 @@ type nodeImplTmplOptions struct {
 	ServiceServerName, ServiceName, ServiceFileName string
 }
 
-type tmplService struct {
+type tmplServerService struct {
+	Type    tmplImportedType
+	HasDeps bool
+}
+
+type tmplNodeService struct {
 	GrpcServerImportAlias string
 }
 

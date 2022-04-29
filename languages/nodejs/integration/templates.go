@@ -165,7 +165,9 @@ const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
 	const errors: unknown[] = [];
 {{- range $.Services}}
   try {
-		{{.ImportAlias}}.wireService({{.ImportAlias}}.Package.instantiateDeps(graph), server);
+		{{.Type.ImportAlias}}.wireService(
+			{{- if .HasDeps}}{{.Type.ImportAlias}}.Package.instantiateDeps(graph), {{ end -}}
+			server);
 	} catch (e) {
 		errors.push(e);
 	}
@@ -207,10 +209,10 @@ server.bindAsync(` + "`" + `${argv.listen_hostname}:${argv.port}` + "`" + `, Ser
 
 			// Node stub template
 			`{{define "Node stub"}}import { Server } from "@grpc/grpc-js";
-import { Deps, WireService } from "./deps.fn";
+import { ServiceDeps, WireService } from "./deps.fn";
 import { {{.ServiceServerName}}, {{.ServiceName}} } from "./{{.ServiceFileName}}_grpc_pb";
 
-export const wireService: WireService = (_: Deps, server: Server): void => {
+export const wireService: WireService = (deps: ServiceDeps, server: Server): void => {
 const service: {{.ServiceServerName}} = {
 	// TODO: implement
 };

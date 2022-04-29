@@ -16,6 +16,7 @@ type ServerData struct {
 
 type EmbeddedServiceData struct {
 	Location workspace.Location
+	HasDeps  bool
 }
 
 type NodeData struct {
