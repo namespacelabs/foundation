@@ -1,3 +1,7 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
 import { sendUnaryData, Server, ServerUnaryCall } from "@grpc/grpc-js";
 import { ServiceDeps, WireService } from "./deps.fn";
 import { IFormatServiceServer, FormatServiceService } from "./service_grpc_pb";

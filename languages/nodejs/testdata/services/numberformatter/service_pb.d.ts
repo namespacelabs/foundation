@@ -1,3 +1,7 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
 // package: languages.nodejs.testdata.services.numberformatter
 // file: languages/nodejs/testdata/services/numberformatter/service.proto
 
