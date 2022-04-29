@@ -17,7 +17,7 @@ import (
 const ServerFilename = "main.fn.ts"
 
 func generateServer(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
-	serverData, err := shared.PrepareServerData(ctx, loader, loc, srv)
+	serverData, err := shared.PrepareServerData(ctx, loader, loc, srv, schema.Framework_NODEJS)
 	if err != nil {
 		return err
 	}
@@ -39,8 +39,14 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 		})
 	}
 
+	importedInitializersAliases, err := convertImportedInitializes(ic, serverData.ImportedInitializers)
+	if err != nil {
+		return err
+	}
+
 	return generateSource(ctx, fs, loc.Rel(ServerFilename), tmpl, "Server", serverTmplOptions{
-		Imports:  ic.imports(),
-		Services: tplServices,
+		Imports:                     ic.imports(),
+		Services:                    tplServices,
+		ImportedInitializersAliases: importedInitializersAliases,
 	})
 }

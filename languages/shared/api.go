@@ -10,7 +10,8 @@ import (
 )
 
 type ServerData struct {
-	Services []EmbeddedServiceData
+	Services             []EmbeddedServiceData
+	ImportedInitializers []schema.PackageName
 }
 
 type EmbeddedServiceData struct {
@@ -18,10 +19,18 @@ type EmbeddedServiceData struct {
 }
 
 type NodeData struct {
-	Kind        schema.Node_Kind
-	PackageName string
-	Deps        []DependencyData
-	Providers   []ProviderData
+	Kind              schema.Node_Kind
+	PackageName       string
+	Deps              []DependencyData
+	Providers         []ProviderData
+	DepsImportAliases []schema.PackageName
+	Initializer       *PackageInitializerData
+}
+
+type PackageInitializerData struct {
+	// List of packages that need to be initialized before this package. Enforced at runtime.
+	InitializeBefore []string
+	InitializeAfter  []string
 }
 
 type TypeData struct {

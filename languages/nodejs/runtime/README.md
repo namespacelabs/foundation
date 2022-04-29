@@ -7,7 +7,7 @@ Install `gcloud` and `npx`.
 ## Publish
 
 ```bash
-# Once a day
+# From time to time.
 npx google-artifactregistry-auth
 
 # It will ask to bump the version.

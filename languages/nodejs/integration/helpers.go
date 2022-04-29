@@ -69,6 +69,19 @@ func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_Node
 	}
 }
 
+func convertImportedInitializes(ic *importCollector, packages []schema.PackageName) ([]string, error) {
+	result := []string{}
+	for _, p := range packages {
+		npmPackage, err := toNpmPackage(p)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, ic.add(nodeDepsNpmImport(npmPackage)))
+	}
+
+	return result, nil
+}
+
 type importCollector struct {
 	// Key: pkg
 	pkgToImport map[string]tmplSingleImport

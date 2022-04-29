@@ -51,6 +51,20 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		return nodeTmplOptions{}, err
 	}
 
+	var packageDepsName *string
+	if packageDeps != nil {
+		packageDepsName = &packageBaseName
+	}
+
+	var initializer *tmplInitializer
+	if nodeData.Initializer != nil {
+		initializer = &tmplInitializer{
+			PackageDepsName:  packageDepsName,
+			InitializeBefore: nodeData.Initializer.InitializeBefore,
+			InitializeAfter:  nodeData.Initializer.InitializeAfter,
+		}
+	}
+
 	providers := []tmplProvider{}
 	for _, p := range nodeData.Providers {
 		inputType, err := convertType(ic, p.InputType)
@@ -61,11 +75,6 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		scopeDeps, err := convertDependencyList(ic, p.Name, p.ScopedDeps)
 		if err != nil {
 			return nodeTmplOptions{}, err
-		}
-
-		var packageDepsName *string
-		if packageDeps != nil {
-			packageDepsName = &packageBaseName
 		}
 
 		providers = append(providers, tmplProvider{
@@ -86,11 +95,18 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		service = nil
 	}
 
+	depsImportAliases, err := convertImportedInitializes(ic, nodeData.DepsImportAliases)
+	if err != nil {
+		return nodeTmplOptions{}, err
+	}
+
 	return nodeTmplOptions{
 		Imports: ic.imports(),
 		Package: tmplPackage{
-			Name: nodeData.PackageName,
-			Deps: packageDeps,
+			Name:              nodeData.PackageName,
+			Deps:              packageDeps,
+			Initializer:       initializer,
+			DepsImportAliases: depsImportAliases,
 		},
 		Providers: providers,
 		Service:   service,

@@ -19,7 +19,7 @@ import (
 )
 
 // Prepare codegen data for a server.
-func PrepareServerData(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server) (ServerData, error) {
+func PrepareServerData(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, fmwk schema.Framework) (ServerData, error) {
 	var serverData ServerData
 
 	for _, ref := range srv.GetImportedPackages() {
@@ -33,7 +33,12 @@ func PrepareServerData(ctx context.Context, loader workspace.Packages, loc works
 				Location: pkg.Location,
 			})
 		}
+
+		if pkg.Node().InitializerFor(fmwk) != nil {
+			serverData.ImportedInitializers = append(serverData.ImportedInitializers, pkg.Location.PackageName)
+		}
 	}
+	serverData.ImportedInitializers = removeDuplicates(serverData.ImportedInitializers)
 
 	return serverData, nil
 }
@@ -44,11 +49,23 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 		PackageName: n.PackageName,
 	}
 
+	if i := n.InitializerFor(fmwk); i != nil {
+		nodeData.Initializer = &PackageInitializerData{
+			InitializeBefore: i.InitializeBefore,
+			InitializeAfter:  i.InitializeAfter,
+		}
+	}
+
 	if len(n.Instantiate) > 0 {
 		deps, err := prepareDeps(ctx, loader, fmwk, n.Instantiate)
 		if err != nil {
 			return NodeData{}, err
 		}
+
+		for _, i := range n.Instantiate {
+			nodeData.DepsImportAliases = append(nodeData.DepsImportAliases, schema.Name(i.PackageName))
+		}
+		nodeData.DepsImportAliases = removeDuplicates(nodeData.DepsImportAliases)
 
 		nodeData.Deps = deps
 	}
@@ -172,4 +189,18 @@ func serializeProto(ctx context.Context, pkg *workspace.Package, provides *schem
 	}
 
 	return &serializedProto, nil
+}
+
+func removeDuplicates(list []schema.PackageName) []schema.PackageName {
+	seen := make(map[schema.PackageName]bool)
+	result := []schema.PackageName{}
+
+	for _, item := range list {
+		if !seen[item] {
+			result = append(result, item)
+			seen[item] = true
+		}
+	}
+
+	return result
 }

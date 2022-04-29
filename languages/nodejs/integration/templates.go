@@ -8,65 +8,6 @@ import (
 	"text/template"
 )
 
-type nodeTmplOptions struct {
-	Imports   []tmplSingleImport
-	Service   *tmplService
-	Package   tmplPackage
-	Providers []tmplProvider
-}
-type serverTmplOptions struct {
-	Imports  []tmplSingleImport
-	Services []tmplImportedType
-}
-
-type nodeImplTmplOptions struct {
-	ServiceServerName, ServiceName, ServiceFileName string
-}
-
-type tmplService struct {
-	GrpcServerImportAlias string
-}
-
-type tmplPackage struct {
-	Name string
-	// nil if the package has no dependencis.
-	Deps *tmplDeps
-}
-
-type tmplProvider struct {
-	Name       string
-	InputType  tmplImportedType
-	OutputType tmplImportedType
-	// nil if the provider has no dependencis.
-	Deps            *tmplDeps
-	PackageDepsName *string
-}
-
-type tmplDeps struct {
-	Name string
-	Deps []tmplDependency
-}
-
-type tmplDependency struct {
-	Name              string
-	Type              tmplImportedType
-	Provider          tmplImportedType
-	ProviderInputType tmplImportedType
-	ProviderInput     tmplSerializedProto
-}
-type tmplSerializedProto struct {
-	Base64Content string
-	Comments      []string
-}
-
-type tmplImportedType struct {
-	ImportAlias, Name string
-}
-
-type tmplSingleImport struct {
-	Alias, Package string
-}
-
 var (
 	tmpl = template.Must(template.New("template").Parse(
 		// Helper templates
@@ -112,6 +53,41 @@ export const Package = {
 };
 {{- end}}
 
+// Input: tmplPackage
+{{define "TransitiveInitializersDef"}}
+
+export const TransitiveInitializers = [
+	{{- if .Initializer}}
+	Initializer,
+	{{- end}}
+	{{- range .DepsImportAliases}}
+	...{{.}}.TransitiveInitializers,
+	{{- end}}
+];
+{{- end}}
+
+// Input: tmplInitializer
+{{define "InitializerDef" -}}
+export const Initializer = {
+  package: Package,
+	initialize: impl.initialize, 
+	
+  {{- if .InitializeBefore}}
+	before: [
+	{{- range .InitializeBefore}}"{{.}}",{{end -}}
+	]{{- end}}
+	
+  {{- if .InitializeAfter}}
+	after: [
+	{{- range .InitializeAfter}}"{{.}}",{{end -}}
+	]{{- end}}
+};
+
+export type Prepare = (
+	{{- if .PackageDepsName}}deps: {{.PackageDepsName}}Deps{{end -}}) => void;
+export const prepare: Prepare = impl.initialize;
+{{- end}}
+
 // Input: tmplProvider
 {{define "ProviderDef"}}
 {{- if .Deps}}
@@ -126,7 +102,7 @@ export const {{.Name}}Provider = (graph: DependencyGraph, input: {{.InputType.Im
 		{{- end}}
 		{{- if .Deps}},
 		// Scoped dependencies that are instantiated for each call to Provide{{.Name}}.
-		graph.profileCall(` + "`" + `${Package.name}#{{.Deps.Name}}` + "`" + `, () => {{template "ConstructDeps" .Deps}})
+		graph.instantiateDeps(Package.name, "{{.Deps.Name}}", () => {{template "ConstructDeps" .Deps}})
 		{{- end}}
   );
 
@@ -153,10 +129,17 @@ import { DependencyGraph } from "@namespacelabs/foundation";
 
 {{- template "PackageDef" .Package}}
 
+{{- if .Package.Initializer}}
+
+{{template "InitializerDef" .Package.Initializer }}
+{{- end}}
+
+{{- template "TransitiveInitializersDef" .Package}}
+
 {{- if .Service}}
 
 export type WireService = (
-	{{- if .Package}}deps: {{.Package.Deps.Name}}Deps, {{end -}}
+	{{- if .Package.Deps}}deps: {{.Package.Deps.Name}}Deps, {{end -}}
 	server: {{.Service.GrpcServerImportAlias}}.Server) => void;
 export const wireService: WireService = impl.wireService;
 {{- end}}
@@ -190,6 +173,12 @@ const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
   return errors;
 };
 
+const TransitiveInitializers = [
+	{{- range .ImportedInitializersAliases}}
+	...{{.}}.TransitiveInitializers,
+	{{- end}}
+];
+
 const argv = yargs(process.argv.slice(2))
 		.options({
 			listen_hostname: { type: "string" },
@@ -200,10 +189,11 @@ const argv = yargs(process.argv.slice(2))
 const server = new Server();
 
 const graph = new DependencyGraph();
+graph.runInitializers(TransitiveInitializers);
 const errors = wireServices(server, graph);
 if (errors.length > 0) {
 	errors.forEach((e) => console.error(e));
-	console.error("%d services failed to initialize.", errors.length)
+	console.error("%d services failed to start.", errors.length)
 	process.exit(1);
 }
 
