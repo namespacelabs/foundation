@@ -8,6 +8,7 @@ import (
 	"context"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
@@ -23,7 +24,7 @@ func (r k8sRuntime) TargetPlatforms(ctx context.Context) ([]specs.Platform, erro
 		return nil, err
 	}
 
-	return parsePlatforms(raw.Value.(systemInfo).nodePlatforms)
+	return parsePlatforms(raw.Value.(*client.SystemInfo).NodePlatform)
 }
 
 func parsePlatforms(plats []string) ([]specs.Platform, error) {

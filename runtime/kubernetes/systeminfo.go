@@ -17,18 +17,14 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type systemInfo struct {
-	nodePlatforms []string
-}
-
 type fetchSystemInfo struct {
 	cli *k8s.Clientset
 	cfg *client.HostEnv
 
-	compute.DoScoped[systemInfo] // DoScoped so the computation is deferred.
+	compute.DoScoped[*client.SystemInfo] // DoScoped so the computation is deferred.
 }
 
-var _ compute.Computable[systemInfo] = &fetchSystemInfo{}
+var _ compute.Computable[*client.SystemInfo] = &fetchSystemInfo{}
 
 func (f *fetchSystemInfo) Action() *tasks.ActionEvent {
 	return tasks.Action("kubernetes.fetch-system-info")
@@ -40,21 +36,31 @@ func (f *fetchSystemInfo) Inputs() *compute.In {
 
 func (f *fetchSystemInfo) Output() compute.Output { return compute.Output{NotCacheable: true} }
 
-func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (systemInfo, error) {
+func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*client.SystemInfo, error) {
 	var platforms uniquestrings.List
 
 	nodes, err := f.cli.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return systemInfo{}, err
+		return nil, err
 	}
+
+	sysInfo := &client.SystemInfo{}
 
 	for _, n := range nodes.Items {
 		platforms.Add(fmt.Sprintf("%s/%s", n.Status.NodeInfo.OperatingSystem, n.Status.NodeInfo.Architecture))
+
+		if nodeType, ok := n.Labels["node.kubernetes.io/instance-type"]; ok && nodeType == "k3s" {
+			sysInfo.DetectedDistribution = "k3s"
+		}
+
+		if _, ok := n.Labels["alpha.eksctl.io/cluster-name"]; ok {
+			sysInfo.DetectedDistribution = "eks"
+		}
 	}
 
-	nodePlatforms := platforms.Strings()
-	sort.Strings(nodePlatforms)
-	tasks.Attachments(ctx).AddResult("platforms", nodePlatforms)
+	sysInfo.NodePlatform = platforms.Strings()
+	sort.Strings(sysInfo.NodePlatform)
+	tasks.Attachments(ctx).AddResult("platforms", sysInfo.NodePlatform)
 
-	return systemInfo{nodePlatforms: nodePlatforms}, nil
+	return sysInfo, nil
 }
