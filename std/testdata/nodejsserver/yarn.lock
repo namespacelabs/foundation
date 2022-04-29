@@ -51,7 +51,7 @@ __metadata:
   resolution: "@namespacelabs.dev/foundation_std_testdata_nodejsserver_server@workspace:server"
   dependencies:
     "@grpc/grpc-js": 1.5.7
-    "@namespacelabs/foundation": ^0.1.19
+    "@namespacelabs/foundation": ^0.1.22
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -64,12 +64,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@namespacelabs/foundation@npm:^0.1.19":
-  version: 0.1.19
-  resolution: "@namespacelabs/foundation@npm:0.1.19::__archiveUrl=https%3A%2F%2Fus-npm.pkg.dev%2Ffoundation-344819%2Fnpm-prebuilts%2F%40namespacelabs%2Ffoundation%2F-%2F%40namespacelabs%2Ffoundation-0.1.19.tgz"
+"@namespacelabs/foundation@npm:^0.1.22":
+  version: 0.1.22
+  resolution: "@namespacelabs/foundation@npm:0.1.22::__archiveUrl=https%3A%2F%2Fus-npm.pkg.dev%2Ffoundation-344819%2Fnpm-prebuilts%2F%40namespacelabs%2Ffoundation%2F-%2F%40namespacelabs%2Ffoundation-0.1.22.tgz"
   dependencies:
     typescript: 4.6.2
-  checksum: 4735981d1affe19becc84c1e9c4581f6c77aad168cc187da05582f7c18f0827e1e5b2a12cef15dffd3d9964b55fc6e4f751d94c93e578d724c6c14b216314cd2
+  checksum: cbb9eb2d5f6f6cf6ca77271c4274d51c3f739cf72b192d99ae933d559ce86ed6631ea5d1c68b43cdae7c0f584eb9fe03b935d61476bac8c8f5d5462c8a5ceffe
   languageName: node
   linkType: hard
 
