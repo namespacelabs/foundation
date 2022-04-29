@@ -8,13 +8,19 @@ import (
 	"context"
 	"encoding/base64"
 
+	"github.com/iancoleman/strcase"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const DepsFilename = "deps.fn.ts"
+const (
+	depsFilename             = "deps.fn.ts"
+	packageServiceBaseName   = "Service"
+	packageExtensionBaseName = "Extension"
+	grpcNpmPackage           = "@grpc/grpc-js"
+)
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
 	nodeData, err := shared.PrepareNodeData(ctx, loader, loc, n, schema.Framework_NODEJS)
@@ -27,11 +33,23 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		return err
 	}
 
-	return generateSource(ctx, fs, loc.Rel(DepsFilename), serviceTmpl, tmplOptions)
+	return generateSource(ctx, fs, loc.Rel(depsFilename), tmpl, "Node", tmplOptions)
 }
 
 func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, error) {
 	ic := newImportCollector()
+
+	var packageBaseName string
+	if nodeData.Kind == schema.Node_SERVICE {
+		packageBaseName = packageServiceBaseName
+	} else {
+		packageBaseName = packageExtensionBaseName
+	}
+
+	packageDeps, err := convertDependencyList(ic, packageBaseName, nodeData.Deps)
+	if err != nil {
+		return nodeTmplOptions{}, err
+	}
 
 	providers := []tmplProvider{}
 	for _, p := range nodeData.Providers {
@@ -40,51 +58,90 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 			return nodeTmplOptions{}, err
 		}
 
+		scopeDeps, err := convertDependencyList(ic, p.Name, p.ScopedDeps)
+		if err != nil {
+			return nodeTmplOptions{}, err
+		}
+
+		var packageDepsName *string
+		if packageDeps != nil {
+			packageDepsName = &packageBaseName
+		}
+
 		providers = append(providers, tmplProvider{
-			Name:       p.Name,
-			InputType:  inputType,
-			OutputType: convertAvailableIn(ic, p.ProviderType.Nodejs),
+			Name:            strcase.ToCamel(p.Name),
+			InputType:       inputType,
+			OutputType:      convertAvailableIn(ic, p.ProviderType.Nodejs),
+			Deps:            scopeDeps,
+			PackageDepsName: packageDepsName,
 		})
 	}
 
 	var service *tmplService
-	if nodeData.Service != nil {
-		deps := []tmplDependency{}
-		for _, d := range nodeData.Service.Deps {
-			npmPackage, err := toNpmPackage(d.ProviderLocation.PackageName)
-			if err != nil {
-				return nodeTmplOptions{}, err
-			}
-			alias := ic.add(nodeDepsNpmImport(npmPackage))
-
-			inputType, err := convertType(ic, d.Provider.InputType)
-			if err != nil {
-				return nodeTmplOptions{}, err
-			}
-
-			deps = append(deps, tmplDependency{
-				Name: d.Name,
-				Type: convertAvailableIn(ic, d.Provider.ProviderType.Nodejs),
-				Provider: tmplImportedType{
-					Name:        d.Provider.Name,
-					ImportAlias: alias,
-				},
-				ProviderInputType: inputType,
-				ProviderInput: tmplSerializedProto{
-					Base64Content: base64.StdEncoding.EncodeToString(d.ProviderInput.Content),
-					Comments:      d.ProviderInput.Comments,
-				},
-			})
-		}
-
+	if nodeData.Kind == schema.Node_SERVICE {
 		service = &tmplService{
-			Deps: deps,
+			GrpcServerImportAlias: ic.add(grpcNpmPackage),
 		}
+	} else {
+		service = nil
 	}
 
 	return nodeTmplOptions{
-		Imports:   ic.imports(),
-		Service:   service,
+		Imports: ic.imports(),
+		Package: tmplPackage{
+			Name: nodeData.PackageName,
+			Deps: packageDeps,
+		},
 		Providers: providers,
+		Service:   service,
+	}, nil
+}
+
+func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDependency, error) {
+	npmPackage, err := toNpmPackage(dep.ProviderLocation.PackageName)
+	if err != nil {
+		return tmplDependency{}, err
+	}
+	alias := ic.add(nodeDepsNpmImport(npmPackage))
+
+	inputType, err := convertType(ic, dep.ProviderInputType)
+	if err != nil {
+		return tmplDependency{}, err
+	}
+
+	return tmplDependency{
+		Name: dep.Name,
+		Type: convertAvailableIn(ic, dep.ProviderType.Nodejs),
+		Provider: tmplImportedType{
+			Name:        strcase.ToCamel(dep.ProviderName),
+			ImportAlias: alias,
+		},
+		ProviderInputType: inputType,
+		ProviderInput: tmplSerializedProto{
+			Base64Content: base64.StdEncoding.EncodeToString(dep.ProviderInput.Content),
+			Comments:      dep.ProviderInput.Comments,
+		},
+	}, nil
+}
+
+// Returns nil if the input list is empty.
+func convertDependencyList(ic *importCollector, name string, deps []shared.DependencyData) (*tmplDeps, error) {
+	if deps == nil {
+		return nil, nil
+	}
+
+	convertedDeps := []tmplDependency{}
+	for _, d := range deps {
+		dep, err := convertDependency(ic, d)
+		if err != nil {
+			return nil, err
+		}
+
+		convertedDeps = append(convertedDeps, dep)
+	}
+
+	return &tmplDeps{
+		Name: name,
+		Deps: convertedDeps,
 	}, nil
 }

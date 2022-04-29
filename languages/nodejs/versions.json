@@ -1,17 +1,18 @@
 {
-  "dependencies": {
-    "typescript": "4.6.2",
-    "ts-node": "10.7.x",
-    "google-protobuf": "^3.20.0",
-    "@grpc/grpc-js": "1.5.7",
-    "yargs": "16.x",
-    "source-map-support": "0.5.21"
-  },
+	"dependencies": {
+		"typescript": "4.6.2",
+		"ts-node": "10.7.x",
+		"google-protobuf": "^3.20.0",
+		"@grpc/grpc-js": "1.5.7",
+		"yargs": "16.x",
+		"source-map-support": "0.5.21",
+		"@namespacelabs/foundation": "^0.1.19"
+	},
 
-  "devDependencies": {
-    "@types/yargs": "16.x",
-    "@types/node": "16.x",
-    "@types/google-protobuf": "^3.15.5",
-    "@tsconfig/node16": "1.0.2"
-  }
+	"devDependencies": {
+		"@types/yargs": "16.x",
+		"@types/node": "16.x",
+		"@types/google-protobuf": "^3.15.5",
+		"@tsconfig/node16": "1.0.2"
+	}
 }

@@ -39,7 +39,7 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 		})
 	}
 
-	return generateSource(ctx, fs, loc.Rel(ServerFilename), serverTmpl, serverTmplOptions{
+	return generateSource(ctx, fs, loc.Rel(ServerFilename), tmpl, "Server", serverTmplOptions{
 		Imports:  ic.imports(),
 		Services: tplServices,
 	})

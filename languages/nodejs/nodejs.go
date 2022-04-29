@@ -272,6 +272,10 @@ func yarnRcContent() string {
 	return fmt.Sprintf(
 		`nodeLinker: node-modules
 
+npmScopes: 
+  namespacelabs:
+    npmRegistryServer: "https://us-npm.pkg.dev/foundation-344819/npm-prebuilts/"
+
 yarnPath: .yarn/releases/yarn-%s.cjs
 `, yarnVersion)
 }
@@ -336,7 +340,7 @@ func maybeGenerateImplStub(ctx context.Context, p *workspace.Package) error {
 		break
 	}
 
-	return generateSource(ctx, p.Location.Module.ReadWriteFS(), implFn, nodeimplTmpl, tmplOptions)
+	return generateSource(ctx, p.Location.Module.ReadWriteFS(), implFn, tmpl, "Node stub", tmplOptions)
 }
 
 func fileNameForService(srvName string, descriptors []*descriptorpb.FileDescriptorProto) (string, error) {

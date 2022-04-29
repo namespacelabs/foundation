@@ -18,12 +18,10 @@ type EmbeddedServiceData struct {
 }
 
 type NodeData struct {
-	Service   *ServiceData
-	Providers []ProviderData
-}
-
-type ServiceData struct {
-	Deps []DependencyData
+	Kind        schema.Node_Kind
+	PackageName string
+	Deps        []DependencyData
+	Providers   []ProviderData
 }
 
 type TypeData struct {
@@ -36,13 +34,16 @@ type ProviderData struct {
 	Name         string
 	InputType    TypeData
 	ProviderType *schema.Provides_AvailableIn
+	ScopedDeps   []DependencyData
 }
 
 type DependencyData struct {
-	Name             string
-	Provider         ProviderData
-	ProviderLocation workspace.Location
-	ProviderInput    SerializedProto
+	Name              string
+	ProviderName      string
+	ProviderInputType TypeData
+	ProviderType      *schema.Provides_AvailableIn
+	ProviderLocation  workspace.Location
+	ProviderInput     SerializedProto
 }
 
 type SerializedProto struct {

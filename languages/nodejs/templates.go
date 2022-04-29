@@ -11,6 +11,7 @@ import (
 type nodeTmplOptions struct {
 	Imports   []tmplSingleImport
 	Service   *tmplService
+	Package   tmplPackage
 	Providers []tmplProvider
 }
 type serverTmplOptions struct {
@@ -22,13 +23,27 @@ type nodeImplTmplOptions struct {
 	ServiceServerName, ServiceName, ServiceFileName string
 }
 
+type tmplService struct {
+	GrpcServerImportAlias string
+}
+
+type tmplPackage struct {
+	Name string
+	// nil if the package has no dependencis.
+	Deps *tmplDeps
+}
+
 type tmplProvider struct {
 	Name       string
 	InputType  tmplImportedType
 	OutputType tmplImportedType
+	// nil if the provider has no dependencis.
+	Deps            *tmplDeps
+	PackageDepsName *string
 }
 
-type tmplService struct {
+type tmplDeps struct {
+	Name string
 	Deps []tmplDependency
 }
 
@@ -53,88 +68,155 @@ type tmplSingleImport struct {
 }
 
 var (
-	serviceTmpl = template.Must(template.New("template").Parse(
-		`// This file was automatically generated.
-
-{{if .Service}}
-import { Server } from "@grpc/grpc-js";
-{{end}}
-import * as impl from "./impl";
-
-{{range .Imports}}
-import * as {{.Alias}} from "{{.Package}}"{{end}}
-
-{{if .Service}}
-export interface ServiceDeps {
-{{range .Service.Deps}}
-	{{.Name}}: {{.Type.ImportAlias}}.{{.Type.Name}};{{end}}
+	tmpl = template.Must(template.New("template").Parse(
+		// Helper templates
+		`
+// Input: tmplDeps
+{{define "DefineDeps" -}}
+export interface {{.Name}}Deps {
+{{- range .Deps}}
+	{{.Name}}: {{.Type.ImportAlias}}.{{.Type.Name}};
+{{- end}}
 }
+{{- end}}	
 
-export const makeServiceDeps = (): ServiceDeps => ({
-	{{range .Service.Deps}}
-	  {{range .ProviderInput.Comments}}
-		// {{.}}{{end}}
-		{{.Name}}: {{.Provider.ImportAlias}}.provide{{.Provider.Name}}(
-			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name}}.deserializeBinary(
-				Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))),{{end}}
-});
+// Input: tmplDeps
+{{define "ConstructDeps" -}}
+({
+	{{- range .Deps}}
+		{{.Name}}: {{.Provider.ImportAlias}}.{{.Provider.Name}}Provider(
+			graph,
+			{{range .ProviderInput.Comments -}}
+			{{if .}}// {{.}}
+			{{end}}
+			{{- end -}}
+			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name -}}
+			.deserializeBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))),
+	{{- end}}
+  })
+{{- end}}
 
-export type WireService = (deps: ServiceDeps, server: Server) => void;
-export const wireService: WireService = impl.wireService;
-{{end}}
+// Input: tmplPackage
+{{define "PackageDef" -}}
+{{- if .Deps}}
+{{template "DefineDeps" .Deps}}
+{{- end}}
 
-{{range $.Providers}}
-export type Provide{{.Name}} = (input: {{.InputType.ImportAlias}}.{{.InputType.Name}}) =>
+export const Package = {
+  name: "{{.Name}}",
+	
+  {{- if .Deps}}
+  // Package dependencies are instantiated at most once.
+  instantiateDeps: (graph: DependencyGraph) => {{template "ConstructDeps" .Deps}},
+	{{- end}}
+};
+{{- end}}
+
+// Input: tmplProvider
+{{define "ProviderDef"}}
+{{- if .Deps}}
+{{template "DefineDeps" .Deps}}
+{{- end}}
+
+export const {{.Name}}Provider = (graph: DependencyGraph, input: {{.InputType.ImportAlias}}.{{.InputType.Name -}}) =>
+	provide{{.Name}}(
+		input
+		{{- if .PackageDepsName}}, 
+		graph.instantiatePackageDeps(Package)
+		{{- end}}
+		{{- if .Deps}},
+		// Scoped dependencies that are instantiated for each call to Provide{{.Name}}.
+		graph.profileCall(` + "`" + `${Package.name}#{{.Deps.Name}}` + "`" + `, () => {{template "ConstructDeps" .Deps}})
+		{{- end}}
+  );
+
+export type Provide{{.Name}} = (input: {{.InputType.ImportAlias}}.{{.InputType.Name}}
+	  {{- if .PackageDepsName}}, packageDeps: {{.PackageDepsName}}Deps{{end -}}
+	  {{- if .Deps}}, deps: {{.Name}}Deps{{end}}) =>
 		{{.OutputType.ImportAlias}}.{{.OutputType.Name}};
 export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
+{{- end}}
+
+{{define "Imports"}}
+{{range .Imports -}}
+import * as {{.Alias}} from "{{.Package}}"
 {{end}}
-`))
+{{end}}` +
 
-	serverTmpl = template.Must(template.New("template").Parse(
-		`// This file was automatically generated.
+			// Node template
+			`{{define "Node"}}{{with $opts := .}}// This file was automatically generated.
 
-import 'source-map-support/register'
+import * as impl from "./impl";
+import { DependencyGraph } from "@namespacelabs/foundation";
+
+{{- template "Imports" . -}}
+
+{{- template "PackageDef" .Package}}
+
+{{- if .Service}}
+
+export type WireService = (
+	{{- if .Package}}deps: {{.Package.Deps.Name}}Deps, {{end -}}
+	server: {{.Service.GrpcServerImportAlias}}.Server) => void;
+export const wireService: WireService = impl.wireService;
+{{- end}}
+
+{{- range $.Providers}}
+{{template "ProviderDef" .}}
+{{- end}}
+{{- end}}
+{{end}}` +
+
+			// Server template
+			`{{define "Server"}}// This file was automatically generated.
+
 import { Server, ServerCredentials } from "@grpc/grpc-js";
+import { DependencyGraph } from "@namespacelabs/foundation";
+import "source-map-support/register"
 import yargs from "yargs/yargs";
 
-{{range .Imports}}
-import * as {{.Alias}} from "{{.Package}}"{{end}}
+{{- template "Imports" . -}}
 
-interface Deps {
-{{range $.Services}}
-{{.Name}}: {{.ImportAlias}}.ServiceDeps;{{end}}
-}
-
-const prepareDeps = (): Deps => ({
-	{{range $.Services}}
-	{{.Name}}: {{.ImportAlias}}.makeServiceDeps(),{{end}}
-});
-
-const wireServices = (server: Server, deps: Deps): void => {
-{{range $.Services}}
-{{.ImportAlias}}.wireService(deps.{{.Name}}!, server);{{end}}
+// Returns a list of initialization errors.
+const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
+	const errors: unknown[] = [];
+{{- range $.Services}}
+  try {
+		{{.ImportAlias}}.wireService({{.ImportAlias}}.Package.instantiateDeps(graph), server);
+	} catch (e) {
+		errors.push(e);
+	}
+{{- end}}
+  return errors;
 };
 
 const argv = yargs(process.argv.slice(2))
-.options({
-	listen_hostname: { type: "string" },
-	port: { type: "number" },
-})
-.parse();
+		.options({
+			listen_hostname: { type: "string" },
+			port: { type: "number" },
+		})
+		.parse();
 
 const server = new Server();
-wireServices(server, prepareDeps());
+
+const graph = new DependencyGraph();
+const errors = wireServices(server, graph);
+if (errors.length > 0) {
+	errors.forEach((e) => console.error(e));
+	console.error("%d services failed to initialize.", errors.length)
+	process.exit(1);
+}
 
 console.log(` + "`" + `Starting the server on ${argv.listen_hostname}:${argv.port}` + "`" + `);
 
 server.bindAsync(` + "`" + `${argv.listen_hostname}:${argv.port}` + "`" + `, ServerCredentials.createInsecure(), () => {
-server.start();
+  server.start();
+  console.log(` + "`" + `Server started.` + "`" + `);
+});
+{{end}}` +
 
-console.log(` + "`" + `Server started.` + "`" + `);
-});`))
-
-	nodeimplTmpl = template.Must(template.New("template").Parse(
-		`import { Server } from "@grpc/grpc-js";
+			// Node stub template
+			`{{define "Node stub"}}import { Server } from "@grpc/grpc-js";
 import { Deps, WireService } from "./deps.fn";
 import { {{.ServiceServerName}}, {{.ServiceName}} } from "./{{.ServiceFileName}}_grpc_pb";
 
@@ -144,5 +226,5 @@ const service: {{.ServiceServerName}} = {
 };
 
 server.addService({{.ServiceName}}, service);
-};`))
+};{{end}}`))
 )
