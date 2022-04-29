@@ -6,19 +6,16 @@ package registry
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials/ssocreds"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/ecr/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	dockertypes "github.com/docker/cli/cli/config/types"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/providers/aws/auth"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -85,36 +82,5 @@ func (em keychainSession) refreshPrivateAuth(ctx context.Context) (authcfg *dock
 }
 
 func (em keychainSession) resolveAccount() compute.Computable[*sts.GetCallerIdentityOutput] {
-	return &resolveAccount{sesh: em.sesh, profile: em.profile}
-}
-
-type resolveAccount struct {
-	sesh    aws.Config // Doesn't affect output.
-	profile string
-
-	compute.DoScoped[*sts.GetCallerIdentityOutput]
-}
-
-func (r *resolveAccount) Action() *tasks.ActionEvent {
-	return tasks.Action("sts.get-caller-identity").Category("aws")
-}
-func (r *resolveAccount) Inputs() *compute.In { return compute.Inputs().Str("profile", r.profile) }
-func (r *resolveAccount) Compute(ctx context.Context, _ compute.Resolved) (*sts.GetCallerIdentityOutput, error) {
-	out, err := sts.NewFromConfig(r.sesh).GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-	if err != nil {
-		var e *ssocreds.InvalidTokenError
-		if errors.As(err, &e) {
-			return nil, fnerrors.UsageError(
-				fmt.Sprintf("Try running `aws --profile %s sso login`.", r.profile),
-				"AWS session credentials have expired.")
-		}
-
-		return nil, err
-	}
-
-	if out.Account == nil {
-		return nil, fnerrors.InvocationError("expected GetCallerIdentityOutput.Account to be present")
-	}
-
-	return out, nil
+	return auth.ResolveWith(em.sesh, em.profile)
 }

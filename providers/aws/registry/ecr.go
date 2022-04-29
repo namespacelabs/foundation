@@ -33,7 +33,7 @@ var _ registry.Manager = ecrManager{}
 
 func Register() {
 	registry.Register("aws/ecr", func(ctx context.Context, env ops.Environment) (m registry.Manager, finalErr error) {
-		sesh, profile, err := awsprovider.ConfiguredSession(ctx, env)
+		sesh, profile, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), env.Proto())
 		if err != nil {
 			return nil, err
 		}

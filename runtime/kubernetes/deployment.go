@@ -204,6 +204,8 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 
 	var serviceAccount string // May be specified by a SpecExtension.
 	var createServiceAccount bool
+	var serviceAccountAnnotations []*kubedef.SpecExtension_Annotation
+
 	for _, input := range server.Extensions {
 		specExt := &kubedef.SpecExtension{}
 		containerExt := &kubedef.ContainerExtension{}
@@ -237,6 +239,11 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 				createServiceAccount = true
 				if specifiedAccount == "" {
 					specifiedAccount = kubedef.MakeDeploymentId(srv.Proto())
+				}
+				serviceAccountAnnotations = append(serviceAccountAnnotations, specExt.ServiceAccountAnnotation...)
+			} else {
+				if len(specExt.ServiceAccountAnnotation) > 0 {
+					return fnerrors.UserError(server.Server.Location, "can't set service account annotations without ensure_service_account")
 				}
 			}
 
@@ -392,12 +399,19 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	}
 
 	if createServiceAccount {
+		annotations := map[string]string{}
+		for _, ann := range serviceAccountAnnotations {
+			annotations[ann.Key] = ann.Value
+		}
+
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Service Account",
 			Resource:    "serviceaccounts",
 			Namespace:   r.ns(),
 			Name:        serviceAccount,
-			Body:        applycorev1.ServiceAccount(serviceAccount, r.ns()).WithLabels(labels),
+			Body: applycorev1.ServiceAccount(serviceAccount, r.ns()).
+				WithLabels(labels).
+				WithAnnotations(annotations),
 		})
 	}
 

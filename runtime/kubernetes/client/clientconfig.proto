@@ -19,4 +19,5 @@ message SystemInfo {
     string          detected_distribution = 2;  // k3d, eks, etc.
 
     string eks_cluster_name = 3;  // Only set if distribution is eks.
+    string eks_account      = 4;  // Only set if distribution is eks.
 }
