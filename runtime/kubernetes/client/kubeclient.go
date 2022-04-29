@@ -109,7 +109,7 @@ func ComputeHostEnv(devHost *schema.DevHost, env *schema.Environment) (*HostEnv,
 
 	hostEnv := &HostEnv{}
 	if !cfg.Get(hostEnv) {
-		return nil, nil
+		return nil, fnerrors.UserError(nil, "%s: no kubernetes runtime configuration available", env.Name)
 	}
 
 	var err error
