@@ -5,8 +5,7 @@
 		"google-protobuf": "^3.20.0",
 		"@grpc/grpc-js": "1.5.7",
 		"yargs": "16.x",
-		"source-map-support": "0.5.21",
-		"@namespacelabs/foundation": "^0.1.22"
+		"source-map-support": "0.5.21"
 	},
 
 	"devDependencies": {

@@ -30,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/yarn"
 	"namespacelabs.dev/foundation/languages"
+	nodejsruntime "namespacelabs.dev/foundation/languages/nodejs/runtime"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -50,6 +51,7 @@ const (
 	packageJsonFn                           = "package.json"
 	fileSyncPort                            = 50000
 	serverPort                              = 10090
+	runtimePackage                          = "@namespacelabs/foundation"
 	// This has the specific value to make the ingress code to do port forwarding and expose this port.
 	// TODO(@nicolasalt): expose individual gRPC services instead when extensions are supported.
 	serverPortName = "server-port"
@@ -364,7 +366,9 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 		return err
 	}
 
-	dependencies := map[string]string{}
+	dependencies := map[string]string{
+		runtimePackage: nodejsruntime.RuntimeVersion(),
+	}
 	for key, value := range builtin().Dependencies {
 		dependencies[key] = value
 	}
