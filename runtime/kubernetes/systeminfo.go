@@ -53,8 +53,9 @@ func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*cli
 			sysInfo.DetectedDistribution = "k3s"
 		}
 
-		if _, ok := n.Labels["alpha.eksctl.io/cluster-name"]; ok {
+		if clusterName, ok := n.Labels["alpha.eksctl.io/cluster-name"]; ok {
 			sysInfo.DetectedDistribution = "eks"
+			sysInfo.EksClusterName = clusterName
 		}
 	}
 

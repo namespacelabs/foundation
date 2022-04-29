@@ -17,4 +17,6 @@ message HostEnv {
 message SystemInfo {
     repeated string node_platform         = 1;
     string          detected_distribution = 2;  // k3d, eks, etc.
+
+    string eks_cluster_name = 3;  // Only set if distribution is eks.
 }
