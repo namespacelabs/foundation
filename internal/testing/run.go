@@ -46,40 +46,42 @@ type testRun struct {
 
 var _ compute.Computable[*TestBundle] = &testRun{}
 
-func (rt *testRun) Action() *tasks.ActionEvent {
-	return tasks.Action("test").Arg("name", rt.TestName).Arg("package_name", rt.TestBinPkg)
+func (test *testRun) Action() *tasks.ActionEvent {
+	return tasks.Action("test").Arg("name", test.TestName).Arg("package_name", test.TestBinPkg)
 }
 
-func (rt *testRun) Inputs() *compute.In {
+func (test *testRun) Inputs() *compute.In {
 	return compute.Inputs().
-		Str("testName", rt.TestName).
-		Stringer("testBinPkg", rt.TestBinPkg).
-		Strs("testBinCommand", rt.TestBinCommand).
-		Computable("testBin", rt.TestBinImageID).
-		Proto("stack", rt.Stack).
-		Strs("focus", rt.Focus).
-		Computable("plan", rt.Plan).
-		Bool("debug", rt.Debug)
+		Str("testName", test.TestName).
+		Stringer("testBinPkg", test.TestBinPkg).
+		Strs("testBinCommand", test.TestBinCommand).
+		Computable("testBin", test.TestBinImageID).
+		Proto("stack", test.Stack).
+		Strs("focus", test.Focus).
+		Computable("plan", test.Plan).
+		Bool("debug", test.Debug)
 }
 
-func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
-	p := compute.GetDepValue(r, rt.Plan, "plan")
+func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
+	p := compute.GetDepValue(r, test.Plan, "plan")
 
-	waiters, err := p.Deployer.Apply(ctx, runtime.TaskServerDeploy, rt.Env)
+	waiters, err := p.Deployer.Apply(ctx, runtime.TaskServerDeploy, test.Env)
 	if err != nil {
 		return nil, err
 	}
 
 	var focusServers []*schema.Server
-	for _, focus := range rt.Focus {
-		entry := rt.Stack.GetServer(schema.PackageName(focus))
+	for _, focus := range test.Focus {
+		entry := test.Stack.GetServer(schema.PackageName(focus))
 		if entry == nil {
 			return nil, fnerrors.InternalError("%s: not present in stack?", focus)
 		}
 		focusServers = append(focusServers, entry.Server)
 	}
 
-	if err := deploy.Wait(ctx, rt.Env, focusServers, waiters); err != nil {
+	rt := runtime.For(ctx, test.Env)
+
+	if err := deploy.Wait(ctx, test.Env, focusServers, waiters); err != nil {
 		var e runtime.ErrContainerFailedToStart
 		if errors.As(err, &e) {
 			// Don't spend more than N time waiting for logs.
@@ -88,7 +90,7 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle
 
 			for k, failed := range e.FailedContainers {
 				out := console.TypedOutput(ctx, fmt.Sprintf("%s:%d", e.Name, k), console.CatOutputTool)
-				if err := runtime.For(rt.Env).FetchLogsTo(ctx, out, failed, runtime.FetchLogsOpts{TailLines: 50}); err != nil {
+				if err := rt.FetchLogsTo(ctx, out, failed, runtime.FetchLogsOpts{TailLines: 50}); err != nil {
 					fmt.Fprintf(console.Warnings(ctx), "failed to retrieve logs of %s: %v\n", e.Name, err)
 				}
 			}
@@ -98,13 +100,13 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle
 	}
 
 	testRun := runtime.ServerRunOpts{
-		Image:              compute.GetDepValue(r, rt.TestBinImageID, "testBin"),
-		Command:            rt.TestBinCommand,
+		Image:              compute.GetDepValue(r, test.TestBinImageID, "testBin"),
+		Command:            test.TestBinCommand,
 		Args:               nil,
 		ReadOnlyFilesystem: true,
 	}
 
-	if rt.Debug {
+	if test.Debug {
 		testRun.Args = append(testRun.Args, "--debug")
 	}
 
@@ -118,7 +120,7 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle
 	ex.Go(func(ctx context.Context) error {
 		defer cancelAll() // When the test is done, cancel logging.
 
-		if err := runtime.For(rt.Env).RunOneShot(ctx, rt.TestBinPkg, testRun, testLog); err != nil {
+		if err := rt.RunOneShot(ctx, test.TestBinPkg, testRun, testLog); err != nil {
 			var e runtime.ErrContainerExitStatus
 			if errors.As(err, &e) && e.ExitCode > 0 {
 				return errTestFailed
@@ -142,14 +144,14 @@ func (rt *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle
 	}
 
 	fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
-	bundle, err := collectLogs(ctx, rt.Env, rt.Stack, rt.Focus)
+	bundle, err := collectLogs(ctx, test.Env, test.Stack, test.Focus)
 	if err != nil {
 		return nil, err
 	}
 
 	bundle.Result = testResults
 	bundle.TestLog = &Log{
-		PackageName: rt.TestBinPkg.String(),
+		PackageName: test.TestBinPkg.String(),
 		Output:      testLogBuf.Seal().Bytes(),
 	}
 
@@ -168,7 +170,7 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 		serverLogs = append(serverLogs, serverLog)
 
 		ex.Go(func(ctx context.Context) error {
-			err := runtime.For(env).StreamLogsTo(ctx, w, srv, runtime.StreamLogsOpts{})
+			err := runtime.For(ctx, env).StreamLogsTo(ctx, w, srv, runtime.StreamLogsOpts{})
 			if errors.Is(err, context.Canceled) {
 				return nil
 			}

@@ -205,7 +205,7 @@ func PrepareK3d(clusterName string, updateKubecfg bool) PrepareFunc {
 // XXX ideally setting up an ingress class would just be a dependent step in the graph; but
 // we don't yet support waiting for these type of relationships.
 func PrepareIngress(ctx context.Context, env ops.Environment, pr *PrepareResult) ([]*schema.DevHost_ConfigureEnvironment, error) {
-	kube, err := kubernetes.New(env.Workspace(), env.DevHost(), env.Proto())
+	kube, err := kubernetes.New(ctx, env.Workspace(), env.DevHost(), env.Proto())
 	if err != nil {
 		return nil, err
 	}

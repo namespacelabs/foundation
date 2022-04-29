@@ -28,7 +28,7 @@ import (
 )
 
 func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (plan build.Plan, err error) {
-	platforms := runtime.For(server.Env()).HostPlatforms()
+	platforms := runtime.For(ctx, server.Env()).TargetPlatforms()
 	err = tasks.Action("fn.deploy.prepare-server-image").
 		Scope(server.PackageName()).
 		Arg("platforms", platforms).

@@ -81,7 +81,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 					t.Reset(maxDeployWait / 2)
 				}
 
-				rt := runtime.For(env)
+				rt := runtime.For(ctx, env)
 				for resourceID, wslist := range pending {
 					all := []runtime.ContainerUnitWaitStatus{}
 					for _, w := range wslist {

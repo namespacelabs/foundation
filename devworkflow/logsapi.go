@@ -22,7 +22,7 @@ func serveLogs(s *SessionState, w http.ResponseWriter, r *http.Request, serverID
 			return err
 		}
 
-		return runtime.For(env).StreamLogsTo(ctx, wsWriter, server, runtime.StreamLogsOpts{})
+		return runtime.For(ctx, env).StreamLogsTo(ctx, wsWriter, server, runtime.StreamLogsOpts{})
 	})
 }
 

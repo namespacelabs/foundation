@@ -177,7 +177,7 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 
 	if len(domains) > 0 && pi.env.Proto().Purpose == schema.Environment_DEVELOPMENT {
 		if pi.ingressPortfwd.closer == nil {
-			pi.ingressPortfwd.closer, pi.ingressPortfwd.err = runtime.For(pi.env).ForwardIngress(ctx, []string{pi.localAddr}, runtime.LocalIngressPort, func(fpe runtime.ForwardedPortEvent) {
+			pi.ingressPortfwd.closer, pi.ingressPortfwd.err = runtime.For(ctx, pi.env).ForwardIngress(ctx, []string{pi.localAddr}, runtime.LocalIngressPort, func(fpe runtime.ForwardedPortEvent) {
 				pi.mu.Lock()
 				defer pi.mu.Unlock()
 
@@ -238,7 +238,7 @@ func (pi *updateCluster) portFwd(ctx context.Context, endpoint *schema.Endpoint,
 		return nil, fnerrors.UserError(nil, "%s: missing in the stack", endpoint.ServerOwner)
 	}
 
-	return runtime.For(pi.env).ForwardPort(ctx, server.Server, endpoint, []string{pi.localAddr}, func(fp runtime.ForwardedPort) {
+	return runtime.For(ctx, pi.env).ForwardPort(ctx, server.Server, endpoint, []string{pi.localAddr}, func(fp runtime.ForwardedPort) {
 		callback(revision, fp.LocalPort)
 	})
 }

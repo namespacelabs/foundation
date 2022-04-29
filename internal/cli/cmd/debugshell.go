@@ -43,7 +43,7 @@ func NewDebugShellCmd() *cobra.Command {
 
 			var imageID oci.ImageID
 			if imageRef == "" {
-				img, err := debugshell.Image(ctx, env, runtime.For(env).HostPlatforms())
+				img, err := debugshell.Image(ctx, env, runtime.For(ctx, env).TargetPlatforms())
 				if err != nil {
 					return err
 				}
@@ -66,7 +66,7 @@ func NewDebugShellCmd() *cobra.Command {
 				}
 			}
 
-			return runtime.For(env).DebugShell(ctx, imageID, rtypes.IO{
+			return runtime.For(ctx, env).DebugShell(ctx, imageID, rtypes.IO{
 				Stdout: os.Stdout,
 				Stderr: os.Stderr,
 				Stdin:  os.Stdin,

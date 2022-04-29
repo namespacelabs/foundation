@@ -56,7 +56,7 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 		return nil, err
 	}
 
-	ds, err := runtime.For(ci.rootenv).PlanIngress(ctx, ci.stack, fragments)
+	ds, err := runtime.For(ctx, ci.rootenv).PlanIngress(ctx, ci.stack, fragments)
 	if err != nil {
 		return nil, err
 	}

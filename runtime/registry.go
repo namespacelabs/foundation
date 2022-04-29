@@ -21,19 +21,20 @@ var (
 	mapping = map[string]MakeRuntimeFunc{}
 )
 
-type MakeRuntimeFunc func(*schema.Workspace, *schema.DevHost, *schema.Environment) (Runtime, error)
+type MakeRuntimeFunc func(context.Context, *schema.Workspace, *schema.DevHost, *schema.Environment) (Runtime, error)
 
 func Register(name string, r MakeRuntimeFunc) {
 	mapping[strings.ToLower(name)] = r
 }
 
-func For(env ops.Environment) Runtime {
-	return ForProto(env.Workspace(), env.Proto(), env.DevHost())
+func HasRuntime(name string) bool {
+	_, ok := mapping[strings.ToLower(name)]
+	return ok
 }
 
-func ForProto(ws *schema.Workspace, env *schema.Environment, devHost *schema.DevHost) Runtime {
-	if make, ok := mapping[strings.ToLower(env.Runtime)]; ok {
-		r, err := make(ws, devHost, env)
+func For(ctx context.Context, env ops.Environment) Runtime {
+	if obtain, ok := mapping[strings.ToLower(env.Proto().Runtime)]; ok {
+		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Proto())
 		if err != nil {
 			return runtimeFwdErr{err}
 		}
@@ -95,6 +96,6 @@ func (r runtimeFwdErr) DebugShell(ctx context.Context, img oci.ImageID, io rtype
 	return r.err
 }
 
-func (r runtimeFwdErr) HostPlatforms() []specs.Platform {
+func (r runtimeFwdErr) TargetPlatforms() []specs.Platform {
 	return nil
 }

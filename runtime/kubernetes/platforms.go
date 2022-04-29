@@ -10,7 +10,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
-func (r k8sRuntime) HostPlatforms() []specs.Platform {
+func (r k8sRuntime) TargetPlatforms() []specs.Platform {
 	if r.env.Purpose == schema.Environment_PRODUCTION {
 		// XXX make this configurable.
 		plats := []string{"linux/amd64", "linux/arm64"}

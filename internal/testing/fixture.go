@@ -88,7 +88,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 	}
 
 	testBin, err := binary.Plan(ctx, testBinary, binary.BuildImageOpts{
-		Platforms: runtime.For(env).HostPlatforms(),
+		Platforms: runtime.For(ctx, env).TargetPlatforms(),
 	})
 	if err != nil {
 		return nil, err
@@ -150,7 +150,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 	if !opts.KeepRuntime {
 		compute.On(ctx).Cleanup(tasks.Action("test.cleanup"), func(ctx context.Context) error {
-			if err := runtime.For(env).DeleteRecursively(ctx); err != nil {
+			if err := runtime.For(ctx, env).DeleteRecursively(ctx); err != nil {
 				return err
 			}
 

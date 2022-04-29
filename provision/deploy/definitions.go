@@ -21,7 +21,7 @@ import (
 )
 
 func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
-	props, err := runtime.For(env).PrepareProvision(ctx)
+	props, err := runtime.For(ctx, env).PrepareProvision(ctx)
 	if err != nil {
 		return nil, err
 	}

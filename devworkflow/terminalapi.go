@@ -67,6 +67,6 @@ func serveTerminal(s *SessionState, w http.ResponseWriter, r *http.Request, serv
 		}()
 
 		// Returns when stdout is drained; which may happen when w fails to write, e.g. when ws is closed.
-		return runtime.For(env).StartTerminal(ctx, server, runtime.TerminalIO{Stdin: inr, Stdout: w, Stderr: w, ResizeQueue: resizeCh}, "bash")
+		return runtime.For(ctx, env).StartTerminal(ctx, server, runtime.TerminalIO{Stdin: inr, Stdout: w, Stderr: w, ResizeQueue: resizeCh}, "bash")
 	})
 }

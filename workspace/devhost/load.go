@@ -25,7 +25,7 @@ import (
 
 const DevHostFilename = "devhost.textpb"
 
-var HasRuntime func(*schema.Workspace, *schema.Environment, *schema.DevHost) bool
+var HasRuntime func(string) bool
 
 func HostOnlyFiles() []string { return []string{DevHostFilename} }
 
@@ -44,7 +44,7 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 	}
 
 	for _, env := range root.Workspace.Env {
-		if !HasRuntime(root.Workspace, env, root.DevHost) {
+		if !HasRuntime(env.Runtime) {
 			return fnerrors.InternalError("%s is not a supported runtime type", env.Runtime)
 		}
 	}

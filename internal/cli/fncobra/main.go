@@ -50,7 +50,6 @@ import (
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -125,9 +124,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			return err
 		}
 		// Used for devhost/environment validation.
-		devhost.HasRuntime = func(w *schema.Workspace, e *schema.Environment, dh *schema.DevHost) bool {
-			return runtime.ForProto(w, e, dh) != nil
-		}
+		devhost.HasRuntime = runtime.HasRuntime
 
 		workspace.MakeFrontend = cuefrontend.NewFrontend
 

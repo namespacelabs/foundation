@@ -304,7 +304,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 				serverRuns = append(serverRuns, run)
 			}
 
-			deployment, err := runtime.For(env).PlanDeployment(ctx, runtime.Deployment{
+			deployment, err := runtime.For(ctx, env).PlanDeployment(ctx, runtime.Deployment{
 				BuildID: buildID,
 				Focus:   focus,
 				Stack:   stack.Proto(),
@@ -398,7 +398,7 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildI
 				prepared, err := binary.Plan(ctx, bin,
 					binary.BuildImageOpts{
 						UsePrebuilts: true,
-						Platforms:    runtime.For(srv.Env()).HostPlatforms(),
+						Platforms:    runtime.For(ctx, srv.Env()).TargetPlatforms(),
 					})
 				if err != nil {
 					return nil, err
