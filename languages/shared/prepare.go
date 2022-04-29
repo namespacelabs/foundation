@@ -6,7 +6,6 @@ package shared
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/protocolbuffers/txtpbfmt/parser"
@@ -18,10 +17,6 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
-
-// Contains @ that can't be used in a Cue identifier,
-// to avoid clashing with keys of user-defined providers.
-const singletonKey = "@singleton"
 
 // Prepare codegen data for a server.
 func PrepareServerData(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server) (ServerData, error) {
@@ -44,22 +39,24 @@ func PrepareServerData(ctx context.Context, loader workspace.Packages, loc works
 }
 
 func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, fmwk schema.Framework) (NodeData, error) {
-	var nodeData NodeData
+	nodeData := NodeData{
+		Kind:        n.Kind,
+		PackageName: n.PackageName,
+	}
 
 	if len(n.Instantiate) > 0 {
-		deps, err := prepareDeps(ctx, loader, fmwk, n.PackageName, singletonKey, n.Instantiate)
+		deps, err := prepareDeps(ctx, loader, fmwk, n.Instantiate)
 		if err != nil {
 			return NodeData{}, err
 		}
 
-		nodeData.SingletonDeps = deps
+		nodeData.Deps = deps
 	}
-	nodeData.Kind = n.Kind
 
 	for _, p := range n.Provides {
 		for _, a := range p.AvailableIn {
 			if a.ProvidedInFrameworks()[fmwk] {
-				scopeDeps, err := prepareDeps(ctx, loader, fmwk, n.PackageName, p.Name, p.Instantiate)
+				scopeDeps, err := prepareDeps(ctx, loader, fmwk, p.Instantiate)
 				if err != nil {
 					return NodeData{}, err
 				}
@@ -77,7 +74,7 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 	return nodeData, nil
 }
 
-func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Framework, pkgName string, localKey string, instantiates []*schema.Instantiate) (*DependencyList, error) {
+func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Framework, instantiates []*schema.Instantiate) ([]DependencyData, error) {
 	if len(instantiates) == 0 {
 		return nil, nil
 	}
@@ -108,21 +105,16 @@ func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Fra
 		}
 
 		deps = append(deps, DependencyData{
-			Name:                     dep.Name,
-			ProviderName:             p.Name,
-			ProviderInputType:        convertType(p.Type, schema.PackageName(dep.PackageName)),
-			ProviderType:             provider,
-			ProviderHasScopedDeps:    len(p.Instantiate) > 0,
-			ProviderHasSingletonDeps: len(pkg.Node().Instantiate) > 0,
-			ProviderLocation:         pkg.Location,
-			ProviderInput:            *providerInput,
+			Name:              dep.Name,
+			ProviderName:      p.Name,
+			ProviderInputType: convertType(p.Type, schema.PackageName(dep.PackageName)),
+			ProviderType:      provider,
+			ProviderLocation:  pkg.Location,
+			ProviderInput:     *providerInput,
 		})
 	}
 
-	return &DependencyList{
-		Key:  fmt.Sprintf("%s#%s", pkgName, localKey),
-		Deps: deps,
-	}, nil
+	return deps, nil
 }
 
 func convertType(t *schema.TypeDef, pkgName schema.PackageName) TypeData {

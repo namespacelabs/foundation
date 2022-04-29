@@ -19,7 +19,6 @@ const (
 	depsFilename             = "deps.fn.ts"
 	packageServiceBaseName   = "Service"
 	packageExtensionBaseName = "Extension"
-	runtimeNpmPackage        = "@namespacelabs/foundation"
 	grpcNpmPackage           = "@grpc/grpc-js"
 )
 
@@ -40,6 +39,18 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, error) {
 	ic := newImportCollector()
 
+	var packageBaseName string
+	if nodeData.Kind == schema.Node_SERVICE {
+		packageBaseName = packageServiceBaseName
+	} else {
+		packageBaseName = packageExtensionBaseName
+	}
+
+	packageDeps, err := convertDependencyList(ic, packageBaseName, nodeData.Deps)
+	if err != nil {
+		return nodeTmplOptions{}, err
+	}
+
 	providers := []tmplProvider{}
 	for _, p := range nodeData.Providers {
 		inputType, err := convertType(ic, p.InputType)
@@ -52,24 +63,18 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 			return nodeTmplOptions{}, err
 		}
 
+		var packageDepsName *string
+		if packageDeps != nil {
+			packageDepsName = &packageBaseName
+		}
+
 		providers = append(providers, tmplProvider{
-			Name:       strcase.ToCamel(p.Name),
-			InputType:  inputType,
-			OutputType: convertAvailableIn(ic, p.ProviderType.Nodejs),
-			ScopedDeps: scopeDeps,
+			Name:            strcase.ToCamel(p.Name),
+			InputType:       inputType,
+			OutputType:      convertAvailableIn(ic, p.ProviderType.Nodejs),
+			Deps:            scopeDeps,
+			PackageDepsName: packageDepsName,
 		})
-	}
-
-	var packageBaseName string
-	if nodeData.Kind == schema.Node_SERVICE {
-		packageBaseName = packageServiceBaseName
-	} else {
-		packageBaseName = packageExtensionBaseName
-	}
-
-	singletonDeps, err := convertDependencyList(ic, packageBaseName, nodeData.SingletonDeps)
-	if err != nil {
-		return nodeTmplOptions{}, err
 	}
 
 	var service *tmplService
@@ -82,10 +87,13 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 	}
 
 	return nodeTmplOptions{
-		Imports:       ic.imports(),
-		SingletonDeps: singletonDeps,
-		Providers:     providers,
-		Service:       service,
+		Imports: ic.imports(),
+		Package: tmplPackage{
+			Name: nodeData.PackageName,
+			Deps: packageDeps,
+		},
+		Providers: providers,
+		Service:   service,
 	}, nil
 }
 
@@ -113,19 +121,17 @@ func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDepe
 			Base64Content: base64.StdEncoding.EncodeToString(dep.ProviderInput.Content),
 			Comments:      dep.ProviderInput.Comments,
 		},
-		HasScopedDeps:    dep.ProviderHasScopedDeps,
-		HasSingletonDeps: dep.ProviderHasSingletonDeps,
 	}, nil
 }
 
 // Returns nil if the input list is empty.
-func convertDependencyList(ic *importCollector, name string, depList *shared.DependencyList) (*tmplDeps, error) {
-	if depList == nil {
+func convertDependencyList(ic *importCollector, name string, deps []shared.DependencyData) (*tmplDeps, error) {
+	if deps == nil {
 		return nil, nil
 	}
 
 	convertedDeps := []tmplDependency{}
-	for _, d := range depList.Deps {
+	for _, d := range deps {
 		dep, err := convertDependency(ic, d)
 		if err != nil {
 			return nil, err
@@ -135,9 +141,7 @@ func convertDependencyList(ic *importCollector, name string, depList *shared.Dep
 	}
 
 	return &tmplDeps{
-		Name:                name,
-		Key:                 depList.Key,
-		DepGraphImportAlias: ic.add(runtimeNpmPackage),
-		Deps:                convertedDeps,
+		Name: name,
+		Deps: convertedDeps,
 	}, nil
 }

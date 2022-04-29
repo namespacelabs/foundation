@@ -9,10 +9,10 @@ import (
 )
 
 type nodeTmplOptions struct {
-	Imports       []tmplSingleImport
-	Service       *tmplService
-	SingletonDeps *tmplDeps
-	Providers     []tmplProvider
+	Imports   []tmplSingleImport
+	Service   *tmplService
+	Package   tmplPackage
+	Providers []tmplProvider
 }
 type serverTmplOptions struct {
 	Imports  []tmplSingleImport
@@ -27,19 +27,24 @@ type tmplService struct {
 	GrpcServerImportAlias string
 }
 
+type tmplPackage struct {
+	Name string
+	// nil if the package has no dependencis.
+	Deps *tmplDeps
+}
+
 type tmplProvider struct {
 	Name       string
 	InputType  tmplImportedType
 	OutputType tmplImportedType
-	ScopedDeps *tmplDeps
+	// nil if the provider has no dependencis.
+	Deps            *tmplDeps
+	PackageDepsName *string
 }
 
 type tmplDeps struct {
 	Name string
-	// Key for this dependency list, globally unique.
-	Key                 string
-	DepGraphImportAlias string
-	Deps                []tmplDependency
+	Deps []tmplDependency
 }
 
 type tmplDependency struct {
@@ -48,8 +53,6 @@ type tmplDependency struct {
 	Provider          tmplImportedType
 	ProviderInputType tmplImportedType
 	ProviderInput     tmplSerializedProto
-	HasScopedDeps     bool
-	HasSingletonDeps  bool
 }
 type tmplSerializedProto struct {
 	Base64Content string
@@ -68,42 +71,70 @@ var (
 	tmpl = template.Must(template.New("template").Parse(
 		// Helper templates
 		`
-// Input: tmplDeps				
-{{define "DepsFactory"}}
+// Input: tmplDeps
+{{define "DefineDeps" -}}
 export interface {{.Name}}Deps {
 {{- range .Deps}}
 	{{.Name}}: {{.Type.ImportAlias}}.{{.Type.Name}};
 {{- end}}
 }
+{{- end}}	
 
-export const {{.Name}}DepsFactory = {
-	key: "{{.Key}}",
-  instantiate: (dg: {{.DepGraphImportAlias}}.DependencyGraph): {{.Name}}Deps => ({
-		{{- range .Deps}}
-			{{- range .ProviderInput.Comments}}
-			// {{.}}
-			{{- end}}
-			{{.Name}}: dg.instantiate({
-				{{- if .HasSingletonDeps}}
-				singletonDepsFactory: {{.Provider.ImportAlias}}.ExtensionDepsFactory,
-				{{- end}}
-				{{- if .HasScopedDeps}}
-				scopedDepsFactory: {{.Provider.ImportAlias}}.{{.Provider.Name}}DepsFactory,
-				{{- end}}
-				providerFn: (params) =>			
-					{{.Provider.ImportAlias}}.provide{{.Provider.Name}}(
-						{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name -}}
-						.deserializeBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
-					{{- if .HasSingletonDeps}},
-					  params.singletonDeps!
-					{{- end}}
-					{{- if .HasScopedDeps}},
-					  params.scopedDeps!
-					{{- end}})
-			}),
-		{{- end}}
-	})
+// Input: tmplDeps
+{{define "ConstructDeps" -}}
+({
+	{{- range .Deps}}
+		{{.Name}}: {{.Provider.ImportAlias}}.{{.Provider.Name}}Provider(
+			graph,
+			{{range .ProviderInput.Comments -}}
+			{{if .}}// {{.}}
+			{{end}}
+			{{- end -}}
+			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name -}}
+			.deserializeBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))),
+	{{- end}}
+  })
+{{- end}}
+
+// Input: tmplPackage
+{{define "PackageDef" -}}
+{{- if .Deps}}
+{{template "DefineDeps" .Deps}}
+{{- end}}
+
+export const Package = {
+  name: "{{.Name}}",
+	
+  {{- if .Deps}}
+  // Package dependencies are instantiated at most once.
+  instantiateDeps: (graph: DependencyGraph) => {{template "ConstructDeps" .Deps}},
+	{{- end}}
 };
+{{- end}}
+
+// Input: tmplProvider
+{{define "ProviderDef"}}
+{{- if .Deps}}
+{{template "DefineDeps" .Deps}}
+{{- end}}
+
+export const {{.Name}}Provider = (graph: DependencyGraph, input: {{.InputType.ImportAlias}}.{{.InputType.Name -}}) =>
+	provide{{.Name}}(
+		input
+		{{- if .PackageDepsName}}, 
+		graph.instantiatePackageDeps(Package)
+		{{- end}}
+		{{- if .Deps}},
+		// Scoped dependencies that are instantiated for each call to Provide{{.Name}}.
+		graph.profileCall(` + "`" + `${Package.name}#{{.Deps.Name}}` + "`" + `, () => {{template "ConstructDeps" .Deps}})
+		{{- end}}
+  );
+
+export type Provide{{.Name}} = (input: {{.InputType.ImportAlias}}.{{.InputType.Name}}
+	  {{- if .PackageDepsName}}, packageDeps: {{.PackageDepsName}}Deps{{end -}}
+	  {{- if .Deps}}, deps: {{.Name}}Deps{{end}}) =>
+		{{.OutputType.ImportAlias}}.{{.OutputType.Name}};
+export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
 {{- end}}
 
 {{define "Imports"}}
@@ -116,34 +147,22 @@ import * as {{.Alias}} from "{{.Package}}"
 			`{{define "Node"}}{{with $opts := .}}// This file was automatically generated.
 
 import * as impl from "./impl";
+import { DependencyGraph } from "@namespacelabs/foundation";
 
 {{- template "Imports" . -}}
 
-{{if .SingletonDeps}}
-// Singleton dependencies are instantiated at most once.
-{{- template "DepsFactory" .SingletonDeps}}
-{{- end}}
+{{- template "PackageDef" .Package}}
 
 {{- if .Service}}
 
 export type WireService = (
-	{{- if .SingletonDeps}}deps: {{.SingletonDeps.Name}}Deps, {{end -}}
+	{{- if .Package}}deps: {{.Package.Deps.Name}}Deps, {{end -}}
 	server: {{.Service.GrpcServerImportAlias}}.Server) => void;
 export const wireService: WireService = impl.wireService;
 {{- end}}
 
-{{- range $.Providers -}}
-
-{{if .ScopedDeps}}
-// Scoped dependencies that are instantiated for each call to Provide{{.Name}}.
-{{template "DepsFactory" .ScopedDeps}}
-{{- end}}
-
-export type Provide{{.Name}} = (input: {{.InputType.ImportAlias}}.{{.InputType.Name}}
-	  {{- if $opts.SingletonDeps}}, singletonDeps: {{$opts.SingletonDeps.Name}}Deps{{end -}}
-	  {{- if .ScopedDeps}}, scopedDeps: {{.Name}}Deps{{end}}) =>
-		{{.OutputType.ImportAlias}}.{{.OutputType.Name}};
-export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
+{{- range $.Providers}}
+{{template "ProviderDef" .}}
 {{- end}}
 {{- end}}
 {{end}}` +
@@ -159,14 +178,11 @@ import yargs from "yargs/yargs";
 {{- template "Imports" . -}}
 
 // Returns a list of initialization errors.
-const wireServices = (server: Server, dg: DependencyGraph): unknown[] => {
+const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
 	const errors: unknown[] = [];
 {{- range $.Services}}
   try {
-		dg.instantiate({
-			singletonDepsFactory: {{.ImportAlias}}.` + packageServiceBaseName + `DepsFactory,
-			providerFn: (params) => {{.ImportAlias}}.wireService(params.singletonDeps!, server),
-		})
+		{{.ImportAlias}}.wireService({{.ImportAlias}}.Package.instantiateDeps(graph), server);
 	} catch (e) {
 		errors.push(e);
 	}
@@ -183,8 +199,8 @@ const argv = yargs(process.argv.slice(2))
 
 const server = new Server();
 
-const dg = new DependencyGraph();
-const errors = wireServices(server, dg);
+const graph = new DependencyGraph();
+const errors = wireServices(server, graph);
 if (errors.length > 0) {
 	errors.forEach((e) => console.error(e));
 	console.error("%d services failed to initialize.", errors.length)
