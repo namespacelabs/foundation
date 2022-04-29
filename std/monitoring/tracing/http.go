@@ -6,6 +6,7 @@ package tracing
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -17,7 +18,11 @@ type HttpClientProvider struct {
 }
 
 func (hp HttpClientProvider) Wrap(client *http.Client) *http.Client {
-	client.Transport = otelhttp.NewTransport(client.Transport, otelhttp.WithTracerProvider(hp.provider))
+	client.Transport = otelhttp.NewTransport(client.Transport,
+		otelhttp.WithTracerProvider(hp.provider),
+		otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+			return fmt.Sprintf("HTTP %s %s%s", r.Method, r.URL.Host, r.URL.Path)
+		}))
 	return client
 }
 
