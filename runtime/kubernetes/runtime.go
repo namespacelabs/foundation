@@ -81,7 +81,11 @@ func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env
 			return k8sRuntime{}, err
 		}
 
-		runtimeCache.cache[key] = k8sRuntime{cli, boundEnv{ws, env, cfg}}
+		runtimeCache.cache[key] = k8sRuntime{
+			cli,
+			boundEnv{ws, env, cfg},
+			compute.InternalGetFuture[systemInfo](ctx, &fetchSystemInfo{cli: cli, cfg: cfg}),
+		}
 	}
 
 	rt := runtimeCache.cache[key]
@@ -92,6 +96,7 @@ func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env
 type k8sRuntime struct {
 	cli *k8s.Clientset
 	boundEnv
+	systemInfo *compute.Future[any] // systemInfo
 }
 
 var _ runtime.Runtime = k8sRuntime{}
