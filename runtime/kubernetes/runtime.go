@@ -76,13 +76,21 @@ func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env
 	defer runtimeCache.mu.Unlock()
 
 	if _, ok := runtimeCache.cache[key]; !ok {
-		runtimeCache.cache[key] = k8sRuntime{boundEnv{ws, env, cfg}}
+		cli, err := client.NewClientFromHostEnv(cfg)
+		if err != nil {
+			return k8sRuntime{}, err
+		}
+
+		runtimeCache.cache[key] = k8sRuntime{cli, boundEnv{ws, env, cfg}}
 	}
 
-	return runtimeCache.cache[key], nil
+	rt := runtimeCache.cache[key]
+
+	return rt, nil
 }
 
 type k8sRuntime struct {
+	cli *k8s.Clientset
 	boundEnv
 }
 
@@ -136,12 +144,7 @@ type ConditionWaiter interface {
 }
 
 func (r k8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, waiter ConditionWaiter) error {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
-	return waitForCondition(ctx, cli, action, waiter)
+	return waitForCondition(ctx, r.cli, action, waiter)
 }
 
 func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.ActionEvent, waiter ConditionWaiter) error {
@@ -157,12 +160,7 @@ func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.Act
 }
 
 func (r k8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return oci.ImageID{}, err
-	}
-
-	d, err := cli.AppsV1().Deployments(r.ns()).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
+	d, err := r.cli.AppsV1().Deployments(r.ns()).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
 	if err != nil {
 		// XXX better error messages.
 		return oci.ImageID{}, err
@@ -358,12 +356,7 @@ func (r k8sRuntime) PlanShutdown(ctx context.Context, foci []provision.Server, s
 }
 
 func (r k8sRuntime) StreamLogsTo(ctx context.Context, w io.Writer, server *schema.Server, opts runtime.StreamLogsOpts) error {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
-	return r.fetchLogs(ctx, cli, w, server, opts)
+	return r.fetchLogs(ctx, r.cli, w, server, opts)
 }
 
 func (r k8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
@@ -372,12 +365,7 @@ func (r k8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runt
 		return fnerrors.InternalError("invalid reference")
 	}
 
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
-	return fetchPodLogs(ctx, cli, w, opaque.Namespace, opaque.Name, opaque.Container, runtime.StreamLogsOpts{
+	return fetchPodLogs(ctx, r.cli, w, opaque.Namespace, opaque.Name, opaque.Container, runtime.StreamLogsOpts{
 		TailLines:        opts.TailLines,
 		FetchLastFailure: opts.FetchLastFailure,
 	})
@@ -389,12 +377,7 @@ func (r k8sRuntime) FetchDiagnostics(ctx context.Context, reference runtime.Cont
 		return runtime.Diagnostics{}, fnerrors.InternalError("invalid reference")
 	}
 
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return runtime.Diagnostics{}, err
-	}
-
-	pod, err := cli.CoreV1().Pods(opaque.Namespace).Get(ctx, opaque.Name, metav1.GetOptions{})
+	pod, err := r.cli.CoreV1().Pods(opaque.Namespace).Get(ctx, opaque.Name, metav1.GetOptions{})
 	if err != nil {
 		return runtime.Diagnostics{}, err
 	}
@@ -439,12 +422,7 @@ func statusToDiagnostic(status v1.ContainerStatus) (runtime.Diagnostics, error) 
 func (r k8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
 	cmd := append([]string{command}, rest...)
 
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
-	return r.startTerminal(ctx, cli, server, rio, cmd)
+	return r.startTerminal(ctx, r.cli, server, rio, cmd)
 }
 
 func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endpoint *schema.Endpoint, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
@@ -452,12 +430,7 @@ func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 		return nil, fnerrors.UserError(server, "%s: no port to forward to", endpoint.GetServiceName())
 	}
 
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return nil, err
-	}
-
-	pod, err := resolvePodByLabels(ctx, cli, io.Discard, r.boundEnv.ns(), map[string]string{
+	pod, err := resolvePodByLabels(ctx, r.cli, io.Discard, r.boundEnv.ns(), map[string]string{
 		kubedef.K8sServerId: server.Id,
 	})
 	if err != nil {
@@ -488,19 +461,14 @@ func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 }
 
 func (r k8sRuntime) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return nil, err
-	}
-
 	svc := nginx.IngressLoadBalancerService()
 	// XXX watch?
-	resolved, err := cli.CoreV1().Services(svc.Namespace).Get(ctx, svc.ServiceName, metav1.GetOptions{})
+	resolved, err := r.cli.CoreV1().Services(svc.Namespace).Get(ctx, svc.ServiceName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	pod, err := resolvePodByLabels(ctx, cli, io.Discard, svc.Namespace, resolved.Spec.Selector)
+	pod, err := resolvePodByLabels(ctx, r.cli, io.Discard, svc.Namespace, resolved.Spec.Selector)
 	if err != nil {
 		return nil, err
 	}
@@ -542,11 +510,6 @@ func (c channelCloser) Close() error {
 }
 
 func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
 	// XXX use a watch
 	announced := map[string]runtime.ContainerReference{}
 
@@ -558,7 +521,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 			// No cancelation, moving along.
 		}
 
-		pods, err := cli.CoreV1().Pods(r.ns()).List(ctx, metav1.ListOptions{
+		pods, err := r.cli.CoreV1().Pods(r.ns()).List(ctx, metav1.ListOptions{
 			LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
 		})
 		if err != nil {
@@ -631,14 +594,9 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 }
 
 func (r k8sRuntime) DeleteRecursively(ctx context.Context) error {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
 	return tasks.Action("kubernetes.namespace.delete").Arg("namespace", r.ns()).Run(ctx, func(ctx context.Context) error {
 		var grace int64 = 0
-		return cli.CoreV1().Namespaces().Delete(ctx, r.ns(), metav1.DeleteOptions{
+		return r.cli.CoreV1().Namespaces().Delete(ctx, r.ns(), metav1.DeleteOptions{
 			GracePeriodSeconds: &grace,
 		})
 	})
