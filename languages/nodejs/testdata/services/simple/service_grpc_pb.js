@@ -1,9 +1,10 @@
+// GENERATED CODE -- DO NOT EDIT!
+
+// Original file comments:
 // Copyright 2022 Namespace Labs Inc; All rights reserved.
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
-
-// GENERATED CODE -- DO NOT EDIT!
-
+//
 'use strict';
 var grpc = require('@grpc/grpc-js');
 var languages_nodejs_testdata_services_simple_service_pb = require('../../../../../languages/nodejs/testdata/services/simple/service_pb.js');
