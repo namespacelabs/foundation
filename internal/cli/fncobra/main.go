@@ -45,6 +45,7 @@ import (
 	nodejs "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/languages/web"
+	"namespacelabs.dev/foundation/providers/aws/iam"
 	ecr "namespacelabs.dev/foundation/providers/aws/registry"
 	artifactregistry "namespacelabs.dev/foundation/providers/gcp/registry"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -168,6 +169,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		artifactregistry.Register()
 		oci.RegisterDomainKeychain("pkg.dev", artifactregistry.DefaultKeychain)
 		oci.RegisterDomainKeychain("amazonaws.com", ecr.DefaultKeychain)
+		iam.RegisterGraphHandlers()
 
 		// Runtimes.
 		kubernetes.Register()

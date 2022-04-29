@@ -1,0 +1,15 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.providers.aws.iam;
+
+option go_package = "namespacelabs.dev/foundation/providers/aws/iam";
+
+message OpEnsureRole {
+    string name                    = 1;
+    string description             = 2;
+    string assume_role_policy_json = 3;  // Serialized iam.PolicyDocument.
+}

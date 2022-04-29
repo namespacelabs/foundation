@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.15.2
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.14.0
 	github.com/aws/aws-sdk-go-v2/service/eks v1.20.6
+	github.com/aws/aws-sdk-go-v2/service/iam v1.18.4
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.21.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.2
 	github.com/cenkalti/backoff/v4 v4.1.2
