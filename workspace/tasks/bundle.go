@@ -88,21 +88,10 @@ func (b *Bundle) WriteInvocationInfo(ctx context.Context, cmd *cobra.Command, ar
 	return nil
 }
 
-// Writes information about the runtime such as memory stats consumed by foundation or
-// the state of docker containers for later diagnosis.
-func (b *Bundle) WriteExitInfo(ctx context.Context, dockerInfo *dockertypes.Info) error {
-	if err := b.writeMemStats(ctx); err != nil {
-		return err
+func (b *Bundle) WriteDockerInfo(ctx context.Context, dockerInfo *dockertypes.Info) error {
+	if dockerInfo == nil {
+		return nil
 	}
-	if dockerInfo != nil {
-		if err := b.writeDockerInfo(ctx, dockerInfo); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (b *Bundle) writeDockerInfo(ctx context.Context, dockerInfo *dockertypes.Info) error {
 	encodedInfo, err := json.Marshal(dockerInfo)
 	if err != nil {
 		return fnerrors.InternalError("failed to marshal docker `types.Info` as JSON: %w", err)
@@ -113,7 +102,7 @@ func (b *Bundle) writeDockerInfo(ctx context.Context, dockerInfo *dockertypes.In
 	return nil
 }
 
-func (b *Bundle) writeMemStats(ctx context.Context) error {
+func (b *Bundle) WriteMemStats(ctx context.Context) error {
 	var mstats runtime.MemStats
 	runtime.ReadMemStats(&mstats)
 
