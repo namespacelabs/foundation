@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/providers/aws/auth"
+	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -50,6 +50,7 @@ func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*cli
 
 	sysInfo := &client.SystemInfo{}
 
+	var eksClusterName string
 	for _, n := range nodes.Items {
 		platforms.Add(fmt.Sprintf("%s/%s", n.Status.NodeInfo.OperatingSystem, n.Status.NodeInfo.Architecture))
 
@@ -59,23 +60,25 @@ func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*cli
 
 		if clusterName, ok := n.Labels["alpha.eksctl.io/cluster-name"]; ok {
 			sysInfo.DetectedDistribution = "eks"
-			sysInfo.EksClusterName = clusterName
+			eksClusterName = clusterName
 		}
 	}
 
 	switch sysInfo.DetectedDistribution {
 	case "eks":
-		account, err := auth.Resolve(ctx, f.devHost, f.env)
+		description, err := eks.DescribeCluster(ctx, f.devHost, f.env, eksClusterName)
 		if err != nil {
 			return nil, err
 		}
 
-		output, err := compute.GetValue(ctx, account)
-		if err != nil {
-			return nil, err
+		sysInfo.EksCluster = &client.EKSCluster{
+			Name: eksClusterName,
+			Arn:  *description.Cluster.Arn,
 		}
 
-		sysInfo.EksAccount = *output.Account
+		if description.Cluster.Identity != nil && description.Cluster.Identity.Oidc != nil {
+			sysInfo.EksCluster.OidcIssuer = *description.Cluster.Identity.Oidc.Issuer
+		}
 	}
 
 	sysInfo.NodePlatform = platforms.Strings()

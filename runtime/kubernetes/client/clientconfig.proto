@@ -18,6 +18,11 @@ message SystemInfo {
     repeated string node_platform         = 1;
     string          detected_distribution = 2;  // k3d, eks, etc.
 
-    string eks_cluster_name = 3;  // Only set if distribution is eks.
-    string eks_account      = 4;  // Only set if distribution is eks.
+    EKSCluster eks_cluster = 3;  // Only set if distribution is eks.
+}
+
+message EKSCluster {
+    string name        = 1;
+    string arn         = 2;
+    string oidc_issuer = 3;
 }
