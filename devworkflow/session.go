@@ -32,7 +32,6 @@ var TaskOutputBuildkitJsonLog = tasks.Output("buildkit.json", "application/json+
 type Session struct {
 	RequestCh chan *DevWorkflowRequest
 
-	Console   io.Writer
 	Errors    io.Writer
 	setSticky func([]byte)
 
@@ -65,9 +64,9 @@ func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname str
 	setSticky(nil)
 
 	return &Session{
-		Console:       console.TypedOutput(ctx, "fn dev", console.CatOutputUs),
 		Errors:        console.Errors(ctx),
 		setSticky:     setSticky,
+		Term:          console.NewTerm(),
 		localHostname: localHostname,
 		obs:           NewObservers(ctx),
 		RequestCh:     make(chan *DevWorkflowRequest, 1),
@@ -146,6 +145,7 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 
 		// Reset the banner.
 		s.setSticky(nil)
+		//s.Term.AddSticky("x", "xxxx")
 
 		env, err := loadWorkspace(ctx, absRoot, envName)
 		if err != nil {

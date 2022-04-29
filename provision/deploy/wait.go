@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kr/text"
+	"golang.org/x/term"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/renderwait"
 	"namespacelabs.dev/foundation/internal/engine/ops"
@@ -19,7 +20,7 @@ import (
 )
 
 const (
-	maxDeployWait      = 10 * time.Second
+	maxDeployWait      = 1 * time.Second
 	tailLinesOnFailure = 10
 )
 
@@ -38,6 +39,43 @@ func Wait(ctx context.Context, env ops.Environment, waiters []ops.Waiter) error 
 	return waitErr
 }
 
+func broadcastEvents(ctx context.Context, out []chan ops.Event) chan ops.Event {
+	in := make(chan ops.Event)
+	go func() {
+		for event := range in {
+			for _, ch := range out {
+				ch <- event
+			}
+		}
+	}()
+	return in
+}
+
+func observeLogs(ctx context.Context, env ops.Environment, parent chan ops.Event) chan ops.Event {
+	ch := make(chan ops.Event)
+	go func() {
+		defer close(parent)
+		term.MakeRaw(0)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case _, ok := <-ch:
+				if !ok {
+					return
+				}
+			}
+			parent <- ops.Event{
+				ResourceID:  "resid",
+				WaitDetails: "buffer",
+			}
+		}
+	}()
+	return ch
+}
+
+// observeContainers observes the deploy events (received from the returned channel) and updates the
+// console (passed as the `parent` parameter).
 func observeContainers(ctx context.Context, env ops.Environment, parent chan ops.Event) chan ops.Event {
 	ch := make(chan ops.Event)
 	t := time.NewTicker(maxDeployWait)
