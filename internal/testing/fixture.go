@@ -87,8 +87,13 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		return nil, fnerrors.UserError(pkgname, "expected a test definition")
 	}
 
+	platforms, err := runtime.For(ctx, env).TargetPlatforms(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	testBin, err := binary.Plan(ctx, testBinary, binary.BuildImageOpts{
-		Platforms: runtime.For(ctx, env).TargetPlatforms(),
+		Platforms: platforms,
 	})
 	if err != nil {
 		return nil, err

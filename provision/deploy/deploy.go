@@ -384,6 +384,11 @@ type containerImage struct {
 func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildID provision.BuildID) (map[schema.PackageName]containerImage, error) {
 	res := map[schema.PackageName]containerImage{}
 	for k, srv := range stack.Servers {
+		platforms, err := runtime.For(ctx, srv.Env()).TargetPlatforms(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		for _, dep := range stack.ParsedServers[k].Deps {
 			containers := append([]frontend.Container{}, dep.ProvisionPlan.Sidecars...)
 			containers = append(containers, dep.ProvisionPlan.Inits...)
@@ -398,7 +403,7 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildI
 				prepared, err := binary.Plan(ctx, bin,
 					binary.BuildImageOpts{
 						UsePrebuilts: true,
-						Platforms:    runtime.For(ctx, srv.Env()).TargetPlatforms(),
+						Platforms:    platforms,
 					})
 				if err != nil {
 					return nil, err

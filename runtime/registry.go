@@ -96,6 +96,6 @@ func (r runtimeFwdErr) DebugShell(ctx context.Context, img oci.ImageID, io rtype
 	return r.err
 }
 
-func (r runtimeFwdErr) TargetPlatforms() []specs.Platform {
-	return nil
+func (r runtimeFwdErr) TargetPlatforms(context.Context) ([]specs.Platform, error) {
+	return nil, r.err
 }

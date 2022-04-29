@@ -86,7 +86,7 @@ type Runtime interface {
 	DeleteRecursively(context.Context) error
 
 	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
-	TargetPlatforms() []specs.Platform
+	TargetPlatforms(context.Context) ([]specs.Platform, error)
 }
 
 type Deployment struct {
