@@ -329,6 +329,18 @@ func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) e
 	return v.Done(v.Call(ctx, f))
 }
 
+func Return[V any](ctx context.Context, ev *ActionEvent, f func(context.Context) (V, error)) (V, error) {
+	v := ev.Start(ctx)
+	var ret V
+	callErr := v.Call(ctx, func(ctx context.Context) error {
+		var err error
+		ret, err = f(ctx)
+		return err
+	})
+	v.Done(callErr)
+	return ret, callErr
+}
+
 func (ev *ActionEvent) Log(ctx context.Context) {
 	sink := SinkFrom(ctx)
 	if sink == nil {
