@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"filippo.io/age"
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/version"
@@ -87,7 +88,32 @@ func (b *Bundle) WriteInvocationInfo(ctx context.Context, cmd *cobra.Command, ar
 	return nil
 }
 
-func (b *Bundle) WriteMemStats(ctx context.Context) error {
+// Writes information about the runtime such as memory stats consumed by foundation or
+// the state of docker containers for later diagnosis.
+func (b *Bundle) WriteExitInfo(ctx context.Context, dockerInfo *dockertypes.Info) error {
+	if err := b.writeMemStats(ctx); err != nil {
+		return err
+	}
+	if dockerInfo != nil {
+		if err := b.writeDockerInfo(ctx, dockerInfo); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *Bundle) writeDockerInfo(ctx context.Context, dockerInfo *dockertypes.Info) error {
+	encodedInfo, err := json.Marshal(dockerInfo)
+	if err != nil {
+		return fnerrors.InternalError("failed to marshal docker `types.Info` as JSON: %w", err)
+	}
+	if err := b.WriteFile(ctx, "docker_info.json", encodedInfo, 0600); err != nil {
+		return fnerrors.InternalError("failed to write docker `types.Info` to `docker_info.json`: %w", err)
+	}
+	return nil
+}
+
+func (b *Bundle) writeMemStats(ctx context.Context) error {
 	var mstats runtime.MemStats
 	runtime.ReadMemStats(&mstats)
 

@@ -28,6 +28,7 @@ import (
 // It also performs Foundation-specific error handling
 type Client interface {
 	ServerVersion(ctx context.Context) (types.Version, error)
+	Info(ctx context.Context) (types.Info, error)
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
 	ContainerStart(ctx context.Context, containerID string, options types.ContainerStartOptions) error
 	ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error
@@ -139,6 +140,11 @@ type wrappedClient struct {
 
 func (w wrappedClient) ServerVersion(ctx context.Context) (types.Version, error) {
 	v, err := w.cli.ServerVersion(ctx)
+	return v, maybeReplaceErr(err)
+}
+
+func (w wrappedClient) Info(ctx context.Context) (types.Info, error) {
+	v, err := w.cli.Info(ctx)
 	return v, maybeReplaceErr(err)
 }
 
