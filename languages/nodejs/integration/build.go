@@ -148,7 +148,7 @@ func prepareYarnWithWorkspaces(workspacePaths []string, yarnRoot string, isDevBu
 		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn")
 	if isDevBuild {
 		// Nodemon is used to watch for changes in the source code within a container and restart the "ts-node" server.
-		buildBase = buildBase.Run(llb.Shlex("yarn global add nodemon@2.0.15"), llb.Dir(yarnRoot)).Root()
+		buildBase = buildBase.Run(llb.Shlex("yarn global add nodemon@2.0.15 ts-node@10.7.0"), llb.Dir(yarnRoot)).Root()
 	}
 	for _, fn := range []string{"package.json", "tsconfig.json", "yarn.lock", ".yarnrc.yml", ".yarn/releases"} {
 		buildBase = buildBase.With(
