@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.languages.nodejs;
+package foundation.languages.nodejs.integration;
 
-option go_package = "namespacelabs.dev/foundation/languages/nodejs";
+option go_package = "namespacelabs.dev/foundation/languages/nodejs/integration";
 
 import "schema/schema.proto";
 

@@ -42,7 +42,7 @@ import (
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/languages/golang"
-	"namespacelabs.dev/foundation/languages/nodejs"
+	nodejs "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/languages/web"
 	ecr "namespacelabs.dev/foundation/providers/aws/registry"
