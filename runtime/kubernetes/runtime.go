@@ -107,6 +107,16 @@ func (r k8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 		return nil, err
 	}
 
+	systemInfo, err := r.SystemInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	packedSystemInfo, err := anypb.New(systemInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	// Ensure the namespace exist, before we go and apply definitions to it. Also, deployServer
 	// assumes that a namespace already exists.
 	def, err := (kubedef.Apply{
@@ -121,7 +131,7 @@ func (r k8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 
 	// Pass the computed namespace to the provisioning tool.
 	return &rtypes.ProvisionProps{
-		ProvisionInput: []*anypb.Any{packedHostEnv},
+		ProvisionInput: []*anypb.Any{packedHostEnv, packedSystemInfo},
 		Definition:     []*schema.Definition{def},
 	}, nil
 }

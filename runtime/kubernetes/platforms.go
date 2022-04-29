@@ -13,18 +13,27 @@ import (
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
+func (r k8sRuntime) SystemInfo(ctx context.Context) (*client.SystemInfo, error) {
+	raw, err := r.systemInfo.Wait(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return raw.Value.(*client.SystemInfo), nil
+}
+
 func (r k8sRuntime) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
 	if r.env.Purpose == schema.Environment_PRODUCTION {
 		// XXX make this configurable.
 		return parsePlatforms([]string{"linux/amd64", "linux/arm64"})
 	}
 
-	raw, err := r.systemInfo.Wait(ctx)
+	sysInfo, err := r.SystemInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return parsePlatforms(raw.Value.(*client.SystemInfo).NodePlatform)
+	return parsePlatforms(sysInfo.NodePlatform)
 }
 
 func parsePlatforms(plats []string) ([]specs.Platform, error) {
