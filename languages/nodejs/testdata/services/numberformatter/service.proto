@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package languages.nodejs.testdata.services.numberformatter;
+
+message FormatRequest {
+    double input = 1;
+}
+
+message FormatResponse {
+    string output = 1;
+}
+
+// grpcurl -plaintext -import-path languages/nodejs/testdata/services/numberformatter -proto service.proto \
+// -d '{"input":12.345445}' 127.0.0.1:XXX \
+// languages.nodejs.testdata.services.numberformatter.FormatService/Format
+service FormatService {
+    rpc Format(FormatRequest) returns (FormatResponse);
+}

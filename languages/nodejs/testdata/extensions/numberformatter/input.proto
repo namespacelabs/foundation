@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package languages.nodejs.testdata.extensions.simple;
+
+message FormattingSettings {
+    int32 precision = 1;
+}

@@ -1,4 +1,4 @@
-// package: nodejsonly.nodejsservice
+// package: languages.nodejs.testdata.services.simple
 // file: languages/nodejs/testdata/services/simple/service.proto
 
 import * as jspb from "google-protobuf";

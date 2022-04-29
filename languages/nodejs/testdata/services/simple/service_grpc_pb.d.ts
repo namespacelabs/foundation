@@ -1,6 +1,6 @@
 // GENERATED CODE -- DO NOT EDIT!
 
-// package: nodejsonly.nodejsservice
+// package: languages.nodejs.testdata.services.simple
 // file: languages/nodejs/testdata/services/simple/service.proto
 
 import * as languages_nodejs_testdata_services_simple_service_pb from "../../../../../languages/nodejs/testdata/services/simple/service_pb";

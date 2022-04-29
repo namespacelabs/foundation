@@ -5,12 +5,18 @@ import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 import "source-map-support/register"
 import yargs from "yargs/yargs";
 import * as i0 from "@namespacelabs.dev/foundation_languages_nodejs_testdata_services_simple/deps.fn"
+import * as i1 from "@namespacelabs.dev/foundation_languages_nodejs_testdata_services_numberformatter/deps.fn"
 
 // Returns a list of initialization errors.
 const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
 	const errors: unknown[] = [];
   try {
 		i0.wireService(server);
+	} catch (e) {
+		errors.push(e);
+	}
+  try {
+		i1.wireService(i1.Package.instantiateDeps(graph), server);
 	} catch (e) {
 		errors.push(e);
 	}
