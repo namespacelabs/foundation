@@ -337,8 +337,7 @@ func Return[V any](ctx context.Context, ev *ActionEvent, f func(context.Context)
 		ret, err = f(ctx)
 		return err
 	})
-	v.Done(callErr)
-	return ret, callErr
+	return ret, v.Done(callErr)
 }
 
 func (ev *ActionEvent) Log(ctx context.Context) {
