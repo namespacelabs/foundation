@@ -7,6 +7,7 @@ package frontend
 import (
 	"context"
 
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -52,9 +53,15 @@ type ProvisionPlan struct {
 	Provisioning *Invocation
 	Sidecars     []Container
 	Inits        []Container
+	Details      []Details
 
 	// Server only.
 	Naming *schema.Naming
+}
+
+type Details struct {
+	Name    string
+	Message proto.Message
 }
 
 type InvocationMount struct {

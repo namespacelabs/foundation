@@ -7,9 +7,13 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
@@ -20,10 +24,56 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+type detailsEntry struct {
+	For     *schema.Server
+	Name    string
+	Message proto.Message
+}
+
 func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
 	props, err := runtime.For(ctx, env).PrepareProvision(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	var details []detailsEntry
+
+	for k, srv := range stack.ParsedServers {
+		m := map[string]schema.PackageName{}
+
+		for _, dep := range srv.Deps {
+			for _, d := range dep.ProvisionPlan.Details {
+				// XXX make this more permissive in the future; if two extensions specifiy the same, it's ok.
+				if previous, ok := m[d.Name]; ok {
+					return nil, fnerrors.UserError(stack.Servers[k].Location,
+						"multiple nodes attempting to set the same detail %q: %q and %q",
+						d.Name, previous, dep.Package.PackageName())
+				}
+
+				m[d.Name] = dep.Package.PackageName()
+				details = append(details, detailsEntry{
+					stack.Servers[k].Proto(), d.Name, d.Message,
+				})
+			}
+		}
+	}
+
+	slices.SortFunc(details, func(a, b detailsEntry) bool {
+		if a.For.PackageName == b.For.PackageName {
+			return strings.Compare(a.Name, b.Name) < 0
+		}
+		return strings.Compare(a.For.PackageName, b.For.PackageName) < 0
+	})
+
+	for _, d := range details {
+		ditProps, err := frontend.ProvisionDetails(ctx, d.Name, env, d.For, d.Message)
+		if err != nil {
+			return nil, err
+		}
+
+		props.Definition = append(props.Definition, ditProps.GetDefinition()...)
+		props.ProvisionInput = append(props.ProvisionInput, ditProps.GetProvisionInput()...)
+		props.Extension = append(props.Extension, ditProps.GetExtension()...)
 	}
 
 	var invocations []compute.Computable[*protocol.ToolResponse]
@@ -75,6 +125,10 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 	ops := append([]*schema.Definition{}, r.props.Definition...)
 
 	extensionsPerServer := map[schema.PackageName][]*schema.DefExtension{}
+
+	for _, ext := range r.props.Extension {
+		extensionsPerServer[schema.PackageName(ext.For)] = append(extensionsPerServer[schema.PackageName(ext.For)], ext)
+	}
 
 	for k, handler := range r.handlers {
 		s := r.stack.Get(handler.For)

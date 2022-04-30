@@ -12,8 +12,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -25,10 +25,10 @@ type fetchSystemInfo struct {
 	devHost *schema.DevHost
 	env     *schema.Environment
 
-	compute.DoScoped[*client.SystemInfo] // DoScoped so the computation is deferred.
+	compute.DoScoped[*kubedef.SystemInfo] // DoScoped so the computation is deferred.
 }
 
-var _ compute.Computable[*client.SystemInfo] = &fetchSystemInfo{}
+var _ compute.Computable[*kubedef.SystemInfo] = &fetchSystemInfo{}
 
 func (f *fetchSystemInfo) Action() *tasks.ActionEvent {
 	return tasks.Action("kubernetes.fetch-system-info")
@@ -40,7 +40,7 @@ func (f *fetchSystemInfo) Inputs() *compute.In {
 
 func (f *fetchSystemInfo) Output() compute.Output { return compute.Output{NotCacheable: true} }
 
-func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*client.SystemInfo, error) {
+func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*kubedef.SystemInfo, error) {
 	var platforms uniquestrings.List
 
 	nodes, err := f.cli.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
@@ -48,9 +48,8 @@ func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*cli
 		return nil, err
 	}
 
-	sysInfo := &client.SystemInfo{}
+	sysInfo := &kubedef.SystemInfo{}
 
-	var eksClusterName string
 	for _, n := range nodes.Items {
 		platforms.Add(fmt.Sprintf("%s/%s", n.Status.NodeInfo.OperatingSystem, n.Status.NodeInfo.Architecture))
 
@@ -60,24 +59,7 @@ func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*cli
 
 		if clusterName, ok := n.Labels["alpha.eksctl.io/cluster-name"]; ok {
 			sysInfo.DetectedDistribution = "eks"
-			eksClusterName = clusterName
-		}
-	}
-
-	switch sysInfo.DetectedDistribution {
-	case "eks":
-		description, err := eks.DescribeCluster(ctx, f.devHost, f.env, eksClusterName)
-		if err != nil {
-			return nil, err
-		}
-
-		sysInfo.EksCluster = &client.EKSCluster{
-			Name: eksClusterName,
-			Arn:  *description.Cluster.Arn,
-		}
-
-		if description.Cluster.Identity != nil && description.Cluster.Identity.Oidc != nil {
-			sysInfo.EksCluster.OidcIssuer = *description.Cluster.Identity.Oidc.Issuer
+			sysInfo.EksClusterName = clusterName
 		}
 	}
 

@@ -1,0 +1,16 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.runtime.kubernetes.kubedef;
+
+option go_package = "namespacelabs.dev/foundation/runtime/kubernetes/kubedef";
+
+message SystemInfo {
+    repeated string node_platform         = 1;
+    string          detected_distribution = 2;  // k3d, eks, etc.
+
+    string eks_cluster_name = 3;  // Only set if distribution is eks.
+}

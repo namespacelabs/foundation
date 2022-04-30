@@ -16,10 +16,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/providers/aws/eks"
 	fniam "namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
@@ -40,25 +40,27 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return fnerrors.BadInputError("universe/aws/irsa only supports kubernetes")
 	}
 
-	sysInfo := &client.SystemInfo{}
-	if err := r.UnpackInput(sysInfo); err != nil {
+	serviceAccount := &kubedef.ServiceAccountDetails{}
+	if err := r.UnpackInput(serviceAccount); err != nil {
 		return err
 	}
 
-	// If we're not deploying to EKS, skip IAM role.
-	if sysInfo.DetectedDistribution != "eks" || sysInfo.EksCluster == nil {
+	eksCluster := &eks.EKSCluster{}
+	if ok, err := r.CheckUnpackInput(eksCluster); err != nil {
+		return err
+	} else if !ok {
 		return nil
 	}
 
-	if sysInfo.EksCluster.Arn == "" {
+	if eksCluster.Arn == "" {
 		return fnerrors.InternalError("eks_cluster.arn is missing")
 	}
 
-	if sysInfo.EksCluster.OidcIssuer == "" {
+	if eksCluster.OidcIssuer == "" {
 		return fnerrors.BadInputError("eks_cluster does not have an OIDC issuer assigned")
 	}
 
-	clusterArn, err := arn.Parse(sysInfo.EksCluster.Arn)
+	clusterArn, err := arn.Parse(eksCluster.Arn)
 	if err != nil {
 		return err
 	}
@@ -67,27 +69,18 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return fnerrors.BadInputError("eks_cluster.arn is missing account id")
 	}
 
-	serviceAccount := kubedef.MakeDeploymentId(r.Focus.Server) // XXX this should be an input.
-
-	// IAM roles have a maximum length of 64.
-	iamRole := fmt.Sprintf("foundation-%s-%s-%s-%s",
-		sysInfo.EksCluster.Name, r.Env.Name, r.Focus.Server.Name, r.Focus.Server.Id)
-	if len(iamRole) > 64 {
-		return fnerrors.InternalError("generated a role name that is too long (%d): %s", len(iamRole), iamRole)
-	}
-
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
 		For: schema.PackageName(r.Focus.Server.PackageName),
 		With: &kubedef.SpecExtension{
-			ServiceAccount:       serviceAccount,
-			EnsureServiceAccount: true,
+			ServiceAccount: serviceAccount.ServiceAccountName,
 			ServiceAccountAnnotation: []*kubedef.SpecExtension_Annotation{
-				{Key: "eks.amazonaws.com/role-arn", Value: fmt.Sprintf("arn:aws:iam::%s:role/%s", clusterArn.AccountID, iamRole)},
+				{Key: "eks.amazonaws.com/role-arn", Value: fmt.Sprintf("arn:aws:iam::%s:role/%s",
+					clusterArn.AccountID, eksCluster.ComputedIamRoleName)},
 			},
 		},
 	})
 
-	oidcProvider := strings.TrimPrefix(sysInfo.EksCluster.OidcIssuer, "https://")
+	oidcProvider := strings.TrimPrefix(eksCluster.OidcIssuer, "https://")
 
 	namespace := kubetool.FromRequest(r).Namespace
 
@@ -117,10 +110,14 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 
 	out.Definitions = append(out.Definitions, makeRole{
 		&fniam.OpEnsureRole{
-			Name: iamRole,
+			RoleName: eksCluster.ComputedIamRoleName,
 			Description: fmt.Sprintf("Foundation-managed IAM role for service account %s/%s in EKS cluster %s",
-				namespace, serviceAccount, sysInfo.EksCluster.Name),
+				namespace, serviceAccount, eksCluster.Name),
 			AssumeRolePolicyJson: string(policyBytes),
+			Tag: []*fniam.Tag{
+				{Key: "alpha.foundation.namespacelabs.com/server-id", Value: r.Focus.Server.Id},
+				{Key: "alpha.foundation.namespacelabs.com/server-package-name", Value: r.Focus.Server.PackageName},
+			},
 		},
 	})
 
@@ -146,7 +143,7 @@ func (m makeRole) ToDefinition(scope ...schema.PackageName) (*schema.Definition,
 	}
 
 	return &schema.Definition{
-		Description: fmt.Sprintf("AWS IAM role %s", m.Name),
+		Description: fmt.Sprintf("AWS IAM role %s", m.RoleName),
 		Impl:        packed,
 		Scope:       schema.Strs(scope...),
 	}, nil

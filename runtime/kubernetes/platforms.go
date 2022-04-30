@@ -8,18 +8,18 @@ import (
 	"context"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
-func (r k8sRuntime) SystemInfo(ctx context.Context) (*client.SystemInfo, error) {
+func (r k8sRuntime) SystemInfo(ctx context.Context) (*kubedef.SystemInfo, error) {
 	raw, err := r.systemInfo.Wait(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return raw.Value.(*client.SystemInfo), nil
+	return raw.Value.(*kubedef.SystemInfo), nil
 }
 
 func (r k8sRuntime) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {

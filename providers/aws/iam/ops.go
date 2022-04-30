@@ -18,8 +18,8 @@ import (
 
 func RegisterGraphHandlers() {
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, def *schema.Definition, m *OpEnsureRole) (*ops.DispatcherResult, error) {
-		if m.AssumeRolePolicyJson == "" || m.Name == "" {
-			return nil, fnerrors.BadInputError("both name and assume_role_policy_json are required")
+		if m.AssumeRolePolicyJson == "" || m.RoleName == "" {
+			return nil, fnerrors.BadInputError("both role_name and assume_role_policy_json are required")
 		}
 
 		sesh, _, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), env.Proto())
@@ -28,12 +28,20 @@ func RegisterGraphHandlers() {
 		}
 
 		input := &iam.CreateRoleInput{
-			RoleName:                 &m.Name,
+			RoleName:                 &m.RoleName,
 			AssumeRolePolicyDocument: &m.AssumeRolePolicyJson,
 		}
 
 		if m.Description != "" {
 			input.Description = &m.Description
+		}
+
+		for _, tag := range m.Tag {
+			key := tag.Key
+			value := tag.Value
+			input.Tags = append(input.Tags, types.Tag{
+				Key: &key, Value: &value,
+			})
 		}
 
 		iamcli := iam.NewFromConfig(sesh)
@@ -42,7 +50,7 @@ func RegisterGraphHandlers() {
 			var e *types.EntityAlreadyExistsException
 			if errors.As(err, &e) {
 				if _, err := iamcli.UpdateAssumeRolePolicy(ctx, &iam.UpdateAssumeRolePolicyInput{
-					RoleName:       &m.Name,
+					RoleName:       &m.RoleName,
 					PolicyDocument: &m.AssumeRolePolicyJson,
 				}); err != nil {
 					return nil, fnerrors.InvocationError("IAM role already existed, and failed to update its policy: %w", err)

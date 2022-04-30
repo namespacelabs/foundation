@@ -94,6 +94,10 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 		return Server{}, fnerrors.UserError(t.Location, "servers can't specify a custom provisioning phase")
 	}
 
+	if len(pdata.Details) > 0 {
+		return Server{}, fnerrors.UserError(t.Location, "servers can't specify a custom details")
+	}
+
 	t.entry.ServerNaming = pdata.Naming
 
 	return t, nil

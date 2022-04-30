@@ -242,25 +242,22 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 				tmpl = tmpl.WithAnnotations(m)
 			}
 
-			specifiedAccount := specExt.ServiceAccount
-
 			if specExt.EnsureServiceAccount {
 				createServiceAccount = true
-				if specifiedAccount == "" {
-					specifiedAccount = kubedef.MakeDeploymentId(srv.Proto())
-				}
-				serviceAccountAnnotations = append(serviceAccountAnnotations, specExt.ServiceAccountAnnotation...)
-			} else {
-				if len(specExt.ServiceAccountAnnotation) > 0 {
-					return fnerrors.UserError(server.Server.Location, "can't set service account annotations without ensure_service_account")
+				if specExt.ServiceAccount == "" {
+					return fnerrors.UserError(server.Server.Location, "ensure_service_account requires service_account to be set")
 				}
 			}
 
-			if serviceAccount != "" && serviceAccount != specifiedAccount {
-				return fnerrors.UserError(server.Server.Location, "incompatible service accounts defined, %q vs %q", serviceAccount, specifiedAccount)
-			}
+			serviceAccountAnnotations = append(serviceAccountAnnotations, specExt.ServiceAccountAnnotation...)
 
-			serviceAccount = specifiedAccount
+			if specExt.ServiceAccount != "" {
+				if serviceAccount != "" && serviceAccount != specExt.ServiceAccount {
+					return fnerrors.UserError(server.Server.Location, "incompatible service accounts defined, %q vs %q",
+						serviceAccount, specExt.ServiceAccount)
+				}
+				serviceAccount = specExt.ServiceAccount
+			}
 
 		case input.Impl.MessageIs(containerExt):
 			if err := input.Impl.UnmarshalTo(containerExt); err != nil {
@@ -422,6 +419,10 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 				WithLabels(labels).
 				WithAnnotations(annotations),
 		})
+	} else {
+		if len(serviceAccountAnnotations) > 0 {
+			return fnerrors.UserError(server.Server.Location, "can't set service account annotations without ensure_service_account")
+		}
 	}
 
 	// We don't deploy managed deployments or statefulsets in tests, as these are one-shot

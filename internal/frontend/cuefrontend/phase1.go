@@ -156,6 +156,31 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 		slices.SortFunc(pdata.Naming.AdditionalTlsManaged, sortAdditional)
 	}
 
+	if details := lookupTransition(vv, "details"); details.Exists() {
+		it, err := details.Val.Fields()
+		if err != nil {
+			return pdata, fnerrors.UserError(nil, "expected `details` to be a struct: %w", err)
+		}
+
+		for it.Next() {
+			name := it.Label()
+
+			msg := frontend.DetailsOf(name)
+			if msg == nil {
+				return pdata, fnerrors.UserError(nil, "don't know how to set details of %q", name)
+			}
+
+			if err := (&fncue.CueV{Val: it.Value()}).DecodeToProtoMessage(msg); err != nil {
+				return pdata, fnerrors.UserError(nil, "failed to unmarshal details of %q: %w", name, err)
+			}
+
+			pdata.Details = append(pdata.Details, frontend.Details{
+				Name:    name,
+				Message: msg,
+			})
+		}
+	}
+
 	return pdata, nil
 }
 

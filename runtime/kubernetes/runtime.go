@@ -24,8 +24,10 @@ import (
 	"k8s.io/client-go/tools/portforward"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -57,6 +59,37 @@ func Register() {
 	runtime.Register("kubernetes", func(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (runtime.Runtime, error) {
 		return New(ctx, ws, devHost, env)
 	})
+
+	frontend.RegisterDetails("namespacelabs.dev/foundation/std/runtime/kubernetes", &kubedef.RuntimeDetails{},
+		func(ctx context.Context, env ops.Environment, srv *schema.Server, d *kubedef.RuntimeDetails) (*rtypes.DetailsProps, error) {
+			if !d.EnsureServiceAccount {
+				return nil, nil
+			}
+
+			serviceAccount := kubedef.MakeDeploymentId(srv)
+
+			saDetails := &kubedef.ServiceAccountDetails{ServiceAccountName: serviceAccount}
+			packedSaDetails, err := anypb.New(saDetails)
+			if err != nil {
+				return nil, err
+			}
+
+			packedExt, err := anypb.New(&kubedef.SpecExtension{
+				EnsureServiceAccount: true,
+				ServiceAccount:       serviceAccount,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			return &rtypes.DetailsProps{
+				ProvisionInput: []*anypb.Any{packedSaDetails},
+				Extension: []*schema.DefExtension{{
+					For:  srv.PackageName,
+					Impl: packedExt,
+				}},
+			}, nil
+		})
 }
 
 func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (k8sRuntime, error) {
@@ -84,7 +117,7 @@ func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env
 		runtimeCache.cache[key] = k8sRuntime{
 			cli,
 			boundEnv{ws, env, cfg},
-			compute.InternalGetFuture[*client.SystemInfo](ctx, &fetchSystemInfo{
+			compute.InternalGetFuture[*kubedef.SystemInfo](ctx, &fetchSystemInfo{
 				cli:     cli,
 				cfg:     cfg,
 				devHost: devHost,

@@ -14,6 +14,7 @@ server: fn.#Server & {
 		"namespacelabs.dev/foundation/std/grpc/logging",
 		"namespacelabs.dev/foundation/std/monitoring/tracing/jaeger",
 		"namespacelabs.dev/foundation/universe/go/panicparse",
+		"namespacelabs.dev/foundation/universe/aws/irsa",
 	]
 }
 

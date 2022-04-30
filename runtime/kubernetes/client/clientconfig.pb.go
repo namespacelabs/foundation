@@ -81,132 +81,6 @@ func (x *HostEnv) GetContext() string {
 	return ""
 }
 
-type SystemInfo struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	NodePlatform         []string    `protobuf:"bytes,1,rep,name=node_platform,json=nodePlatform,proto3" json:"node_platform,omitempty"`
-	DetectedDistribution string      `protobuf:"bytes,2,opt,name=detected_distribution,json=detectedDistribution,proto3" json:"detected_distribution,omitempty"` // k3d, eks, etc.
-	EksCluster           *EKSCluster `protobuf:"bytes,3,opt,name=eks_cluster,json=eksCluster,proto3" json:"eks_cluster,omitempty"`                               // Only set if distribution is eks.
-}
-
-func (x *SystemInfo) Reset() {
-	*x = SystemInfo{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_kubernetes_client_clientconfig_proto_msgTypes[1]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *SystemInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SystemInfo) ProtoMessage() {}
-
-func (x *SystemInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_kubernetes_client_clientconfig_proto_msgTypes[1]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SystemInfo.ProtoReflect.Descriptor instead.
-func (*SystemInfo) Descriptor() ([]byte, []int) {
-	return file_runtime_kubernetes_client_clientconfig_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *SystemInfo) GetNodePlatform() []string {
-	if x != nil {
-		return x.NodePlatform
-	}
-	return nil
-}
-
-func (x *SystemInfo) GetDetectedDistribution() string {
-	if x != nil {
-		return x.DetectedDistribution
-	}
-	return ""
-}
-
-func (x *SystemInfo) GetEksCluster() *EKSCluster {
-	if x != nil {
-		return x.EksCluster
-	}
-	return nil
-}
-
-type EKSCluster struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Name       string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Arn        string `protobuf:"bytes,2,opt,name=arn,proto3" json:"arn,omitempty"`
-	OidcIssuer string `protobuf:"bytes,3,opt,name=oidc_issuer,json=oidcIssuer,proto3" json:"oidc_issuer,omitempty"`
-}
-
-func (x *EKSCluster) Reset() {
-	*x = EKSCluster{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_kubernetes_client_clientconfig_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *EKSCluster) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*EKSCluster) ProtoMessage() {}
-
-func (x *EKSCluster) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_kubernetes_client_clientconfig_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use EKSCluster.ProtoReflect.Descriptor instead.
-func (*EKSCluster) Descriptor() ([]byte, []int) {
-	return file_runtime_kubernetes_client_clientconfig_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *EKSCluster) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *EKSCluster) GetArn() string {
-	if x != nil {
-		return x.Arn
-	}
-	return ""
-}
-
-func (x *EKSCluster) GetOidcIssuer() string {
-	if x != nil {
-		return x.OidcIssuer
-	}
-	return ""
-}
-
 var File_runtime_kubernetes_client_clientconfig_proto protoreflect.FileDescriptor
 
 var file_runtime_kubernetes_client_clientconfig_proto_rawDesc = []byte{
@@ -219,27 +93,11 @@ var file_runtime_kubernetes_client_clientconfig_proto_rawDesc = []byte{
 	0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6b, 0x75,
 	0x62, 0x65, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74,
 	0x65, 0x78, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65,
-	0x78, 0x74, 0x22, 0xb2, 0x01, 0x0a, 0x0a, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x49, 0x6e, 0x66,
-	0x6f, 0x12, 0x23, 0x0a, 0x0d, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f,
-	0x72, 0x6d, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x50, 0x6c,
-	0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d, 0x12, 0x33, 0x0a, 0x15, 0x64, 0x65, 0x74, 0x65, 0x63, 0x74,
-	0x65, 0x64, 0x5f, 0x64, 0x69, 0x73, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x69, 0x6f, 0x6e, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x14, 0x64, 0x65, 0x74, 0x65, 0x63, 0x74, 0x65, 0x64, 0x44,
-	0x69, 0x73, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x4a, 0x0a, 0x0b, 0x65,
-	0x6b, 0x73, 0x5f, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x29, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x72, 0x75,
-	0x6e, 0x74, 0x69, 0x6d, 0x65, 0x2e, 0x6b, 0x75, 0x62, 0x65, 0x72, 0x6e, 0x65, 0x74, 0x65, 0x73,
-	0x2e, 0x45, 0x4b, 0x53, 0x43, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x52, 0x0a, 0x65, 0x6b, 0x73,
-	0x43, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x22, 0x53, 0x0a, 0x0a, 0x45, 0x4b, 0x53, 0x43, 0x6c,
-	0x75, 0x73, 0x74, 0x65, 0x72, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x61, 0x72, 0x6e,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x61, 0x72, 0x6e, 0x12, 0x1f, 0x0a, 0x0b, 0x6f,
-	0x69, 0x64, 0x63, 0x5f, 0x69, 0x73, 0x73, 0x75, 0x65, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x0a, 0x6f, 0x69, 0x64, 0x63, 0x49, 0x73, 0x73, 0x75, 0x65, 0x72, 0x42, 0x38, 0x5a, 0x36,
-	0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65,
-	0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x72, 0x75, 0x6e,
-	0x74, 0x69, 0x6d, 0x65, 0x2f, 0x6b, 0x75, 0x62, 0x65, 0x72, 0x6e, 0x65, 0x74, 0x65, 0x73, 0x2f,
-	0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x78, 0x74, 0x42, 0x38, 0x5a, 0x36, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c,
+	0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x2f, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x2f, 0x6b, 0x75, 0x62, 0x65, 0x72,
+	0x6e, 0x65, 0x74, 0x65, 0x73, 0x2f, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -254,19 +112,16 @@ func file_runtime_kubernetes_client_clientconfig_proto_rawDescGZIP() []byte {
 	return file_runtime_kubernetes_client_clientconfig_proto_rawDescData
 }
 
-var file_runtime_kubernetes_client_clientconfig_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_runtime_kubernetes_client_clientconfig_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_runtime_kubernetes_client_clientconfig_proto_goTypes = []interface{}{
-	(*HostEnv)(nil),    // 0: foundation.runtime.kubernetes.HostEnv
-	(*SystemInfo)(nil), // 1: foundation.runtime.kubernetes.SystemInfo
-	(*EKSCluster)(nil), // 2: foundation.runtime.kubernetes.EKSCluster
+	(*HostEnv)(nil), // 0: foundation.runtime.kubernetes.HostEnv
 }
 var file_runtime_kubernetes_client_clientconfig_proto_depIdxs = []int32{
-	2, // 0: foundation.runtime.kubernetes.SystemInfo.eks_cluster:type_name -> foundation.runtime.kubernetes.EKSCluster
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_runtime_kubernetes_client_clientconfig_proto_init() }
@@ -287,30 +142,6 @@ func file_runtime_kubernetes_client_clientconfig_proto_init() {
 				return nil
 			}
 		}
-		file_runtime_kubernetes_client_clientconfig_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SystemInfo); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_runtime_kubernetes_client_clientconfig_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EKSCluster); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -318,7 +149,7 @@ func file_runtime_kubernetes_client_clientconfig_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_runtime_kubernetes_client_clientconfig_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

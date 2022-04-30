@@ -37,18 +37,26 @@ type AllHandlers interface {
 	Invoke(context.Context, Request) (*protocol.InvokeResponse, error)
 }
 
-func (p Request) UnpackInput(msg proto.Message) error {
+func (p Request) CheckUnpackInput(msg proto.Message) (bool, error) {
 	if msg == nil {
-		return errors.New("msg is nil")
+		return false, errors.New("msg is nil")
 	}
 
 	for _, env := range p.r.Input {
 		if env.MessageIs(msg) {
-			return env.UnmarshalTo(msg)
+			return true, env.UnmarshalTo(msg)
 		}
 	}
 
-	return fnerrors.InternalError("no such input: %s", msg.ProtoReflect().Descriptor().FullName())
+	return false, nil
+}
+
+func (p Request) UnpackInput(msg proto.Message) error {
+	has, err := p.CheckUnpackInput(msg)
+	if err == nil && !has {
+		return fnerrors.InternalError("no such input: %s", msg.ProtoReflect().Descriptor().FullName())
+	}
+	return err
 }
 
 // PackageOwner returns the name of the package that defined this tool.

@@ -1,0 +1,21 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.providers.aws.eks;
+
+option go_package = "namespacelabs.dev/foundation/providers/aws/eks";
+
+message RuntimeDetails {
+    bool describe_if_eks = 1;
+}
+
+message EKSCluster {
+    string name        = 1;
+    string arn         = 2;
+    string oidc_issuer = 3;
+
+    string computed_iam_role_name = 4;  // This role is not instantiated by default.
+}
