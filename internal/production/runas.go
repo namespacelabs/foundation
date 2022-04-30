@@ -17,11 +17,16 @@ func NonRootRunAs(server string) *runtime.RunAs {
 		return nil
 	}
 
-	return NonRootRunAsWithID(*srv.NonRootUserID)
+	return NonRootRunAsWithID(*srv.NonRootUserID, srv.FSGroup)
 }
 
-func NonRootRunAsWithID(id int) *runtime.RunAs {
-	return &runtime.RunAs{
+func NonRootRunAsWithID(id int, fsGroup *int) *runtime.RunAs {
+	runAs := &runtime.RunAs{
 		UserID: fmt.Sprintf("%d", id),
 	}
+	if fsGroup != nil {
+		x := fmt.Sprintf("%d", *fsGroup)
+		runAs.FSGroup = &x
+	}
+	return runAs
 }

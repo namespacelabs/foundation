@@ -79,10 +79,9 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env ops.Environment, conf
 		images := []compute.Computable[oci.Image]{nodejsImage, devControllerImage}
 
 		return oci.MergeImageLayers(images...), nil
-	} else {
-
-		return nodejsImage, nil
 	}
+
+	return nodejsImage, nil
 }
 
 func nodeEnv(env ops.Environment) string {
@@ -121,7 +120,6 @@ func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.Configuration) (llb.State,
 		out = buildBase
 	} else {
 		// For non-dev builds creating an optimized, small image.
-
 		stateOptions := []llb.StateOption{
 			llbutil.CopyFrom(buildBase, filepath.Join(appRootPath, yarnRoot, "node_modules"), filepath.Join(appRootPath, yarnRoot, "node_modules")),
 		}

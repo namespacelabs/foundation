@@ -116,7 +116,8 @@ type ServerRunOpts struct {
 }
 
 type RunAs struct {
-	UserID string
+	UserID  string
+	FSGroup *string
 }
 
 type SidecarRunOpts struct {

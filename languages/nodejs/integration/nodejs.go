@@ -143,7 +143,8 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server prov
 		yarnRoot:   yarnRoot,
 		serverEnv:  server.Env(),
 		isDevBuild: isDevBuild,
-		isFocus:    isFocus}, nil
+		isFocus:    isFocus,
+	}, nil
 }
 
 func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
@@ -190,7 +191,9 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 	} else {
 		run.Command = []string{"node", filepath.Join(srv.Location.Rel(), "main.fn.js")}
 		run.ReadOnlyFilesystem = true
-		run.RunAs = production.NonRootRunAsWithID(production.NonRootUserID)
+		// See internal/production/images.go.
+		fsGroup := production.DefaultFSGroup
+		run.RunAs = production.NonRootRunAsWithID(production.DefaultNonRootUserID, &fsGroup)
 	}
 	run.WorkingDir = "/app"
 	return nil

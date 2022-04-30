@@ -144,10 +144,19 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	if server.RunAs != nil {
 		userId, err := strconv.ParseInt(server.RunAs.UserID, 10, 64)
 		if err != nil {
-			return fnerrors.InternalError("expected server.RunAs to be an int64: %w", err)
+			return fnerrors.InternalError("expected server.RunAs.UserID to be an int64: %w", err)
 		}
 
 		podSecCtx = podSecCtx.WithRunAsUser(userId).WithRunAsNonRoot(true)
+
+		if server.RunAs.FSGroup != nil {
+			fsGroup, err := strconv.ParseInt(*server.RunAs.FSGroup, 10, 64)
+			if err != nil {
+				return fnerrors.InternalError("expected server.RunAs.FSGroup to be an int64: %w", err)
+			}
+
+			podSecCtx.WithFSGroup(fsGroup)
+		}
 	}
 
 	name := serverCtrName(server.Server.Proto())

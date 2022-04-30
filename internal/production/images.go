@@ -22,7 +22,8 @@ const (
 	Distroless = "distroless"
 	Alpine     = "alpine"
 
-	NonRootUserID = 65000
+	DefaultNonRootUserID = 65000
+	DefaultFSGroup       = 65000
 )
 
 // Returns a Computable[v1.Image]
@@ -80,8 +81,8 @@ func ServerImageLLB(name string, target specs.Platform) (llb.State, error) {
 
 func PrepareImage(base llb.State, platform specs.Platform) llb.State {
 	return base.
-		Run(llb.Shlexf("addgroup -g %d nonroot", NonRootUserID)).
-		Run(llb.Shlexf("adduser -h /home/nonroot -D -s /sbin/nologin -G nonroot -u %d nonroot", NonRootUserID)).
+		Run(llb.Shlexf("addgroup -g %d nonroot", DefaultNonRootUserID)).
+		Run(llb.Shlexf("adduser -h /home/nonroot -D -s /sbin/nologin -G nonroot -u %d nonroot", DefaultNonRootUserID)).
 		Root()
 }
 

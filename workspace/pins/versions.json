@@ -18,11 +18,13 @@
   "serverBases": {
     "distroless": {
       "base": "gcr.io/distroless/static:nonroot",
-      "nonRootUserId": 65532
+      "nonRootUserId": 65532,
+      "fsGroup": 65532
     },
     "alpine": {
       "base": "docker.io/library/alpine:3.14",
-      "nonRootUserId": 65000
+      "nonRootUserId": 65000,
+      "fsGroup": 65000
     }
   }
 }
