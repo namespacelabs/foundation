@@ -70,6 +70,20 @@ func Register() {
 
 		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
 	})
+
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNodeStub) (*ops.DispatcherResult, error) {
+		wenv, ok := env.(workspace.Packages)
+		if !ok {
+			return nil, errors.New("workspace.Packages required")
+		}
+
+		pkg, err := wenv.LoadByName(ctx, schema.PackageName(x.Node.PackageName))
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, generateNodeImplStub(ctx, pkg, x.Filename, x.Node)
+	})
 }
 
 func useDevBuild(env *schema.Environment) bool {
@@ -285,30 +299,32 @@ func (impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.
 		}
 	}
 
-	err := tidyPackageJson(ctx, pkgs, p.Location, depPkgNames)
-	if err != nil {
-		return err
-	}
-
-	return maybeGenerateImplStub(ctx, p)
+	return tidyPackageJson(ctx, pkgs, p.Location, depPkgNames)
 }
 
-func maybeGenerateImplStub(ctx context.Context, p *workspace.Package) error {
-	if len(p.Services) == 0 {
+func maybeGenerateNodeImplStub(pkg *workspace.Package, dl *defs.DefList) {
+	if len(pkg.Services) == 0 {
 		// This is not an error, the user might have not added anything yet.
-		return nil
+		return
 	}
 
-	implFn := filepath.Join(p.Location.Rel(), implFileName)
+	implFn := filepath.Join(pkg.Location.Rel(), implFileName)
 
-	_, err := fs.Stat(p.Location.Module.ReadWriteFS(), implFn)
+	_, err := fs.Stat(pkg.Location.Module.ReadWriteFS(), implFn)
 	if err == nil || !os.IsNotExist(err) {
 		// File alreasy exists, do nothing
-		return nil
+		return
 	}
 
+	dl.Add("Generate Nodejs node stub", &OpGenNodeStub{
+		Node:     pkg.Node(),
+		Filename: implFn,
+	}, pkg.PackageName())
+}
+
+func generateNodeImplStub(ctx context.Context, pkg *workspace.Package, filename string, n *schema.Node) error {
 	tmplOptions := nodeImplTmplOptions{}
-	for key, srv := range p.Services {
+	for key, srv := range pkg.Services {
 		srvNameParts := strings.Split(key, ".")
 		srvName := srvNameParts[len(srvNameParts)-1]
 		tmplOptions.ServiceServerName = fmt.Sprintf("I%sServer", srvName)
@@ -324,7 +340,7 @@ func maybeGenerateImplStub(ctx context.Context, p *workspace.Package) error {
 		break
 	}
 
-	return generateSource(ctx, p.Location.Module.ReadWriteFS(), implFn, tmpl, "Node stub", tmplOptions)
+	return generateSource(ctx, pkg.Location.Module.ReadWriteFS(), filename, tmpl, "Node stub", tmplOptions)
 }
 
 func fileNameForService(srvName string, descriptors []*descriptorpb.FileDescriptorProto) (string, error) {
@@ -477,6 +493,8 @@ func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
 
 func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
 	var dl defs.DefList
+
+	maybeGenerateNodeImplStub(pkg, &dl)
 
 	dl.Add("Generate Nodejs node dependencies", &OpGenNode{
 		Node:       pkg.Node(),

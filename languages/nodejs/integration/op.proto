@@ -19,3 +19,8 @@ message OpGenNode {
     foundation.schema.Node node                 = 1;
     repeated foundation.schema.Node loaded_node = 2;
 }
+
+message OpGenNodeStub {
+    foundation.schema.Node node     = 1;
+    string                 filename = 2;
+}
