@@ -39,7 +39,9 @@ func newReader(ctx context.Context) (*rawReader, error) {
 	}
 	r.restore = func() {
 		cr.Cancel()
-		current.Reset()
+		if err := current.Reset(); err != nil {
+			fmt.Fprintf(console.Errors(ctx), "Error : %v:", err)
+		}
 	}
 
 	go func() {
@@ -84,7 +86,12 @@ func termCommands(ctx context.Context, rt runtime.Runtime, serverProtos []*schem
 			if string(c) == "l" && !observeStarted {
 				observeStarted = true
 				for _, server := range serverProtos {
-					go observeLogs(ctx, rt, server)
+					server := server
+					go func() {
+						if err := observeLogs(ctx, rt, server); err != nil {
+							fmt.Fprintf(console.Errors(ctx), "Error getting logs: %v:", err)
+						}
+					}()
 				}
 				// TODO handle multiple keystrokes.
 			}
