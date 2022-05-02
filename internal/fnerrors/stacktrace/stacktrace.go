@@ -1,16 +1,19 @@
-// Copyright 2022 Namespace Labs Inc; All rights reserved.
-// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
-// available at http://github.com/namespacelabs/foundation
+// Copyright (c) 2019 Sentry (https://sentry.io) and individual contributors.
+// All rights reserved.
 
-// Adapted from Sentry's codebase.
+// Adapted from Sentry's codebase with a different filter function customized for
+// foundation in addition to removing several sentry specific struct fields and
+// associated logic.
 
-package fnerrors
+package stacktrace
 
 import (
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
+
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 const unknown string = "unknown"
@@ -49,7 +52,7 @@ func NewErrorStacktrace(err error) (*ErrorStacktrace, error) {
 	}
 
 	if len(pcs) == 0 {
-		return nil, BadInputError("failed to extract program counters from err: %v", err)
+		return nil, fnerrors.BadInputError("failed to extract program counters from err: %v", err)
 	}
 
 	frames := extractFrames(pcs)

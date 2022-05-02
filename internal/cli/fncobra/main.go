@@ -277,16 +277,17 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		tel.RecordError(ctx, err)
 		_ = bundle.WriteError(ctx, err)
 
-		panic(Exit{exitCode})
+		// Ensures graceful invocation of deferred routines in the block above before we exit.
+		panic(exitWithCode{exitCode})
 	}
 }
 
-type Exit struct{ Code int }
+type exitWithCode struct{ Code int }
 
 // exit code handler
 func handleExit() {
 	if e := recover(); e != nil {
-		if exit, ok := e.(Exit); ok {
+		if exit, ok := e.(exitWithCode); ok {
 			os.Exit(exit.Code)
 		}
 		panic(e) // not an Exit, bubble up
