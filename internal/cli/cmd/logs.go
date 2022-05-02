@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/cmd/logs"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -45,7 +46,7 @@ func NewLogsCmd() *cobra.Command {
 			cancel := console.SetIdleLabel(ctx, "listening for deployment changes")
 			defer cancel()
 
-			return observeLogs(ctx, rt, server.Proto())
+			return logs.ObserveLogs(ctx, rt, server.Proto())
 		}),
 	}
 

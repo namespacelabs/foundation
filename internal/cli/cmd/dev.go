@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/devworkflow"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/cli/cmd/logs"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
 	"namespacelabs.dev/foundation/provision"
@@ -141,7 +142,7 @@ func NewDevCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				go termCommands(ctxWithCancel, runtime.For(ctx, env), serverProtos, func() { cancel(); onShutdown() })
+				go logs.TermCommands(ctxWithCancel, runtime.For(ctx, env), serverProtos, func() { cancel(); onShutdown() })
 
 				if devWebServer {
 					webPort := port + 1

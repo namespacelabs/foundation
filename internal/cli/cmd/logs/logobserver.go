@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package cmd
+package logs
 
 import (
 	"context"
@@ -20,53 +20,17 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type rawReader struct {
-	input   chan byte
-	errors  chan error
-	cancel  func() bool
-	restore func()
-}
-
-func newReader(ctx context.Context) (*rawReader, error) {
-	cr, err := cancelreader.NewReader(os.Stdin)
-	if err != nil {
-		return nil, err
-	}
-
-	r := &rawReader{
-		input:  make(chan byte),
-		cancel: cr.Cancel,
-	}
-	current := cons.Current()
-	if err := current.SetRaw(); err != nil {
-		return nil, err
-	}
-	r.restore = func() {
-		cr.Cancel()
-		if err := current.Reset(); err != nil {
-			fmt.Fprintf(console.Errors(ctx), "Error : %v:", err)
-		}
-	}
-
-	go func() {
-		var buf [256]byte
-		for {
-			_, err := cr.Read(buf[:])
-			if err != nil {
-				r.errors <- err
-				return
-			}
-			r.input <- buf[0]
+// TermCommands processes user commands issued from the terminal.
+// On successful exit, the terminal is reset to its original state and `onDone()` callback is called.
+func TermCommands(ctx context.Context, rt runtime.Runtime, serverProtos []*schema.Server, onDone func()) {
+	defer func() {
+		if ctx.Err() == nil {
+			onDone()
 		}
 	}()
-	return r, nil
-}
-
-func termCommands(ctx context.Context, rt runtime.Runtime, serverProtos []*schema.Server, onExit func()) {
 	r, err := newReader(ctx)
 	if err != nil {
 		fmt.Fprintln(console.Errors(ctx), err)
-		onExit()
 		return
 	}
 	defer r.restore()
@@ -76,15 +40,12 @@ func termCommands(ctx context.Context, rt runtime.Runtime, serverProtos []*schem
 		select {
 		case err := <-r.errors:
 			fmt.Fprintf(console.Errors(ctx), "Error while reading from Stdin: %v:", err)
-			onExit()
 			return
 		case c := <-r.input:
 			if int(c) == 3 {
-				onExit()
 				return
 			}
 			if string(c) == "q" {
-				onExit()
 				return
 			}
 			if string(c) == "l" && !observeStarted {
@@ -92,7 +53,7 @@ func termCommands(ctx context.Context, rt runtime.Runtime, serverProtos []*schem
 				for _, server := range serverProtos {
 					server := server
 					go func() {
-						if err := observeLogs(ctx, rt, server); err != nil {
+						if err := ObserveLogs(ctx, rt, server); err != nil {
 							fmt.Fprintf(console.Errors(ctx), "Error getting logs: %v:", err)
 						}
 					}()
@@ -107,8 +68,8 @@ func termCommands(ctx context.Context, rt runtime.Runtime, serverProtos []*schem
 	}
 }
 
-// observeLogs observes a given server in a given runtime and writes the logs to `console.Output`.
-func observeLogs(ctx context.Context, rt runtime.Runtime, serverProto *schema.Server) error {
+// ObserveLogs observes a given server in a given runtime and writes the logs to `console.Output`.
+func ObserveLogs(ctx context.Context, rt runtime.Runtime, serverProto *schema.Server) error {
 	streams := map[string]*logStream{}
 	var mu sync.Mutex
 	return rt.Observe(ctx, serverProto, runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) error {
@@ -154,6 +115,48 @@ func observeLogs(ctx context.Context, rt runtime.Runtime, serverProto *schema.Se
 
 		return nil
 	})
+}
+
+type rawReader struct {
+	input   chan byte
+	errors  chan error
+	cancel  func() bool
+	restore func()
+}
+
+func newReader(ctx context.Context) (*rawReader, error) {
+	cr, err := cancelreader.NewReader(os.Stdin)
+	if err != nil {
+		return nil, err
+	}
+
+	r := &rawReader{
+		input:  make(chan byte),
+		cancel: cr.Cancel,
+	}
+	current := cons.Current()
+	if err := current.SetRaw(); err != nil {
+		return nil, err
+	}
+	r.restore = func() {
+		cr.Cancel()
+		if err := current.Reset(); err != nil {
+			fmt.Fprintf(console.Errors(ctx), "Error : %v:", err)
+		}
+	}
+
+	go func() {
+		var buf [256]byte
+		for {
+			_, err := cr.Read(buf[:])
+			if err != nil {
+				r.errors <- err
+				return
+			}
+			r.input <- buf[0]
+		}
+	}()
+	return r, nil
 }
 
 type logStream struct {
