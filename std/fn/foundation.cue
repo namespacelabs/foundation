@@ -22,7 +22,7 @@ _#Node: {
 
 	on?: {
 		prepare?: {
-			internal: string
+			invokeInternal: string
 		}
 	}
 

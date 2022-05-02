@@ -3,7 +3,6 @@ import (
 	"namespacelabs.dev/foundation/std/fn:inputs"
 )
 
-
 $typesProto: inputs.#Proto & {
 	source: "types.proto"
 }
@@ -17,7 +16,7 @@ extension: fn.#Extension & {
 
 	on: {
 		prepare: {
-			internal: "namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions"
+			invokeInternal: "namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions"
 		}
 	}
 

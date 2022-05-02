@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
@@ -40,7 +41,11 @@ type ParsedNode struct {
 	Package       *workspace.Package
 	ProvisionPlan frontend.ProvisionPlan
 	Allocations   []frontend.ValueWithPath
-	PrepareProps  frontend.PrepareProps
+	PrepareProps  struct {
+		ProvisionInput []*anypb.Any
+		Definition     []*schema.Definition
+		Extension      []*schema.DefExtension
+	}
 }
 
 func (stack *Stack) Proto() *schema.Stack {
@@ -211,7 +216,7 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Package, state *eval.AllocState) (*ParsedNode, error) {
 	var combinedProps frontend.PrepareProps
 	for _, hook := range n.PrepareHooks {
-		props, err := frontend.InvokePrepareHook(ctx, hook.Internal, server.Env(), server.Proto())
+		props, err := frontend.InvokePrepareHook(ctx, hook.InvokeInternal, server.Env(), server.Proto())
 		if err != nil {
 			return nil, fnerrors.Wrap(n.Location, err)
 		}
@@ -220,9 +225,7 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 			continue
 		}
 
-		combinedProps.ProvisionInput = append(combinedProps.ProvisionInput, props.ProvisionInput...)
-		combinedProps.Definition = append(combinedProps.Definition, props.Definition...)
-		combinedProps.Extension = append(combinedProps.Extension, props.Extension...)
+		combinedProps.AppendWith(*props)
 	}
 
 	// We need to make sure that `env` is available before we read extend.stack, as env is often used
@@ -249,7 +252,14 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 		}
 	}
 
-	return &ParsedNode{Package: n, ProvisionPlan: pdata, PrepareProps: combinedProps}, nil
+	pdata.AppendWith(combinedProps.PreparedProvisionPlan)
+
+	node := &ParsedNode{Package: n, ProvisionPlan: pdata}
+	node.PrepareProps.ProvisionInput = combinedProps.ProvisionInput
+	node.PrepareProps.Definition = combinedProps.Definition
+	node.PrepareProps.Extension = combinedProps.Extension
+
+	return node, nil
 }
 
 func fillNeeds(ctx context.Context, server *schema.Server, s *eval.AllocState, allocators []eval.AllocatorFunc, n *schema.Node) ([]frontend.ValueWithPath, error) {

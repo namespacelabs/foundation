@@ -12,7 +12,7 @@ extension: fn.#Extension & {
 
 	on: {
 		prepare: {
-			internal: "namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster"
+			invokeInternal: "namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster"
 		}
 	}
 }

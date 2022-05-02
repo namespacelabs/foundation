@@ -68,7 +68,7 @@ type cueInstantiate struct {
 }
 
 type cueCallback struct {
-	Internal string `json:"internal"`
+	InvokeInternal string `json:"invokeInternal"`
 }
 
 func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *workspace.Package, opts workspace.LoadPackageOpts) error {
@@ -340,7 +340,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			return fnerrors.Wrapf(loc, err, "failed to parse `on.provision`")
 		}
 
-		if callback.Internal == "" {
+		if callback.InvokeInternal == "" {
 			return fnerrors.UserError(loc, "on.provision.internal is required")
 		}
 

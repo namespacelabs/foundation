@@ -19,13 +19,21 @@ var registrations struct {
 }
 
 type PrepareHook struct {
-	Internal string
+	InvokeInternal string
 }
 
 type PrepareProps struct {
+	PreparedProvisionPlan
 	ProvisionInput []*anypb.Any
 	Definition     []*schema.Definition
 	Extension      []*schema.DefExtension
+}
+
+func (p *PrepareProps) AppendWith(rhs PrepareProps) {
+	p.PreparedProvisionPlan.AppendWith(rhs.PreparedProvisionPlan)
+	p.ProvisionInput = append(p.ProvisionInput, rhs.ProvisionInput...)
+	p.Definition = append(p.Definition, rhs.Definition...)
+	p.Extension = append(p.Extension, rhs.Extension...)
 }
 
 type PrepareHookFunc func(context.Context, ops.Environment, *schema.Server) (*PrepareProps, error)
