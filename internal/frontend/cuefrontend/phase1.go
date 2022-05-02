@@ -31,7 +31,7 @@ type cueStack struct {
 	Append []cueWithPackageName `json:"append"`
 }
 
-type cueInvocation struct {
+type cueInvokeBinary struct {
 	Binary       string                                 `json:"binary"`
 	Args         *argsListOrMap                         `json:"args"`
 	Mounts       map[string]frontend.InvocationMount    `json:"mount"`
@@ -39,6 +39,18 @@ type cueInvocation struct {
 	Snapshots    map[string]frontend.InvocationSnapshot `json:"snapshot"`
 	NoCache      bool                                   `json:"noCache"`
 	RequiresKeys bool                                   `json:"requiresKeys"`
+}
+
+func (cib cueInvokeBinary) toFrontend() *frontend.Invocation {
+	return &frontend.Invocation{
+		Binary:       cib.Binary,
+		Args:         cib.Args.Parsed(),
+		Mounts:       cib.Mounts,
+		WorkingDir:   cib.WorkingDir,
+		Snapshots:    cib.Snapshots,
+		NoCache:      cib.NoCache,
+		RequiresKeys: cib.RequiresKeys,
+	}
 }
 
 type cueNaming struct {
@@ -78,20 +90,12 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 	}
 
 	if with := vv.LookupPath("configure.with"); with.Exists() {
-		var dec cueInvocation
+		var dec cueInvokeBinary
 		if err := with.Val.Decode(&dec); err != nil {
 			return pdata, err
 		}
 
-		pdata.Provisioning = append(pdata.Provisioning, &frontend.Invocation{
-			Binary:       dec.Binary,
-			Args:         dec.Args.Parsed(),
-			Mounts:       dec.Mounts,
-			WorkingDir:   dec.WorkingDir,
-			Snapshots:    dec.Snapshots,
-			NoCache:      dec.NoCache,
-			RequiresKeys: dec.RequiresKeys,
-		})
+		pdata.Provisioning = append(pdata.Provisioning, dec.toFrontend())
 	}
 
 	if sidecar := lookupTransition(vv, "sidecar"); sidecar.Exists() {

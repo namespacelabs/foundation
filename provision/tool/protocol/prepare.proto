@@ -1,0 +1,35 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.provision.tool.protocol;
+
+option go_package = "namespacelabs.dev/foundation/provision/tool/protocol";
+
+import "google/protobuf/any.proto";
+import "schema/defextension.proto";
+import "schema/definition.proto";
+import "schema/schema.proto";
+
+message PrepareRequest {
+    foundation.schema.Environment env    = 1;
+    foundation.schema.Server      server = 2;
+}
+
+message PrepareResponse {
+    PreparedProvisionPlan prepared_provision_plan     = 1;
+    repeated google.protobuf.Any provision_input      = 2;
+    repeated foundation.schema.Definition definition  = 3;
+    repeated foundation.schema.DefExtension extension = 4;
+}
+
+message PreparedProvisionPlan {
+    repeated string declared_stack = 1;
+    // XXX missing invocations, sidecards and inits.
+}
+
+service PrepareService {
+    rpc Prepare(PrepareRequest) returns (PrepareResponse);
+}

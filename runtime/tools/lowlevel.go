@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"reflect"
 	"time"
 
 	"google.golang.org/grpc"
@@ -30,25 +31,30 @@ const (
 	MaxInvocationDuration = 1 * time.Minute
 )
 
-func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.RunToolOpts, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {
+type ResolveMethodFunc[Req, Resp proto.Message] func(*grpc.ClientConn) func(context.Context, Req, ...grpc.CallOption) (Resp, error)
+
+type LowLevelInvokeOptions[Req, Resp proto.Message] struct {
+	RedactRequest  func(proto.Message) proto.Message
+	RedactResponse func(proto.Message) proto.Message
+}
+
+func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schema.PackageName, opts rtypes.RunToolOpts, req Req, resolve ResolveMethodFunc[Req, Resp]) (Resp, error) {
 	// XXX security: think through whether it is OK or not to expose Snapshots here.
 	// For now, assume not.
 	attachments := tasks.Attachments(ctx)
-	if attachments.IsRecording() {
-		reqcopy := proto.Clone(req).(*protocol.ToolRequest)
-		reqcopy.Snapshot = nil
-		err := attachments.AttachSerializable("request.textpb", "", reqcopy)
-		if err != nil {
-			fmt.Fprintf(console.Debug(ctx), "failed to serialize request: %v", err)
-		}
+	err := attachments.AttachSerializable("request.textpb", "", redact(req, oo.RedactRequest))
+	if err != nil {
+		fmt.Fprintf(console.Debug(ctx), "failed to serialize request: %v", err)
 	}
+
+	var resp Resp
 
 	// os.Pipe is used instead of io.Pipe, as exec.Command will anyway behind the scenes
 	// create an additional io.Pipe to copy back to os.Pipe; as we need real pipes to communicate
 	// with the underlying process.
 	outr, outw, err := os.Pipe()
 	if err != nil {
-		return nil, err
+		return resp, err
 	}
 
 	defer outr.Close()
@@ -56,7 +62,7 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 
 	inr, inw, err := os.Pipe()
 	if err != nil {
-		return nil, err
+		return resp, err
 	}
 
 	defer inr.Close()
@@ -74,7 +80,6 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 
 	eg, wait := executor.New(ctx)
 
-	var resp *protocol.ToolResponse // XXX lock.
 	eg.Go(func(ctx context.Context) error {
 		return Impl().RunWithOpts(ctx, opts, localexec.RunOpts{
 			OnStart: func() {
@@ -103,7 +108,7 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 
 					defer conn.Close()
 
-					resp, err = protocol.NewInvocationServiceClient(conn).Invoke(ctx, req)
+					resp, err = resolve(conn)(ctx, req) // XXX lock?
 					return err
 				})
 			},
@@ -111,17 +116,24 @@ func LowLevelInvoke(ctx context.Context, pkg schema.PackageName, opts rtypes.Run
 	})
 
 	if err := wait(); err != nil {
-		return nil, err
+		return resp, err
 	}
 
-	if resp == nil {
-		return nil, fnerrors.InternalError("never produced a response")
+	if reflect.ValueOf(resp).IsNil() {
+		return resp, fnerrors.InternalError("never produced a response")
 	}
 
-	err = attachments.AttachSerializable("response.textpb", "", resp)
+	err = attachments.AttachSerializable("response.textpb", "", redact(resp, oo.RedactResponse))
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize response: %v", err)
 	}
 
 	return resp, nil
+}
+
+func redact(m proto.Message, f func(proto.Message) proto.Message) proto.Message {
+	if f == nil {
+		return m
+	}
+	return f(m)
 }

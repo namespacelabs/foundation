@@ -605,6 +605,10 @@ func (ev *EventAttachments) AttachSerializable(name, modifier string, body inter
 		return fnerrors.InternalError("no running action while attaching serializable %q", name)
 	}
 
+	if !ev.IsRecording() {
+		return nil
+	}
+
 	msg, err := common.Serialize(body)
 	if err != nil {
 		return fnerrors.BadInputError("failed to serialize payload: %w", err)

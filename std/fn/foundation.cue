@@ -21,9 +21,7 @@ _#Node: {
 	_#Instantiate
 
 	on?: {
-		prepare?: {
-			invokeInternal: string
-		}
+		prepare?: {invokeInternal: string} | {invokeBinary: #InvokeBinary}
 	}
 
 	packageData: [...string]
@@ -166,9 +164,7 @@ _#ConfigureBase: {
 	#Provisioning: {
 		// XXX add purpose, e.g. contributes startup inputs.
 		with?: {
-			binary:     inputs.#Package
-			args:       #Args
-			workingDir: *"/" | string
+			#InvokeBinary
 			mount: [string]: {fromWorkspace: string}
 			snapshot: [string]: {fromWorkspace: string}
 			noCache:      *false | true
@@ -190,6 +186,12 @@ _#ConfigureBase: {
 		withOrg?: string
 		*{} | {domainName: [string]: [...string]} | {tlsManagedDomainName: [string]: [...string]}
 	}
+}
+
+#InvokeBinary: {
+	binary:     inputs.#Package
+	args:       #Args
+	workingDir: *"/" | string
 }
 
 #Configure: _#ConfigureBase & {

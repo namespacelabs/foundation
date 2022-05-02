@@ -8,6 +8,8 @@ import (
 	"context"
 	"io/fs"
 
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -145,5 +147,15 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	opts.Mounts = append(opts.Mounts, inv.props.LocalMapping...)
 	req.Input = append(req.Input, inv.props.ProvisionInput...)
 
-	return tools.LowLevelInvoke(ctx, r.Source.PackageName, opts, req)
+	return tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{
+		RedactRequest: func(req proto.Message) proto.Message {
+			// XXX security: think through whether it is OK or not to expose Snapshots here.
+			// For now, assume not.
+			reqcopy := proto.Clone(req).(*protocol.ToolRequest)
+			reqcopy.Snapshot = nil
+			return reqcopy
+		},
+	}.Invoke(ctx, r.Source.PackageName, opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
+		return protocol.NewInvocationServiceClient(conn).Invoke
+	})
 }

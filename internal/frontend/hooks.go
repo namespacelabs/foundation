@@ -20,6 +20,7 @@ var registrations struct {
 
 type PrepareHook struct {
 	InvokeInternal string
+	InvokeBinary   *Invocation
 }
 
 type PrepareProps struct {
@@ -46,7 +47,7 @@ func RegisterPrepareHook(name string, f PrepareHookFunc) {
 	registrations.prepare[name] = f
 }
 
-func InvokePrepareHook(ctx context.Context, name string, env ops.Environment, srv *schema.Server) (*PrepareProps, error) {
+func InvokeInternalPrepareHook(ctx context.Context, name string, env ops.Environment, srv *schema.Server) (*PrepareProps, error) {
 	if f, ok := registrations.prepare[name]; ok {
 		return tasks.Return(ctx, tasks.Action("prepare.invoke-hook").Scope(schema.PackageName(srv.PackageName)).Arg("name", name), func(ctx context.Context) (*PrepareProps, error) {
 			return f(ctx, env, srv)

@@ -7,6 +7,7 @@ package tools
 import (
 	"context"
 
+	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
@@ -79,7 +80,11 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 			RunAsUser:  true,
 		}}
 
-	resp, err := LowLevelInvoke(ctx, schema.PackageName(inv.invocation.Binary), run, req)
+	invoke := LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{}
+
+	resp, err := invoke.Invoke(ctx, schema.PackageName(inv.invocation.Binary), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
+		return protocol.NewInvocationServiceClient(conn).Invoke
+	})
 	if err != nil {
 		return nil, err
 	}

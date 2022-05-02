@@ -68,7 +68,8 @@ type cueInstantiate struct {
 }
 
 type cueCallback struct {
-	InvokeInternal string `json:"invokeInternal"`
+	InvokeInternal string          `json:"invokeInternal"`
+	InvokeBinary   cueInvokeBinary `json:"invokeBinary"`
 }
 
 func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *workspace.Package, opts workspace.LoadPackageOpts) error {
@@ -341,10 +342,19 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		}
 
 		if callback.InvokeInternal == "" {
-			return fnerrors.UserError(loc, "on.provision.internal is required")
+			if callback.InvokeBinary.Binary == "" {
+				return fnerrors.UserError(loc, "on.provision.invokeInternal or on.provision.invokeBinary is required")
+			}
+		} else {
+			if callback.InvokeBinary.Binary != "" {
+				return fnerrors.UserError(loc, "on.provision.invokeInternal and on.provision.invokeBinary are exclusive")
+			}
 		}
 
-		out.PrepareHooks = append(out.PrepareHooks, frontend.PrepareHook(callback))
+		out.PrepareHooks = append(out.PrepareHooks, frontend.PrepareHook{
+			InvokeInternal: callback.InvokeInternal,
+			InvokeBinary:   callback.InvokeBinary.toFrontend(),
+		})
 	}
 
 	sort.Slice(node.Instantiate, func(i, j int) bool {
