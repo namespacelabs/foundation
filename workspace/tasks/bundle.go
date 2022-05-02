@@ -116,15 +116,14 @@ func (b *Bundle) WriteMemStats(ctx context.Context) error {
 	return nil
 }
 
-func (b *Bundle) WriteErrorWithStacktrace(ctx context.Context, err error) error {
-	errWithStack := fnerrors.MakeErrorStacktrace(err)
-
-	encerr, err := json.Marshal(errWithStack)
+func (b *Bundle) WriteError(ctx context.Context, err error) error {
+	errstack := fnerrors.NewErrorStacktrace(err)
+	encstack, err := json.Marshal(errstack)
 	if err != nil {
-		return fnerrors.InternalError("failed to marshal `ErrorWithStacktrace` as JSON: %w", err)
+		return fnerrors.InternalError("failed to marshal `ErrorStacktrace` as JSON: %w", err)
 	}
-	if err := b.WriteFile(ctx, "error.json", encerr, 0600); err != nil {
-		return fnerrors.InternalError("failed to write `ErrorWithStacktrace` to `error.json`: %w", err)
+	if err := b.WriteFile(ctx, "error.json", encstack, 0600); err != nil {
+		return fnerrors.InternalError("failed to write `ErrorStacktrace` to `error.json`: %w", err)
 	}
 	return nil
 }

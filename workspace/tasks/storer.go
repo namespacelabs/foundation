@@ -60,9 +60,10 @@ func (st *Storer) store(af *RunningAction) error {
 	return nil
 }
 
-func (st *Storer) RecoverFromPanic(ctx context.Context, err error) {
-	// We flush the bundle even if we had an error serializing the
-	// error.
-	_ = st.bundle.WriteErrorWithStacktrace(ctx, err)
-	st.bundler.Flush(ctx, st.bundle)
+func (st *Storer) WriteError(ctx context.Context, err error) error {
+	return st.bundle.WriteError(ctx, err)
+}
+
+func (st *Storer) Flush(ctx context.Context) error {
+	return st.bundler.Flush(ctx, st.bundle)
 }

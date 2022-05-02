@@ -1,6 +1,8 @@
 // Copyright 2022 Namespace Labs Inc; All rights reserved.
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
+//
+// Adapted from Sentry's codebase.
 
 package fnerrors
 
@@ -11,7 +13,6 @@ import (
 	"strings"
 )
 
-// Adapted from Sentry's codebase.
 const unknown string = "unknown"
 
 // Frame represents a function call and it's metadata. Frames are associated
@@ -23,7 +24,6 @@ type Frame struct {
 	Filename string `json:"filename,omitempty"`
 	AbsPath  string `json:"abs_path,omitempty"`
 	Lineno   int    `json:"lineno,omitempty"`
-	InApp    bool   `json:"in_app,omitempty"`
 }
 
 // Stacktrace holds information about the frames of the stack.
@@ -33,30 +33,11 @@ type Stacktrace struct {
 
 // ErrorStacktrace decorates a Stacktrace with an error message.
 type ErrorStacktrace struct {
-	Errmsg string `json:"errmsg,omitempty"`
-	Trace  Stacktrace
+	Errmsg string     `json:"errmsg,omitempty"`
+	Trace  Stacktrace `json:"trace"`
 }
 
-// NewStacktrace creates a stacktrace using runtime.Callers.
-func NewStacktrace() *Stacktrace {
-	pcs := make([]uintptr, 100)
-	n := runtime.Callers(1, pcs)
-
-	if n == 0 {
-		return nil
-	}
-
-	frames := extractFrames(pcs[:n])
-	frames = filterFrames(frames)
-
-	stacktrace := Stacktrace{
-		Frames: frames,
-	}
-
-	return &stacktrace
-}
-
-func MakeErrorStacktrace(err error) *ErrorStacktrace {
+func NewErrorStacktrace(err error) *ErrorStacktrace {
 	method := extractReflectedStacktraceMethod(err)
 
 	var pcs []uintptr
@@ -257,7 +238,6 @@ func filterFrames(frames []Frame) []Frame {
 // dependency on debug/gosym.
 func packageName(name string) string {
 	// A prefix of "type." and "go." is a compiler-generated symbol that doesn't belong to any package.
-	// See variable reservedimports in cmd/compile/internal/gc/subr.go
 	if strings.HasPrefix(name, "go.") || strings.HasPrefix(name, "type.") {
 		return ""
 	}
