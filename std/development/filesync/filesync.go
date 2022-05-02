@@ -36,7 +36,7 @@ func StartFileSyncServer(configuration *FileSyncConfiguration) {
 		log.Fatal(err)
 	}
 
-	log.Printf("FileSync listening on %s", filesyncHost)
+	log.Printf("FileSync listening on %s. Root dir: \"%s\"", filesyncHost, configuration.RootDir)
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatal(err)
 	}

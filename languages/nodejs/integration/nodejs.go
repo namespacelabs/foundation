@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/console"
@@ -34,7 +33,6 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/dev/controller/admin"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -42,20 +40,16 @@ import (
 
 // Hard-coding the version of generated yarn workspaces since we only support a monorepo for now.
 const (
-	controllerPkg        schema.PackageName = "namespacelabs.dev/foundation/std/dev/controller"
-	grpcPkg              schema.PackageName = "namespacelabs.dev/foundation/std/web/http"
+	controllerPkg        schema.PackageName = "namespacelabs.dev/foundation/std/development/filesync/controller"
+	grpcPkg              schema.PackageName = "namespacelabs.dev/foundation/languages/nodejs/grpc"
 	yarnWorkspaceVersion                    = "0.0.0"
 	yarnVersion                             = "3.2.0"
 	yarnRcFn                                = ".yarnrc.yml"
 	implFileName                            = "impl.ts"
 	packageJsonFn                           = "package.json"
 	fileSyncPort                            = 50000
-	serverPort                              = 10090
 	runtimePackage                          = "@namespacelabs/foundation"
-	// This has the specific value to make the ingress code to do port forwarding and expose this port.
-	// TODO(@nicolasalt): expose individual gRPC services instead when extensions are supported.
-	serverPortName = "server-port"
-	ForceProd      = false
+	ForceProd                               = false
 )
 
 func Register() {
@@ -79,6 +73,8 @@ func Register() {
 }
 
 func useDevBuild(env *schema.Environment) bool {
+	// TODO(@nicolasalt): uncomment when #313 is fixed.
+	// Currently only dev way to pass flags to the server works, see PostParseServer.
 	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
@@ -148,15 +144,19 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server prov
 }
 
 func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
-	if wsremote.Ctx(ctx) != nil {
-		return nil, nil, fnerrors.UserError(srv.Location, "`fn dev` on multiple web/nodejs servers not supported")
+	if useDevBuild(srv.Env().Proto()) {
+		if wsremote.Ctx(ctx) != nil {
+			return nil, nil, fnerrors.UserError(srv.Location, "`fn dev` on multiple web/nodejs servers not supported")
+		}
+
+		devObserver := hotreload.NewFileSyncDevObserver(ctx, srv, fileSyncPort)
+
+		newCtx, _ := wsremote.WithRegistrar(ctx, devObserver.Deposit)
+
+		return newCtx, devObserver, nil
 	}
 
-	devObserver := hotreload.NewFileSyncDevObserver(ctx, srv, fileSyncPort)
-
-	newCtx, _ := wsremote.WithRegistrar(ctx, devObserver.Deposit)
-
-	return newCtx, devObserver, nil
+	return ctx, nil, nil
 }
 
 func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.ServerRunOpts) error {
@@ -164,30 +164,9 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 		// For dev builds we use runtime complication of Typescript.
 		run.ReadOnlyFilesystem = false
 
-		// Initialize devcontroller
-
-		configuration := &admin.Configuration{
-			PackageBase:  "/app",
-			FilesyncPort: fileSyncPort,
-			Backend: []*admin.Backend{{
-				// To match the file sync event package name.
-				PackageName: ".",
-				Execution: &admin.Execution{
-					Args: []string{
-						"nodemon",
-						filepath.Join(srv.Location.Rel(), "main.fn.ts"),
-						"--listen_hostname=127.0.0.1",
-						fmt.Sprintf("--port=%d", serverPort),
-					},
-				},
-			}},
-		}
-		serialized, err := protojson.Marshal(configuration)
-		if err != nil {
-			return fnerrors.InternalError("failed to serialize configuration: %v", err)
-		}
-		run.Command = []string{"/devcontroller"}
-		run.Args = append(run.Args, fmt.Sprintf("--configuration=%s", serialized))
+		run.Command = []string{"/filesync-controller"}
+		run.Args = []string{"/app", fmt.Sprint(fileSyncPort), "nodemon",
+			filepath.Join(srv.Location.Rel(), "main.fn.ts")}
 	} else {
 		run.Command = []string{"node", filepath.Join(srv.Location.Rel(), "main.fn.js")}
 		run.ReadOnlyFilesystem = true
@@ -476,17 +455,20 @@ func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Nod
 }
 
 func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
-	ext.Include = append(ext.Include, grpcPkg, controllerPkg)
+	ext.Include = append(ext.Include, grpcPkg)
 	return nil
 }
 
 func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error {
-	sealed.Proto.Server.StaticPort = []*schema.Endpoint_Port{{Name: serverPortName, ContainerPort: serverPort}}
 	return nil
 }
 
 func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *workspace.CueService) error {
 	return nil
+}
+
+func (impl) DevelopmentPackages() []schema.PackageName {
+	return []schema.PackageName{controllerPkg}
 }
 
 func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {

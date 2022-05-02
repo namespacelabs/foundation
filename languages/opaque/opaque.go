@@ -102,6 +102,10 @@ func (impl) FillEndpoint(*schema.Node, *schema.Endpoint) error {
 	return nil
 }
 
+func (impl) DevelopmentPackages() []schema.PackageName {
+	return nil
+}
+
 func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
 	return frontend.ProvisionStack{}, nil
 }
