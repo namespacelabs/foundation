@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -52,12 +51,6 @@ func main() {
 	for _, backend := range configuration.Backend {
 		if len(backend.GetExecution().GetArgs()) == 0 {
 			log.Fatal("backend.execution.args can't be empty")
-		}
-
-		for _, hook := range backend.OnChange {
-			if len(hook.GetExecution().GetArgs()) == 0 {
-				log.Fatal("backend.on_change.execution.args can't be empty")
-			}
 		}
 	}
 
@@ -137,11 +130,9 @@ type sinkServer struct {
 func (s sinkServer) Push(ctx context.Context, req *wsremote.PushRequest) (*wsremote.PushResponse, error) {
 	pkg := filepath.Join(req.GetSignature().GetModuleName(), req.GetSignature().GetRel())
 
-	for index, backend := range s.configuration.Backend {
+	for _, backend := range s.configuration.Backend {
 		if backend.PackageName == pkg {
 			basePath := filepath.Join(s.configuration.PackageBase, pkg)
-
-			hookMap := map[int]struct{}{}
 
 			for k, ev := range req.FileEvent {
 				if ev.Path == "" {
@@ -149,12 +140,6 @@ func (s sinkServer) Push(ctx context.Context, req *wsremote.PushRequest) (*wsrem
 				}
 
 				filePath := filepath.Join(basePath, ev.Path)
-
-				for k, hook := range backend.OnChange {
-					if slices.Contains(hook.Path, ev.Path) {
-						hookMap[k] = struct{}{} // Mark this hook for execution.
-					}
-				}
 
 				switch ev.Event {
 				case wscontents.FileEvent_WRITE:
@@ -175,26 +160,6 @@ func (s sinkServer) Push(ctx context.Context, req *wsremote.PushRequest) (*wsrem
 				default:
 					return nil, status.Errorf(codes.InvalidArgument, "file_event[%d]: unrecognized event type: %s", k, ev.Event)
 				}
-			}
-
-			// Follow the hook definition order.
-			restart := false
-			for k, hook := range backend.OnChange {
-				if _, ok := hookMap[k]; !ok {
-					continue
-				}
-
-				if err := spawnExecution(ctx, s.configuration, backend.PackageName, hook.Execution); err != nil {
-					return nil, err
-				}
-
-				if hook.RestartAfterExecution {
-					restart = true
-				}
-			}
-
-			if restart {
-				s.running.restartBackend(index)
 			}
 
 			return &wsremote.PushResponse{}, nil
