@@ -122,7 +122,9 @@ func visitAllocs[V proto.Message](allocs []*schema.Allocation, pkg schema.Packag
 				}
 			}
 
-			visitAllocs(instance.DownstreamAllocation, pkg, tmpl, f)
+			if err := visitAllocs(instance.DownstreamAllocation, pkg, tmpl, f); err != nil {
+				return err
+			}
 		}
 	}
 
