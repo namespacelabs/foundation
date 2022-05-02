@@ -121,6 +121,9 @@ require (
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/containerd/continuity v0.2.3-0.20220330195504-d132b287edc8 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.11.3 // indirect
+	github.com/containerd/console v1.0.3
+	github.com/containerd/continuity v0.2.2 // indirect
+	github.com/containerd/stargz-snapshotter/estargz v0.11.2 // indirect
 	github.com/containerd/ttrpc v1.1.0 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -172,8 +175,12 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de // indirect
+<<<<<<< HEAD
 	github.com/muesli/ansi v0.0.0-20211018074035-2e021307bc4b // indirect
 	github.com/muesli/termenv v0.11.1-0.20220212125758-44cd13922739 // indirect
+=======
+	github.com/muesli/cancelreader v0.2.0
+>>>>>>> f18208bd (console_logs)
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e // indirect

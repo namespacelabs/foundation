@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/devworkflow"
@@ -23,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -59,6 +61,7 @@ func NewDevCmd() *cobra.Command {
 				pl := workspace.NewPackageLoader(root)
 
 				var serverPackages []string
+				var serverProtos []*schema.Server
 				for _, p := range args {
 					parsed, err := pl.LoadByName(ctx, root.RelPackage(p).AsPackageName())
 					if err != nil {
@@ -70,6 +73,7 @@ func NewDevCmd() *cobra.Command {
 					}
 
 					serverPackages = append(serverPackages, parsed.PackageName().String())
+					serverProtos = append(serverProtos, parsed.Server)
 				}
 
 				addrParts := strings.Split(servingAddr, ":")
@@ -82,8 +86,8 @@ func NewDevCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-
-				stickies := []string{fmt.Sprintf("fn dev web ui running at: http://%s", servingAddr)}
+				commands := fmt.Sprintf(`commands: (%s)logs (%s)uit`, aec.Bold.Apply("l"), aec.Bold.Apply("q"))
+				stickies := []string{fmt.Sprintf("fn dev web ui running at: http://%s\t%s", servingAddr, aec.Italic.Apply(commands))}
 
 				stackState, err := devworkflow.NewStackState(ctx, sink, host, stickies)
 				if err != nil {
@@ -102,7 +106,6 @@ func NewDevCmd() *cobra.Command {
 						},
 					},
 				}
-
 				r := mux.NewRouter()
 
 				srv := &http.Server{
@@ -114,6 +117,14 @@ func NewDevCmd() *cobra.Command {
 				}
 
 				shutdownErr := make(chan error)
+				onShutdown := func() {
+					ctxT, cancelT := context.WithTimeout(ctx, 1*time.Second)
+					defer cancelT()
+
+					shutdownErr <- srv.Shutdown(ctxT)
+				}
+				ctxWithCancel, cancel := withSigIntCancel(ctx, onShutdown)
+				defer cancel()
 
 				r.PathPrefix("/debug/pprof/").HandlerFunc(pprof.Index)
 				r.PathPrefix("/debug/pprof/cmdline").HandlerFunc(pprof.Cmdline)
@@ -125,6 +136,12 @@ func NewDevCmd() *cobra.Command {
 				devworkflow.RegisterEndpoints(stackState, r)
 
 				go stackState.Run(ctx)
+
+				env, err := provision.RequireEnv(root, envRef)
+				if err != nil {
+					return err
+				}
+				go termCommands(ctxWithCancel, runtime.For(ctx, env), serverProtos, func() { cancel(); onShutdown() })
 
 				if devWebServer {
 					webPort := port + 1
@@ -187,3 +204,24 @@ func NewDevCmd() *cobra.Command {
 
 	return cmd
 }
+<<<<<<< HEAD
+=======
+
+func withSigIntCancel(ctx context.Context, onShutdown func()) (context.Context, func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		select {
+		case <-c:
+			cancel()
+			onShutdown()
+		case <-ctx.Done():
+		}
+	}()
+	return ctx, func() {
+		signal.Stop(c)
+		cancel()
+	}
+}
+>>>>>>> f18208bd (console_logs)

@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -125,9 +126,15 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 			return err
 		}
 
-		core.Log.Printf("Starting gRPC gateway listen on %v", gwLis.Addr())
+		core.Log.Printf("Starting gRPC gateway listen on xx %v", gwLis.Addr())
 
-		go func() { listen("grpc-gateway", httpServer.Serve(gwLis)) }()
+		go func() { listen("grpc-gatewayxxxxxxxxx", httpServer.Serve(gwLis)) }()
+		go func() {
+			//for {
+			core.Log.Printf("Starting gRPC gateway listen on %v", gwLis.Addr())
+			time.Sleep(2 * time.Second)
+			//	}
+		}()
 	}
 
 	return m.Serve()
