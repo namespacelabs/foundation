@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/maketarfs"
 )
@@ -112,6 +113,21 @@ func (b *Bundle) WriteMemStats(ctx context.Context) error {
 	}
 	if err := b.WriteFile(ctx, "memstats.json", encmstats, 0600); err != nil {
 		return fnerrors.InternalError("failed to write `runtime.MemStats` to `memstats.json`: %w", err)
+	}
+	return nil
+}
+
+func (b *Bundle) WriteError(ctx context.Context, err error) error {
+	errstack, err := stacktrace.NewErrorStacktrace(err)
+	if err != nil {
+		return err
+	}
+	encstack, err := json.Marshal(errstack)
+	if err != nil {
+		return fnerrors.InternalError("failed to marshal `ErrorStacktrace` as JSON: %w", err)
+	}
+	if err := b.WriteFile(ctx, "error.json", encstack, 0600); err != nil {
+		return fnerrors.InternalError("failed to write `ErrorStacktrace` to `error.json`: %w", err)
 	}
 	return nil
 }

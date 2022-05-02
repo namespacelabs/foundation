@@ -122,7 +122,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		if err != nil {
 			return err
 		}
-		tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundle)
+		tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundler, bundle)
 		if err != nil {
 			return err
 		}
@@ -230,12 +230,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if cleanupTracer != nil {
 		cleanupTracer()
 	}
-	// Capture useful information about the environment helpful for diagnostics in the bundle.
-	_ = writeExitInfo(ctxWithSink, bundle)
-
-	// Commit the bundle to the filesystem.
-	_ = bundler.Flush(ctxWithSink, bundle)
-
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
 	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
 		// Printing the new version message if any.
@@ -267,12 +261,36 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		default:
 		}
 	}
+	// Ensures deferred routines after invoked gracefully before os.Exit.
+	defer handleExit()
+	defer func() {
+		// Capture useful information about the environment helpful for diagnostics in the bundle.
+		_ = writeExitInfo(ctxWithSink, bundle)
+
+		// Commit the bundle to the filesystem.
+		_ = bundler.Flush(ctxWithSink, bundle)
+	}()
 	if err != nil {
 		exitCode := handleExitError(colors, err)
 		// Record errors only after the user sees them to hide potential latency implications.
 		// We pass the original ctx without sink since logs have already been flushed.
 		tel.RecordError(ctx, err)
-		os.Exit(exitCode)
+		_ = bundle.WriteError(ctx, err)
+
+		// Ensures graceful invocation of deferred routines in the block above before we exit.
+		panic(exitWithCode{exitCode})
+	}
+}
+
+type exitWithCode struct{ Code int }
+
+// exit code handler
+func handleExit() {
+	if e := recover(); e != nil {
+		if exit, ok := e.(exitWithCode); ok {
+			os.Exit(exit.Code)
+		}
+		panic(e) // not an Exit, bubble up
 	}
 }
 
