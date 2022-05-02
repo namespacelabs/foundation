@@ -117,7 +117,10 @@ func (b *Bundle) WriteMemStats(ctx context.Context) error {
 }
 
 func (b *Bundle) WriteError(ctx context.Context, err error) error {
-	errstack := fnerrors.NewErrorStacktrace(err)
+	errstack, err := fnerrors.NewErrorStacktrace(err)
+	if err != nil {
+		return err
+	}
 	encstack, err := json.Marshal(errstack)
 	if err != nil {
 		return fnerrors.InternalError("failed to marshal `ErrorStacktrace` as JSON: %w", err)

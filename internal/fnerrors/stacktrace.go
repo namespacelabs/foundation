@@ -37,7 +37,7 @@ type ErrorStacktrace struct {
 	Trace  Stacktrace `json:"trace"`
 }
 
-func NewErrorStacktrace(err error) *ErrorStacktrace {
+func NewErrorStacktrace(err error) (*ErrorStacktrace, error) {
 	method := extractReflectedStacktraceMethod(err)
 
 	var pcs []uintptr
@@ -49,7 +49,7 @@ func NewErrorStacktrace(err error) *ErrorStacktrace {
 	}
 
 	if len(pcs) == 0 {
-		return nil
+		return nil, BadInputError("failed to extract program counters from err: %v", err)
 	}
 
 	frames := extractFrames(pcs)
@@ -58,7 +58,7 @@ func NewErrorStacktrace(err error) *ErrorStacktrace {
 	stacktrace := Stacktrace{
 		Frames: frames,
 	}
-	return &ErrorStacktrace{Trace: stacktrace, Errmsg: err.Error()}
+	return &ErrorStacktrace{Trace: stacktrace, Errmsg: err.Error()}, nil
 }
 
 func extractReflectedStacktraceMethod(err error) reflect.Value {
@@ -224,6 +224,10 @@ func filterFrames(frames []Frame) []Frame {
 	for _, frame := range frames {
 		// Skip Go internal frames.
 		if frame.Module == "runtime" || frame.Module == "testing" {
+			continue
+		}
+		// Skip cobra command execution frames.
+		if strings.HasPrefix(frame.Module, "github.com/spf13/cobra") {
 			continue
 		}
 		filteredFrames = append(filteredFrames, frame)
