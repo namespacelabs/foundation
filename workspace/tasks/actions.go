@@ -325,7 +325,8 @@ func (ev *ActionEvent) CheckCacheRun(ctx context.Context, options RunOptions) er
 }
 
 func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) error {
-	// Ensure that we write  actions
+	// Ensure that we have the action audit trail with full details about
+	// the panic before propagating.
 	defer func() {
 		if r := recover(); r != nil {
 			if err, ok := r.(error); ok {
