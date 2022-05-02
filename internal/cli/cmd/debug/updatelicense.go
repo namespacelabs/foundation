@@ -19,7 +19,7 @@ import (
 )
 
 var checkExtensions = []string{".go", ".js", ".ts", ".jsx", ".tsx", ".proto", ".hcl", ".yaml", ".yml", ".css"}
-var ignoreExtensions = []string{".pb.go", ".fn.go", ".pb.gw.go", ".fn.ts", ".fn.js", "_pb.js", "_pb.d.ts"}
+var ignoreSuffixes = []string{".pb.go", ".fn.go", ".pb.gw.go", ".fn.ts", ".fn.js", "_pb.js", "_pb.d.ts", "stacktrace.go"}
 
 func newUpdateLicenseCmd() *cobra.Command {
 	var check bool
@@ -56,7 +56,7 @@ func newUpdateLicenseCmd() *cobra.Command {
 					return nil
 				}
 
-				for _, ignore := range ignoreExtensions {
+				for _, ignore := range ignoreSuffixes {
 					if strings.HasSuffix(path, ignore) {
 						return nil
 					}
