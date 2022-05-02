@@ -70,14 +70,16 @@ func streamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamS
 
 func finalizeSpan(hub *sentry.Hub, span *sentry.Span, err error) {
 	if err != nil {
-		hub.CaptureException(err)
-
 		if errors.Is(err, context.Canceled) {
 			span.Status = sentry.SpanStatusCanceled
-		} else if st, ok := status.FromError(err); ok {
-			span.Status = statusFromGrpc(st.Code())
 		} else {
-			span.Status = sentry.SpanStatusUnknown
+			hub.CaptureException(err)
+
+			if st, ok := status.FromError(err); ok {
+				span.Status = statusFromGrpc(st.Code())
+			} else {
+				span.Status = sentry.SpanStatusUnknown
+			}
 		}
 	} else {
 		span.Status = sentry.SpanStatusOK
