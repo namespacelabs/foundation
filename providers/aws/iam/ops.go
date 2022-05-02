@@ -88,6 +88,9 @@ func RegisterGraphHandlers() {
 
 		return nil, nil
 	})
+
+	// Run policy associations after we create roles.
+	ops.RunAfter(&OpEnsureRole{}, &OpAssociatePolicy{})
 }
 
 type tagLike interface {
