@@ -226,12 +226,12 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 	// allows all builds and invocations to occur in parallel.
 
 	binaryInputs := compute.Inputs()
-	for pkg, imgs := range imgs {
-		if imgs.Binary != nil {
-			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:binary", pkg), imgs.Binary)
+	for pkg, img := range imgs {
+		if img.Binary != nil {
+			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:binary", pkg), img.Binary)
 		}
-		if imgs.Config != nil {
-			finalInputs = finalInputs.Computable(fmt.Sprintf("%s:config", pkg), imgs.Config)
+		if img.Config != nil {
+			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:config", pkg), img.Config)
 		}
 	}
 
