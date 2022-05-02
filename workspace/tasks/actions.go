@@ -328,10 +328,10 @@ func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) e
 	defer func() {
 		if r := recover(); r != nil {
 			if err, ok := r.(error); ok {
-				ActionStorer.WriteError(ctx, err)
+				_ = ActionStorer.WriteError(ctx, err)
 			}
 			// Ensure that we always have an audit trail.
-			ActionStorer.Flush(ctx)
+			_ = ActionStorer.Flush(ctx)
 			panic(r)
 		}
 	}()
