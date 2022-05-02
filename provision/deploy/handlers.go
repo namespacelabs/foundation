@@ -64,7 +64,7 @@ func parseHandlers(ctx context.Context, server provision.Server, pr *stack.Parse
 	})
 
 	var handlers []*tool.Definition
-	if dec := pr.ProvisionPlan.Provisioning; dec != nil {
+	for _, dec := range pr.ProvisionPlan.Provisioning {
 		if dec.Binary == "" {
 			return nil, fnerrors.UserError(pkg.Location, "configure.with.binary is required to point to a binary package")
 		}

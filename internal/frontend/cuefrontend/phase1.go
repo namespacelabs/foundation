@@ -83,7 +83,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 			return pdata, err
 		}
 
-		pdata.Provisioning = &frontend.Invocation{
+		pdata.Provisioning = append(pdata.Provisioning, &frontend.Invocation{
 			Binary:       dec.Binary,
 			Args:         dec.Args.Parsed(),
 			Mounts:       dec.Mounts,
@@ -91,7 +91,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 			Snapshots:    dec.Snapshots,
 			NoCache:      dec.NoCache,
 			RequiresKeys: dec.RequiresKeys,
-		}
+		})
 	}
 
 	if sidecar := lookupTransition(vv, "sidecar"); sidecar.Exists() {

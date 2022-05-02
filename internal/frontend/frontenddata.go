@@ -49,7 +49,7 @@ type ProvisionPlan struct {
 
 	// Node only.
 	ProvisionStack
-	Provisioning *Invocation
+	Provisioning []*Invocation
 	Sidecars     []Container
 	Inits        []Container
 
