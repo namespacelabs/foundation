@@ -77,6 +77,10 @@ message IngressFragment {
     }
 }
 
+message IngressFragmentList {
+    repeated IngressFragment ingress_fragment = 1;
+}
+
 message HttpCors {
     bool            enabled        = 1;
     repeated string allowed_origin = 2;

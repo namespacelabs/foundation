@@ -79,13 +79,25 @@ func (c *prepareServerConfig) Action() *tasks.ActionEvent {
 }
 
 func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-	messages, err := protos.SerializeMultiple(c.env, c.stack)
+	var fragment []*schema.IngressFragment
+	for _, entry := range c.stack.Entry {
+		deferred, err := runtime.ComputeIngress(ctx, c.env, entry, c.stack.Endpoint)
+		if err != nil {
+			return nil, err
+		}
+		for _, d := range deferred {
+			fragment = append(fragment, d.WithoutAllocation())
+		}
+	}
+
+	messages, err := protos.SerializeMultiple(c.env, c.stack, &schema.IngressFragmentList{IngressFragment: fragment})
 	if err != nil {
 		return nil, err
 	}
 
 	env := messages[0]
 	stack := messages[1]
+	ingress := messages[2]
 
 	files := &memfs.FS{}
 
@@ -94,6 +106,8 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 		{Path: "config/env.binarypb", Contents: env.Binary},
 		{Path: "config/stack.textpb", Contents: stack.Text},
 		{Path: "config/stack.binarypb", Contents: stack.Binary},
+		{Path: "config/ingress.textpb", Contents: ingress.Text},
+		{Path: "config/ingress.binarypb", Contents: ingress.Binary},
 	} {
 		if err := fnfs.WriteFile(ctx, files, f.Path, f.Contents, 0644); err != nil {
 			return nil, err
