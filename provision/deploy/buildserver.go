@@ -12,13 +12,12 @@ import (
 	"sort"
 	"strings"
 
-	"google.golang.org/protobuf/encoding/prototext"
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -80,34 +79,21 @@ func (c *prepareServerConfig) Action() *tasks.ActionEvent {
 }
 
 func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-	envtext, err := prototext.Marshal(c.env)
+	messages, err := protos.SerializeMultiple(c.env, c.stack)
 	if err != nil {
 		return nil, err
 	}
 
-	envpb, err := proto.MarshalOptions{Deterministic: true}.Marshal(c.env)
-	if err != nil {
-		return nil, err
-	}
-
-	stackProto := c.stack
-	stacktext, err := prototext.Marshal(stackProto)
-	if err != nil {
-		return nil, err
-	}
-
-	stackpb, err := proto.MarshalOptions{Deterministic: true}.Marshal(stackProto)
-	if err != nil {
-		return nil, err
-	}
+	env := messages[0]
+	stack := messages[1]
 
 	files := &memfs.FS{}
 
 	for _, f := range []fnfs.File{
-		{Path: "config/env.textpb", Contents: envtext},
-		{Path: "config/env.binarypb", Contents: envpb},
-		{Path: "config/stack.textpb", Contents: stacktext},
-		{Path: "config/stack.binarypb", Contents: stackpb},
+		{Path: "config/env.textpb", Contents: env.Text},
+		{Path: "config/env.binarypb", Contents: env.Binary},
+		{Path: "config/stack.textpb", Contents: stack.Text},
+		{Path: "config/stack.binarypb", Contents: stack.Binary},
 	} {
 		if err := fnfs.WriteFile(ctx, files, f.Path, f.Contents, 0644); err != nil {
 			return nil, err
