@@ -93,10 +93,6 @@ func main() {
 	}
 }
 
-func spawnExecution(ctx context.Context, configuration *admin.Configuration, packageName string, execution *admin.Execution) error {
-	return makeExecution(ctx, configuration, packageName, execution).Run()
-}
-
 func makeExecution(ctx context.Context, configuration *admin.Configuration, packageName string, execution *admin.Execution) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, execution.Args[0], execution.Args[1:]...)
 	cmd.Stdout = os.Stdout
