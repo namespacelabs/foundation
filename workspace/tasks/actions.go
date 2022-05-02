@@ -325,6 +325,15 @@ func (ev *ActionEvent) CheckCacheRun(ctx context.Context, options RunOptions) er
 }
 
 func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) error {
+	// Ensure that we write  actions
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok {
+				ActionStorer.RecoverFromPanic(ctx, err)
+			}
+			panic(r)
+		}
+	}()
 	v := ev.Start(ctx)
 	return v.Done(v.Call(ctx, f))
 }

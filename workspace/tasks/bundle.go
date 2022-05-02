@@ -116,6 +116,19 @@ func (b *Bundle) WriteMemStats(ctx context.Context) error {
 	return nil
 }
 
+func (b *Bundle) WriteErrorWithStacktrace(ctx context.Context, err error) error {
+	errWithStack := fnerrors.MakeErrorStacktrace(err)
+
+	encerr, err := json.Marshal(errWithStack)
+	if err != nil {
+		return fnerrors.InternalError("failed to marshal `ErrorWithStacktrace` as JSON: %w", err)
+	}
+	if err := b.WriteFile(ctx, "error.json", encerr, 0600); err != nil {
+		return fnerrors.InternalError("failed to write `ErrorWithStacktrace` to `error.json`: %w", err)
+	}
+	return nil
+}
+
 // Guards access to file writes in the bundle.
 func (b *Bundle) WriteFile(ctx context.Context, path string, contents []byte, mode fs.FileMode) error {
 	b.mu.Lock()

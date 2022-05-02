@@ -122,7 +122,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		if err != nil {
 			return err
 		}
-		tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundle)
+		tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundler, bundle)
 		if err != nil {
 			return err
 		}

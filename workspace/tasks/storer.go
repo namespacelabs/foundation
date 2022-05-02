@@ -13,10 +13,13 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
-type Storer struct{ bundle *Bundle }
+type Storer struct {
+	bundler *Bundler
+	bundle  *Bundle
+}
 
-func NewStorer(ctx context.Context, bundle *Bundle) (*Storer, error) {
-	return &Storer{bundle}, nil
+func NewStorer(ctx context.Context, bundler *Bundler, bundle *Bundle) (*Storer, error) {
+	return &Storer{bundler, bundle}, nil
 }
 
 func (st *Storer) Store(af *RunningAction) {
@@ -55,4 +58,11 @@ func (st *Storer) store(af *RunningAction) error {
 		af.attachments.mu.Unlock()
 	}
 	return nil
+}
+
+func (st *Storer) RecoverFromPanic(ctx context.Context, err error) {
+	// We flush the bundle even if we had an error serializing the
+	// error.
+	_ = st.bundle.WriteErrorWithStacktrace(ctx, err)
+	st.bundler.Flush(ctx, st.bundle)
 }
