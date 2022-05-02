@@ -18,8 +18,8 @@ func PlanIngress(rootenv ops.Environment, env *schema.Environment, stack *schema
 	return &computeIngress{rootenv: rootenv, env: env, stack: stack}
 }
 
-func ComputeIngress(ctx context.Context, env *schema.Environment, stack *schema.Stack) ([]*schema.IngressFragment, error) {
-	var fragments []*schema.IngressFragment
+func ComputeIngress(ctx context.Context, env *schema.Environment, stack *schema.Stack) ([]runtime.DeferredIngress, error) {
+	var fragments []runtime.DeferredIngress
 
 	// XXX parallelism.
 	for _, srv := range stack.Entry {
@@ -51,9 +51,19 @@ func (ci *computeIngress) Inputs() *compute.In {
 	return compute.Inputs().Indigestible("rootenv", ci.rootenv).Proto("env", ci.env).Proto("stack", ci.stack)
 }
 func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*ingressResult, error) {
-	fragments, err := ComputeIngress(ctx, ci.env, ci.stack)
+	deferred, err := ComputeIngress(ctx, ci.env, ci.stack)
 	if err != nil {
 		return nil, err
+	}
+
+	var fragments []*schema.IngressFragment
+	// XXX parallelism
+	for _, d := range deferred {
+		fragment, err := d.Allocate(ctx)
+		if err != nil {
+			return nil, err
+		}
+		fragments = append(fragments, fragment)
 	}
 
 	ds, err := runtime.For(ctx, ci.rootenv).PlanIngress(ctx, ci.stack, fragments)
