@@ -36,12 +36,15 @@ func RegisterGraphHandlers() {
 			input.Description = &m.Description
 		}
 
-		for _, tag := range m.Tag {
-			key := tag.Key
-			value := tag.Value
-			input.Tags = append(input.Tags, types.Tag{
-				Key: &key, Value: &value,
-			})
+		for _, t := range m.Tag {
+			input.Tags = append(input.Tags, tag(t.Key, t.Value))
+		}
+
+		if srv := m.ForServer; srv != nil {
+			input.Tags = append(input.Tags,
+				tag("alpha.foundation.namespacelabs.com/server-id", srv.Id),
+				tag("alpha.foundation.namespacelabs.com/server-package-name", srv.PackageName),
+			)
 		}
 
 		iamcli := iam.NewFromConfig(sesh)
@@ -62,4 +65,8 @@ func RegisterGraphHandlers() {
 
 		return nil, nil
 	})
+}
+
+func tag(k, v string) types.Tag {
+	return types.Tag{Key: &v, Value: &v}
 }

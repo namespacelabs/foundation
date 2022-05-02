@@ -119,10 +119,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 			Description: fmt.Sprintf("Foundation-managed IAM role for service account %s/%s in EKS cluster %s",
 				namespace, serviceAccount, eksCluster.Name),
 			AssumeRolePolicyJson: string(policyBytes),
-			Tag: []*fniam.Tag{
-				{Key: "alpha.foundation.namespacelabs.com/server-id", Value: r.Focus.Server.Id},
-				{Key: "alpha.foundation.namespacelabs.com/server-package-name", Value: r.Focus.Server.PackageName},
-			},
+			ForServer:            r.Focus.Server,
 		},
 	})
 
