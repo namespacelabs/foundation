@@ -101,11 +101,3 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 
 	return t, nil
 }
-
-func ServerSchemas(servers []Server) []*schema.Server {
-	var s []*schema.Server
-	for _, srv := range servers {
-		s = append(s, srv.Proto())
-	}
-	return s
-}

@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
@@ -70,18 +69,9 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 		return nil, err
 	}
 
-	var focusServers []*schema.Server
-	for _, focus := range test.Focus {
-		entry := test.Stack.GetServer(schema.PackageName(focus))
-		if entry == nil {
-			return nil, fnerrors.InternalError("%s: not present in stack?", focus)
-		}
-		focusServers = append(focusServers, entry.Server)
-	}
-
 	rt := runtime.For(ctx, test.Env)
 
-	if err := deploy.Wait(ctx, test.Env, focusServers, waiters); err != nil {
+	if err := deploy.Wait(ctx, test.Env, waiters); err != nil {
 		var e runtime.ErrContainerFailedToStart
 		if errors.As(err, &e) {
 			// Don't spend more than N time waiting for logs.

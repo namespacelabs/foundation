@@ -164,15 +164,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		done := make(chan struct{})
 		cancel := compute.SpawnCancelableOnContinuously(ctx, func(ctx context.Context) error {
 			defer close(done)
-			return compute.Continuously(ctx, &updateCluster{
-				obs:       do.obs,
-				localAddr: do.obs.parent.localHostname,
-				env:       focusServers.Env(),
-				stack:     stack.Proto(),
-				focus:     do.serverPackages,
-				plan:      plan,
-				observers: observers,
-			})
+			return compute.Continuously(ctx, newUpdateCluster(do.obs, focusServers.Env(), stack.Proto(), do.serverPackages, observers, plan))
 		})
 
 		do.cancelRunning = func() {

@@ -285,21 +285,3 @@ func (do *stackState) pushUpdate() {
 		}
 	}
 }
-
-func focusServers(stack *schema.Stack, focus []schema.PackageName) []*schema.Server {
-	// Must be called with lock held.
-
-	var servers []*schema.Server
-	for _, pkg := range focus {
-		for _, entry := range stack.Entry {
-			if entry.GetPackageName() == pkg {
-				servers = append(servers, entry.Server)
-				break
-			}
-		}
-		// XXX this is a major hack, as there's no guarantee we'll see all of the
-		// expected servers in the stack.
-	}
-
-	return servers
-}
