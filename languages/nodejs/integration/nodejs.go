@@ -49,10 +49,7 @@ const (
 	packageJsonFn                           = "package.json"
 	fileSyncPort                            = 50000
 	runtimePackage                          = "@namespacelabs/foundation"
-	// This has the specific value to make the ingress code to do port forwarding and expose this port.
-	// TODO(@nicolasalt): expose individual gRPC services instead when extensions are supported.
-	serverPortName = "server-port"
-	ForceProd      = false
+	ForceProd                               = false
 )
 
 func Register() {
