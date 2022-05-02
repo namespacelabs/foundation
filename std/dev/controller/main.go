@@ -33,6 +33,9 @@ import (
 
 var (
 	serializedConf = flag.String("configuration", "", "Serialized configuration in JSON.")
+
+	port           = flag.String("port", "", "Propagated to the executed process.")
+	listenHostname = flag.String("listen_hostname", "", "Propagated to the executed process.")
 )
 
 func main() {
@@ -121,7 +124,15 @@ func spawnExecution(ctx context.Context, configuration *admin.Configuration, pac
 }
 
 func makeExecution(ctx context.Context, configuration *admin.Configuration, packageName string, execution *admin.Execution) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, execution.Args[0], execution.Args[1:]...)
+	args := execution.Args[1:]
+	if *port != "" {
+		args = append(args, "--port", *port)
+	}
+	if *listenHostname != "" {
+		args = append(args, "--listen_hostname", *listenHostname)
+	}
+
+	cmd := exec.CommandContext(ctx, execution.Args[0], args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Dir = filepath.Join(configuration.PackageBase, packageName)
