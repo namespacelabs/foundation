@@ -492,6 +492,10 @@ func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *worksp
 	return nil
 }
 
+func (impl) DevelopmentPackages() []schema.PackageName {
+	return nil
+}
+
 func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
 	return frontend.ProvisionStack{}, nil
 }

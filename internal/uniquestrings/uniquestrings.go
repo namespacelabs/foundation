@@ -7,12 +7,12 @@ package uniquestrings
 // Not thread safe.
 type List struct {
 	index   map[string]bool
-	strings []string
+	ordered []string
 }
 
-func (dl *List) Len() int { return len(dl.strings) }
+func (dl *List) Len() int { return len(dl.ordered) }
 
-func (dl *List) Strings() []string { return dl.strings }
+func (dl *List) Strings() []string { return dl.ordered }
 
 // Adds the specified string to the set. Returns true if the string was not present in the set.
 func (dl *List) Add(v string) bool {
@@ -25,7 +25,7 @@ func (dl *List) Add(v string) bool {
 	}
 
 	dl.index[v] = true
-	dl.strings = append(dl.strings, v)
+	dl.ordered = append(dl.ordered, v)
 	return true
 }
 
