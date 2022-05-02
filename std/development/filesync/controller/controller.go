@@ -18,7 +18,7 @@ func main() {
 	log.SetFlags(log.Lmicroseconds | log.LstdFlags)
 
 	if len(os.Args) < 4 {
-		log.Fatal("must be past at least root, port and server")
+		log.Fatal("must be passed at least root, port and server")
 	}
 
 	root := os.Args[1]
