@@ -24,10 +24,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func doWorkspace(ctx context.Context, set *DevWorkflowRequest_SetWorkspace, obs *stackState) error {
+func doWorkspace(ctx context.Context, set *DevWorkflowRequest_SetWorkspace, obs *stackState, showLogs func(runtime.Runtime)) error {
 	for {
 		err := compute.Do(ctx, func(ctx context.Context) error {
-			return step(ctx, set, obs)
+			return step(ctx, set, obs, showLogs)
 		})
 
 		if err != nil {
@@ -41,7 +41,7 @@ func doWorkspace(ctx context.Context, set *DevWorkflowRequest_SetWorkspace, obs 
 	}
 }
 
-func step(ctx context.Context, set *DevWorkflowRequest_SetWorkspace, obs *stackState) error {
+func step(ctx context.Context, set *DevWorkflowRequest_SetWorkspace, obs *stackState, showLogs func(runtime.Runtime)) error {
 	done := console.SetIdleLabel(ctx, "waiting for workspace changes")
 	defer done()
 
@@ -55,6 +55,8 @@ func step(ctx context.Context, set *DevWorkflowRequest_SetWorkspace, obs *stackS
 	if err != nil {
 		return err
 	}
+
+	go showLogs(runtime.For(ctx, env))
 
 	serverPackages := []schema.PackageName{schema.Name(set.PackageName)}
 	for _, pkg := range set.AdditionalServers {

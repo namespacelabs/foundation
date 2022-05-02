@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	cons "github.com/containerd/console"
+	"github.com/morikuni/aec"
 	"github.com/muesli/cancelreader"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime"
@@ -22,42 +23,37 @@ import (
 
 // TermCommands processes user commands issued from the terminal.
 // On successful exit, the terminal is reset to its original state and `onDone()` callback is called.
-func TermCommands(ctx context.Context, rt runtime.Runtime, serverProtos []*schema.Server, onDone func()) {
-	defer func() {
-		if ctx.Err() == nil {
-			onDone()
-		}
-	}()
+func TermCommands(ctx context.Context, serverProtos []*schema.Server, start chan bool, onDone func()) {
 	r, err := newReader(ctx)
 	if err != nil {
 		fmt.Fprintln(console.Errors(ctx), err)
 		return
 	}
 	defer r.restore()
-
-	observeStarted := false
+	prefix := aec.Bold.Apply(" Commands:")
+	commands := fmt.Sprintf("%s (%s)ogs (%s)uit", prefix, aec.Bold.Apply("l"), aec.Bold.Apply("q"))
+	console.SetStickyContent(ctx, "cmds", []byte(commands))
+	showingLogs := false
 	for {
 		select {
 		case err := <-r.errors:
 			fmt.Fprintf(console.Errors(ctx), "Error while reading from Stdin: %v:", err)
 			return
 		case c := <-r.input:
-			if int(c) == 3 {
+			if int(c) == 3 { // ctrl+c
+				console.SetStickyContent(ctx, "cmds", []byte(fmt.Sprintf("%s Pressed ctrl+c. Quitting...", prefix)))
+				onDone()
 				return
 			}
-			if string(c) == "q" {
+			if string(c) == "q" { // ctrl+c
+				console.SetStickyContent(ctx, "cmds", []byte(fmt.Sprintf("%s Quitting...", prefix)))
+				onDone()
 				return
 			}
-			if string(c) == "l" && !observeStarted {
-				observeStarted = true
-				for _, server := range serverProtos {
-					server := server
-					go func() {
-						if err := ObserveLogs(ctx, rt, server); err != nil {
-							fmt.Fprintf(console.Errors(ctx), "Error getting logs: %v:", err)
-						}
-					}()
-				}
+			if string(c) == "l" && !showingLogs {
+				showingLogs = true
+				console.SetStickyContent(ctx, "cmds", []byte(fmt.Sprintf("%s Showing logs...", prefix)))
+				start <- true
 				// TODO handle multiple keystrokes.
 			}
 		case <-ctx.Done():
@@ -69,10 +65,34 @@ func TermCommands(ctx context.Context, rt runtime.Runtime, serverProtos []*schem
 }
 
 // ObserveLogs observes a given server in a given runtime and writes the logs to `console.Output`.
-func ObserveLogs(ctx context.Context, rt runtime.Runtime, serverProto *schema.Server) error {
-	streams := map[string]*logStream{}
+func ObserveLogs(ctx context.Context, serverProtos []*schema.Server, start chan bool) func(rt runtime.Runtime) {
+	return func(rt runtime.Runtime) {
+		select {
+		case <-ctx.Done():
+			return
+		case <-start:
+			for _, server := range serverProtos {
+				server := server
+				go func() {
+					if err := observeServer(ctx, rt, server, start); err != nil {
+						fmt.Fprintf(console.Errors(ctx), "Error while observing logs: %v", err)
+					}
+				}()
+			}
+		}
+	}
+}
+
+func ObserveLogsSingleServr(ctx context.Context, rt runtime.Runtime, server *schema.Server) error {
+	start := make(chan bool)
+	start <- true
+	return observeServer(ctx, rt, server, start)
+}
+
+func observeServer(ctx context.Context, rt runtime.Runtime, server *schema.Server, start chan bool) error {
 	var mu sync.Mutex
-	return rt.Observe(ctx, serverProto, runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) error {
+	streams := map[string]*logStream{}
+	return rt.Observe(ctx, server, runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) error {
 		mu.Lock()
 		existing := streams[ev.ContainerReference.UniqueID()]
 		if ev.Removed {
