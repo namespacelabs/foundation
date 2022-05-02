@@ -21,11 +21,8 @@ message OpEnsureRole {
 message OpAssociatePolicy {
     string role_name = 1;
 
-    string                   policy_name = 2;
-    string                   description = 3;
-    string                   policy_json = 4;  // Serialized iam.PolicyDocument.
-    repeated Tag             tag         = 5;
-    foundation.schema.Server for_server  = 6;  // If specified, will generate tags that associate the policy with the server.
+    string policy_name = 2;
+    string policy_json = 3;  // Serialized iam.PolicyDocument.
 }
 
 message Tag {
