@@ -20,6 +20,12 @@ _#Node: {
 
 	_#Instantiate
 
+	on?: {
+		prepare?: {
+			internal: string
+		}
+	}
+
 	packageData: [...string]
 
 	requirePersistentStorage?: {

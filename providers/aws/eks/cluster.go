@@ -15,60 +15,56 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func Register() {
-	frontend.RegisterDetails("namespacelabs.dev/foundation/universe/aws/eks", &RuntimeDetails{},
-		func(ctx context.Context, env ops.Environment, srv *schema.Server, details *RuntimeDetails) (*rtypes.DetailsProps, error) {
-			if !details.DescribeIfEks {
-				return nil, nil
-			}
+	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster", prepareDescribeCluster)
+}
 
-			rt, err := kubernetes.New(ctx, env.Workspace(), env.DevHost(), env.Proto())
-			if err != nil {
-				return nil, err
-			}
+func prepareDescribeCluster(ctx context.Context, env ops.Environment, srv *schema.Server) (*frontend.PrepareProps, error) {
+	rt, err := kubernetes.New(ctx, env.Workspace(), env.DevHost(), env.Proto())
+	if err != nil {
+		return nil, err
+	}
 
-			sysInfo, err := rt.SystemInfo(ctx)
-			if err != nil {
-				return nil, err
-			}
+	sysInfo, err := rt.SystemInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-			if sysInfo.DetectedDistribution != "eks" || sysInfo.EksClusterName == "" {
-				return nil, nil
-			}
+	if sysInfo.DetectedDistribution != "eks" || sysInfo.EksClusterName == "" {
+		return nil, nil
+	}
 
-			description, err := DescribeCluster(ctx, env.DevHost(), env.Proto(), sysInfo.EksClusterName)
-			if err != nil {
-				return nil, err
-			}
+	description, err := DescribeCluster(ctx, env.DevHost(), env.Proto(), sysInfo.EksClusterName)
+	if err != nil {
+		return nil, err
+	}
 
-			eksCluster := &EKSCluster{
-				Name: sysInfo.EksClusterName,
-				Arn:  *description.Cluster.Arn,
-				ComputedIamRoleName: fmt.Sprintf("foundation-%s-%s-%s-%s",
-					sysInfo.EksClusterName, env.Proto().Name, srv.Name, srv.Id),
-			}
+	eksCluster := &EKSCluster{
+		Name: sysInfo.EksClusterName,
+		Arn:  *description.Cluster.Arn,
+		ComputedIamRoleName: fmt.Sprintf("foundation-%s-%s-%s-%s",
+			sysInfo.EksClusterName, env.Proto().Name, srv.Name, srv.Id),
+	}
 
-			if len(eksCluster.ComputedIamRoleName) > 64 {
-				return nil, fnerrors.InternalError("generated a role name that is too long (%d): %s",
-					len(eksCluster.ComputedIamRoleName), eksCluster.ComputedIamRoleName)
-			}
+	if len(eksCluster.ComputedIamRoleName) > 64 {
+		return nil, fnerrors.InternalError("generated a role name that is too long (%d): %s",
+			len(eksCluster.ComputedIamRoleName), eksCluster.ComputedIamRoleName)
+	}
 
-			if description.Cluster.Identity != nil && description.Cluster.Identity.Oidc != nil {
-				eksCluster.OidcIssuer = *description.Cluster.Identity.Oidc.Issuer
-			}
+	if description.Cluster.Identity != nil && description.Cluster.Identity.Oidc != nil {
+		eksCluster.OidcIssuer = *description.Cluster.Identity.Oidc.Issuer
+	}
 
-			packedEksCluster, err := anypb.New(eksCluster)
-			if err != nil {
-				return nil, err
-			}
+	packedEksCluster, err := anypb.New(eksCluster)
+	if err != nil {
+		return nil, err
+	}
 
-			return &rtypes.DetailsProps{ProvisionInput: []*anypb.Any{packedEksCluster}}, nil
-		})
+	return &frontend.PrepareProps{ProvisionInput: []*anypb.Any{packedEksCluster}}, nil
 }
 
 func DescribeCluster(ctx context.Context, devHost *schema.DevHost, env *schema.Environment, name string) (out *eks.DescribeClusterOutput, _ error) {

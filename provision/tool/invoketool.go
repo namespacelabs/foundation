@@ -8,6 +8,7 @@ import (
 	"context"
 	"io/fs"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -20,24 +21,28 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Invoke(ctx context.Context, env ops.Environment, r *Definition, stack *schema.Stack, focus schema.PackageName, props *rtypes.ProvisionProps, ev protocol.Lifecycle) compute.Computable[*protocol.ToolResponse] {
+type InvokeProps struct {
+	Event          protocol.Lifecycle
+	LocalMapping   []*rtypes.LocalMapping
+	ProvisionInput []*anypb.Any
+}
+
+func Invoke(ctx context.Context, env ops.Environment, r *Definition, stack *schema.Stack, focus schema.PackageName, props InvokeProps) compute.Computable[*protocol.ToolResponse] {
 	return &cacheableInvocation{
-		handler:   *r,
-		stack:     stack,
-		focus:     focus,
-		env:       env.Proto(),
-		props:     props,
-		lifecycle: ev,
+		handler: *r,
+		stack:   stack,
+		focus:   focus,
+		env:     env.Proto(),
+		props:   props,
 	}
 }
 
 type cacheableInvocation struct {
-	handler   Definition
-	stack     *schema.Stack
-	focus     schema.PackageName
-	env       *schema.Environment
-	props     *rtypes.ProvisionProps
-	lifecycle protocol.Lifecycle
+	handler Definition
+	stack   *schema.Stack
+	focus   schema.PackageName
+	env     *schema.Environment
+	props   InvokeProps
 
 	compute.LocalScoped[*protocol.ToolResponse]
 }
@@ -55,7 +60,7 @@ func (inv *cacheableInvocation) Inputs() *compute.In {
 		Computable("image", inv.handler.Invocation.Image).
 		JSON("handler", Definition{For: inv.handler.For, Source: inv.handler.Source, Invocation: &invocation}). // Without image and PackageAbsPath.
 		Proto("stack", inv.stack).Stringer("focus", inv.focus).Proto("env", inv.env).
-		Proto("props", inv.props).JSON("lifecycle", inv.lifecycle)
+		JSON("props", inv.props)
 }
 
 func (inv *cacheableInvocation) Output() compute.Output {
@@ -86,7 +91,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		Env:           inv.env,
 	}
 
-	switch inv.lifecycle {
+	switch inv.props.Event {
 	case protocol.Lifecycle_PROVISION:
 		req.RequestType = &protocol.ToolRequest_ApplyRequest{
 			ApplyRequest: &protocol.ApplyRequest{
@@ -98,7 +103,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 				Header: header,
 			}}
 	default:
-		return nil, fnerrors.InternalError("%v: no support for lifecycle", inv.lifecycle)
+		return nil, fnerrors.InternalError("%v: no support for lifecycle", inv.props.Event)
 	}
 
 	// Snapshots are pushed synchrously with the invocation itself. This is bound
@@ -137,8 +142,8 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	}
 
 	opts.Mounts = append(opts.Mounts, r.Invocation.Mounts...)
-	opts.Mounts = append(opts.Mounts, inv.props.GetLocalMapping()...)
-	req.Input = append(req.Input, inv.props.GetProvisionInput()...)
+	opts.Mounts = append(opts.Mounts, inv.props.LocalMapping...)
+	req.Input = append(req.Input, inv.props.ProvisionInput...)
 
 	return tools.LowLevelInvoke(ctx, r.Source.PackageName, opts, req)
 }

@@ -34,9 +34,3 @@ message ProvisionProps {
     repeated schema.Definition definition        = 3;
     repeated schema.DefExtension extension       = 4;
 }
-
-message DetailsProps {
-    repeated google.protobuf.Any provision_input = 1;
-    repeated schema.Definition definition        = 2;
-    repeated schema.DefExtension extension       = 3;
-}

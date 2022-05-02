@@ -37,7 +37,9 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	kubenode "namespacelabs.dev/foundation/std/runtime/kubernetes"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"sigs.k8s.io/yaml"
 )
@@ -60,36 +62,71 @@ func Register() {
 		return New(ctx, ws, devHost, env)
 	})
 
-	frontend.RegisterDetails("namespacelabs.dev/foundation/std/runtime/kubernetes", &kubedef.RuntimeDetails{},
-		func(ctx context.Context, env ops.Environment, srv *schema.Server, d *kubedef.RuntimeDetails) (*rtypes.DetailsProps, error) {
-			if !d.EnsureServiceAccount {
-				return nil, nil
+	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
+}
+
+func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv *schema.Server) (*frontend.PrepareProps, error) {
+	var ensureServiceAccount bool
+
+	if err := visitAllocs(srv.Allocation, kubeNode, &kubenode.ServerExtensionArgs{},
+		func(instance *schema.Allocation_Instance, instantiate *schema.Instantiate, args *kubenode.ServerExtensionArgs) {
+			if args.EnsureServiceAccount {
+				ensureServiceAccount = true
+			}
+		}); err != nil {
+		return nil, err
+	}
+
+	if !ensureServiceAccount {
+		return nil, nil
+	}
+
+	serviceAccount := kubedef.MakeDeploymentId(srv)
+
+	saDetails := &kubedef.ServiceAccountDetails{ServiceAccountName: serviceAccount}
+	packedSaDetails, err := anypb.New(saDetails)
+	if err != nil {
+		return nil, err
+	}
+
+	packedExt, err := anypb.New(&kubedef.SpecExtension{
+		EnsureServiceAccount: true,
+		ServiceAccount:       serviceAccount,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &frontend.PrepareProps{
+		ProvisionInput: []*anypb.Any{packedSaDetails},
+		Extension: []*schema.DefExtension{{
+			For:  srv.PackageName,
+			Impl: packedExt,
+		}},
+	}, nil
+}
+
+func visitAllocs[V proto.Message](allocs []*schema.Allocation, pkg schema.PackageName, tmpl V, f func(*schema.Allocation_Instance, *schema.Instantiate, V)) error {
+	typeURL := fnany.TypeURL(pkg, tmpl)
+
+	for _, alloc := range allocs {
+		for _, instance := range alloc.Instance {
+			for _, i := range instance.Instantiated {
+				if i.GetConstructor().GetTypeUrl() == typeURL {
+					copy := proto.Clone(tmpl)
+					if err := proto.Unmarshal(i.Constructor.GetValue(), copy); err != nil {
+						return err
+					}
+
+					f(instance, i, copy.(V))
+				}
 			}
 
-			serviceAccount := kubedef.MakeDeploymentId(srv)
+			visitAllocs(instance.DownstreamAllocation, pkg, tmpl, f)
+		}
+	}
 
-			saDetails := &kubedef.ServiceAccountDetails{ServiceAccountName: serviceAccount}
-			packedSaDetails, err := anypb.New(saDetails)
-			if err != nil {
-				return nil, err
-			}
-
-			packedExt, err := anypb.New(&kubedef.SpecExtension{
-				EnsureServiceAccount: true,
-				ServiceAccount:       serviceAccount,
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			return &rtypes.DetailsProps{
-				ProvisionInput: []*anypb.Any{packedSaDetails},
-				Extension: []*schema.DefExtension{{
-					For:  srv.PackageName,
-					Impl: packedExt,
-				}},
-			}, nil
-		})
+	return nil
 }
 
 func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (k8sRuntime, error) {

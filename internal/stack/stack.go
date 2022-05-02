@@ -40,6 +40,7 @@ type ParsedNode struct {
 	Package       *workspace.Package
 	ProvisionPlan frontend.ProvisionPlan
 	Allocations   []frontend.ValueWithPath
+	PrepareProps  frontend.PrepareProps
 }
 
 func (stack *Stack) Proto() *schema.Stack {
@@ -208,9 +209,24 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 }
 
 func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Package, state *eval.AllocState) (*ParsedNode, error) {
+	var combinedProps frontend.PrepareProps
+	for _, hook := range n.PrepareHooks {
+		props, err := frontend.InvokePrepareHook(ctx, hook.Internal, server.Env(), server.Proto())
+		if err != nil {
+			return nil, fnerrors.Wrap(n.Location, err)
+		}
+
+		if props == nil {
+			continue
+		}
+
+		combinedProps.ProvisionInput = append(combinedProps.ProvisionInput, props.ProvisionInput...)
+		combinedProps.Definition = append(combinedProps.Definition, props.Definition...)
+		combinedProps.Extension = append(combinedProps.Extension, props.Extension...)
+	}
+
 	// We need to make sure that `env` is available before we read extend.stack, as env is often used
 	// for branching.
-
 	pdata, err := n.Parsed.EvalProvision(ctx, server.Env(), frontend.ProvisionInputs{
 		Workspace:      server.Module().Workspace,
 		ServerLocation: server.Location,
@@ -233,7 +249,7 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 		}
 	}
 
-	return &ParsedNode{Package: n, ProvisionPlan: pdata}, nil
+	return &ParsedNode{Package: n, ProvisionPlan: pdata, PrepareProps: combinedProps}, nil
 }
 
 func fillNeeds(ctx context.Context, server *schema.Server, s *eval.AllocState, allocators []eval.AllocatorFunc, n *schema.Node) ([]frontend.ValueWithPath, error) {

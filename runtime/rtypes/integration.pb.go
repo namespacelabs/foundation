@@ -227,69 +227,6 @@ func (x *ProvisionProps) GetExtension() []*schema.DefExtension {
 	return nil
 }
 
-type DetailsProps struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	ProvisionInput []*anypb.Any           `protobuf:"bytes,1,rep,name=provision_input,json=provisionInput,proto3" json:"provision_input,omitempty"`
-	Definition     []*schema.Definition   `protobuf:"bytes,2,rep,name=definition,proto3" json:"definition,omitempty"`
-	Extension      []*schema.DefExtension `protobuf:"bytes,3,rep,name=extension,proto3" json:"extension,omitempty"`
-}
-
-func (x *DetailsProps) Reset() {
-	*x = DetailsProps{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_rtypes_integration_proto_msgTypes[3]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *DetailsProps) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DetailsProps) ProtoMessage() {}
-
-func (x *DetailsProps) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_rtypes_integration_proto_msgTypes[3]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DetailsProps.ProtoReflect.Descriptor instead.
-func (*DetailsProps) Descriptor() ([]byte, []int) {
-	return file_runtime_rtypes_integration_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *DetailsProps) GetProvisionInput() []*anypb.Any {
-	if x != nil {
-		return x.ProvisionInput
-	}
-	return nil
-}
-
-func (x *DetailsProps) GetDefinition() []*schema.Definition {
-	if x != nil {
-		return x.Definition
-	}
-	return nil
-}
-
-func (x *DetailsProps) GetExtension() []*schema.DefExtension {
-	if x != nil {
-		return x.Extension
-	}
-	return nil
-}
-
 var File_runtime_rtypes_integration_proto protoreflect.FileDescriptor
 
 var file_runtime_rtypes_integration_proto_rawDesc = []byte{
@@ -332,24 +269,11 @@ var file_runtime_rtypes_integration_proto_rawDesc = []byte{
 	0x0a, 0x09, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x03, 0x28,
 	0x0b, 0x32, 0x1f, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73,
 	0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x44, 0x65, 0x66, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69,
-	0x6f, 0x6e, 0x52, 0x09, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x22, 0xcb, 0x01,
-	0x0a, 0x0c, 0x44, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73, 0x50, 0x72, 0x6f, 0x70, 0x73, 0x12, 0x3d,
-	0x0a, 0x0f, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x6e, 0x70, 0x75,
-	0x74, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x41, 0x6e, 0x79, 0x52, 0x0e, 0x70,
-	0x72, 0x6f, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x70, 0x75, 0x74, 0x12, 0x3d, 0x0a,
-	0x0a, 0x64, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x03, 0x28,
-	0x0b, 0x32, 0x1d, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73,
-	0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e,
-	0x52, 0x0a, 0x64, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x3d, 0x0a, 0x09,
-	0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32,
-	0x1f, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68,
-	0x65, 0x6d, 0x61, 0x2e, 0x44, 0x65, 0x66, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e,
-	0x52, 0x09, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x42, 0x2d, 0x5a, 0x2b, 0x6e,
-	0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76,
-	0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x72, 0x75, 0x6e, 0x74,
-	0x69, 0x6d, 0x65, 0x2f, 0x72, 0x74, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	0x6f, 0x6e, 0x52, 0x09, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x42, 0x2d, 0x5a,
+	0x2b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64,
+	0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x72, 0x75,
+	0x6e, 0x74, 0x69, 0x6d, 0x65, 0x2f, 0x72, 0x74, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -364,29 +288,25 @@ func file_runtime_rtypes_integration_proto_rawDescGZIP() []byte {
 	return file_runtime_rtypes_integration_proto_rawDescData
 }
 
-var file_runtime_rtypes_integration_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_runtime_rtypes_integration_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_runtime_rtypes_integration_proto_goTypes = []interface{}{
 	(*LocalMapping)(nil),        // 0: foundation.runtime.rtypes.LocalMapping
 	(*Port)(nil),                // 1: foundation.runtime.rtypes.Port
 	(*ProvisionProps)(nil),      // 2: foundation.runtime.rtypes.ProvisionProps
-	(*DetailsProps)(nil),        // 3: foundation.runtime.rtypes.DetailsProps
-	(*anypb.Any)(nil),           // 4: google.protobuf.Any
-	(*schema.Definition)(nil),   // 5: foundation.schema.Definition
-	(*schema.DefExtension)(nil), // 6: foundation.schema.DefExtension
+	(*anypb.Any)(nil),           // 3: google.protobuf.Any
+	(*schema.Definition)(nil),   // 4: foundation.schema.Definition
+	(*schema.DefExtension)(nil), // 5: foundation.schema.DefExtension
 }
 var file_runtime_rtypes_integration_proto_depIdxs = []int32{
 	0, // 0: foundation.runtime.rtypes.ProvisionProps.local_mapping:type_name -> foundation.runtime.rtypes.LocalMapping
-	4, // 1: foundation.runtime.rtypes.ProvisionProps.provision_input:type_name -> google.protobuf.Any
-	5, // 2: foundation.runtime.rtypes.ProvisionProps.definition:type_name -> foundation.schema.Definition
-	6, // 3: foundation.runtime.rtypes.ProvisionProps.extension:type_name -> foundation.schema.DefExtension
-	4, // 4: foundation.runtime.rtypes.DetailsProps.provision_input:type_name -> google.protobuf.Any
-	5, // 5: foundation.runtime.rtypes.DetailsProps.definition:type_name -> foundation.schema.Definition
-	6, // 6: foundation.runtime.rtypes.DetailsProps.extension:type_name -> foundation.schema.DefExtension
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	3, // 1: foundation.runtime.rtypes.ProvisionProps.provision_input:type_name -> google.protobuf.Any
+	4, // 2: foundation.runtime.rtypes.ProvisionProps.definition:type_name -> foundation.schema.Definition
+	5, // 3: foundation.runtime.rtypes.ProvisionProps.extension:type_name -> foundation.schema.DefExtension
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_runtime_rtypes_integration_proto_init() }
@@ -431,18 +351,6 @@ func file_runtime_rtypes_integration_proto_init() {
 				return nil
 			}
 		}
-		file_runtime_rtypes_integration_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DetailsProps); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -450,7 +358,7 @@ func file_runtime_rtypes_integration_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_runtime_rtypes_integration_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

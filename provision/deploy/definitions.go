@@ -7,28 +7,17 @@ package deploy
 import (
 	"context"
 	"fmt"
-	"strings"
 
-	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
-
-type detailsEntry struct {
-	For     *schema.Server
-	Name    string
-	Message proto.Message
-}
 
 func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
 	props, err := runtime.For(ctx, env).PrepareProvision(ctx)
@@ -36,44 +25,25 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 		return nil, err
 	}
 
-	var details []detailsEntry
+	propsPerServer := map[schema.PackageName]tool.InvokeProps{}
+
+	definitions := props.Definition
+	extensions := props.Extension
 
 	for k, srv := range stack.ParsedServers {
-		m := map[string]schema.PackageName{}
+		invokeProps := tool.InvokeProps{Event: event}
+
+		invokeProps.LocalMapping = append(invokeProps.LocalMapping, props.LocalMapping...)
+		invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, props.ProvisionInput...)
 
 		for _, dep := range srv.Deps {
-			for _, d := range dep.ProvisionPlan.Details {
-				// XXX make this more permissive in the future; if two extensions specifiy the same, it's ok.
-				if previous, ok := m[d.Name]; ok {
-					return nil, fnerrors.UserError(stack.Servers[k].Location,
-						"multiple nodes attempting to set the same detail %q: %q and %q",
-						d.Name, previous, dep.Package.PackageName())
-				}
+			invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, dep.PrepareProps.ProvisionInput...)
 
-				m[d.Name] = dep.Package.PackageName()
-				details = append(details, detailsEntry{
-					stack.Servers[k].Proto(), d.Name, d.Message,
-				})
-			}
-		}
-	}
-
-	slices.SortFunc(details, func(a, b detailsEntry) bool {
-		if a.For.PackageName == b.For.PackageName {
-			return strings.Compare(a.Name, b.Name) < 0
-		}
-		return strings.Compare(a.For.PackageName, b.For.PackageName) < 0
-	})
-
-	for _, d := range details {
-		ditProps, err := frontend.ProvisionDetails(ctx, d.Name, env, d.For, d.Message)
-		if err != nil {
-			return nil, err
+			definitions = append(definitions, dep.PrepareProps.Definition...)
+			extensions = append(extensions, dep.PrepareProps.Extension...)
 		}
 
-		props.Definition = append(props.Definition, ditProps.GetDefinition()...)
-		props.ProvisionInput = append(props.ProvisionInput, ditProps.GetProvisionInput()...)
-		props.Extension = append(props.Extension, ditProps.GetExtension()...)
+		propsPerServer[stack.Servers[k].PackageName()] = invokeProps
 	}
 
 	var invocations []compute.Computable[*protocol.ToolResponse]
@@ -83,10 +53,17 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", r.For)
 		}
 
-		invocations = append(invocations, tool.Invoke(ctx, env, r, stack.Proto(), focus.PackageName(), props, event))
+		invocations = append(invocations, tool.Invoke(ctx, env, r, stack.Proto(), focus.PackageName(), propsPerServer[focus.PackageName()]))
 	}
 
-	return &finishInvokeHandlers{stack: stack, handlers: handlers, invocations: invocations, props: props, event: event}, nil
+	return &finishInvokeHandlers{
+		stack:       stack,
+		handlers:    handlers,
+		invocations: invocations,
+		event:       event,
+		definitions: definitions,
+		extensions:  extensions,
+	}, nil
 }
 
 type handlerResult struct {
@@ -99,8 +76,9 @@ type finishInvokeHandlers struct {
 	stack       *stack.Stack
 	handlers    []*tool.Definition
 	invocations []compute.Computable[*protocol.ToolResponse]
-	props       *rtypes.ProvisionProps
 	event       protocol.Lifecycle
+	definitions []*schema.Definition
+	extensions  []*schema.DefExtension
 
 	compute.LocalScoped[*handlerResult]
 }
@@ -110,7 +88,12 @@ func (r *finishInvokeHandlers) Action() *tasks.ActionEvent {
 }
 
 func (r *finishInvokeHandlers) Inputs() *compute.In {
-	in := compute.Inputs().Indigestible("stack", r.stack).Indigestible("handlers", r.handlers).Proto("props", r.props).JSON("event", r.event)
+	in := compute.Inputs().
+		Indigestible("stack", r.stack).
+		Indigestible("handlers", r.handlers).
+		JSON("event", r.event).
+		JSON("definitions", r.definitions).
+		JSON("extensions", r.extensions)
 	for k, invocation := range r.invocations {
 		in = in.Computable(fmt.Sprintf("invocation%d", k), invocation)
 	}
@@ -122,11 +105,11 @@ func (r *finishInvokeHandlers) Output() compute.Output {
 }
 
 func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolved) (*handlerResult, error) {
-	ops := append([]*schema.Definition{}, r.props.Definition...)
+	ops := append([]*schema.Definition{}, r.definitions...)
 
 	extensionsPerServer := map[schema.PackageName][]*schema.DefExtension{}
 
-	for _, ext := range r.props.Extension {
+	for _, ext := range r.extensions {
 		extensionsPerServer[schema.PackageName(ext.For)] = append(extensionsPerServer[schema.PackageName(ext.For)], ext)
 	}
 
