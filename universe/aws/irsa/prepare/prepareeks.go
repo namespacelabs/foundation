@@ -52,6 +52,11 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return nil
 	}
 
+	eksServerDetails := &eks.EKSServerDetails{}
+	if err := r.UnpackInput(eksServerDetails); err != nil {
+		return err
+	}
+
 	if eksCluster.Arn == "" {
 		return fnerrors.InternalError("eks_cluster.arn is missing")
 	}
@@ -75,7 +80,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 			ServiceAccount: serviceAccount.ServiceAccountName,
 			ServiceAccountAnnotation: []*kubedef.SpecExtension_Annotation{
 				{Key: "eks.amazonaws.com/role-arn", Value: fmt.Sprintf("arn:aws:iam::%s:role/%s",
-					clusterArn.AccountID, eksCluster.ComputedIamRoleName)},
+					clusterArn.AccountID, eksServerDetails.ComputedIamRoleName)},
 			},
 		},
 	})
@@ -110,7 +115,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 
 	out.Definitions = append(out.Definitions, makeRole{
 		&fniam.OpEnsureRole{
-			RoleName: eksCluster.ComputedIamRoleName,
+			RoleName: eksServerDetails.ComputedIamRoleName,
 			Description: fmt.Sprintf("Foundation-managed IAM role for service account %s/%s in EKS cluster %s",
 				namespace, serviceAccount, eksCluster.Name),
 			AssumeRolePolicyJson: string(policyBytes),

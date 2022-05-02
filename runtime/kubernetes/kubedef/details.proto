@@ -8,10 +8,6 @@ package foundation.runtime.kubernetes.kubedef;
 
 option go_package = "namespacelabs.dev/foundation/runtime/kubernetes/kubedef";
 
-message RuntimeDetails {
-    bool ensure_service_account = 1;
-}
-
 message ServiceAccountDetails {
     string service_account_name = 1;
 }

@@ -95,6 +95,7 @@ func (x *OpEnsureRole) GetTag() []*Tag {
 	return nil
 }
 
+// XXX TODO
 type OpAssociatePolicy struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

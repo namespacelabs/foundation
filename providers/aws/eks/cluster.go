@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/eks"
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
@@ -38,6 +37,7 @@ func prepareDescribeCluster(ctx context.Context, env ops.Environment, srv *schem
 		return nil, nil
 	}
 
+	// XXX use a compute.Computable here to cache the cluster information if multiple servers depend on it.
 	description, err := DescribeCluster(ctx, env.DevHost(), env.Proto(), sysInfo.EksClusterName)
 	if err != nil {
 		return nil, err
@@ -46,25 +46,29 @@ func prepareDescribeCluster(ctx context.Context, env ops.Environment, srv *schem
 	eksCluster := &EKSCluster{
 		Name: sysInfo.EksClusterName,
 		Arn:  *description.Cluster.Arn,
-		ComputedIamRoleName: fmt.Sprintf("foundation-%s-%s-%s-%s",
-			sysInfo.EksClusterName, env.Proto().Name, srv.Name, srv.Id),
-	}
-
-	if len(eksCluster.ComputedIamRoleName) > 64 {
-		return nil, fnerrors.InternalError("generated a role name that is too long (%d): %s",
-			len(eksCluster.ComputedIamRoleName), eksCluster.ComputedIamRoleName)
 	}
 
 	if description.Cluster.Identity != nil && description.Cluster.Identity.Oidc != nil {
 		eksCluster.OidcIssuer = *description.Cluster.Identity.Oidc.Issuer
 	}
 
-	packedEksCluster, err := anypb.New(eksCluster)
-	if err != nil {
+	eksServerDetails := &EKSServerDetails{
+		ComputedIamRoleName: fmt.Sprintf("foundation-%s-%s-%s-%s",
+			sysInfo.EksClusterName, env.Proto().Name, srv.Name, srv.Id),
+	}
+
+	if len(eksServerDetails.ComputedIamRoleName) > 64 {
+		return nil, fnerrors.InternalError("generated a role name that is too long (%d): %s",
+			len(eksServerDetails.ComputedIamRoleName), eksServerDetails.ComputedIamRoleName)
+	}
+
+	props := &frontend.PrepareProps{}
+
+	if err := props.AppendInputs(eksCluster, eksServerDetails); err != nil {
 		return nil, err
 	}
 
-	return &frontend.PrepareProps{ProvisionInput: []*anypb.Any{packedEksCluster}}, nil
+	return props, nil
 }
 
 func DescribeCluster(ctx context.Context, devHost *schema.DevHost, env *schema.Environment, name string) (out *eks.DescribeClusterOutput, _ error) {

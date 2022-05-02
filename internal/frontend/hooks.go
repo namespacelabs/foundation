@@ -7,6 +7,7 @@ package frontend
 import (
 	"context"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -35,6 +36,17 @@ func (p *PrepareProps) AppendWith(rhs PrepareProps) {
 	p.ProvisionInput = append(p.ProvisionInput, rhs.ProvisionInput...)
 	p.Definition = append(p.Definition, rhs.Definition...)
 	p.Extension = append(p.Extension, rhs.Extension...)
+}
+
+func (p *PrepareProps) AppendInputs(msgs ...proto.Message) error {
+	for _, m := range msgs {
+		any, err := anypb.New(m)
+		if err != nil {
+			return err
+		}
+		p.ProvisionInput = append(p.ProvisionInput, any)
+	}
+	return nil
 }
 
 type PrepareHookFunc func(context.Context, ops.Environment, *schema.Server) (*PrepareProps, error)
