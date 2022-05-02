@@ -479,7 +479,7 @@ func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Nod
 }
 
 func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
-	ext.Include = append(ext.Include, grpcPkg, controllerPkg)
+	ext.Include = append(ext.Include, grpcPkg)
 	return nil
 }
 
@@ -493,7 +493,7 @@ func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *worksp
 }
 
 func (impl) DevelopmentPackages() []schema.PackageName {
-	return nil
+	return []schema.PackageName{controllerPkg}
 }
 
 func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
