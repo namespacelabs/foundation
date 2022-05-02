@@ -79,7 +79,10 @@ func Register() {
 }
 
 func useDevBuild(env *schema.Environment) bool {
-	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
+	// TODO(@nicolasalt): uncomment when #313 is fixed.
+	// Currently only dev way to pass flags to the server works, see PostParseServer.
+	// return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
+	return true
 }
 
 type generator struct{}
