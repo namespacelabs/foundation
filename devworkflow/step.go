@@ -199,7 +199,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 				}
 
 				do.obs.updateStack(func(stack *Stack) *Stack {
-					stack.Stack = s
+					stack.Stack = s.Stack
 					return stack
 				})
 
