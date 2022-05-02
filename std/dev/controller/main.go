@@ -8,8 +8,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/fs"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -20,14 +18,10 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
-	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
-	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/std/dev/controller/admin"
+	"namespacelabs.dev/foundation/std/development/filesync"
 )
 
 var (
@@ -73,20 +67,10 @@ func main() {
 
 	if configuration.FilesyncPort > 0 {
 		go func() {
-			grpcServer := grpc.NewServer()
-
-			wsremote.RegisterFileSyncServiceServer(grpcServer, sinkServer{configuration, running})
-
-			filesyncHost := fmt.Sprintf("0.0.0.0:%d", configuration.FilesyncPort)
-			lis, err := net.Listen("tcp", filesyncHost)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			log.Printf("FileSync listening on %s", filesyncHost)
-			if err := grpcServer.Serve(lis); err != nil {
-				log.Fatal(err)
-			}
+			filesync.StartFileSyncServer(&filesync.FileSyncConfiguration{
+				RootDir: configuration.PackageBase,
+				Port:    configuration.FilesyncPort,
+			})
 		}()
 	}
 
@@ -120,53 +104,6 @@ func makeExecution(ctx context.Context, configuration *admin.Configuration, pack
 	cmd.Dir = filepath.Join(configuration.PackageBase, packageName)
 	cmd.Env = append(os.Environ(), execution.AdditionalEnv...)
 	return cmd
-}
-
-type sinkServer struct {
-	configuration *admin.Configuration
-	running       *running
-}
-
-func (s sinkServer) Push(ctx context.Context, req *wsremote.PushRequest) (*wsremote.PushResponse, error) {
-	pkg := filepath.Join(req.GetSignature().GetModuleName(), req.GetSignature().GetRel())
-
-	for _, backend := range s.configuration.Backend {
-		if backend.PackageName == pkg {
-			basePath := filepath.Join(s.configuration.PackageBase, pkg)
-
-			for k, ev := range req.FileEvent {
-				if ev.Path == "" {
-					return nil, status.Errorf(codes.InvalidArgument, "file_event[%d]: no path", k)
-				}
-
-				filePath := filepath.Join(basePath, ev.Path)
-
-				switch ev.Event {
-				case wscontents.FileEvent_WRITE:
-					if err := ioutil.WriteFile(filePath, ev.NewContents, fs.FileMode(ev.Mode)); err != nil {
-						return nil, err
-					}
-
-				case wscontents.FileEvent_REMOVE:
-					if err := os.Remove(filePath); err != nil {
-						return nil, err
-					}
-
-				case wscontents.FileEvent_MKDIR:
-					if err := os.Mkdir(filePath, fs.FileMode(ev.Mode)); err != nil {
-						return nil, err
-					}
-
-				default:
-					return nil, status.Errorf(codes.InvalidArgument, "file_event[%d]: unrecognized event type: %s", k, ev.Event)
-				}
-			}
-
-			return &wsremote.PushResponse{}, nil
-		}
-	}
-
-	return nil, status.Errorf(codes.InvalidArgument, "package not configured: %s", pkg)
 }
 
 type running struct {
