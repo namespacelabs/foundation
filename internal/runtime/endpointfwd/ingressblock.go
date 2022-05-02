@@ -13,16 +13,16 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type PortForward struct {
 	LocalAddr string
-	Env       workspace.WorkspaceEnvironment
+	Env       ops.Environment
 	Stack     *schema.Stack
 	Focus     []schema.PackageName
 
