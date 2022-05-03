@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -327,11 +328,13 @@ func (ev *ActionEvent) CheckCacheRun(ctx context.Context, options RunOptions) er
 func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) error {
 	defer func() {
 		if r := recover(); r != nil {
-			if err, ok := r.(error); ok {
-				_ = ActionStorer.WriteError(ctx, err)
-			}
+			// Capture the stack on panic.
+			_ = ActionStorer.WriteRuntimeStack(ctx, debug.Stack())
+
 			// Ensure that we always have an audit trail.
 			_ = ActionStorer.Flush(ctx)
+
+			// Bubble up the panic.
 			panic(r)
 		}
 	}()

@@ -60,8 +60,8 @@ func (st *Storer) store(af *RunningAction) error {
 	return nil
 }
 
-func (st *Storer) WriteError(ctx context.Context, err error) error {
-	return st.bundle.WriteError(ctx, err)
+func (st *Storer) WriteRuntimeStack(ctx context.Context, stack []byte) error {
+	return st.bundle.WriteFile(ctx, "runtime_stack.txt", stack, 0600)
 }
 
 func (st *Storer) Flush(ctx context.Context) error {
