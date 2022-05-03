@@ -213,10 +213,10 @@ import { ServiceDeps, WireService } from "./deps.fn";
 import { {{.ServiceServerName}}, {{.ServiceName}} } from "./{{.ServiceFileName}}_grpc_pb";
 
 export const wireService: WireService = (deps: ServiceDeps, server: Server): void => {
-const service: {{.ServiceServerName}} = {
-	// TODO: implement
-};
+  const service: {{.ServiceServerName}} = {
+    // TODO: implement
+  };
 
-server.addService({{.ServiceName}}, service);
+  server.addService({{.ServiceName}}, service);
 };{{end}}`))
 )
