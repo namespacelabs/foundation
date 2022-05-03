@@ -312,7 +312,7 @@ func maybeGenerateNodeImplStub(pkg *workspace.Package, dl *defs.DefList) {
 
 	_, err := fs.Stat(pkg.Location.Module.ReadWriteFS(), implFn)
 	if err == nil || !os.IsNotExist(err) {
-		// File alreasy exists, do nothing
+		// File already exists, do nothing
 		return
 	}
 
