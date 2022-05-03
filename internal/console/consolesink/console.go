@@ -592,6 +592,10 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 		fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
 	}}
 	c.drawFrame(&rawOut, c.outbuf, t, width, height, flush)
+	if !c.rendering {
+		// c.drawFrame() entered the `input` state (and may be rendering the prompt).
+		return
+	}
 
 	newFrame := make([]byte, len(c.outbuf.Bytes()))
 	copy(newFrame, c.outbuf.Bytes())
