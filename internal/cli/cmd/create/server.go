@@ -6,11 +6,19 @@ package create
 
 import (
 	"context"
+	"fmt"
+	"text/template"
 
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/languages/cue"
 	"namespacelabs.dev/foundation/workspace/module"
+	"namespacelabs.dev/go-ids"
+)
+
+const (
+	nodeFileName = "server.cue"
 )
 
 func newServerCmd() *cobra.Command {
@@ -25,14 +33,45 @@ func newServerCmd() *cobra.Command {
 				return err
 			}
 
-			zerolog.Ctx(ctx).Info().
-				Str("root", root.Abs()).
-				Str("loc", loc.RelPath).
-				Msg("create server")
-			return nil
+			if loc.RelPath == "." {
+				return fmt.Errorf("Cannot create server at workspace root. Please specify server location or run %s at the target directory.", colors.Bold("fn create server"))
+			}
+
+			opts := serverTmplOptions{
+				Id: ids.NewRandomBase32ID(12),
+			}
+
+			return cue.GenerateCueSource(ctx, root.FS(), loc.Rel(nodeFileName), serverTmpl, opts)
 
 		}),
 	}
 
 	return cmd
 }
+
+type serverTmplOptions struct {
+	Id        string
+	Name      string
+	Framework string
+}
+
+var serverTmpl = template.Must(template.New(nodeFileName).Parse(`
+import (
+	"namespacelabs.dev/foundation/std/fn"
+)
+
+server: fn.#Server & {
+	id:        "{{.Id}}"
+	name:      "{{.Name}}"
+	framework: "{{.Framework}}"
+
+	import: [
+		{{if eq .Framework "GO_GRPC"}}
+		// To expose GRPC endpoints via HTTP, add this import: 
+		// "namespacelabs.dev/foundation/std/go/grpc/gateway",
+		{{end}}
+
+		// TODO add services here
+	]
+}
+`))
