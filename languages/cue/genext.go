@@ -28,8 +28,9 @@ import (
 	"namespacelabs.dev/foundation/std/fn"
 )
 
+// TODO fill with content if needed
+// For examples, check out namespacelabs.dev/std and namespacelabs.dev/universe
 extension: fn.#Extension & {
-	// TODO fill with content if needed
-	// For examples, check out namespacelabs.dev/std and namespacelabs.dev/universe
+
 }
 `))

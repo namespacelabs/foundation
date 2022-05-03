@@ -46,7 +46,7 @@ func newExtensionCmd() *cobra.Command {
 				return err
 			}
 
-			if err := cue.GenerateServer(ctx, root.FS(), loc, model.Name(), model.Framework()); err != nil {
+			if err := cue.GenerateExtension(ctx, root.FS(), loc); err != nil {
 				return err
 			}
 
