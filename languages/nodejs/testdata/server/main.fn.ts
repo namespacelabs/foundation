@@ -4,9 +4,9 @@ import { Server, ServerCredentials } from "@grpc/grpc-js";
 import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 import "source-map-support/register"
 import yargs from "yargs/yargs";
-import * as i0 from "@namespacelabs.dev/foundation_languages_nodejs_testdata_services_simple/deps.fn"
-import * as i1 from "@namespacelabs.dev/foundation_languages_nodejs_testdata_services_numberformatter/deps.fn"
-import * as i2 from "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_batchformatter/deps.fn"
+import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/deps.fn"
+import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter/deps.fn"
+import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/deps.fn"
 
 // Returns a list of initialization errors.
 const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {

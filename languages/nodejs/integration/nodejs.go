@@ -359,7 +359,7 @@ func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspa
 }
 
 func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, depPkgNames []string) error {
-	npmPackage, err := toNpmPackage(loc.PackageName)
+	npmPackage, err := toNpmPackage(loc)
 	if err != nil {
 		return err
 	}
@@ -377,7 +377,7 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 		}
 
 		if pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS) {
-			importNpmPackage, err := toNpmPackage(pkg.PackageName())
+			importNpmPackage, err := toNpmPackage(pkg.Location)
 			if err != nil {
 				return err
 			}

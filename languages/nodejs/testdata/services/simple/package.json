@@ -13,7 +13,7 @@
 		"@types/node": "16.x",
 		"@types/yargs": "16.x"
 	},
-	"name": "@namespacelabs.dev/foundation_languages_nodejs_testdata_services_simple",
+	"name": "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple",
 	"private": true,
 	"version": "0.0.0"
 }

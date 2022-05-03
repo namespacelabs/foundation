@@ -1,7 +1,7 @@
 {
 	"dependencies": {
 		"@grpc/grpc-js": "1.5.7",
-		"@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_numberformatter": "0.0.0",
+		"@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter": "0.0.0",
 		"@namespacelabs/foundation": "0.1.27",
 		"google-protobuf": "^3.20.0",
 		"source-map-support": "0.5.21",
@@ -14,7 +14,7 @@
 		"@types/node": "16.x",
 		"@types/yargs": "16.x"
 	},
-	"name": "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_batchformatter",
+	"name": "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter",
 	"private": true,
 	"version": "0.0.0"
 }

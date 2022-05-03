@@ -2,9 +2,9 @@
 
 import * as impl from "./impl";
 import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import * as i0 from "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_batchformatter/deps.fn"
-import * as i1 from "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_batchformatter/input_pb"
-import * as i2 from "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_batchformatter/formatter"
+import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/deps.fn"
+import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/input_pb"
+import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/formatter"
 import * as i3 from "@grpc/grpc-js"
 
 

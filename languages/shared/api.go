@@ -11,7 +11,7 @@ import (
 
 type ServerData struct {
 	Services             []EmbeddedServiceData
-	ImportedInitializers []schema.PackageName
+	ImportedInitializers []workspace.Location
 }
 
 type EmbeddedServiceData struct {
@@ -20,12 +20,12 @@ type EmbeddedServiceData struct {
 }
 
 type NodeData struct {
-	Kind              schema.Node_Kind
-	PackageName       string
-	Deps              []DependencyData
-	Providers         []ProviderData
-	DepsImportAliases []schema.PackageName
-	Initializer       *PackageInitializerData
+	Kind                 schema.Node_Kind
+	PackageName          string
+	Deps                 []DependencyData
+	Providers            []ProviderData
+	ImportedInitializers []workspace.Location
+	Initializer          *PackageInitializerData
 }
 
 type PackageInitializerData struct {
@@ -37,7 +37,7 @@ type PackageInitializerData struct {
 type TypeData struct {
 	Name           string
 	SourceFileName string
-	PackageName    schema.PackageName
+	Location       workspace.Location
 }
 
 type ProviderData struct {

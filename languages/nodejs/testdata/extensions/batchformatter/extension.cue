@@ -26,7 +26,7 @@ extension: fn.#Extension & {
 			input: $providerProto.types.InputData
 			availableIn: {
 				nodejs: {
-          import: "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_batchformatter/formatter"
+          import: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/formatter"
 					type:   "BatchFormatter"
 				}
 			}

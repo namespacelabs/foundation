@@ -25,7 +25,7 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 	ic := newImportCollector()
 	tplServices := []tmplServerService{}
 	for _, srv := range serverData.Services {
-		npmPackage, err := toNpmPackage(srv.Location.PackageName)
+		npmPackage, err := toNpmPackage(srv.Location)
 		if err != nil {
 			return err
 		}
@@ -41,7 +41,7 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 			}})
 	}
 
-	importedInitializersAliases, err := convertImportedInitializes(ic, serverData.ImportedInitializers)
+	importedInitializersAliases, err := convertImportedInitializers(ic, serverData.ImportedInitializers)
 	if err != nil {
 		return err
 	}

@@ -9,20 +9,17 @@ import (
 	"strings"
 
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 )
 
 type NpmPackage string
 
-func toNpmPackage(pkgName schema.PackageName) (NpmPackage, error) {
-	pkgComponents := strings.Split(string(pkgName), "/")
-	if len(pkgComponents) < 2 {
-		return "", fnerrors.InternalError("Invalid package name: %s", pkgName)
-	}
-	npmName := strings.Join(pkgComponents[1:], "_")
-	return NpmPackage(fmt.Sprintf("@%s/%s", pkgComponents[0], npmName)), nil
+func toNpmPackage(loc workspace.Location) (NpmPackage, error) {
+	pkg := strings.Join(strings.Split(loc.Rel(), "/"), "-")
+	namespace := strings.Join(strings.Split(loc.Module.ModuleName(), "/"), "-")
+	return NpmPackage(fmt.Sprintf("@%s/%s", namespace, pkg)), nil
 }
 
 func npmImport(npmPackage NpmPackage, moduleName string) string {
@@ -33,7 +30,7 @@ func nodeDepsNpmImport(npmPackage NpmPackage) string {
 	return npmImport(npmPackage, "deps.fn")
 }
 
-func convertPackageToImport(pkg schema.PackageName, filename string) (string, error) {
+func convertLocationToImport(loc workspace.Location, filename string) (string, error) {
 	moduleName := filename
 
 	if strings.HasSuffix(filename, ".proto") {
@@ -41,7 +38,7 @@ func convertPackageToImport(pkg schema.PackageName, filename string) (string, er
 		moduleName = strings.TrimSuffix(moduleName, ".proto") + "_pb"
 	}
 
-	npmPackage, err := toNpmPackage(pkg)
+	npmPackage, err := toNpmPackage(loc)
 	if err != nil {
 		return "", err
 	}
@@ -51,7 +48,7 @@ func convertPackageToImport(pkg schema.PackageName, filename string) (string, er
 
 func convertType(ic *importCollector, t shared.TypeData) (tmplImportedType, error) {
 	// TODO(@nicolasalt): handle the case when the source type is not in the same package.
-	npmImport, err := convertPackageToImport(t.PackageName, t.SourceFileName)
+	npmImport, err := convertLocationToImport(t.Location, t.SourceFileName)
 	if err != nil {
 		return tmplImportedType{}, err
 	}
@@ -69,10 +66,10 @@ func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_Node
 	}
 }
 
-func convertImportedInitializes(ic *importCollector, packages []schema.PackageName) ([]string, error) {
+func convertImportedInitializers(ic *importCollector, locations []workspace.Location) ([]string, error) {
 	result := []string{}
-	for _, p := range packages {
-		npmPackage, err := toNpmPackage(p)
+	for _, loc := range locations {
+		npmPackage, err := toNpmPackage(loc)
 		if err != nil {
 			return nil, err
 		}

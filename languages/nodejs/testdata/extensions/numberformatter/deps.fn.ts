@@ -2,8 +2,8 @@
 
 import * as impl from "./impl";
 import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import * as i0 from "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_numberformatter/input_pb"
-import * as i1 from "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_numberformatter/formatter"
+import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter/input_pb"
+import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter/formatter"
 
 
 

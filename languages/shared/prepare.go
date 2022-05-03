@@ -36,7 +36,7 @@ func PrepareServerData(ctx context.Context, loader workspace.Packages, loc works
 		}
 
 		if pkg.Node().InitializerFor(fmwk) != nil {
-			serverData.ImportedInitializers = append(serverData.ImportedInitializers, pkg.Location.PackageName)
+			serverData.ImportedInitializers = append(serverData.ImportedInitializers, pkg.Location)
 		}
 	}
 	serverData.ImportedInitializers = removeDuplicates(serverData.ImportedInitializers)
@@ -63,10 +63,10 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 			return NodeData{}, err
 		}
 
-		for _, i := range n.Instantiate {
-			nodeData.DepsImportAliases = append(nodeData.DepsImportAliases, schema.Name(i.PackageName))
+		for _, d := range deps {
+			nodeData.ImportedInitializers = append(nodeData.ImportedInitializers, d.ProviderLocation)
 		}
-		nodeData.DepsImportAliases = removeDuplicates(nodeData.DepsImportAliases)
+		nodeData.ImportedInitializers = removeDuplicates(nodeData.ImportedInitializers)
 
 		nodeData.Deps = deps
 	}
@@ -81,7 +81,7 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 
 				nodeData.Providers = append(nodeData.Providers, ProviderData{
 					Name:         p.Name,
-					InputType:    convertType(p.Type, schema.PackageName(n.PackageName)),
+					InputType:    convertType(p.Type, loc),
 					ProviderType: a,
 					ScopedDeps:   scopeDeps,
 				})
@@ -125,7 +125,7 @@ func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Fra
 		deps = append(deps, DependencyData{
 			Name:              dep.Name,
 			ProviderName:      p.Name,
-			ProviderInputType: convertType(p.Type, schema.PackageName(dep.PackageName)),
+			ProviderInputType: convertType(p.Type, pkg.Location),
 			ProviderType:      provider,
 			ProviderLocation:  pkg.Location,
 			ProviderInput:     *providerInput,
@@ -135,13 +135,13 @@ func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Fra
 	return deps, nil
 }
 
-func convertType(t *schema.TypeDef, pkgName schema.PackageName) TypeData {
+func convertType(t *schema.TypeDef, loc workspace.Location) TypeData {
 	nameParts := strings.Split(string(t.Typename), ".")
 	// TODO(@nicolasalt): check that the sources contain at least one file.
 	return TypeData{
 		Name:           nameParts[len(nameParts)-1],
 		SourceFileName: t.Source[0],
-		PackageName:    pkgName,
+		Location:       loc,
 	}
 }
 
@@ -192,14 +192,14 @@ func serializeProto(ctx context.Context, pkg *workspace.Package, provides *schem
 	return &serializedProto, nil
 }
 
-func removeDuplicates(list []schema.PackageName) []schema.PackageName {
+func removeDuplicates(list []workspace.Location) []workspace.Location {
 	seen := make(map[schema.PackageName]bool)
-	result := []schema.PackageName{}
+	result := []workspace.Location{}
 
 	for _, item := range list {
-		if !seen[item] {
+		if !seen[item.PackageName] {
 			result = append(result, item)
-			seen[item] = true
+			seen[item.PackageName] = true
 		}
 	}
 
