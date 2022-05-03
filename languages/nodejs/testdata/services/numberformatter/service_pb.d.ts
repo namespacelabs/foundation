@@ -24,8 +24,10 @@ export namespace FormatRequest {
 }
 
 export class FormatResponse extends jspb.Message {
-  getOutput(): string;
-  setOutput(value: string): void;
+  clearOutputList(): void;
+  getOutputList(): Array<string>;
+  setOutputList(value: Array<string>): void;
+  addOutput(value: string, index?: number): string;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): FormatResponse.AsObject;
@@ -39,7 +41,7 @@ export class FormatResponse extends jspb.Message {
 
 export namespace FormatResponse {
   export type AsObject = {
-    output: string,
+    outputList: Array<string>,
   }
 }
 

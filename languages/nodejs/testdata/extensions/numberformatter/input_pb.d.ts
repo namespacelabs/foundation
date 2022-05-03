@@ -1,4 +1,4 @@
-// package: languages.nodejs.testdata.extensions.simple
+// package: languages.nodejs.testdata.extensions.numberformatter
 // file: languages/nodejs/testdata/extensions/numberformatter/input.proto
 
 import * as jspb from "google-protobuf";

@@ -49,7 +49,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.languages.nodejs.testdata.services.numberformatter.FormatResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.repeatedFields_, null);
 };
 goog.inherits(proto.languages.nodejs.testdata.services.numberformatter.FormatResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -190,6 +190,13 @@ proto.languages.nodejs.testdata.services.numberformatter.FormatRequest.prototype
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.repeatedFields_ = [1];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -221,7 +228,7 @@ proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.prototyp
  */
 proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    output: jspb.Message.getFieldWithDefault(msg, 1, "")
+    outputList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -260,7 +267,7 @@ proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.deserial
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setOutput(value);
+      msg.addOutput(value);
       break;
     default:
       reader.skipField();
@@ -291,9 +298,9 @@ proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.prototyp
  */
 proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getOutput();
+  f = message.getOutputList();
   if (f.length > 0) {
-    writer.writeString(
+    writer.writeRepeatedString(
       1,
       f
     );
@@ -302,20 +309,39 @@ proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.serializ
 
 
 /**
- * optional string output = 1;
- * @return {string}
+ * repeated string output = 1;
+ * @return {!Array<string>}
  */
-proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.prototype.getOutput = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.prototype.getOutputList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.languages.nodejs.testdata.services.numberformatter.FormatResponse} returns this
+ */
+proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.prototype.setOutputList = function(value) {
+  return jspb.Message.setField(this, 1, value || []);
 };
 
 
 /**
  * @param {string} value
+ * @param {number=} opt_index
  * @return {!proto.languages.nodejs.testdata.services.numberformatter.FormatResponse} returns this
  */
-proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.prototype.setOutput = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
+proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.prototype.addOutput = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 1, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.languages.nodejs.testdata.services.numberformatter.FormatResponse} returns this
+ */
+proto.languages.nodejs.testdata.services.numberformatter.FormatResponse.prototype.clearOutputList = function() {
+  return this.setOutputList([]);
 };
 
 

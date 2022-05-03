@@ -35,6 +35,19 @@ function deserialize_languages_nodejs_testdata_services_numberformatter_FormatRe
 // grpcurl -plaintext -import-path languages/nodejs/testdata/services/numberformatter -proto service.proto \
 // -d '{"input":12.345445}' 127.0.0.1:XXX \
 // languages.nodejs.testdata.services.numberformatter.FormatService/Format
+//
+// Response:
+//
+// {
+//   "output": [
+//     "First instance of the \"batchformatter\" extension:",
+//     "  Singleton formatter output: Formatted value: 12.35. This is called 1 times.",
+//     "  Scoped formatter output: Formatted value: 12.34544. This is called 1 times.",
+//     "Second instance of the \"batchformatter\" extension:",
+//     "  Singleton formatter output: Formatted value: 12.35. This is called 2 times.",
+//     "  Scoped formatter output: Formatted value: 12.34544. This is called 1 times."
+//   ]
+// }
 var FormatServiceService = exports.FormatServiceService = {
   format: {
     path: '/languages.nodejs.testdata.services.numberformatter.FormatService/Format',

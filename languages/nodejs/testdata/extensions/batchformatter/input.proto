@@ -4,8 +4,6 @@
 
 syntax = "proto3";
 
-package languages.nodejs.testdata.extensions.numberformatter;
+package languages.nodejs.testdata.extensions.batchformatter;
 
-message FormattingSettings {
-    int32 precision = 1;
-}
+message InputData {}

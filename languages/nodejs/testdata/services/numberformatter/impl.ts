@@ -14,7 +14,17 @@ export const wireService: WireService = (deps: ServiceDeps, server: Server): voi
 			callback: sendUnaryData<FormatResponse>
 		): void {
 			const response: FormatResponse = new FormatResponse();
-			response.setOutput(deps.fmt.formatNumber(call.request.getInput()));
+
+			const formatResult1 = deps.batch1.getFormatResult(call.request.getInput());
+			const formatResult2 = deps.batch2.getFormatResult(call.request.getInput());
+
+			const output = `First instance of the "batchformatter" extension:
+  Singleton formatter output: ${formatResult1.singleton}
+  Scoped formatter output: ${formatResult1.scoped}
+Second instance of the "batchformatter" extension:
+  Singleton formatter output: ${formatResult2.singleton}
+  Scoped formatter output: ${formatResult2.scoped}`;
+			response.setOutputList(output.split("\n"));
 
 			callback(null, response);
 		},

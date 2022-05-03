@@ -9,7 +9,7 @@ package numberformatter
 			packageName: "namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/numberformatter"
 			type:        "fmt"
 			typeDefinition: {
-				"typename": "languages.nodejs.testdata.extensions.simple.FormattingSettings"
+				"typename": "languages.nodejs.testdata.extensions.numberformatter.FormattingSettings"
 				"source": [
 					"input.proto",
 				]
