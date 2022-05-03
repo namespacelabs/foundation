@@ -92,7 +92,12 @@ func NewSecretsCmd() *cobra.Command {
 					return fnerrors.BadInputError("%s: failed to load: %w", fromFile, err)
 				}
 			} else {
-				valueStr := readLine(ctx, fmt.Sprintf("Specify a value for %q in %s.\n\nValue: ", key.Key, key.PackageName))
+				prompt := `Specify a single-line value for %q in %s.
+
+Note: for multi-line input, use the --from_file flag.
+			
+Value: `
+				valueStr := readLine(ctx, fmt.Sprintf(prompt, key.Key, key.PackageName))
 				if valueStr == "" {
 					return errors.New("no value provided, skipping")
 				}
