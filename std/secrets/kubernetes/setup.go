@@ -237,7 +237,7 @@ func fillData(ctx context.Context, server *schema.Server, env *schema.Environmen
 
 			m, err := provideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("%s: %w", server.PackageName, err)
 			}
 
 			names := col.Names[k]
@@ -353,14 +353,14 @@ func provideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userMan
 
 	cfg := secrets.LookupConfig(sdm, caller)
 	if cfg == nil {
-		return nil, fmt.Errorf("%v: no secret configuration definition in map.textpb", caller)
+		return nil, fmt.Errorf("no secret configuration for %q", caller)
 	}
 
 	result := map[string][]byte{}
 	for _, s := range userManaged {
 		spec := lookupSecret(cfg, s.Name)
 		if spec == nil {
-			return nil, fmt.Errorf("no secret configuration for %s of %q in map.textpb", s.Name, caller)
+			return nil, fmt.Errorf("no secret configuration for %s of %q", s.Name, caller)
 		}
 
 		if spec.FromPath != "" {
