@@ -38,7 +38,7 @@ func PrepareIngress(env ops.Environment) compute.Computable[[]*schema.DevHost_Co
 		compute.Inputs(),
 		compute.Output{},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			kube, err := kubernetes.New(env.Workspace(), env.DevHost(), env.Proto())
+			kube, err := kubernetes.New(ctx, env.Workspace(), env.DevHost(), env.Proto())
 			if err != nil {
 				return nil, err
 			}
