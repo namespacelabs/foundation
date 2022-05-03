@@ -14,12 +14,23 @@ import (
 )
 
 type Storer struct {
-	bundler *Bundler
-	bundle  *Bundle
+	bundler   *Bundler
+	bundle    *Bundle
+	flushLogs func()
 }
 
-func NewStorer(ctx context.Context, bundler *Bundler, bundle *Bundle) (*Storer, error) {
-	return &Storer{bundler, bundle}, nil
+func NewStorer(ctx context.Context, bundler *Bundler, bundle *Bundle, options ...func(*Storer)) *Storer {
+	storer := &Storer{bundler: bundler, bundle: bundle}
+	for _, option := range options {
+		option(storer)
+	}
+	return storer
+}
+
+func StorerWithFlushLogs(flushLogs func()) func(*Storer) {
+	return func(storer *Storer) {
+		storer.flushLogs = flushLogs
+	}
 }
 
 func (st *Storer) Store(af *RunningAction) {
@@ -65,5 +76,8 @@ func (st *Storer) WriteRuntimeStack(ctx context.Context, stack []byte) error {
 }
 
 func (st *Storer) Flush(ctx context.Context) error {
+	if st.flushLogs != nil {
+		st.flushLogs()
+	}
 	return st.bundler.Flush(ctx, st.bundle)
 }
