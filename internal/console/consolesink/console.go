@@ -117,7 +117,7 @@ type ConsoleSink struct {
 	root            *node            // Root of the tree of displayable events.
 	nodes           map[string]*node // Map of actionID->tree node.
 	startedCounting time.Time        // When did we start counting.
-	waitForIdle     []func() bool
+	waitForIdle     []func()
 
 	maxLevel int // Only display actions at this level or below (all actions are still computed).
 
@@ -219,12 +219,11 @@ loop:
 					c.rendering = true
 				} else {
 					ch := msg.onInput
-					c.waitForIdle = append(c.waitForIdle, func() bool {
+					c.waitForIdle = append(c.waitForIdle, func() {
 						c.rendering = false
 						if ch != nil {
 							close(ch)
 						}
-						return true
 					})
 				}
 			}
@@ -591,9 +590,8 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 		// If anything is trying to write directly, clear the screen first.
 		fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
 	}}
-	c.drawFrame(&rawOut, c.outbuf, t, width, height, flush)
-	if !c.rendering {
-		// c.drawFrame() entered the `input` state (and may be rendering the prompt).
+	if !c.drawFrame(&rawOut, c.outbuf, t, width, height, flush) {
+		// c.drawFrame() entered the `input` state (and may be rendering the prompt now).
 		return
 	}
 
@@ -660,7 +658,8 @@ func (c *checkDirtyWriter) Write(p []byte) (int, error) {
 	return c.out.Write(p)
 }
 
-func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height uint, flush bool) {
+// drawFrame renders a single frame and returns `false` if further rendering should be stopped.
+func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height uint, flush bool) bool {
 	var running, anchored, waiting, completed, completedAnchors int
 	var printableCompleted []*lineItem
 	for _, r := range c.running {
@@ -794,22 +793,21 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	}
 
 	if flush {
-		return
+		return true
 	}
 
 	if (waiting + running + anchored) == 0 {
 		waitForIdle := c.waitForIdle
 		c.waitForIdle = nil
-		surpressBanner := false
 		for _, f := range waitForIdle {
-			if f() {
-				surpressBanner = true
-			}
+			f()
 		}
-		if !surpressBanner && c.idleLabel != "" {
+		if len(waitForIdle) == 0 && c.idleLabel != "" {
+			// Show the idle banner.
 			c.writeLineWithMaxW(out, width, fmt.Sprintf("[-] idle, %s.", c.idleLabel), "")
 		}
-		return
+		// We may have entered the input state when calling any of the waitForIdle functions.
+		return c.rendering
 	}
 
 	report := ""
@@ -846,6 +844,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 	// Recurse through the line item tree.
 	c.renderLineRec(out, width, c.root, t, " => ", 0, maxDepth)
+	return true
 }
 
 func plural(count int, singular, plural string) string {
