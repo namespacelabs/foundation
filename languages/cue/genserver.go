@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	nodeFileName = "server.cue"
+	serverFileName = "server.cue"
 )
 
 func GenerateServer(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, name string, framework schema.Framework) error {
@@ -24,7 +24,7 @@ func GenerateServer(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Locatio
 		Framework: framework.String(),
 	}
 
-	return generateCueSource(ctx, fsfs, loc.Rel(nodeFileName), serverTmpl, opts)
+	return generateCueSource(ctx, fsfs, loc.Rel(serverFileName), serverTmpl, opts)
 }
 
 type serverTmplOptions struct {
@@ -33,7 +33,7 @@ type serverTmplOptions struct {
 	Framework string
 }
 
-var serverTmpl = template.Must(template.New(nodeFileName).Parse(`
+var serverTmpl = template.Must(template.New(serverFileName).Parse(`
 import (
 	"namespacelabs.dev/foundation/std/fn"
 )

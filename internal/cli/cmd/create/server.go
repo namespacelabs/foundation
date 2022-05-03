@@ -19,12 +19,10 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/languages/cue"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
@@ -194,13 +192,9 @@ func newServerCmd() *cobra.Command {
 		Args:  cobra.RangeArgs(0, 1),
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, loc, err := module.PackageAtArgs(ctx, args)
+			root, loc, err := targetPackage(ctx, args, "server")
 			if err != nil {
 				return err
-			}
-
-			if loc.RelPath == "." {
-				return fmt.Errorf("Cannot create server at workspace root. Please specify server location or run %s at the target directory.", colors.Bold("fn create server"))
 			}
 
 			m, err := tea.NewProgram(initialModel(loc)).StartReturningModel()
