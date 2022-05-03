@@ -13,12 +13,13 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func SetupTracing(ctx context.Context, jaegerEndpoint string) (context.Context, func()) {
 	tp, err := createTracer(jaegerEndpoint)
 	if err != nil {
-		panic(err)
+		fnerrors.Panic(err)
 	}
 
 	// Register our TracerProvider as the global so any imported

@@ -21,6 +21,7 @@ import (
 	"github.com/muesli/reflow/truncate"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/termios"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -182,7 +183,7 @@ func (c *ConsoleSink) Start() func() {
 		var err error
 		out, err = os.CreateTemp("", "consoledebug")
 		if err != nil {
-			panic(err)
+			fnerrors.Panic(err)
 		}
 		c.debugOut = json.NewEncoder(out)
 		c.debugOut.SetIndent("", "  ")

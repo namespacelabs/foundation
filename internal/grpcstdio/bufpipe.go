@@ -8,6 +8,8 @@ import (
 	"bytes"
 	"errors"
 	"sync"
+
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 var (
@@ -68,7 +70,7 @@ func (r *bufferedPipeReader) closeWithError(err error) error {
 	defer r.mu.Unlock()
 
 	if err == nil {
-		panic("no error")
+		fnerrors.Panic("expected an error in `bufferedPipeReader.closeWithError`")
 	}
 
 	if r.writeErr != nil {
@@ -101,7 +103,7 @@ func (w *bufferedPipeWriter) closeWithError(err error) error {
 	defer w.mu.Unlock()
 
 	if err == nil {
-		panic("no error")
+		fnerrors.Panic("expected an error in `bufferedPipeWriter.closeWithError`")
 	}
 
 	if w.readErr != nil {

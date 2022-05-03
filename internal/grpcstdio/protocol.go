@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
 )
 
@@ -217,7 +218,7 @@ func (m msg) calculateChecksum() uint64 {
 	h := xxhash.New()
 
 	if err := m.serializePayloadTo(h); err != nil {
-		panic("failed to write hash")
+		fnerrors.Panic("failed to write hash")
 	}
 
 	return h.Sum64()
@@ -240,7 +241,7 @@ func (s *Session) Dial(dial *DialArgs) (*Stream, error) {
 	s.sessionAlloc++
 
 	if s.sessionAlloc > 0xffff {
-		panic("session allocation wrapped around")
+		fnerrors.Panic("session allocation wrapped around")
 	}
 
 	stream, err := s.newStream(dirClient, id)
@@ -292,7 +293,7 @@ func (s *Session) mustread(req uint32) ([]byte, error) {
 			return nil, err
 		}
 		if n < 0 {
-			panic("negative read")
+			fnerrors.Panic("negative read")
 		}
 		index += uint32(n)
 	}

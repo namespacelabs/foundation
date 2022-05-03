@@ -16,6 +16,7 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/util/system"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/workspace/pins"
 )
@@ -47,10 +48,10 @@ var (
 func init() {
 	versionData, err := fs.ReadFile(lib, "versions.json")
 	if err != nil {
-		panic(err)
+		fnerrors.Panic(err)
 	}
 	if err := json.Unmarshal(versionData, &versions); err != nil {
-		panic(err)
+		fnerrors.Panic(err)
 	}
 
 	golangImage = pins.Image(versions.Buf.Go)

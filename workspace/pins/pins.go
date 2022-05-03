@@ -37,7 +37,7 @@ var (
 func Default(name string) string {
 	r, err := CheckDefault(name)
 	if err != nil {
-		panic(err.Error())
+		fnerrors.Panic(err)
 	}
 	return r
 }
@@ -45,7 +45,7 @@ func Default(name string) string {
 func Image(image string) string {
 	r, err := CheckImage(image)
 	if err != nil {
-		panic(err.Error())
+		fnerrors.Panic(err)
 	}
 	return r
 }
@@ -81,9 +81,9 @@ func CheckImage(image string) (string, error) {
 func init() {
 	versionData, err := fs.ReadFile(lib, "versions.json")
 	if err != nil {
-		panic(err)
+		fnerrors.Panic(err)
 	}
 	if err := json.Unmarshal(versionData, &versions); err != nil {
-		panic(err)
+		fnerrors.Panic(err)
 	}
 }

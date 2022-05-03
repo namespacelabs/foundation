@@ -119,7 +119,7 @@ func register[M proto.Message](dispatcher dispatcherFunc, startSession startSess
 func messageKey(msg proto.Message) string {
 	packed, err := anypb.New(msg)
 	if err != nil {
-		panic(err)
+		fnerrors.Panic(err)
 	}
 	return packed.GetTypeUrl()
 }

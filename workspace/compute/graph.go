@@ -72,7 +72,7 @@ func NoResult[V any]() (Result[V], error) { return Result[V]{}, errNoResult }
 func startComputing(ctx context.Context, g *Orch, c rawComputable) *Promise[any] {
 	if g == nil {
 		// We panic because this is unexpected.
-		panic("no graph in context")
+		fnerrors.Panic("no graph in context")
 	}
 
 	if c == nil {
@@ -136,7 +136,7 @@ func startComputingWithOpts(ctx context.Context, g *Orch, opts computeInstance) 
 		opts.State.promise.mu.Unlock()
 	} else {
 		if !inputs.Digest.IsSet() {
-			panic("global node that doesn't have stable inputs: " + reflect.TypeOf(opts.Computable).String())
+			fnerrors.Panic("global node that doesn't have stable inputs: " + reflect.TypeOf(opts.Computable).String())
 		}
 
 		p, isComputing = maybeCreatePromise(g, opts.Computable, inputs)
@@ -411,7 +411,7 @@ type Detach struct {
 func (g *Orch) DetachWith(d Detach) {
 	if g == nil {
 		// We panic because this is unexpected.
-		panic("running outside of a compute.Do block")
+		fnerrors.Panic("running outside of a compute.Do block")
 	}
 
 	g.exec.Go(func(ctx context.Context) error {
@@ -517,7 +517,7 @@ func Get[V any](ctx context.Context, c Computable[V]) (ResultWithTimestamp[V], e
 
 	typed, ok := r.Value.(V)
 	if !ok {
-		panic("how did a Computable produce the wrong type?")
+		fnerrors.Panic("how did a Computable produce the wrong type?")
 	}
 
 	var rwt ResultWithTimestamp[V]

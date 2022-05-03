@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 type GoImports struct {
@@ -119,5 +121,6 @@ func (gi *GoImports) MustGet2(typeUrl string) string {
 		return rel + "."
 	}
 
-	panic(typeUrl + " is not known")
+	fnerrors.Panic(typeUrl + " is not known")
+	return ""
 }

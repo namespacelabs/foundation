@@ -74,7 +74,7 @@ func RegisterCacheable[V any](c Cacheable[V]) {
 func interfaceType(t interface{}) reflect.Type {
 	vt := reflect.TypeOf(t)
 	if vt.Kind() != reflect.Ptr {
-		panic("expected pointer to type")
+		fnerrors.Panic("expected pointer to type")
 	}
 
 	elem := vt.Elem()
@@ -83,7 +83,8 @@ func interfaceType(t interface{}) reflect.Type {
 		return elem
 	}
 
-	panic("unexpected type, got " + elem.String())
+	fnerrors.Panic("unexpected type, got " + elem.String())
+	return nil
 }
 
 type cacheHit struct {

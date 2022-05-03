@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -50,7 +51,7 @@ func Stop(ctx context.Context, err error) {
 			return err
 		})
 	} else {
-		panic("not under a Continuously() scope")
+		fnerrors.Panic("not under a Continuously() scope")
 	}
 }
 
@@ -234,7 +235,7 @@ func (g *sinkInvocation) ensureGlobalObserver(c rawComputable, key string, rebui
 		}
 
 		if !inputs.Digest.IsSet() {
-			panic("global node that doesn't have stable inputs")
+			fnerrors.Panic("global node that doesn't have stable inputs")
 		}
 
 		g.mu.Lock()

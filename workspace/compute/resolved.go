@@ -4,6 +4,8 @@
 
 package compute
 
+import "namespacelabs.dev/foundation/internal/fnerrors"
+
 type Resolved struct {
 	results map[string]ResultWithTimestamp[any]
 }
@@ -39,7 +41,7 @@ func GetDep[V any](deps Resolved, c Computable[V], key string) (ResultWithTimest
 func GetDepValue[V any](deps Resolved, c Computable[V], key string) V {
 	v, ok := GetDep(deps, c, key)
 	if !ok {
-		panic(key + " not present")
+		fnerrors.Panic(key + " not present")
 	}
 	return v.Value
 }
