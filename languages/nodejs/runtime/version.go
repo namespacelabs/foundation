@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"io/fs"
 	"sync"
+
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 var (
@@ -27,10 +29,10 @@ func RuntimeVersion() string {
 	vonce.Do(func() {
 		data, err := fs.ReadFile(resources, "package.json")
 		if err != nil {
-			panic(err)
+			fnerrors.Panic(err)
 		}
 		if err := json.Unmarshal(data, &packageJson); err != nil {
-			panic(err)
+			fnerrors.Panic(err)
 		}
 	})
 	return packageJson.Version
