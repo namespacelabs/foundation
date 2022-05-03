@@ -30,12 +30,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_batchformatter@0.0.0, @namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_batchformatter@workspace:extensions/batchformatter":
+"@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@workspace:extensions/batchformatter":
   version: 0.0.0-use.local
-  resolution: "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_batchformatter@workspace:extensions/batchformatter"
+  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@workspace:extensions/batchformatter"
   dependencies:
     "@grpc/grpc-js": 1.5.7
-    "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_numberformatter": 0.0.0
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter": 0.0.0
     "@namespacelabs/foundation": 0.1.27
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
@@ -48,9 +48,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_numberformatter@0.0.0, @namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_numberformatter@workspace:extensions/numberformatter":
+"@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:extensions/numberformatter":
   version: 0.0.0-use.local
-  resolution: "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_numberformatter@workspace:extensions/numberformatter"
+  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:extensions/numberformatter"
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs/foundation": 0.1.27
@@ -65,13 +65,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@namespacelabs.dev/foundation_languages_nodejs_testdata_server@workspace:server":
+"@namespacelabs.dev-foundation/languages-nodejs-testdata-server@workspace:server":
   version: 0.0.0-use.local
-  resolution: "@namespacelabs.dev/foundation_languages_nodejs_testdata_server@workspace:server"
+  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-server@workspace:server"
   dependencies:
     "@grpc/grpc-js": 1.5.7
-    "@namespacelabs.dev/foundation_languages_nodejs_testdata_services_numberformatter": 0.0.0
-    "@namespacelabs.dev/foundation_languages_nodejs_testdata_services_simple": 0.0.0
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter": 0.0.0
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
     "@namespacelabs/foundation": 0.1.27
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
@@ -84,12 +84,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@namespacelabs.dev/foundation_languages_nodejs_testdata_services_numberformatter@0.0.0, @namespacelabs.dev/foundation_languages_nodejs_testdata_services_numberformatter@workspace:services/numberformatter":
+"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:services/numberformatter":
   version: 0.0.0-use.local
-  resolution: "@namespacelabs.dev/foundation_languages_nodejs_testdata_services_numberformatter@workspace:services/numberformatter"
+  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:services/numberformatter"
   dependencies:
     "@grpc/grpc-js": 1.5.7
-    "@namespacelabs.dev/foundation_languages_nodejs_testdata_extensions_batchformatter": 0.0.0
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
     "@namespacelabs/foundation": 0.1.27
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
@@ -102,9 +102,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@namespacelabs.dev/foundation_languages_nodejs_testdata_services_simple@0.0.0, @namespacelabs.dev/foundation_languages_nodejs_testdata_services_simple@workspace:services/simple":
+"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:services/simple":
   version: 0.0.0-use.local
-  resolution: "@namespacelabs.dev/foundation_languages_nodejs_testdata_services_simple@workspace:services/simple"
+  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:services/simple"
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs/foundation": 0.1.27

@@ -36,7 +36,7 @@ type tmplPackage struct {
 	// nil if the package has no dependencies.
 	Deps *tmplDeps
 	// De-duped import aliases of dependencies.
-	DepsImportAliases []string
+	ImportedInitializers []string
 }
 
 type tmplInitializer struct {

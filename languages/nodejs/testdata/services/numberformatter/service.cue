@@ -13,7 +13,7 @@ $proto: inputs.#Proto & {
 service: fn.#Service & {
 	framework: "NODEJS"
 
-  // Instantiating the "batchformatter" extension twice to show the scopes of its dependencies.
+	// Instantiating the "batchformatter" extension twice to show the scopes of its dependencies.
 	instantiate: {
 		batch1: batchformatter.#Exports.BatchFormatter
 		batch2: batchformatter.#Exports.BatchFormatter

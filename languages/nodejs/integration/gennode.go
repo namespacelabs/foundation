@@ -95,7 +95,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		service = nil
 	}
 
-	depsImportAliases, err := convertImportedInitializes(ic, nodeData.DepsImportAliases)
+	importedInitializers, err := convertImportedInitializers(ic, nodeData.ImportedInitializers)
 	if err != nil {
 		return nodeTmplOptions{}, err
 	}
@@ -103,10 +103,10 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 	return nodeTmplOptions{
 		Imports: ic.imports(),
 		Package: tmplPackage{
-			Name:              nodeData.PackageName,
-			Deps:              packageDeps,
-			Initializer:       initializer,
-			DepsImportAliases: depsImportAliases,
+			Name:                 nodeData.PackageName,
+			Deps:                 packageDeps,
+			Initializer:          initializer,
+			ImportedInitializers: importedInitializers,
 		},
 		Providers: providers,
 		Service:   service,
@@ -114,7 +114,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 }
 
 func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDependency, error) {
-	npmPackage, err := toNpmPackage(dep.ProviderLocation.PackageName)
+	npmPackage, err := toNpmPackage(dep.ProviderLocation)
 	if err != nil {
 		return tmplDependency{}, err
 	}

@@ -60,7 +60,7 @@ export const TransitiveInitializers: Initializer[] = [
 	{{- if .Initializer}}
 	initializer,
 	{{- end}}
-	{{- range .DepsImportAliases}}
+	{{- range .ImportedInitializers}}
 	...{{.}}.TransitiveInitializers,
 	{{- end}}
 ];
