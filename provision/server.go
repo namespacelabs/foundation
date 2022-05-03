@@ -64,6 +64,10 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 		return Server{}, err
 	}
 
+	if sealed.ParsedPackage == nil || sealed.ParsedPackage.Server == nil {
+		return Server{}, fnerrors.UserError(pkgname, "not a server")
+	}
+
 	t := Server{
 		Location: sealed.ParsedPackage.Location,
 		env:      bind(),
