@@ -13,10 +13,13 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
-type Storer struct{ bundle *Bundle }
+type Storer struct {
+	bundler *Bundler
+	bundle  *Bundle
+}
 
-func NewStorer(ctx context.Context, bundle *Bundle) (*Storer, error) {
-	return &Storer{bundle}, nil
+func NewStorer(ctx context.Context, bundler *Bundler, bundle *Bundle) (*Storer, error) {
+	return &Storer{bundler, bundle}, nil
 }
 
 func (st *Storer) Store(af *RunningAction) {
@@ -55,4 +58,12 @@ func (st *Storer) store(af *RunningAction) error {
 		af.attachments.mu.Unlock()
 	}
 	return nil
+}
+
+func (st *Storer) WriteRuntimeStack(ctx context.Context, stack []byte) error {
+	return st.bundle.WriteFile(ctx, "runtime_stack.txt", stack, 0600)
+}
+
+func (st *Storer) Flush(ctx context.Context) error {
+	return st.bundler.Flush(ctx, st.bundle)
 }

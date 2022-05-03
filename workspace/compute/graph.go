@@ -504,6 +504,10 @@ func Do(parent context.Context, do func(context.Context) error) error {
 	return errResult
 }
 
+func InternalGetFuture[V any](ctx context.Context, c Computable[V]) *Future[any] {
+	return startComputing(ctx, On(ctx), c).Future()
+}
+
 func Get[V any](ctx context.Context, c Computable[V]) (ResultWithTimestamp[V], error) {
 	promise := startComputing(ctx, On(ctx), c)
 	r, err := promise.Future().Wait(ctx)

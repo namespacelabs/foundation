@@ -27,6 +27,7 @@ type versionsJSON struct {
 type ServerBase struct {
 	Base          string `json:"base"`
 	NonRootUserID *int   `json:"nonRootUserId"`
+	FSGroup       *int   `json:"fsGroup"`
 }
 
 var (

@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog"
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logoutput"
@@ -277,12 +276,6 @@ func (do *stackState) updateStack(f func(stack *Stack) *Stack) {
 	do.pushUpdate()
 }
 
-func (do *stackState) copyStack() *Stack {
-	do.parent.mu.Lock()
-	defer do.parent.mu.Unlock()
-	return proto.Clone(do.current).(*Stack)
-}
-
 func (do *stackState) pushUpdate() {
 	if do.lastErr == nil {
 		// XXX shouldn't hold do.mu while trying to send.
@@ -291,22 +284,4 @@ func (do *stackState) pushUpdate() {
 			do.parent.l.Err(err).Msg("sending update failed, bailing")
 		}
 	}
-}
-
-func focusServers(stack *schema.Stack, focus []schema.PackageName) []*schema.Server {
-	// Must be called with lock held.
-
-	var servers []*schema.Server
-	for _, pkg := range focus {
-		for _, entry := range stack.Entry {
-			if entry.GetPackageName() == pkg {
-				servers = append(servers, entry.Server)
-				break
-			}
-		}
-		// XXX this is a major hack, as there's no guarantee we'll see all of the
-		// expected servers in the stack.
-	}
-
-	return servers
 }

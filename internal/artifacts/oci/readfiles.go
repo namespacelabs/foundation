@@ -107,7 +107,7 @@ func ReadFileFromImage(ctx context.Context, img v1.Image, path string) ([]byte, 
 	return fs.ReadFile(vfs, path)
 }
 
-func VisitFilesFromImage(img v1.Image, visitor func(layer, path string, typ byte, contents []byte)) error {
+func VisitFilesFromImage(img v1.Image, visitor func(layer, path string, typ byte, contents []byte) error) error {
 	layers, err := img.Layers()
 	if err != nil {
 		return err
@@ -143,7 +143,9 @@ func VisitFilesFromImage(img v1.Image, visitor func(layer, path string, typ byte
 				contents = []byte(h.Linkname)
 			}
 
-			visitor(digest.String(), h.Name, h.Typeflag, contents)
+			if err := visitor(digest.String(), h.Name, h.Typeflag, contents); err != nil {
+				return err
+			}
 		}
 	}
 

@@ -28,7 +28,7 @@ type Sealed struct {
 }
 
 type SealHelper struct {
-	AdditionalServerDeps func() ([]schema.PackageName, error)
+	AdditionalServerDeps func(schema.Framework) ([]schema.PackageName, error)
 }
 
 func Seal(ctx context.Context, loader Packages, focus schema.PackageName, helper *SealHelper) (Sealed, error) {
@@ -77,7 +77,7 @@ func (g *sealer) DoServer(loc Location, srv *schema.Server, pp *Package) error {
 	}
 
 	if g.helper != nil && g.helper.AdditionalServerDeps != nil {
-		deps, err := g.helper.AdditionalServerDeps()
+		deps, err := g.helper.AdditionalServerDeps(srv.Framework)
 		if err != nil {
 			return err
 		}

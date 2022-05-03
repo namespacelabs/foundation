@@ -44,14 +44,25 @@ type ProvisionStack struct {
 	DeclaredStack []schema.PackageName
 }
 
+type PreparedProvisionPlan struct {
+	ProvisionStack
+	Provisioning []*Invocation
+	Sidecars     []Container
+	Inits        []Container
+}
+
+func (p *PreparedProvisionPlan) AppendWith(rhs PreparedProvisionPlan) {
+	p.DeclaredStack = append(p.DeclaredStack, rhs.DeclaredStack...)
+	p.Provisioning = append(p.Provisioning, rhs.Provisioning...)
+	p.Sidecars = append(p.Sidecars, rhs.Sidecars...)
+	p.Inits = append(p.Inits, rhs.Inits...)
+}
+
 type ProvisionPlan struct {
 	Startup PreStartup
 
 	// Node only.
-	ProvisionStack
-	Provisioning *Invocation
-	Sidecars     []Container
-	Inits        []Container
+	PreparedProvisionPlan
 
 	// Server only.
 	Naming *schema.Naming

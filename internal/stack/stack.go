@@ -9,14 +9,21 @@ import (
 	"sort"
 	"strings"
 
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
+	"namespacelabs.dev/foundation/internal/frontend/invocation"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/eval"
+	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/rtypes"
+	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -40,6 +47,11 @@ type ParsedNode struct {
 	Package       *workspace.Package
 	ProvisionPlan frontend.ProvisionPlan
 	Allocations   []frontend.ValueWithPath
+	PrepareProps  struct {
+		ProvisionInput []*anypb.Any
+		Definition     []*schema.Definition
+		Extension      []*schema.DefExtension
+	}
 }
 
 func (stack *Stack) Proto() *schema.Stack {
@@ -84,7 +96,7 @@ func Compute(ctx context.Context, servers []provision.Server, opts ProvisionOpts
 	err := tasks.Action(runtime.TaskGraphCompute).Scope(provision.ServerPackages(servers).PackageNames()...).Run(ctx,
 		func(ctx context.Context) error {
 			var err error
-			s, err = compute(ctx, opts, servers...)
+			s, err = computeStack(ctx, opts, servers...)
 			return err
 		})
 
@@ -94,7 +106,7 @@ func Compute(ctx context.Context, servers []provision.Server, opts ProvisionOpts
 // XXX Unfortunately as we are today we need to pass provisioning information to stack computation
 // because we need to yield definitions which have ports already materialized. Port allocation is
 // more of a "startup" responsibility but this kept things simpler.
-func compute(ctx context.Context, opts ProvisionOpts, servers ...provision.Server) (*Stack, error) {
+func computeStack(ctx context.Context, opts ProvisionOpts, servers ...provision.Server) (*Stack, error) {
 	if len(servers) == 0 {
 		return nil, fnerrors.InternalError("no server specified")
 	}
@@ -208,9 +220,74 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 }
 
 func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Package, state *eval.AllocState) (*ParsedNode, error) {
+	var combinedProps frontend.PrepareProps
+	for _, hook := range n.PrepareHooks {
+		if hook.InvokeInternal != "" {
+			props, err := frontend.InvokeInternalPrepareHook(ctx, hook.InvokeInternal, server.Env(), server.Proto())
+			if err != nil {
+				return nil, fnerrors.Wrap(n.Location, err)
+			}
+
+			if props == nil {
+				continue
+			}
+
+			combinedProps.AppendWith(*props)
+		} else if hook.InvokeBinary != nil {
+			// XXX combine all builds beforehand.
+			inv, err := invocation.Make(ctx, server.Env(), nil, hook.InvokeBinary)
+			if err != nil {
+				return nil, err
+			}
+
+			image, err := compute.GetValue(ctx, inv.Image)
+			if err != nil {
+				return nil, err
+			}
+
+			opts := rtypes.RunToolOpts{
+				ImageName: inv.ImageName,
+				RunBinaryOpts: rtypes.RunBinaryOpts{
+					Image:      image,
+					Command:    inv.Command,
+					Args:       inv.Args,
+					WorkingDir: inv.WorkingDir,
+				},
+				// XXX security prepare invocations have network access.
+			}
+
+			invoke := tools.LowLevelInvokeOptions[*protocol.PrepareRequest, *protocol.PrepareResponse]{}
+
+			resp, err := invoke.Invoke(ctx, n.PackageName(), opts, &protocol.PrepareRequest{
+				Env:    server.Env().Proto(),
+				Server: server.Proto(),
+			}, func(conn *grpc.ClientConn) func(context.Context, *protocol.PrepareRequest, ...grpc.CallOption) (*protocol.PrepareResponse, error) {
+				return protocol.NewPrepareServiceClient(conn).Prepare
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			var pl schema.PackageList
+			for _, p := range resp.GetPreparedProvisionPlan().GetDeclaredStack() {
+				pl.Add(schema.PackageName(p))
+			}
+
+			combinedProps.AppendWith(frontend.PrepareProps{
+				PreparedProvisionPlan: frontend.PreparedProvisionPlan{
+					ProvisionStack: frontend.ProvisionStack{
+						DeclaredStack: pl.PackageNames(),
+					},
+				},
+				ProvisionInput: resp.ProvisionInput,
+				Definition:     resp.Definition,
+				Extension:      resp.Extension,
+			})
+		}
+	}
+
 	// We need to make sure that `env` is available before we read extend.stack, as env is often used
 	// for branching.
-
 	pdata, err := n.Parsed.EvalProvision(ctx, server.Env(), frontend.ProvisionInputs{
 		Workspace:      server.Module().Workspace,
 		ServerLocation: server.Location,
@@ -233,7 +310,14 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 		}
 	}
 
-	return &ParsedNode{Package: n, ProvisionPlan: pdata}, nil
+	pdata.AppendWith(combinedProps.PreparedProvisionPlan)
+
+	node := &ParsedNode{Package: n, ProvisionPlan: pdata}
+	node.PrepareProps.ProvisionInput = combinedProps.ProvisionInput
+	node.PrepareProps.Definition = combinedProps.Definition
+	node.PrepareProps.Extension = combinedProps.Extension
+
+	return node, nil
 }
 
 func fillNeeds(ctx context.Context, server *schema.Server, s *eval.AllocState, allocators []eval.AllocatorFunc, n *schema.Node) ([]frontend.ValueWithPath, error) {

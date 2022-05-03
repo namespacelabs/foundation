@@ -86,6 +86,7 @@ export type DataType = {
   abs_root: string;
   workspace: WorkspaceType;
   env: EnvironmentType;
+  available_env: EnvironmentType[];
   stack?: StackType;
   current: StackEntryType;
   state?: StackEntryStateType[];
@@ -103,6 +104,5 @@ export type StackEntryType = {
 };
 
 export type WorkspaceType = {
-  env: EnvironmentType[];
   module_name: string;
 };

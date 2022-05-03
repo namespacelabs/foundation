@@ -1,6 +1,5 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
-	"namespacelabs.dev/foundation/std/fn:inputs"
 )
 
 server: fn.#Server & {

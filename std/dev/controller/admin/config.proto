@@ -16,16 +16,9 @@ message Configuration {
 }
 
 message Backend {
-    string            package_name = 1;
-    Execution         execution    = 2;
-    HttpPass          http_pass    = 3;
-    repeated OnChange on_change    = 4;
-
-    message OnChange {
-        repeated string path                    = 1;
-        Execution       execution               = 2;  // If one of the files above changes, execute this command.
-        bool            restart_after_execution = 3;  // If true, restarts the backend after this hook executes.
-    }
+    string    package_name = 1;
+    Execution execution    = 2;
+    HttpPass  http_pass    = 3;
 }
 
 message Execution {

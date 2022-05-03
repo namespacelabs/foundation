@@ -10,39 +10,50 @@ import (
 )
 
 type ServerData struct {
-	Services []EmbeddedServiceData
+	Services             []EmbeddedServiceData
+	ImportedInitializers []workspace.Location
 }
 
 type EmbeddedServiceData struct {
 	Location workspace.Location
+	HasDeps  bool
 }
 
 type NodeData struct {
-	Service   *ServiceData
-	Providers []ProviderData
+	Kind                 schema.Node_Kind
+	PackageName          string
+	Deps                 []DependencyData
+	Providers            []ProviderData
+	ImportedInitializers []workspace.Location
+	Initializer          *PackageInitializerData
 }
 
-type ServiceData struct {
-	Deps []DependencyData
+type PackageInitializerData struct {
+	// List of packages that need to be initialized before this package. Enforced at runtime.
+	InitializeBefore []string
+	InitializeAfter  []string
 }
 
 type TypeData struct {
 	Name           string
 	SourceFileName string
-	PackageName    schema.PackageName
+	Location       workspace.Location
 }
 
 type ProviderData struct {
 	Name         string
 	InputType    TypeData
 	ProviderType *schema.Provides_AvailableIn
+	ScopedDeps   []DependencyData
 }
 
 type DependencyData struct {
-	Name             string
-	Provider         ProviderData
-	ProviderLocation workspace.Location
-	ProviderInput    SerializedProto
+	Name              string
+	ProviderName      string
+	ProviderInputType TypeData
+	ProviderType      *schema.Provides_AvailableIn
+	ProviderLocation  workspace.Location
+	ProviderInput     SerializedProto
 }
 
 type SerializedProto struct {

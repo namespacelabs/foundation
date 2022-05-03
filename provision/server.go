@@ -51,10 +51,13 @@ func (t Server) GetDep(pkg schema.PackageName) *workspace.Package {
 
 func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Environment, pkgname schema.PackageName, bind func() ServerEnv) (Server, error) {
 	sealed, err := workspace.Seal(ctx, loader, pkgname, &workspace.SealHelper{
-		AdditionalServerDeps: func() ([]schema.PackageName, error) {
-			return []schema.PackageName{
-				schema.PackageName(fmt.Sprintf("namespacelabs.dev/foundation/std/runtime/%s", strings.ToLower(env.Runtime))),
-			}, nil
+		AdditionalServerDeps: func(fmwk schema.Framework) ([]schema.PackageName, error) {
+			var pkgs schema.PackageList
+			pkgs.Add(schema.PackageName(fmt.Sprintf("namespacelabs.dev/foundation/std/runtime/%s", strings.ToLower(env.Runtime))))
+			if handler, ok := workspace.FrameworkHandlers[fmwk]; ok {
+				pkgs.AddMultiple(handler.DevelopmentPackages()...)
+			}
+			return pkgs.PackageNames(), nil
 		},
 	})
 	if err != nil {
@@ -97,12 +100,4 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 	t.entry.ServerNaming = pdata.Naming
 
 	return t, nil
-}
-
-func ServerSchemas(servers []Server) []*schema.Server {
-	var s []*schema.Server
-	for _, srv := range servers {
-		s = append(s, srv.Proto())
-	}
-	return s
 }

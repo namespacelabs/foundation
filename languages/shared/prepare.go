@@ -19,7 +19,7 @@ import (
 )
 
 // Prepare codegen data for a server.
-func PrepareServerData(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server) (ServerData, error) {
+func PrepareServerData(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, fmwk schema.Framework) (ServerData, error) {
 	var serverData ServerData
 
 	for _, ref := range srv.GetImportedPackages() {
@@ -31,65 +31,59 @@ func PrepareServerData(ctx context.Context, loader workspace.Packages, loc works
 		if pkg.Node().GetKind() == schema.Node_SERVICE {
 			serverData.Services = append(serverData.Services, EmbeddedServiceData{
 				Location: pkg.Location,
+				HasDeps:  len(pkg.Node().GetInstantiate()) > 0,
 			})
 		}
+
+		if pkg.Node().InitializerFor(fmwk) != nil {
+			serverData.ImportedInitializers = append(serverData.ImportedInitializers, pkg.Location)
+		}
 	}
+	serverData.ImportedInitializers = removeDuplicates(serverData.ImportedInitializers)
 
 	return serverData, nil
 }
 
 func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, fmwk schema.Framework) (NodeData, error) {
-	var nodeData NodeData
+	nodeData := NodeData{
+		Kind:        n.Kind,
+		PackageName: n.PackageName,
+	}
 
-	if n.ExportService != nil {
-		deps := []DependencyData{}
-		for _, dep := range n.GetInstantiate() {
-			pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
-			if err != nil {
-				return NodeData{}, fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
-			}
-
-			_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
-			if p == nil {
-				return NodeData{}, fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
-			}
-
-			var provider *schema.Provides_AvailableIn
-			for _, prov := range p.AvailableIn {
-				if prov.ProvidedInFrameworks()[fmwk] {
-					provider = prov
-					break
-				}
-			}
-
-			providerInput, err := serializeProto(ctx, pkg, p, dep)
-			if err != nil {
-				return NodeData{}, err
-			}
-
-			deps = append(deps, DependencyData{
-				Name: dep.Name,
-				Provider: ProviderData{
-					Name:         p.Name,
-					InputType:    convertType(p.Type, schema.PackageName(dep.PackageName)),
-					ProviderType: provider,
-				},
-				ProviderLocation: pkg.Location,
-				ProviderInput:    *providerInput,
-			})
-		}
-
-		nodeData.Service = &ServiceData{
-			Deps: deps,
+	if i := n.InitializerFor(fmwk); i != nil {
+		nodeData.Initializer = &PackageInitializerData{
+			InitializeBefore: i.InitializeBefore,
+			InitializeAfter:  i.InitializeAfter,
 		}
 	}
+
+	if len(n.Instantiate) > 0 {
+		deps, err := prepareDeps(ctx, loader, fmwk, n.Instantiate)
+		if err != nil {
+			return NodeData{}, err
+		}
+
+		for _, d := range deps {
+			nodeData.ImportedInitializers = append(nodeData.ImportedInitializers, d.ProviderLocation)
+		}
+		nodeData.ImportedInitializers = removeDuplicates(nodeData.ImportedInitializers)
+
+		nodeData.Deps = deps
+	}
+
 	for _, p := range n.Provides {
 		for _, a := range p.AvailableIn {
 			if a.ProvidedInFrameworks()[fmwk] {
+				scopeDeps, err := prepareDeps(ctx, loader, fmwk, p.Instantiate)
+				if err != nil {
+					return NodeData{}, err
+				}
+
 				nodeData.Providers = append(nodeData.Providers, ProviderData{
 					Name:         p.Name,
-					InputType:    convertType(p.Type, schema.PackageName(n.PackageName)),
+					InputType:    convertType(p.Type, loc),
 					ProviderType: a,
+					ScopedDeps:   scopeDeps,
 				})
 			}
 		}
@@ -98,13 +92,56 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 	return nodeData, nil
 }
 
-func convertType(t *schema.TypeDef, pkgName schema.PackageName) TypeData {
+func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Framework, instantiates []*schema.Instantiate) ([]DependencyData, error) {
+	if len(instantiates) == 0 {
+		return nil, nil
+	}
+
+	deps := []DependencyData{}
+	for _, dep := range instantiates {
+		pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
+		if err != nil {
+			return nil, fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
+		}
+
+		_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
+		if p == nil {
+			return nil, fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
+		}
+
+		var provider *schema.Provides_AvailableIn
+		for _, prov := range p.AvailableIn {
+			if prov.ProvidedInFrameworks()[fmwk] {
+				provider = prov
+				break
+			}
+		}
+
+		providerInput, err := serializeProto(ctx, pkg, p, dep)
+		if err != nil {
+			return nil, err
+		}
+
+		deps = append(deps, DependencyData{
+			Name:              dep.Name,
+			ProviderName:      p.Name,
+			ProviderInputType: convertType(p.Type, pkg.Location),
+			ProviderType:      provider,
+			ProviderLocation:  pkg.Location,
+			ProviderInput:     *providerInput,
+		})
+	}
+
+	return deps, nil
+}
+
+func convertType(t *schema.TypeDef, loc workspace.Location) TypeData {
 	nameParts := strings.Split(string(t.Typename), ".")
 	// TODO(@nicolasalt): check that the sources contain at least one file.
 	return TypeData{
 		Name:           nameParts[len(nameParts)-1],
 		SourceFileName: t.Source[0],
-		PackageName:    pkgName,
+		Location:       loc,
 	}
 }
 
@@ -153,4 +190,18 @@ func serializeProto(ctx context.Context, pkg *workspace.Package, provides *schem
 	}
 
 	return &serializedProto, nil
+}
+
+func removeDuplicates(list []workspace.Location) []workspace.Location {
+	seen := make(map[schema.PackageName]bool)
+	result := []workspace.Location{}
+
+	for _, item := range list {
+		if !seen[item.PackageName] {
+			result = append(result, item)
+			seen[item.PackageName] = true
+		}
+	}
+
+	return result
 }

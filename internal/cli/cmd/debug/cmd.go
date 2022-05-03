@@ -32,6 +32,7 @@ func NewDebugCmd() *cobra.Command {
 	cmd.AddCommand(newObserveFsCmd())
 	cmd.AddCommand(newDecodeProtoCmd())
 	cmd.AddCommand(newUpdateLicenseCmd())
+	cmd.AddCommand(newKubernetesCmd())
 
 	return cmd
 }

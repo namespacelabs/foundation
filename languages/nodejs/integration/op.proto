@@ -1,0 +1,26 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.languages.nodejs.integration;
+
+option go_package = "namespacelabs.dev/foundation/languages/nodejs/integration";
+
+import "schema/schema.proto";
+
+message OpGenServer {
+    foundation.schema.Server server             = 1;
+    repeated foundation.schema.Node loaded_node = 2;
+}
+
+message OpGenNode {
+    foundation.schema.Node node                 = 1;
+    repeated foundation.schema.Node loaded_node = 2;
+}
+
+message OpGenNodeStub {
+    foundation.schema.Node node     = 1;
+    string                 filename = 2;
+}

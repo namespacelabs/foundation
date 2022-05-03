@@ -7,9 +7,9 @@ package devhost
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"io/fs"
-	"os"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -25,7 +25,7 @@ import (
 
 const DevHostFilename = "devhost.textpb"
 
-var HasRuntime func(*schema.Workspace, *schema.Environment, *schema.DevHost) bool
+var HasRuntime func(string) bool
 
 func HostOnlyFiles() []string { return []string{DevHostFilename} }
 
@@ -34,7 +34,7 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 
 	devHostBytes, err := fs.ReadFile(root.FS(), DevHostFilename)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
 	} else {
@@ -44,7 +44,7 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 	}
 
 	for _, env := range root.Workspace.Env {
-		if !HasRuntime(root.Workspace, env, root.DevHost) {
+		if !HasRuntime(env.Runtime) {
 			return fnerrors.InternalError("%s is not a supported runtime type", env.Runtime)
 		}
 	}

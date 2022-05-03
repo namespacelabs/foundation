@@ -30,6 +30,8 @@ type FrameworkHandler interface {
 	PreParseServer(context.Context, Location, *FrameworkExt) error
 	PostParseServer(context.Context, *Sealed) error
 	InjectService(Location, *schema.Node, *CueService) error
+	// List of packages that should be added as server dependencies, when the target environment's purpose is DEVELOPMENT.
+	DevelopmentPackages() []schema.PackageName
 	// XXX this is provisional: we need an additional lifecyle hook before provisioning,
 	// which extensions can hook to.
 	EvalProvision(*schema.Node) (frontend.ProvisionStack, error)

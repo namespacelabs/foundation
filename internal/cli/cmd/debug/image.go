@@ -131,7 +131,7 @@ func printContents(ctx context.Context, img v1.Image, filename string) error {
 	}
 
 	var buf bytes.Buffer
-	return oci.VisitFilesFromImage(img, func(layer, path string, typ byte, contents []byte) {
+	return oci.VisitFilesFromImage(img, func(layer, path string, typ byte, contents []byte) error {
 		fmt.Fprintf(&buf, "%s: %s", layer, path)
 		switch typ {
 		case tar.TypeReg:
@@ -143,6 +143,7 @@ func printContents(ctx context.Context, img v1.Image, filename string) error {
 		}
 		fmt.Fprintln(&buf)
 		_, _ = buf.WriteTo(out)
+		return nil
 	})
 }
 

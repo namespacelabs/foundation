@@ -86,7 +86,7 @@ type Runtime interface {
 	DeleteRecursively(context.Context) error
 
 	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
-	HostPlatforms() []specs.Platform
+	TargetPlatforms(context.Context) ([]specs.Platform, error)
 }
 
 type Deployment struct {
@@ -116,7 +116,8 @@ type ServerRunOpts struct {
 }
 
 type RunAs struct {
-	UserID string
+	UserID  string
+	FSGroup *string
 }
 
 type SidecarRunOpts struct {

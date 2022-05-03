@@ -21,8 +21,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/hotreload"
+	"namespacelabs.dev/foundation/internal/yarn"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/languages/nodejs"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -59,7 +59,6 @@ func (impl) ParseNode(context.Context, workspace.Location, *schema.Node, *worksp
 }
 
 func (impl) PreParseServer(_ context.Context, _ workspace.Location, ext *workspace.FrameworkExt) error {
-	ext.Include = append(ext.Include, controllerPkg)
 	return nil
 }
 
@@ -70,6 +69,10 @@ func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error
 
 func (impl) InjectService(workspace.Location, *schema.Node, *workspace.CueService) error {
 	return nil
+}
+
+func (impl) DevelopmentPackages() []schema.PackageName {
+	return []schema.PackageName{controllerPkg}
 }
 
 func (impl) EvalProvision(n *schema.Node) (frontend.ProvisionStack, error) {
@@ -280,7 +283,7 @@ func (i impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspac
 		"vite@2.7.13",
 	}
 
-	if err := nodejs.RunYarn(ctx, p.Location.Rel(), append([]string{"add", "-D"}, devPackages...)); err != nil {
+	if err := yarn.RunYarn(ctx, p.Location.Rel(), append([]string{"add", "-D"}, devPackages...)); err != nil {
 		return err
 	}
 

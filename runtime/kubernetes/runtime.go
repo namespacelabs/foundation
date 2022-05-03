@@ -7,11 +7,14 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"sort"
+	"sync"
 	"time"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,8 +24,10 @@ import (
 	"k8s.io/client-go/tools/portforward"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -32,38 +37,159 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	kubenode "namespacelabs.dev/foundation/std/runtime/kubernetes"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"sigs.k8s.io/yaml"
 )
 
 var (
 	ObserveInitContainerLogs = false
+
+	runtimeCache struct {
+		mu    sync.Mutex
+		cache map[string]k8sRuntime
+	}
 )
 
-func Register() {
-	runtime.Register("kubernetes", func(ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (runtime.Runtime, error) {
-		return New(ws, devHost, env)
-	})
+func init() {
+	runtimeCache.cache = map[string]k8sRuntime{}
 }
 
-func New(ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (k8sRuntime, error) {
+func Register() {
+	runtime.Register("kubernetes", func(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (runtime.Runtime, error) {
+		return New(ctx, ws, devHost, env)
+	})
+
+	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
+}
+
+func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv *schema.Server) (*frontend.PrepareProps, error) {
+	var ensureServiceAccount bool
+
+	if err := visitAllocs(srv.Allocation, kubeNode, &kubenode.ServerExtensionArgs{},
+		func(instance *schema.Allocation_Instance, instantiate *schema.Instantiate, args *kubenode.ServerExtensionArgs) {
+			if args.EnsureServiceAccount {
+				ensureServiceAccount = true
+			}
+		}); err != nil {
+		return nil, err
+	}
+
+	if !ensureServiceAccount {
+		return nil, nil
+	}
+
+	serviceAccount := kubedef.MakeDeploymentId(srv)
+
+	saDetails := &kubedef.ServiceAccountDetails{ServiceAccountName: serviceAccount}
+	packedSaDetails, err := anypb.New(saDetails)
+	if err != nil {
+		return nil, err
+	}
+
+	packedExt, err := anypb.New(&kubedef.SpecExtension{
+		EnsureServiceAccount: true,
+		ServiceAccount:       serviceAccount,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &frontend.PrepareProps{
+		ProvisionInput: []*anypb.Any{packedSaDetails},
+		Extension: []*schema.DefExtension{{
+			For:  srv.PackageName,
+			Impl: packedExt,
+		}},
+	}, nil
+}
+
+func visitAllocs[V proto.Message](allocs []*schema.Allocation, pkg schema.PackageName, tmpl V, f func(*schema.Allocation_Instance, *schema.Instantiate, V)) error {
+	typeURL := fnany.TypeURL(pkg, tmpl)
+
+	for _, alloc := range allocs {
+		for _, instance := range alloc.Instance {
+			for _, i := range instance.Instantiated {
+				if i.GetConstructor().GetTypeUrl() == typeURL {
+					copy := proto.Clone(tmpl)
+					if err := proto.Unmarshal(i.Constructor.GetValue(), copy); err != nil {
+						return err
+					}
+
+					f(instance, i, copy.(V))
+				}
+			}
+
+			if err := visitAllocs(instance.DownstreamAllocation, pkg, tmpl, f); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (k8sRuntime, error) {
 	cfg, err := client.ComputeHostEnv(devHost, env)
 	if err != nil {
 		return k8sRuntime{}, err
 	}
 
-	return k8sRuntime{boundEnv{ws, env, cfg}}, nil
+	cfgbytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(cfg)
+	if err != nil {
+		return k8sRuntime{}, fnerrors.InternalError("failed to serialize config: %w", err)
+	}
+
+	key := base64.RawStdEncoding.EncodeToString(cfgbytes)
+
+	runtimeCache.mu.Lock()
+	defer runtimeCache.mu.Unlock()
+
+	if _, ok := runtimeCache.cache[key]; !ok {
+		cli, err := client.NewClientFromHostEnv(cfg)
+		if err != nil {
+			return k8sRuntime{}, err
+		}
+
+		runtimeCache.cache[key] = k8sRuntime{
+			cli,
+			boundEnv{ws, env, cfg},
+			compute.InternalGetFuture[*kubedef.SystemInfo](ctx, &fetchSystemInfo{
+				cli:     cli,
+				cfg:     cfg,
+				devHost: devHost,
+				env:     env,
+			}),
+		}
+	}
+
+	rt := runtimeCache.cache[key]
+
+	return rt, nil
 }
 
 type k8sRuntime struct {
+	cli *k8s.Clientset
 	boundEnv
+	systemInfo *compute.Future[any] // systemInfo
 }
 
 var _ runtime.Runtime = k8sRuntime{}
 
 func (r k8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, error) {
 	packedHostEnv, err := anypb.New(&kubetool.KubernetesEnv{Namespace: r.ns()})
+	if err != nil {
+		return nil, err
+	}
+
+	systemInfo, err := r.SystemInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	packedSystemInfo, err := anypb.New(systemInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +208,7 @@ func (r k8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 
 	// Pass the computed namespace to the provisioning tool.
 	return &rtypes.ProvisionProps{
-		ProvisionInput: []*anypb.Any{packedHostEnv},
+		ProvisionInput: []*anypb.Any{packedHostEnv, packedSystemInfo},
 		Definition:     []*schema.Definition{def},
 	}, nil
 }
@@ -110,12 +236,7 @@ type ConditionWaiter interface {
 }
 
 func (r k8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, waiter ConditionWaiter) error {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
-	return waitForCondition(ctx, cli, action, waiter)
+	return waitForCondition(ctx, r.cli, action, waiter)
 }
 
 func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.ActionEvent, waiter ConditionWaiter) error {
@@ -131,12 +252,7 @@ func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.Act
 }
 
 func (r k8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return oci.ImageID{}, err
-	}
-
-	d, err := cli.AppsV1().Deployments(r.ns()).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
+	d, err := r.cli.AppsV1().Deployments(r.ns()).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
 	if err != nil {
 		// XXX better error messages.
 		return oci.ImageID{}, err
@@ -332,12 +448,7 @@ func (r k8sRuntime) PlanShutdown(ctx context.Context, foci []provision.Server, s
 }
 
 func (r k8sRuntime) StreamLogsTo(ctx context.Context, w io.Writer, server *schema.Server, opts runtime.StreamLogsOpts) error {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
-	return r.fetchLogs(ctx, cli, w, server, opts)
+	return r.fetchLogs(ctx, r.cli, w, server, opts)
 }
 
 func (r k8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
@@ -346,12 +457,7 @@ func (r k8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runt
 		return fnerrors.InternalError("invalid reference")
 	}
 
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
-	return fetchPodLogs(ctx, cli, w, opaque.Namespace, opaque.Name, opaque.Container, runtime.StreamLogsOpts{
+	return fetchPodLogs(ctx, r.cli, w, opaque.Namespace, opaque.Name, opaque.Container, runtime.StreamLogsOpts{
 		TailLines:        opts.TailLines,
 		FetchLastFailure: opts.FetchLastFailure,
 	})
@@ -363,12 +469,7 @@ func (r k8sRuntime) FetchDiagnostics(ctx context.Context, reference runtime.Cont
 		return runtime.Diagnostics{}, fnerrors.InternalError("invalid reference")
 	}
 
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return runtime.Diagnostics{}, err
-	}
-
-	pod, err := cli.CoreV1().Pods(opaque.Namespace).Get(ctx, opaque.Name, metav1.GetOptions{})
+	pod, err := r.cli.CoreV1().Pods(opaque.Namespace).Get(ctx, opaque.Name, metav1.GetOptions{})
 	if err != nil {
 		return runtime.Diagnostics{}, err
 	}
@@ -413,12 +514,7 @@ func statusToDiagnostic(status v1.ContainerStatus) (runtime.Diagnostics, error) 
 func (r k8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
 	cmd := append([]string{command}, rest...)
 
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
-	return r.startTerminal(ctx, cli, server, rio, cmd)
+	return r.startTerminal(ctx, r.cli, server, rio, cmd)
 }
 
 func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endpoint *schema.Endpoint, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
@@ -426,12 +522,7 @@ func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 		return nil, fnerrors.UserError(server, "%s: no port to forward to", endpoint.GetServiceName())
 	}
 
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return nil, err
-	}
-
-	pod, err := resolvePodByLabels(ctx, cli, io.Discard, r.boundEnv.ns(), map[string]string{
+	pod, err := resolvePodByLabels(ctx, r.cli, io.Discard, r.boundEnv.ns(), map[string]string{
 		kubedef.K8sServerId: server.Id,
 	})
 	if err != nil {
@@ -462,19 +553,14 @@ func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 }
 
 func (r k8sRuntime) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return nil, err
-	}
-
 	svc := nginx.IngressLoadBalancerService()
 	// XXX watch?
-	resolved, err := cli.CoreV1().Services(svc.Namespace).Get(ctx, svc.ServiceName, metav1.GetOptions{})
+	resolved, err := r.cli.CoreV1().Services(svc.Namespace).Get(ctx, svc.ServiceName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	pod, err := resolvePodByLabels(ctx, cli, io.Discard, svc.Namespace, resolved.Spec.Selector)
+	pod, err := resolvePodByLabels(ctx, r.cli, io.Discard, svc.Namespace, resolved.Spec.Selector)
 	if err != nil {
 		return nil, err
 	}
@@ -516,11 +602,6 @@ func (c channelCloser) Close() error {
 }
 
 func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
 	// XXX use a watch
 	announced := map[string]runtime.ContainerReference{}
 
@@ -532,7 +613,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 			// No cancelation, moving along.
 		}
 
-		pods, err := cli.CoreV1().Pods(r.ns()).List(ctx, metav1.ListOptions{
+		pods, err := r.cli.CoreV1().Pods(r.ns()).List(ctx, metav1.ListOptions{
 			LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
 		})
 		if err != nil {
@@ -605,14 +686,9 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 }
 
 func (r k8sRuntime) DeleteRecursively(ctx context.Context) error {
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
 	return tasks.Action("kubernetes.namespace.delete").Arg("namespace", r.ns()).Run(ctx, func(ctx context.Context) error {
 		var grace int64 = 0
-		return cli.CoreV1().Namespaces().Delete(ctx, r.ns(), metav1.DeleteOptions{
+		return r.cli.CoreV1().Namespaces().Delete(ctx, r.ns(), metav1.DeleteOptions{
 			GracePeriodSeconds: &grace,
 		})
 	})

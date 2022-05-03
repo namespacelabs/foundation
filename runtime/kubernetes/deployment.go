@@ -144,10 +144,19 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	if server.RunAs != nil {
 		userId, err := strconv.ParseInt(server.RunAs.UserID, 10, 64)
 		if err != nil {
-			return fnerrors.InternalError("expected server.RunAs to be an int64: %w", err)
+			return fnerrors.InternalError("expected server.RunAs.UserID to be an int64: %w", err)
 		}
 
 		podSecCtx = podSecCtx.WithRunAsUser(userId).WithRunAsNonRoot(true)
+
+		if server.RunAs.FSGroup != nil {
+			fsGroup, err := strconv.ParseInt(*server.RunAs.FSGroup, 10, 64)
+			if err != nil {
+				return fnerrors.InternalError("expected server.RunAs.FSGroup to be an int64: %w", err)
+			}
+
+			podSecCtx.WithFSGroup(fsGroup)
+		}
 	}
 
 	name := serverCtrName(server.Server.Proto())
@@ -203,6 +212,9 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	initArgs := map[schema.PackageName][]string{}
 
 	var serviceAccount string // May be specified by a SpecExtension.
+	var createServiceAccount bool
+	var serviceAccountAnnotations []*kubedef.SpecExtension_Annotation
+
 	for _, input := range server.Extensions {
 		specExt := &kubedef.SpecExtension{}
 		containerExt := &kubedef.ContainerExtension{}
@@ -230,11 +242,22 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 				tmpl = tmpl.WithAnnotations(m)
 			}
 
-			if serviceAccount != "" && serviceAccount != specExt.ServiceAccount {
-				return fnerrors.UserError(server.Server.Location, "incompatible service accounts defined, %q vs %q", serviceAccount, specExt.ServiceAccount)
+			if specExt.EnsureServiceAccount {
+				createServiceAccount = true
+				if specExt.ServiceAccount == "" {
+					return fnerrors.UserError(server.Server.Location, "ensure_service_account requires service_account to be set")
+				}
 			}
 
-			serviceAccount = specExt.ServiceAccount
+			serviceAccountAnnotations = append(serviceAccountAnnotations, specExt.ServiceAccountAnnotation...)
+
+			if specExt.ServiceAccount != "" {
+				if serviceAccount != "" && serviceAccount != specExt.ServiceAccount {
+					return fnerrors.UserError(server.Server.Location, "incompatible service accounts defined, %q vs %q",
+						serviceAccount, specExt.ServiceAccount)
+				}
+				serviceAccount = specExt.ServiceAccount
+			}
 
 		case input.Impl.MessageIs(containerExt):
 			if err := input.Impl.UnmarshalTo(containerExt); err != nil {
@@ -379,6 +402,27 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	// Only mutate `annotations` after all other uses above.
 	if server.ConfigImage != nil {
 		annotations[kubedef.K8sConfigImage] = server.ConfigImage.RepoAndDigest()
+	}
+
+	if createServiceAccount {
+		annotations := map[string]string{}
+		for _, ann := range serviceAccountAnnotations {
+			annotations[ann.Key] = ann.Value
+		}
+
+		s.declarations = append(s.declarations, kubedef.Apply{
+			Description: "Service Account",
+			Resource:    "serviceaccounts",
+			Namespace:   r.ns(),
+			Name:        serviceAccount,
+			Body: applycorev1.ServiceAccount(serviceAccount, r.ns()).
+				WithLabels(labels).
+				WithAnnotations(annotations),
+		})
+	} else {
+		if len(serviceAccountAnnotations) > 0 {
+			return fnerrors.UserError(server.Server.Location, "can't set service account annotations without ensure_service_account")
+		}
 	}
 
 	// We don't deploy managed deployments or statefulsets in tests, as these are one-shot

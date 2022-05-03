@@ -3,7 +3,7 @@ import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/secrets"
+	"namespacelabs.dev/foundation/universe/aws/client"
 )
 
 $providerProto: inputs.#Proto & {
@@ -12,9 +12,7 @@ $providerProto: inputs.#Proto & {
 
 extension: fn.#Extension & {
 	instantiate: {
-		"credentials": secrets.#Exports.Secret & {
-			name: "aws_credentials_file"
-		}
+		clientFactory:  client.#Exports.ClientFactory
 		readinessCheck: core.#Exports.ReadinessCheck
 	}
 

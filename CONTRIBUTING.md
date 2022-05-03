@@ -1,4 +1,3 @@
-
 # Contributing to Foundation
 
 This guide is targeted at the Namespace Labs team for now.
@@ -18,7 +17,8 @@ Foundation is regularly tested under Linux, MacOS 11+ and Windows WSL2.
 
 After `nix` is installed, you can:
 
-- Use `nix-shell` to jump into a shell with all the current dependencies setup (e.g. Go, NodeJS, etc).
+- Use `nix-shell` to jump into a shell with all the current dependencies setup (e.g. Go, NodeJS,
+  etc).
 - Use the "nix environment selector" VSCode extension to apply a nix environment in VSCode.
 - Or use the pre-configured VSCode devcontainer.
 
@@ -40,9 +40,11 @@ You can test a release by running:
 goreleaser release --rm-dist --snapshot
 ```
 
-To issue an actual release, create a Github PAT with `write_packages` permissions and place it in `~/.github/github_token`.
+To issue an actual release, create a Github PAT with `write_packages` permissions and place it in
+`~/.github/github_token`.
 
-Our versioning scheme uses a ever-increasing minor version. After `0.0.23` comes `0.0.24`, and so on.
+Our versioning scheme uses a ever-increasing minor version. After `0.0.23` comes `0.0.24`, and so
+on.
 
 Pick a new version, and run:
 
@@ -51,15 +53,45 @@ git tag -a v0.0.24
 goreleaser release
 ```
 
-NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`, `test:` or `nochangelog` are excluded from the changelog.
+NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
+`test:` or `nochangelog` are excluded from the changelog.
 
 ### MacOS Notarization
 
 In order to allow `fn` binaries to be installed outside of the App store, they need to be notarized.
 
-Notarization must be done in MacOSX, and requires XCode, and https://github.com/mitchellh/gon#installation.
+Notarization must be done in MacOSX, and requires XCode, and
+https://github.com/mitchellh/gon#installation.
 
 ## Development Workflows
+
+### Debugging via VS Code
+
+The debugging configuration is not in the repository because different people may want to used
+different arguments. To bootstrap, create `.vscode/launch.json` and add the following content:
+
+```
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Foundation",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceRoot}/cmd/fn",
+      // This is important, other debugging doesn't work.
+      "env": { "CGO_ENABLED": "0" },
+      // Specify the absolute path to the working directory.
+      "cwd": "~/code/foundation",
+      "args": ["generate"]
+    }
+  ]
+}
+```
 
 ### Protos
 
@@ -87,8 +119,8 @@ fn generate
 
 ### Rebuild prebuilts
 
-At the moment, "prebuilts" are stored in GCP's Artifact Registry. Accessing these packages
-requires no authentication. However, you'll have to sign-in in order to update these prebuilts.
+At the moment, "prebuilts" are stored in GCP's Artifact Registry. Accessing these packages requires
+no authentication. However, you'll have to sign-in in order to update these prebuilts.
 
 Run `gcloud auth login` to authenticate to GCP with your `namespacelabs.com` account, and then
 whenever you need to write new prebuilt images, you'll have to run:
@@ -135,8 +167,8 @@ Check out the trace at http://localhost:20000/.
 
 ### Updating dependencies
 
-To keep dependencies under check, we rely on https://github.com/tailscale/depaware to produce an expanded
-list of transitive dependencies, which is meant to be reviewed manually.
+To keep dependencies under check, we rely on https://github.com/tailscale/depaware to produce an
+expanded list of transitive dependencies, which is meant to be reviewed manually.
 
 If package imports change, a new depaware often needs to be recreated. Use the following commmand to
 re-create:
@@ -163,14 +195,13 @@ different from your workstation.
 
 ### Using `age` for simple secret management
 
-When a server has secrets required for deployment, sharing those secrets between different users
-can sometimes be challenging. Foundation includes a simple solution for it, building on `age`.
+When a server has secrets required for deployment, sharing those secrets between different users can
+sometimes be challenging. Foundation includes a simple solution for it, building on `age`.
 
-Users generate pub/private identities using `fn keys generate`, which can then be
-used to encrypt "secret bundles" which are submittable into the repository. Access
-to the payload is determined by the keys which have been added as receipients to
-the encrypted payload. This list of keys is public, and kept in the repository as
-part of the bundle.
+Users generate pub/private identities using `fn keys generate`, which can then be used to encrypt
+"secret bundles" which are submittable into the repository. Access to the payload is determined by
+the keys which have been added as receipients to the encrypted payload. This list of keys is public,
+and kept in the repository as part of the bundle.
 
 ```
 $ fn keys generate
@@ -187,10 +218,11 @@ Value: <value>
 Wrote std/testdata/server/gogrpc/server.secrets
 ```
 
+A `server.secrets` will be produced which can be submitted to the repository, as the secret values
+are encrypted.
 
-A `server.secrets` will be produced which can be submitted to the repository, as the secret values are encrypted.
-
-To grant access to the encrypted file, merely have your teammate generate a key (see above), add run:
+To grant access to the encrypted file, merely have your teammate generate a key (see above), add
+run:
 
 ```
 $ fn secrets add-reader std/testdata/server/gogrpc --key <pubkey>
@@ -209,6 +241,7 @@ Definitions:
   namespacelabs.dev/foundation/std/testdata/datastore:cert
 ```
 
-Note: this mechanism for secret management does not handle revocations. If a key has been issued which should
-no longer have access to the contents, all secret values should be considered compromised and replaced (as the
-person with private key can read the values from any previous repository commit).
+Note: this mechanism for secret management does not handle revocations. If a key has been issued
+which should no longer have access to the contents, all secret values should be considered
+compromised and replaced (as the person with private key can read the values from any previous
+repository commit).

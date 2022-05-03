@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sync"
 
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/stack"
@@ -163,15 +164,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		done := make(chan struct{})
 		cancel := compute.SpawnCancelableOnContinuously(ctx, func(ctx context.Context) error {
 			defer close(done)
-			return compute.Continuously(ctx, &updateCluster{
-				obs:       do.obs,
-				localAddr: do.obs.parent.localHostname,
-				env:       focusServers.Env(),
-				stack:     stack.Proto(),
-				focus:     do.serverPackages,
-				plan:      plan,
-				observers: observers,
-			})
+			return compute.Continuously(ctx, newUpdateCluster(do.obs, focusServers.Env(), stack.Proto(), do.serverPackages, observers, plan))
 		})
 
 		do.cancelRunning = func() {
@@ -187,7 +180,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		server := focus[0]
 		if err := tasks.Action(runtime.TaskGraphCompute).Scope(server.PackageName()).Run(ctx,
 			func(ctx context.Context) error {
-				buildID, err := runtime.For(do.env).DeployedConfigImageID(ctx, server.Proto())
+				buildID, err := runtime.For(ctx, do.env).DeployedConfigImageID(ctx, server.Proto())
 				if err != nil {
 					return err
 				}
@@ -198,7 +191,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 				}
 
 				do.obs.updateStack(func(stack *Stack) *Stack {
-					stack.Stack = s
+					stack.Stack = s.Stack
 					return stack
 				})
 
@@ -223,10 +216,18 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 }
 
 func computeFirstStack(env provision.Env, t provision.Server) *Stack {
+	workspace := proto.Clone(env.Root().Workspace).(*schema.Workspace)
+
+	// XXX handling broken web ui builds.
+	if workspace.Env == nil {
+		workspace.Env = provision.EnvsOrDefault(workspace)
+	}
+
 	return &Stack{
-		AbsRoot:   env.Root().Abs(),
-		Env:       env.Proto(),
-		Workspace: env.Root().Workspace,
-		Current:   t.StackEntry(),
+		AbsRoot:      env.Root().Abs(),
+		Env:          env.Proto(),
+		Workspace:    workspace,
+		AvailableEnv: workspace.Env,
+		Current:      t.StackEntry(),
 	}
 }

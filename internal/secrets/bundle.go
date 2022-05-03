@@ -133,6 +133,33 @@ func (b *Bundle) Lookup(ctx context.Context, key *ValueKey) ([]byte, error) {
 	return nil, nil
 }
 
+type LookupResult struct {
+	Key   *ValueKey
+	Value []byte
+}
+
+func (b *Bundle) LookupValues(ctx context.Context, key *ValueKey) ([]LookupResult, error) {
+	var results []LookupResult
+	for _, sec := range b.values {
+		for _, v := range sec.m.Value {
+			if keyMatches(key, v.Key) {
+				contents := v.Value
+				if v.FromPath != "" {
+					var err error
+					contents, err = fs.ReadFile(sec.files, v.FromPath)
+					if err != nil {
+						return nil, err
+					}
+				}
+
+				results = append(results, LookupResult{v.Key, contents})
+			}
+		}
+	}
+
+	return results, nil
+}
+
 func (b *Bundle) EnsureReader(pubkey string) error {
 	xid, err := age.ParseX25519Recipient(pubkey)
 	if err != nil {
@@ -257,23 +284,33 @@ func (b *Bundle) SerializeTo(ctx context.Context, w io.Writer, encrypt bool) err
 		return err
 	}
 
-	var breaker lineBreaker
-	breaker.out = w
-
-	b64 := base64.NewEncoder(base64.StdEncoding, &breaker)
-	if _, err := b64.Write(buf.Bytes()); err != nil {
-		return err
-	}
-	if err := b64.Close(); err != nil {
-		return err
-	}
-	if err := breaker.Close(); err != nil {
+	if err := OutputBase64(w, buf.Bytes()); err != nil {
 		return err
 	}
 
 	fmt.Fprintf(w, "-----%s-----\n", guardEnd)
 
 	return err
+}
+
+func OutputBase64(w io.Writer, buf []byte) error {
+	var breaker lineBreaker
+	breaker.out = w
+
+	b64 := base64.NewEncoder(base64.StdEncoding, &breaker)
+	if _, err := b64.Write(buf); err != nil {
+		return err
+	}
+
+	if err := b64.Close(); err != nil {
+		return err
+	}
+
+	if err := breaker.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (b *Bundle) DescribeTo(out io.Writer) {
@@ -299,12 +336,17 @@ func (b *Bundle) DescribeTo(out io.Writer) {
 	default:
 		fmt.Fprintln(out, "Definitions:")
 		for _, def := range b.Definitions() {
-			fmt.Fprintf(out, "  %s:%s", def.Key.PackageName, def.Key.Key)
-			if def.Key.EnvironmentName != "" {
-				fmt.Fprintf(out, " (%s)", def.Key.EnvironmentName)
-			}
+			fmt.Fprintf(out, "  ")
+			DescribeKey(out, def.Key)
 			fmt.Fprintln(out)
 		}
+	}
+}
+
+func DescribeKey(out io.Writer, key *ValueKey) {
+	fmt.Fprintf(out, "%s:%s", key.PackageName, key.Key)
+	if key.EnvironmentName != "" {
+		fmt.Fprintf(out, " (%s)", key.EnvironmentName)
 	}
 }
 

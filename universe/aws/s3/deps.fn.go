@@ -6,12 +6,12 @@ package s3
 import (
 	"context"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/secrets"
+	"namespacelabs.dev/foundation/universe/aws/client"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
-	Credentials    *secrets.Value
+	ClientFactory  client.ClientFactory
 	ReadinessCheck core.Check
 }
 
@@ -33,8 +33,12 @@ var (
 func makeDeps__eoj2dq(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
-	// name: "aws_credentials_file"
-	if deps.Credentials, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChRhd3NfY3JlZGVudGlhbHNfZmlsZQ==", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+	if err := di.Instantiate(ctx, client.Provider__hva50k, func(ctx context.Context, v interface{}) (err error) {
+		if deps.ClientFactory, err = client.ProvideClientFactory(ctx, nil, v.(client.ExtensionDeps)); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 

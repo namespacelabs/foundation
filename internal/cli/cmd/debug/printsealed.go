@@ -90,7 +90,7 @@ func newPrintSealedCmd() *cobra.Command {
 					}
 
 					for _, ingress := range fragments {
-						if err := output(ctx, t.Env(), ingress, outputType); err != nil {
+						if err := output(ctx, t.Env(), ingress.WithoutAllocation(), outputType); err != nil {
 							return err
 						}
 					}

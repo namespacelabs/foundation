@@ -226,12 +226,12 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 	// allows all builds and invocations to occur in parallel.
 
 	binaryInputs := compute.Inputs()
-	for pkg, imgs := range imgs {
-		if imgs.Binary != nil {
-			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:binary", pkg), imgs.Binary)
+	for pkg, img := range imgs {
+		if img.Binary != nil {
+			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:binary", pkg), img.Binary)
 		}
-		if imgs.Config != nil {
-			finalInputs = finalInputs.Computable(fmt.Sprintf("%s:config", pkg), imgs.Config)
+		if img.Config != nil {
+			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:config", pkg), img.Config)
 		}
 	}
 
@@ -304,7 +304,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 				serverRuns = append(serverRuns, run)
 			}
 
-			deployment, err := runtime.For(env).PlanDeployment(ctx, runtime.Deployment{
+			deployment, err := runtime.For(ctx, env).PlanDeployment(ctx, runtime.Deployment{
 				BuildID: buildID,
 				Focus:   focus,
 				Stack:   stack.Proto(),
@@ -384,6 +384,11 @@ type containerImage struct {
 func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildID provision.BuildID) (map[schema.PackageName]containerImage, error) {
 	res := map[schema.PackageName]containerImage{}
 	for k, srv := range stack.Servers {
+		platforms, err := runtime.For(ctx, srv.Env()).TargetPlatforms(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		for _, dep := range stack.ParsedServers[k].Deps {
 			containers := append([]frontend.Container{}, dep.ProvisionPlan.Sidecars...)
 			containers = append(containers, dep.ProvisionPlan.Inits...)
@@ -398,7 +403,7 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildI
 				prepared, err := binary.Plan(ctx, bin,
 					binary.BuildImageOpts{
 						UsePrebuilts: true,
-						Platforms:    runtime.For(srv.Env()).HostPlatforms(),
+						Platforms:    platforms,
 					})
 				if err != nil {
 					return nil, err

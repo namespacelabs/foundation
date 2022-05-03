@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console/renderwait"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/schema"
 )
 
 const (
@@ -24,7 +23,7 @@ const (
 	tailLinesOnFailure = 10
 )
 
-func Wait(ctx context.Context, env ops.Environment, servers []*schema.Server, waiters []ops.Waiter) error {
+func Wait(ctx context.Context, env ops.Environment, waiters []ops.Waiter) error {
 	rwb := renderwait.NewBlock(ctx, "deploy")
 	err := ops.WaitMultiple(ctx, waiters, observeContainers(ctx, env, rwb.Ch()))
 
@@ -81,7 +80,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 					t.Reset(maxDeployWait / 2)
 				}
 
-				rt := runtime.For(env)
+				rt := runtime.For(ctx, env)
 				for resourceID, wslist := range pending {
 					all := []runtime.ContainerUnitWaitStatus{}
 					for _, w := range wslist {

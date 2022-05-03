@@ -21,10 +21,18 @@ extension: fn.#Extension & {
 			}
 		}
 		TracerProvider: {
-			input: $typesProto.types.TracerProviderArgs
+			input: $typesProto.types.NoArgs
 			availableIn: {
 				go: {
 					type: "DeferredTracerProvider"
+				}
+			}
+		}
+		HttpClientProvider: {
+			input: $typesProto.types.NoArgs
+			availableIn: {
+				go: {
+					type: "HttpClientProvider"
 				}
 			}
 		}

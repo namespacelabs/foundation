@@ -42,15 +42,17 @@ import (
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/languages/golang"
-	"namespacelabs.dev/foundation/languages/nodejs"
+	nodejs "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/languages/web"
+	"namespacelabs.dev/foundation/providers/aws/eks"
+	"namespacelabs.dev/foundation/providers/aws/iam"
 	ecr "namespacelabs.dev/foundation/providers/aws/registry"
 	artifactregistry "namespacelabs.dev/foundation/providers/gcp/registry"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -120,14 +122,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		if err != nil {
 			return err
 		}
-		tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundle)
+		tasks.ActionStorer, err = tasks.NewStorer(cmd.Context(), bundler, bundle)
 		if err != nil {
 			return err
 		}
 		// Used for devhost/environment validation.
-		devhost.HasRuntime = func(w *schema.Workspace, e *schema.Environment, dh *schema.DevHost) bool {
-			return runtime.ForProto(w, e, dh) != nil
-		}
+		devhost.HasRuntime = runtime.HasRuntime
 
 		workspace.MakeFrontend = cuefrontend.NewFrontend
 
@@ -167,9 +167,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		// Providers.
 		ecr.Register()
+		eks.Register()
 		artifactregistry.Register()
 		oci.RegisterDomainKeychain("pkg.dev", artifactregistry.DefaultKeychain)
 		oci.RegisterDomainKeychain("amazonaws.com", ecr.DefaultKeychain)
+		iam.RegisterGraphHandlers()
 
 		// Runtimes.
 		kubernetes.Register()
@@ -228,10 +230,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if cleanupTracer != nil {
 		cleanupTracer()
 	}
-
-	// Commit the bundle to the filesystem.
-	_ = bundler.Flush(ctxWithSink, bundle)
-
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
 	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
 		// Printing the new version message if any.
@@ -263,13 +261,53 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		default:
 		}
 	}
+	// Ensures deferred routines after invoked gracefully before os.Exit.
+	defer handleExit()
+	defer func() {
+		// Capture useful information about the environment helpful for diagnostics in the bundle.
+		_ = writeExitInfo(ctxWithSink, bundle)
+
+		// Commit the bundle to the filesystem.
+		_ = bundler.Flush(ctxWithSink, bundle)
+	}()
 	if err != nil {
 		exitCode := handleExitError(colors, err)
 		// Record errors only after the user sees them to hide potential latency implications.
 		// We pass the original ctx without sink since logs have already been flushed.
 		tel.RecordError(ctx, err)
-		os.Exit(exitCode)
+		_ = bundle.WriteError(ctx, err)
+
+		// Ensures graceful invocation of deferred routines in the block above before we exit.
+		panic(exitWithCode{exitCode})
 	}
+}
+
+type exitWithCode struct{ Code int }
+
+// exit code handler
+func handleExit() {
+	if e := recover(); e != nil {
+		if exit, ok := e.(exitWithCode); ok {
+			os.Exit(exit.Code)
+		}
+		panic(e) // not an Exit, bubble up
+	}
+}
+
+func writeExitInfo(ctx context.Context, bundle *tasks.Bundle) error {
+	err := bundle.WriteMemStats(ctx)
+	if err != nil {
+		return err
+	}
+	client, err := docker.NewClient()
+	if err != nil {
+		return err
+	}
+	dockerInfo, err := client.Info(ctx)
+	if err != nil {
+		return err
+	}
+	return bundle.WriteDockerInfo(ctx, &dockerInfo)
 }
 
 func handleExitError(colors bool, err error) int {

@@ -5,12 +5,8 @@
 package tool
 
 import (
-	"io/fs"
-
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/runtime/rtypes"
+	"namespacelabs.dev/foundation/internal/frontend/invocation"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 type Source struct {
@@ -22,23 +18,7 @@ type Definition struct {
 	For           schema.PackageName
 	ServerAbsPath string
 	Source        Source
-	Invocation    *Invocation
-}
-
-type Invocation struct {
-	ImageName  string
-	Image      compute.Computable[oci.Image]
-	Command    []string
-	Args       []string
-	Mounts     []*rtypes.LocalMapping
-	Snapshots  []Snapshot
-	WorkingDir string
-	NoCache    bool
-}
-
-type Snapshot struct {
-	Name     string
-	Contents fs.FS
+	Invocation    *invocation.Invocation
 }
 
 func (s Source) Contains(pkg schema.PackageName) bool {

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/internal/console/common"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks/protocol"
@@ -324,8 +326,31 @@ func (ev *ActionEvent) CheckCacheRun(ctx context.Context, options RunOptions) er
 }
 
 func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) error {
+	defer func() {
+		if r := recover(); r != nil {
+			// Capture the stack on panic.
+			_ = ActionStorer.WriteRuntimeStack(ctx, debug.Stack())
+
+			// Ensure that we always have an audit trail.
+			_ = ActionStorer.Flush(ctx)
+
+			// Bubble up the panic.
+			panic(r)
+		}
+	}()
 	v := ev.Start(ctx)
 	return v.Done(v.Call(ctx, f))
+}
+
+func Return[V any](ctx context.Context, ev *ActionEvent, f func(context.Context) (V, error)) (V, error) {
+	v := ev.Start(ctx)
+	var ret V
+	callErr := v.Call(ctx, func(ctx context.Context) error {
+		var err error
+		ret, err = f(ctx)
+		return err
+	})
+	return ret, v.Done(callErr)
 }
 
 func (ev *ActionEvent) Log(ctx context.Context) {
@@ -588,19 +613,23 @@ func (ev *EventAttachments) Attach(name OutputName, body []byte) {
 	}
 }
 
-func (ev *EventAttachments) AttachSerializable(name, modifier string, body interface{}) {
+func (ev *EventAttachments) AttachSerializable(name, modifier string, body interface{}) error {
 	if ev == nil {
-		panic("no running action")
+		return fnerrors.InternalError("no running action while attaching serializable %q", name)
+	}
+
+	if !ev.IsRecording() {
+		return nil
 	}
 
 	msg, err := common.Serialize(body)
 	if err != nil {
-		panic(fmt.Sprintf("failed to serialize payload: %v", err))
+		return fnerrors.BadInputError("failed to serialize payload: %w", err)
 	}
 
 	bytes, err := common.SerializeToBytes(msg)
 	if err != nil {
-		panic(fmt.Sprintf("failed to serialize payload to bytes: %v", err))
+		return fnerrors.BadInputError("failed to serialize payload to bytes: %w", err)
 	}
 
 	contentType := "application/json"
@@ -609,6 +638,7 @@ func (ev *EventAttachments) AttachSerializable(name, modifier string, body inter
 	}
 
 	ev.Attach(Output(name, contentType), bytes)
+	return nil
 }
 
 func (ev *EventAttachments) addResult(key string, msg interface{}) ResultData {

@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
@@ -75,22 +74,20 @@ func (db DB) withSpan(ctx context.Context, name, sql string, f func(context.Cont
 	ctx, span := db.tracer.Start(ctx, name,
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(semconv.DBStatementKey.String(sql)))
-	err := f(ctx)
-	span.End()
+	defer span.End()
 
-	if span.IsRecording() {
-		if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, pgx.ErrNoRows) {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-		}
+	err := f(ctx)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, pgx.ErrNoRows) {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 	}
 
 	return err
 }
 
 type WireDatabase struct {
-	ready core.Check
-	otel  trace.TracerProvider
+	ready          core.Check
+	tracerProvider trace.TracerProvider
 }
 
 func logf(message string, args ...interface{}) {
@@ -124,8 +121,8 @@ func (w WireDatabase) ProvideDatabase(ctx context.Context, db *Database, usernam
 	})
 
 	var tracer trace.Tracer
-	if w.otel != nil {
-		tracer = otel.Tracer(Package__sfr1nt.PackageName)
+	if w.tracerProvider != nil {
+		tracer = w.tracerProvider.Tracer(Package__sfr1nt.PackageName)
 	}
 
 	return &DB{conn, tracer}, nil

@@ -95,13 +95,14 @@ func resolveBackend(wenv workspace.WorkspaceEnvironment, endpoints languages.End
 					return nil, fnerrors.InternalError("%s: failed to determine naming configuration: %w", pkg.Location.PackageName, err)
 				}
 
-				domains, err := runtime.GuessDomains(wenv.Proto(), pkg.Server, plan.Naming, endpoint.AllocatedName)
+				domains, err := runtime.ComputeDomains(wenv.Proto(), pkg.Server, plan.Naming, endpoint.AllocatedName)
 				if err != nil {
 					return nil, fnerrors.Wrapf(loc, err, "failed to compute domains")
 				}
 
 				bd := &backendDefinition{}
-				for _, d := range domains {
+				for _, deferred := range domains {
+					d := deferred.Domain
 					if d.Managed == schema.Domain_LOCAL_MANAGED {
 						bd.Managed = fmt.Sprintf("http://%s:%d", d.Fqdn, runtime.LocalIngressPort)
 					} else if d.Managed == schema.Domain_CLOUD_MANAGED {

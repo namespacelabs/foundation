@@ -89,6 +89,14 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				Arg:         args,
 			}},
 		}})
+	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
+		For: schema.PackageName("namespacelabs.dev/foundation/universe/development/localstack"),
+		With: &kubedef.ContainerExtension{
+			Env: []*kubedef.ContainerExtension_Env{{
+				Name:  "SERVICES",
+				Value: "s3",
+			}},
+		}})
 	return nil
 }
 

@@ -29,4 +29,5 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewSdkCmd())
 	root.AddCommand(NewVersionCmd())
 	root.AddCommand(NewBundlesCmd())
+	root.AddCommand(NewAttachCmd())
 }

@@ -1,0 +1,35 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package languages.nodejs.testdata.services.numberformatter;
+
+message FormatRequest {
+    double input = 1;
+}
+
+message FormatResponse {
+    repeated string output = 1;
+}
+
+// grpcurl -plaintext -import-path languages/nodejs/testdata/services/numberformatter -proto service.proto \
+// -d '{"input":12.345445}' 127.0.0.1:XXX \
+// languages.nodejs.testdata.services.numberformatter.FormatService/Format
+//
+// Response:
+//
+// {
+//   "output": [
+//     "First instance of the \"batchformatter\" extension:",
+//     "  Singleton formatter output: Formatted value: 12.35. This is called 1 times.",
+//     "  Scoped formatter output: Formatted value: 12.34544. This is called 1 times.",
+//     "Second instance of the \"batchformatter\" extension:",
+//     "  Singleton formatter output: Formatted value: 12.35. This is called 2 times.",
+//     "  Scoped formatter output: Formatted value: 12.34544. This is called 1 times."
+//   ]
+// }
+service FormatService {
+    rpc Format(FormatRequest) returns (FormatResponse);
+}

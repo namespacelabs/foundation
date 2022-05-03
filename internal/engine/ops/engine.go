@@ -6,10 +6,15 @@ package ops
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 
+	"github.com/philopon/go-toposort"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -43,28 +48,30 @@ type Environment interface {
 
 type Runner struct {
 	definitions []*schema.Definition
-	nodes       []rnode
+	nodes       []*rnode
 	scope       schema.PackageList
 }
 
 type rnode struct {
 	def *schema.Definition
-	reg registration
+	reg *registration
 	res *DispatcherResult
 	err error // Error captured from a previous run.
 }
 
 type registration struct {
+	key          string
 	tmpl         proto.Message
 	dispatcher   dispatcherFunc
 	startSession startSessionFunc
+	after        []string
 }
 
 type dispatcherFunc func(context.Context, Environment, *schema.Definition, proto.Message) (*DispatcherResult, error)
 type commitSessionFunc func() error
 type startSessionFunc func(context.Context, Environment) (dispatcherFunc, commitSessionFunc)
 
-var handlers = map[string]registration{}
+var handlers = map[string]*registration{}
 
 func Register[M proto.Message](mr Dispatcher[M]) {
 	var startSession startSessionFunc
@@ -90,17 +97,23 @@ func RegisterFunc[M proto.Message](mr func(ctx context.Context, env Environment,
 	}, nil)
 }
 
+func RunAfter(base, after proto.Message) {
+	h := handlers[messageKey(after)]
+	h.after = append(h.after, messageKey(base))
+}
+
 func register[M proto.Message](dispatcher dispatcherFunc, startSession startSessionFunc) {
 	var m M
 
 	tmpl := reflect.New(reflect.TypeOf(m).Elem()).Interface().(proto.Message)
 	reg := registration{
+		key:          messageKey(tmpl),
 		tmpl:         tmpl,
 		dispatcher:   dispatcher,
 		startSession: startSession,
 	}
 
-	handlers[messageKey(tmpl)] = reg
+	handlers[messageKey(tmpl)] = &reg
 }
 
 func messageKey(msg proto.Message) string {
@@ -116,14 +129,15 @@ func NewRunner() *Runner {
 }
 
 func (g *Runner) Add(defs ...*schema.Definition) error {
-	var nodes []rnode
+	var nodes []*rnode
 	for _, src := range defs {
-		reg, ok := handlers[src.Impl.GetTypeUrl()]
+		key := src.Impl.GetTypeUrl()
+		reg, ok := handlers[key]
 		if !ok {
-			return fnerrors.InternalError("%v: no handler registered", src.Impl.GetTypeUrl())
+			return fnerrors.InternalError("%v: no handler registered", key)
 		}
 
-		nodes = append(nodes, rnode{
+		nodes = append(nodes, &rnode{
 			def: src,
 			reg: reg,
 		})
@@ -156,12 +170,20 @@ func (g *Runner) ApplyParallel(ctx context.Context, name string, env Environment
 }
 
 func (g *Runner) apply(ctx context.Context, env Environment, parallel bool) ([]Waiter, error) {
-	tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
+	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
+	if err != nil {
+		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)
+	}
 
 	sessions := map[string]dispatcherFunc{}
 	commits := map[string]commitSessionFunc{}
 
-	for _, n := range g.nodes {
+	nodes, err := topoSortNodes(g.nodes)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, n := range nodes {
 		if n.err != nil {
 			continue
 		}
@@ -180,7 +202,7 @@ func (g *Runner) apply(ctx context.Context, env Environment, parallel bool) ([]W
 
 	var errs []error
 	var waiters []Waiter
-	for k, n := range g.nodes {
+	for _, n := range nodes {
 		if n.err != nil {
 			continue
 		}
@@ -198,8 +220,8 @@ func (g *Runner) apply(ctx context.Context, env Environment, parallel bool) ([]W
 		}
 
 		d, err := dispatcher(ctx, env, n.def, copy)
-		g.nodes[k].res = d
-		g.nodes[k].err = err
+		n.res = d
+		n.err = err
 		if err != nil {
 			errs = append(errs, fnerrors.InternalError("failed to run %q: %w", typeUrl, err))
 		}
@@ -211,7 +233,7 @@ func (g *Runner) apply(ctx context.Context, env Environment, parallel bool) ([]W
 	// Use insertion order.
 	var ordered []commitSessionFunc
 	var orderedTypeUrls []string
-	for _, n := range g.nodes {
+	for _, n := range nodes {
 		typeUrl := n.def.Impl.GetTypeUrl()
 		if commit, has := commits[typeUrl]; has {
 			ordered = append(ordered, commit)
@@ -255,4 +277,48 @@ func (g *Runner) Definitions() []*schema.Definition {
 		defs = append(defs, n.def)
 	}
 	return defs
+}
+
+func topoSortNodes(nodes []*rnode) ([]*rnode, error) {
+	graph := toposort.NewGraph(len(nodes))
+
+	keyTypes := map[string]struct{}{}
+	for _, n := range nodes {
+		keyTypes[n.reg.key] = struct{}{}
+	}
+
+	for k := range keyTypes {
+		// key types are always prefixed by an underscore.
+		graph.AddNode("_" + k)
+	}
+
+	// The idea is that a category is only done when all of its individual nodes are.
+	for k, n := range nodes {
+		ks := fmt.Sprintf("%d", k)
+		graph.AddNode(ks)
+		graph.AddEdge(ks, "_"+n.reg.key)
+
+		for _, after := range n.reg.after {
+			graph.AddEdge("_"+after, ks)
+		}
+	}
+
+	result, solved := graph.Toposort()
+	if !solved {
+		return nil, fnerrors.InternalError("ops dependencies are not solvable")
+	}
+
+	end := make([]*rnode, 0, len(nodes))
+	for _, k := range result {
+		if strings.HasPrefix(k, "_") {
+			continue // Was a key.
+		}
+		i, err := strconv.ParseInt(k, 10, 64)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to parse serialized index")
+		}
+		end = append(end, nodes[i])
+	}
+
+	return end, nil
 }

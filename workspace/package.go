@@ -27,6 +27,9 @@ type Package struct {
 	Provides    map[string]*protos.FileDescriptorSetAndDeps // key: `Provides.Name`
 	Services    map[string]*protos.FileDescriptorSetAndDeps // key: fully qualified service name
 	PackageData []*types.Resource
+
+	// Hooks
+	PrepareHooks []frontend.PrepareHook
 }
 
 func (pr *Package) PackageName() schema.PackageName { return pr.Location.PackageName }

@@ -20,6 +20,10 @@ _#Node: {
 
 	_#Instantiate
 
+	on?: {
+		prepare?: {invokeInternal: string} | {invokeBinary: #InvokeBinary}
+	}
+
 	packageData: [...string]
 
 	requirePersistentStorage?: {
@@ -153,15 +157,14 @@ _#ConfigureBase: {
 	sidecar?: [...#Container]
 	init?: [...#Container]
 	naming?: #Naming
+	details?: {...}
 	...
 
 	provisioning?: #Provisioning
 	#Provisioning: {
 		// XXX add purpose, e.g. contributes startup inputs.
 		with?: {
-			binary:     inputs.#Package
-			args:       #Args
-			workingDir: *"/" | string
+			#InvokeBinary
 			mount: [string]: {fromWorkspace: string}
 			snapshot: [string]: {fromWorkspace: string}
 			noCache:      *false | true
@@ -183,6 +186,12 @@ _#ConfigureBase: {
 		withOrg?: string
 		*{} | {domainName: [string]: [...string]} | {tlsManagedDomainName: [string]: [...string]}
 	}
+}
+
+#InvokeBinary: {
+	binary:     inputs.#Package
+	args:       #Args
+	workingDir: *"/" | string
 }
 
 #Configure: _#ConfigureBase & {

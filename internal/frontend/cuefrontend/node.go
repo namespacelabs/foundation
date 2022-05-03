@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
@@ -66,16 +67,21 @@ type cueInstantiate struct {
 	TypeDef     cueProto `json:"typeDefinition"`
 }
 
-func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, kind schema.Node_Kind, parent, v *fncue.CueV, pkg *workspace.Package, opts workspace.LoadPackageOpts) error {
-	out := &schema.Node{
+type cueCallback struct {
+	InvokeInternal string          `json:"invokeInternal"`
+	InvokeBinary   cueInvokeBinary `json:"invokeBinary"`
+}
+
+func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *workspace.Package, opts workspace.LoadPackageOpts) error {
+	node := &schema.Node{
 		PackageName: loc.PackageName.String(),
 		Kind:        kind,
 	}
 
 	if kind == schema.Node_EXTENSION {
-		pkg.Extension = out
+		out.Extension = node
 	} else if kind == schema.Node_SERVICE {
-		pkg.Service = out
+		out.Service = node
 	} else {
 		return fnerrors.UserError(loc, "unknown kind: %v", kind)
 	}
@@ -87,7 +93,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 
 	// XXX use this block to use a Decode() function, instead of individual path parsing.
 
-	if err := v.LookupPath("import").Val.Decode(&out.Import); err != nil {
+	if err := v.LookupPath("import").Val.Decode(&node.Import); err != nil {
 		return err
 	}
 
@@ -104,7 +110,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		if fmwk == schema.Framework_OPAQUE {
 			return fnerrors.UserError(loc, "Only servers can be OPAQUE")
 		}
-		out.ServiceFramework = fmwk
+		node.ServiceFramework = fmwk
 	}
 
 	var initializeBefore []string
@@ -143,9 +149,10 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 				return err
 			}
 
-			out.Initializers = append(out.Initializers, &schema.NodeInitializer{
+			node.Initializers = append(node.Initializers, &schema.NodeInitializer{
 				Framework:        schema.Framework(v),
 				InitializeBefore: initializeBefore,
+				InitializeAfter:  initializeAfter,
 			})
 		}
 	} else {
@@ -158,13 +165,13 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	if provides := v.LookupPath("provides"); provides.Exists() {
-		if err := handleProvides(ctx, pl, loc, provides, pkg, opts, out); err != nil {
+		if err := handleProvides(ctx, pl, loc, provides, out, opts, node); err != nil {
 			return err
 		}
 	}
 
-	sort.Slice(out.Provides, func(i, j int) bool {
-		return strings.Compare(out.Provides[i].Name, out.Provides[j].Name) < 0
+	sort.Slice(node.Provides, func(i, j int) bool {
+		return strings.Compare(node.Provides[i].Name, node.Provides[j].Name) < 0
 	})
 
 	if packageData := v.LookupPath("packageData"); packageData.Exists() {
@@ -185,7 +192,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 					return fnerrors.UserError(loc, "failed to load eval data %q: %w", path, err)
 				}
 
-				pkg.PackageData = append(pkg.PackageData, &types.Resource{
+				out.PackageData = append(out.PackageData, &types.Resource{
 					Path:     path,
 					Contents: contents,
 				})
@@ -219,7 +226,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			}
 
 			if inst.PackageName != "" {
-				out.Reference = append(out.Reference, &schema.Reference{
+				node.Reference = append(node.Reference, &schema.Reference{
 					PackageName: inst.PackageName,
 				})
 			}
@@ -230,7 +237,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 					return err
 				}
 
-				out.Instantiate = append(out.Instantiate, &schema.Instantiate{
+				node.Instantiate = append(node.Instantiate, &schema.Instantiate{
 					PackageName: inst.PackageName,
 					Type:        inst.Type,
 					Name:        name,
@@ -240,16 +247,12 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		}
 	}
 
-	sort.Slice(out.Instantiate, func(i, j int) bool {
-		return strings.Compare(out.Instantiate[i].Name, out.Instantiate[j].Name) < 0
-	})
-
 	if ingress := v.LookupPath("ingress"); ingress.Exists() {
 		v, err := ingress.Val.String()
 		if err != nil {
 			return err
 		}
-		out.Ingress = schema.Endpoint_Type(schema.Endpoint_Type_value[v])
+		node.Ingress = schema.Endpoint_Type(schema.Endpoint_Type_value[v])
 	}
 
 	if exported := v.LookupPath("exportService"); exported.Exists() {
@@ -263,10 +266,10 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			if err != nil {
 				return err
 			}
-			out.ExportServicesAsHttp = vb
+			node.ExportServicesAsHttp = vb
 		}
 
-		out.ExportService = append(out.ExportService, &schema.GrpcExportService{
+		node.ExportService = append(node.ExportService, &schema.GrpcExportService{
 			ProtoTypename: svc.Typename,
 			Proto:         svc.Sources,
 		})
@@ -290,10 +293,10 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			return fnerrors.UserError(loc, "expected %q to be a service: %v", svc.Typename, err)
 		}
 
-		if pkg.Services == nil {
-			pkg.Services = map[string]*protos.FileDescriptorSetAndDeps{}
+		if out.Services == nil {
+			out.Services = map[string]*protos.FileDescriptorSetAndDeps{}
 		}
-		pkg.Services[svc.Typename] = parsed
+		out.Services[svc.Typename] = parsed
 	}
 
 	if exported := v.LookupPath("exportHttp"); exported.Exists() {
@@ -303,7 +306,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		}
 
 		for _, p := range paths {
-			out.ExportHttp = append(out.ExportHttp, &schema.HttpPath{
+			node.ExportHttp = append(node.ExportHttp, &schema.HttpPath{
 				Path: p.Path,
 				Kind: p.Kind,
 			})
@@ -325,17 +328,43 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			return fnerrors.Wrapf(loc, err, "failed to parse value")
 		}
 
-		out.RequiredStorage = append(out.RequiredStorage, &schema.RequiredStorage{
+		node.RequiredStorage = append(node.RequiredStorage, &schema.RequiredStorage{
 			PersistentId: d.PersistentID,
 			ByteCount:    uint64(v),
 			MountPath:    d.MountPath,
 		})
 	}
 
+	if on := v.LookupPath("on.prepare"); on.Exists() {
+		var callback cueCallback
+		if err := on.Val.Decode(&callback); err != nil {
+			return fnerrors.Wrapf(loc, err, "failed to parse `on.provision`")
+		}
+
+		if callback.InvokeInternal == "" {
+			if callback.InvokeBinary.Binary == "" {
+				return fnerrors.UserError(loc, "on.provision.invokeInternal or on.provision.invokeBinary is required")
+			}
+		} else {
+			if callback.InvokeBinary.Binary != "" {
+				return fnerrors.UserError(loc, "on.provision.invokeInternal and on.provision.invokeBinary are exclusive")
+			}
+		}
+
+		out.PrepareHooks = append(out.PrepareHooks, frontend.PrepareHook{
+			InvokeInternal: callback.InvokeInternal,
+			InvokeBinary:   callback.InvokeBinary.toFrontend(),
+		})
+	}
+
+	sort.Slice(node.Instantiate, func(i, j int) bool {
+		return strings.Compare(node.Instantiate[i].Name, node.Instantiate[j].Name) < 0
+	})
+
 	if err := fncue.WalkAttrs(parent.Val, func(v cue.Value, key, value string) error {
 		switch key {
 		case fncue.InputKeyword:
-			if err := handleRef(loc, v, value, &out.Reference); err != nil {
+			if err := handleRef(loc, v, value, &node.Reference); err != nil {
 				return err
 			}
 
@@ -343,7 +372,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			need := &schema.Need{
 				CuePath: v.Path().String(),
 			}
-			out.Need = append(out.Need, need)
+			node.Need = append(node.Need, need)
 
 			switch value {
 			case fncue.ServerPortAllocKw:
@@ -364,7 +393,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		return err
 	}
 
-	return workspace.TransformNode(ctx, pl, loc, out, kind)
+	return workspace.TransformNode(ctx, pl, loc, node, kind)
 }
 
 func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, provides *fncue.CueV, pkg *workspace.Package, opts workspace.LoadPackageOpts, out *schema.Node) error {

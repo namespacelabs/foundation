@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-func (v *CueV) decodeToDynamicAny(msg proto.Message) error {
+func (v *CueV) DecodeToProtoMessage(msg proto.Message) error {
 	b, err := v.Val.MarshalJSON()
 	if err != nil {
 		return err
@@ -22,7 +22,7 @@ func (v *CueV) decodeToDynamicAny(msg proto.Message) error {
 func (v *CueV) DecodeAs(msgtype protoreflect.MessageType) (proto.Message, error) {
 	msg := msgtype.New().Interface()
 	if v.Exists() {
-		if err := v.decodeToDynamicAny(msg); err != nil {
+		if err := v.DecodeToProtoMessage(msg); err != nil {
 			return nil, err
 		}
 	}

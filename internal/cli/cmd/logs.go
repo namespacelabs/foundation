@@ -45,7 +45,7 @@ func NewLogsCmd() *cobra.Command {
 				return err
 			}
 
-			rt := runtime.For(env)
+			rt := runtime.For(ctx, env)
 
 			streams := map[string]*logStream{}
 			var mu sync.Mutex

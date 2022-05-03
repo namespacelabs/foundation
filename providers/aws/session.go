@@ -10,15 +10,15 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
-func ConfiguredSession(ctx context.Context, env ops.Environment) (aws.Config, string, error) {
+func ConfiguredSession(ctx context.Context, devHost *schema.DevHost, env *schema.Environment) (aws.Config, string, error) {
 	conf := &Conf{}
-	if !devhost.ConfigurationForEnv(env).Get(conf) {
-		return aws.Config{}, "", fnerrors.UsageError(fmt.Sprintf("Run `fn prepare --env=%s`.", env.Proto().GetName()), "Foundation has not been configured to access AWS.")
+	if !devhost.ConfigurationForEnvParts(devHost, env).Get(conf) {
+		return aws.Config{}, "", fnerrors.UsageError(fmt.Sprintf("Run `fn prepare --env=%s`.", env.GetName()), "Foundation has not been configured to access AWS.")
 	}
 
 	profile := conf.Profile

@@ -1,0 +1,11 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package languages.nodejs.testdata.extensions.numberformatter;
+
+message FormattingSettings {
+    int32 precision = 1;
+}
