@@ -29,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -39,7 +40,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	kubenode "namespacelabs.dev/foundation/std/runtime/kubernetes"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"sigs.k8s.io/yaml"
 )
@@ -68,11 +68,12 @@ func Register() {
 func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv *schema.Server) (*frontend.PrepareProps, error) {
 	var ensureServiceAccount bool
 
-	if err := visitAllocs(srv.Allocation, kubeNode, &kubenode.ServerExtensionArgs{},
-		func(instance *schema.Allocation_Instance, instantiate *schema.Instantiate, args *kubenode.ServerExtensionArgs) {
+	if err := configure.VisitAllocs(srv.Allocation, kubeNode, &kubenode.ServerExtensionArgs{},
+		func(instance *schema.Allocation_Instance, instantiate *schema.Instantiate, args *kubenode.ServerExtensionArgs) error {
 			if args.EnsureServiceAccount {
 				ensureServiceAccount = true
 			}
+			return nil
 		}); err != nil {
 		return nil, err
 	}
@@ -104,31 +105,6 @@ func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv 
 			Impl: packedExt,
 		}},
 	}, nil
-}
-
-func visitAllocs[V proto.Message](allocs []*schema.Allocation, pkg schema.PackageName, tmpl V, f func(*schema.Allocation_Instance, *schema.Instantiate, V)) error {
-	typeURL := fnany.TypeURL(pkg, tmpl)
-
-	for _, alloc := range allocs {
-		for _, instance := range alloc.Instance {
-			for _, i := range instance.Instantiated {
-				if i.GetConstructor().GetTypeUrl() == typeURL {
-					copy := proto.Clone(tmpl)
-					if err := proto.Unmarshal(i.Constructor.GetValue(), copy); err != nil {
-						return err
-					}
-
-					f(instance, i, copy.(V))
-				}
-			}
-
-			if err := visitAllocs(instance.DownstreamAllocation, pkg, tmpl, f); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }
 
 func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (k8sRuntime, error) {

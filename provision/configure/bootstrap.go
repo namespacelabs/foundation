@@ -71,7 +71,7 @@ func run(ctx context.Context, h AllHandlers) {
 }
 
 func Handle(h *Handlers) {
-	run(context.Background(), runHandlers{h})
+	run(context.Background(), HandlersHandler{h})
 }
 
 func HandleInvoke(f InvokeFunc) {
