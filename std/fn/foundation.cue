@@ -21,7 +21,10 @@ _#Node: {
 	_#Instantiate
 
 	on?: {
-		prepare?: {invokeInternal: string} | {invokeBinary: #InvokeBinary}
+		prepare?: {
+			{invokeInternal: string} | {invokeBinary: #InvokeBinary}
+			requires: [...inputs.#Package]
+		}
 	}
 
 	packageData: [...string]

@@ -31,9 +31,10 @@ extension: fn.#Extension & {
 			invokeBinary: {
 				binary: "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
 			}
+			requires: [
+				"namespacelabs.dev/foundation/universe/development/localstack",
+				"namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets",
+			]
 		}
 	}
 }
-
-$localstack: inputs.#Package & "namespacelabs.dev/foundation/universe/development/localstack"
-$init:       inputs.#Package & "namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets"
