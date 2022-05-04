@@ -47,5 +47,9 @@ func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOpti
 }
 
 func ProvideClientFactory(_ context.Context, _ *ClientFactoryArgs, deps ExtensionDeps) (ClientFactory, error) {
-	return ClientFactory{credsPath: deps.Credentials.Path, openTelemetry: deps.OpenTelemetry}, nil
+	cf := ClientFactory{openTelemetry: deps.OpenTelemetry}
+	if deps.Credentials != nil {
+		cf.credsPath = deps.Credentials.Path
+	}
+	return cf, nil
 }

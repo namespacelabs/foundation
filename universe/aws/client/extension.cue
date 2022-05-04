@@ -14,6 +14,7 @@ extension: fn.#Extension & {
 	instantiate: {
 		"credentials": secrets.#Exports.Secret & {
 			name: "aws_credentials_file"
+			optional: true
 		}
 		openTelemetry: tracing.#Exports.TracerProvider
 	}

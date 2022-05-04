@@ -35,7 +35,8 @@ func makeDeps__hva50k(ctx context.Context, di core.Dependencies) (_ interface{},
 	var deps ExtensionDeps
 
 	// name: "aws_credentials_file"
-	if deps.Credentials, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChRhd3NfY3JlZGVudGlhbHNfZmlsZQ==", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+	// optional: true
+	if deps.Credentials, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChRhd3NfY3JlZGVudGlhbHNfZmlsZSgB", &secrets.Secret{}).(*secrets.Secret)); err != nil {
 		return nil, err
 	}
 
