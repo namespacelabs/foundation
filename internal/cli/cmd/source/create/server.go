@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/iancoleman/strcase"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/inputs"
@@ -44,7 +45,7 @@ func newServerCmd() *cobra.Command {
 		Args:  cobra.RangeArgs(0, 1),
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, loc, err := targetPackage(ctx, args, "server")
+			root, loc, err := targetPackage(ctx, args, "service")
 			if err != nil {
 				return err
 			}
