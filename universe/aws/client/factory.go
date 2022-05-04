@@ -6,7 +6,9 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -20,7 +22,12 @@ type ClientFactory struct {
 }
 
 func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {
-	optFns = append(optFns, config.WithSharedCredentialsFiles([]string{cf.credsPath}))
+	if os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE") == "" {
+		if cf.credsPath == "" {
+			return aws.Config{}, errors.New("when running without universe/aws/irsa, aws credentials are required to be set")
+		}
+		optFns = append(optFns, config.WithSharedCredentialsFiles([]string{cf.credsPath}))
+	}
 
 	cfg, err := config.LoadDefaultConfig(ctx, optFns...)
 	if err != nil {
