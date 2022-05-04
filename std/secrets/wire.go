@@ -29,6 +29,10 @@ func ProvideSecret(ctx context.Context, req *Secret) (*Value, error) {
 
 	cfg := LookupConfig(sdm, string(caller))
 	if cfg == nil {
+		if req.Optional {
+			return nil, nil
+		}
+
 		return nil, fmt.Errorf("%v: no secret configuration definition in map.textpb", caller)
 	}
 

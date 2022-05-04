@@ -301,9 +301,11 @@ func fillData(ctx context.Context, server *schema.Server, env *schema.Environmen
 
 			switch len(foundIn) {
 			case 0:
-				return nil, fnerrors.UsageError(
-					fmt.Sprintf("Try running `fn secrets set %s --secret %s:%s`", server.PackageName, key.PackageName, key.Key),
-					"secret %q required by %q not specified", key.Key, key.PackageName)
+				if !secret.Optional {
+					return nil, fnerrors.UsageError(
+						fmt.Sprintf("Try running `fn secrets set %s --secret %s:%s`", server.PackageName, key.PackageName, key.Key),
+						"secret %q required by %q not specified", key.Key, key.PackageName)
+				}
 			case 1:
 				data[col.Names[k][j]] = foundValue
 			default:
