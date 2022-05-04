@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log"
 
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -64,14 +65,12 @@ func (p Request) PackageOwner() string {
 	return p.r.GetToolPackage()
 }
 
-func run(ctx context.Context, h AllHandlers) {
-	if err := handle(ctx, h); err != nil {
+func Handle(h *Handlers) {
+	if err := RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
+		protocol.RegisterInvocationServiceServer(sr, h.ServiceHandler())
+	}); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func Handle(h *Handlers) {
-	run(context.Background(), HandlersHandler{h})
 }
 
 func HandleInvoke(f InvokeFunc) {

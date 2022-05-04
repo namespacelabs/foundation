@@ -41,7 +41,7 @@ func main() {
 		h.Any().HandleStack(provisionHook{})
 
 		protocol.RegisterPrepareServiceServer(sr, prepareHook{})
-		protocol.RegisterInvocationServiceServer(sr, configure.ProtocolHandler{Handlers: configure.HandlerCompat{Tool: configure.HandlersHandler{Handlers: h}}})
+		protocol.RegisterInvocationServiceServer(sr, h.ServiceHandler())
 	}); err != nil {
 		log.Fatal(err)
 	}

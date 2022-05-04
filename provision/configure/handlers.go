@@ -6,9 +6,11 @@ package configure
 
 import (
 	"context"
+	"os"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
 	"tailscale.com/util/multierr"
@@ -49,6 +51,14 @@ func (hs *Handlers) MatchEnv(env *schema.Environment) *MatchingHandlers {
 	return m
 }
 
+func (hs *Handlers) Handler() AllHandlers {
+	return handlersHandler{hs}
+}
+
+func (hs *Handlers) ServiceHandler() protocol.InvocationServiceServer {
+	return protocolHandler{Handlers: hs.Handler()}
+}
+
 func (mh *MatchingHandlers) HandleStack(h StackHandler) *HandlerRoute {
 	r := &HandlerRoute{h: h}
 	r.matches = mh.matches
@@ -63,7 +73,7 @@ func (mh *MatchingHandlers) HandleInvoke(f InvokeFunc) *MatchingHandlers {
 	return mh
 }
 
-type HandlersHandler struct {
+type handlersHandler struct {
 	Handlers *Handlers
 }
 
@@ -87,7 +97,7 @@ func (m matches) match(env *schema.Environment) bool {
 	return true
 }
 
-func (rh HandlersHandler) Apply(ctx context.Context, req StackRequest, out *ApplyOutput) error {
+func (rh handlersHandler) Apply(ctx context.Context, req StackRequest, out *ApplyOutput) error {
 	var errs []error
 
 	for _, r := range rh.Handlers.handlers {
@@ -103,7 +113,7 @@ func (rh HandlersHandler) Apply(ctx context.Context, req StackRequest, out *Appl
 	return multierr.New(errs...)
 }
 
-func (rh HandlersHandler) Delete(ctx context.Context, req StackRequest, out *DeleteOutput) error {
+func (rh handlersHandler) Delete(ctx context.Context, req StackRequest, out *DeleteOutput) error {
 	var errs []error
 
 	for _, r := range rh.Handlers.handlers {
@@ -119,10 +129,18 @@ func (rh HandlersHandler) Delete(ctx context.Context, req StackRequest, out *Del
 	return multierr.New(errs...)
 }
 
-func (rh HandlersHandler) Invoke(ctx context.Context, req Request) (*protocol.InvokeResponse, error) {
+func (rh handlersHandler) Invoke(ctx context.Context, req Request) (*protocol.InvokeResponse, error) {
 	if rh.Handlers.invokeHandler == nil {
 		return nil, status.Error(codes.Unavailable, "invoke not supported")
 	}
 
 	return rh.Handlers.invokeHandler(ctx, req)
+}
+
+type protocolHandler struct {
+	Handlers AllHandlers
+}
+
+func (i protocolHandler) Invoke(ctx context.Context, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {
+	return handleRequest(logoutput.WithOutput(ctx, logoutput.OutputTo{Writer: os.Stderr}), req, i.Handlers)
 }
