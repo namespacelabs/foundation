@@ -31,26 +31,56 @@ type cueStack struct {
 	Append []cueWithPackageName `json:"append"`
 }
 
-type cueInvokeBinary struct {
-	Binary       string                                 `json:"binary"`
-	Args         *argsListOrMap                         `json:"args"`
-	Mounts       map[string]frontend.InvocationMount    `json:"mount"`
-	WorkingDir   string                                 `json:"workingDir"`
-	Snapshots    map[string]frontend.InvocationSnapshot `json:"snapshot"`
-	NoCache      bool                                   `json:"noCache"`
-	RequiresKeys bool                                   `json:"requiresKeys"`
+type cueInvocationMount struct {
+	FromWorkspace string `json:"fromWorkspace"`
 }
 
-func (cib cueInvokeBinary) toFrontend() *frontend.Invocation {
-	return &frontend.Invocation{
+type cueInvocationSnapshot struct {
+	FromWorkspace string `json:"fromWorkspace"`
+	Optional      bool   `json:"optional"`
+	RequireFile   bool   `json:"requireFile"`
+}
+
+type cueInvokeBinary struct {
+	Binary       string                           `json:"binary"`
+	Args         *argsListOrMap                   `json:"args"`
+	Mounts       map[string]cueInvocationMount    `json:"mount"`
+	WorkingDir   string                           `json:"workingDir"`
+	Snapshots    map[string]cueInvocationSnapshot `json:"snapshot"`
+	NoCache      bool                             `json:"noCache"`
+	RequiresKeys bool                             `json:"requiresKeys"`
+}
+
+func (cib cueInvokeBinary) toFrontend() *schema.Invocation {
+	inv := &schema.Invocation{
 		Binary:       cib.Binary,
 		Args:         cib.Args.Parsed(),
-		Mounts:       cib.Mounts,
 		WorkingDir:   cib.WorkingDir,
-		Snapshots:    cib.Snapshots,
 		NoCache:      cib.NoCache,
 		RequiresKeys: cib.RequiresKeys,
 	}
+
+	for k, v := range cib.Mounts {
+		if inv.Mounts == nil {
+			inv.Mounts = map[string]*schema.InvocationMount{}
+		}
+		inv.Mounts[k] = &schema.InvocationMount{
+			FromWorkspace: v.FromWorkspace,
+		}
+	}
+
+	for k, v := range cib.Snapshots {
+		if inv.Snapshots == nil {
+			inv.Snapshots = map[string]*schema.InvocationSnapshot{}
+		}
+		inv.Snapshots[k] = &schema.InvocationSnapshot{
+			FromWorkspace: v.FromWorkspace,
+			Optional:      v.Optional,
+			RequireFile:   v.RequireFile,
+		}
+	}
+
+	return inv
 }
 
 type cueNaming struct {
@@ -106,7 +136,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 		}
 
 		for _, data := range sidecards {
-			pdata.Sidecars = append(pdata.Sidecars, frontend.Container{
+			pdata.Sidecars = append(pdata.Sidecars, &schema.SidecarContainer{
 				Binary: data.Binary,
 				Args:   data.Args.Parsed(),
 			})
@@ -121,7 +151,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 		}
 
 		for _, data := range inits {
-			pdata.Inits = append(pdata.Inits, frontend.Container{
+			pdata.Inits = append(pdata.Inits, &schema.SidecarContainer{
 				Binary: data.Binary,
 				Args:   data.Args.Parsed(),
 			})

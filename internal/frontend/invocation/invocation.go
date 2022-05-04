@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -42,7 +41,7 @@ type Snapshot struct {
 	Contents fs.FS
 }
 
-func Make(ctx context.Context, env provision.ServerEnv, serverLocRef *workspace.Location, with *frontend.Invocation) (*Invocation, error) {
+func Make(ctx context.Context, env provision.ServerEnv, serverLocRef *workspace.Location, with *schema.Invocation) (*Invocation, error) {
 	if with.Binary == "" {
 		return nil, fnerrors.UserError(nil, "`binary` is required to point to a binary package")
 	}

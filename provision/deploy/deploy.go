@@ -291,10 +291,10 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 				}
 
 				for _, dep := range stack.ParsedServers[k].Deps {
-					if err := prepareInitRunOpts(dep.ProvisionPlan.Sidecars, imageIDs, sidecarCommands, &run.Sidecars); err != nil {
+					if err := prepareContainerRunOpts(dep.ProvisionPlan.Sidecars, imageIDs, sidecarCommands, &run.Sidecars); err != nil {
 						return prepareAndBuildResult{}, err
 					}
-					if err := prepareInitRunOpts(dep.ProvisionPlan.Inits, imageIDs, sidecarCommands, &run.Inits); err != nil {
+					if err := prepareContainerRunOpts(dep.ProvisionPlan.Inits, imageIDs, sidecarCommands, &run.Inits); err != nil {
 						return prepareAndBuildResult{}, err
 					}
 				}
@@ -390,7 +390,7 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildI
 		}
 
 		for _, dep := range stack.ParsedServers[k].Deps {
-			containers := append([]frontend.Container{}, dep.ProvisionPlan.Sidecars...)
+			containers := append([]*schema.SidecarContainer{}, dep.ProvisionPlan.Sidecars...)
 			containers = append(containers, dep.ProvisionPlan.Inits...)
 
 			for _, container := range containers {
@@ -483,7 +483,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 	return nil
 }
 
-func prepareInitRunOpts(containers []frontend.Container, imageIDs builtImages, sidecarCommands []sidecarPackage, out *[]runtime.SidecarRunOpts) error {
+func prepareContainerRunOpts(containers []*schema.SidecarContainer, imageIDs builtImages, sidecarCommands []sidecarPackage, out *[]runtime.SidecarRunOpts) error {
 	for _, container := range containers {
 		pkg := schema.PackageName(container.Binary)
 

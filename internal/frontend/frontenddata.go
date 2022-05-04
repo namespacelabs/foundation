@@ -16,7 +16,7 @@ type PreProvision interface {
 }
 
 type PreStartup interface {
-	EvalStartup(context.Context, ops.Environment, StartupInputs, []ValueWithPath) (StartupPlan, error)
+	EvalStartup(context.Context, ops.Environment, StartupInputs, []ValueWithPath) (*schema.StartupPlan, error)
 }
 
 type Location interface {
@@ -46,9 +46,9 @@ type ProvisionStack struct {
 
 type PreparedProvisionPlan struct {
 	ProvisionStack
-	Provisioning []*Invocation
-	Sidecars     []Container
-	Inits        []Container
+	Provisioning []*schema.Invocation
+	Sidecars     []*schema.SidecarContainer
+	Inits        []*schema.SidecarContainer
 }
 
 func (p *PreparedProvisionPlan) AppendWith(rhs PreparedProvisionPlan) {
@@ -66,34 +66,4 @@ type ProvisionPlan struct {
 
 	// Server only.
 	Naming *schema.Naming
-}
-
-type InvocationMount struct {
-	FromWorkspace string `json:"fromWorkspace"`
-}
-
-type InvocationSnapshot struct {
-	FromWorkspace string `json:"fromWorkspace"`
-	Optional      bool   `json:"optional"`
-	RequireFile   bool   `json:"requireFile"`
-}
-
-type Container struct {
-	Binary string   `json:"binary"`
-	Args   []string `json:"args"`
-}
-
-type Invocation struct {
-	Binary       string                        `json:"binary"`
-	Args         []string                      `json:"args"`
-	Mounts       map[string]InvocationMount    `json:"mount"`
-	WorkingDir   string                        `json:"workingDir"`
-	Snapshots    map[string]InvocationSnapshot `json:"snapshot"`
-	NoCache      bool                          `json:"noCache"`
-	RequiresKeys bool                          `json:"requiresKeys"`
-}
-
-type StartupPlan struct {
-	Args []string          `json:"args"`
-	Env  map[string]string `json:"env"`
 }

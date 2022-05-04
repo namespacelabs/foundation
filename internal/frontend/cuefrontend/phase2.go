@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -29,12 +30,12 @@ type cueStartupPlan struct {
 
 var _ frontend.PreStartup = phase2plan{}
 
-func (s phase2plan) EvalStartup(ctx context.Context, env ops.Environment, info frontend.StartupInputs, allocs []frontend.ValueWithPath) (frontend.StartupPlan, error) {
-	var plan frontend.StartupPlan
+func (s phase2plan) EvalStartup(ctx context.Context, env ops.Environment, info frontend.StartupInputs, allocs []frontend.ValueWithPath) (*schema.StartupPlan, error) {
+	plan := &schema.StartupPlan{}
 
 	res, _, err := s.evalStartupStage(ctx, env, info)
 	if err != nil {
-		return plan, err
+		return nil, err
 	}
 
 	for _, alloc := range allocs {
@@ -43,12 +44,12 @@ func (s phase2plan) EvalStartup(ctx context.Context, env ops.Environment, info f
 
 	if v := lookupTransition(res, "startup"); v.Exists() {
 		if err := v.Val.Validate(cue.Concrete(true)); err != nil {
-			return plan, err
+			return nil, err
 		}
 
 		var raw cueStartupPlan
 		if err := v.Val.Decode(&raw); err != nil {
-			return frontend.StartupPlan{}, err
+			return nil, err
 		}
 
 		plan.Env = raw.Env
