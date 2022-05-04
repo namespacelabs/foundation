@@ -28,11 +28,11 @@ extension: fn.#Extension & {
 		}
 	}
 
-    on: {
-        prepare: {
-            invokeBinary: {
-                binary: "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
-            }
-        }
-    }
+	on: {
+		prepare: {
+			invokeBinary: {
+				binary: "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
+			}
+		}
+	}
 }
