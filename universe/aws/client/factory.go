@@ -17,16 +17,17 @@ import (
 )
 
 type ClientFactory struct {
-	credsPath     string
+	SharedCredentialsPath string
+
 	openTelemetry tracing.DeferredTracerProvider
 }
 
 func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {
 	if os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE") == "" {
-		if cf.credsPath == "" {
+		if cf.SharedCredentialsPath == "" {
 			return aws.Config{}, errors.New("when running without universe/aws/irsa, aws credentials are required to be set")
 		}
-		optFns = append(optFns, config.WithSharedCredentialsFiles([]string{cf.credsPath}))
+		optFns = append(optFns, config.WithSharedCredentialsFiles([]string{cf.SharedCredentialsPath}))
 	}
 
 	cfg, err := config.LoadDefaultConfig(ctx, optFns...)
@@ -49,7 +50,7 @@ func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOpti
 func ProvideClientFactory(_ context.Context, _ *ClientFactoryArgs, deps ExtensionDeps) (ClientFactory, error) {
 	cf := ClientFactory{openTelemetry: deps.OpenTelemetry}
 	if deps.Credentials != nil {
-		cf.credsPath = deps.Credentials.Path
+		cf.SharedCredentialsPath = deps.Credentials.Path
 	}
 	return cf, nil
 }

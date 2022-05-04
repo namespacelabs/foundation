@@ -8,10 +8,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	sync "sync"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"google.golang.org/protobuf/encoding/protojson"
+	"namespacelabs.dev/foundation/universe/aws/client"
 	fns3 "namespacelabs.dev/foundation/universe/aws/s3"
 	devs3 "namespacelabs.dev/foundation/universe/development/localstack/s3"
 )
@@ -19,12 +21,28 @@ import (
 var (
 	configuredBuckets  = flag.String("storage_s3_configured_buckets_protojson", "", "A serialized MultipleBucketArgs with all of the bucket configurations.")
 	localstackEndpoint = flag.String("storage_s3_localstack_endpoint", "", "If set, use localstack.")
+
+	parsedConfiguration *MultipleBucketArgs
+	parseOnce           sync.Once
+	parseErr            error
 )
 
+func ProvidedConfiguration() (*MultipleBucketArgs, error) {
+	parseOnce.Do(func() {
+		parsedConfiguration = &MultipleBucketArgs{}
+		parseErr = protojson.Unmarshal([]byte(*configuredBuckets), parsedConfiguration)
+	})
+	return parsedConfiguration, parseErr
+}
+
 func ProvideBucket(ctx context.Context, args *BucketArgs, deps ExtensionDeps) (*fns3.Bucket, error) {
-	conf := &MultipleBucketArgs{}
-	if err := protojson.Unmarshal([]byte(*configuredBuckets), conf); err != nil {
-		return nil, err
+	return ProvideBucketWithFactory(ctx, args, deps.ClientFactory)
+}
+
+func ProvideBucketWithFactory(ctx context.Context, args *BucketArgs, factory client.ClientFactory) (*fns3.Bucket, error) {
+	conf, err := ProvidedConfiguration()
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 
 	for _, bucket := range conf.Bucket {
@@ -33,7 +51,7 @@ func ProvideBucket(ctx context.Context, args *BucketArgs, deps ExtensionDeps) (*
 				return nil, fmt.Errorf("%s: bucket is missing a region configuration", args.BucketName)
 			}
 
-			s3client, err := createClient(ctx, deps, bucket.Region)
+			s3client, err := createClient(ctx, factory, bucket.Region)
 			if err != nil {
 				return nil, err
 			}
@@ -48,7 +66,7 @@ func ProvideBucket(ctx context.Context, args *BucketArgs, deps ExtensionDeps) (*
 	return nil, fmt.Errorf("%s: no bucket configuration available", args.BucketName)
 }
 
-func createClient(ctx context.Context, deps ExtensionDeps, region string) (*s3.Client, error) {
+func createClient(ctx context.Context, factory client.ClientFactory, region string) (*s3.Client, error) {
 	if *localstackEndpoint != "" {
 		return devs3.CreateLocalstackS3Client(ctx, devs3.LocalstackConfig{
 			Region:             region,
@@ -56,7 +74,7 @@ func createClient(ctx context.Context, deps ExtensionDeps, region string) (*s3.C
 		})
 	}
 
-	cfg, err := deps.ClientFactory.New(ctx, config.WithRegion(region))
+	cfg, err := factory.New(ctx, config.WithRegion(region))
 	if err != nil {
 		return nil, err
 	}
