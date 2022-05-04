@@ -19,31 +19,29 @@ import (
 const connBackoff = 500 * time.Millisecond
 
 // EnsureBucketExists creates the requested bucket before it is used.
-func EnsureBucketExists(ctx context.Context, s3client *s3.Client, bc *BucketConfig) error {
-	log.Printf("Creating bucket %s in region: %s\n", bc.BucketName, bc.Region)
-	err := backoff.Retry(func() error {
-		log.Printf("Connecting to S3 stack.")
-		_, err := s3client.ListBuckets(ctx, &s3.ListBucketsInput{})
-		if err != nil {
-			log.Printf("Failed to list buckets: %v", err)
+func EnsureBucketExists(ctx context.Context, client *s3.Client, bc *BucketConfig) error {
+	return EnsureBucketExistsByName(ctx, client, bc.BucketName, bc.Region)
+}
+
+func EnsureBucketExistsByName(ctx context.Context, client *s3.Client, name, region string) error {
+	log.Printf("Creating bucket %s in region: %s\n", name, region)
+	if err := backoff.Retry(func() error {
+		if _, err := client.CreateBucket(ctx, &s3.CreateBucketInput{
+			CreateBucketConfiguration: &types.CreateBucketConfiguration{
+				LocationConstraint: types.BucketLocationConstraint(region),
+			},
+			Bucket: &name,
+		}); err != nil {
+			var e *types.BucketAlreadyOwnedByYou
+			if !errors.As(err, &e) {
+				return fmt.Errorf("failed to create bucket: %w", err)
+			}
 		}
-		return err
-	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx))
-	if err != nil {
-		return fmt.Errorf("failed to connect to S3 stack with error: %w", err)
+
+		return nil
+	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx)); err != nil {
+		return fmt.Errorf("failed to create S3 bucket: %w", err)
 	}
 
-	_, err = s3client.CreateBucket(ctx, &s3.CreateBucketInput{
-		CreateBucketConfiguration: &types.CreateBucketConfiguration{
-			LocationConstraint: types.BucketLocationConstraint(bc.Region),
-		},
-		Bucket: &bc.BucketName,
-	})
-	if err != nil {
-		var e *types.BucketAlreadyOwnedByYou
-		if !errors.As(err, &e) {
-			return fmt.Errorf("failed to create bucket: %w", err)
-		}
-	}
 	return nil
 }

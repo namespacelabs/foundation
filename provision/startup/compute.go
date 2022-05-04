@@ -36,7 +36,7 @@ func loadStartupPlan(ctx context.Context, env ops.Environment, dep *stack.Parsed
 	return mergePlan(plan, merged)
 }
 
-func mergePlan(plan frontend.StartupPlan, merged *schema.BinaryConfig) error {
+func mergePlan(plan *schema.StartupPlan, merged *schema.BinaryConfig) error {
 	merged.Args = append(merged.Args, plan.Args...)
 
 	for k, v := range plan.Env {

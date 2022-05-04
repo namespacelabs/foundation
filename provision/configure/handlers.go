@@ -63,8 +63,8 @@ func (mh *MatchingHandlers) HandleInvoke(f InvokeFunc) *MatchingHandlers {
 	return mh
 }
 
-type runHandlers struct {
-	h *Handlers
+type HandlersHandler struct {
+	Handlers *Handlers
 }
 
 func (m matches) match(env *schema.Environment) bool {
@@ -87,10 +87,10 @@ func (m matches) match(env *schema.Environment) bool {
 	return true
 }
 
-func (rh runHandlers) Apply(ctx context.Context, req StackRequest, out *ApplyOutput) error {
+func (rh HandlersHandler) Apply(ctx context.Context, req StackRequest, out *ApplyOutput) error {
 	var errs []error
 
-	for _, r := range rh.h.handlers {
+	for _, r := range rh.Handlers.handlers {
 		if !r.matches.match(req.Env) {
 			continue
 		}
@@ -103,10 +103,10 @@ func (rh runHandlers) Apply(ctx context.Context, req StackRequest, out *ApplyOut
 	return multierr.New(errs...)
 }
 
-func (rh runHandlers) Delete(ctx context.Context, req StackRequest, out *DeleteOutput) error {
+func (rh HandlersHandler) Delete(ctx context.Context, req StackRequest, out *DeleteOutput) error {
 	var errs []error
 
-	for _, r := range rh.h.handlers {
+	for _, r := range rh.Handlers.handlers {
 		if !r.matches.match(req.Env) {
 			continue
 		}
@@ -119,10 +119,10 @@ func (rh runHandlers) Delete(ctx context.Context, req StackRequest, out *DeleteO
 	return multierr.New(errs...)
 }
 
-func (rh runHandlers) Invoke(ctx context.Context, req Request) (*protocol.InvokeResponse, error) {
-	if rh.h.invokeHandler == nil {
+func (rh HandlersHandler) Invoke(ctx context.Context, req Request) (*protocol.InvokeResponse, error) {
+	if rh.Handlers.invokeHandler == nil {
 		return nil, status.Error(codes.Unavailable, "invoke not supported")
 	}
 
-	return rh.h.invokeHandler(ctx, req)
+	return rh.Handlers.invokeHandler(ctx, req)
 }

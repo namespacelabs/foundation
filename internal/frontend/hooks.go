@@ -21,7 +21,7 @@ var registrations struct {
 
 type PrepareHook struct {
 	InvokeInternal string
-	InvokeBinary   *Invocation
+	InvokeBinary   *schema.Invocation
 }
 
 type PrepareProps struct {

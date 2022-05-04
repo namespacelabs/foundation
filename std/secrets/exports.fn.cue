@@ -19,6 +19,7 @@ import (
 			cacheable?: bool
 			withInput?: types.#Any
 		}
+		optional?: bool
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/std/secrets"

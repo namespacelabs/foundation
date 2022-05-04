@@ -237,7 +237,7 @@ func fillData(ctx context.Context, server *schema.Server, env *schema.Environmen
 
 			m, err := provideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("%s: %w", server.PackageName, err)
 			}
 
 			names := col.Names[k]
@@ -301,9 +301,11 @@ func fillData(ctx context.Context, server *schema.Server, env *schema.Environmen
 
 			switch len(foundIn) {
 			case 0:
-				return nil, fnerrors.UsageError(
-					fmt.Sprintf("Try running `fn secrets set %s --secret %s:%s`", server.PackageName, key.PackageName, key.Key),
-					"secret %q required by %q not specified", key.Key, key.PackageName)
+				if !secret.Optional {
+					return nil, fnerrors.UsageError(
+						fmt.Sprintf("Try running `fn secrets set %s --secret %s:%s`", server.PackageName, key.PackageName, key.Key),
+						"secret %q required by %q not specified", key.Key, key.PackageName)
+				}
 			case 1:
 				data[col.Names[k][j]] = foundValue
 			default:
@@ -353,14 +355,14 @@ func provideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userMan
 
 	cfg := secrets.LookupConfig(sdm, caller)
 	if cfg == nil {
-		return nil, fmt.Errorf("%v: no secret configuration definition in map.textpb", caller)
+		return nil, fmt.Errorf("no secret configuration for %q", caller)
 	}
 
 	result := map[string][]byte{}
 	for _, s := range userManaged {
 		spec := lookupSecret(cfg, s.Name)
 		if spec == nil {
-			return nil, fmt.Errorf("no secret configuration for %s of %q in map.textpb", s.Name, caller)
+			return nil, fmt.Errorf("no secret configuration for %s of %q", s.Name, caller)
 		}
 
 		if spec.FromPath != "" {

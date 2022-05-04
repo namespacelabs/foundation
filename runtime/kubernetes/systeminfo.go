@@ -8,7 +8,9 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
+	"golang.org/x/exp/slices"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
@@ -50,6 +52,8 @@ func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*kub
 
 	sysInfo := &kubedef.SystemInfo{}
 
+	regions := map[string]int32{}
+	zones := map[string]int32{}
 	for _, n := range nodes.Items {
 		platforms.Add(fmt.Sprintf("%s/%s", n.Status.NodeInfo.OperatingSystem, n.Status.NodeInfo.Architecture))
 
@@ -61,7 +65,41 @@ func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*kub
 			sysInfo.DetectedDistribution = "eks"
 			sysInfo.EksClusterName = clusterName
 		}
+
+		if region, ok := n.Labels["topology.kubernetes.io/region"]; ok {
+			regions[region]++
+		}
+
+		if zone, ok := n.Labels["topology.kubernetes.io/zone"]; ok {
+			zones[zone]++
+		}
 	}
+
+	for region, count := range regions {
+		sysInfo.RegionDistribution = append(sysInfo.RegionDistribution, &kubedef.NodeDistribution{
+			Location: region,
+			Count:    count,
+		})
+		sysInfo.Regions = append(sysInfo.Regions, region)
+	}
+
+	for zone, count := range zones {
+		sysInfo.ZoneDistribution = append(sysInfo.ZoneDistribution, &kubedef.NodeDistribution{
+			Location: zone,
+			Count:    count,
+		})
+		sysInfo.Zones = append(sysInfo.Zones, zone)
+	}
+
+	sort.Strings(sysInfo.Regions)
+	sort.Strings(sysInfo.Zones)
+
+	less := func(a, b *kubedef.NodeDistribution) bool {
+		return strings.Compare(a.Location, b.Location) < 0
+	}
+
+	slices.SortFunc(sysInfo.RegionDistribution, less)
+	slices.SortFunc(sysInfo.ZoneDistribution, less)
 
 	sysInfo.NodePlatform = platforms.Strings()
 	sort.Strings(sysInfo.NodePlatform)

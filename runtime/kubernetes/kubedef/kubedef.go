@@ -69,6 +69,11 @@ type ExtendContainer struct {
 	With *ContainerExtension
 }
 
+type ExtendInitContainer struct {
+	For  schema.PackageName
+	With *InitContainerExtension
+}
+
 func (a Apply) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
 	if a.Body == nil {
 		return nil, fnerrors.InternalError("body is missing")
@@ -198,6 +203,15 @@ func (es ExtendSpec) ToDefinition() (*schema.DefExtension, error) {
 }
 
 func (ec ExtendContainer) ToDefinition() (*schema.DefExtension, error) {
+	x, err := anypb.New(ec.With)
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.DefExtension{For: ec.For.String(), Impl: x}, nil
+}
+
+func (ec ExtendInitContainer) ToDefinition() (*schema.DefExtension, error) {
 	x, err := anypb.New(ec.With)
 	if err != nil {
 		return nil, err

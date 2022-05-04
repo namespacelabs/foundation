@@ -11,6 +11,7 @@ option go_package = "namespacelabs.dev/foundation/provision/tool/protocol";
 import "google/protobuf/any.proto";
 import "schema/defextension.proto";
 import "schema/definition.proto";
+import "schema/provision.proto";
 import "schema/schema.proto";
 
 message PrepareRequest {
@@ -26,8 +27,10 @@ message PrepareResponse {
 }
 
 message PreparedProvisionPlan {
-    repeated string declared_stack = 1;
-    // XXX missing invocations, sidecards and inits.
+    repeated string declared_stack                      = 1;
+    repeated foundation.schema.Invocation provisioning  = 2;
+    repeated foundation.schema.SidecarContainer sidecar = 3;
+    repeated foundation.schema.SidecarContainer init    = 4;
 }
 
 service PrepareService {

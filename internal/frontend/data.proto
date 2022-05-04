@@ -1,0 +1,39 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.internal.frontend;
+
+option go_package = "namespacelabs.dev/foundation/internal/frontend";
+
+message Invocation {
+    string                          binary        = 1;
+    repeated string                 args          = 2;
+    map<string, InvocationMount>    mounts        = 3;
+    string                          working_dir   = 4;
+    map<string, InvocationSnapshot> snapshots     = 5;
+    bool                            no_cache      = 6;
+    bool                            requires_keys = 7;
+}
+
+message InvocationMount {
+    string from_workspace = 1;
+}
+
+message InvocationSnapshot {
+    string from_workspace = 1;
+    bool   optional       = 2;
+    bool   require_file   = 3;
+}
+
+message Container {
+    string          binary = 1;
+    repeated string args   = 2;
+}
+
+message StartupPlan {
+    repeated string     args = 1;
+    map<string, string> env  = 2;
+}
