@@ -22,7 +22,9 @@ func VisitAllocs[V proto.Message](allocs []*schema.Allocation, pkg schema.Packag
 						return err
 					}
 
-					f(instance, i, copy.(V))
+					if err := f(instance, i, copy.(V)); err != nil {
+						return err
+					}
 				}
 			}
 
