@@ -4,7 +4,10 @@
 
 package schema
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+)
 
 const (
 	GrpcProtocol = "grpc"
@@ -176,6 +179,10 @@ func (e *Endpoint) HasKind(str string) bool {
 		}
 	}
 	return false
+}
+
+func (e *Endpoint) Address() string {
+	return fmt.Sprintf("%s:%d", e.AllocatedName, e.GetPort().GetContainerPort())
 }
 
 func (p *Provides_AvailableIn) ProvidedInFrameworks() map[Framework]bool {

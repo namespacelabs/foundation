@@ -29,8 +29,10 @@ const (
 	localstackServer = "namespacelabs.dev/foundation/universe/development/localstack"
 	s3node           = "namespacelabs.dev/foundation/universe/storage/s3"
 
-	useLocalstackFlag = "storage_s3_use_localstack"
+	useLocalstackFlag = "storage_s3_localstack_endpoint"
 	serializedFlag    = "storage_s3_configured_buckets_protojson"
+
+	localstackEndpoint = "api"
 )
 
 func main() {
@@ -126,6 +128,18 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	var serverArgs, initArgs []string
 	if useLocalstack(req.Env) {
+		var localstackService string
+		for _, endpoint := range req.Stack.Endpoint {
+			if endpoint.EndpointOwner == localstackServer && endpoint.ServiceName == localstackEndpoint {
+				localstackService = endpoint.Address()
+			}
+		}
+
+		if localstackService == "" {
+			return fmt.Errorf("localstack is required, but no endpoint is present that exports %q in %q",
+				localstackEndpoint, localstackServer)
+		}
+
 		serverArgs = append(serverArgs, fmt.Sprintf("--%s", useLocalstackFlag))
 		initArgs = append(initArgs, fmt.Sprintf("--%s", useLocalstackFlag))
 	} else {
