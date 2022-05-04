@@ -17,14 +17,17 @@ const (
 	serverFileName = "server.cue"
 )
 
-func GenerateServer(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, name string, framework schema.Framework) error {
-	opts := serverTmplOptions{
-		Id:        ids.NewRandomBase32ID(12),
-		Name:      name,
-		Framework: framework.String(),
-	}
+type GenServerOpts struct {
+	Name      string
+	Framework schema.Framework
+}
 
-	return generateCueSource(ctx, fsfs, loc.Rel(serverFileName), serverTmpl, opts)
+func GenerateServer(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServerOpts) error {
+	return generateCueSource(ctx, fsfs, loc.Rel(serverFileName), serverTmpl, serverTmplOptions{
+		Id:        ids.NewRandomBase32ID(12),
+		Name:      opts.Name,
+		Framework: opts.Framework.String(),
+	})
 }
 
 type serverTmplOptions struct {
@@ -45,7 +48,7 @@ server: fn.#Server & {
 
 	import: [
 		{{- if eq .Framework "GO_GRPC"}}
-		// To expose GRPC endpoints via HTTP, add this import: 
+		// To expose GRPC endpoints via HTTP, add this import:
 		// "namespacelabs.dev/foundation/std/go/grpc/gateway",
 		{{end}}
 		// TODO add services here

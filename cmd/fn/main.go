@@ -7,7 +7,6 @@ package main
 import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/cmd"
-	"namespacelabs.dev/foundation/internal/cli/cmd/create"
 	"namespacelabs.dev/foundation/internal/cli/cmd/source"
 	"namespacelabs.dev/foundation/internal/cli/cmd/tools"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -16,7 +15,6 @@ import (
 func main() {
 	fncobra.DoMain("fn", func(root *cobra.Command) {
 		cmd.RegisterCommands(root)
-		root.AddCommand(create.NewCreateCmd())
 		root.AddCommand(source.NewSourceCmd())
 		root.AddCommand(tools.NewToolsCmd())
 	})

@@ -16,18 +16,13 @@ const (
 	serviceFileName = "service.cue"
 )
 
-func GenerateService(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, name string, framework schema.Framework) error {
-	opts := serviceTmplOptions{
-		Name:      name,
-		Framework: framework.String(),
-	}
-
-	return generateCueSource(ctx, fsfs, loc.Rel(serviceFileName), serviceTmpl, opts)
+type GenServiceOpts struct {
+	Name      string
+	Framework schema.Framework
 }
 
-type serviceTmplOptions struct {
-	Name      string
-	Framework string
+func GenerateService(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
+	return generateCueSource(ctx, fsfs, loc.Rel(serviceFileName), serviceTmpl, opts)
 }
 
 var serviceTmpl = template.Must(template.New(serviceFileName).Parse(`

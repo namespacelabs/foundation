@@ -17,8 +17,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/languages/cue"
-	"namespacelabs.dev/foundation/languages/proto"
+	"namespacelabs.dev/foundation/internal/frontend/cue"
+	"namespacelabs.dev/foundation/internal/frontend/proto"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
@@ -61,11 +61,13 @@ func newServiceCmd() *cobra.Command {
 				return err
 			}
 
-			if err := proto.GenerateService(ctx, root.FS(), loc, m.name.Value(), fmwk); err != nil {
+			protoOpts := proto.GenServiceOpts{Name: m.name.Value(), Framework: fmwk}
+			if err := proto.GenerateService(ctx, root.FS(), loc, protoOpts); err != nil {
 				return err
 			}
 
-			if err := cue.GenerateService(ctx, root.FS(), loc, m.name.Value(), fmwk); err != nil {
+			cueOpts := cue.GenServiceOpts{Name: m.name.Value(), Framework: fmwk}
+			if err := cue.GenerateService(ctx, root.FS(), loc, cueOpts); err != nil {
 				return err
 			}
 

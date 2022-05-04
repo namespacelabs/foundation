@@ -19,17 +19,20 @@ const (
 	serviceFileName = "service.proto"
 )
 
-func GenerateService(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, name string, framework schema.Framework) error {
+type GenServiceOpts struct {
+	Name      string
+	Framework schema.Framework
+}
+
+func GenerateService(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
 	parts := strings.Split(loc.RelPath, string(os.PathSeparator))
 
-	opts := serviceTmplOptions{
-		Name:      name,
+	return generateProtoSource(ctx, fsfs, loc.Rel(serviceFileName), serviceTmpl, serviceTmplOptions{
+		Name:      opts.Name,
 		Package:   strings.Join(parts, "."),
 		GoPackage: filepath.Join(append([]string{loc.ModuleName}, parts...)...),
-		Framework: framework.String(),
-	}
-
-	return generateProtoSource(ctx, fsfs, loc.Rel(serviceFileName), serviceTmpl, opts)
+		Framework: opts.Framework.String(),
+	})
 }
 
 type serviceTmplOptions struct {

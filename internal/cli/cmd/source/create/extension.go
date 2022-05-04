@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/languages/cue"
+	"namespacelabs.dev/foundation/internal/frontend/cue"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/source/codegen"

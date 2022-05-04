@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/languages/cue"
+	"namespacelabs.dev/foundation/internal/frontend/cue"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
@@ -55,11 +55,14 @@ func newServerCmd() *cobra.Command {
 				return nil
 			}
 
-			fmwk, err := inputs.SelectedFramework(m.framework)
+			opts := cue.GenServerOpts{Name: m.name.Value()}
+
+			opts.Framework, err = inputs.SelectedFramework(m.framework)
 			if err != nil {
 				return err
 			}
-			if err := cue.GenerateServer(ctx, root.FS(), loc, m.name.Value(), fmwk); err != nil {
+
+			if err := cue.GenerateServer(ctx, root.FS(), loc, opts); err != nil {
 				return err
 			}
 
