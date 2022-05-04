@@ -25,6 +25,9 @@
             yarn
             docker-client # Required by `fn prepare`.
 
+            pre-commit
+            golangci-lint
+
             goreleaser
 
             kubectl
