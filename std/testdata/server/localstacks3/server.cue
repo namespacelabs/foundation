@@ -4,7 +4,7 @@ import (
 
 server: fn.#Server & {
 	id:        "rn5q3mcug1dnkbtue3cg"
-	name:      "supporttestserver"
+	name:      "localstacks3"
 	framework: "GO_GRPC"
 
 	import: [

@@ -8,8 +8,8 @@ import (
 	"context"
 	"fmt"
 
-	"namespacelabs.dev/foundation/testing"
 	s3 "namespacelabs.dev/foundation/std/testdata/service/localstacks3"
+	"namespacelabs.dev/foundation/testing"
 )
 
 func main() {
@@ -24,7 +24,6 @@ func main() {
 		cli := s3.NewS3DemoServiceClient(conn)
 
 		// This file is not present in the bucket.
-		var resp *s3.GetResponse
 		if _, err = cli.Get(ctx, &s3.GetRequest{
 			Filename: "file which is not present",
 		}); err == nil {
@@ -35,13 +34,16 @@ func main() {
 			Filename: "foo",
 			Contents: "bar",
 		}); err != nil {
-			return fmt.Errorf("Add failed with %v", err)
+			return fmt.Errorf("add failed with %v", err)
 		}
-		if resp, err = cli.Get(ctx, &s3.GetRequest{
+
+		resp, err := cli.Get(ctx, &s3.GetRequest{
 			Filename: "foo",
-		}); err != nil {
-			return fmt.Errorf("Get failed with %v", err)
+		})
+		if err != nil {
+			return fmt.Errorf("get failed with %v", err)
 		}
+
 		if resp.Contents != "bar" {
 			return fmt.Errorf("expected contents to be foocontent, got %s", resp.Contents)
 		}

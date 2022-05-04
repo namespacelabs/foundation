@@ -40,7 +40,8 @@ func NewBundlesCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := renderBundleTable(ctx, bundles, console.Stdout(ctx)); err != nil {
+			validBundles := bundlesWithInvocationInfo(ctx, bundles)
+			if err := renderBundleTable(ctx, validBundles, console.Stdout(ctx)); err != nil {
 				return err
 			}
 			return nil
@@ -59,10 +60,11 @@ func NewBundlesCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := renderBundleTable(ctx, bundles, console.Stdout(ctx)); err != nil {
+			validBundles := bundlesWithInvocationInfo(ctx, bundles)
+			if err := renderBundleTable(ctx, validBundles, console.Stdout(ctx)); err != nil {
 				return err
 			}
-			idx, err := promptForBundleIdx(ctx, 1, len(bundles))
+			idx, err := promptForBundleIdx(ctx, 1, len(validBundles))
 			if err != nil {
 				return err
 			}
@@ -70,8 +72,8 @@ func NewBundlesCmd() *cobra.Command {
 			// address lack of binary uploads in gRPC gateway as described in
 			// https://github.com/grpc-ecosystem/grpc-gateway/issues/500.
 			file, _ := dirs.CreateUserTemp("action-bundles", "actions-*.tar.gz.age")
-			bundle := bundles[idx-1]
-			if err := bundle.EncryptTo(ctx, file); err != nil {
+			bundleInfo := validBundles[idx-1]
+			if err := bundleInfo.bundle.EncryptTo(ctx, file); err != nil {
 				return err
 			}
 			fmt.Fprintf(console.Stdout(ctx), "\nSuccessfully wrote encrypted bundle to %s\n", file.Name())
@@ -101,13 +103,27 @@ func promptForBundleIdx(ctx context.Context, startIdx int, endIdx int) (int, err
 	return -1, fnerrors.BadInputError("unexpected failure while prompting for the bundle index")
 }
 
-func renderBundleTable(ctx context.Context, bundles []*tasks.Bundle, w io.Writer) error {
-	for idx, bundle := range bundles {
+type bundleWithInvocationInfo struct {
+	bundle         *tasks.Bundle
+	invocationInfo *tasks.InvocationInfo
+}
+
+func bundlesWithInvocationInfo(ctx context.Context, bundles []*tasks.Bundle) []*bundleWithInvocationInfo {
+	var bundlesWithInfo []*bundleWithInvocationInfo
+	for _, bundle := range bundles {
 		info, err := bundle.ReadInvocationInfo(ctx)
 		if err != nil {
-			return err
+			fmt.Fprintf(console.Debug(ctx), "Failed to read invocation info from corrupted bundle: %v", err)
+			continue
 		}
-		fmt.Fprintf(w, "(%d) %s %s\n", idx+1, info.Command, colors.Faded(humanize.Time(bundle.Timestamp)))
+		bundlesWithInfo = append(bundlesWithInfo, &bundleWithInvocationInfo{bundle, info})
+	}
+	return bundlesWithInfo
+}
+
+func renderBundleTable(ctx context.Context, bundles []*bundleWithInvocationInfo, w io.Writer) error {
+	for idx, bundleInfo := range bundles {
+		fmt.Fprintf(w, "(%d) %s %s\n", idx+1, bundleInfo.invocationInfo.Command, colors.Faded(humanize.Time(bundleInfo.bundle.Timestamp)))
 	}
 	return nil
 }

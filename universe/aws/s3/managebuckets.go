@@ -26,12 +26,17 @@ func EnsureBucketExists(ctx context.Context, client *s3.Client, bc *BucketConfig
 func EnsureBucketExistsByName(ctx context.Context, client *s3.Client, name, region string) error {
 	log.Printf("Creating bucket %s in region: %s\n", name, region)
 	if err := backoff.Retry(func() error {
-		if _, err := client.CreateBucket(ctx, &s3.CreateBucketInput{
-			CreateBucketConfiguration: &types.CreateBucketConfiguration{
-				LocationConstraint: types.BucketLocationConstraint(region),
-			},
+		input := &s3.CreateBucketInput{
 			Bucket: &name,
-		}); err != nil {
+		}
+
+		if region != "" {
+			input.CreateBucketConfiguration = &types.CreateBucketConfiguration{
+				LocationConstraint: types.BucketLocationConstraint(region),
+			}
+		}
+
+		if _, err := client.CreateBucket(ctx, input); err != nil {
 			var e *types.BucketAlreadyOwnedByYou
 			if !errors.As(err, &e) {
 				return fmt.Errorf("failed to create bucket: %w", err)

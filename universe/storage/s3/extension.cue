@@ -2,7 +2,6 @@ import (
 	"encoding/json"
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/std/go/core"
 	awsclient "namespacelabs.dev/foundation/universe/aws/client"
 )
 
@@ -12,8 +11,7 @@ $typesProto: inputs.#Proto & {
 
 extension: fn.#Extension & {
 	instantiate: {
-		clientFactory:  awsclient.#Exports.ClientFactory
-		readinessCheck: core.#Exports.ReadinessCheck
+		clientFactory: awsclient.#Exports.ClientFactory
 	}
 
 	provides: {
@@ -33,6 +31,10 @@ extension: fn.#Extension & {
 			invokeBinary: {
 				binary: "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
 			}
+			requires: [
+				"namespacelabs.dev/foundation/universe/development/localstack",
+				"namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets",
+			]
 		}
 	}
 }

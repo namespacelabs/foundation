@@ -1,7 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/universe/development/localstack/s3"
+	"namespacelabs.dev/foundation/universe/storage/s3"
 )
 
 $proto: inputs.#Proto & {
@@ -13,7 +13,6 @@ service: fn.#Service & {
 
 	instantiate: {
 		"bucket": s3.#Exports.Bucket & {
-			region:     "us-east-2"
 			bucketName: "test-foo-bucket"
 		}
 	}

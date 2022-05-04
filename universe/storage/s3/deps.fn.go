@@ -12,8 +12,7 @@ import (
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
-	ClientFactory  client.ClientFactory
-	ReadinessCheck core.Check
+	ClientFactory client.ClientFactory
 }
 
 type _checkProvideBucket func(context.Context, *BucketArgs, ExtensionDeps) (*s3.Bucket, error)
@@ -40,10 +39,6 @@ func makeDeps__4pkegf(ctx context.Context, di core.Dependencies) (_ interface{},
 		}
 		return nil
 	}); err != nil {
-		return nil, err
-	}
-
-	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
 		return nil, err
 	}
 
