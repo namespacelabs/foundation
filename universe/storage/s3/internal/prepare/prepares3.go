@@ -25,7 +25,7 @@ import (
 
 const (
 	self             = "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
-	initContainer    = "namespacelabs.dev/foundation/universe/storage/s3/internal/manageinit"
+	initContainer    = "namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets"
 	localstackServer = "namespacelabs.dev/foundation/universe/development/localstack"
 	s3node           = "namespacelabs.dev/foundation/universe/storage/s3"
 
@@ -131,7 +131,8 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 		var localstackService string
 		for _, endpoint := range req.Stack.Endpoint {
 			if endpoint.EndpointOwner == localstackServer && endpoint.ServiceName == localstackEndpoint {
-				localstackService = endpoint.Address()
+				localstackService = "http://" + endpoint.Address()
+				break
 			}
 		}
 
@@ -140,8 +141,8 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 				localstackEndpoint, localstackServer)
 		}
 
-		serverArgs = append(serverArgs, fmt.Sprintf("--%s", useLocalstackFlag))
-		initArgs = append(initArgs, fmt.Sprintf("--%s", useLocalstackFlag))
+		serverArgs = append(serverArgs, fmt.Sprintf("--%s=%s", useLocalstackFlag, localstackService))
+		initArgs = append(initArgs, fmt.Sprintf("--%s=%s", useLocalstackFlag, localstackService))
 	} else {
 		for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/aws/client") {
 			if secret.Name == "aws_credentials_file" {

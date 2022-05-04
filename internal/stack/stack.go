@@ -278,6 +278,9 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 					ProvisionStack: frontend.ProvisionStack{
 						DeclaredStack: pl.PackageNames(),
 					},
+					Provisioning: resp.GetPreparedProvisionPlan().GetProvisioning(),
+					Sidecars:     resp.GetPreparedProvisionPlan().GetSidecar(),
+					Inits:        resp.GetPreparedProvisionPlan().GetInit(),
 				},
 				ProvisionInput: resp.ProvisionInput,
 				Definition:     resp.Definition,
