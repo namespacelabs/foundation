@@ -32,10 +32,16 @@ func createLocalStackConfig(ctx context.Context, c LocalstackConfig) (aws.Config
 			SigningRegion: region,
 		}, nil
 	})
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(c.Region),
-		// Specify a custom resolver to be able to point to localstack's endpoint.
-		config.WithEndpointResolverWithOptions(customResolver))
+
+	var opts []func(*config.LoadOptions) error
+	// Specify a custom resolver to be able to point to localstack's endpoint.
+	opts = append(opts, config.WithEndpointResolverWithOptions(customResolver))
+
+	if c.Region != "" {
+		opts = append(opts, config.WithRegion(c.Region))
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
 		return aws.Config{}, fmt.Errorf("failed to load AWS config with error: %w, for endpoint %s", err, *localstackEndpoint)
 	}

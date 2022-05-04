@@ -42,10 +42,6 @@ func apply(ctx context.Context) error {
 		bucket := bucket // Close bucket.
 
 		ex.Go(func(ctx context.Context) error {
-			if bucket.Region == "" {
-				return fmt.Errorf("%s: missing region", bucket.BucketName)
-			}
-
 			b, err := fns3.ProvideBucketWithFactory(ctx, bucket, client.ClientFactory{
 				SharedCredentialsPath: *awsCredentialsFile,
 			})

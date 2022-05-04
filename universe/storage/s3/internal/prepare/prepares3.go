@@ -101,7 +101,13 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 		return strings.Compare(orderedBuckets[i].GetBucketName(), orderedBuckets[j].GetBucketName()) < 0
 	})
 
-	if !useLocalstack(req.Env) {
+	if useLocalstack(req.Env) {
+		for _, bucket := range orderedBuckets {
+			if region := bucket.GetRegion(); region == "" {
+				bucket.Region = "us-east-1" // Default to us-east-1 for testing purposes with localstack.
+			}
+		}
+	} else {
 		for _, bucket := range orderedBuckets {
 			if region := bucket.GetRegion(); region == "" {
 				if l := len(systemInfo.Regions); l == 0 {
@@ -126,7 +132,7 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 		return err
 	}
 
-	var serverArgs, initArgs []string
+	var commonArgs, initArgs []string
 	if useLocalstack(req.Env) {
 		var localstackService string
 		for _, endpoint := range req.Stack.Endpoint {
@@ -141,8 +147,7 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 				localstackEndpoint, localstackServer)
 		}
 
-		serverArgs = append(serverArgs, fmt.Sprintf("--%s=%s", useLocalstackFlag, localstackService))
-		initArgs = append(initArgs, fmt.Sprintf("--%s=%s", useLocalstackFlag, localstackService))
+		commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", useLocalstackFlag, localstackService))
 	} else {
 		for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/aws/client") {
 			if secret.Name == "aws_credentials_file" {
@@ -151,10 +156,13 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 		}
 	}
 
+	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", serializedFlag, serializedBuckets))
+	initArgs = append(initArgs, commonArgs...)
+
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		For: req.Focus.GetPackageName(),
 		With: &kubedef.ContainerExtension{
-			Args: append(serverArgs, fmt.Sprintf("--%s=%s", serializedFlag, serializedBuckets)),
+			Args: commonArgs,
 		},
 	})
 
@@ -162,7 +170,7 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 		For: req.Focus.GetPackageName(),
 		With: &kubedef.InitContainerExtension{
 			PackageName: initContainer,
-			Args:        append(initArgs, fmt.Sprintf("--%s=%s", serializedFlag, serializedBuckets)),
+			Args:        initArgs,
 		},
 	})
 
