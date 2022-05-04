@@ -9,7 +9,7 @@ import (
 )
 
 func IsTerm(fd uintptr) bool {
-	if _, err := unix.IoctlGetTermios(int(fd), ioctl_GETATTR); err != nil {
+	if _, err := unix.IoctlGetTermios(int(fd), ioctlGETATTR); err != nil {
 		return false
 	}
 	return true

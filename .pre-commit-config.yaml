@@ -10,9 +10,8 @@ repos:
     rev: v0.5.0
     hooks:
       - id: go-fmt
-      - id: go-vet
-      - id: go-lint
       - id: go-imports
       - id: go-mod-tidy
       - id: golangci-lint
       - id: go-unit-tests
+      # TODO add go-vet after splitting go mod files #336
