@@ -13,14 +13,12 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/types/known/anypb"
-	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/runtime/tools"
+	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -56,14 +54,42 @@ func NewPrepareCmd() *cobra.Command {
 			}
 
 			var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
-
 			prepares = append(prepares, prepare.PrepareBuildkit(env))
 
+			var k8sconfig compute.Computable[*kubernetes.HostConfig]
 			if contextName != "" {
-				prepares = append(prepares, prepare.PrepareK8s(contextName, env))
+				k8sconfig = prepare.PrepareExistingK8s(contextName, env)
 			} else if env.Purpose() == schema.Environment_DEVELOPMENT {
-				prepares = append(prepares, prepare.PrepareK3d("fn", env, true))
+				k8sconfig = prepare.PrepareK3d("fn", env)
 			}
+			prepares = append(prepares, compute.Map(
+				tasks.Action("prepare.map-k8s"),
+				compute.Inputs().Computable("k8sconfig", k8sconfig),
+				compute.Output{NotCacheable: true},
+				func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+					k8sconfigval := compute.GetDepValue(deps, k8sconfig, "k8sconfig")
+					var confs []*schema.DevHost_ConfigureEnvironment
+					registry := k8sconfigval.Registry()
+					if registry != nil {
+						c, err := devhost.MakeConfiguration(registry)
+						if err != nil {
+							return nil, err
+						}
+						c.Purpose = schema.Environment_DEVELOPMENT
+						confs = append(confs, c)
+					}
+					hostEnv := k8sconfigval.ClientHostEnv()
+					if hostEnv != nil {
+						c, err := devhost.MakeConfiguration(hostEnv)
+						if err != nil {
+							return nil, err
+						}
+						c.Purpose = env.Proto().GetPurpose()
+						c.Runtime = "kubernetes"
+						confs = append(confs, c)
+					}
+					return confs, nil
+				}))
 
 			if awsProfile != "" {
 				prepares = append(prepares, prepare.PrepareAWSProfile(awsProfile, env)) // XXX make provider configurable.
@@ -80,7 +106,26 @@ func NewPrepareCmd() *cobra.Command {
 				prepares = append(prepares, prepare.PrepareAWSRegistry(env)) // XXX make provider configurable.
 			}
 
-			prepareAll := compute.Collect(tasks.Action("prepare-all"), prepares...)
+			//prepares = append(prepares, prepare.PrepareIngress(env, k8sconfig))
+
+			var prebuilts = []schema.PackageName{
+				"namespacelabs.dev/foundation/std/sdk/buf/baseimg",
+				"namespacelabs.dev/foundation/devworkflow/web",
+				"namespacelabs.dev/foundation/std/dev/controller",
+				"namespacelabs.dev/foundation/std/monitoring/grafana/tool",
+				"namespacelabs.dev/foundation/std/monitoring/prometheus/tool",
+				"namespacelabs.dev/foundation/std/secrets/kubernetes",
+			}
+			preparedPrebuilts := prepare.PreparePrebuilts(env, workspace.NewPackageLoader(root), prebuilts)
+			prepares = append(prepares, compute.Map(
+				tasks.Action("prepare.map-prebuilts"),
+				compute.Inputs().Computable("preparedPrebuilts", preparedPrebuilts),
+				compute.Output{NotCacheable: true},
+				func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+					return nil, nil
+				}))
+
+			prepareAll := compute.Collect(tasks.Action("prepare.collect-all"), prepares...)
 			results, err := compute.GetValue(ctx, prepareAll)
 			if err != nil {
 				return err
@@ -90,78 +135,31 @@ func NewPrepareCmd() *cobra.Command {
 			for _, r := range results {
 				confs = append(confs, r.Value)
 			}
-			// XXX Figure out the right way to wire the ingress graph.
-			ingressRes, err := compute.GetValue(ctx, prepare.PrepareIngress(env))
+
+			stdout := console.Stdout(ctx)
+
+			updateCount, err := devHostUpdates(ctx, root, confs)
 			if err != nil {
 				return err
 			}
-			confs = append(confs, ingressRes)
 
-			stdout := console.Stdout(ctx)
-			eg, wait := executor.New(ctx)
-
-			eg.Go(func(ctx context.Context) error {
-				updateCount, err := prepareWorkstation(ctx, root, confs)
-				if err != nil {
-					return err
-				}
-
-				if !force && updateCount == 0 {
-					fmt.Fprintln(stdout, "Configuration is up to date, nothing to do.")
-					return nil
-				}
-
-				if !dontUpdateDevhost {
-					return devhost.RewriteWith(ctx, root, env.Root().DevHost)
-				}
-
-				fmt.Fprintln(stdout, "Add the following to your devhost.textpb, in the root of your workspace:")
-				fmt.Fprintln(stdout)
-				fmt.Fprintln(
-					text.NewIndentWriter(stdout, []byte("    ")),
-					prototext.Format(env.Root().DevHost))
-				fmt.Fprintln(stdout, "Or re-run with `fn prepare -w` for the file to be updated automatically.")
-
+			if !force && updateCount == 0 {
+				fmt.Fprintln(stdout, "Configuration is up to date, nothing to do.")
 				return nil
-			})
+			}
 
-			eg.Go(func(ctx context.Context) error {
-				hostPlatform := tools.Impl().HostPlatform()
-				var required = []schema.PackageName{
-					"namespacelabs.dev/foundation/std/sdk/buf/baseimg",
-					"namespacelabs.dev/foundation/devworkflow/web",
-					"namespacelabs.dev/foundation/std/dev/controller",
-					"namespacelabs.dev/foundation/std/monitoring/grafana/tool",
-					"namespacelabs.dev/foundation/std/monitoring/prometheus/tool",
-					"namespacelabs.dev/foundation/std/secrets/kubernetes",
-				}
+			if !dontUpdateDevhost {
+				return devhost.RewriteWith(ctx, root, env.DevHost())
+			}
 
-				inputs := compute.Inputs()
+			fmt.Fprintln(stdout, "Add the following to your devhost.textpb, in the root of your workspace:")
+			fmt.Fprintln(stdout)
+			fmt.Fprintln(
+				text.NewIndentWriter(stdout, []byte("    ")),
+				prototext.Format(env.DevHost()))
+			fmt.Fprintln(stdout, "Or re-run with `fn prepare -w` for the file to be updated automatically.")
 
-				pl := workspace.NewPackageLoader(root)
-				for _, pkg := range required {
-					p, err := pl.LoadByName(ctx, pkg)
-					if err != nil {
-						return err
-					}
-
-					prepared, err := binary.PlanImage(ctx, p, env, true, &hostPlatform)
-					if err != nil {
-						return err
-					}
-
-					inputs = inputs.Computable(pkg.String(), prepared.Image)
-				}
-
-				// Pre-pull requires images.
-				_, err := compute.Get(ctx, compute.Map(tasks.Action("prepare.prebuilts"), inputs,
-					compute.Output{}, func(ctx context.Context, r compute.Resolved) (int, error) {
-						return 0, nil
-					}))
-				return err
-			})
-
-			return wait()
+			return nil
 		}),
 	}
 
@@ -173,7 +171,7 @@ func NewPrepareCmd() *cobra.Command {
 	return cmd
 }
 
-func prepareWorkstation(ctx context.Context, root *workspace.Root, confs [][]*schema.DevHost_ConfigureEnvironment) (int, error) {
+func devHostUpdates(ctx context.Context, root *workspace.Root, confs [][]*schema.DevHost_ConfigureEnvironment) (int, error) {
 	var updateCount int
 	for _, conf := range confs {
 		if len(conf) == 0 {

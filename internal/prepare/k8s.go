@@ -8,30 +8,17 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	kubeclient "namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareK8s(name string, env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareExistingK8s(contextName string, env ops.Environment) compute.Computable[*kubernetes.HostConfig] {
 	return compute.Map(
-		tasks.Action("prepare.k8s"),
-		compute.Inputs(),
-		compute.Output{},
-		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			hostEnv := &kubeclient.HostEnv{
-				Kubeconfig: "~/.kube/config",
-				Context:    name,
-			}
-
-			c, err := devhost.MakeConfiguration(hostEnv)
-			if err != nil {
-				return nil, err
-			}
-			c.Purpose = env.Proto().GetPurpose()
-			c.Runtime = "kubernetes"
-			return []*schema.DevHost_ConfigureEnvironment{c}, nil
+		tasks.Action("prepare.existing-k8s").HumanReadablef("Prepare a host-configured Kubernetes instance"),
+		compute.Inputs().Str("contextName", contextName).Proto("env", env.Proto()),
+		compute.Output{NotCacheable: true},
+		func(ctx context.Context, _ compute.Resolved) (*kubernetes.HostConfig, error) {
+			return kubernetes.NewHostConfig(contextName, env)
 		})
 }

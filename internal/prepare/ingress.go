@@ -32,13 +32,15 @@ func (noPackageEnv) LoadByName(ctx context.Context, packageName schema.PackageNa
 	return nil, errors.New("not supported")
 }
 
-func PrepareIngress(env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*kubernetes.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
-		tasks.Action("prepare.ingress"),
-		compute.Inputs(),
-		compute.Output{},
-		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			kube, err := kubernetes.New(ctx, env.Workspace(), env.DevHost(), env.Proto())
+		tasks.Action("prepare.ingress").HumanReadablef("Prepare and deploy the Kubernetes ingress controller"),
+		compute.Inputs().Computable("k8sconfig", k8sconfig).Proto("env", env.Proto()),
+		compute.Output{NotCacheable: true},
+		func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+			config := compute.GetDepValue(deps, k8sconfig, "k8sconfig")
+
+			kube, err := kubernetes.NewFromConfig(ctx, config)
 			if err != nil {
 				return nil, err
 			}

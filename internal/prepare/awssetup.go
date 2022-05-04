@@ -18,14 +18,13 @@ import (
 
 func PrepareAWSRegistry(env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
-		tasks.Action("prepare.aws-registry"),
-		compute.Inputs(),
-		compute.Output{},
+		tasks.Action("prepare.aws-registry").HumanReadablef("Prepare the AWS registry configuration"),
+		compute.Inputs().Proto("env", env.Proto()),
+		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			p := &registry.Provider{
 				Provider: "aws/ecr",
 			}
-
 			c, err := devhost.MakeConfiguration(p)
 			if err != nil {
 				return nil, err
@@ -36,16 +35,15 @@ func PrepareAWSRegistry(env ops.Environment) compute.Computable[[]*schema.DevHos
 		})
 }
 
-func PrepareAWSProfile(name string, env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareAWSProfile(profileName string, env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
-		tasks.Action("prepare.aws-profile"),
-		compute.Inputs(),
-		compute.Output{},
+		tasks.Action("prepare.aws-profile").HumanReadablef("Prepare the AWS profile configuration"),
+		compute.Inputs().Str("profileName", profileName).Proto("env", env.Proto()),
+		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			hostEnv := &aws.Conf{
-				Profile: name,
+				Profile: profileName,
 			}
-
 			c, err := devhost.MakeConfiguration(hostEnv)
 			if err != nil {
 				return nil, err

@@ -13,19 +13,17 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/runtime/docker"
-	kubeclient "namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareK3d(clusterName string, env ops.Environment, updateKubecfg bool) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareK3d(clusterName string, env ops.Environment) compute.Computable[*kubernetes.HostConfig] {
 	return compute.Map(
 		tasks.Action("prepare.k3d"),
-		compute.Inputs(),
-		compute.Output{},
-		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Proto()),
+		compute.Output{NotCacheable: true},
+		func(ctx context.Context, _ compute.Resolved) (*kubernetes.HostConfig, error) {
 			// download k3d
 			k3dbin, err := k3d.EnsureSDK(ctx)
 			if err != nil {
@@ -41,8 +39,6 @@ func PrepareK3d(clusterName string, env ops.Environment, updateKubecfg bool) com
 				return nil, err
 			}
 
-			var confs []*schema.DevHost_ConfigureEnvironment
-
 			// XXX Need to support changing the registry of a cluster, for #340.
 			// const registryName = "k3d-registry." + runtime.LocalBaseDomain
 			const registryName = "k3d-registry.nslocal.dev"
@@ -56,15 +52,6 @@ func PrepareK3d(clusterName string, env ops.Environment, updateKubecfg bool) com
 					return nil, err
 				}
 			}
-
-			r := &registry.Registry{Url: fmt.Sprintf("http://%s:%d", registryName, registryPort)}
-
-			c, err := devhost.MakeConfiguration(r)
-			if err != nil {
-				return nil, err
-			}
-			c.Purpose = schema.Environment_DEVELOPMENT
-			confs = append(confs, c)
 
 			clusters, err := k3dbin.ListClusters(ctx)
 			if err != nil {
@@ -80,30 +67,16 @@ func PrepareK3d(clusterName string, env ops.Environment, updateKubecfg bool) com
 
 			if ours == nil {
 				// Create cluster.
-				if err := k3dbin.CreateCluster(ctx, clusterName, fmt.Sprintf("%s:%d", registryName, registryPort), "rancher/k3s:v1.20.7-k3s1", updateKubecfg); err != nil {
+				if err := k3dbin.CreateCluster(ctx, clusterName, fmt.Sprintf("%s:%d", registryName, registryPort), "rancher/k3s:v1.20.7-k3s1", true); err != nil {
 					return nil, err
 				}
 			}
 
-			if updateKubecfg {
-				if err := k3dbin.MergeConfiguration(ctx, clusterName); err != nil {
-					return nil, err
-				}
-
-				hostEnv := &kubeclient.HostEnv{
-					Kubeconfig: "~/.kube/config",
-					Context:    "k3d-" + clusterName,
-				}
-
-				c, err = devhost.MakeConfiguration(hostEnv)
-				if err != nil {
-					return nil, err
-				}
-				c.Purpose = env.Proto().GetPurpose()
-				c.Runtime = "kubernetes"
-				confs = append(confs, c)
+			if err := k3dbin.MergeConfiguration(ctx, clusterName); err != nil {
+				return nil, err
 			}
 
-			return confs, nil
+			r := &registry.Registry{Url: fmt.Sprintf("http://%s:%d", registryName, registryPort)}
+			return kubernetes.NewHostConfig("k3d-"+clusterName, env, kubernetes.WithRegistry(r))
 		})
 }
