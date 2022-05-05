@@ -104,7 +104,6 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
-		For: "namespacelabs.dev/foundation/std/monitoring/grafana/server",
 		With: &kubedef.SpecExtension{
 			Volume: []*kubedef.SpecExtension_Volume{{
 				Name: volumeName, // XXX generate unique names.
@@ -119,7 +118,6 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-		For: "namespacelabs.dev/foundation/std/monitoring/grafana/server",
 		With: &kubedef.ContainerExtension{
 			VolumeMount: []*kubedef.ContainerExtension_VolumeMount{{
 				Name:      volumeName,

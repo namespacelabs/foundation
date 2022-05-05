@@ -60,17 +60,14 @@ type CreateSecretConditionally struct {
 }
 
 type ExtendSpec struct {
-	For  schema.PackageName
 	With *SpecExtension
 }
 
 type ExtendContainer struct {
-	For  schema.PackageName
 	With *ContainerExtension
 }
 
 type ExtendInitContainer struct {
-	For  schema.PackageName
 	With *InitContainerExtension
 }
 
@@ -199,7 +196,7 @@ func (es ExtendSpec) ToDefinition() (*schema.DefExtension, error) {
 		return nil, err
 	}
 
-	return &schema.DefExtension{For: es.For.String(), Impl: x}, nil
+	return &schema.DefExtension{Impl: x}, nil
 }
 
 func (ec ExtendContainer) ToDefinition() (*schema.DefExtension, error) {
@@ -208,7 +205,7 @@ func (ec ExtendContainer) ToDefinition() (*schema.DefExtension, error) {
 		return nil, err
 	}
 
-	return &schema.DefExtension{For: ec.For.String(), Impl: x}, nil
+	return &schema.DefExtension{Impl: x}, nil
 }
 
 func (ec ExtendInitContainer) ToDefinition() (*schema.DefExtension, error) {
@@ -217,7 +214,7 @@ func (ec ExtendInitContainer) ToDefinition() (*schema.DefExtension, error) {
 		return nil, err
 	}
 
-	return &schema.DefExtension{For: ec.For.String(), Impl: x}, nil
+	return &schema.DefExtension{Impl: x}, nil
 }
 
 func SerializeSelector(selector map[string]string) string {

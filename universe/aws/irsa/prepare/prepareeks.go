@@ -78,7 +78,6 @@ func (provisionHook) Apply(ctx context.Context, r configure.StackRequest, out *c
 	}
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
-		For: schema.PackageName(r.Focus.Server.PackageName),
 		With: &kubedef.SpecExtension{
 			ServiceAccount: serviceAccount.ServiceAccountName,
 			ServiceAccountAnnotation: []*kubedef.SpecExtension_Annotation{

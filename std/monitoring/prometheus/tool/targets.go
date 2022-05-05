@@ -23,14 +23,14 @@ func (configureTargets) Apply(ctx context.Context, r configure.StackRequest, out
 				continue
 			}
 
+			if endpoint.GetServerOwner() != r.Focus.Server.PackageName {
+				// Only configure focus server
+				continue
+			}
+
 			port := endpoint.Port
 			if port.GetContainerPort() <= 0 {
 				return fmt.Errorf("%s: no port specified", endpoint.ServerOwner)
-			}
-
-			srv := r.Stack.GetServer(schema.PackageName(endpoint.GetServerOwner()))
-			if srv == nil {
-				return fmt.Errorf("%s: missing in the stack", endpoint.GetServerOwner())
 			}
 
 			var http *schema.HttpExportedService
@@ -47,7 +47,6 @@ func (configureTargets) Apply(ctx context.Context, r configure.StackRequest, out
 			}
 
 			out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
-				For: srv.GetPackageName(),
 				With: &kubedef.SpecExtension{
 					Annotation: []*kubedef.SpecExtension_Annotation{
 						{Key: "prometheus.io/scrape", Value: "true"},
@@ -57,7 +56,7 @@ func (configureTargets) Apply(ctx context.Context, r configure.StackRequest, out
 				}})
 
 			zerolog.Ctx(ctx).Debug().
-				Stringer("server", srv.GetPackageName()).
+				Str("server", r.Focus.Server.PackageName).
 				Int32("port", port.ContainerPort).
 				Msg("Annotating server for scraping.")
 		}
