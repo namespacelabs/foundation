@@ -7,14 +7,13 @@ package kubernetes
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
 	"sync"
 	"time"
 
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -112,19 +111,15 @@ func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env
 		return k8sRuntime{}, err
 	}
 
-	cfgbytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(cfg)
+	keyBytes, err := json.Marshal(struct {
+		C *client.HostEnv
+		E *schema.Environment
+	}{cfg, env})
 	if err != nil {
-		return k8sRuntime{}, fnerrors.InternalError("failed to serialize config: %w", err)
+		return k8sRuntime{}, fnerrors.InternalError("failed to serialize config/env key: %w", err)
 	}
 
-	envbytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(env)
-	if err != nil {
-		return k8sRuntime{}, fnerrors.InternalError("failed to serialize env: %w", err)
-	}
-
-	key := fmt.Sprintf("%s\n%s",
-		base64.RawStdEncoding.EncodeToString(cfgbytes),
-		base64.RawStdEncoding.EncodeToString(envbytes))
+	key := string(keyBytes)
 
 	runtimeCache.mu.Lock()
 	defer runtimeCache.mu.Unlock()
