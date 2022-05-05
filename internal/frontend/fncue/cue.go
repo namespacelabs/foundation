@@ -60,6 +60,7 @@ type CuePackage struct {
 	RelPath    string   // Relative to module root.
 	Files      []string // Relative to RelPath
 	Sources    fs.FS
+	Imports    []string // Top level import statements.
 }
 
 func (pkg CuePackage) RelFiles() []string {
@@ -101,12 +102,13 @@ func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname strin
 		}
 
 		for _, imp := range f.Imports {
-			pkg, _ := astutil.ParseImportSpec(imp)
-			if isStandardImportPath(pkg.ID) {
+			importInfo, _ := astutil.ParseImportSpec(imp)
+			pkg.Imports = append(pkg.Imports, importInfo.Dir)
+			if isStandardImportPath(importInfo.ID) {
 				continue
 			}
 
-			if err := CollectImports(ctx, resolver, pkg.Dir, m); err != nil {
+			if err := CollectImports(ctx, resolver, importInfo.Dir, m); err != nil {
 				return err
 			}
 		}

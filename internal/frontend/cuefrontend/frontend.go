@@ -24,7 +24,7 @@ type impl struct {
 func NewFrontend(pl workspace.EarlyPackageLoader) workspace.Frontend {
 	return impl{
 		loader:  pl,
-		evalctx: fncue.NewEvalCtx(workspaceLoader{pl}),
+		evalctx: fncue.NewEvalCtx(WorkspaceLoader{pl}),
 	}
 }
 
@@ -112,17 +112,17 @@ func (ft impl) GetPackageType(ctx context.Context, pkg schema.PackageName) (work
 	return workspace.PackageType_Undefined, nil
 }
 
-type workspaceLoader struct {
-	pl workspace.EarlyPackageLoader
+type WorkspaceLoader struct {
+	Pl workspace.EarlyPackageLoader
 }
 
-func (wl workspaceLoader) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, error) {
-	loc, err := wl.pl.Resolve(ctx, pkgname)
+func (wl WorkspaceLoader) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, error) {
+	loc, err := wl.Pl.Resolve(ctx, pkgname)
 	if err != nil {
 		return fnfs.Location{}, err
 	}
 
-	w, err := wl.pl.WorkspaceOf(ctx, loc.Module)
+	w, err := wl.Pl.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
 		return fnfs.Location{}, err
 	}

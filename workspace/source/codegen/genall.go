@@ -31,45 +31,46 @@ func ForLocations(ctx context.Context, root *workspace.Root, locs []fnfs.Locatio
 		if err != nil {
 			onError(GenerateError{PackageName: loc.AsPackageName(), What: "loading schema", Err: err})
 			errCount++
-		} else {
-			if srv := sealed.Proto.Server; srv != nil {
-				defs, err := languages.IntegrationFor(srv.Framework).GenerateServer(sealed.ParsedPackage, sealed.Proto.Node)
-				if err != nil {
-					onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate server", Err: err})
-					errCount++
-				} else {
-					if err := g.Add(defs...); err != nil {
-						return err
-					}
-				}
+			continue
+		}
+		if srv := sealed.Proto.Server; srv != nil {
+			defs, err := languages.IntegrationFor(srv.Framework).GenerateServer(sealed.ParsedPackage, sealed.Proto.Node)
+			if err != nil {
+				onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate server", Err: err})
+				errCount++
 			} else {
-				var pkg *workspace.Package
-				for _, dep := range sealed.Deps {
-					if dep.PackageName() == loc.AsPackageName() {
-						pkg = dep
-						break
-					}
+				if err := g.Add(defs...); err != nil {
+					return err
 				}
-
-				if pkg == nil || pkg.Node() == nil {
-					continue
+			}
+		} else {
+			var pkg *workspace.Package
+			for _, dep := range sealed.Deps {
+				if dep.PackageName() == loc.AsPackageName() {
+					pkg = dep
+					break
 				}
+			}
 
-				defs, err := ForNode(pkg, sealed.Proto.Node)
-				if err != nil {
-					onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
-					errCount++
-				} else {
-					if err := g.Add(defs...); err != nil {
-						return err
-					}
+			if pkg == nil || pkg.Node() == nil {
+				continue
+			}
+
+			defs, err := ForNode(pkg, sealed.Proto.Node)
+			if err != nil {
+				onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
+				errCount++
+			} else {
+				if err := g.Add(defs...); err != nil {
+					return err
 				}
 			}
 		}
+		if _, err := g.Execute(ctx, "workspace.generate", genEnv{root, pl.Seal()}); err != nil {
+			return err
+		}
 	}
-
-	_, err := g.Execute(ctx, "workspace.generate", genEnv{root, pl.Seal()})
-	return err
+	return nil
 }
 
 type genEnv struct {
