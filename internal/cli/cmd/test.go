@@ -80,6 +80,9 @@ func NewTestCmd() *cobra.Command {
 				// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
 				env := testing.PrepareEnvFrom(devEnv, !testOpts.KeepRuntime)
 
+				status := aec.LightBlackF.Apply("RUNNING")
+				fmt.Fprintf(stderr, "%s: Test %s\n", loc.AsPackageName(), status)
+
 				test, err := testing.PrepareTest(ctx, pl, env, loc.AsPackageName(), testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
 					var suts []provision.Server
 
@@ -108,7 +111,7 @@ func NewTestCmd() *cobra.Command {
 					return err
 				}
 
-				status := aec.GreenF.Apply("PASSED")
+				status = aec.GreenF.Apply("PASSED")
 				if !v.Value.Bundle.Result.Success {
 					status = aec.RedF.Apply("FAILED")
 				}
