@@ -68,12 +68,7 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 				ch <- ev
 			}
 
-			cfg, err := client.ComputeHostEnv(w.devHost, w.env)
-			if err != nil {
-				return err
-			}
-
-			cli, err := client.NewClientFromHostEnv(cfg)
+			cli, err := client.NewClient(client.ConfigFromDevHost(ctx, w.devHost, w.env))
 			if err != nil {
 				return err
 			}

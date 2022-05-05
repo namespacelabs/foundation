@@ -19,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -36,14 +35,7 @@ var (
 
 func RegisterGraphHandlers() {
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, g *schema.Definition, op *OpGenerateWebhookCert) (*ops.HandleResult, error) {
-		cfg, err := client.ComputeHostEnv(env.DevHost(), env.Proto())
-		if err != nil {
-			return nil, err
-		}
-
-		fmt.Fprintf(console.Debug(ctx), "kubernetes: using configuration: %+v\n", cfg)
-
-		cli, err := client.NewClientFromHostEnv(cfg)
+		cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
 		if err != nil {
 			return nil, err
 		}

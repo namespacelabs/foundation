@@ -23,12 +23,7 @@ import (
 
 func RegisterGraphHandlers() {
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, g *schema.Definition, op *OpMapAddress) (*ops.HandleResult, error) {
-		cfg, err := client.ComputeHostEnv(env.DevHost(), env.Proto())
-		if err != nil {
-			return nil, err
-		}
-
-		cli, err := client.NewClientFromHostEnv(cfg)
+		cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
 		if err != nil {
 			return nil, err
 		}

@@ -120,12 +120,7 @@ func RegisterGraphHandlers() {
 						}()
 					}
 
-					cfg, err := client.ComputeHostEnv(env.DevHost(), env.Proto())
-					if err != nil {
-						return err
-					}
-
-					cli, err := client.NewClientFromHostEnv(cfg)
+					cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
 					if err != nil {
 						return err
 					}
@@ -349,12 +344,7 @@ func RegisterGraphHandlers() {
 			return nil, nil // Nothing to do.
 		}
 
-		cfg, err := client.ComputeHostEnv(env.DevHost(), env.Proto())
-		if err != nil {
-			return nil, err
-		}
-
-		cli, err := client.NewClientFromHostEnv(cfg)
+		cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
 		if err != nil {
 			return nil, err
 		}
