@@ -4,8 +4,21 @@
 
 package filewatcher
 
-import "namespacelabs.dev/go-filenotify"
+import (
+	"context"
 
-func NewWatcher() (filenotify.FileWatcher, error) {
-	return filenotify.NewPollingWatcher(), nil
+	"github.com/fsnotify/fsnotify"
+)
+
+type FileWatcherFactory interface {
+	AddFile(name string) error
+	AddDirectory(name string) error
+	StartWatching(context.Context) (EventsAndErrors, error)
+	Close() error
+}
+
+type EventsAndErrors interface {
+	Events() <-chan fsnotify.Event
+	Errors() <-chan error
+	Close() error
 }

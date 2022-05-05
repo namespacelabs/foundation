@@ -147,7 +147,7 @@ func (p *obsState) cancel() {
 func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSnapshot)) (func(), error) {
 	logger := console.TypedOutput(ctx, "observepackages", console.CatOutputUs)
 
-	watcher, err := filewatcher.NewWatcher()
+	watcher, err := filewatcher.NewFactory()
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 			}
 			p := filepath.Join(srcs.Module.Abs(), path)
 			expected[p] = contents // Don't really care about permissions etc, only contents.
-			return watcher.Add(p)
+			return watcher.AddFile(p)
 		}); err != nil {
 			watcher.Close()
 			return nil, err
@@ -212,12 +212,16 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 		}
 	}()
 
-	// go wscontents.AggregateFSEvents(watcher, logger, bufferCh)
+	w, err := watcher.StartWatching(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	go func() {
-		wscontents.AggregateFSEvents(watcher, logger, bufferCh)
+		wscontents.AggregateFSEvents(w, logger, bufferCh)
 	}()
 
 	return func() {
-		watcher.Close()
+		w.Close()
 	}, nil
 }

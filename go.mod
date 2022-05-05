@@ -20,6 +20,7 @@ require (
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/dustin/go-humanize v1.0.0
+	github.com/fsnotify/fsevents v0.1.1
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/getsentry/sentry-go v0.13.0
 	github.com/go-redis/redis/v8 v8.11.5
