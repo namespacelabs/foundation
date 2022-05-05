@@ -68,11 +68,15 @@ func WaitMultiple(ctx context.Context, waiters []Waiter, ch chan Event) error {
 			if ch != nil {
 				chch = make(chan Event)
 
-				go func() {
+				// It's important to have this channel forwarding run in the same executor,
+				// to guarantee it doesn't return (and thus closes `ch`), before `chch` itself
+				// is closed.
+				eg.Go(func(ctx context.Context) error {
 					for ev := range chch {
 						ch <- ev
 					}
-				}()
+					return nil
+				})
 			}
 
 			return w(ctx, chch)
