@@ -106,7 +106,7 @@ func NewPrepareCmd() *cobra.Command {
 				prepares = append(prepares, prepare.PrepareAWSRegistry(env)) // XXX make provider configurable.
 			}
 
-			//prepares = append(prepares, prepare.PrepareIngress(env, k8sconfig))
+			prepares = append(prepares, prepare.PrepareIngress(env, k8sconfig))
 
 			var prebuilts = []schema.PackageName{
 				"namespacelabs.dev/foundation/std/sdk/buf/baseimg",
