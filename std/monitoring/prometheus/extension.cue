@@ -21,6 +21,11 @@ configure: fn.#Configure & {
 			append: [$promServer]
 		}
 
-		with: binary: $tool
+		with: {
+			binary: $tool
+			args: {
+				mode: "client"
+			}
+		}
 	}
 }

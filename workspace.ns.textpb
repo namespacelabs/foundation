@@ -21,7 +21,7 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/monitoring/prometheus/tool"
-  digest: "sha256:c44eb20c6a4bc09109d7e03e0da3eae4b9a5856bbd053d5a5d0835d130d27f30"
+  digest: "sha256:cad51cbd0998214159b4a07de8725f3dde7aeaddd13035c12ac8afae0c478d8f"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/sdk/buf/baseimg"
@@ -89,7 +89,7 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/development/localstack/s3/internal/configure"
-  digest: "sha256:c2ecda8e9d68081acdfaa7008b0c12252067b01bf5eb4693d2a177b0ee070d4b"
+  digest: "sha256:be9aedc27b585802e5a57c10082136ce096545a44b163c310792e02212f0c2d3"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/development/localstack/s3/internal/managebuckets/init"
