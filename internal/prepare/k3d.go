@@ -20,7 +20,7 @@ import (
 
 func PrepareK3d(clusterName string, env ops.Environment) compute.Computable[*kubernetes.HostConfig] {
 	return compute.Map(
-		tasks.Action("prepare.k3d"),
+		tasks.Action("prepare.k3d").HumanReadablef("Prepare the local k3d environment"),
 		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Proto()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) (*kubernetes.HostConfig, error) {

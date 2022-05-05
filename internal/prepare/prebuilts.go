@@ -19,7 +19,7 @@ import (
 
 func PreparePrebuilts(env ops.Environment, pl *workspace.PackageLoader, packages []schema.PackageName) compute.Computable[[]oci.Image] {
 	return compute.Map(
-		tasks.Action("prepare.prebuilts"),
+		tasks.Action("prepare.prebuilts").HumanReadablef("Prepare prebuilt packages"),
 		compute.Inputs().Proto("env", env.Proto()).Strs("packages", schema.Strs(packages...)),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]oci.Image, error) {
