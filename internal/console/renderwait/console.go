@@ -124,25 +124,25 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 
 		fmt.Fprintf(&b, " %s:\n\n", cat)
 		for _, blk := range blocks {
-			var icon, took string
+			var ready bool
+			var took string
 			if blk.AlreadyExisted && !blk.Ready {
-				icon = "[ ]"
 				took = box("waiting for previous deployment ...", mergeWaitStatus(blk.WaitStatus))
 			} else if blk.AlreadyExisted {
-				icon = "[✓]"
+				ready = true
 				took = "(no update required)"
 			} else if blk.Ready {
-				icon = "[✓]"
+				ready = true
 				took = fmt.Sprintf("took %v", timefmt.Format(blk.End.Sub(blk.Start)))
 			} else {
-				icon = "[ ]"
 				took = mergeWaitStatus(blk.WaitStatus)
 				if took == "" {
 					took = "waiting ..."
 				}
 			}
-			fmt.Fprintf(&b, "  %s %s %s\n", icon, blk.Scope, aec.LightBlackF.Apply(took))
-			if details := blk.WaitDetails; details != "" {
+
+			fmt.Fprintf(&b, "  %s %s %s\n", icon(ready), blk.Scope, aec.LightBlackF.Apply(took))
+			if details := blk.WaitDetails; !ready && details != "" {
 				fmt.Fprint(text.NewIndentWriter(&b, []byte("      ")), details)
 			}
 		}
@@ -152,6 +152,13 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 		fmt.Fprintln(&b)
 	}
 	return b.Bytes()
+}
+
+func icon(ready bool) string {
+	if ready {
+		return "[✓]"
+	}
+	return "[ ]"
 }
 
 func mergeWaitStatus(status []ops.WaitStatus) string {
