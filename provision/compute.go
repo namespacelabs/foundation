@@ -155,6 +155,11 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 	expected := map[string][]byte{}
 
 	for _, srcs := range snap.sealed.Sources() {
+		// Don't monitor changes to external modules, assume they're immutable.
+		if srcs.Module.IsExternal() {
+			continue
+		}
+
 		// XXX we don't watch directories, which may end up being a miss.
 		if err := fnfs.VisitFiles(ctx, srcs.Snapshot, func(path string, contents []byte, de fs.DirEntry) error {
 			if de.IsDir() {
