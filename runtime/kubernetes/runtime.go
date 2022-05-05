@@ -19,8 +19,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/portforward"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
@@ -499,34 +499,29 @@ func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 		return nil, fnerrors.UserError(server, "%s: no port to forward to", endpoint.GetServiceName())
 	}
 
-	pod, err := resolvePodByLabels(ctx, r.cli, io.Discard, r.boundEnv.ns(), map[string]string{
-		kubedef.K8sServerId: server.Id,
-	})
-	if err != nil {
-		return nil, err
-	}
+	ctxWithCancel, cancel := context.WithCancel(ctx)
 
-	// XXX be smarter about port allocation.
-	containerPorts := []string{fmt.Sprintf(":%d", endpoint.GetPort().ContainerPort)}
+	go func() {
+		if err := r.boundEnv.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
+			Namespace:     r.boundEnv.ns(),
+			Identifier:    server.PackageName,
+			LocalAddrs:    localAddrs,
+			LocalPort:     0,
+			ContainerPort: int(endpoint.GetPort().ContainerPort),
 
-	stopCh := make(chan struct{})
+			Resolve: func(ctx context.Context) (v1.Pod, error) {
+				// XXX instead of resolving all the time, cache the resolution.
+				return resolvePodByLabels(ctx, r.cli, io.Discard, r.boundEnv.ns(), map[string]string{
+					kubedef.K8sServerId: server.Id,
+				})
+			},
+			ReportPorts: callback,
+		}); err != nil {
+			fmt.Fprintf(console.Errors(ctx), "port forwarding for %s (%d) failed: %v\n", server.PackageName, endpoint.GetPort().ContainerPort, err)
+		}
+	}()
 
-	compute.On(ctx).DetachWith(compute.Detach{
-		Action:     tasks.Action("port.forward").Indefinite(),
-		BestEffort: true,
-		Do: func(ctx context.Context) error {
-			return r.boundEnv.startAndBlockPortFwd(ctx, r.boundEnv.ns(), pod.Name, localAddrs, containerPorts, stopCh, func(forwarded []portforward.ForwardedPort) {
-				for _, p := range forwarded {
-					callback(runtime.ForwardedPort{
-						LocalPort:     uint(p.Local),
-						ContainerPort: uint(endpoint.Port.GetContainerPort()),
-					})
-				}
-			})
-		},
-	})
-
-	return channelCloser(stopCh), nil
+	return closerCallback(cancel), nil
 }
 
 func (r k8sRuntime) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
@@ -542,39 +537,46 @@ func (r k8sRuntime) ForwardIngress(ctx context.Context, localAddrs []string, loc
 		return nil, err
 	}
 
-	stopCh := make(chan struct{})
+	ctxWithCancel, cancel := context.WithCancel(ctx)
 
-	compute.On(ctx).DetachWith(compute.Detach{
-		Action:     tasks.Action("port.forward.ingress").Indefinite(),
-		BestEffort: true,
-		Do: func(ctx context.Context) error {
-			return r.startAndBlockPortFwd(ctx, svc.Namespace, pod.Name, localAddrs, []string{fmt.Sprintf("%d:%d", localPort, svc.ContainerPort)}, stopCh, func(forwarded []portforward.ForwardedPort) {
-				for _, p := range forwarded {
-					f(runtime.ForwardedPortEvent{
-						Added: []runtime.ForwardedPort{{
-							LocalPort:     uint(p.Local),
-							ContainerPort: uint(svc.ContainerPort),
+	go func() {
+		if err := r.boundEnv.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
+			Namespace:     svc.Namespace,
+			Identifier:    "ingress",
+			LocalAddrs:    localAddrs,
+			LocalPort:     localPort,
+			ContainerPort: svc.ContainerPort,
+
+			Resolve: func(ctx context.Context) (v1.Pod, error) {
+				return pod, nil
+			},
+			ReportPorts: func(p runtime.ForwardedPort) {
+				f(runtime.ForwardedPortEvent{
+					Added: []runtime.ForwardedPort{{
+						LocalPort:     p.LocalPort,
+						ContainerPort: p.ContainerPort,
+					}},
+					Endpoint: &schema.Endpoint{
+						ServiceName: runtime.IngressServiceName,
+						ServiceMetadata: []*schema.ServiceMetadata{{
+							Protocol: "http",
+							Kind:     runtime.IngressServiceKind,
 						}},
-						Endpoint: &schema.Endpoint{
-							ServiceName: runtime.IngressServiceName,
-							ServiceMetadata: []*schema.ServiceMetadata{{
-								Protocol: "http",
-								Kind:     runtime.IngressServiceKind,
-							}},
-						},
-					})
-				}
-			})
-		},
-	})
+					},
+				})
+			},
+		}); err != nil {
+			fmt.Fprintf(console.Errors(ctx), "ingress forwarding failed: %v\n", err)
+		}
+	}()
 
-	return channelCloser(stopCh), nil
+	return closerCallback(cancel), nil
 }
 
-type channelCloser chan struct{}
+type closerCallback func()
 
-func (c channelCloser) Close() error {
-	close(c)
+func (c closerCallback) Close() error {
+	c()
 	return nil
 }
 
