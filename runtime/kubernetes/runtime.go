@@ -452,20 +452,20 @@ func (r k8sRuntime) FetchDiagnostics(ctx context.Context, reference runtime.Cont
 
 	for _, init := range pod.Status.InitContainerStatuses {
 		if init.Name == opaque.Container {
-			return statusToDiagnostic(init)
+			return statusToDiagnostic(init), nil
 		}
 	}
 
 	for _, ctr := range pod.Status.ContainerStatuses {
 		if ctr.Name == opaque.Container {
-			return statusToDiagnostic(ctr)
+			return statusToDiagnostic(ctr), nil
 		}
 	}
 
 	return runtime.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.Name, opaque.Container)
 }
 
-func statusToDiagnostic(status v1.ContainerStatus) (runtime.Diagnostics, error) {
+func statusToDiagnostic(status v1.ContainerStatus) runtime.Diagnostics {
 	var diag runtime.Diagnostics
 
 	diag.RestartCount = status.RestartCount
@@ -484,7 +484,7 @@ func statusToDiagnostic(status v1.ContainerStatus) (runtime.Diagnostics, error) 
 		diag.ExitCode = status.State.Terminated.ExitCode
 	}
 
-	return diag, nil
+	return diag
 }
 
 func (r k8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
