@@ -117,7 +117,14 @@ func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env
 		return k8sRuntime{}, fnerrors.InternalError("failed to serialize config: %w", err)
 	}
 
-	key := base64.RawStdEncoding.EncodeToString(cfgbytes)
+	envbytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(env)
+	if err != nil {
+		return k8sRuntime{}, fnerrors.InternalError("failed to serialize env: %w", err)
+	}
+
+	key := fmt.Sprintf("%s\n%s",
+		base64.RawStdEncoding.EncodeToString(cfgbytes),
+		base64.RawStdEncoding.EncodeToString(envbytes))
 
 	runtimeCache.mu.Lock()
 	defer runtimeCache.mu.Unlock()

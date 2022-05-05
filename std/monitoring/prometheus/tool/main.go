@@ -5,14 +5,29 @@
 package main
 
 import (
+	"flag"
+	"log"
+
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/schema"
 )
 
+var (
+	mode = flag.String("mode", "", "Do we provision the prometheus server or client?")
+)
+
 func main() {
+	flag.Parse()
+
 	h := configure.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
-	henv.HandleStack(configureTargets{})
-	henv.HandleStack(configureServer{})
+	switch *mode {
+	case "client":
+		henv.HandleStack(configureTargets{})
+	case "server":
+		henv.HandleStack(configureServer{})
+	default:
+		log.Fatalf("unknown mode: %s", *mode)
+	}
 	configure.Handle(h)
 }

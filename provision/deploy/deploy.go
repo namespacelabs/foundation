@@ -469,7 +469,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 	merged, err := startup.ComputeConfig(ctx, s.Env(), stack.GetParsed(s.PackageName()), frontend.StartupInputs{
 		Stack:         stack.Proto(),
 		Server:        s.Proto(),
-		ServerImage:   imgs.Binary.ImageRef(),
+		ServerImage:   imgs.Binary.RepoAndDigest(),
 		ServerRootAbs: s.Location.Abs(),
 	})
 	if err != nil {
