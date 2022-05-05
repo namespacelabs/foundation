@@ -20,7 +20,7 @@ require (
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/dustin/go-humanize v1.0.0
-	github.com/fsnotify/fsnotify v1.5.1
+	github.com/fsnotify/fsnotify v1.5.4
 	github.com/getsentry/sentry-go v0.13.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.6.0
@@ -82,6 +82,7 @@ require (
 	k8s.io/api v0.23.3
 	k8s.io/apimachinery v0.23.3
 	k8s.io/client-go v0.23.3
+	namespacelabs.dev/go-filenotify v0.0.0-20220505133155-a4d5b8e9c5e1
 	namespacelabs.dev/go-ids v0.0.0-20220216144417-79021816502e
 	sigs.k8s.io/yaml v1.3.0
 	tailscale.com v1.22.2

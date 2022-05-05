@@ -15,6 +15,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/wscontents"
@@ -146,7 +147,7 @@ func (p *obsState) cancel() {
 func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSnapshot)) (func(), error) {
 	logger := console.TypedOutput(ctx, "observepackages", console.CatOutputUs)
 
-	watcher, err := fsnotify.NewWatcher()
+	watcher, err := filewatcher.NewWatcher()
 	if err != nil {
 		return nil, err
 	}
