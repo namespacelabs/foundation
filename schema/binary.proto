@@ -8,6 +8,9 @@ package foundation.schema;
 
 option go_package = "namespacelabs.dev/foundation/schema";
 
+// A "binary" represents a compiled image. It's similar to a Docker image,
+// with the difference that the mechanism to build a binary is always
+// attached to itself -- i.e. it's a reproducible build.
 message Binary {
     reserved 3, 4;
 
@@ -29,6 +32,7 @@ message Binary {
     }
 }
 
+// Instructions of how to invoke the image, if it includes an invocable binary.
 message BinaryConfig {
     repeated string command = 1;
     repeated string args    = 2;

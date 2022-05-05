@@ -42,7 +42,7 @@ func Register() {
 	languages.Register(schema.Framework_GO_GRPC, impl{})
 	runtime.RegisterSupport(schema.Framework_GO_GRPC, impl{})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.DispatcherResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, errors.New("workspace.Packages required")
@@ -56,7 +56,7 @@ func Register() {
 		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenServer) (*ops.DispatcherResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenServer) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, errors.New("workspace.Packages required")

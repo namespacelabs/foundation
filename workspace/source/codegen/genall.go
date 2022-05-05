@@ -22,7 +22,7 @@ type GenerateError struct {
 
 func ForLocations(ctx context.Context, root *workspace.Root, locs []fnfs.Location, onError func(GenerateError)) error {
 	var errCount int
-	var g ops.Runner
+	var g ops.Plan
 
 	pl := workspace.NewPackageLoader(root)
 
@@ -68,7 +68,7 @@ func ForLocations(ctx context.Context, root *workspace.Root, locs []fnfs.Locatio
 		}
 	}
 
-	_, err := g.Apply(ctx, "workspace.generate", genEnv{root, pl.Seal()})
+	_, err := g.Execute(ctx, "workspace.generate", genEnv{root, pl.Seal()})
 	return err
 }
 

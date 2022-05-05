@@ -28,7 +28,7 @@ func Shutdown(ctx context.Context, env workspace.WorkspaceEnvironment, servers [
 		return err
 	}
 
-	g := ops.NewRunner()
+	g := ops.NewPlan()
 	if err := g.Add(defs1...); err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func Shutdown(ctx context.Context, env workspace.WorkspaceEnvironment, servers [
 		return err
 	}
 
-	_, err = g.Apply(ctx, "deploy.shutdown", env)
+	_, err = g.Execute(ctx, "deploy.shutdown", env)
 	return err
 }
 

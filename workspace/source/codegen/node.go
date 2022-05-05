@@ -41,7 +41,7 @@ func Register() {
 
 type generator struct{}
 
-func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenNode) (*ops.DispatcherResult, error) {
+func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenNode) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, errors.New("workspace.Packages required")

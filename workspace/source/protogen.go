@@ -44,9 +44,9 @@ func RegisterGraphHandlers() {
 
 type statefulGen struct{}
 
-var _ ops.HasStartSession[*OpProtoGen] = statefulGen{}
+var _ ops.BatchedDispatcher[*OpProtoGen] = statefulGen{}
 
-func (statefulGen) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.DispatcherResult, error) {
+func (statefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
 	if !ok {
 		return nil, errors.New("WorkspaceEnvironment required")
@@ -84,7 +84,7 @@ type multiGen struct {
 	files []*protos.FileDescriptorSetAndDeps
 }
 
-func (m *multiGen) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.DispatcherResult, error) {
+func (m *multiGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, errors.New("workspace.Packages required")
@@ -96,13 +96,15 @@ func (m *multiGen) Run(ctx context.Context, env ops.Environment, _ *schema.Defin
 	}
 
 	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.locs = append(m.locs, loc)
 	m.opts = append(m.opts, GoProtosOpts{
 		HTTPGateway: msg.GenerateHttpGateway,
 		Framework:   msg.Framework,
 	})
 	m.files = append(m.files, msg.Protos)
-	m.mu.Unlock()
+
 	return nil, nil
 }
 

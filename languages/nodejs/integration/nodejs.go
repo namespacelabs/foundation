@@ -57,7 +57,7 @@ func Register() {
 
 	ops.Register[*OpGenServer](generator{})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.DispatcherResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, errors.New("workspace.Packages required")
@@ -71,7 +71,7 @@ func Register() {
 		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNodeStub) (*ops.DispatcherResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNodeStub) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, errors.New("workspace.Packages required")
@@ -94,7 +94,7 @@ func useDevBuild(env *schema.Environment) bool {
 
 type generator struct{}
 
-func (generator) Run(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenServer) (*ops.DispatcherResult, error) {
+func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenServer) (*ops.HandleResult, error) {
 	workspacePackages, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, errors.New("workspace.Packages required")
@@ -270,7 +270,7 @@ func yarnRcContent() string {
 	return fmt.Sprintf(
 		`nodeLinker: node-modules
 
-npmScopes: 
+npmScopes:
   namespacelabs:
     npmRegistryServer: "https://us-npm.pkg.dev/foundation-344819/npm-prebuilts/"
 
