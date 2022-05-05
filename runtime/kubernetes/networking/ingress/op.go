@@ -10,7 +10,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -39,7 +38,7 @@ func RegisterGraphHandlers() {
 }
 
 func waitForIngress(ctx context.Context, cli *k8s.Clientset, ingressSvc *nginx.NameRef, op *OpMapAddress) error {
-	return wait.PollImmediateWithContext(ctx, 500*time.Millisecond, 1*time.Minute, func(ctx context.Context) (bool, error) {
+	return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 1*time.Minute, func(ctx context.Context) (bool, error) {
 		// If the ingress declares there's a load balancer service that backs itself, then look
 		// for the LB address instead of waiting for the ingress to be mapped.
 		if ingressSvc != nil {

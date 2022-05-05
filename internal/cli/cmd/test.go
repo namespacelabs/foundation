@@ -101,7 +101,6 @@ func NewTestCmd() *cobra.Command {
 
 					return suts, stack, nil
 				})
-
 				if err != nil {
 					return err
 				}

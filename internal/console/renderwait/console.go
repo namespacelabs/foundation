@@ -60,10 +60,6 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 
 		case ev, ok := <-rwb.ch:
 			if !ok {
-				return
-			}
-
-			if ev.AllDone {
 				_, _ = rwb.flushLog.Write(render(m, ids, true))
 				rwb.setSticky(nil)
 				return

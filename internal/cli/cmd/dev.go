@@ -10,8 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
-	"os"
-	"os/signal"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/devworkflow"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
@@ -48,7 +47,10 @@ func NewDevCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, sink := tasks.WithStatefulSink(cmd.Context())
 
-			return compute.Do(ctx, func(ctx context.Context) error {
+			ctxWithCancel, cancel := fncobra.WithSigIntCancel(ctx)
+			defer cancel()
+
+			return compute.Do(ctxWithCancel, func(ctx context.Context) error {
 				root, err := module.FindRoot(ctx, ".")
 				if err != nil {
 					return err
@@ -113,14 +115,6 @@ func NewDevCmd() *cobra.Command {
 
 				shutdownErr := make(chan error)
 
-				ctxWithCancel, cancel := withSigIntCancel(ctx, func() {
-					ctxT, cancelT := context.WithTimeout(ctx, 1*time.Second)
-					defer cancelT()
-
-					shutdownErr <- srv.Shutdown(ctxT)
-				})
-				defer cancel()
-
 				r.PathPrefix("/debug/pprof/").HandlerFunc(pprof.Index)
 				r.PathPrefix("/debug/pprof/cmdline").HandlerFunc(pprof.Cmdline)
 				r.PathPrefix("/debug/pprof/profile").HandlerFunc(pprof.Profile)
@@ -130,11 +124,11 @@ func NewDevCmd() *cobra.Command {
 
 				devworkflow.RegisterEndpoints(stackState, r)
 
-				go stackState.Run(ctxWithCancel)
+				go stackState.Run(ctx)
 
 				if devWebServer {
 					webPort := port + 1
-					proxyTarget, err := web.StartDevServer(ctxWithCancel, root, webPackage, port, webPort)
+					proxyTarget, err := web.StartDevServer(ctx, root, webPackage, port, webPort)
 					if err != nil {
 						return err
 					}
@@ -164,6 +158,15 @@ func NewDevCmd() *cobra.Command {
 					r.PathPrefix("/").Handler(mux)
 				}
 
+				go func() {
+					// On cancelation, i.e. Ctrl-C, ask the server to shutdown.
+					<-ctx.Done()
+					ctxT, cancelT := context.WithTimeout(ctx, 1*time.Second)
+					defer cancelT()
+
+					shutdownErr <- srv.Shutdown(ctxT)
+				}()
+
 				if err := srv.ListenAndServe(); err != nil {
 					if err != http.ErrServerClosed {
 						// Fetch logs here
@@ -183,22 +186,4 @@ func NewDevCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&devworkflow.AlsoOutputBuildToStderr, "alsooutputtostderr", devworkflow.AlsoOutputBuildToStderr, "Also send build output to stderr.")
 
 	return cmd
-}
-
-func withSigIntCancel(ctx context.Context, onShutdown func()) (context.Context, func()) {
-	ctx, cancel := context.WithCancel(ctx)
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		select {
-		case <-c:
-			cancel()
-			onShutdown()
-		case <-ctx.Done():
-		}
-	}()
-	return ctx, func() {
-		signal.Stop(c)
-		cancel()
-	}
 }

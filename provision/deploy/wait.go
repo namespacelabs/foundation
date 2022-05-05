@@ -25,16 +25,17 @@ const (
 
 func Wait(ctx context.Context, env ops.Environment, waiters []ops.Waiter) error {
 	rwb := renderwait.NewBlock(ctx, "deploy")
-	err := ops.WaitMultiple(ctx, waiters, observeContainers(ctx, env, rwb.Ch()))
+
+	waitErr := ops.WaitMultiple(ctx, waiters, observeContainers(ctx, env, rwb.Ch()))
 
 	// Make sure that rwb completes before further output below (for ordering purposes).
-	if waitErr := rwb.Wait(ctx); waitErr != nil {
-		if err == nil {
-			err = waitErr
+	if err := rwb.Wait(ctx); err != nil {
+		if waitErr == nil {
+			return err
 		}
 	}
 
-	return err
+	return waitErr
 }
 
 func observeContainers(ctx context.Context, env ops.Environment, parent chan ops.Event) chan ops.Event {

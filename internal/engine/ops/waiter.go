@@ -32,8 +32,6 @@ type Event struct {
 	WaitDetails string
 	// XXX move to a runtime/ specific type.
 	RuntimeSpecificHelp string // Something like `kubectl -n foobar describe pod quux`
-
-	AllDone bool // True when WaitUntilReady returns.
 }
 
 type WaitStatus interface {
@@ -50,10 +48,7 @@ func WaitMultiple(ctx context.Context, waiters []Waiter, ch chan Event) error {
 	}
 
 	if ch != nil {
-		defer func() {
-			ch <- Event{AllDone: true}
-			close(ch)
-		}()
+		defer close(ch)
 	}
 
 	if len(waiters) == 0 {
@@ -73,14 +68,11 @@ func WaitMultiple(ctx context.Context, waiters []Waiter, ch chan Event) error {
 			if ch != nil {
 				chch = make(chan Event)
 
-				eg.Go(func(_ context.Context) error {
+				go func() {
 					for ev := range chch {
-						if !ev.AllDone {
-							ch <- ev
-						}
+						ch <- ev
 					}
-					return nil
-				})
+				}()
 			}
 
 			return w(ctx, chch)

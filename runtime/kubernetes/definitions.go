@@ -114,10 +114,7 @@ func RegisterGraphHandlers() {
 				sc := sc // Close sc.
 				waiters = append(waiters, func(ctx context.Context, ch chan ops.Event) error {
 					if ch != nil {
-						defer func() {
-							ch <- ops.Event{AllDone: true}
-							close(ch)
-						}()
+						defer close(ch)
 					}
 
 					cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))

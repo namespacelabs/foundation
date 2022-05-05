@@ -6,6 +6,7 @@ package fncobra
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -228,6 +229,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if cleanupTracer != nil {
 		cleanupTracer()
 	}
+
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
 	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
 		// Printing the new version message if any.
@@ -259,6 +261,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		default:
 		}
 	}
+
 	// Ensures deferred routines after invoked gracefully before os.Exit.
 	defer handleExit()
 	defer func() {
@@ -268,7 +271,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Commit the bundle to the filesystem.
 		_ = bundler.Flush(ctxWithSink, bundle)
 	}()
-	if err != nil {
+
+	if err != nil && !errors.Is(err, context.Canceled) {
 		exitCode := handleExitError(colors, err)
 		// Record errors only after the user sees them to hide potential latency implications.
 		// We pass the original ctx without sink since logs have already been flushed.

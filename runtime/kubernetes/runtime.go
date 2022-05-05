@@ -18,7 +18,6 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/portforward"
@@ -221,7 +220,7 @@ func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.Act
 			return err
 		}
 
-		return wait.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
+		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
 			return waiter.Poll(ctx, cli)
 		})
 	})
