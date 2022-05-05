@@ -77,8 +77,8 @@ func SDK(ctx context.Context) (compute.Computable[Kubectl], error) {
 		return nil, err
 	}
 
-	k3dPath := filepath.Join(cacheDir, "kubectl")
-	written := unpack.WriteLocal(k3dPath, 0755, ref)
+	kubectlPath := filepath.Join(cacheDir, "kubectl")
+	written := unpack.WriteLocal(kubectlPath, 0755, ref)
 
 	return compute.Map(
 		tasks.Action("kubectl.ensure").Arg("version", version).HumanReadablef("Ensuring kubectl %s is installed", version),

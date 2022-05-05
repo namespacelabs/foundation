@@ -6,14 +6,13 @@ package tools
 
 import (
 	"context"
+	"os"
+	"os/exec"
 
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/runtime/rtypes"
-	"namespacelabs.dev/foundation/runtime/tools"
-	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/sdk/grpcurl"
 )
 
 func newGRPCurlCmd() *cobra.Command {
@@ -23,22 +22,19 @@ func newGRPCurlCmd() *cobra.Command {
 		DisableFlagParsing: true,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			rt := tools.Impl()
-
-			res, err := compute.Get(ctx, oci.ResolveImage("fullstorydev/grpcurl:v1.8.5", rt.HostPlatform()))
+			bin, err := grpcurl.EnsureSDK(ctx)
 			if err != nil {
 				return err
 			}
 
-			return tools.Impl().Run(ctx, rtypes.RunToolOpts{
-				IO:                rtypes.StdIO(ctx),
-				UseHostNetworking: true,
-				RunBinaryOpts: rtypes.RunBinaryOpts{
-					WorkingDir: "/",
-					Image:      res.Value.(v1.Image),
-					Args:       args,
-				},
-			})
+			done := console.EnterInputMode(ctx)
+			defer done()
+
+			kubectl := exec.CommandContext(ctx, string(bin), args...)
+			kubectl.Stdout = os.Stdout
+			kubectl.Stderr = os.Stderr
+			kubectl.Stdin = os.Stdin
+			return kubectl.Run()
 		}),
 	}
 
