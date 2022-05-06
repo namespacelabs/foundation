@@ -8,8 +8,7 @@ server: fn.#OpaqueServer & {
 
 	isStateful: true
 
-	// TODO pin the localstack version.
-	binary: image: "localstack/localstack"
+	binary: image: "localstack/localstack@sha256:4ebb75b927bcfc9a79c77075734e51ce6031054b776eed2defcb3c0dfa4cf699"
 
 	import: [
 		"namespacelabs.dev/foundation/universe/development/localstack/configure",
