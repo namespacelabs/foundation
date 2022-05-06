@@ -19,7 +19,7 @@ type StaticBuild struct {
 }
 
 func (w StaticBuild) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	return ViteBuild(ctx, w.Location, env, conf.Target, ".", "/")
+	return ViteBuild(ctx, w.Location, env, conf, ".", "/")
 }
 
 func (w StaticBuild) PlatformIndependent() bool { return true }

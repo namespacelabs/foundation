@@ -94,10 +94,7 @@ func (impl) EvalProvision(n *schema.Node) (frontend.ProvisionStack, error) {
 }
 
 func (impl) PrepareBuild(ctx context.Context, endpoints languages.Endpoints, srv provision.Server, isFocus bool) (build.Spec, error) {
-	builds, err := buildWebApps(ctx, endpoints, srv, isFocus)
-	if err != nil {
-		return nil, err
-	}
+	schemaEndpoints := endpoints.GetEndpoints()
 
 	if useDevBuild(srv.Env().Proto()) {
 		pkg, err := srv.Env().LoadByName(ctx, controllerPkg)
@@ -110,29 +107,15 @@ func (impl) PrepareBuild(ctx context.Context, endpoints languages.Endpoints, srv
 			return nil, err
 		}
 
-		return buildDevServer{p.Plan, builds}, nil
+		return buildDevServer{p.Plan, srv, isFocus, schemaEndpoints}, nil
 	}
 
-	var defaultConf memfs.FS
-	defaultConf.Add("etc/nginx/conf.d/default.conf", []byte(fmt.Sprintf(`server {
-		listen %d;
-		server_name localhost;
-
-		location / {
-			root /%s;
-			index index.html;
-		}
-
-		error_page 500 502 503 504 /50x.html;
-		location = /50x.html {
-			root /usr/share/nginx/html;
-		}
-}`, httpPort, compiledPath)))
-
-	return buildProdWebServer{oci.MakeLayer("conf", compute.Precomputed[fs.FS](&defaultConf, defaultConf.ComputeDigest)), builds}, nil
+	return buildProdWebServer{
+		srv, isFocus, schemaEndpoints,
+	}, nil
 }
 
-func buildWebApps(ctx context.Context, endpoints languages.Endpoints, srv provision.Server, isFocus bool) ([]compute.Computable[oci.Image], error) {
+func buildWebApps(ctx context.Context, conf build.Configuration, endpoints []*schema.Endpoint, srv provision.Server, isFocus bool) ([]compute.Computable[oci.Image], error) {
 	var builds []compute.Computable[oci.Image]
 
 	for _, m := range srv.Proto().UrlMap {
@@ -162,7 +145,12 @@ func buildWebApps(ctx context.Context, endpoints languages.Endpoints, srv provis
 			return nil, err
 		}
 
-		var build compute.Computable[oci.Image]
+		targetConf := build.Configuration{
+			Target:      nil,
+			PublishName: conf.PublishName,
+		}
+
+		var b compute.Computable[oci.Image]
 		if useDevBuild(srv.Env().Proto()) {
 			var devwebConfig memfs.FS
 			devwebConfig.Add("devweb.config.js", []byte(`import { defineConfig, loadEnv } from "vite";
@@ -188,15 +176,15 @@ func buildWebApps(ctx context.Context, endpoints languages.Endpoints, srv provis
 
 			extra = append(extra, &devwebConfig)
 
-			build, err = viteSource(ctx, filepath.Join("/packages", m.PackageName), loc, isFocus, srv.Env(), nil, extra...)
+			b, err = viteSource(ctx, filepath.Join("/packages", m.PackageName), loc, isFocus, srv.Env(), targetConf, extra...)
 		} else {
-			build, err = ViteBuild(ctx, loc, srv.Env(), nil, filepath.Join(compiledPath, m.PathPrefix), m.PathPrefix, extra...)
+			b, err = ViteBuild(ctx, loc, srv.Env(), targetConf, filepath.Join(compiledPath, m.PathPrefix), m.PathPrefix, extra...)
 		}
 
 		if err != nil {
 			return nil, err
 		}
-		builds = append(builds, build)
+		builds = append(builds, b)
 	}
 	return builds, nil
 }
@@ -330,22 +318,30 @@ func (i impl) GenerateNode(pkg *workspace.Package, available []*schema.Node) ([]
 }
 
 type buildDevServer struct {
-	baseImage      build.Plan
-	staticContents []compute.Computable[oci.Image]
+	baseImage       build.Plan
+	srv             provision.Server
+	isFocus         bool
+	schemaEndpoints []*schema.Endpoint
 }
 
-func (bws buildDevServer) BuildImage(ctx context.Context, env ops.Environment, cfg build.Configuration) (compute.Computable[oci.Image], error) {
+func (bws buildDevServer) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+	builds, err := buildWebApps(ctx, conf, bws.schemaEndpoints, bws.srv, bws.isFocus)
+	if err != nil {
+		return nil, err
+	}
+
 	baseImage, err := bws.baseImage.Spec.BuildImage(ctx, env, build.Configuration{
 		SourceLabel: bws.baseImage.SourceLabel,
 		Workspace:   bws.baseImage.Workspace,
-		Target:      cfg.Target,
+		Target:      conf.Target,
+		PublishName: conf.PublishName,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	images := []compute.Computable[oci.Image]{baseImage}
-	images = append(images, bws.staticContents...)
+	images = append(images, builds...)
 
 	return oci.MergeImageLayers(images...), nil
 }
@@ -353,13 +349,39 @@ func (bws buildDevServer) BuildImage(ctx context.Context, env ops.Environment, c
 func (bws buildDevServer) PlatformIndependent() bool { return false }
 
 type buildProdWebServer struct {
-	config         compute.Computable[oci.Layer]
-	staticContents []compute.Computable[oci.Image]
+	srv             provision.Server
+	isFocus         bool
+	schemaEndpoints []*schema.Endpoint
 }
 
-func (bws buildProdWebServer) BuildImage(ctx context.Context, env ops.Environment, cfg build.Configuration) (compute.Computable[oci.Image], error) {
-	images := []compute.Computable[oci.Image]{oci.ResolveImage("nginx:1.21.5-alpine", *cfg.Target), oci.MakeImage(oci.Scratch(), bws.config)}
-	images = append(images, bws.staticContents...)
+func (bws buildProdWebServer) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+	builds, err := buildWebApps(ctx, conf, bws.schemaEndpoints, bws.srv, bws.isFocus)
+	if err != nil {
+		return nil, err
+	}
+
+	var defaultConf memfs.FS
+	defaultConf.Add("etc/nginx/conf.d/default.conf", []byte(fmt.Sprintf(`server {
+		listen %d;
+		server_name localhost;
+
+		location / {
+			root /%s;
+			index index.html;
+		}
+
+		error_page 500 502 503 504 /50x.html;
+		location = /50x.html {
+			root /usr/share/nginx/html;
+		}
+}`, httpPort, compiledPath)))
+	config := oci.MakeLayer("conf", compute.Precomputed[fs.FS](&defaultConf, defaultConf.ComputeDigest))
+
+	images := []compute.Computable[oci.Image]{
+		oci.ResolveImage("nginx:1.21.5-alpine", *conf.Target),
+		oci.MakeImage(oci.Scratch(), config),
+	}
+	images = append(images, builds...)
 	return oci.MergeImageLayers(images...), nil
 }
 

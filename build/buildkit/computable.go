@@ -374,6 +374,10 @@ func IngestFromFS(ctx context.Context, fsys fs.FS, path string, compressed bool)
 		return nil, err
 	}
 
+	return attachImageResults(ctx, img)
+}
+
+func attachImageResults(ctx context.Context, img oci.Image) (oci.Image, error) {
 	digest, err := img.Digest()
 	if err != nil {
 		return nil, err
@@ -486,7 +490,12 @@ func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse)
 		return nil, err
 	}
 
-	return compute.WithGraphLifecycle(ctx, func(ctx context.Context) (oci.Image, error) {
+	img, err := compute.WithGraphLifecycle(ctx, func(ctx context.Context) (oci.Image, error) {
 		return remote.Image(p, remote.WithContext(ctx))
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return attachImageResults(ctx, img)
 }

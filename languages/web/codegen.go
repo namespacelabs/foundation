@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend"
-	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -77,9 +76,9 @@ func generatePlaceholder(loader workspace.Packages) genFunc {
 	}
 }
 
-func resolveBackend(wenv workspace.WorkspaceEnvironment, endpoints languages.Endpoints) genFunc {
+func resolveBackend(wenv workspace.WorkspaceEnvironment, endpoints []*schema.Endpoint) genFunc {
 	return func(ctx context.Context, loc workspace.Location, backend *OpGenHttpBackend_Backend) (*backendDefinition, error) {
-		for _, endpoint := range endpoints.GetEndpoints() {
+		for _, endpoint := range endpoints {
 			if endpoint.EndpointOwner == backend.EndpointOwner && endpoint.ServiceName == backend.ServiceName {
 				pkg, err := wenv.LoadByName(ctx, schema.PackageName(endpoint.EndpointOwner))
 				if err != nil {
