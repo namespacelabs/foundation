@@ -9,7 +9,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
 	corev1 "k8s.io/api/core/v1"
@@ -17,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/docker"
@@ -140,18 +143,38 @@ func PrepareK3d(clusterName string, updateKubecfg bool) PrepareFunc {
 		// XXX Need to support changing the registry of a cluster, for #340.
 		// const registryName = "k3d-registry." + runtime.LocalBaseDomain
 		const registryName = "k3d-registry.nslocal.dev"
-		const registryPort = 41000
-		if _, err := cli.ContainerInspect(ctx, registryName); err != nil {
+		registryCtr, err := cli.ContainerInspect(ctx, registryName)
+		if err != nil {
 			if !client.IsErrNotFound(err) {
 				return nil, err
 			}
 
-			if err := k3dbin.CreateRegistry(ctx, registryName, registryPort); err != nil {
+			requestedRegistryPort := 41000
+			// If running in CI, use dynamic port allocation to reduce probability of a port collision.
+			// And in CI there's little need for stable addresses.
+			if environment.IsRunningInCI() {
+				requestedRegistryPort = 0
+			}
+
+			if err := k3dbin.CreateRegistry(ctx, registryName, requestedRegistryPort); err != nil {
+				return nil, err
+			}
+
+			registryCtr, err = cli.ContainerInspect(ctx, registryName)
+			if err != nil {
 				return nil, err
 			}
 		}
 
-		r := &registry.Registry{Url: fmt.Sprintf("http://%s:%d", registryName, registryPort)}
+		bindings := findPort(registryCtr, "5000/tcp")
+		if len(bindings) == 0 {
+			return nil, fmt.Errorf("registry: does not export port 5000 as expected")
+		}
+
+		registryPort := bindings[0].HostPort
+		registryAddr := fmt.Sprintf("%s:%s", registryName, registryPort)
+
+		r := &registry.Registry{Url: "http://" + registryAddr}
 
 		c, err := devhost.MakeConfiguration(r)
 		if err != nil {
@@ -174,7 +197,7 @@ func PrepareK3d(clusterName string, updateKubecfg bool) PrepareFunc {
 
 		if ours == nil {
 			// Create cluster.
-			if err := k3dbin.CreateCluster(ctx, clusterName, fmt.Sprintf("%s:%d", registryName, registryPort), "rancher/k3s:v1.20.7-k3s1", updateKubecfg); err != nil {
+			if err := k3dbin.CreateCluster(ctx, clusterName, registryAddr, "rancher/k3s:v1.20.7-k3s1", updateKubecfg); err != nil {
 				return nil, err
 			}
 		}
@@ -200,6 +223,14 @@ func PrepareK3d(clusterName string, updateKubecfg bool) PrepareFunc {
 
 		return confs, nil
 	}
+}
+
+func findPort(ctr types.ContainerJSON, port string) []nat.PortBinding {
+	if ctr.NetworkSettings == nil {
+		return nil
+	}
+
+	return ctr.NetworkSettings.Ports[nat.Port(port)]
 }
 
 // XXX ideally setting up an ingress class would just be a dependent step in the graph; but
