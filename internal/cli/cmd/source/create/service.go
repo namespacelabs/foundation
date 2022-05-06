@@ -22,35 +22,38 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
+const serviceSuffix = "service"
+
 func serviceName(loc fnfs.Location) string {
 	var name string
 	base := filepath.Base(loc.RelPath)
 	dir := filepath.Dir(loc.RelPath)
-	if base != "service" {
+	if base != serviceSuffix {
 		name = strcase.ToCamel(base)
-	} else if dir != "service" {
+	} else if dir != serviceSuffix {
 		name = strcase.ToCamel(dir)
 	}
 
-	if name != "" && !strings.HasSuffix(strings.ToLower(name), "service") {
-		return name + "Service"
+	if name != "" && !strings.HasSuffix(strings.ToLower(name), serviceSuffix) {
+		return name + strcase.ToCamel(serviceSuffix)
 	}
 
 	return name
 }
 
 func newServiceCmd() *cobra.Command {
+	use := "service"
 	cmd := &cobra.Command{
-		Use:   "service",
+		Use:   use,
 		Short: "Creates a service.",
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, loc, err := targetPackage(ctx, args, "service")
+			root, loc, err := targetPackage(ctx, args, use)
 			if err != nil {
 				return err
 			}
 
-			m := computeModel("service", serviceName(loc))
+			m := computeModel(use, serviceName(loc))
 			if !m.IsFinal() {
 				// Form aborted
 				return nil

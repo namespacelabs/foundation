@@ -20,36 +20,39 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
+const serverSuffix = "server"
+
 func serverName(loc fnfs.Location) string {
 	var name string
 	base := filepath.Base(loc.RelPath)
 	dir := filepath.Dir(loc.RelPath)
-	if base != "server" {
+	if base != serverSuffix {
 		name = base
-	} else if dir != "server" {
+	} else if dir != serverSuffix {
 		name = dir
 	}
 
-	if name != "" && !strings.HasSuffix(name, "server") {
-		return name + "server"
+	if name != "" && !strings.HasSuffix(name, serverSuffix) {
+		return name + serverSuffix
 	}
 
 	return name
 }
 
 func newServerCmd() *cobra.Command {
+	use := "server"
 	cmd := &cobra.Command{
-		Use:   "server",
+		Use:   use,
 		Short: "Creates a server.",
 		Args:  cobra.RangeArgs(0, 1),
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, loc, err := targetPackage(ctx, args, "server")
+			root, loc, err := targetPackage(ctx, args, use)
 			if err != nil {
 				return err
 			}
 
-			m := computeModel("server", serverName(loc))
+			m := computeModel(use, serverName(loc))
 			if !m.IsFinal() {
 				// Form aborted
 				return nil
