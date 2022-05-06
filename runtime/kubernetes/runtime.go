@@ -500,6 +500,11 @@ func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 	}
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)
+	p := newPodResolver(r.cli, r.boundEnv.ns(), map[string]string{
+		kubedef.K8sServerId: server.Id,
+	})
+
+	p.Start(ctxWithCancel)
 
 	go func() {
 		if err := r.boundEnv.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
@@ -509,11 +514,8 @@ func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 			LocalPort:     0,
 			ContainerPort: int(endpoint.GetPort().ContainerPort),
 
-			Resolve: func(ctx context.Context) (v1.Pod, error) {
-				// XXX instead of resolving all the time, cache the resolution.
-				return resolvePodByLabels(ctx, r.cli, io.Discard, r.boundEnv.ns(), map[string]string{
-					kubedef.K8sServerId: server.Id,
-				})
+			Watch: func(ctx context.Context, f func(*v1.Pod, int64, error)) func() {
+				return p.Watch(f)
 			},
 			ReportPorts: callback,
 		}); err != nil {
@@ -547,8 +549,9 @@ func (r k8sRuntime) ForwardIngress(ctx context.Context, localAddrs []string, loc
 			LocalPort:     localPort,
 			ContainerPort: svc.ContainerPort,
 
-			Resolve: func(ctx context.Context) (v1.Pod, error) {
-				return pod, nil
+			Watch: func(_ context.Context, f func(*v1.Pod, int64, error)) func() {
+				f(&pod, 1, nil)
+				return func() {}
 			},
 			ReportPorts: func(p runtime.ForwardedPort) {
 				f(runtime.ForwardedPortEvent{

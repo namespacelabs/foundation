@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	"go.uber.org/atomic"
 	v1 "k8s.io/api/core/v1"
@@ -28,9 +29,9 @@ type fwdArgs struct {
 	Namespace     string
 	Identifier    string
 	LocalAddrs    []string
-	LocalPort     int
+	LocalPort     int // 0 to be dynamically allocated.
 	ContainerPort int
-	Resolve       func(context.Context) (v1.Pod, error)
+	Watch         func(context.Context, func(*v1.Pod, int64, error)) func()
 	ReportPorts   func(runtime.ForwardedPort)
 }
 
@@ -56,6 +57,63 @@ func (r boundEnv) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error 
 
 	ids := atomic.NewInt32(0)
 	ex, wait := executor.New(ctx)
+
+	var mu sync.Mutex
+	var currentConn httpstream.Connection
+	var currentRev int64
+	cond := sync.NewCond(&mu)
+
+	defer func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if currentConn != nil {
+			currentConn.Close()
+		}
+	}()
+
+	go func() {
+		// On cancelation, wake up all go routines waiting on a connection.
+		<-ctx.Done()
+		cond.Broadcast()
+	}()
+
+	closeWatcher := args.Watch(ctx, func(pod *v1.Pod, revision int64, err error) {
+		ex.Go(func(ctx context.Context) error {
+			if err != nil {
+				return err
+			}
+
+			var streamConn httpstream.Connection
+			if pod != nil {
+				fmt.Fprintf(debug, "kube/portfwd: %s: %d: resolved pod: %s\n", args.Identifier, args.ContainerPort, pod.Name)
+
+				req := restClient.Post().Resource("pods").Namespace(args.Namespace).Name(pod.Name).SubResource("portforward")
+
+				dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
+
+				streamConn, _, err = dialer.Dial(PortForwardProtocolV1Name)
+				if err != nil {
+					return err
+				}
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			if revision > currentRev {
+				currentRev = revision
+				if currentConn != nil {
+					currentConn.Close()
+				}
+
+				currentConn = streamConn
+				cond.Broadcast()
+			}
+			return nil
+		})
+	})
+	defer closeWatcher()
+
 	for _, localAddr := range args.LocalAddrs {
 		var cfg net.ListenConfig
 		lst, err := cfg.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", localAddr, args.LocalPort))
@@ -83,25 +141,14 @@ func (r boundEnv) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error 
 				fmt.Fprintf(debug, "kube/portfwd: %s: %d: accepted new connection: %v\n", args.Identifier, args.ContainerPort, conn.RemoteAddr())
 
 				ex.Go(func(ctx context.Context) error {
-					pod, err := args.Resolve(ctx)
+					streamConn, err := cancelableWait(ctx, cond, func() (httpstream.Connection, bool) {
+						return currentConn, currentConn != nil
+					})
 					if err != nil {
 						return err
 					}
 
-					fmt.Fprintf(debug, "kube/portfwd: %s: %d: resolved pod: %s\n", args.Identifier, args.ContainerPort, pod.Name)
-
-					req := restClient.Post().Resource("pods").Namespace(args.Namespace).Name(pod.Name).SubResource("portforward")
-
-					dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
-
-					streamConn, _, err := dialer.Dial(PortForwardProtocolV1Name)
-					if err != nil {
-						return err
-					}
-
-					defer streamConn.Close()
-
-					return handleConnection(ctx, streamConn, conn, int(ids.Inc()), pod.Name, args.ContainerPort, nil)
+					return handleConnection(ctx, streamConn, conn, int(ids.Inc()), args.Identifier, args.ContainerPort, nil)
 				})
 			}
 		})
@@ -110,14 +157,14 @@ func (r boundEnv) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error 
 	return wait()
 }
 
-func handleConnection(ctx context.Context, streamConn httpstream.Connection, conn net.Conn, requestID int, podName string, containerPort int, errch chan error) error {
+func handleConnection(ctx context.Context, streamConn httpstream.Connection, conn net.Conn, requestID int, debugid string, containerPort int, errch chan error) error {
 	defer conn.Close()
 
 	localAddr := conn.(*net.TCPConn).LocalAddr().(*net.TCPAddr)
 	remoteAddr := conn.(*net.TCPConn).RemoteAddr().(*net.TCPAddr)
 
 	debug := console.Debug(ctx)
-	fmt.Fprintf(debug, "kube/portfwd: handling connection for %s:%d: remote addr: %v\n", podName, containerPort, remoteAddr)
+	fmt.Fprintf(debug, "kube/portfwd: %s: %d: handling connection for remote addr: %v\n", debugid, containerPort, remoteAddr)
 
 	headers := http.Header{}
 	headers.Set(v1.StreamType, v1.StreamTypeError)
@@ -125,7 +172,7 @@ func handleConnection(ctx context.Context, streamConn httpstream.Connection, con
 	headers.Set(v1.PortForwardRequestIDHeader, fmt.Sprintf("%d", requestID))
 
 	makeErr := func(msg string, err error) error {
-		return fmt.Errorf("kube/portfwd: %s: %d -> %d: %s: %w", podName, localAddr.Port, containerPort, msg, err)
+		return fmt.Errorf("kube/portfwd: %s: %d -> %d: %s: %w", debugid, localAddr.Port, containerPort, msg, err)
 	}
 
 	errorStream, err := streamConn.CreateStream(headers)
@@ -188,7 +235,7 @@ func handleConnection(ctx context.Context, streamConn httpstream.Connection, con
 	case <-localError:
 	}
 
-	fmt.Fprintf(debug, "kube/portfwd: %s: %d -> %d: remote addr: %v: closed connection: %v\n", podName, localAddr.Port, containerPort, remoteAddr, err)
+	fmt.Fprintf(debug, "kube/portfwd: %s: %d -> %d: remote addr: %v: closed connection: %v\n", debugid, localAddr.Port, containerPort, remoteAddr, err)
 
 	// always expect something on errorChan (it may be nil)
 	return <-errorChan
