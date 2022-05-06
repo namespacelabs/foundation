@@ -48,12 +48,12 @@ type LoadPackageOpt func(*LoadPackageOpts)
 
 func DontLoadDependencies() LoadPackageOpt {
 	return func(lpo *LoadPackageOpts) {
-		lpo.LoadDependencies = false
+		lpo.LoadPackageReferences = false
 	}
 }
 
 type LoadPackageOpts struct {
-	LoadDependencies bool
+	LoadPackageReferences bool
 }
 
 type EarlyPackageLoader interface {
@@ -242,7 +242,7 @@ func (pl *PackageLoader) LoadByNameWithOpts(ctx context.Context, packageName sch
 }
 
 func (pl *PackageLoader) LoadPackage(ctx context.Context, loc Location, opt ...LoadPackageOpt) (parsed *Package, err error) {
-	opts := LoadPackageOpts{LoadDependencies: true}
+	opts := LoadPackageOpts{LoadPackageReferences: true}
 	for _, o := range opt {
 		o(&opts)
 	}

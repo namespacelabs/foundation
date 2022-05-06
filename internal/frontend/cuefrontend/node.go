@@ -180,23 +180,21 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			return err
 		}
 
-		if opts.LoadDependencies {
-			fsys, err := pl.WorkspaceOf(ctx, loc.Module)
+		fsys, err := pl.WorkspaceOf(ctx, loc.Module)
+		if err != nil {
+			return err
+		}
+
+		for _, path := range paths {
+			contents, err := fs.ReadFile(fsys, loc.Rel(path))
 			if err != nil {
-				return err
+				return fnerrors.UserError(loc, "failed to load eval data %q: %w", path, err)
 			}
 
-			for _, path := range paths {
-				contents, err := fs.ReadFile(fsys, loc.Rel(path))
-				if err != nil {
-					return fnerrors.UserError(loc, "failed to load eval data %q: %w", path, err)
-				}
-
-				out.PackageData = append(out.PackageData, &types.Resource{
-					Path:     path,
-					Contents: contents,
-				})
-			}
+			out.PackageData = append(out.PackageData, &types.Resource{
+				Path:     path,
+				Contents: contents,
+			})
 		}
 	}
 
@@ -231,7 +229,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 				})
 			}
 
-			if opts.LoadDependencies {
+			if opts.LoadPackageReferences {
 				constructor, err := constructAny(ctx, inst, v, newAPI, pl, loc)
 				if err != nil {
 					return err
@@ -512,7 +510,7 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 					})
 				}
 
-				if opts.LoadDependencies {
+				if opts.LoadPackageReferences {
 					constructor, err := constructAny(ctx, inst, v, newAPI, pl, loc)
 					if err != nil {
 						return err
