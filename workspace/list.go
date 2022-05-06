@@ -37,7 +37,7 @@ func ListSchemas(ctx context.Context, root *Root) (SchemaList, error) {
 		}
 
 		if d.IsDir() {
-			if (path != "." && path[0] == '.') || slices.Contains(wscontents.DirsToAvoid, path) {
+			if (path != "." && path[0] == '.') || slices.Contains(wscontents.DirsToAvoid, d.Name()) {
 				return fs.SkipDir
 			}
 			return nil
