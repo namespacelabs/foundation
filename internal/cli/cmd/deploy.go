@@ -88,7 +88,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			waiters, err := computed.Deployer.Apply(ctx, runtime.TaskServerDeploy, env.BindWith(packages))
+			waiters, err := computed.Deployer.Execute(ctx, runtime.TaskServerDeploy, env.BindWith(packages))
 			if err != nil {
 				return err
 			}

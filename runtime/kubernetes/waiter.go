@@ -13,7 +13,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -38,10 +37,8 @@ type waitOn struct {
 
 func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 	if ch != nil {
-		defer func() {
-			ch <- ops.Event{AllDone: true}
-			close(ch)
-		}()
+		defer close(ch)
+
 	}
 
 	return tasks.Action(runtime.TaskServerStart).Scope(w.scope).Run(ctx,
@@ -68,17 +65,12 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 				ch <- ev
 			}
 
-			cfg, err := client.ComputeHostEnv(w.devHost, w.env)
+			cli, err := client.NewClient(client.ConfigFromDevHost(ctx, w.devHost, w.env))
 			if err != nil {
 				return err
 			}
 
-			cli, err := client.NewClientFromHostEnv(cfg)
-			if err != nil {
-				return err
-			}
-
-			return wait.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(c context.Context) (done bool, err error) {
+			return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(c context.Context) (done bool, err error) {
 				var observedGeneration int64
 				var readyReplicas, replicas int32
 

@@ -91,7 +91,7 @@ func (pi *updateCluster) Inputs() *compute.In {
 func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) error {
 	plan := compute.GetDepValue(deps, pi.plan, "plan")
 
-	waiters, err := plan.Deployer.Apply(ctx, runtime.TaskServerDeploy, pi.env)
+	waiters, err := plan.Deployer.Execute(ctx, runtime.TaskServerDeploy, pi.env)
 	if err != nil {
 		return err
 	}

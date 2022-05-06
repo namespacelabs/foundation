@@ -5,7 +5,9 @@
 package client
 
 import (
+	"context"
 	"errors"
+	"fmt"
 
 	k8s "k8s.io/client-go/kubernetes"
 	tadmissionregistrationv1 "k8s.io/client-go/kubernetes/typed/admissionregistration/v1"
@@ -16,6 +18,7 @@ import (
 	trbacv1 "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -23,12 +26,12 @@ import (
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
-type kubeconfigProvider interface {
+type KubeconfigProvider interface {
 	GetKubeconfig() string
 	GetContext() string
 }
 
-func NewRestConfigFromHostEnv(cfg kubeconfigProvider) (*restclient.Config, error) {
+func NewRestConfigFromHostEnv(cfg KubeconfigProvider) (*restclient.Config, error) {
 	if cfg.GetKubeconfig() == "" {
 		return nil, errors.New("hostEnv.Kubeconfig is required")
 	}
@@ -38,7 +41,15 @@ func NewRestConfigFromHostEnv(cfg kubeconfigProvider) (*restclient.Config, error
 		&clientcmd.ConfigOverrides{CurrentContext: cfg.GetContext()}).ClientConfig()
 }
 
-func NewClientFromHostEnv(cfg kubeconfigProvider) (*k8s.Clientset, error) {
+func NewClient(cfg KubeconfigProvider, err error) (*k8s.Clientset, error) {
+	if err != nil {
+		return nil, err
+	}
+
+	return NewClientFromHostEnv(cfg)
+}
+
+func NewClientFromHostEnv(cfg KubeconfigProvider) (*k8s.Clientset, error) {
 	config, err := NewRestConfigFromHostEnv(cfg)
 	if err != nil {
 		return nil, err
@@ -119,4 +130,25 @@ func ComputeHostEnv(devHost *schema.DevHost, env *schema.Environment) (*HostEnv,
 	}
 
 	return hostEnv, nil
+}
+
+func ConfigFromEnv(ctx context.Context, env ops.Environment) (KubeconfigProvider, error) {
+	if x, ok := env.(interface {
+		KubeconfigProvider() (KubeconfigProvider, error)
+	}); ok {
+		return x.KubeconfigProvider()
+	}
+
+	return ConfigFromDevHost(ctx, env.DevHost(), env.Proto())
+}
+
+func ConfigFromDevHost(ctx context.Context, devhost *schema.DevHost, env *schema.Environment) (KubeconfigProvider, error) {
+	cfg, err := ComputeHostEnv(devhost, env)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "kubernetes: using configuration: %+v\n", cfg)
+
+	return cfg, nil
 }

@@ -49,7 +49,7 @@ func apply(ctx context.Context) error {
 				return err
 			}
 
-			if err = s3.EnsureBucketExistsByName(ctx, b.S3Client, bucket.BucketName, bucket.Region); err != nil {
+			if err := s3.EnsureBucketExistsByName(ctx, b.S3Client, bucket.BucketName, bucket.Region); err != nil {
 				return fmt.Errorf("failed to create bucket: %w", err)
 			}
 

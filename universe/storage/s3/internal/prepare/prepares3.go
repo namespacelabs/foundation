@@ -41,7 +41,7 @@ func main() {
 		h.Any().HandleStack(provisionHook{})
 
 		protocol.RegisterPrepareServiceServer(sr, prepareHook{})
-		protocol.RegisterInvocationServiceServer(sr, configure.ProtocolHandler{Handlers: configure.HandlerCompat{Tool: configure.HandlersHandler{Handlers: h}}})
+		protocol.RegisterInvocationServiceServer(sr, h.ServiceHandler())
 	}); err != nil {
 		log.Fatal(err)
 	}
@@ -160,14 +160,12 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 	initArgs = append(initArgs, commonArgs...)
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-		For: req.Focus.GetPackageName(),
 		With: &kubedef.ContainerExtension{
 			Args: commonArgs,
 		},
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendInitContainer{
-		For: req.Focus.GetPackageName(),
 		With: &kubedef.InitContainerExtension{
 			PackageName: initContainer,
 			Args:        initArgs,

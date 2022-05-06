@@ -208,9 +208,11 @@ type ContainerWaitStatus struct {
 }
 
 type ContainerUnitWaitStatus struct {
-	Reference ContainerReference
-	Name      string
-	Status    string
+	Reference   ContainerReference
+	Name        string
+	StatusLabel string
+
+	Status Diagnostics
 }
 
 type ContainerReference interface {
@@ -221,7 +223,7 @@ type ContainerReference interface {
 func (cw ContainerWaitStatus) WaitStatus() string {
 	var inits []string
 	for _, init := range cw.Initializers {
-		inits = append(inits, fmt.Sprintf("%s: %s", init.Name, init.Status))
+		inits = append(inits, fmt.Sprintf("%s: %s", init.Name, init.StatusLabel))
 	}
 
 	joinedInits := strings.Join(inits, "; ")
@@ -230,11 +232,11 @@ func (cw ContainerWaitStatus) WaitStatus() string {
 	case 0:
 		return joinedInits
 	case 1:
-		return box(cw.Containers[0].Status, joinedInits)
+		return box(cw.Containers[0].StatusLabel, joinedInits)
 	default:
 		var labels []string
 		for _, ctr := range cw.Containers {
-			labels = append(labels, fmt.Sprintf("%s: %s", ctr.Name, ctr.Status))
+			labels = append(labels, fmt.Sprintf("%s: %s", ctr.Name, ctr.StatusLabel))
 		}
 
 		return box(fmt.Sprintf("{%s}", strings.Join(labels, "; ")), joinedInits)
@@ -262,4 +264,8 @@ type Diagnostics struct {
 	ExitCode         int32
 
 	RestartCount int32
+}
+
+func (d Diagnostics) Failed() bool {
+	return d.Terminated && d.ExitCode > 0
 }

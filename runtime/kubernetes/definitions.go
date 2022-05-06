@@ -30,7 +30,7 @@ import (
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, apply *kubedef.OpApply) (*ops.DispatcherResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, apply *kubedef.OpApply) (*ops.HandleResult, error) {
 		if apply.Resource == "" {
 			return nil, fnerrors.InternalError("%s: apply.Resource is required", d.Description)
 		}
@@ -100,7 +100,7 @@ func RegisterGraphHandlers() {
 					}
 					waiters = append(waiters, w.WaitUntilReady)
 				}
-				return &ops.DispatcherResult{
+				return &ops.HandleResult{
 					Waiters: waiters,
 				}, nil
 			} else {
@@ -114,18 +114,10 @@ func RegisterGraphHandlers() {
 				sc := sc // Close sc.
 				waiters = append(waiters, func(ctx context.Context, ch chan ops.Event) error {
 					if ch != nil {
-						defer func() {
-							ch <- ops.Event{AllDone: true}
-							close(ch)
-						}()
+						defer close(ch)
 					}
 
-					cfg, err := client.ComputeHostEnv(env.DevHost(), env.Proto())
-					if err != nil {
-						return err
-					}
-
-					cli, err := client.NewClientFromHostEnv(cfg)
+					cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
 					if err != nil {
 						return err
 					}
@@ -155,7 +147,7 @@ func RegisterGraphHandlers() {
 				})
 			}
 
-			return &ops.DispatcherResult{
+			return &ops.HandleResult{
 				Waiters: waiters,
 			}, nil
 		}
@@ -163,7 +155,7 @@ func RegisterGraphHandlers() {
 		return nil, nil
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, delete *kubedef.OpDelete) (*ops.DispatcherResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, delete *kubedef.OpDelete) (*ops.HandleResult, error) {
 		if delete.Resource == "" {
 			return nil, fnerrors.InternalError("%s: delete.Resource is required", d.Description)
 		}
@@ -204,7 +196,7 @@ func RegisterGraphHandlers() {
 		return nil, nil
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, deleteList *kubedef.OpDeleteList) (*ops.DispatcherResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, deleteList *kubedef.OpDeleteList) (*ops.HandleResult, error) {
 		if deleteList.Resource == "" {
 			return nil, fnerrors.InternalError("%s: deleteList.Resource is required", d.Description)
 		}
@@ -274,7 +266,7 @@ func RegisterGraphHandlers() {
 		return nil, nil
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, create *kubedef.OpCreate) (*ops.DispatcherResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, create *kubedef.OpCreate) (*ops.HandleResult, error) {
 		if create.Resource == "" {
 			return nil, fnerrors.InternalError("%s: create.Resource is required", d.Description)
 		}
@@ -326,7 +318,7 @@ func RegisterGraphHandlers() {
 		return nil, nil
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, create *kubedef.OpCreateSecretConditionally) (*ops.DispatcherResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, create *kubedef.OpCreateSecretConditionally) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.WorkspaceEnvironment)
 		if !ok {
 			return nil, fnerrors.InternalError("expected a workspace.WorkspaceEnvironment")
@@ -349,12 +341,7 @@ func RegisterGraphHandlers() {
 			return nil, nil // Nothing to do.
 		}
 
-		cfg, err := client.ComputeHostEnv(env.DevHost(), env.Proto())
-		if err != nil {
-			return nil, err
-		}
-
-		cli, err := client.NewClientFromHostEnv(cfg)
+		cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
 		if err != nil {
 			return nil, err
 		}

@@ -20,6 +20,7 @@ import (
 	"github.com/karrick/godirwalk"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
@@ -280,7 +281,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 	// XXX we could have an observe model driven from a single watcher, but
 	// there's a new watcher instantiated per Observe for simplicity for now.
 
-	watcher, err := fsnotify.NewWatcher()
+	watcher, err := filewatcher.NewFactory()
 	if err != nil {
 		return nil, err
 	}
@@ -298,13 +299,15 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 		}
 
 		// Watch every single file and directory in the snapshot.
-		if d.Type().IsDir() || d.Type().IsRegular() {
-			return watcher.Add(filepath.Join(vp.absPath, path))
+		if d.Type().IsDir() {
+			return watcher.AddDirectory(filepath.Join(vp.absPath, path))
+		} else if d.Type().IsRegular() {
+			return watcher.AddFile(filepath.Join(vp.absPath, path))
 		}
 
 		return nil
 	}); err != nil {
-		fmt.Fprintln(vp.logger, "watching failed", err)
+		fmt.Fprintln(vp.logger, "watching failed: ", err)
 		watcher.Close()
 		return nil, err
 	}
@@ -347,14 +350,19 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 		}
 	}()
 
-	go AggregateFSEvents(watcher, vp.logger, bufferCh)
+	w, err := watcher.StartWatching(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	go AggregateFSEvents(w, vp.logger, bufferCh)
 
 	return func() {
-		watcher.Close()
+		w.Close()
 	}, nil
 }
 
-func AggregateFSEvents(watcher *fsnotify.Watcher, logger io.Writer, bufferCh chan []fsnotify.Event) {
+func AggregateFSEvents(watcher filewatcher.EventsAndErrors, logger io.Writer, bufferCh chan []fsnotify.Event) {
 	// Usually the return callback would be sole responsible to stop the watcher,
 	// but we want to free resources as early as we know that we can longer listen
 	// to events.
@@ -369,7 +377,7 @@ func AggregateFSEvents(watcher *fsnotify.Watcher, logger io.Writer, bufferCh cha
 	var buffer []fsnotify.Event
 	for {
 		select {
-		case ev, ok := <-watcher.Events:
+		case ev, ok := <-watcher.Events():
 			if !ok {
 				return
 			}
@@ -383,7 +391,7 @@ func AggregateFSEvents(watcher *fsnotify.Watcher, logger io.Writer, bufferCh cha
 				buffer = nil
 			}
 
-		case err, ok := <-watcher.Errors:
+		case err, ok := <-watcher.Errors():
 			if !ok {
 				return
 			}

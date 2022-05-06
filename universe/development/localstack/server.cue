@@ -11,6 +11,10 @@ server: fn.#OpaqueServer & {
 	// TODO pin the localstack version.
 	binary: image: "localstack/localstack"
 
+	import: [
+		"namespacelabs.dev/foundation/universe/development/localstack/configure",
+	]
+
 	// Export the service so it its endpoint is discoverable by clients.
 	service: "api": {
 		containerPort: 4566

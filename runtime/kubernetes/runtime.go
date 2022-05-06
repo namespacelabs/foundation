@@ -7,22 +7,20 @@ package kubernetes
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
 	"sync"
 	"time"
 
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/portforward"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
@@ -108,12 +106,15 @@ func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv 
 }
 
 func NewFromConfig(ctx context.Context, config *HostConfig) (k8sRuntime, error) {
-	hostenvbytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(config.hostEnv)
+	keyBytes, err := json.Marshal(struct {
+		C *client.HostEnv
+		E *schema.Environment
+	}{config.hostEnv, config.env})
 	if err != nil {
-		return k8sRuntime{}, fnerrors.InternalError("failed to serialize hostenv: %w", err)
+		return k8sRuntime{}, fnerrors.InternalError("failed to serialize config/env key: %w", err)
 	}
 
-	key := base64.RawStdEncoding.EncodeToString(hostenvbytes)
+	key := string(keyBytes)
 
 	runtimeCache.mu.Lock()
 	defer runtimeCache.mu.Unlock()
@@ -225,7 +226,7 @@ func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.Act
 			return err
 		}
 
-		return wait.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
+		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
 			return waiter.Poll(ctx, cli)
 		})
 	})
@@ -456,20 +457,20 @@ func (r k8sRuntime) FetchDiagnostics(ctx context.Context, reference runtime.Cont
 
 	for _, init := range pod.Status.InitContainerStatuses {
 		if init.Name == opaque.Container {
-			return statusToDiagnostic(init)
+			return statusToDiagnostic(init), nil
 		}
 	}
 
 	for _, ctr := range pod.Status.ContainerStatuses {
 		if ctr.Name == opaque.Container {
-			return statusToDiagnostic(ctr)
+			return statusToDiagnostic(ctr), nil
 		}
 	}
 
 	return runtime.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.Name, opaque.Container)
 }
 
-func statusToDiagnostic(status v1.ContainerStatus) (runtime.Diagnostics, error) {
+func statusToDiagnostic(status v1.ContainerStatus) runtime.Diagnostics {
 	var diag runtime.Diagnostics
 
 	diag.RestartCount = status.RestartCount
@@ -488,7 +489,7 @@ func statusToDiagnostic(status v1.ContainerStatus) (runtime.Diagnostics, error) 
 		diag.ExitCode = status.State.Terminated.ExitCode
 	}
 
-	return diag, nil
+	return diag
 }
 
 func (r k8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
@@ -502,34 +503,31 @@ func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 		return nil, fnerrors.UserError(server, "%s: no port to forward to", endpoint.GetServiceName())
 	}
 
-	pod, err := resolvePodByLabels(ctx, r.cli, io.Discard, r.boundEnv.ns(), map[string]string{
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	p := newPodResolver(r.cli, r.boundEnv.ns(), map[string]string{
 		kubedef.K8sServerId: server.Id,
 	})
-	if err != nil {
-		return nil, err
-	}
 
-	// XXX be smarter about port allocation.
-	containerPorts := []string{fmt.Sprintf(":%d", endpoint.GetPort().ContainerPort)}
+	p.Start(ctxWithCancel)
 
-	stopCh := make(chan struct{})
+	go func() {
+		if err := r.boundEnv.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
+			Namespace:     r.boundEnv.ns(),
+			Identifier:    server.PackageName,
+			LocalAddrs:    localAddrs,
+			LocalPort:     0,
+			ContainerPort: int(endpoint.GetPort().ContainerPort),
 
-	compute.On(ctx).DetachWith(compute.Detach{
-		Action:     tasks.Action("port.forward").Indefinite(),
-		BestEffort: true,
-		Do: func(ctx context.Context) error {
-			return r.boundEnv.startAndBlockPortFwd(ctx, r.boundEnv.ns(), pod.Name, localAddrs, containerPorts, stopCh, func(forwarded []portforward.ForwardedPort) {
-				for _, p := range forwarded {
-					callback(runtime.ForwardedPort{
-						LocalPort:     uint(p.Local),
-						ContainerPort: uint(endpoint.Port.GetContainerPort()),
-					})
-				}
-			})
-		},
-	})
+			Watch: func(ctx context.Context, f func(*v1.Pod, int64, error)) func() {
+				return p.Watch(f)
+			},
+			ReportPorts: callback,
+		}); err != nil {
+			fmt.Fprintf(console.Errors(ctx), "port forwarding for %s (%d) failed: %v\n", server.PackageName, endpoint.GetPort().ContainerPort, err)
+		}
+	}()
 
-	return channelCloser(stopCh), nil
+	return closerCallback(cancel), nil
 }
 
 func (r k8sRuntime) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
@@ -545,39 +543,47 @@ func (r k8sRuntime) ForwardIngress(ctx context.Context, localAddrs []string, loc
 		return nil, err
 	}
 
-	stopCh := make(chan struct{})
+	ctxWithCancel, cancel := context.WithCancel(ctx)
 
-	compute.On(ctx).DetachWith(compute.Detach{
-		Action:     tasks.Action("port.forward.ingress").Indefinite(),
-		BestEffort: true,
-		Do: func(ctx context.Context) error {
-			return r.startAndBlockPortFwd(ctx, svc.Namespace, pod.Name, localAddrs, []string{fmt.Sprintf("%d:%d", localPort, svc.ContainerPort)}, stopCh, func(forwarded []portforward.ForwardedPort) {
-				for _, p := range forwarded {
-					f(runtime.ForwardedPortEvent{
-						Added: []runtime.ForwardedPort{{
-							LocalPort:     uint(p.Local),
-							ContainerPort: uint(svc.ContainerPort),
+	go func() {
+		if err := r.boundEnv.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
+			Namespace:     svc.Namespace,
+			Identifier:    "ingress",
+			LocalAddrs:    localAddrs,
+			LocalPort:     localPort,
+			ContainerPort: svc.ContainerPort,
+
+			Watch: func(_ context.Context, f func(*v1.Pod, int64, error)) func() {
+				f(&pod, 1, nil)
+				return func() {}
+			},
+			ReportPorts: func(p runtime.ForwardedPort) {
+				f(runtime.ForwardedPortEvent{
+					Added: []runtime.ForwardedPort{{
+						LocalPort:     p.LocalPort,
+						ContainerPort: p.ContainerPort,
+					}},
+					Endpoint: &schema.Endpoint{
+						ServiceName: runtime.IngressServiceName,
+						ServiceMetadata: []*schema.ServiceMetadata{{
+							Protocol: "http",
+							Kind:     runtime.IngressServiceKind,
 						}},
-						Endpoint: &schema.Endpoint{
-							ServiceName: runtime.IngressServiceName,
-							ServiceMetadata: []*schema.ServiceMetadata{{
-								Protocol: "http",
-								Kind:     runtime.IngressServiceKind,
-							}},
-						},
-					})
-				}
-			})
-		},
-	})
+					},
+				})
+			},
+		}); err != nil {
+			fmt.Fprintf(console.Errors(ctx), "ingress forwarding failed: %v\n", err)
+		}
+	}()
 
-	return channelCloser(stopCh), nil
+	return closerCallback(cancel), nil
 }
 
-type channelCloser chan struct{}
+type closerCallback func()
 
-func (c channelCloser) Close() error {
-	close(c)
+func (c closerCallback) Close() error {
+	c()
 	return nil
 }
 

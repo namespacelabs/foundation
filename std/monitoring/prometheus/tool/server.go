@@ -6,11 +6,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io/fs"
 	"strings"
 
-	"github.com/rs/zerolog"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/provision/configure"
@@ -24,7 +22,6 @@ const (
 	clusterRoleName        = "fn:prometheus"
 	clusterRoleBindingName = "fn:prometheus"
 	configMapName          = id
-	promServer             = "namespacelabs.dev/foundation/std/monitoring/prometheus/server"
 	promYaml               = "prometheus.yml"
 )
 
@@ -40,11 +37,6 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 	promYamlData, err := fs.ReadFile(embeddedData, promYaml)
 	if err != nil {
 		return err
-	}
-
-	prom := r.Stack.GetServer(promServer)
-	if prom == nil {
-		return fmt.Errorf("%s: missing in the stack", promServer)
 	}
 
 	out.Definitions = append(out.Definitions, kubedef.Apply{
@@ -66,7 +58,7 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 		),
 	})
 
-	serviceAccount := makeServiceAccount(prom.Server)
+	serviceAccount := makeServiceAccount(r.Focus.Server)
 	out.Definitions = append(out.Definitions, kubedef.Apply{
 		Description: "Prometheus ClusterRoleBinding",
 		Resource:    "clusterrolebindings",
@@ -103,7 +95,6 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
-		For: promServer,
 		With: &kubedef.SpecExtension{
 			ServiceAccount: serviceAccount,
 			Volume: []*kubedef.SpecExtension_Volume{{
@@ -122,7 +113,6 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-		For: promServer,
 		With: &kubedef.ContainerExtension{
 			VolumeMount: []*kubedef.ContainerExtension_VolumeMount{{
 				Name:      volumeName,
@@ -136,13 +126,6 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 }
 
 func (configureServer) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
-	prom := r.Stack.GetServer(promServer)
-	if prom == nil {
-		zerolog.Ctx(ctx).Warn().
-			Msg("Nothing to do, prometheus not in the stack.")
-		return nil
-	}
-
 	out.Ops = append(out.Ops, kubedef.Delete{
 		Description: "Prometheus ClusterRoleBinding",
 		Resource:    "clusterrolebindings",
@@ -158,7 +141,7 @@ func (configureServer) Delete(ctx context.Context, r configure.StackRequest, out
 	out.Ops = append(out.Ops, kubedef.Delete{
 		Description: "Prometheus Service Account",
 		Resource:    "serviceaccounts",
-		Name:        makeServiceAccount(prom.Server),
+		Name:        makeServiceAccount(r.Focus.Server),
 		Namespace:   kubetool.FromRequest(r).Namespace,
 	})
 

@@ -7,13 +7,11 @@ package ops
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/philopon/go-toposort"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -22,23 +20,9 @@ import (
 	"tailscale.com/util/multierr"
 )
 
-type Dispatcher[M proto.Message] interface {
-	Run(context.Context, Environment, *schema.Definition, M) (*DispatcherResult, error)
-}
-
-type Session[M proto.Message] interface {
-	Dispatcher[M]
-	Commit() error
-}
-
-type HasStartSession[M proto.Message] interface {
-	StartSession(context.Context, Environment) Session[M]
-}
-
-type DispatcherResult struct {
-	Waiters []Waiter
-}
-
+// Environment represents an execution environment: it puts together a root
+// workspace, a workspace configuration (devhost) and then finally the
+// schema-level environment we're running for.
 type Environment interface {
 	fnerrors.Location
 	Workspace() *schema.Workspace
@@ -46,89 +30,40 @@ type Environment interface {
 	Proto() *schema.Environment // Will be nil if not in a build or deployment phase.
 }
 
-type Runner struct {
+// A dispatcher provides the implementation for a particular type, i.e. it
+// handles the execution of a particular serialized invocation.
+type Dispatcher[M proto.Message] interface {
+	Handle(context.Context, Environment, *schema.Definition, M) (*HandleResult, error)
+}
+
+// A BatchedDispatcher represents an implementation which batches the execution
+// of multiple invocations.
+type BatchedDispatcher[M proto.Message] interface {
+	StartSession(context.Context, Environment) Session[M]
+}
+
+// A session represents a single batched invocation.
+type Session[M proto.Message] interface {
+	Dispatcher[M]
+	Commit() error
+}
+
+type HandleResult struct {
+	Waiters []Waiter
+}
+
+// A plan collects a set of invocations which can then be executed as a batch.
+type Plan struct {
 	definitions []*schema.Definition
 	nodes       []*rnode
 	scope       schema.PackageList
 }
 
-type rnode struct {
-	def *schema.Definition
-	reg *registration
-	res *DispatcherResult
-	err error // Error captured from a previous run.
+func NewPlan() *Plan {
+	return &Plan{}
 }
 
-type registration struct {
-	key          string
-	tmpl         proto.Message
-	dispatcher   dispatcherFunc
-	startSession startSessionFunc
-	after        []string
-}
-
-type dispatcherFunc func(context.Context, Environment, *schema.Definition, proto.Message) (*DispatcherResult, error)
-type commitSessionFunc func() error
-type startSessionFunc func(context.Context, Environment) (dispatcherFunc, commitSessionFunc)
-
-var handlers = map[string]*registration{}
-
-func Register[M proto.Message](mr Dispatcher[M]) {
-	var startSession startSessionFunc
-	if stateful, ok := mr.(HasStartSession[M]); ok {
-		startSession = func(ctx context.Context, env Environment) (dispatcherFunc, commitSessionFunc) {
-			st := stateful.StartSession(ctx, env)
-			return func(ctx context.Context, env Environment, def *schema.Definition, msg proto.Message) (*DispatcherResult, error) {
-					return st.Run(ctx, env, def, msg.(M))
-				}, func() error {
-					return st.Commit()
-				}
-		}
-	}
-
-	register[M](func(ctx context.Context, env Environment, def *schema.Definition, msg proto.Message) (*DispatcherResult, error) {
-		return mr.Run(ctx, env, def, msg.(M))
-	}, startSession)
-}
-
-func RegisterFunc[M proto.Message](mr func(ctx context.Context, env Environment, def *schema.Definition, m M) (*DispatcherResult, error)) {
-	register[M](func(ctx context.Context, env Environment, def *schema.Definition, msg proto.Message) (*DispatcherResult, error) {
-		return mr(ctx, env, def, msg.(M))
-	}, nil)
-}
-
-func RunAfter(base, after proto.Message) {
-	h := handlers[messageKey(after)]
-	h.after = append(h.after, messageKey(base))
-}
-
-func register[M proto.Message](dispatcher dispatcherFunc, startSession startSessionFunc) {
-	var m M
-
-	tmpl := reflect.New(reflect.TypeOf(m).Elem()).Interface().(proto.Message)
-	reg := registration{
-		key:          messageKey(tmpl),
-		tmpl:         tmpl,
-		dispatcher:   dispatcher,
-		startSession: startSession,
-	}
-
-	handlers[messageKey(tmpl)] = &reg
-}
-
-func messageKey(msg proto.Message) string {
-	packed, err := anypb.New(msg)
-	if err != nil {
-		panic(err)
-	}
-	return packed.GetTypeUrl()
-}
-
-func NewRunner() *Runner {
-	return &Runner{}
-}
-
-func (g *Runner) Add(defs ...*schema.Definition) error {
+func (g *Plan) Add(defs ...*schema.Definition) error {
 	var nodes []*rnode
 	for _, src := range defs {
 		key := src.Impl.GetTypeUrl()
@@ -151,7 +86,7 @@ func (g *Runner) Add(defs ...*schema.Definition) error {
 	return nil
 }
 
-func (g *Runner) Apply(ctx context.Context, name string, env Environment) (waiters []Waiter, err error) {
+func (g *Plan) Execute(ctx context.Context, name string, env Environment) (waiters []Waiter, err error) {
 	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, false)
@@ -160,7 +95,7 @@ func (g *Runner) Apply(ctx context.Context, name string, env Environment) (waite
 	return
 }
 
-func (g *Runner) ApplyParallel(ctx context.Context, name string, env Environment) (waiters []Waiter, err error) {
+func (g *Plan) ExecuteParallel(ctx context.Context, name string, env Environment) (waiters []Waiter, err error) {
 	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, true)
@@ -169,7 +104,7 @@ func (g *Runner) ApplyParallel(ctx context.Context, name string, env Environment
 	return
 }
 
-func (g *Runner) apply(ctx context.Context, env Environment, parallel bool) ([]Waiter, error) {
+func (g *Plan) apply(ctx context.Context, env Environment, parallel bool) ([]Waiter, error) {
 	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)
@@ -271,7 +206,7 @@ func (g *Runner) apply(ctx context.Context, env Environment, parallel bool) ([]W
 	return waiters, multierr.New(errs...)
 }
 
-func (g *Runner) Definitions() []*schema.Definition {
+func (g *Plan) Definitions() []*schema.Definition {
 	var defs []*schema.Definition
 	for _, n := range g.nodes {
 		defs = append(defs, n.def)

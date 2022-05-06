@@ -11,8 +11,6 @@ import (
 
 	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/internal/grpcstdio"
-	"namespacelabs.dev/foundation/internal/logoutput"
-	"namespacelabs.dev/foundation/provision/tool/protocol"
 )
 
 func RunServer(ctx context.Context, register func(grpc.ServiceRegistrar)) error {
@@ -34,18 +32,4 @@ func RunServer(ctx context.Context, register func(grpc.ServiceRegistrar)) error 
 	register(s)
 
 	return s.Serve(x.Listener())
-}
-
-func handle(ctx context.Context, h AllHandlers) error {
-	return RunServer(ctx, func(sr grpc.ServiceRegistrar) {
-		protocol.RegisterInvocationServiceServer(sr, ProtocolHandler{Handlers: h})
-	})
-}
-
-type ProtocolHandler struct {
-	Handlers AllHandlers
-}
-
-func (i ProtocolHandler) Invoke(ctx context.Context, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {
-	return handleRequest(logoutput.WithOutput(ctx, logoutput.OutputTo{Writer: os.Stderr}), req, i.Handlers)
 }

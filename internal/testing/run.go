@@ -64,7 +64,7 @@ func (test *testRun) Inputs() *compute.In {
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
 	p := compute.GetDepValue(r, test.Plan, "plan")
 
-	waiters, err := p.Deployer.Apply(ctx, runtime.TaskServerDeploy, test.Env)
+	waiters, err := p.Deployer.Execute(ctx, runtime.TaskServerDeploy, test.Env)
 	if err != nil {
 		return nil, err
 	}

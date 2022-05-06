@@ -10,10 +10,21 @@ option go_package = "namespacelabs.dev/foundation/schema";
 
 import "google/protobuf/any.proto";
 
+// A definition represents a serialized invocation. It captures the arguments
+// for a a method which is registered by an implementation. It thus provides a
+// form of decoupling, and allows for a frontend/backend design, with separate
+// planning/execution phases. If this type would be created today, it would be
+// named "SerializedInvocation".
 message Definition {
-    string              description = 1;  // Human readable label.
-    google.protobuf.Any impl        = 2;
-    repeated string     scope       = 3;  // List of package names.
+    // Human readable description of the definition, does not affect output.
+    // Presented to the user on invocation.
+    string description = 1;
+    // Arguments to the method. The type of the arguments is used to select the
+    // method implementation.
+    google.protobuf.Any impl = 2;
+    // The list of packages this invocation applies to. Purely informational,
+    // does not affect output.
+    repeated string scope = 3;
 }
 
 message DefinitionList {

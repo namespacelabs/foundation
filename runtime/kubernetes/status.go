@@ -21,9 +21,10 @@ func waiterFromPodStatus(ns, name string, ps v1.PodStatus) ops.WaitStatus {
 	for _, container := range ps.ContainerStatuses {
 		if lbl := containerStateLabel(&ps, container.State); lbl != "" {
 			cw.Containers = append(cw.Containers, runtime.ContainerUnitWaitStatus{
-				Reference: makePodRef(ns, name, container.Name),
-				Name:      container.Name,
-				Status:    lbl,
+				Reference:   makePodRef(ns, name, container.Name),
+				Name:        container.Name,
+				StatusLabel: lbl,
+				Status:      statusToDiagnostic(container),
 			})
 		}
 	}
@@ -31,9 +32,10 @@ func waiterFromPodStatus(ns, name string, ps v1.PodStatus) ops.WaitStatus {
 	for _, init := range ps.InitContainerStatuses {
 		if lbl := containerStateLabel(nil, init.State); lbl != "" {
 			cw.Initializers = append(cw.Initializers, runtime.ContainerUnitWaitStatus{
-				Reference: makePodRef(ns, name, init.Name),
-				Name:      init.Name,
-				Status:    lbl,
+				Reference:   makePodRef(ns, name, init.Name),
+				Name:        init.Name,
+				StatusLabel: lbl,
+				Status:      statusToDiagnostic(init),
 			})
 		}
 	}

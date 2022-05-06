@@ -17,11 +17,11 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/monitoring/grafana/tool"
-  digest: "sha256:691c004de1441b7447f124c9f779383369d7ac6556649aeba6c72787cccfdf57"
+  digest: "sha256:6f49983ca17aac0b13833a0b58104b47ed980bdaf77b8705d7098dfc08f3779d"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/monitoring/prometheus/tool"
-  digest: "sha256:c44eb20c6a4bc09109d7e03e0da3eae4b9a5856bbd053d5a5d0835d130d27f30"
+  digest: "sha256:d8593880784d264fdfb8f04475794acea16edacba776cbcc5f300f9054f18d36"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/sdk/buf/baseimg"
@@ -45,7 +45,7 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/aws/irsa/prepare"
-  digest: "sha256:c1a4ea64cdfcfe1e161cfac609cad4a8430e5651d18acd16bfbf327d274ae880"
+  digest: "sha256:d8d65aed3c4d9f23abaaadf8165210c7aa3bc14b4b8fddbb944d37b9a82879d2"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/aws/s3/internal/configure"
@@ -89,11 +89,15 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/development/localstack/s3/internal/configure"
-  digest: "sha256:c2ecda8e9d68081acdfaa7008b0c12252067b01bf5eb4693d2a177b0ee070d4b"
+  digest: "sha256:be9aedc27b585802e5a57c10082136ce096545a44b163c310792e02212f0c2d3"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/development/localstack/s3/internal/managebuckets/init"
   digest: "sha256:698bbde8d981de61b63e9091dfcb90393be6b9c3a8c0875917a392bf07076564"
+}
+prebuilt_binary: {
+  package_name: "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
+  digest: "sha256:0eeacef94fb813af524090cce8b2e6ebf7b36fb20d547609fc958ed3cb6d09b9"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/networking/tailscale/image"

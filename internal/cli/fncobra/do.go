@@ -13,7 +13,10 @@ import (
 
 func RunE(f func(ctx context.Context, args []string) error) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		return compute.Do(cmd.Context(), func(ctx context.Context) error {
+		ctx, cancel := WithSigIntCancel(cmd.Context())
+		defer cancel()
+
+		return compute.Do(ctx, func(ctx context.Context) error {
 			return f(ctx, args)
 		})
 	}

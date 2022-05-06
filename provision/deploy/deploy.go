@@ -88,7 +88,7 @@ type makeDeployGraph struct {
 }
 
 type Plan struct {
-	Deployer         *ops.Runner
+	Deployer         *ops.Plan
 	IngressFragments []*schema.IngressFragment
 	Hints            []string // Optional messages to pass to the user.
 }
@@ -112,7 +112,7 @@ func (m *makeDeployGraph) Output() compute.Output {
 func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*Plan, error) {
 	pbr := compute.GetDepValue(deps, m.prepare, "prepare")
 
-	g := ops.NewRunner()
+	g := ops.NewPlan()
 
 	if err := g.Add(pbr.HandlerResult.Definitions...); err != nil {
 		return nil, err
@@ -469,7 +469,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 	merged, err := startup.ComputeConfig(ctx, s.Env(), stack.GetParsed(s.PackageName()), frontend.StartupInputs{
 		Stack:         stack.Proto(),
 		Server:        s.Proto(),
-		ServerImage:   imgs.Binary.ImageRef(),
+		ServerImage:   imgs.Binary.RepoAndDigest(),
 		ServerRootAbs: s.Location.Abs(),
 	})
 	if err != nil {

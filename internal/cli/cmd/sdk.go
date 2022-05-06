@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
+	"namespacelabs.dev/foundation/internal/sdk/grpcurl"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -26,7 +27,7 @@ import (
 )
 
 func NewSdkCmd() *cobra.Command {
-	sdks := []string{"go", "k3d", "kubectl"}
+	sdks := []string{"go", "k3d", "kubectl", "grpcurl"}
 
 	goSdkVersion := "1.18"
 
@@ -73,6 +74,7 @@ func sdkList(sdks []string, goVersion string) []sdk {
 		},
 		simpleFileSDK("k3d", k3d.SDK, k3d.AllDownloads),
 		simpleFileSDK("kubectl", kubectl.SDK, kubectl.AllDownloads),
+		simpleFileSDK("grpcurl", grpcurl.SDK, grpcurl.AllDownloads),
 	}
 
 	var ret []sdk

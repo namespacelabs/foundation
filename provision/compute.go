@@ -15,6 +15,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/wscontents"
@@ -146,7 +147,7 @@ func (p *obsState) cancel() {
 func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSnapshot)) (func(), error) {
 	logger := console.TypedOutput(ctx, "observepackages", console.CatOutputUs)
 
-	watcher, err := fsnotify.NewWatcher()
+	watcher, err := filewatcher.NewFactory()
 	if err != nil {
 		return nil, err
 	}
@@ -154,6 +155,11 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 	expected := map[string][]byte{}
 
 	for _, srcs := range snap.sealed.Sources() {
+		// Don't monitor changes to external modules, assume they're immutable.
+		if srcs.Module.IsExternal() {
+			continue
+		}
+
 		// XXX we don't watch directories, which may end up being a miss.
 		if err := fnfs.VisitFiles(ctx, srcs.Snapshot, func(path string, contents []byte, de fs.DirEntry) error {
 			if de.IsDir() {
@@ -161,7 +167,7 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 			}
 			p := filepath.Join(srcs.Module.Abs(), path)
 			expected[p] = contents // Don't really care about permissions etc, only contents.
-			return watcher.Add(p)
+			return watcher.AddFile(p)
 		}); err != nil {
 			watcher.Close()
 			return nil, err
@@ -211,12 +217,16 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 		}
 	}()
 
-	// go wscontents.AggregateFSEvents(watcher, logger, bufferCh)
+	w, err := watcher.StartWatching(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	go func() {
-		wscontents.AggregateFSEvents(watcher, logger, bufferCh)
+		wscontents.AggregateFSEvents(w, logger, bufferCh)
 	}()
 
 	return func() {
-		watcher.Close()
+		w.Close()
 	}, nil
 }

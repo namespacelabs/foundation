@@ -27,15 +27,18 @@ import (
 
 func main() {
 	if err := configure.RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
-		protocol.RegisterInvocationServiceServer(sr, configure.ProtocolHandler{Handlers: configure.HandlerCompat{Tool: tool{}}})
+		h := configure.NewHandlers()
+		h.Any().HandleStack(provisionHook{})
+
+		protocol.RegisterInvocationServiceServer(sr, h.ServiceHandler())
 	}); err != nil {
 		log.Fatal(err)
 	}
 }
 
-type tool struct{}
+type provisionHook struct{}
 
-func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (provisionHook) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return fnerrors.BadInputError("universe/aws/irsa only supports kubernetes")
 	}
@@ -75,7 +78,6 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	}
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
-		For: schema.PackageName(r.Focus.Server.PackageName),
 		With: &kubedef.SpecExtension{
 			ServiceAccount: serviceAccount.ServiceAccountName,
 			ServiceAccountAnnotation: []*kubedef.SpecExtension_Annotation{
@@ -126,7 +128,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	return nil
 }
 
-func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (provisionHook) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return fnerrors.BadInputError("universe/aws/irsa only supports kubernetes")
 	}

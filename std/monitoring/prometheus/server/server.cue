@@ -8,6 +8,10 @@ server: fn.#OpaqueServer & {
 		image: "prom/prometheus:v2.31.1@sha256:a8779cfe553e0331e9046268e26c539fa39ecf90d59836d828163e65e8f4fa35"
 	}
 
+	import: [
+		"namespacelabs.dev/foundation/std/monitoring/prometheus/server/configure",
+	]
+
 	service: "prometheus": {
 		containerPort: 9090
 		metadata: {

@@ -36,7 +36,7 @@ func (rwb logRenderer) Loop(ctx context.Context) {
 			return
 
 		case ev, ok := <-rwb.ch:
-			if !ok || ev.AllDone {
+			if !ok {
 				return
 			}
 
