@@ -17,9 +17,9 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PreparePrebuilts(env ops.Environment, pl *workspace.PackageLoader, packages []schema.PackageName) compute.Computable[[]oci.Image] {
+func DownloadPrebuilts(env ops.Environment, pl *workspace.PackageLoader, packages []schema.PackageName) compute.Computable[[]oci.Image] {
 	return compute.Map(
-		tasks.Action("prepare.prebuilts").HumanReadablef("Prepare prebuilt packages"),
+		tasks.Action("prepare.download-prebuilts").HumanReadablef("Download prebuilt package images"),
 		compute.Inputs().Proto("env", env.Proto()).Strs("packages", schema.Strs(packages...)),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]oci.Image, error) {
@@ -38,7 +38,7 @@ func PreparePrebuilts(env ops.Environment, pl *workspace.PackageLoader, packages
 				}
 				images = append(images, prepared.Image)
 			}
-			collectAll := compute.Collect(tasks.Action("prepare.collect-prebuilt-images"), images...)
+			collectAll := compute.Collect(tasks.Action("prepare.download-prebuilt-images"), images...)
 			resolved, err := compute.GetValue(ctx, collectAll)
 			if err != nil {
 				return nil, err

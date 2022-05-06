@@ -116,7 +116,7 @@ func NewPrepareCmd() *cobra.Command {
 				"namespacelabs.dev/foundation/std/monitoring/prometheus/tool",
 				"namespacelabs.dev/foundation/std/secrets/kubernetes",
 			}
-			preparedPrebuilts := prepare.PreparePrebuilts(env, workspace.NewPackageLoader(root), prebuilts)
+			preparedPrebuilts := prepare.DownloadPrebuilts(env, workspace.NewPackageLoader(root), prebuilts)
 			prepares = append(prepares, compute.Map(
 				tasks.Action("prepare.map-prebuilts"),
 				compute.Inputs().Computable("preparedPrebuilts", preparedPrebuilts),
