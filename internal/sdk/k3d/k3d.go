@@ -181,13 +181,19 @@ func (k3d K3D) ListClusters(ctx context.Context) ([]Cluster, error) {
 	return clusters, nil
 }
 
+// If port is 0, an open port is allocated dynamically.
 func (k3d K3D) CreateRegistry(ctx context.Context, name string, port int) error {
 	if !strings.HasPrefix(name, "k3d-") {
 		return fnerrors.UserError(nil, "a k3d- prefix is required in registry names")
 	}
 
 	return tasks.Action("k3d.create-image-registry").Run(ctx, func(ctx context.Context) error {
-		return k3d.do(ctx, "registry", "create", strings.TrimPrefix(name, "k3d-"), "-p", fmt.Sprintf("%d", port))
+		args := []string{"registry", "create", strings.TrimPrefix(name, "k3d-")}
+		if port != 0 {
+			args = append(args, "-p", fmt.Sprintf("%d", port))
+		}
+
+		return k3d.do(ctx, args...)
 	})
 }
 
