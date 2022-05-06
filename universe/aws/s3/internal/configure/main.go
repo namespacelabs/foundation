@@ -26,7 +26,10 @@ const (
 type tool struct{}
 
 func main() {
-	configure.RunTool(tool{})
+	h := configure.NewHandlers()
+	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
+	henv.HandleStack(tool{})
+	configure.Handle(h)
 }
 
 func collectBuckets(server *schema.Server, owner string) ([]*s3.BucketConfig, error) {
@@ -49,9 +52,6 @@ func collectBuckets(server *schema.Server, owner string) ([]*s3.BucketConfig, er
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	if r.Env.Runtime != "kubernetes" {
-		return nil
-	}
 	col, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
 		return err

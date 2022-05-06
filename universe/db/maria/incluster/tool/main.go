@@ -22,7 +22,10 @@ import (
 type tool struct{}
 
 func main() {
-	configure.RunTool(tool{})
+	h := configure.NewHandlers()
+	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
+	henv.HandleStack(tool{})
+	configure.Handle(h)
 }
 
 func collectDatabases(server *schema.Server, owner string, internalEndpoint *schema.Endpoint) (map[schema.PackageName][]*maria.Database, error) {
@@ -63,10 +66,6 @@ func internalEndpoint(s *schema.Stack) *schema.Endpoint {
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	if r.Env.Runtime != "kubernetes" {
-		return nil
-	}
-
 	args := []string{}
 
 	col, err := secrets.Collect(r.Focus.Server)

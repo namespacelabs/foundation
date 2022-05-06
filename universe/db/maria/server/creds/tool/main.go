@@ -9,13 +9,17 @@ import (
 
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/secrets"
 )
 
 type tool struct{}
 
 func main() {
-	configure.RunTool(tool{})
+	h := configure.NewHandlers()
+	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
+	henv.HandleStack(tool{})
+	configure.Handle(h)
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {

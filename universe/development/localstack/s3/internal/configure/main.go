@@ -27,7 +27,10 @@ const (
 type tool struct{}
 
 func main() {
-	configure.RunTool(tool{})
+	h := configure.NewHandlers()
+	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
+	henv.HandleStack(tool{})
+	configure.Handle(h)
 }
 
 func collectBuckets(server *schema.Server, owner string) ([]*s3.BucketConfig, error) {
@@ -59,10 +62,6 @@ func getLocalstackEndpoint(s *schema.Stack) string {
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	if r.Env.Runtime != "kubernetes" {
-		return nil
-	}
-
 	localstackEndpoint := getLocalstackEndpoint(r.Stack)
 	if localstackEndpoint == "" {
 		return fmt.Errorf("localstack endpoint is required")
