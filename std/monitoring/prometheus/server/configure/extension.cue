@@ -3,13 +3,12 @@ import (
 	"namespacelabs.dev/foundation/std/fn:inputs"
 )
 
+// TODO #349 remove empty extension.
 extension: fn.#Extension
-
-$tool: inputs.#Package & "namespacelabs.dev/foundation/std/monitoring/prometheus/tool"
 
 configure: fn.#Configure & {
 	with: {
-		binary: $tool
+		binary: "namespacelabs.dev/foundation/std/monitoring/prometheus/tool"
 		args: {
 			mode: "server"
 		}

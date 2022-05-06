@@ -48,7 +48,7 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 	}
 
 	// Used by `fn tidy`.
-	if !opts.LoadDependencies {
+	if !opts.LoadPackageReferences {
 		return srv, nil
 	}
 

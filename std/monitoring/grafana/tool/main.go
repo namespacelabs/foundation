@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
+	"namespacelabs.dev/foundation/schema"
 )
 
 const (
@@ -30,14 +31,13 @@ var volumeName = strings.Replace(id, ".", "-", -1)
 type tool struct{}
 
 func main() {
-	configure.RunTool(tool{})
+	h := configure.NewHandlers()
+	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
+	henv.HandleStack(tool{})
+	configure.Handle(h)
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	if r.Env.Runtime != "kubernetes" {
-		return nil
-	}
-
 	namespace := kubetool.FromRequest(r).Namespace
 
 	configs := map[string]string{}
@@ -131,10 +131,6 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 }
 
 func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
-	if r.Env.Runtime != "kubernetes" {
-		return nil
-	}
-
 	namespace := kubetool.FromRequest(r).Namespace
 
 	out.Ops = append(out.Ops, kubedef.Delete{

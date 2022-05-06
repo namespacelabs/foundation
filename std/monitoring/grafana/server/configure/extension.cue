@@ -5,8 +5,6 @@ import (
 
 extension: fn.#Extension
 
-$tool: inputs.#Package & "namespacelabs.dev/foundation/std/monitoring/grafana/tool"
-
 configure: fn.#Configure & {
-	with: binary: $tool
+	with: binary: "namespacelabs.dev/foundation/std/monitoring/grafana/tool"
 }

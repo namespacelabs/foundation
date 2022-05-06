@@ -34,7 +34,10 @@ import (
 type tool struct{}
 
 func main() {
-	configure.RunTool(tool{})
+	h := configure.NewHandlers()
+	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
+	henv.HandleStack(tool{})
+	configure.Handle(h)
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {

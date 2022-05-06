@@ -13,19 +13,16 @@ $env:        inputs.#Environment
 $promServer: inputs.#Server & {
 	packageName: "namespacelabs.dev/foundation/std/monitoring/prometheus/server"
 }
-$tool: inputs.#Package & "namespacelabs.dev/foundation/std/monitoring/prometheus/tool"
 
 configure: fn.#Configure & {
-	if $env.runtime == "kubernetes" {
-		stack: {
-			append: [$promServer]
-		}
+	stack: {
+		append: [$promServer]
+	}
 
-		with: {
-			binary: $tool
-			args: {
-				mode: "client"
-			}
+	with: {
+		binary: "namespacelabs.dev/foundation/std/monitoring/prometheus/tool"
+		args: {
+			mode: "client"
 		}
 	}
 }
