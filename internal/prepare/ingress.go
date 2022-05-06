@@ -26,7 +26,6 @@ type noPackageEnv struct {
 }
 
 var _ workspace.Packages = noPackageEnv{}
-var _ client.KubeconfigProvider = noPackageEnv{}
 
 func (noPackageEnv) Resolve(ctx context.Context, packageName schema.PackageName) (workspace.Location, error) {
 	return workspace.Location{}, errors.New("not supported")
@@ -35,12 +34,8 @@ func (noPackageEnv) LoadByName(ctx context.Context, packageName schema.PackageNa
 	return nil, errors.New("not supported")
 }
 
-func (p noPackageEnv) GetKubeconfig() string {
-	return p.hostEnv.GetKubeconfig()
-}
-
-func (p noPackageEnv) GetContext() string {
-	return p.hostEnv.GetContext()
+func (p noPackageEnv) KubeconfigProvider() (client.KubeconfigProvider, error) {
+	return p.hostEnv, nil
 }
 
 func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*kubernetes.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
