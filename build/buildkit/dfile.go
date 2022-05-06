@@ -54,7 +54,7 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env ops.Environment, c
 		req.FrontendOpt = makeDockerOpts([]specs.Platform{*conf.Target})
 	}
 
-	return makeImage(env, conf.Target, req, []LocalContents{df.Contents}), nil
+	return makeImage(env, conf.Target, req, []LocalContents{df.Contents}, nil), nil
 }
 
 func (df dockerfileBuild) PlatformIndependent() bool { return false }

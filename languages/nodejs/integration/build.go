@@ -50,7 +50,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env ops.Environment, conf
 
 	state, local := n.LLB(bnj, conf)
 
-	nodejsImage, err := buildkit.LLBToImage(ctx, env, conf.Target, state, local)
+	nodejsImage, err := buildkit.LLBToImageWithConf(ctx, env, conf, state, local)
 	if err != nil {
 		return nil, err
 	}
@@ -144,14 +144,17 @@ func prepareYarnWithWorkspaces(workspacePaths []string, yarnRoot string, isDevBu
 	buildBase := base.Run(llb.Shlex("apk add --no-cache python2 make g++")).
 		Root().
 		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn")
+
 	if isDevBuild {
 		// Nodemon is used to watch for changes in the source code within a container and restart the "ts-node" server.
 		buildBase = buildBase.Run(llb.Shlex("yarn global add nodemon@2.0.15 ts-node@10.7.0"), llb.Dir(yarnRoot)).Root()
 	}
+
 	for _, fn := range []string{"package.json", "tsconfig.json", "yarn.lock", ".yarnrc.yml", ".yarn/releases"} {
 		buildBase = buildBase.With(
 			llbutil.CopyFrom(src, filepath.Join(yarnRoot, fn), filepath.Join(targetYarnRoot, fn)))
 	}
+
 	for _, path := range workspacePaths {
 		buildBase = buildBase.With(llbutil.CopyFrom(src, path, filepath.Join(appRootPath, path)))
 	}
@@ -159,15 +162,15 @@ func prepareYarnWithWorkspaces(workspacePaths []string, yarnRoot string, isDevBu
 	yarnInstall := buildBase.Run(llb.Shlex("yarn install --immutable"), llb.Dir(targetYarnRoot))
 	yarnInstall.AddMount("/cache/yarn", llb.Scratch(), llb.AsPersistentCacheDir(
 		"yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
-	out := yarnInstall.Root()
 
-	// No need to compile Typescript for dev builds, "nodemon" does it itself.
-	if !isDevBuild {
-		out = out.
-			Run(llb.Shlex("yarn plugin import workspace-tools@3.1.1"), llb.Dir(targetYarnRoot)).Root().
-			// Compile Typescript in parallel in the reverse dependency order.
-			Run(llb.Shlex("yarn workspaces foreach -pt run tsc"), llb.Dir(targetYarnRoot)).Root()
+	out := yarnInstall.Root()
+	if isDevBuild {
+		// No need to compile Typescript for dev builds, "nodemon" does it itself.
+		return out
 	}
 
-	return out
+	return out.
+		Run(llb.Shlex("yarn plugin import workspace-tools@3.1.1"), llb.Dir(targetYarnRoot)).Root().
+		// Compile Typescript in parallel in the reverse dependency order.
+		Run(llb.Shlex("yarn workspaces foreach -pt run tsc"), llb.Dir(targetYarnRoot)).Root()
 }

@@ -342,17 +342,22 @@ func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *s
 				return nil, err
 			}
 
+			name, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName(), buildID)
+			if err != nil {
+				return nil, err
+			}
+
+			// Leave a hint to where we're pushing to, in case the builder can
+			// use that information for optimization purposes. This may be
+			// replaced with a graph optimization pass in the future.
+			p.PublishName = name
+
 			bin, err := multiplatform.PrepareMultiPlatformImage(ctx, srv.Env(), p)
 			if err != nil {
 				return nil, err
 			}
 
-			tag, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName(), buildID)
-			if err != nil {
-				return nil, err
-			}
-
-			images.Binary = oci.PublishResolvable(tag, bin)
+			images.Binary = oci.PublishResolvable(name, bin)
 		}
 
 		// In production builds, also build a "config image" which includes both the processed

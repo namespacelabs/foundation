@@ -7,6 +7,7 @@ package buildkit
 import (
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -16,9 +17,12 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
+	"github.com/moby/buildkit/exporter/containerimage/exptypes"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/build"
@@ -53,7 +57,16 @@ func (l LocalContents) Name() string {
 }
 
 func DefinitionToImage(env ops.Environment, platform *specs.Platform, def *llb.Definition) compute.Computable[oci.Image] {
-	return makeImage(env, platform, &frontendReq{Def: def}, nil)
+	return makeImage(env, platform, &frontendReq{Def: def}, nil, nil)
+}
+
+func LLBToImageWithConf(ctx context.Context, env ops.Environment, conf build.Configuration, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
+	serialized, err := state.Marshal(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return makeImage(env, conf.Target, &frontendReq{Def: serialized}, localDirs, conf.PublishName), nil
 }
 
 func LLBToImage(ctx context.Context, env ops.Environment, platform *specs.Platform, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
@@ -62,7 +75,7 @@ func LLBToImage(ctx context.Context, env ops.Environment, platform *specs.Platfo
 		return nil, err
 	}
 
-	return makeImage(env, platform, &frontendReq{Def: serialized}, localDirs), nil
+	return makeImage(env, platform, &frontendReq{Def: serialized}, localDirs, nil), nil
 }
 
 func LLBToFS(ctx context.Context, env ops.Environment, platform *specs.Platform, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
@@ -82,9 +95,9 @@ type reqBase struct {
 	localDirs      []LocalContents // If set, the output is not cachable by us.
 }
 
-func makeImage(env ops.Environment, platform *specs.Platform, req *frontendReq, localDirs []LocalContents) compute.Computable[oci.Image] {
+func makeImage(env ops.Environment, platform *specs.Platform, req *frontendReq, localDirs []LocalContents, targetName compute.Computable[oci.AllocatedName]) compute.Computable[oci.Image] {
 	base := reqBase{devHost: env.DevHost(), targetPlatform: platformOrDefault(platform), req: req, localDirs: localDirs}
-	return &reqToImage{reqBase: base}
+	return &reqToImage{reqBase: base, targetName: targetName}
 }
 
 func platformOrDefault(targetPlatform *specs.Platform) specs.Platform {
@@ -152,6 +165,11 @@ func (l reqBase) buildOutput() compute.Output {
 
 type reqToImage struct {
 	reqBase
+
+	// If set, targetName will resolve into the allocated image name that this
+	// image will be uploaded to, by our caller.
+	targetName compute.Computable[oci.AllocatedName]
+
 	compute.LocalScoped[oci.Image]
 }
 
@@ -161,8 +179,13 @@ func (l *reqToImage) Action() *tasks.ActionEvent {
 		WellKnown(tasks.WkCategory, "build").
 		WellKnown(tasks.WkRuntime, "docker")
 }
+
 func (l *reqToImage) Inputs() *compute.In {
-	return l.buildInputs()
+	in := l.buildInputs()
+	if l.targetName != nil {
+		return in.Computable("targetName", l.targetName)
+	}
+	return in
 }
 
 func (l *reqToImage) Output() compute.Output {
@@ -172,6 +195,16 @@ func (l *reqToImage) Output() compute.Output {
 func (l *reqToImage) ImageRef() string { return "(buildkit)" } // Implements HasImageRef
 
 func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
+	if targetName, ok := compute.GetDepWithType[oci.AllocatedName](deps, "targetName"); ok {
+		v := targetName.Value
+
+		// If the target needs permissions, we don't do the direct push
+		// optimization as we don't yet wire the keychain into buildkit.
+		if v.Keychain == nil {
+			return solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
+		}
+	}
+
 	return solve(ctx, deps, l.reqBase, exportToImage())
 }
 
@@ -251,11 +284,13 @@ If you don't think this is an actual issue, please re-run with --skip_buildkit_w
 
 	eg, wait := executor.New(ctx)
 
+	var solveRes *client.SolveResponse
 	eg.Go(func(ctx context.Context) error {
 		// XXX Span data coming out from buildkit is not really working.
 		ctx = trace.ContextWithSpan(ctx, nil)
 
-		_, err := c.Solve(ctx, l.req.Def, solveOpt, ch)
+		var err error
+		solveRes, err = c.Solve(ctx, l.req.Def, solveOpt, ch)
 		return err
 	})
 
@@ -265,13 +300,13 @@ If you don't think this is an actual issue, please re-run with --skip_buildkit_w
 		return res, err
 	}
 
-	return e.Provide(ctx)
+	return e.Provide(ctx, solveRes)
 }
 
 type exporter[V any] interface {
 	Prepare(context.Context) error
 	Exports() []client.ExportEntry
-	Provide(context.Context) (V, error)
+	Provide(context.Context, *client.SolveResponse) (V, error)
 }
 
 func exportToImage() exporter[oci.Image] { return &exportImage{} }
@@ -305,7 +340,7 @@ func (e *exportImage) Exports() []client.ExportEntry {
 	}}
 }
 
-func (e *exportImage) Provide(ctx context.Context) (oci.Image, error) {
+func (e *exportImage) Provide(ctx context.Context, _ *client.SolveResponse) (oci.Image, error) {
 	return IngestFromFS(ctx, fnfs.Local(filepath.Dir(e.output.Name())), filepath.Base(e.output.Name()), false)
 }
 
@@ -396,6 +431,62 @@ func (e *exportFS) Exports() []client.ExportEntry {
 	}}
 }
 
-func (e *exportFS) Provide(ctx context.Context) (fs.FS, error) {
+func (e *exportFS) Provide(context.Context, *client.SolveResponse) (fs.FS, error) {
 	return fnfs.Local(e.outputDir), nil
+}
+
+func exportToRegistry(ref string, insecure bool) exporter[oci.Image] {
+	return &exportRegistry{ref: ref, insecure: insecure}
+}
+
+type exportRegistry struct {
+	ref      string
+	insecure bool
+
+	parsed name.Repository
+}
+
+func (e *exportRegistry) Prepare(ctx context.Context) error {
+	p, err := name.NewRepository(e.ref, e.nameOpts()...)
+	if err != nil {
+		return err
+	}
+	e.parsed = p
+	return nil
+}
+
+func (e *exportRegistry) nameOpts() []name.Option {
+	if e.insecure {
+		return []name.Option{name.Insecure}
+	}
+
+	return nil
+}
+
+func (e *exportRegistry) Exports() []client.ExportEntry {
+	return []client.ExportEntry{{
+		Type: client.ExporterImage,
+		Attrs: map[string]string{
+			"push":              "true",
+			"name":              e.ref,
+			"push-by-digest":    "true",
+			"registry.insecure": fmt.Sprintf("%v", e.insecure),
+		},
+	}}
+}
+
+func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse) (oci.Image, error) {
+	digest, ok := res.ExporterResponse[exptypes.ExporterImageDigestKey]
+	if !ok {
+		return nil, errors.New("digest is missing from result")
+	}
+
+	p, err := name.NewDigest(e.parsed.Name()+"@"+digest, e.nameOpts()...)
+	if err != nil {
+		return nil, err
+	}
+
+	return compute.WithGraphLifecycle(ctx, func(ctx context.Context) (oci.Image, error) {
+		return remote.Image(p, remote.WithContext(ctx))
+	})
 }

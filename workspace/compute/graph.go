@@ -44,6 +44,7 @@ var (
 
 type Orch struct {
 	cache    cache.Cache
+	origctx  context.Context
 	exec     executor.Executor
 	throttle *throttleState
 
@@ -445,6 +446,16 @@ func (g *Orch) Call(callback func(context.Context) error) error {
 	return err
 }
 
+func WithGraphLifecycle[V any](ctx context.Context, f func(context.Context) (V, error)) (V, error) {
+	g := On(ctx)
+	if g == nil {
+		var empty V
+		return empty, errors.New("no graph in context")
+	}
+
+	return f(g.origctx)
+}
+
 func Cache(ctx context.Context) cache.Cache {
 	return On(ctx).cache
 }
@@ -475,6 +486,7 @@ func Do(parent context.Context, do func(context.Context) error) error {
 	}
 	ctx := context.WithValue(parent, _graphKey, g)
 	exec, wait := executor.New(ctx)
+	g.origctx = ctx
 	g.exec = exec
 
 	errResult := do(ctx)

@@ -47,7 +47,7 @@ func (debugShellBuild) BuildImage(ctx context.Context, env ops.Environment, conf
 
 	r := gobase.Run(llb.Shlexf("go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.6"))
 
-	return buildkit.LLBToImage(ctx, env, conf.Target, r.Root())
+	return buildkit.LLBToImageWithConf(ctx, env, conf, r.Root())
 }
 
 func (debugShellBuild) PlatformIndependent() bool { return false }

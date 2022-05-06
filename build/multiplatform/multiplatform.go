@@ -41,6 +41,7 @@ func prepareImage(ctx context.Context, env ops.Environment, p build.Plan) (compu
 		img, err := p.Spec.BuildImage(ctx, env, build.Configuration{
 			SourceLabel: p.SourceLabel,
 			Workspace:   p.Workspace,
+			PublishName: p.PublishName,
 		})
 		if err != nil {
 			return nil, err
@@ -112,6 +113,7 @@ func prepareMultiPlatformPlan(ctx context.Context, plan build.Plan, platforms []
 				SourceLabel: plan.SourceLabel,
 				Workspace:   plan.Workspace,
 				Target:      nil, // Plan says it is agnostic.
+				PublishName: plan.PublishName,
 			},
 		}
 		requests = append(requests, br)
@@ -132,6 +134,7 @@ func prepareMultiPlatformPlan(ctx context.Context, plan build.Plan, platforms []
 					SourceLabel: label,
 					Workspace:   plan.Workspace,
 					Target:      platformPtr(plat),
+					PublishName: plan.PublishName,
 				},
 			}
 

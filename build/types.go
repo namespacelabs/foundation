@@ -34,6 +34,12 @@ type Plan struct {
 	Spec          Spec
 	Workspace     Workspace
 	Platforms     []specs.Platform
+
+	// The caller has given us a hint or where the built image will be uploaded
+	// to, in case the builder implementation can use this information for
+	// optimization purposes. This may be null, and an implementation can always
+	// elect to ignore it.
+	PublishName compute.Computable[oci.AllocatedName]
 }
 
 type Workspace interface {
@@ -46,6 +52,9 @@ type Configuration struct {
 	SourceLabel string
 	Target      *specs.Platform
 	Workspace   Workspace
+
+	// See Plan.PublishName.
+	PublishName compute.Computable[oci.AllocatedName]
 }
 
 type BuildPlatformsVar struct{}
