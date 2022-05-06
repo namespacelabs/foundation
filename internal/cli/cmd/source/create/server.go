@@ -44,7 +44,7 @@ func newServerCmd() *cobra.Command {
 		Args:  cobra.RangeArgs(0, 1),
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, loc, err := targetPackage(ctx, args, "service")
+			root, loc, err := targetPackage(ctx, args, "server")
 			if err != nil {
 				return err
 			}
