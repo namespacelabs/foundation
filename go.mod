@@ -19,8 +19,6 @@ require (
 	github.com/containerd/containerd v1.6.3-0.20220401172941-5ff8fce1fcc6
 	github.com/docker/cli v20.10.13+incompatible
 	github.com/charmbracelet/lipgloss v0.4.0
-	github.com/containerd/containerd v1.6.1
-	github.com/docker/cli v20.10.12+incompatible
 	github.com/containerd/containerd v1.6.3-0.20220401172941-5ff8fce1fcc6
 	github.com/docker/cli v20.10.13+incompatible
 	github.com/docker/docker v20.10.12+incompatible
