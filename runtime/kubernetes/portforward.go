@@ -115,8 +115,7 @@ func (r boundEnv) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error 
 	defer closeWatcher()
 
 	for _, localAddr := range args.LocalAddrs {
-		var cfg net.ListenConfig
-		lst, err := cfg.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", localAddr, args.LocalPort))
+		lst, err := listenPort(ctx, localAddr, args.LocalPort, args.ContainerPort)
 		if err != nil {
 			return err
 		}
@@ -155,6 +154,23 @@ func (r boundEnv) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error 
 	}
 
 	return wait()
+}
+
+func listenPort(ctx context.Context, localAddr string, localPort, containerPort int) (net.Listener, error) {
+	var cfg net.ListenConfig
+
+	if localPort == 0 {
+		// First we try to listen on a local port that matches the container port.
+
+		lst, err := cfg.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", localAddr, containerPort))
+		if err == nil {
+			return lst, nil
+		}
+
+		// Any failures fallback to the open any port path.
+	}
+
+	return cfg.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", localAddr, localPort))
 }
 
 func handleConnection(ctx context.Context, streamConn httpstream.Connection, conn net.Conn, requestID int, debugid string, containerPort int, errch chan error) error {
