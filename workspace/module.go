@@ -31,8 +31,9 @@ type Module struct {
 	Workspace *schema.Workspace
 	DevHost   *schema.DevHost
 
-	absPath  string
-	external bool
+	absPath string
+	// If not empty, this is an external module.
+	version string
 }
 
 type DownloadedModule struct {
@@ -50,7 +51,7 @@ type ResolvedPackage struct {
 
 // Implements fnerrors.Location.
 func (root *Module) ErrorLocation() string {
-	if root.external {
+	if root.IsExternal() {
 		return root.Workspace.ModuleName
 	}
 
@@ -59,9 +60,10 @@ func (root *Module) ErrorLocation() string {
 
 func (root *Module) Abs() string        { return root.absPath }
 func (root *Module) ModuleName() string { return root.Workspace.ModuleName }
-func (root *Module) IsExternal() bool   { return root.external }
+func (root *Module) IsExternal() bool   { return root.version != "" }
+func (root *Module) Version() string    { return root.version }
 func (root *Module) VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
-	return wscontents.Observe(root.absPath, rel, observeChanges && !root.external)
+	return wscontents.Observe(root.absPath, rel, observeChanges && !root.IsExternal())
 }
 func (root *Module) SnapshotContents(ctx context.Context, rel string) (fs.FS, error) {
 	v, err := compute.Get(ctx, root.VersionedFS(rel, false))
@@ -72,7 +74,7 @@ func (root *Module) SnapshotContents(ctx context.Context, rel string) (fs.FS, er
 }
 
 func (root *Module) ReadWriteFS() fnfs.ReadWriteFS {
-	if root.external {
+	if root.IsExternal() {
 		return fnfs.Local(root.absPath).(fnfs.ReadWriteFS) // LocalFS has a Write, which fails Writes.
 	}
 	return fnfs.ReadWriteLocalFS(root.absPath)
