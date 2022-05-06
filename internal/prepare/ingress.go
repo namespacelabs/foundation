@@ -50,12 +50,12 @@ func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*kubernete
 				return nil, err
 			}
 
-			g := ops.NewRunner()
+			g := ops.NewPlan()
 			if err := g.Add(state.Definitions()...); err != nil {
 				return nil, err
 			}
 
-			waiters, err := g.Apply(ctx, runtime.TaskServerDeploy, noPackageEnv{env})
+			waiters, err := g.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{env})
 			if err != nil {
 				return nil, err
 			}
