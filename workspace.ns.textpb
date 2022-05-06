@@ -96,11 +96,11 @@ prebuilt_binary: {
   digest: "sha256:698bbde8d981de61b63e9091dfcb90393be6b9c3a8c0875917a392bf07076564"
 }
 prebuilt_binary: {
-  package_name: "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
-  digest: "sha256:0eeacef94fb813af524090cce8b2e6ebf7b36fb20d547609fc958ed3cb6d09b9"
-}
-prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/networking/tailscale/image"
   digest: "sha256:909c41521883aa1c49324b5b406c263ced0cfa81529189a74c7b38cf9e199377"
+}
+prebuilt_binary: {
+  package_name: "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
+  digest: "sha256:0eeacef94fb813af524090cce8b2e6ebf7b36fb20d547609fc958ed3cb6d09b9"
 }
 prebuilt_base_repository: "us-docker.pkg.dev/foundation-344819/prebuilts/"
