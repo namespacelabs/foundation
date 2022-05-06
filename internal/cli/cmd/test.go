@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/morikuni/aec"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -86,7 +87,7 @@ func NewTestCmd() *cobra.Command {
 
 			for _, loc := range locs {
 				// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
-				env := testing.PrepareEnvFrom(devEnv, !testOpts.KeepRuntime)
+				env := fac.PrepareTestEnv()
 
 				status := aec.LightBlackF.Apply("RUNNING")
 				fmt.Fprintf(stderr, "%s: Test %s\n", loc.AsPackageName(), status)
