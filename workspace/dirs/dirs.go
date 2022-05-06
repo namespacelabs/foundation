@@ -10,6 +10,9 @@ import (
 	"strings"
 )
 
+const WorkspaceCacheSymLink = ".fn"
+const moduleCacheDir = "module"
+
 func Cache() (string, error) {
 	dir, err := os.UserCacheDir()
 	if err != nil {
@@ -41,7 +44,12 @@ func ModuleCache(name, ref string) (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(cacheDir, "module", name, ref), nil
+	return filepath.Join(cacheDir, moduleCacheDir, name, ref), nil
+}
+
+// Path to the module via the symlinked cache directory, relative to the workspace root.
+func ModuleSymLinkedCache(name, ref string) string {
+	return filepath.Join(WorkspaceCacheSymLink, moduleCacheDir, name, ref)
 }
 
 func CertCache() (string, error) {

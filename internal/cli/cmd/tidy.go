@@ -7,6 +7,7 @@ package cmd
 import (
 	"context"
 	"io"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -14,12 +15,14 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/module"
 	"tailscale.com/util/multierr"
 )
@@ -37,6 +40,19 @@ func NewTidyCmd() *cobra.Command {
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
 				return err
+			}
+
+			cacheDir, err := dirs.Cache()
+			if err != nil {
+				return err
+			}
+			err = os.Remove(root.CacheSymLink())
+			if err != nil && !os.IsNotExist(err) {
+				return fnerrors.UserError(nil, "Failed to remove \"%s\" before symlinking: %w", root.CacheSymLink(), err)
+			}
+			err = os.Symlink(cacheDir, root.CacheSymLink())
+			if err != nil {
+				return fnerrors.UserError(nil, "Failed to symlink \"%s\" -> \"%s\": %w", root.CacheSymLink(), cacheDir, err)
 			}
 
 			pl := workspace.NewPackageLoader(root)

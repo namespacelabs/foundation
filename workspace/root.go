@@ -9,6 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 type Root struct {
@@ -42,4 +43,8 @@ func (root *Root) RelPackage(rel string) fnfs.Location {
 // Implements fnerrors.Location.
 func (root *Root) ErrorLocation() string {
 	return root.absPath
+}
+
+func (root *Root) CacheSymLink() string {
+	return filepath.Join(root.absPath, dirs.WorkspaceCacheSymLink)
 }
