@@ -107,6 +107,16 @@ func MakeResourceSpecificClient(resource string, cfg *restclient.Config) (restcl
 }
 
 func ResolveConfig(env ops.Environment) (*restclient.Config, error) {
+	if x, ok := env.(interface {
+		KubeconfigProvider() (KubeconfigProvider, error)
+	}); ok {
+		provider, err := x.KubeconfigProvider()
+		if err != nil {
+			return nil, err
+		}
+		return NewRestConfigFromHostEnv(provider)
+	}
+
 	cfg, err := ComputeHostEnv(env.DevHost(), env.Proto())
 	if err != nil {
 		return nil, err
