@@ -10,15 +10,15 @@ import (
 
 	"github.com/kr/text"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/prototext"
-	"namespacelabs.dev/foundation/build/binary"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/workstation"
+	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/runtime/tools"
+	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -26,6 +26,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
+
+var deprecatedConfigs = []string{
+	"type.googleapis.com/foundation.build.buildkit.Configuration",
+}
 
 func NewPrepareCmd() *cobra.Command {
 	var dontUpdateDevhost, force bool
@@ -49,18 +53,46 @@ func NewPrepareCmd() *cobra.Command {
 				return err
 			}
 
-			var prepares []workstation.PrepareFunc
+			var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
+			prepares = append(prepares, prepare.PrepareBuildkit(env))
 
-			prepares = append(prepares, workstation.PrepareBuildkit())
-
+			var k8sconfig compute.Computable[*kubernetes.HostConfig]
 			if contextName != "" {
-				prepares = append(prepares, workstation.SetK8sContext(contextName))
+				k8sconfig = prepare.PrepareExistingK8s(contextName, env)
 			} else if env.Purpose() == schema.Environment_DEVELOPMENT {
-				prepares = append(prepares, workstation.PrepareK3d("fn", true))
+				k8sconfig = prepare.PrepareK3d("fn", env)
 			}
+			prepares = append(prepares, compute.Map(
+				tasks.Action("prepare.map-k8s"),
+				compute.Inputs().Computable("k8sconfig", k8sconfig),
+				compute.Output{NotCacheable: true},
+				func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+					k8sconfigval := compute.GetDepValue(deps, k8sconfig, "k8sconfig")
+					var confs []*schema.DevHost_ConfigureEnvironment
+					registry := k8sconfigval.Registry()
+					if registry != nil {
+						c, err := devhost.MakeConfiguration(registry)
+						if err != nil {
+							return nil, err
+						}
+						c.Purpose = schema.Environment_DEVELOPMENT
+						confs = append(confs, c)
+					}
+					hostEnv := k8sconfigval.ClientHostEnv()
+					if hostEnv != nil {
+						c, err := devhost.MakeConfiguration(hostEnv)
+						if err != nil {
+							return nil, err
+						}
+						c.Purpose = env.Proto().GetPurpose()
+						c.Runtime = "kubernetes"
+						confs = append(confs, c)
+					}
+					return confs, nil
+				}))
 
 			if awsProfile != "" {
-				prepares = append(prepares, workstation.SetAWSProfile(awsProfile)) // XXX make provider configurable.
+				prepares = append(prepares, prepare.PrepareAWSProfile(awsProfile, env)) // XXX make provider configurable.
 			}
 
 			if env.Purpose() == schema.Environment_PRODUCTION {
@@ -71,76 +103,63 @@ func NewPrepareCmd() *cobra.Command {
 					return fnerrors.UsageError("Please also specify `--context`.", "Kubernetes context is required for preparing a production environment.")
 				}
 
-				prepares = append(prepares, workstation.PrepareAWSRegistry) // XXX make provider configurable.
+				prepares = append(prepares, prepare.PrepareAWSRegistry(env)) // XXX make provider configurable.
 			}
 
-			prepares = append(prepares, workstation.PrepareIngress)
+			prepares = append(prepares, prepare.PrepareIngress(env, k8sconfig))
+
+			var prebuilts = []schema.PackageName{
+				"namespacelabs.dev/foundation/std/sdk/buf/baseimg",
+				"namespacelabs.dev/foundation/devworkflow/web",
+				"namespacelabs.dev/foundation/std/dev/controller",
+				"namespacelabs.dev/foundation/std/monitoring/grafana/tool",
+				"namespacelabs.dev/foundation/std/monitoring/prometheus/tool",
+				"namespacelabs.dev/foundation/std/secrets/kubernetes",
+			}
+			preparedPrebuilts := prepare.DownloadPrebuilts(env, workspace.NewPackageLoader(root), prebuilts)
+			prepares = append(prepares, compute.Map(
+				tasks.Action("prepare.map-prebuilts"),
+				compute.Inputs().Computable("preparedPrebuilts", preparedPrebuilts),
+				compute.Output{NotCacheable: true},
+				func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+					return nil, nil
+				}))
+
+			prepareAll := compute.Collect(tasks.Action("prepare.collect-all"), prepares...)
+			results, err := compute.GetValue(ctx, prepareAll)
+			if err != nil {
+				return err
+			}
+
+			var confs [][]*schema.DevHost_ConfigureEnvironment
+			for _, r := range results {
+				confs = append(confs, r.Value)
+			}
 
 			stdout := console.Stdout(ctx)
-			eg, wait := executor.New(ctx)
 
-			eg.Go(func(ctx context.Context) error {
-				r, err := workstation.Prepare(ctx, root, env, prepares...)
-				if err != nil {
-					return err
-				}
-
-				if !force && r.UpdateCount == 0 {
-					fmt.Fprintln(stdout, "Configuration is up to date, nothing to do.")
-					return nil
-				}
-
-				if !dontUpdateDevhost {
-					return devhost.RewriteWith(ctx, root, env.Root().DevHost)
-				}
-
-				fmt.Fprintln(stdout, "Add the following to your devhost.textpb, in the root of your workspace:")
-				fmt.Fprintln(stdout)
-				fmt.Fprintln(
-					text.NewIndentWriter(stdout, []byte("    ")),
-					prototext.Format(env.Root().DevHost))
-				fmt.Fprintln(stdout, "Or re-run with `fn prepare -w` for the file to be updated automatically.")
-
-				return nil
-			})
-
-			eg.Go(func(ctx context.Context) error {
-				hostPlatform := tools.Impl().HostPlatform()
-				var required = []schema.PackageName{
-					"namespacelabs.dev/foundation/std/sdk/buf/baseimg",
-					"namespacelabs.dev/foundation/devworkflow/web",
-					"namespacelabs.dev/foundation/std/dev/controller",
-					"namespacelabs.dev/foundation/std/monitoring/grafana/tool",
-					"namespacelabs.dev/foundation/std/monitoring/prometheus/tool",
-					"namespacelabs.dev/foundation/std/secrets/kubernetes",
-				}
-
-				inputs := compute.Inputs()
-
-				pl := workspace.NewPackageLoader(root)
-				for _, pkg := range required {
-					p, err := pl.LoadByName(ctx, pkg)
-					if err != nil {
-						return err
-					}
-
-					prepared, err := binary.PlanImage(ctx, p, env, true, &hostPlatform)
-					if err != nil {
-						return err
-					}
-
-					inputs = inputs.Computable(pkg.String(), prepared.Image)
-				}
-
-				// Pre-pull requires images.
-				_, err := compute.Get(ctx, compute.Map(tasks.Action("prepare.prebuilts"), inputs,
-					compute.Output{}, func(ctx context.Context, r compute.Resolved) (int, error) {
-						return 0, nil
-					}))
+			updateCount, err := devHostUpdates(ctx, root, confs)
+			if err != nil {
 				return err
-			})
+			}
 
-			return wait()
+			if !force && updateCount == 0 {
+				fmt.Fprintln(stdout, "Configuration is up to date, nothing to do.")
+				return nil
+			}
+
+			if !dontUpdateDevhost {
+				return devhost.RewriteWith(ctx, root, env.DevHost())
+			}
+
+			fmt.Fprintln(stdout, "Add the following to your devhost.textpb, in the root of your workspace:")
+			fmt.Fprintln(stdout)
+			fmt.Fprintln(
+				text.NewIndentWriter(stdout, []byte("    ")),
+				prototext.Format(env.DevHost()))
+			fmt.Fprintln(stdout, "Or re-run with `fn prepare -w` for the file to be updated automatically.")
+
+			return nil
 		}),
 	}
 
@@ -150,4 +169,57 @@ func NewPrepareCmd() *cobra.Command {
 	cmd.Flags().StringVar(&contextName, "context", "", "If set, configures Foundation to use the specific context.")
 	cmd.Flags().StringVar(&awsProfile, "aws_profile", awsProfile, "Configures the specified AWS configuration profile.")
 	return cmd
+}
+
+func devHostUpdates(ctx context.Context, root *workspace.Root, confs [][]*schema.DevHost_ConfigureEnvironment) (int, error) {
+	var updateCount int
+	for _, conf := range confs {
+		if len(conf) == 0 {
+			continue
+		}
+
+		updated, was := devhost.Update(root, conf...)
+		if was {
+			updateCount++
+		}
+
+		// Make sure that the subsequent calls observe an up to date configuration.
+		// XXX this is not right, Root() should be immutable.
+		root.DevHost = updated
+	}
+
+	// Remove deprecated bits.
+	for k, u := range root.DevHost.Configure {
+		var without []*anypb.Any
+
+		for _, cfg := range u.Configuration {
+			if !slices.Contains(deprecatedConfigs, cfg.TypeUrl) {
+				without = append(without, cfg)
+			} else {
+				updateCount++
+			}
+		}
+
+		if len(without) == 0 {
+			root.DevHost.Configure[k] = nil // Mark for removal.
+		} else {
+			u.Configuration = without
+		}
+	}
+
+	k := 0
+	for {
+		if k >= len(root.DevHost.Configure) {
+			break
+		}
+
+		if root.DevHost.Configure[k] == nil {
+			root.DevHost.Configure = append(root.DevHost.Configure[:k], root.DevHost.Configure[k+1:]...)
+			updateCount++
+		} else {
+			k++
+		}
+	}
+
+	return updateCount, nil
 }

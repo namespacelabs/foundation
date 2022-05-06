@@ -105,16 +105,11 @@ func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv 
 	}, nil
 }
 
-func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (k8sRuntime, error) {
-	cfg, err := client.ComputeHostEnv(devHost, env)
-	if err != nil {
-		return k8sRuntime{}, err
-	}
-
+func NewFromConfig(ctx context.Context, config *HostConfig) (k8sRuntime, error) {
 	keyBytes, err := json.Marshal(struct {
 		C *client.HostEnv
 		E *schema.Environment
-	}{cfg, env})
+	}{config.hostEnv, config.env})
 	if err != nil {
 		return k8sRuntime{}, fnerrors.InternalError("failed to serialize config/env key: %w", err)
 	}
@@ -125,19 +120,19 @@ func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env
 	defer runtimeCache.mu.Unlock()
 
 	if _, ok := runtimeCache.cache[key]; !ok {
-		cli, err := client.NewClientFromHostEnv(cfg)
+		cli, err := client.NewClientFromHostEnv(config.hostEnv)
 		if err != nil {
 			return k8sRuntime{}, err
 		}
 
 		runtimeCache.cache[key] = k8sRuntime{
 			cli,
-			boundEnv{ws, env, cfg},
+			boundEnv{config.ws, config.env, config.hostEnv},
 			compute.InternalGetFuture[*kubedef.SystemInfo](ctx, &fetchSystemInfo{
 				cli:     cli,
-				cfg:     cfg,
-				devHost: devHost,
-				env:     env,
+				cfg:     config.hostEnv,
+				devHost: config.devHost,
+				env:     config.env,
 			}),
 		}
 	}
@@ -145,6 +140,15 @@ func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env
 	rt := runtimeCache.cache[key]
 
 	return rt, nil
+}
+
+func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (k8sRuntime, error) {
+	hostEnv, err := client.ComputeHostEnv(devHost, env)
+	if err != nil {
+		return k8sRuntime{}, err
+	}
+	hostConfig := &HostConfig{ws: ws, devHost: devHost, env: env, hostEnv: hostEnv, registry: nil}
+	return NewFromConfig(ctx, hostConfig)
 }
 
 type k8sRuntime struct {
