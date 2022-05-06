@@ -138,7 +138,6 @@ func ConfigFromEnv(ctx context.Context, env ops.Environment) (KubeconfigProvider
 	}); ok {
 		return x.KubeconfigProvider()
 	}
-
 	return ConfigFromDevHost(ctx, env.DevHost(), env.Proto())
 }
 

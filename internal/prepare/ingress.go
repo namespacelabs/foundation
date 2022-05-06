@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -20,16 +21,26 @@ import (
 )
 
 type noPackageEnv struct {
+	hostEnv *client.HostEnv
 	ops.Environment
 }
 
 var _ workspace.Packages = noPackageEnv{}
+var _ client.KubeconfigProvider = noPackageEnv{}
 
 func (noPackageEnv) Resolve(ctx context.Context, packageName schema.PackageName) (workspace.Location, error) {
 	return workspace.Location{}, errors.New("not supported")
 }
 func (noPackageEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*workspace.Package, error) {
 	return nil, errors.New("not supported")
+}
+
+func (p noPackageEnv) GetKubeconfig() string {
+	return p.hostEnv.GetKubeconfig()
+}
+
+func (p noPackageEnv) GetContext() string {
+	return p.hostEnv.GetContext()
 }
 
 func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*kubernetes.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
@@ -55,7 +66,7 @@ func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*kubernete
 				return nil, err
 			}
 
-			waiters, err := g.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{env})
+			waiters, err := g.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{config.ClientHostEnv(), env})
 			if err != nil {
 				return nil, err
 			}
