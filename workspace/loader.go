@@ -95,7 +95,7 @@ func NewPackageLoader(root *Root) *PackageLoader {
 	pl.workspace = root.Workspace
 	pl.devHost = root.DevHost
 	pl.moduleCache = &moduleCache{loaded: map[string]*Module{}, pl: pl}
-	pl.rootmodule = pl.moduleCache.inject(root.absPath, root.Workspace, false)
+	pl.rootmodule = pl.moduleCache.inject(root.absPath, root.Workspace, "" /* version */)
 	pl.loaded = map[string]*Package{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
 	pl.frontend = MakeFrontend(pl)
@@ -335,13 +335,13 @@ type moduleCache struct {
 	loaded map[string]*Module
 }
 
-func (cache *moduleCache) inject(absPath string, w *schema.Workspace, external bool) *Module {
+func (cache *moduleCache) inject(absPath string, w *schema.Workspace, version string) *Module {
 	m := &Module{
 		Workspace: w,
 		DevHost:   cache.pl.devHost,
 
-		absPath:  absPath,
-		external: external,
+		absPath: absPath,
+		version: version,
 	}
 
 	cache.mu.Lock()
@@ -376,7 +376,7 @@ func (cache *moduleCache) resolveExternal(moduleName string, download func() (*D
 		return nil, fnerrors.InternalError("%s: inconsistent definition, module specified %q", moduleName, w.ModuleName)
 	}
 
-	return cache.inject(downloaded.LocalPath, w, true), nil
+	return cache.inject(downloaded.LocalPath, w, downloaded.Version), nil
 }
 
 func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.PackageName) (Location, error) {
