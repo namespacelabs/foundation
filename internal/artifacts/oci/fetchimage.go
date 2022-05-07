@@ -77,6 +77,8 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 			return nil, fnerrors.BadInputError("expected to parse an image index: %w", err)
 		}
 
+		tasks.Attachments(ctx).AddResult("index", true)
+
 		return imageForPlatform(idx, r.platform, func(h v1.Hash) (Image, error) {
 			d := ImageID{Repository: descriptor.Repository, Digest: h.String()}
 			// When we do a recursive lookup we don't constrain platform anymore, as more

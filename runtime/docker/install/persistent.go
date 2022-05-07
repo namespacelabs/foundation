@@ -13,7 +13,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/rs/zerolog/log"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
@@ -92,12 +91,10 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 	imageID.Repository = p.Image
 	imageID.Tag = p.Version
 
-	rawImage, err := compute.Get(ctx, oci.ResolveImage(imageID.ImageRef(), docker.HostPlatform()))
+	image, err := compute.GetValue(ctx, oci.ResolveImage(imageID.ImageRef(), docker.HostPlatform()))
 	if err != nil {
 		return err
 	}
-
-	image := rawImage.Value.(v1.Image)
 
 	tag, err := name.NewTag(imageID.ImageRef())
 	if err != nil {

@@ -49,6 +49,10 @@ type Digestible interface {
 	ComputeDigest(context.Context) (schema.Digest, error)
 }
 
+type DigestFunc func(context.Context) (schema.Digest, error)
+
+func (f DigestFunc) ComputeDigest(ctx context.Context) (schema.Digest, error) { return f(ctx) }
+
 func Precomputed[V any](v V, compute func(context.Context) (schema.Digest, error)) Computable[V] {
 	return precomputed[V]{value: v, computeDigest: compute}
 }

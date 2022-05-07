@@ -12,11 +12,11 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/runtime/rtypes"
+	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -61,22 +61,13 @@ func HostPlatform() specs.Platform {
 func (r ToolRuntime) HostPlatform() specs.Platform { return HostPlatform() }
 
 func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.RunOpts) error {
-	n := opts.ImageName
-	if n == "" {
-		n = "foundation.namespacelabs.dev/docker-invocation"
-	}
-
-	tag, err := name.NewTag(n, name.WithDefaultTag("local"))
+	computable, err := writeImageOnce(opts.ImageName, opts.Image)
 	if err != nil {
 		return err
 	}
 
-	config, err := opts.Image.ConfigName()
+	config, err := compute.GetValue(ctx, computable)
 	if err != nil {
-		return fnerrors.InvocationError("docker: failed to fetch image config: %w", err)
-	}
-
-	if err := WriteImage(ctx, opts.Image, tag, false); err != nil {
 		return err
 	}
 
