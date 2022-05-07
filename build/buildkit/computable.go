@@ -60,22 +60,13 @@ func DefinitionToImage(env ops.Environment, platform *specs.Platform, def *llb.D
 	return makeImage(env, platform, &frontendReq{Def: def}, nil, nil)
 }
 
-func LLBToImageWithConf(ctx context.Context, env ops.Environment, conf build.Configuration, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
+func LLBToImage(ctx context.Context, env ops.Environment, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
 	serialized, err := state.Marshal(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return makeImage(env, conf.Target, &frontendReq{Def: serialized}, localDirs, conf.PublishName), nil
-}
-
-func LLBToImage(ctx context.Context, env ops.Environment, platform *specs.Platform, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
-	serialized, err := state.Marshal(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return makeImage(env, platform, &frontendReq{Def: serialized}, localDirs, nil), nil
+	return makeImage(env, conf.TargetPlatform(), &frontendReq{Def: serialized}, localDirs, conf.PublishName()), nil
 }
 
 func LLBToFS(ctx context.Context, env ops.Environment, platform *specs.Platform, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {

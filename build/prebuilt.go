@@ -31,7 +31,7 @@ type prebuilt struct {
 }
 
 func (p prebuilt) BuildImage(ctx context.Context, _ ops.Environment, conf Configuration) (compute.Computable[oci.Image], error) {
-	return oci.ImageP(p.imgid.ImageRef(), conf.Target), nil
+	return oci.ImageP(p.imgid.ImageRef(), conf.TargetPlatform()), nil
 }
 
 func (p prebuilt) PlatformIndependent() bool { return p.platformIndependent }

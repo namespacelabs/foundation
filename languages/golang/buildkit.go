@@ -25,9 +25,14 @@ import (
 
 var useSeparateGoModPhase = false
 
-func buildUsingBuildkit(ctx context.Context, env ops.Environment, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {
+type buildConf interface {
+	build.BuildTarget
+	build.BuildWorkspace
+}
+
+func buildUsingBuildkit(ctx context.Context, env ops.Environment, bin GoBinary, conf buildConf) (compute.Computable[oci.Image], error) {
 	local := buildkit.LocalContents{
-		Module:         conf.Workspace,
+		Module:         conf.Workspace(),
 		Path:           bin.GoModulePath,
 		ObserveChanges: bin.isFocus,
 	}
@@ -36,7 +41,7 @@ func buildUsingBuildkit(ctx context.Context, env ops.Environment, bin GoBinary, 
 
 	base := makeGoBuildBase(bin.GoVersion, buildkit.HostPlatform())
 
-	prodBase, err := production.ServerImageLLB(production.Distroless, *conf.Target)
+	prodBase, err := production.ServerImageLLB(production.Distroless, *conf.TargetPlatform())
 	if err != nil {
 		return nil, err
 	}
@@ -50,15 +55,15 @@ func buildUsingBuildkit(ctx context.Context, env ops.Environment, bin GoBinary, 
 	goBuild = append(goBuild, fmt.Sprintf("-o=/out/%s", bin.BinaryName))
 
 	state := (llbutil.RunGo{
-		Base:       prepareGoMod(base, src, conf.Target).Root(),
+		Base:       prepareGoMod(base, src, conf.TargetPlatform()).Root(),
 		SrcMount:   src,
 		WorkingDir: bin.SourcePath,
-		Platform:   conf.Target,
+		Platform:   conf.TargetPlatform(),
 	}).With(
-		llbutil.PrefixSh(label, conf.Target, "go "+strings.Join(goBuild, " "))...).
+		llbutil.PrefixSh(label, conf.TargetPlatform(), "go "+strings.Join(goBuild, " "))...).
 		AddMount("/out", prodBase)
 
-	image, err := buildkit.LLBToImageWithConf(ctx, env, conf, state, local)
+	image, err := buildkit.LLBToImage(ctx, env, conf, state, local)
 	if err != nil {
 		return nil, err
 	}

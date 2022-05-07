@@ -29,11 +29,14 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Build(ctx context.Context, env ops.Environment, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	return buildLocalImage(ctx, env, conf.Workspace, bin, *conf.Target)
+func Build(ctx context.Context, env ops.Environment, bin GoBinary, conf buildConf) (compute.Computable[oci.Image], error) {
+	if conf.Workspace() == nil {
+		panic(conf)
+	}
+	return buildLocalImage(ctx, env, conf.Workspace(), bin, conf)
 }
 
-func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.Workspace, bin GoBinary, target specs.Platform) (compute.Computable[oci.Image], error) {
+func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.Workspace, bin GoBinary, target build.BuildTarget) (compute.Computable[oci.Image], error) {
 	sdk, err := golang.MatchSDK(bin.GoVersion, golang.HostPlatform())
 	if err != nil {
 		return nil, err
@@ -51,14 +54,14 @@ func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.W
 			sdk:       sdk,
 			workspace: workspace.VersionedFS(bin.GoModulePath, bin.isFocus),
 			binary:    bin,
-			platform:  target,
+			platform:  *target.TargetPlatform(),
 		}),
 	}
 
 	return compute.Named(tasks.Action("go.make-binary-image").Arg("binary", bin), oci.MakeImage(baseImage, layers...)), nil
 }
 
-func baseImage(ctx context.Context, env ops.Environment, target specs.Platform) (compute.Computable[oci.Image], error) {
+func baseImage(ctx context.Context, env ops.Environment, target build.BuildTarget) (compute.Computable[oci.Image], error) {
 	// We use a different base for development because most Kubernetes installations don't
 	// yet support ephemeral containers, which would allow us to side-load into the same
 	// namespace as the running server, for debugging. So we instead add a base with some
@@ -69,7 +72,7 @@ func baseImage(ctx context.Context, env ops.Environment, target specs.Platform) 
 		return production.DevelopmentImage(ctx, production.Alpine, env, target)
 	}
 
-	return production.ServerImage(production.Distroless, target)
+	return production.ServerImage(production.Distroless, *target.TargetPlatform())
 }
 
 func platformToEnv(platform specs.Platform, cgo int) []string {

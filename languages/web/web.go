@@ -115,7 +115,7 @@ func (impl) PrepareBuild(ctx context.Context, endpoints languages.Endpoints, srv
 	}, nil
 }
 
-func buildWebApps(ctx context.Context, conf build.Configuration, endpoints []*schema.Endpoint, srv provision.Server, isFocus bool) ([]compute.Computable[oci.Image], error) {
+func buildWebApps(ctx context.Context, conf build.BuildTarget, endpoints []*schema.Endpoint, srv provision.Server, isFocus bool) ([]compute.Computable[oci.Image], error) {
 	var builds []compute.Computable[oci.Image]
 
 	for _, m := range srv.Proto().UrlMap {
@@ -145,10 +145,7 @@ func buildWebApps(ctx context.Context, conf build.Configuration, endpoints []*sc
 			return nil, err
 		}
 
-		targetConf := build.Configuration{
-			Target:      nil,
-			PublishName: conf.PublishName,
-		}
+		targetConf := build.NewBuildTarget(nil).WithTargetName(conf.PublishName())
 
 		var b compute.Computable[oci.Image]
 		if useDevBuild(srv.Env().Proto()) {
@@ -330,12 +327,11 @@ func (bws buildDevServer) BuildImage(ctx context.Context, env ops.Environment, c
 		return nil, err
 	}
 
-	baseImage, err := bws.baseImage.Spec.BuildImage(ctx, env, build.Configuration{
-		SourceLabel: bws.baseImage.SourceLabel,
-		Workspace:   bws.baseImage.Workspace,
-		Target:      conf.Target,
-		PublishName: conf.PublishName,
-	})
+	baseImage, err := bws.baseImage.Spec.BuildImage(ctx, env,
+		build.NewBuildTarget(conf.TargetPlatform()).
+			WithTargetName(conf.PublishName()).
+			WithSourceLabel(bws.baseImage.SourceLabel).
+			WithWorkspace(bws.baseImage.Workspace))
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +374,7 @@ func (bws buildProdWebServer) BuildImage(ctx context.Context, env ops.Environmen
 	config := oci.MakeLayer("conf", compute.Precomputed[fs.FS](&defaultConf, defaultConf.ComputeDigest))
 
 	images := []compute.Computable[oci.Image]{
-		oci.ResolveImage("nginx:1.21.5-alpine", *conf.Target),
+		oci.ResolveImage("nginx:1.21.5-alpine", *conf.TargetPlatform()),
 		oci.MakeImage(oci.Scratch(), config),
 	}
 	images = append(images, builds...)

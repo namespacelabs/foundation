@@ -27,7 +27,7 @@ import (
 )
 
 // Returns a Computable[v1.Image] with the results of the compilation.
-func ViteBuild(ctx context.Context, loc workspace.Location, env ops.Environment, conf build.Configuration, baseOutput, basePath string, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
+func ViteBuild(ctx context.Context, loc workspace.Location, env ops.Environment, conf build.BuildTarget, baseOutput, basePath string, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
 	local, base, err := viteBase(ctx, "/app", loc.Module, loc.Rel(), false, extraFiles...)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func ViteBuild(ctx context.Context, loc workspace.Location, env ops.Environment,
 		Run(llb.Shlexf("node_modules/.bin/vite build --base=%s --outDir=%s --emptyOutDir", basePath, filepath.Join("/out", baseOutput)), llb.Dir("/app")).
 		AddMount("/out", llb.Scratch())
 
-	image, err := buildkit.LLBToImageWithConf(ctx, env, conf, out, local)
+	image, err := buildkit.LLBToImage(ctx, env, conf, out, local)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func ViteBuild(ctx context.Context, loc workspace.Location, env ops.Environment,
 	return compute.Named(tasks.Action("web.vite.build").Arg("builder", "buildkit"), image), nil
 }
 
-func viteSource(ctx context.Context, target string, loc workspace.Location, isFocus bool, env ops.Environment, conf build.Configuration, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
+func viteSource(ctx context.Context, target string, loc workspace.Location, isFocus bool, env ops.Environment, conf build.BuildTarget, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
 	var module build.Workspace
 
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {
@@ -67,7 +67,7 @@ func viteSource(ctx context.Context, target string, loc workspace.Location, isFo
 		return nil, err
 	}
 
-	image, err := buildkit.LLBToImageWithConf(ctx, env, conf, state, local)
+	image, err := buildkit.LLBToImage(ctx, env, conf, state, local)
 	if err != nil {
 		return nil, err
 	}

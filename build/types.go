@@ -48,13 +48,24 @@ type Workspace interface {
 	VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned]
 }
 
-type Configuration struct {
-	SourceLabel string
-	Target      *specs.Platform
-	Workspace   Workspace
-
+type BuildTarget interface {
+	TargetPlatform() *specs.Platform
 	// See Plan.PublishName.
-	PublishName compute.Computable[oci.AllocatedName]
+	PublishName() compute.Computable[oci.AllocatedName]
+}
+
+type BuildWorkspace interface {
+	Workspace() Workspace
+}
+
+type BuildDescription interface {
+	SourceLabel() string
+}
+
+type Configuration interface {
+	BuildDescription
+	BuildTarget
+	BuildWorkspace
 }
 
 type BuildPlatformsVar struct{}

@@ -45,16 +45,16 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env ops.Environment, c
 	req := &frontendReq{
 		Frontend: "dockerfile.v0",
 		FrontendInputs: map[string]llb.State{
-			dockerfile.DefaultLocalNameDockerfile: makeDockerfileState(conf.SourceLabel, df),
+			dockerfile.DefaultLocalNameDockerfile: makeDockerfileState(conf.SourceLabel(), df),
 			dockerfile.DefaultLocalNameContext:    MakeLocalState(df.Contents),
 		},
 	}
 
-	if conf.Target != nil {
-		req.FrontendOpt = makeDockerOpts([]specs.Platform{*conf.Target})
+	if conf.TargetPlatform() != nil {
+		req.FrontendOpt = makeDockerOpts([]specs.Platform{*conf.TargetPlatform()})
 	}
 
-	return makeImage(env, conf.Target, req, []LocalContents{df.Contents}, nil), nil
+	return makeImage(env, conf.TargetPlatform(), req, []LocalContents{df.Contents}, nil), nil
 }
 
 func (df dockerfileBuild) PlatformIndependent() bool { return false }

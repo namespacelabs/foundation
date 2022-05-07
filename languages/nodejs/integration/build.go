@@ -50,7 +50,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env ops.Environment, conf
 
 	state, local := n.LLB(bnj, conf)
 
-	nodejsImage, err := buildkit.LLBToImageWithConf(ctx, env, conf, state, local)
+	nodejsImage, err := buildkit.LLBToImage(ctx, env, conf, state, local)
 	if err != nil {
 		return nil, err
 	}
@@ -67,11 +67,11 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env ops.Environment, conf
 			return nil, err
 		}
 
-		devControllerImage, err := p.Plan.Spec.BuildImage(ctx, env, build.Configuration{
-			SourceLabel: p.Plan.SourceLabel,
-			Workspace:   p.Plan.Workspace,
-			Target:      conf.Target,
-		})
+		devControllerImage, err := p.Plan.Spec.BuildImage(ctx, env,
+			build.NewBuildTarget(conf.TargetPlatform()).
+				WithTargetName(conf.PublishName()).
+				WithSourceLabel(p.Plan.SourceLabel).
+				WithWorkspace(p.Plan.Workspace))
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +99,7 @@ type NodeJsBinary struct {
 	Env        string
 }
 
-func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.Configuration) (llb.State, buildkit.LocalContents) {
+func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.BuildTarget) (llb.State, buildkit.LocalContents) {
 	local := buildkit.LocalContents{Module: bnj.module, Path: ".", ObserveChanges: bnj.isFocus}
 	src := buildkit.MakeLocalState(local)
 
@@ -109,7 +109,7 @@ func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.Configuration) (llb.State,
 	}
 
 	yarnRoot := bnj.yarnRoot.String()
-	buildBase := prepareYarnWithWorkspaces(yarnWorkspacePaths, yarnRoot, bnj.isDevBuild, n.NodeJsBase, src, *conf.Target)
+	buildBase := prepareYarnWithWorkspaces(yarnWorkspacePaths, yarnRoot, bnj.isDevBuild, n.NodeJsBase, src, *conf.TargetPlatform())
 
 	var out llb.State
 	// The dev and prod builds are different:
@@ -129,7 +129,7 @@ func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.Configuration) (llb.State,
 		}
 
 		// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
-		out = production.PrepareImage(llbutil.Image(n.NodeJsBase, *conf.Target), *conf.Target).
+		out = production.PrepareImage(llbutil.Image(n.NodeJsBase, *conf.TargetPlatform()), *conf.TargetPlatform()).
 			With(stateOptions...)
 	}
 

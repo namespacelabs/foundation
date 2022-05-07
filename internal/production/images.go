@@ -9,6 +9,7 @@ import (
 
 	"github.com/moby/buildkit/client/llb"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/engine/ops"
@@ -44,7 +45,7 @@ func ServerImage(name string, target specs.Platform) (compute.Computable[oci.Ima
 // DevelopmentImage returns a minimal base image where we add tools for development. Use of
 // development images is temporary, and likely to only be used when ephemeral containers
 // are not available.
-func DevelopmentImage(ctx context.Context, name string, env ops.Environment, target specs.Platform) (compute.Computable[oci.Image], error) {
+func DevelopmentImage(ctx context.Context, name string, env ops.Environment, target build.BuildTarget) (compute.Computable[oci.Image], error) {
 	base := pins.Server(name)
 	if base == nil || base.Base == "" {
 		return nil, fnerrors.InternalError("missing base server definition for %q", name)
@@ -59,10 +60,10 @@ func DevelopmentImage(ctx context.Context, name string, env ops.Environment, tar
 		return nil, err
 	}
 
-	state := prepareImage(llbutil.Image(serverBase, target), *base.NonRootUserID)
+	state := prepareImage(llbutil.Image(serverBase, *target.TargetPlatform()), *base.NonRootUserID)
 	state = state.Run(llb.Shlex("apk add --no-cache bash")).Root()
 
-	return buildkit.LLBToImage(ctx, env, &target, state)
+	return buildkit.LLBToImage(ctx, env, target, state)
 }
 
 func ServerImageLLB(name string, target specs.Platform) (llb.State, error) {

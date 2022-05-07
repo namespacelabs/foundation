@@ -31,12 +31,13 @@ type debugShellBuild struct{}
 var _ build.Spec = debugShellBuild{}
 
 func (debugShellBuild) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	image := llbutil.Image("ubuntu:20.04@sha256:8ae9bafbb64f63a50caab98fd3a5e37b3eb837a3e0780b78e5218e63193961f9", *conf.Target)
+	image := llbutil.Image("ubuntu:20.04@sha256:8ae9bafbb64f63a50caab98fd3a5e37b3eb837a3e0780b78e5218e63193961f9", *conf.TargetPlatform())
 
 	base := image.
 		Run(llb.Shlexf("apt-get update")).
 		Run(llb.Shlexf("apt-get install -y curl")).
-		Run(llb.Shlexf("curl -L https://go.dev/dl/go1.17.8.%s-%s.tar.gz -o /tmp/go.tgz", conf.Target.OS, conf.Target.Architecture)).
+		Run(llb.Shlexf("curl -L https://go.dev/dl/go1.17.8.%s-%s.tar.gz -o /tmp/go.tgz",
+			conf.TargetPlatform().OS, conf.TargetPlatform().Architecture)).
 		Run(llb.Shlexf("tar -C /usr/local -xzf /tmp/go.tgz")).
 		Run(llb.Shlexf("rm /tmp/go.tgz"))
 
@@ -47,7 +48,7 @@ func (debugShellBuild) BuildImage(ctx context.Context, env ops.Environment, conf
 
 	r := gobase.Run(llb.Shlexf("go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.6"))
 
-	return buildkit.LLBToImageWithConf(ctx, env, conf, r.Root())
+	return buildkit.LLBToImage(ctx, env, conf, r.Root())
 }
 
 func (debugShellBuild) PlatformIndependent() bool { return false }

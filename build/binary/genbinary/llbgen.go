@@ -39,27 +39,24 @@ func (l llbBinary) BuildImage(ctx context.Context, env ops.Environment, conf bui
 	tools := tools.Impl()
 
 	hostPlatform := tools.HostPlatform()
-	bin, err := l.bin.BuildImage(ctx, env, build.Configuration{
-		Target:    &hostPlatform,
-		Workspace: l.module,
-	})
+	bin, err := l.bin.BuildImage(ctx, env, build.NewBuildTarget(&hostPlatform).WithWorkspace(l.module))
 	if err != nil {
 		return nil, err
 	}
 
 	action := tasks.Action("binary.llbgen").Scope(l.packageName)
 
-	if conf.Target != nil {
-		action = action.Arg("platform", devhost.FormatPlatform(*conf.Target))
+	if conf.TargetPlatform() != nil {
+		action = action.Arg("platform", devhost.FormatPlatform(*conf.TargetPlatform()))
 	}
 
-	return compute.Map(action, compute.Inputs().Computable("bin", bin).JSON("platform", conf.Target), compute.Output{},
+	return compute.Map(action, compute.Inputs().Computable("bin", bin).JSON("platform", conf.TargetPlatform()), compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
 			binImage := compute.GetDepValue(deps, bin, "bin")
 
 			var targetPlatform string
-			if conf.Target != nil {
-				targetPlatform = devhost.FormatPlatform(*conf.Target)
+			if conf.TargetPlatform() != nil {
+				targetPlatform = devhost.FormatPlatform(*conf.TargetPlatform())
 			}
 
 			var serializedLLB bytes.Buffer
@@ -87,7 +84,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env ops.Environment, conf bui
 				return nil, err
 			}
 
-			return compute.GetValue(ctx, buildkit.DefinitionToImage(env, conf.Target, def))
+			return compute.GetValue(ctx, buildkit.DefinitionToImage(env, conf.TargetPlatform(), def))
 		}), nil
 }
 

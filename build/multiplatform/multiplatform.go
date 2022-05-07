@@ -38,11 +38,7 @@ func prefix(p, label string) string {
 
 func prepareImage(ctx context.Context, env ops.Environment, p build.Plan) (compute.Computable[oci.ResolvableImage], error) {
 	if p.Spec.PlatformIndependent() {
-		img, err := p.Spec.BuildImage(ctx, env, build.Configuration{
-			SourceLabel: p.SourceLabel,
-			Workspace:   p.Workspace,
-			PublishName: p.PublishName,
-		})
+		img, err := p.Spec.BuildImage(ctx, env, build.NewBuildTarget(nil).WithTargetName(p.PublishName).WithSourceLabel(p.SourceLabel))
 		if err != nil {
 			return nil, err
 		}
@@ -93,8 +89,8 @@ func prepareImage(ctx context.Context, env ops.Environment, p build.Plan) (compu
 }
 
 type buildRequest struct {
-	build.Configuration
-	Spec build.Spec
+	Configuration build.Configuration
+	Spec          build.Spec
 }
 
 type indexPlan struct {
@@ -109,12 +105,10 @@ func prepareMultiPlatformPlan(ctx context.Context, plan build.Plan, platforms []
 	if plan.Spec.PlatformIndependent() {
 		br := buildRequest{
 			Spec: plan.Spec,
-			Configuration: build.Configuration{
-				SourceLabel: plan.SourceLabel,
-				Workspace:   plan.Workspace,
-				Target:      nil, // Plan says it is agnostic.
-				PublishName: plan.PublishName,
-			},
+			Configuration: build.NewBuildTarget(nil /* Plan says it is agnostic. */).
+				WithTargetName(plan.PublishName).
+				WithWorkspace(plan.Workspace).
+				WithSourceLabel(plan.SourceLabel),
 		}
 		requests = append(requests, br)
 
@@ -130,12 +124,10 @@ func prepareMultiPlatformPlan(ctx context.Context, plan build.Plan, platforms []
 
 			br := buildRequest{
 				Spec: plan.Spec,
-				Configuration: build.Configuration{
-					SourceLabel: label,
-					Workspace:   plan.Workspace,
-					Target:      platformPtr(plat),
-					PublishName: plan.PublishName,
-				},
+				Configuration: build.NewBuildTarget(platformPtr(plat)).
+					WithTargetName(plan.PublishName).
+					WithWorkspace(plan.Workspace).
+					WithSourceLabel(label),
 			}
 
 			platformIndex = append(platformIndex, len(requests))

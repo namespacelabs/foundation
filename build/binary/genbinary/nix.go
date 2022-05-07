@@ -32,7 +32,7 @@ type nixImage struct {
 }
 
 func (l nixImage) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	if conf.Target == nil {
+	if conf.TargetPlatform() == nil {
 		return nil, fnerrors.BadInputError("nix: target platform is missing")
 	}
 
@@ -60,7 +60,7 @@ filter-syscalls = false
 
 	// Filter-syscalls is necessary due to an interaction with Docker, see https://github.com/NixOS/nix/issues/5258
 
-	base := llb.Image(nixosImage, llb.Platform(*conf.Target)).
+	base := llb.Image(nixosImage, llb.Platform(*conf.TargetPlatform())).
 		File(llb.Mkfile("/etc/nix/nix.conf", 0777, []byte(nixconf))).
 		AddEnv("PATH", "/root/.nix-profile/bin")
 
@@ -73,7 +73,7 @@ filter-syscalls = false
 		Run(llb.Shlexf("cp -L /tmp/result /out/" + outputImageFile))
 	out := postCopy.AddMount("/out", llb.Scratch())
 
-	fsys, err := buildkit.LLBToFS(ctx, env, conf.Target, out)
+	fsys, err := buildkit.LLBToFS(ctx, env, conf.TargetPlatform(), out)
 	if err != nil {
 		return nil, err
 	}
