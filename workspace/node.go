@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.Node, kind schema.Node_Kind, opts LoadPackageOpts) error {
+func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.Node, kind schema.Node_Kind) error {
 	if kind == schema.Node_EXTENSION {
 		if node.Ingress != schema.Endpoint_INGRESS_UNSPECIFIED {
 			return errors.New("ingress can only be specified for services")
@@ -88,11 +88,9 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 
 	node.UserImports = deps.PackageNamesAsString()
 
-	if opts.LoadPackageReferences {
-		err := visitDeps(ctx, pl, loc, deps.PackageNames(), &deps, nil)
-		if err != nil {
-			return err
-		}
+	err := visitDeps(ctx, pl, loc, deps.PackageNames(), &deps, nil)
+	if err != nil {
+		return err
 	}
 
 	// XXX stable order is missing

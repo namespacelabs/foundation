@@ -60,7 +60,6 @@ type CuePackage struct {
 	RelPath    string   // Relative to module root.
 	Files      []string // Relative to RelPath
 	Sources    fs.FS
-	Imports    []string // Top level import statements.
 }
 
 func (pkg CuePackage) RelFiles() []string {
@@ -71,20 +70,20 @@ func (pkg CuePackage) RelFiles() []string {
 	return files
 }
 
-func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname string, m map[string]*CuePackage) error {
+func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname string, m map[string]CuePackage) error {
 	if _, ok := m[pkgname]; ok {
 		return nil
 	}
 
 	// Leave a marker that this package is already handled, to avoid processing through cycles.
-	m[pkgname] = &CuePackage{}
+	m[pkgname] = CuePackage{}
 
 	pkg, err := loadPackageContents(ctx, resolver, pkgname)
 	if err != nil {
 		return err
 	}
 
-	m[pkgname] = pkg
+	m[pkgname] = *pkg
 
 	if len(pkg.Files) == 0 {
 		return nil
@@ -102,13 +101,12 @@ func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname strin
 		}
 
 		for _, imp := range f.Imports {
-			importInfo, _ := astutil.ParseImportSpec(imp)
-			pkg.Imports = append(pkg.Imports, importInfo.Dir)
-			if isStandardImportPath(importInfo.ID) {
+			pkg, _ := astutil.ParseImportSpec(imp)
+			if isStandardImportPath(pkg.ID) {
 				continue
 			}
 
-			if err := CollectImports(ctx, resolver, importInfo.Dir, m); err != nil {
+			if err := CollectImports(ctx, resolver, pkg.Dir, m); err != nil {
 				return err
 			}
 		}
@@ -176,7 +174,7 @@ func (ev *EvalCtx) Eval(ctx context.Context, pkgname string) (*Partial, error) {
 	// We work around Cue's limited package management. Rather than maintaining package copies under
 	// a top-level cue.mod directory, we want instead a system more similar to Go's, with explicit
 	// version locking, and downloads into a common shared cache.
-	collectedImports := map[string]*CuePackage{}
+	collectedImports := map[string]CuePackage{}
 
 	if err := CollectImports(ctx, ev.loader, pkgname, collectedImports); err != nil {
 		return nil, err
@@ -189,10 +187,10 @@ func (ev *EvalCtx) Eval(ctx context.Context, pkgname string) (*Partial, error) {
 
 	// A foundation package definition has no package statement, which we refer to as the "_"
 	// import here.
-	return ev.cache.Eval(ctx, *pkg, pkgname+":_", collectedImports)
+	return ev.cache.Eval(ctx, pkg, pkgname+":_", collectedImports)
 }
 
-func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage) (*Partial, error) {
+func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]CuePackage) (*Partial, error) {
 	ev.mu.Lock()
 	defer ev.mu.Unlock()
 
@@ -215,7 +213,7 @@ func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 		}
 
 		for _, dep := range collectedImports {
-			partial.CueImports = append(partial.CueImports, *dep)
+			partial.CueImports = append(partial.CueImports, dep)
 		}
 		sort.Slice(partial.CueImports, func(i, j int) bool {
 			return strings.Compare(partial.CueImports[i].ModuleName, partial.CueImports[j].ModuleName) < 0
@@ -227,7 +225,7 @@ func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 	return ev.built[pkgname], nil
 }
 
-func (ev *snapshotCache) buildAndCacheInstance(ctx context.Context, pkg CuePackage, info astutil.ImportInfo, collectedImports map[string]*CuePackage) *build.Instance {
+func (ev *snapshotCache) buildAndCacheInstance(ctx context.Context, pkg CuePackage, info astutil.ImportInfo, collectedImports map[string]CuePackage) *build.Instance {
 	if p := ev.parsed[info.ID]; p != nil {
 		return p
 	}
@@ -237,7 +235,7 @@ func (ev *snapshotCache) buildAndCacheInstance(ctx context.Context, pkg CuePacka
 	return p
 }
 
-func (ev *snapshotCache) buildInstance(ctx context.Context, collectedImports map[string]*CuePackage, info astutil.ImportInfo, pkg CuePackage) *build.Instance {
+func (ev *snapshotCache) buildInstance(ctx context.Context, collectedImports map[string]CuePackage, info astutil.ImportInfo, pkg CuePackage) *build.Instance {
 	p := ev.bldctx.NewInstance(fmt.Sprintf("%s/%s", pkg.ModuleName, pkg.RelPath), func(pos token.Pos, path string) *build.Instance {
 		if isStandardImportPath(path) {
 			return nil // Builtin.
@@ -245,7 +243,7 @@ func (ev *snapshotCache) buildInstance(ctx context.Context, collectedImports map
 
 		info, _ := astutil.ParseImportSpec(ast.NewImport(nil, path))
 		if pkg, ok := collectedImports[info.Dir]; ok {
-			return ev.buildAndCacheInstance(ctx, *pkg, info, collectedImports)
+			return ev.buildAndCacheInstance(ctx, pkg, info, collectedImports)
 		}
 
 		return nil
