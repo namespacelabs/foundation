@@ -127,7 +127,7 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 		}
 
 		r := &workspaceLoader{alloc}
-		imports := map[string]fncue.CuePackage{}
+		imports := map[string]*fncue.CuePackage{}
 
 		// Check whether imports refer to packages; we'll see calls to workspaceResolver.
 		// We ignore errors, because some of the errors may be related to the lack of
