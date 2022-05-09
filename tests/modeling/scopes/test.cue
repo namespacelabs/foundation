@@ -1,6 +1,4 @@
-import (
-"namespacelabs.dev/foundation/std/fn"
- "namespacelabs.dev/foundation/std/testdata/server/modeling")
+import "namespacelabs.dev/foundation/std/fn"
 
 test: fn.#Test & {
 	name: "test-scoped-instantiation"

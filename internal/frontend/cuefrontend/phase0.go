@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.EarlyPackageLoader, loc workspace.Location, opts workspace.LoadPackageOpts) (*fncue.Partial, error) {
+func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.EarlyPackageLoader, loc workspace.Location) (*fncue.Partial, error) {
 	var v *fncue.Partial
 	if err := tasks.Action("cue.package.parse").Scope(loc.PackageName).Run(ctx, func(ctx context.Context) error {
 		if st, err := fs.Stat(fnfs.Local(loc.Module.Abs()), loc.Rel()); err != nil {
@@ -44,12 +44,12 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.Earl
 			WithFetcher(fncue.ResourceIKw, FetchResource(fsys, loc)).
 			WithFetcher(fncue.PackageIKW, FetchPackage(pl))
 
-		parsedPartial := *firstPass
 		newV, newLeft, err := applyInputs(ctx, inputs, &firstPass.CueV, firstPass.Left)
 		if err != nil {
 			return fnerrors.Wrapf(loc, err, "evaluating package")
 		}
 
+		parsedPartial := *firstPass
 		parsedPartial.Val = newV.Val
 		parsedPartial.Left = newLeft
 		v = &parsedPartial

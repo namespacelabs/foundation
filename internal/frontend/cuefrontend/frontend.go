@@ -29,7 +29,7 @@ func NewFrontend(pl workspace.EarlyPackageLoader) workspace.Frontend {
 }
 
 func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error) {
-	partial, err := parsePackage(ctx, ft.evalctx, ft.loader, loc, opts)
+	partial, err := parsePackage(ctx, ft.evalctx, ft.loader, loc)
 	if err != nil {
 		return nil, err
 	}

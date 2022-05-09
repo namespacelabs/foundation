@@ -1,8 +1,4 @@
-import (
-"namespacelabs.dev/foundation/std/fn"
-		"namespacelabs.dev/foundation/languages/nodejs/testdata/services/simple",
-		"namespacelabs.dev/foundation/languages/nodejs/testdata/services/numberformatter",
-        )
+import "namespacelabs.dev/foundation/std/fn"
 
 server: fn.#Server & {
 	id:        "bkpqlg4jt9fgo01bqam0"

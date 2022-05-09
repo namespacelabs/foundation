@@ -6,9 +6,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"strings"
 
 	"github.com/philopon/go-toposort"
 	"github.com/spf13/cobra"
@@ -96,6 +93,7 @@ func generateProtos(ctx context.Context, root *workspace.Root) error {
 }
 
 func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniquestrings.List, pkgIdx map[schema.PackageName]uint64) ([]fnfs.Location, error) {
+	// Gather all the possible nodes into a set.
 	all := map[string]struct{}{}
 	for _, from := range nodes {
 		parent := from.AsPackageName()
@@ -108,25 +106,14 @@ func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniques
 	}
 	graph := toposort.NewGraph(len(all))
 
-	for n, _ := range all {
+	for n := range all {
 		graph.AddNode(n)
 	}
 	for _, from := range nodes {
 		parent := from.AsPackageName()
-		pch := true
-		if strings.Contains(parent.String(), "formatter") {
-			pch = true
-			fmt.Fprintf(os.Stderr, "xxxparent: %s\n", parent)
-		}
-
 		if children, ok := imports[parent]; ok {
 			for _, child := range children.Strings() {
 				graph.AddEdge(child, parent.String())
-				//graph.AddEdge(parent.String(), child)
-				if pch {
-					fmt.Fprintf(os.Stderr, "%s -> %s\n", strings.TrimPrefix(parent.String(), "namespacelabs.dev/foundation/"),
-						strings.TrimPrefix(child, "namespacelabs.dev/foundation/"))
-				}
 			}
 		}
 	}
@@ -134,9 +121,6 @@ func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniques
 	result, solved := graph.Toposort()
 	if !solved {
 		return nil, fnerrors.InternalError("ops dependencies are not solvable")
-	}
-	for _, k := range result {
-		fmt.Fprintf(os.Stderr, "sol: %s\n", k)
 	}
 
 	end := make([]fnfs.Location, 0, len(nodes))

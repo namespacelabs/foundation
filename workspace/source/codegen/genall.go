@@ -22,22 +22,18 @@ type GenerateError struct {
 
 // ForNodeLocations generates protos for Extensions and Services. Locations in `locs` are sorted in a topological order.
 func ForLocationsGenProto(ctx context.Context, root *workspace.Root, locs []fnfs.Location, onError func(GenerateError)) error {
-	var errCount int
-
 	pl := workspace.NewPackageLoader(root)
 	g := ops.Plan{}
 	for _, loc := range locs {
 		pkg, err := pl.LoadByNameWithOpts(ctx, loc.AsPackageName(), workspace.DontLoadDependencies())
 		if err != nil {
 			onError(GenerateError{PackageName: loc.AsPackageName(), What: "loading schema", Err: err})
-			errCount++
 			continue
 		}
 		if n := pkg.Node(); n != nil {
 			defs, err := ProtosForNode(pkg, []*schema.Node{n})
 			if err != nil {
 				onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
-				errCount++
 			} else {
 				if err := g.Add(defs...); err != nil {
 					return err
@@ -53,21 +49,18 @@ func ForLocationsGenProto(ctx context.Context, root *workspace.Root, locs []fnfs
 
 // ForLocationsGenCode generates code for all packages in `locs`. At this stage we assume protos are already generated.
 func ForLocationsGenCode(ctx context.Context, root *workspace.Root, locs []fnfs.Location, onError func(GenerateError)) error {
-	var errCount int
 	pl := workspace.NewPackageLoader(root)
 	g := ops.Plan{}
 	for _, loc := range locs {
 		sealed, err := workspace.Seal(ctx, pl, loc.AsPackageName(), nil)
 		if err != nil {
 			onError(GenerateError{PackageName: loc.AsPackageName(), What: "loading schema", Err: err})
-			errCount++
 			continue
 		}
 		if srv := sealed.Proto.Server; srv != nil {
 			defs, err := languages.IntegrationFor(srv.Framework).GenerateServer(sealed.ParsedPackage, sealed.Proto.Node)
 			if err != nil {
 				onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate server", Err: err})
-				errCount++
 			} else {
 				if err := g.Add(defs...); err != nil {
 					return err
@@ -89,7 +82,6 @@ func ForLocationsGenCode(ctx context.Context, root *workspace.Root, locs []fnfs.
 			defs, err := ForNodeForLanguage(pkg, sealed.Proto.Node)
 			if err != nil {
 				onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
-				errCount++
 				return err
 			} else {
 				if err := g.Add(defs...); err != nil {

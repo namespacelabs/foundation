@@ -65,7 +65,11 @@ func ListSchemasWithOpt(ctx context.Context, root *Root, opt ListSchemaOpt) (Sch
 				return nil
 			}
 
-			if ptype != PackageType_Undefined {
+			if opt.NodeOnly {
+				if ptype == PackageType_Extension || ptype == PackageType_Service {
+					sl.Locations = append(sl.Locations, pkg)
+				}
+			} else if ptype != PackageType_Undefined {
 				sl.Locations = append(sl.Locations, pkg)
 			}
 

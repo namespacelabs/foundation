@@ -1,7 +1,5 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
-		"namespacelabs.dev/foundation/std/go/grpc/gateway",
-		"namespacelabs.dev/foundation/std/testdata/service/list",
 )
 
 server: fn.#Server & {

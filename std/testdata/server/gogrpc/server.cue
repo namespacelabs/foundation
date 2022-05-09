@@ -1,12 +1,6 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-		"namespacelabs.dev/foundation/std/go/grpc/gateway",
-		"namespacelabs.dev/foundation/std/testdata/service/post",
-		"namespacelabs.dev/foundation/std/grpc/logging",
-		"namespacelabs.dev/foundation/std/monitoring/tracing/jaeger",
-		"namespacelabs.dev/foundation/universe/go/panicparse",
-		"namespacelabs.dev/foundation/universe/aws/irsa",
 )
 
 server: fn.#Server & {
