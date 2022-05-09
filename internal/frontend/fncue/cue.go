@@ -77,7 +77,7 @@ func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname strin
 	}
 
 	// Leave a marker that this package is already handled, to avoid processing through cycles.
-	m[pkgname] = CuePackage{}
+	m[pkgname] = &CuePackage{}
 
 	pkg, err := loadPackageContents(ctx, resolver, pkgname)
 	if err != nil {

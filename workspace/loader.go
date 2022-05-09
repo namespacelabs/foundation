@@ -52,24 +52,6 @@ func DontLoadDependencies() LoadPackageOpt {
 	}
 }
 
-func SkipTest() LoadPackageOpt {
-	return func(lpo *LoadPackageOpts) {
-		lpo.SkipTest = true
-	}
-}
-
-func SkipBinary() LoadPackageOpt {
-	return func(lpo *LoadPackageOpts) {
-		lpo.SkipBinary = true
-	}
-}
-
-func SkipServer() LoadPackageOpt {
-	return func(lpo *LoadPackageOpts) {
-		lpo.SkipServer = true
-	}
-}
-
 type LoadPackageOpts struct {
 	LoadPackageReferences bool
 }

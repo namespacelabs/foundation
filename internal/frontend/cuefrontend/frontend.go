@@ -56,37 +56,29 @@ func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts wo
 		count++
 	}
 
-	if !opts.SkipServer {
-		if server := v.LookupPath("server"); server.Exists() {
-			parsedSrv, err := parseCueServer(ctx, ft.loader, loc, v, server, parsed, opts)
-			if err != nil {
-				return nil, fnerrors.Wrapf(loc, err, "parsing server")
-			}
-			parsed.Server = parsedSrv
-			count++
+	if server := v.LookupPath("server"); server.Exists() {
+		parsedSrv, err := parseCueServer(ctx, ft.loader, loc, v, server, parsed, opts)
+		if err != nil {
+			return nil, fnerrors.Wrapf(loc, err, "parsing server")
 		}
+		parsed.Server = parsedSrv
+		count++
 	}
-
-	if !opts.SkipBinary {
-		if binary := v.LookupPath("binary"); binary.Exists() {
-			parsedBinary, err := parseCueBinary(ctx, loc, v, binary)
-			if err != nil {
-				return nil, fnerrors.Wrapf(loc, err, "parsing binary")
-			}
-			parsed.Binary = parsedBinary
-			count++
+	if binary := v.LookupPath("binary"); binary.Exists() {
+		parsedBinary, err := parseCueBinary(ctx, loc, v, binary)
+		if err != nil {
+			return nil, fnerrors.Wrapf(loc, err, "parsing binary")
 		}
+		parsed.Binary = parsedBinary
+		count++
 	}
-
-	if !opts.SkipTest {
-		if test := v.LookupPath("test"); test.Exists() {
-			parsedTest, err := parseCueTest(ctx, loc, v, test)
-			if err != nil {
-				return nil, fnerrors.Wrapf(loc, err, "parsing test")
-			}
-			parsed.Test = parsedTest
-			count++
+	if test := v.LookupPath("test"); test.Exists() {
+		parsedTest, err := parseCueTest(ctx, loc, v, test)
+		if err != nil {
+			return nil, fnerrors.Wrapf(loc, err, "parsing test")
 		}
+		parsed.Test = parsedTest
+		count++
 	}
 
 	if count > 1 {
@@ -103,11 +95,11 @@ func (ft impl) GetPackageType(ctx context.Context, pkg schema.PackageName) (work
 	}
 
 	var topLevels = map[string]workspace.PackageType{
-		"service": workspace.PackageType_Service,
-		"server": workspace.PackageType_Server,
+		"service":   workspace.PackageType_Service,
+		"server":    workspace.PackageType_Server,
 		"extension": workspace.PackageType_Extension,
-		"test": workspace.PackageType_Test,
-		"binary": workspace.PackageType_Binary,
+		"test":      workspace.PackageType_Test,
+		"binary":    workspace.PackageType_Binary,
 	}
 	for k, v := range topLevels {
 		if firstPass.LookupPath(k).Exists() {

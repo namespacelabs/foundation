@@ -69,7 +69,7 @@ func newServerCmd() *cobra.Command {
 				return err
 			}
 
-			return codegen.ForLocations(ctx, root, []fnfs.Location{loc}, func(e codegen.GenerateError) {
+			return codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, func(e codegen.GenerateError) {
 				w := console.Stderr(ctx)
 				fmt.Fprintf(w, "%s: %s failed:\n", e.PackageName, e.What)
 				fnerrors.Format(w, true, e.Err)

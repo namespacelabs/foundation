@@ -45,15 +45,13 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.Earl
 			WithFetcher(fncue.PackageIKW, FetchPackage(pl))
 
 		parsedPartial := *firstPass
-		if !opts.SkipBinary {
-			newV, newLeft, err := applyInputs(ctx, inputs, &firstPass.CueV, firstPass.Left)
-			if err != nil {
-				return fnerrors.Wrapf(loc, err, "evaluating package")
-			}
-
-			parsedPartial.Val = newV.Val
-			parsedPartial.Left = newLeft
+		newV, newLeft, err := applyInputs(ctx, inputs, &firstPass.CueV, firstPass.Left)
+		if err != nil {
+			return fnerrors.Wrapf(loc, err, "evaluating package")
 		}
+
+		parsedPartial.Val = newV.Val
+		parsedPartial.Left = newLeft
 		v = &parsedPartial
 
 		return nil
