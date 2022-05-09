@@ -1,4 +1,6 @@
-import "namespacelabs.dev/foundation/std/fn"
+import ( "namespacelabs.dev/foundation/std/testdata/server/localstacks3"
+"namespacelabs.dev/foundation/std/fn"
+)
 
 test: fn.#Test & {
 	name: "test-localstack-s3"

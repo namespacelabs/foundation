@@ -52,7 +52,7 @@ func generateGoSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath strin
 			fmt.Fprintln(console.Debug(ctx), "The input sources were:")
 			fmt.Fprintln(console.Debug(ctx), src.String())
 
-			return fnerrors.InternalError("failed to format generated Go file: %w", err)
+			return fnerrors.InternalError("failed to format generated Go file %s >>%s<<: %w", filePath, src.String(), err)
 		}
 
 		_, err = w.Write(formatted)

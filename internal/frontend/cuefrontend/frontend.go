@@ -29,7 +29,7 @@ func NewFrontend(pl workspace.EarlyPackageLoader) workspace.Frontend {
 }
 
 func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error) {
-	partial, err := parsePackage(ctx, ft.evalctx, ft.loader, loc)
+	partial, err := parsePackage(ctx, ft.evalctx, ft.loader, loc, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -56,31 +56,37 @@ func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts wo
 		count++
 	}
 
-	if server := v.LookupPath("server"); server.Exists() {
-		parsedSrv, err := parseCueServer(ctx, ft.loader, loc, v, server, parsed, opts)
-		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing server")
+	if !opts.SkipServer {
+		if server := v.LookupPath("server"); server.Exists() {
+			parsedSrv, err := parseCueServer(ctx, ft.loader, loc, v, server, parsed, opts)
+			if err != nil {
+				return nil, fnerrors.Wrapf(loc, err, "parsing server")
+			}
+			parsed.Server = parsedSrv
+			count++
 		}
-		parsed.Server = parsedSrv
-		count++
 	}
 
-	if binary := v.LookupPath("binary"); binary.Exists() {
-		parsedBinary, err := parseCueBinary(ctx, loc, v, binary)
-		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing binary")
+	if !opts.SkipBinary {
+		if binary := v.LookupPath("binary"); binary.Exists() {
+			parsedBinary, err := parseCueBinary(ctx, loc, v, binary)
+			if err != nil {
+				return nil, fnerrors.Wrapf(loc, err, "parsing binary")
+			}
+			parsed.Binary = parsedBinary
+			count++
 		}
-		parsed.Binary = parsedBinary
-		count++
 	}
 
-	if test := v.LookupPath("test"); test.Exists() {
-		parsedTest, err := parseCueTest(ctx, loc, v, test)
-		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing test")
+	if !opts.SkipTest {
+		if test := v.LookupPath("test"); test.Exists() {
+			parsedTest, err := parseCueTest(ctx, loc, v, test)
+			if err != nil {
+				return nil, fnerrors.Wrapf(loc, err, "parsing test")
+			}
+			parsed.Test = parsedTest
+			count++
 		}
-		parsed.Test = parsedTest
-		count++
 	}
 
 	if count > 1 {
@@ -110,6 +116,22 @@ func (ft impl) GetPackageType(ctx context.Context, pkg schema.PackageName) (work
 	}
 
 	return workspace.PackageType_Undefined, nil
+}
+
+func (ft impl) HasNodePackage(ctx context.Context, pkg schema.PackageName) (bool, error) {
+	firstPass, err := ft.evalctx.Eval(ctx, pkg.String())
+	if err != nil {
+		return false, err
+	}
+
+	var topLevels = []string{"service", "extension"}
+	for _, topLevel := range topLevels {
+		if firstPass.LookupPath(topLevel).Exists() {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 type WorkspaceLoader struct {

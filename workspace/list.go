@@ -22,9 +22,17 @@ type SchemaList struct {
 	Locations []fnfs.Location
 }
 
+type ListSchemaOpt struct {
+	NodeOnly bool
+}
+
+func ListSchemas(ctx context.Context, root *Root) (SchemaList, error) {
+	return ListSchemasWithOpt(ctx, root, ListSchemaOpt{})
+}
+
 // Recursively visits each non-hidden sub-directory of rootDir, and keeps
 // tabs of the schemas on each.
-func ListSchemas(ctx context.Context, root *Root) (SchemaList, error) {
+func ListSchemasWithOpt(ctx context.Context, root *Root, opt ListSchemaOpt) (SchemaList, error) {
 	sl := SchemaList{Root: root}
 
 	pl := NewPackageLoader(root)

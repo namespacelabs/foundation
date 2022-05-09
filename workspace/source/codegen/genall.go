@@ -20,12 +20,42 @@ type GenerateError struct {
 	Err         error
 }
 
-func ForLocations(ctx context.Context, root *workspace.Root, locs []fnfs.Location, onError func(GenerateError)) error {
+// ForNodeLocations generates protos for Extensions and Services. Locations in `locs` are sorted in a topological order.
+func ForLocationsGenProto(ctx context.Context, root *workspace.Root, locs []fnfs.Location, onError func(GenerateError)) error {
 	var errCount int
-	var g ops.Plan
 
 	pl := workspace.NewPackageLoader(root)
+	g := ops.Plan{}
+	for _, loc := range locs {
+		pkg, err := pl.LoadByNameWithOpts(ctx, loc.AsPackageName(), workspace.DontLoadDependencies())
+		if err != nil {
+			onError(GenerateError{PackageName: loc.AsPackageName(), What: "loading schema", Err: err})
+			errCount++
+			continue
+		}
+		if n := pkg.Node(); n != nil {
+			defs, err := ProtosForNode(pkg, []*schema.Node{n})
+			if err != nil {
+				onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
+				errCount++
+			} else {
+				if err := g.Add(defs...); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := g.Execute(ctx, "workspace.generate.phase.node", genEnv{root, pl.Seal()}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
+// ForLocationsGenCode generates code for all packages in `locs`. At this stage we assume protos are already generated.
+func ForLocationsGenCode(ctx context.Context, root *workspace.Root, locs []fnfs.Location, onError func(GenerateError)) error {
+	var errCount int
+	pl := workspace.NewPackageLoader(root)
+	g := ops.Plan{}
 	for _, loc := range locs {
 		sealed, err := workspace.Seal(ctx, pl, loc.AsPackageName(), nil)
 		if err != nil {
@@ -56,21 +86,20 @@ func ForLocations(ctx context.Context, root *workspace.Root, locs []fnfs.Locatio
 				continue
 			}
 
-			defs, err := ForNode(pkg, sealed.Proto.Node)
+			defs, err := ForNodeForLanguage(pkg, sealed.Proto.Node)
 			if err != nil {
 				onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
 				errCount++
+				return err
 			} else {
 				if err := g.Add(defs...); err != nil {
 					return err
 				}
 			}
 		}
-		if _, err := g.Execute(ctx, "workspace.generate", genEnv{root, pl.Seal()}); err != nil {
-			return err
-		}
 	}
-	return nil
+	_, err := g.Execute(ctx, "workspace.generate.phase.code", genEnv{root, pl.Seal()})
+	return err
 }
 
 type genEnv struct {
