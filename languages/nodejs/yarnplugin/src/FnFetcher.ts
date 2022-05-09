@@ -1,3 +1,7 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
 import { Fetcher, FetchOptions, Locator, MinimalFetchOptions, structUtils } from "@yarnpkg/core";
 import { ppath } from "@yarnpkg/fslib";
 import { fileUtils } from "@yarnpkg/plugin-file";
