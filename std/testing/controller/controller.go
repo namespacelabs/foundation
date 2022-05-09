@@ -9,7 +9,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/rs/zerolog"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -19,8 +18,8 @@ import (
 )
 
 const (
-	interval  = time.Second      // TODO: time.Minute
-	killAfter = 10 * time.Second // TODO
+	interval  = time.Minute
+	killAfter = 5 * time.Minute
 )
 
 func main() {
@@ -48,9 +47,6 @@ func main() {
 		}
 
 		for _, ns := range list.Items {
-			// TODO remove
-			zerolog.Ctx(ctx).Info().Str("status", string(ns.Status.Phase)).Msgf("Namespace=%s", ns.Name)
-
 			if ns.Status.Phase == corev1.NamespaceTerminating {
 				// TODO Add more filtering?
 				continue
@@ -62,6 +58,7 @@ func main() {
 				log.Fatalf("failed to list events in namespace %s: %v", ns.Name, err)
 			}
 			if len(events.Items) == 0 {
+				// TODO what if a namespace never has events?
 				continue
 			}
 			lastTimestamp := events.Items[0].LastTimestamp
@@ -72,8 +69,9 @@ func main() {
 				}
 			}
 
-			if time.Now().Sub(lastTimestamp.Time) > killAfter {
-				log.Printf("Deleting stale testing namespace %s", ns.Name)
+			elapsed := time.Now().Sub(lastTimestamp.Time)
+			if elapsed > killAfter {
+				log.Printf("Deleting stale testing namespace %s. Saw no new event since %s", ns.Name, elapsed)
 				if err := clientset.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{}); err != nil {
 					log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
 				}
