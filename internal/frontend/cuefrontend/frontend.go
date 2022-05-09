@@ -24,7 +24,7 @@ type impl struct {
 func NewFrontend(pl workspace.EarlyPackageLoader) workspace.Frontend {
 	return impl{
 		loader:  pl,
-		evalctx: fncue.NewEvalCtx(WorkspaceLoader{pl}),
+		evalctx: fncue.NewEvalCtx(workspaceLoader{pl}),
 	}
 }
 
@@ -64,6 +64,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts wo
 		parsed.Server = parsedSrv
 		count++
 	}
+
 	if binary := v.LookupPath("binary"); binary.Exists() {
 		parsedBinary, err := parseCueBinary(ctx, loc, v, binary)
 		if err != nil {
@@ -72,6 +73,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts wo
 		parsed.Binary = parsedBinary
 		count++
 	}
+
 	if test := v.LookupPath("test"); test.Exists() {
 		parsedTest, err := parseCueTest(ctx, loc, v, test)
 		if err != nil {
@@ -95,11 +97,11 @@ func (ft impl) GetPackageType(ctx context.Context, pkg schema.PackageName) (work
 	}
 
 	var topLevels = map[string]workspace.PackageType{
-		"service":   workspace.PackageType_Service,
-		"server":    workspace.PackageType_Server,
+		"service": workspace.PackageType_Service,
+		"server": workspace.PackageType_Server,
 		"extension": workspace.PackageType_Extension,
-		"test":      workspace.PackageType_Test,
-		"binary":    workspace.PackageType_Binary,
+		"test": workspace.PackageType_Test,
+		"binary": workspace.PackageType_Binary,
 	}
 	for k, v := range topLevels {
 		if firstPass.LookupPath(k).Exists() {
@@ -110,33 +112,17 @@ func (ft impl) GetPackageType(ctx context.Context, pkg schema.PackageName) (work
 	return workspace.PackageType_Undefined, nil
 }
 
-func (ft impl) HasNodePackage(ctx context.Context, pkg schema.PackageName) (bool, error) {
-	firstPass, err := ft.evalctx.Eval(ctx, pkg.String())
-	if err != nil {
-		return false, err
-	}
-
-	var topLevels = []string{"service", "extension"}
-	for _, topLevel := range topLevels {
-		if firstPass.LookupPath(topLevel).Exists() {
-			return true, nil
-		}
-	}
-
-	return false, nil
+type workspaceLoader struct {
+	pl workspace.EarlyPackageLoader
 }
 
-type WorkspaceLoader struct {
-	PackageLoader workspace.EarlyPackageLoader
-}
-
-func (wl WorkspaceLoader) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, error) {
-	loc, err := wl.PackageLoader.Resolve(ctx, pkgname)
+func (wl workspaceLoader) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, error) {
+	loc, err := wl.pl.Resolve(ctx, pkgname)
 	if err != nil {
 		return fnfs.Location{}, err
 	}
 
-	w, err := wl.PackageLoader.WorkspaceOf(ctx, loc.Module)
+	w, err := wl.pl.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
 		return fnfs.Location{}, err
 	}

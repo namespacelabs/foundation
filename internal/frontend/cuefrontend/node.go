@@ -391,7 +391,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		return err
 	}
 
-	return workspace.TransformNode(ctx, pl, loc, node, kind, opts)
+	return workspace.TransformNode(ctx, pl, loc, node, kind)
 }
 
 func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, provides *fncue.CueV, pkg *workspace.Package, opts workspace.LoadPackageOpts, out *schema.Node) error {
