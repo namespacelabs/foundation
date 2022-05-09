@@ -127,16 +127,16 @@ func (ft impl) HasNodePackage(ctx context.Context, pkg schema.PackageName) (bool
 }
 
 type WorkspaceLoader struct {
-	Pl workspace.EarlyPackageLoader
+	PackageLoader workspace.EarlyPackageLoader
 }
 
 func (wl WorkspaceLoader) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, error) {
-	loc, err := wl.Pl.Resolve(ctx, pkgname)
+	loc, err := wl.PackageLoader.Resolve(ctx, pkgname)
 	if err != nil {
 		return fnfs.Location{}, err
 	}
 
-	w, err := wl.Pl.WorkspaceOf(ctx, loc.Module)
+	w, err := wl.PackageLoader.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
 		return fnfs.Location{}, err
 	}

@@ -79,6 +79,7 @@ func newServiceCmd() *cobra.Command {
 				fmt.Fprintf(w, "%s: %s failed:\n", e.PackageName, e.What)
 				fnerrors.Format(w, true, e.Err)
 			}
+			// Generate protos before generating code for this extension as code (our generated code may depend on the protos).
 			if err := codegen.ForLocationsGenProto(ctx, root, []fnfs.Location{loc}, onError); err != nil {
 				return nil
 			}

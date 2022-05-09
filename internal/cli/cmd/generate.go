@@ -61,7 +61,7 @@ func generateProtos(ctx context.Context, root *workspace.Root) error {
 	}
 
 	pl := workspace.NewPackageLoader(root)
-	wl := cuefrontend.WorkspaceLoader{Pl: pl}
+	wl := cuefrontend.WorkspaceLoader{PackageLoader: pl}
 
 	cuePackages := make(map[string]*fncue.CuePackage) // Cue packages by PackageName.
 	for _, loc := range list.Locations {
@@ -94,19 +94,19 @@ func generateProtos(ctx context.Context, root *workspace.Root) error {
 
 func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniquestrings.List, pkgIdx map[schema.PackageName]uint64) ([]fnfs.Location, error) {
 	// Gather all the possible nodes into a set.
-	all := map[string]struct{}{}
+	all := &uniquestrings.List{}
 	for _, from := range nodes {
 		parent := from.AsPackageName()
-		all[parent.String()] = struct{}{}
+		all.Add(parent.String())
 		if imp, ok := imports[parent]; ok {
 			for _, i := range imp.Strings() {
-				all[i] = struct{}{}
+				all.Add(i)
 			}
 		}
 	}
-	graph := toposort.NewGraph(len(all))
+	graph := toposort.NewGraph(all.Len())
 
-	for n := range all {
+	for _, n := range all.Strings() {
 		graph.AddNode(n)
 	}
 	for _, from := range nodes {
