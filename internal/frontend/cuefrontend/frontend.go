@@ -90,20 +90,26 @@ func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts wo
 	return parsed, nil
 }
 
-func (ft impl) HasPackage(ctx context.Context, pkg schema.PackageName) (bool, error) {
+func (ft impl) GetPackageType(ctx context.Context, pkg schema.PackageName) (workspace.PackageType, error) {
 	firstPass, err := ft.evalctx.Eval(ctx, pkg.String())
 	if err != nil {
-		return false, err
+		return workspace.PackageType_Undefined, err
 	}
 
-	var topLevels = []string{"service", "server", "extension", "test", "binary"}
-	for _, topLevel := range topLevels {
-		if firstPass.LookupPath(topLevel).Exists() {
-			return true, nil
+	var topLevels = map[string]workspace.PackageType{
+		"service": workspace.PackageType_Service,
+		"server": workspace.PackageType_Server,
+		"extension": workspace.PackageType_Extension,
+		"test": workspace.PackageType_Test,
+		"binary": workspace.PackageType_Binary,
+	}
+	for k, v := range topLevels {
+		if firstPass.LookupPath(k).Exists() {
+			return v, nil
 		}
 	}
 
-	return false, nil
+	return workspace.PackageType_Undefined, nil
 }
 
 type workspaceLoader struct {
