@@ -147,6 +147,12 @@ jobs:
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
+      - name: Regenerate generated files
+        run: |
+          find . -regex '.*\.fn\.cue' -exec rm {} \; ; \
+          find . -regex '.*\.fn\.go' -exec rm {} \; ; \
+          /tmp/fn generate
+
       - name: Run all tests
         run: |
           /tmp/fn test \
@@ -209,6 +215,13 @@ jobs:
 
       - name: print kubectl cluster-info
         run: kubectl cluster-info
+
+      - name: Regenerate generated files
+        run: |
+          cd ${{ matrix.root_path }}; \
+          find . -regex '.*\.fn\.cue' -exec rm {} \; ; \
+          find . -regex '.*\.fn\.go' -exec rm {} \; ; \
+          /tmp/fn generate
 
       - name: run all tests
         run: |
