@@ -9,18 +9,46 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applyrbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
+	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 )
 
 const (
-	clusterRole        = "foundation:controller:testing-controller"
-	clusterRoleBinding = "foundation:controller:testing-controller-binding"
-	serviceAccount     = "foundation-testing-controller-service-account"
+	clusterRole        = "foundation:controller:role"
+	clusterRoleBinding = "foundation:controller:role-binding"
+	serviceAccount     = "foundation-controller-service-account"
 )
+
+func ensureRoleBinding(ctx context.Context, cli *kubernetes.Clientset, ns string) error {
+	// We fetch the existing binding to ensure we don't unbind service accounts in other namespaces
+	res, err := cli.RbacV1().ClusterRoleBindings().Get(ctx, clusterRoleBinding, metav1.GetOptions{})
+	if err != nil && !k8serrors.IsNotFound(err) {
+		return err
+	}
+
+	binding := applyrbacv1.ClusterRoleBinding(clusterRoleBinding).
+		WithSubjects(applyrbacv1.Subject().WithKind("ServiceAccount").WithName(serviceAccount).WithNamespace(ns)).
+		WithRoleRef(applyrbacv1.RoleRef().WithKind("ClusterRole").WithName(clusterRole))
+
+	if res != nil {
+		for _, sub := range res.Subjects {
+			if sub.Name == serviceAccount && sub.Namespace == ns {
+				// Service account already bound in correct namespace. Nothing to do.
+				return nil
+			}
+			binding.WithSubjects(applyrbacv1.Subject().WithKind(sub.Kind).WithName(sub.Name).WithNamespace(sub.Namespace))
+		}
+	}
+
+	_, err = cli.RbacV1().ClusterRoleBindings().Apply(ctx, binding, kubedef.Ego())
+	return err
+}
 
 func (r k8sRuntime) RunController(ctx context.Context, runOpts runtime.ServerRunOpts) error {
 	cli, err := client.NewClientFromHostEnv(r.hostEnv)
@@ -50,10 +78,7 @@ func (r k8sRuntime) RunController(ctx context.Context, runOpts runtime.ServerRun
 		return err
 	}
 
-	binding := applyrbacv1.ClusterRoleBinding(clusterRoleBinding).
-		WithSubjects(applyrbacv1.Subject().WithKind("ServiceAccount").WithName(serviceAccount).WithNamespace(ns)).
-		WithRoleRef(applyrbacv1.RoleRef().WithKind("ClusterRole").WithName(clusterRole))
-	if _, err := cli.RbacV1().ClusterRoleBindings().Apply(ctx, binding, kubedef.Ego()); err != nil {
+	if err := ensureRoleBinding(ctx, cli, ns); err != nil {
 		return err
 	}
 
