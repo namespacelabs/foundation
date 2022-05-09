@@ -22,10 +22,11 @@ func TestMakeLabels(t *testing.T) {
 	got := MakeLabels(env, srv)
 
 	if d := cmp.Diff(map[string]string{
-		"app.kubernetes.io/managed-by":      "foundation.namespace.so",
-		"k8s.namespacelabs.dev/env":         "prod",
-		"k8s.namespacelabs.dev/env-purpose": "production",
-		"k8s.namespacelabs.dev/server-id":   "abc",
+		"app.kubernetes.io/managed-by":        "foundation.namespace.so",
+		"k8s.namespacelabs.dev/env":           "prod",
+		"k8s.namespacelabs.dev/env-ephemeral": "false",
+		"k8s.namespacelabs.dev/env-purpose":   "production",
+		"k8s.namespacelabs.dev/server-id":     "abc",
 	}, got); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
