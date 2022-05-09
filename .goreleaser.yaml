@@ -18,7 +18,7 @@ builds:
 
   - id: macos
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     main: ./cmd/fn
     binary: fn
     flags:
