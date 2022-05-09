@@ -59,7 +59,6 @@ func generateProtos(ctx context.Context, root *workspace.Root) error {
 	if err != nil {
 		return err
 	}
-
 	pl := workspace.NewPackageLoader(root)
 	wl := cuefrontend.WorkspaceLoader{PackageLoader: pl}
 
@@ -77,12 +76,7 @@ func generateProtos(ctx context.Context, root *workspace.Root) error {
 		}
 		imports[schema.PackageName(packageName)] = *l
 	}
-	// Maps package name to the original place in list.Locations.
-	packageIndex := map[schema.PackageName]uint64{}
-	for i, loc := range list.Locations {
-		packageIndex[loc.AsPackageName()] = uint64(i)
-	}
-	topoSorted, err := topoSortNodes(list.Locations, imports, packageIndex)
+	topoSorted, err := topoSortNodes(list.Locations, imports)
 	if err != nil {
 		return err
 	}
@@ -92,7 +86,7 @@ func generateProtos(ctx context.Context, root *workspace.Root) error {
 	})
 }
 
-func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniquestrings.List, pkgIdx map[schema.PackageName]uint64) ([]fnfs.Location, error) {
+func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniquestrings.List) ([]fnfs.Location, error) {
 	// Gather all the possible nodes into a set.
 	all := &uniquestrings.List{}
 	for _, from := range nodes {
@@ -113,6 +107,7 @@ func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniques
 		parent := from.AsPackageName()
 		if children, ok := imports[parent]; ok {
 			for _, child := range children.Strings() {
+				// First children then parents.
 				graph.AddEdge(child, parent.String())
 			}
 		}
@@ -120,13 +115,18 @@ func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniques
 
 	result, solved := graph.Toposort()
 	if !solved {
-		return nil, fnerrors.InternalError("ops dependencies are not solvable")
+		return nil, fnerrors.InternalError("dependency graph has a cycle")
 	}
 
+	// Maps package name to the original place in list.Locations.
+	packageToLoc := map[schema.PackageName]fnfs.Location{}
+	for _, loc := range nodes {
+		packageToLoc[loc.AsPackageName()] = loc
+	}
 	end := make([]fnfs.Location, 0, len(nodes))
 	for _, k := range result {
-		if i, ok := pkgIdx[schema.PackageName(k)]; ok {
-			end = append(end, nodes[i])
+		if loc, ok := packageToLoc[schema.PackageName(k)]; ok {
+			end = append(end, loc)
 		}
 	}
 
