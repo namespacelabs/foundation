@@ -474,6 +474,7 @@ func ComputeDomains(env *schema.Environment, srv *schema.Server, naming *schema.
 	})
 
 	for _, d := range naming.GetAdditionalTlsManaged() {
+		d := d // Capture d.
 		if d.AllocatedName == allocatedName {
 			domains = append(domains, DeferredDomain{
 				Domain: &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED_TLS_MANAGED},
