@@ -20,55 +20,77 @@ type GenerateError struct {
 	Err         error
 }
 
-func ForLocations(ctx context.Context, root *workspace.Root, locs []fnfs.Location, onError func(GenerateError)) error {
-	var errCount int
-	var g ops.Plan
-
+// ForNodeLocations generates protos for Extensions and Services. Locations in `locs` are sorted in a topological order.
+func ForLocationsGenProto(ctx context.Context, root *workspace.Root, locs []fnfs.Location, onError func(GenerateError)) error {
 	pl := workspace.NewPackageLoader(root)
+	g := ops.Plan{}
+	for _, loc := range locs {
+		pkg, err := pl.LoadByNameWithOpts(ctx, loc.AsPackageName(), workspace.DontLoadDependencies())
+		if err != nil {
+			onError(GenerateError{PackageName: loc.AsPackageName(), What: "loading schema", Err: err})
+			continue
+		}
+		if n := pkg.Node(); n != nil {
+			defs, err := ProtosForNode(pkg, []*schema.Node{n})
+			if err != nil {
+				onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
+			} else {
+				if err := g.Add(defs...); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := g.Execute(ctx, "workspace.generate.phase.node", genEnv{root, pl.Seal()}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
+// ForLocationsGenCode generates code for all packages in `locs`. At this stage we assume protos are already generated.
+func ForLocationsGenCode(ctx context.Context, root *workspace.Root, locs []fnfs.Location, onError func(GenerateError)) error {
+	pl := workspace.NewPackageLoader(root)
+	g := ops.Plan{}
 	for _, loc := range locs {
 		sealed, err := workspace.Seal(ctx, pl, loc.AsPackageName(), nil)
 		if err != nil {
 			onError(GenerateError{PackageName: loc.AsPackageName(), What: "loading schema", Err: err})
-			errCount++
-		} else {
-			if srv := sealed.Proto.Server; srv != nil {
-				defs, err := languages.IntegrationFor(srv.Framework).GenerateServer(sealed.ParsedPackage, sealed.Proto.Node)
-				if err != nil {
-					onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate server", Err: err})
-					errCount++
-				} else {
-					if err := g.Add(defs...); err != nil {
-						return err
-					}
-				}
+			continue
+		}
+		if srv := sealed.Proto.Server; srv != nil {
+			defs, err := languages.IntegrationFor(srv.Framework).GenerateServer(sealed.ParsedPackage, sealed.Proto.Node)
+			if err != nil {
+				onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate server", Err: err})
 			} else {
-				var pkg *workspace.Package
-				for _, dep := range sealed.Deps {
-					if dep.PackageName() == loc.AsPackageName() {
-						pkg = dep
-						break
-					}
+				if err := g.Add(defs...); err != nil {
+					return err
 				}
-
-				if pkg == nil || pkg.Node() == nil {
-					continue
+			}
+		} else {
+			var pkg *workspace.Package
+			for _, dep := range sealed.Deps {
+				if dep.PackageName() == loc.AsPackageName() {
+					pkg = dep
+					break
 				}
+			}
 
-				defs, err := ForNode(pkg, sealed.Proto.Node)
-				if err != nil {
-					onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
-					errCount++
-				} else {
-					if err := g.Add(defs...); err != nil {
-						return err
-					}
+			if pkg == nil || pkg.Node() == nil {
+				continue
+			}
+
+			defs, err := ForNodeForLanguage(pkg, sealed.Proto.Node)
+			if err != nil {
+				onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
+				return err
+			} else {
+				if err := g.Add(defs...); err != nil {
+					return err
 				}
 			}
 		}
 	}
-
-	_, err := g.Execute(ctx, "workspace.generate", genEnv{root, pl.Seal()})
+	_, err := g.Execute(ctx, "workspace.generate.phase.code", genEnv{root, pl.Seal()})
 	return err
 }
 

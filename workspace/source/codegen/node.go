@@ -55,7 +55,7 @@ func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.Defi
 	return nil, generateNode(ctx, loc, msg.Node, msg.Protos, loc.Module.ReadWriteFS())
 }
 
-func ForNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.Definition, error) {
+func ProtosForNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.Definition, error) {
 	var allDefs []*schema.Definition
 
 	if len(pkg.Provides) > 0 {
@@ -77,7 +77,11 @@ func ForNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.Defini
 			allDefs = append(allDefs, lst...)
 		}
 	}
+	return allDefs, nil
+}
 
+func ForNodeForLanguage(pkg *workspace.Package, available []*schema.Node) ([]*schema.Definition, error) {
+	var allDefs []*schema.Definition
 	for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
 		defs, err := languages.IntegrationFor(fmwk).GenerateNode(pkg, available)
 		if err != nil {
