@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog"
 	corev1 "k8s.io/api/core/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/runtime"
@@ -18,6 +19,19 @@ import (
 func (r k8sRuntime) RunController(ctx context.Context, runOpts runtime.ServerRunOpts) error {
 	name := fmt.Sprintf("controller-%v", labelName(runOpts.Command))
 
+	zerolog.Ctx(ctx).Info().Str("name", name).Msg("name")
+
+	cli, err := client.NewClientFromHostEnv(r.hostEnv)
+	if err != nil {
+		return err
+	}
+	zerolog.Ctx(ctx).Info().Msg("client")
+
+	if _, err := cli.CoreV1().Namespaces().Apply(ctx, applycorev1.Namespace(r.ns()), kubedef.Ego()); err != nil {
+		return err
+	}
+	zerolog.Ctx(ctx).Info().Str("ns", r.ns()).Msg("created")
+
 	container := applycorev1.Container().
 		WithName(name).
 		WithImage(runOpts.Image.RepoAndDigest()).
@@ -27,11 +41,6 @@ func (r k8sRuntime) RunController(ctx context.Context, runOpts runtime.ServerRun
 			applycorev1.SecurityContext().
 				WithReadOnlyRootFilesystem(runOpts.ReadOnlyFilesystem))
 
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
-	if err != nil {
-		return err
-	}
-
 	pod := applycorev1.Pod(name, r.ns()).
 		WithSpec(applycorev1.PodSpec().WithContainers(container).
 			WithRestartPolicy(corev1.RestartPolicyOnFailure))
@@ -39,6 +48,7 @@ func (r k8sRuntime) RunController(ctx context.Context, runOpts runtime.ServerRun
 	if _, err := cli.CoreV1().Pods(r.ns()).Apply(ctx, pod, kubedef.Ego()); err != nil {
 		return err
 	}
+	zerolog.Ctx(ctx).Info().Str("ns", r.ns()).Msg("applied")
 
 	// Shall we block on the controller becoming healthy?
 

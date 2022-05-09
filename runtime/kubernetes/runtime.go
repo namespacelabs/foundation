@@ -181,7 +181,7 @@ func (r k8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 		Description: "Namespace",
 		Resource:    "namespaces",
 		Name:        r.ns(),
-		Body:        applycorev1.Namespace(r.ns()),
+		Body:        applycorev1.Namespace(r.ns()).WithLabels(kubedef.MakeLabels(r.env, nil)),
 	}).ToDefinition()
 	if err != nil {
 		return nil, err

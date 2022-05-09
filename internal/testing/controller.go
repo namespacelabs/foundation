@@ -7,6 +7,7 @@ package testing
 import (
 	"context"
 
+	"github.com/rs/zerolog"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -17,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
-const controllerPkg = "namespacelabs.dev/std/testing/controller"
+const controllerPkg = "namespacelabs.dev/foundation/std/testing/controller"
 
 func EnsureController(ctx context.Context, pl *workspace.PackageLoader, fac factory) error {
 	env := fac.PrepareControllerEnv()
@@ -52,9 +53,12 @@ func EnsureController(ctx context.Context, pl *workspace.PackageLoader, fac fact
 
 	fixtureImage := oci.PublishResolvable(binTag, bin)
 
+	zerolog.Ctx(ctx).Info().Msg("building bin")
+
 	// TODO model async later
 	img, err := compute.Get(ctx, fixtureImage)
 
+	zerolog.Ctx(ctx).Info().Msg("built bin")
 	runOpts := runtime.ServerRunOpts{
 		Image:              img.Value,
 		Command:            prepared.Command,
@@ -62,7 +66,11 @@ func EnsureController(ctx context.Context, pl *workspace.PackageLoader, fac fact
 		ReadOnlyFilesystem: true,
 	}
 
-	runtime.For(ctx, env).RunController(ctx, runOpts)
+	zerolog.Ctx(ctx).Info().Msg("run controller")
+	if err := runtime.For(ctx, env).RunController(ctx, runOpts); err != nil {
+		return err
+	}
 
+	zerolog.Ctx(ctx).Info().Msg("done")
 	return nil
 }

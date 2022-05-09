@@ -425,14 +425,6 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		}
 	}
 
-	// Ensure namespace labels for filtering (e.g. by env purpose).
-	s.declarations = append(s.declarations, kubedef.Apply{
-		Description: "Namespace",
-		Resource:    "namespaces",
-		Name:        r.ns(),
-		Body:        applycorev1.Namespace(r.ns()).WithLabels(kubedef.MakeLabels(r.env, nil)),
-	})
-
 	// We don't deploy managed deployments or statefulsets in tests, as these are one-shot
 	// servers which we want to control a bit more carefully. For example, we want to deploy
 	// them with restart_policy=never, which we would otherwise not be able to do with
