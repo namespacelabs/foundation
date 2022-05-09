@@ -83,7 +83,7 @@ different arguments. To bootstrap, create `.vscode/launch.json` and add the foll
       "request": "launch",
       "mode": "debug",
       "program": "${workspaceRoot}/cmd/fn",
-      // This is important, other debugging doesn't work.
+      // This is important, otherwise debugging doesn't work.
       "env": { "CGO_ENABLED": "0" },
       // Specify the absolute path to the working directory.
       "cwd": "~/code/foundation",
