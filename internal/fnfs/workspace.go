@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -55,7 +56,7 @@ func WriteFileExtended(ctx context.Context, dst ReadWriteFS, filePath string, mo
 			if errors.Is(err, fs.ErrNotExist) {
 				goto write
 			}
-			return err
+			return fnerrors.UserError(nil, "failed to write a workspace file %q: %w", filePath, err)
 		}
 
 		defer f.Close()

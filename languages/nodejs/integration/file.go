@@ -15,7 +15,6 @@ import (
 	"namespacelabs.dev/foundation/internal/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -41,7 +40,7 @@ func writeSource(w io.Writer, t *template.Template, templateName string, data in
 	return err
 }
 
-func findYarnRoot(loc workspace.Location) (schema.PackageName, error) {
+func findYarnRoot(loc workspace.Location) (string, error) {
 	path, err := findroot.Find(yarnLockFn, loc.Abs(), findroot.LookForFile(yarnLockFn))
 	if err != nil {
 		return "", nil
@@ -52,5 +51,5 @@ func findYarnRoot(loc workspace.Location) (schema.PackageName, error) {
 		return "", err
 	}
 
-	return schema.Name(relPath), nil
+	return relPath, nil
 }

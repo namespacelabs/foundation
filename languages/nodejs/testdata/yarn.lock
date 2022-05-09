@@ -385,6 +385,8 @@ __metadata:
 "root-workspace-0b6124@workspace:.":
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
+  dependencies:
+    typescript: 4.6.2
   languageName: unknown
   linkType: soft
 
