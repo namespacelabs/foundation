@@ -54,6 +54,9 @@ func EnsureController(ctx context.Context, pl *workspace.PackageLoader, fac fact
 
 	// TODO model async when we run tests in parallel #344
 	img, err := compute.Get(ctx, fixtureImage)
+	if err != nil {
+		return err
+	}
 
 	runOpts := runtime.ServerRunOpts{
 		Image:              img.Value,
