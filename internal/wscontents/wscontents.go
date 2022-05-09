@@ -224,7 +224,7 @@ func MakeVersioned(ctx context.Context, moduleAbsPath, rel string, observeChange
 		absPath:        filepath.Join(moduleAbsPath, rel),
 		fs:             fsys,
 		revision:       1,
-		logger:         console.Output(ctx, "observepath"),
+		errLogger:      console.Output(ctx, "observepath"),
 		onNewSnapshot:  onNewSnapshot,
 		observeChanges: observeChanges,
 	}, nil
@@ -243,7 +243,7 @@ type versioned struct {
 	absPath        string
 	fs             fs.FS
 	revision       uint64
-	logger         io.Writer
+	errLogger      io.Writer
 	observeChanges bool
 
 	// If available, is called on the updated snapshot before sending an update.
@@ -307,7 +307,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 
 		return nil
 	}); err != nil {
-		fmt.Fprintln(vp.logger, "watching failed: ", err)
+		fmt.Fprintln(vp.errLogger, "watching failed: ", err)
 		watcher.Close()
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 	bufferCh := make(chan []fsnotify.Event)
 	go func() {
 		for buffer := range bufferCh {
-			newFsys, deliver, err := handleEvents(ctx, vp.logger, vp.absPath, fsys, vp.onNewSnapshot, buffer)
+			newFsys, deliver, err := handleEvents(ctx, console.Debug(ctx), vp.errLogger, vp.absPath, fsys, vp.onNewSnapshot, buffer)
 			if err != nil {
 				compute.Stop(ctx, err)
 				break
@@ -338,7 +338,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 				absPath:        vp.absPath,
 				fs:             fsys,
 				revision:       vp.revision,
-				logger:         vp.logger,
+				errLogger:      vp.errLogger,
 				observeChanges: vp.observeChanges,
 			}
 			onChange(r, false)
@@ -355,14 +355,14 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 		return nil, err
 	}
 
-	go AggregateFSEvents(w, vp.logger, bufferCh)
+	go AggregateFSEvents(w, console.Debug(ctx), vp.errLogger, bufferCh)
 
 	return func() {
 		w.Close()
 	}, nil
 }
 
-func AggregateFSEvents(watcher filewatcher.EventsAndErrors, logger io.Writer, bufferCh chan []fsnotify.Event) {
+func AggregateFSEvents(watcher filewatcher.EventsAndErrors, debugLogger, errLogger io.Writer, bufferCh chan []fsnotify.Event) {
 	// Usually the return callback would be sole responsible to stop the watcher,
 	// but we want to free resources as early as we know that we can longer listen
 	// to events.
@@ -382,7 +382,7 @@ func AggregateFSEvents(watcher filewatcher.EventsAndErrors, logger io.Writer, bu
 				return
 			}
 
-			fmt.Fprintf(logger, "Received filesystem event (%s): %v\n", ev.Name, ev.Op)
+			fmt.Fprintf(debugLogger, "Received filesystem event (%s): %v\n", ev.Name, ev.Op)
 			buffer = append(buffer, ev)
 
 		case _, ok := <-t.C:
@@ -396,19 +396,19 @@ func AggregateFSEvents(watcher filewatcher.EventsAndErrors, logger io.Writer, bu
 				return
 			}
 
-			fmt.Fprintf(logger, "Received filesystem event error: %v\n", err)
+			fmt.Fprintf(errLogger, "Received filesystem event error: %v\n", err)
 		}
 	}
 }
 
-func handleEvents(ctx context.Context, logger io.Writer, absPath string, fsys fnfs.ReadWriteFS, onNewSnapshot OnNewSnapshopFunc, buffer []fsnotify.Event) (fnfs.ReadWriteFS, bool, error) {
+func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPath string, fsys fnfs.ReadWriteFS, onNewSnapshot OnNewSnapshopFunc, buffer []fsnotify.Event) (fnfs.ReadWriteFS, bool, error) {
 	// Coalesce multiple changes.
 	var dirtyPaths uniquestrings.List
 	for _, ev := range buffer {
 		dirtyPaths.Add(ev.Name)
 	}
 
-	fmt.Fprintf(logger, "Coalesced: %v\n", dirtyPaths.Strings())
+	fmt.Fprintf(debugLogger, "Coalesced: %v\n", dirtyPaths.Strings())
 
 	var actions []*FileEvent
 	for _, p := range dirtyPaths.Strings() {
@@ -457,7 +457,7 @@ func handleEvents(ctx context.Context, logger io.Writer, absPath string, fsys fn
 		}
 	}
 
-	fmt.Fprintf(logger, "Detected changes: %v\n", labels)
+	fmt.Fprintf(userVisible, "Detected changes: %v\n", labels)
 
 	if onNewSnapshot == nil {
 		return fsys, true, nil
