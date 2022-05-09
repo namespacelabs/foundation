@@ -19,3 +19,13 @@ roots under `.yarn/plugins` and this code is submitted to the user repository, a
 Yarn.
 
 In the future we may reconsider this behavior, for example, add the plugin to `.gitignore`.
+
+### Why not an NPM package?
+
+From the Yarn help:
+
+```
+Plugins cannot be downloaded from the npm registry, and aren't allowed to have
+dependencies (they need to be bundled into a single file, possibly thanks to the
+`@yarnpkg/builder` package).
+```
