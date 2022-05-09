@@ -28,13 +28,17 @@ func (r k8sRuntime) RunController(ctx context.Context, runOpts runtime.ServerRun
 		return err
 	}
 
+	// We intentionally don't use r.ns() since we don't want one controller per workspace.
+	// Controllers operate with cluster-wide permissions.
+	ns := r.env.Name
+
 	// TODO add annotations/labels?
-	if _, err := cli.CoreV1().Namespaces().Apply(ctx, applycorev1.Namespace(r.ns()), kubedef.Ego()); err != nil {
+	if _, err := cli.CoreV1().Namespaces().Apply(ctx, applycorev1.Namespace(ns), kubedef.Ego()); err != nil {
 		return err
 	}
 
-	acc := applycorev1.ServiceAccount(serviceAccount, r.ns())
-	if _, err := cli.CoreV1().ServiceAccounts(r.ns()).Apply(ctx, acc, kubedef.Ego()); err != nil {
+	acc := applycorev1.ServiceAccount(serviceAccount, ns)
+	if _, err := cli.CoreV1().ServiceAccounts(ns).Apply(ctx, acc, kubedef.Ego()); err != nil {
 		return err
 	}
 
@@ -47,7 +51,7 @@ func (r k8sRuntime) RunController(ctx context.Context, runOpts runtime.ServerRun
 	}
 
 	binding := applyrbacv1.ClusterRoleBinding(clusterRoleBinding).
-		WithSubjects(applyrbacv1.Subject().WithKind("ServiceAccount").WithName(serviceAccount).WithNamespace(r.ns())).
+		WithSubjects(applyrbacv1.Subject().WithKind("ServiceAccount").WithName(serviceAccount).WithNamespace(ns)).
 		WithRoleRef(applyrbacv1.RoleRef().WithKind("ClusterRole").WithName(clusterRole))
 	if _, err := cli.RbacV1().ClusterRoleBindings().Apply(ctx, binding, kubedef.Ego()); err != nil {
 		return err
@@ -63,13 +67,13 @@ func (r k8sRuntime) RunController(ctx context.Context, runOpts runtime.ServerRun
 			applycorev1.SecurityContext().
 				WithReadOnlyRootFilesystem(runOpts.ReadOnlyFilesystem))
 
-	pod := applycorev1.Pod(name, r.ns()).WithSpec(applycorev1.PodSpec().
+	pod := applycorev1.Pod(name, ns).WithSpec(applycorev1.PodSpec().
 		WithContainers(container).
 		WithRestartPolicy(corev1.RestartPolicyOnFailure).
 		WithServiceAccountName(serviceAccount))
 
 	// Shall we block on the controller becoming healthy?
-	_, err = cli.CoreV1().Pods(r.ns()).Apply(ctx, pod, kubedef.Ego())
+	_, err = cli.CoreV1().Pods(ns).Apply(ctx, pod, kubedef.Ego())
 	return err
 
 }
