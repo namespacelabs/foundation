@@ -44,7 +44,7 @@ func (f factory) PrepareTestEnv() provision.Env {
 func (f factory) PrepareControllerEnv() provision.Env {
 	testEnv := &schema.Environment{
 		Name:      "test-controller",
-		Purpose:   schema.Environment_TESTING,
+		Purpose:   schema.Environment_TESTING, // TODO Add new purpose INTERNAL?
 		Runtime:   "kubernetes",
 		Ephemeral: false,
 	}

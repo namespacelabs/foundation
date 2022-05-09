@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -37,14 +38,23 @@ func main() {
 	for {
 		// TODO consider using .Watch(...)
 		list, err := clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-			LabelSelector: kubedef.SerializeSelector(kubedef.SelectByPurpose(schema.Environment_TESTING)),
+			LabelSelector: kubedef.SerializeSelector(
+				kubedef.SelectByPurpose(schema.Environment_TESTING),
+				kubedef.SelectEphemeral(),
+			),
 		})
 		if err != nil {
 			log.Fatalf("failed to list namespaces: %v", err)
 		}
 
 		for _, ns := range list.Items {
+			// TODO remove
 			zerolog.Ctx(ctx).Info().Str("status", string(ns.Status.Phase)).Msgf("Namespace=%s", ns.Name)
+
+			if ns.Status.Phase == corev1.NamespaceTerminating {
+				// TODO Add more filtering?
+				continue
+			}
 
 			// TODO consider using .Watch(...)
 			events, err := clientset.CoreV1().Events(ns.Name).List(ctx, metav1.ListOptions{})

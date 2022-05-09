@@ -217,10 +217,12 @@ func (ec ExtendInitContainer) ToDefinition() (*schema.DefExtension, error) {
 	return &schema.DefExtension{Impl: x}, nil
 }
 
-func SerializeSelector(selector map[string]string) string {
+func SerializeSelector(selectors ...map[string]string) string {
 	var sels []string
-	for k, v := range selector {
-		sels = append(sels, fmt.Sprintf("%s=%s", k, v))
+	for _, selector := range selectors {
+		for k, v := range selector {
+			sels = append(sels, fmt.Sprintf("%s=%s", k, v))
+		}
 	}
 	sort.Strings(sels)
 	return strings.Join(sels, ",")

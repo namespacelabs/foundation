@@ -16,6 +16,7 @@ const (
 	K8sServicePackageName = "k8s.namespacelabs.dev/service-package-name"
 	K8sServiceGrpcType    = "k8s.namespacelabs.dev/service-grpc-type"
 	K8sEnvName            = "k8s.namespacelabs.dev/env"
+	K8sEnvEphemeral       = "k8s.namespacelabs.dev/env-ephemeral"
 	K8sEnvPurpose         = "k8s.namespacelabs.dev/env-purpose"
 	K8sConfigImage        = "k8s.namespacelabs.dev/config-image"
 
@@ -37,6 +38,12 @@ func SelectByPurpose(purpose schema.Environment_Purpose) map[string]string {
 	}
 }
 
+func SelectEphemeral() map[string]string {
+	return map[string]string{
+		K8sEnvEphemeral: "true",
+	}
+}
+
 func ManagedBy() map[string]string {
 	return map[string]string{
 		AppKubernetesIoManagedBy: id,
@@ -51,6 +58,11 @@ func MakeLabels(env *schema.Environment, srv *schema.Server) map[string]string {
 	}
 	m[K8sEnvName] = env.Name
 	m[K8sEnvPurpose] = strings.ToLower(env.Purpose.String())
+	if env.Ephemeral {
+		m[K8sEnvEphemeral] = "true"
+	} else {
+		m[K8sEnvEphemeral] = "false"
+	}
 	return m
 }
 

@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/morikuni/aec"
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
