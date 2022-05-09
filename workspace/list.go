@@ -51,13 +51,13 @@ func ListSchemas(ctx context.Context, root *Root) (SchemaList, error) {
 			}
 
 			pkg := root.RelPackage(dir)
-			ok, err := pl.frontend.HasPackage(ctx, pkg.AsPackageName())
+			ptype, err := pl.frontend.GetPackageType(ctx, pkg.AsPackageName())
 			if err != nil {
 				fmt.Fprintf(console.Stderr(ctx), "failed to parse %s: %v\n", dir, err)
 				return nil
 			}
 
-			if ok {
+			if ptype != PackageType_Undefined {
 				sl.Locations = append(sl.Locations, pkg)
 			}
 
