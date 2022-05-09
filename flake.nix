@@ -23,7 +23,9 @@
             upx
             nodejs-16_x
             yarn
+
             docker-client # Required by `fn prepare`.
+            crane
 
             pre-commit
             golangci-lint
