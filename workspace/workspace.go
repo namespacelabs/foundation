@@ -24,7 +24,8 @@ import (
 const WorkspaceFilename = "workspace.ns.textpb"
 
 func ModuleAt(path string) (*schema.Workspace, error) {
-	moduleBytes, err := ioutil.ReadFile(filepath.Join(path, WorkspaceFilename))
+	file := filepath.Join(path, WorkspaceFilename)
+	moduleBytes, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +35,7 @@ func ModuleAt(path string) (*schema.Workspace, error) {
 
 	firstPass := &schema.Workspace{}
 	if err := (prototext.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(moduleBytes, firstPass); err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "failed to parse workspace definition for validation")
+		return nil, fnerrors.Wrapf(nil, err, "failed to parse %s for validation", file)
 	}
 
 	if firstPass.GetFoundation().GetMinimumApi() > versions.APIVersion {
@@ -43,7 +44,7 @@ func ModuleAt(path string) (*schema.Workspace, error) {
 
 	w := &schema.Workspace{}
 	if err := prototext.Unmarshal(moduleBytes, w); err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "failed to parse workspace definition")
+		return nil, fnerrors.Wrapf(nil, err, "failed to parse %s", file)
 	}
 
 	return w, nil

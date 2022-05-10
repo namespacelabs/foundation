@@ -223,7 +223,7 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 	}
 
 	go func() {
-		wscontents.AggregateFSEvents(w, logger, bufferCh)
+		wscontents.AggregateFSEvents(w, console.Debug(ctx), logger, bufferCh)
 	}()
 
 	return func() {
