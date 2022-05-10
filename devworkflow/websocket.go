@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func readerLoop(l zerolog.Logger, ws *websocket.Conn, f func([]byte) error) {
@@ -47,7 +48,7 @@ func readerLoop(l zerolog.Logger, ws *websocket.Conn, f func([]byte) error) {
 	}
 }
 
-func writeJSONLoop(ctx context.Context, ws *websocket.Conn, ch chan JSON) {
+func writeJSONLoop(ctx context.Context, ws *websocket.Conn, ch chan *Update) {
 	defer ws.Close() // On error, close the ws so the reader loop also exits.
 
 	l := zerolog.Ctx(ctx).With().Str("remoteAddr", ws.RemoteAddr().String()).Logger()
@@ -58,13 +59,18 @@ func writeJSONLoop(ctx context.Context, ws *websocket.Conn, ch chan JSON) {
 			l.Debug().Msg("done")
 			return
 
-		case newJSON := <-ch:
-			if err := ws.WriteMessage(websocket.BinaryMessage, newJSON); err != nil {
+		case newUpdate := <-ch:
+			data, err := tasks.TryProtoAsJson(nil, newUpdate, false)
+			if err != nil {
+				l.Err(err).Msg("failed to serialize")
+				return
+			}
+			if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
 				l.Err(err).Msg("failed to write")
 				return
 			}
 
-			l.Trace().Int("len", len(newJSON)).Msg("pushed JSON")
+			l.Trace().Int("len", len(data)).Msg("pushed JSON")
 		}
 	}
 }

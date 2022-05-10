@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog"
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logoutput"
@@ -84,8 +85,8 @@ func (s *SessionState) Close(ctx context.Context) {
 	s.obs.Close()
 }
 
-func (s *SessionState) NewClient() (chan JSON, func()) {
-	ch := make(chan JSON, 1)
+func (s *SessionState) NewClient() (chan *Update, func()) {
+	ch := make(chan *Update, 1)
 
 	const maxTaskUpload = 1000
 	protos := s.sink.History(maxTaskUpload, func(t *protocol.Task) bool {
@@ -93,21 +94,13 @@ func (s *SessionState) NewClient() (chan JSON, func()) {
 	})
 
 	s.mu.Lock()
-
 	// When a new client connects, send them the latest information immediately.
 	// XXX keep latest computed stack in `s`.
 	tu := &Update{TaskUpdate: protos}
 	if s.stack != nil {
 		tu.StackUpdate = s.stack.current
 	}
-
-	// XXX rethink proto resolving.
-	if b, err := tasks.TryProtoAsJson(nil, tu, false); err == nil {
-		ch <- b
-	} else {
-		s.l.Err(err).Msg("failed to serialize in initial push")
-	}
-
+	ch <- tu
 	s.mu.Unlock()
 
 	s.obs.Add(ch)
@@ -205,10 +198,7 @@ type sinkObserver struct{ s *SessionState }
 func (so *sinkObserver) pushUpdate(ra *tasks.RunningAction) {
 	p := ra.Proto()
 
-	// XXX rethink proto resolving.
-	if err := so.s.obs.MarshalAndPublish(nil, &Update{TaskUpdate: []*protocol.Task{p}}); err != nil {
-		so.s.l.Err(err).Msg("sending update failed")
-	}
+	so.s.obs.Publish(&Update{TaskUpdate: []*protocol.Task{p}})
 }
 
 func (so *sinkObserver) OnStart(ra *tasks.RunningAction)  { so.pushUpdate(ra) }
@@ -265,23 +255,18 @@ func (s *SessionState) TaskLogByName(taskID, name string) io.ReadCloser {
 
 type stackState struct {
 	parent  *SessionState
-	current *Stack // protected by s.mu
-	lastErr error  // protected by s.mu
+	current *Stack // protected by parent.mu
 }
 
 func (do *stackState) updateStack(f func(stack *Stack) *Stack) {
 	do.parent.mu.Lock()
-	defer do.parent.mu.Unlock()
 	do.current = f(do.current)
-	do.pushUpdate()
+	currentCopy := proto.Clone(do.current).(*Stack)
+	do.parent.mu.Unlock()
+	// XXX currentCopy may be actually stale if pushUpdate is overtaken by another thread.
+	do.pushUpdate(currentCopy)
 }
 
-func (do *stackState) pushUpdate() {
-	if do.lastErr == nil {
-		// XXX shouldn't hold do.mu while trying to send.
-		if err := do.parent.obs.MarshalAndPublish(nil, &Update{StackUpdate: do.current}); err != nil {
-			do.lastErr = err
-			do.parent.l.Err(err).Msg("sending update failed, bailing")
-		}
-	}
+func (do *stackState) pushUpdate(stack *Stack) {
+	do.parent.obs.Publish(&Update{StackUpdate: stack})
 }

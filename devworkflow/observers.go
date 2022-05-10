@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type opType int
@@ -22,8 +21,8 @@ const (
 
 type obOp struct {
 	typ opType
-	ch  chan JSON
-	msg JSON
+	ch  chan *Update
+	msg *Update
 }
 
 type Observers struct {
@@ -31,30 +30,22 @@ type Observers struct {
 	ch   chan obOp
 }
 
-func (obs *Observers) Add(ch chan JSON) {
+func (obs *Observers) Add(ch chan *Update) {
 	if !obs.isClosed() {
 		obs.ch <- obOp{typ: pOpAddCh, ch: ch}
 	}
 }
 
-func (obs *Observers) Remove(ch chan JSON) {
+func (obs *Observers) Remove(ch chan *Update) {
 	if !obs.isClosed() {
 		obs.ch <- obOp{typ: pOpRemoveCh, ch: ch}
 	}
 }
 
-func (obs *Observers) MarshalAndPublish(pr tasks.ProtoResolver, msg proto.Message) error {
-	data, err := tasks.TryProtoAsJson(pr, msg, false)
-	if err != nil {
-		return err
-	}
-	obs.Publish(data)
-	return nil
-}
-
-func (obs *Observers) Publish(data JSON) {
+func (obs *Observers) Publish(data *Update) {
 	if !obs.isClosed() {
-		obs.ch <- obOp{typ: pOpNewData, msg: data}
+		copy := proto.Clone(data).(*Update)
+		obs.ch <- obOp{typ: pOpNewData, msg: copy}
 	}
 }
 
@@ -81,14 +72,14 @@ func NewObservers(ctx context.Context) *Observers {
 }
 
 func doLoop(ctx context.Context, ch chan obOp) {
-	var observers []chan JSON
+	var observers []chan *Update
 
 	for op := range ch {
 		switch op.typ {
 		case pOpAddCh:
 			observers = append(observers, op.ch)
 		case pOpRemoveCh:
-			var newObservers []chan JSON
+			var newObservers []chan *Update
 			for _, obs := range observers {
 				if obs != op.ch {
 					newObservers = append(newObservers, obs)
