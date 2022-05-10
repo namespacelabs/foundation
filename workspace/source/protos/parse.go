@@ -16,6 +16,9 @@ import (
 	"github.com/jhump/protoreflect/desc/protoparse"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
+
+	// Include descriptors for generated googleapis.
+	_ "google.golang.org/genproto/googleapis/api/annotations"
 )
 
 func Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDeps, error) {
@@ -25,6 +28,8 @@ func Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDeps, error) {
 		Accessor: func(filename string) (io.ReadCloser, error) {
 			return fsys.Open(filename)
 		},
+		// This allows imports to be resolved via loading linked-in descriptors.
+		LookupImport: desc.LoadFileDescriptor,
 	}
 
 	files, err := expandProtoList(fsys, files)
