@@ -7,6 +7,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
@@ -21,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func NewTestCmd() *cobra.Command {
@@ -76,6 +78,8 @@ func NewTestCmd() *cobra.Command {
 			stderr := console.Stderr(ctx)
 			pl := workspace.NewPackageLoader(devEnv.Root())
 
+			var parallelTests []compute.Computable[testing.StoredTestResults]
+
 			for _, loc := range locs {
 				// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
 				env := testing.PrepareEnvFrom(devEnv, !testOpts.KeepRuntime)
@@ -105,24 +109,29 @@ func NewTestCmd() *cobra.Command {
 					return err
 				}
 
-				v, err := compute.Get(ctx, test)
+				if testOpts.Parallel {
+					parallelTests = append(parallelTests, test)
+				} else {
+					v, err := compute.Get(ctx, test)
+					if err != nil {
+						return err
+					}
+					printResult(v, stderr)
+				}
+			}
+
+			if len(parallelTests) > 0 {
+				runTests := compute.Collect(tasks.Action("test.all-tests"), parallelTests...)
+
+				results, err := compute.GetValue(ctx, runTests)
 				if err != nil {
 					return err
 				}
 
-				status = aec.GreenF.Apply("PASSED")
-				if !v.Value.Bundle.Result.Success {
-					status = aec.RedF.Apply("FAILED")
+				for _, res := range results {
+					printResult(res, stderr)
 				}
-
-				cached := ""
-				if v.Cached {
-					cached = aec.LightBlackF.Apply(" (CACHED)")
-				}
-
-				fmt.Fprintf(stderr, "%s: Test %s%s %s\n", loc.AsPackageName(), status, cached, aec.LightBlackF.Apply(v.Value.ImageRef.ImageRef()))
 			}
-
 			return nil
 		}),
 	}
@@ -131,6 +140,21 @@ func NewTestCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
 	cmd.Flags().BoolVar(&testOpts.KeepRuntime, "keep_runtime", testOpts.KeepRuntime, "If true, don't cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
 	cmd.Flags().BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
+	cmd.Flags().BoolVar(&testOpts.Parallel, "parallel", testOpts.Parallel, "If true, run tests in parallel. This skips most debug output.")
 
 	return cmd
+}
+
+func printResult(res compute.ResultWithTimestamp[testing.StoredTestResults], out io.Writer) {
+	status := aec.GreenF.Apply("PASSED")
+	if !res.Value.Bundle.Result.Success {
+		status = aec.RedF.Apply("FAILED")
+	}
+
+	cached := ""
+	if res.Cached {
+		cached = aec.LightBlackF.Apply(" (CACHED)")
+	}
+
+	fmt.Fprintf(out, "%s: Test %s%s %s\n", res.Value.Package, status, cached, aec.LightBlackF.Apply(res.Value.ImageRef.ImageRef()))
 }

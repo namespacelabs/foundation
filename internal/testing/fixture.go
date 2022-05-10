@@ -35,10 +35,12 @@ const startupTestBinary = "namespacelabs.dev/foundation/std/startup/testdriver"
 type StoredTestResults struct {
 	Bundle   *TestBundle
 	ImageRef oci.ImageID
+	Package  schema.PackageName
 }
 
 type TestOpts struct {
 	Debug       bool
+	Parallel    bool
 	KeepRuntime bool // If true, don't release test-specific runtime resources (e.g. Kubernetes namespace).
 }
 
@@ -151,6 +153,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		TestBinCommand: testBin.Command,
 		TestBinImageID: fixtureImage,
 		Debug:          opts.Debug,
+		Parallel:       opts.Parallel,
 	}
 
 	if !opts.KeepRuntime {
@@ -195,6 +198,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 			return StoredTestResults{
 				Bundle:   compute.GetDepValue[*TestBundle](deps, results, "bundle"),
 				ImageRef: compute.GetDepValue(deps, imageID, "stored"),
+				Package:  pkgname,
 			}, nil
 		}), nil
 }

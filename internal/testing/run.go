@@ -35,10 +35,11 @@ type testRun struct {
 	TestBinCommand []string
 	TestBinImageID compute.Computable[oci.ImageID]
 
-	Stack *schema.Stack
-	Focus []string // Package names.
-	Plan  compute.Computable[*deploy.Plan]
-	Debug bool
+	Stack    *schema.Stack
+	Focus    []string // Package names.
+	Plan     compute.Computable[*deploy.Plan]
+	Debug    bool
+	Parallel bool
 
 	compute.LocalScoped[*TestBundle]
 }
@@ -58,7 +59,8 @@ func (test *testRun) Inputs() *compute.In {
 		Proto("stack", test.Stack).
 		Strs("focus", test.Focus).
 		Computable("plan", test.Plan).
-		Bool("debug", test.Debug)
+		Bool("debug", test.Debug).
+		Bool("parallel", test.Parallel)
 }
 
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
@@ -71,7 +73,24 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 
 	rt := runtime.For(ctx, test.Env)
 
-	if err := deploy.Wait(ctx, test.Env, waiters); err != nil {
+	if test.Parallel {
+		// We call ops.WaitMultiple directly here to skip visual output from deploy.Wait.
+		// Surprisingly, nil ch does not work here so we create a sink channel.
+		ch := make(chan ops.Event)
+		go func() {
+			for {
+				select {
+				case _, ok := <-ch:
+					if !ok {
+						return
+					}
+				}
+			}
+		}()
+		if err := ops.WaitMultiple(ctx, waiters, ch); err != nil {
+			return nil, err
+		}
+	} else if err := deploy.Wait(ctx, test.Env, waiters); err != nil {
 		var e runtime.ErrContainerFailedToStart
 		if errors.As(err, &e) {
 			// Don't spend more than N time waiting for logs.
@@ -105,7 +124,8 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 
 	ex, wait := executor.New(localCtx)
 
-	testLog, testLogBuf := makeLog(ctx, "testlog", true)
+	printLogs := !test.Parallel
+	testLog, testLogBuf := makeLog(ctx, "testlog", printLogs)
 
 	ex.Go(func(ctx context.Context) error {
 		defer cancelAll() // When the test is done, cancel logging.
@@ -133,8 +153,10 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 		return nil, waitErr
 	}
 
-	fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
-	bundle, err := collectLogs(ctx, test.Env, test.Stack, test.Focus)
+	if printLogs {
+		fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
+	}
+	bundle, err := collectLogs(ctx, test.Env, test.Stack, test.Focus, printLogs)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +170,7 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 	return bundle, nil
 }
 
-func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, focus []string) (*TestBundle, error) {
+func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, focus []string, printLogs bool) (*TestBundle, error) {
 	ex, wait := executor.New(ctx)
 
 	var serverLogs []*syncbuffer.ByteBuffer // Follows same indexing as rt.Focus.
@@ -156,7 +178,7 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 	for _, entry := range stack.Entry {
 		srv := entry.Server // Close on srv.
 
-		w, serverLog := makeLog(ctx, srv.Name, slices.Contains(focus, srv.PackageName))
+		w, serverLog := makeLog(ctx, srv.Name, printLogs && slices.Contains(focus, srv.PackageName))
 		serverLogs = append(serverLogs, serverLog)
 
 		ex.Go(func(ctx context.Context) error {
