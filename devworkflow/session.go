@@ -263,6 +263,7 @@ func (do *stackState) updateStack(f func(stack *Stack) *Stack) {
 	do.current = f(do.current)
 	currentCopy := proto.Clone(do.current).(*Stack)
 	do.parent.mu.Unlock()
+	// XXX currentCopy may be actually stale if pushUpdate is overtaken by another thread.
 	do.pushUpdate(currentCopy)
 }
 
