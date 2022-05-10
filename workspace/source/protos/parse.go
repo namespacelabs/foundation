@@ -29,6 +29,9 @@ func Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDeps, error) {
 			return fsys.Open(filename)
 		},
 		// This allows imports to be resolved via loading linked-in descriptors.
+		// CAVEAT: We run the risk of exposing all linked-in descriptors and an allowlist would
+		// have been ideal but as https://github.com/namespacelabs/foundation/pull/362#discussion_r868497530
+		// calls out, the protoparse design is brittle and doesn't accomodate this well.
 		LookupImport: desc.LoadFileDescriptor,
 	}
 
