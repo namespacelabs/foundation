@@ -22,6 +22,11 @@ import (
 func PrepareServerData(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, fmwk schema.Framework) (ServerData, error) {
 	var serverData ServerData
 
+	userImports := make(map[schema.PackageName]bool)
+	for _, i := range srv.GetUserImports() {
+		userImports[schema.Name(i)] = true
+	}
+
 	for _, ref := range srv.GetImportedPackages() {
 		pkg, err := loader.LoadByName(ctx, ref)
 		if err != nil {
@@ -35,7 +40,8 @@ func PrepareServerData(ctx context.Context, loader workspace.Packages, loc works
 			})
 		}
 
-		if pkg.Node().InitializerFor(fmwk) != nil {
+		// Only adding initializers from direct dependencies.
+		if userImports[pkg.PackageName()] {
 			serverData.ImportedInitializers = append(serverData.ImportedInitializers, pkg.Location)
 		}
 	}

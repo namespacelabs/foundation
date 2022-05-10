@@ -6,7 +6,6 @@ import "source-map-support/register"
 import yargs from "yargs/yargs";
 import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/deps.fn"
 import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter/deps.fn"
-import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/deps.fn"
 
 // Returns a list of initialization errors.
 const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
@@ -25,7 +24,8 @@ const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
 };
 
 const TransitiveInitializers: Initializer[] = [
-	...i2.TransitiveInitializers,
+	...i0.TransitiveInitializers,
+	...i1.TransitiveInitializers,
 ];
 
 const argv = yargs(process.argv.slice(2))
