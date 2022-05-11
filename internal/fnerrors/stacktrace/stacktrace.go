@@ -71,21 +71,26 @@ func (f Frame) Format(s fmt.State, verb rune) {
 	case 's':
 		switch {
 		case s.Flag('+'):
-			io.WriteString(s, f.Name())
-			io.WriteString(s, "\n\t")
-			io.WriteString(s, f.File())
+			writeString(s, f.Name())
+			writeString(s, "\n\t")
+			writeString(s, f.File())
 		default:
-			io.WriteString(s, path.Base(f.File()))
+			writeString(s, path.Base(f.File()))
 		}
 	case 'd':
-		io.WriteString(s, strconv.Itoa(f.Line()))
+		writeString(s, strconv.Itoa(f.Line()))
 	case 'n':
-		io.WriteString(s, funcname(f.Name()))
+		writeString(s, funcname(f.Name()))
 	case 'v':
 		f.Format(s, 's')
-		io.WriteString(s, ":")
+		writeString(s, ":")
 		f.Format(s, 'd')
 	}
+}
+
+// errcheck safe wrapper for io.WriteString.
+func writeString(w io.Writer, s string) {
+	_, _ = io.WriteString(w, s)
 }
 
 // MarshalText formats a stacktrace Frame as a text string. The output is the
