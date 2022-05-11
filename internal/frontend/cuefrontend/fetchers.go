@@ -62,7 +62,7 @@ func FetchService(pl workspace.Packages) FetcherFunc {
 		svc := pkg.Service
 
 		if len(svc.ExportService) != 1 {
-			return nil, fnerrors.New(fmt.Sprintf("#input.Service can only be used on nodes which export exactly one service, saw %d", len(svc.ExportService)))
+			return nil, fnerrors.UserError(nil, "#input.Service can only be used on nodes which export exactly one service, saw %d", len(svc.ExportService))
 		}
 
 		// XXX use protoreflect.FullName(svc.ExportService[0].ProtoTypename).Name()
@@ -250,7 +250,7 @@ func FetchPackage(pl workspace.Packages) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		packageName, err := v.String()
 		if err != nil {
-			return nil, fnerrors.InternalError("expected a string when loading a package: %w", err)
+			return nil, fnerrors.UserError(nil, "expected a string when loading a package: %w", err)
 		}
 
 		_, err = pl.LoadByName(ctx, schema.PackageName(packageName))
