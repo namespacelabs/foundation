@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os/exec"
 	"runtime"
 
 	cueerrors "cuelang.org/go/cue/errors"
@@ -74,7 +73,7 @@ func DoesNotMeetVersionRequirements(pkg string, expected, got int32) error {
 
 // This error is purely for wiring and ensures that Foundation exits with an appropriate exit code.
 // The error content has to be output independently.
-func ExitError(err error, code int) error {
+func ExitWithCode(err error, code int) error {
 	return &exitError{err, code}
 }
 
@@ -138,7 +137,7 @@ func (e *VersionError) Error() string {
 	return fmt.Sprintf("`fn` needs to be updated to use %q, (need api version %d, got %d)", e.Pkg, e.Expected, e.Got)
 }
 
-type exitErrorType interface {
+type ExitError interface {
 	ExitCode() int
 }
 
@@ -153,15 +152,6 @@ func (e *exitError) Error() string {
 
 func (e *exitError) ExitCode() int {
 	return e.code
-}
-
-func GetExitError(err error) (exitErrorType, bool) {
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		return exitErr, true
-	} else if exitErr, ok := err.(*exitError); ok {
-		return exitErr, true
-	}
-	return nil, false
 }
 
 func Format(w io.Writer, colors bool, err error) {

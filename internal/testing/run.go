@@ -59,8 +59,7 @@ func (test *testRun) Inputs() *compute.In {
 		Proto("stack", test.Stack).
 		Strs("focus", test.Focus).
 		Computable("plan", test.Plan).
-		Bool("debug", test.Debug).
-		Bool("outputProgress", test.OutputProgress)
+		Bool("debug", test.Debug)
 }
 
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {

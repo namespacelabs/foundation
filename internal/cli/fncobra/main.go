@@ -319,7 +319,7 @@ func writeExitInfo(ctx context.Context, bundle *tasks.Bundle) error {
 }
 
 func handleExitError(colors bool, err error) int {
-	if exitError, ok := fnerrors.GetExitError(err); ok {
+	if exitError, ok := err.(fnerrors.ExitError); ok {
 		// If we are exiting, because a sub-process failed, don't bother outputting
 		// an error again, just forward the appropriate exit code.
 		return exitError.ExitCode()

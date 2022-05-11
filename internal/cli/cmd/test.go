@@ -123,7 +123,7 @@ func NewTestCmd() *cobra.Command {
 					printResult(v, stderr)
 
 					if !v.Value.Bundle.Result.Success {
-						return fnerrors.ExitError(fmt.Errorf("Test %s failed", v.Value.Package), exitCode)
+						return fnerrors.ExitWithCode(fmt.Errorf("Test %s failed", v.Value.Package), exitCode)
 					}
 				}
 			}
@@ -146,7 +146,7 @@ func NewTestCmd() *cobra.Command {
 				}
 			}
 			if len(failed) > 0 {
-				return fnerrors.ExitError(fmt.Errorf("Failed tests: [%s]", strings.Join(failed, ",")), exitCode)
+				return fnerrors.ExitWithCode(fmt.Errorf("Failed tests: [%s]", strings.Join(failed, ",")), exitCode)
 			}
 
 			return nil
