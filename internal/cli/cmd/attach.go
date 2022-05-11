@@ -88,7 +88,7 @@ func NewAttachCmd() *cobra.Command {
 
 			pfwd := endpointfwd.PortForward{
 				LocalAddr: "localhost",
-				Env:       env,
+				Selector:  env,
 			}
 
 			pfwd.OnUpdate = func() {

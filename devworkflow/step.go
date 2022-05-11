@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
@@ -20,65 +21,50 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func doWorkspace(ctx context.Context, set *DevWorkflowRequest_SetWorkspace, obs *stackState) error {
+func setWorkspace(ctx context.Context, env provision.Env, packageName string, additional []string, obs *SessionState, pfw *endpointfwd.PortForward) error {
 	for {
-		err := compute.Do(ctx, func(ctx context.Context) error {
-			return step(ctx, set, obs)
-		})
+		if err := compute.Do(ctx, func(ctx context.Context) error {
+			done := console.SetIdleLabel(ctx, "waiting for workspace changes")
+			defer done()
 
-		if err != nil {
+			serverPackages := []schema.PackageName{schema.Name(packageName)}
+			for _, pkg := range additional {
+				serverPackages = append(serverPackages, schema.Name(pkg))
+			}
+
+			focusServers := provision.RequireServers(env, serverPackages...)
+
+			// Changing the graph is fairly heavy-weight at this point, as it will lead to
+			// a rebuild of all packages (although they'll likely hit the cache), as well
+			// as a full re-deployment, re-port forward, etc. Ideally this would be more
+			// incremental by having narrower dependencies. E.g. single server would have
+			// a single build, single deployment, etc. And changes to siblings servers
+			// would only impact themselves, not all servers. #362
+			return compute.Continuously(ctx, &buildAndDeploy{
+				obs:            obs,
+				pfw:            pfw,
+				env:            env,
+				serverPackages: serverPackages,
+				focusServers:   focusServers,
+			})
+		}); err != nil {
 			if msg, ok := fnerrors.IsExpected(err); ok {
 				fmt.Fprintf(console.Stderr(ctx), "\n  %s\n\n", msg)
 				continue // Go again.
 			}
+			return err
 		}
 
-		return err
+		return nil
 	}
-}
-
-func step(ctx context.Context, set *DevWorkflowRequest_SetWorkspace, obs *stackState) error {
-	done := console.SetIdleLabel(ctx, "waiting for workspace changes")
-	defer done()
-
-	// Re-create loc/root here, to dump the cache.
-	root, err := module.FindRoot(ctx, set.AbsRoot)
-	if err != nil {
-		return err
-	}
-
-	env, err := provision.RequireEnv(root, set.EnvName)
-	if err != nil {
-		return err
-	}
-
-	serverPackages := []schema.PackageName{schema.Name(set.PackageName)}
-	for _, pkg := range set.AdditionalServers {
-		serverPackages = append(serverPackages, schema.Name(pkg))
-	}
-
-	focusServers := provision.RequireServers(env, serverPackages...)
-
-	// Changing the graph is fairly heavy-weight at this point, as it will lead to
-	// a rebuild of all packages (although they'll likely hit the cache), as well
-	// as a full re-deployment, re-port forward, etc. Ideally this would be more
-	// incremental by having narrower dependencies. E.g. single server would have
-	// a single build, single deployment, etc. And changes to siblings servers
-	// would only impact themselves, not all servers. #362
-	return compute.Continuously(ctx, &buildAndDeploy{
-		obs:            obs,
-		env:            env,
-		serverPackages: serverPackages,
-		focusServers:   focusServers,
-	})
 }
 
 type buildAndDeploy struct {
-	obs            *stackState
+	obs            *SessionState
+	pfw            *endpointfwd.PortForward
 	env            provision.Env
 	serverPackages []schema.PackageName
 	focusServers   compute.Computable[*provision.ServerSnapshot]
@@ -107,9 +93,9 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		return err
 	}
 
-	do.obs.updateStack(func(_ *Stack) *Stack {
+	do.obs.updateStackInPlace(func(stack *Stack) {
 		// XXX We pass focus[0] as the focus as that's the model the web ui supports right now.
-		return computeFirstStack(do.env, focus[0])
+		setFirstStack(stack, do.env, focus[0])
 	})
 
 	switch do.env.Purpose() {
@@ -143,9 +129,8 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			return err
 		}
 
-		do.obs.updateStack(func(s *Stack) *Stack {
+		do.obs.updateStackInPlace(func(s *Stack) {
 			s.Stack = stack.Proto()
-			return s
 		})
 
 		plan, err := deploy.PrepareDeployStack(ctx, do.env, stack, focus)
@@ -164,7 +149,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		done := make(chan struct{})
 		cancel := compute.SpawnCancelableOnContinuously(ctx, func(ctx context.Context) error {
 			defer close(done)
-			return compute.Continuously(ctx, newUpdateCluster(do.obs, focusServers.Env(), stack.Proto(), do.serverPackages, observers, plan))
+			return compute.Continuously(ctx, newUpdateCluster(focusServers.Env(), stack.Proto(), do.serverPackages, observers, plan, do.pfw))
 		})
 
 		do.cancelRunning = func() {
@@ -190,9 +175,8 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 					return err
 				}
 
-				do.obs.updateStack(func(stack *Stack) *Stack {
+				do.obs.updateStackInPlace(func(stack *Stack) {
 					stack.Stack = s.Stack
-					return stack
 				})
 
 				return nil
@@ -215,7 +199,7 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-func computeFirstStack(env provision.Env, t provision.Server) *Stack {
+func setFirstStack(out *Stack, env provision.Env, t provision.Server) {
 	workspace := proto.Clone(env.Root().Workspace).(*schema.Workspace)
 
 	// XXX handling broken web ui builds.
@@ -223,11 +207,9 @@ func computeFirstStack(env provision.Env, t provision.Server) *Stack {
 		workspace.Env = provision.EnvsOrDefault(workspace)
 	}
 
-	return &Stack{
-		AbsRoot:      env.Root().Abs(),
-		Env:          env.Proto(),
-		Workspace:    workspace,
-		AvailableEnv: workspace.Env,
-		Current:      t.StackEntry(),
-	}
+	out.AbsRoot = env.Root().Abs()
+	out.Env = env.Proto()
+	out.Workspace = workspace
+	out.AvailableEnv = workspace.Env
+	out.Current = t.StackEntry()
 }

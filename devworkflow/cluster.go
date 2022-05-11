@@ -7,7 +7,6 @@ package devworkflow
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -28,18 +27,18 @@ type updateCluster struct {
 	pfw *endpointfwd.PortForward
 }
 
-func newPortFwd(obs *stackState, env ops.Environment, localaddr string) *endpointfwd.PortForward {
+func newPortFwd(obs *SessionState, selector runtime.Selector, localaddr string) *endpointfwd.PortForward {
 	pfw := &endpointfwd.PortForward{
-		Env:       env,
+		Selector:  selector,
 		LocalAddr: localaddr,
 	}
 
 	pfw.OnAdd = func(endpoint *schema.Endpoint, localPort uint) {
-		obs.updateStack(func(stack *Stack) *Stack {
+		obs.updateStackInPlace(func(stack *Stack) {
 			for _, fwd := range stack.ForwardedPort {
 				if fwd.Endpoint == endpoint {
 					fwd.LocalPort = int32(localPort)
-					return stack
+					return
 				}
 			}
 
@@ -48,12 +47,11 @@ func newPortFwd(obs *stackState, env ops.Environment, localaddr string) *endpoin
 				ContainerPort: endpoint.GetPort().GetContainerPort(),
 				LocalPort:     int32(localPort),
 			})
-			return stack
 		})
 	}
 
 	pfw.OnDelete = func(unused []*schema.Endpoint) {
-		obs.updateStack(func(stack *Stack) *Stack {
+		obs.updateStackInPlace(func(stack *Stack) {
 			var portFwds []*ForwardedPort
 			for _, fwd := range stack.ForwardedPort {
 				filtered := false
@@ -69,25 +67,24 @@ func newPortFwd(obs *stackState, env ops.Environment, localaddr string) *endpoin
 			}
 
 			stack.ForwardedPort = portFwds
-			return stack
 		})
 	}
 
 	pfw.OnUpdate = func() {
-		obs.parent.setSticky(pfw.Render())
+		obs.setSticky(pfw.Render())
 	}
 
 	return pfw
 }
 
-func newUpdateCluster(obs *stackState, env workspace.WorkspaceEnvironment, stack *schema.Stack, focus []schema.PackageName, observers []languages.DevObserver, plan compute.Computable[*deploy.Plan]) *updateCluster {
+func newUpdateCluster(env workspace.WorkspaceEnvironment, stack *schema.Stack, focus []schema.PackageName, observers []languages.DevObserver, plan compute.Computable[*deploy.Plan], pfw *endpointfwd.PortForward) *updateCluster {
 	return &updateCluster{
 		env:       env,
 		observers: observers,
 		plan:      plan,
 		stack:     stack,
 		focus:     focus,
-		pfw:       newPortFwd(obs, env, obs.parent.localHostname),
+		pfw:       pfw,
 	}
 }
 

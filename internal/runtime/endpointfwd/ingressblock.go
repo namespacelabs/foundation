@@ -13,16 +13,16 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"tailscale.com/util/multierr"
 )
 
 type PortForward struct {
 	LocalAddr string
-	Env       ops.Environment
+	Selector  runtime.Selector
 
 	OnAdd    func(*schema.Endpoint, uint)
 	OnDelete func([]*schema.Endpoint)
@@ -133,9 +133,9 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 		}
 	}
 
-	if len(domains) > 0 && pi.Env.Proto().Purpose == schema.Environment_DEVELOPMENT {
+	if len(domains) > 0 && pi.Selector.Proto().Purpose == schema.Environment_DEVELOPMENT {
 		if pi.ingressPortfwd.closer == nil {
-			pi.ingressPortfwd.closer, pi.ingressPortfwd.err = runtime.For(ctx, pi.Env).ForwardIngress(ctx, []string{pi.LocalAddr}, runtime.LocalIngressPort, func(fpe runtime.ForwardedPortEvent) {
+			pi.ingressPortfwd.closer, pi.ingressPortfwd.err = runtime.For(ctx, pi.Selector).ForwardIngress(ctx, []string{pi.LocalAddr}, runtime.LocalIngressPort, func(fpe runtime.ForwardedPortEvent) {
 				pi.mu.Lock()
 				defer pi.mu.Unlock()
 
@@ -189,7 +189,7 @@ func (pi *PortForward) portFwd(ctx context.Context, endpoint *schema.Endpoint, r
 		return nil, fnerrors.UserError(nil, "%s: missing in the stack", endpoint.ServerOwner)
 	}
 
-	return runtime.For(ctx, pi.Env).ForwardPort(ctx, server.Server, endpoint, []string{pi.LocalAddr}, func(fp runtime.ForwardedPort) {
+	return runtime.For(ctx, pi.Selector).ForwardPort(ctx, server.Server, endpoint, []string{pi.LocalAddr}, func(fp runtime.ForwardedPort) {
 		callback(revision, fp.LocalPort)
 	})
 }
@@ -200,17 +200,22 @@ func (pi *PortForward) Cleanup() error {
 
 	pi.done = true
 
+	var errs []error
 	for _, fwd := range pi.endpointPortFwds {
 		if fwd.closer != nil {
-			fwd.closer.Close()
+			if err := fwd.closer.Close(); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 
 	if pi.ingressPortfwd.closer != nil {
-		pi.ingressPortfwd.closer.Close()
+		if err := pi.ingressPortfwd.closer.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
-	return nil
+	return multierr.New(errs...)
 }
 
 func focusServers(stack *schema.Stack, focus []schema.PackageName) []*schema.Server {

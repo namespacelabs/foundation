@@ -11,7 +11,6 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
@@ -32,7 +31,13 @@ func HasRuntime(name string) bool {
 	return ok
 }
 
-func For(ctx context.Context, env ops.Environment) Runtime {
+type Selector interface {
+	Workspace() *schema.Workspace
+	DevHost() *schema.DevHost
+	Proto() *schema.Environment
+}
+
+func For(ctx context.Context, env Selector) Runtime {
 	if obtain, ok := mapping[strings.ToLower(env.Proto().Runtime)]; ok {
 		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Proto())
 		if err != nil {

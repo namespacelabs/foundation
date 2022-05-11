@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logoutput"
+	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
@@ -32,6 +33,7 @@ type SessionState struct {
 	Ch chan *DevWorkflowRequest
 
 	Console   io.Writer
+	Errors    io.Writer
 	setSticky func([]byte)
 
 	localHostname string
@@ -42,10 +44,12 @@ type SessionState struct {
 	buildOutput   *syncbuffer.ByteBuffer // XXX cap the size
 	buildkitJSON  *syncbuffer.ByteBuffer
 
-	mu      sync.Mutex // Protect below.
-	current *DevWorkflowRequest_SetWorkspace
-	cancel  func()
-	stack   *stackState
+	mu           sync.Mutex // Protect below.
+	current      *DevWorkflowRequest_SetWorkspace
+	cancel       func()
+	currentStack *Stack
+	pfwEnv       *schema.Environment
+	pfw          *endpointfwd.PortForward
 }
 
 func NewStackState(ctx context.Context, sink *tasks.StatefulSink, localHostname string, stickies []string) (*SessionState, error) {
@@ -66,6 +70,7 @@ func NewStackState(ctx context.Context, sink *tasks.StatefulSink, localHostname 
 
 	return &SessionState{
 		Console:       console.TypedOutput(ctx, "fn dev", console.CatOutputUs),
+		Errors:        console.Errors(ctx),
 		setSticky:     setSticky,
 		localHostname: localHostname,
 		obs:           NewObservers(ctx),
@@ -93,12 +98,10 @@ func (s *SessionState) NewClient() (chan *Update, func()) {
 	s.mu.Lock()
 	// When a new client connects, send them the latest information immediately.
 	// XXX keep latest computed stack in `s`.
-	tu := &Update{TaskUpdate: protos}
-	if s.stack != nil {
-		tu.StackUpdate = s.stack.current
-	}
-	ch <- tu
+	tu := &Update{TaskUpdate: protos, StackUpdate: proto.Clone(s.currentStack).(*Stack)}
 	s.mu.Unlock()
+
+	ch <- tu
 
 	s.obs.Add(ch)
 	return ch, func() {
@@ -150,11 +153,9 @@ func (s *SessionState) ResolveServer(ctx context.Context, serverID string) (prov
 		return provision.Env{}, nil, err
 	}
 
-	if s.stack != nil {
-		entry := s.stack.current.GetStack().GetServerByID(serverID)
-		if entry != nil {
-			return env, entry.Server, nil
-		}
+	entry := s.currentStack.GetStack().GetServerByID(serverID)
+	if entry != nil {
+		return env, entry.Server, nil
 	}
 
 	return provision.Env{}, nil, fnerrors.UserError(nil, "%s: no such server in the current session", serverID)
@@ -162,32 +163,52 @@ func (s *SessionState) ResolveServer(ctx context.Context, serverID string) (prov
 
 func (s *SessionState) handleSetWorkspace(ctx context.Context, x *DevWorkflowRequest_SetWorkspace) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.current != nil {
 		s.cancel() // Cancel whatever it is doing.
 		s.cancel = nil
 		s.current = nil
-		s.stack = nil
 	}
+
+	previousPortFwds := s.currentStack.GetForwardedPort()
+	s.currentStack = &Stack{ForwardedPort: previousPortFwds}
 
 	if x != nil {
 		newCtx, newCancel := context.WithCancel(ctx)
 		s.current = x
-		s.stack = &stackState{parent: s}
 		s.cancel = newCancel
-		do := s.stack
-		s.mu.Unlock()
 
 		// Reset the banner.
 		s.setSticky(nil)
 
+		env, err := loadWorkspace(newCtx, x.AbsRoot, x.EnvName)
+		if err != nil {
+			s.cancelPortForward()
+			fmt.Fprintln(console.Errors(newCtx), "failed to load workspace", err)
+			return
+		}
+
+		pfw := s.ensurePortForward(env)
+
 		go func() {
-			err := doWorkspace(newCtx, x, do)
+			err := setWorkspace(newCtx, env, x.PackageName, x.AdditionalServers, s, pfw)
 
 			if err != nil && !errors.Is(err, context.Canceled) {
 				fnerrors.Format(console.Stderr(ctx), true, err)
 			}
 		}()
 	}
+}
+
+func loadWorkspace(ctx context.Context, absRoot, envName string) (provision.Env, error) {
+	// Re-create loc/root here, to dump the cache.
+	root, err := module.FindRoot(ctx, absRoot)
+	if err != nil {
+		return provision.Env{}, err
+	}
+
+	return provision.RequireEnv(root, envName)
 }
 
 type sinkObserver struct{ s *SessionState }
@@ -224,12 +245,22 @@ func (s *SessionState) Run(ctx context.Context) {
 		WithColors: true, // Assume xterm.js can handle color.
 	})
 
+	defer func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.cancelPortForward()
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 
-		case req := <-s.Ch:
+		case req, ok := <-s.Ch:
+			if !ok {
+				return
+			}
+
 			switch x := req.Type.(type) {
 			case *DevWorkflowRequest_SetWorkspace_:
 				s.handleSetWorkspace(ctx, x.SetWorkspace)
@@ -250,20 +281,33 @@ func (s *SessionState) TaskLogByName(taskID, name string) io.ReadCloser {
 	return s.sink.HistoricReaderByName(taskID, name)
 }
 
-type stackState struct {
-	parent  *SessionState
-	current *Stack // protected by parent.mu
+func (s *SessionState) ensurePortForward(env provision.Env) *endpointfwd.PortForward {
+	if s.pfw != nil && proto.Equal(s.pfwEnv, env.Proto()) {
+		// Nothing to do.
+		return s.pfw
+	}
+
+	s.cancelPortForward()
+
+	s.pfw = newPortFwd(s, env, s.localHostname)
+	return s.pfw
 }
 
-func (do *stackState) updateStack(f func(stack *Stack) *Stack) {
-	do.parent.mu.Lock()
-	do.current = f(do.current)
-	currentCopy := proto.Clone(do.current).(*Stack)
-	do.parent.mu.Unlock()
-	// XXX currentCopy may be actually stale if pushUpdate is overtaken by another thread.
-	do.pushUpdate(currentCopy)
+func (s *SessionState) cancelPortForward() {
+	if s.pfw != nil {
+		if err := s.pfw.Cleanup(); err != nil {
+			fmt.Fprintln(s.Errors, "Failed to cleanup port forwarding resources", err)
+		}
+		s.pfw = nil
+	}
 }
 
-func (do *stackState) pushUpdate(stack *Stack) {
-	do.parent.obs.Publish(&Update{StackUpdate: stack})
+func (s *SessionState) updateStackInPlace(f func(stack *Stack)) {
+	s.mu.Lock()
+	f(s.currentStack)
+	s.currentStack.Revision++
+	copy := proto.Clone(s.currentStack).(*Stack)
+	s.mu.Unlock()
+
+	s.obs.Publish(&Update{StackUpdate: copy})
 }
