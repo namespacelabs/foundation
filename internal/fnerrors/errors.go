@@ -21,10 +21,6 @@ func New(errmsg string) error {
 	return &fnError{Err: errors.New(errmsg), stack: stacktrace.New()}
 }
 
-func Errorf(format string, args ...interface{}) error {
-	return &fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}
-}
-
 func Wrap(loc Location, err error) error {
 	if userErr, ok := err.(*userError); ok {
 		if userErr.Location == nil {
