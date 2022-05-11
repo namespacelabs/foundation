@@ -42,7 +42,8 @@ func ModuleAt(path string) (*schema.Workspace, error) {
 		return nil, fnerrors.DoesNotMeetVersionRequirements(firstPass.ModuleName, firstPass.GetFoundation().GetMinimumApi(), versions.APIVersion)
 	}
 
-	if firstPass.GetFoundation().GetMinimumApi() < versions.MinimumAPIVersion {
+	if firstPass.GetFoundation().GetMinimumApi() > 0 &&
+		firstPass.GetFoundation().GetMinimumApi() < versions.MinimumAPIVersion {
 		return nil, fnerrors.UserError(nil, `Unfortunately, this version of Foundation is too recent to be used with the
 current repository. If you're testing out an existing repository that uses
 Foundation, try fetching a newer version of the repository. If this is your
