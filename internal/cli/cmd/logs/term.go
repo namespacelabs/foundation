@@ -19,8 +19,7 @@ import (
 )
 
 type Term interface {
-	// Renders available commands.
-	PrintCommands(ctx context.Context)
+	PrintInitialCommandsIntoConsole(ctx context.Context)
 	// Hanles user input events and changing environment.
 	HandleEvents(ctx context.Context,
 		root *workspace.Root, serverProtos []*schema.Server, onDone func(), ch chan *devworkflow.Update)
@@ -81,7 +80,7 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 	}
 }
 
-func (t term) PrintCommands(ctx context.Context) {
+func (t term) PrintInitialCommandsIntoConsole(ctx context.Context) {
 	cmds := fmt.Sprintf(" (%s): logs (%s): quit", aec.Bold.Apply("l"), aec.Bold.Apply("q"))
 	updateCmd(ctx, cmds)
 }
