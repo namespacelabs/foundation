@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	applyrbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
@@ -57,6 +58,13 @@ type CreateSecretConditionally struct {
 	Name              string
 	UserSpecifiedName string
 	Invocation        *types.DeferredInvocation
+}
+
+// Only a limited set of nodes is allowed to set this.
+type Admin struct {
+	Description string
+	Name        string
+	Rules       []*applyrbacv1.PolicyRuleApplyConfiguration
 }
 
 type ExtendSpec struct {
@@ -185,6 +193,30 @@ func (c CreateSecretConditionally) ToDefinition(scope ...schema.PackageName) (*s
 
 	return &schema.Definition{
 		Description: c.Description,
+		Impl:        x,
+		Scope:       scopeToStrings(scope),
+	}, nil
+}
+
+func (a Admin) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+	if len(a.Rules) == 0 {
+		return nil, fnerrors.InternalError("no admin rules specified")
+	}
+
+	rules, err := json.Marshal(a.Rules)
+	if err != nil {
+		return nil, err
+	}
+
+	x, err := anypb.New(&OpAdmin{
+		RulesJson: string(rules),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.Definition{
+		Description: a.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
 	}, nil

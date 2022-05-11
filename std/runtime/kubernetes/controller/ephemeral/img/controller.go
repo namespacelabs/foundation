@@ -71,7 +71,7 @@ func main() {
 
 			elapsed := time.Now().Sub(lastTimestamp.Time)
 			if elapsed > killAfter {
-				log.Printf("Deleting stale testing namespace %s. Saw no new event since %s", ns.Name, elapsed)
+				log.Printf("Deleting stale ephemeral namespace %s. Saw no new event since %s", ns.Name, elapsed)
 				if err := clientset.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{}); err != nil {
 					log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
 				}

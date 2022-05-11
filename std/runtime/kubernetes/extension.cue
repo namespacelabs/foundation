@@ -25,3 +25,16 @@ extension: fn.#Extension & {
 		"defaults/pod.podsecuritycontext.yaml",
 	]
 }
+
+$env:     inputs.#Environment
+$ephCtrl: inputs.#Server & {
+	packageName: "namespacelabs.dev/foundation/std/monitoring/grafana/server"
+}
+
+configure: fn.#Configure & {
+	stack: {
+		if $env.ephemeral {
+			append: [$ephCtrl]
+		}
+	}
+}

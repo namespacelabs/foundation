@@ -1,4 +1,4 @@
 binary: {
-	name: "testing-controller"
+	name: "ephemeral.controller.tool"
 	from: go_package: "."
 }

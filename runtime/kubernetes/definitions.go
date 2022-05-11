@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -154,6 +155,29 @@ func RegisterGraphHandlers() {
 			}, nil
 		}
 
+		return nil, nil
+	})
+
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, admin *kubedef.OpAdmin) (*ops.HandleResult, error) {
+		if admin.RulesJson == "" {
+			return nil, fnerrors.InternalError("%s: admin.RulesJson is required", d.Description)
+		}
+		if admin.Name == "" {
+			return nil, fnerrors.InternalError("%s: admin.Name is required", d.Description)
+		}
+
+		for _, s := range d.Scope {
+			if !strings.HasPrefix(s, "namespacelabs.dev/foundation/std/runtime/kubernetes/controller") {
+				return nil, fnerrors.InternalError("only kubernetes controllers are allowed to request admin rights")
+			}
+		}
+
+		if err := tasks.Action("kubernetes.admin").Scope(asPackages(d.Scope)...).
+			HumanReadablef(d.Description).Run(ctx, func(ctx context.Context) error {
+			return grantAdmin(ctx, env, admin)
+		}); err != nil {
+			return nil, fnerrors.InvocationError("%s: %w", d.Description, err)
+		}
 		return nil, nil
 	})
 
