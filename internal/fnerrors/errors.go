@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
 )
 
-// Returns a new error wrapping the given error message with the stack trace
+// New returns a new error wrapping the given error message with the stack trace
 // at the point of invocation.
 func New(errmsg string) error {
 	return &fnError{Err: errors.New(errmsg), stack: stacktrace.New()}
@@ -226,9 +226,9 @@ func format(w io.Writer, colors bool, err error) {
 
 			loc := formatLabel(child.Location.ErrorLocation(), colors)
 
-			// Add the invoking frame which is at index 1.
+			// Add the first frame in the stack.
 			if len(child.stack) > 0 {
-				frame := child.stack[1]
+				frame := child.stack[0]
 				loc += formatPos(fmt.Sprintf(" (%s:%d)", frame.File(), frame.Line()), colors)
 			}
 			fmt.Fprintf(w, "%s at %s:", child.Err.Error(), loc)

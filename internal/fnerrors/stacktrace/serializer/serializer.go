@@ -4,6 +4,8 @@
 // Adapted from Sentry's codebase with a different filter function customized for
 // foundation in addition to removing several sentry specific struct fields and
 // associated logic.
+//
+// See https://github.com/getsentry/sentry-go.
 
 package stacktraceserializer
 

@@ -23,7 +23,7 @@ type Frame uintptr
 // multiple frames may have the same PC value.
 func (f Frame) pc() uintptr { return uintptr(f) - 1 }
 
-// file returns the full path to the file that contains the
+// File returns the full path to the file that contains the
 // function for this Frame's pc.
 func (f Frame) File() string {
 	fn := runtime.FuncForPC(f.pc())
@@ -34,7 +34,7 @@ func (f Frame) File() string {
 	return file
 }
 
-// line returns the line number of source code of the
+// Line returns the line number of source code of the
 // function for this Frame's pc.
 func (f Frame) Line() int {
 	fn := runtime.FuncForPC(f.pc())
@@ -45,7 +45,7 @@ func (f Frame) Line() int {
 	return line
 }
 
-// name returns the name of this function, if known.
+// Name returns the name of this function, if known.
 func (f Frame) Name() string {
 	fn := runtime.FuncForPC(f.pc())
 	if fn == nil {
@@ -101,6 +101,8 @@ func (f Frame) MarshalText() ([]byte, error) {
 // StackTrace is stack of Frames from innermost (newest) to outermost (oldest).
 type StackTrace []Frame
 
+// New returns a new StackTrace after filtering out uninteresting frames
+// from runtime.Callers.
 func New() StackTrace {
 	const depth = 32
 	var pcs [depth]uintptr
