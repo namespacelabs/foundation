@@ -6,6 +6,7 @@ package frontend
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -66,5 +67,5 @@ func InvokeInternalPrepareHook(ctx context.Context, name string, env ops.Environ
 		})
 	}
 
-	return nil, fnerrors.UserError(nil, "%s: does not exist", name)
+	return nil, fnerrors.New(fmt.Sprintf("%s: does not exist", name))
 }

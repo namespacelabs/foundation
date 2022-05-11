@@ -7,7 +7,6 @@ package registry
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os/exec"
 
@@ -47,7 +46,7 @@ func Register() {
 func (em manager) IsInsecure() bool { return false }
 
 func (em manager) Tag(ctx context.Context, packageName schema.PackageName, version provision.BuildID) (oci.AllocatedName, error) {
-	return oci.AllocatedName{}, errors.New("unimplemented")
+	return oci.AllocatedName{}, fnerrors.New("unimplemented")
 }
 
 func (em manager) AllocateTag(packageName schema.PackageName, buildID provision.BuildID) c.Computable[oci.AllocatedName] {

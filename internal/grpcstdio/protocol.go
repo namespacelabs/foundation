@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
 )
 
@@ -325,7 +326,7 @@ func (s *Session) loop() {
 		}
 
 		if msg.checksum != msg.calculateChecksum() {
-			s.quit(errors.New("bad checksum"))
+			s.quit(fnerrors.New("bad checksum"))
 			break
 		}
 
@@ -504,7 +505,7 @@ func (s *Session) Accept() (*DialedStream, error) {
 
 func (s *Session) Shutdown() {
 	s.debugf("close listener")
-	s.quit(errors.New("listener closed"))
+	s.quit(fnerrors.New("listener closed"))
 }
 
 func (s *Session) closeStream(stream *Stream) {
@@ -575,7 +576,7 @@ func (s *Stream) Write(p []byte) (int, error) {
 
 func (s *Stream) Close() error {
 	s.parent.debugf("stream.close %s %x", s.direction, s.id)
-	s.closePipes(errors.New("closed"))
+	s.closePipes(fnerrors.New("closed"))
 	s.parent.closeStream(s)
 	return nil
 }

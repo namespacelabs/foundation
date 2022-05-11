@@ -6,7 +6,6 @@ package kubernetes
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -22,6 +21,7 @@ import (
 	"k8s.io/client-go/transport/spdy"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 )
 
@@ -208,7 +208,7 @@ func handleConnection(ctx context.Context, streamConn httpstream.Connection, con
 		case err != nil:
 			errorChan <- makeErr("error reading from error stream", err)
 		case len(message) > 0:
-			errorChan <- makeErr("error ocurred during forwarding", errors.New(string(message)))
+			errorChan <- makeErr("error ocurred during forwarding", fnerrors.New(string(message)))
 		}
 	}()
 

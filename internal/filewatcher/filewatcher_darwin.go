@@ -64,7 +64,7 @@ func (fsn *fsEvents) StartWatching(ctx context.Context) (EventsAndErrors, error)
 
 	root := longestCommonPrefix(dirs.Strings())
 	if root == "" || root == "/" {
-		return nil, errors.New("fs notify common root is /, would watch too many files")
+		return nil, fnerrors.New("fs notify common root is /, would watch too many files")
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "fsevents: common root is %q\n", root)
@@ -166,5 +166,5 @@ func (p *passEvents) Close() error {
 		return nil
 	}
 
-	return errors.New("already closed")
+	return fnerrors.New("already closed")
 }

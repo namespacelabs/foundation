@@ -173,7 +173,7 @@ func storeCert(ctx context.Context, srv *schema.Server, org, cacheKey string, re
 
 func makeCertDir(org string, srv *schema.Server) (string, error) {
 	if org == "" {
-		return "", errors.New("no org specified")
+		return "", fnerrors.New("no org specified")
 	}
 
 	certDir, err := dirs.CertCache()

@@ -6,7 +6,6 @@ package golang
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -45,7 +44,7 @@ func Register() {
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
-			return nil, errors.New("workspace.Packages required")
+			return nil, fnerrors.New("workspace.Packages required")
 		}
 
 		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Node.PackageName))
@@ -59,7 +58,7 @@ func Register() {
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenServer) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
-			return nil, errors.New("workspace.Packages required")
+			return nil, fnerrors.New("workspace.Packages required")
 		}
 
 		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Server.PackageName))

@@ -6,10 +6,10 @@ package prepare
 
 import (
 	"context"
-	"errors"
 
 	corev1 "k8s.io/api/core/v1"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -28,10 +28,10 @@ type noPackageEnv struct {
 var _ workspace.Packages = noPackageEnv{}
 
 func (noPackageEnv) Resolve(ctx context.Context, packageName schema.PackageName) (workspace.Location, error) {
-	return workspace.Location{}, errors.New("not supported")
+	return workspace.Location{}, fnerrors.New("not supported")
 }
 func (noPackageEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*workspace.Package, error) {
-	return nil, errors.New("not supported")
+	return nil, fnerrors.New("not supported")
 }
 
 func (p noPackageEnv) KubeconfigProvider() (client.KubeconfigProvider, error) {

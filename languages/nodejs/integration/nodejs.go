@@ -7,7 +7,6 @@ package integration
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -60,7 +59,7 @@ func Register() {
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
-			return nil, errors.New("workspace.Packages required")
+			return nil, fnerrors.New("workspace.Packages required")
 		}
 
 		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Node.PackageName))
@@ -74,7 +73,7 @@ func Register() {
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNodeStub) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
-			return nil, errors.New("workspace.Packages required")
+			return nil, fnerrors.New("workspace.Packages required")
 		}
 
 		pkg, err := wenv.LoadByName(ctx, schema.PackageName(x.Node.PackageName))
@@ -97,7 +96,7 @@ type generator struct{}
 func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenServer) (*ops.HandleResult, error) {
 	workspacePackages, ok := env.(workspace.Packages)
 	if !ok {
-		return nil, errors.New("workspace.Packages required")
+		return nil, fnerrors.New("workspace.Packages required")
 	}
 
 	loc, err := workspacePackages.Resolve(ctx, schema.PackageName(msg.Server.PackageName))
