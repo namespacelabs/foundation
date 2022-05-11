@@ -31,6 +31,7 @@ func NewTerm() Term {
 
 type term struct {
 	cancelFuncs []context.CancelFunc
+	showingLogs bool
 }
 
 // HandleEvents processes user keystroke events and dev workflow updates.
@@ -49,12 +50,11 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 	}()
 
 	envRef := ""
-	showingLogs := false
 	for {
 		select {
 		case update := <-ch:
 			if update.StackUpdate != nil && update.StackUpdate.Env != nil {
-				if showingLogs && envRef != update.StackUpdate.Env.Name {
+				if t.showingLogs && envRef != update.StackUpdate.Env.Name {
 					t.stopLogging()
 					t.newLogTailMultiple(ctx, root, update.StackUpdate.Env.Name, serverProtos)
 				}
@@ -69,12 +69,12 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 				return
 			}
 			if string(c) == "l" && envRef != "" {
-				if showingLogs {
+				if t.showingLogs {
 					t.stopLogging()
 				} else {
 					t.newLogTailMultiple(ctx, root, envRef, serverProtos)
 				}
-				showingLogs = !showingLogs
+				t.showingLogs = !t.showingLogs
 			}
 		case <-ctx.Done():
 			r.cancel()
