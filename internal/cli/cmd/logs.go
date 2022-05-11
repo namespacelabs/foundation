@@ -13,7 +13,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
@@ -44,8 +43,7 @@ func NewLogsCmd() *cobra.Command {
 			cancel := console.SetIdleLabel(ctx, "listening for deployment changes")
 			defer cancel()
 
-			lo := logs.NewLogsObserver()
-			return lo.Start(ctx, root, envRef, []*schema.Server{server.Proto()})
+			return logs.NewLogTail(ctx, root, envRef, server.Proto())
 		}),
 	}
 

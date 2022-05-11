@@ -19,47 +19,13 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type LogsObserver interface {
-	// Start fetching logs. Outputs to the console.
-	Start(ctx context.Context, root *workspace.Root, envRef string, servers []*schema.Server) error
-	Stop()
-}
-
-// Returns non-thread-safe LogsObserver.
-func NewLogsObserver() LogsObserver {
-	return &logsObserver{}
-}
-
-type logsObserver struct {
-	cancel context.CancelFunc
-}
-
-func (lo *logsObserver) Start(ctx context.Context, root *workspace.Root, envRef string, server []*schema.Server) error {
+// NewLogTail blocks fetching logs from a container.
+func NewLogTail(ctx context.Context, root *workspace.Root, envRef string, server *schema.Server) error {
 	env, err := provision.RequireEnv(root, envRef)
 	if err != nil {
 		return err
 	}
 	rt := runtime.For(ctx, env)
-	ctxWithCancel, cancel := context.WithCancel(ctx)
-	lo.cancel = cancel
-	for _, server := range server {
-		server := server
-		go func() {
-			if err := startSingle(ctxWithCancel, rt, server); err != nil {
-				fmt.Fprintf(console.Errors(ctx), "Error while observing logs: %v", err)
-			}
-		}()
-	}
-	return nil
-}
-
-func (lo *logsObserver) Stop() {
-	if lo.cancel != nil {
-		lo.cancel()
-	}
-}
-
-func startSingle(ctx context.Context, rt runtime.Runtime, server *schema.Server) error {
 	var mu sync.Mutex
 	streams := map[string]*logStream{}
 	return rt.Observe(ctx, server, runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) error {

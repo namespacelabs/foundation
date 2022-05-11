@@ -30,12 +30,14 @@ func NewTerm() Term {
 	return &term{}
 }
 
-type term struct{}
+type term struct {
+	cancelFuncs []context.CancelFunc
+}
 
 // HandleEvents processes user keystroke events and dev workflow updates.
 // Here we also take care on calling `onDone` callback on user exiting.
 func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverProtos []*schema.Server, onDone func(), ch chan *devworkflow.Update) {
-	r, err := newReader(ctx)
+	r, err := newStdinReader(ctx)
 	if err != nil {
 		fmt.Fprintln(console.Errors(ctx), err)
 		return
@@ -49,33 +51,27 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 
 	envRef := ""
 	showingLogs := false
-	logsObserver := NewLogsObserver()
 	for {
 		select {
 		case update := <-ch:
 			if update.StackUpdate != nil && update.StackUpdate.Env != nil {
 				if showingLogs && envRef != update.StackUpdate.Env.Name {
-					logsObserver.Stop()
-					if err := logsObserver.Start(ctx, root, update.StackUpdate.Env.Name, serverProtos); err != nil {
-						fmt.Fprintf(console.Errors(ctx), "Error starting log observer: %v:", err)
-					}
-					continue
+					t.stopLogging()
+					t.newLogTailMultiple(ctx, root, update.StackUpdate.Env.Name, serverProtos)
 				}
 				envRef = update.StackUpdate.Env.Name
 			}
 		case err := <-r.errors:
-			fmt.Fprintf(console.Errors(ctx), "Error while reading from Stdin: %v:", err)
+			fmt.Fprintf(console.Errors(ctx), "Error while reading from Stdin: %v\n", err)
 			return
 		case c := <-r.input:
 			if int(c) == 3 || string(c) == "q" { // ctrl+c
-				updateCmd(ctx, " Quitting...")
+				t.stopLogging()
 				return
 			}
 			if string(c) == "l" && envRef != "" && !showingLogs {
 				showingLogs = true
-				if err := logsObserver.Start(ctx, root, envRef, serverProtos); err != nil {
-					fmt.Fprintf(console.Errors(ctx), "Error starting log observer: %v:", err)
-				}
+				t.newLogTailMultiple(ctx, root, envRef, serverProtos)
 				// TODO handle multiple keystrokes.
 			}
 		case <-ctx.Done():
@@ -90,24 +86,45 @@ func (t term) PrintCommands(ctx context.Context) {
 	updateCmd(ctx, cmds)
 }
 
+func (t *term) newLogTailMultiple(ctx context.Context, root *workspace.Root, envRef string, serverProtos []*schema.Server) {
+	for _, server := range serverProtos {
+		server := server // Capture server
+		ctxWithCancel, cancelF := context.WithCancel(ctx)
+		t.cancelFuncs = append(t.cancelFuncs, cancelF)
+		go func() {
+			err := NewLogTail(ctxWithCancel, root, envRef, server)
+			if err != nil {
+				fmt.Fprintf(console.Errors(ctx), "Error starting logs: %v\n", err)
+			}
+		}()
+	}
+}
+
+func (t *term) stopLogging() {
+	for _, cancelF := range t.cancelFuncs {
+		cancelF()
+	}
+	t.cancelFuncs = t.cancelFuncs[:]
+}
+
 func updateCmd(ctx context.Context, cmd string) {
 	console.SetStickyContent(ctx, "cmds", []byte(cmd))
 }
 
-type rawReader struct {
+type rawStdinReader struct {
 	input   chan byte
 	errors  chan error
 	cancel  func() bool
 	restore func()
 }
 
-func newReader(ctx context.Context) (*rawReader, error) {
+func newStdinReader(ctx context.Context) (*rawStdinReader, error) {
 	cr, err := cancelreader.NewReader(os.Stdin)
 	if err != nil {
 		return nil, err
 	}
 
-	r := &rawReader{
+	r := &rawStdinReader{
 		input:  make(chan byte),
 		cancel: cr.Cancel,
 	}
