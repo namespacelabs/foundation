@@ -12,7 +12,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -37,7 +36,6 @@ type SessionState struct {
 
 	localHostname string
 	obs           *Observers
-	l             zerolog.Logger
 	sink          *tasks.StatefulSink
 
 	commandOutput *syncbuffer.ByteBuffer // XXX cap the size
@@ -72,7 +70,6 @@ func NewStackState(ctx context.Context, sink *tasks.StatefulSink, localHostname 
 		localHostname: localHostname,
 		obs:           NewObservers(ctx),
 		Ch:            make(chan *DevWorkflowRequest, 1),
-		l:             zerolog.Ctx(ctx).With().Logger(),
 		commandOutput: syncbuffer.NewByteBuffer(),
 		buildOutput:   syncbuffer.NewByteBuffer(),
 		buildkitJSON:  syncbuffer.NewByteBuffer(),
