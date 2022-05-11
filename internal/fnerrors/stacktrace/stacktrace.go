@@ -155,14 +155,14 @@ func (st StackTrace) Format(s fmt.State, verb rune) {
 // formatSlice will format this StackTrace into the given buffer as a slice of
 // Frame, only valid when called with '%s' or '%v'.
 func (st StackTrace) formatSlice(s fmt.State, verb rune) {
-	io.WriteString(s, "[")
+	writeString(s, "[")
 	for i, f := range st {
 		if i > 0 {
 			io.WriteString(s, " ")
 		}
 		f.Format(s, verb)
 	}
-	io.WriteString(s, "]")
+	writeString(s, "]")
 }
 
 // funcname removes the path prefix component of a function's name reported by func.Name().
