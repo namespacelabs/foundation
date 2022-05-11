@@ -36,12 +36,21 @@ func SDKCache(name string) (string, error) {
 }
 
 func ModuleCache(name, ref string) (string, error) {
+	cacheDir, err := ModuleCacheRoot()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(cacheDir, name, ref), nil
+}
+
+func ModuleCacheRoot() (string, error) {
 	cacheDir, err := Cache()
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(cacheDir, "module", name, ref), nil
+	return filepath.Join(cacheDir, "module"), nil
 }
 
 func CertCache() (string, error) {

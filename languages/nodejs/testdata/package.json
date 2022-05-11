@@ -1,4 +1,7 @@
 {
+	"devDependencies": {
+		"typescript": "4.6.2"
+	},
 	"packageManager": "yarn@3.2.0",
 	"private": true,
 	"workspaces": [

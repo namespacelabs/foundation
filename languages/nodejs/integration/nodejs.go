@@ -7,11 +7,13 @@ package integration
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -29,6 +31,7 @@ import (
 	"namespacelabs.dev/foundation/internal/yarn"
 	"namespacelabs.dev/foundation/languages"
 	nodejsruntime "namespacelabs.dev/foundation/languages/nodejs/runtime"
+	"namespacelabs.dev/foundation/languages/nodejs/yarnplugin"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -37,24 +40,61 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-// Hard-coding the version of generated yarn workspaces since we only support a monorepo for now.
 const (
-	controllerPkg        schema.PackageName = "namespacelabs.dev/foundation/std/development/filesync/controller"
-	grpcPkg              schema.PackageName = "namespacelabs.dev/foundation/languages/nodejs/grpc"
-	yarnWorkspaceVersion                    = "0.0.0"
-	yarnVersion                             = "3.2.0"
-	yarnRcFn                                = ".yarnrc.yml"
-	implFileName                            = "impl.ts"
-	packageJsonFn                           = "package.json"
-	fileSyncPort                            = 50000
-	runtimePackage                          = "@namespacelabs/foundation"
-	ForceProd                               = false
+	controllerPkg schema.PackageName = "namespacelabs.dev/foundation/std/development/filesync/controller"
+	grpcPkg       schema.PackageName = "namespacelabs.dev/foundation/languages/nodejs/grpc"
+	// Yarn version of the packages in the same module. Doesn't really matter what the value here is.
+	defaultPackageVersion = "0.0.0"
+	yarnVersion           = "3.2.0"
+	yarnRcFn              = ".yarnrc.yml"
+	fnYarnPluginPath      = ".yarn/plugins/plugin-foundation.cjs"
+	yarnGitIgnore         = ".yarn/.gitignore"
+	implFileName          = "impl.ts"
+	packageJsonFn         = "package.json"
+	fileSyncPort          = 50000
+	runtimePackage        = "@namespacelabs/foundation"
+	ForceProd             = false
+)
+
+var (
+	yarnRcContent = fmt.Sprintf(
+		`nodeLinker: node-modules
+
+npmScopes:
+  namespacelabs:
+    npmRegistryServer: "https://us-npm.pkg.dev/foundation-344819/npm-prebuilts/"
+
+plugins:
+  - path: %s
+
+yarnPath: .yarn/releases/yarn-%s.cjs
+`, fnYarnPluginPath, yarnVersion)
+	yarnGitIgnoreContent = fmt.Sprintf(
+		`/.gitignore
+%s
+`, strings.TrimPrefix(fnYarnPluginPath, ".yarn"))
 )
 
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
 
-	ops.Register[*OpGenServer](generator{})
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenServer) (*ops.HandleResult, error) {
+		workspacePackages, ok := env.(workspace.Packages)
+		if !ok {
+			return nil, errors.New("workspace.Packages required")
+		}
+
+		loc, err := workspacePackages.Resolve(ctx, schema.PackageName(x.Server.PackageName))
+		if err != nil {
+			return nil, err
+		}
+
+		if err := generateServer(ctx, workspacePackages, loc, x.Server, x.LoadedNode, loc.Module.ReadWriteFS()); err != nil {
+			return nil, fnerrors.InternalError("failed to generate server: %w", err)
+		}
+
+		return nil, nil
+	})
 
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
@@ -83,32 +123,14 @@ func Register() {
 
 		return nil, generateNodeImplStub(ctx, pkg, x.Filename, x.Node)
 	})
+
+	ops.Register[*OpGenYarnRoot](yarnRootStatefulGen{})
 }
 
 func useDevBuild(env *schema.Environment) bool {
 	// TODO(@nicolasalt): uncomment when #313 is fixed.
 	// Currently only dev way to pass flags to the server works, see PostParseServer.
 	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
-}
-
-type generator struct{}
-
-func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenServer) (*ops.HandleResult, error) {
-	workspacePackages, ok := env.(workspace.Packages)
-	if !ok {
-		return nil, fnerrors.New("workspace.Packages required")
-	}
-
-	loc, err := workspacePackages.Resolve(ctx, schema.PackageName(msg.Server.PackageName))
-	if err != nil {
-		return nil, err
-	}
-
-	if err := generateServer(ctx, workspacePackages, loc, msg.Server, msg.LoadedNode, loc.Module.ReadWriteFS()); err != nil {
-		return nil, fnerrors.InternalError("failed to generate server: %w", err)
-	}
-
-	return nil, nil
 }
 
 type impl struct {
@@ -140,7 +162,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server prov
 			Mod: server.Location.Module,
 			// "ModuleName" is empty because we have only one module in the image and
 			// we can put everything under the root "/app" directory.
-			Sink: r.For(&wsremote.Signature{ModuleName: "", Rel: yarnRoot.String()}),
+			Sink: r.For(&wsremote.Signature{ModuleName: "", Rel: yarnRoot}),
 		}
 	} else {
 		module = server.Location.Module
@@ -192,7 +214,8 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 }
 
 func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) error {
-	yarnRoots := map[string]*workspace.Module{}
+	yarnRootsMap := map[string]bool{}
+	yarnRoots := []string{}
 	for _, pkg := range packages {
 		if (pkg.Server != nil && pkg.Server.Framework == schema.Framework_NODEJS) ||
 			(pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS)) {
@@ -201,93 +224,23 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 				// If we can't find yarn root, using the workspace root.
 				yarnRoot = ""
 			}
-			// It is always the same module, but saving it as a value allows to avoid additional checks for nil.
-			yarnRoots[yarnRoot.String()] = pkg.Location.Module
-		}
-	}
-
-	for yarnRoot, module := range yarnRoots {
-		if err := tidyYarnRoot(ctx, yarnRoot, module); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func tidyYarnRoot(ctx context.Context, path string, module *workspace.Module) error {
-	yarnHasCorrectVersion, err := updateYarnRootPackageJson(ctx, path, module.ReadWriteFS())
-
-	if err != nil {
-		return err
-	}
-
-	// Install Yarn 3+ if needed
-	if !yarnHasCorrectVersion {
-		if err := yarn.RunYarn(ctx, path, []string{"set", "version", yarnVersion}); err != nil {
-			return err
-		}
-		// Yarn adds "packageManager" field to the end of package.json, re-format it in alphapetical order
-		// to make tn tidy idempotent.
-		if _, err = updateYarnRootPackageJson(ctx, path, module.ReadWriteFS()); err != nil {
-			return err
-		}
-	}
-
-	// Write .yarnrc.yml with the correct nodeLinker.
-	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), module.ReadWriteFS(), filepath.Join(path, yarnRcFn), func(w io.Writer) error {
-		_, err := io.WriteString(w, yarnRcContent())
-		return err
-	}); err != nil {
-		return err
-	}
-
-	// Create "tsconfig.json" if it doesn't exist.
-	tsconfigFn := filepath.Join(path, "tsconfig.json")
-	if _, err := updateJson(ctx, tsconfigFn, module.ReadWriteFS(),
-		func(tsconfig map[string]interface{}, fileExisted bool) {
-			if !fileExisted {
-				tsconfig["extends"] = "@tsconfig/node16/tsconfig.json"
-				tsconfig["compilerOptions"] = map[string]interface{}{
-					"sourceMap": true,
-				}
+			if !yarnRootsMap[yarnRoot] {
+				yarnRootsMap[yarnRoot] = true
+				yarnRoots = append(yarnRoots, yarnRoot)
 			}
-		}); err != nil {
-		return err
+		}
 	}
 
-	// `fn tidy` could update dependencies of some nodes/servers, running `yarn install` to update
-	// `node_modules`.
-	if err := yarn.RunYarn(ctx, path, []string{"install"}); err != nil {
-		return err
+	// Iterating over a list for the stable order.
+	for _, yarnRoot := range yarnRoots {
+		// `fn tidy` could update dependencies of some nodes/servers, running `yarn install` to update
+		// `node_modules`.
+		if err := yarn.RunYarn(ctx, yarnRoot, []string{"install"}); err != nil {
+			return err
+		}
 	}
 
 	return nil
-}
-
-func yarnRcContent() string {
-	return fmt.Sprintf(
-		`nodeLinker: node-modules
-
-npmScopes:
-  namespacelabs:
-    npmRegistryServer: "https://us-npm.pkg.dev/foundation-344819/npm-prebuilts/"
-
-yarnPath: .yarn/releases/yarn-%s.cjs
-`, yarnVersion)
-}
-
-// Returns whether yarn has the correct version
-func updateYarnRootPackageJson(ctx context.Context, path string, fs fnfs.ReadWriteFS) (bool, error) {
-	yarnHasCorrectVersion := false
-	_, err := updatePackageJson(ctx, path, fs, func(packageJson map[string]interface{}, fileExisted bool) {
-		packageJson["private"] = true
-		packageJson["workspaces"] = []string{"**/*"}
-		yarnWithVersion := fmt.Sprintf("yarn@%s", yarnVersion)
-		yarnHasCorrectVersion = packageJson["packageManager"] == yarnWithVersion
-	})
-
-	return yarnHasCorrectVersion, err
 }
 
 func (impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
@@ -380,14 +333,22 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 			if err != nil {
 				return err
 			}
-			dependencies[string(importNpmPackage)] = yarnWorkspaceVersion
+
+			var ref string
+			if pkg.Location.Module.IsExternal() {
+				ref = "fn:" + pkg.Location.PathInCache()
+			} else {
+				ref = defaultPackageVersion
+			}
+
+			dependencies[string(importNpmPackage)] = ref
 		}
 	}
 
 	_, err = updatePackageJson(ctx, loc.Rel(), loc.Module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
 		packageJson["name"] = npmPackage
 		packageJson["private"] = true
-		packageJson["version"] = yarnWorkspaceVersion
+		packageJson["version"] = defaultPackageVersion
 
 		packageJson["dependencies"] = mergeJsonMap(packageJson["dependencies"], dependencies)
 		packageJson["devDependencies"] = mergeJsonMap(packageJson["devDependencies"], builtin().DevDependencies)
@@ -430,12 +391,12 @@ func updateJson(ctx context.Context, filepath string, fsys fnfs.ReadWriteFS, cal
 
 	jsonRaw, err := fs.ReadFile(fsys, filepath)
 	if err != nil && !os.IsNotExist(err) {
-		return nil, err
+		return nil, fnerrors.UserError(nil, "error while parsing %s: %s", filepath, err)
 	}
 	fileExisted := err == nil
 	if err == nil {
 		if err := json.Unmarshal(jsonRaw, &parsedJson); err != nil {
-			return nil, err
+			return nil, fnerrors.UserError(nil, "error while parsing %s: %s", filepath, err)
 		}
 	}
 
@@ -490,7 +451,7 @@ func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
 	return frontend.ProvisionStack{}, nil
 }
 
-func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
+func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
 	var dl defs.DefList
 
 	maybeGenerateNodeImplStub(pkg, &dl)
@@ -517,5 +478,143 @@ func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schem
 		})
 	}
 
+	yarnRoot, err := findYarnRoot(pkg.Location)
+	if err != nil {
+		return nil, err
+	}
+
+	dl.Add("Generate Nodejs Yarn root", &OpGenYarnRoot{
+		YarnRootPkgName: string(yarnRoot),
+	}, pkg.Location.PackageName)
+
 	return dl.Serialize()
+}
+
+type yarnRootStatefulGen struct{}
+
+// This is never called but ops.Register requires the Dispatcher.
+func (yarnRootStatefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenYarnRoot) (*ops.HandleResult, error) {
+	return nil, fnerrors.UserError(nil, "yarnRootStatefulGen.Handle is not supposed to be called")
+}
+
+func (yarnRootStatefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Session[*OpGenYarnRoot] {
+	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
+	if !ok {
+		// An error will then be returned in Close().
+		wenv = nil
+	}
+
+	return &yarnRootGenSession{wenv: wenv, yarnRoots: map[string]context.Context{}}
+}
+
+type yarnRootGenSession struct {
+	wenv      workspace.MutableWorkspaceEnvironment
+	yarnRoots map[string]context.Context
+}
+
+func (s *yarnRootGenSession) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenYarnRoot) (*ops.HandleResult, error) {
+	s.yarnRoots[x.YarnRootPkgName] = ctx
+	return nil, nil
+}
+
+func (s *yarnRootGenSession) Commit() error {
+	// Converting to a slice for deterministic order.
+	var roots []string
+	for yarnRoot := range s.yarnRoots {
+		roots = append(roots, yarnRoot)
+	}
+	sort.Strings(roots)
+
+	for _, yarnRoot := range roots {
+		if err := generateYarnRoot(s.yarnRoots[yarnRoot], yarnRoot, s.wenv.OutputFS()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func generateYarnRoot(ctx context.Context, path string, out fnfs.ReadWriteFS) error {
+	yarnHasCorrectVersion, err := updateYarnRootPackageJson(ctx, path, out)
+
+	if err != nil {
+		return err
+	}
+
+	// Install Yarn 3+ if needed
+	if !yarnHasCorrectVersion {
+		if err := yarn.RunYarn(ctx, path, []string{"set", "version", yarnVersion}); err != nil {
+			return err
+		}
+		// Yarn adds "packageManager" field to the end of package.json, re-format it in alphapetical order
+		// to make tn tidy idempotent.
+		if _, err = updateYarnRootPackageJson(ctx, path, out); err != nil {
+			return err
+		}
+	}
+
+	// Write .yarnrc.yml with the correct nodeLinker.
+	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), out, filepath.Join(path, yarnRcFn), func(w io.Writer) error {
+		_, err := io.WriteString(w, yarnRcContent)
+		return err
+	}); err != nil {
+		return err
+	}
+
+	// Write .gitignore to hide the foundation plugin.
+	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), out, filepath.Join(path, yarnGitIgnore), func(w io.Writer) error {
+		_, err := io.WriteString(w, yarnGitIgnoreContent)
+		return err
+	}); err != nil {
+		return err
+	}
+
+	// Write the Foundation plugin.
+	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), out,
+		filepath.Join(path, fnYarnPluginPath), func(w io.Writer) error {
+			_, err := w.Write(yarnplugin.PluginContent())
+			return err
+		}); err != nil {
+		return err
+	}
+
+	// Create "tsconfig.json" if it doesn't exist.
+	tsconfigFn := filepath.Join(path, "tsconfig.json")
+	if _, err := updateJson(ctx, tsconfigFn, out,
+		func(tsconfig map[string]interface{}, fileExisted bool) {
+			if !fileExisted {
+				tsconfig["extends"] = "@tsconfig/node16/tsconfig.json"
+				tsconfig["compilerOptions"] = map[string]interface{}{
+					"sourceMap": true,
+				}
+				tsconfig["ts-node"] = map[string]interface{}{
+					"ignore": []string{"(?!.*) important to not ignore node_modules (which is the default) because Foundation-managed dependencies need to be compiled and they live inside node_modules"},
+				}
+				tsconfig["include"] = []string{
+					"**/*",
+					// TODO(@nicolasalt): do not hardcode modules that need to be compiled (i.e. managed by foundation).
+					"node_modules/@github*/**/*",
+				}
+			}
+		}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Returns whether yarn has the correct version
+func updateYarnRootPackageJson(ctx context.Context, path string, fs fnfs.ReadWriteFS) (bool, error) {
+	yarnHasCorrectVersion := false
+	_, err := updatePackageJson(ctx, path, fs, func(packageJson map[string]interface{}, fileExisted bool) {
+		packageJson["private"] = true
+		packageJson["workspaces"] = []string{"**/*"}
+		packageJson["devDependencies"] = map[string]string{
+			"typescript": builtin().Dependencies["typescript"],
+		}
+		yarnWithVersion := fmt.Sprintf("yarn@%s", yarnVersion)
+		yarnHasCorrectVersion = packageJson["packageManager"] == yarnWithVersion
+	})
+
+	return yarnHasCorrectVersion, err
 }

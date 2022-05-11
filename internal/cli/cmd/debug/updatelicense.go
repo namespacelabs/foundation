@@ -19,7 +19,17 @@ import (
 )
 
 var checkExtensions = []string{".go", ".js", ".ts", ".jsx", ".tsx", ".proto", ".hcl", ".yaml", ".yml", ".css"}
-var ignoreSuffixes = []string{".pb.go", ".fn.go", ".pb.gw.go", ".fn.ts", ".fn.js", "_pb.js", "_pb.d.ts", "stacktrace.go"}
+var ignoreSuffixes = []string{
+	".pb.go",
+	".fn.go",
+	".pb.gw.go",
+	".fn.ts",
+	".fn.js",
+	"_pb.js",
+	"_pb.d.ts",
+	"stacktrace.go",
+	// Compiled Foundation plugin for Yarn.
+	"plugin-fn.js"}
 
 func newUpdateLicenseCmd() *cobra.Command {
 	var check bool

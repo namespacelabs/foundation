@@ -52,6 +52,12 @@ func (loc Location) ErrorLocation() string {
 	return loc.relPath
 }
 
+// Directory of this location relative to the module cache.
+// Makes sense only for external modules.
+func (loc Location) PathInCache() string {
+	return filepath.Join(loc.Module.ModuleName(), loc.Module.Version(), loc.Rel())
+}
+
 func NewLocationForTesting(root *Module, packageName, path string) Location {
 	return Location{Module: root, PackageName: schema.PackageName(packageName), relPath: path}
 }

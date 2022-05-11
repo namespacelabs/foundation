@@ -14,8 +14,10 @@ import (
 	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/desc/protoparse"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
+	"namespacelabs.dev/foundation/internal/wscontents"
 
 	// Include descriptors for generated googleapis.
 	_ "google.golang.org/genproto/googleapis/api/annotations"
@@ -117,6 +119,9 @@ func expandProtoList(fsys fs.FS, files []string) ([]string, error) {
 		}
 
 		if st.IsDir() {
+			if slices.Contains(wscontents.AllDirsToAvoid, st.Name()) {
+				continue
+			}
 			dirents, err := fs.ReadDir(fsys, f)
 			if err != nil {
 				return nil, err

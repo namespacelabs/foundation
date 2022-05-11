@@ -24,3 +24,8 @@ message OpGenNodeStub {
     foundation.schema.Node node     = 1;
     string                 filename = 2;
 }
+
+// Generate required files in a Yarn root.
+message OpGenYarnRoot {
+    string yarn_root_pkg_name = 1;
+}

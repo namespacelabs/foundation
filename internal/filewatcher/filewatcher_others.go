@@ -10,11 +10,12 @@ package filewatcher
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/go-filenotify"
 )
 
-func NewFactory() (FileWatcherFactory, error) {
-	return fsNotifyWrapper{filenotify.NewPollingWatcher()}, nil
+func NewFactory(ctx context.Context) (FileWatcherFactory, error) {
+	return fsNotifyWrapper{filenotify.NewPollingWatcher(console.Debug(ctx))}, nil
 }
 
 type fsNotifyWrapper struct {
