@@ -147,7 +147,54 @@ jobs:
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
-      - name: Regenerate generated files
+      - name: Run all tests
+        run: |
+          /tmp/fn test \
+            --buildkit_import_cache=type=gha \
+            --buildkit_export_cache=type=gha,mode=max \
+            --use_prebuilts=true \
+            --golang_use_buildkit=false \
+            --include_servers
+
+  run_fn_generate_then_e2e_tests:
+    name: e2e tests with full fn gnerate
+    needs: build_fn
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
+      # Required by buildkit gha cache.
+      - name: Expose GitHub Runtime
+        uses: crazy-max/ghaction-github-runtime@v1
+
+      - name: Setup cross-invocation caching (Go)
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-fnrun-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-go-fnrun-
+
+      - name: Download Foundation
+        uses: actions/download-artifact@v2
+        with:
+          name: fn-${{ runner.os }}
+
+      # fn is moved out of the workspace so we don't spend time uploading it to buildkit.
+      - name: Make Foundation executable
+        run: chmod +x fn && mv fn /tmp/fn
+
+      - name: Prepare development environment
+        run: /tmp/fn prepare
+
+      - name: Run fn generate on a clean slate
         run: |
           find . -regex '.*\.fn\.cue' -exec rm {} \; ; \
           find . -regex '.*\.fn\.go' -exec rm {} \; ; \
@@ -215,13 +262,6 @@ jobs:
 
       - name: print kubectl cluster-info
         run: kubectl cluster-info
-
-      - name: Regenerate generated files
-        run: |
-          cd ${{ matrix.root_path }}; \
-          find . -regex '.*\.fn\.cue' -exec rm {} \; ; \
-          find . -regex '.*\.fn\.go' -exec rm {} \; ; \
-          /tmp/fn generate
 
       - name: run all tests
         run: |
