@@ -10,6 +10,13 @@ package versions
 // added to Foundation, this number must be bumped.
 const APIVersion = 29
 
+// MinimumAPIVersion represents the minimum requested version that this version
+// of foundation supports. If a module requests, e.g. a minimum version of 28,
+// which is below the version here specified, then Foundation will fail with a
+// error that says our version of Foundation is too recent. This is used during
+// development when maintaining backwards compatibility is too expensive.ß
+const MinimumAPIVersion = 29
+
 // Embedded into provisioning tools.
 const ToolAPIVersion = 2
 

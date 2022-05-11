@@ -42,6 +42,17 @@ func ModuleAt(path string) (*schema.Workspace, error) {
 		return nil, fnerrors.DoesNotMeetVersionRequirements(firstPass.ModuleName, firstPass.GetFoundation().GetMinimumApi(), versions.APIVersion)
 	}
 
+	if firstPass.GetFoundation().GetMinimumApi() < versions.MinimumAPIVersion {
+		return nil, fnerrors.UserError(nil, `Unfortunately, this version of Foundation is too recent to be used with the
+current repository. If you're testing out an existing repository that uses
+Foundation, try fetching a newer version of the repository. If this is your
+own codebase, then you'll need to either revert to a previous version of
+"fn", or update your dependency versions with "fn mod tidy".
+
+This version check will be removed in future non-alpha versions of
+Foundation, which establish a stable longer term supported API surface.`)
+	}
+
 	w := &schema.Workspace{}
 	if err := prototext.Unmarshal(moduleBytes, w); err != nil {
 		return nil, fnerrors.Wrapf(nil, err, "failed to parse %s", file)
