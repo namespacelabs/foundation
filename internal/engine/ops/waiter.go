@@ -41,6 +41,8 @@ type WaitStatus interface {
 // A waiter implementation is required to close the received channel when it's done.
 type Waiter func(context.Context, chan Event) error
 
+// WaitMultiple waits for multiple Waiters to become ready. If `ch` is not null,
+// it receives state change events, emitted by the waiters themselves.
 func WaitMultiple(ctx context.Context, waiters []Waiter, ch chan Event) error {
 	if len(waiters) == 1 {
 		// Defer channel management to the child waiter as well.

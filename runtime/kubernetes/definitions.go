@@ -141,7 +141,9 @@ func RegisterGraphHandlers() {
 								if ready {
 									ev.Ready = ops.Ready
 								}
-								ch <- ev
+								if ch != nil {
+									ch <- ev
+								}
 								return ready, nil
 							}))
 				})
