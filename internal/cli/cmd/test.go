@@ -86,7 +86,7 @@ func NewTestCmd() *cobra.Command {
 
 			for _, loc := range locs {
 				// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
-				env := fac.PrepareTestEnv()
+				env := testing.PrepareEnvFrom(devEnv, !testOpts.KeepRuntime)
 
 				status := aec.LightBlackF.Apply("RUNNING")
 				fmt.Fprintf(stderr, "%s: Test %s\n", loc.AsPackageName(), status)

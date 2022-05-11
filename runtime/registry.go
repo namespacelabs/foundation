@@ -93,10 +93,6 @@ func (r runtimeFwdErr) RunOneShot(context.Context, schema.PackageName, ServerRun
 	return r.err
 }
 
-func (r runtimeFwdErr) RunController(context.Context, ServerRunOpts) error {
-	return r.err
-}
-
 func (r runtimeFwdErr) DeleteRecursively(context.Context) error {
 	return r.err
 }

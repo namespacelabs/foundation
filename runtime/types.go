@@ -82,9 +82,6 @@ type Runtime interface {
 	// This mechanism is targeted at invoking test runners within the runtime environment.
 	RunOneShot(context.Context, schema.PackageName, ServerRunOpts, io.Writer) error
 
-	// Deploys a controller with appropriate cluster permissions.
-	RunController(context.Context, ServerRunOpts) error
-
 	// Deletes the scoped environment, and all of its associated resources (e.g. after a test invocation).
 	DeleteRecursively(context.Context) error
 
