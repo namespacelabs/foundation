@@ -71,6 +71,12 @@ func DoesNotMeetVersionRequirements(pkg string, expected, got int32) error {
 	return &VersionError{pkg, expected, got}
 }
 
+// This error is purely for wiring and ensures that Foundation exits with an appropriate exit code.
+// The error content has to be output independently.
+func ExitWithCode(err error, code int) error {
+	return &exitError{err, code}
+}
+
 type userError struct {
 	Location Location
 	Err      error
@@ -129,6 +135,23 @@ type VersionError struct {
 
 func (e *VersionError) Error() string {
 	return fmt.Sprintf("`fn` needs to be updated to use %q, (need api version %d, got %d)", e.Pkg, e.Expected, e.Got)
+}
+
+type ExitError interface {
+	ExitCode() int
+}
+
+type exitError struct {
+	Err  error
+	code int
+}
+
+func (e *exitError) Error() string {
+	return e.Err.Error()
+}
+
+func (e *exitError) ExitCode() int {
+	return e.code
 }
 
 func Format(w io.Writer, colors bool, err error) {
