@@ -2,13 +2,13 @@
 
 import * as impl from "./impl";
 import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter/input_pb"
-import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter/formatter"
+import * as i0 from "@namespacelabs.dev-foundation-nodejs-testdata/extensions-numberformatter/input_pb"
+import * as i1 from "@namespacelabs.dev-foundation-nodejs-testdata/extensions-numberformatter/formatter"
 
 
 
 export const Package = {
-  name: "namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/numberformatter",
+  name: "namespacelabs.dev/foundation-nodejs-testdata/extensions/numberformatter",
 };
 
 export const TransitiveInitializers: Initializer[] = [

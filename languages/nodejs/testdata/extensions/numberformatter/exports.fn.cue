@@ -6,7 +6,7 @@ package numberformatter
 		precision?: int
 
 		#Definition: {
-			packageName: "namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/numberformatter"
+			packageName: "namespacelabs.dev/foundation-nodejs-testdata/extensions/numberformatter"
 			type:        "fmt"
 			typeDefinition: {
 				"typename": "languages.nodejs.testdata.extensions.numberformatter.FormattingSettings"

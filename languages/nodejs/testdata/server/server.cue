@@ -6,7 +6,7 @@ server: fn.#Server & {
 	framework: "NODEJS"
 
 	import: [
-		"namespacelabs.dev/foundation/languages/nodejs/testdata/services/simple",
-		"namespacelabs.dev/foundation/languages/nodejs/testdata/services/numberformatter",
+		"namespacelabs.dev/foundation-nodejs-testdata/services/simple",
+		"namespacelabs.dev/foundation-nodejs-testdata/services/numberformatter",
 	]
 }

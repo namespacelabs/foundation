@@ -1,5 +1,5 @@
 // package: languages.nodejs.testdata.extensions.numberformatter
-// file: languages/nodejs/testdata/extensions/numberformatter/input.proto
+// file: extensions/numberformatter/input.proto
 
 import * as jspb from "google-protobuf";
 
@@ -22,4 +22,3 @@ export namespace FormattingSettings {
     precision: number,
   }
 }
-

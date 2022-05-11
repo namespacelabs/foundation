@@ -1,7 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/batchformatter"
+	"namespacelabs.dev/foundation-nodejs-testdata/extensions/batchformatter"
 )
 
 $proto: inputs.#Proto & {

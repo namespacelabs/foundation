@@ -1,5 +1,5 @@
 // package: languages.nodejs.testdata.services.simple
-// file: languages/nodejs/testdata/services/simple/service.proto
+// file: services/simple/service.proto
 
 import * as jspb from "google-protobuf";
 
@@ -42,4 +42,3 @@ export namespace PostResponse {
     output: string,
   }
 }
-

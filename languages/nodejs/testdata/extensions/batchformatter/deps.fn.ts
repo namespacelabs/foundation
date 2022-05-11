@@ -2,11 +2,11 @@
 
 import * as impl from "./impl";
 import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter/deps.fn"
-import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter/input_pb"
-import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter/formatter"
-import * as i3 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/input_pb"
-import * as i4 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/formatter"
+import * as i0 from "@namespacelabs.dev-foundation-nodejs-testdata/extensions-numberformatter/deps.fn"
+import * as i1 from "@namespacelabs.dev-foundation-nodejs-testdata/extensions-numberformatter/input_pb"
+import * as i2 from "@namespacelabs.dev-foundation-nodejs-testdata/extensions-numberformatter/formatter"
+import * as i3 from "@namespacelabs.dev-foundation-nodejs-testdata/extensions-batchformatter/input_pb"
+import * as i4 from "@namespacelabs.dev-foundation-nodejs-testdata/extensions-batchformatter/formatter"
 
 
 export interface ExtensionDeps {
@@ -14,7 +14,7 @@ export interface ExtensionDeps {
 }
 
 export const Package = {
-  name: "namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/batchformatter",
+  name: "namespacelabs.dev/foundation-nodejs-testdata/extensions/batchformatter",
   // Package dependencies are instantiated at most once.
   instantiateDeps: (graph: DependencyGraph) => ({
 		fmt: i0.FmtProvider(
@@ -43,7 +43,7 @@ export interface BatchFormatterDeps {
 
 export const BatchFormatterProvider = (graph: DependencyGraph, input: i3.InputData) =>
 	provideBatchFormatter(
-		input, 
+		input,
 		graph.instantiatePackageDeps(Package),
 		// Scoped dependencies that are instantiated for each call to ProvideBatchFormatter.
 		graph.instantiateDeps(Package.name, "BatchFormatter", () => ({

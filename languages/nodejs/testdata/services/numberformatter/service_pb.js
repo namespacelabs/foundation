@@ -1,4 +1,4 @@
-// source: languages/nodejs/testdata/services/numberformatter/service.proto
+// source: services/numberformatter/service.proto
 /**
  * @fileoverview
  * @enhanceable

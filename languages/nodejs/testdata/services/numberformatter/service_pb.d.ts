@@ -1,5 +1,5 @@
 // package: languages.nodejs.testdata.services.numberformatter
-// file: languages/nodejs/testdata/services/numberformatter/service.proto
+// file: services/numberformatter/service.proto
 
 import * as jspb from "google-protobuf";
 
@@ -44,4 +44,3 @@ export namespace FormatResponse {
     outputList: Array<string>,
   }
 }
-

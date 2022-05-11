@@ -1,0 +1,9 @@
+module_name: "namespacelabs.dev/foundation-nodejs-testdata"
+foundation: {
+  minimum_api: 29
+}
+
+replace: {
+  module_name: "namespacelabs.dev/foundation"
+  path: "../../.."
+}

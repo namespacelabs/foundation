@@ -1,7 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/numberformatter"
+	"namespacelabs.dev/foundation-nodejs-testdata/extensions/numberformatter"
 )
 
 $providerProto: inputs.#Proto & {
@@ -26,7 +26,7 @@ extension: fn.#Extension & {
 			input: $providerProto.types.InputData
 			availableIn: {
 				nodejs: {
-					import: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/formatter"
+					import: "@namespacelabs.dev-foundation-nodejs-testdata/extensions-batchformatter/formatter"
 					type:   "BatchFormatter"
 				}
 			}

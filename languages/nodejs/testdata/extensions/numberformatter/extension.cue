@@ -15,7 +15,7 @@ extension: fn.#Extension & {
 			input: $inputProto.types.FormattingSettings
 			availableIn: {
 				nodejs: {
-					import: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter/formatter"
+					import: "@namespacelabs.dev-foundation-nodejs-testdata/extensions-numberformatter/formatter"
 					type:   "NumberFormatter"
 				}
 			}

@@ -4,7 +4,7 @@ package batchformatter
 #Exports: {
 	BatchFormatter: {
 		#Definition: {
-			packageName: "namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/batchformatter"
+			packageName: "namespacelabs.dev/foundation-nodejs-testdata/extensions/batchformatter"
 			type:        "BatchFormatter"
 			typeDefinition: {
 				"typename": "languages.nodejs.testdata.extensions.batchformatter.InputData"

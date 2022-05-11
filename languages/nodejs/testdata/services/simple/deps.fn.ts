@@ -7,7 +7,7 @@ import * as i0 from "@grpc/grpc-js"
 
 
 export const Package = {
-  name: "namespacelabs.dev/foundation/languages/nodejs/testdata/services/simple",
+  name: "namespacelabs.dev/foundation-nodejs-testdata/services/simple",
 };
 
 export const TransitiveInitializers: Initializer[] = [

@@ -2,9 +2,9 @@
 
 import * as impl from "./impl";
 import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/deps.fn"
-import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/input_pb"
-import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/formatter"
+import * as i0 from "@namespacelabs.dev-foundation-nodejs-testdata/extensions-batchformatter/deps.fn"
+import * as i1 from "@namespacelabs.dev-foundation-nodejs-testdata/extensions-batchformatter/input_pb"
+import * as i2 from "@namespacelabs.dev-foundation-nodejs-testdata/extensions-batchformatter/formatter"
 import * as i3 from "@grpc/grpc-js"
 
 
@@ -14,7 +14,7 @@ export interface ServiceDeps {
 }
 
 export const Package = {
-  name: "namespacelabs.dev/foundation/languages/nodejs/testdata/services/numberformatter",
+  name: "namespacelabs.dev/foundation-nodejs-testdata/services/numberformatter",
   // Package dependencies are instantiated at most once.
   instantiateDeps: (graph: DependencyGraph) => ({
 		batch1: i0.BatchFormatterProvider(

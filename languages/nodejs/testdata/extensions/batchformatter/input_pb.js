@@ -1,4 +1,4 @@
-// source: languages/nodejs/testdata/extensions/batchformatter/input.proto
+// source: extensions/batchformatter/input.proto
 /**
  * @fileoverview
  * @enhanceable

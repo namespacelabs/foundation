@@ -1,5 +1,5 @@
 // package: languages.nodejs.testdata.extensions.batchformatter
-// file: languages/nodejs/testdata/extensions/batchformatter/input.proto
+// file: extensions/batchformatter/input.proto
 
 import * as jspb from "google-protobuf";
 
@@ -18,4 +18,3 @@ export namespace InputData {
   export type AsObject = {
   }
 }
-

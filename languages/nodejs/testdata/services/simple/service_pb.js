@@ -1,4 +1,4 @@
-// source: languages/nodejs/testdata/services/simple/service.proto
+// source: services/simple/service.proto
 /**
  * @fileoverview
  * @enhanceable

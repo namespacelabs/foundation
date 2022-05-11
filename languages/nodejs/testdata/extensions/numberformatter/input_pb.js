@@ -1,4 +1,4 @@
-// source: languages/nodejs/testdata/extensions/numberformatter/input.proto
+// source: extensions/numberformatter/input.proto
 /**
  * @fileoverview
  * @enhanceable
