@@ -21,6 +21,7 @@ import (
 
 // NewLogTail blocks fetching logs from a container.
 func NewLogTail(ctx context.Context, root *workspace.Root, envRef string, server *schema.Server) error {
+	// TODO simiplify runtime creation.
 	env, err := provision.RequireEnv(root, envRef)
 	if err != nil {
 		return err

@@ -87,7 +87,7 @@ func NewDevCmd() *cobra.Command {
 				}
 				t := logs.NewTerm()
 				// This has to happen before new stackState gets created to render commands at the top.
-				t.PrintInitialCommandsIntoConsole(ctx)
+				t.SetConsoleSticky(ctx)
 				stickies := []string{fmt.Sprintf("fn dev web ui running at: http://%s", servingAddr)}
 
 				stackState, err := devworkflow.NewStackState(ctx, sink, host, stickies)

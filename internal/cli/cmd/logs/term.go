@@ -19,7 +19,7 @@ import (
 )
 
 type Term interface {
-	PrintInitialCommandsIntoConsole(ctx context.Context)
+	SetConsoleSticky(ctx context.Context)
 	// Hanles user input events and changing environment.
 	HandleEvents(ctx context.Context,
 		root *workspace.Root, serverProtos []*schema.Server, onDone func(), ch chan *devworkflow.Update)
@@ -80,7 +80,7 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 	}
 }
 
-func (t term) PrintInitialCommandsIntoConsole(ctx context.Context) {
+func (t term) SetConsoleSticky(ctx context.Context) {
 	cmds := fmt.Sprintf(" (%s): logs (%s): quit", aec.Bold.Apply("l"), aec.Bold.Apply("q"))
 	updateCmd(ctx, cmds)
 }
