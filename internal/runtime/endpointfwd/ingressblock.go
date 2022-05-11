@@ -23,14 +23,14 @@ import (
 type PortForward struct {
 	LocalAddr string
 	Env       ops.Environment
-	Stack     *schema.Stack
-	Focus     []schema.PackageName
 
 	OnAdd    func(*schema.Endpoint, uint)
 	OnDelete func([]*schema.Endpoint)
 	OnUpdate func()
 
 	mu               sync.Mutex
+	stack            *schema.Stack
+	focus            []*schema.Server
 	done             bool
 	revision         int
 	endpointPortFwds map[string]*portFwd
@@ -46,9 +46,12 @@ type portFwd struct {
 	localPort uint
 }
 
-func (pi *PortForward) Update(ctx context.Context, fragments []*schema.IngressFragment) {
+func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []schema.PackageName, fragments []*schema.IngressFragment) {
 	pi.mu.Lock()
 	defer pi.mu.Unlock()
+
+	pi.stack = stack
+	pi.focus = focusServers(stack, focus)
 
 	domains, err := runtime.FilterAndDedupDomains(fragments, func(d *schema.Domain) bool {
 		return d.GetManaged() != schema.Domain_MANAGED_UNKNOWN
@@ -57,7 +60,7 @@ func (pi *PortForward) Update(ctx context.Context, fragments []*schema.IngressFr
 	if err == nil {
 		pi.domains = domains
 	} else {
-		fmt.Fprintln(console.Stderr(ctx), "Failed to forward resulting ingress:", err)
+		fmt.Fprintln(console.Errors(ctx), "Failed to forward resulting ingress:", err)
 	}
 
 	if pi.endpointPortFwds == nil {
@@ -66,7 +69,7 @@ func (pi *PortForward) Update(ctx context.Context, fragments []*schema.IngressFr
 
 	pi.revision++
 
-	for _, endpoint := range pi.Stack.Endpoint {
+	for _, endpoint := range stack.Endpoint {
 		key := fmt.Sprintf("%s/%s/%s", endpoint.ServerOwner, endpoint.EndpointOwner, endpoint.ServiceName)
 		if existing, ok := pi.endpointPortFwds[key]; ok {
 			if proto.Equal(existing.endpoint, endpoint) {
@@ -173,17 +176,15 @@ func (pi *PortForward) Render() []byte {
 		})
 	}
 
-	focus := focusServers(pi.Stack, pi.Focus)
+	deploy.SortPorts(portFwds, pi.focus)
 
-	deploy.SortPorts(portFwds, focus)
-
-	deploy.RenderPortsAndIngresses(true, &out, pi.LocalAddr, pi.Stack, focus, portFwds, pi.domains, nil)
+	deploy.RenderPortsAndIngresses(true, &out, pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, nil)
 
 	return out.Bytes()
 }
 
 func (pi *PortForward) portFwd(ctx context.Context, endpoint *schema.Endpoint, revision int, callback func(int, uint)) (io.Closer, error) {
-	server := pi.Stack.GetServer(schema.PackageName(endpoint.ServerOwner))
+	server := pi.stack.GetServer(schema.PackageName(endpoint.ServerOwner))
 	if server == nil {
 		return nil, fnerrors.UserError(nil, "%s: missing in the stack", endpoint.ServerOwner)
 	}

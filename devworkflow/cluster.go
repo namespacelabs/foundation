@@ -7,6 +7,7 @@ package devworkflow
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -20,25 +21,20 @@ type updateCluster struct {
 	env       workspace.WorkspaceEnvironment
 	observers []languages.DevObserver
 
-	plan compute.Computable[*deploy.Plan]
+	plan  compute.Computable[*deploy.Plan]
+	stack *schema.Stack
+	focus []schema.PackageName
 
-	pfw endpointfwd.PortForward
+	pfw *endpointfwd.PortForward
 }
 
-func newUpdateCluster(obs *stackState, env workspace.WorkspaceEnvironment, stack *schema.Stack, focus []schema.PackageName, observers []languages.DevObserver, plan compute.Computable[*deploy.Plan]) *updateCluster {
-	pi := &updateCluster{
-		env:       env,
-		observers: observers,
-		plan:      plan,
-		pfw: endpointfwd.PortForward{
-			LocalAddr: obs.parent.localHostname,
-			Env:       env,
-			Stack:     stack,
-			Focus:     focus,
-		},
+func newPortFwd(obs *stackState, env ops.Environment, localaddr string) *endpointfwd.PortForward {
+	pfw := &endpointfwd.PortForward{
+		Env:       env,
+		LocalAddr: localaddr,
 	}
 
-	pi.pfw.OnAdd = func(endpoint *schema.Endpoint, localPort uint) {
+	pfw.OnAdd = func(endpoint *schema.Endpoint, localPort uint) {
 		obs.updateStack(func(stack *Stack) *Stack {
 			for _, fwd := range stack.ForwardedPort {
 				if fwd.Endpoint == endpoint {
@@ -56,7 +52,7 @@ func newUpdateCluster(obs *stackState, env workspace.WorkspaceEnvironment, stack
 		})
 	}
 
-	pi.pfw.OnDelete = func(unused []*schema.Endpoint) {
+	pfw.OnDelete = func(unused []*schema.Endpoint) {
 		obs.updateStack(func(stack *Stack) *Stack {
 			var portFwds []*ForwardedPort
 			for _, fwd := range stack.ForwardedPort {
@@ -77,15 +73,26 @@ func newUpdateCluster(obs *stackState, env workspace.WorkspaceEnvironment, stack
 		})
 	}
 
-	pi.pfw.OnUpdate = func() {
-		obs.parent.setSticky(pi.pfw.Render())
+	pfw.OnUpdate = func() {
+		obs.parent.setSticky(pfw.Render())
 	}
 
-	return pi
+	return pfw
+}
+
+func newUpdateCluster(obs *stackState, env workspace.WorkspaceEnvironment, stack *schema.Stack, focus []schema.PackageName, observers []languages.DevObserver, plan compute.Computable[*deploy.Plan]) *updateCluster {
+	return &updateCluster{
+		env:       env,
+		observers: observers,
+		plan:      plan,
+		stack:     stack,
+		focus:     focus,
+		pfw:       newPortFwd(obs, env, obs.parent.localHostname),
+	}
 }
 
 func (pi *updateCluster) Inputs() *compute.In {
-	return compute.Inputs().Computable("plan", pi.plan)
+	return compute.Inputs().Computable("plan", pi.plan).Proto("stack", pi.stack).JSON("focus", pi.focus)
 }
 
 func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) error {
@@ -104,7 +111,7 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 		obs.OnDeployment()
 	}
 
-	pi.pfw.Update(ctx, plan.IngressFragments)
+	pi.pfw.Update(ctx, pi.stack, pi.focus, plan.IngressFragments)
 
 	return nil
 }

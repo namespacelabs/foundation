@@ -89,15 +89,13 @@ func NewAttachCmd() *cobra.Command {
 			pfwd := endpointfwd.PortForward{
 				LocalAddr: "localhost",
 				Env:       env,
-				Stack:     stackProto,
-				Focus:     focus,
 			}
 
 			pfwd.OnUpdate = func() {
 				console.SetStickyContent(ctx, "ingress", pfwd.Render())
 			}
 
-			pfwd.Update(ctx, fragment)
+			pfwd.Update(ctx, stackProto, focus, fragment)
 
 			// XXX do cmd/logs too.
 			select {}
