@@ -190,6 +190,54 @@ func (x *OpGenNodeStub) GetFilename() string {
 	return ""
 }
 
+// Generate required files in a Yarn root.
+type OpGenYarnRoot struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	YarnRootPkgName string `protobuf:"bytes,1,opt,name=yarn_root_pkg_name,json=yarnRootPkgName,proto3" json:"yarn_root_pkg_name,omitempty"`
+}
+
+func (x *OpGenYarnRoot) Reset() {
+	*x = OpGenYarnRoot{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_languages_nodejs_integration_op_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OpGenYarnRoot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OpGenYarnRoot) ProtoMessage() {}
+
+func (x *OpGenYarnRoot) ProtoReflect() protoreflect.Message {
+	mi := &file_languages_nodejs_integration_op_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OpGenYarnRoot.ProtoReflect.Descriptor instead.
+func (*OpGenYarnRoot) Descriptor() ([]byte, []int) {
+	return file_languages_nodejs_integration_op_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *OpGenYarnRoot) GetYarnRootPkgName() string {
+	if x != nil {
+		return x.YarnRootPkgName
+	}
+	return ""
+}
+
 var File_languages_nodejs_integration_op_proto protoreflect.FileDescriptor
 
 var file_languages_nodejs_integration_op_proto_rawDesc = []byte{
@@ -219,12 +267,16 @@ var file_languages_nodejs_integration_op_proto_rawDesc = []byte{
 	0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f,
 	0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x4e, 0x6f, 0x64, 0x65, 0x52, 0x04, 0x6e,
 	0x6f, 0x64, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x42,
-	0x3b, 0x5a, 0x39, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73,
-	0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f,
-	0x6c, 0x61, 0x6e, 0x67, 0x75, 0x61, 0x67, 0x65, 0x73, 0x2f, 0x6e, 0x6f, 0x64, 0x65, 0x6a, 0x73,
-	0x2f, 0x69, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x22,
+	0x3c, 0x0a, 0x0d, 0x4f, 0x70, 0x47, 0x65, 0x6e, 0x59, 0x61, 0x72, 0x6e, 0x52, 0x6f, 0x6f, 0x74,
+	0x12, 0x2b, 0x0a, 0x12, 0x79, 0x61, 0x72, 0x6e, 0x5f, 0x72, 0x6f, 0x6f, 0x74, 0x5f, 0x70, 0x6b,
+	0x67, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0f, 0x79, 0x61,
+	0x72, 0x6e, 0x52, 0x6f, 0x6f, 0x74, 0x50, 0x6b, 0x67, 0x4e, 0x61, 0x6d, 0x65, 0x42, 0x3b, 0x5a,
+	0x39, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64,
+	0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x6c, 0x61,
+	0x6e, 0x67, 0x75, 0x61, 0x67, 0x65, 0x73, 0x2f, 0x6e, 0x6f, 0x64, 0x65, 0x6a, 0x73, 0x2f, 0x69,
+	0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -239,20 +291,21 @@ func file_languages_nodejs_integration_op_proto_rawDescGZIP() []byte {
 	return file_languages_nodejs_integration_op_proto_rawDescData
 }
 
-var file_languages_nodejs_integration_op_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_languages_nodejs_integration_op_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_languages_nodejs_integration_op_proto_goTypes = []interface{}{
 	(*OpGenServer)(nil),   // 0: foundation.languages.nodejs.integration.OpGenServer
 	(*OpGenNode)(nil),     // 1: foundation.languages.nodejs.integration.OpGenNode
 	(*OpGenNodeStub)(nil), // 2: foundation.languages.nodejs.integration.OpGenNodeStub
-	(*schema.Server)(nil), // 3: foundation.schema.Server
-	(*schema.Node)(nil),   // 4: foundation.schema.Node
+	(*OpGenYarnRoot)(nil), // 3: foundation.languages.nodejs.integration.OpGenYarnRoot
+	(*schema.Server)(nil), // 4: foundation.schema.Server
+	(*schema.Node)(nil),   // 5: foundation.schema.Node
 }
 var file_languages_nodejs_integration_op_proto_depIdxs = []int32{
-	3, // 0: foundation.languages.nodejs.integration.OpGenServer.server:type_name -> foundation.schema.Server
-	4, // 1: foundation.languages.nodejs.integration.OpGenServer.loaded_node:type_name -> foundation.schema.Node
-	4, // 2: foundation.languages.nodejs.integration.OpGenNode.node:type_name -> foundation.schema.Node
-	4, // 3: foundation.languages.nodejs.integration.OpGenNode.loaded_node:type_name -> foundation.schema.Node
-	4, // 4: foundation.languages.nodejs.integration.OpGenNodeStub.node:type_name -> foundation.schema.Node
+	4, // 0: foundation.languages.nodejs.integration.OpGenServer.server:type_name -> foundation.schema.Server
+	5, // 1: foundation.languages.nodejs.integration.OpGenServer.loaded_node:type_name -> foundation.schema.Node
+	5, // 2: foundation.languages.nodejs.integration.OpGenNode.node:type_name -> foundation.schema.Node
+	5, // 3: foundation.languages.nodejs.integration.OpGenNode.loaded_node:type_name -> foundation.schema.Node
+	5, // 4: foundation.languages.nodejs.integration.OpGenNodeStub.node:type_name -> foundation.schema.Node
 	5, // [5:5] is the sub-list for method output_type
 	5, // [5:5] is the sub-list for method input_type
 	5, // [5:5] is the sub-list for extension type_name
@@ -302,6 +355,18 @@ func file_languages_nodejs_integration_op_proto_init() {
 				return nil
 			}
 		}
+		file_languages_nodejs_integration_op_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OpGenYarnRoot); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -309,7 +374,7 @@ func file_languages_nodejs_integration_op_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_languages_nodejs_integration_op_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
