@@ -42,6 +42,7 @@ import (
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
+	"namespacelabs.dev/foundation/internal/ulimit"
 	"namespacelabs.dev/foundation/languages/golang"
 	nodejs "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/languages/opaque"
@@ -97,6 +98,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	logger, sink, flushLogs := consoleToSink(out, colors)
 
 	ctxWithSink := tasks.WithSink(logger.WithContext(ctx), sink)
+
+	// Some of our builds can go fairly wide on parallelism, requiring opening
+	// hundreds of files, between cache reads, cache writes, etc. This is a best
+	// effort attempt at increasing the file limit to a number we can be more
+	// comfortable with. 4096 is the result of experimentation.
+	ulimit.SetFileLimit(ctxWithSink, 4096)
 
 	tel := fnapi.NewTelemetry()
 
