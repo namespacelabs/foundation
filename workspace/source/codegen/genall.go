@@ -31,7 +31,7 @@ func ForLocationsGenProto(ctx context.Context, root *workspace.Root, locs []fnfs
 			continue
 		}
 		if n := pkg.Node(); n != nil {
-			defs, err := ProtosForNode(pkg, []*schema.Node{n})
+			defs, err := ProtosForNode(pkg)
 			if err != nil {
 				onError(GenerateError{PackageName: loc.AsPackageName(), What: "generate node", Err: err})
 			} else {
