@@ -209,6 +209,7 @@ func (a Admin) ToDefinition(scope ...schema.PackageName) (*schema.Definition, er
 	}
 
 	x, err := anypb.New(&OpAdmin{
+		Name:      a.Name,
 		RulesJson: string(rules),
 	})
 	if err != nil {
