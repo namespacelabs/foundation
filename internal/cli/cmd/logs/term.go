@@ -32,7 +32,8 @@ func NewTerm() Term {
 	return &term{}
 }
 
-// TermCommands processes user commands and dev workflow updates.
+// HandleEvents processes user keystroke events and dev workflow updates.
+// Here we also take care on calling `onDone` callback on user exiting.
 func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverProtos []*schema.Server, onDone func(), ch chan *devworkflow.Update) {
 	r, err := newReader(ctx)
 	if err != nil {
@@ -40,7 +41,11 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 		return
 	}
 	defer r.restore()
-	defer onDone()
+	defer func() {
+		if ctx.Err() == nil {
+			onDone()
+		}
+	}()
 
 	envRef := ""
 	showingLogs := false
@@ -49,12 +54,12 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 		select {
 		case update := <-ch:
 			if update.StackUpdate != nil && update.StackUpdate.Env != nil {
-				envRef = update.StackUpdate.Env.Name
-				if !showingLogs {
+				if showingLogs && envRef != update.StackUpdate.Env.Name {
+					logsObserver.Stop()
+					logsObserver.Start(ctx, root, update.StackUpdate.Env.Name, serverProtos)
 					continue
 				}
-				logsObserver.Stop()
-				logsObserver.Start(ctx, root, envRef, serverProtos)
+				envRef = update.StackUpdate.Env.Name
 			}
 		case err := <-r.errors:
 			fmt.Fprintf(console.Errors(ctx), "Error while reading from Stdin: %v:", err)
