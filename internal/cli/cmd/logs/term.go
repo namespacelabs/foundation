@@ -56,7 +56,9 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 			if update.StackUpdate != nil && update.StackUpdate.Env != nil {
 				if showingLogs && envRef != update.StackUpdate.Env.Name {
 					logsObserver.Stop()
-					logsObserver.Start(ctx, root, update.StackUpdate.Env.Name, serverProtos)
+					if err := logsObserver.Start(ctx, root, update.StackUpdate.Env.Name, serverProtos); err != nil {
+						fmt.Fprintf(console.Errors(ctx), "Error starting log observer: %v:", err)
+					}
 					continue
 				}
 				envRef = update.StackUpdate.Env.Name
@@ -71,7 +73,9 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 			}
 			if string(c) == "l" && envRef != "" && !showingLogs {
 				showingLogs = true
-				logsObserver.Start(ctx, root, envRef, serverProtos)
+				if err := logsObserver.Start(ctx, root, envRef, serverProtos); err != nil {
+					fmt.Fprintf(console.Errors(ctx), "Error starting log observer: %v:", err)
+				}
 				// TODO handle multiple keystrokes.
 			}
 		case <-ctx.Done():
