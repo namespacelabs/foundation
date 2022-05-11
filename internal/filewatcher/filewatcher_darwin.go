@@ -9,7 +9,6 @@ package filewatcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
