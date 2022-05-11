@@ -35,11 +35,11 @@ type testRun struct {
 	TestBinCommand []string
 	TestBinImageID compute.Computable[oci.ImageID]
 
-	Stack    *schema.Stack
-	Focus    []string // Package names.
-	Plan     compute.Computable[*deploy.Plan]
-	Debug    bool
-	Parallel bool
+	Stack          *schema.Stack
+	Focus          []string // Package names.
+	Plan           compute.Computable[*deploy.Plan]
+	Debug          bool
+	OutputProgress bool
 
 	compute.LocalScoped[*TestBundle]
 }
@@ -60,7 +60,7 @@ func (test *testRun) Inputs() *compute.In {
 		Strs("focus", test.Focus).
 		Computable("plan", test.Plan).
 		Bool("debug", test.Debug).
-		Bool("parallel", test.Parallel)
+		Bool("outputProgress", test.OutputProgress)
 }
 
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
@@ -73,7 +73,25 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 
 	rt := runtime.For(ctx, test.Env)
 
-	if test.Parallel {
+	if test.OutputProgress {
+		if err := deploy.Wait(ctx, test.Env, waiters); err != nil {
+			var e runtime.ErrContainerFailedToStart
+			if errors.As(err, &e) {
+				// Don't spend more than N time waiting for logs.
+				ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				defer cancel()
+
+				for k, failed := range e.FailedContainers {
+					out := console.TypedOutput(ctx, fmt.Sprintf("%s:%d", e.Name, k), console.CatOutputTool)
+					if err := rt.FetchLogsTo(ctx, out, failed, runtime.FetchLogsOpts{TailLines: 50}); err != nil {
+						fmt.Fprintf(console.Warnings(ctx), "failed to retrieve logs of %s: %v\n", e.Name, err)
+					}
+				}
+			}
+
+			return nil, err
+		}
+	} else {
 		// We call ops.WaitMultiple directly here to skip visual output from deploy.Wait.
 		// Surprisingly, nil ch does not work here so we create a sink channel.
 		ch := make(chan ops.Event)
@@ -90,22 +108,6 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 		if err := ops.WaitMultiple(ctx, waiters, ch); err != nil {
 			return nil, err
 		}
-	} else if err := deploy.Wait(ctx, test.Env, waiters); err != nil {
-		var e runtime.ErrContainerFailedToStart
-		if errors.As(err, &e) {
-			// Don't spend more than N time waiting for logs.
-			ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-			defer cancel()
-
-			for k, failed := range e.FailedContainers {
-				out := console.TypedOutput(ctx, fmt.Sprintf("%s:%d", e.Name, k), console.CatOutputTool)
-				if err := rt.FetchLogsTo(ctx, out, failed, runtime.FetchLogsOpts{TailLines: 50}); err != nil {
-					fmt.Fprintf(console.Warnings(ctx), "failed to retrieve logs of %s: %v\n", e.Name, err)
-				}
-			}
-		}
-
-		return nil, err
 	}
 
 	testRun := runtime.ServerRunOpts{
@@ -124,8 +126,11 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 
 	ex, wait := executor.New(localCtx)
 
-	printLogs := !test.Parallel
-	testLog, testLogBuf := makeLog(ctx, "testlog", printLogs)
+	var extraOutput []io.Writer
+	if test.OutputProgress {
+		extraOutput = append(extraOutput, console.Output(ctx, "testlog"))
+	}
+	testLog, testLogBuf := makeLog(extraOutput...)
 
 	ex.Go(func(ctx context.Context) error {
 		defer cancelAll() // When the test is done, cancel logging.
@@ -153,10 +158,10 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 		return nil, waitErr
 	}
 
-	if printLogs {
+	if test.OutputProgress {
 		fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
 	}
-	bundle, err := collectLogs(ctx, test.Env, test.Stack, test.Focus, printLogs)
+	bundle, err := collectLogs(ctx, test.Env, test.Stack, test.Focus, test.OutputProgress)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +183,11 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 	for _, entry := range stack.Entry {
 		srv := entry.Server // Close on srv.
 
-		w, serverLog := makeLog(ctx, srv.Name, printLogs && slices.Contains(focus, srv.PackageName))
+		var extraOutput []io.Writer
+		if printLogs && slices.Contains(focus, srv.PackageName) {
+			extraOutput = append(extraOutput, console.Output(ctx, srv.Name))
+		}
+		w, serverLog := makeLog(extraOutput...)
 		serverLogs = append(serverLogs, serverLog)
 
 		ex.Go(func(ctx context.Context) error {
@@ -206,12 +215,12 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 	return bundle, nil
 }
 
-func makeLog(ctx context.Context, name string, focus bool) (io.Writer, *syncbuffer.ByteBuffer) {
+func makeLog(otherWriters ...io.Writer) (io.Writer, *syncbuffer.ByteBuffer) {
 	buf := syncbuffer.NewByteBuffer()
-	if !focus {
+	if len(otherWriters) == 0 {
 		return buf, buf
 	}
-
-	w := io.MultiWriter(console.Output(ctx, name), buf)
+	w := io.MultiWriter(append(otherWriters, buf)...)
 	return w, buf
+
 }

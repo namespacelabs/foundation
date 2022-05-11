@@ -153,7 +153,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		TestBinCommand: testBin.Command,
 		TestBinImageID: fixtureImage,
 		Debug:          opts.Debug,
-		Parallel:       opts.Parallel,
+		OutputProgress: !opts.Parallel,
 	}
 
 	if !opts.KeepRuntime {

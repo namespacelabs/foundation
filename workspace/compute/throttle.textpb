@@ -24,3 +24,12 @@ throttle_configuration {
     }
     capacity: 3
 }
+
+# Don't run more than 5 tests in parallel.
+throttle_configuration {
+    labels {
+        key: "action"
+        value: "test"
+    }
+    capacity: 5
+}
