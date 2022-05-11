@@ -20,17 +20,17 @@ import (
 
 type Term interface {
 	// Renders available commands.
-	Commands(ctx context.Context)
+	PrintCommands(ctx context.Context)
 	// Hanles user input events and changing environment.
 	HandleEvents(ctx context.Context,
 		root *workspace.Root, serverProtos []*schema.Server, onDone func(), ch chan *devworkflow.Update)
 }
 
-type term struct{}
-
 func NewTerm() Term {
 	return &term{}
 }
+
+type term struct{}
 
 // HandleEvents processes user keystroke events and dev workflow updates.
 // Here we also take care on calling `onDone` callback on user exiting.
@@ -85,7 +85,7 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 	}
 }
 
-func (t term) Commands(ctx context.Context) {
+func (t term) PrintCommands(ctx context.Context) {
 	cmds := fmt.Sprintf(" (%s): logs (%s): quit", aec.Bold.Apply("l"), aec.Bold.Apply("q"))
 	updateCmd(ctx, cmds)
 }

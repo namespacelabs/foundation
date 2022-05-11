@@ -86,7 +86,7 @@ func NewDevCmd() *cobra.Command {
 					return err
 				}
 				t := logs.NewTerm()
-				t.Commands(ctx)
+				t.PrintCommands(ctx)
 				stickies := []string{fmt.Sprintf("fn dev web ui running at: http://%s", servingAddr)}
 
 				stackState, err := devworkflow.NewStackState(ctx, sink, host, stickies)
