@@ -12,8 +12,8 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
@@ -41,12 +41,11 @@ func NewLogsCmd() *cobra.Command {
 				return err
 			}
 
-			rt := runtime.For(ctx, env)
-
 			cancel := console.SetIdleLabel(ctx, "listening for deployment changes")
 			defer cancel()
 
-			return logs.ObserveLogsSingleServr(ctx, rt, server.Proto())
+			lo := logs.NewLogsObserver()
+			return lo.Start(ctx, root, envRef, []*schema.Server{server.Proto()})
 		}),
 	}
 

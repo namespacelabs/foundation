@@ -85,6 +85,8 @@ func NewDevCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
+				t := logs.NewTerm()
+				t.Commands(ctx)
 				stickies := []string{fmt.Sprintf("fn dev web ui running at: http://%s", servingAddr)}
 
 				stackState, err := devworkflow.NewStackState(ctx, sink, host, stickies)
@@ -125,11 +127,11 @@ func NewDevCmd() *cobra.Command {
 
 				devworkflow.RegisterEndpoints(stackState, r)
 
-				startLogs := make(chan bool) // Signals that the user want's to show logs.
-				showLogsFn := logs.ObserveLogs(ctx, serverProtos, startLogs)
-				go stackState.Run(ctx, showLogsFn)
+				go stackState.Run(ctx)
 
-				go logs.TermCommands(ctxWithCancel, serverProtos, startLogs, cancel)
+				ch, done := stackState.NewClient()
+				defer done()
+				go t.HandleEvents(ctx, root, serverProtos, cancel, ch)
 
 				if devWebServer {
 					webPort := port + 1

@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -164,7 +163,7 @@ func (s *SessionState) ResolveServer(ctx context.Context, serverID string) (prov
 	return provision.Env{}, nil, fnerrors.UserError(nil, "%s: no such server in the current session", serverID)
 }
 
-func (s *SessionState) handleSetWorkspace(ctx context.Context, x *DevWorkflowRequest_SetWorkspace, showLogs func(rt runtime.Runtime)) {
+func (s *SessionState) handleSetWorkspace(ctx context.Context, x *DevWorkflowRequest_SetWorkspace) {
 	s.mu.Lock()
 	if s.current != nil {
 		s.cancel() // Cancel whatever it is doing.
@@ -185,7 +184,7 @@ func (s *SessionState) handleSetWorkspace(ctx context.Context, x *DevWorkflowReq
 		s.setSticky(nil)
 
 		go func() {
-			err := doWorkspace(newCtx, x, do, showLogs)
+			err := doWorkspace(newCtx, x, do)
 
 			if err != nil && !errors.Is(err, context.Canceled) {
 				fnerrors.Format(console.Stderr(ctx), true, err)
@@ -206,7 +205,7 @@ func (so *sinkObserver) OnStart(ra *tasks.RunningAction)  { so.pushUpdate(ra) }
 func (so *sinkObserver) OnUpdate(ra *tasks.RunningAction) { so.pushUpdate(ra) }
 func (so *sinkObserver) OnDone(ra *tasks.RunningAction)   { so.pushUpdate(ra) }
 
-func (s *SessionState) Run(ctx context.Context, f func(ctx runtime.Runtime)) {
+func (s *SessionState) Run(ctx context.Context) {
 	cancel := s.sink.Observe(&sinkObserver{s})
 	defer cancel()
 
@@ -236,14 +235,14 @@ func (s *SessionState) Run(ctx context.Context, f func(ctx runtime.Runtime)) {
 		case req := <-s.Ch:
 			switch x := req.Type.(type) {
 			case *DevWorkflowRequest_SetWorkspace_:
-				s.handleSetWorkspace(ctx, x.SetWorkspace, f)
+				s.handleSetWorkspace(ctx, x.SetWorkspace)
 
 			case *DevWorkflowRequest_ReloadWorkspace:
 				if x.ReloadWorkspace {
 					s.mu.Lock()
 					current := s.current
 					s.mu.Unlock()
-					s.handleSetWorkspace(ctx, current, f)
+					s.handleSetWorkspace(ctx, current)
 				}
 			}
 		}
