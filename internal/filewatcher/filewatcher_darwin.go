@@ -19,6 +19,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"go.uber.org/atomic"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 )
 
