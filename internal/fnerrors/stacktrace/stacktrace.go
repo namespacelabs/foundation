@@ -139,7 +139,7 @@ func (st StackTrace) Format(s fmt.State, verb rune) {
 		switch {
 		case s.Flag('+'):
 			for _, f := range st {
-				io.WriteString(s, "\n")
+				writeString(s, "\n")
 				f.Format(s, verb)
 			}
 		case s.Flag('#'):
@@ -158,7 +158,7 @@ func (st StackTrace) formatSlice(s fmt.State, verb rune) {
 	writeString(s, "[")
 	for i, f := range st {
 		if i > 0 {
-			io.WriteString(s, " ")
+			writeString(s, " ")
 		}
 		f.Format(s, verb)
 	}
