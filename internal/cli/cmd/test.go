@@ -8,11 +8,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/testing"
@@ -24,6 +26,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
+
+const exitCode = 3
 
 func NewTestCmd() *cobra.Command {
 	var (
@@ -117,9 +121,14 @@ func NewTestCmd() *cobra.Command {
 						return err
 					}
 					printResult(v, stderr)
+
+					if !v.Value.Bundle.Result.Success {
+						return fnerrors.ExitError(fmt.Errorf("Test %s failed", v.Value.Package), exitCode)
+					}
 				}
 			}
 
+			var failed []string
 			if len(parallelTests) > 0 {
 				runTests := compute.Collect(tasks.Action("test.all-tests"), parallelTests...)
 
@@ -130,8 +139,16 @@ func NewTestCmd() *cobra.Command {
 
 				for _, res := range results {
 					printResult(res, stderr)
+					if !res.Value.Bundle.Result.Success {
+						failed = append(failed, string(res.Value.Package))
+					}
+
 				}
 			}
+			if len(failed) > 0 {
+				return fnerrors.ExitError(fmt.Errorf("Failed tests: [%s]", strings.Join(failed, ",")), exitCode)
+			}
+
 			return nil
 		}),
 	}

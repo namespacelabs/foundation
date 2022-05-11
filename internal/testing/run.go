@@ -93,19 +93,7 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 		}
 	} else {
 		// We call ops.WaitMultiple directly here to skip visual output from deploy.Wait.
-		// Surprisingly, nil ch does not work here so we create a sink channel.
-		ch := make(chan ops.Event)
-		go func() {
-			for {
-				select {
-				case _, ok := <-ch:
-					if !ok {
-						return
-					}
-				}
-			}
-		}()
-		if err := ops.WaitMultiple(ctx, waiters, ch); err != nil {
+		if err := ops.WaitMultiple(ctx, waiters, nil); err != nil {
 			return nil, err
 		}
 	}
