@@ -69,7 +69,7 @@ func TransientError(format string, args ...interface{}) error {
 
 // This error is expected, e.g. a rebuild is required.
 func ExpectedError(format string, args ...interface{}) error {
-	return &internalError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
+	return &internalError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: true}
 }
 
 // This error means that Foundation does not meet the minimum version requirements.
