@@ -82,7 +82,7 @@ jobs:
             ${{ runner.os }}-go-fnrun-
 
       - name: Download Foundation
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: fn-${{ runner.os }}
 
@@ -133,7 +133,7 @@ jobs:
             ${{ runner.os }}-go-fnrun-
 
       - name: Download Foundation
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: fn-${{ runner.os }}
 
@@ -186,7 +186,7 @@ jobs:
             ${{ runner.os }}-go-fnrun-
 
       - name: Download Foundation
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: fn-${{ runner.os }}
 
@@ -242,7 +242,7 @@ jobs:
             ${{ runner.os }}-go-fnrun-
 
       - name: download foundation
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: fn-${{ runner.os }}
 
