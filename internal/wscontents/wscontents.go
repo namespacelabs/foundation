@@ -281,7 +281,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 	// XXX we could have an observe model driven from a single watcher, but
 	// there's a new watcher instantiated per Observe for simplicity for now.
 
-	watcher, err := filewatcher.NewFactory()
+	watcher, err := filewatcher.NewFactory(ctx)
 	if err != nil {
 		return nil, err
 	}
