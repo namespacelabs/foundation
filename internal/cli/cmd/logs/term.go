@@ -68,10 +68,13 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 				t.stopLogging()
 				return
 			}
-			if string(c) == "l" && envRef != "" && !showingLogs {
-				showingLogs = true
-				t.newLogTailMultiple(ctx, root, envRef, serverProtos)
-				// TODO handle multiple keystrokes.
+			if string(c) == "l" && envRef != "" {
+				if showingLogs {
+					t.stopLogging()
+				} else {
+					t.newLogTailMultiple(ctx, root, envRef, serverProtos)
+				}
+				showingLogs = !showingLogs
 			}
 		case <-ctx.Done():
 			r.cancel()
@@ -81,7 +84,11 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 }
 
 func (t term) SetConsoleSticky(ctx context.Context) {
-	cmds := fmt.Sprintf(" (%s): logs (%s): quit", aec.Bold.Apply("l"), aec.Bold.Apply("q"))
+	logCmd := "stream logs"
+	if t.showingLogs {
+		logCmd = "pause  logs"
+	}
+	cmds := fmt.Sprintf(" (%s): %s (%s): quit", aec.Bold.Apply("l"), logCmd, aec.Bold.Apply("q"))
 	updateCmd(ctx, cmds)
 }
 
