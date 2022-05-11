@@ -24,7 +24,7 @@ func New(errmsg string) error {
 func Wrap(loc Location, err error) error {
 	if userErr, ok := err.(*userError); ok {
 		if userErr.Location == nil {
-			return &userError{fnError: fnError{Err: err, stack: stacktrace.New()}, Location: loc}
+			return &userError{fnError: fnError{Err: userErr.Err, stack: userErr.stack}, Location: loc}
 		} else if userErr.Location == loc {
 			return userErr
 		}
