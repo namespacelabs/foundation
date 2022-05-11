@@ -494,7 +494,7 @@ type yarnRootStatefulGen struct{}
 
 // This is never called but ops.Register requires the Dispatcher.
 func (yarnRootStatefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenYarnRoot) (*ops.HandleResult, error) {
-	return nil, nil
+	return nil, fnerrors.UserError(nil, "yarnRootStatefulGen.Handle is not supposed to be called")
 }
 
 func (yarnRootStatefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Session[*OpGenYarnRoot] {
