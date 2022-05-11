@@ -14,7 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/schema"
 )
 
 const (
@@ -38,7 +37,6 @@ func main() {
 		// TODO consider using .Watch(...)
 		list, err := clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
 			LabelSelector: kubedef.SerializeSelector(
-				kubedef.SelectByPurpose(schema.Environment_TESTING),
 				kubedef.SelectEphemeral(),
 			),
 		})

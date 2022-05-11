@@ -32,12 +32,6 @@ func SelectById(srv *schema.Server) map[string]string {
 	}
 }
 
-func SelectByPurpose(purpose schema.Environment_Purpose) map[string]string {
-	return map[string]string{
-		K8sEnvPurpose: strings.ToLower(purpose.String()),
-	}
-}
-
 func SelectEphemeral() map[string]string {
 	return map[string]string{
 		K8sEnvEphemeral: "true",
