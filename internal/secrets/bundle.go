@@ -9,7 +9,6 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -454,14 +453,14 @@ func detect(raw []byte) ([]byte, error) {
 	guard := []byte(fmt.Sprintf("-----%s-----\n", guardBegin))
 	idx := bytes.Index(raw, guard)
 	if idx < 0 {
-		return nil, errors.New("invalid bundle: missing begin guard")
+		return nil, fnerrors.New("invalid bundle: missing begin guard")
 	}
 
 	rawLeft := raw[(idx + len(guard)):]
 
 	endIdx := bytes.Index(rawLeft, []byte(fmt.Sprintf("-----%s-----", guardEnd)))
 	if endIdx < 0 {
-		return nil, errors.New("invalid bundle: missing end guard")
+		return nil, fnerrors.New("invalid bundle: missing end guard")
 	}
 
 	return ioutil.ReadAll(base64.NewDecoder(base64.StdEncoding, bytes.NewReader(rawLeft[:endIdx])))

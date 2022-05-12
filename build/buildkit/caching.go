@@ -5,13 +5,13 @@
 package buildkit
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 
 	"github.com/moby/buildkit/client"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 var (
@@ -42,7 +42,7 @@ func (c *cacheVar) Set(v string) error {
 		args[kv[0]] = kv[1]
 	}
 	if args["type"] == "" {
-		return errors.New("type is required")
+		return fnerrors.New("type is required")
 	}
 	c.cacheType = args["type"]
 	delete(args, "type")

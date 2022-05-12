@@ -6,10 +6,10 @@ package eval
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -39,7 +39,7 @@ func (r *AllocState) Alloc(ctx context.Context, server *schema.Server, allocator
 	}
 
 	if k >= len(n.GetNeed()) {
-		return frontend.ValueWithPath{}, errors.New("k is too large")
+		return frontend.ValueWithPath{}, fnerrors.New("k is too large")
 	}
 
 	v, err := r.allocValue(ctx, allocator, n, n.GetNeed()[k])

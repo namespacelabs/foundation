@@ -7,7 +7,6 @@ package buildkit
 import (
 	"compress/gzip"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -473,7 +472,7 @@ func (e *exportRegistry) Exports() []client.ExportEntry {
 func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse) (oci.Image, error) {
 	digest, ok := res.ExporterResponse[exptypes.ExporterImageDigestKey]
 	if !ok {
-		return nil, errors.New("digest is missing from result")
+		return nil, fnerrors.New("digest is missing from result")
 	}
 
 	p, err := name.NewDigest(e.parsed.Name()+"@"+digest, e.nameOpts()...)

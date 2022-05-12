@@ -7,7 +7,6 @@ package tarfs
 import (
 	"archive/tar"
 	"context"
-	"errors"
 	"io"
 	"io/fs"
 	"path/filepath"
@@ -28,7 +27,7 @@ var _ fnfs.VisitFS = FS{}
 
 func (l FS) Open(path string) (fs.File, error) {
 	if !fs.ValidPath(path) {
-		return nil, &fs.PathError{Op: "open", Path: path, Err: errors.New("invalid path")}
+		return nil, &fs.PathError{Op: "open", Path: path, Err: fnerrors.New("invalid path")}
 	}
 
 	var inmem memfs.FS
@@ -50,7 +49,7 @@ func (c checkPath) Has(p string) bool { return p == string(c) }
 
 func (l FS) ReadDir(dir string) ([]fs.DirEntry, error) {
 	if !fs.ValidPath(dir) {
-		return nil, &fs.PathError{Op: "readdir", Path: dir, Err: errors.New("invalid path")}
+		return nil, &fs.PathError{Op: "readdir", Path: dir, Err: fnerrors.New("invalid path")}
 	}
 
 	f, err := l.TarStream()

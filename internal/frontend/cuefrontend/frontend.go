@@ -6,7 +6,6 @@ package cuefrontend
 
 import (
 	"context"
-	"errors"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -82,7 +81,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts wo
 	}
 
 	if count > 1 {
-		return nil, errors.New("package must only define one of: server, service, extension, binary or test")
+		return nil, fnerrors.New("package must only define one of: server, service, extension, binary or test")
 	}
 
 	return parsed, nil

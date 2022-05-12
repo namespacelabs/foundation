@@ -99,7 +99,7 @@ Note: for multi-line input, use the --from_file flag.
 Value: `
 				valueStr := readLine(ctx, fmt.Sprintf(prompt, key.Key, key.PackageName))
 				if valueStr == "" {
-					return errors.New("no value provided, skipping")
+					return fnerrors.New("no value provided, skipping")
 				}
 				value = []byte(valueStr)
 			}
@@ -126,7 +126,7 @@ Value: `
 			}
 
 			if !bundle.Delete(key.PackageName, key.Key) {
-				return errors.New("no such key")
+				return fnerrors.New("no such key")
 			}
 
 			return writeBundle(ctx, loc, bundle, !rawtext)

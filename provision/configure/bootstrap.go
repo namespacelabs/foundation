@@ -6,7 +6,6 @@ package configure
 
 import (
 	"context"
-	"errors"
 	"io/fs"
 	"log"
 
@@ -40,7 +39,7 @@ type AllHandlers interface {
 
 func (p Request) CheckUnpackInput(msg proto.Message) (bool, error) {
 	if msg == nil {
-		return false, errors.New("msg is nil")
+		return false, fnerrors.New("msg is nil")
 	}
 
 	for _, env := range p.r.Input {

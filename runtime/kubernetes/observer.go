@@ -6,7 +6,6 @@ package kubernetes
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -17,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -74,7 +74,7 @@ func (p *podResolver) Start(ctx context.Context) {
 			case ev, ok := <-w.ResultChan():
 				if !ok {
 					fmt.Fprintf(debug, "kube/podresolver: %s: closed\n", sel)
-					return errors.New("unexpected watch closure")
+					return fnerrors.New("unexpected watch closure")
 				}
 
 				if ev.Object == nil {

@@ -6,13 +6,9 @@ package grpcstdio
 
 import (
 	"bytes"
-	"errors"
 	"sync"
-)
 
-var (
-	errClosed        = errors.New("pipe is closed")
-	errAlreadyClosed = errors.New("already closed")
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 type pipe struct {
@@ -60,7 +56,7 @@ func (r *bufferedPipeReader) Read(data []byte) (int, error) {
 }
 
 func (r *bufferedPipeReader) Close() error {
-	return r.closeWithError(errClosed)
+	return r.closeWithError(fnerrors.New("pipe is closed"))
 }
 
 func (r *bufferedPipeReader) closeWithError(err error) error {
@@ -72,7 +68,7 @@ func (r *bufferedPipeReader) closeWithError(err error) error {
 	}
 
 	if r.writeErr != nil {
-		return errAlreadyClosed
+		return fnerrors.New("pipe is closed")
 	}
 
 	r.writeErr = err
@@ -93,7 +89,7 @@ func (w *bufferedPipeWriter) Write(data []byte) (int, error) {
 }
 
 func (w *bufferedPipeWriter) Close() error {
-	return w.closeWithError(errClosed)
+	return w.closeWithError(fnerrors.New("already closed"))
 }
 
 func (w *bufferedPipeWriter) closeWithError(err error) error {
@@ -105,7 +101,7 @@ func (w *bufferedPipeWriter) closeWithError(err error) error {
 	}
 
 	if w.readErr != nil {
-		return errAlreadyClosed
+		return fnerrors.New("already closed")
 	}
 
 	w.readErr = err

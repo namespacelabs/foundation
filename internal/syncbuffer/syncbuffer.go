@@ -6,9 +6,10 @@ package syncbuffer
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"sync"
+
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 type ByteBuffer struct {
@@ -99,5 +100,5 @@ func (s *Sealed) Bytes() []byte { return s.finalized }
 type failedWriter struct{}
 
 func (failedWriter) Write(p []byte) (int, error) {
-	return 0, errors.New("already sealed")
+	return 0, fnerrors.New("already sealed")
 }

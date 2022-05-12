@@ -27,7 +27,8 @@ var ignoreSuffixes = []string{
 	".fn.js",
 	"_pb.js",
 	"_pb.d.ts",
-	"stacktrace.go",
+	"stacktrace/stacktrace.go",
+	"stacktrace/serializer/serializer.go",
 	// Compiled Foundation plugin for Yarn.
 	"plugin-fn.js"}
 

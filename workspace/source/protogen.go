@@ -7,7 +7,6 @@ package source
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -21,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/sdk/buf"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -49,7 +49,7 @@ var _ ops.BatchedDispatcher[*OpProtoGen] = statefulGen{}
 func (statefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
 	if !ok {
-		return nil, errors.New("WorkspaceEnvironment required")
+		return nil, fnerrors.New("WorkspaceEnvironment required")
 	}
 
 	mod := &perModuleGen{}
@@ -87,7 +87,7 @@ type multiGen struct {
 func (m *multiGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
-		return nil, errors.New("workspace.Packages required")
+		return nil, fnerrors.New("workspace.Packages required")
 	}
 
 	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.PackageName))
@@ -145,7 +145,7 @@ func ensurePerModule(mods []*perModuleGen, root *workspace.Module) ([]*perModule
 
 func (m *multiGen) Commit() error {
 	if m.wenv == nil {
-		return errors.New("WorkspaceEnvironment required")
+		return fnerrors.New("WorkspaceEnvironment required")
 	}
 
 	var mods []*perModuleGen
