@@ -23,12 +23,20 @@ func main() {
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+	serviceAccount := makeServiceAccount(r.Focus.Server)
+
 	out.Definitions = append(out.Definitions, kubedef.Admin{
-		Description: "Ephemeral Controller",
-		Name:        "ephemeralcontroller",
+		Description:    "Ephemeral Controller",
+		ServiceAccount: serviceAccount,
 		Rules: []*applyrbacv1.PolicyRuleApplyConfiguration{
 			applyrbacv1.PolicyRule().WithAPIGroups("").WithResources("namespaces").WithVerbs("list", "delete"),
 			applyrbacv1.PolicyRule().WithAPIGroups("").WithResources("events").WithVerbs("list"),
+		},
+	})
+
+	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
+		With: &kubedef.SpecExtension{
+			ServiceAccount: serviceAccount,
 		},
 	})
 
@@ -37,4 +45,8 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 
 func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
 	return nil
+}
+
+func makeServiceAccount(srv *schema.Server) string {
+	return kubedef.MakeDeploymentId(srv)
 }

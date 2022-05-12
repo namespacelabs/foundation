@@ -107,6 +107,11 @@ type deployOpts struct {
 func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
 	srv := server.Server
 
+	ns := r.ns()
+	if isController(srv.PackageName()) {
+		ns = adminNamespace
+	}
+
 	if server.Image.Repository == "" {
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", server.Image)
 	}
@@ -339,9 +344,9 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: fmt.Sprintf("Persistent storage for %s", rs.Owner),
 			Resource:    "persistentvolumeclaims",
-			Namespace:   r.ns(),
+			Namespace:   ns,
 			Name:        rs.PersistentId,
-			Body: applycorev1.PersistentVolumeClaim(rs.PersistentId, r.ns()).
+			Body: applycorev1.PersistentVolumeClaim(rs.PersistentId, ns).
 				WithSpec(applycorev1.PersistentVolumeClaimSpec().
 					WithAccessModes(corev1.ReadWriteOnce).
 					WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
@@ -413,9 +418,9 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Service Account",
 			Resource:    "serviceaccounts",
-			Namespace:   r.ns(),
+			Namespace:   ns,
 			Name:        serviceAccount,
-			Body: applycorev1.ServiceAccount(serviceAccount, r.ns()).
+			Body: applycorev1.ServiceAccount(serviceAccount, ns).
 				WithLabels(labels).
 				WithAnnotations(annotations),
 		})
@@ -433,9 +438,9 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server",
 			Resource:    "pods",
-			Namespace:   r.ns(),
+			Namespace:   ns,
 			Name:        deploymentId,
-			Body: applycorev1.Pod(deploymentId, r.ns()).
+			Body: applycorev1.Pod(deploymentId, ns).
 				WithAnnotations(annotations).
 				WithAnnotations(tmpl.Annotations).
 				WithLabels(labels).
@@ -449,10 +454,10 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server StatefulSet",
 			Resource:    "statefulsets",
-			Namespace:   r.ns(),
+			Namespace:   ns,
 			Name:        deploymentId,
 			Body: appsv1.
-				StatefulSet(deploymentId, r.ns()).
+				StatefulSet(deploymentId, ns).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.StatefulSetSpec().
@@ -464,10 +469,10 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server Deployment",
 			Resource:    "deployments",
-			Namespace:   r.ns(),
+			Namespace:   ns,
 			Name:        deploymentId,
 			Body: appsv1.
-				Deployment(deploymentId, r.ns()).
+				Deployment(deploymentId, ns).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.DeploymentSpec().

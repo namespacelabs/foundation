@@ -62,9 +62,9 @@ type CreateSecretConditionally struct {
 
 // Only a limited set of nodes is allowed to set this.
 type Admin struct {
-	Description string
-	Name        string
-	Rules       []*applyrbacv1.PolicyRuleApplyConfiguration
+	Description    string
+	ServiceAccount string
+	Rules          []*applyrbacv1.PolicyRuleApplyConfiguration
 }
 
 type ExtendSpec struct {
@@ -209,8 +209,8 @@ func (a Admin) ToDefinition(scope ...schema.PackageName) (*schema.Definition, er
 	}
 
 	x, err := anypb.New(&OpAdmin{
-		Name:      a.Name,
-		RulesJson: string(rules),
+		ServiceAccount: a.ServiceAccount,
+		RulesJson:      string(rules),
 	})
 	if err != nil {
 		return nil, err
