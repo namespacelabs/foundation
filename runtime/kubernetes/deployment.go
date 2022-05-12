@@ -434,7 +434,7 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	// servers which we want to control a bit more carefully. For example, we want to deploy
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
-	if r.env.Purpose == schema.Environment_TESTING {
+	if r.env.Purpose == schema.Environment_TESTING && !isController(srv.PackageName()) {
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server",
 			Resource:    "pods",
