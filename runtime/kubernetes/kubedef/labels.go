@@ -7,6 +7,7 @@ package kubedef
 import (
 	"strings"
 
+	"namespacelabs.dev/foundation/runtime/kubernetes/controller"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -50,7 +51,9 @@ func MakeLabels(env *schema.Environment, srv *schema.Server) map[string]string {
 	if srv != nil {
 		m[K8sServerId] = srv.Id
 	}
-	m[K8sEnvName] = env.Name
+	if !controller.IsController(schema.PackageName(srv.GetPackageName())) {
+		m[K8sEnvName] = env.Name
+	}
 	m[K8sEnvPurpose] = strings.ToLower(env.Purpose.String())
 	if env.Ephemeral {
 		m[K8sEnvEphemeral] = "true"

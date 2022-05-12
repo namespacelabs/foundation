@@ -8,13 +8,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applyrbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/controller"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -34,17 +34,13 @@ func adminBinding(name string) string {
 	return fmt.Sprintf("foundation:admin:%s-binding", name)
 }
 
-func isController(pkg schema.PackageName) bool {
-	return strings.HasPrefix(pkg.String(), ctrlPackage)
-}
-
 func grantAdmin(ctx context.Context, env ops.Environment, scope []schema.PackageName, admin *kubedef.OpAdmin) error {
 	if !validChars.MatchString(admin.ServiceAccount) {
 		return fnerrors.InternalError("Invalid service account name %q - it may only contain digits and lowercase letters.", admin.ServiceAccount)
 	}
 
 	for _, s := range scope {
-		if !isController(s) {
+		if !controller.IsController(s) {
 			return fnerrors.InternalError("%s: only kubernetes controllers are allowed to request admin rights", s)
 		}
 	}

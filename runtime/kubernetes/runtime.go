@@ -233,7 +233,8 @@ func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.Act
 }
 
 func (r k8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
-	d, err := r.cli.AppsV1().Deployments(r.ns(schema.PackageName(server.PackageName))).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
+	pkg := schema.PackageName(server.GetPackageName())
+	d, err := r.cli.AppsV1().Deployments(r.ns(pkg)).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
 	if err != nil {
 		// XXX better error messages.
 		return oci.ImageID{}, err
@@ -345,7 +346,7 @@ func (r k8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 			continue
 		}
 
-		defs, m, err := ingress.Ensure(ctx, r.ns(schema.PackageName(srv.Server.PackageName)), r.env, srv.Server, frags, certSecretMap)
+		defs, m, err := ingress.Ensure(ctx, r.ns(srv.GetPackageName()), r.env, srv.Server, frags, certSecretMap)
 		if err != nil {
 			return nil, err
 		}
@@ -591,6 +592,8 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 	// XXX use a watch
 	announced := map[string]runtime.ContainerReference{}
 
+	pkg := schema.PackageName(srv.GetPackageName())
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -599,7 +602,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 			// No cancelation, moving along.
 		}
 
-		pods, err := r.cli.CoreV1().Pods(r.ns(schema.PackageName(srv.PackageName))).List(ctx, metav1.ListOptions{
+		pods, err := r.cli.CoreV1().Pods(r.ns(pkg)).List(ctx, metav1.ListOptions{
 			LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
 		})
 		if err != nil {
@@ -615,7 +618,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 		labels := map[string]string{}
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == v1.PodRunning {
-				instance := makePodRef(r.ns(schema.PackageName(srv.PackageName)), pod.Name, serverCtrName(srv))
+				instance := makePodRef(r.ns(pkg), pod.Name, serverCtrName(srv))
 				keys = append(keys, Key{
 					Instance:  instance,
 					CreatedAt: pod.CreationTimestamp.Time,
@@ -625,7 +628,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 
 				if ObserveInitContainerLogs {
 					for _, container := range pod.Spec.InitContainers {
-						instance := makePodRef(r.ns(schema.PackageName(srv.PackageName)), pod.Name, container.Name)
+						instance := makePodRef(r.ns(pkg), pod.Name, container.Name)
 						keys = append(keys, Key{Instance: instance, CreatedAt: pod.CreationTimestamp.Time})
 						newM[instance.UniqueID()] = struct{}{}
 						labels[instance.UniqueID()] = fmt.Sprintf("%s:%s", pod.Name, container.Name)

@@ -21,6 +21,7 @@ import (
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/controller"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"sigs.k8s.io/yaml"
@@ -429,7 +430,7 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	// servers which we want to control a bit more carefully. For example, we want to deploy
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
-	if r.env.Purpose == schema.Environment_TESTING && !isController(srv.PackageName()) {
+	if r.env.Purpose == schema.Environment_TESTING && !controller.IsController(srv.PackageName()) {
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server",
 			Resource:    "pods",
