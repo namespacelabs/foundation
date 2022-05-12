@@ -75,6 +75,7 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 					t.newLogTailMultiple(ctx, root, envRef, serverProtos)
 				}
 				t.showingLogs = !t.showingLogs
+				t.SetConsoleSticky(ctx)
 			}
 		case <-ctx.Done():
 			r.cancel()
