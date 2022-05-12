@@ -274,7 +274,7 @@ func format(w io.Writer, colors bool, err error) {
 			}
 		}
 		if truncated {
-			fmt.Fprintf(w, "%s%d%s\n", italic("... (truncated to last ", colors), limitLines, italic(" lines ...", colors))
+			fmt.Fprintf(w, "%s%d%s\n", italic("... (truncated to last ", colors), limitLines, italic(" lines) ...", colors))
 		}
 		for _, line := range lines {
 			fmt.Fprintf(w, "%s\n", line)
