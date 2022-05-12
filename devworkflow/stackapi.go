@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func serveStack(s *SessionState, w http.ResponseWriter, r *http.Request) {
+func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:    64 * 1024,
 		WriteBufferSize:   64 * 1024,

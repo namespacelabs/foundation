@@ -24,7 +24,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func setWorkspace(ctx context.Context, env provision.Env, packageName string, additional []string, obs *SessionState, pfw *endpointfwd.PortForward) error {
+func setWorkspace(ctx context.Context, env provision.Env, packageName string, additional []string, obs *Session, pfw *endpointfwd.PortForward) error {
 	for {
 		if err := compute.Do(ctx, func(ctx context.Context) error {
 			done := console.SetIdleLabel(ctx, "waiting for workspace changes")
@@ -63,7 +63,7 @@ func setWorkspace(ctx context.Context, env provision.Env, packageName string, ad
 }
 
 type buildAndDeploy struct {
-	obs            *SessionState
+	obs            *Session
 	pfw            *endpointfwd.PortForward
 	env            provision.Env
 	serverPackages []schema.PackageName

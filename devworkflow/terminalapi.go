@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 )
 
-func serveTerminal(s *SessionState, w http.ResponseWriter, r *http.Request, serverID string) {
+func serveTerminal(s *Session, w http.ResponseWriter, r *http.Request, serverID string) {
 	serveStream("terminal", w, r, func(ctx context.Context, ws *websocket.Conn, w io.Writer) error {
 		// XXX rather than obtaining the current one, it should be encoded in the request to logs.
 		env, server, err := s.ResolveServer(r.Context(), serverID)

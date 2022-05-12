@@ -85,11 +85,13 @@ func NewDevCmd() *cobra.Command {
 
 				stickies := []string{fmt.Sprintf("fn dev web ui running at: http://%s", servingAddr)}
 
-				stackState, err := devworkflow.NewStackState(ctx, sink, host, stickies)
+				stackState, err := devworkflow.NewSession(ctx, sink, host, stickies)
 				if err != nil {
 					return err
 				}
-				defer stackState.Close(ctx)
+				defer stackState.Close()
+
+				go stackState.Run(ctx)
 
 				// Kick off the dev workflow.
 				stackState.Ch <- &devworkflow.DevWorkflowRequest{
@@ -123,8 +125,6 @@ func NewDevCmd() *cobra.Command {
 				r.PathPrefix("/debug/pprof/goroutine").HandlerFunc(pprof.Index)
 
 				devworkflow.RegisterEndpoints(stackState, r)
-
-				go stackState.Run(ctx)
 
 				if devWebServer {
 					webPort := port + 1

@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 )
 
-func serveLogs(s *SessionState, w http.ResponseWriter, r *http.Request, serverID string) {
+func serveLogs(s *Session, w http.ResponseWriter, r *http.Request, serverID string) {
 	serveStream("server.logs", w, r, func(ctx context.Context, conn *websocket.Conn, wsWriter io.Writer) error {
 		// XXX rather than obtaining the current one, it should be encoded in the request to logs.
 		env, server, err := s.ResolveServer(ctx, serverID)
@@ -26,7 +26,7 @@ func serveLogs(s *SessionState, w http.ResponseWriter, r *http.Request, serverID
 	})
 }
 
-func serveTaskOutput(s *SessionState, w http.ResponseWriter, r *http.Request, taskID, name string) {
+func serveTaskOutput(s *Session, w http.ResponseWriter, r *http.Request, taskID, name string) {
 	copyStream(fmt.Sprintf("task.output[%s]", name), w, r, func(ctx context.Context) (io.ReadCloser, error) {
 		return s.TaskLogByName(taskID, name), nil
 	})

@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -29,7 +30,7 @@ var AlsoOutputToStderr = false
 var AlsoOutputBuildToStderr = false
 var TaskOutputBuildkitJsonLog = tasks.Output("buildkit.json", "application/json+fn.buildkit")
 
-type SessionState struct {
+type Session struct {
 	Ch chan *DevWorkflowRequest
 
 	Console   io.Writer
@@ -44,15 +45,19 @@ type SessionState struct {
 	buildOutput   *syncbuffer.ByteBuffer // XXX cap the size
 	buildkitJSON  *syncbuffer.ByteBuffer
 
-	mu           sync.Mutex // Protect below.
-	current      *DevWorkflowRequest_SetWorkspace
-	cancel       func()
-	currentStack *Stack
-	pfwEnv       *schema.Environment
-	pfw          *endpointfwd.PortForward
+	mu        sync.Mutex // Protect below.
+	requested struct {
+		absRoot string
+		envName string
+		servers []string
+	}
+	cancelWorkspace func()
+	currentStack    *Stack
+	currentEnv      runtime.Selector
+	pfw             *endpointfwd.PortForward
 }
 
-func NewStackState(ctx context.Context, sink *tasks.StatefulSink, localHostname string, stickies []string) (*SessionState, error) {
+func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname string, stickies []string) (*Session, error) {
 	setSticky := func(b []byte) {
 		var out bytes.Buffer
 		for _, sticky := range stickies {
@@ -68,7 +73,7 @@ func NewStackState(ctx context.Context, sink *tasks.StatefulSink, localHostname 
 
 	setSticky(nil)
 
-	return &SessionState{
+	return &Session{
 		Console:       console.TypedOutput(ctx, "fn dev", console.CatOutputUs),
 		Errors:        console.Errors(ctx),
 		setSticky:     setSticky,
@@ -82,12 +87,12 @@ func NewStackState(ctx context.Context, sink *tasks.StatefulSink, localHostname 
 	}, nil
 }
 
-func (s *SessionState) Close(ctx context.Context) {
+func (s *Session) Close() {
 	close(s.Ch)
 	s.obs.Close()
 }
 
-func (s *SessionState) NewClient() (chan *Update, func()) {
+func (s *Session) NewClient() (chan *Update, func()) {
 	ch := make(chan *Update, 1)
 
 	const maxTaskUpload = 1000
@@ -110,95 +115,64 @@ func (s *SessionState) NewClient() (chan *Update, func()) {
 	}
 }
 
-func (s *SessionState) CommandOutput() io.ReadCloser   { return s.commandOutput.Reader() }
-func (s *SessionState) BuildOutput() io.ReadCloser     { return s.buildOutput.Reader() }
-func (s *SessionState) BuildJSONOutput() io.ReadCloser { return s.buildkitJSON.Reader() }
+func (s *Session) CommandOutput() io.ReadCloser   { return s.commandOutput.Reader() }
+func (s *Session) BuildOutput() io.ReadCloser     { return s.buildOutput.Reader() }
+func (s *Session) BuildJSONOutput() io.ReadCloser { return s.buildkitJSON.Reader() }
 
-func (s *SessionState) CurrentEnv(ctx context.Context) (provision.Env, error) {
-	s.mu.Lock()
-	var absRoot, envName string
-	if s.current != nil {
-		absRoot = s.current.AbsRoot
-		envName = s.current.EnvName
-	}
-	s.mu.Unlock()
-
-	if absRoot == "" {
-		return provision.Env{}, fnerrors.InternalError("no workspace currently configured")
-	}
-
-	root, err := module.FindRoot(ctx, absRoot)
-	if err != nil {
-		return provision.Env{}, err
-	}
-
-	return provision.RequireEnv(root, envName)
-}
-
-func (s *SessionState) ResolveServer(ctx context.Context, serverID string) (provision.Env, *schema.Server, error) {
+func (s *Session) ResolveServer(ctx context.Context, serverID string) (runtime.Selector, *schema.Server, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	if s.current == nil {
-		return provision.Env{}, nil, fnerrors.InternalError("no current session")
-	}
-
-	root, err := module.FindRoot(ctx, s.current.AbsRoot)
-	if err != nil {
-		return provision.Env{}, nil, err
-	}
-
-	env, err := provision.RequireEnv(root, s.current.EnvName)
-	if err != nil {
-		return provision.Env{}, nil, err
-	}
 
 	entry := s.currentStack.GetStack().GetServerByID(serverID)
 	if entry != nil {
-		return env, entry.Server, nil
+		return s.currentEnv, entry.Server, nil
 	}
 
-	return provision.Env{}, nil, fnerrors.UserError(nil, "%s: no such server in the current session", serverID)
+	return nil, nil, fnerrors.UserError(nil, "%s: no such server in the current session", serverID)
 }
 
-func (s *SessionState) handleSetWorkspace(ctx context.Context, x *DevWorkflowRequest_SetWorkspace) {
+func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName string, servers []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.current != nil {
-		s.cancel() // Cancel whatever it is doing.
-		s.cancel = nil
-		s.current = nil
+	if s.cancelWorkspace != nil {
+		s.cancelWorkspace() // Cancel whatever it is doing.
+		s.cancelWorkspace = nil
 	}
 
 	previousPortFwds := s.currentStack.GetForwardedPort()
 	s.currentStack = &Stack{ForwardedPort: previousPortFwds}
 
-	if x != nil {
-		newCtx, newCancel := context.WithCancel(ctx)
-		s.current = x
-		s.cancel = newCancel
+	s.requested.absRoot = absRoot
+	s.requested.envName = envName
+	s.requested.servers = servers
+
+	if len(servers) > 0 {
+		ctx, newCancel := context.WithCancel(parentCtx)
+		s.cancelWorkspace = newCancel
 
 		// Reset the banner.
 		s.setSticky(nil)
 
-		env, err := loadWorkspace(newCtx, x.AbsRoot, x.EnvName)
+		env, err := loadWorkspace(ctx, absRoot, envName)
 		if err != nil {
 			s.cancelPortForward()
-			fmt.Fprintln(console.Errors(newCtx), "failed to load workspace", err)
-			return
+			return err
 		}
 
-		pfw := s.ensurePortForward(env)
+		resetStack(s.currentStack, env)
+		pfw := s.setEnvironment(env)
 
 		go func() {
-			err := setWorkspace(newCtx, env, x.PackageName, x.AdditionalServers, s, pfw)
+			err := setWorkspace(ctx, env, servers[0], servers[1:], s, pfw)
 
 			if err != nil && !errors.Is(err, context.Canceled) {
-				fnerrors.Format(console.Stderr(ctx), true, err)
+				fnerrors.Format(console.Stderr(parentCtx), true, err)
 			}
 		}()
 	}
+
+	return nil
 }
 
 func loadWorkspace(ctx context.Context, absRoot, envName string) (provision.Env, error) {
@@ -211,7 +185,7 @@ func loadWorkspace(ctx context.Context, absRoot, envName string) (provision.Env,
 	return provision.RequireEnv(root, envName)
 }
 
-type sinkObserver struct{ s *SessionState }
+type sinkObserver struct{ s *Session }
 
 func (so *sinkObserver) pushUpdate(ra *tasks.RunningAction) {
 	p := ra.Proto()
@@ -223,7 +197,7 @@ func (so *sinkObserver) OnStart(ra *tasks.RunningAction)  { so.pushUpdate(ra) }
 func (so *sinkObserver) OnUpdate(ra *tasks.RunningAction) { so.pushUpdate(ra) }
 func (so *sinkObserver) OnDone(ra *tasks.RunningAction)   { so.pushUpdate(ra) }
 
-func (s *SessionState) Run(ctx context.Context) {
+func (s *Session) Run(ctx context.Context) error {
 	cancel := s.sink.Observe(&sinkObserver{s})
 	defer cancel()
 
@@ -254,35 +228,45 @@ func (s *SessionState) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 
 		case req, ok := <-s.Ch:
 			if !ok {
-				return
+				return nil
 			}
 
 			switch x := req.Type.(type) {
 			case *DevWorkflowRequest_SetWorkspace_:
-				s.handleSetWorkspace(ctx, x.SetWorkspace)
+				set := x.SetWorkspace
+				servers := append([]string{set.GetPackageName()}, set.GetAdditionalServers()...)
+				if err := s.handleSetWorkspace(ctx, set.GetAbsRoot(), set.GetEnvName(), servers); err != nil {
+					fmt.Fprintln(console.Errors(ctx), "failed to load workspace", err)
+					return err
+				}
 
 			case *DevWorkflowRequest_ReloadWorkspace:
 				if x.ReloadWorkspace {
 					s.mu.Lock()
-					current := s.current
+					absRoot := s.requested.absRoot
+					envName := s.requested.envName
+					servers := s.requested.servers
 					s.mu.Unlock()
-					s.handleSetWorkspace(ctx, current)
+					if err := s.handleSetWorkspace(ctx, absRoot, envName, servers); err != nil {
+						fmt.Fprintln(console.Errors(ctx), "failed to load workspace", err)
+						return err
+					}
 				}
 			}
 		}
 	}
 }
 
-func (s *SessionState) TaskLogByName(taskID, name string) io.ReadCloser {
+func (s *Session) TaskLogByName(taskID, name string) io.ReadCloser {
 	return s.sink.HistoricReaderByName(taskID, name)
 }
 
-func (s *SessionState) ensurePortForward(env provision.Env) *endpointfwd.PortForward {
-	if s.pfw != nil && proto.Equal(s.pfwEnv, env.Proto()) {
+func (s *Session) setEnvironment(env runtime.Selector) *endpointfwd.PortForward {
+	if s.pfw != nil && proto.Equal(s.currentEnv.Proto(), env.Proto()) {
 		// Nothing to do.
 		return s.pfw
 	}
@@ -290,10 +274,11 @@ func (s *SessionState) ensurePortForward(env provision.Env) *endpointfwd.PortFor
 	s.cancelPortForward()
 
 	s.pfw = newPortFwd(s, env, s.localHostname)
+	s.currentEnv = env
 	return s.pfw
 }
 
-func (s *SessionState) cancelPortForward() {
+func (s *Session) cancelPortForward() {
 	if s.pfw != nil {
 		if err := s.pfw.Cleanup(); err != nil {
 			fmt.Fprintln(s.Errors, "Failed to cleanup port forwarding resources", err)
@@ -302,7 +287,7 @@ func (s *SessionState) cancelPortForward() {
 	}
 }
 
-func (s *SessionState) updateStackInPlace(f func(stack *Stack)) {
+func (s *Session) updateStackInPlace(f func(stack *Stack)) {
 	s.mu.Lock()
 	f(s.currentStack)
 	s.currentStack.Revision++
@@ -310,4 +295,18 @@ func (s *SessionState) updateStackInPlace(f func(stack *Stack)) {
 	s.mu.Unlock()
 
 	s.obs.Publish(&Update{StackUpdate: copy})
+}
+
+func resetStack(out *Stack, env provision.Env) {
+	workspace := proto.Clone(env.Root().Workspace).(*schema.Workspace)
+
+	// XXX handling broken web ui builds.
+	if workspace.Env == nil {
+		workspace.Env = provision.EnvsOrDefault(workspace)
+	}
+
+	out.AbsRoot = env.Root().Abs()
+	out.Env = env.Proto()
+	out.Workspace = workspace
+	out.AvailableEnv = workspace.Env
 }

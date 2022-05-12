@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func RegisterEndpoints(s *SessionState, r *mux.Router) {
+func RegisterEndpoints(s *Session, r *mux.Router) {
 	r.HandleFunc("/ws/fn/command", fwd("command", func() io.ReadCloser {
 		return s.CommandOutput()
 	}))
