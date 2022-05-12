@@ -52,13 +52,14 @@ func MakeLabels(env *schema.Environment, srv *schema.Server) map[string]string {
 		m[K8sServerId] = srv.Id
 	}
 	if !controller.IsController(schema.PackageName(srv.GetPackageName())) {
+		// Controllers are environment agnostic (deployed in a single global namespace).
 		m[K8sEnvName] = env.Name
-	}
-	m[K8sEnvPurpose] = strings.ToLower(env.Purpose.String())
-	if env.Ephemeral {
-		m[K8sEnvEphemeral] = "true"
-	} else {
-		m[K8sEnvEphemeral] = "false"
+		m[K8sEnvPurpose] = strings.ToLower(env.Purpose.String())
+		if env.Ephemeral {
+			m[K8sEnvEphemeral] = "true"
+		} else {
+			m[K8sEnvEphemeral] = "false"
+		}
 	}
 	return m
 }
