@@ -44,18 +44,21 @@ func main() {
 			log.Fatalf("failed to list namespaces: %v", err)
 		}
 
+		log.Printf("found %d ephemeral namespaces", len(list.Items))
+
 		for _, ns := range list.Items {
 			if ns.Status.Phase == corev1.NamespaceTerminating {
-				// TODO Add more filtering?
+				log.Printf("Skipping namespace %q. It is already terminating.", ns.Name)
 				continue
 			}
 
 			// TODO consider using .Watch(...)
 			events, err := clientset.CoreV1().Events(ns.Name).List(ctx, metav1.ListOptions{})
 			if err != nil {
-				log.Fatalf("failed to list events in namespace %s: %v", ns.Name, err)
+				log.Fatalf("failed to list events in namespace %q: %v", ns.Name, err)
 			}
 			if len(events.Items) == 0 {
+				log.Printf("No events found for namespace %q. Skipping for now.", ns.Name)
 				// TODO what if a namespace never has events?
 				continue
 			}
@@ -73,9 +76,12 @@ func main() {
 				if err := clientset.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{}); err != nil {
 					log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
 				}
+			} else {
+				log.Printf("Last event for namespace %q was %s ago. Let's not delete it yet.", ns.Name, elapsed)
 			}
 		}
 
+		log.Printf("Will check again in %s.", interval)
 		time.Sleep(interval)
 	}
 }
