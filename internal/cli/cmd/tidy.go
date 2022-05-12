@@ -151,6 +151,10 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 		}
 	}
 
+	if root.Workspace.ModuleName != cliModule {
+		alloc.checkResolve(ctx, schema.PackageName(cliModule))
+	}
+
 	root.Workspace.Dep = nil
 
 	modules := map[string]*schema.Workspace_Dependency{}
@@ -176,6 +180,8 @@ func rewriteWorkspace(ctx context.Context, root *workspace.Root, ws *schema.Work
 		return workspace.FormatWorkspace(w, ws)
 	})
 }
+
+const cliModule = "namespacelabs.dev/foundation"
 
 type allocator struct {
 	loader   *workspace.PackageLoader
