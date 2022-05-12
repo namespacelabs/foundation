@@ -95,7 +95,7 @@ func (f *fnError) Error() string {
 
 // Signature is compatible with pkg/errors and allows frameworks like Sentry to
 // automatically extract the frame.
-func (f *fnError) GetStackTrace() stacktrace.StackTrace {
+func (f *fnError) StackTrace() stacktrace.StackTrace {
 	return f.stack
 }
 
