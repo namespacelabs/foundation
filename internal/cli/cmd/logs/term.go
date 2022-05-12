@@ -86,7 +86,7 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 func (t term) SetConsoleSticky(ctx context.Context) {
 	logCmd := "stream logs"
 	if t.showingLogs {
-		logCmd = "pause  logs"
+		logCmd = "pause logs " // Additional space at the end for a better allignment.
 	}
 	cmds := fmt.Sprintf(" (%s): %s (%s): quit", aec.Bold.Apply("l"), logCmd, aec.Bold.Apply("q"))
 	updateCmd(ctx, cmds)
