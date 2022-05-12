@@ -6,7 +6,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	k8s "k8s.io/client-go/kubernetes"
@@ -33,7 +32,7 @@ type KubeconfigProvider interface {
 
 func NewRestConfigFromHostEnv(cfg KubeconfigProvider) (*restclient.Config, error) {
 	if cfg.GetKubeconfig() == "" {
-		return nil, errors.New("hostEnv.Kubeconfig is required")
+		return nil, fnerrors.New("hostEnv.Kubeconfig is required")
 	}
 
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(

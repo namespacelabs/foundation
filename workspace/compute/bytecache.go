@@ -7,7 +7,6 @@ package compute
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"os"
 
@@ -70,7 +69,7 @@ func (bc byteStreamCacheable) LoadCached(ctx context.Context, c cache.Cache, t C
 		}
 	}
 
-	return Result[ByteStream]{}, errors.New("unexpected cache implementation, couldn't get content length of cache entry")
+	return Result[ByteStream]{}, fnerrors.New("unexpected cache implementation, couldn't get content length of cache entry")
 }
 
 func (bc byteStreamCacheable) Cache(ctx context.Context, c cache.Cache, v ByteStream) (schema.Digest, error) {

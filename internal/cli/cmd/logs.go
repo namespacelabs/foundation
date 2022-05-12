@@ -6,19 +6,14 @@ package cmd
 
 import (
 	"context"
-	"fmt"
-	"io"
-	"sync"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/cmd/logs"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func NewLogsCmd() *cobra.Command {
@@ -45,57 +40,10 @@ func NewLogsCmd() *cobra.Command {
 				return err
 			}
 
-			rt := runtime.For(ctx, env)
-
-			streams := map[string]*logStream{}
-			var mu sync.Mutex
-
 			cancel := console.SetIdleLabel(ctx, "listening for deployment changes")
 			defer cancel()
 
-			return rt.Observe(ctx, server.Proto(), runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) error {
-				mu.Lock()
-				existing := streams[ev.ContainerReference.UniqueID()]
-				if ev.Removed {
-					delete(streams, ev.ContainerReference.UniqueID())
-				}
-				mu.Unlock()
-
-				if ev.Added {
-					if existing != nil {
-						return nil
-					}
-				} else if ev.Removed {
-					if existing != nil {
-						existing.cancel()
-					}
-					return nil
-				}
-
-				newS := &logStream{}
-				mu.Lock()
-				streams[ev.ContainerReference.UniqueID()] = newS
-				mu.Unlock()
-
-				compute.On(ctx).Detach(tasks.Action("stream-log").Indefinite(), func(ctx context.Context) error {
-					w := console.Output(ctx, ev.HumanReadableID)
-					ctx, cancel := context.WithCancel(ctx)
-
-					if !newS.set(cancel, w) {
-						// Raced with pod disappearing.
-						return nil
-					}
-
-					fmt.Fprintln(w, "<Starting to stream>")
-
-					return rt.FetchLogsTo(ctx, w, ev.ContainerReference, runtime.FetchLogsOpts{
-						TailLines: 20,
-						Follow:    true,
-					})
-				})
-
-				return nil
-			})
+			return logs.NewLogTail(ctx, root, envRef, server.Proto())
 		}),
 	}
 
@@ -103,38 +51,4 @@ func NewLogsCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&kubernetes.ObserveInitContainerLogs, "observe_init_containers", kubernetes.ObserveInitContainerLogs, "Kubernetes-specific flag to also fetch logs from init containers.")
 
 	return cmd
-}
-
-type logStream struct {
-	mu         sync.Mutex
-	cancelFunc func()
-	cancelled  bool
-	w          io.Writer
-}
-
-func (ls *logStream) cancel() {
-	ls.mu.Lock()
-	cancel := ls.cancelFunc
-	ls.cancelFunc = nil
-	wasCancelled := ls.cancelled
-	ls.cancelled = true
-	w := ls.w
-	ls.mu.Unlock()
-
-	if cancel != nil {
-		cancel()
-	}
-
-	if !wasCancelled {
-		fmt.Fprintln(w, "<Closed>")
-	}
-}
-
-func (ls *logStream) set(cancel func(), w io.Writer) bool {
-	ls.mu.Lock()
-	cancelled := ls.cancelled
-	ls.cancelFunc = cancel
-	ls.w = w
-	ls.mu.Unlock()
-	return !cancelled
 }

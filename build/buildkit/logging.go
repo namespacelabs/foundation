@@ -7,7 +7,6 @@ package buildkit
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -17,6 +16,7 @@ import (
 	"github.com/moby/buildkit/util/progress/progressui"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -133,7 +133,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 				if vertex.Completed != nil && existing != nil {
 					var err error
 					if vertex.Error != "" {
-						err = errors.New(vertex.Error)
+						err = fnerrors.New(vertex.Error)
 					}
 
 					existing.customDone(*vertex.Completed, err)
@@ -178,7 +178,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 		}
 
 		for _, ra := range running {
-			ra.customDone(time.Now(), errors.New("never finished"))
+			ra.customDone(time.Now(), fnerrors.New("never finished"))
 		}
 
 		return nil

@@ -16,6 +16,9 @@
 devhost.textpb
 cmd/fn/fn
 
+# vscode debug binary
+cmd/fn/__debug_bin
+
 node_modules/
 .parcel-cache/
 dist/

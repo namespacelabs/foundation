@@ -7,11 +7,11 @@ package git
 import (
 	"bytes"
 	"context"
-	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 // Adapted from Go's src/cmd/go/internal/vcs/vcs.go
@@ -58,13 +58,13 @@ func parseRevTime(out []byte) (string, time.Time, error) {
 
 	i := strings.IndexByte(buf, ':')
 	if i < 1 {
-		return "", time.Time{}, errors.New("unrecognized VCS tool output")
+		return "", time.Time{}, fnerrors.New("unrecognized VCS tool output")
 	}
 	rev := buf[:i]
 
 	secs, err := strconv.ParseInt(string(buf[i+1:]), 10, 64)
 	if err != nil {
-		return "", time.Time{}, fmt.Errorf("unrecognized VCS tool output: %v", err)
+		return "", time.Time{}, fnerrors.InternalError("unrecognized VCS tool output: %w", err)
 	}
 
 	return rev, time.Unix(secs, 0), nil

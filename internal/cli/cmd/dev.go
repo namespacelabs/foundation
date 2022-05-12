@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/devworkflow"
+	"namespacelabs.dev/foundation/internal/cli/cmd/logs"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
@@ -59,6 +60,7 @@ func NewDevCmd() *cobra.Command {
 				pl := workspace.NewPackageLoader(root)
 
 				var serverPackages []string
+				var serverProtos []*schema.Server
 				for _, p := range args {
 					parsed, err := pl.LoadByName(ctx, root.RelPackage(p).AsPackageName())
 					if err != nil {
@@ -70,6 +72,7 @@ func NewDevCmd() *cobra.Command {
 					}
 
 					serverPackages = append(serverPackages, parsed.PackageName().String())
+					serverProtos = append(serverProtos, parsed.Server)
 				}
 
 				addrParts := strings.Split(servingAddr, ":")
@@ -82,7 +85,9 @@ func NewDevCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-
+				t := logs.NewTerm()
+				// This has to happen before new stackState gets created to render commands at the top.
+				t.SetConsoleSticky(ctx)
 				stickies := []string{fmt.Sprintf("fn dev web ui running at: http://%s", servingAddr)}
 
 				stackState, err := devworkflow.NewSession(ctx, sink, host, stickies)
@@ -104,7 +109,6 @@ func NewDevCmd() *cobra.Command {
 						},
 					},
 				}
-
 				r := mux.NewRouter()
 
 				srv := &http.Server{
@@ -125,6 +129,10 @@ func NewDevCmd() *cobra.Command {
 				r.PathPrefix("/debug/pprof/goroutine").HandlerFunc(pprof.Index)
 
 				devworkflow.RegisterEndpoints(stackState, r)
+
+				ch, done := stackState.NewClient()
+				defer done()
+				go t.HandleEvents(ctx, root, serverProtos, cancel, ch)
 
 				if devWebServer {
 					webPort := port + 1

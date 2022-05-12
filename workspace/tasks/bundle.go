@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
+	stacktraceserializer "namespacelabs.dev/foundation/internal/fnerrors/stacktrace/serializer"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/maketarfs"
 )
@@ -118,7 +118,7 @@ func (b *Bundle) WriteMemStats(ctx context.Context) error {
 }
 
 func (b *Bundle) WriteError(ctx context.Context, err error) error {
-	errstack, err := stacktrace.NewErrorStacktrace(err)
+	errstack, err := stacktraceserializer.NewErrorStacktrace(err)
 	if err != nil {
 		return err
 	}

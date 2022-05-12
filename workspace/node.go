@@ -6,7 +6,6 @@ package workspace
 
 import (
 	"context"
-	"errors"
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -17,11 +16,11 @@ import (
 func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.Node, kind schema.Node_Kind, opts LoadPackageOpts) error {
 	if kind == schema.Node_EXTENSION {
 		if node.Ingress != schema.Endpoint_INGRESS_UNSPECIFIED {
-			return errors.New("ingress can only be specified for services")
+			return fnerrors.New("ingress can only be specified for services")
 		}
 
 		if len(node.ExportService) > 0 {
-			return errors.New("extensions can't export services")
+			return fnerrors.New("extensions can't export services")
 		}
 	}
 
@@ -145,11 +144,11 @@ func loadDep(ctx context.Context, pl Packages, pkg schema.PackageName) (*Package
 	}
 
 	if p.Server != nil {
-		return nil, errors.New("dependencies can't include servers")
+		return nil, fnerrors.New("dependencies can't include servers")
 	}
 
 	if p.Binary != nil {
-		return nil, errors.New("dependencies can't be binaries")
+		return nil, fnerrors.New("dependencies can't be binaries")
 	}
 
 	return p, nil

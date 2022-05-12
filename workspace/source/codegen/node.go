@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -44,7 +43,7 @@ type generator struct{}
 func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenNode) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
-		return nil, errors.New("workspace.Packages required")
+		return nil, fnerrors.New("workspace.Packages required")
 	}
 
 	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.Node.PackageName))

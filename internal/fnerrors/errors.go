@@ -8,62 +8,68 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"runtime"
 
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/kr/text"
 	"github.com/morikuni/aec"
+	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
 )
+
+// New returns a new error wrapping the given error message with the stack trace
+// at the point of invocation.
+func New(errmsg string) error {
+	return &fnError{Err: errors.New(errmsg), stack: stacktrace.New()}
+}
 
 func Wrap(loc Location, err error) error {
 	if userErr, ok := err.(*userError); ok {
 		if userErr.Location == nil {
-			return &userError{Location: loc, Err: userErr.Err, Frame: userErr.Frame}
+			return &userError{fnError: fnError{Err: userErr.Err, stack: userErr.stack}, Location: loc}
 		} else if userErr.Location == loc {
 			return userErr
 		}
 	}
 
-	return &userError{Location: loc, Err: err, Frame: caller(1)}
+	return &userError{fnError: fnError{Err: err, stack: stacktrace.New()}, Location: loc}
 }
 
 func Wrapf(loc Location, err error, whatFmt string, args ...interface{}) error {
 	args = append(args, err)
-	return &userError{loc, fmt.Errorf(whatFmt+": %w", args...), caller(1)}
+	return &userError{fnError: fnError{Err: fmt.Errorf(whatFmt+": %w", args...), stack: stacktrace.New()}, Location: loc}
 }
 
 func UserError(loc Location, format string, args ...interface{}) error {
-	return &userError{loc, fmt.Errorf(format, args...), caller(1)}
+	return &userError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, Location: loc}
 }
 
 // Configuration or system setup is not correct and requires user intervention.
 func UsageError(what, whyFmt string, args ...interface{}) error {
-	return &usageError{Why: fmt.Sprintf(whyFmt, args...), What: what}
+	return &usageError{fnError: fnError{Err: fmt.Errorf(whyFmt, args...), stack: stacktrace.New()}, Why: fmt.Sprintf(whyFmt, args...), What: what}
 }
 
 // Unexpected situation.
 func InternalError(format string, args ...interface{}) error {
-	return &internalError{fmt.Errorf(format, args...), false}
+	return &internalError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
 }
 
 // A call to a remote endpoint failed, perhaps due to a transient issue.
 func InvocationError(format string, args ...interface{}) error {
-	return &invocationError{fmt.Errorf(format, args...), false}
+	return &invocationError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
 }
 
 // The input does match our expectations (e.g. missing bits, wrong version, etc).
 func BadInputError(format string, args ...interface{}) error {
-	return &internalError{fmt.Errorf(format, args...), false}
+	return &internalError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
 }
 
 // We failed but it may be due a transient issue.
 func TransientError(format string, args ...interface{}) error {
-	return &internalError{fmt.Errorf(format, args...), false}
+	return &internalError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
 }
 
 // This error is expected, e.g. a rebuild is required.
 func ExpectedError(format string, args ...interface{}) error {
-	return &internalError{fmt.Errorf(format, args...), true}
+	return &internalError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: true}
 }
 
 // This error means that Foundation does not meet the minimum version requirements.
@@ -74,27 +80,43 @@ func DoesNotMeetVersionRequirements(pkg string, expected, got int32) error {
 // This error is purely for wiring and ensures that Foundation exits with an appropriate exit code.
 // The error content has to be output independently.
 func ExitWithCode(err error, code int) error {
-	return &exitError{err, code}
+	return &exitError{fnError: fnError{Err: err, stack: stacktrace.New()}, code: code}
+}
+
+// Wraps an error with a stack trace at the point of invocation.
+type fnError struct {
+	Err   error
+	stack stacktrace.StackTrace
+}
+
+func (f *fnError) Error() string {
+	return f.Err.Error()
+}
+
+// Signature is compatible with pkg/errors and allows frameworks like Sentry to
+// automatically extract the frame.
+func (f *fnError) StackTrace() stacktrace.StackTrace {
+	return f.stack
 }
 
 type userError struct {
+	fnError
 	Location Location
-	Err      error
-	Frame    frame
 }
 
 type usageError struct {
+	fnError
 	Why  string
 	What string
 }
 
 type internalError struct {
-	Err      error
+	fnError
 	expected bool
 }
 
 type invocationError struct {
-	Err      error
+	fnError
 	expected bool
 }
 
@@ -142,6 +164,7 @@ type ExitError interface {
 }
 
 type exitError struct {
+	fnError
 	Err  error
 	code int
 }
@@ -199,10 +222,11 @@ func format(w io.Writer, colors bool, err error) {
 
 			loc := formatLabel(child.Location.ErrorLocation(), colors)
 
-			_, file, line := child.Frame.location()
-
-			loc += formatPos(fmt.Sprintf(" (%s:%d)", file, line), colors)
-
+			// Add the first frame in the stack.
+			if len(child.stack) > 0 {
+				frame := child.stack[0]
+				loc += formatPos(fmt.Sprintf(" (%s:%d)", frame.File(), frame.Line()), colors)
+			}
 			fmt.Fprintf(w, "%s at %s:", child.Err.Error(), loc)
 			fmt.Fprintln(w)
 			format(indent(w), colors, child.Err)
@@ -279,32 +303,6 @@ func formatPos(pos string, colors bool) string {
 }
 
 func indent(w io.Writer) io.Writer { return text.NewIndentWriter(w, []byte("  ")) }
-
-// Adapted from xerror's codebase.
-type frame struct {
-	frames [3]uintptr
-}
-
-func caller(skip int) frame {
-	var s frame
-	runtime.Callers(skip+1, s.frames[:])
-	return s
-}
-
-// location reports the file, line, and function of a frame.
-//
-// The returned function may be "" even if file and line are not.
-func (f frame) location() (function, file string, line int) {
-	frames := runtime.CallersFrames(f.frames[:])
-	if _, ok := frames.Next(); !ok {
-		return "", "", 0
-	}
-	fr, ok := frames.Next()
-	if !ok {
-		return "", "", 0
-	}
-	return fr.Function, fr.File, fr.Line
-}
 
 func unwrap(err error) error {
 	if x := errors.Unwrap(err); x != nil {
