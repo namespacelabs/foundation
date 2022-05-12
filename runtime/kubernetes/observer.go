@@ -146,7 +146,9 @@ func (p *podResolver) Watch(f func(*v1.Pod, int64, error)) func() {
 
 func (p *podResolver) selectPod() *v1.Pod {
 	if len(p.runningPods) > 0 {
-		return &p.runningPods[0]
+		// Always pick the last pod, as that's the most recent to show up and is
+		// likely to be the one that survives e.g. a new deployment.
+		return &p.runningPods[len(p.runningPods)-1]
 	}
 	return nil
 }
