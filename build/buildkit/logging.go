@@ -127,6 +127,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 						action:   tasks.Action(name).Category("buildkit").StartTimestamp(*vertex.Started).Start(ctx),
 						statuses: map[string]*tasks.RunningAction{},
 					}
+					//existing.action.
 					running[vid] = existing
 				}
 
@@ -134,6 +135,9 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 					var err error
 					if vertex.Error != "" {
 						err = fnerrors.New(vertex.Error)
+						//fnerrors.WithLogs(err, existing.action.Attachments().kkkkkkkkk
+
+						//existing.action.Attachments().ReaderByName()
 					}
 
 					existing.customDone(*vertex.Completed, err)
