@@ -8,13 +8,19 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/localexec"
+	yarnsdk "namespacelabs.dev/foundation/internal/sdk/yarn"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 func RunYarn(ctx context.Context, relPath string, args []string) error {
+	bin, err := yarnsdk.EnsureSDK(ctx)
+	if err != nil {
+		return err
+	}
+
 	var cmd localexec.Command
-	cmd.Command = "yarn"
-	cmd.Args = args
+	cmd.Command = "node"
+	cmd.Args = append([]string{string(bin)}, args...)
 	cmd.Dir = relPath
 	fnModuleCache, err := dirs.ModuleCacheRoot()
 	if err != nil {
