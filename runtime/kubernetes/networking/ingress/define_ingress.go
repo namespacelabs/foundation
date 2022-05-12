@@ -246,7 +246,7 @@ func Delete(ns string, stack []provision.Server) ([]*schema.Definition, error) {
 		if def, err := op.ToDefinition(srv.PackageName()); err != nil {
 			return nil, err
 		} else {
-			defs = append(defs, def)
+			defs = append(defs, def...)
 		}
 	}
 

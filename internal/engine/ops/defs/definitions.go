@@ -49,7 +49,7 @@ func Make(ops ...MakeDefinition) ([]*schema.Definition, error) {
 			return nil, err
 		}
 
-		defs = append(defs, def)
+		defs = append(defs, def...)
 	}
 
 	return defs, nil

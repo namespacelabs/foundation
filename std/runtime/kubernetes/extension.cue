@@ -26,15 +26,15 @@ extension: fn.#Extension & {
 	]
 }
 
-$env:     inputs.#Environment
-$ephCtrl: inputs.#Server & {
-	packageName: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/ephemeral"
+$env:  inputs.#Environment
+$ctrl: inputs.#Server & {
+	packageName: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller"
 }
 
 configure: fn.#Configure & {
 	stack: {
 		if $env.ephemeral {
-			append: [$ephCtrl]
+			append: [$ctrl]
 		}
 	}
 }

@@ -12,7 +12,6 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	applyrbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
@@ -60,13 +59,6 @@ type CreateSecretConditionally struct {
 	Invocation        *types.DeferredInvocation
 }
 
-// Only a limited set of nodes is allowed to set this.
-type Admin struct {
-	Description    string
-	ServiceAccount string
-	Rules          []*applyrbacv1.PolicyRuleApplyConfiguration
-}
-
 type ExtendSpec struct {
 	With *SpecExtension
 }
@@ -79,7 +71,7 @@ type ExtendInitContainer struct {
 	With *InitContainerExtension
 }
 
-func (a Apply) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (a Apply) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, error) {
 	if a.Body == nil {
 		return nil, fnerrors.InternalError("body is missing")
 	}
@@ -99,11 +91,11 @@ func (a Apply) ToDefinition(scope ...schema.PackageName) (*schema.Definition, er
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return []*schema.Definition{{
 		Description: a.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
-	}, nil
+	}}, nil
 }
 
 func scopeToStrings(scope []schema.PackageName) []string {
@@ -114,7 +106,7 @@ func scopeToStrings(scope []schema.PackageName) []string {
 	return r
 }
 
-func (d Delete) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (d Delete) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, error) {
 	x, err := anypb.New(&OpDelete{
 		Resource:  d.Resource,
 		Namespace: d.Namespace,
@@ -124,14 +116,14 @@ func (d Delete) ToDefinition(scope ...schema.PackageName) (*schema.Definition, e
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return []*schema.Definition{{
 		Description: d.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
-	}, nil
+	}}, nil
 }
 
-func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (d DeleteList) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, error) {
 	x, err := anypb.New(&OpDeleteList{
 		Resource:      d.Resource,
 		Namespace:     d.Namespace,
@@ -141,14 +133,14 @@ func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.Definitio
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return []*schema.Definition{{
 		Description: d.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
-	}, nil
+	}}, nil
 }
 
-func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (c Create) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, error) {
 	if c.Body == nil {
 		return nil, fnerrors.InternalError("body is missing")
 	}
@@ -169,14 +161,14 @@ func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.Definition, e
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return []*schema.Definition{{
 		Description: c.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
-	}, nil
+	}}, nil
 }
 
-func (c CreateSecretConditionally) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (c CreateSecretConditionally) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, error) {
 	if c.Invocation == nil {
 		return nil, fnerrors.InternalError("invocation is missing")
 	}
@@ -191,36 +183,11 @@ func (c CreateSecretConditionally) ToDefinition(scope ...schema.PackageName) (*s
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return []*schema.Definition{{
 		Description: c.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
-	}, nil
-}
-
-func (a Admin) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
-	if len(a.Rules) == 0 {
-		return nil, fnerrors.InternalError("no admin rules specified")
-	}
-
-	rules, err := json.Marshal(a.Rules)
-	if err != nil {
-		return nil, err
-	}
-
-	x, err := anypb.New(&OpAdmin{
-		ServiceAccount: a.ServiceAccount,
-		RulesJson:      string(rules),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &schema.Definition{
-		Description: a.Description,
-		Impl:        x,
-		Scope:       scopeToStrings(scope),
-	}, nil
+	}}, nil
 }
 
 func (es ExtendSpec) ToDefinition() (*schema.DefExtension, error) {

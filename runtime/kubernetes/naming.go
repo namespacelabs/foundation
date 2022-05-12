@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 
+	"namespacelabs.dev/foundation/runtime/kubernetes/controller"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -39,7 +41,7 @@ func labelName(command []string) string {
 // We use namespaces to isolate deployments per workspace and environment.
 // Using the path base plus a digest provides short, memorable names and avoids collision.
 // TODO add knob to allow namespace overwrites if the need arises.
-func namespace(ws *schema.Workspace, env *schema.Environment) string {
+func moduleNamespace(ws *schema.Workspace, env *schema.Environment) string {
 	parts := []string{strings.ToLower(env.Name)}
 	parts = append(parts, validChars.FindAllString(filepath.Base(ws.ModuleName), -1)...)
 
@@ -62,4 +64,12 @@ func packageId(pkg schema.PackageName) string {
 	fmt.Fprintf(h, "%s", pkg) // Write to a sha256 hash never fails.
 	digest := h.Sum(nil)
 	return base32encoding.EncodeToString(digest[:8])
+}
+
+func serverNamespace(r boundEnv, srv *schema.Server) string {
+	if controller.IsController(schema.PackageName(srv.PackageName)) {
+		return kubedef.AdminNamespace
+	}
+
+	return r.moduleNamespace
 }

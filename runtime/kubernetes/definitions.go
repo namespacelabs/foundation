@@ -157,23 +157,6 @@ func RegisterGraphHandlers() {
 		return nil, nil
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, admin *kubedef.OpAdmin) (*ops.HandleResult, error) {
-		if admin.RulesJson == "" {
-			return nil, fnerrors.InternalError("%s: admin.RulesJson is required", d.Description)
-		}
-		if admin.ServiceAccount == "" {
-			return nil, fnerrors.InternalError("%s: admin.ServiceAccount is required", d.Description)
-		}
-		scope := asPackages(d.Scope)
-		if err := tasks.Action("kubernetes.admin").Scope(scope...).
-			HumanReadablef(d.Description).Run(ctx, func(ctx context.Context) error {
-			return grantAdmin(ctx, env, scope, admin)
-		}); err != nil {
-			return nil, fnerrors.InvocationError("%s: %w", d.Description, err)
-		}
-		return nil, nil
-	})
-
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, delete *kubedef.OpDelete) (*ops.HandleResult, error) {
 		if delete.Resource == "" {
 			return nil, fnerrors.InternalError("%s: delete.Resource is required", d.Description)

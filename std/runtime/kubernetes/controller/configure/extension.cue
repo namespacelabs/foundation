@@ -7,5 +7,5 @@ import (
 extension: fn.#Extension
 
 configure: fn.#Configure & {
-	with: binary: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/ephemeral/tool"
+	with: binary: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/tool"
 }

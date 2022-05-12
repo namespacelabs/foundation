@@ -107,6 +107,8 @@ type deployOpts struct {
 
 func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
 	srv := server.Server
+	isController := controller.IsController(srv.PackageName())
+	ns := serverNamespace(r, srv.Proto())
 
 	if server.Image.Repository == "" {
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", server.Image)
@@ -200,7 +202,13 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	spec := applycorev1.PodSpec().
 		WithSecurityContext(podSecCtx)
 
-	labels := kubedef.MakeLabels(r.env, srv.Proto())
+	var labels map[string]string
+	if isController {
+		// Controllers are environment agnostic (deployed in a single global namespace).
+		labels = kubedef.MakeLabels(nil, srv.Proto())
+	} else {
+		labels = kubedef.MakeLabels(r.env, srv.Proto())
+	}
 	annotations := kubedef.MakeAnnotations(srv.StackEntry())
 
 	deploymentId := kubedef.MakeDeploymentId(srv.Proto())
@@ -340,9 +348,9 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: fmt.Sprintf("Persistent storage for %s", rs.Owner),
 			Resource:    "persistentvolumeclaims",
-			Namespace:   r.ns(srv.PackageName()),
+			Namespace:   ns,
 			Name:        rs.PersistentId,
-			Body: applycorev1.PersistentVolumeClaim(rs.PersistentId, r.ns(srv.PackageName())).
+			Body: applycorev1.PersistentVolumeClaim(rs.PersistentId, ns).
 				WithSpec(applycorev1.PersistentVolumeClaimSpec().
 					WithAccessModes(corev1.ReadWriteOnce).
 					WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
@@ -414,9 +422,9 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Service Account",
 			Resource:    "serviceaccounts",
-			Namespace:   r.ns(srv.PackageName()),
+			Namespace:   ns,
 			Name:        serviceAccount,
-			Body: applycorev1.ServiceAccount(serviceAccount, r.ns(srv.PackageName())).
+			Body: applycorev1.ServiceAccount(serviceAccount, ns).
 				WithLabels(labels).
 				WithAnnotations(annotations),
 		})
@@ -430,13 +438,14 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	// servers which we want to control a bit more carefully. For example, we want to deploy
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
+	// Controllers are excluded here as they run as singletons in a global namespace.
 	if r.env.Purpose == schema.Environment_TESTING && !controller.IsController(srv.PackageName()) {
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server",
 			Resource:    "pods",
-			Namespace:   r.ns(srv.PackageName()),
+			Namespace:   ns,
 			Name:        deploymentId,
-			Body: applycorev1.Pod(deploymentId, r.ns(srv.PackageName())).
+			Body: applycorev1.Pod(deploymentId, ns).
 				WithAnnotations(annotations).
 				WithAnnotations(tmpl.Annotations).
 				WithLabels(labels).
@@ -450,10 +459,10 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server StatefulSet",
 			Resource:    "statefulsets",
-			Namespace:   r.ns(srv.PackageName()),
+			Namespace:   ns,
 			Name:        deploymentId,
 			Body: appsv1.
-				StatefulSet(deploymentId, r.ns(srv.PackageName())).
+				StatefulSet(deploymentId, ns).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.StatefulSetSpec().
@@ -465,10 +474,10 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server Deployment",
 			Resource:    "deployments",
-			Namespace:   r.ns(srv.PackageName()),
+			Namespace:   ns,
 			Name:        deploymentId,
 			Body: appsv1.
-				Deployment(deploymentId, r.ns(srv.PackageName())).
+				Deployment(deploymentId, ns).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.DeploymentSpec().
@@ -493,6 +502,7 @@ func makeStorageVolumeName(rs *schema.RequiredStorage) string {
 
 func (r boundEnv) deployEndpoint(ctx context.Context, server runtime.ServerConfig, endpoint *schema.Endpoint, s *serverRunState) error {
 	t := server.Server
+	ns := serverNamespace(r, t.Proto())
 
 	serviceSpec := applycorev1.ServiceSpec().WithSelector(kubedef.SelectById(t.Proto()))
 
@@ -509,10 +519,10 @@ func (r boundEnv) deployEndpoint(ctx context.Context, server runtime.ServerConfi
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: fmt.Sprintf("Service %s", endpoint.ServiceName),
 			Resource:    "services",
-			Namespace:   r.ns(t.PackageName()),
+			Namespace:   ns,
 			Name:        endpoint.AllocatedName,
 			Body: applycorev1.
-				Service(endpoint.AllocatedName, r.ns(t.PackageName())).
+				Service(endpoint.AllocatedName, ns).
 				WithLabels(kubedef.MakeServiceLabels(r.env, t.Proto(), endpoint)).
 				WithAnnotations(serviceAnnotations).
 				WithSpec(serviceSpec),

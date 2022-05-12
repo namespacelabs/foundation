@@ -9,23 +9,14 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/runtime/kubernetes/controller"
 	fnschema "namespacelabs.dev/foundation/schema"
 )
 
 type boundEnv struct {
-	ws      *fnschema.Workspace
-	env     *fnschema.Environment
-	hostEnv *client.HostEnv
-}
-
-// Returns the namespace for server based on it's package.
-// When provided with an empty string, the default namespace for the runtime environment is returned.
-func (r boundEnv) ns(pkg fnschema.PackageName) string {
-	if controller.IsController(pkg) {
-		return adminNamespace
-	}
-	return namespace(r.ws, r.env)
+	ws              *fnschema.Workspace
+	env             *fnschema.Environment
+	hostEnv         *client.HostEnv
+	moduleNamespace string
 }
 
 func (r boundEnv) makeDefaultConfig() (*rest.Config, error) {

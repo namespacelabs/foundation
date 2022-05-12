@@ -122,7 +122,7 @@ func Ensure(ctx context.Context) ([]*schema.Definition, error) {
 		if err != nil {
 			return nil, err
 		}
-		defs = append(defs, def)
+		defs = append(defs, def...)
 	}
 
 	if webhook.Body == nil {
