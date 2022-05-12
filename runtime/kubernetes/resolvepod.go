@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -43,7 +44,7 @@ func resolvePodByLabels(ctx context.Context, cli *kubernetes.Clientset, w io.Wri
 
 		pods, err := cli.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: labelSel})
 		if err != nil {
-			return corev1.Pod{}, err
+			return corev1.Pod{}, fnerrors.Wrapf(nil, err, "unable to list pods")
 		}
 
 		if len(pods.Items) == 0 {
