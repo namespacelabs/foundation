@@ -110,10 +110,9 @@ func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.Configuration) (llb.State,
 
 	yarnRoot := filepath.Join(appRootPath, bnj.yarnRoot)
 	buildBase := prepareYarnBase(n.NodeJsBase, *conf.TargetPlatform(), bnj.isDevBuild)
-	for _, fn := range []string{"package.json", "tsconfig.json", "yarn.lock", ".yarnrc.yml", ".yarn/releases", ".yarn/plugins"} {
-		buildBase = buildBase.With(
-			llbutil.CopyFrom(src, filepath.Join(bnj.yarnRoot, fn), filepath.Join(yarnRoot, fn)))
-	}
+	// We have to copy the whole Yarn root because otherwise there may be missing workspaces
+	// and `yarn install --immutable` will fail.
+	buildBase = buildBase.With(llbutil.CopyFrom(src, bnj.yarnRoot, yarnRoot))
 	for _, loc := range bnj.locs {
 		if loc.Module.IsExternal() {
 			// External modules live in the Foundation module cache.
@@ -123,9 +122,6 @@ func (n NodeJsBinary) LLB(bnj buildNodeJS, conf build.Configuration) (llb.State,
 			locals = append(locals, moduleLocal)
 			buildBase = buildBase.With(llbutil.CopyFrom(buildkit.MakeLocalState(moduleLocal), ".",
 				filepath.Join(fnModuleCache, loc.PathInCache())))
-		} else {
-			// Packages from lhe local module are copied directly to the app root.
-			buildBase = buildBase.With(llbutil.CopyFrom(src, loc.Rel(), filepath.Join(appRootPath, loc.Rel())))
 		}
 	}
 	buildBase = runYarnInstall(*conf.TargetPlatform(), buildBase, yarnRoot, bnj.isDevBuild)
