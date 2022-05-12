@@ -18,7 +18,12 @@ type boundEnv struct {
 	hostEnv *client.HostEnv
 }
 
-func (r boundEnv) ns() string {
+// Returns the namespace for server based on it's package.
+// When provided with an empty string, the default namespace for the runtime environment is returned.
+func (r boundEnv) ns(pkg fnschema.PackageName) string {
+	if isController(pkg) {
+		return adminNamespace
+	}
 	return namespace(r.ws, r.env)
 }
 

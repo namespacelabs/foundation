@@ -21,7 +21,7 @@ import (
 )
 
 func (r boundEnv) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, server *schema.Server) (corev1.Pod, error) {
-	return resolvePodByLabels(ctx, cli, w, r.ns(), map[string]string{
+	return resolvePodByLabels(ctx, cli, w, r.ns(schema.PackageName(server.PackageName)), map[string]string{
 		kubedef.K8sServerId: server.Id,
 	})
 }

@@ -24,7 +24,7 @@ func (r boundEnv) Kubectl(ctx context.Context, io rtypes.IO, args ...string) err
 	defer done()
 
 	kubectl := exec.CommandContext(ctx, string(kubectlBin),
-		append([]string{"--kubeconfig=" + r.hostEnv.Kubeconfig, "--context=" + r.hostEnv.Context, "-n", r.ns()}, args...)...)
+		append([]string{"--kubeconfig=" + r.hostEnv.Kubeconfig, "--context=" + r.hostEnv.Context, "-n", r.ns("")}, args...)...)
 	kubectl.Stdout = io.Stdout
 	kubectl.Stderr = io.Stderr
 	kubectl.Stdin = io.Stdin

@@ -107,11 +107,6 @@ type deployOpts struct {
 func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
 	srv := server.Server
 
-	ns := r.ns()
-	if isController(srv.PackageName()) {
-		ns = adminNamespace
-	}
-
 	if server.Image.Repository == "" {
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", server.Image)
 	}
@@ -164,7 +159,7 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		}
 	}
 
-	name := serverCtrName(server.Server.Proto())
+	name := serverCtrName(srv.Proto())
 	containers := []string{name}
 	container := applycorev1.Container().
 		WithName(name).
@@ -344,9 +339,9 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: fmt.Sprintf("Persistent storage for %s", rs.Owner),
 			Resource:    "persistentvolumeclaims",
-			Namespace:   ns,
+			Namespace:   r.ns(srv.PackageName()),
 			Name:        rs.PersistentId,
-			Body: applycorev1.PersistentVolumeClaim(rs.PersistentId, ns).
+			Body: applycorev1.PersistentVolumeClaim(rs.PersistentId, r.ns(srv.PackageName())).
 				WithSpec(applycorev1.PersistentVolumeClaimSpec().
 					WithAccessModes(corev1.ReadWriteOnce).
 					WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
@@ -418,9 +413,9 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Service Account",
 			Resource:    "serviceaccounts",
-			Namespace:   ns,
+			Namespace:   r.ns(srv.PackageName()),
 			Name:        serviceAccount,
-			Body: applycorev1.ServiceAccount(serviceAccount, ns).
+			Body: applycorev1.ServiceAccount(serviceAccount, r.ns(srv.PackageName())).
 				WithLabels(labels).
 				WithAnnotations(annotations),
 		})
@@ -438,9 +433,9 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server",
 			Resource:    "pods",
-			Namespace:   ns,
+			Namespace:   r.ns(srv.PackageName()),
 			Name:        deploymentId,
-			Body: applycorev1.Pod(deploymentId, ns).
+			Body: applycorev1.Pod(deploymentId, r.ns(srv.PackageName())).
 				WithAnnotations(annotations).
 				WithAnnotations(tmpl.Annotations).
 				WithLabels(labels).
@@ -454,10 +449,10 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server StatefulSet",
 			Resource:    "statefulsets",
-			Namespace:   ns,
+			Namespace:   r.ns(srv.PackageName()),
 			Name:        deploymentId,
 			Body: appsv1.
-				StatefulSet(deploymentId, ns).
+				StatefulSet(deploymentId, r.ns(srv.PackageName())).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.StatefulSetSpec().
@@ -469,10 +464,10 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server Deployment",
 			Resource:    "deployments",
-			Namespace:   ns,
+			Namespace:   r.ns(srv.PackageName()),
 			Name:        deploymentId,
 			Body: appsv1.
-				Deployment(deploymentId, ns).
+				Deployment(deploymentId, r.ns(srv.PackageName())).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.DeploymentSpec().
@@ -513,10 +508,10 @@ func (r boundEnv) deployEndpoint(ctx context.Context, server runtime.ServerConfi
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: fmt.Sprintf("Service %s", endpoint.ServiceName),
 			Resource:    "services",
-			Namespace:   r.ns(),
+			Namespace:   r.ns(t.PackageName()),
 			Name:        endpoint.AllocatedName,
 			Body: applycorev1.
-				Service(endpoint.AllocatedName, r.ns()).
+				Service(endpoint.AllocatedName, r.ns(t.PackageName())).
 				WithLabels(kubedef.MakeServiceLabels(r.env, t.Proto(), endpoint)).
 				WithAnnotations(serviceAnnotations).
 				WithSpec(serviceSpec),

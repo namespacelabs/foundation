@@ -20,7 +20,7 @@ func (r boundEnv) fetchLogs(ctx context.Context, cli *kubernetes.Clientset, w io
 		return err
 	}
 
-	return fetchPodLogs(ctx, cli, w, r.ns(), pod.Name, "", opts)
+	return fetchPodLogs(ctx, cli, w, r.ns(schema.PackageName(server.PackageName)), pod.Name, "", opts)
 }
 
 func fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, namespace, podName, containerName string, opts runtime.StreamLogsOpts) error {

@@ -160,7 +160,7 @@ type k8sRuntime struct {
 var _ runtime.Runtime = k8sRuntime{}
 
 func (r k8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, error) {
-	packedHostEnv, err := anypb.New(&kubetool.KubernetesEnv{Namespace: r.ns()})
+	packedHostEnv, err := anypb.New(&kubetool.KubernetesEnv{Namespace: r.ns("")})
 	if err != nil {
 		return nil, err
 	}
@@ -180,8 +180,8 @@ func (r k8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 	def, err := (kubedef.Apply{
 		Description: "Namespace",
 		Resource:    "namespaces",
-		Name:        r.ns(),
-		Body:        applycorev1.Namespace(r.ns()).WithLabels(kubedef.MakeLabels(r.env, nil)),
+		Name:        r.ns(""),
+		Body:        applycorev1.Namespace(r.ns("")).WithLabels(kubedef.MakeLabels(r.env, nil)),
 	}).ToDefinition()
 	if err != nil {
 		return nil, err
@@ -233,7 +233,7 @@ func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.Act
 }
 
 func (r k8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
-	d, err := r.cli.AppsV1().Deployments(r.ns()).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
+	d, err := r.cli.AppsV1().Deployments(r.ns(schema.PackageName(server.PackageName))).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
 	if err != nil {
 		// XXX better error messages.
 		return oci.ImageID{}, err
@@ -312,7 +312,7 @@ func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 		}
 	}
 
-	state.hints = append(state.hints, fmt.Sprintf("Track your deployment with %s.", colors.Bold(fmt.Sprintf("kubectl -n %s get pods", r.ns()))))
+	state.hints = append(state.hints, fmt.Sprintf("Track your deployment with %s.", colors.Bold(fmt.Sprintf("kubectl -n %s get pods", r.ns("")))))
 
 	return state, nil
 }
@@ -320,7 +320,7 @@ func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 func (r k8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
 	var state deploymentState
 
-	certSecretMap, secrets := ingress.MakeCertificateSecrets(r.ns(), allFragments)
+	certSecretMap, secrets := ingress.MakeCertificateSecrets(r.ns(""), allFragments)
 
 	for _, apply := range secrets {
 		// XXX we could actually collect which servers refer what certs, to use as scope.
@@ -345,7 +345,7 @@ func (r k8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 			continue
 		}
 
-		defs, m, err := ingress.Ensure(ctx, r.ns(), r.env, srv.Server, frags, certSecretMap)
+		defs, m, err := ingress.Ensure(ctx, r.ns(schema.PackageName(srv.Server.PackageName)), r.env, srv.Server, frags, certSecretMap)
 		if err != nil {
 			return nil, err
 		}
@@ -384,7 +384,7 @@ func (r k8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 func (r k8sRuntime) PlanShutdown(ctx context.Context, foci []provision.Server, stack []provision.Server) ([]*schema.Definition, error) {
 	var definitions []*schema.Definition
 
-	if del, err := ingress.Delete(r.ns(), stack); err != nil {
+	if del, err := ingress.Delete(r.ns(""), stack); err != nil {
 		return nil, err
 	} else {
 		definitions = append(definitions, del...)
@@ -396,7 +396,7 @@ func (r k8sRuntime) PlanShutdown(ctx context.Context, foci []provision.Server, s
 		ops = append(ops, kubedef.DeleteList{
 			Description: "Services",
 			Resource:    "services",
-			Namespace:   r.ns(),
+			Namespace:   r.ns(t.PackageName()),
 			Selector:    kubedef.SelectById(t.Proto()),
 		})
 
@@ -404,14 +404,14 @@ func (r k8sRuntime) PlanShutdown(ctx context.Context, foci []provision.Server, s
 			ops = append(ops, kubedef.Delete{
 				Description: "StatefulSet",
 				Resource:    "statefulsets",
-				Namespace:   r.ns(),
+				Namespace:   r.ns(t.PackageName()),
 				Name:        kubedef.MakeDeploymentId(t.Proto()),
 			})
 		} else {
 			ops = append(ops, kubedef.Delete{
 				Description: "Deployment",
 				Resource:    "deployments",
-				Namespace:   r.ns(),
+				Namespace:   r.ns(t.PackageName()),
 				Name:        kubedef.MakeDeploymentId(t.Proto()),
 			})
 		}
@@ -504,7 +504,7 @@ func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 	}
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)
-	p := newPodResolver(r.cli, r.boundEnv.ns(), map[string]string{
+	p := newPodResolver(r.cli, r.boundEnv.ns(schema.PackageName(server.PackageName)), map[string]string{
 		kubedef.K8sServerId: server.Id,
 	})
 
@@ -512,7 +512,7 @@ func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 
 	go func() {
 		if err := r.boundEnv.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
-			Namespace:     r.boundEnv.ns(),
+			Namespace:     r.boundEnv.ns(schema.PackageName(server.PackageName)),
 			Identifier:    server.PackageName,
 			LocalAddrs:    localAddrs,
 			LocalPort:     0,
@@ -599,7 +599,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 			// No cancelation, moving along.
 		}
 
-		pods, err := r.cli.CoreV1().Pods(r.ns()).List(ctx, metav1.ListOptions{
+		pods, err := r.cli.CoreV1().Pods(r.ns(schema.PackageName(srv.PackageName))).List(ctx, metav1.ListOptions{
 			LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
 		})
 		if err != nil {
@@ -615,7 +615,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 		labels := map[string]string{}
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == v1.PodRunning {
-				instance := makePodRef(r.ns(), pod.Name, serverCtrName(srv))
+				instance := makePodRef(r.ns(schema.PackageName(srv.PackageName)), pod.Name, serverCtrName(srv))
 				keys = append(keys, Key{
 					Instance:  instance,
 					CreatedAt: pod.CreationTimestamp.Time,
@@ -625,7 +625,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 
 				if ObserveInitContainerLogs {
 					for _, container := range pod.Spec.InitContainers {
-						instance := makePodRef(r.ns(), pod.Name, container.Name)
+						instance := makePodRef(r.ns(schema.PackageName(srv.PackageName)), pod.Name, container.Name)
 						keys = append(keys, Key{Instance: instance, CreatedAt: pod.CreationTimestamp.Time})
 						newM[instance.UniqueID()] = struct{}{}
 						labels[instance.UniqueID()] = fmt.Sprintf("%s:%s", pod.Name, container.Name)
@@ -672,9 +672,9 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 }
 
 func (r k8sRuntime) DeleteRecursively(ctx context.Context) error {
-	return tasks.Action("kubernetes.namespace.delete").Arg("namespace", r.ns()).Run(ctx, func(ctx context.Context) error {
+	return tasks.Action("kubernetes.namespace.delete").Arg("namespace", r.ns("")).Run(ctx, func(ctx context.Context) error {
 		var grace int64 = 0
-		return r.cli.CoreV1().Namespaces().Delete(ctx, r.ns(), metav1.DeleteOptions{
+		return r.cli.CoreV1().Namespaces().Delete(ctx, r.ns(""), metav1.DeleteOptions{
 			GracePeriodSeconds: &grace,
 		})
 	})
