@@ -6,6 +6,7 @@ package logs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -100,7 +101,7 @@ func (t *term) newLogTailMultiple(ctx context.Context, root *workspace.Root, env
 		t.cancelFuncs = append(t.cancelFuncs, cancelF)
 		go func() {
 			err := NewLogTail(ctxWithCancel, root, envRef, server)
-			if err != nil {
+			if err != nil && !errors.Is(err, context.Canceled) {
 				fmt.Fprintf(console.Errors(ctx), "Error starting logs: %v\n", err)
 			}
 		}()
