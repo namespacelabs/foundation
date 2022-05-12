@@ -152,7 +152,9 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 	}
 
 	if root.Workspace.ModuleName != cliModule {
-		alloc.checkResolve(ctx, schema.PackageName(cliModule))
+		if _, err := alloc.checkResolve(ctx, schema.PackageName(cliModule)); err != nil {
+			return err
+		}
 	}
 
 	root.Workspace.Dep = nil
