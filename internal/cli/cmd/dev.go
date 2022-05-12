@@ -97,7 +97,9 @@ func NewDevCmd() *cobra.Command {
 				}
 				defer stackState.Close()
 
-				go stackState.Run(ctx)
+				go func() {
+					_ = stackState.Run(ctx)
+				}()
 
 				// Kick off the dev workflow.
 				stackState.Ch <- &devworkflow.DevWorkflowRequest{
