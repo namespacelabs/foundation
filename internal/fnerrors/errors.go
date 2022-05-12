@@ -5,6 +5,7 @@
 package fnerrors
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -36,6 +37,10 @@ func Wrap(loc Location, err error) error {
 func Wrapf(loc Location, err error, whatFmt string, args ...interface{}) error {
 	args = append(args, err)
 	return &userError{fnError: fnError{Err: fmt.Errorf(whatFmt+": %w", args...), stack: stacktrace.New()}, Location: loc}
+}
+
+func WithLogs(err error, readerF func() io.Reader) error {
+	return &errWithLogs{err, readerF}
 }
 
 func UserError(loc Location, format string, args ...interface{}) error {
@@ -120,6 +125,11 @@ type invocationError struct {
 	expected bool
 }
 
+type errWithLogs struct {
+	Err     error
+	readerF func() io.Reader // Returns reader with command's stderr output.
+}
+
 func IsExpected(err error) (string, bool) {
 	if x, ok := unwrap(err).(*internalError); ok && x.expected {
 		return x.Err.Error(), true
@@ -148,6 +158,10 @@ func (e *internalError) Error() string {
 
 func (e *invocationError) Error() string {
 	return fmt.Sprintf("failed when calling resource: %s", e.Err.Error())
+}
+
+func (e *errWithLogs) Error() string {
+	return e.Err.Error()
 }
 
 type VersionError struct {
@@ -244,6 +258,29 @@ func format(w io.Writer, colors bool, err error) {
 		fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
 		errorReportRequest(w)
 
+	case *errWithLogs:
+		format(w, colors, x.Err)
+		fmt.Fprintf(w, "%s\n", bold("Captured logs:", colors))
+		const limitLines = 10
+		lines := make([]string, 0, limitLines)
+		scanner := bufio.NewScanner(x.readerF())
+		truncated := false
+		for scanner.Scan() {
+			if len(lines) < limitLines {
+				lines = append(lines, scanner.Text())
+			} else {
+				truncated = true
+				lines = append(lines[1:], scanner.Text())
+			}
+		}
+		if truncated {
+			fmt.Fprintf(w, "%s%d%s\n", italic("... (truncated to last ", colors), limitLines, italic(" lines) ...", colors))
+		}
+		for _, line := range lines {
+			fmt.Fprintf(w, "%s\n", line)
+		}
+		fmt.Fprintln(w)
+
 	case cueerrors.Error:
 		err := cueerrors.Sanitize(x)
 		for _, e := range cueerrors.Errors(err) {
@@ -291,6 +328,13 @@ func formatLabel(str string, colors bool) string {
 func bold(str string, colors bool) string {
 	if colors {
 		return aec.Bold.Apply(str)
+	}
+	return str
+}
+
+func italic(str string, colors bool) string {
+	if colors {
+		return aec.Italic.Apply(str)
 	}
 	return str
 }
