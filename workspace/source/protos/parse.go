@@ -17,7 +17,7 @@ import (
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/internal/wscontents"
+	"namespacelabs.dev/foundation/workspace/dirs"
 
 	// Include descriptors for generated googleapis.
 	_ "google.golang.org/genproto/googleapis/api/annotations"
@@ -119,7 +119,7 @@ func expandProtoList(fsys fs.FS, files []string) ([]string, error) {
 		}
 
 		if st.IsDir() {
-			if slices.Contains(wscontents.AllDirsToAvoid, st.Name()) {
+			if slices.Contains(dirs.AllDirsToAvoid, st.Name()) {
 				continue
 			}
 			dirents, err := fs.ReadDir(fsys, f)

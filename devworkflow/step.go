@@ -37,6 +37,8 @@ func setWorkspace(ctx context.Context, env provision.Env, packageName string, ad
 
 			focusServers := provision.RequireServers(env, serverPackages...)
 
+			fmt.Fprintf(console.Debug(ctx), "devworkflow: setWorkspace.Do\n")
+
 			// Changing the graph is fairly heavy-weight at this point, as it will lead to
 			// a rebuild of all packages (although they'll likely hit the cache), as well
 			// as a full re-deployment, re-port forward, etc. Ideally this would be more

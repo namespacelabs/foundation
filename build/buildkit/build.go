@@ -18,10 +18,10 @@ import (
 	"github.com/moby/buildkit/session/sshforward/sshprovider"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
+	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 
 	_ "github.com/moby/buildkit/client/connhelper/dockercontainer"
@@ -85,7 +85,7 @@ type frontendReq struct {
 
 func MakeLocalState(src LocalContents) llb.State {
 	var excludePatterns []string
-	for _, dir := range wscontents.AllDirsToAvoid {
+	for _, dir := range dirs.AllDirsToAvoid {
 		excludePatterns = append(excludePatterns, "**/"+dir+"/")
 	}
 	excludePatterns = append(excludePatterns, devhost.DevHostFilename)

@@ -147,6 +147,8 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 	s.requested.envName = envName
 	s.requested.servers = servers
 
+	fmt.Fprintf(console.Debug(parentCtx), "devworkflow: setWorkspace: %s %s %v\n", envName, absRoot, servers)
+
 	if len(servers) > 0 {
 		ctx, newCancel := context.WithCancel(parentCtx)
 		s.cancelWorkspace = newCancel

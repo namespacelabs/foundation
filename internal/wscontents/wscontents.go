@@ -28,16 +28,9 @@ import (
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
-
-var DirsToAvoid = []string{"node_modules"}
-var AllDirsToAvoid = append([]string{".git", ".parcel-cache"}, DirsToAvoid...)
-
-// Returns a Computable[fs.FS]
-func Load(absPath string) compute.Computable[fs.FS] {
-	return &computeContents{absPath: absPath}
-}
 
 // Observe returns a Computable that is Versioned, that is, it produces a value
 // but can also be observed for updates. It produces a new revision whenever the
@@ -123,7 +116,7 @@ func snapshotContents(modulePath, rel string) (*memfs.FS, error) {
 				return godirwalk.SkipThis
 			} else if name[0] == '.' { // Skip hidden directories.
 				return godirwalk.SkipThis
-			} else if slices.Contains(DirsToAvoid, name) {
+			} else if slices.Contains(dirs.DirsToAvoid, name) {
 				return godirwalk.SkipThis
 			}
 
@@ -291,7 +284,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 			return err
 		}
 
-		if (path != "." && path[0] == '.') || slices.Contains(DirsToAvoid, d.Name()) {
+		if (path != "." && path[0] == '.') || slices.Contains(dirs.DirsToAvoid, d.Name()) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}

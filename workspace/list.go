@@ -13,7 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/wscontents"
+	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 type SchemaList struct {
@@ -45,7 +45,7 @@ func ListSchemasWithOpt(ctx context.Context, root *Root, opt ListSchemaOpt) (Sch
 		}
 
 		if d.IsDir() {
-			if (path != "." && path[0] == '.') || slices.Contains(wscontents.DirsToAvoid, d.Name()) {
+			if (path != "." && path[0] == '.') || slices.Contains(dirs.DirsToAvoid, d.Name()) {
 				return fs.SkipDir
 			}
 			return nil
