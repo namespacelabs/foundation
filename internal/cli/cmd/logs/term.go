@@ -31,6 +31,7 @@ func NewTerm() Term {
 
 type term struct {
 	cancelFuncs []context.CancelFunc
+	showingLogs bool
 }
 
 // HandleEvents processes user keystroke events and dev workflow updates.
@@ -49,12 +50,11 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 	}()
 
 	envRef := ""
-	showingLogs := false
 	for {
 		select {
 		case update := <-ch:
 			if update.StackUpdate != nil && update.StackUpdate.Env != nil {
-				if showingLogs && envRef != update.StackUpdate.Env.Name {
+				if t.showingLogs && envRef != update.StackUpdate.Env.Name {
 					t.stopLogging()
 					t.newLogTailMultiple(ctx, root, update.StackUpdate.Env.Name, serverProtos)
 				}
@@ -68,10 +68,13 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 				t.stopLogging()
 				return
 			}
-			if string(c) == "l" && envRef != "" && !showingLogs {
-				showingLogs = true
-				t.newLogTailMultiple(ctx, root, envRef, serverProtos)
-				// TODO handle multiple keystrokes.
+			if string(c) == "l" && envRef != "" {
+				if t.showingLogs {
+					t.stopLogging()
+				} else {
+					t.newLogTailMultiple(ctx, root, envRef, serverProtos)
+				}
+				t.showingLogs = !t.showingLogs
 			}
 		case <-ctx.Done():
 			r.cancel()
@@ -81,7 +84,11 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 }
 
 func (t term) SetConsoleSticky(ctx context.Context) {
-	cmds := fmt.Sprintf(" (%s): logs (%s): quit", aec.Bold.Apply("l"), aec.Bold.Apply("q"))
+	logCmd := "stream logs"
+	if t.showingLogs {
+		logCmd = "pause logs " // Additional space at the end for a better allignment.
+	}
+	cmds := fmt.Sprintf(" (%s): %s (%s): quit", aec.Bold.Apply("l"), logCmd, aec.Bold.Apply("q"))
 	updateCmd(ctx, cmds)
 }
 
