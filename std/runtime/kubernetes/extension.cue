@@ -28,7 +28,7 @@ extension: fn.#Extension & {
 
 $env:     inputs.#Environment
 $ephCtrl: inputs.#Server & {
-	packageName: "namespacelabs.dev/foundation/std/monitoring/grafana/server"
+	packageName: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/ephemeral"
 }
 
 configure: fn.#Configure & {
