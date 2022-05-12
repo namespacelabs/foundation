@@ -21,7 +21,6 @@ import (
 
 const (
 	adminNamespace = "fn-admin"
-	ctrlPackage    = "namespacelabs.dev/foundation/std/runtime/kubernetes/controller"
 )
 
 // We use separate roles/accs to maintain a minimum set of permissions per usecase.
