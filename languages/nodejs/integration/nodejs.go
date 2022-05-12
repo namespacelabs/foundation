@@ -45,7 +45,6 @@ const (
 	grpcPkg       schema.PackageName = "namespacelabs.dev/foundation/languages/nodejs/grpc"
 	// Yarn version of the packages in the same module. Doesn't really matter what the value here is.
 	defaultPackageVersion = "0.0.0"
-	yarnVersion           = "3.2.0"
 	yarnRcFn              = ".yarnrc.yml"
 	fnYarnPluginPath      = ".yarn/plugins/plugin-foundation.cjs"
 	yarnGitIgnore         = ".yarn/.gitignore"
@@ -66,9 +65,7 @@ npmScopes:
 
 plugins:
   - path: %s
-
-yarnPath: .yarn/releases/yarn-%s.cjs
-`, fnYarnPluginPath, yarnVersion)
+`, fnYarnPluginPath)
 	yarnGitIgnoreContent = fmt.Sprintf(
 		`/.gitignore
 %s
@@ -535,22 +532,10 @@ func (s *yarnRootGenSession) Commit() error {
 }
 
 func generateYarnRoot(ctx context.Context, path string, out fnfs.ReadWriteFS) error {
-	yarnHasCorrectVersion, err := updateYarnRootPackageJson(ctx, path, out)
+	err := updateYarnRootPackageJson(ctx, path, out)
 
 	if err != nil {
 		return err
-	}
-
-	// Install Yarn 3+ if needed
-	if !yarnHasCorrectVersion {
-		if err := yarn.RunYarn(ctx, path, []string{"set", "version", yarnVersion}); err != nil {
-			return err
-		}
-		// Yarn adds "packageManager" field to the end of package.json, re-format it in alphapetical order
-		// to make tn tidy idempotent.
-		if _, err = updateYarnRootPackageJson(ctx, path, out); err != nil {
-			return err
-		}
 	}
 
 	// Write .yarnrc.yml with the correct nodeLinker.
@@ -604,17 +589,14 @@ func generateYarnRoot(ctx context.Context, path string, out fnfs.ReadWriteFS) er
 }
 
 // Returns whether yarn has the correct version
-func updateYarnRootPackageJson(ctx context.Context, path string, fs fnfs.ReadWriteFS) (bool, error) {
-	yarnHasCorrectVersion := false
+func updateYarnRootPackageJson(ctx context.Context, path string, fs fnfs.ReadWriteFS) error {
 	_, err := updatePackageJson(ctx, path, fs, func(packageJson map[string]interface{}, fileExisted bool) {
 		packageJson["private"] = true
 		packageJson["workspaces"] = []string{"**/*"}
 		packageJson["devDependencies"] = map[string]string{
 			"typescript": builtin().Dependencies["typescript"],
 		}
-		yarnWithVersion := fmt.Sprintf("yarn@%s", yarnVersion)
-		yarnHasCorrectVersion = packageJson["packageManager"] == yarnWithVersion
 	})
 
-	return yarnHasCorrectVersion, err
+	return err
 }
