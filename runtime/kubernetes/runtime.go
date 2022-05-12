@@ -16,6 +16,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 	v1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
@@ -677,8 +678,13 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 func (r k8sRuntime) DeleteRecursively(ctx context.Context) error {
 	return tasks.Action("kubernetes.namespace.delete").Arg("namespace", r.ns("")).Run(ctx, func(ctx context.Context) error {
 		var grace int64 = 0
-		return r.cli.CoreV1().Namespaces().Delete(ctx, r.ns(""), metav1.DeleteOptions{
+		err := r.cli.CoreV1().Namespaces().Delete(ctx, r.ns(""), metav1.DeleteOptions{
 			GracePeriodSeconds: &grace,
 		})
+		if k8serrors.IsNotFound(err) {
+			// Namespace already deleted
+			return nil
+		}
+		return err
 	})
 }
