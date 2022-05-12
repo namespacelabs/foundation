@@ -11,6 +11,7 @@ import (
 	"os/exec"
 
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -39,8 +40,9 @@ func (c Command) Run(ctx context.Context) error {
 			tasks.Attachments(ctx).Output(tasks.Output("stdout", "text/plain")),
 		)
 
+		const stderrOutputName = "stderr"
 		stderr := io.MultiWriter(out,
-			tasks.Attachments(ctx).Output(tasks.Output("stderr", "text/plain")),
+			tasks.Attachments(ctx).Output(tasks.Output(stderrOutputName, "text/plain")),
 		)
 
 		cmd := exec.CommandContext(ctx, c.Command, c.Args...)
@@ -49,7 +51,12 @@ func (c Command) Run(ctx context.Context) error {
 		cmd.Stderr = stderr
 		cmd.Env = append(os.Environ(), c.AdditionalEnv...)
 
-		return RunAndPropagateCancelation(ctx, c.label(), cmd)
+		if err := RunAndPropagateCancelation(ctx, c.label(), cmd); err != nil {
+			// TODO consider passing an ID of a buffer instead of a callback.
+			readerF := func() io.Reader { return tasks.Attachments(ctx).ReaderByName(stderrOutputName) }
+			return fnerrors.CommandError(readerF, "invocation failed: %w", err)
+		}
+		return nil
 	})
 }
 
