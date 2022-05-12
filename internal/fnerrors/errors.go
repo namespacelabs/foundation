@@ -5,6 +5,7 @@
 package fnerrors
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -38,7 +39,7 @@ func Wrapf(loc Location, err error, whatFmt string, args ...interface{}) error {
 	return &userError{fnError: fnError{Err: fmt.Errorf(whatFmt+": %w", args...), stack: stacktrace.New()}, Location: loc}
 }
 
-func WithLogs(readerF func() io.Reader, err error) error {
+func WithLogs(err error, readerF func() io.Reader) error {
 	return &errWithLogs{err, readerF}
 }
 
@@ -260,8 +261,24 @@ func format(w io.Writer, colors bool, err error) {
 	case *errWithLogs:
 		format(w, colors, x.Err)
 		fmt.Fprintf(w, "%s\n", bold("Captured logs:", colors))
-		// TODO: limit the number of lines to last N
-		_, _ = io.Copy(w, x.readerF()) // ignore error handling
+		const limitLines = 10
+		lines := make([]string, 0, limitLines)
+		scanner := bufio.NewScanner(x.readerF())
+		truncated := false
+		for scanner.Scan() {
+			if len(lines) < limitLines {
+				lines = append(lines, scanner.Text())
+			} else {
+				truncated = true
+				lines = append(lines[1:], scanner.Text())
+			}
+		}
+		if truncated {
+			fmt.Fprintf(w, "%s%d%s\n", italic("... (truncated to last ", colors), limitLines, italic(" lines ...", colors))
+		}
+		for _, line := range lines {
+			fmt.Fprintf(w, "%s\n", line)
+		}
 		fmt.Fprintln(w)
 
 	case cueerrors.Error:
@@ -311,6 +328,13 @@ func formatLabel(str string, colors bool) string {
 func bold(str string, colors bool) string {
 	if colors {
 		return aec.Bold.Apply(str)
+	}
+	return str
+}
+
+func italic(str string, colors bool) string {
+	if colors {
+		return aec.Italic.Apply(str)
 	}
 	return str
 }

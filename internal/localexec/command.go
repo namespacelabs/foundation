@@ -52,9 +52,8 @@ func (c Command) Run(ctx context.Context) error {
 		cmd.Env = append(os.Environ(), c.AdditionalEnv...)
 
 		if err := RunAndPropagateCancelation(ctx, c.label(), cmd); err != nil {
-			// TODO consider passing an ID of a buffer instead of a callback.
 			readerF := func() io.Reader { return tasks.Attachments(ctx).ReaderByName(stderrOutputName) }
-			return fnerrors.WithLogs(readerF, err)
+			return fnerrors.WithLogs(err, readerF)
 		}
 		return nil
 	})
