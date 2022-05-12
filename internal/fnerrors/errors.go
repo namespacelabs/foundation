@@ -38,6 +38,10 @@ func Wrapf(loc Location, err error, whatFmt string, args ...interface{}) error {
 	return &userError{fnError: fnError{Err: fmt.Errorf(whatFmt+": %w", args...), stack: stacktrace.New()}, Location: loc}
 }
 
+func WithLogs(readerF func() io.Reader, err error) error {
+	return &errWithLogs{err, readerF}
+}
+
 func UserError(loc Location, format string, args ...interface{}) error {
 	return &userError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, Location: loc}
 }
@@ -55,11 +59,6 @@ func InternalError(format string, args ...interface{}) error {
 // A call to a remote endpoint failed, perhaps due to a transient issue.
 func InvocationError(format string, args ...interface{}) error {
 	return &invocationError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
-}
-
-// An invoked command failed.
-func CommandError(f func() io.Reader, format string, args ...interface{}) error {
-	return &commandError{fmt.Errorf(format, args...), f, false}
 }
 
 // The input does match our expectations (e.g. missing bits, wrong version, etc).
@@ -125,10 +124,9 @@ type invocationError struct {
 	expected bool
 }
 
-type commandError struct {
-	Err      error
-	readerF  func() io.Reader // Returns reader with command's stderr output.
-	expected bool
+type errWithLogs struct {
+	Err     error
+	readerF func() io.Reader // Returns reader with command's stderr output.
 }
 
 func IsExpected(err error) (string, bool) {
@@ -161,8 +159,8 @@ func (e *invocationError) Error() string {
 	return fmt.Sprintf("failed when calling resource: %s", e.Err.Error())
 }
 
-func (e *commandError) Error() string {
-	return fmt.Sprintf("command failed: %s", e.Err.Error())
+func (e *errWithLogs) Error() string {
+	return e.Err.Error()
 }
 
 type VersionError struct {
@@ -259,9 +257,9 @@ func format(w io.Writer, colors bool, err error) {
 		fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
 		errorReportRequest(w)
 
-	case *commandError:
-		fmt.Fprintf(w, "%s: %v\n", bold("command error", colors), x.Err)
-		fmt.Fprintf(w, "%s\n", bold("command's stderr:", colors))
+	case *errWithLogs:
+		format(w, colors, x.Err)
+		fmt.Fprintf(w, "%s\n", bold("Captured logs:", colors))
 		// TODO: limit the number of lines to last N
 		_, _ = io.Copy(w, x.readerF()) // ignore error handling
 		fmt.Fprintln(w)

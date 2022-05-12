@@ -54,7 +54,7 @@ func (c Command) Run(ctx context.Context) error {
 		if err := RunAndPropagateCancelation(ctx, c.label(), cmd); err != nil {
 			// TODO consider passing an ID of a buffer instead of a callback.
 			readerF := func() io.Reader { return tasks.Attachments(ctx).ReaderByName(stderrOutputName) }
-			return fnerrors.CommandError(readerF, "invocation failed: %w", err)
+			return fnerrors.WithLogs(readerF, err)
 		}
 		return nil
 	})
