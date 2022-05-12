@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/http/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -85,7 +84,9 @@ func NewDevCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
+
 				t := logs.NewTerm()
+
 				// This has to happen before new stackState gets created to render commands at the top.
 				t.SetConsoleSticky(ctx)
 				stickies := []string{fmt.Sprintf("fn dev web ui running at: http://%s", servingAddr)}
@@ -109,8 +110,8 @@ func NewDevCmd() *cobra.Command {
 						},
 					},
 				}
-				r := mux.NewRouter()
 
+				r := mux.NewRouter()
 				srv := &http.Server{
 					Handler:      r,
 					Addr:         servingAddr,
@@ -121,13 +122,7 @@ func NewDevCmd() *cobra.Command {
 
 				shutdownErr := make(chan error)
 
-				r.PathPrefix("/debug/pprof/").HandlerFunc(pprof.Index)
-				r.PathPrefix("/debug/pprof/cmdline").HandlerFunc(pprof.Cmdline)
-				r.PathPrefix("/debug/pprof/profile").HandlerFunc(pprof.Profile)
-				r.PathPrefix("/debug/pprof/symbol").HandlerFunc(pprof.Symbol)
-				r.PathPrefix("/debug/pprof/trace").HandlerFunc(pprof.Trace)
-				r.PathPrefix("/debug/pprof/goroutine").HandlerFunc(pprof.Index)
-
+				fncobra.RegisterPprof(r)
 				devworkflow.RegisterEndpoints(stackState, r)
 
 				ch, done := stackState.NewClient()

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/logs"
+	"github.com/gorilla/mux"
 	"github.com/muesli/reflow/indent"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/rs/zerolog"
@@ -73,13 +74,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	setupViper()
 
 	if viper.GetBool("enable_pprof") {
-		h := http.NewServeMux()
-		h.HandleFunc("/debug/pprof/", httppprof.Index)
-		h.HandleFunc("/debug/pprof/cmdline", httppprof.Cmdline)
-		h.HandleFunc("/debug/pprof/profile", httppprof.Profile)
-		h.HandleFunc("/debug/pprof/symbol", httppprof.Symbol)
-		h.HandleFunc("/debug/pprof/trace", httppprof.Trace)
-
+		h := mux.NewRouter()
+		RegisterPprof(h)
 		go func() {
 			log.Println(http.ListenAndServe("localhost:6060", h))
 		}()
@@ -504,4 +500,13 @@ func checkRemoteStatus(logger *zerolog.Logger, channel chan remoteStatus) {
 
 		channel <- *status
 	}
+}
+
+func RegisterPprof(r *mux.Router) {
+	r.PathPrefix("/debug/pprof/").HandlerFunc(httppprof.Index)
+	r.PathPrefix("/debug/pprof/cmdline").HandlerFunc(httppprof.Cmdline)
+	r.PathPrefix("/debug/pprof/profile").HandlerFunc(httppprof.Profile)
+	r.PathPrefix("/debug/pprof/symbol").HandlerFunc(httppprof.Symbol)
+	r.PathPrefix("/debug/pprof/trace").HandlerFunc(httppprof.Trace)
+	r.PathPrefix("/debug/pprof/goroutine").HandlerFunc(httppprof.Index)
 }
