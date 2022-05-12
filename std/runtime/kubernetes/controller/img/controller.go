@@ -11,6 +11,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -81,7 +82,8 @@ func watchNamespace(ctx context.Context, clientset *kubernetes.Clientset, ns *co
 		select {
 		case <-time.After(remaining):
 			log.Printf("deleting stale ephemeral namespace %q", ns.Name)
-			if err := clientset.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{}); err != nil {
+			err := clientset.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{})
+			if err != nil && !k8serrors.IsNotFound(err) {
 				log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
 			}
 			return
