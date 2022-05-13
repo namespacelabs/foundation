@@ -180,7 +180,6 @@ func (l *reqToImage) Output() compute.Output {
 
 func (l *reqToImage) ImageRef() string { return "(buildkit)" } // Implements HasImageRef
 
-var errLogCtx = newErrContext()
 
 func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
 	// TargetName is not added as a dependency of the `reqToImage` compute node, or
@@ -196,7 +195,7 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 		if v.Keychain == nil {
 			i, err := solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
 			if err != nil {
-				bufNames := errLogCtx.getBufNames(ctx)
+				bufNames := tasks.GetErrContext(ctx).GetBufNames()
 				for i := range bufNames {
 					err = fnerrors.WithLogs(
 						err,

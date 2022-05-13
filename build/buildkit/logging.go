@@ -36,7 +36,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 	outText := attachments.Output(tasks.TaskOutputTextLog)
 	outJSON := attachments.Output(TaskOutputBuildkitJsonLog)
 
-	errLogCtx.addLog(ctx, tasks.TaskOutputTextLog)
+	tasks.GetErrContext(ctx).AddLog(tasks.TaskOutputTextLog)
 
 	writers := []io.Writer{outText}
 	jsonWriters := []io.Writer{outJSON}
@@ -173,12 +173,13 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 
 			for _, log := range event.Logs {
 				if streams[log.Stream] == nil {
+					// TODO 2 buffers are enough - now we have 3 (as console creates 2).
 					outputName := tasks.Output(consoleName(log.Stream), "text/plain")
 					output := tasks.Attachments(ctx).Output(outputName)
 					streams[log.Stream] = io.MultiWriter(
 						output,
 						console.Output(ctx, consoleName(log.Stream)))
-					errLogCtx.addLog(ctx, outputName)
+					tasks.GetErrContext(ctx).AddLog(outputName)
 				}
 
 				_, _ = streams[log.Stream].Write(log.Data)
