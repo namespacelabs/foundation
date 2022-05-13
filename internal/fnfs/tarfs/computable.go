@@ -11,11 +11,12 @@ import (
 	"io/fs"
 
 	"namespacelabs.dev/foundation/internal/artifacts"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func TarGunzip(contents compute.Computable[compute.ByteStream]) compute.Computable[fs.FS] {
+func TarGunzip(contents compute.Computable[bytestream.ByteStream]) compute.Computable[fs.FS] {
 	return compute.Map(tasks.Action("tar.fs"),
 		compute.Inputs().Computable("contents", contents),
 		compute.Output{},

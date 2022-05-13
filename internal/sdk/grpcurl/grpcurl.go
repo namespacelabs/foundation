@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/schema"
@@ -84,8 +85,8 @@ func SDK(ctx context.Context) (compute.Computable[Grpcurl], error) {
 		}), nil
 }
 
-func AllDownloads() []compute.Computable[compute.ByteStream] {
-	var downloads []compute.Computable[compute.ByteStream]
+func AllDownloads() []compute.Computable[bytestream.ByteStream] {
+	var downloads []compute.Computable[bytestream.ByteStream]
 	for _, v := range Pins {
 		downloads = append(downloads, download.URL(v))
 	}

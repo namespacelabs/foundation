@@ -11,6 +11,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -56,6 +57,6 @@ func SDK(ctx context.Context) (compute.Computable[Yarn], error) {
 		}), nil
 }
 
-func AllDownloads() []compute.Computable[compute.ByteStream] {
-	return []compute.Computable[compute.ByteStream]{download.URL(Pin)}
+func AllDownloads() []compute.Computable[bytestream.ByteStream] {
+	return []compute.Computable[bytestream.ByteStream]{download.URL(Pin)}
 }

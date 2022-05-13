@@ -13,16 +13,11 @@ import (
 	"os"
 	"sync"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
-
-type ByteStream interface {
-	Digest() schema.Digest
-	ContentLength() uint64
-	Reader() (io.ReadCloser, error)
-}
 
 func NewByteStream(ctx context.Context) (*ByteStreamWriter, error) {
 	f, err := dirs.CreateUserTemp("compute", "bytestream")
@@ -54,8 +49,8 @@ type byteStream struct {
 	consumed bool
 }
 
-func (bsw *byteStream) Digest() schema.Digest {
-	return bsw.digest
+func (bsw *byteStream) ComputeDigest(context.Context) (schema.Digest, error) {
+	return bsw.digest, nil
 }
 
 func (bsw *byteStream) ContentLength() uint64 {
@@ -97,7 +92,7 @@ func (bsw *ByteStreamWriter) Close() error {
 	return bsw.f.Close()
 }
 
-func (bsw *ByteStreamWriter) Complete() (ByteStream, error) {
+func (bsw *ByteStreamWriter) Complete() (bytestream.ByteStream, error) {
 	if err := bsw.f.Close(); err != nil {
 		return nil, err
 	}

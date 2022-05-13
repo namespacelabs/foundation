@@ -23,6 +23,7 @@ import (
 	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -150,7 +151,7 @@ func (sdk LocalSDK) ComputeDigest(context.Context) (schema.Digest, error) {
 
 type installSDK struct {
 	sdk       LocalSDK
-	tarStream compute.Computable[compute.ByteStream]
+	tarStream compute.Computable[bytestream.ByteStream]
 
 	compute.DoScoped[LocalSDK]
 }

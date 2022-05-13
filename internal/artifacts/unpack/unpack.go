@@ -12,6 +12,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -25,7 +26,7 @@ type writeLocal struct {
 	url      string
 	absPath  string
 	perm     os.FileMode
-	download compute.Computable[compute.ByteStream]
+	download compute.Computable[bytestream.ByteStream]
 
 	compute.LocalScoped[string]
 }
@@ -52,9 +53,14 @@ func (wl *writeLocal) Compute(ctx context.Context, deps compute.Resolved) (strin
 	dir := filepath.Dir(wl.absPath)
 	name := filepath.Base(wl.absPath)
 
+	digest, err := bytestream.Digest(ctx, download)
+	if err != nil {
+		return "", err
+	}
+
 	if err := fnfs.WriteFileExtended(ctx, fnfs.ReadWriteLocalFS(dir), name, wl.perm,
 		fnfs.WriteFileExtendedOpts{
-			ContentsDigest: download.Digest(),
+			ContentsDigest: digest,
 			EnsureFileMode: true,
 		},
 		func(w io.Writer) error {

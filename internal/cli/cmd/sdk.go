@@ -14,6 +14,7 @@ import (
 	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -87,7 +88,7 @@ func sdkList(sdks []string, goVersion string) []sdk {
 }
 
 func simpleFileSDK[V ~string](name string, makeComputable func(context.Context) (compute.Computable[V], error),
-	allDownloads func() []compute.Computable[compute.ByteStream]) sdk {
+	allDownloads func() []compute.Computable[bytestream.ByteStream]) sdk {
 	return sdk{
 		name: name,
 		make: func(ctx context.Context, in *compute.In, verify bool) (*compute.In, error) {

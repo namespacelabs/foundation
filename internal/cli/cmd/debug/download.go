@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -24,7 +25,7 @@ func newDownloadCmd() *cobra.Command {
 		Args:  cobra.ArbitraryArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			var downloads []compute.Computable[compute.ByteStream]
+			var downloads []compute.Computable[bytestream.ByteStream]
 
 			for _, arg := range args {
 				var artifact artifacts.Reference

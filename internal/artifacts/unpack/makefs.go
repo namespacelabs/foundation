@@ -13,6 +13,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -27,7 +28,7 @@ type makeFS struct {
 	ref artifacts.Reference // Presentation only.
 
 	dirent   memfs.FileDirent
-	contents compute.Computable[compute.ByteStream]
+	contents compute.Computable[bytestream.ByteStream]
 
 	compute.LocalScoped[fs.FS]
 }
@@ -53,7 +54,7 @@ func (u *makeFS) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, err
 
 type singleFileFS struct {
 	dirent   memfs.FileDirent
-	contents compute.ByteStream
+	contents bytestream.ByteStream
 }
 
 func (fsys singleFileFS) Open(name string) (fs.File, error) {

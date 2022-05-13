@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"namespacelabs.dev/foundation/internal/artifacts"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/ctxio"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -17,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func URL(ref artifacts.Reference) compute.Computable[compute.ByteStream] {
+func URL(ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {
 	return &downloadUrl{url: ref.URL, digest: ref.Digest}
 }
 
@@ -25,7 +26,7 @@ type downloadUrl struct {
 	url    string
 	digest schema.Digest
 
-	compute.LocalScoped[compute.ByteStream]
+	compute.LocalScoped[bytestream.ByteStream]
 }
 
 func (dl *downloadUrl) Action() *tasks.ActionEvent {
@@ -36,7 +37,7 @@ func (dl *downloadUrl) Inputs() *compute.In {
 	return compute.Inputs().Str("url", dl.url).Digest("digest", dl.digest)
 }
 
-func (dl *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (compute.ByteStream, error) {
+func (dl *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (bytestream.ByteStream, error) {
 	resp, err := http.Get(dl.url)
 	if err != nil {
 		return nil, err
@@ -72,7 +73,12 @@ func (dl *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (compute
 		return nil, err
 	}
 
-	if resultDigest := bs.Digest(); resultDigest != dl.digest {
+	resultDigest, err := bytestream.Digest(ctx, bs)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resultDigest.Equals(dl.digest) {
 		return nil, fnerrors.InternalError("artifact.download: %s: digest didn't match, got %s expected %s", dl.url, resultDigest, dl.digest)
 	}
 

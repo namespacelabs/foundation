@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/cache"
@@ -17,7 +18,7 @@ import (
 
 func RegisterBytesCacheable() {
 	RegisterCacheable[[]byte](bytesCacheable{})
-	RegisterCacheable[ByteStream](byteStreamCacheable{})
+	RegisterCacheable[bytestream.ByteStream](byteStreamCacheable{})
 }
 
 type bytesCacheable struct{}
@@ -48,14 +49,14 @@ func (bc bytesCacheable) Cache(ctx context.Context, c cache.Cache, contents []by
 
 type byteStreamCacheable struct{}
 
-func (bc byteStreamCacheable) ComputeDigest(_ context.Context, v interface{}) (schema.Digest, error) {
-	return v.(ByteStream).Digest(), nil
+func (bc byteStreamCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.Digest, error) {
+	return bytestream.Digest(ctx, v.(bytestream.ByteStream))
 }
 
-func (bc byteStreamCacheable) LoadCached(ctx context.Context, c cache.Cache, t CacheableInstance, d schema.Digest) (Result[ByteStream], error) {
+func (bc byteStreamCacheable) LoadCached(ctx context.Context, c cache.Cache, t CacheableInstance, d schema.Digest) (Result[bytestream.ByteStream], error) {
 	f, err := c.Blob(d)
 	if err != nil {
-		return Result[ByteStream]{}, err
+		return Result[bytestream.ByteStream]{}, err
 	}
 
 	defer f.Close()
@@ -63,16 +64,16 @@ func (bc byteStreamCacheable) LoadCached(ctx context.Context, c cache.Cache, t C
 	if file, ok := f.(*os.File); ok {
 		// Need to stat.
 		if st, err := file.Stat(); err != nil {
-			return Result[ByteStream]{}, fnerrors.InternalError("couldn't get content length of cache entry: %w", err)
+			return Result[bytestream.ByteStream]{}, fnerrors.InternalError("couldn't get content length of cache entry: %w", err)
 		} else {
-			return Result[ByteStream]{Digest: d, Value: cachedByteStream{c, d, uint64(st.Size())}}, nil
+			return Result[bytestream.ByteStream]{Digest: d, Value: cachedByteStream{c, d, uint64(st.Size())}}, nil
 		}
 	}
 
-	return Result[ByteStream]{}, fnerrors.New("unexpected cache implementation, couldn't get content length of cache entry")
+	return Result[bytestream.ByteStream]{}, fnerrors.New("unexpected cache implementation, couldn't get content length of cache entry")
 }
 
-func (bc byteStreamCacheable) Cache(ctx context.Context, c cache.Cache, v ByteStream) (schema.Digest, error) {
+func (bc byteStreamCacheable) Cache(ctx context.Context, c cache.Cache, v bytestream.ByteStream) (schema.Digest, error) {
 	if cached, ok := v.(cachedByteStream); ok {
 		// Don't rewrite, it's already cached.
 		return cached.digest, nil
@@ -83,7 +84,16 @@ func (bc byteStreamCacheable) Cache(ctx context.Context, c cache.Cache, v ByteSt
 		return schema.Digest{}, err
 	}
 
-	return v.Digest(), c.WriteBlob(ctx, v.Digest(), f)
+	digest, err := bytestream.Digest(ctx, v)
+	if err != nil {
+		return digest, err
+	}
+
+	if err := c.WriteBlob(ctx, digest, f); err != nil {
+		return digest, err
+	}
+
+	return digest, nil
 }
 
 type cachedByteStream struct {
@@ -92,9 +102,11 @@ type cachedByteStream struct {
 	contentLength uint64
 }
 
-var _ ByteStream = cachedByteStream{}
+var _ bytestream.ByteStream = cachedByteStream{}
 
-func (bs cachedByteStream) Digest() schema.Digest { return bs.digest }
+func (bs cachedByteStream) ComputeDigest(context.Context) (schema.Digest, error) {
+	return bs.digest, nil
+}
 func (bs cachedByteStream) ContentLength() uint64 { return bs.contentLength }
 func (bs cachedByteStream) Reader() (io.ReadCloser, error) {
 	return bs.cache.Blob(bs.digest)
