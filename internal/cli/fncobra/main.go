@@ -65,6 +65,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks/actiontracing"
 )
 
+var (
+	enableErrorTracing = false
+)
+
 func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if v := os.Getenv("FN_CPU_PROFILE"); v != "" {
 		done := cpuprofile(v)
@@ -213,6 +217,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, skips our enforcement of the maximum workspace size we're willing to push to buildkit.")
 	rootCmd.PersistentFlags().BoolVar(&k3d.IgnoreZfsCheck, "ignore_zfs_check", k3d.IgnoreZfsCheck,
 		"If set to true, ignores checking whether the base system is ZFS based.")
+	rootCmd.PersistentFlags().BoolVar(&enableErrorTracing, "error_tracing", enableErrorTracing,
+		"If set to true, prints a trace of foundation errors leading to the root cause with source info.")
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
@@ -325,7 +331,7 @@ func handleExitError(colors bool, err error) int {
 		// an error again, just forward the appropriate exit code.
 		return exitError.ExitCode()
 	} else if versionError, ok := err.(*fnerrors.VersionError); ok {
-		fnerrors.Format(os.Stderr, colors, versionError)
+		fnerrors.Format(os.Stderr, versionError, fnerrors.WithColors(true))
 
 		if version, err := version.Version(); err == nil {
 			ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -344,7 +350,7 @@ func handleExitError(colors bool, err error) int {
 	} else {
 		// Only print errors after calling flushLogs above, so the console driver
 		// is no longer erasing lines.
-		fnerrors.Format(os.Stderr, colors, err)
+		fnerrors.Format(os.Stderr, err, fnerrors.WithColors(true), fnerrors.WithTracing(enableErrorTracing))
 		return 1
 	}
 }

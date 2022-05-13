@@ -192,128 +192,209 @@ func (e *exitError) ExitCode() int {
 	return e.code
 }
 
-func Format(w io.Writer, colors bool, err error) {
-	if colors {
-		fmt.Fprint(w, aec.RedF.With(aec.Bold).Apply("Failed:\n"))
-	} else {
-		fmt.Fprint(w, "Failed:\n")
-	}
-	format(indent(w), colors, err)
+type FormatOptions struct {
+	// true to use ANSI colors.
+	colors bool
+	// If true, we show the chain of foundation errors
+	// leading to the root cause.
+	tracing bool
 }
 
-func format(w io.Writer, colors bool, err error) {
-	if x, ok := unwrap(err).(*usageError); ok {
-		// XXX don't wordwrap if terminal is below 80 chars in width.
-		fmt.Fprintln(w, text.Wrap(x.Why, 80))
+type FormatOption func(*FormatOptions)
+
+func WithColors(colors bool) FormatOption {
+	return func(opts *FormatOptions) {
+		opts.colors = colors
+	}
+}
+
+func WithTracing(tracing bool) FormatOption {
+	return func(opts *FormatOptions) {
+		opts.tracing = tracing
+	}
+}
+
+func isFnError(err error) bool {
+	switch err.(type) {
+	case *fnError, *usageError, *userError, *internalError, *invocationError, *DependencyFailedError, *VersionError:
+		return true
+	}
+	return false
+}
+
+func Format(w io.Writer, err error, args ...FormatOption) {
+	opts := &FormatOptions{colors: false, tracing: false}
+	for _, opt := range args {
+		opt(opts)
+	}
+	if opts.colors {
+		fmt.Fprint(w, aec.RedF.With(aec.Bold).Apply("Failed: "))
+	} else {
+		fmt.Fprint(w, "Failed: ")
+	}
+	if opts.tracing {
 		fmt.Fprintln(w)
-		fmt.Fprintln(w, "  ", x.What)
+	}
+	cause := err
+	// Keep unwrapping to get to the root cause which isn't a fnError.
+	for isFnError(cause) {
+		if opts.tracing {
+			w = indent(w)
+			format(w, cause, opts)
+			writeSourceFileAndLine(w, cause, opts.colors)
+		}
+		if x := errors.Unwrap(cause); x != nil {
+			cause = x
+		} else {
+			break
+		}
+	}
+	format(w, cause, opts)
+}
+
+func writeSourceFileAndLine(w io.Writer, err error, colors bool) {
+	type stackTracer interface {
+		StackTrace() stacktrace.StackTrace
+	}
+	if st, ok := err.(stackTracer); ok {
+		stack := st.StackTrace()
+		if len(stack) == 0 {
+			return
+		}
+		frame := stack[0]
+		sourceInfo := fmt.Sprintf("%s:%d", frame.File(), frame.Line())
+		if colors {
+			fmt.Fprintf(w, "%s\n", aec.LightBlackF.Apply(sourceInfo))
+		} else {
+			fmt.Fprintf(w, "%s\n", sourceInfo)
+		}
+	}
+}
+
+func format(w io.Writer, err error, opts *FormatOptions) {
+	if err == nil {
 		return
 	}
-
 	switch x := err.(type) {
+	case *usageError:
+		formatUsageError(w, x, opts)
+
 	case *userError:
-		child := x
-
-		if child.Location == nil {
-			if unwrap := errors.Unwrap(child.Err); unwrap == nil {
-				fmt.Fprintf(w, " %s\n", child.Err.Error())
-			} else {
-				fmt.Fprintf(w, "%s:", child.Err.Error())
-				fmt.Fprintln(w)
-				format(indent(w), colors, unwrap)
-			}
-		} else {
-			for {
-				if uec, ok := child.Err.(*userError); ok {
-					if uec.Location.ErrorLocation() != x.Location.ErrorLocation() || uec.Err == nil {
-						break
-					} else {
-						child = uec
-					}
-				} else {
-					break
-				}
-			}
-
-			loc := formatLabel(child.Location.ErrorLocation(), colors)
-
-			// Add the first frame in the stack.
-			if len(child.stack) > 0 {
-				frame := child.stack[0]
-				loc += formatPos(fmt.Sprintf(" (%s:%d)", frame.File(), frame.Line()), colors)
-			}
-			fmt.Fprintf(w, "%s at %s:", child.Err.Error(), loc)
-			fmt.Fprintln(w)
-			format(indent(w), colors, child.Err)
-		}
+		formatUserError(w, x, opts)
 
 	case *internalError:
-		fmt.Fprintf(w, "%s: %s\n", bold("internal error", colors), x.Err.Error())
-		fmt.Fprintln(w)
-		fmt.Fprintf(w, "This was unexpected, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
-		errorReportRequest(w)
+		formatInternalError(w, x, opts)
 
 	case *invocationError:
-		fmt.Fprintf(w, "%s: %s\n", bold("invocation error", colors), x.Err.Error())
-		fmt.Fprintln(w)
-		fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
-		errorReportRequest(w)
+		formatInvocationError(w, x, opts)
 
 	case *errWithLogs:
-		format(w, colors, x.Err)
-		fmt.Fprintf(w, "%s\n", bold("Captured logs:", colors))
-		const limitLines = 10
-		lines := make([]string, 0, limitLines)
-		scanner := bufio.NewScanner(x.readerF())
-		truncated := false
-		for scanner.Scan() {
-			if len(lines) < limitLines {
-				lines = append(lines, scanner.Text())
-			} else {
-				truncated = true
-				lines = append(lines[1:], scanner.Text())
-			}
-		}
-		if truncated {
-			fmt.Fprintf(w, "%s%d%s\n", italic("... (truncated to last ", colors), limitLines, italic(" lines) ...", colors))
-		}
-		for _, line := range lines {
-			fmt.Fprintf(w, "%s\n", line)
-		}
-		fmt.Fprintln(w)
+		formatErrWithLogs(w, x, opts)
 
 	case cueerrors.Error:
-		err := cueerrors.Sanitize(x)
-		cycle := false
-		for _, e := range cueerrors.Errors(err) {
-			if strings.Contains(e.Error(), "structural cycle") {
-				cycle = true
-			}
-			positions := cueerrors.Positions(e)
-			if len(positions) == 0 {
-				fmt.Fprintln(w, e.Error())
-			} else {
-				for _, p := range positions {
-					pos := p.Position()
-
-					fmt.Fprintln(w, e.Error(), formatPos(pos.String(), colors))
-				}
-			}
-		}
-		if cycle {
-			fmt.Fprintf(w, "This was unexpected, but could be a flake.\nThere is a known issue with CUE parsing reporting incorrect structural cycle errors: https://github.com/cue-lang/cue/issues/1608\nPlease try again! If the error persists, this indicates a proper structural cycle in your CUE definitions.\n")
-		}
+		formatCueError(w, x, opts)
 
 	case *DependencyFailedError:
-		fmt.Fprintf(w, "failed to compute %s %s:\n", formatLabel(x.Name, colors), aec.LightBlackF.Apply(fmt.Sprintf("(%s)", x.Type)))
-		format(indent(w), colors, x.Err)
+		formatDependencyFailedError(w, x, opts)
 
 	default:
-		if unwrapped := errors.Unwrap(x); unwrapped != nil {
-			format(indent(w), colors, unwrapped)
+		fmt.Fprintf(w, "%s\n", x.Error())
+	}
+}
+
+func formatErrWithLogs(w io.Writer, err *errWithLogs, opts *FormatOptions) {
+	colors := opts.colors
+	fmt.Fprintf(w, "%s\n\n", err.Error())
+	if opts.colors {
+		fmt.Fprintf(w, "%s\n", aec.CyanF.With(aec.Bold).Apply("Captured logs: "))
+	} else {
+		fmt.Fprint(w, "Captured logs: ")
+	}
+	const limitLines = 10
+	lines := make([]string, 0, limitLines)
+	scanner := bufio.NewScanner(err.readerF())
+	truncated := false
+	for scanner.Scan() {
+		if len(lines) < limitLines {
+			lines = append(lines, scanner.Text())
 		} else {
-			fmt.Fprintln(w, x)
+			truncated = true
+			lines = append(lines[1:], scanner.Text())
 		}
+	}
+	if truncated {
+		fmt.Fprintf(w, "%s%d%s\n", italic("... (truncated to last ", colors), limitLines, italic(" lines) ...", colors))
+	}
+	for _, line := range lines {
+		fmt.Fprintf(w, "%s\n", line)
+	}
+	fmt.Fprintln(w)
+}
+
+func formatUsageError(w io.Writer, err *usageError, opts *FormatOptions) {
+	// XXX don't wordwrap if terminal is below 80 chars in width.
+	errTxt := text.Wrap(err.Why, 80)
+	fmt.Fprintf(w, "%s: %s %s\n", formatLabel("usage error", opts.colors), errTxt, bold(err.What, opts.colors))
+}
+
+func formatInternalError(w io.Writer, err *internalError, opts *FormatOptions) {
+	fmt.Fprintf(w, "%s: %s\n", formatLabel("internal error", opts.colors), err.Err.Error())
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "This was unexpected, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
+	errorReportRequest(w)
+}
+
+func formatInvocationError(w io.Writer, err *invocationError, opts *FormatOptions) {
+	fmt.Fprintf(w, "%s: %s\n", formatLabel("invocation error", opts.colors), err.Err.Error())
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
+	errorReportRequest(w)
+}
+
+func formatCueError(w io.Writer, err cueerrors.Error, opts *FormatOptions) {
+	errclean := cueerrors.Sanitize(err)
+	cycle := false
+	for _, e := range cueerrors.Errors(errclean) {
+		if strings.Contains(e.Error(), "structural cycle") {
+			cycle = true
+		}
+		positions := cueerrors.Positions(e)
+		if len(positions) == 0 {
+			fmt.Fprintln(w, e.Error())
+		} else {
+			for _, p := range positions {
+				pos := p.Position()
+
+				fmt.Fprintln(w, e.Error(), formatPos(pos.String(), opts.colors))
+			}
+		}
+	}
+	if cycle {
+		fmt.Fprintf(w, "This was unexpected, but could be a flake.\nThere is a known issue with CUE parsing reporting incorrect structural cycle errors: https://github.com/cue-lang/cue/issues/1608\nPlease try again! If the error persists, this indicates a proper structural cycle in your CUE definitions.\n")
+	}
+}
+
+func formatDependencyFailedError(w io.Writer, err *DependencyFailedError, opts *FormatOptions) {
+	depName := formatLabel(err.Name, opts.colors)
+
+	depType := fmt.Sprintf("(%s)", err.Type)
+	if opts.colors {
+		depType = aec.LightMagentaF.Apply(depType)
+	}
+
+	if opts.tracing {
+		fmt.Fprintf(w, "failed to compute %s %s\n", depName, depType)
+	} else {
+		fmt.Fprintf(w, "failed to compute %s %s: %s\n", depName, depType, err.Err)
+	}
+}
+
+func formatUserError(w io.Writer, err *userError, opts *FormatOptions) {
+	if err.Location != nil {
+		loc := formatLabel(err.Location.ErrorLocation(), opts.colors)
+		fmt.Fprintf(w, "%s at %s\n", err.Err.Error(), loc)
+	} else {
+		fmt.Fprintf(w, "%s\n", err.Err.Error())
 	}
 }
 
