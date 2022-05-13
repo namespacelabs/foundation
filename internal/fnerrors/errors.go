@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/kr/text"
@@ -283,7 +284,11 @@ func format(w io.Writer, colors bool, err error) {
 
 	case cueerrors.Error:
 		err := cueerrors.Sanitize(x)
+		cycle := false
 		for _, e := range cueerrors.Errors(err) {
+			if strings.Contains(e.Error(), "structural cycle") {
+				cycle = true
+			}
 			positions := cueerrors.Positions(e)
 			if len(positions) == 0 {
 				fmt.Fprintln(w, e.Error())
@@ -294,6 +299,9 @@ func format(w io.Writer, colors bool, err error) {
 					fmt.Fprintln(w, e.Error(), formatPos(pos.String(), colors))
 				}
 			}
+		}
+		if cycle {
+			fmt.Fprintf(w, "This was unexpected, but could be a flake.\nThere is a known issue with CUE parsing reporting incorrect structural cycle errors: https://github.com/cue-lang/cue/issues/1608\nPlease try again! If the error persists, this indicates a proper structural cycle in your CUE definitions.\n")
 		}
 
 	case *DependencyFailedError:
