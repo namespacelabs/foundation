@@ -15,6 +15,7 @@ import (
 	"github.com/muesli/cancelreader"
 	"namespacelabs.dev/foundation/devworkflow"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
@@ -38,6 +39,9 @@ type term struct {
 // HandleEvents processes user keystroke events and dev workflow updates.
 // Here we also take care on calling `onDone` callback on user exiting.
 func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverProtos []*schema.Server, onDone func(), ch chan *devworkflow.Update) {
+	if !termios.IsTerm(os.Stdin.Fd()) {
+		return
+	}
 	r, err := newStdinReader(ctx)
 	if err != nil {
 		fmt.Fprintln(console.Errors(ctx), err)
