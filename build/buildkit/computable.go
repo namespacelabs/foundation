@@ -171,11 +171,7 @@ func (l *reqToImage) Action() *tasks.ActionEvent {
 }
 
 func (l *reqToImage) Inputs() *compute.In {
-	in := l.buildInputs()
-	if l.targetName != nil {
-		return in.Computable("targetName", l.targetName)
-	}
-	return in
+	return l.buildInputs()
 }
 
 func (l *reqToImage) Output() compute.Output {
@@ -185,8 +181,13 @@ func (l *reqToImage) Output() compute.Output {
 func (l *reqToImage) ImageRef() string { return "(buildkit)" } // Implements HasImageRef
 
 func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
-	if targetName, ok := compute.GetDepWithType[oci.AllocatedName](deps, "targetName"); ok {
-		v := targetName.Value
+	// TargetName is not added as a dependency of the `reqToImage` compute node, or
+	// our inputs are not stable.
+	if l.targetName != nil {
+		v, err := compute.GetValue(ctx, l.targetName)
+		if err != nil {
+			return nil, err
+		}
 
 		// If the target needs permissions, we don't do the direct push
 		// optimization as we don't yet wire the keychain into buildkit.
