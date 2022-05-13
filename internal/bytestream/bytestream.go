@@ -5,9 +5,11 @@
 package bytestream
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"io"
+	"io/ioutil"
 
 	"namespacelabs.dev/foundation/schema"
 )
@@ -42,4 +44,39 @@ func Digest(ctx context.Context, bs ByteStream) (schema.Digest, error) {
 	}
 
 	return schema.FromHash("sha256", h), nil
+}
+
+type Static struct {
+	Contents []byte
+}
+
+func (s Static) ContentLength() uint64 { return uint64(len(s.Contents)) }
+func (s Static) Reader() (io.ReadCloser, error) {
+	return io.NopCloser(bytes.NewReader(s.Contents)), nil
+}
+
+func WriteTo(w io.Writer, contents ByteStream) error {
+	r, err := contents.Reader()
+	if err != nil {
+		return err
+	}
+
+	defer r.Close()
+
+	if _, err := io.Copy(w, r); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ReadAll(contents ByteStream) ([]byte, error) {
+	r, err := contents.Reader()
+	if err != nil {
+		return nil, err
+	}
+
+	defer r.Close()
+
+	return ioutil.ReadAll(r)
 }

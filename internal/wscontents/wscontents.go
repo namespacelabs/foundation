@@ -19,6 +19,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/karrick/godirwalk"
 	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -173,7 +174,7 @@ func (fsys *contentFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	return fsys.fs.ReadDir(name)
 }
 
-func (fsys *contentFS) VisitFiles(ctx context.Context, f func(string, []byte, fs.DirEntry) error) error {
+func (fsys *contentFS) VisitFiles(ctx context.Context, f func(string, bytestream.ByteStream, fs.DirEntry) error) error {
 	return fsys.fs.VisitFiles(ctx, f)
 }
 

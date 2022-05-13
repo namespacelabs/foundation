@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"filippo.io/age"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
@@ -20,9 +21,14 @@ import (
 )
 
 func Visit(ctx context.Context, keysDir fs.FS, callback func(*age.X25519Identity) error) error {
-	return fnfs.VisitFiles(ctx, keysDir, func(path string, contents []byte, dirent fs.DirEntry) error {
+	return fnfs.VisitFiles(ctx, keysDir, func(path string, blob bytestream.ByteStream, dirent fs.DirEntry) error {
 		if filepath.Ext(path) != ".txt" {
 			return nil
+		}
+
+		contents, err := bytestream.ReadAll(blob)
+		if err != nil {
+			return err
 		}
 
 		xid, err := validateKey(age.ParseIdentities(bytes.NewReader(contents)))

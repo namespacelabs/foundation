@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"sync"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
@@ -46,7 +47,7 @@ func (inc *IncrementalFS) Snapshot(opts SnapshotOpts) (*FS, error) {
 	return Snapshot(&inc.snapshot, opts)
 }
 
-func (inc *IncrementalFS) VisitFiles(ctx context.Context, f func(string, []byte, fs.DirEntry) error) error {
+func (inc *IncrementalFS) VisitFiles(ctx context.Context, f func(string, bytestream.ByteStream, fs.DirEntry) error) error {
 	inc.mu.RLock()
 	defer inc.mu.RUnlock()
 	return inc.snapshot.VisitFiles(ctx, f)

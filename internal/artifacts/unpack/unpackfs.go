@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -112,7 +113,7 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (string, 
 
 	var checksums []checksumEntry
 	// XXX parallelism.
-	if err := fnfs.VisitFiles(ctx, fsysv.Value, func(path string, contents []byte, de fs.DirEntry) error {
+	if err := fnfs.VisitFiles(ctx, fsysv.Value, func(path string, blob bytestream.ByteStream, de fs.DirEntry) error {
 		dir := filepath.Dir(path)
 		if dir != "." {
 			if err := os.MkdirAll(filepath.Join(targetDir, dir), 0755); err != nil {
@@ -125,12 +126,30 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (string, 
 			return err
 		}
 
-		if err := ioutil.WriteFile(filepath.Join(targetDir, path), contents, fi.Mode()); err != nil {
+		contents, err := blob.Reader()
+		if err != nil {
+			return err
+		}
+
+		defer contents.Close()
+
+		file, err := os.OpenFile(filepath.Join(targetDir, path), os.O_CREATE|os.O_WRONLY, fi.Mode())
+		if err != nil {
 			return err
 		}
 
 		h := sha256.New()
-		h.Write(contents)
+		w := io.MultiWriter(file, h)
+
+		_, writeErr := io.Copy(w, contents)
+		closeErr := file.Close()
+
+		if writeErr != nil {
+			return writeErr
+		} else if closeErr != nil {
+			return closeErr
+		}
+
 		checksums = append(checksums, checksumEntry{Path: path, Digest: schema.FromHash("sha256", h)})
 		return nil
 	}); err != nil {

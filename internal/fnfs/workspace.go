@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -33,10 +34,9 @@ func WriteWorkspaceFile(ctx context.Context, log io.Writer, vfs ReadWriteFS, fil
 }
 
 func WriteFSToWorkspace(ctx context.Context, log io.Writer, vfs ReadWriteFS, src fs.FS) error {
-	return VisitFiles(ctx, src, func(path string, contents []byte, dirent fs.DirEntry) error {
+	return VisitFiles(ctx, src, func(path string, contents bytestream.ByteStream, dirent fs.DirEntry) error {
 		return WriteWorkspaceFile(ctx, log, vfs, path, func(w io.Writer) error {
-			_, err := w.Write(contents)
-			return err
+			return bytestream.WriteTo(w, contents)
 		})
 	})
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/gorilla/mux"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/schema"
@@ -55,7 +56,7 @@ func (m *serveFS) Compute(ctx context.Context, deps compute.Resolved) (*mux.Rout
 func MuxFromFS(ctx context.Context, fsys fs.FS, d schema.Digest, ts time.Time, spa bool) (*mux.Router, error) {
 	r := mux.NewRouter()
 
-	if err := fnfs.VisitFiles(ctx, fsys, func(path string, contents []byte, _ fs.DirEntry) error {
+	if err := fnfs.VisitFiles(ctx, fsys, func(path string, blob bytestream.ByteStream, _ fs.DirEntry) error {
 		var route *mux.Route
 
 		if path == "index.html" {
@@ -66,6 +67,11 @@ func MuxFromFS(ctx context.Context, fsys fs.FS, d schema.Digest, ts time.Time, s
 			}
 		} else {
 			route = r.Path("/" + path)
+		}
+
+		contents, err := bytestream.ReadAll(blob)
+		if err != nil {
+			return err
 		}
 
 		route.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {

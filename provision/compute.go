@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -161,9 +162,13 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 		}
 
 		// XXX we don't watch directories, which may end up being a miss.
-		if err := fnfs.VisitFiles(ctx, srcs.Snapshot, func(path string, contents []byte, de fs.DirEntry) error {
+		if err := fnfs.VisitFiles(ctx, srcs.Snapshot, func(path string, blob bytestream.ByteStream, de fs.DirEntry) error {
 			if de.IsDir() {
 				return nil
+			}
+			contents, err := bytestream.ReadAll(blob)
+			if err != nil {
+				return err
 			}
 			p := filepath.Join(srcs.Module.Abs(), path)
 			expected[p] = contents // Don't really care about permissions etc, only contents.

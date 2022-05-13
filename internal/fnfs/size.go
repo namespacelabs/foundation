@@ -7,6 +7,8 @@ package fnfs
 import (
 	"context"
 	"io/fs"
+
+	"namespacelabs.dev/foundation/internal/bytestream"
 )
 
 type TotalSizeFS interface {
@@ -19,8 +21,8 @@ func TotalSize(ctx context.Context, fsys fs.FS) (uint64, error) {
 	}
 
 	var count uint64
-	err := VisitFiles(ctx, fsys, func(path string, contents []byte, de fs.DirEntry) error {
-		count += uint64(len(contents))
+	err := VisitFiles(ctx, fsys, func(path string, contents bytestream.ByteStream, de fs.DirEntry) error {
+		count += contents.ContentLength()
 		return nil
 	})
 	return count, err

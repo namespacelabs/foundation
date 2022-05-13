@@ -11,6 +11,7 @@ import (
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/schema"
@@ -89,7 +90,7 @@ func (l layerBackedFS) ReadDir(dir string) ([]fs.DirEntry, error) {
 	return tarfs.FS{TarStream: l.tarStream}.ReadDir(dir)
 }
 
-func (l layerBackedFS) VisitFiles(ctx context.Context, visitor func(string, []byte, fs.DirEntry) error) error {
+func (l layerBackedFS) VisitFiles(ctx context.Context, visitor func(string, bytestream.ByteStream, fs.DirEntry) error) error {
 	return tarfs.FS{TarStream: l.tarStream}.VisitFiles(ctx, visitor)
 }
 

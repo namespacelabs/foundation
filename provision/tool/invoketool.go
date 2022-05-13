@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -115,7 +116,12 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	for _, snapshot := range r.Invocation.Snapshots {
 		snap := &protocol.Snapshot{Name: snapshot.Name}
 
-		if err := fnfs.VisitFiles(ctx, snapshot.Contents, func(path string, contents []byte, _ fs.DirEntry) error {
+		if err := fnfs.VisitFiles(ctx, snapshot.Contents, func(path string, blob bytestream.ByteStream, _ fs.DirEntry) error {
+			contents, err := bytestream.ReadAll(blob)
+			if err != nil {
+				return err
+			}
+
 			snap.Entry = append(snap.Entry, &protocol.Snapshot_FileEntry{
 				Path:     path,
 				Contents: contents,

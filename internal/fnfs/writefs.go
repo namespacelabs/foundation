@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/ctxio"
 )
 
@@ -41,6 +42,27 @@ func WriteFile(ctx context.Context, fs WriteFS, path string, contents []byte, mo
 	}
 
 	_, writeErr := io.Copy(ctxio.WriterWithContext(ctx, w, nil), bytes.NewReader(contents))
+	closeErr := w.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	return closeErr
+}
+
+func WriteByteStream(ctx context.Context, fs WriteFS, path string, contents bytestream.ByteStream, mode fs.FileMode) error {
+	r, err := contents.Reader()
+	if err != nil {
+		return err
+	}
+
+	defer r.Close()
+
+	w, err := fs.OpenWrite(path, mode.Perm())
+	if err != nil {
+		return err
+	}
+
+	_, writeErr := io.Copy(ctxio.WriterWithContext(ctx, w, nil), r)
 	closeErr := w.Close()
 	if writeErr != nil {
 		return writeErr

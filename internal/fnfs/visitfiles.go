@@ -6,7 +6,10 @@ package fnfs
 
 import (
 	"context"
+	"io"
 	"io/fs"
+
+	"namespacelabs.dev/foundation/internal/bytestream"
 )
 
 type File struct {
@@ -15,10 +18,10 @@ type File struct {
 }
 
 type VisitFS interface {
-	VisitFiles(context.Context, func(string, []byte, fs.DirEntry) error) error
+	VisitFiles(context.Context, func(string, bytestream.ByteStream, fs.DirEntry) error) error
 }
 
-func VisitFiles(ctx context.Context, fsys fs.FS, visitor func(string, []byte, fs.DirEntry) error) error {
+func VisitFiles(ctx context.Context, fsys fs.FS, visitor func(string, bytestream.ByteStream, fs.DirEntry) error) error {
 	if vfs, ok := fsys.(VisitFS); ok {
 		return vfs.VisitFiles(ctx, visitor)
 	}
@@ -36,19 +39,22 @@ func VisitFiles(ctx context.Context, fsys fs.FS, visitor func(string, []byte, fs
 			return nil
 		}
 
-		contents, err := fs.ReadFile(fsys, path)
+		fi, err := d.Info()
 		if err != nil {
 			return err
 		}
 
-		return visitor(path, contents, d)
+		return visitor(path, reader{fsys, path, fi.Size()}, d)
 	})
 }
 
-func AllFiles(ctx context.Context, fsys fs.ReadDirFS) ([]File, error) {
-	var files []File
-	return files, VisitFiles(ctx, fsys, func(path string, contents []byte, dirent fs.DirEntry) error {
-		files = append(files, File{path, contents})
-		return nil
-	})
+type reader struct {
+	fsys fs.FS
+	path string
+	size int64
+}
+
+func (b reader) ContentLength() uint64 { return uint64(b.size) }
+func (b reader) Reader() (io.ReadCloser, error) {
+	return b.fsys.Open(b.path)
 }

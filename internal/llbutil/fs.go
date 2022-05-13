@@ -10,12 +10,18 @@ import (
 	"path/filepath"
 
 	"github.com/moby/buildkit/client/llb"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
 func WriteFS(ctx context.Context, fsys fs.FS, base llb.State, target string) (llb.State, error) {
-	if err := fnfs.VisitFiles(ctx, fsys, func(path string, contents []byte, de fs.DirEntry) error {
+	if err := fnfs.VisitFiles(ctx, fsys, func(path string, blob bytestream.ByteStream, de fs.DirEntry) error {
 		info, err := de.Info()
+		if err != nil {
+			return err
+		}
+
+		contents, err := bytestream.ReadAll(blob)
 		if err != nil {
 			return err
 		}

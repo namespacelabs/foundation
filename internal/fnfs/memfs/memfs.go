@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
@@ -88,7 +89,7 @@ func readDir(node *fsNode) []fs.DirEntry {
 	return entries
 }
 
-func (m *FS) VisitFiles(ctx context.Context, visitor func(string, []byte, fs.DirEntry) error) error {
+func (m *FS) VisitFiles(ctx context.Context, visitor func(string, bytestream.ByteStream, fs.DirEntry) error) error {
 	// Need to guarantee that VisitFiles calls visitor in a deterministic way.
 	sorted := make([]*fnfs.File, len(m.files))
 	copy(sorted, m.files)
@@ -98,7 +99,7 @@ func (m *FS) VisitFiles(ctx context.Context, visitor func(string, []byte, fs.Dir
 
 	for _, f := range sorted {
 		dirent := FileDirent{Path: f.Path, ContentSize: int64(len(f.Contents)), FileMode: memFileMode}
-		if err := visitor(f.Path, f.Contents, dirent); err != nil {
+		if err := visitor(f.Path, bytestream.Static{Contents: f.Contents}, dirent); err != nil {
 			return err
 		}
 	}

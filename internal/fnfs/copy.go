@@ -9,10 +9,12 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+
+	"namespacelabs.dev/foundation/internal/bytestream"
 )
 
 func CopyTo(ctx context.Context, dst WriteFS, dstBasePath string, src fs.FS) error {
-	return VisitFiles(ctx, src, func(path string, contents []byte, dirent fs.DirEntry) error {
+	return VisitFiles(ctx, src, func(path string, contents bytestream.ByteStream, dirent fs.DirEntry) error {
 		st, err := dirent.Info()
 		if err != nil {
 			return err
@@ -27,7 +29,7 @@ func CopyTo(ctx context.Context, dst WriteFS, dstBasePath string, src fs.FS) err
 			}
 		}
 
-		return WriteFile(ctx, dst, target, contents, st.Mode().Perm())
+		return WriteByteStream(ctx, dst, target, contents, st.Mode().Perm())
 	})
 }
 

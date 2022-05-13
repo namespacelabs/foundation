@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
@@ -326,7 +327,7 @@ func (pl *PackageLoader) Stats(ctx context.Context) PackageLoaderStats {
 		name := name // Close mod.
 
 		// Ignore errors; we're best effort.
-		_ = fnfs.VisitFiles(ctx, mod, func(path string, _ []byte, _ fs.DirEntry) error {
+		_ = fnfs.VisitFiles(ctx, mod, func(path string, _ bytestream.ByteStream, _ fs.DirEntry) error {
 			stats.PerModule[name] = append(stats.PerModule[name], path)
 			return nil
 		})

@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -37,12 +38,12 @@ func (p *addPrefix) Inputs() *compute.In {
 func (p *addPrefix) Compute(ctx context.Context, d compute.Resolved) (fs.FS, error) {
 	var r memfs.FS
 
-	return &r, fnfs.VisitFiles(ctx, compute.GetDepValue(d, p.fsys, "fsys"), func(path string, contents []byte, dirent fs.DirEntry) error {
+	return &r, fnfs.VisitFiles(ctx, compute.GetDepValue(d, p.fsys, "fsys"), func(path string, contents bytestream.ByteStream, dirent fs.DirEntry) error {
 		st, err := dirent.Info()
 		if err != nil {
 			return err
 		}
 
-		return fnfs.WriteFile(ctx, &r, filepath.Join(p.prefix, path), contents, st.Mode().Perm())
+		return fnfs.WriteByteStream(ctx, &r, filepath.Join(p.prefix, path), contents, st.Mode().Perm())
 	})
 }

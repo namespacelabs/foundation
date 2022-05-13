@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
@@ -96,7 +97,7 @@ func (de tarDirent) IsDir() bool                { return de.info.IsDir() }
 func (de tarDirent) Type() fs.FileMode          { return de.info.Mode().Type() }
 func (de tarDirent) Info() (fs.FileInfo, error) { return de.info, nil }
 
-func (l FS) VisitFiles(ctx context.Context, visitor func(string, []byte, fs.DirEntry) error) error {
+func (l FS) VisitFiles(ctx context.Context, visitor func(string, bytestream.ByteStream, fs.DirEntry) error) error {
 	f, err := l.TarStream()
 	if err != nil {
 		return err
@@ -126,7 +127,9 @@ func (l FS) VisitFiles(ctx context.Context, visitor func(string, []byte, fs.DirE
 			return fnerrors.BadInputError("failed to read contents of %q: %v", h.Name, err)
 		}
 
-		if err := visitor(h.Name, b, tarDirent{h.FileInfo()}); err != nil {
+		// XXX could optimize this by deferring the read to the first Reader() that is requested.
+
+		if err := visitor(h.Name, bytestream.Static{Contents: b}, tarDirent{h.FileInfo()}); err != nil {
 			return err
 		}
 	}

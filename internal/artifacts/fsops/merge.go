@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -46,13 +47,13 @@ func (p *merge) Compute(ctx context.Context, d compute.Resolved) (fs.FS, error) 
 	for k, fsys := range p.fsys {
 		res := compute.GetDepValue(d, fsys, fmt.Sprintf("fsys%d", k))
 
-		if err := fnfs.VisitFiles(ctx, res, func(path string, contents []byte, dirent fs.DirEntry) error {
+		if err := fnfs.VisitFiles(ctx, res, func(path string, contents bytestream.ByteStream, dirent fs.DirEntry) error {
 			st, err := dirent.Info()
 			if err != nil {
 				return err
 			}
 
-			return fnfs.WriteFile(ctx, &r, path, contents, st.Mode().Perm())
+			return fnfs.WriteByteStream(ctx, &r, path, contents, st.Mode().Perm())
 		}); err != nil {
 			return nil, err
 		}

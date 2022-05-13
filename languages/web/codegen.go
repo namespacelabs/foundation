@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/fs"
 
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -43,7 +44,7 @@ func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.Defi
 	}
 
 	out := loc.Module.ReadWriteFS()
-	return nil, fnfs.VisitFiles(ctx, fsys, func(path string, contents []byte, de fs.DirEntry) error {
+	return nil, fnfs.VisitFiles(ctx, fsys, func(path string, contents bytestream.ByteStream, de fs.DirEntry) error {
 		info, err := de.Info()
 		if err != nil {
 			return err
@@ -53,8 +54,7 @@ func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.Defi
 			CompareContents: true,
 			AnnounceWrite:   console.Stdout(ctx),
 		}, func(w io.Writer) error {
-			_, err := w.Write(contents)
-			return err
+			return bytestream.WriteTo(w, contents)
 		})
 	})
 }

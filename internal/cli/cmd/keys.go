@@ -19,6 +19,7 @@ import (
 	"filippo.io/age"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -144,7 +145,7 @@ func NewKeysCmd() *cobra.Command {
 
 			tmpDir := fnfs.ReadWriteLocalFS(tmpDirPath)
 
-			if err := fnfs.VisitFiles(ctx, fsys, func(path string, contents []byte, dirent fs.DirEntry) error {
+			if err := fnfs.VisitFiles(ctx, fsys, func(path string, contents bytestream.ByteStream, dirent fs.DirEntry) error {
 				d := filepath.Dir(path)
 				if d != "." {
 					if err := os.Mkdir(filepath.Join(tmpDirPath, d), 0700); err != nil {
@@ -152,7 +153,7 @@ func NewKeysCmd() *cobra.Command {
 					}
 				}
 
-				return fnfs.WriteFile(ctx, tmpDir, path, contents, 0600)
+				return fnfs.WriteByteStream(ctx, tmpDir, path, contents, 0600)
 			}); err != nil {
 				return fnerrors.InternalError("visitfiles failed: %w", err)
 			}
