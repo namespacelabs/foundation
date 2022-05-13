@@ -364,18 +364,15 @@ func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *s
 		// stack at the time of evaluation of the target image and deployment, but also the
 		// source configuration files used to compute a startup configuration, so it can be re-
 		// evaluated on a need basis.
-		if focus.Includes(srv.PackageName()) {
-			switch srv.Env().Proto().GetPurpose() {
-			case schema.Environment_DEVELOPMENT, schema.Environment_PRODUCTION:
-				configImage := prepareConfigImage(ctx, srv, stack)
+		if focus.Includes(srv.PackageName()) && !srv.Env().Proto().Ephemeral {
+			configImage := prepareConfigImage(ctx, srv, stack)
 
-				cfgtag, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName(), config.MakeConfigTag(buildID))
-				if err != nil {
-					return nil, err
-				}
-
-				images.Config = oci.PublishImage(cfgtag, configImage)
+			cfgtag, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName(), config.MakeConfigTag(buildID))
+			if err != nil {
+				return nil, err
 			}
+
+			images.Config = oci.PublishImage(cfgtag, configImage)
 		}
 
 		imageMap[srv.PackageName()] = images
