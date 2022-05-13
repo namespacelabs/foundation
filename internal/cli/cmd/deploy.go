@@ -133,7 +133,8 @@ func NewDeployCmd() *cobra.Command {
 
 			for _, srv := range servers {
 				var hints []string
-				hints = append(hints, fmt.Sprintf("You can inspect server logs using %s.", colors.Bold(fmt.Sprintf("fn logs %s%s", envLabel, srv.Location.Rel()))))
+				hints = append(hints, fmt.Sprintf("Tail server logs: %s", colors.Bold(fmt.Sprintf("fn logs %s%s", envLabel, srv.Location.Rel()))))
+				hints = append(hints, fmt.Sprintf("Attach to the deployment (port forward to workstation): %s", colors.Bold(fmt.Sprintf("fn attach %s%s", envLabel, srv.Location.Rel()))))
 				hints = append(hints, computed.Hints...)
 
 				if env.Purpose() == schema.Environment_DEVELOPMENT {

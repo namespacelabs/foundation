@@ -314,7 +314,7 @@ func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 		}
 	}
 
-	state.hints = append(state.hints, fmt.Sprintf("Track your deployment with %s.", colors.Bold(fmt.Sprintf("kubectl -n %s get pods", r.moduleNamespace))))
+	state.hints = append(state.hints, fmt.Sprintf("Inspecting your deployment: %s", colors.Bold(fmt.Sprintf("kubectl -n %s get pods", r.moduleNamespace))))
 
 	return state, nil
 }
