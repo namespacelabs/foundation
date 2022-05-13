@@ -98,7 +98,8 @@ func NewAttachCmd() *cobra.Command {
 			pfwd.Update(ctx, stackProto, focus, fragment)
 
 			// XXX do cmd/logs too.
-			select {}
+			<-ctx.Done()
+			return ctx.Err()
 		}),
 	}
 
