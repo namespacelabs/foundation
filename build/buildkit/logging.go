@@ -127,7 +127,6 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 						action:   tasks.Action(name).Category("buildkit").StartTimestamp(*vertex.Started).Start(ctx),
 						statuses: map[string]*tasks.RunningAction{},
 					}
-					//existing.action.
 					running[vid] = existing
 				}
 
@@ -135,9 +134,14 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 					var err error
 					if vertex.Error != "" {
 						err = fnerrors.New(vertex.Error)
-						//fnerrors.WithLogs(err, existing.action.Attachments().kkkkkkkkk
-
-						//existing.action.Attachments().ReaderByName()
+						for streamNum := range streams {
+							readerF := func() io.Reader {
+								return tasks.Attachments(ctx).ReaderByName(consoleName(streamNum))
+							}
+							err = fnerrors.WithLogs(err, readerF)
+							// Pass one stream only as fnerrors.WithLogs does not handle well printing from multiple sources.
+							break
+						}
 					}
 
 					existing.customDone(*vertex.Completed, err)
@@ -174,7 +178,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 
 			for _, log := range event.Logs {
 				if streams[log.Stream] == nil {
-					streams[log.Stream] = console.Output(ctx, fmt.Sprintf("buildkit:%d", log.Stream))
+					streams[log.Stream] = console.Output(ctx, consoleName(log.Stream))
 				}
 
 				_, _ = streams[log.Stream].Write(log.Data)
@@ -187,6 +191,10 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 
 		return nil
 	})
+}
+
+func consoleName(streamNum int) string {
+	return fmt.Sprintf("buildkit:%d", streamNum)
 }
 
 type vertexState struct {
