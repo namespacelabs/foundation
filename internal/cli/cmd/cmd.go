@@ -4,7 +4,11 @@
 
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/cmd/source"
+	"namespacelabs.dev/foundation/internal/cli/cmd/tools"
+)
 
 func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewLintCmd())
@@ -30,4 +34,6 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewVersionCmd())
 	root.AddCommand(NewBundlesCmd())
 	root.AddCommand(NewAttachCmd())
+	root.AddCommand(source.NewSourceCmd())
+	root.AddCommand(tools.NewToolsCmd())
 }
