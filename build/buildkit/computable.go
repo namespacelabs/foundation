@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	sync "sync"
 
 	"github.com/dustin/go-humanize"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -192,11 +193,58 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 		// If the target needs permissions, we don't do the direct push
 		// optimization as we don't yet wire the keychain into buildkit.
 		if v.Keychain == nil {
-			return solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
+			i, err := solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
+			if err != nil {
+				errContextBuffers.mu.Lock()
+				defer errContextBuffers.mu.Unlock()
+				names := errContextBuffers.namesByAction[tasks.Attachments(ctx).ActionID()]
+				err = fnerrors.WithLogs(
+					err,
+					func() io.Reader { return tasks.Attachments(ctx).ReaderByName("text.log") })
+			}
+			return i, err
 		}
 	}
 
 	return solve(ctx, deps, l.reqBase, exportToImage())
+}
+
+// actionLoggingContext stores per-action Attachment's buffer names that could provide additional context
+// in case of a failure.
+type actionLoggingContext struct {
+	// fields protected by actionsContext.mu
+
+	buffNames   []string
+	buffWithErr map[string]bool // A buffer is associated with a Vertex known to fail.
+}
+
+//
+type allLoggingContexts struct {
+	mu        sync.Mutex
+	perAction map[string]actionLoggingContext // Protected by mutex.
+	//vertexHasError map[string][]string // Protected by mutex.
+}
+
+var globalLogCtx = &allLoggingContexts{perAction: make(map[string]actionLoggingContext)}
+
+func addLogBuffer(ctx context.Context, name string) {
+	globalLogCtx.mu.Lock()
+	defer globalLogCtx.mu.Unlock()
+
+	actionId := tasks.Attachments(ctx).ActionID()
+	aCtx := globalLogCtx.perAction[actionId]
+	aCtx.buffNames = append(aCtx.buffNames, name)
+	globalLogCtx.perAction[actionId] = aCtx
+}
+
+func markLogBufferWithErr(ctx context.Context, name string) {
+	globalLogCtx.mu.Lock()
+	defer globalLogCtx.mu.Unlock()
+
+	actionId := tasks.Attachments(ctx).ActionID()
+	aCtx := globalLogCtx.perAction[actionId]
+	aCtx.buffWithErr[name] = true
+	globalLogCtx.perAction[actionId] = aCtx
 }
 
 type reqToFS struct {
