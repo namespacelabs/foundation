@@ -48,7 +48,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		Resource:    "clusterroles",
 		Name:        role,
 		Body: applyrbacv1.ClusterRole(role).WithRules(
-			applyrbacv1.PolicyRule().WithAPIGroups("").WithResources("namespaces").WithVerbs("list", "watch", "delete"),
+			applyrbacv1.PolicyRule().WithAPIGroups("").WithResources("namespaces").WithVerbs("watch", "delete"),
 			applyrbacv1.PolicyRule().WithAPIGroups("").WithResources("events").WithVerbs("watch"),
 		),
 	})

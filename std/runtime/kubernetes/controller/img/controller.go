@@ -45,16 +45,6 @@ func main() {
 		),
 	}
 
-	list, err := clientset.CoreV1().Namespaces().List(ctx, opts)
-	if err != nil {
-		log.Fatalf("failed to list namespaces: %v", err)
-	}
-
-	for _, ns := range list.Items {
-		handleNamespace(ctx, clientset, &ns)
-	}
-
-	opts.ResourceVersion = list.GetListMeta().GetResourceVersion()
 	w, err := clientset.CoreV1().Namespaces().Watch(ctx, opts)
 	if err != nil {
 		log.Fatalf("failed to watch namespaces: %v", err)
