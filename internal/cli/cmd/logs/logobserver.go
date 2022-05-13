@@ -65,7 +65,7 @@ func NewLogTail(ctx context.Context, root *workspace.Root, envRef string, server
 			fmt.Fprintf(w, "<Starting log tail for %s>\n", ev.HumanReadableID)
 
 			return rt.FetchLogsTo(ctx, w, ev.ContainerReference, runtime.FetchLogsOpts{
-				TailLines: 20,
+				TailLines: 30,
 				Follow:    true,
 			})
 		})
