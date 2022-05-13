@@ -5,22 +5,18 @@
 package grpcurl
 
 import (
-	"compress/gzip"
 	"context"
 	"fmt"
-	"io"
-	"os"
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
+	"namespacelabs.dev/foundation/internal/artifacts/unpack"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
-	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -76,47 +72,15 @@ func SDK(ctx context.Context) (compute.Computable[Grpcurl], error) {
 		return nil, fnerrors.UserError(nil, "platform not supported: %s", key)
 	}
 
-	cacheDir, err := dirs.SDKCache("grpcurl")
-	if err != nil {
-		return nil, err
-	}
-
-	grpcBin := filepath.Join(cacheDir, "grpcurl")
-	if _, err := os.Stat(grpcBin); err == nil {
-		return compute.Precomputed(Grpcurl(grpcBin), func(ctx context.Context) (schema.Digest, error) {
-			return schema.DigestOf(grpcBin)
-		}), nil
-	}
-
-	artifact := download.URL(ref)
+	fsys := unpack.Unpack(tarfs.TarGunzip(download.URL(ref)))
 
 	return compute.Map(
 		tasks.Action("grpcurl.ensure").Arg("version", version).HumanReadablef("Ensuring grpcurl %s is installed", version),
-		compute.Inputs().Computable("download", artifact),
+		compute.Inputs().Computable("fsys", fsys),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (Grpcurl, error) {
-			blob := compute.GetDepValue(r, artifact, "download")
-			dst := fnfs.ReadWriteLocalFS(cacheDir)
-
-			blobFS := tarfs.FS{
-				TarStream: func() (io.ReadCloser, error) {
-					r, err := blob.Reader()
-					if err != nil {
-						return nil, err
-					}
-
-					pr := artifacts.NewProgressReader(r, blob.ContentLength())
-					tasks.Attachments(ctx).SetProgress(pr)
-
-					return gzip.NewReader(pr)
-				},
-			}
-
-			if err := fnfs.CopyTo(ctx, dst, ".", blobFS); err != nil {
-				return Grpcurl(""), err
-			}
-
-			return Grpcurl(grpcBin), nil
+			fsys := compute.GetDepValue(r, fsys, "fsys")
+			return Grpcurl(filepath.Join(fsys, "grpcurl")), nil
 		}), nil
 }
 

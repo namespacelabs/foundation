@@ -13,29 +13,29 @@ import (
 const memFileMode = 0644
 const memDirMode = 0755
 
-type fileDirent struct {
+type FileDirent struct {
 	Path        string
 	ContentSize int64
 	FileMode    fs.FileMode
 }
 
-var _ fs.FileInfo = fileDirent{}
-var _ fs.DirEntry = fileDirent{}
+var _ fs.FileInfo = FileDirent{}
+var _ fs.DirEntry = FileDirent{}
 
-func (f fileDirent) Name() string { return filepath.Base(f.Path) }
+func (f FileDirent) Name() string { return filepath.Base(f.Path) }
 
-func (f fileDirent) IsDir() bool { return false }
+func (f FileDirent) IsDir() bool { return false }
 
-func (f fileDirent) Type() fs.FileMode { return 0 /*Regular*/ }
+func (f FileDirent) Type() fs.FileMode { return 0 /*Regular*/ }
 
-func (f fileDirent) Info() (fs.FileInfo, error) {
+func (f FileDirent) Info() (fs.FileInfo, error) {
 	return f, nil
 }
 
-func (f fileDirent) Size() int64        { return f.ContentSize }
-func (f fileDirent) Mode() fs.FileMode  { return f.FileMode }
-func (f fileDirent) ModTime() time.Time { return time.Unix(1, 1) }
-func (f fileDirent) Sys() interface{}   { return nil }
+func (f FileDirent) Size() int64        { return f.ContentSize }
+func (f FileDirent) Mode() fs.FileMode  { return f.FileMode }
+func (f FileDirent) ModTime() time.Time { return time.Unix(1, 1) }
+func (f FileDirent) Sys() interface{}   { return nil }
 
 type dirDirent struct {
 	Basename string

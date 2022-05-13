@@ -78,7 +78,7 @@ func readDir(node *fsNode) []fs.DirEntry {
 		if f := child.file; f == nil {
 			entries = append(entries, dirDirent{Basename: name, DirMode: memDirMode})
 		} else {
-			entries = append(entries, fileDirent{Path: f.Path, ContentSize: int64(len(f.Contents)), FileMode: memFileMode})
+			entries = append(entries, FileDirent{Path: f.Path, ContentSize: int64(len(f.Contents)), FileMode: memFileMode})
 		}
 	}
 
@@ -97,7 +97,7 @@ func (m *FS) VisitFiles(ctx context.Context, visitor func(string, []byte, fs.Dir
 	})
 
 	for _, f := range sorted {
-		dirent := fileDirent{Path: f.Path, ContentSize: int64(len(f.Contents)), FileMode: memFileMode}
+		dirent := FileDirent{Path: f.Path, ContentSize: int64(len(f.Contents)), FileMode: memFileMode}
 		if err := visitor(f.Path, f.Contents, dirent); err != nil {
 			return err
 		}
@@ -231,7 +231,7 @@ type memFile struct {
 }
 
 func (mf memFile) Stat() (fs.FileInfo, error) {
-	return fileDirent{Path: mf.entry.Path, ContentSize: int64(len(mf.entry.Contents)), FileMode: memFileMode}, nil
+	return FileDirent{Path: mf.entry.Path, ContentSize: int64(len(mf.entry.Contents)), FileMode: memFileMode}, nil
 }
 
 func (mf memFile) Read(p []byte) (int, error) {

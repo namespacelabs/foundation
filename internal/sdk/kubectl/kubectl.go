@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
-	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -72,20 +71,14 @@ func SDK(ctx context.Context) (compute.Computable[Kubectl], error) {
 		return nil, fnerrors.UserError(nil, "platform not supported: %s", key)
 	}
 
-	cacheDir, err := dirs.SDKCache("kubectl")
-	if err != nil {
-		return nil, err
-	}
-
-	kubectlPath := filepath.Join(cacheDir, "kubectl")
-	written := unpack.WriteLocal(kubectlPath, 0755, ref)
+	w := unpack.Unpack(unpack.MakeFilesystem("kubectl", 0755, ref))
 
 	return compute.Map(
 		tasks.Action("kubectl.ensure").Arg("version", version).HumanReadablef("Ensuring kubectl %s is installed", version),
-		compute.Inputs().Computable("kubectl", written),
+		compute.Inputs().Computable("kubectl", w),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (Kubectl, error) {
-			return Kubectl(compute.GetDepValue(r, written, "kubectl")), nil
+			return Kubectl(filepath.Join(compute.GetDepValue(r, w, "kubectl"), "kubectl")), nil
 		}), nil
 }
 

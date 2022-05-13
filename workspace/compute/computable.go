@@ -11,6 +11,14 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+// A computable represents a node in a computation graph. Each computation node produces a value,
+// which is computed by its `Compute` method. A node's output can be cached, and is keyed by all
+// declared inputs. For correctness, it is required that all meaningful inputs that may impact
+// the semantics of the output (and its digest), be listed in `Inputs`. A node can also depend on
+// other nodes, and use their computed values. That relationship is established by declaring another
+// Computable as an Input to this one. The resulting value, will then be available in `Resolved`.
+// If any of node's dependencies fails to compute, the node implicitly fails as well (with the
+// same error).
 type Computable[V any] interface {
 	Action() *tasks.ActionEvent
 	Inputs() *In

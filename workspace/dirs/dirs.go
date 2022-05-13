@@ -62,6 +62,15 @@ func CertCache() (string, error) {
 	return filepath.Join(cacheDir, "certs"), nil
 }
 
+func UnpackCache() (string, error) {
+	cacheDir, err := Cache()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(cacheDir, "unpack"), nil
+}
+
 func Ensure(dir string, err error) (string, error) {
 	if err != nil {
 		return dir, err
