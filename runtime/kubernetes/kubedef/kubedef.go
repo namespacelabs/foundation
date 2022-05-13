@@ -17,6 +17,10 @@ import (
 	"namespacelabs.dev/foundation/std/types"
 )
 
+const (
+	AdminNamespace = "fn-admin"
+)
+
 type Apply struct {
 	Description string
 	Resource    string // XXX this can be implied from `kind` in the body. See #339.

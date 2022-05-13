@@ -25,3 +25,16 @@ extension: fn.#Extension & {
 		"defaults/pod.podsecuritycontext.yaml",
 	]
 }
+
+$env:  inputs.#Environment
+$ctrl: inputs.#Server & {
+	packageName: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller"
+}
+
+configure: fn.#Configure & {
+	stack: {
+		if $env.ephemeral {
+			append: [$ctrl]
+		}
+	}
+}

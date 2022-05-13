@@ -13,13 +13,10 @@ import (
 )
 
 type boundEnv struct {
-	ws      *fnschema.Workspace
-	env     *fnschema.Environment
-	hostEnv *client.HostEnv
-}
-
-func (r boundEnv) ns() string {
-	return namespace(r.ws, r.env)
+	ws              *fnschema.Workspace
+	env             *fnschema.Environment
+	hostEnv         *client.HostEnv
+	moduleNamespace string
 }
 
 func (r boundEnv) makeDefaultConfig() (*rest.Config, error) {
