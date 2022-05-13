@@ -57,7 +57,11 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 	envRef := ""
 	for {
 		select {
-		case update := <-ch:
+		case update, ok := <-ch:
+			if !ok {
+				return
+			}
+
 			if update.StackUpdate != nil && update.StackUpdate.Env != nil {
 				if t.showingLogs && envRef != update.StackUpdate.Env.Name {
 					t.stopLogging()
@@ -68,6 +72,7 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 		case err := <-r.errors:
 			fmt.Fprintf(console.Errors(ctx), "Error while reading from Stdin: %v\n", err)
 			return
+
 		case c := <-r.input:
 			if int(c) == 3 || string(c) == "q" { // ctrl+c
 				t.stopLogging()
@@ -82,6 +87,7 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 				t.showingLogs = !t.showingLogs
 				t.SetConsoleSticky(ctx)
 			}
+
 		case <-ctx.Done():
 			r.cancel()
 			return
