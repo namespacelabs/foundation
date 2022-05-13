@@ -339,7 +339,7 @@ func (o *observable) Loop(ctx context.Context) error {
 		var inputs *computedInputs
 
 		err := o.computable.Action().RunWithOpts(ctx, tasks.RunOpts{
-			Wait: func(ctx context.Context, wellKnown map[tasks.WellKnown]string) (bool, error) {
+			Wait: func(ctx context.Context) (bool, error) {
 				var err error
 				inputs, err = o.computable.Inputs().computeDigest(ctx, o.computable.Computable, true)
 				if err != nil {

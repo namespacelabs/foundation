@@ -211,7 +211,7 @@ func waitCompute(ctx context.Context, g *Orch, p *Promise[any], opts computeInst
 	var resolved *Resolved
 	var hits []cacheHit
 	if err := opts.Action().ID(p.actionID).RunWithOpts(ctx, tasks.RunOpts{
-		Wait: func(ctx context.Context, wellKnown map[tasks.WellKnown]string) (bool, error) {
+		Wait: func(ctx context.Context) (bool, error) {
 			// If we've already calculated an inputs' digest, then attempt to load from the cache
 			// directly. If not, we'll need to wait on our dependencies to determine whether a
 			// complete digest is available then.

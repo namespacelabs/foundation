@@ -282,7 +282,7 @@ func (ev *ActionEvent) Start(ctx context.Context) *RunningAction {
 
 type RunOpts struct {
 	// If Wait returns true, then the action is considered to be cached, and Run is skipped.
-	Wait func(context.Context, map[WellKnown]string) (bool, error)
+	Wait func(context.Context) (bool, error)
 	Run  func(context.Context) error
 }
 
@@ -314,7 +314,7 @@ func (ev *ActionEvent) RunWithOpts(ctx context.Context, opts RunOpts) error {
 		}
 
 		if opts.Wait != nil {
-			cached, err := opts.Wait(ctx, ev.wellKnown)
+			cached, err := opts.Wait(ctx)
 			if err != nil {
 				return err
 			}
