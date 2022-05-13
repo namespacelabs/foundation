@@ -234,6 +234,7 @@ func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.Act
 }
 
 func (r k8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
+	// XXX need a StatefulSet variant.
 	d, err := r.cli.AppsV1().Deployments(serverNamespace(r.boundEnv, server)).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
 	if err != nil {
 		// XXX better error messages.

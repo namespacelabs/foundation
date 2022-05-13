@@ -19,7 +19,7 @@ import (
 )
 
 func NewAttachCmd() *cobra.Command {
-	envRef := "prod"
+	envRef := "dev"
 	rehydrate := true
 
 	cmd := &cobra.Command{

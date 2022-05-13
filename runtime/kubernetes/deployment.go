@@ -209,6 +209,7 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	} else {
 		labels = kubedef.MakeLabels(r.env, srv.Proto())
 	}
+
 	annotations := kubedef.MakeAnnotations(srv.StackEntry())
 
 	deploymentId := kubedef.MakeDeploymentId(srv.Proto())
