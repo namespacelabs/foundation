@@ -38,7 +38,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	kubenode "namespacelabs.dev/foundation/std/runtime/kubernetes"
-	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"sigs.k8s.io/yaml"
 )
@@ -129,12 +128,6 @@ func NewFromConfig(ctx context.Context, config *HostConfig) (k8sRuntime, error) 
 		runtimeCache.cache[key] = k8sRuntime{
 			cli,
 			boundEnv{config.ws, config.env, config.hostEnv, moduleNamespace(config.ws, config.env)},
-			compute.InternalGetFuture[*kubedef.SystemInfo](ctx, &fetchSystemInfo{
-				cli:     cli,
-				cfg:     config.hostEnv,
-				devHost: config.devHost,
-				env:     config.env,
-			}),
 		}
 	}
 
@@ -155,7 +148,6 @@ func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env
 type k8sRuntime struct {
 	cli *k8s.Clientset
 	boundEnv
-	systemInfo *compute.Future[any] // systemInfo
 }
 
 var _ runtime.Runtime = k8sRuntime{}

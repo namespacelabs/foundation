@@ -10,16 +10,15 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 func (r k8sRuntime) SystemInfo(ctx context.Context) (*kubedef.SystemInfo, error) {
-	raw, err := r.systemInfo.Wait(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return raw.Value.(*kubedef.SystemInfo), nil
+	return compute.GetValue[*kubedef.SystemInfo](ctx, &fetchSystemInfo{
+		cli: r.cli,
+		cfg: r.hostEnv,
+	})
 }
 
 func (r k8sRuntime) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {

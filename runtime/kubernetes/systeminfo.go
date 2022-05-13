@@ -16,16 +16,13 @@ import (
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type fetchSystemInfo struct {
-	cli     *k8s.Clientset
-	cfg     *client.HostEnv
-	devHost *schema.DevHost
-	env     *schema.Environment
+	cli *k8s.Clientset
+	cfg *client.HostEnv
 
 	compute.DoScoped[*kubedef.SystemInfo] // DoScoped so the computation is deferred.
 }
@@ -37,7 +34,7 @@ func (f *fetchSystemInfo) Action() *tasks.ActionEvent {
 }
 
 func (f *fetchSystemInfo) Inputs() *compute.In {
-	return compute.Inputs().Proto("cfg", f.cfg).Proto("devhost", f.devHost).Proto("env", f.env)
+	return compute.Inputs().Proto("cfg", f.cfg)
 }
 
 func (f *fetchSystemInfo) Output() compute.Output { return compute.Output{NotCacheable: true} }
