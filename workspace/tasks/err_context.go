@@ -37,7 +37,7 @@ func GetErrContext(ctx context.Context) *actionErrContext {
 
 	aec, present := errCtx.perAction[actionId]
 	if !present {
-		aec := &actionErrContext{
+		aec = &actionErrContext{
 			buffNames: []OutputName{},
 		}
 		errCtx.perAction[actionId] = aec
