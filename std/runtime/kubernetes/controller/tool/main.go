@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	applyrbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/provision/configure"
@@ -29,7 +30,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		Description:    "Ephemeral Controller",
 		ServiceAccount: serviceAccount,
 		Rules: []*applyrbacv1.PolicyRuleApplyConfiguration{
-			applyrbacv1.PolicyRule().WithAPIGroups("").WithResources("namespaces").WithVerbs("watch", "delete"),
+			applyrbacv1.PolicyRule().WithAPIGroups("").WithResources("namespaces").WithVerbs("list", "watch", "delete"),
 			applyrbacv1.PolicyRule().WithAPIGroups("").WithResources("events").WithVerbs("watch"),
 		},
 	})
@@ -48,5 +49,5 @@ func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure
 }
 
 func makeServiceAccount(srv *schema.Server) string {
-	return kubedef.MakeDeploymentId(srv)
+	return fmt.Sprintf("admin-%s", kubedef.MakeDeploymentId(srv))
 }

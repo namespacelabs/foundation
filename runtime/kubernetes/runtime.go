@@ -680,13 +680,15 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 func (r k8sRuntime) DeleteRecursively(ctx context.Context) error {
 	return tasks.Action("kubernetes.namespace.delete").Arg("namespace", r.moduleNamespace).Run(ctx, func(ctx context.Context) error {
 		var grace int64 = 0
-		err := r.cli.CoreV1().Namespaces().Delete(ctx, r.moduleNamespace, metav1.DeleteOptions{
+		if err := r.cli.CoreV1().Namespaces().Delete(ctx, r.moduleNamespace, metav1.DeleteOptions{
 			GracePeriodSeconds: &grace,
-		})
-		if k8serrors.IsNotFound(err) {
-			// Namespace already deleted
-			return nil
+		}); err != nil {
+			if k8serrors.IsNotFound(err) {
+				// Namespace already deleted
+				return nil
+			}
+			return err
 		}
-		return err
+		return nil
 	})
 }

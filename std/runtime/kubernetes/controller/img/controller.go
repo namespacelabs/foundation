@@ -22,6 +22,10 @@ const (
 	killAfter = 5 * time.Minute
 )
 
+var (
+	tracked map[string]struct{}
+)
+
 func main() {
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -34,11 +38,24 @@ func main() {
 
 	ctx := context.Background()
 
-	w, err := clientset.CoreV1().Namespaces().Watch(ctx, metav1.ListOptions{
+	tracked = make(map[string]struct{})
+	opts := metav1.ListOptions{
 		LabelSelector: kubedef.SerializeSelector(
 			kubedef.SelectEphemeral(),
 		),
-	})
+	}
+
+	list, err := clientset.CoreV1().Namespaces().List(ctx, opts)
+	if err != nil {
+		log.Fatalf("failed to list namespaces: %v", err)
+	}
+
+	for _, ns := range list.Items {
+		handleNamespace(ctx, clientset, &ns)
+	}
+
+	opts.ResourceVersion = list.GetListMeta().GetResourceVersion()
+	w, err := clientset.CoreV1().Namespaces().Watch(ctx, opts)
 	if err != nil {
 		log.Fatalf("failed to watch namespaces: %v", err)
 	}
@@ -55,15 +72,25 @@ func main() {
 			log.Printf("received non-namespace watch event: %v\n", reflect.TypeOf(ev.Object))
 			continue
 		}
-
-		if ns.Status.Phase == corev1.NamespaceTerminating {
-			log.Printf("Skipping namespace %q. It is already terminating.", ns.Name)
-			continue
-		}
-
-		go watchNamespace(ctx, clientset, ns)
+		handleNamespace(ctx, clientset, ns)
 	}
 
+}
+
+func handleNamespace(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1.Namespace) {
+	if _, ok := tracked[ns.Name]; ok {
+		// Already watching namespace
+		return
+	}
+
+	if ns.Status.Phase == corev1.NamespaceTerminating {
+		log.Printf("Skipping namespace %q. It is already terminating.", ns.Name)
+		return
+	}
+
+	tracked[ns.Name] = struct{}{}
+	log.Printf("tracking ephemeral namespace %q", ns.Name)
+	go watchNamespace(ctx, clientset, ns)
 }
 
 func watchNamespace(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1.Namespace) {
@@ -82,8 +109,7 @@ func watchNamespace(ctx context.Context, clientset *kubernetes.Clientset, ns *co
 		select {
 		case <-time.After(remaining):
 			log.Printf("deleting stale ephemeral namespace %q", ns.Name)
-			err := clientset.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{})
-			if err != nil && !k8serrors.IsNotFound(err) {
+			if err := clientset.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
 				log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
 			}
 			return
@@ -92,6 +118,7 @@ func watchNamespace(ctx context.Context, clientset *kubernetes.Clientset, ns *co
 			if !ok {
 				log.Fatalf("unexpected event watch closure for namespace %q: %v", ns.Name, err)
 			}
+
 			event, ok := ev.Object.(*corev1.Event)
 			if !ok {
 				log.Printf("received non-event watch event for namespace %q: %v", ns.Name, reflect.TypeOf(ev.Object))

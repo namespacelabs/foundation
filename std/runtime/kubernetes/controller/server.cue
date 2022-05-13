@@ -4,7 +4,7 @@ import (
 
 server: fn.#OpaqueServer & {
 	id:   "vvmln00pguusl9idcv9g"
-	name: "kubernetescontroller"
+	name: "fn-controller"
 
 	binary: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/img"
 

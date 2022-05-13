@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	validChars = regexp.MustCompile("[a-z0-9]+")
+	validChars = regexp.MustCompile("[a-z0-9-]+")
 )
 
 // We use separate roles/accs to maintain a minimum set of permissions per usecase.

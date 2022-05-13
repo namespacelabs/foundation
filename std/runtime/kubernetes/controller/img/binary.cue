@@ -1,4 +1,4 @@
 binary: {
-	name: "ephemeral-controller"
+	name: "fn-controller"
 	from: go_package: "."
 }
