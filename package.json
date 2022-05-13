@@ -1,0 +1,13 @@
+{
+	"devDependencies": {
+		"typescript": "4.6.2"
+	},
+	"private": true,
+	"workspaces": [
+		"languages/nodejs/testdata/extensions/batchformatter",
+		"languages/nodejs/testdata/extensions/numberformatter",
+		"languages/nodejs/testdata/server",
+		"languages/nodejs/testdata/services/numberformatter",
+		"languages/nodejs/testdata/services/simple"
+	]
+}

@@ -30,9 +30,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@workspace:extensions/batchformatter":
+"@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@workspace:languages/nodejs/testdata/extensions/batchformatter":
   version: 0.0.0-use.local
-  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@workspace:extensions/batchformatter"
+  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@workspace:languages/nodejs/testdata/extensions/batchformatter"
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter": 0.0.0
@@ -48,9 +48,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:extensions/numberformatter":
+"@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:languages/nodejs/testdata/extensions/numberformatter":
   version: 0.0.0-use.local
-  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:extensions/numberformatter"
+  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:languages/nodejs/testdata/extensions/numberformatter"
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs/foundation": 0.1.27
@@ -65,9 +65,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@namespacelabs.dev-foundation/languages-nodejs-testdata-server@workspace:server":
+"@namespacelabs.dev-foundation/languages-nodejs-testdata-server@workspace:languages/nodejs/testdata/server":
   version: 0.0.0-use.local
-  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-server@workspace:server"
+  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-server@workspace:languages/nodejs/testdata/server"
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter": 0.0.0
@@ -84,9 +84,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:services/numberformatter":
+"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:languages/nodejs/testdata/services/numberformatter":
   version: 0.0.0-use.local
-  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:services/numberformatter"
+  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:languages/nodejs/testdata/services/numberformatter"
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
@@ -102,9 +102,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:services/simple":
+"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple":
   version: 0.0.0-use.local
-  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:services/simple"
+  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple"
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs/foundation": 0.1.27
