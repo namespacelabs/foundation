@@ -7,16 +7,18 @@ package fnerrors
 import (
 	"errors"
 	"fmt"
+
+	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
 )
 
 func DependencyFailed(name, typ string, err error) error {
-	return &DependencyFailedError{name, typ, err}
+	return &DependencyFailedError{fnError: fnError{Err: err, stack: stacktrace.New()}, Name: name, Type: typ}
 }
 
 type DependencyFailedError struct {
+	fnError
 	Name string
 	Type string
-	Err  error
 }
 
 func (d *DependencyFailedError) Error() string {

@@ -53,7 +53,7 @@ func newExtensionCmd() *cobra.Command {
 			onError := func(e codegen.GenerateError) {
 				w := console.Stderr(ctx)
 				fmt.Fprintf(w, "%s: %s failed:\n", e.PackageName, e.What)
-				fnerrors.Format(w, true, e.Err)
+				fnerrors.Format(w, e.Err, fnerrors.WithColors(true))
 			}
 			// Generate protos before generating code for this extension as code (our generated code may depend on the protos).
 			if err := codegen.ForLocationsGenProto(ctx, root, []fnfs.Location{loc}, onError); err != nil {

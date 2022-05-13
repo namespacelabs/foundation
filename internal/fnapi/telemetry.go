@@ -60,7 +60,7 @@ func (tel *Telemetry) IsTelemetryEnabled() bool {
 
 func (tel *Telemetry) logError(ctx context.Context, err error) {
 	if tel.errorLogging {
-		fnerrors.Format(console.Stderr(ctx), true, err)
+		fnerrors.Format(console.Stderr(ctx), err, fnerrors.WithColors(true))
 	}
 }
 

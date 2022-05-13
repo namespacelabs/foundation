@@ -46,7 +46,7 @@ func NewGenerateCmd() *cobra.Command {
 			// Generate code.
 			return codegen.ForLocationsGenCode(ctx, root, list.Locations, func(e codegen.GenerateError) {
 				w := console.Stderr(ctx)
-				fnerrors.Format(w, true, e.Err)
+				fnerrors.Format(w, e.Err, fnerrors.WithColors(true))
 			})
 		}),
 	}
@@ -82,7 +82,7 @@ func generateProtos(ctx context.Context, root *workspace.Root) error {
 	}
 	return codegen.ForLocationsGenProto(ctx, root, topoSorted, func(e codegen.GenerateError) {
 		w := console.Stderr(ctx)
-		fnerrors.Format(w, true, e.Err)
+		fnerrors.Format(w, e.Err, fnerrors.WithColors(true))
 	})
 }
 
