@@ -188,7 +188,9 @@ func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 
 	for _, server := range d.Servers {
 		var singleState serverRunState
-		var deployOpts deployOpts
+		deployOpts := deployOpts{
+			focus: d.Focus,
+		}
 
 		var serverInternalEndpoints []*schema.InternalEndpoint
 		for _, ie := range d.Stack.InternalEndpoint {
