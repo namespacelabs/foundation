@@ -17,6 +17,10 @@ import (
 	"namespacelabs.dev/foundation/std/types"
 )
 
+const (
+	AdminNamespace = "fn-admin"
+)
+
 type Apply struct {
 	Description string
 	Resource    string // XXX this can be implied from `kind` in the body. See #339.
@@ -71,7 +75,7 @@ type ExtendInitContainer struct {
 	With *InitContainerExtension
 }
 
-func (a Apply) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, error) {
+func (a Apply) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
 	if a.Body == nil {
 		return nil, fnerrors.InternalError("body is missing")
 	}
@@ -91,11 +95,11 @@ func (a Apply) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, 
 		return nil, err
 	}
 
-	return []*schema.Definition{{
+	return &schema.Definition{
 		Description: a.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
-	}}, nil
+	}, nil
 }
 
 func scopeToStrings(scope []schema.PackageName) []string {
@@ -106,7 +110,7 @@ func scopeToStrings(scope []schema.PackageName) []string {
 	return r
 }
 
-func (d Delete) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, error) {
+func (d Delete) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
 	x, err := anypb.New(&OpDelete{
 		Resource:  d.Resource,
 		Namespace: d.Namespace,
@@ -116,14 +120,14 @@ func (d Delete) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition,
 		return nil, err
 	}
 
-	return []*schema.Definition{{
+	return &schema.Definition{
 		Description: d.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
-	}}, nil
+	}, nil
 }
 
-func (d DeleteList) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, error) {
+func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
 	x, err := anypb.New(&OpDeleteList{
 		Resource:      d.Resource,
 		Namespace:     d.Namespace,
@@ -133,14 +137,14 @@ func (d DeleteList) ToDefinition(scope ...schema.PackageName) ([]*schema.Definit
 		return nil, err
 	}
 
-	return []*schema.Definition{{
+	return &schema.Definition{
 		Description: d.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
-	}}, nil
+	}, nil
 }
 
-func (c Create) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, error) {
+func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
 	if c.Body == nil {
 		return nil, fnerrors.InternalError("body is missing")
 	}
@@ -161,14 +165,14 @@ func (c Create) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition,
 		return nil, err
 	}
 
-	return []*schema.Definition{{
+	return &schema.Definition{
 		Description: c.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
-	}}, nil
+	}, nil
 }
 
-func (c CreateSecretConditionally) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, error) {
+func (c CreateSecretConditionally) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
 	if c.Invocation == nil {
 		return nil, fnerrors.InternalError("invocation is missing")
 	}
@@ -183,11 +187,11 @@ func (c CreateSecretConditionally) ToDefinition(scope ...schema.PackageName) ([]
 		return nil, err
 	}
 
-	return []*schema.Definition{{
+	return &schema.Definition{
 		Description: c.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
-	}}, nil
+	}, nil
 }
 
 func (es ExtendSpec) ToDefinition() (*schema.DefExtension, error) {
@@ -222,7 +226,6 @@ func SerializeSelector(selector map[string]string) string {
 	for k, v := range selector {
 		sels = append(sels, fmt.Sprintf("%s=%s", k, v))
 	}
-
 	sort.Strings(sels)
 	return strings.Join(sels, ",")
 }

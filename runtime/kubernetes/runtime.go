@@ -191,7 +191,7 @@ func (r k8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 	// Pass the computed namespace to the provisioning tool.
 	return &rtypes.ProvisionProps{
 		ProvisionInput: []*anypb.Any{packedHostEnv, packedSystemInfo},
-		Definition:     def,
+		Definition:     []*schema.Definition{def},
 	}, nil
 }
 
@@ -309,7 +309,7 @@ func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 			if err != nil {
 				return nil, err
 			}
-			state.definitions = append(state.definitions, def...)
+			state.definitions = append(state.definitions, def)
 		}
 	}
 
@@ -329,7 +329,7 @@ func (r k8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 		if err != nil {
 			return nil, err
 		}
-		state.definitions = append(state.definitions, def...)
+		state.definitions = append(state.definitions, def)
 	}
 
 	// XXX ensure that any single domain is only used by a single ingress.
@@ -356,7 +356,7 @@ func (r k8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 			if err != nil {
 				return nil, err
 			}
-			state.definitions = append(state.definitions, def...)
+			state.definitions = append(state.definitions, def)
 		}
 
 		managed = append(managed, m...)
@@ -422,7 +422,7 @@ func (r k8sRuntime) PlanShutdown(ctx context.Context, foci []provision.Server, s
 			if def, err := op.ToDefinition(t.PackageName()); err != nil {
 				return nil, err
 			} else {
-				definitions = append(definitions, def...)
+				definitions = append(definitions, def)
 			}
 		}
 	}

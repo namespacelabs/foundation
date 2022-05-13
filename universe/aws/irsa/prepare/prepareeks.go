@@ -140,17 +140,17 @@ type makeRole struct {
 	*fniam.OpEnsureRole
 }
 
-func (m makeRole) ToDefinition(scope ...schema.PackageName) ([]*schema.Definition, error) {
+func (m makeRole) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
 	packed, err := anypb.New(m.OpEnsureRole)
 	if err != nil {
 		return nil, err
 	}
 
-	return []*schema.Definition{{
+	return &schema.Definition{
 		Description: fmt.Sprintf("AWS IAM role %s", m.RoleName),
 		Impl:        packed,
 		Scope:       schema.Strs(scope...),
-	}}, nil
+	}, nil
 }
 
 type PolicyDocument struct {
