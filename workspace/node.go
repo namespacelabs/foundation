@@ -65,6 +65,8 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 		}
 
 		// XXX this special casing should be found a new home.
+		// Note(@nicolasalt): this only affects Go. In Node.js the "Conn" type is not provided,
+		// so this statement has no effect.
 		if dep.PackageName == "namespacelabs.dev/foundation/std/grpc" && dep.Type == "Backend" {
 			additionalInstances = append(additionalInstances, &schema.Instantiate{
 				PackageName: dep.PackageName,

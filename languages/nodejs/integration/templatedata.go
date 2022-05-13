@@ -52,6 +52,11 @@ type tmplProvider struct {
 	// nil if the provider has no dependencis.
 	Deps            *tmplDeps
 	PackageDepsName *string
+	// If parametrized, the provider function has a type parameter and
+	// takes an additional argument - constructor of that type.
+	// Used to implement the gRPC extension where the provided type is
+	// a usage-specific gRPC client instance.
+	IsParameterized bool
 }
 
 type tmplDeps struct {
@@ -65,6 +70,8 @@ type tmplDependency struct {
 	Provider          tmplImportedType
 	ProviderInputType tmplImportedType
 	ProviderInput     tmplSerializedProto
+	// See tmplProvider.IsParameterized.
+	IsProviderParameterized bool
 }
 type tmplSerializedProto struct {
 	Base64Content string

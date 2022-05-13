@@ -16,23 +16,25 @@ var (
 {{define "DefineDeps" -}}
 export interface {{.Name}}Deps {
 {{- range .Deps}}
-	{{.Name}}: {{.Type.ImportAlias}}.{{.Type.Name}};
+	{{.Name}}: {{template "Type" .Type}};
 {{- end}}
 }
-{{- end}}	
+{{- end}}
 
 // Input: tmplDeps
 {{define "ConstructDeps" -}}
 ({
 	{{- range .Deps}}
-		{{.Name}}: {{.Provider.ImportAlias}}.{{.Provider.Name}}Provider(
+		{{.Name}}: {{template "Type" .Provider}}Provider(
 			graph,
 			{{range .ProviderInput.Comments -}}
 			{{if .}}// {{.}}
 			{{end}}
 			{{- end -}}
-			{{.ProviderInputType.ImportAlias}}.{{.ProviderInputType.Name -}}
-			.deserializeBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))),
+			{{template "Type" .ProviderInputType -}}
+			.deserializeBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
+		  {{- if .IsProviderParameterized}},
+			{{template "Type" .Type}}{{end}}),
 	{{- end}}
   })
 {{- end}}
@@ -45,7 +47,7 @@ export interface {{.Name}}Deps {
 
 export const Package = {
   name: "{{.Name}}",
-	
+
   {{- if .Deps}}
   // Package dependencies are instantiated at most once.
   instantiateDeps: (graph: DependencyGraph) => {{template "ConstructDeps" .Deps}},
@@ -70,13 +72,13 @@ export const TransitiveInitializers: Initializer[] = [
 {{define "InitializerDef" -}}
 const initializer = {
   package: Package,
-	initialize: impl.initialize, 
-	
+	initialize: impl.initialize,
+
   {{- if .InitializeBefore}}
 	before: [
 	{{- range .InitializeBefore}}"{{.}}",{{end -}}
 	]{{- end}}
-	
+
   {{- if .InitializeAfter}}
 	after: [
 	{{- range .InitializeAfter}}"{{.}}",{{end -}}
@@ -94,22 +96,27 @@ export const prepare: Prepare = impl.initialize;
 {{template "DefineDeps" .Deps}}
 {{- end}}
 
-export const {{.Name}}Provider = (graph: DependencyGraph, input: {{.InputType.ImportAlias}}.{{.InputType.Name -}}) =>
+export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
+  (graph: DependencyGraph, input: {{template "Type" .InputType -}}
+  {{if .IsParameterized}}, outputTypeCtr: new (...args: any[]) => T{{end}}) =>
 	provide{{.Name}}(
 		input
-		{{- if .PackageDepsName}}, 
+		{{- if .PackageDepsName}},
 		graph.instantiatePackageDeps(Package)
 		{{- end}}
 		{{- if .Deps}},
 		// Scoped dependencies that are instantiated for each call to Provide{{.Name}}.
 		graph.instantiateDeps(Package.name, "{{.Deps.Name}}", () => {{template "ConstructDeps" .Deps}})
 		{{- end}}
+		{{- if .IsParameterized}}, outputTypeCtr{{end}}
   );
 
-export type Provide{{.Name}} = (input: {{.InputType.ImportAlias}}.{{.InputType.Name}}
+export type Provide{{.Name}} = {{if .IsParameterized}}<T>{{end -}}
+    (input: {{template "Type" .InputType}}
 	  {{- if .PackageDepsName}}, packageDeps: {{.PackageDepsName}}Deps{{end -}}
-	  {{- if .Deps}}, deps: {{.Name}}Deps{{end}}) =>
-		{{.OutputType.ImportAlias}}.{{.OutputType.Name}};
+	  {{- if .Deps}}, deps: {{.Name}}Deps{{end}}
+		{{- if .IsParameterized}}, outputTypeCtr: new (...args: any[]) => T{{end}}) =>
+		{{if .IsParameterized}}T{{else}}{{template "Type" .OutputType}}{{end}};
 export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
 {{- end}}
 
@@ -117,7 +124,12 @@ export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
 {{range .Imports -}}
 import * as {{.Alias}} from "{{.Package}}"
 {{end}}
-{{end}}` +
+{{end}}
+
+// Type: tmplImportedType
+{{define "Type" -}}
+{{if .ImportAlias}}{{.ImportAlias}}.{{end}}{{.Name}}
+{{- end}}` +
 
 			// Node template
 			`{{define "Node"}}{{with $opts := .}}// This file was automatically generated.

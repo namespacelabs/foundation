@@ -67,7 +67,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 
 	providers := []tmplProvider{}
 	for _, p := range nodeData.Providers {
-		inputType, err := convertType(ic, p.InputType)
+		inputType, err := convertProtoType(ic, p.InputType)
 		if err != nil {
 			return nodeTmplOptions{}, err
 		}
@@ -77,7 +77,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 			return nodeTmplOptions{}, err
 		}
 
-		outputType, err := convertAvailableIn(ic, p.ProviderType.Nodejs, p.Location)
+		providerType, err := convertProviderType(ic, p.ProviderType, p.Location)
 		if err != nil {
 			return nodeTmplOptions{}, err
 		}
@@ -85,9 +85,10 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 		providers = append(providers, tmplProvider{
 			Name:            strcase.ToCamel(p.Name),
 			InputType:       inputType,
-			OutputType:      outputType,
+			OutputType:      providerType,
 			Deps:            scopeDeps,
 			PackageDepsName: packageDepsName,
+			IsParameterized: p.ProviderType.IsParameterized,
 		})
 	}
 
@@ -118,6 +119,14 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 	}, nil
 }
 
+func convertProviderType(ic *importCollector, providerTypeData shared.ProviderTypeData, loc workspace.Location) (tmplImportedType, error) {
+	if providerTypeData.ParsedType != nil {
+		return convertAvailableIn(ic, providerTypeData.ParsedType.Nodejs, loc)
+	} else {
+		return convertProtoType(ic, *providerTypeData.Type)
+	}
+}
+
 func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDependency, error) {
 	npmPackage, err := toNpmPackage(dep.ProviderLocation)
 	if err != nil {
@@ -125,19 +134,19 @@ func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDepe
 	}
 	alias := ic.add(nodeDepsNpmImport(npmPackage))
 
-	inputType, err := convertType(ic, dep.ProviderInputType)
+	inputType, err := convertProtoType(ic, dep.ProviderInputType)
 	if err != nil {
 		return tmplDependency{}, err
 	}
 
-	depType, err := convertAvailableIn(ic, dep.ProviderType.Nodejs, dep.ProviderLocation)
+	providerType, err := convertProviderType(ic, dep.ProviderType, dep.ProviderLocation)
 	if err != nil {
 		return tmplDependency{}, err
 	}
 
 	return tmplDependency{
 		Name: dep.Name,
-		Type: depType,
+		Type: providerType,
 		Provider: tmplImportedType{
 			Name:        strcase.ToCamel(dep.ProviderName),
 			ImportAlias: alias,
@@ -147,6 +156,7 @@ func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDepe
 			Base64Content: base64.StdEncoding.EncodeToString(dep.ProviderInput.Content),
 			Comments:      dep.ProviderInput.Comments,
 		},
+		IsProviderParameterized: dep.ProviderType.IsParameterized,
 	}, nil
 }
 

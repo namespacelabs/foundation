@@ -71,6 +71,7 @@ __metadata:
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter": 0.0.0
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
     "@namespacelabs/foundation": 0.1.27
     "@tsconfig/node16": 1.0.2
@@ -102,9 +103,44 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser@workspace:languages/nodejs/testdata/services/postuser":
+  version: 0.0.0-use.local
+  resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser@workspace:languages/nodejs/testdata/services/postuser"
+  dependencies:
+    "@grpc/grpc-js": 1.5.7
+    "@namespacelabs.dev-foundation/std-grpc": 0.0.0
+    "@namespacelabs/foundation": 0.1.27
+    "@tsconfig/node16": 1.0.2
+    "@types/google-protobuf": ^3.15.5
+    "@types/node": 16.x
+    "@types/yargs": 16.x
+    google-protobuf: ^3.20.0
+    source-map-support: 0.5.21
+    typescript: 4.6.2
+    yargs: 16.x
+  languageName: unknown
+  linkType: soft
+
 "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@0.0.0, @namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple":
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple"
+  dependencies:
+    "@grpc/grpc-js": 1.5.7
+    "@namespacelabs/foundation": 0.1.27
+    "@tsconfig/node16": 1.0.2
+    "@types/google-protobuf": ^3.15.5
+    "@types/node": 16.x
+    "@types/yargs": 16.x
+    google-protobuf: ^3.20.0
+    source-map-support: 0.5.21
+    typescript: 4.6.2
+    yargs: 16.x
+  languageName: unknown
+  linkType: soft
+
+"@namespacelabs.dev-foundation/std-grpc@0.0.0, @namespacelabs.dev-foundation/std-grpc@workspace:std/grpc":
+  version: 0.0.0-use.local
+  resolution: "@namespacelabs.dev-foundation/std-grpc@workspace:std/grpc"
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs/foundation": 0.1.27

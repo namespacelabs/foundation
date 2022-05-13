@@ -8,6 +8,8 @@
 		"languages/nodejs/testdata/extensions/numberformatter",
 		"languages/nodejs/testdata/server",
 		"languages/nodejs/testdata/services/numberformatter",
-		"languages/nodejs/testdata/services/simple"
+		"languages/nodejs/testdata/services/postuser",
+		"languages/nodejs/testdata/services/simple",
+		"std/grpc"
 	]
 }

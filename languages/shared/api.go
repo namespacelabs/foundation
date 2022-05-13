@@ -34,25 +34,46 @@ type PackageInitializerData struct {
 	InitializeAfter  []string
 }
 
-type TypeData struct {
+type ProtoTypeKind int32
+
+const (
+	ProtoMessage ProtoTypeKind = iota
+	ProtoService
+)
+
+type ProtoTypeData struct {
 	Name           string
 	SourceFileName string
 	Location       workspace.Location
+	// Distinguishing between message and service types because they need to be imported from different files in node.js
+	Kind ProtoTypeKind
 }
 
 type ProviderData struct {
 	Name         string
 	Location     workspace.Location
-	InputType    TypeData
-	ProviderType *schema.Provides_AvailableIn
+	InputType    ProtoTypeData
+	ProviderType ProviderTypeData
 	ScopedDeps   []DependencyData
+}
+
+// Only one of these two fields is set.
+type ProviderTypeData struct {
+	// Regular case: the user specific the type of the provider in `availableIn`.
+	ParsedType *schema.Provides_AvailableIn
+	// std/grpc extension: the provider type `<service-name>Client` is generated at runtime.
+	// Only can happen within DependencyData.
+	Type *ProtoTypeData
+	// If true, the provider can return different types dependning on the usage context.\
+	// Used to implement gRPC client injection.
+	IsParameterized bool
 }
 
 type DependencyData struct {
 	Name              string
 	ProviderName      string
-	ProviderInputType TypeData
-	ProviderType      *schema.Provides_AvailableIn
+	ProviderInputType ProtoTypeData
+	ProviderType      ProviderTypeData
 	ProviderLocation  workspace.Location
 	ProviderInput     SerializedProto
 }

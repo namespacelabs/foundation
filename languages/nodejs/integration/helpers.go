@@ -30,47 +30,56 @@ func nodeDepsNpmImport(npmPackage NpmPackage) string {
 	return npmImport(npmPackage, "deps.fn")
 }
 
-func convertLocationToImport(loc workspace.Location, filename string) (string, error) {
-	moduleName := filename
+func convertProtoType(ic *importCollector, t shared.ProtoTypeData) (tmplImportedType, error) {
+	tsModuleName := t.SourceFileName
 
-	if strings.HasSuffix(filename, ".proto") {
+	if strings.HasSuffix(tsModuleName, ".proto") {
 		// strip suffix
-		moduleName = strings.TrimSuffix(moduleName, ".proto") + "_pb"
+		tsModuleName = strings.TrimSuffix(tsModuleName, ".proto")
+		if t.Kind == shared.ProtoService {
+			tsModuleName += "_grpc_pb"
+		} else {
+			tsModuleName += "_pb"
+		}
+
+		// Hack: ts-protoc-gen doesn't support "import public" in proto files so manually substitute
+		// the import for the standard gRPC extension.
+		// TODO: fix this somehow.
+		if string(t.Location.PackageName) == "namespacelabs.dev/foundation/std/grpc" && t.SourceFileName == "provider.proto" {
+			tsModuleName = "protos/" + tsModuleName
+		}
 	}
 
-	npmPackage, err := toNpmPackage(loc)
-	if err != nil {
-		return "", err
-	}
-
-	return npmImport(npmPackage, moduleName), nil
-}
-
-func convertType(ic *importCollector, t shared.TypeData) (tmplImportedType, error) {
-	// TODO(@nicolasalt): handle the case when the source type is not in the same package.
-	npmImport, err := convertLocationToImport(t.Location, t.SourceFileName)
+	npmPackage, err := toNpmPackage(t.Location)
 	if err != nil {
 		return tmplImportedType{}, err
 	}
 
 	return tmplImportedType{
-		Name:        t.Name,
-		ImportAlias: ic.add(npmImport),
+		Name: t.Name,
+		// TODO: handle the case when the source type is not in the same package.
+		ImportAlias: ic.add(npmImport(npmPackage, tsModuleName)),
 	}, nil
 }
 
 func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_NodeJs, loc workspace.Location) (tmplImportedType, error) {
+	// Empty import means that the type is generated at runtime when the provider is used as a dependency,
+	// and here were are generating the provider definition. In this case this type is not used from the templates.
+	if a.Import == "" {
+		return tmplImportedType{}, nil
+	}
+
 	var imp string
 	if strings.Contains(a.Import, "/") {
 		// Full path is specified.
 		imp = a.Import
 	} else {
 		// As a shortcut, the user can specify the file from the same package without the full NPM package.
-		var err error
-		imp, err = convertLocationToImport(loc, a.Import)
+		npmPackage, err := toNpmPackage(loc)
 		if err != nil {
 			return tmplImportedType{}, err
 		}
+		imp = npmImport(npmPackage, a.Import)
 	}
 	return tmplImportedType{
 		Name:        a.Type,
@@ -103,8 +112,12 @@ func newImportCollector() *importCollector {
 	}
 }
 
-// Returns assigned alias
+// Returns the assigned alias or an empty string if no alias has been assigned.
 func (ic *importCollector) add(npmImport string) string {
+	if npmImport == "" {
+		return ""
+	}
+
 	var alias string
 	if im, ok := ic.pkgToImport[npmImport]; ok {
 		alias = im.Alias

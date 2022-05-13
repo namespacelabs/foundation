@@ -19,6 +19,7 @@ extension: fn.#Extension & {
 			input: $providerProto.types.Backend
 			availableIn: {
 				go: {} // Computed at runtime.
+				nodejs: {} // Computed at runtime.
 			}
 		}
 
@@ -29,6 +30,8 @@ extension: fn.#Extension & {
 					package: "google.golang.org/grpc"
 					type:    "*ClientConn"
 				}
+				// nodejs doesn't have a type for a connection. Re-using a channel happens automatically:
+				// https://github.com/grpc/grpc-node/issues/359
 			}
 		}
 	}
