@@ -198,6 +198,7 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 
 		run.Command = []string{"/filesync-controller"}
 		run.Args = []string{"/app", fmt.Sprint(fileSyncPort), "nodemon",
+			"--config", nodemonConfigPath,
 			filepath.Join(srv.Location.Rel(), "main.fn.ts")}
 	} else {
 		run.Command = []string{"node", filepath.Join(srv.Location.Rel(), "main.fn.js")}
@@ -565,24 +566,25 @@ func generateYarnRoot(ctx context.Context, path string, out fnfs.ReadWriteFS) er
 
 	// Create "tsconfig.json" if it doesn't exist.
 	tsconfigFn := filepath.Join(path, "tsconfig.json")
-	if _, err := updateJson(ctx, tsconfigFn, out,
-		func(tsconfig map[string]interface{}, fileExisted bool) {
-			if !fileExisted {
-				tsconfig["extends"] = "@tsconfig/node16/tsconfig.json"
-				tsconfig["compilerOptions"] = map[string]interface{}{
-					"sourceMap": true,
-				}
-				tsconfig["ts-node"] = map[string]interface{}{
-					"ignore": []string{"(?!.*) important to not ignore node_modules (which is the default) because Foundation-managed dependencies need to be compiled and they live inside node_modules"},
-				}
-				tsconfig["include"] = []string{
-					"**/*",
-					// TODO(@nicolasalt): do not hardcode modules that need to be compiled (i.e. managed by foundation).
-					"node_modules/@github*/**/*",
-				}
-			}
+	_, err = fs.ReadFile(out, tsconfigFn)
+	if err != nil && !os.IsNotExist(err) {
+		return fnerrors.UserError(nil, "error while parsing %s: %s", tsconfigFn, err)
+	}
+	fileExisted := err == nil
+	if !fileExisted {
+		tsConfig := tsConfig{
+			Extends: "@tsconfig/node16/tsconfig.json",
+		}
+		tsConfigRaw, err := json.MarshalIndent(tsConfig, "", "\t")
+		if err != nil {
+			return err
+		}
+		if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), out, tsconfigFn, func(w io.Writer) error {
+			_, err := w.Write(tsConfigRaw)
+			return err
 		}); err != nil {
-		return err
+			return err
+		}
 	}
 
 	return nil

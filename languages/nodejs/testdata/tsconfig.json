@@ -1,15 +1,3 @@
 {
-	"compilerOptions": {
-		"sourceMap": true
-	},
-	"extends": "@tsconfig/node16/tsconfig.json",
-	"include": [
-		"**/*",
-		"node_modules/@github*/**/*"
-	],
-	"ts-node": {
-		"ignore": [
-			"(?!.*) important to not ignore node_modules (which is the default) because Foundation-managed dependencies need to be compiled and they live inside node_modules"
-		]
-	}
+	"extends": "@tsconfig/node16/tsconfig.json"
 }
