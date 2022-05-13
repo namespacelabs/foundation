@@ -46,7 +46,7 @@ require (
 	github.com/jhump/protoreflect v1.10.3
 	github.com/karrick/godirwalk v1.16.1
 	github.com/kr/text v0.2.0
-	github.com/maruel/panicparse/v2 v2.2.1
+	github.com/maruel/panicparse/v2 v2.2.2
 	github.com/mattn/go-zglob v0.0.3
 	github.com/miekg/dns v1.1.46
 	github.com/moby/buildkit v0.10.2

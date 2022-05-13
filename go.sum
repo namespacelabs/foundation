@@ -799,8 +799,8 @@ github.com/mailru/easyjson v0.7.0/go.mod h1:KAzv3t3aY1NaHWoQz1+4F1ccyAH66Jk7yos7
 github.com/mailru/easyjson v0.7.6 h1:8yTIVnZgCoiM1TgqoeTl+LfU5Jg6/xL3QhGQnimLYnA=
 github.com/mailru/easyjson v0.7.6/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/marstr/guid v1.1.0/go.mod h1:74gB1z2wpxxInTG6yaqA7KrtM0NZ+RbrcqDvYHefzho=
-github.com/maruel/panicparse/v2 v2.2.1 h1:VXY1afcZVisbGdNIRQV15vmM7K40pTCiou0b/xwtOBU=
-github.com/maruel/panicparse/v2 v2.2.1/go.mod h1:WizmeHJfpyKYYKGInKv8ax8jh7DJnQE5yFDuzFfHzIU=
+github.com/maruel/panicparse/v2 v2.2.2 h1:4Gu/Z5oLpJCE/0/NwxrUkyn7alpqOQdJAUuchB2OoJU=
+github.com/maruel/panicparse/v2 v2.2.2/go.mod h1:WizmeHJfpyKYYKGInKv8ax8jh7DJnQE5yFDuzFfHzIU=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-colorable v0.1.1/go.mod h1:FuOcm+DKB9mbwrcAfNl7/TZVBZ6rcnceauSikq3lYCQ=
 github.com/mattn/go-colorable v0.1.6/go.mod h1:u6P/XSegPjTcexA+o6vUJrdnUu04hMope9wVRipJSqc=
