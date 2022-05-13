@@ -51,7 +51,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-18.04, ubuntu-20.04]
+        os: [ubuntu-20.04]
         use_prebuilts: [false, true]
         golang_use_buildkit: [false, true]
     runs-on: ${{ matrix.os }}
@@ -111,7 +111,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-18.04, ubuntu-20.04]
+        os: [ubuntu-20.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
