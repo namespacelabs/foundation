@@ -2,25 +2,26 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package compute
+package tasks
 
 import (
 	"context"
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"sync"
 
 	"google.golang.org/protobuf/encoding/prototext"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/workspace/dirs"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 var (
 	//go:embed throttle.textpb
 	embeddedConfig embed.FS
+
+	throttler *throttleState
 )
 
 type throttleState struct {
@@ -36,10 +37,20 @@ type throttleCapacity struct {
 	used map[string]int32 // Total amount of capacity used per value.
 }
 
-func parseThrottleConfig(ctx context.Context) (*ThrottleConfigurations, error) {
+func SetupThrottler(debug io.Writer) error {
+	conf, err := parseThrottleConfig(debug)
+	if err != nil {
+		return err
+	}
+
+	throttler = newThrottleState(debug, conf.ThrottleConfiguration)
+	return nil
+}
+
+func parseThrottleConfig(debug io.Writer) (*ThrottleConfigurations, error) {
 	if dir, err := dirs.Config(); err == nil {
 		if cfg, err := parseThrottleConfigFrom(os.DirFS(dir)); err == nil {
-			fmt.Fprintf(console.Debug(ctx), "Using user-provided throttle configuration (loaded from %s).\n", dir)
+			fmt.Fprintf(debug, "Using user-provided throttle configuration (loaded from %s).\n", dir)
 			return cfg, nil
 		}
 	}
@@ -61,16 +72,19 @@ func parseThrottleConfigFrom(fsys fs.FS) (*ThrottleConfigurations, error) {
 	return confs, nil
 }
 
-func newThrottleState(confs []*ThrottleConfiguration) *throttleState {
+func newThrottleState(debug io.Writer, confs []*ThrottleConfiguration) *throttleState {
+	fmt.Fprintln(debug, "Setting up action throttler.")
+
 	ts := &throttleState{}
 	ts.cond = sync.NewCond(&ts.mu)
 	for _, conf := range confs {
 		ts.capacity = append(ts.capacity, &throttleCapacity{c: conf, used: map[string]int32{}})
+		fmt.Fprintf(debug, "  %+v\n", conf)
 	}
 	return ts
 }
 
-func (ts *throttleState) AcquireLease(ctx context.Context, wellKnown map[tasks.WellKnown]string) (func(), error) {
+func (ts *throttleState) AcquireLease(ctx context.Context, wellKnown map[WellKnown]string) (func(), error) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -87,7 +101,7 @@ func (ts *throttleState) AcquireLease(ctx context.Context, wellKnown map[tasks.W
 			var label string
 			if cap.c.CountPerLabel != "" {
 				var ok bool
-				label, ok = wellKnown[tasks.WellKnown(cap.c.CountPerLabel)]
+				label, ok = wellKnown[WellKnown(cap.c.CountPerLabel)]
 				if !ok {
 					continue
 				}
@@ -130,9 +144,9 @@ func (ts *throttleState) AcquireLease(ctx context.Context, wellKnown map[tasks.W
 	}
 }
 
-func (tc *throttleCapacity) matches(labels map[tasks.WellKnown]string) bool {
+func (tc *throttleCapacity) matches(labels map[WellKnown]string) bool {
 	for key, value := range tc.c.Labels {
-		if chk, ok := labels[tasks.WellKnown(key)]; !ok || chk != value {
+		if chk, ok := labels[WellKnown(key)]; !ok || chk != value {
 			return false
 		}
 	}

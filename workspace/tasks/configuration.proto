@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.workspace.compute;
+package foundation.workspace.tasks;
 
-option go_package = "namespacelabs.dev/foundation/workspace/compute";
+option go_package = "namespacelabs.dev/foundation/workspace/tasks";
 
 message ThrottleConfiguration {
     // Capacity configuration applies to requests with these labels.

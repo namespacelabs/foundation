@@ -280,52 +280,13 @@ func (ev *ActionEvent) Start(ctx context.Context) *RunningAction {
 	return ra
 }
 
-type RunOptions struct {
+type RunOpts struct {
+	// If Wait returns true, then the action is considered to be cached, and Run is skipped.
 	Wait func(context.Context, map[WellKnown]string) (bool, error)
 	Run  func(context.Context) error
 }
 
-func (ev *ActionEvent) CheckCacheRun(ctx context.Context, options RunOptions) error {
-	ra := ev.toAction(ctx, ActionWaiting)
-	ra.sink.Waiting(ra)
-
-	var wasCached bool
-	err := ra.Call(ctx, func(ctx context.Context) error {
-		if _, ok := ev.wellKnown[WkAction]; !ok {
-			if ev.wellKnown == nil {
-				ev.wellKnown = map[WellKnown]string{}
-			}
-			ev.wellKnown[WkAction] = ev.data.Name
-		}
-
-		cached, err := options.Wait(ctx, ev.wellKnown)
-		if err != nil {
-			return err
-		}
-		wasCached = cached
-		return nil
-	})
-	if err != nil {
-		return ra.Done(err)
-	}
-
-	if ra.span != nil && ra.span.IsRecording() {
-		ra.span.AddEvent("starting", trace.WithAttributes(attribute.Bool("cached", wasCached)))
-	}
-
-	if wasCached {
-		ra.Data.Arguments = append(ra.Data.Arguments, ActionArgument{Name: "cached", Msg: true})
-		return ra.Done(nil)
-	}
-
-	// Our data model implies that the caller always owns data; and sinks should perform copies.
-	ra.Data.Started = time.Now()
-	ra.markStarted(ctx)
-
-	return ra.Done(ra.Call(ctx, options.Run))
-}
-
-func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) error {
+func (ev *ActionEvent) RunWithOpts(ctx context.Context, opts RunOpts) error {
 	defer func() {
 		if r := recover(); r != nil {
 			// Capture the stack on panic.
@@ -338,8 +299,68 @@ func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) e
 			panic(r)
 		}
 	}()
-	v := ev.Start(ctx)
-	return v.Done(v.Call(ctx, f))
+
+	ra := ev.toAction(ctx, ActionWaiting)
+	ra.sink.Waiting(ra)
+
+	var wasCached bool
+	var releaseLease func()
+	err := ra.Call(ctx, func(ctx context.Context) error {
+		if _, ok := ev.wellKnown[WkAction]; !ok {
+			if ev.wellKnown == nil {
+				ev.wellKnown = map[WellKnown]string{}
+			}
+			ev.wellKnown[WkAction] = ev.data.Name
+		}
+
+		if opts.Wait != nil {
+			cached, err := opts.Wait(ctx, ev.wellKnown)
+			if err != nil {
+				return err
+			}
+			wasCached = cached
+			if cached {
+				// Don't try to acquire a lease.
+				return nil
+			}
+		}
+
+		if throttler == nil {
+			return nil
+		}
+
+		// Classify the wait for lease time as "wait time".
+		var err error
+		releaseLease, err = throttler.AcquireLease(ctx, ev.wellKnown)
+		return err
+	})
+	if err != nil {
+		return ra.Done(err)
+	}
+
+	// Only record a Starting event if we had to wait.
+	if (opts.Wait != nil || releaseLease != nil) && ra.span != nil && ra.span.IsRecording() {
+		ra.span.AddEvent("starting", trace.WithAttributes(attribute.Bool("cached", wasCached)))
+	}
+
+	if wasCached {
+		ra.Data.Arguments = append(ra.Data.Arguments, ActionArgument{Name: "cached", Msg: true})
+		return ra.Done(nil)
+	}
+
+	if releaseLease != nil {
+		defer releaseLease()
+	}
+
+	// Our data model implies that the caller always owns data; and sinks should perform copies.
+	ra.Data.Started = time.Now()
+	ra.markStarted(ctx)
+
+	return ra.Done(ra.Call(ctx, opts.Run))
+}
+
+func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) error {
+	return ev.RunWithOpts(ctx, RunOpts{Run: f})
 }
 
 func Return[V any](ctx context.Context, ev *ActionEvent, f func(context.Context) (V, error)) (V, error) {

@@ -338,8 +338,7 @@ func (o *observable) Loop(ctx context.Context) error {
 
 		var inputs *computedInputs
 
-		var releaseLease func()
-		err := o.computable.Action().CheckCacheRun(ctx, tasks.RunOptions{
+		err := o.computable.Action().RunWithOpts(ctx, tasks.RunOpts{
 			Wait: func(ctx context.Context, wellKnown map[tasks.WellKnown]string) (bool, error) {
 				var err error
 				inputs, err = o.computable.Inputs().computeDigest(ctx, o.computable.Computable, true)
@@ -359,13 +358,9 @@ func (o *observable) Loop(ctx context.Context) error {
 					return true, nil
 				}
 
-				releaseLease, err = orch.throttle.AcquireLease(ctx, wellKnown)
-				return false, err
+				return false, nil
 			},
 			Run: func(ctx context.Context) error {
-				if releaseLease != nil {
-					defer releaseLease()
-				}
 				var err error
 				res, err := compute(ctx, orch, o.computable, cacheable, shouldCache, inputs, resolved)
 				if err != nil {

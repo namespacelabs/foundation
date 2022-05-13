@@ -43,10 +43,9 @@ var (
 )
 
 type Orch struct {
-	cache    cache.Cache
-	origctx  context.Context
-	exec     executor.Executor
-	throttle *throttleState
+	cache   cache.Cache
+	origctx context.Context
+	exec    executor.Executor
 
 	mu       sync.Mutex
 	promises map[string]*Promise[any]
@@ -211,8 +210,7 @@ func waitCompute(ctx context.Context, g *Orch, p *Promise[any], opts computeInst
 
 	var resolved *Resolved
 	var hits []cacheHit
-	var releaseLease func()
-	if err := opts.Action().ID(p.actionID).CheckCacheRun(ctx, tasks.RunOptions{
+	if err := opts.Action().ID(p.actionID).RunWithOpts(ctx, tasks.RunOpts{
 		Wait: func(ctx context.Context, wellKnown map[tasks.WellKnown]string) (bool, error) {
 			// If we've already calculated an inputs' digest, then attempt to load from the cache
 			// directly. If not, we'll need to wait on our dependencies to determine whether a
@@ -263,14 +261,9 @@ func waitCompute(ctx context.Context, g *Orch, p *Promise[any], opts computeInst
 				results: results,
 			}
 
-			releaseLease, err = g.throttle.AcquireLease(ctx, wellKnown)
-			return false, err
+			return false, nil
 		},
 		Run: func(ctx context.Context) error {
-			if releaseLease != nil {
-				defer releaseLease()
-			}
-
 			res, err := compute(ctx, g, opts, cacheable, shouldCache, inputs, *resolved)
 			if err != nil {
 				return err
@@ -474,15 +467,9 @@ func Do(parent context.Context, do func(context.Context) error) error {
 		}
 	}
 
-	tconf, err := parseThrottleConfig(parent)
-	if err != nil {
-		return fnerrors.InternalError("failed to parse throttle configuration: %v", err)
-	}
-
 	g := &Orch{
 		cache:    c,
 		promises: map[string]*Promise[any]{},
-		throttle: newThrottleState(tconf.ThrottleConfiguration),
 	}
 	ctx := context.WithValue(parent, _graphKey, g)
 	exec, wait := executor.New(ctx)
