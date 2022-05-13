@@ -26,5 +26,6 @@ func main() {
 
 	ctx := context.Background()
 
-	controlEphemeral(ctx, clientset)
+	go controlEphemeral(ctx, clientset)
+	go controlDev(ctx, clientset)
 }

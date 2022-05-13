@@ -12,6 +12,7 @@ import (
 
 const (
 	K8sServerId           = "k8s.namespacelabs.dev/server-id"
+	K8sServerFocus        = "k8s.namespacelabs.dev/server-focus"
 	K8sServerPackageName  = "k8s.namespacelabs.dev/server-package-name"
 	K8sServicePackageName = "k8s.namespacelabs.dev/service-package-name"
 	K8sServiceGrpcType    = "k8s.namespacelabs.dev/service-grpc-type"
@@ -69,6 +70,10 @@ func MakeAnnotations(entry *schema.Stack_Entry) map[string]string {
 
 	// XXX add annotations with pointers to tools, team owners, etc.
 	return m
+}
+
+func MarkFocus(annotations *map[string]string) {
+	(*annotations)[K8sServerFocus] = "true"
 }
 
 func MakeServiceAnnotations(srv *schema.Server, endpoint *schema.Endpoint) (map[string]string, error) {

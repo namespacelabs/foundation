@@ -214,7 +214,7 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	annotations := kubedef.MakeAnnotations(srv.StackEntry())
 
 	if opts.focus.Includes(srv.PackageName()) {
-		// Add annotation
+		kubedef.MarkFocus(&annotations)
 	}
 
 	deploymentId := kubedef.MakeDeploymentId(srv.Proto())
