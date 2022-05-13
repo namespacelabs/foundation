@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	sync "sync"
 
 	"github.com/dustin/go-humanize"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -181,6 +180,8 @@ func (l *reqToImage) Output() compute.Output {
 
 func (l *reqToImage) ImageRef() string { return "(buildkit)" } // Implements HasImageRef
 
+var errLogCtx = newErrContext()
+
 func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
 	// TargetName is not added as a dependency of the `reqToImage` compute node, or
 	// our inputs are not stable.
@@ -195,56 +196,22 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 		if v.Keychain == nil {
 			i, err := solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
 			if err != nil {
-				errContextBuffers.mu.Lock()
-				defer errContextBuffers.mu.Unlock()
-				names := errContextBuffers.namesByAction[tasks.Attachments(ctx).ActionID()]
-				err = fnerrors.WithLogs(
-					err,
-					func() io.Reader { return tasks.Attachments(ctx).ReaderByName("text.log") })
+				bufNames := errLogCtx.getBufNames(ctx)
+				for i := range bufNames {
+					err = fnerrors.WithLogs(
+						err,
+						func() io.Reader {
+							return tasks.Attachments(ctx).ReaderByOutputName(bufNames[len(bufNames)-i-1])
+						})
+					// TODO: allow multi buffer as contexts.
+					break
+				}
 			}
 			return i, err
 		}
 	}
 
 	return solve(ctx, deps, l.reqBase, exportToImage())
-}
-
-// actionLoggingContext stores per-action Attachment's buffer names that could provide additional context
-// in case of a failure.
-type actionLoggingContext struct {
-	// fields protected by actionsContext.mu
-
-	buffNames   []string
-	buffWithErr map[string]bool // A buffer is associated with a Vertex known to fail.
-}
-
-//
-type allLoggingContexts struct {
-	mu        sync.Mutex
-	perAction map[string]actionLoggingContext // Protected by mutex.
-	//vertexHasError map[string][]string // Protected by mutex.
-}
-
-var globalLogCtx = &allLoggingContexts{perAction: make(map[string]actionLoggingContext)}
-
-func addLogBuffer(ctx context.Context, name string) {
-	globalLogCtx.mu.Lock()
-	defer globalLogCtx.mu.Unlock()
-
-	actionId := tasks.Attachments(ctx).ActionID()
-	aCtx := globalLogCtx.perAction[actionId]
-	aCtx.buffNames = append(aCtx.buffNames, name)
-	globalLogCtx.perAction[actionId] = aCtx
-}
-
-func markLogBufferWithErr(ctx context.Context, name string) {
-	globalLogCtx.mu.Lock()
-	defer globalLogCtx.mu.Unlock()
-
-	actionId := tasks.Attachments(ctx).ActionID()
-	aCtx := globalLogCtx.perAction[actionId]
-	aCtx.buffWithErr[name] = true
-	globalLogCtx.perAction[actionId] = aCtx
 }
 
 type reqToFS struct {

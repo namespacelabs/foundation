@@ -36,6 +36,8 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 	outText := attachments.Output(tasks.TaskOutputTextLog)
 	outJSON := attachments.Output(TaskOutputBuildkitJsonLog)
 
+	errLogCtx.addLog(ctx, tasks.TaskOutputTextLog)
+
 	writers := []io.Writer{outText}
 	jsonWriters := []io.Writer{outJSON}
 
@@ -134,14 +136,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 					var err error
 					if vertex.Error != "" {
 						err = fnerrors.New(vertex.Error)
-						for streamNum := range streams {
-							readerF := func() io.Reader {
-								return tasks.Attachments(ctx).ReaderByName(consoleName(streamNum))
-							}
-							err = fnerrors.WithLogs(err, readerF)
-							// Pass one stream only as fnerrors.WithLogs does not handle well printing from multiple sources.
-							break
-						}
+						// TODO mark a buffer storing the error message.
 					}
 
 					existing.customDone(*vertex.Completed, err)
@@ -178,7 +173,12 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 
 			for _, log := range event.Logs {
 				if streams[log.Stream] == nil {
-					streams[log.Stream] = console.Output(ctx, consoleName(log.Stream))
+					outputName := tasks.Output(consoleName(log.Stream), "text/plain")
+					output := tasks.Attachments(ctx).Output(outputName)
+					streams[log.Stream] = io.MultiWriter(
+						output,
+						console.Output(ctx, consoleName(log.Stream)))
+					errLogCtx.addLog(ctx, outputName)
 				}
 
 				_, _ = streams[log.Stream].Write(log.Data)
