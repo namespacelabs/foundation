@@ -243,7 +243,11 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 			format(w, cause, opts)
 			writeSourceFileAndLine(w, cause, opts.colors)
 		}
-		cause = unwrap(cause)
+		if x := errors.Unwrap(cause); x != nil {
+			cause = x
+		} else {
+			break
+		}
 	}
 	format(w, cause, opts)
 }
@@ -329,8 +333,8 @@ func formatErrWithLogs(w io.Writer, err *errWithLogs, opts *FormatOptions) {
 
 func formatUsageError(w io.Writer, err *usageError, opts *FormatOptions) {
 	// XXX don't wordwrap if terminal is below 80 chars in width.
-	errTxt := text.Wrap(fmt.Sprintf("%s %s", err.Why, bold(err.What, opts.colors)), 80)
-	fmt.Fprintf(w, "%s: %s\n", formatLabel("usage error", opts.colors), errTxt)
+	errTxt := text.Wrap(err.Why, 80)
+	fmt.Fprintf(w, "%s: %s %s\n", formatLabel("usage error", opts.colors), errTxt, bold(err.What, opts.colors))
 }
 
 func formatInternalError(w io.Writer, err *internalError, opts *FormatOptions) {
@@ -371,10 +375,17 @@ func formatCueError(w io.Writer, err cueerrors.Error, opts *FormatOptions) {
 }
 
 func formatDependencyFailedError(w io.Writer, err *DependencyFailedError, opts *FormatOptions) {
+	depName := formatLabel(err.Name, opts.colors)
+
+	depType := fmt.Sprintf("(%s)", err.Type)
+	if opts.colors {
+		depType = aec.LightMagentaF.Apply(depType)
+	}
+
 	if opts.tracing {
-		fmt.Fprintf(w, "failed to compute %s %s\n", formatLabel(err.Name, opts.colors), aec.LightMagentaF.Apply(fmt.Sprintf("(%s)", err.Type)))
+		fmt.Fprintf(w, "failed to compute %s %s\n", depName, depType)
 	} else {
-		fmt.Fprintf(w, "failed to compute %s %s: %s\n", formatLabel(err.Name, opts.colors), aec.LightMagentaF.Apply(fmt.Sprintf("(%s)", err.Type)), err.Err)
+		fmt.Fprintf(w, "failed to compute %s %s: %s\n", depName, depType, err.Err)
 	}
 }
 
