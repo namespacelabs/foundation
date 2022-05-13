@@ -420,7 +420,18 @@ func updateJson(ctx context.Context, filepath string, fsys fnfs.ReadWriteFS, cal
 
 func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
 	var dl defs.DefList
+
 	dl.Add("Generate Typescript server dependencies", &OpGenServer{Server: pkg.Server, LoadedNode: nodes}, pkg.PackageName())
+
+	yarnRoot, err := findYarnRoot(pkg.Location)
+	if err != nil {
+		return nil, err
+	}
+	dl.Add("Generate Nodejs Yarn root", &OpGenYarnRoot{
+		YarnRootPkgName: yarnRoot,
+		RelLocation:     pkg.Location.Rel(),
+	}, pkg.Location.PackageName)
+
 	return dl.Serialize()
 }
 
@@ -480,9 +491,9 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 	if err != nil {
 		return nil, err
 	}
-
 	dl.Add("Generate Nodejs Yarn root", &OpGenYarnRoot{
-		YarnRootPkgName: string(yarnRoot),
+		YarnRootPkgName: yarnRoot,
+		RelLocation:     pkg.Location.Rel(),
 	}, pkg.Location.PackageName)
 
 	return dl.Serialize()
@@ -502,16 +513,33 @@ func (yarnRootStatefulGen) StartSession(ctx context.Context, env ops.Environment
 		wenv = nil
 	}
 
-	return &yarnRootGenSession{wenv: wenv, yarnRoots: map[string]context.Context{}}
+	return &yarnRootGenSession{wenv: wenv, yarnRoots: map[string]*yarnRootData{}}
 }
 
 type yarnRootGenSession struct {
 	wenv      workspace.MutableWorkspaceEnvironment
-	yarnRoots map[string]context.Context
+	yarnRoots map[string]*yarnRootData
+}
+
+type yarnRootData struct {
+	ctx            context.Context
+	workspacePaths []string
 }
 
 func (s *yarnRootGenSession) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenYarnRoot) (*ops.HandleResult, error) {
-	s.yarnRoots[x.YarnRootPkgName] = ctx
+	if s.yarnRoots[x.YarnRootPkgName] == nil {
+		s.yarnRoots[x.YarnRootPkgName] = &yarnRootData{
+			ctx:            ctx,
+			workspacePaths: []string{},
+		}
+	}
+	yarnRootData := s.yarnRoots[x.YarnRootPkgName]
+
+	relpath, err := filepath.Rel(x.YarnRootPkgName, x.RelLocation)
+	if err != nil {
+		return nil, err
+	}
+	yarnRootData.workspacePaths = append(yarnRootData.workspacePaths, relpath)
 	return nil, nil
 }
 
@@ -532,8 +560,10 @@ func (s *yarnRootGenSession) Commit() error {
 	return nil
 }
 
-func generateYarnRoot(ctx context.Context, path string, out fnfs.ReadWriteFS) error {
-	err := updateYarnRootPackageJson(ctx, path, out)
+func generateYarnRoot(yarnRootData *yarnRootData, path string, out fnfs.ReadWriteFS) error {
+	ctx := yarnRootData.ctx
+
+	err := updateYarnRootPackageJson(yarnRootData, path, out)
 
 	if err != nil {
 		return err
@@ -591,10 +621,10 @@ func generateYarnRoot(ctx context.Context, path string, out fnfs.ReadWriteFS) er
 }
 
 // Returns whether yarn has the correct version
-func updateYarnRootPackageJson(ctx context.Context, path string, fs fnfs.ReadWriteFS) error {
-	_, err := updatePackageJson(ctx, path, fs, func(packageJson map[string]interface{}, fileExisted bool) {
+func updateYarnRootPackageJson(yarnRootData *yarnRootData, path string, fs fnfs.ReadWriteFS) error {
+	_, err := updatePackageJson(yarnRootData.ctx, path, fs, func(packageJson map[string]interface{}, fileExisted bool) {
 		packageJson["private"] = true
-		packageJson["workspaces"] = []string{"**/*"}
+		packageJson["workspaces"] = yarnRootData.workspacePaths
 		packageJson["devDependencies"] = map[string]string{
 			"typescript": builtin().Dependencies["typescript"],
 		}
