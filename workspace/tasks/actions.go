@@ -702,6 +702,10 @@ func (ev *EventAttachments) SetProgress(p ActionProgress) *EventAttachments {
 	return ev
 }
 
+func (ev *EventAttachments) ReaderByOutputName(outputName OutputName) io.ReadCloser {
+	return ev.ReaderByName(outputName.name)
+}
+
 func (ev *EventAttachments) ReaderByName(name string) io.ReadCloser {
 	if ev != nil {
 		ev.mu.Lock()

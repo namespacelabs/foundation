@@ -36,6 +36,8 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 	outText := attachments.Output(tasks.TaskOutputTextLog)
 	outJSON := attachments.Output(TaskOutputBuildkitJsonLog)
 
+	tasks.GetErrContext(ctx).AddLog(tasks.TaskOutputTextLog)
+
 	writers := []io.Writer{outText}
 	jsonWriters := []io.Writer{outJSON}
 
@@ -134,6 +136,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 					var err error
 					if vertex.Error != "" {
 						err = fnerrors.New(vertex.Error)
+						// TODO mark a buffer storing the error message.
 					}
 
 					existing.customDone(*vertex.Completed, err)
@@ -170,7 +173,13 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 
 			for _, log := range event.Logs {
 				if streams[log.Stream] == nil {
-					streams[log.Stream] = console.Output(ctx, fmt.Sprintf("buildkit:%d", log.Stream))
+					// TODO 2 buffers are enough - now we have 3 (as console creates 2).
+					outputName := tasks.Output(consoleName(log.Stream), "text/plain")
+					output := tasks.Attachments(ctx).Output(outputName)
+					streams[log.Stream] = io.MultiWriter(
+						output,
+						console.Output(ctx, consoleName(log.Stream)))
+					tasks.GetErrContext(ctx).AddLog(outputName)
 				}
 
 				_, _ = streams[log.Stream].Write(log.Data)
@@ -183,6 +192,10 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 
 		return nil
 	})
+}
+
+func consoleName(streamNum int) string {
+	return fmt.Sprintf("buildkit:%d", streamNum)
 }
 
 type vertexState struct {

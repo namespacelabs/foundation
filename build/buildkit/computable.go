@@ -180,6 +180,7 @@ func (l *reqToImage) Output() compute.Output {
 
 func (l *reqToImage) ImageRef() string { return "(buildkit)" } // Implements HasImageRef
 
+
 func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
 	// TargetName is not added as a dependency of the `reqToImage` compute node, or
 	// our inputs are not stable.
@@ -192,7 +193,20 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 		// If the target needs permissions, we don't do the direct push
 		// optimization as we don't yet wire the keychain into buildkit.
 		if v.Keychain == nil {
-			return solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
+			i, err := solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
+			if err != nil {
+				bufNames := tasks.GetErrContext(ctx).GetBufNames()
+				for i := range bufNames {
+					err = fnerrors.WithLogs(
+						err,
+						func() io.Reader {
+							return tasks.Attachments(ctx).ReaderByOutputName(bufNames[len(bufNames)-i-1])
+						})
+					// TODO: allow multi buffer as contexts.
+					break
+				}
+			}
+			return i, err
 		}
 	}
 
