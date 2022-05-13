@@ -100,6 +100,9 @@ func (r boundEnv) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error 
 			mu.Lock()
 			defer mu.Unlock()
 
+			fmt.Fprintf(debug, "kube/portfwd: %s: update stream %d/%d: had_conn: %v\n",
+				args.Identifier, revision, currentRev, currentConn != nil)
+
 			if revision > currentRev {
 				currentRev = revision
 				if currentConn != nil {

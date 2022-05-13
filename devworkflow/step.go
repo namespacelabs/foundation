@@ -80,6 +80,8 @@ func (do *buildAndDeploy) Inputs() *compute.In {
 }
 
 func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error {
+	fmt.Fprintf(console.Debug(ctx), "devworkflow: buildAndDeploy.Updated\n")
+
 	do.mu.Lock()
 	defer do.mu.Unlock()
 
@@ -146,8 +148,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		// delivered (Continuously doesn't call Updated, until the previous call returns).
 
 		// A channel is used to signal that the child Continuously() has returned, and
-		// thus we can be sure that it's Cleanup has been called (e.g. port forwards
-		// have been cancelled, etc).
+		// thus we can be sure that its Cleanup has been called.
 		done := make(chan struct{})
 		cancel := compute.SpawnCancelableOnContinuously(ctx, func(ctx context.Context) error {
 			defer close(done)

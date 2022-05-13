@@ -6,7 +6,9 @@ package devworkflow
 
 import (
 	"context"
+	"fmt"
 
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -43,6 +45,8 @@ func (pi *updateCluster) Inputs() *compute.In {
 }
 
 func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) error {
+	fmt.Fprintf(console.Debug(ctx), "devworkflow: updatedCluster.Updated\n")
+
 	plan := compute.GetDepValue(deps, pi.plan, "plan")
 
 	waiters, err := plan.Deployer.Execute(ctx, runtime.TaskServerDeploy, pi.env)
@@ -64,5 +68,5 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 }
 
 func (pi *updateCluster) Cleanup(_ context.Context) error {
-	return pi.pfw.Cleanup()
+	return nil
 }

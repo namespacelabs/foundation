@@ -5,6 +5,7 @@
 package devworkflow
 
 import (
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -19,7 +20,7 @@ func newPortFwd(obs *Session, selector runtime.Selector, localaddr string) *endp
 	pfw.OnAdd = func(endpoint *schema.Endpoint, localPort uint) {
 		obs.updateStackInPlace(func(stack *Stack) {
 			for _, fwd := range stack.ForwardedPort {
-				if fwd.Endpoint == endpoint {
+				if proto.Equal(fwd.Endpoint, endpoint) {
 					fwd.LocalPort = int32(localPort)
 					return
 				}

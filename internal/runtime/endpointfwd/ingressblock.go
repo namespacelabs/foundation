@@ -68,6 +68,7 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 	}
 
 	pi.revision++
+	fmt.Fprintf(console.Debug(ctx), "portfwd: revision: %d\n", pi.revision)
 
 	for _, endpoint := range stack.Endpoint {
 		key := fmt.Sprintf("%s/%s/%s", endpoint.ServerOwner, endpoint.EndpointOwner, endpoint.ServiceName)
@@ -86,12 +87,16 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 		endpoint := endpoint // Close endpoint.
 		closer, err := pi.portFwd(ctx, endpoint, pi.revision, func(wasrevision int, localPort uint) {
 			// Emit stack update without locks.
-			if endpoint.GetPort().GetContainerPort() > 0 && pi.OnAdd != nil {
+			isAdd := endpoint.GetPort().GetContainerPort() > 0 && pi.OnAdd != nil
+			if isAdd {
 				pi.OnAdd(endpoint, localPort)
 			}
 
 			pi.mu.Lock()
 			defer pi.mu.Unlock()
+
+			fmt.Fprintf(console.Debug(ctx), "portfwd: event: revisions: %d/%d localPort: %d is_add: %v done: %v\n",
+				wasrevision, pi.revision, localPort, isAdd, pi.done)
 
 			instance.localPort = localPort
 			if wasrevision == pi.revision {
