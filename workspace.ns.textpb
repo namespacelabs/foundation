@@ -9,19 +9,27 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/dev/controller"
-  digest: "sha256:acd230d0794eab83c6270a348ce5385a2fcb7f777cb4673702b779494447a501"
+  digest: "sha256:21e55367259946475153eec46b344d15ad6f424f2c853892f16b00de4f364ec9"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/development/filesync/controller"
-  digest: "sha256:afaecc8287935a446a029299b3a8626748f9a9e56d3ebf8cd25b2531beee24d5"
+  digest: "sha256:ccc93350c62bb40650054c5b0c341bca01dc9727558e8736c5dcbd9a6fc66a55"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/monitoring/grafana/tool"
-  digest: "sha256:810d066576f34c731fa5c0aca648e0a56f04a2f0fa6a9e5073e670df8efa2de0"
+  digest: "sha256:96a619b48a581d72b29173462d2fd77e61a6f7ce629d88761dee29ddc9b7c61b"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/monitoring/prometheus/tool"
-  digest: "sha256:b646982222effe3ad5ce249b9e418647af15a79088b8d4b8fba11b298f7dab05"
+  digest: "sha256:52274802b9669ca8e74e670f0f193a77f1ebb8a7fc9f24bb35409bea3561ab0d"
+}
+prebuilt_binary: {
+  package_name: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/img"
+  digest: "sha256:912be6c2aff19717a7b56cf7ccff9ec8a979eaec7d4060cebbe96094b08ba076"
+}
+prebuilt_binary: {
+  package_name: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/tool"
+  digest: "sha256:f4e7725ab5fad319b8411cf77e8cb64cee2ba741cb75cacb65b4992cc213a67a"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/sdk/buf/baseimg"
@@ -33,7 +41,7 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/secrets/kubernetes"
-  digest: "sha256:28473ed0fc39e64195c284e52b9f586f6834978eec4112c71e0d569afa981bc4"
+  digest: "sha256:5f0bdd82a9e231141565375e2800a9caf8b521712ca06564ba93f13e9dcaee21"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/startup/testdriver"
@@ -41,47 +49,47 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/testdata/datastore/keygen"
-  digest: "sha256:5d45d0b6219291ed77436528149de44ba6e43165a63843d4c6a7d992b2d06cfc"
+  digest: "sha256:254829a40b5b98c5832bd89fb8387f3d86f4cd64a7c251ff813bc230ab66344c"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/aws/irsa/prepare"
-  digest: "sha256:f9f084832f63f0e29e2688646aa2879fac4d8d0893d0860595d0d664548f5b85"
+  digest: "sha256:a27bf79416bf3e5f31bf70f61b6d00c88d969df8a2c061ed71547d394d79c524"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/aws/s3/internal/configure"
-  digest: "sha256:1f320a0a6706a83e7fafa507658593dc581a803c23531e4a583006a428058bab"
+  digest: "sha256:afe09b57377d7869f26a00ef1138d1bec013f1648db8496588a4b1db29aa24ce"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/aws/s3/internal/managebuckets/init"
-  digest: "sha256:28728a8000a483b52074228eb3a9d3e94886e65c4255c6b58509c873d4283c4e"
+  digest: "sha256:f473236bcae0c0ff76644e7dc76611c0586159c6e4fe410ada72ace84881d93d"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/maria/incluster/tool"
-  digest: "sha256:6d025913188d08608704ef89e02443da77f25981f46813583e339b1bcaa34eef"
+  digest: "sha256:68ac05623ef801c506545b5cb5187d6b3398a64616d4432ddd42e2e02b236616"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/maria/init"
-  digest: "sha256:aa33ce545cd192f2e39a0d245ced1248c4d81e22f53571a27a3ffc4ad0c35788"
+  digest: "sha256:518d0ac440583931ceb076243b4b1658c6760b0b0c362b7d826cdb1605c9f32c"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/maria/server/creds/tool"
-  digest: "sha256:db2b3f28b0c2a3ee9964550439d28b8c8b3de502d924f618139c018ddc961a9a"
+  digest: "sha256:cd31c59fe6fc655d9c55e230ab6806dbc793ea70c0374d0b08bfc1cbd18f816e"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool"
-  digest: "sha256:5e166fcd4b88dc84dd8a34bb0b35e51ec8a31756784116e1bcd8f773872b72aa"
+  digest: "sha256:644873cad3013eae18b02420c986c3d854b9d99b97c3a91476a926915d290a14"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/init"
-  digest: "sha256:b2a916a9eaa64b2b5a0cd7bfd2eb42645a040042309a1720a22f7fba96536c10"
+  digest: "sha256:2a61eaa81bf50aec8eb0e723ecac5f97aafe6ae263af7df44af75485f52d6c65"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/opaque/tool"
-  digest: "sha256:8fe3b6edc91b8d345ddd8161fcf7a7697454728cd26d31803d031aeca7c9727b"
+  digest: "sha256:99499165b49c992a3eff90f2cacc8d1521c470c67ec7d3f0afbdcd158dda6774"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/server/creds/tool"
-  digest: "sha256:fcfb9db225bbc6c2d2143d5a052a153549bb8b4dcf39c895ba9e1adb040f48e8"
+  digest: "sha256:bdbc6fb15b9660945d4cb36d0a66e6908b45dc538f190370f6a705834f1da742"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/db/postgres/server/img"
@@ -89,11 +97,11 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/development/localstack/s3/internal/configure"
-  digest: "sha256:ba9878ffc2a5f1b5bb82ed7da1312ebc21c38771f391a7bb3c0777d754acc792"
+  digest: "sha256:1f819a6fd1b506e790b645794ed56729b44ea2175b2fd3550681307211160b49"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/development/localstack/s3/internal/managebuckets/init"
-  digest: "sha256:430051d1a279074a3d1bc9440f56b47ed8b6c155245c4182d1eb04fd39c1257a"
+  digest: "sha256:d0fa2bc2a3b8a82bbfce15dfcc34caf1154231d359ea761b8ed74c67c9fc033a"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/networking/tailscale/image"
@@ -101,10 +109,10 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets"
-  digest: "sha256:d54a39b555fefae7286d105e0a9aaad7109b4a86edbc425f235c54bf013b4d66"
+  digest: "sha256:7d6013f691ea721a375bf5fac300a3f7b3091320f5b681e2ace1e63b13b73363"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
-  digest: "sha256:20b31fd642157877f1bbfced40ee59f8596857def3806304f6d6d037e9935ad8"
+  digest: "sha256:f438c25efc96083ca98f645cc11e1111e78cde0ef447a7ab14270c337d3fe683"
 }
 prebuilt_base_repository: "us-docker.pkg.dev/foundation-344819/prebuilts/"
