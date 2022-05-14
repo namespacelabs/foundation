@@ -19,7 +19,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	t "go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
@@ -90,7 +90,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 			),
 		)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create resource: %w", err)
 	}
 
 	opts = append(opts, trace.WithResource(resource))
