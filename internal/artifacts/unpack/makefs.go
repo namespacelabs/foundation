@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -57,6 +58,8 @@ type singleFileFS struct {
 	contents bytestream.ByteStream
 }
 
+var _ fnfs.VisitFS = singleFileFS{}
+
 func (fsys singleFileFS) Open(name string) (fs.File, error) {
 	if filepath.Clean(name) != fsys.dirent.Path {
 		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
@@ -70,25 +73,13 @@ func (fsys singleFileFS) Open(name string) (fs.File, error) {
 	return singleFile{dirent: fsys.dirent, ReadCloser: r}, nil
 }
 
-func (fsys singleFileFS) VisitFiles(ctx context.Context, f func(string, []byte, fs.DirEntry) error) error {
-	r, err := fsys.contents.Reader()
-	if err != nil {
-		return err
-	}
-
-	defer r.Close()
-
-	bytes, err := io.ReadAll(r)
-	if err != nil {
-		return err
-	}
-
-	return f(fsys.dirent.Path, bytes, fsys.dirent)
+func (fsys singleFileFS) VisitFiles(ctx context.Context, f func(string, bytestream.ByteStream, fs.DirEntry) error) error {
+	return f(fsys.dirent.Path, fsys.contents, fsys.dirent)
 }
 
 type singleFile struct {
-	dirent memfs.FileDirent
 	io.ReadCloser
+	dirent memfs.FileDirent
 }
 
 func (f singleFile) Stat() (fs.FileInfo, error) {
