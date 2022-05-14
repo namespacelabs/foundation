@@ -88,22 +88,36 @@ func (em manager) RefreshAuth(ctx context.Context) ([]*dockertypes.AuthConfig, e
 type defaultKeychain struct{}
 
 func (defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
-	var out bytes.Buffer
-
-	if err := tasks.Action("gcloud.auth.print-access-token").Run(ctx, func(ctx context.Context) error {
-		cmd := exec.CommandContext(ctx, "gcloud", "auth", "print-access-token")
-		cmd.Stdout = &out
-		cmd.Stderr = console.TypedOutput(ctx, "gcloud", console.CatOutputTool)
-		if err := cmd.Run(); err != nil {
-			return fnerrors.InvocationError("failed to obtain gcloud access token: %w", err)
-		}
-		return nil
-	}); err != nil {
+	authConfig, err := c.GetValue[authn.AuthConfig](ctx, &obtainAccessToken{})
+	if err != nil {
 		return nil, err
 	}
 
-	return authn.FromConfig(authn.AuthConfig{
+	return authn.FromConfig(authConfig), nil
+}
+
+type obtainAccessToken struct {
+	c.DoScoped[authn.AuthConfig]
+}
+
+var _ c.Computable[authn.AuthConfig] = &obtainAccessToken{}
+
+func (obtainAccessToken) Action() *tasks.ActionEvent {
+	return tasks.Action("gcloud.auth.print-access-token")
+}
+func (obtainAccessToken) Inputs() *c.In    { return c.Inputs() }
+func (obtainAccessToken) Output() c.Output { return c.Output{NotCacheable: true} }
+func (obtainAccessToken) Compute(ctx context.Context, _ c.Resolved) (authn.AuthConfig, error) {
+	var out bytes.Buffer
+	cmd := exec.CommandContext(ctx, "gcloud", "auth", "print-access-token")
+	cmd.Stdout = &out
+	cmd.Stderr = console.TypedOutput(ctx, "gcloud", console.CatOutputTool)
+	if err := cmd.Run(); err != nil {
+		return authn.AuthConfig{}, fnerrors.InvocationError("failed to obtain gcloud access token: %w", err)
+	}
+
+	return authn.AuthConfig{
 		Username: "oauth2accesstoken",
 		Password: out.String(),
-	}), nil
+	}, nil
 }
