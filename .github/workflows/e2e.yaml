@@ -37,7 +37,7 @@ jobs:
           CGO_ENABLED: 0
         run: go build -v -o fn ./cmd/fn
       - name: Upload fn
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: fn-${{ runner.os }}
           path: fn
