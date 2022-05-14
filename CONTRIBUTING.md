@@ -165,18 +165,6 @@ FN_ENABLE_TRACING=true fn build ...
 
 Check out the trace at http://localhost:20000/.
 
-### Updating dependencies
-
-To keep dependencies under check, we rely on https://github.com/tailscale/depaware to produce an
-expanded list of transitive dependencies, which is meant to be reviewed manually.
-
-If package imports change, a new depaware often needs to be recreated. Use the following commmand to
-re-create:
-
-```bash
-go run github.com/tailscale/depaware --update namespacelabs.dev/foundation/cmd/fn
-```
-
 ### Iterating on the internal Dev UI
 
 ```bash
