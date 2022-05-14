@@ -19,6 +19,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
@@ -257,13 +258,18 @@ func fillData(ctx context.Context, server *schema.Server, env *schema.Environmen
 	var bundleNames []string
 
 	for _, snapshot := range contentSnapshots {
-		if err := fnfs.VisitFiles(ctx, snapshot, func(path string, contents []byte, de fs.DirEntry) error {
+		if err := fnfs.VisitFiles(ctx, snapshot, func(path string, blob bytestream.ByteStream, de fs.DirEntry) error {
 			if filepath.Ext(path) != ".secrets" {
 				return nil
 			}
 
 			if snapshotKeys == nil {
 				return fmt.Errorf("can't use encrypted secrets without keys")
+			}
+
+			contents, err := bytestream.ReadAll(blob)
+			if err != nil {
+				return err
 			}
 
 			bundle, err := fnsecrets.LoadBundle(ctx, snapshotKeys, contents)
