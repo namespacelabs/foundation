@@ -5,7 +5,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -91,17 +90,17 @@ func (provisionHook) Apply(ctx context.Context, r configure.StackRequest, out *c
 
 	namespace := kubetool.FromRequest(r).Namespace
 
-	policy := PolicyDocument{
+	policy := fniam.PolicyDocument{
 		Version: "2012-10-17",
-		Statement: []StatementEntry{
+		Statement: []fniam.StatementEntry{
 			{
 				Effect: "Allow",
-				Principal: Principal{
+				Principal: &fniam.Principal{
 					Federated: fmt.Sprintf("arn:aws:iam::%s:oidc-provider/%s", clusterArn.AccountID, oidcProvider),
 				},
 				Action: []string{"sts:AssumeRoleWithWebIdentity"},
-				Condition: Condition{
-					StringEquals: []kv{
+				Condition: &fniam.Condition{
+					StringEquals: []fniam.Condition_KeyValue{
 						{Key: fmt.Sprintf("%s:aud", oidcProvider), Value: "sts.amazonaws.com"},
 						{Key: fmt.Sprintf("%s:sub", oidcProvider), Value: fmt.Sprintf("system:serviceaccount:%s:%s", namespace, serviceAccount)},
 					},
@@ -151,42 +150,4 @@ func (m makeRole) ToDefinition(scope ...schema.PackageName) (*schema.Definition,
 		Impl:        packed,
 		Scope:       schema.Strs(scope...),
 	}, nil
-}
-
-type PolicyDocument struct {
-	Version   string
-	Statement []StatementEntry
-}
-
-type StatementEntry struct {
-	Effect    string
-	Principal Principal
-	Action    []string
-	Condition Condition
-}
-
-type Principal struct {
-	Federated string
-}
-
-type Condition struct {
-	StringEquals []kv
-}
-
-type kv struct {
-	Key   string
-	Value string
-}
-
-func (c Condition) MarshalJSON() ([]byte, error) {
-	var b bytes.Buffer
-	fmt.Fprintf(&b, "{%q:{", "StringEquals")
-	for k, kv := range c.StringEquals {
-		fmt.Fprintf(&b, "%q:%q", kv.Key, kv.Value)
-		if k < len(c.StringEquals)-1 {
-			fmt.Fprintf(&b, ",")
-		}
-	}
-	fmt.Fprintf(&b, "}}")
-	return b.Bytes(), nil
 }

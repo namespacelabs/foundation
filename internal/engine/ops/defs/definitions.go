@@ -54,3 +54,25 @@ func Make(ops ...MakeDefinition) ([]*schema.Definition, error) {
 
 	return defs, nil
 }
+
+func Static(description string, impl proto.Message) MakeDefinition {
+	return staticDef{description, impl}
+}
+
+type staticDef struct {
+	description string
+	impl        proto.Message
+}
+
+func (def staticDef) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+	serialized, err := anypb.New(def.impl)
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.Definition{
+		Description: def.description,
+		Impl:        serialized,
+		Scope:       schema.Strs(scope...),
+	}, nil
+}

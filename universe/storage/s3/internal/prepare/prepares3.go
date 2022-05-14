@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sort"
@@ -14,7 +15,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/providers/aws/eks"
+	fniam "namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -77,6 +81,13 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 		return err
 	}
 
+	eksDetails := &eks.EKSServerDetails{}
+	if ok, err := req.CheckUnpackInput(eksDetails); err != nil {
+		return err
+	} else if !ok {
+		eksDetails = nil
+	}
+
 	buckets := map[string]*s3.BucketArgs{}
 	if err := configure.VisitAllocs(req.Focus.Server.Allocation, s3node, &s3.BucketArgs{},
 		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, args *s3.BucketArgs) error {
@@ -120,6 +131,46 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 				}
 			}
 		}
+	}
+
+	// XXX should be "can consume IAM policies bit".
+	if eksDetails != nil {
+		buckets := make([]string, len(orderedBuckets))
+		bucketsWildcard := make([]string, len(orderedBuckets))
+		for k, bucket := range orderedBuckets {
+			buckets[k] = fmt.Sprintf("arn:aws:s3:::%s", bucket.BucketName)
+			bucketsWildcard[k] = fmt.Sprintf("arn:aws:s3:::%s/*", bucket.BucketName)
+		}
+
+		// https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_s3_rw-bucket.html
+		policy := fniam.PolicyDocument{
+			Version: "2012-10-17",
+			Statement: []fniam.StatementEntry{
+				{
+					Effect:   "Allow",
+					Action:   []string{"s3:ListBucket"},
+					Resource: buckets,
+				},
+				{
+					Effect:   "Allow",
+					Action:   []string{"s3:*Object"},
+					Resource: bucketsWildcard,
+				},
+			},
+		}
+
+		policyBytes, err := json.Marshal(policy)
+		if err != nil {
+			return fnerrors.InternalError("failed to serialize policy: %w", err)
+		}
+
+		associate := &fniam.OpAssociatePolicy{
+			RoleName:   eksDetails.ComputedIamRoleName,
+			PolicyName: "fn-universe-storage-s3-bucket-access",
+			PolicyJson: string(policyBytes),
+		}
+
+		out.Definitions = append(out.Definitions, defs.Static("S3 IAM Bucket Access policy", associate))
 	}
 
 	serializedBuckets, err := protojson.Marshal(&s3.MultipleBucketArgs{Bucket: orderedBuckets})

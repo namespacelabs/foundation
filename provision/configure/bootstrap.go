@@ -38,12 +38,12 @@ type AllHandlers interface {
 }
 
 func (p Request) CheckUnpackInput(msg proto.Message) (bool, error) {
-	if msg == nil {
-		return false, fnerrors.New("msg is nil")
-	}
-
 	for _, env := range p.r.Input {
 		if env.MessageIs(msg) {
+			if msg == nil {
+				return false, fnerrors.New("msg is nil")
+			}
+
 			return true, env.UnmarshalTo(msg)
 		}
 	}
