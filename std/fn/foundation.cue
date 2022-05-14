@@ -160,7 +160,6 @@ _#ConfigureBase: {
 	sidecar?: [...#Container]
 	init?: [...#Container]
 	naming?: #Naming
-	details?: {...}
 	...
 
 	provisioning?: #Provisioning
