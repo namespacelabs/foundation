@@ -23,6 +23,8 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/schema"
 )
 
 type fwdArgs struct {
@@ -36,6 +38,40 @@ type fwdArgs struct {
 }
 
 const PortForwardProtocolV1Name = "portforward.k8s.io"
+
+func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endpoint *schema.Endpoint, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
+	if endpoint.GetPort().GetContainerPort() <= 0 {
+		return nil, fnerrors.UserError(server, "%s: no port to forward to", endpoint.GetServiceName())
+	}
+
+	ns := serverNamespace(r.boundEnv, server)
+
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	p := newPodObserver(r.cli, ns, map[string]string{
+		kubedef.K8sServerId: server.Id,
+	})
+
+	p.Start(ctxWithCancel)
+
+	go func() {
+		if err := r.boundEnv.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
+			Namespace:     ns,
+			Identifier:    server.PackageName,
+			LocalAddrs:    localAddrs,
+			LocalPort:     0,
+			ContainerPort: int(endpoint.GetPort().ContainerPort),
+
+			Watch: func(ctx context.Context, f func(*v1.Pod, int64, error)) func() {
+				return p.Watch(f)
+			},
+			ReportPorts: callback,
+		}); err != nil {
+			fmt.Fprintf(console.Errors(ctx), "port forwarding for %s (%d) failed: %v\n", server.PackageName, endpoint.GetPort().ContainerPort, err)
+		}
+	}()
+
+	return closerCallback(cancel), nil
+}
 
 func (r boundEnv) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error {
 	config, err := r.makeDefaultConfig()

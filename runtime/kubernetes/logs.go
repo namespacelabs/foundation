@@ -10,9 +10,26 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
+
+func (r k8sRuntime) StreamLogsTo(ctx context.Context, w io.Writer, server *schema.Server, opts runtime.StreamLogsOpts) error {
+	return r.fetchLogs(ctx, r.cli, w, server, opts)
+}
+
+func (r k8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
+	opaque, ok := reference.(containerPodReference)
+	if !ok {
+		return fnerrors.InternalError("invalid reference")
+	}
+
+	return fetchPodLogs(ctx, r.cli, w, opaque.Namespace, opaque.Name, opaque.Container, runtime.StreamLogsOpts{
+		TailLines:        opts.TailLines,
+		FetchLastFailure: opts.FetchLastFailure,
+	})
+}
 
 func (r boundEnv) fetchLogs(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, server *schema.Server, opts runtime.StreamLogsOpts) error {
 	pod, err := r.resolvePod(ctx, cli, w, server)

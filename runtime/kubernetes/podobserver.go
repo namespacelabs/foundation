@@ -23,9 +23,9 @@ import (
 	"namespacelabs.dev/go-ids"
 )
 
-// podResolver continuously attempts to resolve a single pod that match the specified set of labels.
+// podObserver continuously attempts to resolve a single pod that match the specified set of labels.
 // If the resolved pod is terminated, a new one is picked.
-type podResolver struct {
+type podObserver struct {
 	client    *k8s.Clientset
 	namespace string
 	labels    map[string]string
@@ -42,8 +42,8 @@ type watcherRegistration struct {
 	f  func(*v1.Pod, int64, error)
 }
 
-func newPodResolver(client *k8s.Clientset, namespace string, labels map[string]string) *podResolver {
-	p := &podResolver{
+func newPodObserver(client *k8s.Clientset, namespace string, labels map[string]string) *podObserver {
+	p := &podObserver{
 		client:    client,
 		namespace: namespace,
 		labels:    labels,
@@ -52,7 +52,7 @@ func newPodResolver(client *k8s.Clientset, namespace string, labels map[string]s
 	return p
 }
 
-func (p *podResolver) Start(ctx context.Context) {
+func (p *podObserver) Start(ctx context.Context) {
 	compute.On(ctx).Detach(tasks.Action("kubernetes.pod-resolver").Indefinite(), func(rootCtx context.Context) error {
 		// Note: the passed in ctx is used instead, as we want to react to cancelations.
 
@@ -121,7 +121,7 @@ func (p *podResolver) Start(ctx context.Context) {
 	})
 }
 
-func (p *podResolver) Watch(f func(*v1.Pod, int64, error)) func() {
+func (p *podObserver) Watch(f func(*v1.Pod, int64, error)) func() {
 	id := ids.NewRandomBase32ID(8)
 
 	p.mu.Lock()
@@ -144,7 +144,7 @@ func (p *podResolver) Watch(f func(*v1.Pod, int64, error)) func() {
 	}
 }
 
-func (p *podResolver) selectPod() *v1.Pod {
+func (p *podObserver) selectPod() *v1.Pod {
 	if len(p.runningPods) > 0 {
 		// Always pick the last pod, as that's the most recent to show up and is
 		// likely to be the one that survives e.g. a new deployment.
@@ -153,14 +153,14 @@ func (p *podResolver) selectPod() *v1.Pod {
 	return nil
 }
 
-func (p *podResolver) broadcast() {
+func (p *podObserver) broadcast() {
 	pod := p.selectPod()
 	for _, w := range p.watchers {
 		w.f(pod, p.revision, nil)
 	}
 }
 
-func (p *podResolver) Wait(ctx context.Context) (v1.Pod, error) {
+func (p *podObserver) Wait(ctx context.Context) (v1.Pod, error) {
 	return cancelableWait(ctx, p.cond, func() (v1.Pod, bool) {
 		pod := p.selectPod()
 		if pod == nil {

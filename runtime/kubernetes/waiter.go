@@ -23,6 +23,27 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+type ConditionWaiter interface {
+	Prepare(context.Context, *k8s.Clientset) error
+	Poll(context.Context, *k8s.Clientset) (bool, error)
+}
+
+func (r k8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, waiter ConditionWaiter) error {
+	return waitForCondition(ctx, r.cli, action, waiter)
+}
+
+func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.ActionEvent, waiter ConditionWaiter) error {
+	return action.Run(ctx, func(ctx context.Context) error {
+		if err := waiter.Prepare(ctx, cli); err != nil {
+			return err
+		}
+
+		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
+			return waiter.Poll(ctx, cli)
+		})
+	})
+}
+
 type waitOn struct {
 	devHost *schema.DevHost
 	env     *schema.Environment
