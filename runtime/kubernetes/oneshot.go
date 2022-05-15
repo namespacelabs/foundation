@@ -38,7 +38,7 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 			applycorev1.SecurityContext().
 				WithReadOnlyRootFilesystem(runOpts.ReadOnlyFilesystem))
 
-	cli, err := client.NewClientFromHostEnv(r.hostEnv)
+	cli, err := client.NewClientFromHostEnv(ctx, r.hostEnv)
 	if err != nil {
 		return err
 	}

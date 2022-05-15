@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/ssocreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -28,13 +29,26 @@ func Resolve(ctx context.Context, devHost *schema.DevHost, env *schema.Environme
 	return &resolveAccount{Config: config, Profile: profile}, nil
 }
 
-func ResolveWith(config aws.Config, profile string) compute.Computable[*sts.GetCallerIdentityOutput] {
+func ResolveWithProfile(ctx context.Context, profile string) (compute.Computable[*sts.GetCallerIdentityOutput], error) {
+	if profile == "" {
+		profile = "default"
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile))
+	if err != nil {
+		return nil, err
+	}
+
+	return ResolveWithConfig(cfg, profile), nil
+}
+
+func ResolveWithConfig(config aws.Config, profile string) compute.Computable[*sts.GetCallerIdentityOutput] {
 	return &resolveAccount{Config: config, Profile: profile}
 }
 
 type resolveAccount struct {
 	Config  aws.Config // Doesn't affect output.
-	Profile string
+	Profile string     // Used purely as cache key.
 
 	compute.DoScoped[*sts.GetCallerIdentityOutput]
 }

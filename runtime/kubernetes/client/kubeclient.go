@@ -20,7 +20,9 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/providers/aws/auth"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
@@ -40,18 +42,47 @@ func NewRestConfigFromHostEnv(cfg KubeconfigProvider) (*restclient.Config, error
 		&clientcmd.ConfigOverrides{CurrentContext: cfg.GetContext()}).ClientConfig()
 }
 
-func NewClient(cfg KubeconfigProvider, err error) (*k8s.Clientset, error) {
+func NewClient(ctx context.Context, cfg KubeconfigProvider, err error) (*k8s.Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
 
-	return NewClientFromHostEnv(cfg)
+	return NewClientFromHostEnv(ctx, cfg)
 }
 
-func NewClientFromHostEnv(cfg KubeconfigProvider) (*k8s.Clientset, error) {
+func NewClientFromHostEnv(ctx context.Context, cfg KubeconfigProvider) (*k8s.Clientset, error) {
 	config, err := NewRestConfigFromHostEnv(cfg)
 	if err != nil {
 		return nil, err
+	}
+
+	// If the auth provider is AWS, check for credentials on our side first.
+	// This will allow us to produce a better error message, if the credentials
+	// are out of date. In the future, our AWS integration may also issue tokens,
+	// which amortize this cost.
+	//
+	// This uses an heuristic: if the configuration is setup to use an exec-based
+	// authenticator that is called "aws-iam-authenticator", then we're likely
+	// hitting EKS. But if the user sets up some other authenticator, that's fine,
+	// it still work, but any information
+	if config.ExecProvider != nil && config.ExecProvider.Command == "aws-iam-authenticator" {
+		var profile string
+		for _, kv := range config.ExecProvider.Env {
+			if kv.Name == "AWS_PROFILE" {
+				profile = kv.Value
+			}
+		}
+
+		r, err := auth.ResolveWithProfile(ctx, profile)
+		if err != nil {
+			return nil, fnerrors.Wrap(nil, err)
+		}
+
+		// If we're not able to resolve our own account, then auth is likely needed. The error
+		// will contain user instructions.
+		if _, err := compute.GetValue(ctx, r); err != nil {
+			return nil, fnerrors.Wrap(nil, err)
+		}
 	}
 
 	clientset, err := k8s.NewForConfig(config)
@@ -141,22 +172,23 @@ func ComputeHostEnv(devHost *schema.DevHost, env *schema.Environment) (*HostEnv,
 	return hostEnv, nil
 }
 
-func ConfigFromEnv(ctx context.Context, env ops.Environment) (KubeconfigProvider, error) {
+func ConfigFromEnv(ctx context.Context, env ops.Environment) (context.Context, KubeconfigProvider, error) {
 	if x, ok := env.(interface {
 		KubeconfigProvider() (KubeconfigProvider, error)
 	}); ok {
-		return x.KubeconfigProvider()
+		p, err := x.KubeconfigProvider()
+		return ctx, p, err
 	}
 	return ConfigFromDevHost(ctx, env.DevHost(), env.Proto())
 }
 
-func ConfigFromDevHost(ctx context.Context, devhost *schema.DevHost, env *schema.Environment) (KubeconfigProvider, error) {
+func ConfigFromDevHost(ctx context.Context, devhost *schema.DevHost, env *schema.Environment) (context.Context, KubeconfigProvider, error) {
 	cfg, err := ComputeHostEnv(devhost, env)
 	if err != nil {
-		return nil, err
+		return ctx, nil, err
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "kubernetes: using configuration: %+v\n", cfg)
 
-	return cfg, nil
+	return ctx, cfg, nil
 }

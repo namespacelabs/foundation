@@ -80,5 +80,5 @@ func (em keychainSession) refreshPrivateAuth(ctx context.Context) (*dockertypes.
 }
 
 func (em keychainSession) resolveAccount() compute.Computable[*sts.GetCallerIdentityOutput] {
-	return auth.ResolveWith(em.sesh, em.profile)
+	return auth.ResolveWithConfig(em.sesh, em.profile)
 }

@@ -69,7 +69,7 @@ func NewFromConfig(ctx context.Context, config *HostConfig) (k8sRuntime, error) 
 	defer runtimeCache.mu.Unlock()
 
 	if _, ok := runtimeCache.cache[key]; !ok {
-		cli, err := client.NewClientFromHostEnv(config.hostEnv)
+		cli, err := client.NewClientFromHostEnv(ctx, config.hostEnv)
 		if err != nil {
 			return k8sRuntime{}, err
 		}
