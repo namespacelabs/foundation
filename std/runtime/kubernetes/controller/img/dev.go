@@ -71,6 +71,7 @@ func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1
 				required[dep] = struct{}{}
 			}
 
+			// We only clean up deployments here. Consider cleaning up other resources (e.g. stateful sets).
 			list, err := clientset.AppsV1().Deployments(ns.Name).List(ctx, metav1.ListOptions{})
 			if err != nil {
 				log.Fatalf("failed to list deployments in namespace %q: %v", ns.Name, err)
