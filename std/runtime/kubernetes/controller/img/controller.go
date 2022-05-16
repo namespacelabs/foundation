@@ -17,8 +17,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-var ()
-
 func main() {
 	config, err := rest.InClusterConfig()
 	if err != nil {
