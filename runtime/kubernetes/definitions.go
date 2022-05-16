@@ -76,6 +76,11 @@ func RegisterGraphHandlers() {
 			return nil, fnerrors.InvocationError("%s: %w", d.Description, err)
 		}
 
+		if apply.Namespace == kubedef.AdminNamespace {
+			// don't wait for changes to admin namespace
+			return &ops.HandleResult{}, nil
+		}
+
 		switch apply.Resource {
 		case "deployments", "statefulsets":
 			generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
