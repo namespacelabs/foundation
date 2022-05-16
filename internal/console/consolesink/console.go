@@ -110,14 +110,13 @@ type ConsoleSink struct {
 	ch       chan consoleEvent
 	ticker   <-chan time.Time
 
-	rendering       bool
 	idling          bool
 	buffer          []consoleOutput  // Pending regular log output lines.
 	running         []*lineItem      // Computed EventData for waiting/running actions.
 	root            *node            // Root of the tree of displayable events.
 	nodes           map[string]*node // Map of actionID->tree node.
 	startedCounting time.Time        // When did we start counting.
-	waitForIdle     []func()
+	waitForIdle     []chan struct{}
 
 	maxLevel int // Only display actions at this level or below (all actions are still computed).
 
@@ -152,11 +151,10 @@ var _ tasks.ActionSink = &ConsoleSink{}
 
 func NewSink(out *os.File, maxLevel int) *ConsoleSink {
 	return &ConsoleSink{
-		out:       out,
-		outbuf:    bytes.NewBuffer(make([]byte, 4*1024)), // Start with 4k, enough to hold 20 lines of 100 bytes. bytes.Buffer will grow as needed.
-		rendering: true,
-		idling:    true,
-		maxLevel:  maxLevel,
+		out:      out,
+		outbuf:   bytes.NewBuffer(make([]byte, 4*1024)), // Start with 4k, enough to hold 20 lines of 100 bytes. bytes.Buffer will grow as needed.
+		idling:   true,
+		maxLevel: maxLevel,
 	}
 }
 
@@ -207,6 +205,7 @@ func (c *ConsoleSink) Start() func() {
 func (c *ConsoleSink) run(canceled chan struct{}) {
 	defer close(c.waitDone)
 
+	rendering := true
 loop:
 	for {
 		select {
@@ -216,15 +215,9 @@ loop:
 		case msg := <-c.ch:
 			if msg.renderingMode != "" {
 				if msg.renderingMode == "rendering" {
-					c.rendering = true
+					rendering = true
 				} else {
-					ch := msg.onInput
-					c.waitForIdle = append(c.waitForIdle, func() {
-						c.rendering = false
-						if ch != nil {
-							close(ch)
-						}
-					})
+					c.waitForIdle = append(c.waitForIdle, msg.onInput)
 				}
 			}
 
@@ -276,7 +269,21 @@ loop:
 			}
 
 		case t := <-c.ticker:
-			c.redraw(t, false)
+			if !rendering {
+				continue
+			}
+			running, waiting, anchored := c.countStates()
+			if running+waiting+anchored == 0 {
+				c.redraw(t, true) // Entering input mode - flush the state.
+				rendering = false
+				for _, waitingForIdle := range c.waitForIdle {
+					// Unblock callers waiting for the input state.
+					close(waitingForIdle)
+				}
+				c.waitForIdle = nil
+			} else {
+				c.redraw(t, false)
+			}
 		}
 	}
 
@@ -552,10 +559,6 @@ type debugRunning struct {
 }
 
 func (c *ConsoleSink) redraw(t time.Time, flush bool) {
-	if !c.rendering {
-		return
-	}
-
 	var width uint
 	var height uint
 	if w, err := termios.TermSize(c.out.Fd()); err == nil {
@@ -590,10 +593,7 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 		// If anything is trying to write directly, clear the screen first.
 		fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
 	}}
-	if !c.drawFrame(&rawOut, c.outbuf, t, width, height, flush) {
-		// c.drawFrame() entered the `input` state (and may be rendering the prompt now).
-		return
-	}
+	c.drawFrame(&rawOut, c.outbuf, t, width, height, flush)
 
 	newFrame := make([]byte, len(c.outbuf.Bytes()))
 	copy(newFrame, c.outbuf.Bytes())
@@ -658,10 +658,10 @@ func (c *checkDirtyWriter) Write(p []byte) (int, error) {
 	return c.out.Write(p)
 }
 
-// drawFrame renders a single frame and returns `false` if further rendering should be stopped.
-func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height uint, flush bool) bool {
-	var running, anchored, waiting, completed, completedAnchors int
-	var printableCompleted []*lineItem
+func (c *ConsoleSink) countStates() (running, waiting, anchored int) {
+	running = 0
+	waiting = 0
+	anchored = 0
 	for _, r := range c.running {
 		if r.data.State == tasks.ActionRunning {
 			if !r.data.Indefinite {
@@ -673,7 +673,18 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 			}
 		} else if r.data.State == tasks.ActionWaiting {
 			waiting++
-		} else {
+		}
+	}
+	return
+}
+
+// drawFrame renders a single frame and returns `false` if further rendering should be stopped.
+func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height uint, flush bool) {
+	running, waiting, anchored := c.countStates()
+	var completed, completedAnchors int
+	var printableCompleted []*lineItem
+	for _, r := range c.running {
+		if r.data.State != tasks.ActionWaiting && r.data.State != tasks.ActionRunning {
 			hasError := (r.data.Err != nil && tasks.ErrorType(r.data.Err) == tasks.ErrTypeIsRegular)
 			shouldLog := LogActions && (DisplayWaitingActions || r.data.AnchorID == "")
 
@@ -793,21 +804,15 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	}
 
 	if flush {
-		return true
+		return
 	}
 
 	if (waiting + running + anchored) == 0 {
-		waitForIdle := c.waitForIdle
-		c.waitForIdle = nil
-		for _, f := range waitForIdle {
-			f()
-		}
-		if len(waitForIdle) == 0 && c.idleLabel != "" {
+		if len(c.waitForIdle) == 0 && c.idleLabel != "" {
 			// Show the idle banner.
 			c.writeLineWithMaxW(out, width, fmt.Sprintf("[-] idle, %s.", c.idleLabel), "")
 		}
-		// We may have entered the input state when calling any of the waitForIdle functions.
-		return c.rendering
+		return
 	}
 
 	report := ""
@@ -844,7 +849,6 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 	// Recurse through the line item tree.
 	c.renderLineRec(out, width, c.root, t, " => ", 0, maxDepth)
-	return true
 }
 
 func plural(count int, singular, plural string) string {
