@@ -189,7 +189,7 @@ func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 		focus: d.Focus,
 	}
 
-	// collect all required servers first
+	// Collect all required servers before planning deployment as they are referenced in annotations.
 	for _, server := range d.Servers {
 		deployOpts.deps = append(deployOpts.deps, server.Server.Proto().Id)
 	}
