@@ -28,7 +28,8 @@ func main() {
 	}
 
 	w := watcher{
-		clientset: clientset,
+		clientset:   clientset,
+		controllers: make(map[metav1.ListOptions]controller),
 	}
 
 	w.Add(controlEphemeral, metav1.ListOptions{
@@ -61,6 +62,9 @@ func (w watcher) Run(ctx context.Context) {
 	for opts, controller := range w.controllers {
 		go watchNamespaces(ctx, w.clientset, opts, controller)
 	}
+
+	// Only stop namespace watching on fatal errors
+	select {}
 }
 
 func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, opts metav1.ListOptions, c controller) {
@@ -100,6 +104,7 @@ func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, opts 
 		done := make(chan struct{})
 		tracked[ns.Name] = done
 
+		log.Printf("watching namespace %s\n", ns.Name)
 		go c(ctx, clientset, ns, done)
 	}
 }
