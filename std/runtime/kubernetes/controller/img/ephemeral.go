@@ -59,7 +59,7 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 				continue
 			}
 
-			if lastTimestamp.After(event.LastTimestamp.Time) {
+			if !lastTimestamp.Before(event.LastTimestamp.Time) {
 				continue
 			}
 

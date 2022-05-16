@@ -9,7 +9,6 @@ import (
 	"log"
 	"reflect"
 	"strings"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -20,18 +19,26 @@ import (
 )
 
 func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1.Namespace, done chan struct{}) {
-	w, err := clientset.AppsV1().Deployments(ns.Name).Watch(ctx, metav1.ListOptions{
+	opts := metav1.ListOptions{
 		LabelSelector: kubedef.SerializeSelector(
 			kubedef.SelectFocusServer(),
 		),
-	})
+	}
+
+	l, err := clientset.AppsV1().Deployments(ns.Name).List(ctx, opts)
+	if err != nil {
+		log.Fatalf("failed to list focus deployments in namespace %q: %v", ns.Name, err)
+	}
+
+	// Ensure that we only consider current focus servers when cleaning up unused deps.
+	opts.ResourceVersion = l.ResourceVersion
+
+	w, err := clientset.AppsV1().Deployments(ns.Name).Watch(ctx, opts)
 	if err != nil {
 		log.Fatalf("failed to watch focus deployments in namespace %q: %v", ns.Name, err)
 	}
 
 	defer w.Stop()
-
-	var lastCreation time.Time
 
 	for {
 		select {
@@ -49,12 +56,8 @@ func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1
 				continue
 			}
 
-			if focus.Status.Replicas < focus.Status.ReadyReplicas {
+			if focus.Status.Replicas < focus.Status.ReadyReplicas || focus.Status.Replicas < 1 {
 				// Not ready yet.
-				continue
-			}
-
-			if lastCreation.After(focus.CreationTimestamp.Time) {
 				continue
 			}
 
@@ -64,8 +67,7 @@ func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1
 				continue
 			}
 
-			log.Printf("found new focus deployment %q in namespace %q", focus.Name, ns.Name)
-			lastCreation = focus.CreationTimestamp.Time
+			log.Printf("updated focus deployment %q in namespace %q", focus.Name, ns.Name)
 			required := make(map[string]struct{})
 			for _, dep := range strings.Split(deps, ",") {
 				required[dep] = struct{}{}
