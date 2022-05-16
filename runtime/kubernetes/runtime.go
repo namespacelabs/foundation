@@ -185,12 +185,17 @@ func (r k8sRuntime) PrepareCluster(ctx context.Context) (runtime.DeploymentState
 
 func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
 	var state deploymentState
+	deployOpts := deployOpts{
+		focus: d.Focus,
+	}
+
+	// collect all required servers first
+	for _, server := range d.Servers {
+		deployOpts.deps = append(deployOpts.deps, server.Server.Proto().Id)
+	}
 
 	for _, server := range d.Servers {
 		var singleState serverRunState
-		deployOpts := deployOpts{
-			focus: d.Focus,
-		}
 
 		var serverInternalEndpoints []*schema.InternalEndpoint
 		for _, ie := range d.Stack.InternalEndpoint {

@@ -33,7 +33,7 @@ $ctrl: inputs.#Server & {
 
 configure: fn.#Configure & {
 	stack: {
-		if $env.ephemeral {
+		if $env.ephemeral || $env.purpose  == "DEVELOPMENT" {
 			append: [$ctrl]
 		}
 	}
