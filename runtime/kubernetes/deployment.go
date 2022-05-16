@@ -212,7 +212,7 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		labels = kubedef.MakeLabels(r.env, srv.Proto())
 	}
 
-	annotations := kubedef.MakeAnnotations(srv.StackEntry())
+	annotations := kubedef.MakeAnnotations(r.env, srv.StackEntry())
 
 	if opts.focus.Includes(srv.PackageName()) {
 		kubedef.MarkFocus(&labels)

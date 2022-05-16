@@ -6,6 +6,7 @@ package kubedef
 
 import (
 	"strings"
+	"time"
 
 	"namespacelabs.dev/foundation/schema"
 )
@@ -20,12 +21,14 @@ const (
 	K8sEnvName            = "k8s.namespacelabs.dev/env"
 	K8sEnvEphemeral       = "k8s.namespacelabs.dev/env-ephemeral"
 	K8sEnvPurpose         = "k8s.namespacelabs.dev/env-purpose"
+	K8sEnvTimeout         = "k8s.namespacelabs.dev/env-timeout"
 	K8sConfigImage        = "k8s.namespacelabs.dev/config-image"
 
 	AppKubernetesIoManagedBy = "app.kubernetes.io/managed-by"
 
-	id              = "foundation.namespace.so" // #220 Update when product name is final
-	K8sFieldManager = id
+	id               = "foundation.namespace.so" // #220 Update when product name is final
+	K8sFieldManager  = id
+	ephemeralTimeout = time.Hour
 )
 
 func SelectById(srv *schema.Server) map[string]string {
@@ -80,9 +83,15 @@ func MarkFocus(labels *map[string]string) {
 	(*labels)[K8sServerFocus] = "true"
 }
 
-func MakeAnnotations(entry *schema.Stack_Entry) map[string]string {
-	m := map[string]string{
-		K8sServerPackageName: entry.GetPackageName().String(),
+func MakeAnnotations(env *schema.Environment, entry *schema.Stack_Entry) map[string]string {
+	m := map[string]string{}
+
+	if entry != nil {
+		m[K8sServerPackageName] = entry.GetPackageName().String()
+	}
+
+	if env.GetEphemeral() {
+		m[K8sEnvTimeout] = ephemeralTimeout.String()
 	}
 
 	// XXX add annotations with pointers to tools, team owners, etc.

@@ -33,15 +33,17 @@ func TestMakeLabels(t *testing.T) {
 }
 
 func TestMakeAnnotations(t *testing.T) {
+	env := &schema.Environment{Ephemeral: true}
 	srv := &schema.Server{
 		Id:          "abc",
 		PackageName: "namespacelabs.dev/foundation/test",
 	}
 
-	got := MakeAnnotations(&schema.Stack_Entry{Server: srv})
+	got := MakeAnnotations(env, &schema.Stack_Entry{Server: srv})
 
 	if d := cmp.Diff(map[string]string{
 		"k8s.namespacelabs.dev/server-package-name": "namespacelabs.dev/foundation/test",
+		"k8s.namespacelabs.dev/env-timeout":         ephemeralTimeout.String(),
 	}, got); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
