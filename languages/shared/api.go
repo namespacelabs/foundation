@@ -42,6 +42,7 @@ type TypeData struct {
 
 type ProviderData struct {
 	Name         string
+	Location     workspace.Location
 	InputType    TypeData
 	ProviderType *schema.Provides_AvailableIn
 	ScopedDeps   []DependencyData

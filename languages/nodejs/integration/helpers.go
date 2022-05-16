@@ -59,11 +59,23 @@ func convertType(ic *importCollector, t shared.TypeData) (tmplImportedType, erro
 	}, nil
 }
 
-func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_NodeJs) tmplImportedType {
+func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_NodeJs, loc workspace.Location) (tmplImportedType, error) {
+	var imp string
+	if strings.Contains(a.Import, "/") {
+		// Full path is specified.
+		imp = a.Import
+	} else {
+		// As a shortcut, the user can specify the file from the same package without the full NPM package.
+		var err error
+		imp, err = convertLocationToImport(loc, a.Import)
+		if err != nil {
+			return tmplImportedType{}, err
+		}
+	}
 	return tmplImportedType{
 		Name:        a.Type,
-		ImportAlias: ic.add(a.Import),
-	}
+		ImportAlias: ic.add(imp),
+	}, nil
 }
 
 func convertImportedInitializers(ic *importCollector, locations []workspace.Location) ([]string, error) {

@@ -87,6 +87,7 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 
 				nodeData.Providers = append(nodeData.Providers, ProviderData{
 					Name:         p.Name,
+					Location:     loc,
 					InputType:    convertType(p.Type, loc),
 					ProviderType: a,
 					ScopedDeps:   scopeDeps,

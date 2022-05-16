@@ -77,10 +77,15 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 			return nodeTmplOptions{}, err
 		}
 
+		outputType, err := convertAvailableIn(ic, p.ProviderType.Nodejs, p.Location)
+		if err != nil {
+			return nodeTmplOptions{}, err
+		}
+
 		providers = append(providers, tmplProvider{
 			Name:            strcase.ToCamel(p.Name),
 			InputType:       inputType,
-			OutputType:      convertAvailableIn(ic, p.ProviderType.Nodejs),
+			OutputType:      outputType,
 			Deps:            scopeDeps,
 			PackageDepsName: packageDepsName,
 		})
@@ -125,9 +130,14 @@ func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDepe
 		return tmplDependency{}, err
 	}
 
+	depType, err := convertAvailableIn(ic, dep.ProviderType.Nodejs, dep.ProviderLocation)
+	if err != nil {
+		return tmplDependency{}, err
+	}
+
 	return tmplDependency{
 		Name: dep.Name,
-		Type: convertAvailableIn(ic, dep.ProviderType.Nodejs),
+		Type: depType,
 		Provider: tmplImportedType{
 			Name:        strcase.ToCamel(dep.ProviderName),
 			ImportAlias: alias,
