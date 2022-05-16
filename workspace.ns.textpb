@@ -25,7 +25,7 @@ prebuilt_binary: {
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/img"
-  digest: "sha256:2a823b4b94756355df04deb5588b86b5765b4c239a260422e8ed90f1b06e0bac"
+  digest: "sha256:d1eab447bf9ae7cdb059aaa882bda36194f5cc556c8d49bf6e4623a4e46f55be"
 }
 prebuilt_binary: {
   package_name: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/tool"

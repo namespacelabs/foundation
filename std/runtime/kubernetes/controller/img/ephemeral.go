@@ -64,7 +64,6 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 			}
 
 			lastTimestamp = event.LastTimestamp.Time
-			log.Printf("received recent event for namespace %q", ns.Name)
 		}
 	}
 }
