@@ -211,8 +211,13 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 	return nil
 }
 
+type yarnRootData struct {
+	moduleFs       fnfs.ReadWriteFS
+	workspacePaths []string
+}
+
 func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) error {
-	yarnRootsMap := map[string]bool{}
+	yarnRootsMap := map[string]*yarnRootData{}
 	yarnRoots := []string{}
 	for _, pkg := range packages {
 		if (pkg.Server != nil && pkg.Server.Framework == schema.Framework_NODEJS) ||
@@ -222,15 +227,28 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 				// If we can't find yarn root, using the workspace root.
 				yarnRoot = ""
 			}
-			if !yarnRootsMap[yarnRoot] {
-				yarnRootsMap[yarnRoot] = true
+			if yarnRootsMap[yarnRoot] == nil {
+				yarnRootsMap[yarnRoot] = &yarnRootData{
+					moduleFs:       pkg.Location.Module.ReadWriteFS(),
+					workspacePaths: []string{},
+				}
 				yarnRoots = append(yarnRoots, yarnRoot)
 			}
+			yarnRootData := yarnRootsMap[yarnRoot]
+
+			relpath, err := filepath.Rel(yarnRoot, pkg.Location.Rel())
+			if err != nil {
+				return err
+			}
+			yarnRootData.workspacePaths = append(yarnRootData.workspacePaths, relpath)
 		}
 	}
 
 	// Iterating over a list for the stable order.
 	for _, yarnRoot := range yarnRoots {
+		if err := updateYarnRootPackageJson(ctx, yarnRootsMap[yarnRoot], yarnRoot); err != nil {
+			return err
+		}
 		// `fn tidy` could update dependencies of some nodes/servers, running `yarn install` to update
 		// `node_modules`.
 		if err := yarn.RunYarn(ctx, yarnRoot, []string{"install"}); err != nil {
@@ -239,6 +257,18 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 	}
 
 	return nil
+}
+
+func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, path string) error {
+	_, err := updatePackageJson(ctx, path, yarnRootData.moduleFs, func(packageJson map[string]interface{}, fileExisted bool) {
+		packageJson["private"] = true
+		packageJson["workspaces"] = yarnRootData.workspacePaths
+		packageJson["devDependencies"] = map[string]string{
+			"typescript": builtin().Dependencies["typescript"],
+		}
+	})
+
+	return err
 }
 
 func (impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
@@ -513,33 +543,18 @@ func (yarnRootStatefulGen) StartSession(ctx context.Context, env ops.Environment
 		wenv = nil
 	}
 
-	return &yarnRootGenSession{wenv: wenv, yarnRoots: map[string]*yarnRootData{}}
+	return &yarnRootGenSession{wenv: wenv, yarnRoots: map[string]context.Context{}}
 }
 
 type yarnRootGenSession struct {
 	wenv      workspace.MutableWorkspaceEnvironment
-	yarnRoots map[string]*yarnRootData
-}
-
-type yarnRootData struct {
-	ctx            context.Context
-	workspacePaths []string
+	yarnRoots map[string]context.Context
 }
 
 func (s *yarnRootGenSession) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenYarnRoot) (*ops.HandleResult, error) {
 	if s.yarnRoots[x.YarnRootPkgName] == nil {
-		s.yarnRoots[x.YarnRootPkgName] = &yarnRootData{
-			ctx:            ctx,
-			workspacePaths: []string{},
-		}
+		s.yarnRoots[x.YarnRootPkgName] = ctx
 	}
-	yarnRootData := s.yarnRoots[x.YarnRootPkgName]
-
-	relpath, err := filepath.Rel(x.YarnRootPkgName, x.RelLocation)
-	if err != nil {
-		return nil, err
-	}
-	yarnRootData.workspacePaths = append(yarnRootData.workspacePaths, relpath)
 	return nil, nil
 }
 
@@ -560,15 +575,7 @@ func (s *yarnRootGenSession) Commit() error {
 	return nil
 }
 
-func generateYarnRoot(yarnRootData *yarnRootData, path string, out fnfs.ReadWriteFS) error {
-	ctx := yarnRootData.ctx
-
-	err := updateYarnRootPackageJson(yarnRootData, path, out)
-
-	if err != nil {
-		return err
-	}
-
+func generateYarnRoot(ctx context.Context, path string, out fnfs.ReadWriteFS) error {
 	// Write .yarnrc.yml with the correct nodeLinker.
 	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), out, filepath.Join(path, yarnRcFn), func(w io.Writer) error {
 		_, err := io.WriteString(w, yarnRcContent)
@@ -596,7 +603,7 @@ func generateYarnRoot(yarnRootData *yarnRootData, path string, out fnfs.ReadWrit
 
 	// Create "tsconfig.json" if it doesn't exist.
 	tsconfigFn := filepath.Join(path, "tsconfig.json")
-	_, err = fs.ReadFile(out, tsconfigFn)
+	_, err := fs.ReadFile(out, tsconfigFn)
 	if err != nil && !os.IsNotExist(err) {
 		return fnerrors.UserError(nil, "error while parsing %s: %s", tsconfigFn, err)
 	}
@@ -618,17 +625,4 @@ func generateYarnRoot(yarnRootData *yarnRootData, path string, out fnfs.ReadWrit
 	}
 
 	return nil
-}
-
-// Returns whether yarn has the correct version
-func updateYarnRootPackageJson(yarnRootData *yarnRootData, path string, fs fnfs.ReadWriteFS) error {
-	_, err := updatePackageJson(yarnRootData.ctx, path, fs, func(packageJson map[string]interface{}, fileExisted bool) {
-		packageJson["private"] = true
-		packageJson["workspaces"] = yarnRootData.workspacePaths
-		packageJson["devDependencies"] = map[string]string{
-			"typescript": builtin().Dependencies["typescript"],
-		}
-	})
-
-	return err
 }
