@@ -14,7 +14,7 @@ const (
 	K8sServerId           = "k8s.namespacelabs.dev/server-id"
 	K8sServerFocus        = "k8s.namespacelabs.dev/server-focus"
 	K8sServerPackageName  = "k8s.namespacelabs.dev/server-package-name"
-	K8sServerDeps         = "k8s.namespacelabs.dev/server-deps"
+	K8sFocusDeps          = "k8s.namespacelabs.dev/focus-deps" // dep servers of all focus servers
 	K8sServicePackageName = "k8s.namespacelabs.dev/service-package-name"
 	K8sServiceGrpcType    = "k8s.namespacelabs.dev/service-grpc-type"
 	K8sEnvName            = "k8s.namespacelabs.dev/env"
@@ -90,7 +90,7 @@ func MakeAnnotations(entry *schema.Stack_Entry) map[string]string {
 }
 
 func AnnotateDeps(deps []string, annotations *map[string]string) {
-	(*annotations)[K8sServerDeps] = strings.Join(deps, ",")
+	(*annotations)[K8sFocusDeps] = strings.Join(deps, ",")
 }
 
 func MakeServiceAnnotations(srv *schema.Server, endpoint *schema.Endpoint) (map[string]string, error) {

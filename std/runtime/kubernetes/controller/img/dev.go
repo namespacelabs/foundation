@@ -61,7 +61,7 @@ func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1
 				continue
 			}
 
-			deps, ok := focus.Annotations[kubedef.K8sServerDeps]
+			deps, ok := focus.Annotations[kubedef.K8sFocusDeps]
 			if !ok {
 				log.Printf("focus deployment %q in namespace %q does not contain a deps annotation", focus.Name, ns.Name)
 				continue
