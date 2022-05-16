@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -40,9 +41,9 @@ func newKubeCtlCmd() *cobra.Command {
 			}
 
 			return k8s.Kubectl(ctx, rtypes.IO{
-				Stdout: os.Stdout,
-				Stderr: os.Stderr,
 				Stdin:  os.Stdin,
+				Stdout: console.Stdout(ctx),
+				Stderr: console.Stderr(ctx),
 			}, args...)
 		}),
 	}
