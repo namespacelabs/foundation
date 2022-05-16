@@ -28,14 +28,6 @@ import (
 	"tailscale.com/util/multierr"
 )
 
-type CueV struct{ Val cue.Value }
-type Partial struct {
-	CueV
-	Left       []KeyAndPath
-	Package    CuePackage
-	CueImports []CuePackage
-}
-
 type KeyAndPath struct {
 	Key    string
 	Target cue.Path
@@ -204,7 +196,7 @@ func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 			return nil, vv.Err()
 		}
 
-		partial := &Partial{}
+		partial := &Partial{Ctx: ev}
 		partial.Package = pkg
 		partial.Val = vv
 

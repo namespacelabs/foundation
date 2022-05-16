@@ -37,7 +37,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts wo
 
 	parsed := &workspace.Package{
 		Location: loc,
-		Parsed:   phase1plan{Value: v, Left: partial.Left},
+		Parsed:   phase1plan{partial: partial, Value: v, Left: partial.Left},
 	}
 
 	var count int

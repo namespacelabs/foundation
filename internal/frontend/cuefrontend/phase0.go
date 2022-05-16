@@ -17,25 +17,24 @@ import (
 )
 
 func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.EarlyPackageLoader, loc workspace.Location) (*fncue.Partial, error) {
-	var v *fncue.Partial
-	if err := tasks.Action("cue.package.parse").Scope(loc.PackageName).Run(ctx, func(ctx context.Context) error {
+	return tasks.Return(ctx, tasks.Action("cue.package.parse").LogLevel(1).Scope(loc.PackageName), func(ctx context.Context) (*fncue.Partial, error) {
 		if st, err := fs.Stat(fnfs.Local(loc.Module.Abs()), loc.Rel()); err != nil {
 			if os.IsNotExist(err) {
-				return fnerrors.UserError(nil, "%s: package does not exist", loc.PackageName)
+				return nil, fnerrors.UserError(nil, "%s: package does not exist", loc.PackageName)
 			}
-			return err
+			return nil, err
 		} else if !st.IsDir() {
-			return fnerrors.UserError(loc, "expected a directory")
+			return nil, fnerrors.UserError(loc, "expected a directory")
 		}
 
 		firstPass, err := evalctx.Eval(ctx, loc.PackageName.String())
 		if err != nil {
-			return fnerrors.Wrapf(loc, err, "parsing package")
+			return nil, fnerrors.Wrapf(loc, err, "parsing package")
 		}
 
 		fsys, err := pl.WorkspaceOf(ctx, loc.Module)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		inputs := newFuncs().
@@ -44,20 +43,26 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.Earl
 			WithFetcher(fncue.ResourceIKw, FetchResource(fsys, loc)).
 			WithFetcher(fncue.PackageIKW, FetchPackage(pl))
 
-		newV, newLeft, err := applyInputs(ctx, inputs, &firstPass.CueV, firstPass.Left)
-		if err != nil {
-			return fnerrors.Wrapf(loc, err, "evaluating package")
+			// Load packages without the serialization lock held.
+		for _, k := range firstPass.Left {
+			if k.Key == fncue.PackageIKW {
+				if _, err := FetchPackage(pl)(ctx, firstPass.CueV.Val.LookupPath(k.Target)); err != nil {
+					return nil, err
+				}
+			}
 		}
 
-		parsedPartial := *firstPass
-		parsedPartial.Val = newV.Val
-		parsedPartial.Left = newLeft
-		v = &parsedPartial
+		return fncue.SerializedEval(firstPass, func() (*fncue.Partial, error) {
+			newV, newLeft, err := applyInputs(ctx, inputs, &firstPass.CueV, firstPass.Left)
+			if err != nil {
+				return nil, fnerrors.Wrapf(loc, err, "evaluating package")
+			}
 
-		return nil
-	}); err != nil {
-		return nil, err
-	}
+			parsedPartial := *firstPass
+			parsedPartial.Val = newV.Val
+			parsedPartial.Left = newLeft
 
-	return v, nil
+			return &parsedPartial, nil
+		})
+	})
 }

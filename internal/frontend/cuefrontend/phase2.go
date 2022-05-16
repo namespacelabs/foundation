@@ -19,8 +19,9 @@ import (
 )
 
 type phase2plan struct {
-	Value *fncue.CueV
-	Left  []fncue.KeyAndPath // injected values left to be filled.
+	partial *fncue.Partial
+	Value   *fncue.CueV
+	Left    []fncue.KeyAndPath // injected values left to be filled.
 }
 
 type cueStartupPlan struct {
@@ -33,13 +34,21 @@ var _ frontend.PreStartup = phase2plan{}
 func (s phase2plan) EvalStartup(ctx context.Context, env ops.Environment, info frontend.StartupInputs, allocs []frontend.ValueWithPath) (*schema.StartupPlan, error) {
 	plan := &schema.StartupPlan{}
 
-	res, _, err := s.evalStartupStage(ctx, env, info)
+	res, err := fncue.SerializedEval(s.partial, func() (*fncue.CueV, error) {
+		res, _, err := s.evalStartupStage(ctx, env, info)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, alloc := range allocs {
+			res = res.FillPath(cue.ParsePath(alloc.Need.CuePath), alloc.Value)
+		}
+
+		return res, nil
+	})
+
 	if err != nil {
 		return nil, err
-	}
-
-	for _, alloc := range allocs {
-		res = res.FillPath(cue.ParsePath(alloc.Need.CuePath), alloc.Value)
 	}
 
 	if v := lookupTransition(res, "startup"); v.Exists() {

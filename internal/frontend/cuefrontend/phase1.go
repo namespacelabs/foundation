@@ -19,6 +19,8 @@ import (
 )
 
 type phase1plan struct {
+	partial *fncue.Partial
+
 	Value *fncue.CueV
 	Left  []fncue.KeyAndPath // injected values left to be filled.
 }
@@ -99,14 +101,16 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 		return frontend.ProvisionPlan{}, fnerrors.InternalError("env is missing .. env")
 	}
 
-	vv, left, err := applyInputs(ctx, provisionFuncs(env.Proto(), inputs), p1.Value, p1.Left)
+	vv, left, err := fncue.SerializedEval3(p1.partial, func() (*fncue.CueV, []fncue.KeyAndPath, error) {
+		return applyInputs(ctx, provisionFuncs(env.Proto(), inputs), p1.Value, p1.Left)
+	})
 	if err != nil {
 		return frontend.ProvisionPlan{}, err
 	}
 
 	var pdata frontend.ProvisionPlan
 
-	pdata.Startup = phase2plan{Value: vv, Left: left}
+	pdata.Startup = phase2plan{partial: p1.partial, Value: vv, Left: left}
 
 	if stackVal := lookupTransition(vv, "stack"); stackVal.Exists() {
 		var stack cueStack

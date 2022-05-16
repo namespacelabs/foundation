@@ -91,14 +91,31 @@ type PackageLoader struct {
 	rootmodule  *Module
 	moduleCache *moduleCache
 	mu          sync.RWMutex
-	fsys        map[string]*memfs.IncrementalFS // module name -> IncrementalFS
-	loaded      map[string]*Package             // package name -> Package
+	fsys        map[string]*memfs.IncrementalFS        // module name -> IncrementalFS
+	loaded      map[schema.PackageName]*Package        // package name -> Package
+	loading     map[schema.PackageName]*loadingPackage // Package name -> loadingPackage
 }
 
 type sealedPackages struct {
 	sources  []ModuleSources
-	modules  map[string]*Module  // module name -> Module
-	packages map[string]*Package // package name -> Package
+	modules  map[string]*Module              // module name -> Module
+	packages map[schema.PackageName]*Package // package name -> Package
+}
+
+type resultPair struct {
+	value *Package
+	err   error
+}
+
+type loadingPackage struct {
+	pl      *PackageLoader
+	loc     Location
+	opts    LoadPackageOpts
+	mu      sync.Mutex
+	waiters []chan resultPair
+	waiting int // The first waiter, will also get to the package load.
+	done    bool
+	result  resultPair
 }
 
 func NewPackageLoader(root *Root) *PackageLoader {
@@ -108,7 +125,8 @@ func NewPackageLoader(root *Root) *PackageLoader {
 	pl.devHost = root.DevHost
 	pl.moduleCache = &moduleCache{loaded: map[string]*Module{}, pl: pl}
 	pl.rootmodule = pl.moduleCache.inject(root.absPath, root.Workspace, "" /* version */)
-	pl.loaded = map[string]*Package{}
+	pl.loaded = map[schema.PackageName]*Package{}
+	pl.loading = map[schema.PackageName]*loadingPackage{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
 	pl.frontend = MakeFrontend(pl)
 	return pl
@@ -117,7 +135,7 @@ func NewPackageLoader(root *Root) *PackageLoader {
 func (pl *PackageLoader) Seal() SealedPackages {
 	sealed := sealedPackages{
 		modules:  map[string]*Module{},
-		packages: map[string]*Package{},
+		packages: map[schema.PackageName]*Package{},
 	}
 
 	pl.moduleCache.mu.Lock()
@@ -259,28 +277,30 @@ func (pl *PackageLoader) LoadPackage(ctx context.Context, loc Location, opt ...L
 		o(&opts)
 	}
 
-	pl.mu.RLock()
-	previous := pl.loaded[loc.PackageName.String()]
-	pl.mu.RUnlock()
+	pkgName := loc.PackageName
 
-	if previous != nil {
-		return previous, nil
+	// Fast path: was the package already loaded?
+	pl.mu.RLock()
+	loaded := pl.loaded[pkgName]
+	pl.mu.RUnlock()
+	if loaded != nil {
+		return loaded, nil
 	}
 
-	err = tasks.Action("package.load").Scope(loc.PackageName).Run(ctx, func(ctx context.Context) error {
-		var err error
-		parsed, err = pl.frontend.ParsePackage(ctx, loc, opts)
-		if err != nil {
-			return err
+	// Slow path: if not, concentrate all concurrent loads of the same package into a single loader.
+	pl.mu.Lock()
+	loading := pl.loading[pkgName]
+	if loading == nil {
+		loading = &loadingPackage{
+			pl:   pl,
+			loc:  loc,
+			opts: opts,
 		}
+		pl.loading[pkgName] = loading
+	}
+	pl.mu.Unlock()
 
-		pl.mu.Lock()
-		pl.loaded[loc.PackageName.String()] = parsed
-		pl.mu.Unlock()
-
-		return nil
-	})
-	return
+	return loading.Load(ctx)
 }
 
 func (pl *PackageLoader) ExternalLocation(ctx context.Context, mod *schema.Workspace_Dependency, packageName schema.PackageName) (Location, error) {
@@ -341,6 +361,70 @@ func (pl *PackageLoader) Stats(ctx context.Context) PackageLoaderStats {
 	return stats
 }
 
+func (pl *PackageLoader) complete(pkg *Package) {
+	pl.mu.Lock()
+	pl.loaded[pkg.PackageName()] = pkg
+	pl.mu.Unlock()
+}
+
+func (l *loadingPackage) Load(ctx context.Context) (*Package, error) {
+	l.mu.Lock()
+
+	rev := l.waiting
+	l.waiting++
+
+	// We've been selected to load the package.
+	if rev == 0 {
+		l.mu.Unlock()
+		var res resultPair
+		res.value, res.err = tasks.Return(ctx, tasks.Action("package.load").Scope(l.loc.PackageName), func(ctx context.Context) (*Package, error) {
+			return l.pl.frontend.ParsePackage(ctx, l.loc, l.opts)
+		})
+
+		l.mu.Lock()
+
+		l.done = true
+		l.result = res
+
+		if res.err == nil {
+			l.pl.complete(res.value)
+		}
+
+		waiters := l.waiters
+		l.waiters = nil
+		l.mu.Unlock()
+
+		for _, ch := range waiters {
+			ch <- res
+			close(ch)
+		}
+
+		return res.value, res.err
+	}
+
+	if l.done {
+		defer l.mu.Unlock()
+		return l.result.value, l.result.err
+	}
+
+	// Very important that this is a buffered channel, else the write above will
+	// block forever and deadlock package loading.
+	ch := make(chan resultPair, 1)
+	l.waiters = append(l.waiters, ch)
+	l.mu.Unlock()
+
+	select {
+	case v, ok := <-ch:
+		if !ok {
+			return nil, fnerrors.InternalError("unexpected eof")
+		}
+		return v.value, v.err
+
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
 type moduleCache struct {
 	pl     *PackageLoader
 	mu     sync.RWMutex
@@ -392,7 +476,7 @@ func (cache *moduleCache) resolveExternal(moduleName string, download func() (*D
 }
 
 func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.PackageName) (Location, error) {
-	if pkg, ok := sealed.packages[packageName.String()]; ok {
+	if pkg, ok := sealed.packages[packageName]; ok {
 		return pkg.Location, nil
 	}
 
@@ -400,7 +484,7 @@ func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.Pac
 }
 
 func (sealed sealedPackages) LoadByName(ctx context.Context, packageName schema.PackageName) (*Package, error) {
-	if pkg, ok := sealed.packages[packageName.String()]; ok {
+	if pkg, ok := sealed.packages[packageName]; ok {
 		return pkg, nil
 	}
 
