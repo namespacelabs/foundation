@@ -192,8 +192,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		return nil
 	})
 
-	registerCommands(rootCmd)
-
 	rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 		"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
 	rootCmd.PersistentFlags().BoolVar(&consolesink.LogActions, "log_actions", consolesink.LogActions,
@@ -232,6 +230,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
+
+	registerCommands(rootCmd)
 
 	err := rootCmd.ExecuteContext(ctxWithSink)
 
