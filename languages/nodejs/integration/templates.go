@@ -135,7 +135,7 @@ import * as {{.Alias}} from "{{.Package}}"
 			`{{define "Node"}}{{with $opts := .}}// This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
+import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundation";
 
 {{- template "Imports" . -}}
 
@@ -152,7 +152,7 @@ import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 
 export type WireService = (
 	{{- if .Package.Deps}}deps: {{.Package.Deps.Name}}Deps, {{end -}}
-	server: {{.Service.GrpcServerImportAlias}}.Server) => void;
+	registrar: Registrar) => void;
 export const wireService: WireService = impl.wireService;
 {{- end}}
 
@@ -165,10 +165,7 @@ export const wireService: WireService = impl.wireService;
 			// Server template
 			`{{define "Server"}}// This file was automatically generated.
 
-import { Server, ServerCredentials } from "@grpc/grpc-js";
-import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import "source-map-support/register"
-import yargs from "yargs/yargs";
+import { DependencyGraph, Initializer, Server } from "@namespacelabs/foundation";
 
 {{- template "Imports" . -}}
 
@@ -193,13 +190,6 @@ const TransitiveInitializers: Initializer[] = [
 	{{- end}}
 ];
 
-const argv = yargs(process.argv.slice(2))
-		.options({
-			listen_hostname: { type: "string" },
-			port: { type: "number" },
-		})
-		.parse();
-
 const server = new Server();
 
 const graph = new DependencyGraph();
@@ -211,24 +201,19 @@ if (errors.length > 0) {
 	process.exit(1);
 }
 
-console.log(` + "`" + `Starting the server on ${argv.listen_hostname}:${argv.port}` + "`" + `);
-
-server.bindAsync(` + "`" + `${argv.listen_hostname}:${argv.port}` + "`" + `, ServerCredentials.createInsecure(), () => {
-  server.start();
-  console.log(` + "`" + `Server started.` + "`" + `);
-});
+server.start();
 {{end}}` +
 
 			// Node stub template
-			`{{define "Node stub"}}import { Server } from "@grpc/grpc-js";
+			`{{define "Node stub"}}import { Registrar } from "@namespacelabs/foundation";
 import { ServiceDeps, WireService } from "./deps.fn";
 import { {{.ServiceServerName}}, {{.ServiceName}} } from "./{{.ServiceFileName}}_grpc_pb";
 
-export const wireService: WireService = (deps: ServiceDeps, server: Server): void => {
+export const wireService: WireService = (deps: ServiceDeps, registrar: Registrar): void => {
   const service: {{.ServiceServerName}} = {
     // TODO: implement
   };
 
-  server.addService({{.ServiceName}}, service);
+  registrar.registerGrpcService({{.ServiceName}}, service);
 };{{end}}`))
 )

@@ -1,7 +1,7 @@
 // This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
+import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundation";
 import * as i0 from "@namespacelabs.dev-foundation/std-grpc/protos/provider_pb"
 
 

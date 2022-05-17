@@ -36,7 +36,7 @@ __metadata:
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter": 0.0.0
-    "@namespacelabs/foundation": 0.1.27
+    "@namespacelabs/foundation": 0.1.36
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -53,7 +53,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:languages/nodejs/testdata/extensions/numberformatter"
   dependencies:
     "@grpc/grpc-js": 1.5.7
-    "@namespacelabs/foundation": 0.1.27
+    "@namespacelabs/foundation": 0.1.36
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -73,7 +73,7 @@ __metadata:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
-    "@namespacelabs/foundation": 0.1.27
+    "@namespacelabs/foundation": 0.1.36
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -91,7 +91,7 @@ __metadata:
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
-    "@namespacelabs/foundation": 0.1.27
+    "@namespacelabs/foundation": 0.1.36
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -109,7 +109,7 @@ __metadata:
   dependencies:
     "@grpc/grpc-js": 1.5.7
     "@namespacelabs.dev-foundation/std-grpc": 0.0.0
-    "@namespacelabs/foundation": 0.1.27
+    "@namespacelabs/foundation": 0.1.36
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -126,7 +126,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple"
   dependencies:
     "@grpc/grpc-js": 1.5.7
-    "@namespacelabs/foundation": 0.1.27
+    "@namespacelabs/foundation": 0.1.36
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -143,7 +143,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/std-grpc@workspace:std/grpc"
   dependencies:
     "@grpc/grpc-js": 1.5.7
-    "@namespacelabs/foundation": 0.1.27
+    "@namespacelabs/foundation": 0.1.36
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -155,12 +155,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@namespacelabs/foundation@npm:0.1.27":
-  version: 0.1.27
-  resolution: "@namespacelabs/foundation@npm:0.1.27::__archiveUrl=https%3A%2F%2Fus-npm.pkg.dev%2Ffoundation-344819%2Fnpm-prebuilts%2F%40namespacelabs%2Ffoundation%2F-%2F%40namespacelabs%2Ffoundation-0.1.27.tgz"
+"@namespacelabs/foundation@npm:0.1.36":
+  version: 0.1.36
+  resolution: "@namespacelabs/foundation@npm:0.1.36::__archiveUrl=https%3A%2F%2Fus-npm.pkg.dev%2Ffoundation-344819%2Fnpm-prebuilts%2F%40namespacelabs%2Ffoundation%2F-%2F%40namespacelabs%2Ffoundation-0.1.36.tgz"
   dependencies:
+    source-map-support: 0.5.21
     typescript: 4.6.2
-  checksum: 644e3fd66bf53dd101b606a69d62f85e1dffc0c5cc9d914220deaee3916d5eaf5bb4c99f00b058cdf984f59cf0fe43fa19bb045a0899143e00db9009ccc93afb
+    yargs: 16.x
+  checksum: b0a5db7da60bf47c7da7e7bdd1776a9daaf202bed79d54db61c689478aeb38a51587f7583bc7f1522e8ed54965e4604e60ebbcc74623c98fdf8d2f528dc306fd
   languageName: node
   linkType: hard
 
