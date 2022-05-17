@@ -10,6 +10,7 @@
 		"languages/nodejs/testdata/services/numberformatter",
 		"languages/nodejs/testdata/services/postuser",
 		"languages/nodejs/testdata/services/simple",
+		"languages/nodejs/testdata/services/simplehttp",
 		"std/grpc"
 	]
 }

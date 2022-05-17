@@ -1,11 +1,12 @@
 {
 	"name": "@namespacelabs/foundation",
-	"version": "0.1.36",
+	"version": "0.1.37",
 	"description": "Runtime Node.js libraries for Foundation",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"license": "https://github.com/namespacelabs/foundation/blob/main/LICENSE",
 	"dependencies": {
+		"fastify": "3.29.0",
 		"source-map-support": "0.5.21",
 		"typescript": "4.6.2",
 		"yargs": "16.x"

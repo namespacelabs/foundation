@@ -2,8 +2,9 @@
 
 import { DependencyGraph, Initializer, Server } from "@namespacelabs/foundation";
 import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/deps.fn"
-import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter/deps.fn"
-import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser/deps.fn"
+import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp/deps.fn"
+import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter/deps.fn"
+import * as i3 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser/deps.fn"
 
 // Returns a list of initialization errors.
 const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
@@ -14,12 +15,17 @@ const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
 		errors.push(e);
 	}
   try {
-		i1.wireService(i1.Package.instantiateDeps(graph), server);
+		i1.wireService(server);
 	} catch (e) {
 		errors.push(e);
 	}
   try {
 		i2.wireService(i2.Package.instantiateDeps(graph), server);
+	} catch (e) {
+		errors.push(e);
+	}
+  try {
+		i3.wireService(i3.Package.instantiateDeps(graph), server);
 	} catch (e) {
 		errors.push(e);
 	}
@@ -30,6 +36,7 @@ const TransitiveInitializers: Initializer[] = [
 	...i0.TransitiveInitializers,
 	...i1.TransitiveInitializers,
 	...i2.TransitiveInitializers,
+	...i3.TransitiveInitializers,
 ];
 
 const server = new Server();
