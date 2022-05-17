@@ -75,10 +75,11 @@ func init() {
 }
 
 type consoleOutput struct {
-	id    common.IdAndHash
-	name  string
-	cat   common.CatOutputType
-	lines [][]byte
+	id       common.IdAndHash
+	actionID tasks.ActionID
+	name     string
+	cat      common.CatOutputType
+	lines    [][]byte
 }
 
 type consoleEvent struct {
@@ -153,7 +154,7 @@ type node struct {
 
 type logSources struct {
 	mu      sync.Mutex
-	sources []common.IdAndHash // Sources of log output (think: action IDs)
+	sources []tasks.ActionID // Sources of log output (think: action IDs)
 }
 
 var _ tasks.ActionSink = &ConsoleSink{}
@@ -746,13 +747,13 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 			}
 			for _, line := range block.lines {
 				fmt.Fprintf(raw, "%s%s %s\n", aec.EraseLine(aec.EraseModes.Tail), hdrBuf.Bytes(), line)
-				c.recordLogSource(block.id)
+				c.recordLogSource(block.actionID)
 			}
 			hdrBuf.Reset()
 		} else {
 			for _, line := range block.lines {
 				fmt.Fprintf(raw, "%s%s\n", aec.EraseLine(aec.EraseModes.Tail), line)
-				c.recordLogSource(block.id)
+				c.recordLogSource(block.actionID)
 			}
 		}
 	}
@@ -862,7 +863,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	c.renderLineRec(out, width, c.root, t, " => ", 0, maxDepth)
 }
 
-func (c *ConsoleSink) recordLogSource(id common.IdAndHash) {
+func (c *ConsoleSink) recordLogSource(id tasks.ActionID) {
 	c.logSources.mu.Lock()
 	defer c.logSources.mu.Unlock()
 	if len(c.logSources.sources) < maxLogSourcesAccounted {
@@ -877,8 +878,7 @@ func (c *ConsoleSink) RecentInputSourcesContain(actionId tasks.ActionID) bool {
 	c.logSources.mu.Lock()
 	defer c.logSources.mu.Unlock()
 	for _, logSource := range c.logSources.sources {
-		// TODO change logSource.ID and actionId to have stronger types than a string.
-		if len(actionId) > 5 && len(logSource.ID) > 5 && actionId.String()[:6] == logSource.ID[:6] {
+		if logSource == actionId {
 			return true
 		}
 	}
@@ -1006,8 +1006,8 @@ func (c *ConsoleSink) AttachmentsUpdated(actionID tasks.ActionID, data *tasks.Re
 	}
 }
 
-func (c *ConsoleSink) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, lines [][]byte) {
-	c.ch <- consoleEvent{output: consoleOutput{id: id, name: name, cat: cat, lines: lines}}
+func (c *ConsoleSink) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, actionID tasks.ActionID, lines [][]byte) {
+	c.ch <- consoleEvent{output: consoleOutput{id: id, name: name, cat: cat, lines: lines, actionID: actionID}}
 }
 
 func (c *ConsoleSink) AllocateConsoleId() uint64 {
