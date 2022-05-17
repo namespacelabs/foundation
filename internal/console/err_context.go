@@ -19,7 +19,7 @@ var errCtx = newErrContext()
 // errContext stores Attachment's buffer names that may provide additional context in case of an error.
 type errContext struct {
 	mu sync.Mutex
-	// provides errorContext for a specific ation (keyed by ActionID)
+	// provides errorContext for a specific action (keyed by ActionID).
 	perAction map[string]*actionErrContext
 }
 
