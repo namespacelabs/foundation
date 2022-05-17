@@ -19,7 +19,7 @@ type hasAction interface {
 }
 
 type Promise[V any] struct {
-	actionID string
+	actionID tasks.ActionID
 	c        hasAction
 	mu       sync.Mutex
 	waiters  []chan atom[V] // We use channels, to allow for select{}ing for cancelation.
@@ -28,7 +28,7 @@ type Promise[V any] struct {
 }
 
 type Future[V any] struct {
-	actionID string
+	actionID tasks.ActionID
 	c        hasAction
 	ch       chan atom[V]
 	atom     atom[V]
@@ -54,7 +54,7 @@ type atom[V any] struct {
 }
 
 func initializePromise[V any](p *Promise[V], c hasAction, id string) *Promise[V] {
-	p.actionID = id
+	p.actionID = tasks.ActionID(id)
 	p.c = c
 	return p
 }
@@ -64,7 +64,7 @@ func makePromise[V any](c hasAction, id string) *Promise[V] {
 }
 
 func NewPromise[V any](g *Orch, action *tasks.ActionEvent, f func(context.Context) (ResultWithTimestamp[V], error)) *Promise[V] {
-	p := makePromise[V](wrapHasAction{action}, tasks.NewActionID())
+	p := makePromise[V](wrapHasAction{action}, tasks.NewActionID().String())
 
 	g.Detach(action, func(ctx context.Context) error {
 		result, err := f(ctx)

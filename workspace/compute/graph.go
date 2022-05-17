@@ -126,7 +126,7 @@ func startComputingWithOpts(ctx context.Context, g *Orch, opts computeInstance) 
 		opts.State.promise.mu.Lock()
 
 		if !opts.State.running {
-			initializePromise(&opts.State.promise, opts.Computable, tasks.NewActionID())
+			initializePromise(&opts.State.promise, opts.Computable, tasks.NewActionID().String())
 			opts.State.running = true
 		} else {
 			isComputing = true

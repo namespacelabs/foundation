@@ -62,7 +62,7 @@ func TypedOutput(ctx context.Context, name string, cat common.CatOutputType) io.
 func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutputType) io.Writer {
 	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
 	if t, ok := unwrapped.(writerLiner); ok {
-		id := tasks.Attachments(ctx).ActionID()
+		id := tasks.Attachments(ctx).ActionID().String()
 		if id == "" {
 			id = ids.NewRandomBase32ID(8)
 		}

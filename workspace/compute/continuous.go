@@ -311,7 +311,7 @@ func (o *observable) Loop(ctx context.Context) error {
 
 	cacheable, shouldCache := o.computable.CacheInfo()
 
-	p := makePromise[any](o.computable.Computable, tasks.NewActionID())
+	p := makePromise[any](o.computable.Computable, tasks.NewActionID().String())
 	hit := checkCache(ctx, orch, o.computable, cacheable, shouldCache, deplessInputs, p)
 	if hit.VerifiedHit {
 		o.newValue(ctx, p.resolved.value)
@@ -350,7 +350,7 @@ func (o *observable) Loop(ctx context.Context) error {
 					return false, err
 				}
 
-				p := makePromise[any](o.computable.Computable, tasks.NewActionID())
+				p := makePromise[any](o.computable.Computable, tasks.NewActionID().String())
 
 				if hit, err := checkLoadCache(ctx, "cache.load.post", orch, o.computable, cacheable, inputs.PostComputeDigest, p); err == nil && hit.VerifiedHit {
 					o.newValue(ctx, p.resolved.value)

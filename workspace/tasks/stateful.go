@@ -23,8 +23,8 @@ type statefulState struct {
 	observers []Observer
 
 	allProtos      []*protocol.Task
-	protoIndex     map[string]int
-	allAttachments map[string]*EventAttachments
+	protoIndex     map[ActionID]int
+	allAttachments map[ActionID]*EventAttachments
 }
 
 type Observer interface {
@@ -40,14 +40,14 @@ var _ ActionSink = &statefulState{}
 func WithStatefulSink(ctx context.Context) (context.Context, *StatefulSink) {
 	s := &statefulState{
 		parent:         SinkFrom(ctx),
-		protoIndex:     map[string]int{},
-		allAttachments: map[string]*EventAttachments{},
+		protoIndex:     map[ActionID]int{},
+		allAttachments: map[ActionID]*EventAttachments{},
 	}
 
 	return WithSink(ctx, s), &StatefulSink{s}
 }
 
-func (s *StatefulSink) HistoricReaderByName(id, name string) io.ReadCloser {
+func (s *StatefulSink) HistoricReaderByName(id ActionID, name string) io.ReadCloser {
 	s.s.mu.Lock()
 	defer s.s.mu.Unlock()
 
@@ -166,7 +166,7 @@ func (s *statefulState) Instant(ev *EventData) {
 	}
 }
 
-func (s *statefulState) AttachmentsUpdated(actionID string, data *ResultData) {
+func (s *statefulState) AttachmentsUpdated(actionID ActionID, data *ResultData) {
 	if s.parent != nil {
 		s.parent.AttachmentsUpdated(actionID, data)
 	}

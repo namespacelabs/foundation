@@ -20,7 +20,7 @@ var errCtx = newErrContext()
 type errContext struct {
 	mu sync.Mutex
 	// provides errorContext for a specific action (keyed by ActionID).
-	perAction map[string]*actionErrContext
+	perAction map[tasks.ActionID]*actionErrContext
 }
 
 type actionErrContext struct {
@@ -30,7 +30,7 @@ type actionErrContext struct {
 
 func newErrContext() *errContext {
 	return &errContext{
-		perAction: make(map[string]*actionErrContext),
+		perAction: make(map[tasks.ActionID]*actionErrContext),
 	}
 }
 
