@@ -43,13 +43,13 @@ func WithLogs(ctx context.Context, err error) error {
 	}
 	attachments := tasks.Attachments(ctx)
 	if consoleSink, ok := sink.(*consolesink.ConsoleSink); ok {
-		// Only skip the error message 
+		// Only skip the error message
 		if consoleSink.RecentInputSourcesContain(attachments.ActionID()) {
 			return err
 		}
 	}
 
-	bufNames := tasks.GetErrContext(ctx).GetBufNames()
+	bufNames := GetErrContext(ctx).getBufNames()
 	for i := range bufNames {
 		err = fnerrors.WithLogs(
 			err,
@@ -61,6 +61,12 @@ func WithLogs(ctx context.Context, err error) error {
 	}
 
 	return err
+}
+
+func (aec *actionErrContext) AddLog(name tasks.OutputName) {
+	aec.mu.Lock()
+	defer aec.mu.Unlock()
+	aec.buffNames = append(aec.buffNames, name)
 }
 
 func GetErrContext(ctx context.Context) *actionErrContext {
@@ -79,13 +85,7 @@ func GetErrContext(ctx context.Context) *actionErrContext {
 	return aec
 }
 
-func (aec *actionErrContext) AddLog(name tasks.OutputName) {
-	aec.mu.Lock()
-	defer aec.mu.Unlock()
-	aec.buffNames = append(aec.buffNames, name)
-}
-
-func (aec *actionErrContext) GetBufNames() []tasks.OutputName {
+func (aec *actionErrContext) getBufNames() []tasks.OutputName {
 	aec.mu.Lock()
 	defer aec.mu.Unlock()
 

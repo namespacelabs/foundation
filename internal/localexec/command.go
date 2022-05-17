@@ -43,7 +43,7 @@ func (c Command) Run(ctx context.Context) error {
 		stderr := io.MultiWriter(out,
 			tasks.Attachments(ctx).Output(stderrOutputName),
 		)
-		tasks.GetErrContext(ctx).AddLog(stderrOutputName)
+		console.GetErrContext(ctx).AddLog(stderrOutputName)
 
 		cmd := exec.CommandContext(ctx, c.Command, c.Args...)
 		cmd.Dir = c.Dir

@@ -22,7 +22,6 @@ import (
 	"github.com/muesli/reflow/truncate"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/termios"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -878,13 +877,13 @@ func (c *ConsoleSink) RecentInputSourcesContain(actionId string) bool {
 	c.logSources.mu.Lock()
 	defer c.logSources.mu.Unlock()
 	for _, logSource := range c.logSources.sources {
-		if len(actionId) > 5 && len(logSource.ID) > 5 && actionId[:5] == logSource.ID[:5] {
+		// TODO change logSource.ID and actionId to have stronger types than a string.
+		if len(actionId) > 5 && len(logSource.ID) > 5 && actionId[:6] == logSource.ID[:6] {
 			return true
 		}
 	}
 	return false
 }
-
 
 func plural(count int, singular, plural string) string {
 	if count == 1 {
