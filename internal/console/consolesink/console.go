@@ -15,6 +15,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/morikuni/aec"
@@ -35,7 +36,8 @@ var (
 )
 
 const (
-	includeToolIDs = false
+	includeToolIDs         = false
+	maxLogSourcesAccounted = 30 // Sources of the last [num] output messages.
 
 	FPS = 60
 )
@@ -123,6 +125,8 @@ type ConsoleSink struct {
 	idleLabel     string           // Label that is shown after `[-] idle` when no tasks are running.
 	stickyContent []*stickyContent // Multi-line content that is always displayed above actions.
 
+	logSources logSources // Sources of log output (think: action IDs)
+
 	debugOut *json.Encoder
 }
 
@@ -145,6 +149,11 @@ type node struct {
 	replacement *node // If this node is a `compute.wait`, replace it with the actual computation it is waiting on.
 	hidden      bool  // Whether this node has been marked hidden (because e.g. there are multiple nodes to the same anchor).
 	children    []string
+}
+
+type logSources struct {
+	mu      sync.Mutex
+	sources []common.IdAndHash // Sources of log output (think: action IDs)
 }
 
 var _ tasks.ActionSink = &ConsoleSink{}
@@ -737,11 +746,13 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 			}
 			for _, line := range block.lines {
 				fmt.Fprintf(raw, "%s%s %s\n", aec.EraseLine(aec.EraseModes.Tail), hdrBuf.Bytes(), line)
+				c.recordLogSource(block.id)
 			}
 			hdrBuf.Reset()
 		} else {
 			for _, line := range block.lines {
 				fmt.Fprintf(raw, "%s%s\n", aec.EraseLine(aec.EraseModes.Tail), line)
+				c.recordLogSource(block.id)
 			}
 		}
 	}
@@ -849,6 +860,29 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 	// Recurse through the line item tree.
 	c.renderLineRec(out, width, c.root, t, " => ", 0, maxDepth)
+}
+
+func (c *ConsoleSink) recordLogSource(id common.IdAndHash) {
+	c.logSources.mu.Lock()
+	defer c.logSources.mu.Unlock()
+	if len(c.logSources.sources) < maxLogSourcesAccounted {
+		c.logSources.sources = append(c.logSources.sources, id)
+		return
+	}
+
+	c.logSources.sources = append(c.logSources.sources[1:], id)
+}
+
+func (c *ConsoleSink) RecentInputSourcesContain(actionId string) bool {
+	c.logSources.mu.Lock()
+	defer c.logSources.mu.Unlock()
+	for _, logSource := range c.logSources.sources {
+		// TODO change logSource.ID and actionId to have stronger types than a string.
+		if len(actionId) > 5 && len(logSource.ID) > 5 && actionId[:6] == logSource.ID[:6] {
+			return true
+		}
+	}
+	return false
 }
 
 func plural(count int, singular, plural string) string {

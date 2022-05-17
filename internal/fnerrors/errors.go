@@ -303,7 +303,6 @@ func format(w io.Writer, err error, opts *FormatOptions) {
 
 func formatErrWithLogs(w io.Writer, err *errWithLogs, opts *FormatOptions) {
 	colors := opts.colors
-	fmt.Fprintf(w, "%s\n\n", err.Error())
 	if opts.colors {
 		fmt.Fprintf(w, "%s\n", aec.CyanF.With(aec.Bold).Apply("Captured logs: "))
 	} else {

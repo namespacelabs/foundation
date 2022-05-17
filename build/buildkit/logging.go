@@ -36,7 +36,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 	outText := attachments.Output(tasks.TaskOutputTextLog)
 	outJSON := attachments.Output(TaskOutputBuildkitJsonLog)
 
-	tasks.GetErrContext(ctx).AddLog(tasks.TaskOutputTextLog)
+	console.GetErrContext(ctx).AddLog(tasks.TaskOutputTextLog)
 
 	writers := []io.Writer{outText}
 	jsonWriters := []io.Writer{outJSON}
@@ -179,7 +179,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 					streams[log.Stream] = io.MultiWriter(
 						output,
 						console.Output(ctx, consoleName(log.Stream)))
-					tasks.GetErrContext(ctx).AddLog(outputName)
+					console.GetErrContext(ctx).AddLog(outputName)
 				}
 
 				_, _ = streams[log.Stream].Write(log.Data)
