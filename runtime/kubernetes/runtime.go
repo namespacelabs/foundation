@@ -123,7 +123,9 @@ func (r k8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 		Description: "Namespace",
 		Resource:    "namespaces",
 		Name:        r.moduleNamespace,
-		Body:        applycorev1.Namespace(r.moduleNamespace).WithLabels(kubedef.MakeLabels(r.env, nil)),
+		Body: applycorev1.Namespace(r.moduleNamespace).
+			WithLabels(kubedef.MakeLabels(r.env, nil)).
+			WithAnnotations(kubedef.MakeAnnotations(r.env, nil)),
 	}).ToDefinition()
 	if err != nil {
 		return nil, err
@@ -185,10 +187,17 @@ func (r k8sRuntime) PrepareCluster(ctx context.Context) (runtime.DeploymentState
 
 func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
 	var state deploymentState
+	deployOpts := deployOpts{
+		focus: d.Focus,
+	}
+
+	// Collect all required servers before planning deployment as they are referenced in annotations.
+	for _, server := range d.Servers {
+		deployOpts.stackIds = append(deployOpts.stackIds, server.Server.Proto().Id)
+	}
 
 	for _, server := range d.Servers {
 		var singleState serverRunState
-		var deployOpts deployOpts
 
 		var serverInternalEndpoints []*schema.InternalEndpoint
 		for _, ie := range d.Stack.InternalEndpoint {

@@ -17,82 +17,37 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 )
 
-const (
-	killAfter = 5 * time.Minute
-)
+const gracePeriod = 5 * time.Minute
 
-func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset) {
-	opts := metav1.ListOptions{
-		LabelSelector: kubedef.SerializeSelector(
-			kubedef.SelectEphemeral(),
-		),
+func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1.Namespace, done chan struct{}) {
+	timeout := time.Hour
+
+	if anno, ok := ns.Annotations[kubedef.K8sEnvTimeout]; ok {
+		var err error
+		if timeout, err = time.ParseDuration(anno); err != nil {
+			log.Fatalf("invalid timeout annotation %q for namespace %q: %v", anno, ns.Name, err)
+		}
 	}
 
-	w, err := clientset.CoreV1().Namespaces().Watch(ctx, opts)
+	w, err := clientset.CoreV1().Pods(ns.Name).Watch(ctx, metav1.ListOptions{
+		LabelSelector: kubedef.SerializeSelector(kubedef.SelectNamespaceDriver()),
+	})
 	if err != nil {
-		log.Fatalf("failed to watch namespaces: %v", err)
+		log.Fatalf("failed to watch driver pod for namespace %q: %v", ns.Name, err)
+
 	}
-
-	defer w.Stop()
-
-	tracked := make(map[string]chan struct{})
-	for {
-		ev, ok := <-w.ResultChan()
-		if !ok {
-			log.Fatalf("unexpected namespace watch closure: %v", err)
-		}
-		ns, ok := ev.Object.(*corev1.Namespace)
-		if !ok {
-			log.Printf("received non-namespace watch event: %v\n", reflect.TypeOf(ev.Object))
-			continue
-		}
-
-		if done, ok := tracked[ns.Name]; ok {
-			if ns.Status.Phase == corev1.NamespaceTerminating {
-				log.Printf("Stopping watch on %q. It is already terminating.", ns.Name)
-				done <- struct{}{}
-
-				delete(tracked, ns.Name)
-			}
-			continue
-		}
-
-		if ns.Status.Phase == corev1.NamespaceTerminating {
-			continue
-		}
-
-		done := make(chan struct{})
-		tracked[ns.Name] = done
-		log.Printf("Starting watch on ephemeral namespace %q", ns.Name)
-		go watchNamespace(ctx, clientset, ns, done)
-
-		log.Printf("Watching %d ephemeral namespaces.", len(tracked))
-	}
-}
-
-func watchNamespace(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1.Namespace, done chan struct{}) {
-	w, err := clientset.CoreV1().Events(ns.Name).Watch(ctx, metav1.ListOptions{})
-	if err != nil {
-		log.Fatalf("failed to watch events in namespace %q: %v", ns.Name, err)
-	}
-
-	defer w.Stop()
-
-	lastTimestamp := time.Now()
 
 	for {
-		remaining := killAfter - time.Since(lastTimestamp)
+		remaining := time.Until(ns.CreationTimestamp.Time.Add(timeout))
+		if remaining > 0 {
+			log.Printf("namespace %s with timeout %s will be deleted in %s", ns.Name, timeout, remaining.Round(time.Second))
+		}
 
 		select {
 		case <-done:
 			return
 		case <-time.After(remaining):
-			log.Printf("deleting stale ephemeral namespace %q", ns.Name)
-			if err := clientset.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{}); err != nil {
-				if !k8serrors.IsNotFound(err) {
-					// Namespace already deleted
-					return
-				}
+			if err := deleteNs(ctx, clientset, ns.Name); err != nil {
 				log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
 			}
 			return
@@ -102,16 +57,40 @@ func watchNamespace(ctx context.Context, clientset *kubernetes.Clientset, ns *co
 				log.Fatalf("unexpected event watch closure for namespace %q: %v", ns.Name, err)
 			}
 
-			event, ok := ev.Object.(*corev1.Event)
+			driver, ok := ev.Object.(*corev1.Pod)
 			if !ok {
-				log.Printf("received non-event watch event for namespace %q: %v", ns.Name, reflect.TypeOf(ev.Object))
+				log.Printf("received non-pod watch event for namespace %q: %v", ns.Name, reflect.TypeOf(ev.Object))
 				continue
 			}
 
-			if lastTimestamp.Before(event.LastTimestamp.Time) {
-				lastTimestamp = event.LastTimestamp.Time
-				log.Printf("received recent event for namespace %q", ns.Name)
+			if driver.Status.Phase != corev1.PodFailed && driver.Status.Phase != corev1.PodSucceeded {
+				// driver not finished yet
+				continue
+			}
+
+			// We add a grace period to avoid racing with log collection from a client.
+			log.Printf("Driver %s finished. Namespace %s will be deleted in %s", driver.Name, ns.Name, gracePeriod)
+
+			select {
+			case <-done:
+				return
+			case <-time.After(gracePeriod):
+				if err := deleteNs(ctx, clientset, ns.Name); err != nil {
+					log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
+				}
+				return
 			}
 		}
 	}
+}
+
+func deleteNs(ctx context.Context, clientset *kubernetes.Clientset, name string) error {
+	log.Printf("deleting namespace %q", name)
+	err := clientset.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
+	if !k8serrors.IsNotFound(err) {
+		// Namespace already deleted
+		return nil
+	}
+
+	return err
 }

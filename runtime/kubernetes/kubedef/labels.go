@@ -6,24 +6,30 @@ package kubedef
 
 import (
 	"strings"
+	"time"
 
 	"namespacelabs.dev/foundation/schema"
 )
 
 const (
 	K8sServerId           = "k8s.namespacelabs.dev/server-id"
+	K8sServerFocus        = "k8s.namespacelabs.dev/server-focus"
 	K8sServerPackageName  = "k8s.namespacelabs.dev/server-package-name"
+	K8sFocusStack         = "k8s.namespacelabs.dev/focus-stack" // all focus servers and all their deps.
 	K8sServicePackageName = "k8s.namespacelabs.dev/service-package-name"
 	K8sServiceGrpcType    = "k8s.namespacelabs.dev/service-grpc-type"
 	K8sEnvName            = "k8s.namespacelabs.dev/env"
 	K8sEnvEphemeral       = "k8s.namespacelabs.dev/env-ephemeral"
 	K8sEnvPurpose         = "k8s.namespacelabs.dev/env-purpose"
+	K8sEnvTimeout         = "k8s.namespacelabs.dev/env-timeout"
+	K8sNamespaceDriver    = "k8s.namespacelabs.dev/namespace-driver"
 	K8sConfigImage        = "k8s.namespacelabs.dev/config-image"
 
 	AppKubernetesIoManagedBy = "app.kubernetes.io/managed-by"
 
-	id              = "foundation.namespace.so" // #220 Update when product name is final
-	K8sFieldManager = id
+	id                      = "foundation.namespace.so" // #220 Update when product name is final
+	K8sFieldManager         = id
+	defaultEphemeralTimeout = time.Hour
 )
 
 func SelectById(srv *schema.Server) map[string]string {
@@ -35,6 +41,24 @@ func SelectById(srv *schema.Server) map[string]string {
 func SelectEphemeral() map[string]string {
 	return map[string]string{
 		K8sEnvEphemeral: "true",
+	}
+}
+
+func SelectFocusServer() map[string]string {
+	return map[string]string{
+		K8sServerFocus: "true",
+	}
+}
+
+func SelectNamespaceDriver() map[string]string {
+	return map[string]string{
+		K8sNamespaceDriver: "true",
+	}
+}
+
+func SelectByPurpose(p schema.Environment_Purpose) map[string]string {
+	return map[string]string{
+		K8sEnvPurpose: strings.ToLower(p.String()),
 	}
 }
 
@@ -62,13 +86,29 @@ func MakeLabels(env *schema.Environment, srv *schema.Server) map[string]string {
 	return m
 }
 
-func MakeAnnotations(entry *schema.Stack_Entry) map[string]string {
-	m := map[string]string{
-		K8sServerPackageName: entry.GetPackageName().String(),
+func WithFocusMark(labels map[string]string) map[string]string {
+	labels[K8sServerFocus] = "true"
+	return labels
+}
+
+func MakeAnnotations(env *schema.Environment, entry *schema.Stack_Entry) map[string]string {
+	m := map[string]string{}
+
+	if entry != nil {
+		m[K8sServerPackageName] = entry.GetPackageName().String()
+	}
+
+	if env.GetEphemeral() {
+		m[K8sEnvTimeout] = defaultEphemeralTimeout.String()
 	}
 
 	// XXX add annotations with pointers to tools, team owners, etc.
 	return m
+}
+
+func WithFocusStack(annotations map[string]string, stack []string) map[string]string {
+	annotations[K8sFocusStack] = strings.Join(stack, ",")
+	return annotations
 }
 
 func MakeServiceAnnotations(srv *schema.Server, endpoint *schema.Endpoint) (map[string]string, error) {

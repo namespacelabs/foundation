@@ -88,7 +88,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		Body: applycorev1.
 			Secret(name, namespace).
 			WithType(v1.SecretTypeOpaque).
-			WithAnnotations(kubedef.MakeAnnotations(r.Stack.GetServer(r.Focus.GetPackageName()))).
+			WithAnnotations(kubedef.MakeAnnotations(r.Env, r.Stack.GetServer(r.Focus.GetPackageName()))).
 			WithLabels(kubedef.MakeLabels(r.Env, r.Focus.Server)).
 			WithData(data),
 	})
