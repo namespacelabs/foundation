@@ -9,7 +9,7 @@ import (
 )
 
 func goBuildArgs(goVersion string) []string {
-	args := []string{"build", "-v", "-trimpaths"}
+	args := []string{"build", "-v", "-trimpath"}
 
 	// VCS information is not included in the binaries, to ensure we have reproducible builds.
 	if semver.Compare(goVersion, "1.18") >= 0 {

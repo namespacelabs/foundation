@@ -874,7 +874,7 @@ func (c *ConsoleSink) recordLogSource(id common.IdAndHash) {
 	c.logSources.sources = append(c.logSources.sources[1:], id)
 }
 
-func (c *ConsoleSink) recentInputSourcesContain(actionId string) bool {
+func (c *ConsoleSink) RecentInputSourcesContain(actionId string) bool {
 	c.logSources.mu.Lock()
 	defer c.logSources.mu.Unlock()
 	for _, logSource := range c.logSources.sources {
@@ -885,34 +885,6 @@ func (c *ConsoleSink) recentInputSourcesContain(actionId string) bool {
 	return false
 }
 
-// WrapError adds additional context to the error message, but only if a given message
-// hasn't been output in the most recent log lines.
-func WrapError(ctx context.Context, err error) error {
-	sink := tasks.SinkFrom(ctx)
-	if sink == nil {
-		return err
-	}
-	consoleSink, ok := sink.(*ConsoleSink)
-	if !ok {
-		return err
-	}
-	attachments := tasks.Attachments(ctx)
-	if consoleSink.recentInputSourcesContain(attachments.ActionID()) {
-		return err
-	}
-	bufNames := tasks.GetErrContext(ctx).GetBufNames()
-	for i := range bufNames {
-		err = fnerrors.WithLogs(
-			err,
-			func() io.Reader {
-				return attachments.ReaderByOutputName(bufNames[len(bufNames)-i-1])
-			})
-		// TODO: allow multi buffer as contexts. As for now we use the last buffer as a heuristic.
-		break
-	}
-
-	return err
-}
 
 func plural(count int, singular, plural string) string {
 	if count == 1 {

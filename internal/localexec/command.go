@@ -11,7 +11,6 @@ import (
 	"os/exec"
 
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -53,7 +52,7 @@ func (c Command) Run(ctx context.Context) error {
 		cmd.Env = append(os.Environ(), c.AdditionalEnv...)
 
 		if err := RunAndPropagateCancelation(ctx, c.label(), cmd); err != nil {
-			return consolesink.WrapError(ctx, err)
+			return console.WithLogs(ctx, err)
 		}
 		return nil
 	})
