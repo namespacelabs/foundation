@@ -81,7 +81,7 @@ func watchNamespace(ctx context.Context, clientset *kubernetes.Clientset, ns *co
 	lastTimestamp := time.Now()
 
 	for {
-		remaining := killAfter - time.Now().Sub(lastTimestamp)
+		remaining := killAfter - time.Since(lastTimestamp)
 
 		select {
 		case <-done:

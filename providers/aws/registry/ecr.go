@@ -57,7 +57,7 @@ func repoURL(sesh aws.Config, caller *sts.GetCallerIdentityOutput) string {
 func (em ecrManager) IsInsecure() bool { return false }
 
 func (em ecrManager) Tag(ctx context.Context, packageName schema.PackageName, version provision.BuildID) (oci.AllocatedName, error) {
-	res, err := compute.Get(ctx, keychainSession{em.sesh, em.profile}.resolveAccount())
+	res, err := compute.Get(ctx, keychainSession(em).resolveAccount())
 	if err != nil {
 		return oci.AllocatedName{}, err
 	}
@@ -66,7 +66,7 @@ func (em ecrManager) Tag(ctx context.Context, packageName schema.PackageName, ve
 	url := packageURL(repoURL(em.sesh, caller), packageName.String())
 
 	return oci.AllocatedName{
-		Keychain: keychainSession{em.sesh, em.profile},
+		Keychain: keychainSession(em),
 		ImageID: oci.ImageID{
 			Repository: url,
 			Tag:        version.String(),
@@ -75,7 +75,7 @@ func (em ecrManager) Tag(ctx context.Context, packageName schema.PackageName, ve
 }
 
 func (em ecrManager) AllocateTag(packageName schema.PackageName, buildID provision.BuildID) compute.Computable[oci.AllocatedName] {
-	keychain := keychainSession{em.sesh, em.profile}
+	keychain := keychainSession(em)
 
 	var repo compute.Computable[string] = &makeRepository{
 		sesh:           em.sesh,

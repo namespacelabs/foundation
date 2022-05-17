@@ -12,7 +12,6 @@ import (
 	"flag"
 	"fmt"
 
-	"golang.org/x/xerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
 
@@ -30,7 +29,7 @@ func getEndpoint() (*schema.Endpoint, error) {
 
 	var endpoint schema.Endpoint
 	if err := json.Unmarshal([]byte(*mariadbEndpoint), &endpoint); err != nil {
-		return nil, xerrors.Errorf("failed to parse mariadb endpoint configuration: %w", err)
+		return nil, fmt.Errorf("failed to parse mariadb endpoint configuration: %w", err)
 	}
 
 	return &endpoint, nil

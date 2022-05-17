@@ -58,7 +58,7 @@ func logHeader(ctx context.Context, what, fullMethod string, req interface{}) st
 	}
 
 	if t, ok := ctx.Deadline(); ok {
-		left := t.Sub(time.Now())
+		left := time.Until(t)
 		deadline = fmt.Sprintf("%v", left)
 	}
 
