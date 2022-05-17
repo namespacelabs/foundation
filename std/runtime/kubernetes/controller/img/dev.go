@@ -40,6 +40,8 @@ func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1
 
 	defer w.Stop()
 
+	log.Printf("watching namespace %s for updates to focus deployment", ns.Name)
+
 	for {
 		select {
 		case <-done:

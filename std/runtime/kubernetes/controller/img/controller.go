@@ -104,7 +104,6 @@ func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, opts 
 		done := make(chan struct{})
 		tracked[ns.Name] = done
 
-		log.Printf("watching namespace %s\n", ns.Name)
 		go c(ctx, clientset, ns, done)
 	}
 }

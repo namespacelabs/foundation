@@ -26,12 +26,17 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 		}
 	}
 
-	// TODO watch test driver for test environments.
+	remaining := time.Until(ns.CreationTimestamp.Time.Add(timeout))
+	if remaining > 0 {
+		log.Printf("namespace %s with timeout %s will be deleted in %s", ns.Name, timeout, remaining.Round(time.Second))
+	}
+
+	// TODO also watch test driver for test environments.
 
 	select {
 	case <-done:
 		return
-	case <-time.After(timeout):
+	case <-time.After(remaining):
 		log.Printf("deleting stale ephemeral namespace %q", ns.Name)
 		if err := clientset.CoreV1().Namespaces().Delete(ctx, ns.Name, metav1.DeleteOptions{}); err != nil {
 			if !k8serrors.IsNotFound(err) {
