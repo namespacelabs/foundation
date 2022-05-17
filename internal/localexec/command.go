@@ -11,6 +11,7 @@ import (
 	"os/exec"
 
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -53,7 +54,18 @@ func (c Command) Run(ctx context.Context) error {
 
 		if err := RunAndPropagateCancelation(ctx, c.label(), cmd); err != nil {
 			readerF := func() io.Reader { return tasks.Attachments(ctx).ReaderByName(stderrOutputName) }
-			return fnerrors.WithLogs(err, readerF)
+			shouldLog := func() bool {
+				sink := tasks.SinkFrom(ctx)
+				if sink == nil {
+					return false
+				}
+				consoleSink, ok := sink.(*consolesink.ConsoleSink)
+				if !ok {
+					return false
+				}
+				return !consoleSink.RecentInputSourcesContain(tasks.Attachments(ctx).ActionID())
+			}
+			return fnerrors.WithLogs(err, shouldLog, readerF)
 		}
 		return nil
 	})

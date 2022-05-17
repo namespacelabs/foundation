@@ -28,6 +28,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -180,7 +181,6 @@ func (l *reqToImage) Output() compute.Output {
 
 func (l *reqToImage) ImageRef() string { return "(buildkit)" } // Implements HasImageRef
 
-
 func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
 	// TargetName is not added as a dependency of the `reqToImage` compute node, or
 	// our inputs are not stable.
@@ -196,9 +196,21 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 			i, err := solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
 			if err != nil {
 				bufNames := tasks.GetErrContext(ctx).GetBufNames()
+				shouldLog := func() bool {
+					sink := tasks.SinkFrom(ctx)
+					if sink == nil {
+						return false
+					}
+					consoleSink, ok := sink.(*consolesink.ConsoleSink)
+					if !ok {
+						return false
+					}
+					return !consoleSink.RecentInputSourcesContain(tasks.Attachments(ctx).ActionID())
+				}
 				for i := range bufNames {
 					err = fnerrors.WithLogs(
 						err,
+						shouldLog,
 						func() io.Reader {
 							return tasks.Attachments(ctx).ReaderByOutputName(bufNames[len(bufNames)-i-1])
 						})
