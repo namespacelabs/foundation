@@ -22,6 +22,7 @@ import (
 	"github.com/muesli/reflow/truncate"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/termios"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -745,13 +746,13 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 				}
 			}
 			for _, line := range block.lines {
-				fmt.Fprintf(raw, "%s%s BB [%s] BB%s\n", aec.EraseLine(aec.EraseModes.Tail), hdrBuf.Bytes(), block.id.ID, line)
+				fmt.Fprintf(raw, "%s%s %s\n", aec.EraseLine(aec.EraseModes.Tail), hdrBuf.Bytes(), line)
 				c.recordLogSource(block.id)
 			}
 			hdrBuf.Reset()
 		} else {
 			for _, line := range block.lines {
-				fmt.Fprintf(raw, "%sAA [%s] AA %s\n", aec.EraseLine(aec.EraseModes.Tail), block.id.ID, line)
+				fmt.Fprintf(raw, "%s%s\n", aec.EraseLine(aec.EraseModes.Tail), line)
 				c.recordLogSource(block.id)
 			}
 		}
@@ -873,7 +874,7 @@ func (c *ConsoleSink) recordLogSource(id common.IdAndHash) {
 	c.logSources.sources = append(c.logSources.sources[1:], id)
 }
 
-func (c *ConsoleSink) RecentInputSourcesContain(actionId string) bool {
+func (c *ConsoleSink) recentInputSourcesContain(actionId string) bool {
 	c.logSources.mu.Lock()
 	defer c.logSources.mu.Unlock()
 	for _, logSource := range c.logSources.sources {
@@ -882,6 +883,35 @@ func (c *ConsoleSink) RecentInputSourcesContain(actionId string) bool {
 		}
 	}
 	return false
+}
+
+// WrapError adds additional context to the error message, but only if a given message
+// hasn't been output in the most recent log lines.
+func WrapError(ctx context.Context, err error) error {
+	sink := tasks.SinkFrom(ctx)
+	if sink == nil {
+		return err
+	}
+	consoleSink, ok := sink.(*ConsoleSink)
+	if !ok {
+		return err
+	}
+	attachments := tasks.Attachments(ctx)
+	if consoleSink.recentInputSourcesContain(attachments.ActionID()) {
+		return err
+	}
+	bufNames := tasks.GetErrContext(ctx).GetBufNames()
+	for i := range bufNames {
+		err = fnerrors.WithLogs(
+			err,
+			func() io.Reader {
+				return attachments.ReaderByOutputName(bufNames[len(bufNames)-i-1])
+			})
+		// TODO: allow multi buffer as contexts. As for now we use the last buffer as a heuristic.
+		break
+	}
+
+	return err
 }
 
 func plural(count int, singular, plural string) string {

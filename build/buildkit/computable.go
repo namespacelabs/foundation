@@ -195,28 +195,7 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 		if v.Keychain == nil {
 			i, err := solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
 			if err != nil {
-				bufNames := tasks.GetErrContext(ctx).GetBufNames()
-				shouldLog := func() bool {
-					sink := tasks.SinkFrom(ctx)
-					if sink == nil {
-						return false
-					}
-					consoleSink, ok := sink.(*consolesink.ConsoleSink)
-					if !ok {
-						return false
-					}
-					return !consoleSink.RecentInputSourcesContain(tasks.Attachments(ctx).ActionID())
-				}
-				for i := range bufNames {
-					err = fnerrors.WithLogs(
-						err,
-						shouldLog,
-						func() io.Reader {
-							return tasks.Attachments(ctx).ReaderByOutputName(bufNames[len(bufNames)-i-1])
-						})
-					// TODO: allow multi buffer as contexts.
-					break
-				}
+				err = consolesink.WrapError(ctx, err)
 			}
 			return i, err
 		}

@@ -39,8 +39,8 @@ func Wrapf(loc Location, err error, whatFmt string, args ...interface{}) error {
 	return &userError{fnError: fnError{Err: fmt.Errorf(whatFmt+": %w", args...), stack: stacktrace.New()}, Location: loc}
 }
 
-func WithLogs(err error, shouldLog func() bool, readerF func() io.Reader) error {
-	return &errWithLogs{err, shouldLog, readerF}
+func WithLogs(err error, readerF func() io.Reader) error {
+	return &errWithLogs{err, readerF}
 }
 
 func UserError(loc Location, format string, args ...interface{}) error {
@@ -126,9 +126,8 @@ type invocationError struct {
 }
 
 type errWithLogs struct {
-	Err       error
-	shouldLog func() bool
-	readerF   func() io.Reader // Returns reader with command's stderr output.
+	Err     error
+	readerF func() io.Reader // Returns reader with command's stderr output.
 }
 
 func IsExpected(err error) (string, bool) {
@@ -304,10 +303,6 @@ func format(w io.Writer, err error, opts *FormatOptions) {
 
 func formatErrWithLogs(w io.Writer, err *errWithLogs, opts *FormatOptions) {
 	colors := opts.colors
-	fmt.Fprintf(w, "%s\n\n", err.Error())
-	if !err.shouldLog() {
-		return
-	}
 	if opts.colors {
 		fmt.Fprintf(w, "%s\n", aec.CyanF.With(aec.Bold).Apply("Captured logs: "))
 	} else {

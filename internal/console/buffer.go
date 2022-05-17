@@ -46,10 +46,6 @@ func (w *consoleBuffer) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func (w consoleBuffer) Id() common.IdAndHash {
-	return w.id
-}
-
 func dropCR(data []byte) []byte {
 	if len(data) > 0 && data[len(data)-1] == '\r' {
 		return data[0 : len(data)-1]

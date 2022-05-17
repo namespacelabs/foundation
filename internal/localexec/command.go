@@ -12,7 +12,6 @@ import (
 
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -41,10 +40,11 @@ func (c Command) Run(ctx context.Context) error {
 			tasks.Attachments(ctx).Output(tasks.Output("stdout", "text/plain")),
 		)
 
-		const stderrOutputName = "stderr"
+		stderrOutputName := tasks.Output("stderr", "text/plain")
 		stderr := io.MultiWriter(out,
-			tasks.Attachments(ctx).Output(tasks.Output(stderrOutputName, "text/plain")),
+			tasks.Attachments(ctx).Output(stderrOutputName),
 		)
+		tasks.GetErrContext(ctx).AddLog(stderrOutputName)
 
 		cmd := exec.CommandContext(ctx, c.Command, c.Args...)
 		cmd.Dir = c.Dir
@@ -53,19 +53,7 @@ func (c Command) Run(ctx context.Context) error {
 		cmd.Env = append(os.Environ(), c.AdditionalEnv...)
 
 		if err := RunAndPropagateCancelation(ctx, c.label(), cmd); err != nil {
-			readerF := func() io.Reader { return tasks.Attachments(ctx).ReaderByName(stderrOutputName) }
-			shouldLog := func() bool {
-				sink := tasks.SinkFrom(ctx)
-				if sink == nil {
-					return false
-				}
-				consoleSink, ok := sink.(*consolesink.ConsoleSink)
-				if !ok {
-					return false
-				}
-				return !consoleSink.RecentInputSourcesContain(tasks.Attachments(ctx).ActionID())
-			}
-			return fnerrors.WithLogs(err, shouldLog, readerF)
+			return consolesink.WrapError(ctx, err)
 		}
 		return nil
 	})
