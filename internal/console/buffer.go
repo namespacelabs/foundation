@@ -9,17 +9,19 @@ import (
 	"sync"
 
 	"namespacelabs.dev/foundation/internal/console/common"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type writerLiner interface {
-	WriteLines(common.IdAndHash, string, common.CatOutputType, [][]byte)
+	WriteLines(common.IdAndHash, string, common.CatOutputType, tasks.ActionID, [][]byte)
 }
 
 type consoleBuffer struct {
-	actual writerLiner
-	name   string
-	cat    common.CatOutputType
-	id     common.IdAndHash
+	actual   writerLiner
+	name     string
+	cat      common.CatOutputType
+	id       common.IdAndHash
+	actionID tasks.ActionID // Optional ActionID in case this buffer is used in a context of an Action.
 
 	mu  sync.Mutex
 	buf bytes.Buffer
@@ -41,7 +43,7 @@ func (w *consoleBuffer) Write(p []byte) (int, error) {
 	}
 	w.mu.Unlock()
 	if len(lines) > 0 {
-		w.actual.WriteLines(w.id, w.name, w.cat, lines)
+		w.actual.WriteLines(w.id, w.name, w.cat, w.actionID, lines)
 	}
 	return len(p), nil
 }

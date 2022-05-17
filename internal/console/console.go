@@ -62,8 +62,9 @@ func TypedOutput(ctx context.Context, name string, cat common.CatOutputType) io.
 func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutputType) io.Writer {
 	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
 	if t, ok := unwrapped.(writerLiner); ok {
-		id := tasks.Attachments(ctx).ActionID().String()
-		if id == "" {
+		actionID := tasks.Attachments(ctx).ActionID()
+		id := actionID.String()
+		if actionID == "" {
 			id = ids.NewRandomBase32ID(8)
 		}
 
@@ -71,7 +72,11 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutput
 			id = id[:6]
 		}
 
-		return &consoleBuffer{actual: t, name: name, cat: cat, id: common.IdAndHashFrom(id)}
+		buf := &consoleBuffer{actual: t, name: name, cat: cat, id: common.IdAndHashFrom(id)}
+		if actionID != "" {
+			buf.actionID = actionID
+		}
+		return buf
 	}
 
 	// If there's no console sink in context, pass along the original Stdout or Stderr.
