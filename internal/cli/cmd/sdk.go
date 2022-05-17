@@ -145,19 +145,35 @@ func newSdkShellCmd(selectedSdkList func() []sdk) *cobra.Command {
 				updatedPath = prependPath(updatedPath, r.Value)
 			}
 
-			ps1 := fmt.Sprintf("%s %s %s \\w$ ",
-				aec.LightBlueF.Apply("(fn)"),
-				aec.LightGreenF.Apply("\\u"),
-				aec.LightBlackF.Apply("\\h"))
-
 			done := console.EnterInputMode(ctx)
 			defer done()
 
-			cmd := exec.CommandContext(ctx, shell, "--login", "--noprofile")
+			var shellArgs, shellEnv []string
+			switch filepath.Base(shell) {
+			case "bash":
+				prompt := fmt.Sprintf("%s %s %s \\w$ ",
+					aec.LightBlueF.Apply("(fn)"),
+					aec.LightGreenF.Apply("\\u"),
+					aec.LightBlackF.Apply("\\h"))
+
+				shellArgs = []string{"--login", "--noprofile"}
+				shellEnv = []string{"PS1=" + prompt}
+			case "zsh":
+				prompt := fmt.Sprintf("%s %s %s %%~$ ",
+					aec.LightBlueF.Apply("(fn)"),
+					aec.LightGreenF.Apply("%n"),
+					aec.LightBlackF.Apply("%m"))
+
+				shellArgs = []string{"--no-rcs"}
+				shellEnv = []string{"PROMPT=" + prompt}
+			}
+
+			cmd := exec.CommandContext(ctx, shell, shellArgs...)
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			cmd.Env = append(os.Environ(), "PATH="+updatedPath, "PS1="+ps1)
+			cmd.Env = append(os.Environ(), "PATH="+updatedPath)
+			cmd.Env = append(cmd.Env, shellEnv...)
 			return cmd.Run()
 		}),
 	}
