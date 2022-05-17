@@ -326,7 +326,7 @@ func (li *lineItem) precompute() {
 	var serialized []atom
 
 	if data.AnchorID != "" {
-		serialized = append(serialized, atom{key: "anchor", value: string(data.AnchorID)})
+		serialized = append(serialized, atom{key: "anchor", value: data.AnchorID.String()})
 	}
 
 	li.scope = data.Scope.PackageNamesAsString()
