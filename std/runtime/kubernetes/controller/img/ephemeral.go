@@ -72,7 +72,9 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 			log.Printf("Driver %s finished. Namespace %s will be deleted in %s", driver.Name, ns.Name, gracePeriod)
 			<-time.After(gracePeriod)
 
-			deleteNs(ctx, clientset, ns.Name)
+			if err := deleteNs(ctx, clientset, ns.Name); err != nil {
+				log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
+			}
 			return
 		}
 	}
