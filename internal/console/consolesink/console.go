@@ -275,11 +275,11 @@ loop:
 			running, waiting, anchored := c.countStates()
 			if running+waiting+anchored == 0 {
 				c.redraw(t, true) // Entering input mode - flush the state.
-				rendering = false
 				for _, waitingForIdle := range c.waitForIdle {
 					// Unblock callers waiting for the input state.
 					close(waitingForIdle)
 				}
+				rendering = len(c.waitForIdle) == 0
 				c.waitForIdle = nil
 			} else {
 				c.redraw(t, false)
@@ -803,15 +803,15 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		c.writeLineWithMaxW(out, width, hdr, "")
 	}
 
-	if flush {
-		return
-	}
-
 	if (waiting + running + anchored) == 0 {
 		if len(c.waitForIdle) == 0 && c.idleLabel != "" {
 			// Show the idle banner.
 			c.writeLineWithMaxW(out, width, fmt.Sprintf("[-] idle, %s.", c.idleLabel), "")
 		}
+		return
+	}
+
+	if flush {
 		return
 	}
 
