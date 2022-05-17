@@ -33,7 +33,7 @@ type ActionSink interface {
 	Started(*RunningAction)
 	Done(*RunningAction)
 	Instant(*EventData)
-	AttachmentsUpdated(string, *ResultData)
+	AttachmentsUpdated(ActionID, *ResultData)
 }
 
 type ActionState string
@@ -53,6 +53,10 @@ type OnDoneFunc func(*protocol.Task)
 
 type WellKnown string
 
+type ActionID string
+
+func (a ActionID) String() string { return string(a) }
+
 const (
 	WkAction   = "action"
 	WkCategory = "category"
@@ -61,9 +65,9 @@ const (
 )
 
 type EventData struct {
-	ActionID      string
-	ParentID      string
-	AnchorID      string // This action represents "waiting" on the action represented by `anchorID`.
+	ActionID      ActionID
+	ParentID      ActionID
+	AnchorID      ActionID // This action represents "waiting" on the action represented by `anchorID`.
 	State         ActionState
 	Name          string
 	HumanReadable string // If not set, name is used.
@@ -102,7 +106,7 @@ type ResultData struct {
 }
 
 type EventAttachments struct {
-	actionID string
+	actionID ActionID
 	sink     ActionSink
 
 	mu sync.Mutex // Protects below.
@@ -157,12 +161,12 @@ func (ev *ActionEvent) OnDone(f OnDoneFunc) *ActionEvent {
 	return ev
 }
 
-func (ev *ActionEvent) ID(id string) *ActionEvent {
+func (ev *ActionEvent) ID(id ActionID) *ActionEvent {
 	ev.data.ActionID = id
 	return ev
 }
 
-func (ev *ActionEvent) Anchor(id string) *ActionEvent {
+func (ev *ActionEvent) Anchor(id ActionID) *ActionEvent {
 	ev.data.AnchorID = id
 	return ev
 }
@@ -177,7 +181,7 @@ func (ev *ActionEvent) Category(category string) *ActionEvent {
 	return ev
 }
 
-func (ev *ActionEvent) Parent(tid string) *ActionEvent {
+func (ev *ActionEvent) Parent(tid ActionID) *ActionEvent {
 	ev.data.ParentID = tid
 	return ev
 }
@@ -196,7 +200,7 @@ func (ev *ActionEvent) WellKnown(key WellKnown, value string) *ActionEvent {
 	return ev
 }
 
-func NewActionID() string { return ids.NewRandomBase62ID(16) }
+func NewActionID() ActionID { return ActionID(ids.NewRandomBase62ID(16)) }
 
 func (ev *ActionEvent) initMissing() {
 	if ev.data.ActionID == "" {
@@ -390,7 +394,7 @@ func (ev *ActionEvent) Log(ctx context.Context) {
 
 func makeProto(data *EventData, at *EventAttachments) *protocol.Task {
 	p := &protocol.Task{
-		Id:                 data.ActionID,
+		Id:                 data.ActionID.String(),
 		Name:               data.Name,
 		HumanReadableLabel: data.HumanReadable,
 		CreatedTs:          data.Started.UnixNano(),
@@ -420,7 +424,7 @@ func makeProto(data *EventData, at *EventAttachments) *protocol.Task {
 
 func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask {
 	p := &protocol.StoredTask{
-		Id:                 data.ActionID,
+		Id:                 data.ActionID.String(),
 		Name:               data.Name,
 		HumanReadableLabel: data.HumanReadable,
 		CreatedTs:          data.Started.UnixNano(),
@@ -475,7 +479,7 @@ func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask 
 	return p
 }
 
-func (af *RunningAction) ID() string                     { return af.Data.ActionID }
+func (af *RunningAction) ID() ActionID                   { return af.Data.ActionID }
 func (af *RunningAction) Proto() *protocol.Task          { return makeProto(&af.Data, af.attachments) }
 func (af *RunningAction) Attachments() *EventAttachments { return af.attachments }
 
@@ -487,9 +491,9 @@ func startSpan(ctx context.Context, data EventData) trace.Span {
 	_, span := otel.Tracer("fn").Start(ctx, name)
 
 	if span.IsRecording() {
-		span.SetAttributes(attribute.String("actionID", data.ActionID))
+		span.SetAttributes(attribute.String("actionID", data.ActionID.String()))
 		if data.AnchorID != "" {
-			span.SetAttributes(attribute.String("anchorID", data.AnchorID))
+			span.SetAttributes(attribute.String("anchorID", data.AnchorID.String()))
 		}
 
 		for _, arg := range data.Arguments {
@@ -761,7 +765,7 @@ func (ev *EventAttachments) Output(name OutputName) io.Writer {
 	return w
 }
 
-func (ev *EventAttachments) ActionID() string {
+func (ev *EventAttachments) ActionID() ActionID {
 	if ev == nil {
 		return ""
 	}

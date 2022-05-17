@@ -16,9 +16,9 @@ func NewLoggerSink(logger *zerolog.Logger) ActionSink { return &sinkLogger{logge
 type sinkLogger struct{ logger *zerolog.Logger }
 
 func (sl *sinkLogger) start(ev EventData, withArgs bool) *zerolog.Event {
-	e := sl.logger.Info().Str("action_id", ev.ActionID).Str("name", ev.Name).Int("log_level", ev.Level)
+	e := sl.logger.Info().Str("action_id", ev.ActionID.String()).Str("name", ev.Name).Int("log_level", ev.Level)
 	if ev.ParentID != "" {
-		e = e.Str("parent_id", ev.ParentID)
+		e = e.Str("parent_id", ev.ParentID.String())
 	}
 	if withArgs {
 		if ev.Scope.Len() > 0 {
@@ -64,4 +64,4 @@ func (sl *sinkLogger) Instant(ev *EventData) {
 	sl.start(*ev, true).Msg(ev.Name)
 }
 
-func (sl *sinkLogger) AttachmentsUpdated(string, *ResultData) { /* nothing to do */ }
+func (sl *sinkLogger) AttachmentsUpdated(ActionID, *ResultData) { /* nothing to do */ }

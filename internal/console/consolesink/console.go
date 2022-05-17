@@ -88,7 +88,7 @@ type consoleEvent struct {
 		contents []byte
 	}
 
-	attachmentUpdatedForID string           // Set if we got an attachments updated message.
+	attachmentUpdatedForID tasks.ActionID   // Set if we got an attachments updated message.
 	ev                     tasks.EventData  // Set on Start() and Done().
 	results                tasks.ResultData // Set on Done() or AttachmentsUpdated().
 	progress               tasks.ActionProgress
@@ -113,11 +113,11 @@ type ConsoleSink struct {
 	ticker   <-chan time.Time
 
 	idling          bool
-	buffer          []consoleOutput  // Pending regular log output lines.
-	running         []*lineItem      // Computed EventData for waiting/running actions.
-	root            *node            // Root of the tree of displayable events.
-	nodes           map[string]*node // Map of actionID->tree node.
-	startedCounting time.Time        // When did we start counting.
+	buffer          []consoleOutput          // Pending regular log output lines.
+	running         []*lineItem              // Computed EventData for waiting/running actions.
+	root            *node                    // Root of the tree of displayable events.
+	nodes           map[tasks.ActionID]*node // Map of actionID->tree node.
+	startedCounting time.Time                // When did we start counting.
 	waitForIdle     []chan struct{}
 
 	maxLevel int // Only display actions at this level or below (all actions are still computed).
@@ -148,7 +148,7 @@ type node struct {
 	item        *lineItem
 	replacement *node // If this node is a `compute.wait`, replace it with the actual computation it is waiting on.
 	hidden      bool  // Whether this node has been marked hidden (because e.g. there are multiple nodes to the same anchor).
-	children    []string
+	children    []tasks.ActionID
 }
 
 type logSources struct {
@@ -300,7 +300,7 @@ loop:
 	c.redraw(time.Now(), true)
 }
 
-func (c *ConsoleSink) addOrGet(actionID string, addIfMissing bool) *lineItem {
+func (c *ConsoleSink) addOrGet(actionID tasks.ActionID, addIfMissing bool) *lineItem {
 	index := -1
 	for k, r := range c.running {
 		if r.data.ActionID == actionID {
@@ -326,7 +326,7 @@ func (li *lineItem) precompute() {
 	var serialized []atom
 
 	if data.AnchorID != "" {
-		serialized = append(serialized, atom{key: "anchor", value: data.AnchorID})
+		serialized = append(serialized, atom{key: "anchor", value: data.AnchorID.String()})
 	}
 
 	li.scope = data.Scope.PackageNamesAsString()
@@ -379,9 +379,9 @@ func (li *lineItem) precompute() {
 }
 
 func (c *ConsoleSink) recomputeTree() {
-	nodes := map[string]*node{}
+	nodes := map[tasks.ActionID]*node{}
 	root := &node{}
-	anchors := map[string]bool{}
+	anchors := map[tasks.ActionID]bool{}
 
 	var runningCount int
 	for _, item := range c.running {
@@ -430,8 +430,8 @@ func (c *ConsoleSink) recomputeTree() {
 	}
 }
 
-func without(strs []string, str string) []string {
-	var newStrs []string
+func without(strs []tasks.ActionID, str tasks.ActionID) []tasks.ActionID {
+	var newStrs []tasks.ActionID
 	for _, s := range strs {
 		if s != str {
 			newStrs = append(newStrs, s)
@@ -440,7 +440,7 @@ func without(strs []string, str string) []string {
 	return newStrs
 }
 
-func sortNodes(nodes map[string]*node, n *node) {
+func sortNodes(nodes map[tasks.ActionID]*node, n *node) {
 	sort.Slice(n.children, func(i, j int) bool {
 		// If an action is anchored, use the anchor's start time for sorting purposes.
 		a := follow(nodes[n.children[i]])
@@ -460,7 +460,7 @@ func follow(n *node) *node {
 	return n
 }
 
-func parentOf(root *node, tree map[string]*node, id string) *node {
+func parentOf(root *node, tree map[tasks.ActionID]*node, id tasks.ActionID) *node {
 	if id == "" {
 		return root
 	} else {
@@ -484,7 +484,7 @@ func renderLine(w io.Writer, li *lineItem) {
 		fmt.Fprint(w, base.With(aec.LightBlackF).Apply(t), " ")
 
 		if OutputActionID {
-			fmt.Fprint(w, aec.LightBlackF.Apply("["+data.ActionID[:8]+"] "))
+			fmt.Fprint(w, aec.LightBlackF.Apply("["+data.ActionID.String()[:8]+"] "))
 		}
 	}
 
@@ -560,7 +560,7 @@ type debugData struct {
 }
 
 type debugRunning struct {
-	ID        string
+	ID        tasks.ActionID
 	Name      string
 	Created   time.Time
 	State     string
@@ -873,12 +873,12 @@ func (c *ConsoleSink) recordLogSource(id common.IdAndHash) {
 	c.logSources.sources = append(c.logSources.sources[1:], id)
 }
 
-func (c *ConsoleSink) RecentInputSourcesContain(actionId string) bool {
+func (c *ConsoleSink) RecentInputSourcesContain(actionId tasks.ActionID) bool {
 	c.logSources.mu.Lock()
 	defer c.logSources.mu.Unlock()
 	for _, logSource := range c.logSources.sources {
 		// TODO change logSource.ID and actionId to have stronger types than a string.
-		if len(actionId) > 5 && len(logSource.ID) > 5 && actionId[:6] == logSource.ID[:6] {
+		if len(actionId) > 5 && len(logSource.ID) > 5 && actionId.String()[:6] == logSource.ID[:6] {
 			return true
 		}
 	}
@@ -956,7 +956,7 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 			lineb.Reset()
 
 			if OutputActionID {
-				fmt.Fprint(&lineb, aec.LightBlackF.Apply(" ["+data.ActionID[:8]+"]"))
+				fmt.Fprint(&lineb, aec.LightBlackF.Apply(" ["+data.ActionID.String()[:8]+"]"))
 			}
 
 			fmt.Fprint(&lineb, prefix)
@@ -1000,7 +1000,7 @@ func (c *ConsoleSink) Instant(ev *tasks.EventData) {
 	c.ch <- consoleEvent{ev: *ev}
 }
 
-func (c *ConsoleSink) AttachmentsUpdated(actionID string, data *tasks.ResultData) {
+func (c *ConsoleSink) AttachmentsUpdated(actionID tasks.ActionID, data *tasks.ResultData) {
 	if data != nil {
 		c.ch <- consoleEvent{attachmentUpdatedForID: actionID, results: *data, progress: data.Progress}
 	}

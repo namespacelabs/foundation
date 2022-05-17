@@ -48,7 +48,7 @@ func (st *Storer) store(af *RunningAction) error {
 		return err
 	}
 
-	if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId, "action.textpb"), pbytes, 0600); err != nil {
+	if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId.String(), "action.textpb"), pbytes, 0600); err != nil {
 		return err
 	}
 
@@ -62,7 +62,7 @@ func (st *Storer) store(af *RunningAction) error {
 			if err != nil {
 				return err
 			}
-			if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId, id+filepath.Ext(buf.name)), out, 0600); err != nil {
+			if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId.String(), id+filepath.Ext(buf.name)), out, 0600); err != nil {
 				return err
 			}
 		}
