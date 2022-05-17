@@ -5,6 +5,7 @@
 package fncue
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/fs"
@@ -184,6 +185,22 @@ func (ev *EvalCtx) Eval(ctx context.Context, pkgname string) (*Partial, error) {
 	return ev.cache.Eval(ctx, *pkg, pkgname+":_", collectedImports)
 }
 
+func joinErrors(errs []error) error {
+	switch len(errs) {
+	case 0:
+		return nil
+	case 1:
+		return errs[0]
+	default:
+		var msg bytes.Buffer
+		fmt.Fprintln(&msg, "Encountered multiple errors:")
+		for i, err := range errs {
+			fmt.Fprintf(&msg, "Error (%d):\n%s\n", i, err)
+		}
+		return fmt.Errorf(msg.String())
+	}
+}
+
 func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage) (*Partial, error) {
 	ev.mu.Lock()
 	defer ev.mu.Unlock()
@@ -191,6 +208,9 @@ func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 	if _, has := ev.built[pkgname]; !has {
 		info, _ := astutil.ParseImportSpec(ast.NewImport(nil, pkgname))
 		p := ev.buildAndCacheInstance(ctx, pkg, info, collectedImports)
+		if len(p.DepsErrors) > 0 {
+			return nil, joinErrors(p.DepsErrors)
+		}
 		vv := ev.cuectx.BuildInstance(p)
 		if vv.Err() != nil {
 			return nil, vv.Err()
