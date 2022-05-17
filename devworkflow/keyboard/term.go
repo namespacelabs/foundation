@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 // StartHandler processes user keystroke events and dev workflow updates.
@@ -76,7 +75,7 @@ func (t *termState) handleEvents(ctx context.Context, stdin *rawStdinReader, sta
 			if update.StackUpdate != nil && update.StackUpdate.Env != nil {
 				if t.showingLogs && envRef != update.StackUpdate.Env.Name {
 					t.stopLogging()
-					t.newLogTailMultiple(ctx, root, update.StackUpdate.Env.Name, serverProtos)
+					t.newLogTailMultiple(ctx, env, serverProtos)
 				}
 				envRef = update.StackUpdate.Env.Name
 			}
@@ -94,7 +93,7 @@ func (t *termState) handleEvents(ctx context.Context, stdin *rawStdinReader, sta
 				if t.showingLogs {
 					t.stopLogging()
 				} else {
-					t.newLogTailMultiple(ctx, root, envRef, serverProtos)
+					t.newLogTailMultiple(ctx, env, serverProtos)
 				}
 
 				t.showingLogs = !t.showingLogs

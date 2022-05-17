@@ -24,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/foundation/workspace/tasks/protocol"
-	"namespacelabs.dev/go-ids"
 )
 
 var AlsoOutputToStderr = false
@@ -47,10 +46,10 @@ type Session struct {
 
 	mu        sync.Mutex // Protect below.
 	requested struct {
-		absRoot   string
-		envName   string
-		ephemeral bool
-		servers   []string
+		absRoot string
+		envName string
+		env     *schema.Environment
+		servers []string
 	}
 	cancelWorkspace func()
 	currentStack    *Stack
@@ -119,7 +118,7 @@ func (s *Session) ResolveServer(ctx context.Context, serverID string) (runtime.S
 	return nil, nil, fnerrors.UserError(nil, "%s: no such server in the current session", serverID)
 }
 
-func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName string, ephemeral bool, servers []string) error {
+func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName string, env *schema.Environment, servers []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -133,14 +132,10 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 
 	s.requested.absRoot = absRoot
 	s.requested.envName = envName
-	s.requested.ephemeral = ephemeral
+	s.requested.env = env
 	s.requested.servers = servers
 
-	envComment := ""
-	if ephemeral {
-		envComment = " (ephemeral)"
-	}
-	fmt.Fprintf(console.Debug(parentCtx), "devworkflow: setWorkspace: %s%s %s %v\n", envName, envComment, absRoot, servers)
+	fmt.Fprintf(console.Debug(parentCtx), "devworkflow: setWorkspace: %s %s %v\n", envName, absRoot, servers)
 
 	if len(servers) > 0 {
 		ctx, newCancel := context.WithCancel(parentCtx)
@@ -149,17 +144,17 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 		// Reset the banner.
 		s.setSticky(nil)
 
-		env, err := loadWorkspace(ctx, absRoot, envName, ephemeral)
+		boundEnv, err := loadWorkspace(ctx, absRoot, envName, env)
 		if err != nil {
 			s.cancelPortForward()
 			return err
 		}
 
-		resetStack(s.currentStack, env)
-		pfw := s.setEnvironment(env)
+		resetStack(s.currentStack, boundEnv)
+		pfw := s.setEnvironment(boundEnv)
 
 		go func() {
-			err := setWorkspace(ctx, env, servers[0], servers[1:], s, pfw)
+			err := setWorkspace(ctx, boundEnv, servers[0], servers[1:], s, pfw)
 
 			if err != nil && !errors.Is(err, context.Canceled) {
 				fnerrors.Format(console.Stderr(parentCtx), err, fnerrors.WithColors(true))
@@ -170,33 +165,22 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 	return nil
 }
 
-func loadWorkspace(ctx context.Context, absRoot, envName string, ephemeral bool) (provision.Env, error) {
+func loadWorkspace(ctx context.Context, absRoot, envName string, env *schema.Environment) (provision.Env, error) {
 	// Re-create loc/root here, to dump the cache.
 	root, err := module.FindRoot(ctx, absRoot)
 	if err != nil {
 		return provision.Env{}, err
 	}
 
-	env, err := provision.RequireEnv(root, envName)
+	boundEnv, err := provision.RequireEnv(root, envName)
 	if err != nil {
 		return provision.Env{}, err
 	}
 
-	if !ephemeral {
-		return env, nil
-	}
+	slice := devhost.ConfigurationForEnv(boundEnv)
+	boundEnv.Root().DevHost.Configure = slice.WithoutConstraints()
 
-	slice := devhost.ConfigurationForEnv(env)
-	env.Root().DevHost.Configure = slice.WithoutConstraints()
-
-	ephEnv := &schema.Environment{
-		Name:      fmt.Sprintf("%s-ephemeral-%s", env.Name(), ids.NewRandomBase32ID(8)),
-		Purpose:   env.Purpose(),
-		Runtime:   env.Runtime(),
-		Ephemeral: true,
-	}
-
-	return provision.MakeEnv(env.Root(), ephEnv), nil
+	return provision.MakeEnv(boundEnv.Root(), env), nil
 }
 
 type sinkObserver struct{ s *Session }
@@ -253,7 +237,7 @@ func (s *Session) Run(ctx context.Context) error {
 			case *DevWorkflowRequest_SetWorkspace_:
 				set := x.SetWorkspace
 				servers := append([]string{set.GetPackageName()}, set.GetAdditionalServers()...)
-				if err := s.handleSetWorkspace(ctx, set.GetAbsRoot(), set.GetEnvName(), set.GetEphemeral(), servers); err != nil {
+				if err := s.handleSetWorkspace(ctx, set.GetAbsRoot(), set.GetEnvName(), set.GetEnv(), servers); err != nil {
 					fmt.Fprintln(console.Errors(ctx), "failed to load workspace", err)
 					return err
 				}
@@ -263,10 +247,10 @@ func (s *Session) Run(ctx context.Context) error {
 					s.mu.Lock()
 					absRoot := s.requested.absRoot
 					envName := s.requested.envName
-					ephemeral := s.requested.ephemeral
+					env := s.requested.env
 					servers := s.requested.servers
 					s.mu.Unlock()
-					if err := s.handleSetWorkspace(ctx, absRoot, envName, ephemeral, servers); err != nil {
+					if err := s.handleSetWorkspace(ctx, absRoot, envName, env, servers); err != nil {
 						fmt.Fprintln(console.Errors(ctx), "failed to load workspace", err)
 						return err
 					}

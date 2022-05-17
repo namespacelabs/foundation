@@ -49,10 +49,10 @@ message DevWorkflowRequest {
     }
 
     message SetWorkspace {
-        string abs_root     = 1;
-        string package_name = 2;
-        string env_name     = 3;
-        bool   ephemeral    = 5;
+        string             abs_root     = 1;
+        string             package_name = 2;
+        string             env_name     = 3;
+        schema.Environment env          = 5;
 
         // XXX this needs more appropriate modeling.
         repeated string additional_servers = 4;

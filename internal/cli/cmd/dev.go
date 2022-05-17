@@ -28,8 +28,10 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/go-ids"
 )
 
 func NewDevCmd() *cobra.Command {
@@ -65,6 +67,23 @@ func NewDevCmd() *cobra.Command {
 				}
 
 				defer lis.Close()
+				
+				env, err := provision.RequireEnv(root, envRef)
+				if err != nil {
+					return err
+				}
+
+				if ephemeralEnv {
+					slice := devhost.ConfigurationForEnv(env)
+					env.Root().DevHost.Configure = slice.WithoutConstraints()
+
+					env = provision.MakeEnv(env.Root(), &schema.Environment{
+						Name:      fmt.Sprintf("%s-ephemeral-%s", env.Name(), ids.NewRandomBase32ID(8)),
+						Purpose:   env.Purpose(),
+						Runtime:   env.Runtime(),
+						Ephemeral: true,
+					})
+				}
 
 				pl := workspace.NewPackageLoader(root)
 
@@ -107,7 +126,7 @@ func NewDevCmd() *cobra.Command {
 							PackageName:       serverPackages[0],
 							AdditionalServers: serverPackages[1:],
 							EnvName:           envRef,
-							Ephemeral:         ephemeralEnv,
+							Env:               env.Proto(),
 						},
 					},
 				}
