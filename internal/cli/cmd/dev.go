@@ -35,6 +35,7 @@ import (
 func NewDevCmd() *cobra.Command {
 	var (
 		envRef       = "dev"
+		ephemeralEnv = false
 		servingAddr  string
 		devWebServer = false
 	)
@@ -106,6 +107,7 @@ func NewDevCmd() *cobra.Command {
 							PackageName:       serverPackages[0],
 							AdditionalServers: serverPackages[1:],
 							EnvName:           envRef,
+							Ephemeral:         ephemeralEnv,
 						},
 					},
 				}
@@ -185,6 +187,7 @@ func NewDevCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
 	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to provision (as defined in the workspace).")
+	cmd.Flags().BoolVar(&ephemeralEnv, "ephemeral", ephemeralEnv, "Create an isolated environment for the dev session (cleaned up on exit).")
 	cmd.Flags().BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
 	cmd.Flags().BoolVar(&devworkflow.AlsoOutputBuildToStderr, "alsooutputtostderr", devworkflow.AlsoOutputBuildToStderr, "Also send build output to stderr.")
 

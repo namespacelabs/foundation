@@ -52,6 +52,7 @@ message DevWorkflowRequest {
         string abs_root     = 1;
         string package_name = 2;
         string env_name     = 3;
+        bool   ephemeral    = 5;
 
         // XXX this needs more appropriate modeling.
         repeated string additional_servers = 4;
