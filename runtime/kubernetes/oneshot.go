@@ -44,7 +44,8 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 	}
 
 	pod := applycorev1.Pod(name, r.moduleNamespace).
-		WithSpec(applycorev1.PodSpec().WithContainers(container).WithRestartPolicy(corev1.RestartPolicyNever))
+		WithSpec(applycorev1.PodSpec().WithContainers(container).WithRestartPolicy(corev1.RestartPolicyNever)).
+		WithLabels(kubedef.SelectNamespaceDriver())
 
 	if _, err := cli.CoreV1().Pods(r.moduleNamespace).Apply(ctx, pod, kubedef.Ego()); err != nil {
 		return err

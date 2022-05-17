@@ -89,7 +89,7 @@ func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, opts 
 
 		if done, ok := tracked[ns.Name]; ok {
 			if ns.Status.Phase == corev1.NamespaceTerminating {
-				log.Printf("Stopping watch on %q. It is already terminating.", ns.Name)
+				log.Printf("Stopping watch on %q. It is terminating.", ns.Name)
 				done <- struct{}{}
 
 				delete(tracked, ns.Name)

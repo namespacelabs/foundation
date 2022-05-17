@@ -22,6 +22,7 @@ const (
 	K8sEnvEphemeral       = "k8s.namespacelabs.dev/env-ephemeral"
 	K8sEnvPurpose         = "k8s.namespacelabs.dev/env-purpose"
 	K8sEnvTimeout         = "k8s.namespacelabs.dev/env-timeout"
+	K8sNamespaceDriver    = "k8s.namespacelabs.dev/namespace-driver"
 	K8sConfigImage        = "k8s.namespacelabs.dev/config-image"
 
 	AppKubernetesIoManagedBy = "app.kubernetes.io/managed-by"
@@ -46,6 +47,12 @@ func SelectEphemeral() map[string]string {
 func SelectFocusServer() map[string]string {
 	return map[string]string{
 		K8sServerFocus: "true",
+	}
+}
+
+func SelectNamespaceDriver() map[string]string {
+	return map[string]string{
+		K8sNamespaceDriver: "true",
 	}
 }
 
