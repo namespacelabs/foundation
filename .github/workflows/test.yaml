@@ -1,7 +1,19 @@
 on: [push, pull_request]
 name: Test
 jobs:
+  pre_job:
+    runs-on: ubuntu-20.04
+    # Map a step output to a job output
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          do_not_skip: '["workflow_dispatch"]'
   test:
+    needs: pre_job
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     strategy:
       matrix:
         go-version: [1.18.x]
