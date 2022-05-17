@@ -6,6 +6,7 @@ package source
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -17,10 +18,11 @@ import (
 )
 
 func newBufGenerateCmd() *cobra.Command {
+	lang := "go"
+
 	cmd := &cobra.Command{
-		Use: "proto-generate",
-		// TODO: add a CLI flag to specify the languages when needed.
-		Short:   "Run buf.build generate on your codebase. Only generates Go proto codegen.",
+		Use:     "proto-generate",
+		Short:   "Run buf.build generate on your codebase.",
 		Aliases: []string{"proto-gen", "protogen"},
 
 		RunE: fncobra.RunE(func(ctx context.Context, userArgs []string) error {
@@ -43,10 +45,23 @@ func newBufGenerateCmd() *cobra.Command {
 				clean = []string{"."}
 			}
 
-			return source.GenGoProtosAtPaths(ctx, env, workspace.NewPackageLoader(root), root.FS(),
-				source.GoProtosOpts{Framework: source.OpProtoGen_GO}, clean, root.FS())
+			var fmwk source.OpProtoGen_Framework
+			switch lang {
+			case "go":
+				fmwk = source.OpProtoGen_GO
+			case "typescript":
+				fmwk = source.OpProtoGen_TYPESCRIPT
+			default:
+				return fmt.Errorf("unsupported language: %s", lang)
+			}
+
+			return source.GenProtosAtPaths(ctx, env, workspace.NewPackageLoader(root), root.FS(),
+				source.ProtosOpts{Framework: fmwk}, clean, root.FS())
 		}),
 	}
+
+	cmd.Flags().StringVar(&lang, "lang", lang,
+		"Language for proto generation. Supported values: go, typescript.")
 
 	return cmd
 }

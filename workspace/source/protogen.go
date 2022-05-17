@@ -33,7 +33,7 @@ import (
 	"tailscale.com/util/multierr"
 )
 
-type GoProtosOpts struct {
+type ProtosOpts struct {
 	HTTPGateway bool
 	Framework   OpProtoGen_Framework
 }
@@ -80,7 +80,7 @@ type multiGen struct {
 
 	mu    sync.Mutex
 	locs  []workspace.Location
-	opts  []GoProtosOpts
+	opts  []ProtosOpts
 	files []*protos.FileDescriptorSetAndDeps
 }
 
@@ -99,7 +99,7 @@ func (m *multiGen) Handle(ctx context.Context, env ops.Environment, _ *schema.De
 	defer m.mu.Unlock()
 
 	m.locs = append(m.locs, loc)
-	m.opts = append(m.opts, GoProtosOpts{
+	m.opts = append(m.opts, ProtosOpts{
 		HTTPGateway: msg.GenerateHttpGateway,
 		Framework:   msg.Framework,
 	})
@@ -175,7 +175,7 @@ func (m *multiGen) Commit() error {
 	return multierr.New(errs...)
 }
 
-func makeProtoSrcs(buf compute.Computable[oci.Image], parsed *protos.FileDescriptorSetAndDeps, opts GoProtosOpts) compute.Computable[fs.FS] {
+func makeProtoSrcs(buf compute.Computable[oci.Image], parsed *protos.FileDescriptorSetAndDeps, opts ProtosOpts) compute.Computable[fs.FS] {
 	return &genGoProtosAtLoc{
 		buf:         buf,
 		fileDescSet: parsed,
@@ -189,14 +189,14 @@ func generateProtoSrcs(ctx context.Context, buf compute.Computable[oci.Image], m
 	for framework, descriptors := range mod.withHTTP.descriptorsMap {
 		if len(descriptors) != 0 {
 			fsys = append(fsys, makeProtoSrcs(buf, protos.Merge(descriptors...),
-				GoProtosOpts{HTTPGateway: true, Framework: framework}))
+				ProtosOpts{HTTPGateway: true, Framework: framework}))
 		}
 	}
 
 	for framework, descriptors := range mod.withoutHTTP.descriptorsMap {
 		if len(descriptors) != 0 {
 			fsys = append(fsys, makeProtoSrcs(buf, protos.Merge(descriptors...),
-				GoProtosOpts{HTTPGateway: false, Framework: framework}))
+				ProtosOpts{HTTPGateway: false, Framework: framework}))
 		}
 	}
 
@@ -219,7 +219,7 @@ func generateProtoSrcs(ctx context.Context, buf compute.Computable[oci.Image], m
 type genGoProtosAtLoc struct {
 	buf         compute.Computable[oci.Image]
 	fileDescSet *protos.FileDescriptorSetAndDeps
-	opts        GoProtosOpts
+	opts        ProtosOpts
 
 	compute.LocalScoped[fs.FS]
 }
@@ -350,7 +350,7 @@ func (g *genGoProtosAtLoc) Compute(ctx context.Context, deps compute.Resolved) (
 	return result, nil
 }
 
-func GenGoProtosAtPaths(ctx context.Context, env ops.Environment, loader workspace.Packages, src fs.FS, opts GoProtosOpts, paths []string, out fnfs.ReadWriteFS) error {
+func GenProtosAtPaths(ctx context.Context, env ops.Environment, loader workspace.Packages, src fs.FS, opts ProtosOpts, paths []string, out fnfs.ReadWriteFS) error {
 	parsed, err := protos.Parse(src, paths)
 	if err != nil {
 		return err
