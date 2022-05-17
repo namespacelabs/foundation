@@ -63,7 +63,7 @@ func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1
 				continue
 			}
 
-			deps, ok := focus.Annotations[kubedef.K8sFocusDeps]
+			stack, ok := focus.Annotations[kubedef.K8sFocusStack]
 			if !ok {
 				log.Printf("focus deployment %q in namespace %q does not contain a deps annotation", focus.Name, ns.Name)
 				continue
@@ -71,7 +71,7 @@ func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1
 
 			log.Printf("updated focus deployment %q in namespace %q", focus.Name, ns.Name)
 			required := make(map[string]struct{})
-			for _, dep := range strings.Split(deps, ",") {
+			for _, dep := range strings.Split(stack, ",") {
 				required[dep] = struct{}{}
 			}
 

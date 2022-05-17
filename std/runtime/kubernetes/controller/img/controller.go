@@ -29,7 +29,7 @@ func main() {
 
 	w := watcher{
 		clientset:   clientset,
-		controllers: make(map[metav1.ListOptions]controller),
+		controllers: make(map[metav1.ListOptions]controllerFunc),
 	}
 
 	w.Add(controlEphemeral, metav1.ListOptions{
@@ -47,14 +47,14 @@ func main() {
 	w.Run(context.Background())
 }
 
-type controller func(context.Context, *kubernetes.Clientset, *corev1.Namespace, chan struct{})
+type controllerFunc func(context.Context, *kubernetes.Clientset, *corev1.Namespace, chan struct{})
 
 type watcher struct {
 	clientset   *kubernetes.Clientset
-	controllers map[metav1.ListOptions]controller
+	controllers map[metav1.ListOptions]controllerFunc
 }
 
-func (w watcher) Add(c controller, opts metav1.ListOptions) {
+func (w watcher) Add(c controllerFunc, opts metav1.ListOptions) {
 	w.controllers[opts] = c
 }
 
@@ -67,7 +67,7 @@ func (w watcher) Run(ctx context.Context) {
 	select {}
 }
 
-func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, opts metav1.ListOptions, c controller) {
+func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, opts metav1.ListOptions, f controllerFunc) {
 	w, err := clientset.CoreV1().Namespaces().Watch(ctx, opts)
 	if err != nil {
 		log.Fatalf("failed to watch namespaces: %v", err)
@@ -104,6 +104,6 @@ func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, opts 
 		done := make(chan struct{})
 		tracked[ns.Name] = done
 
-		go c(ctx, clientset, ns, done)
+		go f(ctx, clientset, ns, done)
 	}
 }

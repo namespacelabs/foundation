@@ -70,12 +70,16 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 
 			// We add a grace period to avoid racing with log collection from a client.
 			log.Printf("Driver %s finished. Namespace %s will be deleted in %s", driver.Name, ns.Name, gracePeriod)
-			<-time.After(gracePeriod)
 
-			if err := deleteNs(ctx, clientset, ns.Name); err != nil {
-				log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
+			select {
+			case <-done:
+				return
+			case <-time.After(gracePeriod):
+				if err := deleteNs(ctx, clientset, ns.Name); err != nil {
+					log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
+				}
+				return
 			}
-			return
 		}
 	}
 }

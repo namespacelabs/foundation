@@ -15,7 +15,7 @@ const (
 	K8sServerId           = "k8s.namespacelabs.dev/server-id"
 	K8sServerFocus        = "k8s.namespacelabs.dev/server-focus"
 	K8sServerPackageName  = "k8s.namespacelabs.dev/server-package-name"
-	K8sFocusDeps          = "k8s.namespacelabs.dev/focus-deps" // dep servers of all focus servers
+	K8sFocusStack         = "k8s.namespacelabs.dev/focus-stack" // all focus servers and all their deps.
 	K8sServicePackageName = "k8s.namespacelabs.dev/service-package-name"
 	K8sServiceGrpcType    = "k8s.namespacelabs.dev/service-grpc-type"
 	K8sEnvName            = "k8s.namespacelabs.dev/env"
@@ -27,9 +27,9 @@ const (
 
 	AppKubernetesIoManagedBy = "app.kubernetes.io/managed-by"
 
-	id               = "foundation.namespace.so" // #220 Update when product name is final
-	K8sFieldManager  = id
-	ephemeralTimeout = time.Hour
+	id                      = "foundation.namespace.so" // #220 Update when product name is final
+	K8sFieldManager         = id
+	defaultEphemeralTimeout = time.Hour
 )
 
 func SelectById(srv *schema.Server) map[string]string {
@@ -86,8 +86,9 @@ func MakeLabels(env *schema.Environment, srv *schema.Server) map[string]string {
 	return m
 }
 
-func MarkFocus(labels *map[string]string) {
-	(*labels)[K8sServerFocus] = "true"
+func WithFocusMark(labels map[string]string) map[string]string {
+	labels[K8sServerFocus] = "true"
+	return labels
 }
 
 func MakeAnnotations(env *schema.Environment, entry *schema.Stack_Entry) map[string]string {
@@ -98,15 +99,16 @@ func MakeAnnotations(env *schema.Environment, entry *schema.Stack_Entry) map[str
 	}
 
 	if env.GetEphemeral() {
-		m[K8sEnvTimeout] = ephemeralTimeout.String()
+		m[K8sEnvTimeout] = defaultEphemeralTimeout.String()
 	}
 
 	// XXX add annotations with pointers to tools, team owners, etc.
 	return m
 }
 
-func AnnotateDeps(deps []string, annotations *map[string]string) {
-	(*annotations)[K8sFocusDeps] = strings.Join(deps, ",")
+func WithFocusStack(annotations map[string]string, stack []string) map[string]string {
+	annotations[K8sFocusStack] = strings.Join(stack, ",")
+	return annotations
 }
 
 func MakeServiceAnnotations(srv *schema.Server, endpoint *schema.Endpoint) (map[string]string, error) {

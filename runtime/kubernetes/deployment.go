@@ -103,8 +103,8 @@ func toProbe(endpoint *schema.InternalEndpoint, md *schema.ServiceMetadata) (*ap
 }
 
 type deployOpts struct {
-	focus schema.PackageList
-	deps  []string
+	focus    schema.PackageList
+	stackIds []string
 }
 
 func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
@@ -215,8 +215,8 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	annotations := kubedef.MakeAnnotations(r.env, srv.StackEntry())
 
 	if opts.focus.Includes(srv.PackageName()) {
-		kubedef.MarkFocus(&labels)
-		kubedef.AnnotateDeps(opts.deps, &annotations)
+		labels = kubedef.WithFocusMark(labels)
+		annotations = kubedef.WithFocusStack(annotations, opts.stackIds)
 	}
 
 	deploymentId := kubedef.MakeDeploymentId(srv.Proto())
