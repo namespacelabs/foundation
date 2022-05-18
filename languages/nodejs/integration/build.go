@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
+	"namespacelabs.dev/foundation/internal/sdk/yarn"
 	yarnsdk "namespacelabs.dev/foundation/internal/sdk/yarn"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
@@ -178,13 +179,21 @@ func prepareYarnBase(ctx context.Context, nodejsBase string, platform specs.Plat
 		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn").
 		// Needed for the Foundation plugin for Yarn.
 		AddEnv("FN_MODULE_CACHE", fnModuleCachePath)
+	for k, v := range YarnEnvArgs("/") {
+		buildBase = buildBase.AddEnv(k, v)
+	}
 
 	if isDevBuild {
 		// Nodemon is used to watch for changes in the source code within a container and restart the "ts-node" server.
 		buildBase = buildBase.Run(llb.Shlex("yarn global add nodemon@2.0.15 ts-node@10.7.0 typescript@4.6.2")).Root()
 	}
 
-	return copyYarnBinaryFromCache(ctx, buildBase)
+	buildBase, err := copyYarnBinaryFromCache(ctx, buildBase)
+	if err != nil {
+		return llb.State{}, err
+	}
+
+	return copyYarnAuxFilesFromCache(ctx, buildBase)
 }
 
 func copyYarnBinaryFromCache(ctx context.Context, base llb.State) (llb.State, error) {
@@ -200,6 +209,15 @@ func copyYarnBinaryFromCache(ctx context.Context, base llb.State) (llb.State, er
 	var fsys memfs.FS
 	fsys.Add(yarnBinaryPath, yarnBinContent)
 	state, err := llbutil.WriteFS(ctx, &fsys, base, ".")
+	if err != nil {
+		return llb.State{}, err
+	}
+
+	return state, nil
+}
+
+func copyYarnAuxFilesFromCache(ctx context.Context, base llb.State) (llb.State, error) {
+	state, err := llbutil.WriteFS(ctx, yarn.YarnAuxFiles(), base, ".")
 	if err != nil {
 		return llb.State{}, err
 	}

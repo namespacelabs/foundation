@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
-func RunYarn(ctx context.Context, relPath string, args []string) error {
+func RunYarn(ctx context.Context, relPath string, args []string, env []string) error {
 	bin, err := yarnsdk.EnsureSDK(ctx)
 	if err != nil {
 		return err
@@ -26,6 +26,7 @@ func RunYarn(ctx context.Context, relPath string, args []string) error {
 	if err != nil {
 		return err
 	}
-	cmd.AdditionalEnv = []string{"FN_MODULE_CACHE=" + fnModuleCache}
+	cmd.AdditionalEnv = append(env, "FN_MODULE_CACHE="+fnModuleCache)
+
 	return cmd.Run(ctx)
 }

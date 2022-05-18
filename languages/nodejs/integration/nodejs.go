@@ -31,7 +31,6 @@ import (
 	"namespacelabs.dev/foundation/internal/yarn"
 	"namespacelabs.dev/foundation/languages"
 	nodejsruntime "namespacelabs.dev/foundation/languages/nodejs/runtime"
-	"namespacelabs.dev/foundation/languages/nodejs/yarnplugin"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -46,31 +45,11 @@ const (
 	httpNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/http"
 	// Yarn version of the packages in the same module. Doesn't really matter what the value here is.
 	defaultPackageVersion = "0.0.0"
-	yarnRcFn              = ".yarnrc.yml"
-	fnYarnPluginPath      = ".yarn/plugins/plugin-foundation.cjs"
-	yarnGitIgnore         = ".yarn/.gitignore"
 	implFileName          = "impl.ts"
 	packageJsonFn         = "package.json"
 	fileSyncPort          = 50000
 	runtimePackage        = "@namespacelabs/foundation"
 	ForceProd             = false
-)
-
-var (
-	yarnRcContent = fmt.Sprintf(
-		`nodeLinker: node-modules
-
-npmScopes:
-  namespacelabs:
-    npmRegistryServer: "https://us-npm.pkg.dev/foundation-344819/npm-prebuilts/"
-
-plugins:
-  - path: %s
-`, fnYarnPluginPath)
-	yarnGitIgnoreContent = fmt.Sprintf(
-		`/.gitignore
-%s
-`, strings.TrimPrefix(fnYarnPluginPath, ".yarn"))
 )
 
 func Register() {
@@ -250,7 +229,7 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 		}
 		// `fn tidy` could update dependencies of some nodes/servers, running `yarn install` to update
 		// `node_modules`.
-		if err := yarn.RunYarn(ctx, yarnRoot, []string{"install"}); err != nil {
+		if err := RunNodejsYarn(ctx, yarnRoot, []string{"install"}); err != nil {
 			return err
 		}
 	}
@@ -596,31 +575,6 @@ func (s *yarnRootGenSession) Commit() error {
 }
 
 func generateYarnRoot(ctx context.Context, path string, out fnfs.ReadWriteFS) error {
-	// Write .yarnrc.yml with the correct nodeLinker.
-	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), out, filepath.Join(path, yarnRcFn), func(w io.Writer) error {
-		_, err := io.WriteString(w, yarnRcContent)
-		return err
-	}); err != nil {
-		return err
-	}
-
-	// Write .gitignore to hide the foundation plugin.
-	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), out, filepath.Join(path, yarnGitIgnore), func(w io.Writer) error {
-		_, err := io.WriteString(w, yarnGitIgnoreContent)
-		return err
-	}); err != nil {
-		return err
-	}
-
-	// Write the Foundation plugin.
-	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), out,
-		filepath.Join(path, fnYarnPluginPath), func(w io.Writer) error {
-			_, err := w.Write(yarnplugin.PluginContent())
-			return err
-		}); err != nil {
-		return err
-	}
-
 	// Create "tsconfig.json" if it doesn't exist.
 	tsconfigFn := filepath.Join(path, "tsconfig.json")
 	_, err := fs.ReadFile(out, tsconfigFn)
