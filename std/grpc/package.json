@@ -1,9 +1,6 @@
 {
 	"dependencies": {
 		"@grpc/grpc-js": "1.5.7",
-		"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter": "0.0.0",
-		"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser": "0.0.0",
-		"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": "0.0.0",
 		"@namespacelabs/foundation": "0.1.27",
 		"google-protobuf": "^3.20.0",
 		"source-map-support": "0.5.21",
@@ -16,7 +13,15 @@
 		"@types/node": "16.x",
 		"@types/yargs": "16.x"
 	},
-	"name": "@namespacelabs.dev-foundation/languages-nodejs-testdata-server",
+	"files": [
+		"dist",
+		"src"
+	],
+	"name": "@namespacelabs.dev-foundation/std-grpc",
 	"private": true,
+	"scripts": {
+		"build": "tsc",
+		"prepare": "yarn run build"
+	},
 	"version": "0.0.0"
 }

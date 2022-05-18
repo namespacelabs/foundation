@@ -43,7 +43,7 @@ export interface BatchFormatterDeps {
 
 export const BatchFormatterProvider = (graph: DependencyGraph, input: i3.InputData) =>
 	provideBatchFormatter(
-		input, 
+		input,
 		graph.instantiatePackageDeps(Package),
 		// Scoped dependencies that are instantiated for each call to ProvideBatchFormatter.
 		graph.instantiateDeps(Package.name, "BatchFormatter", () => ({

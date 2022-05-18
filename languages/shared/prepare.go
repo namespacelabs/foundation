@@ -6,6 +6,7 @@ package shared
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/protocolbuffers/txtpbfmt/parser"
@@ -14,6 +15,7 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	grpcprotos "namespacelabs.dev/foundation/std/grpc/protos"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
@@ -86,17 +88,26 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 				}
 
 				nodeData.Providers = append(nodeData.Providers, ProviderData{
-					Name:         p.Name,
-					Location:     loc,
-					InputType:    convertType(p.Type, loc),
-					ProviderType: a,
-					ScopedDeps:   scopeDeps,
+					Name:      p.Name,
+					Location:  loc,
+					InputType: convertProtoMessageType(p.Type, loc),
+					ProviderType: ProviderTypeData{
+						ParsedType:      a,
+						IsParameterized: isStdGrpcExtension(n.PackageName, p.Name),
+					},
+					ScopedDeps: scopeDeps,
 				})
 			}
 		}
 	}
 
 	return nodeData, nil
+}
+
+// The standard grpc extension requires special handling as the provided type is
+// is a usage-specific gRPC client class.
+func isStdGrpcExtension(pkgName string, providerName string) bool {
+	return pkgName == "namespacelabs.dev/foundation/std/grpc" && providerName == "Backend"
 }
 
 func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Framework, instantiates []*schema.Instantiate) ([]DependencyData, error) {
@@ -106,49 +117,135 @@ func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Fra
 
 	deps := []DependencyData{}
 	for _, dep := range instantiates {
-		pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
-		if err != nil {
-			return nil, fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
-		}
-
-		_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
-		if p == nil {
-			return nil, fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
-		}
-
-		var provider *schema.Provides_AvailableIn
-		for _, prov := range p.AvailableIn {
-			if prov.ProvidedInFrameworks()[fmwk] {
-				provider = prov
-				break
-			}
-		}
-
-		providerInput, err := serializeProto(ctx, pkg, p, dep)
+		depData, err := prepareDep(ctx, loader, fmwk, dep)
 		if err != nil {
 			return nil, err
 		}
 
-		deps = append(deps, DependencyData{
-			Name:              dep.Name,
-			ProviderName:      p.Name,
-			ProviderInputType: convertType(p.Type, pkg.Location),
-			ProviderType:      provider,
-			ProviderLocation:  pkg.Location,
-			ProviderInput:     *providerInput,
-		})
+		if depData != nil {
+			deps = append(deps, *depData)
+		}
 	}
 
 	return deps, nil
 }
 
-func convertType(t *schema.TypeDef, loc workspace.Location) TypeData {
+// Returns nil if the provider is not available in the current framework.
+func prepareDep(ctx context.Context, loader workspace.Packages, fmwk schema.Framework, dep *schema.Instantiate) (*DependencyData, error) {
+	pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
+	if err != nil {
+		return nil, fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
+	}
+
+	_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
+	if p == nil {
+		return nil, fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
+	}
+
+	var provider *ProviderTypeData
+	// Special case: generate the gRPC client definition.
+	if isStdGrpcExtension(dep.PackageName, dep.Type) {
+		grpcClientType, err := prepareGrpcBackendDep(ctx, loader, dep)
+		if err != nil {
+			return nil, err
+		}
+		provider = &ProviderTypeData{
+			Type:            grpcClientType,
+			IsParameterized: true,
+		}
+	} else {
+		for _, prov := range p.AvailableIn {
+			if prov.ProvidedInFrameworks()[fmwk] {
+				if provider != nil {
+					return nil, fnerrors.UserError(nil, "multiple providers available for %s/%s", dep.PackageName, dep.Type)
+				}
+				provider = &ProviderTypeData{
+					ParsedType: prov,
+				}
+			}
+		}
+	}
+
+	if provider == nil {
+		// This provider is not available in the current framework.
+		return nil, nil
+	}
+
+	providerInput, err := serializeProto(ctx, pkg, p, dep)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DependencyData{
+		Name:              dep.Name,
+		ProviderName:      p.Name,
+		ProviderInputType: convertProtoMessageType(p.Type, pkg.Location),
+		ProviderType:      *provider,
+		ProviderLocation:  pkg.Location,
+		ProviderInput:     *providerInput,
+	}, nil
+}
+
+func prepareGrpcBackendDep(ctx context.Context, loader workspace.Packages, dep *schema.Instantiate) (*ProtoTypeData, error) {
+	backend := &grpcprotos.Backend{}
+	if err := proto.Unmarshal(dep.Constructor.Value, backend); err != nil {
+		return nil, err
+	}
+
+	pkg, err := loader.LoadByName(ctx, schema.PackageName(backend.PackageName))
+	if err != nil {
+		return nil, err
+	}
+
+	if pkg.Node().GetKind() != schema.Node_SERVICE {
+		return nil, fnerrors.UserError(nil, "%s: must be a service", backend.PackageName)
+	}
+
+	// Finding the exported service. If no service name is provided, pick the first and only service.
+	var exportedService *schema.GrpcExportService
+	for _, svc := range pkg.Node().ExportService {
+		if backend.ServiceName == "" || matchesService(svc.ProtoTypename, backend.ServiceName) {
+			if exportedService != nil {
+				return nil, fnerrors.UserError(nil, "%s: matching too many services, already had %s, got %s as well",
+					backend.PackageName, exportedService.ProtoTypename, svc.ProtoTypename)
+			}
+			exportedService = svc
+		}
+	}
+
+	if exportedService == nil {
+		return nil, fnerrors.UserError(nil, "%s: no such service %q", backend.PackageName, backend.ServiceName)
+	}
+
+	return &ProtoTypeData{
+		Name:           fmt.Sprintf("%sClient", simpleServiceName(exportedService.ProtoTypename)),
+		SourceFileName: exportedService.GetProto()[0],
+		Location:       pkg.Location,
+		Kind:           ProtoService,
+	}, nil
+}
+
+func matchesService(exported, provided string) bool {
+	// Exported is always fully qualified, and provided may be a simple name.
+	if exported == provided {
+		return true
+	}
+	return simpleServiceName(exported) == provided
+}
+
+func simpleServiceName(typename string) string {
+	parts := strings.Split(typename, ".")
+	return parts[len(parts)-1]
+}
+
+func convertProtoMessageType(t *schema.TypeDef, loc workspace.Location) ProtoTypeData {
 	nameParts := strings.Split(string(t.Typename), ".")
-	// TODO(@nicolasalt): check that the sources contain at least one file.
-	return TypeData{
+	// TODO: check that the sources contain at least one file.
+	return ProtoTypeData{
 		Name:           nameParts[len(nameParts)-1],
 		SourceFileName: t.Source[0],
 		Location:       loc,
+		Kind:           ProtoMessage,
 	}
 }
 
