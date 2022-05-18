@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"strings"
 
 	"github.com/kr/text"
 	"github.com/protocolbuffers/txtpbfmt/parser"
@@ -17,8 +16,8 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
+	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
-	grpcprotos "namespacelabs.dev/foundation/std/grpc/protos"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
@@ -170,43 +169,19 @@ func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instant
 	// XXX Well, yes, this shouldn't live here. But being practical. We need to either have
 	// a way to define how to generate the types. Or we need to use generics (although generics
 	// don't replace all of the uses).
-	if dep.PackageName == "namespacelabs.dev/foundation/std/grpc" && dep.Type == "Backend" {
-		backend := &grpcprotos.Backend{}
-		if err := proto.Unmarshal(dep.Constructor.Value, backend); err != nil {
-			return err
-		}
-
-		pkg, err := loader.LoadByName(ctx, schema.PackageName(backend.PackageName))
+	if shared.IsStdGrpcExtension(dep.PackageName, dep.Type) {
+		grpcClientType, err := shared.PrepareGrpcBackendDep(ctx, loader, dep)
 		if err != nil {
 			return err
-		}
-
-		if pkg.Node().GetKind() != schema.Node_SERVICE {
-			return fnerrors.UserError(nil, "%s: must be a service", backend.PackageName)
-		}
-
-		var exportedService *schema.GrpcExportService
-		for _, svc := range pkg.Node().ExportService {
-			if backend.ServiceName == "" || matchesService(svc.ProtoTypename, backend.ServiceName) {
-				if exportedService != nil {
-					return fnerrors.UserError(nil, "%s: matching too many services, already had %s, got %s as well",
-						backend.PackageName, exportedService.ProtoTypename, svc.ProtoTypename)
-				}
-				exportedService = svc
-			}
-		}
-
-		if exportedService == nil {
-			return fnerrors.UserError(nil, "%s: no such service %q", backend.PackageName, backend.ServiceName)
 		}
 
 		// XXX not hermetic.
-		gopkg, err := gosupport.ComputeGoPackage(pkg.Location.Abs())
+		gopkg, err := gosupport.ComputeGoPackage(grpcClientType.Location.Abs())
 		if err != nil {
 			return err
 		}
 
-		clientType := simpleName(exportedService.ProtoTypename) + "Client"
+		clientType := grpcClientType.Name
 
 		prov.GoPackage = gopkg
 		prov.Method = "New" + clientType
@@ -258,19 +233,6 @@ func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instant
 	}
 
 	return nil
-}
-
-func matchesService(exported, provided string) bool {
-	// Exported is always fully qualified, and provided may be a simple name.
-	if exported == provided {
-		return true
-	}
-	return simpleName(exported) == provided
-}
-
-func simpleName(typename string) string {
-	parts := strings.Split(typename, ".")
-	return parts[len(parts)-1]
 }
 
 func makeProvidesMethod(p *schema.Provides) string {

@@ -98,7 +98,7 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 					InputType: convertProtoMessageType(p.Type, loc),
 					ProviderType: ProviderTypeData{
 						ParsedType:      a,
-						IsParameterized: isStdGrpcExtension(n.PackageName, p.Name),
+						IsParameterized: IsStdGrpcExtension(n.PackageName, p.Name),
 					},
 					ScopedDeps: scopeDeps,
 				})
@@ -111,7 +111,8 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 
 // The standard grpc extension requires special handling as the provided type is
 // is a usage-specific gRPC client class.
-func isStdGrpcExtension(pkgName string, providerName string) bool {
+// TODO: make private once Go is fully migrate to the "shared" API.
+func IsStdGrpcExtension(pkgName string, providerName string) bool {
 	return pkgName == "namespacelabs.dev/foundation/std/grpc" && providerName == "Backend"
 }
 
@@ -149,8 +150,8 @@ func prepareDep(ctx context.Context, loader workspace.Packages, fmwk schema.Fram
 
 	var provider *ProviderTypeData
 	// Special case: generate the gRPC client definition.
-	if isStdGrpcExtension(dep.PackageName, dep.Type) {
-		grpcClientType, err := prepareGrpcBackendDep(ctx, loader, dep)
+	if IsStdGrpcExtension(dep.PackageName, dep.Type) {
+		grpcClientType, err := PrepareGrpcBackendDep(ctx, loader, dep)
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +192,8 @@ func prepareDep(ctx context.Context, loader workspace.Packages, fmwk schema.Fram
 	}, nil
 }
 
-func prepareGrpcBackendDep(ctx context.Context, loader workspace.Packages, dep *schema.Instantiate) (*ProtoTypeData, error) {
+// TODO: make private once Go is fully migrate to the "shared" API.
+func PrepareGrpcBackendDep(ctx context.Context, loader workspace.Packages, dep *schema.Instantiate) (*ProtoTypeData, error) {
 	backend := &grpcprotos.Backend{}
 	if err := proto.Unmarshal(dep.Constructor.Value, backend); err != nil {
 		return nil, err
