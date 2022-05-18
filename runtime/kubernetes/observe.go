@@ -76,6 +76,8 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 				if err := onInstance(runtime.ObserveEvent{ContainerReference: ref, Removed: true}); err != nil {
 					return err
 				}
+				// The previously announced pod is not present in the current list and is already announced as `Removed`.
+				delete(announced, k)
 			}
 		}
 
