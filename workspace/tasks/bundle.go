@@ -160,14 +160,19 @@ func (b *Bundle) EncryptTo(ctx context.Context, dst io.Writer) error {
 	if err != nil {
 		return fnerrors.BadInputError("failed to parse public key: %w", err)
 	}
-	gz := gzip.NewWriter(dst)
-	defer gz.Close()
 
-	encryptedWriter, _ := age.Encrypt(gz, recipient)
-	defer encryptedWriter.Close()
-
-	if err := maketarfs.TarFS(ctx, encryptedWriter, b.fsys, nil, nil); err != nil {
-		return fnerrors.InternalError("failed to create encrypted bundle: %w", err)
+	encWriter, err := age.Encrypt(dst, recipient)
+	if err != nil {
+		return fnerrors.InternalError("failed to encrypt bundle: %w", err)
 	}
+	defer encWriter.Close()
+
+	gzWriter := gzip.NewWriter(encWriter)
+	defer gzWriter.Close()
+
+	if err := maketarfs.TarFS(ctx, gzWriter, b.fsys, nil, nil); err != nil {
+		return fnerrors.InternalError("failed to archive bundle: %w", err)
+	}
+
 	return nil
 }
