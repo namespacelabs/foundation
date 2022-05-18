@@ -2,6 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
+// This is about parsing Fn-specific dialect of Cue.
 package cuefrontend
 
 import (
