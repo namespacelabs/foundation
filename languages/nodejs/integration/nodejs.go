@@ -42,7 +42,8 @@ import (
 
 const (
 	controllerPkg schema.PackageName = "namespacelabs.dev/foundation/std/development/filesync/controller"
-	grpcPkg       schema.PackageName = "namespacelabs.dev/foundation/languages/nodejs/grpc"
+	grpcNode      schema.PackageName = "namespacelabs.dev/foundation/languages/nodejs/grpc"
+	httpNode      schema.PackageName = "namespacelabs.dev/foundation/languages/nodejs/http"
 	// Yarn version of the packages in the same module. Doesn't really matter what the value here is.
 	defaultPackageVersion = "0.0.0"
 	yarnRcFn              = ".yarnrc.yml"
@@ -125,8 +126,6 @@ func Register() {
 }
 
 func useDevBuild(env *schema.Environment) bool {
-	// TODO(@nicolasalt): uncomment when #313 is fixed.
-	// Currently only dev way to pass flags to the server works, see PostParseServer.
 	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
@@ -470,11 +469,32 @@ func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Nod
 }
 
 func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
-	ext.Include = append(ext.Include, grpcPkg)
+	ext.Include = append(ext.Include, grpcNode)
 	return nil
 }
 
+// TODO: consolidate with the Go implementation.
 func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error {
+	for _, dep := range sealed.Deps {
+		svc := dep.Service
+		if svc == nil {
+			continue
+		}
+
+		for _, p := range svc.ExportHttp {
+			sealed.Proto.Server.UrlMap = append(sealed.Proto.Server.UrlMap, &schema.Server_URLMapEntry{
+				PathPrefix:  p.Path,
+				IngressName: svc.IngressServiceName,
+				Kind:        p.Kind,
+				PackageName: svc.PackageName,
+			})
+		}
+	}
+
+	if len(sealed.Proto.Server.UrlMap) > 0 && !sealed.HasDep(httpNode) {
+		return fnerrors.UserError(sealed.Location, "node.js server exposes HTTP paths, it must depend on %s", httpNode)
+	}
+
 	return nil
 }
 

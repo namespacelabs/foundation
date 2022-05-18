@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/protocolbuffers/txtpbfmt/parser"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/dynamicpb"
@@ -42,8 +43,12 @@ func PrepareServerData(ctx context.Context, loader workspace.Packages, loc works
 			})
 		}
 
-		// Only adding initializers from direct dependencies.
-		if userImports[pkg.PackageName()] {
+		node := pkg.Node()
+
+		// Only adding initializers from direct dependencies that have codegen
+		// for the given framework.
+		if userImports[pkg.PackageName()] &&
+			(node == nil || slices.Contains(node.CodegeneratedFrameworks(), fmwk)) {
 			serverData.ImportedInitializers = append(serverData.ImportedInitializers, pkg.Location)
 		}
 	}
