@@ -6,7 +6,7 @@ import { performance } from "perf_hooks";
 
 const maximumInitTimeMs = 10;
 
-export interface Package<PackageDepsT> {
+interface Package<PackageDepsT> {
 	name: string;
 
 	instantiateDeps?: (dg: DependencyGraph) => PackageDepsT;

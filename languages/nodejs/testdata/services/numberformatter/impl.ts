@@ -2,12 +2,13 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import { sendUnaryData, Server, ServerUnaryCall } from "@grpc/grpc-js";
+import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
+import { Registrar } from "@namespacelabs/foundation";
 import { ServiceDeps, WireService } from "./deps.fn";
-import { IFormatServiceServer, FormatServiceService } from "./service_grpc_pb";
+import { FormatServiceService, IFormatServiceServer } from "./service_grpc_pb";
 import { FormatRequest, FormatResponse } from "./service_pb";
 
-export const wireService: WireService = (deps: ServiceDeps, server: Server): void => {
+export const wireService: WireService = (deps: ServiceDeps, registrar: Registrar): void => {
 	const service: IFormatServiceServer = {
 		format: function (
 			call: ServerUnaryCall<FormatRequest, FormatResponse>,
@@ -30,5 +31,5 @@ Second instance of the "batchformatter" extension:
 		},
 	};
 
-	server.addService(FormatServiceService, service);
+	registrar.registerGrpcService(FormatServiceService, service);
 };

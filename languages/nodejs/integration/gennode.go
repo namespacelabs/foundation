@@ -19,7 +19,6 @@ const (
 	depsFilename             = "deps.fn.ts"
 	packageServiceBaseName   = "Service"
 	packageExtensionBaseName = "Extension"
-	grpcNpmPackage           = "@grpc/grpc-js"
 )
 
 func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
@@ -94,9 +93,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 
 	var service *tmplNodeService
 	if nodeData.Kind == schema.Node_SERVICE {
-		service = &tmplNodeService{
-			GrpcServerImportAlias: ic.add(grpcNpmPackage),
-		}
+		service = &tmplNodeService{}
 	} else {
 		service = nil
 	}

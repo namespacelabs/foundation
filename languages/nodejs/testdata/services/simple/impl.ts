@@ -2,12 +2,13 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import { sendUnaryData, Server, ServerUnaryCall } from "@grpc/grpc-js";
+import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
+import { Registrar } from "@namespacelabs/foundation";
 import { WireService } from "./deps.fn";
 import { IPostServiceServer, PostServiceService } from "./service_grpc_pb";
 import { PostRequest, PostResponse } from "./service_pb";
 
-export const wireService: WireService = (server: Server): void => {
+export const wireService: WireService = (registrar: Registrar): void => {
 	const service: IPostServiceServer = {
 		post: function (
 			call: ServerUnaryCall<PostRequest, PostResponse>,
@@ -20,5 +21,5 @@ export const wireService: WireService = (server: Server): void => {
 		},
 	};
 
-	server.addService(PostServiceService, service);
+	registrar.registerGrpcService(PostServiceService, service);
 };

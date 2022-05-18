@@ -1,8 +1,7 @@
 // This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import * as i0 from "@grpc/grpc-js"
+import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundation";
 
 
 
@@ -13,5 +12,5 @@ export const Package = {
 export const TransitiveInitializers: Initializer[] = [
 ];
 
-export type WireService = (server: i0.Server) => void;
+export type WireService = (registrar: Registrar) => void;
 export const wireService: WireService = impl.wireService;

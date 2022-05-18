@@ -27,7 +27,6 @@ type tmplServerService struct {
 }
 
 type tmplNodeService struct {
-	GrpcServerImportAlias string
 }
 
 type tmplPackage struct {
