@@ -7,12 +7,9 @@ package kubernetes
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
 	"sort"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/runtime"
@@ -25,14 +22,6 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 	announced := map[string]runtime.ContainerReference{}
 
 	ns := serverNamespace(r.boundEnv, srv)
-	f, err := os.OpenFile("/tmp/text.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Println(err)
-	}
-	defer f.Close()
-
-	logger := log.New(f, "prefix", log.LstdFlags)
 
 	for {
 		select {
@@ -57,14 +46,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 		newM := map[string]struct{}{}
 		labels := map[string]string{}
 		for _, pod := range pods.Items {
-			logger.Printf("pod: %s [%s] <%s>\n: %s\n", pod.Name, pod.CreationTimestamp, pod.CreationTimestamp.Time, proto.MarshalTextString(&pod))
-			f.Sync()
 			if pod.Status.Phase == v1.PodRunning {
-				// for _, cs := range pod.Status.ContainerStatuses {
-				// 	if cs.State.Terminated != nil {
-				// 		continue
-				// 	}
-				// }
 				instance := makePodRef(ns, pod.Name, serverCtrName(srv))
 				keys = append(keys, Key{
 					Instance:  instance,
@@ -94,6 +76,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 				if err := onInstance(runtime.ObserveEvent{ContainerReference: ref, Removed: true}); err != nil {
 					return err
 				}
+				// The previously announced pod is not present in the current list and is already announced as `Removed`.
 				delete(announced, k)
 			}
 		}
