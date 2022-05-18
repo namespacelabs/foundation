@@ -42,8 +42,8 @@ import (
 
 const (
 	controllerPkg schema.PackageName = "namespacelabs.dev/foundation/std/development/filesync/controller"
-	grpcNode      schema.PackageName = "namespacelabs.dev/foundation/languages/nodejs/grpc"
-	httpNode      schema.PackageName = "namespacelabs.dev/foundation/languages/nodejs/http"
+	grpcNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/grpc"
+	httpNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/http"
 	// Yarn version of the packages in the same module. Doesn't really matter what the value here is.
 	defaultPackageVersion = "0.0.0"
 	yarnRcFn              = ".yarnrc.yml"
