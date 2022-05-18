@@ -53,7 +53,7 @@ func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 					CreatedAt: pod.CreationTimestamp.Time,
 				})
 				newM[instance.UniqueID()] = struct{}{}
-				labels[instance.UniqueID()] = pod.Name
+				labels[instance.UniqueID()] = srv.Name
 
 				if ObserveInitContainerLogs {
 					for _, container := range pod.Spec.InitContainers {
