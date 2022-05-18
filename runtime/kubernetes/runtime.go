@@ -240,6 +240,17 @@ func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 		}
 	}
 
+	// TODO Hacky! Clean this up.
+	if r.env.Ephemeral && r.env.Purpose != schema.Environment_TESTING && len(d.Servers) > 0 {
+		env := d.Servers[0].Server.Env()
+
+		def, err := r.runDriver(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		state.definitions = append(state.definitions, def)
+	}
+
 	state.hints = append(state.hints, fmt.Sprintf("Inspecting your deployment: %s", colors.Bold(fmt.Sprintf("kubectl -n %s get pods", r.moduleNamespace))))
 
 	return state, nil

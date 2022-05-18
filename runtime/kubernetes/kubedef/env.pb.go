@@ -592,6 +592,69 @@ func (x *OpCreateSecretConditionally) GetInvocation() *types.DeferredInvocation 
 	return nil
 }
 
+type OpRun struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Name      string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Image     string `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
+}
+
+func (x *OpRun) Reset() {
+	*x = OpRun{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[8]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OpRun) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OpRun) ProtoMessage() {}
+
+func (x *OpRun) ProtoReflect() protoreflect.Message {
+	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[8]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OpRun.ProtoReflect.Descriptor instead.
+func (*OpRun) Descriptor() ([]byte, []int) {
+	return file_runtime_kubernetes_kubedef_env_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *OpRun) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *OpRun) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *OpRun) GetImage() string {
+	if x != nil {
+		return x.Image
+	}
+	return ""
+}
+
 type SpecExtension_Volume struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -607,7 +670,7 @@ type SpecExtension_Volume struct {
 func (x *SpecExtension_Volume) Reset() {
 	*x = SpecExtension_Volume{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[8]
+		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -620,7 +683,7 @@ func (x *SpecExtension_Volume) String() string {
 func (*SpecExtension_Volume) ProtoMessage() {}
 
 func (x *SpecExtension_Volume) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[8]
+	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -692,7 +755,7 @@ type SpecExtension_Annotation struct {
 func (x *SpecExtension_Annotation) Reset() {
 	*x = SpecExtension_Annotation{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[9]
+		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -705,7 +768,7 @@ func (x *SpecExtension_Annotation) String() string {
 func (*SpecExtension_Annotation) ProtoMessage() {}
 
 func (x *SpecExtension_Annotation) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[9]
+	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -746,7 +809,7 @@ type SpecExtension_Volume_Secret struct {
 func (x *SpecExtension_Volume_Secret) Reset() {
 	*x = SpecExtension_Volume_Secret{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[10]
+		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -759,7 +822,7 @@ func (x *SpecExtension_Volume_Secret) String() string {
 func (*SpecExtension_Volume_Secret) ProtoMessage() {}
 
 func (x *SpecExtension_Volume_Secret) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[10]
+	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -795,7 +858,7 @@ type SpecExtension_Volume_ConfigMap struct {
 func (x *SpecExtension_Volume_ConfigMap) Reset() {
 	*x = SpecExtension_Volume_ConfigMap{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[11]
+		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -808,7 +871,7 @@ func (x *SpecExtension_Volume_ConfigMap) String() string {
 func (*SpecExtension_Volume_ConfigMap) ProtoMessage() {}
 
 func (x *SpecExtension_Volume_ConfigMap) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[11]
+	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -857,7 +920,7 @@ type SpecExtension_Volume_ConfigMap_Item struct {
 func (x *SpecExtension_Volume_ConfigMap_Item) Reset() {
 	*x = SpecExtension_Volume_ConfigMap_Item{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[12]
+		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -870,7 +933,7 @@ func (x *SpecExtension_Volume_ConfigMap_Item) String() string {
 func (*SpecExtension_Volume_ConfigMap_Item) ProtoMessage() {}
 
 func (x *SpecExtension_Volume_ConfigMap_Item) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[12]
+	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -914,7 +977,7 @@ type ContainerExtension_VolumeMount struct {
 func (x *ContainerExtension_VolumeMount) Reset() {
 	*x = ContainerExtension_VolumeMount{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[13]
+		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -927,7 +990,7 @@ func (x *ContainerExtension_VolumeMount) String() string {
 func (*ContainerExtension_VolumeMount) ProtoMessage() {}
 
 func (x *ContainerExtension_VolumeMount) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[13]
+	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -983,7 +1046,7 @@ type ContainerExtension_Env struct {
 func (x *ContainerExtension_Env) Reset() {
 	*x = ContainerExtension_Env{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[14]
+		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -996,7 +1059,7 @@ func (x *ContainerExtension_Env) String() string {
 func (*ContainerExtension_Env) ProtoMessage() {}
 
 func (x *ContainerExtension_Env) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[14]
+	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1038,7 +1101,7 @@ type ContainerExtension_ArgTuple struct {
 func (x *ContainerExtension_ArgTuple) Reset() {
 	*x = ContainerExtension_ArgTuple{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[15]
+		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1051,7 +1114,7 @@ func (x *ContainerExtension_ArgTuple) String() string {
 func (*ContainerExtension_ArgTuple) ProtoMessage() {}
 
 func (x *ContainerExtension_ArgTuple) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[15]
+	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1093,7 +1156,7 @@ type ContainerExtension_InitContainer struct {
 func (x *ContainerExtension_InitContainer) Reset() {
 	*x = ContainerExtension_InitContainer{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[16]
+		mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1106,7 +1169,7 @@ func (x *ContainerExtension_InitContainer) String() string {
 func (*ContainerExtension_InitContainer) ProtoMessage() {}
 
 func (x *ContainerExtension_InitContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[16]
+	mi := &file_runtime_kubernetes_kubedef_env_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1300,11 +1363,16 @@ var file_runtime_kubernetes_kubedef_env_proto_rawDesc = []byte{
 	0x01, 0x28, 0x0b, 0x32, 0x28, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e,
 	0x2e, 0x73, 0x74, 0x64, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x44, 0x65, 0x66, 0x65, 0x72,
 	0x72, 0x65, 0x64, 0x49, 0x6e, 0x76, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0a, 0x69,
-	0x6e, 0x76, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x39, 0x5a, 0x37, 0x6e, 0x61, 0x6d,
-	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66,
-	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d,
-	0x65, 0x2f, 0x6b, 0x75, 0x62, 0x65, 0x72, 0x6e, 0x65, 0x74, 0x65, 0x73, 0x2f, 0x6b, 0x75, 0x62,
-	0x65, 0x64, 0x65, 0x66, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6e, 0x76, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x4f, 0x0a, 0x05, 0x4f, 0x70, 0x52,
+	0x75, 0x6e, 0x12, 0x1c, 0x0a, 0x09, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65,
+	0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04,
+	0x6e, 0x61, 0x6d, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x05, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x42, 0x39, 0x5a, 0x37, 0x6e, 0x61,
+	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f,
+	0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x72, 0x75, 0x6e, 0x74, 0x69,
+	0x6d, 0x65, 0x2f, 0x6b, 0x75, 0x62, 0x65, 0x72, 0x6e, 0x65, 0x74, 0x65, 0x73, 0x2f, 0x6b, 0x75,
+	0x62, 0x65, 0x64, 0x65, 0x66, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1319,7 +1387,7 @@ func file_runtime_kubernetes_kubedef_env_proto_rawDescGZIP() []byte {
 	return file_runtime_kubernetes_kubedef_env_proto_rawDescData
 }
 
-var file_runtime_kubernetes_kubedef_env_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_runtime_kubernetes_kubedef_env_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_runtime_kubernetes_kubedef_env_proto_goTypes = []interface{}{
 	(*SpecExtension)(nil),                       // 0: foundation.runtime.kubernetes.kubedef.SpecExtension
 	(*ContainerExtension)(nil),                  // 1: foundation.runtime.kubernetes.kubedef.ContainerExtension
@@ -1329,29 +1397,30 @@ var file_runtime_kubernetes_kubedef_env_proto_goTypes = []interface{}{
 	(*OpDeleteList)(nil),                        // 5: foundation.runtime.kubernetes.kubedef.OpDeleteList
 	(*OpCreate)(nil),                            // 6: foundation.runtime.kubernetes.kubedef.OpCreate
 	(*OpCreateSecretConditionally)(nil),         // 7: foundation.runtime.kubernetes.kubedef.OpCreateSecretConditionally
-	(*SpecExtension_Volume)(nil),                // 8: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume
-	(*SpecExtension_Annotation)(nil),            // 9: foundation.runtime.kubernetes.kubedef.SpecExtension.Annotation
-	(*SpecExtension_Volume_Secret)(nil),         // 10: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.Secret
-	(*SpecExtension_Volume_ConfigMap)(nil),      // 11: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.ConfigMap
-	(*SpecExtension_Volume_ConfigMap_Item)(nil), // 12: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.ConfigMap.Item
-	(*ContainerExtension_VolumeMount)(nil),      // 13: foundation.runtime.kubernetes.kubedef.ContainerExtension.VolumeMount
-	(*ContainerExtension_Env)(nil),              // 14: foundation.runtime.kubernetes.kubedef.ContainerExtension.Env
-	(*ContainerExtension_ArgTuple)(nil),         // 15: foundation.runtime.kubernetes.kubedef.ContainerExtension.ArgTuple
-	(*ContainerExtension_InitContainer)(nil),    // 16: foundation.runtime.kubernetes.kubedef.ContainerExtension.InitContainer
-	(*types.DeferredInvocation)(nil),            // 17: foundation.std.types.DeferredInvocation
+	(*OpRun)(nil),                               // 8: foundation.runtime.kubernetes.kubedef.OpRun
+	(*SpecExtension_Volume)(nil),                // 9: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume
+	(*SpecExtension_Annotation)(nil),            // 10: foundation.runtime.kubernetes.kubedef.SpecExtension.Annotation
+	(*SpecExtension_Volume_Secret)(nil),         // 11: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.Secret
+	(*SpecExtension_Volume_ConfigMap)(nil),      // 12: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.ConfigMap
+	(*SpecExtension_Volume_ConfigMap_Item)(nil), // 13: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.ConfigMap.Item
+	(*ContainerExtension_VolumeMount)(nil),      // 14: foundation.runtime.kubernetes.kubedef.ContainerExtension.VolumeMount
+	(*ContainerExtension_Env)(nil),              // 15: foundation.runtime.kubernetes.kubedef.ContainerExtension.Env
+	(*ContainerExtension_ArgTuple)(nil),         // 16: foundation.runtime.kubernetes.kubedef.ContainerExtension.ArgTuple
+	(*ContainerExtension_InitContainer)(nil),    // 17: foundation.runtime.kubernetes.kubedef.ContainerExtension.InitContainer
+	(*types.DeferredInvocation)(nil),            // 18: foundation.std.types.DeferredInvocation
 }
 var file_runtime_kubernetes_kubedef_env_proto_depIdxs = []int32{
-	8,  // 0: foundation.runtime.kubernetes.kubedef.SpecExtension.volume:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Volume
-	9,  // 1: foundation.runtime.kubernetes.kubedef.SpecExtension.annotation:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Annotation
-	9,  // 2: foundation.runtime.kubernetes.kubedef.SpecExtension.service_account_annotation:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Annotation
-	13, // 3: foundation.runtime.kubernetes.kubedef.ContainerExtension.volume_mount:type_name -> foundation.runtime.kubernetes.kubedef.ContainerExtension.VolumeMount
-	14, // 4: foundation.runtime.kubernetes.kubedef.ContainerExtension.env:type_name -> foundation.runtime.kubernetes.kubedef.ContainerExtension.Env
-	15, // 5: foundation.runtime.kubernetes.kubedef.ContainerExtension.arg_tuple:type_name -> foundation.runtime.kubernetes.kubedef.ContainerExtension.ArgTuple
-	16, // 6: foundation.runtime.kubernetes.kubedef.ContainerExtension.init_container:type_name -> foundation.runtime.kubernetes.kubedef.ContainerExtension.InitContainer
-	17, // 7: foundation.runtime.kubernetes.kubedef.OpCreateSecretConditionally.invocation:type_name -> foundation.std.types.DeferredInvocation
-	10, // 8: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.secret:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.Secret
-	11, // 9: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.config_map:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.ConfigMap
-	12, // 10: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.ConfigMap.item:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.ConfigMap.Item
+	9,  // 0: foundation.runtime.kubernetes.kubedef.SpecExtension.volume:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Volume
+	10, // 1: foundation.runtime.kubernetes.kubedef.SpecExtension.annotation:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Annotation
+	10, // 2: foundation.runtime.kubernetes.kubedef.SpecExtension.service_account_annotation:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Annotation
+	14, // 3: foundation.runtime.kubernetes.kubedef.ContainerExtension.volume_mount:type_name -> foundation.runtime.kubernetes.kubedef.ContainerExtension.VolumeMount
+	15, // 4: foundation.runtime.kubernetes.kubedef.ContainerExtension.env:type_name -> foundation.runtime.kubernetes.kubedef.ContainerExtension.Env
+	16, // 5: foundation.runtime.kubernetes.kubedef.ContainerExtension.arg_tuple:type_name -> foundation.runtime.kubernetes.kubedef.ContainerExtension.ArgTuple
+	17, // 6: foundation.runtime.kubernetes.kubedef.ContainerExtension.init_container:type_name -> foundation.runtime.kubernetes.kubedef.ContainerExtension.InitContainer
+	18, // 7: foundation.runtime.kubernetes.kubedef.OpCreateSecretConditionally.invocation:type_name -> foundation.std.types.DeferredInvocation
+	11, // 8: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.secret:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.Secret
+	12, // 9: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.config_map:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.ConfigMap
+	13, // 10: foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.ConfigMap.item:type_name -> foundation.runtime.kubernetes.kubedef.SpecExtension.Volume.ConfigMap.Item
 	11, // [11:11] is the sub-list for method output_type
 	11, // [11:11] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name
@@ -1462,7 +1531,7 @@ func file_runtime_kubernetes_kubedef_env_proto_init() {
 			}
 		}
 		file_runtime_kubernetes_kubedef_env_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SpecExtension_Volume); i {
+			switch v := v.(*OpRun); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1474,7 +1543,7 @@ func file_runtime_kubernetes_kubedef_env_proto_init() {
 			}
 		}
 		file_runtime_kubernetes_kubedef_env_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SpecExtension_Annotation); i {
+			switch v := v.(*SpecExtension_Volume); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1486,7 +1555,7 @@ func file_runtime_kubernetes_kubedef_env_proto_init() {
 			}
 		}
 		file_runtime_kubernetes_kubedef_env_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SpecExtension_Volume_Secret); i {
+			switch v := v.(*SpecExtension_Annotation); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1498,7 +1567,7 @@ func file_runtime_kubernetes_kubedef_env_proto_init() {
 			}
 		}
 		file_runtime_kubernetes_kubedef_env_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SpecExtension_Volume_ConfigMap); i {
+			switch v := v.(*SpecExtension_Volume_Secret); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1510,7 +1579,7 @@ func file_runtime_kubernetes_kubedef_env_proto_init() {
 			}
 		}
 		file_runtime_kubernetes_kubedef_env_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SpecExtension_Volume_ConfigMap_Item); i {
+			switch v := v.(*SpecExtension_Volume_ConfigMap); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1522,7 +1591,7 @@ func file_runtime_kubernetes_kubedef_env_proto_init() {
 			}
 		}
 		file_runtime_kubernetes_kubedef_env_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ContainerExtension_VolumeMount); i {
+			switch v := v.(*SpecExtension_Volume_ConfigMap_Item); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1534,7 +1603,7 @@ func file_runtime_kubernetes_kubedef_env_proto_init() {
 			}
 		}
 		file_runtime_kubernetes_kubedef_env_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ContainerExtension_Env); i {
+			switch v := v.(*ContainerExtension_VolumeMount); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1546,7 +1615,7 @@ func file_runtime_kubernetes_kubedef_env_proto_init() {
 			}
 		}
 		file_runtime_kubernetes_kubedef_env_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ContainerExtension_ArgTuple); i {
+			switch v := v.(*ContainerExtension_Env); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1558,6 +1627,18 @@ func file_runtime_kubernetes_kubedef_env_proto_init() {
 			}
 		}
 		file_runtime_kubernetes_kubedef_env_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ContainerExtension_ArgTuple); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_runtime_kubernetes_kubedef_env_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ContainerExtension_InitContainer); i {
 			case 0:
 				return &v.state
@@ -1570,7 +1651,7 @@ func file_runtime_kubernetes_kubedef_env_proto_init() {
 			}
 		}
 	}
-	file_runtime_kubernetes_kubedef_env_proto_msgTypes[8].OneofWrappers = []interface{}{
+	file_runtime_kubernetes_kubedef_env_proto_msgTypes[9].OneofWrappers = []interface{}{
 		(*SpecExtension_Volume_Secret_)(nil),
 		(*SpecExtension_Volume_ConfigMap_)(nil),
 	}
@@ -1580,7 +1661,7 @@ func file_runtime_kubernetes_kubedef_env_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_runtime_kubernetes_kubedef_env_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

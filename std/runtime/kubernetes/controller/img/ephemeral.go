@@ -63,6 +63,7 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 				continue
 			}
 
+			// Should we support multiple drivers here?
 			if driver.Status.Phase != corev1.PodFailed && driver.Status.Phase != corev1.PodSucceeded {
 				// driver not finished yet
 				continue

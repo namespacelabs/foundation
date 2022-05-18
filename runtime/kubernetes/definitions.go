@@ -7,7 +7,9 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"os/exec"
 
+	"github.com/rs/zerolog"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -382,6 +384,51 @@ func RegisterGraphHandlers() {
 			FieldManager: kubedef.Ego().FieldManager,
 		}); err != nil {
 			return nil, err
+		}
+
+		return nil, nil
+	})
+
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, run *kubedef.OpRun) (*ops.HandleResult, error) {
+		zerolog.Ctx(ctx).Info().Msg("OpRun")
+
+		if run.Name == "" {
+			return nil, fnerrors.InternalError("%s: run.Name is required", d.Description)
+		}
+
+		if run.Image == "" {
+			return nil, fnerrors.InternalError("%s: run.Image is required", d.Description)
+		}
+
+		if err := tasks.Action("kubernetes.run").Scope(asPackages(d.Scope)...).
+			HumanReadablef(d.Description).
+			Arg("name", run.Name).
+			Arg("namespace", run.Namespace).Run(ctx, func(ctx context.Context) error {
+
+			args := []string{
+				"run",
+				run.Name,
+				"--rm",
+				"--attach",
+				fmt.Sprintf("--image=%s", run.Image),
+				fmt.Sprintf("--namespace=%s", run.Namespace),
+			}
+
+			// TODO remove
+			zerolog.Ctx(ctx).Info().Strs("args", args).Msg("kubectl")
+
+			cmd := exec.CommandContext(ctx, "kubectl", args...)
+
+			// TODO Remove after debug
+			out := console.TypedOutput(ctx, "k8s driver run", console.CatOutputUs)
+			cmd.Stdout = out
+			cmd.Stderr = out
+			if err := cmd.Start(); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil && !errors.IsNotFound(err) {
+			return nil, fnerrors.InvocationError("%s: %w", d.Description, err)
 		}
 
 		return nil, nil

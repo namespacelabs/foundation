@@ -34,6 +34,7 @@ func (e Env) Proto() *schema.Environment          { return e.env }
 func (e Env) Name() string                        { return e.env.Name }
 func (e Env) Runtime() string                     { return e.env.Runtime }
 func (e Env) Purpose() schema.Environment_Purpose { return e.env.Purpose }
+func (e Env) Ephemeral() bool                     { return e.env.GetEphemeral() }
 
 func (e Env) RequireServerAtLoc(ctx context.Context, loc fnfs.Location) (Server, error) {
 	return e.RequireServer(ctx, loc.AsPackageName())
