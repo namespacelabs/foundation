@@ -53,6 +53,9 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 	sealed, err := workspace.Seal(ctx, loader, pkgname, &workspace.SealHelper{
 		AdditionalServerDeps: func(fmwk schema.Framework) ([]schema.PackageName, error) {
 			var pkgs schema.PackageList
+			// Hack for testing
+			pkgs.Add(schema.PackageName("namespacelabs.dev/foundation/std/runtime/kubernetes/driver"))
+
 			pkgs.Add(schema.PackageName(fmt.Sprintf("namespacelabs.dev/foundation/std/runtime/%s", strings.ToLower(env.Runtime))))
 			if handler, ok := workspace.FrameworkHandlers[fmwk]; ok {
 				pkgs.AddMultiple(handler.DevelopmentPackages()...)

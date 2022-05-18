@@ -8,8 +8,8 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 
-	"github.com/rs/zerolog"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -390,8 +390,6 @@ func RegisterGraphHandlers() {
 	})
 
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, run *kubedef.OpRun) (*ops.HandleResult, error) {
-		zerolog.Ctx(ctx).Info().Msg("OpRun")
-
 		if run.Name == "" {
 			return nil, fnerrors.InternalError("%s: run.Name is required", d.Description)
 		}
@@ -405,6 +403,10 @@ func RegisterGraphHandlers() {
 			Arg("name", run.Name).
 			Arg("namespace", run.Namespace).Run(ctx, func(ctx context.Context) error {
 
+			if len(run.Command) != 1 {
+				return fnerrors.InternalError("unsupported: expectet 1 command, got %d", len(run.Command))
+			}
+
 			args := []string{
 				"run",
 				run.Name,
@@ -412,15 +414,18 @@ func RegisterGraphHandlers() {
 				"--attach",
 				fmt.Sprintf("--image=%s", run.Image),
 				fmt.Sprintf("--namespace=%s", run.Namespace),
+				"--",
+				run.Command[0],
 			}
-
-			// TODO remove
-			zerolog.Ctx(ctx).Info().Strs("args", args).Msg("kubectl")
 
 			cmd := exec.CommandContext(ctx, "kubectl", args...)
 
 			// TODO Remove after debug
 			out := console.TypedOutput(ctx, "k8s driver run", console.CatOutputUs)
+			fmt.Fprintln(out, "typed")
+
+			fmt.Fprintf(out, "about to run 'kubectl %s'\n", strings.Join(args, " "))
+			fmt.Fprintf(out, "debug with 'kubectl -n %s describe pod %s'\n", run.Namespace, run.Name)
 			cmd.Stdout = out
 			cmd.Stderr = out
 			if err := cmd.Start(); err != nil {

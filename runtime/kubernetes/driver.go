@@ -21,7 +21,7 @@ import (
 
 const k8sDriver = "namespacelabs.dev/foundation/std/runtime/kubernetes/driver"
 
-func (r k8sRuntime) runDriver(ctx context.Context, env provision.ServerEnv) (*schema.Definition, error) {
+func (r k8sRuntime) prepareDriver(ctx context.Context, env provision.ServerEnv) (*schema.Definition, error) {
 	pkg, err := env.LoadByName(ctx, k8sDriver)
 	if err != nil {
 		return nil, err
@@ -62,6 +62,7 @@ func (r k8sRuntime) runDriver(ctx context.Context, env provision.ServerEnv) (*sc
 		Namespace: r.moduleNamespace,
 		Name:      name,
 		Image:     v.Value.RepoAndDigest(),
+		Command:   prepared.Command,
 	})
 	if err != nil {
 		return nil, err

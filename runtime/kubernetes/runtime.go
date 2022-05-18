@@ -16,6 +16,7 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
@@ -244,7 +245,10 @@ func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 	if r.env.Ephemeral && r.env.Purpose != schema.Environment_TESTING && len(d.Servers) > 0 {
 		env := d.Servers[0].Server.Env()
 
-		def, err := r.runDriver(ctx, env)
+		// TODO remove
+		fmt.Fprintln(console.TypedOutput(ctx, "driver debug", console.CatOutputUs), "prepare driver")
+
+		def, err := r.prepareDriver(ctx, env)
 		if err != nil {
 			return nil, err
 		}
