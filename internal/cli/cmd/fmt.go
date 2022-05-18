@@ -7,10 +7,10 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/karrick/godirwalk"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -51,23 +51,25 @@ func NewFmtCmd() *cobra.Command {
 					return err
 				}
 			} else {
-				if err := godirwalk.Walk(root.Abs(), &godirwalk.Options{
-					Callback: func(path string, directoryEntry *godirwalk.Dirent) error {
-						if directoryEntry.IsDir() || filepath.Ext(path) != ".cue" {
-							return nil
-						}
+				if err := filepath.WalkDir(root.Abs(), func(path string, de fs.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
 
-						rel, err := filepath.Rel(root.Abs(), filepath.Dir(path))
-						if err != nil {
-							return err
-						}
-
-						if err := fncue.Format(ctx, root.FS(), root.RelPackage(rel), filepath.Base(path), opts); err != nil {
-							errs = append(errs, err)
-						}
-
+					if de.IsDir() || filepath.Ext(path) != ".cue" {
 						return nil
-					},
+					}
+
+					rel, err := filepath.Rel(root.Abs(), filepath.Dir(path))
+					if err != nil {
+						return err
+					}
+
+					if err := fncue.Format(ctx, root.FS(), root.RelPackage(rel), filepath.Base(path), opts); err != nil {
+						errs = append(errs, err)
+					}
+
+					return nil
 				}); err != nil {
 					return err
 				}

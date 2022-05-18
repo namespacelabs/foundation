@@ -17,7 +17,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/fsnotify/fsnotify"
-	"github.com/karrick/godirwalk"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
@@ -110,51 +109,53 @@ func snapshotContents(modulePath, rel string) (*memfs.FS, error) {
 	}
 
 	var inmem memfs.FS
-	return &inmem, godirwalk.Walk(absPath, &godirwalk.Options{
-		Callback: func(osPathname string, directoryEntry *godirwalk.Dirent) error {
-			name := directoryEntry.Name()
-			if len(name) == 0 {
-				return godirwalk.SkipThis
-			} else if name[0] == '.' { // Skip hidden directories.
-				return godirwalk.SkipThis
-			} else if slices.Contains(dirs.DirsToAvoid, name) {
-				return godirwalk.SkipThis
-			}
+	return &inmem, filepath.WalkDir(absPath, func(osPathname string, de fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 
-			if !directoryEntry.IsRegular() {
-				return nil
-			}
+		name := de.Name()
+		if len(name) == 0 {
+			return filepath.SkipDir
+		} else if name[0] == '.' { // Skip hidden directories.
+			return filepath.SkipDir
+		} else if slices.Contains(dirs.DirsToAvoid, name) {
+			return filepath.SkipDir
+		}
 
-			rel, err := filepath.Rel(absPath, osPathname) // XXX expensive?
-			if err != nil {
-				return err
-			}
+		if !de.Type().IsRegular() {
+			return nil
+		}
 
-			f, err := os.Open(osPathname)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
+		rel, err := filepath.Rel(absPath, osPathname) // XXX expensive?
+		if err != nil {
+			return err
+		}
 
-			st, err := f.Stat()
-			if err != nil {
-				return err
-			}
+		f, err := os.Open(osPathname)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
 
-			d, err := inmem.OpenWrite(rel, st.Mode().Perm())
-			if err != nil {
-				return err
-			}
+		st, err := f.Stat()
+		if err != nil {
+			return err
+		}
 
-			_, err = io.Copy(d, f)
-			err2 := d.Close()
+		d, err := inmem.OpenWrite(rel, st.Mode().Perm())
+		if err != nil {
+			return err
+		}
 
-			if err != nil {
-				return err
-			}
+		_, err = io.Copy(d, f)
+		err2 := d.Close()
 
-			return err2
-		},
+		if err != nil {
+			return err
+		}
+
+		return err2
 	})
 }
 
