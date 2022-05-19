@@ -6,14 +6,10 @@ package oci
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"reflect"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -35,10 +31,6 @@ func pushImage(ctx context.Context, tag AllocatedName, img v1.Image) (ImageID, e
 		remoteOpts = append(remoteOpts, rp.Track())
 
 		if err := remote.Write(ref, img, remoteOpts...); err != nil {
-			if ok, nerr := checkUnauthorized(err, ref); ok {
-				return nerr
-			}
-
 			return fnerrors.InvocationError("failed to push to registry %q: %w", ref, err)
 		}
 
@@ -48,18 +40,6 @@ func pushImage(ctx context.Context, tag AllocatedName, img v1.Image) (ImageID, e
 	}
 
 	return tag.WithDigest(digest), nil
-}
-
-func checkUnauthorized(err error, ref name.Tag) (bool, error) {
-	terr := &transport.Error{}
-	if errors.As(err, &terr) {
-		if terr.StatusCode == http.StatusUnauthorized || terr.StatusCode == http.StatusForbidden {
-			return true, fnerrors.UsageError("Try running `fn refresh-creds`.",
-				"Failed to upload image to %q, perhaps you are missing up-to-date credentials?", ref.Registry)
-		}
-	}
-
-	return false, err
 }
 
 func pushImageIndex(ctx context.Context, tag AllocatedName, img v1.ImageIndex) error {
@@ -74,9 +54,6 @@ func pushImageIndex(ctx context.Context, tag AllocatedName, img v1.ImageIndex) e
 		remoteOpts = append(remoteOpts, rp.Track())
 
 		if err := remote.WriteIndex(ref, img, remoteOpts...); err != nil {
-			if ok, nerr := checkUnauthorized(err, ref); ok {
-				return nerr
-			}
 			return err
 		}
 		return nil
