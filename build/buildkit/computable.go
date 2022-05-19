@@ -17,6 +17,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/moby/buildkit/client"
@@ -194,7 +195,7 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 		if v.Keychain == nil {
 			i, err := solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
 			if err != nil {
-				err = console.WithLogs(ctx, err)
+				return nil, console.WithLogs(ctx, err)
 			}
 			return i, err
 		}
@@ -336,7 +337,11 @@ func (e *exportImage) Exports() []client.ExportEntry {
 }
 
 func (e *exportImage) Provide(ctx context.Context, _ *client.SolveResponse) (oci.Image, error) {
-	return IngestFromFS(ctx, fnfs.Local(filepath.Dir(e.output.Name())), filepath.Base(e.output.Name()), false)
+	img, err := IngestFromFS(ctx, fnfs.Local(filepath.Dir(e.output.Name())), filepath.Base(e.output.Name()), false)
+	if err != nil {
+		return nil, err
+	}
+	return mutate.Canonical(img)
 }
 
 func IngestFromFS(ctx context.Context, fsys fs.FS, path string, compressed bool) (oci.Image, error) {
@@ -492,5 +497,10 @@ func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse)
 		return nil, err
 	}
 
-	return attachImageResults(ctx, img)
+	canonical, err := mutate.Canonical(img)
+	if err != nil {
+		return nil, err
+	}
+
+	return attachImageResults(ctx, canonical)
 }
