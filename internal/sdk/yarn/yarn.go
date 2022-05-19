@@ -14,7 +14,6 @@ import (
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -40,20 +39,14 @@ func EnsureSDK(ctx context.Context) (Yarn, error) {
 }
 
 func SDK(ctx context.Context) (compute.Computable[Yarn], error) {
-	cacheDir, err := dirs.SDKCache("yarn")
-	if err != nil {
-		return nil, err
-	}
-
-	yarnPath := filepath.Join(cacheDir, "yarn")
-	written := unpack.WriteLocal(yarnPath, 0644, Pin)
+	w := unpack.Unpack(unpack.MakeFilesystem("yarn.js", 0755, Pin))
 
 	return compute.Map(
 		tasks.Action("yarn.ensure").Arg("version", version).HumanReadablef("Ensuring yarn %s is installed", version),
-		compute.Inputs().Computable("yarn", written),
+		compute.Inputs().Computable("yarn", w),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (Yarn, error) {
-			return Yarn(compute.GetDepValue(r, written, "yarn")), nil
+			return Yarn(filepath.Join(compute.GetDepValue(r, w, "yarn").Files, "yarn.js")), nil
 		}), nil
 }
 
