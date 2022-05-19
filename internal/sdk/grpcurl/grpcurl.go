@@ -73,7 +73,7 @@ func SDK(ctx context.Context) (compute.Computable[Grpcurl], error) {
 		return nil, fnerrors.UserError(nil, "platform not supported: %s", key)
 	}
 
-	fsys := unpack.Unpack(tarfs.TarGunzip(download.URL(ref)))
+	fsys := unpack.Unpack("grpcurl", tarfs.TarGunzip(download.URL(ref)))
 
 	return compute.Map(
 		tasks.Action("grpcurl.ensure").Arg("version", version).HumanReadablef("Ensuring grpcurl %s is installed", version),

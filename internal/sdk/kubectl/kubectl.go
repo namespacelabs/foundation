@@ -72,7 +72,7 @@ func SDK(ctx context.Context) (compute.Computable[Kubectl], error) {
 		return nil, fnerrors.UserError(nil, "platform not supported: %s", key)
 	}
 
-	w := unpack.Unpack(unpack.MakeFilesystem("kubectl", 0755, ref))
+	w := unpack.Unpack("kubectl", unpack.MakeFilesystem("kubectl", 0755, ref))
 
 	return compute.Map(
 		tasks.Action("kubectl.ensure").Arg("version", version).HumanReadablef("Ensuring kubectl %s is installed", version),

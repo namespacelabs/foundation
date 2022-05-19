@@ -9,12 +9,15 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"hash"
 	"io"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -31,21 +34,36 @@ type Unpacked struct {
 	Files string // Points to the unpacked filesystem.
 }
 
-func Unpack(fsys compute.Computable[fs.FS]) compute.Computable[Unpacked] {
-	return &unpackFS{fsys: fsys}
+func Unpack(what string, fsys compute.Computable[fs.FS], opts ...UnpackOpt) compute.Computable[Unpacked] {
+	u := &unpackFS{what: what, fsys: fsys}
+	for _, opt := range opts {
+		opt(u)
+	}
+	return u
 }
 
+// Rather than checksum all files, checksum only the specified ones.
+func WithChecksumPaths(paths ...string) UnpackOpt {
+	return func(uf *unpackFS) {
+		uf.checksumPaths = append(uf.checksumPaths, paths...)
+	}
+}
+
+type UnpackOpt func(*unpackFS)
+
 type unpackFS struct {
-	fsys compute.Computable[fs.FS]
+	what          string
+	fsys          compute.Computable[fs.FS]
+	checksumPaths []string
 
 	compute.LocalScoped[Unpacked]
 }
 
 var _ compute.Computable[Unpacked] = &unpackFS{}
 
-func (u *unpackFS) Action() *tasks.ActionEvent { return tasks.Action("fs.unpack") }
+func (u *unpackFS) Action() *tasks.ActionEvent { return tasks.Action(fmt.Sprintf("unpack.%s", u.what)) }
 func (u *unpackFS) Inputs() *compute.In {
-	return compute.Inputs().Computable("fsys", u.fsys)
+	return compute.Inputs().Computable("fsys", u.fsys).Str("what", u.what)
 }
 func (u *unpackFS) Output() compute.Output {
 	// This node is not cacheable as we always want to validate the contents of the resulting path.
@@ -61,7 +79,7 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked
 	}
 
 	baseDir := filepath.Join(dir, fsysv.Digest.Algorithm, fsysv.Digest.Hex)
-	targetDir := filepath.Join(baseDir, "files")
+	targetDir := filepath.Join(baseDir, u.what)
 	targetChecksum := filepath.Join(baseDir, "checksums.json")
 
 	tasks.Attachments(ctx).AddResult("dir", targetDir)
@@ -71,7 +89,6 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked
 		var checksums []checksumEntry
 		if err := json.Unmarshal(checksumsBytes, &checksums); err == nil {
 			// If unmarshal fails, we'll just remove and replace below.
-
 			ex, wait := executor.New(ctx)
 			for _, cksum := range checksums {
 				cksum := cksum // Close cksum.
@@ -142,8 +159,16 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked
 			return err
 		}
 
-		h := sha256.New()
-		w := io.MultiWriter(file, h)
+		checksum := len(u.checksumPaths) == 0 || slices.Contains(u.checksumPaths, path)
+
+		var w io.Writer
+		var h hash.Hash
+		if checksum {
+			h = sha256.New()
+			w = io.MultiWriter(file, h)
+		} else {
+			w = file
+		}
 
 		_, writeErr := io.Copy(w, contents)
 		closeErr := file.Close()
@@ -154,7 +179,10 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked
 			return closeErr
 		}
 
-		checksums = append(checksums, checksumEntry{Path: path, Digest: schema.FromHash("sha256", h)})
+		if h != nil {
+			checksums = append(checksums, checksumEntry{Path: path, Digest: schema.FromHash("sha256", h)})
+		}
+
 		return nil
 	}); err != nil {
 		return Unpacked{}, err

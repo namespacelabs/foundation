@@ -26,15 +26,6 @@ func Config() (string, error) {
 	return filepath.Join(dir, "fn"), nil
 }
 
-func SDKCache(name string) (string, error) {
-	cacheDir, err := Cache()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(cacheDir, "sdk", name), nil
-}
-
 func ModuleCache(name, ref string) (string, error) {
 	cacheDir, err := ModuleCacheRoot()
 	if err != nil {

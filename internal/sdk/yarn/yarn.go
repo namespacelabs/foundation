@@ -39,7 +39,7 @@ func EnsureSDK(ctx context.Context) (Yarn, error) {
 }
 
 func SDK(ctx context.Context) (compute.Computable[Yarn], error) {
-	w := unpack.Unpack(unpack.MakeFilesystem("yarn.js", 0755, Pin))
+	w := unpack.Unpack("yarn", unpack.MakeFilesystem("yarn.js", 0755, Pin))
 
 	return compute.Map(
 		tasks.Action("yarn.ensure").Arg("version", version).HumanReadablef("Ensuring yarn %s is installed", version),

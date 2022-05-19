@@ -96,7 +96,7 @@ func SDK(ctx context.Context) (compute.Computable[K3D], error) {
 		}
 	}
 
-	w := unpack.Unpack(unpack.MakeFilesystem("k3d", 0755, ref))
+	w := unpack.Unpack("k3d", unpack.MakeFilesystem("k3d", 0755, ref))
 
 	return compute.Map(
 		tasks.Action("k3d.ensure").Arg("version", version).HumanReadablef("Ensuring k3d %s is installed", version),

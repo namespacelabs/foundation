@@ -17,7 +17,7 @@ import (
 )
 
 func TarGunzip(contents compute.Computable[bytestream.ByteStream]) compute.Computable[fs.FS] {
-	return compute.Map(tasks.Action("tar.fs"),
+	return compute.Map(tasks.Action("tar.extract"),
 		compute.Inputs().Computable("contents", contents),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (fs.FS, error) {

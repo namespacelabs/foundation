@@ -46,5 +46,5 @@ func YarnAuxFiles() fs.FS {
 
 func computable(ctx context.Context) compute.Computable[unpack.Unpacked] {
 	fsys := YarnAuxFiles()
-	return unpack.Unpack(compute.Precomputed(fsys, fsys.(*memfs.FS).ComputeDigest))
+	return unpack.Unpack("yarn-plugin", compute.Precomputed(fsys, fsys.(*memfs.FS).ComputeDigest))
 }
