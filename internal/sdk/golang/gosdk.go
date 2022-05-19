@@ -99,35 +99,55 @@ func SDK(version string, platform specs.Platform) (compute.Computable[LocalSDK],
 		},
 	}
 
+	return &prepareSDK{ref: ref, version: actualVer}, nil
+}
+
+type prepareSDK struct {
+	version string
+	ref     artifacts.Reference
+
+	compute.DoScoped[LocalSDK]
+}
+
+func (p *prepareSDK) Action() *tasks.ActionEvent {
+	return tasks.Action("go.sdk.prepare").Arg("version", p.version)
+}
+func (p *prepareSDK) Inputs() *compute.In {
+	return compute.Inputs().Str("version", p.version).JSON("ref", p.ref)
+}
+func (p *prepareSDK) Output() compute.Output { return compute.Output{NotCacheable: true} }
+func (p *prepareSDK) Compute(ctx context.Context, _ compute.Resolved) (LocalSDK, error) {
 	// XXX security
 	// We only checksum go/bin/go, it's a robustness/performance trade-off.
-	fsys := unpack.Unpack("go-sdk", tarfs.TarGunzip(download.URL(ref)), unpack.WithChecksumPaths("go/bin/go"))
+	fsys := unpack.Unpack("go-sdk", tarfs.TarGunzip(download.URL(p.ref)), unpack.WithChecksumPaths("go/bin/go"))
 
-	return compute.Map(tasks.Action("go.sdk.prepare").Arg("version", actualVer),
-		compute.Inputs().Computable("sdk", fsys),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, deps compute.Resolved) (LocalSDK, error) {
-			sdk := compute.GetDepValue(deps, fsys, "sdk")
-			goBin := filepath.Join(sdk.Files, "go/bin/go")
-			if !isNixOS() {
-				return LocalSDK{
-					Path:    sdk.Files,
-					Version: actualVer,
-					goBin:   goBin,
-				}, nil
-			}
+	// The contents of the sdk are unpacked here, rather than as an input to
+	// this computable, as DoScoped Computables must have a deterministic set of
+	// inputs; and the digest of a FS is only known after the FS is available.
+	sdk, err := compute.GetValue(ctx, fsys)
+	if err != nil {
+		return LocalSDK{}, err
+	}
 
-			patchedGoBin, err := ensureNixosPatched(ctx, goBin)
-			if err != nil {
-				return LocalSDK{}, err
-			}
+	goBin := filepath.Join(sdk.Files, "go/bin/go")
+	if !isNixOS() {
+		return LocalSDK{
+			Path:    sdk.Files,
+			Version: p.version,
+			goBin:   goBin,
+		}, nil
+	}
 
-			return LocalSDK{
-				Path:    sdk.Files,
-				Version: actualVer,
-				goBin:   patchedGoBin,
-			}, nil
-		}), nil
+	patchedGoBin, err := ensureNixosPatched(ctx, goBin)
+	if err != nil {
+		return LocalSDK{}, err
+	}
+
+	return LocalSDK{
+		Path:    sdk.Files,
+		Version: p.version,
+		goBin:   patchedGoBin,
+	}, nil
 }
 
 func ensureNixosPatched(ctx context.Context, goBin string) (string, error) {
