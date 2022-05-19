@@ -27,17 +27,21 @@ import (
 
 var CheckChecksums = true
 
-func Unpack(fsys compute.Computable[fs.FS]) compute.Computable[string] {
+type Unpacked struct {
+	Files string // Points to the unpacked filesystem.
+}
+
+func Unpack(fsys compute.Computable[fs.FS]) compute.Computable[Unpacked] {
 	return &unpackFS{fsys: fsys}
 }
 
 type unpackFS struct {
 	fsys compute.Computable[fs.FS]
 
-	compute.LocalScoped[string]
+	compute.LocalScoped[Unpacked]
 }
 
-var _ compute.Computable[string] = &unpackFS{}
+var _ compute.Computable[Unpacked] = &unpackFS{}
 
 func (u *unpackFS) Action() *tasks.ActionEvent { return tasks.Action("fs.unpack") }
 func (u *unpackFS) Inputs() *compute.In {
@@ -48,12 +52,12 @@ func (u *unpackFS) Output() compute.Output {
 	return compute.Output{NotCacheable: true}
 }
 
-func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (string, error) {
+func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked, error) {
 	fsysv, _ := compute.GetDep(deps, u.fsys, "fsys")
 
 	dir, err := dirs.Ensure(dirs.UnpackCache())
 	if err != nil {
-		return "", err
+		return Unpacked{}, err
 	}
 
 	baseDir := filepath.Join(dir, fsysv.Digest.Algorithm, fsysv.Digest.Hex)
@@ -96,19 +100,19 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (string, 
 			}
 
 			if err := wait(); err == nil {
-				return targetDir, nil
+				return Unpacked{targetDir}, nil
 			}
 		}
 	}
 
 	if err := os.RemoveAll(baseDir); err != nil {
 		if !os.IsNotExist(err) {
-			return "", fnerrors.UserError(nil, "failed to remove existing unpack directory: %w", err)
+			return Unpacked{}, fnerrors.UserError(nil, "failed to remove existing unpack directory: %w", err)
 		}
 	}
 
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return "", fnerrors.UserError(nil, "failed to create target unpack directory: %w", err)
+		return Unpacked{}, fnerrors.UserError(nil, "failed to create target unpack directory: %w", err)
 	}
 
 	var checksums []checksumEntry
@@ -153,19 +157,19 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (string, 
 		checksums = append(checksums, checksumEntry{Path: path, Digest: schema.FromHash("sha256", h)})
 		return nil
 	}); err != nil {
-		return "", err
+		return Unpacked{}, err
 	}
 
 	serializedChecksums, err := json.Marshal(checksums)
 	if err != nil {
-		return "", fnerrors.InternalError("failed to serialize checksums: %w", err)
+		return Unpacked{}, fnerrors.InternalError("failed to serialize checksums: %w", err)
 	}
 
 	if err := ioutil.WriteFile(targetChecksum, serializedChecksums, 0444); err != nil {
-		return "", fnerrors.InternalError("failed to write checksum file: %w", err)
+		return Unpacked{}, fnerrors.InternalError("failed to write checksum file: %w", err)
 	}
 
-	return targetDir, nil
+	return Unpacked{targetDir}, nil
 }
 
 type checksumEntry struct {

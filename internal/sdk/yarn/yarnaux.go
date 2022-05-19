@@ -30,7 +30,11 @@ npmScopes:
 
 // Returns the directory with all the files
 func EnsureYarnAuxFilesDir(ctx context.Context) (string, error) {
-	return compute.GetValue(ctx, computable(ctx))
+	v, err := compute.GetValue(ctx, computable(ctx))
+	if err != nil {
+		return "", err
+	}
+	return v.Files, nil
 }
 
 func YarnAuxFiles() fs.FS {
@@ -40,7 +44,7 @@ func YarnAuxFiles() fs.FS {
 	return &fsys
 }
 
-func computable(ctx context.Context) compute.Computable[string] {
+func computable(ctx context.Context) compute.Computable[unpack.Unpacked] {
 	fsys := YarnAuxFiles()
 	return unpack.Unpack(compute.Precomputed(fsys, fsys.(*memfs.FS).ComputeDigest))
 }
