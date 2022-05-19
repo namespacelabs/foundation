@@ -32,7 +32,6 @@ var TaskOutputBuildkitJsonLog = tasks.Output("buildkit.json", "application/json+
 type Session struct {
 	RequestCh chan *DevWorkflowRequest
 
-	Console   io.Writer
 	Errors    io.Writer
 	setSticky func([]byte)
 
@@ -65,7 +64,6 @@ func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname str
 	setSticky(nil)
 
 	return &Session{
-		Console:       console.TypedOutput(ctx, "fn dev", console.CatOutputUs),
 		Errors:        console.Errors(ctx),
 		setSticky:     setSticky,
 		localHostname: localHostname,

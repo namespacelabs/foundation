@@ -38,6 +38,8 @@ func Wait(ctx context.Context, env ops.Environment, waiters []ops.Waiter) error 
 	return waitErr
 }
 
+// observeContainers observes the deploy events (received from the returned channel) and updates the
+// console through the `parent` channel.
 func observeContainers(ctx context.Context, env ops.Environment, parent chan ops.Event) chan ops.Event {
 	ch := make(chan ops.Event)
 	t := time.NewTicker(maxDeployWait)

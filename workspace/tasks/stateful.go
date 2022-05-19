@@ -22,7 +22,7 @@ type statefulState struct {
 	running   []*RunningAction
 	observers []Observer
 
-	allProtos      []*protocol.Task
+	allTasks      []*protocol.Task
 	protoIndex     map[ActionID]int
 	allAttachments map[ActionID]*EventAttachments
 }
@@ -33,25 +33,25 @@ type Observer interface {
 	OnDone(*RunningAction)
 }
 
-type StatefulSink struct{ s *statefulState }
+type StatefulSink struct{ state *statefulState }
 
 var _ ActionSink = &statefulState{}
 
 func WithStatefulSink(ctx context.Context) (context.Context, *StatefulSink) {
-	s := &statefulState{
+	state := &statefulState{
 		parent:         SinkFrom(ctx),
 		protoIndex:     map[ActionID]int{},
 		allAttachments: map[ActionID]*EventAttachments{},
 	}
 
-	return WithSink(ctx, s), &StatefulSink{s}
+	return WithSink(ctx, state), &StatefulSink{state}
 }
 
 func (s *StatefulSink) HistoricReaderByName(id ActionID, name string) io.ReadCloser {
-	s.s.mu.Lock()
-	defer s.s.mu.Unlock()
+	s.state.mu.Lock()
+	defer s.state.mu.Unlock()
 
-	if attachments, ok := s.s.allAttachments[id]; ok {
+	if attachments, ok := s.state.allAttachments[id]; ok {
 		return attachments.ReaderByName(name)
 	}
 
@@ -59,11 +59,11 @@ func (s *StatefulSink) HistoricReaderByName(id ActionID, name string) io.ReadClo
 }
 
 func (s *StatefulSink) History(max int, filter func(*protocol.Task) bool) []*protocol.Task {
-	s.s.mu.Lock()
-	defer s.s.mu.Unlock()
+	s.state.mu.Lock()
+	defer s.state.mu.Unlock()
 
 	var filtered []*protocol.Task
-	for _, t := range s.s.allProtos {
+	for _, t := range s.state.allTasks {
 		if filter == nil || filter(t) {
 			filtered = append(filtered, t)
 		}
@@ -79,16 +79,16 @@ func (s *StatefulSink) History(max int, filter func(*protocol.Task) bool) []*pro
 }
 
 func (s *StatefulSink) Observe(obs Observer) func() {
-	s.s.mu.Lock()
-	s.s.observers = append(s.s.observers, obs)
-	s.s.mu.Unlock()
+	s.state.mu.Lock()
+	s.state.observers = append(s.state.observers, obs)
+	s.state.mu.Unlock()
 
 	return func() {
-		s.s.mu.Lock()
-		defer s.s.mu.Unlock()
-		for k, was := range s.s.observers {
+		s.state.mu.Lock()
+		defer s.state.mu.Unlock()
+		for k, was := range s.state.observers {
 			if was == obs {
-				s.s.observers = append(s.s.observers[0:k], s.s.observers[k+1:]...)
+				s.state.observers = append(s.state.observers[0:k], s.state.observers[k+1:]...)
 				return
 			}
 		}
@@ -102,8 +102,8 @@ func (s *statefulState) addToRunning(ra *RunningAction) []Observer {
 	if _, ok := s.protoIndex[ra.Data.ActionID]; !ok {
 		s.running = append(s.running, ra)
 		s.allAttachments[ra.Data.ActionID] = ra.attachments
-		index := len(s.allProtos)
-		s.allProtos = append(s.allProtos, p)
+		index := len(s.allTasks)
+		s.allTasks = append(s.allTasks, p)
 		s.protoIndex[ra.Data.ActionID] = index
 	}
 	observers := s.observers
@@ -143,7 +143,7 @@ func (s *statefulState) removeFromRunning(ra *RunningAction) {
 	}
 
 	if index, ok := s.protoIndex[ra.Data.ActionID]; ok {
-		s.allProtos[index] = p // Update with completed, etc.
+		s.allTasks[index] = p // Update with completed, etc.
 	}
 
 	s.mu.Unlock()
@@ -183,7 +183,7 @@ func (s *statefulState) AttachmentsUpdated(actionID ActionID, data *ResultData) 
 	if r != nil {
 		p := r.Proto()
 		if index, ok := s.protoIndex[actionID]; ok {
-			s.allProtos[index] = p
+			s.allTasks[index] = p
 		}
 	}
 	s.mu.Unlock()
