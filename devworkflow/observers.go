@@ -7,6 +7,8 @@ package devworkflow
 import (
 	"context"
 
+	"go.uber.org/atomic"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -19,67 +21,97 @@ const (
 )
 
 type obsMsg struct {
-	typ opType
-	ch  chan *Update
-	msg *Update
+	op         opType
+	observer   *Observer
+	message    *Update
+	callbackCh chan struct{} // If set, will be closed after this message is handled.
 }
 
 type Observers struct {
-	done chan struct{}
-	ch   chan obsMsg
+	ch     chan obsMsg
+	closed atomic.Bool
+}
+
+type Observer struct {
+	parent *Observers
+	ch     chan *Update
+	closed atomic.Bool
 }
 
 func NewObservers(ctx context.Context) *Observers {
 	ch := make(chan obsMsg)
 	go doLoop(ctx, ch)
-	return &Observers{ch: ch, done: make(chan struct{})}
+	return &Observers{ch: ch}
 }
 
-func (obs *Observers) Add(ch chan *Update) {
-	obs.push(obsMsg{typ: pOpAddCh, ch: ch})
-}
-
-func (obs *Observers) Remove(ch chan *Update) {
-	obs.push(obsMsg{typ: pOpRemoveCh, ch: ch})
+func (obs *Observers) New() *Observer {
+	cli := &Observer{parent: obs, ch: make(chan *Update)}
+	obs.push(obsMsg{op: pOpAddCh, observer: cli})
+	return cli
 }
 
 func (obs *Observers) Publish(data *Update) {
 	copy := proto.Clone(data).(*Update)
-	obs.push(obsMsg{typ: pOpNewData, msg: copy})
+	obs.push(obsMsg{op: pOpNewData, message: copy})
 }
 
-func (obs *Observers) push(op obsMsg) {
-	select {
-	case <-obs.done:
-		// Channel closed
-	case obs.ch <- op:
+func (obs *Observers) push(op obsMsg) bool {
+	if !obs.closed.Load() {
+		obs.ch <- op
+		return true
 	}
+
+	return false
 }
 
 func (obs *Observers) Close() {
-	close(obs.done)
-	close(obs.ch)
+	if obs.closed.CAS(false, true) {
+		close(obs.ch)
+	}
 }
 
 func doLoop(ctx context.Context, ch chan obsMsg) {
-	var observers []chan *Update
+	var observers []*Observer
 
 	for op := range ch {
-		switch op.typ {
+		switch op.op {
 		case pOpAddCh:
-			observers = append(observers, op.ch)
+			observers = append(observers, op.observer)
 		case pOpRemoveCh:
-			var newObservers []chan *Update
-			for _, obs := range observers {
-				if obs != op.ch {
-					newObservers = append(newObservers, obs)
-				}
+			index := slices.Index(observers, op.observer)
+			if index >= 0 {
+				close(op.observer.ch)
+				observers = slices.Delete(observers, index, index+1)
 			}
-			observers = newObservers
 		case pOpNewData:
 			for _, obs := range observers {
-				obs <- op.msg
+				obs.ch <- op.message
 			}
 		}
+
+		if op.callbackCh != nil {
+			close(op.callbackCh)
+		}
 	}
+
+	// Make sure that any observers that were not canceled, become canceled.
+	for _, obs := range observers {
+		obs.closed.Store(true)
+		close(obs.ch)
+	}
+}
+
+func (o *Observer) Close() {
+	// Only send close message once.
+	if o.closed.CAS(false, true) {
+		callback := make(chan struct{})
+		if o.parent.push(obsMsg{op: pOpRemoveCh, observer: o, callbackCh: callback}) {
+			// Block until we're actually removed.
+			<-callback
+		}
+	}
+}
+
+func (o *Observer) Events() chan *Update {
+	return o.ch
 }

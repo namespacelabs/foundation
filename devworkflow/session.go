@@ -30,7 +30,7 @@ var AlsoOutputBuildToStderr = false
 var TaskOutputBuildkitJsonLog = tasks.Output("buildkit.json", "application/json+fn.buildkit")
 
 type Session struct {
-	Ch chan *DevWorkflowRequest
+	RequestCh chan *DevWorkflowRequest
 
 	Console   io.Writer
 	Errors    io.Writer
@@ -70,7 +70,7 @@ func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname str
 		setSticky:     setSticky,
 		localHostname: localHostname,
 		obs:           NewObservers(ctx),
-		Ch:            make(chan *DevWorkflowRequest, 1),
+		RequestCh:     make(chan *DevWorkflowRequest, 1),
 		commandOutput: syncbuffer.NewByteBuffer(),
 		buildOutput:   syncbuffer.NewByteBuffer(),
 		buildkitJSON:  syncbuffer.NewByteBuffer(),
@@ -79,31 +79,31 @@ func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname str
 }
 
 func (s *Session) Close() {
-	close(s.Ch)
+	close(s.RequestCh)
 	s.obs.Close()
 }
 
-func (s *Session) NewClient() (chan *Update, func()) {
+func (s *Session) NewClient(needsHistory bool) *Observer {
 	ch := make(chan *Update, 1)
 
 	const maxTaskUpload = 1000
-	protos := s.sink.History(maxTaskUpload, func(t *protocol.Task) bool {
-		return true
-	})
+	var taskHistory []*protocol.Task
+
+	if needsHistory {
+		taskHistory = s.sink.History(maxTaskUpload, func(t *protocol.Task) bool {
+			return true
+		})
+	}
 
 	s.mu.Lock()
 	// When a new client connects, send them the latest information immediately.
 	// XXX keep latest computed stack in `s`.
-	tu := &Update{TaskUpdate: protos, StackUpdate: proto.Clone(s.currentStack).(*Stack)}
+	tu := &Update{TaskUpdate: taskHistory, StackUpdate: proto.Clone(s.currentStack).(*Stack)}
 	s.mu.Unlock()
 
 	ch <- tu
 
-	s.obs.Add(ch)
-	return ch, func() {
-		s.obs.Remove(ch)
-		close(ch)
-	}
+	return s.obs.New()
 }
 
 func (s *Session) CommandOutput() io.ReadCloser   { return s.commandOutput.Reader() }
@@ -223,7 +223,7 @@ func (s *Session) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 
-		case req, ok := <-s.Ch:
+		case req, ok := <-s.RequestCh:
 			if !ok {
 				return nil
 			}

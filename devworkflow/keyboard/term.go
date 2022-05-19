@@ -46,8 +46,8 @@ type termState struct {
 }
 
 func (t *termState) handleEvents(ctx context.Context, stdin *rawStdinReader, stackState *devworkflow.Session, root *workspace.Root, serverProtos []*schema.Server, onDone func()) {
-	ch, done := stackState.NewClient()
-	defer done()
+	obs := stackState.NewClient(false)
+	defer obs.Close()
 
 	defer stdin.restore()
 
@@ -62,7 +62,7 @@ func (t *termState) handleEvents(ctx context.Context, stdin *rawStdinReader, sta
 	envRef := ""
 	for {
 		select {
-		case update, ok := <-ch:
+		case update, ok := <-obs.Events():
 			if !ok {
 				return
 			}

@@ -97,7 +97,7 @@ func NewDevCmd() *cobra.Command {
 				}()
 
 				// Kick off the dev workflow.
-				stackState.Ch <- &devworkflow.DevWorkflowRequest{
+				stackState.RequestCh <- &devworkflow.DevWorkflowRequest{
 					Type: &devworkflow.DevWorkflowRequest_SetWorkspace_{
 						SetWorkspace: &devworkflow.DevWorkflowRequest_SetWorkspace{
 							AbsRoot:           root.Abs(),

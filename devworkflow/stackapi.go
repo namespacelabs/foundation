@@ -34,13 +34,13 @@ func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
 
 	l.Debug().Str("url", r.URL.String()).Msg("connected")
 
-	ch, cancel := s.NewClient()
-	defer cancel()
+	ch := s.NewClient(true)
+	defer ch.Close()
 
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel() // Important that this is the first deferred call, before closing the channel.
 
-	go writeJSONLoop(ctx, ws, ch)
+	go writeJSONLoop(ctx, ws, ch.Events())
 
 	readerLoop(zerolog.Ctx(r.Context()).With().Logger(), ws, func(msg []byte) error {
 		m := &DevWorkflowRequest{}
@@ -49,7 +49,7 @@ func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Push it to be processed.
-		s.Ch <- m
+		s.RequestCh <- m
 		return nil
 	})
 }
