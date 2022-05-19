@@ -11,8 +11,24 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Canonical(ctx context.Context, img Image) (Image, error) {
+func WithCanonicalManifest(ctx context.Context, img Image) (Image, error) {
 	return tasks.Return(ctx, tasks.Action("oci.image.make-canonical"), func(ctx context.Context) (Image, error) {
-		return mutate.Canonical(img)
+		// mutate.Canonical() resets the build timestamps for each layer. That's
+		// too expensive, as it requires decompressing all layers. So we let the original
+		// layers as-is, but clear other sources of non-determinism out.
+
+		cf, err := img.ConfigFile()
+		if err != nil {
+			return nil, err
+		}
+
+		// Get rid of host-dependent random config
+		cfg := cf.DeepCopy()
+
+		cfg.Container = ""
+		cfg.Config.Hostname = ""
+		cfg.DockerVersion = ""
+
+		return mutate.ConfigFile(img, cfg)
 	})
 }

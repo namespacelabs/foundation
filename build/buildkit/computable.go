@@ -192,11 +192,13 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 		// If the target needs permissions, we don't do the direct push
 		// optimization as we don't yet wire the keychain into buildkit.
 		if v.Keychain == nil {
-			i, err := solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
+			tasks.Attachments(ctx).AddResult("push", v.Repository)
+
+			img, err := solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
 			if err != nil {
 				return nil, console.WithLogs(ctx, err)
 			}
-			return i, err
+			return img, err
 		}
 	}
 
@@ -372,26 +374,6 @@ func IngestFromFS(ctx context.Context, fsys fs.FS, path string, compressed bool)
 	return canonical(ctx, img)
 }
 
-func canonical(ctx context.Context, original oci.Image) (oci.Image, error) {
-	img, err := oci.Canonical(ctx, original)
-	if err != nil {
-		return nil, err
-	}
-
-	digest, err := img.Digest()
-	if err != nil {
-		return nil, err
-	}
-
-	cfgName, err := img.ConfigName()
-	if err != nil {
-		return nil, err
-	}
-
-	tasks.Attachments(ctx).AddResult("digest", digest).AddResult("config", cfgName)
-	return img, nil
-}
-
 type andClose struct {
 	actual io.ReadCloser
 	closer io.Closer
@@ -498,4 +480,24 @@ func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse)
 	}
 
 	return canonical(ctx, img)
+}
+
+func canonical(ctx context.Context, original oci.Image) (oci.Image, error) {
+	img, err := oci.WithCanonicalManifest(ctx, original)
+	if err != nil {
+		return nil, err
+	}
+
+	digest, err := img.Digest()
+	if err != nil {
+		return nil, err
+	}
+
+	cfgName, err := img.ConfigName()
+	if err != nil {
+		return nil, err
+	}
+
+	tasks.Attachments(ctx).AddResult("digest", digest).AddResult("config", cfgName)
+	return img, nil
 }
