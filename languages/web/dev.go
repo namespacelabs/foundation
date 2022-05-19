@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-func StartDevServer(ctx context.Context, root *workspace.Root, pkg schema.PackageName, mainPort, webPort int64) (string, error) {
+func StartDevServer(ctx context.Context, root *workspace.Root, pkg schema.PackageName, mainPort, webPort int) (string, error) {
 	host := "127.0.0.1"
 	hostPort := fmt.Sprintf("%s:%d", host, webPort)
 

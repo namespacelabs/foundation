@@ -6,11 +6,11 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -33,7 +33,7 @@ import (
 func NewDevCmd() *cobra.Command {
 	var (
 		envRef       = "dev"
-		servingAddr  = "127.0.0.1:4001"
+		servingAddr  string
 		devWebServer = false
 	)
 
@@ -56,6 +56,13 @@ func NewDevCmd() *cobra.Command {
 					return err
 				}
 
+				lis, err := startListener(servingAddr)
+				if err != nil {
+					return err
+				}
+
+				defer lis.Close()
+
 				pl := workspace.NewPackageLoader(root)
 
 				var serverPackages []string
@@ -74,24 +81,15 @@ func NewDevCmd() *cobra.Command {
 					serverProtos = append(serverProtos, parsed.Server)
 				}
 
-				addrParts := strings.Split(servingAddr, ":")
-				if len(addrParts) < 2 {
-					return fnerrors.UserError(nil, "invalid listen address, expected <addr>:<port>")
-				}
-
-				host := addrParts[0]
-				port, err := strconv.ParseInt(addrParts[1], 10, 32)
-				if err != nil {
-					return err
-				}
-
 				t := logs.NewTerm()
 
 				// This has to happen before new stackState gets created to render commands at the top.
 				t.SetConsoleSticky(ctx)
-				stickies := []string{fmt.Sprintf("fn dev web ui running at: http://%s", servingAddr)}
 
-				stackState, err := devworkflow.NewSession(ctx, sink, host, stickies)
+				stickies := []string{fmt.Sprintf("fn dev web ui running at: http://%s", lis.Addr())}
+				localHost := lis.Addr().(*net.TCPAddr).IP.String()
+
+				stackState, err := devworkflow.NewSession(ctx, sink, localHost, stickies)
 				if err != nil {
 					return err
 				}
@@ -132,8 +130,9 @@ func NewDevCmd() *cobra.Command {
 				go t.HandleEvents(ctx, root, serverProtos, cancel, ch)
 
 				if devWebServer {
-					webPort := port + 1
-					proxyTarget, err := web.StartDevServer(ctx, root, webPackage, port, webPort)
+					localPort := lis.Addr().(*net.TCPAddr).Port
+					webPort := localPort + 1
+					proxyTarget, err := web.StartDevServer(ctx, root, webPackage, localPort, webPort)
 					if err != nil {
 						return err
 					}
@@ -185,10 +184,34 @@ func NewDevCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&servingAddr, "listen", "H", servingAddr, "What address to listen on.")
+	cmd.Flags().StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
 	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to provision (as defined in the workspace).")
 	cmd.Flags().BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
 	cmd.Flags().BoolVar(&devworkflow.AlsoOutputBuildToStderr, "alsooutputtostderr", devworkflow.AlsoOutputBuildToStderr, "Also send build output to stderr.")
 
 	return cmd
+}
+
+func startListener(specified string) (net.Listener, error) {
+	const defaultHostname = "127.0.0.1"
+	const defaultStartingPort = 4001
+
+	if specified != "" {
+		return net.Listen("tcp", specified)
+	}
+
+	for port := defaultStartingPort; ; port++ {
+		l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", defaultHostname, port))
+		if err != nil {
+			var errno syscall.Errno
+			if errors.As(err, &errno) {
+				if errno == syscall.EADDRINUSE {
+					continue
+				}
+			}
+			return nil, err
+		}
+
+		return l, nil
+	}
 }
