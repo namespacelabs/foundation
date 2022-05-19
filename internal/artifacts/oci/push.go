@@ -31,7 +31,7 @@ func pushImage(ctx context.Context, tag AllocatedName, img v1.Image) (ImageID, e
 
 	var rp RemoteProgress
 	if err := tasks.Action("oci.push-image").Progress(&rp).Arg("ref", ref).Run(ctx, func(ctx context.Context) error {
-		remoteOpts := RemoteOptsForWriting(ctx, tag.Keychain)
+		remoteOpts := RemoteOptsWithAuth(ctx, tag.Keychain)
 		remoteOpts = append(remoteOpts, rp.Track())
 
 		if err := remote.Write(ref, img, remoteOpts...); err != nil {
@@ -70,7 +70,7 @@ func pushImageIndex(ctx context.Context, tag AllocatedName, img v1.ImageIndex) e
 
 	var rp RemoteProgress
 	return tasks.Action("oci.write-image-index").Progress(&rp).Arg("ref", ref).Run(ctx, func(ctx context.Context) error {
-		remoteOpts := RemoteOptsForWriting(ctx, tag.Keychain)
+		remoteOpts := RemoteOptsWithAuth(ctx, tag.Keychain)
 		remoteOpts = append(remoteOpts, rp.Track())
 
 		if err := remote.WriteIndex(ref, img, remoteOpts...); err != nil {

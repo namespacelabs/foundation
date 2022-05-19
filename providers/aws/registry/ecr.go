@@ -100,6 +100,15 @@ func (em ecrManager) AllocateTag(packageName schema.PackageName, buildID provisi
 	)
 }
 
+func (em ecrManager) AuthRepository(img oci.ImageID) (oci.AllocatedName, error) {
+	keychain := keychainSession(em)
+
+	return oci.AllocatedName{
+		Keychain: keychain,
+		ImageID:  img,
+	}, nil
+}
+
 type makeRepository struct {
 	sesh           aws.Config
 	callerIdentity compute.Computable[*sts.GetCallerIdentityOutput]

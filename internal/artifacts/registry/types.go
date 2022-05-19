@@ -32,7 +32,9 @@ func Register(name string, make func(context.Context, ops.Environment) (Manager,
 type Manager interface {
 	// Returns true if calls to the registry should be made over HTTP (instead of HTTPS).
 	IsInsecure() bool
+
 	AllocateTag(schema.PackageName, provision.BuildID) compute.Computable[oci.AllocatedName]
+	AuthRepository(oci.ImageID) (oci.AllocatedName, error)
 }
 
 func GetRegistry(ctx context.Context, env ops.Environment) (Manager, error) {

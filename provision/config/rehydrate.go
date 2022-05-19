@@ -35,17 +35,22 @@ func Rehydrate(ctx context.Context, srv provision.Server, imageID oci.ImageID) (
 		return nil, err
 	}
 
-	var opts []name.Option
-	if reg.IsInsecure() {
-		opts = append(opts, name.Insecure)
-	}
-
-	ref, err := name.ParseReference(imageID.ImageRef(), opts...)
+	allocated, err := reg.AuthRepository(imageID)
 	if err != nil {
 		return nil, err
 	}
 
-	img, err := remote.Image(ref, oci.RemoteOpts(ctx)...)
+	var opts []name.Option
+	if allocated.InsecureRegistry {
+		opts = append(opts, name.Insecure)
+	}
+
+	ref, err := name.ParseReference(allocated.ImageRef(), opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	img, err := remote.Image(ref, oci.RemoteOptsWithAuth(ctx, allocated.Keychain)...)
 	if err != nil {
 		return nil, err
 	}
