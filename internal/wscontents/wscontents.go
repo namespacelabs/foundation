@@ -109,21 +109,19 @@ func snapshotContents(modulePath, rel string) (*memfs.FS, error) {
 	}
 
 	var inmem memfs.FS
-	return &inmem, filepath.WalkDir(absPath, func(osPathname string, de fs.DirEntry, err error) error {
+	if err := filepath.WalkDir(absPath, func(osPathname string, de fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		name := de.Name()
-		if len(name) == 0 {
-			return filepath.SkipDir
-		} else if name[0] == '.' { // Skip hidden directories.
-			return filepath.SkipDir
-		} else if slices.Contains(dirs.DirsToAvoid, name) {
-			return filepath.SkipDir
-		}
-
-		if !de.Type().IsRegular() {
+		if de.IsDir() {
+			name := de.Name()
+			// Skip hidden directories, and directories marked for skipping.
+			if (len(name) > 1 && name[0] == '.') || slices.Contains(dirs.DirsToAvoid, name) {
+				return filepath.SkipDir
+			}
+			return nil
+		} else if !de.Type().IsRegular() {
 			return nil
 		}
 
@@ -156,7 +154,11 @@ func snapshotContents(modulePath, rel string) (*memfs.FS, error) {
 		}
 
 		return err2
-	})
+	}); err != nil {
+		return nil, err
+	}
+
+	return &inmem, nil
 }
 
 type contentFS struct {
