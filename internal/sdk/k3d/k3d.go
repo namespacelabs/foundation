@@ -27,7 +27,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
-	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -97,20 +96,14 @@ func SDK(ctx context.Context) (compute.Computable[K3D], error) {
 		}
 	}
 
-	cacheDir, err := dirs.SDKCache("k3d")
-	if err != nil {
-		return nil, err
-	}
-
-	k3dPath := filepath.Join(cacheDir, "k3d")
-	written := unpack.WriteLocal(k3dPath, 0755, ref)
+	w := unpack.Unpack(unpack.MakeFilesystem("k3d", 0755, ref))
 
 	return compute.Map(
 		tasks.Action("k3d.ensure").Arg("version", version).HumanReadablef("Ensuring k3d %s is installed", version),
-		compute.Inputs().Computable("k3d", written),
+		compute.Inputs().Computable("k3d", w),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (K3D, error) {
-			return K3D(compute.GetDepValue(r, written, "k3d")), nil
+			return K3D(filepath.Join(compute.GetDepValue(r, w, "k3d"), "k3d")), nil
 		}), nil
 }
 
