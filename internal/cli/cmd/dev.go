@@ -168,7 +168,7 @@ func NewDevCmd() *cobra.Command {
 					shutdownErr <- srv.Shutdown(ctxT)
 				}()
 
-				if err := srv.ListenAndServe(); err != nil {
+				if err := srv.Serve(lis); err != nil {
 					if err != http.ErrServerClosed {
 						// Fetch logs here
 						return err
