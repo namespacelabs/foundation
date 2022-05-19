@@ -1,6 +1,6 @@
 {
 	"dependencies": {
-		"@grpc/grpc-js": "1.5.7",
+		"@grpc/grpc-js": "1.5.8",
 		"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter": "0.0.0",
 		"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser": "0.0.0",
 		"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": "0.0.0",

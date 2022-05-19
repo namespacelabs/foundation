@@ -21,13 +21,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@grpc/grpc-js@npm:1.5.7":
-  version: 1.5.7
-  resolution: "@grpc/grpc-js@npm:1.5.7"
+"@grpc/grpc-js@npm:1.5.8":
+  version: 1.5.8
+  resolution: "@grpc/grpc-js@npm:1.5.8"
   dependencies:
     "@grpc/proto-loader": ^0.6.4
     "@types/node": ">=12.12.47"
-  checksum: e292cd09b8b0939d6ae9a6c66f732f23ff6f844cffa9821d13af0de55f19131aae56471838d7c961572da294b8447a27981b0c6cea8ec5ad99e23a5fde8e1ca0
+  checksum: 09e5b6466e08356cddc115ce9a10d6f1b089a16eb6f1b689cec9ac9aa63c8dec4241c9add1e7e1aaa2f74bea2e01fc3819ba756c254abc62915ccf4a329c4e3e
   languageName: node
   linkType: hard
 
@@ -50,7 +50,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@workspace:languages/nodejs/testdata/extensions/batchformatter"
   dependencies:
-    "@grpc/grpc-js": 1.5.7
+    "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter": 0.0.0
     "@namespacelabs/foundation": 0.1.37
     "@tsconfig/node16": 1.0.2
@@ -68,7 +68,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:languages/nodejs/testdata/extensions/numberformatter"
   dependencies:
-    "@grpc/grpc-js": 1.5.7
+    "@grpc/grpc-js": 1.5.8
     "@namespacelabs/foundation": 0.1.37
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
@@ -85,7 +85,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-server@workspace:languages/nodejs/testdata/server"
   dependencies:
-    "@grpc/grpc-js": 1.5.7
+    "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
@@ -106,7 +106,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:languages/nodejs/testdata/services/numberformatter"
   dependencies:
-    "@grpc/grpc-js": 1.5.7
+    "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
     "@namespacelabs/foundation": 0.1.37
     "@tsconfig/node16": 1.0.2
@@ -124,7 +124,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser@workspace:languages/nodejs/testdata/services/postuser"
   dependencies:
-    "@grpc/grpc-js": 1.5.7
+    "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/std-grpc": 0.0.0
     "@namespacelabs/foundation": 0.1.37
     "@tsconfig/node16": 1.0.2
@@ -142,7 +142,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple"
   dependencies:
-    "@grpc/grpc-js": 1.5.7
+    "@grpc/grpc-js": 1.5.8
     "@namespacelabs/foundation": 0.1.37
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
@@ -159,7 +159,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp@workspace:languages/nodejs/testdata/services/simplehttp"
   dependencies:
-    "@grpc/grpc-js": 1.5.7
+    "@grpc/grpc-js": 1.5.8
     "@namespacelabs/foundation": 0.1.37
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
@@ -176,7 +176,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-grpc@workspace:std/grpc"
   dependencies:
-    "@grpc/grpc-js": 1.5.7
+    "@grpc/grpc-js": 1.5.8
     "@namespacelabs/foundation": 0.1.37
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
