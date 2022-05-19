@@ -17,7 +17,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/moby/buildkit/client"
@@ -337,11 +336,7 @@ func (e *exportImage) Exports() []client.ExportEntry {
 }
 
 func (e *exportImage) Provide(ctx context.Context, _ *client.SolveResponse) (oci.Image, error) {
-	img, err := IngestFromFS(ctx, fnfs.Local(filepath.Dir(e.output.Name())), filepath.Base(e.output.Name()), false)
-	if err != nil {
-		return nil, err
-	}
-	return mutate.Canonical(img)
+	return IngestFromFS(ctx, fnfs.Local(filepath.Dir(e.output.Name())), filepath.Base(e.output.Name()), false)
 }
 
 func IngestFromFS(ctx context.Context, fsys fs.FS, path string, compressed bool) (oci.Image, error) {
@@ -374,10 +369,15 @@ func IngestFromFS(ctx context.Context, fsys fs.FS, path string, compressed bool)
 		return nil, err
 	}
 
-	return attachImageResults(ctx, img)
+	return canonical(ctx, img)
 }
 
-func attachImageResults(ctx context.Context, img oci.Image) (oci.Image, error) {
+func canonical(ctx context.Context, original oci.Image) (oci.Image, error) {
+	img, err := oci.Canonical(ctx, original)
+	if err != nil {
+		return nil, err
+	}
+
 	digest, err := img.Digest()
 	if err != nil {
 		return nil, err
@@ -497,10 +497,5 @@ func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse)
 		return nil, err
 	}
 
-	canonical, err := mutate.Canonical(img)
-	if err != nil {
-		return nil, err
-	}
-
-	return attachImageResults(ctx, canonical)
+	return canonical(ctx, img)
 }
