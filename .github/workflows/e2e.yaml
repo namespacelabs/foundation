@@ -162,7 +162,7 @@ jobs:
             --include_servers
 
   run_fn_generate_then_e2e_tests:
-    name: e2e tests with full fn gnerate
+    name: e2e tests with full fn generate
     needs: build_fn
     strategy:
       matrix:
