@@ -66,7 +66,6 @@ func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname str
 	return &Session{
 		Errors:        console.Errors(ctx),
 		setSticky:     setSticky,
-		Term:          console.NewTerm(),
 		localHostname: localHostname,
 		obs:           NewObservers(ctx),
 		RequestCh:     make(chan *DevWorkflowRequest, 1),
@@ -145,7 +144,6 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 
 		// Reset the banner.
 		s.setSticky(nil)
-		//s.Term.AddSticky("x", "xxxx")
 
 		env, err := loadWorkspace(ctx, absRoot, envName)
 		if err != nil {
