@@ -56,10 +56,6 @@ func (em manager) AllocateTag(packageName schema.PackageName, buildID provision.
 		})
 }
 
-func (em manager) AuthRepository(img oci.ImageID) (oci.AllocatedName, error) {
-	return oci.AllocatedName{}, fnerrors.New("unimplemented")
-}
-
 func (em manager) RefreshAuth(ctx context.Context) ([]*dockertypes.AuthConfig, error) {
 	creds, err := transport.Creds(ctx, option.WithScopes(compute.CloudPlatformScope))
 	if err != nil {

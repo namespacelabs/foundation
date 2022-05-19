@@ -33,10 +33,3 @@ func (sr staticRegistry) AllocateTag(packageName schema.PackageName, version pro
 
 	return StaticName(sr.r, oci.ImageID{Repository: w, Tag: version.String()})
 }
-
-func (sr staticRegistry) AuthRepository(img oci.ImageID) (oci.AllocatedName, error) {
-	return oci.AllocatedName{
-		InsecureRegistry: sr.r.GetInsecure(),
-		ImageID:          img,
-	}, nil
-}
