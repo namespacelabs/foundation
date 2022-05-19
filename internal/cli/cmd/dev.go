@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/devworkflow"
@@ -81,15 +82,16 @@ func NewDevCmd() *cobra.Command {
 					serverProtos = append(serverProtos, parsed.Server)
 				}
 
-				t := logs.NewTerm()
+				inputHandler := logs.NewTerm()
 
 				// This has to happen before new stackState gets created to render commands at the top.
-				t.SetConsoleSticky(ctx)
+				inputHandler.SetConsoleSticky(ctx)
 
-				stickies := []string{fmt.Sprintf("fn dev web ui running at: http://%s", lis.Addr())}
 				localHost := lis.Addr().(*net.TCPAddr).IP.String()
 
-				stackState, err := devworkflow.NewSession(ctx, sink, localHost, stickies)
+				stackState, err := devworkflow.NewSession(ctx, sink, localHost,
+					fmt.Sprintf(" %s: web ui running at: http://%s",
+						aec.Bold.Apply("Foundation"), lis.Addr()))
 				if err != nil {
 					return err
 				}
@@ -127,7 +129,8 @@ func NewDevCmd() *cobra.Command {
 
 				ch, done := stackState.NewClient()
 				defer done()
-				go t.HandleEvents(ctx, root, serverProtos, cancel, ch)
+
+				go inputHandler.HandleEvents(ctx, root, serverProtos, cancel, ch)
 
 				if devWebServer {
 					localPort := lis.Addr().(*net.TCPAddr).Port

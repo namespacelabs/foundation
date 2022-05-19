@@ -23,8 +23,7 @@ import (
 type Term interface {
 	SetConsoleSticky(ctx context.Context)
 	// Hanles user input events and changing environment.
-	HandleEvents(ctx context.Context,
-		root *workspace.Root, serverProtos []*schema.Server, onDone func(), ch chan *devworkflow.Update)
+	HandleEvents(context.Context, *workspace.Root, []*schema.Server, func(), chan *devworkflow.Update)
 }
 
 func NewTerm() Term {
@@ -42,12 +41,15 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 	if !termios.IsTerm(os.Stdin.Fd()) {
 		return
 	}
-	r, err := newStdinReader(ctx)
+
+	stdin, err := newStdinReader(ctx)
 	if err != nil {
 		fmt.Fprintln(console.Errors(ctx), err)
 		return
 	}
-	defer r.restore()
+
+	defer stdin.restore()
+
 	defer func() {
 		if ctx.Err() == nil {
 			onDone()
@@ -69,15 +71,17 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 				}
 				envRef = update.StackUpdate.Env.Name
 			}
-		case err := <-r.errors:
+
+		case err := <-stdin.errors:
 			fmt.Fprintf(console.Errors(ctx), "Error while reading from Stdin: %v\n", err)
 			return
 
-		case c := <-r.input:
+		case c := <-stdin.input:
 			if int(c) == 3 || string(c) == "q" { // ctrl+c
 				t.stopLogging()
 				return
 			}
+
 			if string(c) == "l" && envRef != "" {
 				if t.showingLogs {
 					t.stopLogging()
@@ -89,7 +93,7 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 			}
 
 		case <-ctx.Done():
-			r.cancel()
+			stdin.cancel()
 			return
 		}
 	}
@@ -100,7 +104,8 @@ func (t term) SetConsoleSticky(ctx context.Context) {
 	if t.showingLogs {
 		logCmd = "pause logs " // Additional space at the end for a better allignment.
 	}
-	cmds := fmt.Sprintf(" (%s): %s (%s): quit", aec.Bold.Apply("l"), logCmd, aec.Bold.Apply("q"))
+
+	cmds := fmt.Sprintf(" %s (%s): %s (%s): quit", aec.LightBlackF.Apply("Key bindings"), aec.Bold.Apply("l"), logCmd, aec.Bold.Apply("q"))
 	updateCmd(ctx, cmds)
 }
 
@@ -126,7 +131,7 @@ func (t *term) stopLogging() {
 }
 
 func updateCmd(ctx context.Context, cmd string) {
-	console.SetStickyContent(ctx, "cmds", []byte(cmd))
+	console.SetStickyContent(ctx, "commands", []byte(cmd))
 }
 
 type rawStdinReader struct {

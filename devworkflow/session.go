@@ -5,7 +5,6 @@
 package devworkflow
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -57,18 +56,10 @@ type Session struct {
 	pfw             *endpointfwd.PortForward
 }
 
-func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname string, stickies []string) (*Session, error) {
+func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname string, headerSticky string) (*Session, error) {
 	setSticky := func(b []byte) {
-		var out bytes.Buffer
-		for _, sticky := range stickies {
-			fmt.Fprintf(&out, " %s\n", sticky)
-		}
-		if len(b) > 0 && len(stickies) > 0 {
-			fmt.Fprintln(&out)
-			out.Write(b)
-		}
-
-		console.SetStickyContent(ctx, "stack", out.Bytes())
+		console.SetStickyContent(ctx, "header", []byte(headerSticky))
+		console.SetStickyContent(ctx, "stack", b)
 	}
 
 	setSticky(nil)

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"math/rand"
 	"os"
 	"sort"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/morikuni/aec"
 	"github.com/muesli/reflow/truncate"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/logoutput"
@@ -59,6 +61,12 @@ var (
 		aec.NewRGB8Bit(0x56, 0x81, 0xd7),
 		aec.NewRGB8Bit(0x56, 0xac, 0xd7),
 		aec.NewRGB8Bit(0x56, 0xd7, 0xd7),
+	}
+
+	StickyPriorities = map[string]int{
+		"header":   0,
+		"commands": 1,
+		"stack":    2,
 	}
 )
 
@@ -253,6 +261,24 @@ loop:
 					c.stickyContent = append(c.stickyContent, &stickyContent{
 						name:    msg.setSticky.name,
 						content: bytes.Split(msg.setSticky.contents, []byte("\n")),
+					})
+
+					slices.SortStableFunc(c.stickyContent, func(a, b *stickyContent) bool {
+						var acost, bcost int
+
+						if p, ok := StickyPriorities[a.name]; ok {
+							acost = p
+						} else {
+							acost = math.MaxInt
+						}
+
+						if p, ok := StickyPriorities[b.name]; ok {
+							bcost = p
+						} else {
+							bcost = math.MaxInt
+						}
+
+						return acost < bcost
 					})
 				}
 			}
