@@ -59,7 +59,7 @@ func NewDevCmd() *cobra.Command {
 
 				lis, err := startListener(servingAddr)
 				if err != nil {
-					return err
+					return fnerrors.InternalError("Failed to start listener at %q: %w", servingAddr, err)
 				}
 
 				defer lis.Close()
