@@ -53,14 +53,14 @@ type DigestFunc func(context.Context) (schema.Digest, error)
 
 func (f DigestFunc) ComputeDigest(ctx context.Context) (schema.Digest, error) { return f(ctx) }
 
-func Precomputed[V any](v V, compute func(context.Context) (schema.Digest, error)) Computable[V] {
-	return precomputed[V]{value: v, computeDigest: compute}
+func Precomputed[V any](v V, computeDigest func(context.Context, V) (schema.Digest, error)) Computable[V] {
+	return precomputed[V]{value: v, computeDigest: computeDigest}
 }
 
 type precomputed[V any] struct {
 	value         V
 	err           error
-	computeDigest func(context.Context) (schema.Digest, error)
+	computeDigest func(context.Context, V) (schema.Digest, error)
 	PrecomputeScoped[V]
 }
 
@@ -69,7 +69,7 @@ var _ Digestible = precomputed[any]{}
 func (p precomputed[V]) Action() *tasks.ActionEvent { return nil }
 func (p precomputed[V]) Inputs() *In {
 	return Inputs().Marshal("digest", func(ctx context.Context, w io.Writer) error {
-		digest, err := p.computeDigest(ctx)
+		digest, err := p.computeDigest(ctx, p.value)
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ func (p precomputed[V]) Compute(ctx context.Context, deps Resolved) (V, error) {
 }
 
 func (p precomputed[V]) ComputeDigest(ctx context.Context) (schema.Digest, error) {
-	return p.computeDigest(ctx)
+	return p.computeDigest(ctx, p.value)
 }
 
 func Sticky[V any](action *tasks.ActionEvent, c Computable[V]) Computable[V] {

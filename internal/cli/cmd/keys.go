@@ -130,7 +130,7 @@ func NewKeysCmd() *cobra.Command {
 				return fnerrors.InternalError("failed to decrypt: %w", err)
 			}
 
-			originalDigest, err := digestfs.Digest(ctx, fsys, nil, nil)
+			originalDigest, err := digestfs.Digest(ctx, fsys)
 			if err != nil {
 				return fnerrors.InternalError("failed to compute a digest of the input: %w", err)
 			}
@@ -173,7 +173,7 @@ func NewKeysCmd() *cobra.Command {
 				return err
 			}
 
-			changedDigest, err := digestfs.Digest(ctx, tmpDir, nil, nil)
+			changedDigest, err := digestfs.Digest(ctx, tmpDir)
 			if err == nil {
 				// If we fail to compute the digest, it's ok, just go ahead and rewrite the contents.
 				if changedDigest == originalDigest {

@@ -13,7 +13,11 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func Digest(ctx context.Context, fsys fs.FS, includeFiles []string, excludeFiles []string) (schema.Digest, error) {
+func Digest(ctx context.Context, fsys fs.FS) (schema.Digest, error) {
+	return DigestWithOpts(ctx, fsys, nil, nil)
+}
+
+func DigestWithOpts(ctx context.Context, fsys fs.FS, includeFiles []string, excludeFiles []string) (schema.Digest, error) {
 	h := sha256.New()
 	err := maketarfs.TarFS(ctx, h, fsys, includeFiles, excludeFiles)
 	return schema.FromHash("sha256", h), err

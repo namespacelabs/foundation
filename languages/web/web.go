@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/frontend"
@@ -371,7 +372,7 @@ func (bws buildProdWebServer) BuildImage(ctx context.Context, env ops.Environmen
 			root /usr/share/nginx/html;
 		}
 }`, httpPort, compiledPath)))
-	config := oci.MakeLayer("conf", compute.Precomputed[fs.FS](&defaultConf, defaultConf.ComputeDigest))
+	config := oci.MakeLayer("conf", compute.Precomputed[fs.FS](&defaultConf, digestfs.Digest))
 
 	images := []compute.Computable[oci.Image]{
 		oci.ResolveImage("nginx:1.21.5-alpine", *conf.TargetPlatform()),

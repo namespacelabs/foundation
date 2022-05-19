@@ -9,6 +9,7 @@ import (
 	"io/fs"
 
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
+	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/languages/nodejs/yarnplugin"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -46,5 +47,5 @@ func YarnAuxFiles() fs.FS {
 
 func computable(ctx context.Context) compute.Computable[unpack.Unpacked] {
 	fsys := YarnAuxFiles()
-	return unpack.Unpack("yarn-plugin", compute.Precomputed(fsys, fsys.(*memfs.FS).ComputeDigest))
+	return unpack.Unpack("yarn-plugin", compute.Precomputed(fsys, digestfs.Digest))
 }

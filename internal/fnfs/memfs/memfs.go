@@ -150,7 +150,7 @@ func (m *FS) Clone() fnfs.ReadWriteFS {
 }
 
 func (m *FS) ComputeDigest(ctx context.Context) (schema.Digest, error) {
-	return digestfs.Digest(ctx, m, nil, nil)
+	return digestfs.Digest(ctx, m)
 }
 
 func (m *FS) TotalSize(ctx context.Context) (uint64, error) {

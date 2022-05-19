@@ -256,7 +256,7 @@ func (vp *versioned) FS() fs.FS {
 }
 
 func (vp *versioned) ComputeDigest(ctx context.Context) (schema.Digest, error) {
-	return digestfs.Digest(ctx, vp.fs, nil, nil)
+	return digestfs.Digest(ctx, vp.fs)
 }
 
 func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWithTimestamp[any], bool)) (func(), error) {
