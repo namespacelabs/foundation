@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package logs
+package logtail
 
 import (
 	"context"
@@ -11,21 +11,15 @@ import (
 	"sync"
 
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 // NewLogTail blocks fetching logs from a container.
-func NewLogTail(ctx context.Context, root *workspace.Root, envRef string, server *schema.Server) error {
-	// TODO simiplify runtime creation.
-	env, err := provision.RequireEnv(root, envRef)
-	if err != nil {
-		return err
-	}
+func NewLogTail(ctx context.Context, env runtime.Selector, server *schema.Server) error {
+	// TODO simplify runtime creation.
 	rt := runtime.For(ctx, env)
 	var mu sync.Mutex
 	streams := map[string]*logStream{}

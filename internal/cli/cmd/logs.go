@@ -8,9 +8,9 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/cli/cmd/logs"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -43,7 +43,7 @@ func NewLogsCmd() *cobra.Command {
 			cancel := console.SetIdleLabel(ctx, "listening for deployment changes")
 			defer cancel()
 
-			return logs.NewLogTail(ctx, root, envRef, server.Proto())
+			return logtail.NewLogTail(ctx, env, server.Proto())
 		}),
 	}
 

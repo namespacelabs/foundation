@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/devworkflow"
-	"namespacelabs.dev/foundation/internal/cli/cmd/logs"
+	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
@@ -82,11 +82,6 @@ func NewDevCmd() *cobra.Command {
 					serverProtos = append(serverProtos, parsed.Server)
 				}
 
-				inputHandler := logs.NewTerm()
-
-				// This has to happen before new stackState gets created to render commands at the top.
-				inputHandler.SetConsoleSticky(ctx)
-
 				localHost := lis.Addr().(*net.TCPAddr).IP.String()
 
 				stackState, err := devworkflow.NewSession(ctx, sink, localHost,
@@ -127,10 +122,9 @@ func NewDevCmd() *cobra.Command {
 				fncobra.RegisterPprof(r)
 				devworkflow.RegisterEndpoints(stackState, r)
 
-				ch, done := stackState.NewClient()
-				defer done()
-
-				go inputHandler.HandleEvents(ctx, root, serverProtos, cancel, ch)
+				if err := keyboard.StartHandler(ctx, stackState, root, serverProtos, cancel); err != nil {
+					return err
+				}
 
 				if devWebServer {
 					localPort := lis.Addr().(*net.TCPAddr).Port

@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package logs
+package keyboard
 
 import (
 	"context"
@@ -16,37 +16,38 @@ import (
 	"namespacelabs.dev/foundation/devworkflow"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/termios"
+	"namespacelabs.dev/foundation/internal/logs/logtail"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
 
-type Term interface {
-	SetConsoleSticky(ctx context.Context)
-	// Hanles user input events and changing environment.
-	HandleEvents(context.Context, *workspace.Root, []*schema.Server, func(), chan *devworkflow.Update)
-}
-
-func NewTerm() Term {
-	return &term{}
-}
-
-type term struct {
-	cancelFuncs []context.CancelFunc
-	showingLogs bool
-}
-
-// HandleEvents processes user keystroke events and dev workflow updates.
+// StartHandler processes user keystroke events and dev workflow updates.
 // Here we also take care on calling `onDone` callback on user exiting.
-func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverProtos []*schema.Server, onDone func(), ch chan *devworkflow.Update) {
+func StartHandler(ctx context.Context, stackState *devworkflow.Session, root *workspace.Root, serverProtos []*schema.Server, onDone func()) error {
 	if !termios.IsTerm(os.Stdin.Fd()) {
-		return
+		return nil
 	}
 
 	stdin, err := newStdinReader(ctx)
 	if err != nil {
-		fmt.Fprintln(console.Errors(ctx), err)
-		return
+		return err
 	}
+
+	t := &termState{}
+	t.updateSticky(ctx)
+	go t.handleEvents(ctx, stdin, stackState, root, serverProtos, onDone)
+	return nil
+}
+
+type termState struct {
+	cancelFuncs []context.CancelFunc
+	showingLogs bool
+}
+
+func (t *termState) handleEvents(ctx context.Context, stdin *rawStdinReader, stackState *devworkflow.Session, root *workspace.Root, serverProtos []*schema.Server, onDone func()) {
+	ch, done := stackState.NewClient()
+	defer done()
 
 	defer stdin.restore()
 
@@ -55,6 +56,8 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 			onDone()
 		}
 	}()
+
+	defer t.stopLogging()
 
 	envRef := ""
 	for {
@@ -78,7 +81,6 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 
 		case c := <-stdin.input:
 			if int(c) == 3 || string(c) == "q" { // ctrl+c
-				t.stopLogging()
 				return
 			}
 
@@ -88,34 +90,38 @@ func (t *term) HandleEvents(ctx context.Context, root *workspace.Root, serverPro
 				} else {
 					t.newLogTailMultiple(ctx, root, envRef, serverProtos)
 				}
+
 				t.showingLogs = !t.showingLogs
-				t.SetConsoleSticky(ctx)
+				t.updateSticky(ctx)
 			}
 
 		case <-ctx.Done():
-			stdin.cancel()
 			return
 		}
 	}
 }
 
-func (t term) SetConsoleSticky(ctx context.Context) {
+func (t *termState) updateSticky(ctx context.Context) {
 	logCmd := "stream logs"
 	if t.showingLogs {
 		logCmd = "pause logs " // Additional space at the end for a better allignment.
 	}
 
-	cmds := fmt.Sprintf(" %s (%s): %s (%s): quit", aec.LightBlackF.Apply("Key bindings"), aec.Bold.Apply("l"), logCmd, aec.Bold.Apply("q"))
-	updateCmd(ctx, cmds)
+	keybindings := fmt.Sprintf(" %s (%s): %s (%s): quit", aec.LightBlackF.Apply("Key bindings"), aec.Bold.Apply("l"), logCmd, aec.Bold.Apply("q"))
+	console.SetStickyContent(ctx, "commands", []byte(keybindings))
 }
 
-func (t *term) newLogTailMultiple(ctx context.Context, root *workspace.Root, envRef string, serverProtos []*schema.Server) {
+func (t *termState) newLogTailMultiple(ctx context.Context, root *workspace.Root, envRef string, serverProtos []*schema.Server) {
 	for _, server := range serverProtos {
 		server := server // Capture server
 		ctxWithCancel, cancelF := context.WithCancel(ctx)
 		t.cancelFuncs = append(t.cancelFuncs, cancelF)
 		go func() {
-			err := NewLogTail(ctxWithCancel, root, envRef, server)
+			env, err := provision.RequireEnv(root, envRef)
+			if err == nil {
+				err = logtail.NewLogTail(ctxWithCancel, env, server)
+			}
+
 			if err != nil && !errors.Is(err, context.Canceled) {
 				fmt.Fprintf(console.Errors(ctx), "Error starting logs: %v\n", err)
 			}
@@ -123,15 +129,11 @@ func (t *term) newLogTailMultiple(ctx context.Context, root *workspace.Root, env
 	}
 }
 
-func (t *term) stopLogging() {
+func (t *termState) stopLogging() {
 	for _, cancelF := range t.cancelFuncs {
 		cancelF()
 	}
-	t.cancelFuncs = t.cancelFuncs[:]
-}
-
-func updateCmd(ctx context.Context, cmd string) {
-	console.SetStickyContent(ctx, "commands", []byte(cmd))
+	t.cancelFuncs = nil
 }
 
 type rawStdinReader struct {
@@ -151,10 +153,12 @@ func newStdinReader(ctx context.Context) (*rawStdinReader, error) {
 		input:  make(chan byte),
 		cancel: cr.Cancel,
 	}
+
 	current := cons.Current()
 	if err := current.SetRaw(); err != nil {
 		return nil, err
 	}
+
 	r.restore = func() {
 		cr.Cancel()
 		if err := current.Reset(); err != nil {
@@ -173,5 +177,6 @@ func newStdinReader(ctx context.Context) (*rawStdinReader, error) {
 			r.input <- buf[0]
 		}
 	}()
+
 	return r, nil
 }
