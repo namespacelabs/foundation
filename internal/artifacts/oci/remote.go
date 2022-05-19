@@ -33,9 +33,6 @@ func RemoteOpts(ctx context.Context) []remote.Option {
 }
 
 func RemoteOptsWithAuth(ctx context.Context, keychain Keychain) []remote.Option {
-	if keychain == nil {
-		return RemoteOpts(ctx)
-	}
 	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(keychainSequence{ctx, keychain})}
 }
 
