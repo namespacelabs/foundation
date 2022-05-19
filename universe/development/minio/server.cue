@@ -20,4 +20,11 @@ server: fn.#OpaqueServer & {
 			protocol: "dummy string"
 		}
 	}
+
+	service: "console": {
+		containerPort: 9001
+		metadata: {
+			protocol: "http"
+		}
+	}
 }
