@@ -8,13 +8,13 @@ import (
 	"context"
 	"fmt"
 
-	s3 "namespacelabs.dev/foundation/std/testdata/service/minio"
+	s3 "namespacelabs.dev/foundation/std/testdata/service/localstacks3"
 	"namespacelabs.dev/foundation/testing"
 )
 
 func main() {
 	testing.Do(func(ctx context.Context, t testing.Test) error {
-		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/testdata/service/minio", "minio")
+		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/testdata/service/localstacks3", "localstacks3")
 
 		conn, err := t.Connect(ctx, endpoint)
 		if err != nil {

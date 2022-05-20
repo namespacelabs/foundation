@@ -8,6 +8,6 @@ test: fn.#Test & {
 	}
 
 	fixture: {
-		sut: "namespacelabs.dev/foundation/std/testdata/server/minio"
+		sut: "namespacelabs.dev/foundation/std/testdata/server/localstacks3"
 	}
 }
