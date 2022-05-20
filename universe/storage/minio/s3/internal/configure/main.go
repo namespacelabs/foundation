@@ -19,8 +19,8 @@ import (
 const (
 	// Bucket type name provided by the aws/s3 package.
 	bucketTypeName           = "Bucket"
-	localstackPackageName    = "namespacelabs.dev/foundation/universe/storage/minio"
-	localstackServiceName    = "api"
+	packageName    = "namespacelabs.dev/foundation/universe/storage/minio"
+	serviceName    = "api"
 	initContainerToConfigure = "namespacelabs.dev/foundation/universe/storage/minio/s3/internal/managebuckets/init"
 )
 
@@ -54,7 +54,7 @@ func collectBuckets(server *schema.Server, owner string) ([]*s3.BucketConfig, er
 
 func getEndpoint(s *schema.Stack) string {
 	for _, e := range s.Endpoint {
-		if e.ServiceName == localstackServiceName && e.ServerOwner == localstackPackageName {
+		if e.ServiceName == serviceName && e.ServerOwner == packageName {
 			return fmt.Sprintf("http://%s:%d", e.AllocatedName, e.Port.ContainerPort)
 		}
 	}
@@ -62,11 +62,11 @@ func getEndpoint(s *schema.Stack) string {
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	localstackEndpoint := getEndpoint(r.Stack)
-	if localstackEndpoint == "" {
-		return fmt.Errorf("endpoint definition is required")
+	endpoint := getEndpoint(r.Stack)
+	if endpoint == "" {
+		return fmt.Errorf("endpoint is required")
 	}
-	args := []string{fmt.Sprintf("--init_endpoint=%s", localstackEndpoint)}
+	args := []string{fmt.Sprintf("--init_endpoint=%s", endpoint)}
 
 	bucketConfigs, err := collectBuckets(r.Focus.Server, r.PackageOwner())
 	if err != nil {

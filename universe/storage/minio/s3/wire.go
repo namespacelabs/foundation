@@ -17,14 +17,14 @@ import (
 )
 
 var (
-	endpoint = flag.String("minio_api_endpoint", "", "Localstack endpoint configuration.")
+	endpoint = flag.String("minio_api_endpoint", "", "Endpoint configuration.")
 	// TODO clean up credentials.
 	accessKey = flag.String("access_key", "access_key_value", "Access key")
 	secretKey = flag.String("secret_key", "secret_key_value", "Secret key")
 )
 
-type LocalstackConfig struct {
-	Region, LocalstackEndpoint string
+type Config struct {
+	Region, Endpoint string
 }
 
 type credProvider struct {
@@ -39,11 +39,11 @@ func (c *credProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
 	}, nil
 }
 
-func createLocalStackConfig(ctx context.Context, c LocalstackConfig) (aws.Config, error) {
+func createConfig(ctx context.Context, c Config) (aws.Config, error) {
 	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
 			PartitionID:   "aws",
-			URL:           c.LocalstackEndpoint,
+			URL:           c.Endpoint,
 			SigningRegion: region,
 		}, nil
 	})
@@ -64,8 +64,8 @@ func createLocalStackConfig(ctx context.Context, c LocalstackConfig) (aws.Config
 	return cfg, nil
 }
 
-func CreateS3Client(ctx context.Context, config LocalstackConfig) (*s3.Client, error) {
-	cfg, err := createLocalStackConfig(ctx, config)
+func CreateS3Client(ctx context.Context, config Config) (*s3.Client, error) {
+	cfg, err := createConfig(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -79,9 +79,9 @@ func CreateS3Client(ctx context.Context, config LocalstackConfig) (*s3.Client, e
 
 func ProvideBucket(ctx context.Context, config *BucketConfig, deps ExtensionDeps) (*fns3.Bucket, error) {
 	s3client, err := CreateS3Client(ctx,
-		LocalstackConfig{
-			Region:             config.Region,
-			LocalstackEndpoint: *endpoint,
+		Config{
+			Region:   config.Region,
+			Endpoint: *endpoint,
 		})
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func ProvideBucket(ctx context.Context, config *BucketConfig, deps ExtensionDeps
 
 	// Asynchronously wait until a database connection is ready.
 	deps.ReadinessCheck.RegisterFunc(
-		fmt.Sprintf("localstack readiness: %s", core.InstantiationPathFromContext(ctx)),
+		fmt.Sprintf("readiness: %s", core.InstantiationPathFromContext(ctx)),
 		func(ctx context.Context) error {
 			_, err := s3client.ListBuckets(ctx, &s3.ListBucketsInput{})
 			return err

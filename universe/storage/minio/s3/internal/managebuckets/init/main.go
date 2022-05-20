@@ -30,9 +30,9 @@ func main() {
 			log.Fatalf("Failed to unmarshal bucket config with error: %s", err)
 		}
 
-		s3client, err := devs3.CreateS3Client(ctx, devs3.LocalstackConfig{
-			Region:             bc.Region,
-			LocalstackEndpoint: *endpoint,
+		s3client, err := devs3.CreateS3Client(ctx, devs3.Config{
+			Region:   bc.Region,
+			Endpoint: *endpoint,
 		})
 		if err != nil {
 			log.Fatalf("Failed to create s3 client with: %v", err)
