@@ -17,9 +17,10 @@ import (
 )
 
 var (
-	localstackEndpoint = flag.String("minio_api_endpoint", "", "Localstack endpoint configuration.")
-	accessKey          = flag.String("access_key", "AKIAIOSFODNN7EXAMPLE", "")
-	secretKey          = flag.String("secret_key", "wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY", "Localstack endpoint configuration.")
+	endpoint = flag.String("minio_api_endpoint", "", "Localstack endpoint configuration.")
+	// TODO clean up credentials.
+	accessKey = flag.String("access_key", "access_key_value", "Access key")
+	secretKey = flag.String("secret_key", "secret_key_value", "Secret key")
 )
 
 type LocalstackConfig struct {
@@ -58,7 +59,7 @@ func createLocalStackConfig(ctx context.Context, c LocalstackConfig) (aws.Config
 
 	cfg, err := config.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
-		return aws.Config{}, fmt.Errorf("failed to load AWS config with error: %w, for endpoint %s", err, *localstackEndpoint)
+		return aws.Config{}, fmt.Errorf("failed to load AWS config with error: %w, for endpoint %s", err, *endpoint)
 	}
 	return cfg, nil
 }
@@ -80,7 +81,7 @@ func ProvideBucket(ctx context.Context, config *BucketConfig, deps ExtensionDeps
 	s3client, err := CreateS3Client(ctx,
 		LocalstackConfig{
 			Region:             config.Region,
-			LocalstackEndpoint: *localstackEndpoint,
+			LocalstackEndpoint: *endpoint,
 		})
 	if err != nil {
 		return nil, err

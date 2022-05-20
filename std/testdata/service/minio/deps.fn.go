@@ -8,7 +8,7 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/universe/aws/s3"
-	s31 "namespacelabs.dev/foundation/universe/development/minio/s3"
+	s31 "namespacelabs.dev/foundation/universe/storage/minio/s3"
 )
 
 // Dependencies that are instantiated once for the lifetime of the service.
@@ -35,7 +35,7 @@ var (
 func makeDeps__k9bs2r(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ServiceDeps
 
-	if err := di.Instantiate(ctx, s31.Provider__eksqhd, func(ctx context.Context, v interface{}) (err error) {
+	if err := di.Instantiate(ctx, s31.Provider__jemnkl, func(ctx context.Context, v interface{}) (err error) {
 		// bucket_name: "test-minio-bucket"
 		if deps.Bucket, err = s31.ProvideBucket(ctx, core.MustUnwrapProto("EhF0ZXN0LW1pbmlvLWJ1Y2tldA==", &s31.BucketConfig{}).(*s31.BucketConfig), v.(s31.ExtensionDeps)); err != nil {
 			return err

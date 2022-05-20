@@ -7,7 +7,7 @@ package s3
 		bucketName?: string
 
 		#Definition: {
-			packageName: "namespacelabs.dev/foundation/universe/development/minio/s3"
+			packageName: "namespacelabs.dev/foundation/universe/storage/minio/s3"
 			type:        "Bucket"
 			typeDefinition: {
 				"typename": "foundation.universe.aws.s3.BucketConfig"

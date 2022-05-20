@@ -10,17 +10,17 @@ import (
 	"flag"
 	"log"
 
-	devs3 "namespacelabs.dev/foundation/universe/development/minio/s3"
 	"namespacelabs.dev/foundation/universe/aws/s3"
+	devs3 "namespacelabs.dev/foundation/universe/storage/minio/s3"
 )
 
 var (
-	localstackEndpoint = flag.String("init_endpoint", "", "Localstack endpoint configuration.")
+	endpoint = flag.String("init_endpoint", "", "Endpoint configuration.")
 )
 
 func main() {
 	flag.Parse()
-	log.Printf("Starting with endpoint %s\n", *localstackEndpoint)
+	log.Printf("Starting with endpoint %s\n", *endpoint)
 
 	ctx := context.Background()
 	// BucketConfigs are passed as additional arguments without flag names.
@@ -32,7 +32,7 @@ func main() {
 
 		s3client, err := devs3.CreateS3Client(ctx, devs3.LocalstackConfig{
 			Region:             bc.Region,
-			LocalstackEndpoint: *localstackEndpoint,
+			LocalstackEndpoint: *endpoint,
 		})
 		if err != nil {
 			log.Fatalf("Failed to create s3 client with: %v", err)

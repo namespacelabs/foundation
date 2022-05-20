@@ -13,15 +13,15 @@ import (
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/universe/development/minio/s3"
+	"namespacelabs.dev/foundation/universe/storage/minio/s3"
 )
 
 const (
 	// Bucket type name provided by the aws/s3 package.
 	bucketTypeName           = "Bucket"
-	localstackPackageName    = "namespacelabs.dev/foundation/universe/development/minio/server"
+	localstackPackageName    = "namespacelabs.dev/foundation/universe/storage/minio"
 	localstackServiceName    = "api"
-	initContainerToConfigure = "namespacelabs.dev/foundation/universe/development/minio/s3/internal/managebuckets/init"
+	initContainerToConfigure = "namespacelabs.dev/foundation/universe/storage/minio/s3/internal/managebuckets/init"
 )
 
 type tool struct{}
@@ -52,7 +52,7 @@ func collectBuckets(server *schema.Server, owner string) ([]*s3.BucketConfig, er
 	return buckets, nil
 }
 
-func getLocalstackEndpoint(s *schema.Stack) string {
+func getEndpoint(s *schema.Stack) string {
 	for _, e := range s.Endpoint {
 		if e.ServiceName == localstackServiceName && e.ServerOwner == localstackPackageName {
 			return fmt.Sprintf("http://%s:%d", e.AllocatedName, e.Port.ContainerPort)
@@ -62,9 +62,9 @@ func getLocalstackEndpoint(s *schema.Stack) string {
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	localstackEndpoint := getLocalstackEndpoint(r.Stack)
+	localstackEndpoint := getEndpoint(r.Stack)
 	if localstackEndpoint == "" {
-		return fmt.Errorf("localstack endpoint is required")
+		return fmt.Errorf("endpoint definition is required")
 	}
 	args := []string{fmt.Sprintf("--init_endpoint=%s", localstackEndpoint)}
 

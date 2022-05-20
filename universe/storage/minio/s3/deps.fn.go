@@ -19,17 +19,17 @@ type _checkProvideBucket func(context.Context, *BucketConfig, ExtensionDeps) (*s
 var _ _checkProvideBucket = ProvideBucket
 
 var (
-	Package__eksqhd = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/universe/development/minio/s3",
+	Package__jemnkl = &core.Package{
+		PackageName: "namespacelabs.dev/foundation/universe/storage/minio/s3",
 	}
 
-	Provider__eksqhd = core.Provider{
-		Package:     Package__eksqhd,
-		Instantiate: makeDeps__eksqhd,
+	Provider__jemnkl = core.Provider{
+		Package:     Package__jemnkl,
+		Instantiate: makeDeps__jemnkl,
 	}
 )
 
-func makeDeps__eksqhd(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
+func makeDeps__jemnkl(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
 	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {

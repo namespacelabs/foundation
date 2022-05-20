@@ -31,16 +31,16 @@ extension: fn.#Extension & {
 $env: inputs.#Environment
 
 $minioServer: inputs.#Server & {
-	packageName: "namespacelabs.dev/foundation/universe/development/minio/server"
+	packageName: "namespacelabs.dev/foundation/universe/storage/minio"
 }
 
 configure: fn.#Configure & {
 	// The internal/configure package gathers and provides invocation arguments into the `init` binary below.
-	with: binary: "namespacelabs.dev/foundation/universe/development/minio/s3/internal/configure"
+	with: binary: "namespacelabs.dev/foundation/universe/storage/minio/s3/internal/configure"
 
 	// Make sure the provided S3 bucket exists.
 	init: [{
-		binary: "namespacelabs.dev/foundation/universe/development/minio/s3/internal/managebuckets/init"
+		binary: "namespacelabs.dev/foundation/universe/storage/minio/s3/internal/managebuckets/init"
 	}]
 
 	stack: {

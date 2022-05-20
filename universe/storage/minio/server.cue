@@ -11,7 +11,7 @@ server: fn.#OpaqueServer & {
 	binary: image: "minio/minio"
 
 	import: [
-		"namespacelabs.dev/foundation/universe/development/minio/server/configure",
+		"namespacelabs.dev/foundation/universe/storage/minio/configure",
 	]
 
 	service: "api": {
