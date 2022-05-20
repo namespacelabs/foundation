@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             (unknown)
-// source: std/testdata/service/multidb/service.proto
+// source: std/testdata/service/proto/list.proto
 
-package multidb
+package proto
 
 import (
 	context "context"
@@ -23,8 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ListServiceClient interface {
-	AddPostgres(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	AddMaria(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Add(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResponse, error)
 }
 
@@ -36,18 +35,9 @@ func NewListServiceClient(cc grpc.ClientConnInterface) ListServiceClient {
 	return &listServiceClient{cc}
 }
 
-func (c *listServiceClient) AddPostgres(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *listServiceClient) Add(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/std.testdata.service.multidb.ListService/AddPostgres", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *listServiceClient) AddMaria(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/std.testdata.service.multidb.ListService/AddMaria", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/std.testdata.service.proto.ListService/Add", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +46,7 @@ func (c *listServiceClient) AddMaria(ctx context.Context, in *AddRequest, opts .
 
 func (c *listServiceClient) List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResponse, error) {
 	out := new(ListResponse)
-	err := c.cc.Invoke(ctx, "/std.testdata.service.multidb.ListService/List", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/std.testdata.service.proto.ListService/List", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +57,7 @@ func (c *listServiceClient) List(ctx context.Context, in *emptypb.Empty, opts ..
 // All implementations should embed UnimplementedListServiceServer
 // for forward compatibility
 type ListServiceServer interface {
-	AddPostgres(context.Context, *AddRequest) (*emptypb.Empty, error)
-	AddMaria(context.Context, *AddRequest) (*emptypb.Empty, error)
+	Add(context.Context, *AddRequest) (*emptypb.Empty, error)
 	List(context.Context, *emptypb.Empty) (*ListResponse, error)
 }
 
@@ -76,11 +65,8 @@ type ListServiceServer interface {
 type UnimplementedListServiceServer struct {
 }
 
-func (UnimplementedListServiceServer) AddPostgres(context.Context, *AddRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddPostgres not implemented")
-}
-func (UnimplementedListServiceServer) AddMaria(context.Context, *AddRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddMaria not implemented")
+func (UnimplementedListServiceServer) Add(context.Context, *AddRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Add not implemented")
 }
 func (UnimplementedListServiceServer) List(context.Context, *emptypb.Empty) (*ListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
@@ -97,38 +83,20 @@ func RegisterListServiceServer(s grpc.ServiceRegistrar, srv ListServiceServer) {
 	s.RegisterService(&ListService_ServiceDesc, srv)
 }
 
-func _ListService_AddPostgres_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ListService_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ListServiceServer).AddPostgres(ctx, in)
+		return srv.(ListServiceServer).Add(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/std.testdata.service.multidb.ListService/AddPostgres",
+		FullMethod: "/std.testdata.service.proto.ListService/Add",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListServiceServer).AddPostgres(ctx, req.(*AddRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ListService_AddMaria_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ListServiceServer).AddMaria(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/std.testdata.service.multidb.ListService/AddMaria",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListServiceServer).AddMaria(ctx, req.(*AddRequest))
+		return srv.(ListServiceServer).Add(ctx, req.(*AddRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -143,7 +111,7 @@ func _ListService_List_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/std.testdata.service.multidb.ListService/List",
+		FullMethod: "/std.testdata.service.proto.ListService/List",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ListServiceServer).List(ctx, req.(*emptypb.Empty))
@@ -155,16 +123,12 @@ func _ListService_List_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ListService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "std.testdata.service.multidb.ListService",
+	ServiceName: "std.testdata.service.proto.ListService",
 	HandlerType: (*ListServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "AddPostgres",
-			Handler:    _ListService_AddPostgres_Handler,
-		},
-		{
-			MethodName: "AddMaria",
-			Handler:    _ListService_AddMaria_Handler,
+			MethodName: "Add",
+			Handler:    _ListService_Add_Handler,
 		},
 		{
 			MethodName: "List",
@@ -172,5 +136,5 @@ var ListService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "std/testdata/service/multidb/service.proto",
+	Metadata: "std/testdata/service/proto/list.proto",
 }

@@ -10,7 +10,7 @@ import (
 	"sort"
 
 	"google.golang.org/protobuf/types/known/emptypb"
-	"namespacelabs.dev/foundation/std/testdata/service/list"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 	"namespacelabs.dev/foundation/testing"
 )
 
@@ -23,12 +23,12 @@ func main() {
 			return err
 		}
 
-		cli := list.NewListServiceClient(conn)
+		cli := proto.NewListServiceClient(conn)
 
 		items := []string{"item1", "item2"}
 
 		for _, item := range items {
-			if _, err = cli.Add(ctx, &list.AddRequest{Item: item}); err != nil {
+			if _, err = cli.Add(ctx, &proto.AddRequest{Item: item}); err != nil {
 				return err
 			}
 		}

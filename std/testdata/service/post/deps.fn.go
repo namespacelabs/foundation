@@ -11,14 +11,14 @@ import (
 	fngrpc "namespacelabs.dev/foundation/std/grpc"
 	"namespacelabs.dev/foundation/std/grpc/deadlines"
 	"namespacelabs.dev/foundation/std/testdata/datastore"
-	"namespacelabs.dev/foundation/std/testdata/service/simple"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 )
 
 // Dependencies that are instantiated once for the lifetime of the service.
 type ServiceDeps struct {
 	Dl         *deadlines.DeadlineRegistration
 	Main       *datastore.DB
-	Simple     simple.EmptyServiceClient
+	Simple     proto.EmptyServiceClient
 	SimpleConn *grpc.ClientConn
 }
 
@@ -74,7 +74,7 @@ func makeDeps__j7h7h5(ctx context.Context, di core.Dependencies) (_ interface{},
 		return nil, err
 	}
 
-	deps.Simple = simple.NewEmptyServiceClient(deps.SimpleConn)
+	deps.Simple = proto.NewEmptyServiceClient(deps.SimpleConn)
 
 	return deps, nil
 }

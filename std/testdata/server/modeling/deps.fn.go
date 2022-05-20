@@ -8,7 +8,7 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/server"
-	"namespacelabs.dev/foundation/std/testdata/service/multicounter"
+	"namespacelabs.dev/foundation/std/testdata/service/count"
 )
 
 func RegisterInitializers(di *core.DependencyGraph) {
@@ -18,8 +18,8 @@ func RegisterInitializers(di *core.DependencyGraph) {
 func WireServices(ctx context.Context, srv server.Server, depgraph core.Dependencies) []error {
 	var errs []error
 
-	if err := depgraph.Instantiate(ctx, multicounter.Provider__n4bhfe, func(ctx context.Context, v interface{}) error {
-		multicounter.WireService(ctx, srv.Scope(multicounter.Package__n4bhfe), v.(multicounter.ServiceDeps))
+	if err := depgraph.Instantiate(ctx, count.Provider__0lo23l, func(ctx context.Context, v interface{}) error {
+		count.WireService(ctx, srv.Scope(count.Package__0lo23l), v.(count.ServiceDeps))
 		return nil
 	}); err != nil {
 		errs = append(errs, err)

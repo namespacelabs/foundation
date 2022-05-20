@@ -8,40 +8,40 @@ import (
 	"context"
 	"fmt"
 
-	"namespacelabs.dev/foundation/std/testdata/service/multicounter"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 	"namespacelabs.dev/foundation/testing"
 )
 
 func main() {
 	testing.Do(func(ctx context.Context, t testing.Test) error {
-		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/testdata/service/multicounter", "multicounter")
+		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/testdata/service/count", "count")
 
 		conn, err := t.Connect(ctx, endpoint)
 		if err != nil {
 			return err
 		}
 
-		cli := multicounter.NewMulticounterServiceClient(conn)
-		one, err := cli.Get(ctx, &multicounter.GetRequest{Name: "one"})
+		cli := proto.NewCountServiceClient(conn)
+		one, err := cli.Get(ctx, &proto.GetRequest{Name: "one"})
 		if err != nil {
 			return err
 		}
 
-		two, err := cli.Get(ctx, &multicounter.GetRequest{Name: "two"})
+		two, err := cli.Get(ctx, &proto.GetRequest{Name: "two"})
 		if err != nil {
 			return err
 		}
 
-		if _, err := cli.Increment(ctx, &multicounter.IncrementRequest{Name: "one"}); err != nil {
+		if _, err := cli.Increment(ctx, &proto.IncrementRequest{Name: "one"}); err != nil {
 			return err
 		}
 
-		newone, err := cli.Get(ctx, &multicounter.GetRequest{Name: "one"})
+		newone, err := cli.Get(ctx, &proto.GetRequest{Name: "one"})
 		if err != nil {
 			return err
 		}
 
-		newtwo, err := cli.Get(ctx, &multicounter.GetRequest{Name: "two"})
+		newtwo, err := cli.Get(ctx, &proto.GetRequest{Name: "two"})
 		if err != nil {
 			return err
 		}
@@ -55,11 +55,11 @@ func main() {
 			return fmt.Errorf("accidental side-effect: counter changed from %d to %d", two.Value, newtwo.Value)
 		}
 
-		if _, err := cli.Increment(ctx, &multicounter.IncrementRequest{Name: "unknown"}); err == nil {
+		if _, err := cli.Increment(ctx, &proto.IncrementRequest{Name: "unknown"}); err == nil {
 			return fmt.Errorf("expected failure for Increment on unknown name")
 		}
 
-		if _, err := cli.Get(ctx, &multicounter.GetRequest{Name: "unknown"}); err == nil {
+		if _, err := cli.Get(ctx, &proto.GetRequest{Name: "unknown"}); err == nil {
 			return fmt.Errorf("expected failure for Increment on unknown name")
 		}
 

@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             (unknown)
-// source: std/testdata/service/simple/service.proto
+// source: std/testdata/service/proto/simple.proto
 
-package simple
+package proto
 
 import (
 	grpc "google.golang.org/grpc"
@@ -54,9 +54,9 @@ func RegisterEmptyServiceServer(s grpc.ServiceRegistrar, srv EmptyServiceServer)
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var EmptyService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "std.testdata.service.simple.EmptyService",
+	ServiceName: "std.testdata.service.proto.EmptyService",
 	HandlerType: (*EmptyServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams:     []grpc.StreamDesc{},
-	Metadata:    "std/testdata/service/simple/service.proto",
+	Metadata:    "std/testdata/service/proto/simple.proto",
 }

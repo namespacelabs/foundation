@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	s3 "namespacelabs.dev/foundation/std/testdata/service/localstacks3"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 	"namespacelabs.dev/foundation/testing"
 )
 
@@ -21,23 +21,23 @@ func main() {
 			return err
 		}
 
-		cli := s3.NewS3DemoServiceClient(conn)
+		cli := proto.NewFileServiceClient(conn)
 
 		// This file is not present in the bucket.
-		if _, err = cli.Get(ctx, &s3.GetRequest{
+		if _, err = cli.Get(ctx, &proto.GetFileRequest{
 			Filename: "file which is not present",
 		}); err == nil {
 			return fmt.Errorf("calling on unexistent bucket should fail")
 		}
 
-		if _, err = cli.Add(ctx, &s3.AddRequest{
+		if _, err = cli.Add(ctx, &proto.AddFileRequest{
 			Filename: "foo",
 			Contents: "bar",
 		}); err != nil {
 			return fmt.Errorf("add failed with %v", err)
 		}
 
-		resp, err := cli.Get(ctx, &s3.GetRequest{
+		resp, err := cli.Get(ctx, &proto.GetFileRequest{
 			Filename: "foo",
 		})
 		if err != nil {

@@ -5,7 +5,7 @@ import (
 )
 
 $proto: inputs.#Proto & {
-	source: "service.proto"
+	source: "../proto/count.proto"
 }
 
 service: fn.#Service & {
@@ -20,5 +20,5 @@ service: fn.#Service & {
 		}
 	}
 
-	exportService: $proto.services.MulticounterService
+	exportService: $proto.services.CountService
 }

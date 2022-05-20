@@ -5,7 +5,7 @@ import (
 )
 
 $proto: inputs.#Proto & {
-	source: "service.proto"
+	source: "../proto/list.proto"
 }
 
 service: fn.#Service & {

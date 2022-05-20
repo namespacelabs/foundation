@@ -5,7 +5,7 @@ import (
 )
 
 $proto: inputs.#Proto & {
-	source: "service.proto"
+	source: "../proto/file.proto"
 }
 
 service: fn.#Service & {
@@ -17,6 +17,6 @@ service: fn.#Service & {
 		}
 	}
 
-	exportService: $proto.services.S3DemoService
+	exportService: $proto.services.FileService
 	ingress:       "INTERNET_FACING"
 }
