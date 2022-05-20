@@ -130,11 +130,28 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
+        regenerate_fn_generate: [false, true]
+        repo: [foundation, examples]
+        include:
+          - repo: foundation
+            root_path: foundation
+          - repo: examples
+            root_path: examples/todos
     runs-on: ${{ matrix.os }}
+    env:
+      GOPRIVATE: namespacelabs.dev/*
+      NSL_GH_SERVICE: ${{ secrets.NSL_GH_SERVICE }}
     timeout-minutes: 30
     steps:
-      - name: Check out
+      - name: configure git
+        run: git config --global url.https://$NSL_GH_SERVICE@github.com/.insteadOf https://github.com/
+
+      - name: checkout dependant repo
         uses: actions/checkout@v3
+        with:
+          repository: namespacelabs/${{ matrix.repo }}
+          path: ${{ matrix.repo }}
+          token: ${{ secrets.NSL_GH_SERVICE }}
 
       # Required by buildkit gha cache.
       - name: Expose GitHub Runtime
@@ -160,16 +177,24 @@ jobs:
         run: chmod +x fn && mv fn /tmp/fn
 
       - name: Prepare development environment
-        run: /tmp/fn prepare
+        run: cd ${{ matrix.root_path }} && /tmp/fn prepare
+
+      - name: Run fn generate on a clean slate
+        if: ${{ matrix.regenerate_fn_generate }}
+        run: |
+          cd ${{ matrix.root_path }} ; \
+          find . -regex '.*\.fn\.cue' -exec rm {} \; ; \
+          find . -regex '.*\.fn\.go' -exec rm {} \; ; \
 
       - name: Generate code that is not submitted to the repository
-        run: /tmp/fn generate
+        run: cd ${{ matrix.root_path }} && /tmp/fn generate
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
       - name: Run all tests
         run: |
+          cd ${{ matrix.root_path }}; \
           /tmp/fn test \
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
@@ -193,120 +218,3 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         if: failure() && github.event_name == 'push'
-
-  run_fn_generate_then_e2e_tests:
-    name: e2e tests with full fn generate
-    needs: build_fn
-    strategy:
-      matrix:
-        os: [ubuntu-20.04]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    steps:
-      - name: Check out
-        uses: actions/checkout@v3
-
-      # Required by buildkit gha cache.
-      - name: Expose GitHub Runtime
-        uses: crazy-max/ghaction-github-runtime@v1
-
-      - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-fnrun-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-go-fnrun-
-
-      - name: Download Foundation
-        uses: actions/download-artifact@v3
-        with:
-          name: fn-${{ runner.os }}
-
-      # fn is moved out of the workspace so we don't spend time uploading it to buildkit.
-      - name: Make Foundation executable
-        run: chmod +x fn && mv fn /tmp/fn
-
-      - name: Prepare development environment
-        run: /tmp/fn prepare
-
-      - name: Run fn generate on a clean slate
-        run: |
-          find . -regex '.*\.fn\.cue' -exec rm {} \; ; \
-          find . -regex '.*\.fn\.go' -exec rm {} \; ; \
-          /tmp/fn generate
-
-      - name: Run all tests
-        run: |
-          /tmp/fn test \
-            --buildkit_import_cache=type=gha \
-            --buildkit_export_cache=type=gha,mode=max \
-            --use_prebuilts=true \
-            --golang_use_buildkit=false \
-            --include_servers
-
-  run_e2e_tests_other_repos:
-    name: e2e tests on dependant repos
-    needs: build_fn
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        include:
-          - repo: examples
-            root_path: examples/todos
-            include_servers: true
-    env:
-      GOPRIVATE: namespacelabs.dev/*
-      NSL_GH_SERVICE: ${{ secrets.NSL_GH_SERVICE }}
-    timeout-minutes: 30
-    steps:
-      # Required by buildkit gha cache.
-      - name: Expose GitHub Runtime
-        uses: crazy-max/ghaction-github-runtime@v1
-
-      - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-fnrun-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-go-fnrun-
-
-      - name: download foundation
-        uses: actions/download-artifact@v3
-        with:
-          name: fn-${{ runner.os }}
-
-      # fn is moved out of the workspace so we don't spend time uploading it to buildkit.
-      - name: make foundation executable
-        run: chmod +x fn && mv fn /tmp/fn
-
-      - name: checkout dependant repo
-        uses: actions/checkout@v3
-        with:
-          repository: namespacelabs/${{ matrix.repo }}
-          path: ${{ matrix.repo }}
-          token: ${{ secrets.NSL_GH_SERVICE }}
-
-      - name: configure git
-        run: git config --global url.https://$NSL_GH_SERVICE@github.com/.insteadOf https://github.com/
-
-      - name: prepare dev environment
-        run: cd ${{ matrix.root_path }} && /tmp/fn prepare
-
-      - name: print kubectl cluster-info
-        run: kubectl cluster-info
-
-      - name: run all tests
-        run: |
-          cd ${{ matrix.root_path }};
-          /tmp/fn test \
-            --buildkit_import_cache=type=gha \
-            --buildkit_export_cache=type=gha,mode=max \
-            --use_prebuilts=true \
-            --golang_use_buildkit=false \
-            --include_servers=${{ matrix.include_servers }}
