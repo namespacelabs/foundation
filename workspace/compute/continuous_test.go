@@ -16,7 +16,7 @@ import (
 
 func TestSink(t *testing.T) {
 	l := zerolog.New(zerolog.NewConsoleWriter())
-	ctx := tasks.WithSink(context.Background(), tasks.NewLoggerSink(&l))
+	ctx := tasks.WithSink(context.Background(), tasks.NewJsonLoggerSink(&l))
 
 	ch := make(chan int, 1)
 	ch <- 1
@@ -31,7 +31,7 @@ func TestSink(t *testing.T) {
 
 func TestVersionedSink(t *testing.T) {
 	l := zerolog.New(zerolog.NewConsoleWriter())
-	ctx := tasks.WithSink(context.Background(), tasks.NewLoggerSink(&l))
+	ctx := tasks.WithSink(context.Background(), tasks.NewJsonLoggerSink(&l))
 
 	ch := make(chan int, 1)
 	x := &versionedStream{ch: ch}

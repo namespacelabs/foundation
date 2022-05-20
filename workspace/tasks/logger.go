@@ -11,11 +11,11 @@ import (
 	"namespacelabs.dev/foundation/internal/console/common"
 )
 
-func NewLoggerSink(logger *zerolog.Logger) ActionSink { return &sinkLogger{logger} }
+func NewJsonLoggerSink(logger *zerolog.Logger) ActionSink { return &jsonLogger{logger} }
 
-type sinkLogger struct{ logger *zerolog.Logger }
+type jsonLogger struct{ logger *zerolog.Logger }
 
-func (sl *sinkLogger) start(ev EventData, withArgs bool) *zerolog.Event {
+func (sl *jsonLogger) start(ev EventData, withArgs bool) *zerolog.Event {
 	e := sl.logger.Info().Str("action_id", ev.ActionID.String()).Str("name", ev.Name).Int("log_level", ev.Level)
 	if ev.ParentID != "" {
 		e = e.Str("parent_id", ev.ParentID.String())
@@ -37,15 +37,15 @@ func (sl *sinkLogger) start(ev EventData, withArgs bool) *zerolog.Event {
 	return e
 }
 
-func (sl *sinkLogger) Waiting(ra *RunningAction) {
+func (sl *jsonLogger) Waiting(ra *RunningAction) {
 	// Do nothing.
 }
 
-func (sl *sinkLogger) Started(ra *RunningAction) {
+func (sl *jsonLogger) Started(ra *RunningAction) {
 	sl.start(ra.Data, true).Msg("start")
 }
 
-func (sl *sinkLogger) Done(ra *RunningAction) {
+func (sl *jsonLogger) Done(ra *RunningAction) {
 	ev := sl.start(ra.Data, true)
 	if ra.Data.Err != nil {
 		t := ErrorType(ra.Data.Err)
@@ -60,8 +60,8 @@ func (sl *sinkLogger) Done(ra *RunningAction) {
 	ev.Dur("took", ra.Data.Completed.Sub(ra.Data.Started)).Msg("done")
 }
 
-func (sl *sinkLogger) Instant(ev *EventData) {
+func (sl *jsonLogger) Instant(ev *EventData) {
 	sl.start(*ev, true).Msg(ev.Name)
 }
 
-func (sl *sinkLogger) AttachmentsUpdated(ActionID, *ResultData) { /* nothing to do */ }
+func (sl *jsonLogger) AttachmentsUpdated(ActionID, *ResultData) { /* nothing to do */ }

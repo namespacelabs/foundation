@@ -35,6 +35,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
@@ -92,9 +93,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		ctx, cleanupTracer = actiontracing.SetupTracing(ctx, tracerEndpoint)
 	}
 
-	out, colors := consoleFromFile()
+	out, interactive := consoleFromFile()
 
-	logger, sink, flushLogs := consoleToSink(out, colors)
+	logger, sink, flushLogs := consoleToSink(out, interactive)
 
 	ctxWithSink := tasks.WithSink(logger.WithContext(ctx), sink)
 
@@ -253,7 +254,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		case status, ok := <-remoteStatusChan:
 			if ok {
 				clr := clrs.Green
-				if !colors {
+				if !interactive {
 					clr = func(str string) string { return str }
 				}
 
@@ -289,7 +290,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	}()
 
 	if err != nil && !errors.Is(err, context.Canceled) {
-		exitCode := handleExitError(colors, err)
+		exitCode := handleExitError(interactive, err)
 		// Record errors only after the user sees them to hide potential latency implications.
 		// We pass the original ctx without sink since logs have already been flushed.
 		tel.RecordError(ctx, err)
@@ -455,20 +456,20 @@ func outputType() logoutput.OutputType {
 	return logoutput.OutputText
 }
 
-func consoleToSink(out *os.File, colors bool) (*zerolog.Logger, tasks.ActionSink, func()) {
-	logout := logoutput.OutputTo{Writer: out, WithColors: colors, OutputType: outputType()}
+func consoleToSink(out *os.File, interactive bool) (*zerolog.Logger, tasks.ActionSink, func()) {
+	logout := logoutput.OutputTo{Writer: out, WithColors: interactive, OutputType: outputType()}
 
-	if colors && !viper.GetBool("console_no_colors") {
-		consoleSink := consolesink.NewSink(out, viper.GetInt("console_log_level"))
+	if (interactive || environment.IsRunningInCI()) && !viper.GetBool("console_no_colors") {
+		consoleSink := consolesink.NewSink(out, interactive, viper.GetInt("console_log_level"))
 		cleanup := consoleSink.Start()
 		logout.Writer = console.ConsoleOutput(consoleSink, common.KnownStderr)
 
-		return logout.Logger(), consoleSink, cleanup
+		return logout.ZeroLogger(), consoleSink, cleanup
 	}
 
-	logger := logout.Logger()
+	logger := logout.ZeroLogger()
 
-	return logger, tasks.NewLoggerSink(logger), nil
+	return logger, tasks.NewJsonLoggerSink(logger), nil
 }
 
 func cpuprofile(cpuprofile string) func() {

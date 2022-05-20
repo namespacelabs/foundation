@@ -47,7 +47,7 @@ func (o OutputTo) MakeWriter() io.Writer {
 	return zerolog.ConsoleWriter{Out: o.Writer, TimeFormat: StampMilliTZ, NoColor: !o.WithColors}
 }
 
-func (o OutputTo) Logger() *zerolog.Logger {
+func (o OutputTo) ZeroLogger() *zerolog.Logger {
 	l := withZerologWriter(o.MakeWriter())
 	return &l
 }
@@ -65,7 +65,7 @@ func OutputFrom(ctx context.Context) OutputTo {
 }
 
 func withZerolog(ctx context.Context) context.Context {
-	return OutputFrom(ctx).Logger().WithContext(ctx)
+	return OutputFrom(ctx).ZeroLogger().WithContext(ctx)
 }
 
 func withZerologWriter(w io.Writer) zerolog.Logger {

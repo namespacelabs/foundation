@@ -114,6 +114,7 @@ type atom struct {
 
 type ConsoleSink struct {
 	out           *os.File
+	interactive   bool          // If set to false, only emit buffer output and logged actions.
 	outbuf        *bytes.Buffer // A buffer is utilized when preparing output, to avoiding having multiple individual writes hit the console.
 	previousLines [][]byte      // We keep a copy of the last rendered lines to avoid redrawing if the output doesn't change.
 
@@ -167,12 +168,13 @@ type logSources struct {
 
 var _ tasks.ActionSink = &ConsoleSink{}
 
-func NewSink(out *os.File, maxLevel int) *ConsoleSink {
+func NewSink(out *os.File, interactive bool, maxLevel int) *ConsoleSink {
 	return &ConsoleSink{
-		out:      out,
-		outbuf:   bytes.NewBuffer(make([]byte, 4*1024)), // Start with 4k, enough to hold 20 lines of 100 bytes. bytes.Buffer will grow as needed.
-		idling:   true,
-		maxLevel: maxLevel,
+		out:         out,
+		interactive: interactive,
+		outbuf:      bytes.NewBuffer(make([]byte, 4*1024)), // Start with 4k, enough to hold 20 lines of 100 bytes. bytes.Buffer will grow as needed.
+		idling:      true,
+		maxLevel:    maxLevel,
 	}
 }
 
@@ -714,6 +716,10 @@ func (c *ConsoleSink) countStates() (running, waiting, anchored int) {
 	return
 }
 
+func (c *ConsoleSink) logActions() bool {
+	return !c.interactive || LogActions
+}
+
 // drawFrame renders a single frame and returns `false` if further rendering should be stopped.
 func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height uint, flush bool) {
 	running, waiting, anchored := c.countStates()
@@ -722,11 +728,12 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	for _, r := range c.running {
 		if r.data.State != tasks.ActionWaiting && r.data.State != tasks.ActionRunning {
 			hasError := (r.data.Err != nil && tasks.ErrorType(r.data.Err) == tasks.ErrTypeIsRegular)
-			shouldLog := LogActions && (DisplayWaitingActions || r.data.AnchorID == "")
+			shouldLog := c.logActions() && (DisplayWaitingActions || r.data.AnchorID == "")
 
 			if (shouldLog || hasError) && r.data.Level <= c.maxLevel {
 				printableCompleted = append(printableCompleted, r)
 			}
+
 			completed++
 			if r.data.AnchorID != "" {
 				completedAnchors++
@@ -734,7 +741,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		}
 	}
 
-	if LogActions && len(printableCompleted) > 0 {
+	if c.logActions() && len(printableCompleted) > 0 {
 		sort.Slice(printableCompleted, func(i, j int) bool {
 			return printableCompleted[i].data.Completed.Before(printableCompleted[j].data.Completed)
 		})
@@ -827,6 +834,10 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		c.recomputeTree()
 	}
 
+	if !c.interactive {
+		return
+	}
+
 	if len(c.stickyContent) > 0 {
 		hdr := fmt.Sprintf("%s ", stickyBar)
 		c.writeLineWithMaxW(out, width, hdr, "")
@@ -854,7 +865,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	}
 
 	report := ""
-	if LogActions {
+	if c.logActions() {
 		report += "\n"
 	}
 
