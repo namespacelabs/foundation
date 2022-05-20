@@ -32,7 +32,9 @@ func generateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string) (
 	}
 
 	lock := lockFile{
-		ModuleToPath: map[string]string{},
+		ModuleToPath: map[string]string{
+			workspace.ModuleName: moduleAbsPath,
+		},
 	}
 
 	for _, dep := range workspace.Dep {

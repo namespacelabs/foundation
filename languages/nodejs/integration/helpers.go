@@ -25,6 +25,15 @@ func toNpmPackage(loc workspace.Location) (NpmPackage, error) {
 	return NpmPackage(fmt.Sprintf("@%s/%s", namespace, pkg)), nil
 }
 
+func toNpmPackage2(moduleName string, path string) (NpmPackage, error) {
+	if path == runtimePackagePath {
+		return runtimeNpmPackage, nil
+	}
+	pkg := strings.Join(strings.Split(path, "/"), "-")
+	namespace := strings.Join(strings.Split(moduleName, "/"), "-")
+	return NpmPackage(fmt.Sprintf("@%s/%s", namespace, pkg)), nil
+}
+
 func npmImport(npmPackage NpmPackage, moduleName string) string {
 	return fmt.Sprintf("%s/%s", npmPackage, moduleName)
 }

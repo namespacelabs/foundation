@@ -49,7 +49,7 @@ const (
 	packageJsonFn         = "package.json"
 	fileSyncPort          = 50000
 	runtimeNpmPackage     = "@namespacelabs/foundation"
-	ForceProd             = false
+	ForceProd             = true
 )
 
 func Register() {
@@ -115,22 +115,23 @@ type impl struct {
 }
 
 func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server provision.Server, isFocus bool) (build.Spec, error) {
-	deps := []workspace.Location{}
+	pkgs := []*workspace.Package{server.Package}
 	for _, dep := range server.Deps() {
 		if dep.PackageName() == runtimeNode || pkgSupportsNodejs(dep) {
-			deps = append(deps, dep.Location)
+			pkgs = append(pkgs, dep)
+
+			// protos := allDescriptorsForPkg(dep)
 		}
 	}
+
+	// Key: module name
+	moduleMap := map[string]*moduleToBuild{}
 
 	yarnRoot, err := findYarnRoot(server.Location)
 	if err != nil {
 		return nil, err
 	}
-
-	locs := append(deps, server.Location)
-
 	isDevBuild := useDevBuild(server.Env().Proto())
-
 	var module build.Workspace
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !server.Location.Module.IsExternal() && isDevBuild {
 		module = yarn.YarnHotReloadModule{
@@ -142,11 +143,30 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server prov
 	} else {
 		module = server.Location.Module
 	}
+	moduleMap[module.ModuleName()] = &moduleToBuild{
+		module:   module,
+		relPaths: []string{"."},
+	}
+
+	for _, pkg := range pkgs {
+		moduleName := pkg.Location.Module.ModuleName()
+		if _, ok := moduleMap[moduleName]; !ok {
+			moduleMap[moduleName] = &moduleToBuild{
+				module:   pkg.Location.Module,
+				relPaths: []string{},
+			}
+		}
+		module := moduleMap[moduleName]
+		module.relPaths = append(module.relPaths, pkg.Location.Rel())
+	}
+	modules := []moduleToBuild{}
+	for _, module := range moduleMap {
+		modules = append(modules, *module)
+	}
 
 	return buildNodeJS{
-		module:    module,
 		workspace: server.Location.Module.Workspace,
-		locs:      locs,
+		modules:   modules,
 		// fnRuntimeDeps: []string{runtimePackagePath},
 		yarnRoot:   yarnRoot,
 		serverEnv:  server.Env(),
@@ -521,19 +541,13 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 		LoadedNode: nodes,
 	}, pkg.PackageName())
 
-	var list []*protos.FileDescriptorSetAndDeps
-	for _, dl := range pkg.Provides {
-		list = append(list, dl)
-	}
-	for _, svc := range pkg.Services {
-		list = append(list, svc)
-	}
+	protos := allDescriptorsForPkg(pkg)
 
-	if len(list) > 0 {
+	if len(protos.File) > 0 {
 		dl.Add("Generate Javascript/Typescript proto sources", &source.OpProtoGen{
 			PackageName:         pkg.PackageName().String(),
 			GenerateHttpGateway: pkg.Node().ExportServicesAsHttp,
-			Protos:              protos.Merge(list...),
+			Protos:              protos,
 			Framework:           source.OpProtoGen_TYPESCRIPT,
 		})
 	}
@@ -548,6 +562,18 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 	}, pkg.Location.PackageName)
 
 	return dl.Serialize()
+}
+
+func allDescriptorsForPkg(pkg *workspace.Package) *protos.FileDescriptorSetAndDeps {
+	var list []*protos.FileDescriptorSetAndDeps
+	for _, dl := range pkg.Provides {
+		list = append(list, dl)
+	}
+	for _, svc := range pkg.Services {
+		list = append(list, svc)
+	}
+
+	return protos.Merge(list...)
 }
 
 type yarnRootStatefulGen struct{}
