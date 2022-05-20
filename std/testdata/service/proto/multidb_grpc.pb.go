@@ -25,6 +25,7 @@ const _ = grpc.SupportPackageIsVersion7
 type MultiDbListServiceClient interface {
 	AddPostgres(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	AddMaria(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Merges from all dbs.
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResponse, error)
 }
 
@@ -69,6 +70,7 @@ func (c *multiDbListServiceClient) List(ctx context.Context, in *emptypb.Empty, 
 type MultiDbListServiceServer interface {
 	AddPostgres(context.Context, *AddRequest) (*emptypb.Empty, error)
 	AddMaria(context.Context, *AddRequest) (*emptypb.Empty, error)
+	// Merges from all dbs.
 	List(context.Context, *emptypb.Empty) (*ListResponse, error)
 }
 
