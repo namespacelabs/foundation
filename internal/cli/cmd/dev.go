@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/devworkflow"
 	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
@@ -90,6 +91,7 @@ func NewDevCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
+				console.SetIdleLabel(ctx, "waiting for workspace changes")
 				defer stackState.Close()
 
 				go func() {
