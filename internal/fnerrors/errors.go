@@ -179,7 +179,6 @@ type ExitError interface {
 
 type exitError struct {
 	fnError
-	Err  error
 	code int
 }
 
