@@ -19,8 +19,8 @@ import (
 const (
 	// Bucket type name provided by the aws/s3 package.
 	bucketTypeName           = "Bucket"
-	packageName    = "namespacelabs.dev/foundation/universe/storage/minio"
-	serviceName    = "api"
+	packageName              = "namespacelabs.dev/foundation/universe/storage/minio"
+	serviceName              = "api"
 	initContainerToConfigure = "namespacelabs.dev/foundation/universe/storage/minio/s3/internal/managebuckets/init"
 )
 

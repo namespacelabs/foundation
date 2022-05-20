@@ -6,7 +6,7 @@ syntax = "proto3";
 
 package localstacks3;
 
-option go_package = "namespacelabs.dev/foundation/std/testdata/service/localstacks3";
+option go_package = "namespacelabs.dev/foundation/universe/development/localstack/localstacks3";
 
 import "google/protobuf/empty.proto";
 
