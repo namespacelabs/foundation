@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -50,7 +51,10 @@ func main() {
 
 		log.Println(response)
 
-		resp, err := http.Get(testing.MakeHttpUrl(endpoint, metrics.Path))
+		scrapeUrl := testing.MakeHttpUrl(endpoint, metrics.Path)
+		log.Printf("Scraping responses at: %s", scrapeUrl)
+
+		resp, err := http.Get(scrapeUrl)
 		if err != nil {
 			return err
 		}
@@ -71,16 +75,22 @@ func main() {
 			if mf.GetName() == "grpc_server_msg_received_total" {
 				for _, metric := range mf.Metric {
 					if hasLabels(metric.Label, map[string]string{
-						"grpc_service": "std.testdata.service.post.PostService",
+						"grpc_service": "std.testdata.service.proto.PostService",
 						"grpc_method":  "Post",
 					}) {
 						m = metric
+					} else {
+						var labels []string
+						for _, label := range metric.GetLabel() {
+							labels = append(labels, fmt.Sprintf("%s:%s", label.GetName(), label.GetValue()))
+						}
+						log.Printf("Found other GRPC metric with labels: %s", strings.Join(labels, ","))
 					}
 				}
 			}
 		}
 
-		log.Println(m)
+		log.Printf("Expected metric: %s", m)
 
 		if m.GetCounter().GetValue() != 1 {
 			return fmt.Errorf("expected grpc_server_msg_received_total to be 1, saw %+v instead", m)
