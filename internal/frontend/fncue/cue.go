@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"cuelang.org/go/cue/ast/astutil"
 	"cuelang.org/go/cue/build"
 	"cuelang.org/go/cue/cuecontext"
+	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/parser"
 	"cuelang.org/go/cue/token"
 	"namespacelabs.dev/foundation/internal/console"
@@ -97,7 +99,7 @@ func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname strin
 		for _, imp := range f.Imports {
 			importInfo, _ := astutil.ParseImportSpec(imp)
 			pkg.Imports = append(pkg.Imports, importInfo.Dir)
-			if isStandardImportPath(importInfo.ID) {
+			if IsStandardImportPath(importInfo.ID) {
 				continue
 			}
 
@@ -212,9 +214,6 @@ func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 			return nil, joinErrors(p.DepsErrors)
 		}
 		vv := ev.cuectx.BuildInstance(p)
-		if vv.Err() != nil {
-			return nil, vv.Err()
-		}
 
 		partial := &Partial{Ctx: ev}
 		partial.Package = pkg
@@ -232,6 +231,12 @@ func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 		sort.Slice(partial.CueImports, func(i, j int) bool {
 			return strings.Compare(partial.CueImports[i].ModuleName, partial.CueImports[j].ModuleName) < 0
 		})
+
+		if vv.Err() != nil {
+			// Even if there are errors, return the partially valid Cue value.
+			// This is useful to provide language features in LSP for not fully valid files.
+			return partial, vv.Err()
+		}
 
 		ev.built[pkgname] = partial
 	}
@@ -251,7 +256,7 @@ func (ev *snapshotCache) buildAndCacheInstance(ctx context.Context, pkg CuePacka
 
 func (ev *snapshotCache) buildInstance(ctx context.Context, collectedImports map[string]*CuePackage, info astutil.ImportInfo, pkg CuePackage) *build.Instance {
 	p := ev.bldctx.NewInstance(fmt.Sprintf("%s/%s", pkg.ModuleName, pkg.RelPath), func(pos token.Pos, path string) *build.Instance {
-		if isStandardImportPath(path) {
+		if IsStandardImportPath(path) {
 			return nil // Builtin.
 		}
 
@@ -266,13 +271,15 @@ func (ev *snapshotCache) buildInstance(ctx context.Context, collectedImports map
 	for _, f := range pkg.Files {
 		contents, err := fs.ReadFile(pkg.Sources, filepath.Join(pkg.RelPath, f))
 		if err != nil {
-			p.DepsErrors = append(p.DepsErrors, err)
+			p.Err = errors.Append(p.Err, errors.Promote(err, "ReadFile"))
 			continue
 		}
 
-		parsed, err := parser.ParseFile(f, contents, parser.ParseComments)
+		// Filename recorded is "example.com/module/package/file.cue".
+		importPath := path.Join(pkg.ModuleName, pkg.RelPath, f)
+		parsed, err := parser.ParseFile(importPath, contents, parser.ParseComments)
 		if err != nil {
-			p.DepsErrors = append(p.DepsErrors, err)
+			p.Err = errors.Append(p.Err, errors.Promote(err, "ParseFile"))
 			continue
 		}
 
@@ -292,7 +299,7 @@ func (ev *snapshotCache) buildInstance(ctx context.Context, collectedImports map
 	return p
 }
 
-func isStandardImportPath(path string) bool {
+func IsStandardImportPath(path string) bool {
 	i := strings.Index(path, "/")
 	if i < 0 {
 		return true
