@@ -10,12 +10,13 @@ import (
 
 	"google.golang.org/grpc/peer"
 	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 )
 
 type Service struct {
 }
 
-func (svc *Service) Post(ctx context.Context, req *PostRequest) (*PostResponse, error) {
+func (svc *Service) Post(ctx context.Context, req *proto.PostRequest) (*proto.PostResponse, error) {
 	log.Printf("new request\n")
 
 	p, ok := peer.FromContext(ctx)
@@ -27,7 +28,7 @@ func (svc *Service) Post(ctx context.Context, req *PostRequest) (*PostResponse, 
 
 	log.Printf("request: %+v\n", req)
 
-	response := &PostResponse{Response: "hello there: " + req.GetInput()}
+	response := &proto.PostResponse{Response: "hello there: " + req.GetInput()}
 	log.Printf("will reply with: %+v\n", response)
 
 	return response, nil
@@ -35,5 +36,5 @@ func (svc *Service) Post(ctx context.Context, req *PostRequest) (*PostResponse, 
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	svc := &Service{}
-	RegisterPostServiceServer(srv, svc)
+	proto.RegisterPostServiceServer(srv, svc)
 }

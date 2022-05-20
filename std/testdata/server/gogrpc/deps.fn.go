@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/monitoring/tracing/jaeger"
 	"namespacelabs.dev/foundation/std/testdata/service/post"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 	"namespacelabs.dev/foundation/universe/go/panicparse"
 )
 
@@ -35,7 +36,7 @@ func WireServices(ctx context.Context, srv server.Server, depgraph core.Dependen
 		errs = append(errs, err)
 	}
 
-	srv.InternalRegisterGrpcGateway(post.RegisterPostServiceHandler)
+	srv.InternalRegisterGrpcGateway(proto.RegisterPostServiceHandler)
 
 	return errs
 }

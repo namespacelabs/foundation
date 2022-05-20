@@ -15,7 +15,7 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/testdata/service/post"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 	"namespacelabs.dev/foundation/testing"
 )
 
@@ -43,7 +43,7 @@ func main() {
 			return err
 		}
 
-		response, err := post.NewPostServiceClient(conn).Post(ctx, &post.PostRequest{Input: "Hello from the test"})
+		response, err := proto.NewPostServiceClient(conn).Post(ctx, &proto.PostRequest{Input: "Hello from the test"})
 		if err != nil {
 			return err
 		}

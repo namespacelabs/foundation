@@ -95,7 +95,21 @@ func prepareGenerate(ctx context.Context, loader workspace.Packages, imports []s
 
 				if dep.Parent.ExportServicesAsHttp {
 					for _, svc := range dep.Parent.ExportService {
-						n.GrpcGatewayServices = append(n.GrpcGatewayServices, string(protoreflect.FullName(svc.ProtoTypename).Name()))
+						if len(svc.Proto) == 0 {
+							return fnerrors.UserError(dep.Location, "%s: can't compute go package, no sources", svc.ProtoTypename)
+						}
+
+						gopkg, err := gosupport.ComputeGoPackage(dep.Location.Abs(filepath.Dir(svc.Proto[0])))
+						if err != nil {
+							return err
+						}
+
+						typedef := gosupport.TypeDef{
+							GoImportURL: gopkg,
+							GoName:      fmt.Sprintf("Register%sHandler", protoreflect.FullName(svc.ProtoTypename).Name()),
+						}
+
+						n.GrpcGatewayServices = append(n.GrpcGatewayServices, typedef)
 					}
 				}
 
@@ -279,7 +293,7 @@ type nodeWithDeps struct {
 	Typename            string
 	Scope               string
 	IsService           bool
-	GrpcGatewayServices []string
+	GrpcGatewayServices []gosupport.TypeDef
 	Provisioned         []*typeProvider
 	Refs                []Refs // Same indexing as `Provisioned`.
 }
@@ -313,7 +327,7 @@ func WireServices(ctx context.Context, srv {{$opts.Imports.Ensure "namespacelabs
 			errs = append(errs, err)
 		}
 
-{{range $v.GrpcGatewayServices}}srv.InternalRegisterGrpcGateway({{$opts.Imports.Ensure $v.GoImportURL}}Register{{.}}Handler)
+{{range $v.GrpcGatewayServices}}srv.InternalRegisterGrpcGateway({{$opts.Imports.Ensure .GoImportURL}}{{.GoName}})
 {{end -}}
 {{end}}
 	return errs

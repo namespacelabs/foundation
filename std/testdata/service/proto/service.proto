@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package std.testdata.service.post;
+package std.testdata.service.proto;
 
-option go_package = "namespacelabs.dev/foundation/std/testdata/service/post";
+option go_package = "namespacelabs.dev/foundation/std/testdata/service/proto";
 
 message PostRequest {
     string input = 1;
