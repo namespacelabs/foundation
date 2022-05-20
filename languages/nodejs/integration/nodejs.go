@@ -30,7 +30,6 @@ import (
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/yarn"
 	"namespacelabs.dev/foundation/languages"
-	nodejsruntime "namespacelabs.dev/foundation/languages/nodejs/runtime"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -44,12 +43,15 @@ const (
 	controllerPkg schema.PackageName = "namespacelabs.dev/foundation/std/development/filesync/controller"
 	grpcNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/grpc"
 	httpNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/http"
+	runtimeNode   schema.PackageName = "namespacelabs.dev/foundation/languages/nodejs/runtime"
+	// Short alias of the runtime package.
+	runtimeNpmPackage  = "@namespacelabs/foundation"
+	runtimePackagePath = "languages/nodejs/runtime"
 	// Yarn version of the packages in the same module. Doesn't really matter what the value here is.
 	defaultPackageVersion = "0.0.0"
 	implFileName          = "impl.ts"
 	packageJsonFn         = "package.json"
 	fileSyncPort          = 50000
-	runtimePackage        = "@namespacelabs/foundation"
 	ForceProd             = false
 )
 
@@ -118,7 +120,8 @@ type impl struct {
 func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server provision.Server, isFocus bool) (build.Spec, error) {
 	deps := []workspace.Location{}
 	for _, dep := range server.Deps() {
-		if dep.Node() != nil && slices.Contains(dep.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS) {
+		// The runtime node doesn't have codegen for node.js so it needs to be included explicitly.
+		if dep.PackageName() == runtimeNode || pkgSupportsNodejs(dep) {
 			deps = append(deps, dep.Location)
 		}
 	}
@@ -146,12 +149,18 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server prov
 
 	return buildNodeJS{
 		module:     module,
+		workspace:  server.Location.Module.Workspace,
 		locs:       locs,
 		yarnRoot:   yarnRoot,
 		serverEnv:  server.Env(),
 		isDevBuild: isDevBuild,
 		isFocus:    isFocus,
 	}, nil
+}
+
+func pkgSupportsNodejs(pkg *workspace.Package) bool {
+	return (pkg.Server != nil && pkg.Server.Framework == schema.Framework_NODEJS) ||
+		(pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS))
 }
 
 func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
@@ -191,16 +200,16 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 }
 
 type yarnRootData struct {
-	moduleFs       fnfs.ReadWriteFS
+	module         *workspace.Module
 	workspacePaths []string
+	workspace      *schema.Workspace
 }
 
 func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) error {
 	yarnRootsMap := map[string]*yarnRootData{}
 	yarnRoots := []string{}
 	for _, pkg := range packages {
-		if (pkg.Server != nil && pkg.Server.Framework == schema.Framework_NODEJS) ||
-			(pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS)) {
+		if pkgSupportsNodejs(pkg) {
 			yarnRoot, err := findYarnRoot(pkg.Location)
 			if err != nil {
 				// If we can't find yarn root, using the workspace root.
@@ -208,8 +217,9 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 			}
 			if yarnRootsMap[yarnRoot] == nil {
 				yarnRootsMap[yarnRoot] = &yarnRootData{
-					moduleFs:       pkg.Location.Module.ReadWriteFS(),
+					module:         pkg.Location.Module,
 					workspacePaths: []string{},
+					workspace:      pkg.Location.Module.Workspace,
 				}
 				yarnRoots = append(yarnRoots, yarnRoot)
 			}
@@ -225,9 +235,17 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 
 	// Iterating over a list for the stable order.
 	for _, yarnRoot := range yarnRoots {
-		if err := updateYarnRootPackageJson(ctx, yarnRootsMap[yarnRoot], yarnRoot); err != nil {
+		// Can't fail
+		yarnRootData := yarnRootsMap[yarnRoot]
+
+		if err := updateYarnRootPackageJson(ctx, yarnRootData, yarnRoot); err != nil {
 			return err
 		}
+
+		if err := writeLockFile(ctx, yarnRootData.workspace, yarnRootData.module, yarnRoot); err != nil {
+			return err
+		}
+
 		// `fn tidy` could update dependencies of some nodes/servers, running `yarn install` to update
 		// `node_modules`.
 		if err := RunNodejsYarn(ctx, yarnRoot, []string{"install"}); err != nil {
@@ -239,7 +257,7 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 }
 
 func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, path string) error {
-	_, err := updatePackageJson(ctx, path, yarnRootData.moduleFs, func(packageJson map[string]interface{}, fileExisted bool) {
+	_, err := updatePackageJson(ctx, path, yarnRootData.module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
 		packageJson["private"] = true
 		packageJson["workspaces"] = yarnRootData.workspacePaths
 		packageJson["devDependencies"] = map[string]string{
@@ -324,7 +342,8 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 	}
 
 	dependencies := map[string]string{
-		runtimePackage: nodejsruntime.RuntimeVersion(),
+		// For servers this dependency is added automatically via "runtimeNode", but not for nodes.
+		runtimeNpmPackage: fmt.Sprintf("fn:%s/%s", foundationModule, runtimePackagePath),
 	}
 	for key, value := range builtin().Dependencies {
 		dependencies[key] = value
@@ -342,10 +361,13 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 			}
 
 			var ref string
-			if pkg.Location.Module.IsExternal() {
-				ref = "fn:" + pkg.Location.PathInCache()
-			} else {
+			// IsExternal() woudn't work here since it would return "false" for local modules
+			// used via "replace". Dependencies from all non-main modules are handled via "fn:"
+			// protocol.
+			if pkg.Location.Module.ModuleName() == loc.Module.ModuleName() {
 				ref = defaultPackageVersion
+			} else {
+				ref = "fn:" + pkg.Location.String()
 			}
 
 			dependencies[string(importNpmPackage)] = ref
@@ -449,7 +471,11 @@ func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Nod
 }
 
 func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
-	ext.Include = append(ext.Include, grpcNode)
+	// Adding extra nodes here:
+	// - grpcNode sets up correct flags for the server startup.
+	// - runtimeNode allows to treat the Foundation Node.js runtime as a regular node that has a Location,
+	// and copy it to the build image in the same way as other nodes.
+	ext.Include = append(ext.Include, grpcNode, runtimeNode)
 	return nil
 }
 

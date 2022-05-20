@@ -1,10 +1,6 @@
 {
 	"name": "@namespacelabs/foundation",
-	"version": "0.1.37",
-	"description": "Runtime Node.js libraries for Foundation",
-	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
-	"license": "https://github.com/namespacelabs/foundation/blob/main/LICENSE",
+	"private": true,
 	"dependencies": {
 		"fastify": "3.29.0",
 		"source-map-support": "0.5.21",
@@ -14,13 +10,5 @@
 	"devDependencies": {
 		"@tsconfig/node16": "1.0.2",
 		"@types/node": "16.x"
-	},
-	"scripts": {
-		"build": "tsc -p .",
-		"prepare": "yarn run build"
-	},
-	"files": [
-		"dist",
-		"src"
-	]
+	}
 }

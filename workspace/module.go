@@ -60,8 +60,11 @@ func (root *Module) ErrorLocation() string {
 
 func (root *Module) Abs() string        { return root.absPath }
 func (root *Module) ModuleName() string { return root.Workspace.ModuleName }
-func (root *Module) IsExternal() bool   { return root.version != "" }
-func (root *Module) Version() string    { return root.version }
+
+// An external module is downloaded from a remote location and stored in the cache. It always has a version.
+func (root *Module) IsExternal() bool { return root.version != "" }
+
+func (root *Module) Version() string { return root.version }
 func (root *Module) VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
 	return wscontents.Observe(root.absPath, rel, observeChanges && !root.IsExternal())
 }
