@@ -11,9 +11,11 @@ import (
 	"google.golang.org/grpc/peer"
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/std/testdata/service/proto"
+	"namespacelabs.dev/go-ids"
 )
 
 type Service struct {
+	proto.UnimplementedPostServiceServer
 }
 
 func (svc *Service) Post(ctx context.Context, req *proto.PostRequest) (*proto.PostResponse, error) {
@@ -28,7 +30,7 @@ func (svc *Service) Post(ctx context.Context, req *proto.PostRequest) (*proto.Po
 
 	log.Printf("request: %+v\n", req)
 
-	response := &proto.PostResponse{Response: "hello there: " + req.GetInput()}
+	response := &proto.PostResponse{Id: ids.NewSortableID(), Response: "hello there: " + req.GetInput()}
 	log.Printf("will reply with: %+v\n", response)
 
 	return response, nil

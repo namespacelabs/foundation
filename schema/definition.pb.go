@@ -25,14 +25,25 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// A definition represents a serialized invocation. It captures the arguments
+// for a a method which is registered by an implementation. It thus provides a
+// form of decoupling, and allows for a frontend/backend design, with separate
+// planning/execution phases. If this type would be created today, it would be
+// named "SerializedInvocation".
 type Definition struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Description string     `protobuf:"bytes,1,opt,name=description,proto3" json:"description,omitempty"` // Human readable label.
-	Impl        *anypb.Any `protobuf:"bytes,2,opt,name=impl,proto3" json:"impl,omitempty"`
-	Scope       []string   `protobuf:"bytes,3,rep,name=scope,proto3" json:"scope,omitempty"` // List of package names.
+	// Human readable description of the definition, does not affect output.
+	// Presented to the user on invocation.
+	Description string `protobuf:"bytes,1,opt,name=description,proto3" json:"description,omitempty"`
+	// Arguments to the method. The type of the arguments is used to select the
+	// method implementation.
+	Impl *anypb.Any `protobuf:"bytes,2,opt,name=impl,proto3" json:"impl,omitempty"`
+	// The list of packages this invocation applies to. Purely informational,
+	// does not affect output.
+	Scope []string `protobuf:"bytes,3,rep,name=scope,proto3" json:"scope,omitempty"`
 }
 
 func (x *Definition) Reset() {

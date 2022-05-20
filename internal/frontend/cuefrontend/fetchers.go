@@ -137,11 +137,6 @@ type cueProtoload struct {
 	Services map[string]cueProto `json:"services"`
 }
 
-type cueProto struct {
-	Typename string   `json:"typename"`
-	Source   []string `json:"source"`
-}
-
 func FetchProto(fsys fs.FS, loc workspace.Location) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		var load cueProtoload
@@ -202,14 +197,14 @@ func fillFromFile(fds *protos.FileDescriptorSetAndDeps, d *descriptorpb.FileDesc
 	for _, t := range d.GetMessageType() {
 		out.Types[t.GetName()] = cueProto{
 			Typename: fmt.Sprintf("%s.%s", d.GetPackage(), t.GetName()),
-			Source:   out.Sources,
+			Sources:  out.Sources,
 		}
 	}
 
 	for _, svc := range d.GetService() {
 		out.Services[svc.GetName()] = cueProto{
 			Typename: fmt.Sprintf("%s.%s", d.GetPackage(), svc.GetName()),
-			Source:   out.Sources,
+			Sources:  out.Sources,
 		}
 	}
 

@@ -166,6 +166,9 @@ func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocate
 		})
 	}
 
+	slices.Sort(gatewayServices)
+	gatewayServices = slices.Compact(gatewayServices)
+
 	if len(gatewayServices) > 0 {
 		var gwPort *schema.Endpoint_Port
 		for _, port := range serverPorts {
