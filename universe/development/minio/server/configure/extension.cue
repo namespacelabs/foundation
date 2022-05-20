@@ -12,5 +12,9 @@ configure: fn.#Configure & {
 			"--address=:9000",
 			"--console-address=:9001",
 		]
+		env: {
+			"MINIO_ROOT_USER":     "AKIAIOSFODNN7EXAMPLE"
+			"MINIO_ROOT_PASSWORD": "wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY"
+		}
 	}
 }

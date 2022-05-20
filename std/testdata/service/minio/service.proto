@@ -4,9 +4,27 @@
 
 syntax = "proto3";
 
-package minio.s3;
+package foundation.std.testdata.service.minio;
 
 option go_package = "namespacelabs.dev/foundation/std/testdata/service/minio";
 
-import public "std/testdata/service/localstack/service.proto";
+import "google/protobuf/empty.proto";
+
+message AddRequest {
+  string filename = 1;
+  string contents = 2;
+}
+
+message GetRequest {
+  string filename = 1;
+}
+
+message GetResponse {
+  string contents = 1;
+}
+
+service S3DemoService {
+  rpc Add(AddRequest) returns (google.protobuf.Empty);
+  rpc Get(GetRequest) returns (GetResponse);
+}
 

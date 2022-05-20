@@ -11,13 +11,13 @@ server: fn.#OpaqueServer & {
 	binary: image: "minio/minio"
 
 	import: [
-		"namespacelabs.dev/foundation/universe/development/minio/configure",
+		"namespacelabs.dev/foundation/universe/development/minio/server/configure",
 	]
 
 	service: "api": {
 		containerPort: 9000
 		metadata: {
-			protocol: "dummy string"
+			protocol: "http"
 		}
 	}
 
