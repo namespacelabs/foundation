@@ -212,7 +212,7 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 					})
 				}
 
-				return false, runtime.ErrContainerFailedToStart{
+				return false, runtime.ErrContainerFailed{
 					Name:             fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
 					Reason:           strings.Join(labels, "; "),
 					FailedContainers: failed,

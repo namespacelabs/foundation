@@ -74,7 +74,7 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 
 	if test.OutputProgress {
 		if err := deploy.Wait(ctx, test.Env, waiters); err != nil {
-			var e runtime.ErrContainerFailedToStart
+			var e runtime.ErrContainerFailed
 			if errors.As(err, &e) {
 				// Don't spend more than N time waiting for logs.
 				ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -123,8 +123,12 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 		defer cancelAll() // When the test is done, cancel logging.
 
 		if err := rt.RunOneShot(ctx, test.TestBinPkg, testRun, testLog); err != nil {
-			var e runtime.ErrContainerExitStatus
-			if errors.As(err, &e) && e.ExitCode > 0 {
+			// XXX consolidate these two.
+			var e1 runtime.ErrContainerExitStatus
+			var e2 runtime.ErrContainerFailed
+			if errors.As(err, &e1) && e1.ExitCode > 0 {
+				return errTestFailed
+			} else if errors.As(err, &e2) {
 				return errTestFailed
 			} else {
 				return err
@@ -148,6 +152,7 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 	if test.OutputProgress {
 		fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
 	}
+
 	bundle, err := collectLogs(ctx, test.Env, test.Stack, test.Focus, test.OutputProgress)
 	if err != nil {
 		return nil, err

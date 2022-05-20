@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -96,6 +97,11 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 		if err := r.Wait(ctx, tasks.Action("kubernetes.pod.wait"), WaitForPodConditition(fetchPod(r.moduleNamespace, name), func(status corev1.PodStatus) (bool, error) {
 			return (status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 		})); err != nil {
+			var e runtime.ErrContainerFailed
+			if errors.As(err, &e) {
+				return err
+			}
+
 			return fnerrors.InternalError("kubernetes: expected pod to have terminated, but didn't see termination status: %w", err)
 		}
 	}

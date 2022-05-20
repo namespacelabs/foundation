@@ -191,15 +191,15 @@ func (e ErrContainerExitStatus) Error() string {
 	return fmt.Sprintf("container exited with code %d", e.ExitCode)
 }
 
-type ErrContainerFailedToStart struct {
+type ErrContainerFailed struct {
 	Name   string
 	Reason string
 
 	FailedContainers []ContainerReference // A pointer that can be passed to the runtime to fetch logs.
 }
 
-func (e ErrContainerFailedToStart) Error() string {
-	return fmt.Sprintf("%s: container did not start successfully, failed with: %s", e.Name, e.Reason)
+func (e ErrContainerFailed) Error() string {
+	return fmt.Sprintf("%s: container failed with: %s", e.Name, e.Reason)
 }
 
 type ContainerWaitStatus struct {
