@@ -1,7 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/universe/storage/minio/s3"
+	"namespacelabs.dev/foundation/universe/storage/s3"
 )
 
 $proto: inputs.#Proto & {

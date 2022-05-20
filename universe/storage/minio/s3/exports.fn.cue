@@ -12,7 +12,7 @@ package s3
 			typeDefinition: {
 				"typename": "foundation.universe.aws.s3.BucketConfig"
 				"source": [
-					"provider.proto",
+					"../../../aws/s3/provider.proto",
 				]
 			}
 		}
