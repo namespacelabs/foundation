@@ -179,7 +179,7 @@ func cancelableWait[V any](ctx context.Context, cond *sync.Cond, resolve func() 
 		if !ok {
 			// Has the context been canceled?
 			if err := ctx.Err(); err != nil {
-				return v, nil
+				return v, err
 			}
 		} else {
 			return v, nil
