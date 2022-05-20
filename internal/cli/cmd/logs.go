@@ -40,8 +40,7 @@ func NewLogsCmd() *cobra.Command {
 				return err
 			}
 
-			cancel := console.SetIdleLabel(ctx, "listening for deployment changes")
-			defer cancel()
+			console.SetIdleLabel(ctx, "listening for deployment changes")
 
 			return logtail.NewLogTail(ctx, env, server.Proto())
 		}),

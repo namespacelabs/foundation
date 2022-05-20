@@ -1040,11 +1040,9 @@ func (c *ConsoleSink) AllocateConsoleId() uint64 {
 	return uint64(rand.Int63())
 }
 
-func (c *ConsoleSink) SetIdleLabel(label string) func() {
+func (c *ConsoleSink) SetIdleLabel(label string) {
 	// XXX locking
-	was := c.idleLabel
 	c.idleLabel = label
-	return func() { c.idleLabel = was }
 }
 
 func (c *ConsoleSink) SetStickyContent(name string, content []byte) {

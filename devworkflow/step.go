@@ -27,9 +27,6 @@ import (
 func setWorkspace(ctx context.Context, env provision.Env, packageName string, additional []string, obs *Session, pfw *endpointfwd.PortForward) error {
 	for {
 		if err := compute.Do(ctx, func(ctx context.Context) error {
-			done := console.SetIdleLabel(ctx, "waiting for workspace changes")
-			defer done()
-
 			serverPackages := []schema.PackageName{schema.Name(packageName)}
 			for _, pkg := range additional {
 				serverPackages = append(serverPackages, schema.Name(pkg))
