@@ -21,10 +21,6 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v3
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest
-        if: runner.os == 'macos'
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
