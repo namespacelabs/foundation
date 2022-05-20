@@ -319,6 +319,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 					Owner:       endpoint.EndpointOwner,
 					Service:     endpoint.AllocatedName,
 					Port:        endpoint.Port,
+					Method:      p.Method,
 				})
 				// XXX rethink this.
 				grpc = append(grpc, &schema.IngressFragment_IngressGrpcService{

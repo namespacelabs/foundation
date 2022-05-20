@@ -70,10 +70,11 @@ message IngressFragment {
     }
 
     message IngressGrpcService {
-        string        grpc_service = 1;  // Fully qualified name.
-        string        owner        = 2;  // Package name.
-        string        service      = 3;  // Backing service.
-        Endpoint.Port port         = 4;
+        string          grpc_service = 1;  // Fully qualified name.
+        string          owner        = 2;  // Package name.
+        string          service      = 3;  // Backing service.
+        repeated string method       = 5;  // If not set, forward all methods.
+        Endpoint.Port   port         = 4;
     }
 }
 

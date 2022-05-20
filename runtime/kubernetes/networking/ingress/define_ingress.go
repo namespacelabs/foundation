@@ -183,13 +183,24 @@ func generateForSrv(ns string, env *schema.Environment, srv *schema.Server, name
 				return nil, nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.GrpcService, p.Service))
 			}
 
-			paths = append(paths, applynetworkingv1.HTTPIngressPath().
-				WithPath("/"+p.GrpcService).
-				WithPathType(netv1.PathTypePrefix).
-				WithBackend(
-					applynetworkingv1.IngressBackend().WithService(
-						applynetworkingv1.IngressServiceBackend().WithName(p.Service).WithPort(
-							applynetworkingv1.ServiceBackendPort().WithNumber(p.Port.ContainerPort)))))
+			backend := applynetworkingv1.IngressBackend().
+				WithService(applynetworkingv1.IngressServiceBackend().
+					WithName(p.Service).
+					WithPort(applynetworkingv1.ServiceBackendPort().WithNumber(p.Port.ContainerPort)))
+
+			if len(p.Method) == 0 {
+				paths = append(paths, applynetworkingv1.HTTPIngressPath().
+					WithPath("/"+p.GrpcService).
+					WithPathType(netv1.PathTypePrefix).
+					WithBackend(backend))
+			} else {
+				for _, method := range p.Method {
+					paths = append(paths, applynetworkingv1.HTTPIngressPath().
+						WithPath(fmt.Sprintf("/%s/%s", p.GrpcService, method)).
+						WithPathType(netv1.PathTypeExact).
+						WithBackend(backend))
+				}
+			}
 		}
 
 		spec = spec.WithRules(applynetworkingv1.IngressRule().WithHost(ng.Domain.Fqdn).WithHTTP(

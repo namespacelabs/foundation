@@ -386,12 +386,6 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 }
 
 func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, export cueExportMethods, node *schema.Node, out *workspace.Package) error {
-	node.ExportService = append(node.ExportService, &schema.GrpcExportService{
-		ProtoTypename: export.Service.Typename,
-		Proto:         export.Service.Sources,
-		Method:        export.Methods,
-	})
-
 	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
 		return err
@@ -407,9 +401,38 @@ func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc wor
 		return fnerrors.UserError(loc, "failed to load service %q: %v", export.Service.Typename, err)
 	}
 
-	if _, ok := desc.(protoreflect.ServiceDescriptor); !ok {
+	svc, ok := desc.(protoreflect.ServiceDescriptor)
+	if !ok {
 		return fnerrors.UserError(loc, "expected %q to be a service: %v", export.Service.Typename, err)
 	}
+
+	// Validated that the methods exported are actually part of the service.
+	if len(export.Methods) > 0 {
+		var notFound []string
+		for _, method := range export.Methods {
+			// XXX O(n^2)
+			var found bool
+			for i := 0; i < svc.Methods().Len(); i++ {
+				declared := svc.Methods().Get(i)
+				if string(declared.Name()) == method {
+					found = true
+					break
+				}
+			}
+			if !found {
+				notFound = append(notFound, method)
+			}
+		}
+		if len(notFound) > 0 {
+			return fnerrors.UserError(loc, "%s: the following methods don't exist in the service: %v", export.Service.Typename, notFound)
+		}
+	}
+
+	node.ExportService = append(node.ExportService, &schema.GrpcExportService{
+		ProtoTypename: export.Service.Typename,
+		Proto:         export.Service.Sources,
+		Method:        export.Methods,
+	})
 
 	if out.Services == nil {
 		out.Services = map[string]*protos.FileDescriptorSetAndDeps{}

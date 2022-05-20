@@ -1,7 +1,6 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/std/testdata/datastore"
 	"namespacelabs.dev/foundation/std/grpc"
 	"namespacelabs.dev/foundation/std/grpc/deadlines"
 )
@@ -21,7 +20,10 @@ service: fn.#Service & {
 		}
 	}
 
-	exportService:        $proto.services.PostService
+	exportMethods: {
+		service: $proto.services.PostService
+		methods: ["Fetch"]
+	}
 	exportServicesAsHttp: true
 	ingress:              "INTERNET_FACING"
 }
