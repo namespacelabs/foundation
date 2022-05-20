@@ -22,7 +22,7 @@ var (
 func main() {
 	flag.Parse()
 	if *awsCredentialsFile == "" {
-		log.Fatalf("aws_credentials_file must be set if localstack_endpoint is not set.")
+		log.Fatalf("aws_credentials_file must be set")
 	}
 
 	ctx := context.Background()
