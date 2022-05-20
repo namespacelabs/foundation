@@ -44,8 +44,12 @@ func NewObservers(ctx context.Context) *Observers {
 	return &Observers{ch: ch}
 }
 
-func (obs *Observers) New() *Observer {
-	cli := &Observer{parent: obs, ch: make(chan *Update)}
+func (obs *Observers) New(update *Update) *Observer {
+	cli := &Observer{parent: obs, ch: make(chan *Update, 1)}
+	if update != nil {
+		// Write before anyone has the chance of closing the channel.
+		cli.ch <- update
+	}
 	obs.push(obsMsg{op: pOpAddCh, observer: cli})
 	return cli
 }

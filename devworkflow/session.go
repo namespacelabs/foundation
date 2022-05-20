@@ -82,8 +82,6 @@ func (s *Session) Close() {
 }
 
 func (s *Session) NewClient(needsHistory bool) *Observer {
-	ch := make(chan *Update, 1)
-
 	const maxTaskUpload = 1000
 	var taskHistory []*protocol.Task
 
@@ -99,9 +97,7 @@ func (s *Session) NewClient(needsHistory bool) *Observer {
 	tu := &Update{TaskUpdate: taskHistory, StackUpdate: proto.Clone(s.currentStack).(*Stack)}
 	s.mu.Unlock()
 
-	ch <- tu
-
-	return s.obs.New()
+	return s.obs.New(tu)
 }
 
 func (s *Session) CommandOutput() io.ReadCloser   { return s.commandOutput.Reader() }
