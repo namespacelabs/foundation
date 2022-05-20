@@ -16,7 +16,7 @@ jobs:
     name: Build Foundation
     strategy:
       matrix:
-        os: [ubuntu-18.04] # Add macos-11 when e2e tests work (macos images dont include docker)
+        os: [ubuntu-20.04, [self-hosted, macOS]]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out
@@ -53,7 +53,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-20.04, [self-hosted, macOS]]
         use_prebuilts: [false, true]
         golang_use_buildkit: [false, true]
     runs-on: ${{ matrix.os }}
@@ -113,7 +113,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-20.04, [self-hosted, macOS]]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -183,7 +183,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-20.04, [self-hosted, macOS]]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
