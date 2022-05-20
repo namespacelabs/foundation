@@ -180,6 +180,9 @@ message GrpcExportService {
 
     // The type of the service being exported.
     string proto_typename = 2;
+
+    // A subset of methods this implementation supports. If empty, the implementation supports all methods.
+    repeated string method = 3;
 }
 
 message Reference {

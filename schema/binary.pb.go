@@ -24,6 +24,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// A "binary" represents a compiled image. It's similar to a Docker image,
+// with the difference that the mechanism to build a binary is always
+// attached to itself -- i.e. it's a reproducible build.
 type Binary struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -96,6 +99,7 @@ func (x *Binary) GetConfig() *BinaryConfig {
 	return nil
 }
 
+// Instructions of how to invoke the image, if it includes an invocable binary.
 type BinaryConfig struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

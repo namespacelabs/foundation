@@ -63,13 +63,15 @@ _#Node: {
 
 	ingress: *"PRIVATE" | "INTERNET_FACING"
 
-	exportService?:        #GrpcService
+	exportService?:        types.#Proto
 	exportServicesAsHttp?: bool // XXX move this to the service definition.
+	exportMethods?: {
+		service: types.#Proto
+		methods: [...string]
+	}
 
 	exportHttp?: [...#HttpPath]
 }
-
-#GrpcService: types.#Proto
 
 #HttpPath: {
 	path:  string

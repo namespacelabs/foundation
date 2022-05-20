@@ -29,9 +29,14 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 )
 
-type cueGrpcService struct {
+type cueProto struct {
 	Typename string   `json:"typename"`
 	Sources  []string `json:"source"`
+}
+
+type cueExportMethods struct {
+	Service cueProto `json:"service"`
+	Methods []string `json:"methods"`
 }
 
 type cueHttpPath struct {
@@ -253,48 +258,34 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		node.Ingress = schema.Endpoint_Type(schema.Endpoint_Type_value[v])
 	}
 
+	if e := v.LookupPath("exportServicesAsHttp"); e.Exists() {
+		vb, err := e.Val.Bool()
+		if err != nil {
+			return err
+		}
+		node.ExportServicesAsHttp = vb
+	}
+
 	if exported := v.LookupPath("exportService"); exported.Exists() {
-		var svc cueGrpcService
+		var svc cueProto
 		if err := exported.Val.Decode(&svc); err != nil {
 			return err
 		}
 
-		if e := v.LookupPath("exportServicesAsHttp"); e.Exists() {
-			vb, err := e.Val.Bool()
-			if err != nil {
-				return err
-			}
-			node.ExportServicesAsHttp = vb
+		if err := handleService(ctx, pl, loc, cueExportMethods{Service: svc}, node, out); err != nil {
+			return err
 		}
+	}
 
-		node.ExportService = append(node.ExportService, &schema.GrpcExportService{
-			ProtoTypename: svc.Typename,
-			Proto:         svc.Sources,
-		})
-
-		fsys, err := pl.WorkspaceOf(ctx, loc.Module)
-		if err != nil {
+	if exported := v.LookupPath("exportMethods"); exported.Exists() {
+		var export cueExportMethods
+		if err := exported.Val.Decode(&export); err != nil {
 			return err
 		}
 
-		parsed, err := protos.ParseAtLocation(fsys, loc, svc.Sources)
-		if err != nil {
-			return fnerrors.UserError(loc, "failed to parse proto sources %v: %v", svc.Sources, err)
+		if err := handleService(ctx, pl, loc, export, node, out); err != nil {
+			return err
 		}
-
-		_, desc, err := protos.LoadDescriptorByName(parsed, svc.Typename)
-		if err != nil {
-			return fnerrors.UserError(loc, "failed to load service %q: %v", svc.Typename, err)
-		}
-
-		if _, ok := desc.(protoreflect.ServiceDescriptor); !ok {
-			return fnerrors.UserError(loc, "expected %q to be a service: %v", svc.Typename, err)
-		}
-
-		if out.Services == nil {
-			out.Services = map[string]*protos.FileDescriptorSetAndDeps{}
-		}
-		out.Services[svc.Typename] = parsed
 	}
 
 	if exported := v.LookupPath("exportHttp"); exported.Exists() {
@@ -392,6 +383,63 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	return workspace.TransformNode(ctx, pl, loc, node, kind, opts)
+}
+
+func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, export cueExportMethods, node *schema.Node, out *workspace.Package) error {
+	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
+	if err != nil {
+		return err
+	}
+
+	parsed, err := protos.ParseAtLocation(fsys, loc, export.Service.Sources)
+	if err != nil {
+		return fnerrors.UserError(loc, "failed to parse proto sources %v: %v", export.Service.Sources, err)
+	}
+
+	_, desc, err := protos.LoadDescriptorByName(parsed, export.Service.Typename)
+	if err != nil {
+		return fnerrors.UserError(loc, "failed to load service %q: %v", export.Service.Typename, err)
+	}
+
+	svc, ok := desc.(protoreflect.ServiceDescriptor)
+	if !ok {
+		return fnerrors.UserError(loc, "expected %q to be a service: %v", export.Service.Typename, err)
+	}
+
+	// Validated that the methods exported are actually part of the service.
+	if len(export.Methods) > 0 {
+		var notFound []string
+		for _, method := range export.Methods {
+			// XXX O(n^2)
+			var found bool
+			for i := 0; i < svc.Methods().Len(); i++ {
+				declared := svc.Methods().Get(i)
+				if string(declared.Name()) == method {
+					found = true
+					break
+				}
+			}
+			if !found {
+				notFound = append(notFound, method)
+			}
+		}
+		if len(notFound) > 0 {
+			return fnerrors.UserError(loc, "%s: the following methods don't exist in the service: %v", export.Service.Typename, notFound)
+		}
+	}
+
+	node.ExportService = append(node.ExportService, &schema.GrpcExportService{
+		ProtoTypename: export.Service.Typename,
+		Proto:         export.Service.Sources,
+		Method:        export.Methods,
+	})
+
+	if out.Services == nil {
+		out.Services = map[string]*protos.FileDescriptorSetAndDeps{}
+	}
+
+	out.Services[export.Service.Typename] = parsed
+	return nil
 }
 
 func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, provides *fncue.CueV, pkg *workspace.Package, opts workspace.LoadPackageOpts, out *schema.Node) error {
@@ -534,7 +582,7 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 
 func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAPI bool, pl workspace.EarlyPackageLoader, loc workspace.Location) (*anypb.Any, error) {
 	if inst.PackageName == "" {
-		if len(inst.TypeDef.Source) > 0 {
+		if len(inst.TypeDef.Sources) > 0 {
 			return nil, fnerrors.UserError(loc, "source can't be provided when package is unspecified")
 		}
 
@@ -571,7 +619,7 @@ func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAP
 		return nil, err
 	}
 
-	msgdesc, err := protos.LoadMessageAtLocation(fsys, resolved, inst.TypeDef.Source, inst.TypeDef.Typename)
+	msgdesc, err := protos.LoadMessageAtLocation(fsys, resolved, inst.TypeDef.Sources, inst.TypeDef.Typename)
 	if err != nil {
 		return nil, fnerrors.UserError(loc, "%s: %w", resolved.PackageName, err)
 	}

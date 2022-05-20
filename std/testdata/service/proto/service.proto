@@ -13,9 +13,19 @@ message PostRequest {
 }
 
 message PostResponse {
+    string id       = 1;
+    string response = 2;
+}
+
+message FetchRequest {
+    string id = 1;
+}
+
+message FetchResponse {
     string response = 1;
 }
 
 service PostService {
     rpc Post(PostRequest) returns (PostResponse);
+    rpc Fetch(FetchRequest) returns (FetchResponse);
 }

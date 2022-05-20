@@ -166,6 +166,9 @@ func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocate
 		})
 	}
 
+	slices.Sort(gatewayServices)
+	gatewayServices = slices.Compact(gatewayServices)
+
 	if len(gatewayServices) > 0 {
 		var gwPort *schema.Endpoint_Port
 		for _, port := range serverPorts {
@@ -316,6 +319,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 					Owner:       endpoint.EndpointOwner,
 					Service:     endpoint.AllocatedName,
 					Port:        endpoint.Port,
+					Method:      p.Method,
 				})
 				// XXX rethink this.
 				grpc = append(grpc, &schema.IngressFragment_IngressGrpcService{
