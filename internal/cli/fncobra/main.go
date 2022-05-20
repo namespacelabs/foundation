@@ -444,7 +444,7 @@ func ensureFnConfig() {
 }
 
 func consoleFromFile() (*os.File, bool) {
-	out := os.Stdout
+	out := os.Stderr
 	return out, termios.IsTerm(out.Fd())
 }
 
