@@ -52,7 +52,7 @@ __metadata:
   dependencies:
     "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter": 0.0.0
-    "@namespacelabs/foundation": 0.1.37
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -69,7 +69,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:languages/nodejs/testdata/extensions/numberformatter"
   dependencies:
     "@grpc/grpc-js": 1.5.8
-    "@namespacelabs/foundation": 0.1.37
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -90,7 +90,7 @@ __metadata:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp": 0.0.0
-    "@namespacelabs/foundation": 0.1.37
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -108,7 +108,7 @@ __metadata:
   dependencies:
     "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
-    "@namespacelabs/foundation": 0.1.37
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -126,7 +126,7 @@ __metadata:
   dependencies:
     "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/std-grpc": 0.0.0
-    "@namespacelabs/foundation": 0.1.37
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -143,7 +143,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple"
   dependencies:
     "@grpc/grpc-js": 1.5.8
-    "@namespacelabs/foundation": 0.1.37
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -160,7 +160,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp@workspace:languages/nodejs/testdata/services/simplehttp"
   dependencies:
     "@grpc/grpc-js": 1.5.8
-    "@namespacelabs/foundation": 0.1.37
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -177,7 +177,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/std-grpc@workspace:std/grpc"
   dependencies:
     "@grpc/grpc-js": 1.5.8
-    "@namespacelabs/foundation": 0.1.37
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": ^3.15.5
     "@types/node": 16.x
@@ -189,15 +189,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@namespacelabs/foundation@npm:0.1.37":
-  version: 0.1.37
-  resolution: "@namespacelabs/foundation@npm:0.1.37::__archiveUrl=https%3A%2F%2Fus-npm.pkg.dev%2Ffoundation-344819%2Fnpm-prebuilts%2F%40namespacelabs%2Ffoundation%2F-%2F%40namespacelabs%2Ffoundation-0.1.37.tgz"
+"@namespacelabs/foundation@fn:namespacelabs.dev/foundation/languages/nodejs/runtime":
+  version: 0.0.0
+  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/languages/nodejs/runtime::d0b84a"
   dependencies:
     fastify: 3.29.0
     source-map-support: 0.5.21
     typescript: 4.6.2
     yargs: 16.x
-  checksum: 0a04737de913b3315414ac8ffff4aa903abf4a243a6ce4f86b6a2337a2a591c53215878badfbe68511ddc41b24b0b7c6265601cd954aa3bb35d2679071e51d23
+  checksum: 8994ce359ccf2ef04b2ce08149cbd3cda538376d360940e7def1c2a8ec2fd2852a1fdf023267ed7c30379883d4128b846086dc70645a8a3ecb340357e2685ca2
   languageName: node
   linkType: hard
 

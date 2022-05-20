@@ -9,7 +9,6 @@ import (
 
 	"namespacelabs.dev/foundation/internal/localexec"
 	yarnsdk "namespacelabs.dev/foundation/internal/sdk/yarn"
-	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 func RunYarn(ctx context.Context, relPath string, args []string, env []string) error {
@@ -22,11 +21,7 @@ func RunYarn(ctx context.Context, relPath string, args []string, env []string) e
 	cmd.Command = "node"
 	cmd.Args = append([]string{string(bin)}, args...)
 	cmd.Dir = relPath
-	fnModuleCache, err := dirs.ModuleCacheRoot()
-	if err != nil {
-		return err
-	}
-	cmd.AdditionalEnv = append(env, "FN_MODULE_CACHE="+fnModuleCache)
+	cmd.AdditionalEnv = env
 
 	return cmd.Run(ctx)
 }

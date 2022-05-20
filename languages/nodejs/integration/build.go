@@ -19,11 +19,11 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/yarn"
-	yarnsdk "namespacelabs.dev/foundation/internal/sdk/yarn"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -37,7 +37,7 @@ const appRootPath = "/app"
 // These paths are only used within a buildkit environment.
 var (
 	// We add "node_modules" so Yarn doesn't recognize external modules as workspaces.
-	fnModuleCachePath = filepath.Join(appRootPath, ".cache", "node_modules")
+	depsRootPath      = filepath.Join(appRootPath, "external_deps", "node_modules")
 	yarnBinaryPath    = "/yarn.cjs"
 	tsConfigPath      = filepath.Join(appRootPath, "tsconfig.production.fn.json")
 	nodemonConfigPath = filepath.Join(appRootPath, "nodemon.fn.json")
@@ -45,6 +45,7 @@ var (
 
 type buildNodeJS struct {
 	module     build.Workspace
+	workspace  *schema.Workspace
 	locs       []workspace.Location
 	yarnRoot   string
 	serverEnv  provision.ServerEnv
@@ -129,6 +130,23 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
+	lockFileStruct, err := generateLockFileStruct(bnj.workspace, appRootPath)
+	if err != nil {
+		return llb.State{}, nil, err
+	}
+
+	// When building an image we simply put all the dependencies under "depsRootPath" by their module name.
+	for moduleName, modulePath := range lockFileStruct.ModuleToPath {
+		// Special case: for the Foundation module itself keeping the root path.
+		if modulePath != appRootPath {
+			lockFileStruct.ModuleToPath[moduleName] = filepath.Join(depsRootPath, moduleName)
+		}
+	}
+	buildBase, err = writeJsonAsFile(ctx, buildBase, lockFileStruct, filepath.Join(appRootPath, lockFilePath))
+	if err != nil {
+		return llb.State{}, nil, err
+	}
+
 	// We have to copy the whole Yarn root because otherwise there may be missing workspaces
 	// and `yarn install --immutable` will fail.
 	buildBase = buildBase.With(llbutil.CopyFrom(src, bnj.yarnRoot, yarnRoot))
@@ -141,14 +159,16 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 	for _, loc := range bnj.locs {
-		if loc.Module.IsExternal() {
-			// External modules live in the Foundation module cache.
-			// We copy from the cache to the "fnModuleCache" dir, replicating the cache structure
-			// so our Yarn plugin can find it.
+		if loc.Module.ModuleName() != bnj.module.ModuleName() {
+			modulePath, ok := lockFileStruct.ModuleToPath[loc.Module.ModuleName()]
+			if !ok {
+				return llb.State{}, nil, fnerrors.InternalError("module %s not found in the Foundation lock file", loc.Module.ModuleName())
+			}
+
 			moduleLocal := buildkit.LocalContents{Module: loc.Module, Path: loc.Rel(), ObserveChanges: false}
 			locals = append(locals, moduleLocal)
 			buildBase = buildBase.With(llbutil.CopyFrom(buildkit.MakeLocalState(moduleLocal), ".",
-				filepath.Join(fnModuleCachePath, loc.PathInCache())))
+				filepath.Join(modulePath, loc.Rel())))
 		}
 	}
 	buildBase = runYarnInstall(*conf.TargetPlatform(), buildBase, yarnRoot, bnj.isDevBuild)
@@ -176,9 +196,7 @@ func prepareYarnBase(ctx context.Context, nodejsBase string, platform specs.Plat
 	base := llbutil.Image(nodejsBase, platform)
 	buildBase := base.Run(llb.Shlex("apk add --no-cache python2 make g++")).
 		Root().
-		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn").
-		// Needed for the Foundation plugin for Yarn.
-		AddEnv("FN_MODULE_CACHE", fnModuleCachePath)
+		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn")
 	for k, v := range YarnEnvArgs("/") {
 		buildBase = buildBase.AddEnv(k, v)
 	}
@@ -198,7 +216,7 @@ func prepareYarnBase(ctx context.Context, nodejsBase string, platform specs.Plat
 
 func copyYarnBinaryFromCache(ctx context.Context, base llb.State) (llb.State, error) {
 	// TODO: feed Yarn SDK as a dependency to the graph to speed up the initial build.
-	yarnBin, err := yarnsdk.EnsureSDK(ctx)
+	yarnBin, err := yarn.EnsureSDK(ctx)
 	if err != nil {
 		return llb.State{}, err
 	}
@@ -226,6 +244,7 @@ func copyYarnAuxFilesFromCache(ctx context.Context, base llb.State) (llb.State, 
 }
 
 func writeJsonAsFile(ctx context.Context, base llb.State, content any, path string) (llb.State, error) {
+	base = base.File(llb.Mkdir(filepath.Dir(path), 0755, llb.WithParents(true)))
 	json, err := json.MarshalIndent(content, "", "\t")
 	if err != nil {
 		return llb.State{}, err
@@ -269,7 +288,7 @@ func generateTsConfig(ctx context.Context, base llb.State, locs []workspace.Loca
 	}
 
 	for _, loc := range locs {
-		if loc.Module.IsExternal() {
+		if loc.Module.IsExternal() || loc.PackageName == runtimeNode {
 			npmPackage, err := toNpmPackage(loc)
 			if err != nil {
 				return llb.State{}, err

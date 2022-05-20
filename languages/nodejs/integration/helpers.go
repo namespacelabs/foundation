@@ -17,6 +17,9 @@ import (
 type NpmPackage string
 
 func toNpmPackage(loc workspace.Location) (NpmPackage, error) {
+	if loc.PackageName == runtimeNode {
+		return runtimeNpmPackage, nil
+	}
 	pkg := strings.Join(strings.Split(loc.Rel(), "/"), "-")
 	namespace := strings.Join(strings.Split(loc.Module.ModuleName(), "/"), "-")
 	return NpmPackage(fmt.Sprintf("@%s/%s", namespace, pkg)), nil
