@@ -2,6 +2,9 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
+// Implements loading of Foundation-specific dialect of Cue which includes:
+// * a Golang-like module system where modules are loaded from source transparently when needed;
+// * support for @fn() attributes allowing to access runtime data from the environment.
 package fncue
 
 import (
@@ -50,6 +53,7 @@ type WorkspaceLoader interface {
 	SnapshotDir(context.Context, schema.PackageName, memfs.SnapshotOpts) (fnfs.Location, error)
 }
 
+// Represents an unparsed Cue package.
 type CuePackage struct {
 	ModuleName string
 	RelPath    string   // Relative to module root.
@@ -66,6 +70,8 @@ func (pkg CuePackage) RelFiles() []string {
 	return files
 }
 
+// Fills [m] with the transitive closure of packages and files imported by package [pkgname].
+// TODO: Use [snapshotCache] instead of re-parsing all packages directly.
 func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname string, m map[string]*CuePackage) error {
 	if _, ok := m[pkgname]; ok {
 		return nil
@@ -141,6 +147,7 @@ func loadPackageContents(ctx context.Context, loader WorkspaceLoader, pkgName st
 	}, nil
 }
 
+// Entry point to load Cue packages from a Foundation workspace.
 type EvalCtx struct {
 	cache  *snapshotCache
 	loader WorkspaceLoader
@@ -203,19 +210,19 @@ func joinErrors(errs []error) error {
 	}
 }
 
-func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage) (*Partial, error) {
-	ev.mu.Lock()
-	defer ev.mu.Unlock()
+func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage) (*Partial, error) {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
 
-	if _, has := ev.built[pkgname]; !has {
+	if _, has := sc.built[pkgname]; !has {
 		info, _ := astutil.ParseImportSpec(ast.NewImport(nil, pkgname))
-		p := ev.buildAndCacheInstance(ctx, pkg, info, collectedImports)
+		p := sc.parseAndCacheInstance(ctx, pkg, info, collectedImports)
 		if len(p.DepsErrors) > 0 {
 			return nil, joinErrors(p.DepsErrors)
 		}
-		vv := ev.cuectx.BuildInstance(p)
+		vv := sc.cuectx.BuildInstance(p)
 
-		partial := &Partial{Ctx: ev}
+		partial := &Partial{Ctx: sc}
 		partial.Package = pkg
 		partial.Val = vv
 
@@ -238,31 +245,31 @@ func (ev *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 			return partial, vv.Err()
 		}
 
-		ev.built[pkgname] = partial
+		sc.built[pkgname] = partial
 	}
 
-	return ev.built[pkgname], nil
+	return sc.built[pkgname], nil
 }
 
-func (ev *snapshotCache) buildAndCacheInstance(ctx context.Context, pkg CuePackage, info astutil.ImportInfo, collectedImports map[string]*CuePackage) *build.Instance {
-	if p := ev.parsed[info.ID]; p != nil {
+func (sc *snapshotCache) parseAndCacheInstance(ctx context.Context, pkg CuePackage, info astutil.ImportInfo, collectedImports map[string]*CuePackage) *build.Instance {
+	if p := sc.parsed[info.ID]; p != nil {
 		return p
 	}
 
-	p := ev.buildInstance(ctx, collectedImports, info, pkg)
-	ev.parsed[info.ID] = p
+	p := sc.parseInstance(ctx, collectedImports, info, pkg)
+	sc.parsed[info.ID] = p
 	return p
 }
 
-func (ev *snapshotCache) buildInstance(ctx context.Context, collectedImports map[string]*CuePackage, info astutil.ImportInfo, pkg CuePackage) *build.Instance {
-	p := ev.bldctx.NewInstance(fmt.Sprintf("%s/%s", pkg.ModuleName, pkg.RelPath), func(pos token.Pos, path string) *build.Instance {
+func (sc *snapshotCache) parseInstance(ctx context.Context, collectedImports map[string]*CuePackage, info astutil.ImportInfo, pkg CuePackage) *build.Instance {
+	p := sc.bldctx.NewInstance(fmt.Sprintf("%s/%s", pkg.ModuleName, pkg.RelPath), func(pos token.Pos, path string) *build.Instance {
 		if IsStandardImportPath(path) {
 			return nil // Builtin.
 		}
 
 		info, _ := astutil.ParseImportSpec(ast.NewImport(nil, path))
 		if pkg, ok := collectedImports[info.Dir]; ok {
-			return ev.buildAndCacheInstance(ctx, *pkg, info, collectedImports)
+			return sc.parseAndCacheInstance(ctx, *pkg, info, collectedImports)
 		}
 
 		return nil

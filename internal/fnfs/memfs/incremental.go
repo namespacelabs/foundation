@@ -17,6 +17,7 @@ func IncrementalSnapshot(origin fs.FS) *IncrementalFS {
 	return &IncrementalFS{origin: origin}
 }
 
+// A proxy to the underlying [fs.FS] that caches files in memory upon first access.
 type IncrementalFS struct {
 	origin   fs.FS
 	mu       sync.RWMutex
@@ -43,10 +44,12 @@ func (inc *IncrementalFS) Open(name string) (fs.File, error) {
 	return inc.snapshot.Open(name)
 }
 
+// Returns a copy of the FS containing the cached files (the ones that were accessed).
 func (inc *IncrementalFS) Snapshot(opts SnapshotOpts) (*FS, error) {
 	return Snapshot(&inc.snapshot, opts)
 }
 
+// Walks over all cached files.
 func (inc *IncrementalFS) VisitFiles(ctx context.Context, f func(string, bytestream.ByteStream, fs.DirEntry) error) error {
 	inc.mu.RLock()
 	defer inc.mu.RUnlock()
