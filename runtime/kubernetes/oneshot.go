@@ -56,7 +56,9 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 		WaitForPodConditition(fetchPod(r.moduleNamespace, name), func(status corev1.PodStatus) (bool, error) {
 			return (status.Phase == corev1.PodRunning || status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 		})); err != nil {
-		return err
+		if _, ok := err.(runtime.ErrContainerFailed); !ok {
+			return err
+		}
 	}
 
 	if ctx.Err() != nil {
