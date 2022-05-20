@@ -7,7 +7,7 @@ import (
 )
 
 $providerProto: inputs.#Proto & {
-	source: "../../../aws/s3/provider.proto"
+	source: "provider.proto"
 }
 
 extension: fn.#Extension & {
