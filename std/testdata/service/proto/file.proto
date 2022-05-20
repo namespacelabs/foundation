@@ -4,26 +4,26 @@
 
 syntax = "proto3";
 
-package localstacks3;
+package std.testdata.service.proto;
 
-option go_package = "namespacelabs.dev/foundation/universe/development/localstack/localstacks3";
+option go_package = "namespacelabs.dev/foundation/std/testdata/service/proto";
 
 import "google/protobuf/empty.proto";
 
-message AddRequest {
+message AddFileRequest {
   string filename = 1;
   string contents = 2;
 }
 
-message GetRequest {
+message GetFileRequest {
   string filename = 1;
 }
 
-message GetResponse {
+message GetFileResponse {
   string contents = 1;
 }
 
-service S3DemoService {
-  rpc Add(AddRequest) returns (google.protobuf.Empty);
-  rpc Get(GetRequest) returns (GetResponse);
+service FileService {
+  rpc Add(AddFileRequest) returns (google.protobuf.Empty);
+  rpc Get(GetFileRequest) returns (GetFileResponse);
 }

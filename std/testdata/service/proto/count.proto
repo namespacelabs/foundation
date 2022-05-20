@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package std.testdata.service.multicounter;
+package std.testdata.service.proto;
 
-option go_package = "namespacelabs.dev/foundation/std/testdata/service/multicounter";
+option go_package = "namespacelabs.dev/foundation/std/testdata/service/proto";
 
 import "google/protobuf/empty.proto";
 
@@ -23,7 +23,7 @@ message GetResponse {
     int32 value = 1;
 }
 
-service MulticounterService {
+service CountService {
     rpc Increment(IncrementRequest) returns (google.protobuf.Empty);
     rpc Get(GetRequest) returns (GetResponse);
 }

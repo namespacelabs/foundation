@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
@@ -29,7 +30,7 @@ func add(ctx context.Context, db *postgres.DB, item string) error {
 	return err
 }
 
-func (svc *Service) Add(ctx context.Context, req *AddRequest) (*emptypb.Empty, error) {
+func (svc *Service) Add(ctx context.Context, req *proto.AddRequest) (*emptypb.Empty, error) {
 	log.Printf("new Add request: %+v\n", req)
 
 	if err := add(ctx, svc.db, req.Item); err != nil {
@@ -63,7 +64,7 @@ func list(ctx context.Context, db *postgres.DB) ([]string, error) {
 	return res, nil
 }
 
-func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*ListResponse, error) {
+func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*proto.ListResponse, error) {
 	log.Print("new List request\n")
 
 	l, err := list(ctx, svc.db)
@@ -71,11 +72,11 @@ func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*ListResponse, 
 		log.Fatalf("failed to read list: %v", err)
 	}
 
-	response := &ListResponse{Item: l}
+	response := &proto.ListResponse{Item: l}
 	return response, nil
 }
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	svc := &Service{db: deps.Db}
-	RegisterListServiceServer(srv, svc)
+	proto.RegisterListServiceServer(srv, svc)
 }

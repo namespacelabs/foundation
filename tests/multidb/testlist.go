@@ -10,7 +10,7 @@ import (
 	"sort"
 
 	"google.golang.org/protobuf/types/known/emptypb"
-	"namespacelabs.dev/foundation/std/testdata/service/multidb"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 	"namespacelabs.dev/foundation/testing"
 )
 
@@ -23,12 +23,12 @@ func main() {
 			return err
 		}
 
-		cli := multidb.NewListServiceClient(conn)
+		cli := proto.NewMultiDbListServiceClient(conn)
 
-		if _, err = cli.AddPostgres(ctx, &multidb.AddRequest{Item: "postgres-item"}); err != nil {
+		if _, err = cli.AddPostgres(ctx, &proto.AddRequest{Item: "postgres-item"}); err != nil {
 			return err
 		}
-		if _, err = cli.AddMaria(ctx, &multidb.AddRequest{Item: "maria-item"}); err != nil {
+		if _, err = cli.AddMaria(ctx, &proto.AddRequest{Item: "maria-item"}); err != nil {
 			return err
 		}
 

@@ -6,7 +6,7 @@ import (
 )
 
 $proto: inputs.#Proto & {
-	source: "service.proto"
+	source: "../proto/multidb.proto"
 }
 
 service: fn.#Service & {
@@ -27,7 +27,7 @@ service: fn.#Service & {
 		}
 	}
 
-	exportService:        $proto.services.ListService
+	exportService:        $proto.services.MultiDbListService
 	exportServicesAsHttp: true
 	ingress:              "INTERNET_FACING"
 }

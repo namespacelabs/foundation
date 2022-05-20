@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"path/filepath"
 
 	"github.com/kr/text"
 	"github.com/protocolbuffers/txtpbfmt/parser"
@@ -176,7 +177,8 @@ func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instant
 		}
 
 		// XXX not hermetic.
-		gopkg, err := gosupport.ComputeGoPackage(grpcClientType.Location.Abs())
+		path := filepath.Dir(grpcClientType.Location.Rel(grpcClientType.SourceFileName))
+		gopkg, err := gosupport.ComputeGoPackage(path)
 		if err != nil {
 			return err
 		}

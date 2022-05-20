@@ -13,6 +13,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
@@ -31,7 +32,7 @@ func addPostgres(ctx context.Context, db *postgres.DB, item string) error {
 	return err
 }
 
-func (svc *Service) AddPostgres(ctx context.Context, req *AddRequest) (*emptypb.Empty, error) {
+func (svc *Service) AddPostgres(ctx context.Context, req *proto.AddRequest) (*emptypb.Empty, error) {
 	log.Printf("new AddPostgres request: %+v\n", req)
 
 	if err := addPostgres(ctx, svc.postgres, req.Item); err != nil {
@@ -50,7 +51,7 @@ func addMaria(ctx context.Context, db *sql.DB, item string) error {
 	return err
 }
 
-func (svc *Service) AddMaria(ctx context.Context, req *AddRequest) (*emptypb.Empty, error) {
+func (svc *Service) AddMaria(ctx context.Context, req *proto.AddRequest) (*emptypb.Empty, error) {
 	log.Printf("new AddMaria request: %+v\n", req)
 
 	if err := addMaria(ctx, svc.maria, req.Item); err != nil {
@@ -107,7 +108,7 @@ func listMaria(ctx context.Context, db *sql.DB) ([]string, error) {
 	return res, nil
 }
 
-func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*ListResponse, error) {
+func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*proto.ListResponse, error) {
 	log.Print("new List request\n")
 
 	pglist, err := listPostgres(ctx, svc.postgres)
@@ -120,7 +121,7 @@ func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*ListResponse, 
 		log.Fatalf("failed to read list: %v", err)
 	}
 
-	response := &ListResponse{Item: append(pglist, marialist...)}
+	response := &proto.ListResponse{Item: append(pglist, marialist...)}
 	return response, nil
 }
 
@@ -129,5 +130,5 @@ func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 		maria:    deps.Maria,
 		postgres: deps.Postgres,
 	}
-	RegisterListServiceServer(srv, svc)
+	proto.RegisterMultiDbListServiceServer(srv, svc)
 }

@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package multicounter
+package count
 
 import (
 	"context"
@@ -11,13 +11,14 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/std/testdata/counter"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 )
 
 type Service struct {
 	counters []counter.Counter
 }
 
-func (svc *Service) Increment(ctx context.Context, req *IncrementRequest) (*emptypb.Empty, error) {
+func (svc *Service) Increment(ctx context.Context, req *proto.IncrementRequest) (*emptypb.Empty, error) {
 	for _, c := range svc.counters {
 		if c.GetName() == req.Name {
 			c.Increment()
@@ -28,10 +29,10 @@ func (svc *Service) Increment(ctx context.Context, req *IncrementRequest) (*empt
 	return nil, fmt.Errorf("unknown counter %s", req.Name)
 }
 
-func (svc *Service) Get(ctx context.Context, req *GetRequest) (*GetResponse, error) {
+func (svc *Service) Get(ctx context.Context, req *proto.GetRequest) (*proto.GetResponse, error) {
 	for _, c := range svc.counters {
 		if c.GetName() == req.Name {
-			return &GetResponse{Value: c.Get()}, nil
+			return &proto.GetResponse{Value: c.Get()}, nil
 		}
 	}
 
@@ -40,5 +41,5 @@ func (svc *Service) Get(ctx context.Context, req *GetRequest) (*GetResponse, err
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	svc := &Service{counters: []counter.Counter{*deps.One, *deps.Two}}
-	RegisterMulticounterServiceServer(srv, svc)
+	proto.RegisterCountServiceServer(srv, svc)
 }

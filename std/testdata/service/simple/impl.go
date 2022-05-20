@@ -8,11 +8,12 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/std/testdata/service/proto"
 )
 
 type Service struct {
 }
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
-	RegisterEmptyServiceServer(srv, &Service{})
+	proto.RegisterEmptyServiceServer(srv, &Service{})
 }
