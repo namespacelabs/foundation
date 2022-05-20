@@ -16,7 +16,7 @@ jobs:
     name: Build Foundation
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-20.04, [self-hosted, macOS]]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out
