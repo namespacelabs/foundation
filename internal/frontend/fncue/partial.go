@@ -8,6 +8,7 @@ import "cuelang.org/go/cue"
 
 type CueV struct{ Val cue.Value }
 
+// Represents a Cue value alongside a list of keys that are *left* to be resolved and filled later.
 type Partial struct {
 	CueV
 	Ctx        *snapshotCache
