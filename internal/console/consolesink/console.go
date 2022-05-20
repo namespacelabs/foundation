@@ -629,13 +629,17 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 		}
 	}()
 
+	if !c.interactive {
+		c.drawFrame(c.out, c.outbuf, t, width, height, flush)
+		return
+	}
+
 	rawOut := checkDirtyWriter{out: c.out, onFirstWrite: func() {
 		resetCursorOnce()
-		if c.interactive {
-			// If anything is trying to write directly, clear the screen first.
-			fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
-		}
+		// If anything is trying to write directly, clear the screen first.
+		fmt.Fprint(c.out, aec.EraseDisplay(aec.EraseModes.Tail))
 	}}
+
 	c.drawFrame(&rawOut, c.outbuf, t, width, height, flush)
 
 	newFrame := make([]byte, len(c.outbuf.Bytes()))
