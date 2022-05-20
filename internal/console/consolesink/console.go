@@ -597,14 +597,16 @@ type debugRunning struct {
 }
 
 func (c *ConsoleSink) redraw(t time.Time, flush bool) {
+	if !c.interactive {
+		c.drawFrame(c.out, c.outbuf, t, 0, 0, flush)
+		return
+	}
+
 	var width uint
 	var height uint
-
-	if c.interactive {
-		if w, err := termios.TermSize(c.out.Fd()); err == nil {
-			width = uint(w.Width)
-			height = uint(w.Height)
-		}
+	if w, err := termios.TermSize(c.out.Fd()); err == nil {
+		width = uint(w.Width)
+		height = uint(w.Height)
 	}
 
 	previousLines := c.previousLines
@@ -628,11 +630,6 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 			fmt.Fprint(c.out, aec.Show)
 		}
 	}()
-
-	if !c.interactive {
-		c.drawFrame(c.out, c.outbuf, t, width, height, flush)
-		return
-	}
 
 	rawOut := checkDirtyWriter{out: c.out, onFirstWrite: func() {
 		resetCursorOnce()
