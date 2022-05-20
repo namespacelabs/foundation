@@ -8,13 +8,13 @@ configure: fn.#Configure & {
 	startup: {
 		args: [
 			"server",
-			"/tmp",
+			"/tmp", // TODO mount storage
 			"--address=:9000",
 			"--console-address=:9001",
 		]
 		env: {
-			"MINIO_ROOT_USER":     "AKIAIOSFODNN7EXAMPLE"
-			"MINIO_ROOT_PASSWORD": "wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY"
+			"MINIO_ROOT_USER":     "access_key_value"
+			"MINIO_ROOT_PASSWORD": "secret_key_value"
 		}
 	}
 }
