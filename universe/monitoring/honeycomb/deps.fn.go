@@ -43,7 +43,8 @@ func makeDeps__e1uscp(ctx context.Context, di core.Dependencies) (_ interface{},
 	var deps ExtensionDeps
 
 	// name: "x-honeycomb-team"
-	if deps.HoneycombTeam, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChB4LWhvbmV5Y29tYi10ZWFt", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+	// optional: true
+	if deps.HoneycombTeam, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChB4LWhvbmV5Y29tYi10ZWFtKAE=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
 		return nil, err
 	}
 

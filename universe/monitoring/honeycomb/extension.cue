@@ -11,7 +11,8 @@ extension: fn.#Extension & {
 
 	instantiate: {
 		honeycombTeam: secrets.#Exports.Secret & {
-			name: "x-honeycomb-team"
+			name:     "x-honeycomb-team"
+			optional: true // XXX this is temporary until we figure out the testing story.
 		}
 		openTelemetry: tracing.#Exports.Exporter & {
 			name: "honeycomb"

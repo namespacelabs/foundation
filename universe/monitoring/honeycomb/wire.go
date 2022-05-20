@@ -13,6 +13,11 @@ import (
 )
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
+	if deps.HoneycombTeam.GetPath() == "" {
+		// No secret specified.
+		return nil
+	}
+
 	opts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
 		otlptracegrpc.WithHeaders(map[string]string{
