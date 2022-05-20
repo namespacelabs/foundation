@@ -16,7 +16,7 @@ jobs:
     name: Build Foundation
     strategy:
       matrix:
-        os: [ubuntu-20.04, [self-hosted, macOS]]
+        os: [ubuntu-20.04]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out
@@ -69,7 +69,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-20.04, [self-hosted, macOS]]
+        os: [ubuntu-20.04]
         use_prebuilts: [false, true]
         golang_use_buildkit: [false, true]
     runs-on: ${{ matrix.os }}
@@ -129,7 +129,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-20.04, [self-hosted, macOS]]
+        os: [ubuntu-20.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -199,7 +199,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-20.04, [self-hosted, macOS]]
+        os: [ubuntu-20.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
