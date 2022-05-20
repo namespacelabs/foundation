@@ -5,7 +5,7 @@ on:
       - main
   pull_request:
     branches:
-      - '*'
+      - "*"
 
 permissions:
   packages: read
@@ -161,6 +161,21 @@ jobs:
             --golang_use_buildkit=false \
             --include_servers
 
+      - uses: k0kubun/action-slack@v2.0.0
+        with:
+          payload: |
+            {
+              "attachments": [{
+                "text": "${{ job.status }}: ${{ github.workflow }} <https://github.com/${{ github.repository }}/commit/${{ github.sha }}/checks|${{ env.COMMIT_DATE }} #${{ env.COMMIT_NUMBER_OF_DAY }}> " +
+                        "(<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|" + "${{ github.sha }}".substring(0, 10) + ">) " +
+                        "of ${{ github.repository }}@" + "${{ github.ref }}".split('/').reverse()[0] + " by ${{ github.event.head_commit.committer.name }}",
+                "color": "danger"
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: failure() && github.event_name == 'push'
+
   run_fn_generate_then_e2e_tests:
     name: e2e tests with full fn generate
     needs: build_fn
@@ -260,8 +275,7 @@ jobs:
           token: ${{ secrets.NSL_GH_SERVICE }}
 
       - name: configure git
-        run:
-          git config --global url.https://$NSL_GH_SERVICE@github.com/.insteadOf https://github.com/
+        run: git config --global url.https://$NSL_GH_SERVICE@github.com/.insteadOf https://github.com/
 
       - name: prepare dev environment
         run: cd ${{ matrix.root_path }} && /tmp/fn prepare
