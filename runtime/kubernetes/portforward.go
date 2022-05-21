@@ -84,11 +84,6 @@ func (r boundEnv) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error 
 		return err
 	}
 
-	transport, upgrader, err := spdy.RoundTripperFor(config)
-	if err != nil {
-		return err
-	}
-
 	debug := console.Debug(ctx)
 
 	ids := atomic.NewInt32(0)
@@ -124,6 +119,11 @@ func (r boundEnv) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error 
 				fmt.Fprintf(debug, "kube/portfwd: %s: %d: resolved pod: %s\n", args.Identifier, args.ContainerPort, pod.Name)
 
 				req := restClient.Post().Resource("pods").Namespace(args.Namespace).Name(pod.Name).SubResource("portforward")
+
+				transport, upgrader, err := spdy.RoundTripperFor(config)
+				if err != nil {
+					return err
+				}
 
 				dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
 
