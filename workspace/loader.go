@@ -62,10 +62,10 @@ type EarlyPackageLoader interface {
 	WorkspaceOf(context.Context, *Module) (*memfs.IncrementalFS, error)
 }
 
-type PackageType int64
+type PackageType int
 
 const (
-	PackageType_Undefined PackageType = iota
+	PackageType_None PackageType = iota
 	PackageType_Extension
 	PackageType_Service
 	PackageType_Server
@@ -75,7 +75,7 @@ const (
 
 type Frontend interface {
 	ParsePackage(context.Context, Location, LoadPackageOpts) (*Package, error)
-	GetPackageType(context.Context, schema.PackageName) (PackageType, error)
+	GuessPackageType(context.Context, schema.PackageName) (PackageType, error)
 }
 
 var MakeFrontend func(EarlyPackageLoader) Frontend

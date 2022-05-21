@@ -20,19 +20,11 @@ type SchemaList struct {
 	Root *Root
 
 	Locations []fnfs.Location
+	Types     []PackageType
 }
 
-type ListSchemaOpt struct {
-	NodeOnly bool
-}
-
+// Returns a list of all of the schema definitions found under root.
 func ListSchemas(ctx context.Context, root *Root) (SchemaList, error) {
-	return ListSchemasWithOpt(ctx, root, ListSchemaOpt{})
-}
-
-// Recursively visits each non-hidden sub-directory of rootDir, and keeps
-// tabs of the schemas on each.
-func ListSchemasWithOpt(ctx context.Context, root *Root, opt ListSchemaOpt) (SchemaList, error) {
 	sl := SchemaList{Root: root}
 
 	pl := NewPackageLoader(root)
@@ -59,18 +51,16 @@ func ListSchemasWithOpt(ctx context.Context, root *Root, opt ListSchemaOpt) (Sch
 			}
 
 			pkg := root.RelPackage(dir)
-			ptype, err := pl.frontend.GetPackageType(ctx, pkg.AsPackageName())
+
+			ptype, err := pl.frontend.GuessPackageType(ctx, pkg.AsPackageName())
 			if err != nil {
 				fmt.Fprintf(console.Stderr(ctx), "failed to parse %s: %v\n", dir, err)
 				return nil
 			}
 
-			if opt.NodeOnly {
-				if ptype == PackageType_Extension || ptype == PackageType_Service {
-					sl.Locations = append(sl.Locations, pkg)
-				}
-			} else if ptype != PackageType_Undefined {
+			if ptype != PackageType_None {
 				sl.Locations = append(sl.Locations, pkg)
+				sl.Types = append(sl.Types, ptype)
 			}
 
 			visited[dir] = struct{}{}

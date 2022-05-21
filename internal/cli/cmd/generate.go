@@ -55,31 +55,44 @@ func NewGenerateCmd() *cobra.Command {
 }
 
 func generateProtos(ctx context.Context, root *workspace.Root) error {
-	list, err := workspace.ListSchemasWithOpt(ctx, root, workspace.ListSchemaOpt{NodeOnly: true})
+	list, err := workspace.ListSchemas(ctx, root)
 	if err != nil {
 		return err
 	}
+
 	pl := workspace.NewPackageLoader(root)
 	wl := cuefrontend.WorkspaceLoader{PackageLoader: pl}
 
-	cuePackages := make(map[string]*fncue.CuePackage) // Cue packages by PackageName.
-	for _, loc := range list.Locations {
+	cuePackages := map[string]*fncue.CuePackage{} // Cue packages by PackageName.
+
+	var nodeLocs []fnfs.Location
+	for k, loc := range list.Locations {
+		if !(list.Types[k] == workspace.PackageType_Extension || list.Types[k] == workspace.PackageType_Service) {
+			continue
+		}
+
 		if err := fncue.CollectImports(ctx, wl, loc.AsPackageName().String(), cuePackages); err != nil {
 			return err
 		}
+
+		nodeLocs = append(nodeLocs, loc)
 	}
+
 	imports := map[schema.PackageName]uniquestrings.List{}
 	for packageName, cp := range cuePackages {
 		l := &uniquestrings.List{}
 		for _, imp := range cp.Imports {
 			l.Add(imp)
 		}
+
 		imports[schema.PackageName(packageName)] = *l
 	}
-	topoSorted, err := topoSortNodes(list.Locations, imports)
+
+	topoSorted, err := topoSortNodes(nodeLocs, imports)
 	if err != nil {
 		return err
 	}
+
 	return codegen.ForLocationsGenProto(ctx, root, topoSorted, func(e codegen.GenerateError) {
 		w := console.Stderr(ctx)
 		fnerrors.Format(w, e.Err, fnerrors.WithColors(true))

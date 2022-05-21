@@ -88,13 +88,13 @@ func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts wo
 	return parsed, nil
 }
 
-func (ft impl) GetPackageType(ctx context.Context, pkg schema.PackageName) (workspace.PackageType, error) {
+func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (workspace.PackageType, error) {
 	firstPass, err := ft.evalctx.Eval(ctx, pkg.String())
 	if err != nil {
-		return workspace.PackageType_Undefined, err
+		return workspace.PackageType_None, err
 	}
 
-	var topLevels = map[string]workspace.PackageType{
+	topLevels := map[string]workspace.PackageType{
 		"service":   workspace.PackageType_Service,
 		"server":    workspace.PackageType_Server,
 		"extension": workspace.PackageType_Extension,
@@ -107,7 +107,7 @@ func (ft impl) GetPackageType(ctx context.Context, pkg schema.PackageName) (work
 		}
 	}
 
-	return workspace.PackageType_Undefined, nil
+	return workspace.PackageType_None, nil
 }
 
 func (ft impl) HasNodePackage(ctx context.Context, pkg schema.PackageName) (bool, error) {
