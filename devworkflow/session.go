@@ -81,7 +81,7 @@ func (s *Session) Close() {
 	s.obs.Close()
 }
 
-func (s *Session) NewClient(needsHistory bool) *Observer {
+func (s *Session) NewClient(needsHistory bool) (*Observer, error) {
 	const maxTaskUpload = 1000
 	var taskHistory []*protocol.Task
 

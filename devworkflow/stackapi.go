@@ -34,7 +34,12 @@ func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
 
 	l.Debug().Str("url", r.URL.String()).Msg("connected")
 
-	ch := s.NewClient(true)
+	ch, err := s.NewClient(true)
+	if err != nil {
+		w.WriteHeader(500)
+		l.Err(err).Msg("failed to create client")
+		return
+	}
 	defer ch.Close()
 
 	ctx, cancel := context.WithCancel(r.Context())

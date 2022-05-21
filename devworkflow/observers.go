@@ -6,10 +6,12 @@ package devworkflow
 
 import (
 	"context"
+	"sync"
 
 	"go.uber.org/atomic"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 type opType int
@@ -29,7 +31,8 @@ type obsMsg struct {
 
 type Observers struct {
 	ch     chan obsMsg
-	closed atomic.Bool
+	mu     sync.Mutex
+	closed bool
 }
 
 type Observer struct {
@@ -44,34 +47,49 @@ func NewObservers(ctx context.Context) *Observers {
 	return &Observers{ch: ch}
 }
 
-func (obs *Observers) New(update *Update) *Observer {
+func (obs *Observers) New(update *Update) (*Observer, error) {
 	cli := &Observer{parent: obs, ch: make(chan *Update, 1)}
 	if update != nil {
 		// Write before anyone has the chance of closing the channel.
 		cli.ch <- update
 	}
-	obs.push(obsMsg{op: pOpAddCh, observer: cli})
-	return cli
+
+	if !obs.pushCheckClosed(obsMsg{op: pOpAddCh, observer: cli}) {
+		return nil, fnerrors.New("was closed")
+	}
+
+	return cli, nil
 }
 
 func (obs *Observers) Publish(data *Update) {
 	copy := proto.Clone(data).(*Update)
-	obs.push(obsMsg{op: pOpNewData, message: copy})
+	obs.pushCheckClosed(obsMsg{op: pOpNewData, message: copy})
 }
 
-func (obs *Observers) push(op obsMsg) bool {
-	if !obs.closed.Load() {
-		obs.ch <- op
-		return true
+func (obs *Observers) pushCheckClosed(op obsMsg) bool {
+	obs.mu.Lock()
+	defer obs.mu.Unlock()
+
+	if obs.closed {
+		return false
 	}
 
-	return false
+	// This is a bit tricky as we keep the lock held while waiting for the
+	// goroutine to consume our write. That means that a concurrent Close() will
+	// also have to wait.
+	obs.ch <- op
+	return true
 }
 
 func (obs *Observers) Close() {
-	if obs.closed.CAS(false, true) {
-		close(obs.ch)
+	obs.mu.Lock()
+	defer obs.mu.Unlock()
+	if obs.closed {
+		return
 	}
+
+	obs.closed = true
+	close(obs.ch)
 }
 
 func doLoop(ctx context.Context, ch chan obsMsg) {
@@ -109,7 +127,7 @@ func (o *Observer) Close() {
 	// Only send close message once.
 	if o.closed.CAS(false, true) {
 		callback := make(chan struct{})
-		if o.parent.push(obsMsg{op: pOpRemoveCh, observer: o, callbackCh: callback}) {
+		if o.parent.pushCheckClosed(obsMsg{op: pOpRemoveCh, observer: o, callbackCh: callback}) {
 			// Block until we're actually removed.
 			<-callback
 		}

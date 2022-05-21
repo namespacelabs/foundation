@@ -35,7 +35,6 @@ func StartHandler(ctx context.Context, stackState *devworkflow.Session, root *wo
 	}
 
 	t := &termState{}
-	t.updateSticky(ctx)
 	go t.handleEvents(ctx, stdin, stackState, root, serverProtos, onDone)
 	return nil
 }
@@ -46,8 +45,15 @@ type termState struct {
 }
 
 func (t *termState) handleEvents(ctx context.Context, stdin *rawStdinReader, stackState *devworkflow.Session, root *workspace.Root, serverProtos []*schema.Server, onDone func()) {
-	obs := stackState.NewClient(false)
+	obs, err := stackState.NewClient(false)
+	if err != nil {
+		fmt.Fprintln(console.Debug(ctx), "failed to create observer", err)
+		return
+	}
+
 	defer obs.Close()
+
+	t.updateSticky(ctx)
 
 	defer stdin.restore()
 
