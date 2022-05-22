@@ -14,10 +14,12 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -30,8 +32,8 @@ func NewBundlesCmd() *cobra.Command {
 
 	list := &cobra.Command{
 		Use:   "list",
-		Short: "Lists previous foundation command invocations.",
-		Args:  cobra.MaximumNArgs(0),
+		Short: "Lists previous command invocations.",
+		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			bundler := tasks.NewActionBundler()
@@ -50,8 +52,8 @@ func NewBundlesCmd() *cobra.Command {
 
 	upload := &cobra.Command{
 		Use:   "upload",
-		Short: "Encrypts and uploads a command bundle to foundation.",
-		Args:  cobra.MaximumNArgs(0),
+		Short: "Encrypts and uploads a command bundle to namespace.",
+		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			bundler := tasks.NewActionBundler()
@@ -64,26 +66,73 @@ func NewBundlesCmd() *cobra.Command {
 			if err := renderBundleTable(ctx, validBundles, console.Stdout(ctx)); err != nil {
 				return err
 			}
+
 			idx, err := promptForBundleIdx(ctx, 1, len(validBundles))
 			if err != nil {
 				return err
 			}
-			// XXX Verify `bundle.EncryptTo` with a temp `io.Writer` while we
-			// address lack of binary uploads in gRPC gateway as described in
-			// https://github.com/grpc-ecosystem/grpc-gateway/issues/500.
-			file, _ := dirs.CreateUserTemp("action-bundles", "actions-*.tar.gz.age")
-			defer file.Close()
+
+			// Create a temporary age file that we encrypt to whose contents will be uploaded.
+			file, err := dirs.CreateUserTemp("action-bundles", "actions-*.tar.gz.age")
+			if err != nil {
+				return fnerrors.InternalError("failed to create the temporary `age` file: %w", err)
+			}
+			encBundlePath := file.Name()
+			defer os.Remove(encBundlePath)
+
 			bundleInfo := validBundles[idx-1]
 			if err := bundleInfo.bundle.EncryptTo(ctx, file); err != nil {
 				return err
 			}
-			fmt.Fprintf(console.Stdout(ctx), "\nSuccessfully wrote encrypted bundle to %s\n", file.Name())
-			return nil
+
+			// Please note that we need to close and re-open the encrypted bundle to succesfully post the contents
+			// to the bundle service. The body is empty if we directly pass the open file handler above.
+			if err := file.Close(); err != nil {
+				return fnerrors.InternalError("failed to close temporary encrypted bundle %s: %w", encBundlePath, err)
+			}
+			bundleContents, err := os.OpenFile(encBundlePath, os.O_RDONLY, 0600)
+			if err != nil {
+				return fnerrors.InternalError("failed to open the flushed encrypted bundle %s: %w", encBundlePath, err)
+			}
+
+			invokedCmd := bundleInfo.invocationInfo.Command
+			return fnapi.UploadBundle(ctx, bundleContents, func(res *fnapi.UploadBundleResponse) error {
+				w := console.Stderr(ctx)
+				fmt.Fprintf(w, "Uploaded artifacts for %s successfully with fingerprint: %s.\n", aec.MagentaF.Apply(invokedCmd), aec.BlueF.Apply(aec.Bold.Apply(res.BundleId)))
+				fmt.Fprintln(w)
+				fmt.Fprintf(w, "Please file a bug at https://github.com/namespacelabs/foundation/issues with the command %q and fingerprint %q.\n", invokedCmd, res.BundleId)
+				return nil
+			})
+		}),
+	}
+
+	download := &cobra.Command{
+		Use:   "download",
+		Short: "Downloads an encrypted command bundle from Namespace.",
+		Args:  cobra.ExactArgs(1),
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			bundleId := args[0]
+			return fnapi.DownloadBundle(ctx, bundleId, func(body io.ReadCloser) error {
+				file, err := dirs.CreateUserTemp("action-bundles", "actions-*.tar.gz.age")
+				if err != nil {
+					return fnerrors.InternalError("failed to create the temporary `age` file to download to: %w\n", err)
+				}
+				encPath := file.Name()
+				defer file.Close()
+
+				if _, err := io.Copy(file, body); err != nil {
+					return fnerrors.InternalError("failed to copy downloaded bundle contents to %s: %w\n", encPath, err)
+				}
+				fmt.Fprintf(console.Stderr(ctx), "\nSuccessfully downloaded encrypted bundle for fingerprint %s to %s\n", aec.BlueF.Apply(aec.Bold.Apply(bundleId)), encPath)
+				return nil
+			})
 		}),
 	}
 
 	cmd.AddCommand(list)
 	cmd.AddCommand(upload)
+	cmd.AddCommand(download)
 
 	return cmd
 }
