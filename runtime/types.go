@@ -25,30 +25,32 @@ const (
 )
 
 type Runtime interface {
-	// PrepareProvision is called before invoking a provisioning tool, to offer the runtime
-	// implementation a way to pass runtime-specific information to the tool. E.g. what's the
-	// Kubernetes namespace we're working with.
+	// PrepareProvision is called before invoking a provisioning tool, to offer
+	// the runtime implementation a way to pass runtime-specific information to
+	// the tool. E.g. what's the Kubernetes namespace we're working with.
 	PrepareProvision(context.Context) (*rtypes.ProvisionProps, error)
 
-	// DeployedConfigImageID retrieves the image reference of the "configuration image" used
-	// to deploy the specified server. Configuration images are only generated for production
-	// environments for now.
+	// DeployedConfigImageID retrieves the image reference of the "configuration
+	// image" used to deploy the specified server. Configuration images are only
+	// generated for production environments for now.
 	DeployedConfigImageID(context.Context, *schema.Server) (oci.ImageID, error)
 
-	// Plans a deployment, i.e. produces a series of instructions that will instantiate the
-	// required deployment resources to run the servers in the specified Deployment. This
-	// method is side-effect free; mutations are applied when the generated plan is applied.
+	// Plans a deployment, i.e. produces a series of instructions that will
+	// instantiate the required deployment resources to run the servers in the
+	// specified Deployment. This method is side-effect free; mutations are
+	// applied when the generated plan is applied.
 	PlanDeployment(context.Context, Deployment) (DeploymentState, error)
 
-	// Plans an ingress deployment, i.e. produces a series of instructions that will instantiate
-	// the required deployment resources to run the servers in the specified Ingresses. This
-	// method is side-effect free; mutations are applied when the generated plan is applied.
+	// Plans an ingress deployment, i.e. produces a series of instructions that
+	// will instantiate the required deployment resources to run the servers in
+	// the specified Ingresses. This method is side-effect free; mutations are
+	// applied when the generated plan is applied.
 	PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error)
 
-	// Plans a stack shutdown, i.e. produces a series of instructions that will delete the
-	// previously added resources. This method is side-effect free; mutations are applied when
-	// the generated plan is applied.
-	PlanShutdown(ctx context.Context, focus []provision.Server, stack []provision.Server) ([]*schema.Definition, error)
+	// Plans a stack shutdown, i.e. produces a series of instructions that will
+	// delete the previously added resources. This method is side-effect free;
+	// mutations are applied when the generated plan is applied.
+	PlanShutdown(context.Context, []provision.Server) ([]*schema.Definition, error)
 
 	// Streams logs from a previously deployed server.
 	StreamLogsTo(context.Context, io.Writer, *schema.Server, StreamLogsOpts) error
@@ -59,31 +61,38 @@ type Runtime interface {
 	// Fetch diagnostics of a particular container reference.
 	FetchDiagnostics(context.Context, ContainerReference) (Diagnostics, error)
 
-	// Starts a new shell in the container of a previously deployed server. The image of the
-	// server must contain the specified command. For ephemeral containers, see #329.
+	// Starts a new shell in the container of a previously deployed server. The
+	// image of the server must contain the specified command. For ephemeral
+	// containers, see #329.
 	StartTerminal(ctx context.Context, server *schema.Server, io TerminalIO, command string, rest ...string) error
 
 	// Forwards a single port.
 	ForwardPort(ctx context.Context, server *schema.Server, endpoint *schema.Endpoint, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error)
 
-	// Exposes the cluster's ingress, in the specified local address and port. This is used to
-	// create stable localhost-bound ingress addresses (for e.g. nslocal.host).
+	// Exposes the cluster's ingress, in the specified local address and port.
+	// This is used to create stable localhost-bound ingress addresses (for e.g.
+	// nslocal.host).
 	ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f PortForwardedFunc) (io.Closer, error)
 
-	// Creates a one-shot container, in the same isolation domain as other servers (in Kubernetes,
-	// it would be the same namespace), with the specified image. This container is meant to be
-	// used for debugging purposes.
+	// Creates a one-shot container, in the same isolation domain as other
+	// servers (in Kubernetes, it would be the same namespace), with the
+	// specified image. This container is meant to be used for debugging
+	// purposes.
 	DebugShell(ctx context.Context, imageID oci.ImageID, io rtypes.IO) error
 
-	// Observes lifecyle events of the specified server. Unless OneShot is set, Observe runs until the context is cancelled.
+	// Observes lifecyle events of the specified server. Unless OneShot is set,
+	// Observe runs until the context is cancelled.
 	Observe(context.Context, *schema.Server, ObserveOpts, func(ObserveEvent) error) error
 
-	// Runs the specified container as a one-shot, streaming it's output to the specified writer.
-	// This mechanism is targeted at invoking test runners within the runtime environment.
+	// Runs the specified container as a one-shot, streaming it's output to the
+	// specified writer. This mechanism is targeted at invoking test runners
+	// within the runtime environment.
 	RunOneShot(context.Context, schema.PackageName, ServerRunOpts, io.Writer) error
 
-	// Deletes the scoped environment, and all of its associated resources (e.g. after a test invocation).
-	DeleteRecursively(context.Context) error
+	// Deletes the scoped environment, and all of its associated resources (e.g.
+	// after a test invocation). If wait is true, waits until the target
+	// resources have been removed. Returns true if resources were deleted.
+	DeleteRecursively(ctx context.Context, wait bool) (bool, error)
 
 	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
 	TargetPlatforms(context.Context) ([]specs.Platform, error)

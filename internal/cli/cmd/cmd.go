@@ -35,6 +35,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewVersionCmd())
 	root.AddCommand(NewBundlesCmd())
 	root.AddCommand(NewAttachCmd())
+	root.AddCommand(NewDeploymentCmd())
 	root.AddCommand(source.NewSourceCmd())
 	root.AddCommand(tools.NewToolsCmd())
 	root.AddCommand(lsp.NewLSPCmd())

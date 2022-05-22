@@ -23,7 +23,7 @@ func Shutdown(ctx context.Context, env workspace.WorkspaceEnvironment, servers [
 		return err
 	}
 
-	defs1, err := runtime.For(ctx, env).PlanShutdown(ctx, servers, stack.Servers)
+	defs1, err := runtime.For(ctx, env).PlanShutdown(ctx, stack.Servers)
 	if err != nil {
 		return err
 	}

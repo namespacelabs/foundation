@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"google.golang.org/protobuf/types/known/anypb"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -248,7 +249,7 @@ func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 	return state, nil
 }
 
-func (r k8sRuntime) PlanShutdown(ctx context.Context, foci []provision.Server, stack []provision.Server) ([]*schema.Definition, error) {
+func (r k8sRuntime) PlanShutdown(ctx context.Context, stack []provision.Server) ([]*schema.Definition, error) {
 	var definitions []*schema.Definition
 
 	if del, err := ingress.Delete(r.moduleNamespace, stack); err != nil {
@@ -302,18 +303,38 @@ func (r k8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, ri
 	return r.startTerminal(ctx, r.cli, server, rio, cmd)
 }
 
-func (r k8sRuntime) DeleteRecursively(ctx context.Context) error {
-	return tasks.Action("kubernetes.namespace.delete").Arg("namespace", r.moduleNamespace).Run(ctx, func(ctx context.Context) error {
+func (r k8sRuntime) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
+	return tasks.Return(ctx, tasks.Action("kubernetes.namespace.delete").Arg("namespace", r.moduleNamespace), func(ctx context.Context) (bool, error) {
 		var grace int64 = 0
 		if err := r.cli.CoreV1().Namespaces().Delete(ctx, r.moduleNamespace, metav1.DeleteOptions{
 			GracePeriodSeconds: &grace,
 		}); err != nil {
 			if k8serrors.IsNotFound(err) {
 				// Namespace already deleted
-				return nil
+				return false, nil
 			}
-			return err
+			return false, err
 		}
-		return nil
+
+		if !wait {
+			return true, nil
+		}
+
+		return tasks.Return(ctx, tasks.Action("kubernetes.namespace.delete-wait").Arg("namespace", r.moduleNamespace), func(ctx context.Context) (bool, error) {
+			if err := client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
+				if _, err := r.cli.CoreV1().Namespaces().Get(ctx, r.moduleNamespace, metav1.GetOptions{}); err != nil {
+					if k8serrors.IsNotFound(err) {
+						return true, nil
+					}
+					return true, err
+				}
+
+				return false, nil
+			}); err != nil {
+				return true, err
+			}
+
+			return true, nil
+		})
 	})
 }

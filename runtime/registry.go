@@ -64,7 +64,7 @@ func (r runtimeFwdErr) PlanDeployment(context.Context, Deployment) (DeploymentSt
 func (r runtimeFwdErr) PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error) {
 	return nil, r.err
 }
-func (r runtimeFwdErr) PlanShutdown(context.Context, []provision.Server, []provision.Server) ([]*schema.Definition, error) {
+func (r runtimeFwdErr) PlanShutdown(context.Context, []provision.Server) ([]*schema.Definition, error) {
 	return nil, r.err
 }
 func (r runtimeFwdErr) StreamLogsTo(context.Context, io.Writer, *schema.Server, StreamLogsOpts) error {
@@ -93,8 +93,8 @@ func (r runtimeFwdErr) RunOneShot(context.Context, schema.PackageName, ServerRun
 	return r.err
 }
 
-func (r runtimeFwdErr) DeleteRecursively(context.Context) error {
-	return r.err
+func (r runtimeFwdErr) DeleteRecursively(context.Context, bool) (bool, error) {
+	return false, r.err
 }
 
 func (r runtimeFwdErr) DebugShell(ctx context.Context, img oci.ImageID, io rtypes.IO) error {

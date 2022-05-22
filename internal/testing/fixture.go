@@ -158,7 +158,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 	if !opts.KeepRuntime {
 		compute.On(ctx).Cleanup(tasks.Action("test.cleanup"), func(ctx context.Context) error {
-			if err := runtime.For(ctx, env).DeleteRecursively(ctx); err != nil {
+			if _, err := runtime.For(ctx, env).DeleteRecursively(ctx, false); err != nil {
 				return err
 			}
 
