@@ -11,6 +11,7 @@ import (
 )
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
+	deps.Interceptors.ForClient(grpc_prometheus.UnaryClientInterceptor, grpc_prometheus.StreamClientInterceptor)
 	deps.Interceptors.ForServer(grpc_prometheus.UnaryServerInterceptor, grpc_prometheus.StreamServerInterceptor)
 	return nil
 }
