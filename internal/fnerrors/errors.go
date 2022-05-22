@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/kr/text"
@@ -86,6 +87,11 @@ func DoesNotMeetVersionRequirements(pkg string, expected, got int32) error {
 // The error content has to be output independently.
 func ExitWithCode(err error, code int) error {
 	return &exitError{fnError: fnError{Err: err, stack: stacktrace.New()}, code: code}
+}
+
+// CodegenError associates an error with a code generation phase and a list of packages.
+func CodegenError(err error, phase string, packages ...string) error {
+	return &codegenError{err, phase, packages}
 }
 
 // Wraps an error with a stack trace at the point of invocation.
@@ -188,6 +194,16 @@ func (e *exitError) Error() string {
 
 func (e *exitError) ExitCode() int {
 	return e.code
+}
+
+type codegenError struct {
+	Err      error
+	phase    string
+	packages []string
+}
+
+func (e *codegenError) Error() string {
+	return e.Err.Error()
 }
 
 type FormatOptions struct {
@@ -295,6 +311,9 @@ func format(w io.Writer, err error, opts *FormatOptions) {
 	case *DependencyFailedError:
 		formatDependencyFailedError(w, x, opts)
 
+	case *codegenError:
+		formatCodegenError(w, x, opts)
+
 	default:
 		fmt.Fprintf(w, "%s\n", x.Error())
 	}
@@ -386,6 +405,10 @@ func formatUserError(w io.Writer, err *userError, opts *FormatOptions) {
 	} else {
 		fmt.Fprintf(w, "%s\n", err.Err.Error())
 	}
+}
+
+func formatCodegenError(w io.Writer, err *codegenError, opts *FormatOptions) {
+	fmt.Fprintf(w, "%s at phase [%s] for package(s) %s\n", err.Error(), aec.MagentaF.Apply(err.phase), aec.LightBlackF.Apply(strings.Join(err.packages, ", ")))
 }
 
 func errorReportRequest(w io.Writer) {

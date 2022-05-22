@@ -35,26 +35,35 @@ func NewGenerateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := generateProtos(ctx, root); err != nil {
+
+			genErrAggregator := codegen.NewErrorAggregator()
+			genErrAggregator.Start()
+			w := console.Stderr(ctx)
+
+			if err := generateProtos(ctx, root, genErrAggregator); err != nil {
+				genErrAggregator.Flush(w, true)
 				return err
 			}
 
 			list, err := workspace.ListSchemas(ctx, root)
 			if err != nil {
+				genErrAggregator.Flush(w, true)
 				return err
 			}
+
 			// Generate code.
-			return codegen.ForLocationsGenCode(ctx, root, list.Locations, func(e codegen.GenerateError) {
-				w := console.Stderr(ctx)
-				fnerrors.Format(w, e.Err, fnerrors.WithColors(true))
+			err = codegen.ForLocationsGenCode(ctx, root, list.Locations, func(e codegen.GenerateError) {
+				genErrAggregator.ErrChannel <- e
 			})
+			genErrAggregator.Flush(w, true)
+			return err
 		}),
 	}
 
 	return cmd
 }
 
-func generateProtos(ctx context.Context, root *workspace.Root) error {
+func generateProtos(ctx context.Context, root *workspace.Root, genErrAggregator *codegen.GenerateErrorAggregator) error {
 	list, err := workspace.ListSchemas(ctx, root)
 	if err != nil {
 		return err
@@ -94,8 +103,7 @@ func generateProtos(ctx context.Context, root *workspace.Root) error {
 	}
 
 	return codegen.ForLocationsGenProto(ctx, root, topoSorted, func(e codegen.GenerateError) {
-		w := console.Stderr(ctx)
-		fnerrors.Format(w, e.Err, fnerrors.WithColors(true))
+		genErrAggregator.ErrChannel <- e
 	})
 }
 

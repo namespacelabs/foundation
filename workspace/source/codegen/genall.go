@@ -14,12 +14,6 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-type GenerateError struct {
-	PackageName schema.PackageName
-	What        string
-	Err         error
-}
-
 // ForNodeLocations generates protos for Extensions and Services. Locations in `locs` are sorted in a topological order.
 func ForLocationsGenProto(ctx context.Context, root *workspace.Root, locs []fnfs.Location, onError func(GenerateError)) error {
 	pl := workspace.NewPackageLoader(root)
