@@ -17,7 +17,6 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewLsCmd())
 	root.AddCommand(NewGenerateCmd())
 	root.AddCommand(NewDeployCmd())
-	root.AddCommand(NewShutdownCmd())
 	root.AddCommand(NewFmtCmd())
 	root.AddCommand(NewPrepareCmd())
 	root.AddCommand(NewDevCmd())

@@ -19,10 +19,8 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -247,54 +245,6 @@ func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 	state.hints = append(state.hints, fmt.Sprintf("Inspecting your deployment: %s", colors.Bold(fmt.Sprintf("kubectl -n %s get pods", r.moduleNamespace))))
 
 	return state, nil
-}
-
-func (r k8sRuntime) PlanShutdown(ctx context.Context, stack []provision.Server) ([]*schema.Definition, error) {
-	var definitions []*schema.Definition
-
-	if del, err := ingress.Delete(r.moduleNamespace, stack); err != nil {
-		return nil, err
-	} else {
-		definitions = append(definitions, del...)
-	}
-
-	for _, t := range stack {
-		var ops []defs.MakeDefinition
-		ns := serverNamespace(r.boundEnv, t.Proto())
-
-		ops = append(ops, kubedef.DeleteList{
-			Description: "Services",
-			Resource:    "services",
-			Namespace:   ns,
-			Selector:    kubedef.SelectById(t.Proto()),
-		})
-
-		if t.IsStateful() {
-			ops = append(ops, kubedef.Delete{
-				Description: "StatefulSet",
-				Resource:    "statefulsets",
-				Namespace:   ns,
-				Name:        kubedef.MakeDeploymentId(t.Proto()),
-			})
-		} else {
-			ops = append(ops, kubedef.Delete{
-				Description: "Deployment",
-				Resource:    "deployments",
-				Namespace:   ns,
-				Name:        kubedef.MakeDeploymentId(t.Proto()),
-			})
-		}
-
-		for _, op := range ops {
-			if def, err := op.ToDefinition(t.PackageName()); err != nil {
-				return nil, err
-			} else {
-				definitions = append(definitions, def)
-			}
-		}
-	}
-
-	return definitions, nil
 }
 
 func (r k8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {

@@ -47,11 +47,6 @@ type Runtime interface {
 	// applied when the generated plan is applied.
 	PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error)
 
-	// Plans a stack shutdown, i.e. produces a series of instructions that will
-	// delete the previously added resources. This method is side-effect free;
-	// mutations are applied when the generated plan is applied.
-	PlanShutdown(context.Context, []provision.Server) ([]*schema.Definition, error)
-
 	// Streams logs from a previously deployed server.
 	StreamLogsTo(context.Context, io.Writer, *schema.Server, StreamLogsOpts) error
 
