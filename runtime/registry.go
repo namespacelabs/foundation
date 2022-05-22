@@ -93,6 +93,10 @@ func (r runtimeFwdErr) DeleteRecursively(context.Context, bool) (bool, error) {
 	return false, r.err
 }
 
+func (r runtimeFwdErr) DeleteAllRecursively(context.Context, bool, io.Writer) (bool, error) {
+	return false, r.err
+}
+
 func (r runtimeFwdErr) DebugShell(ctx context.Context, img oci.ImageID, io rtypes.IO) error {
 	return r.err
 }

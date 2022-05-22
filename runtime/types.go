@@ -89,6 +89,11 @@ type Runtime interface {
 	// resources have been removed. Returns true if resources were deleted.
 	DeleteRecursively(ctx context.Context, wait bool) (bool, error)
 
+	// Deletes any runtime resource deployed by this runtime, regardless of
+	// environment. If wait is true, waits until the target resources have been
+	// removed. Returns true if resources were deleted.
+	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
+
 	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
 	TargetPlatforms(context.Context) ([]specs.Platform, error)
 }

@@ -59,7 +59,37 @@ func NewDeploymentCmd() *cobra.Command {
 	remove.Flags().BoolVar(&defaultYes, "yes", defaultYes, "If set to true, assume yes on prompts.")
 	remove.Flags().BoolVar(&wait, "wait", wait, "If set to true, waits until all resources are removed before returning.")
 
+	removeAll := &cobra.Command{
+		Use:   "remove-all",
+		Short: "Removes all deployment assets associated with the specified environment.",
+		Args:  cobra.NoArgs,
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			env, err := requireEnv(ctx, envRef)
+			if err != nil {
+				return err
+			}
+
+			if !defaultYes {
+				if err := checkDelete(ctx, envRef); err != nil {
+					return err
+				}
+			}
+
+			if _, err := runtime.For(ctx, env).DeleteAllRecursively(ctx, wait, console.Stdout(ctx)); err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
+
+	removeAll.Flags().StringVar(&envRef, "env", envRef, "Specifies the environment to apply to.")
+	removeAll.Flags().BoolVar(&defaultYes, "yes", defaultYes, "If set to true, assume yes on prompts.")
+	removeAll.Flags().BoolVar(&wait, "wait", wait, "If set to true, waits until all resources are removed before returning.")
+
 	cmd.AddCommand(remove)
+	cmd.AddCommand(removeAll)
 
 	return cmd
 }
