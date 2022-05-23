@@ -54,15 +54,13 @@ func Stop(ctx context.Context, err error) {
 	}
 }
 
-func Continuously(baseCtx context.Context, sinkable Sinkable) error {
-	onError := func(err error) error { return err }
-	return ContinuouslyWithErr(baseCtx, sinkable, onError)
-}
+type TransformError func(error) error
 
-type onError func(error) error
-
-func ContinuouslyWithErr(baseCtx context.Context, sinkable Sinkable, onError onError) error {
-	g := &sinkInvocation{onError: onError}
+// Continuously computes `sinkable` and recomputes it on any tansitive change to `sinkable`'s inputs.
+//
+// `transformErr` (is not nil) allows to transform (e.g. ignore) encountered errors.
+func Continuously(baseCtx context.Context, sinkable Sinkable, transformErr TransformError) error {
+	g := &sinkInvocation{transformErr: transformErr}
 	ctx := context.WithValue(baseCtx, _continuousKey, g)
 	// We want all executions under the executor to be able to obtain the current invocation.
 	eg, wait := executor.New(ctx)
@@ -88,9 +86,9 @@ func SpawnCancelableOnContinuously(ctx context.Context, f func(context.Context) 
 type sinkInvocation struct {
 	eg executor.Executor
 
-	mu      sync.Mutex
-	globals map[string]*observable
-	onError onError
+	mu           sync.Mutex
+	globals      map[string]*observable
+	transformErr TransformError
 }
 
 func (g *sinkInvocation) sink(ctx context.Context, in *In, updated func(context.Context, Resolved) error) {
@@ -372,11 +370,12 @@ func (o *observable) Loop(ctx context.Context) error {
 				var err error
 				res, err := compute(ctx, orch, o.computable, cacheable, shouldCache, inputs, resolved)
 				if err != nil {
-					if err = o.inv.onError(err); err != nil {
+					if err = o.inv.transformErr(err); err != nil {
 						return err
 					}
+				} else {
+					o.newValue(ctx, res)
 				}
-				o.newValue(ctx, res)
 				return nil
 			},
 		})
@@ -455,7 +454,6 @@ func (o *observable) doUpdate(result ResultWithTimestamp[any]) func() {
 }
 
 type onResult struct {
-	ID      string
-	Handle  func(ResultWithTimestamp[any]) bool
-	onError onError
+	ID     string
+	Handle func(ResultWithTimestamp[any]) bool
 }

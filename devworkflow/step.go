@@ -41,19 +41,13 @@ func setWorkspace(ctx context.Context, env provision.Env, packageName string, ad
 		// incremental by having narrower dependencies. E.g. single server would have
 		// a single build, single deployment, etc. And changes to siblings servers
 		// would only impact themselves, not all servers. #362
-		return compute.ContinuouslyWithErr(ctx, &buildAndDeploy{
+		return compute.Continuously(ctx, &buildAndDeploy{
 			obs:            obs,
 			pfw:            pfw,
 			env:            env,
 			serverPackages: serverPackages,
 			focusServers:   focusServers,
-		}, func(err error) error {
-			if msg, ok := fnerrors.IsExpected(err); ok {
-				fmt.Fprintf(console.Stderr(ctx), "\n  %s\n\n", msg)
-				return nil // Go again.
-			}
-			return err
-		})
+		}, nil)
 	})
 }
 
@@ -143,7 +137,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		// A channel is used to signal that the child Continuously() has returned, and
 		// thus we can be sure that its Cleanup has been called.
 		done := make(chan struct{})
-		onError := func(err error) error {
+		transformError := func(err error) error {
 			if err != nil {
 				if msg, ok := fnerrors.IsExpected(err); ok {
 					fmt.Fprintf(console.Stderr(ctx), "\n  %s\n\n", msg)
@@ -154,9 +148,9 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		}
 		cancel := compute.SpawnCancelableOnContinuously(ctx, func(ctx context.Context) error {
 			defer close(done)
-			return compute.ContinuouslyWithErr(ctx,
+			return compute.Continuously(ctx,
 				newUpdateCluster(focusServers.Env(), stack.Proto(), do.serverPackages, observers, plan, do.pfw),
-				onError)
+				transformError)
 		})
 
 		do.cancelRunning = func() {

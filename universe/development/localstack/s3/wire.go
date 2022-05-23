@@ -61,7 +61,7 @@ func CreateLocalstackS3Client(ctx context.Context, config LocalstackConfig) (*s3
 	return s3client, nil
 }
 
-func ProvideBuckets(ctx context.Context, config *BucketConfig, deps ExtensionDeps) (*fns3.Bucket, error) {
+func ProvideBucket(ctx context.Context, config *BucketConfig, deps ExtensionDeps) (*fns3.Bucket, error) {
 	s3client, err := CreateLocalstackS3Client(ctx,
 		LocalstackConfig{
 			Region:             config.Region,
@@ -73,7 +73,7 @@ func ProvideBuckets(ctx context.Context, config *BucketConfig, deps ExtensionDep
 
 	// Asynchronously wait until a database connection is ready.
 	deps.ReadinessCheck.RegisterFunc(
-		fmt.Sprintf("iess: %s", core.InstantiationPathFromContext(ctx)),
+		fmt.Sprintf("localstack readiness: %s", core.InstantiationPathFromContext(ctx)),
 		func(ctx context.Context) error {
 			_, err := s3client.ListBuckets(ctx, &s3.ListBucketsInput{})
 			return err

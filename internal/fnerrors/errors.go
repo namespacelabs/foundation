@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/kr/text"
@@ -138,7 +137,6 @@ func IsExpected(err error) (string, bool) {
 	if x, ok := unwrap(err).(*userError); ok {
 		return x.Err.Error(), true
 	}
-	fmt.Fprintf(os.Stderr, "%T\n", unwrap(err))
 	return "", false
 }
 

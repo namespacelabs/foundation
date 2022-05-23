@@ -23,7 +23,7 @@ func TestSink(t *testing.T) {
 	x := &testStream{ch: ch}
 
 	if err := Do(ctx, func(ctx context.Context) error {
-		return Continuously(ctx, simpleSinkable{c: &testComputable{intStream: x}, t: t})
+		return Continuously(ctx, simpleSinkable{c: &testComputable{intStream: x}, t: t}, nil)
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestVersionedSink(t *testing.T) {
 
 				return got + 1, true
 			},
-		})
+		}, nil)
 	}); err != nil {
 		t.Fatal(err)
 	}

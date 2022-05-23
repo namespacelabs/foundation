@@ -30,7 +30,7 @@ func newObserveFsCmd() *cobra.Command {
 
 			return compute.Continuously(ctx, &sinkObserve{
 				events: wscontents.Observe(module.Abs(), ".", true),
-			})
+			}, nil)
 		}),
 	}
 
