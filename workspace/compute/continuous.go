@@ -54,13 +54,19 @@ func Stop(ctx context.Context, err error) {
 	}
 }
 
-type TransformError func(error) error
+type TransformErrorFunc func(error) error
 
 // Continuously computes `sinkable` and recomputes it on any tansitive change to `sinkable`'s inputs.
 //
-// `transformErr` (is not nil) allows to transform (e.g. ignore) encountered errors.
-func Continuously(baseCtx context.Context, sinkable Sinkable, transformErr TransformError) error {
-	g := &sinkInvocation{transformErr: transformErr}
+// `transformErr` (if not nil) allows to transform (e.g. ignore) encountered errors.
+func Continuously(baseCtx context.Context, sinkable Sinkable, transformErr TransformErrorFunc) error {
+	g := &sinkInvocation{}
+	if transformErr != nil {
+		g.transformErr = transformErr
+	} else {
+		// For nil-safety - use a identity transform function.
+		g.transformErr = func(err error) error { return err }
+	}
 	ctx := context.WithValue(baseCtx, _continuousKey, g)
 	// We want all executions under the executor to be able to obtain the current invocation.
 	eg, wait := executor.New(ctx)
@@ -88,7 +94,7 @@ type sinkInvocation struct {
 
 	mu           sync.Mutex
 	globals      map[string]*observable
-	transformErr TransformError
+	transformErr TransformErrorFunc
 }
 
 func (g *sinkInvocation) sink(ctx context.Context, in *In, updated func(context.Context, Resolved) error) {
@@ -367,9 +373,7 @@ func (o *observable) Loop(ctx context.Context) error {
 				return false, nil
 			},
 			Run: func(ctx context.Context) error {
-				var err error
-				res, err := compute(ctx, orch, o.computable, cacheable, shouldCache, inputs, resolved)
-				if err != nil {
+				if res, err := compute(ctx, orch, o.computable, cacheable, shouldCache, inputs, resolved); err != nil {
 					if err = o.inv.transformErr(err); err != nil {
 						return err
 					}

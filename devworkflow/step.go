@@ -141,7 +141,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			if err != nil {
 				if msg, ok := fnerrors.IsExpected(err); ok {
 					fmt.Fprintf(console.Stderr(ctx), "\n  %s\n\n", msg)
-					return nil
+					return nil // Swallow the error in case it is expected.
 				}
 			}
 			return err
