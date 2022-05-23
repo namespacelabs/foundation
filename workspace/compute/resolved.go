@@ -39,7 +39,11 @@ func GetDep[V any](deps Resolved, c Computable[V], key string) (ResultWithTimest
 func MustGetDepValue[V any](deps Resolved, c Computable[V], key string) V {
 	v, ok := GetDep(deps, c, key)
 	if !ok {
-		panic(key + " not present")
+		keys := ""
+		for key := range deps.results {
+			keys += key + " "
+		}
+		panic(key + " not present among " + keys)
 	}
 	return v.Value
 }
