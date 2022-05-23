@@ -26,13 +26,15 @@ export interface {{.Name}}Deps {
 ({
 	{{- range .Deps}}
 		{{.Name}}: {{template "Type" .Provider}}Provider(
-			graph,
+			graph
+			{{- if not .IsProviderParameterized}},
 			{{range .ProviderInput.Comments -}}
 			{{if .}}// {{.}}
 			{{end}}
 			{{- end -}}
 			{{template "Type" .ProviderInputType -}}
 			.deserializeBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
+			{{- end -}}
 		  {{- if .IsProviderParameterized}},
 			{{template "Type" .Type}}{{end}}),
 	{{- end}}
@@ -97,10 +99,11 @@ export const prepare: Prepare = impl.initialize;
 {{- end}}
 
 export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
-  (graph: DependencyGraph, input: {{template "Type" .InputType -}}
-  {{if .IsParameterized}}, outputTypeCtr: new (...args: any[]) => T{{end}}) =>
+  (graph: DependencyGraph
+	{{- if not .IsParameterized }}, input: {{template "Type" .InputType -}}{{end}}
+  {{- if .IsParameterized}}, outputTypeCtr: new (...args: any[]) => T{{end}}) =>
 	provide{{.Name}}(
-		input
+		{{if not .IsParameterized}}input{{end}}
 		{{- if .PackageDepsName}},
 		graph.instantiatePackageDeps(Package)
 		{{- end}}
@@ -108,14 +111,14 @@ export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
 		// Scoped dependencies that are instantiated for each call to Provide{{.Name}}.
 		graph.instantiateDeps(Package.name, "{{.Deps.Name}}", () => {{template "ConstructDeps" .Deps}})
 		{{- end}}
-		{{- if .IsParameterized}}, outputTypeCtr{{end}}
+		{{- if .IsParameterized}}outputTypeCtr{{end}}
   );
 
 export type Provide{{.Name}} = {{if .IsParameterized}}<T>{{end -}}
-    (input: {{template "Type" .InputType}}
+    ({{- if not .IsParameterized}}input: {{template "Type" .InputType}}{{end}}
 	  {{- if .PackageDepsName}}, packageDeps: {{.PackageDepsName}}Deps{{end -}}
 	  {{- if .Deps}}, deps: {{.Name}}Deps{{end}}
-		{{- if .IsParameterized}}, outputTypeCtr: new (...args: any[]) => T{{end}}) =>
+		{{- if .IsParameterized}}outputTypeCtr: new (...args: any[]) => T{{end}}) =>
 		{{if .IsParameterized}}T{{else}}{{template "Type" .OutputType}}{{end}};
 export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
 {{- end}}

@@ -2,7 +2,6 @@
 
 import * as impl from "./impl";
 import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundation";
-import * as i0 from "@namespacelabs.dev-foundation/std-grpc/protos/provider_pb"
 
 
 
@@ -14,11 +13,11 @@ export const TransitiveInitializers: Initializer[] = [
 ];
 
 
-export const BackendProvider = <T>(graph: DependencyGraph, input: i0.Backend, outputTypeCtr: new (...args: any[]) => T) =>
+export const BackendProvider = <T>(graph: DependencyGraph, outputTypeCtr: new (...args: any[]) => T) =>
 	provideBackend(
-		input, outputTypeCtr
+		outputTypeCtr
   );
 
-export type ProvideBackend = <T>(input: i0.Backend, outputTypeCtr: new (...args: any[]) => T) =>
+export type ProvideBackend = <T>(outputTypeCtr: new (...args: any[]) => T) =>
 		T;
 export const provideBackend: ProvideBackend = impl.provideBackend;

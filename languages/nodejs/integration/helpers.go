@@ -41,13 +41,6 @@ func convertProtoType(ic *importCollector, t shared.ProtoTypeData) (tmplImported
 		} else {
 			tsModuleName += "_pb"
 		}
-
-		// Hack: ts-protoc-gen doesn't support "import public" in proto files so manually substitute
-		// the import for the standard gRPC extension.
-		// TODO: fix this somehow.
-		if string(t.Location.PackageName) == "namespacelabs.dev/foundation/std/grpc" && t.SourceFileName == "provider.proto" {
-			tsModuleName = "protos/" + tsModuleName
-		}
 	}
 
 	npmPackage, err := toNpmPackage(t.Location)
