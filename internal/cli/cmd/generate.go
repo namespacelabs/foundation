@@ -37,14 +37,10 @@ func NewGenerateCmd() *cobra.Command {
 			}
 
 			codegenMultiErr := fnerrors.NewCodegenMultiError()
-			onError := func(err fnerrors.CodegenError) {
-				codegenMultiErr.Append(err)
-			}
 			// Aggregates and prints all accumulated codegen errors on return.
-			defer func() {
-				fnerrors.Format(console.Stderr(ctx), codegenMultiErr, fnerrors.WithColors(true))
-			}()
-			if err := generateProtos(ctx, root, onError); err != nil {
+			defer fnerrors.Format(console.Stderr(ctx), codegenMultiErr, fnerrors.WithColors(true))
+
+			if err := generateProtos(ctx, root, codegenMultiErr.Append); err != nil {
 				return err
 			}
 			list, err := workspace.ListSchemas(ctx, root)
@@ -52,7 +48,7 @@ func NewGenerateCmd() *cobra.Command {
 				return err
 			}
 			// Generate code.
-			return codegen.ForLocationsGenCode(ctx, root, list.Locations, onError)
+			return codegen.ForLocationsGenCode(ctx, root, list.Locations, codegenMultiErr.Append)
 		}),
 	}
 

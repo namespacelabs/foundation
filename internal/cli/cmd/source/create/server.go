@@ -69,14 +69,10 @@ func newServerCmd() *cobra.Command {
 			}
 
 			codegenMultiErr := fnerrors.NewCodegenMultiError()
-			onError := func(err fnerrors.CodegenError) {
-				codegenMultiErr.Append(err)
-			}
 			// Aggregates and prints all accumulated codegen errors on return.
-			defer func() {
-				fnerrors.Format(console.Stderr(ctx), codegenMultiErr, fnerrors.WithColors(true))
-			}()
-			return codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, onError)
+			defer fnerrors.Format(console.Stderr(ctx), codegenMultiErr, fnerrors.WithColors(true))
+
+			return codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, codegenMultiErr.Append)
 		}),
 	}
 
