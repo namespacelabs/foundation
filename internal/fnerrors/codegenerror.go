@@ -54,8 +54,8 @@ func NewCodegenMultiError() *CodegenMultiError {
 func (c *CodegenMultiError) Error() string {
 	buf := &bytes.Buffer{}
 	for _, err := range c.errs {
-		io.WriteString(buf, err.Error())
-		io.WriteString(buf, "\n")
+		_, _ = io.WriteString(buf, err.Error())
+		_, _ = io.WriteString(buf, "\n")
 	}
 	return buf.String()
 }
