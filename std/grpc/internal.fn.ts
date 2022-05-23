@@ -1,9 +1,9 @@
 // This file was automatically generated.
+// Contains Foundation-internal wiring, the user doesn't interact directly with it.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundation";
-
-
+import * as api from "./api.fn";
+import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 
 export const Package = {
   name: "namespacelabs.dev/foundation/std/grpc",
@@ -12,12 +12,7 @@ export const Package = {
 export const TransitiveInitializers: Initializer[] = [
 ];
 
-
 export const BackendProvider = <T>(graph: DependencyGraph, outputTypeCtr: new (...args: any[]) => T) =>
-	provideBackend(
+	api.provideBackend(
 		outputTypeCtr
   );
-
-export type ProvideBackend = <T>(outputTypeCtr: new (...args: any[]) => T) =>
-		T;
-export const provideBackend: ProvideBackend = impl.provideBackend;

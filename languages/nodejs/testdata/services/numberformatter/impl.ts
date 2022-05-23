@@ -4,7 +4,7 @@
 
 import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
 import { Registrar } from "@namespacelabs/foundation";
-import { ServiceDeps, WireService } from "./deps.fn";
+import { ServiceDeps, WireService } from "./api.fn";
 import { FormatServiceService, IFormatServiceServer } from "./service_grpc_pb";
 import { FormatRequest, FormatResponse } from "./service_pb";
 

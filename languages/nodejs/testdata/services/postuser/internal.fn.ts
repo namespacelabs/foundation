@@ -1,14 +1,11 @@
 // This file was automatically generated.
+// Contains Foundation-internal wiring, the user doesn't interact directly with it.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundation";
-import * as i0 from "@namespacelabs.dev-foundation/std-grpc/deps.fn"
+import * as api from "./api.fn";
+import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
+import * as i0 from "@namespacelabs.dev-foundation/std-grpc/internal.fn"
 import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/service_grpc_pb"
-
-
-export interface ServiceDeps {
-	postService: i1.PostServiceClient;
-}
 
 export const Package = {
   name: "namespacelabs.dev/foundation/languages/nodejs/testdata/services/postuser",
@@ -23,6 +20,3 @@ export const Package = {
 export const TransitiveInitializers: Initializer[] = [
 	...i0.TransitiveInitializers,
 ];
-
-export type WireService = (deps: ServiceDeps, registrar: Registrar) => void;
-export const wireService: WireService = impl.wireService;

@@ -39,8 +39,12 @@ func npmImport(npmPackage NpmPackage, moduleName string) string {
 	return fmt.Sprintf("%s/%s", npmPackage, moduleName)
 }
 
-func nodeDepsNpmImport(npmPackage NpmPackage) string {
-	return npmImport(npmPackage, "deps.fn")
+func nodeApiNpmImport(npmPackage NpmPackage) string {
+	return npmImport(npmPackage, "api.fn")
+}
+
+func nodeInternalNpmImport(npmPackage NpmPackage) string {
+	return npmImport(npmPackage, "internal.fn")
 }
 
 func convertProtoType(ic *importCollector, t shared.ProtoTypeData) (tmplImportedType, error) {
@@ -100,7 +104,7 @@ func convertImportedInitializers(ic *importCollector, locations []workspace.Loca
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, ic.add(nodeDepsNpmImport(npmPackage)))
+		result = append(result, ic.add(nodeInternalNpmImport(npmPackage)))
 	}
 
 	return result, nil

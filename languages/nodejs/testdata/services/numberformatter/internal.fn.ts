@@ -1,16 +1,12 @@
 // This file was automatically generated.
+// Contains Foundation-internal wiring, the user doesn't interact directly with it.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundation";
-import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/deps.fn"
+import * as api from "./api.fn";
+import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
+import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/internal.fn"
 import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/input_pb"
 import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter/formatter"
-
-
-export interface ServiceDeps {
-	batch1: i2.BatchFormatter;
-	batch2: i2.BatchFormatter;
-}
 
 export const Package = {
   name: "namespacelabs.dev/foundation/languages/nodejs/testdata/services/numberformatter",
@@ -28,6 +24,3 @@ export const Package = {
 export const TransitiveInitializers: Initializer[] = [
 	...i0.TransitiveInitializers,
 ];
-
-export type WireService = (deps: ServiceDeps, registrar: Registrar) => void;
-export const wireService: WireService = impl.wireService;

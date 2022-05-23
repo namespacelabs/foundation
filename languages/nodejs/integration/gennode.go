@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	depsFilename             = "deps.fn.ts"
+	internalFilename         = "internal.fn.ts"
+	apiFilename              = "api.fn.ts"
 	packageServiceBaseName   = "Service"
 	packageExtensionBaseName = "Extension"
 )
@@ -32,7 +33,12 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		return err
 	}
 
-	return generateSource(ctx, fs, loc.Rel(depsFilename), tmpl, "Node", tmplOptions)
+	err = generateSource(ctx, fs, loc.Rel(internalFilename), tmpl, "NodeInternal", tmplOptions)
+	if err != nil {
+		return err
+	}
+
+	return generateSource(ctx, fs, loc.Rel(apiFilename), tmpl, "NodeApi", tmplOptions)
 }
 
 func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, error) {
@@ -134,7 +140,7 @@ func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDepe
 	if err != nil {
 		return tmplDependency{}, err
 	}
-	alias := ic.add(nodeDepsNpmImport(npmPackage))
+	alias := ic.add(nodeInternalNpmImport(npmPackage))
 
 	inputType := tmplImportedType{}
 	// TODO: remove this condition once dependency on the gRPC Backend proto

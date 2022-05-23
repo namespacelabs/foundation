@@ -37,8 +37,10 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 			HasDeps: srv.HasDeps,
 			Type: tmplImportedType{
 				Name:        srvName,
-				ImportAlias: ic.add(nodeDepsNpmImport(npmPackage)),
-			}})
+				ImportAlias: ic.add(nodeApiNpmImport(npmPackage)),
+			},
+			InternalImportAlias: ic.add(nodeInternalNpmImport(npmPackage)),
+		})
 	}
 
 	importedInitializersAliases, err := convertImportedInitializers(ic, serverData.ImportedInitializers)

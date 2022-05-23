@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import { BatchFormatterDeps, ExtensionDeps, ProvideBatchFormatter } from "./deps.fn";
+import { BatchFormatterDeps, ExtensionDeps, ProvideBatchFormatter } from "./api.fn";
 import { BatchFormatter } from "./formatter";
 import { InputData } from "./input_pb";
 

@@ -22,8 +22,9 @@ type nodeImplTmplOptions struct {
 }
 
 type tmplServerService struct {
-	Type    tmplImportedType
-	HasDeps bool
+	Type                tmplImportedType
+	InternalImportAlias string
+	HasDeps             bool
 }
 
 type tmplNodeService struct {

@@ -3,7 +3,7 @@
 // available at http://github.com/namespacelabs/foundation
 
 import { Registrar } from "@namespacelabs/foundation";
-import { WireService } from "./deps.fn";
+import { WireService } from "./api.fn";
 
 export const wireService: WireService = (registrar: Registrar): void => {
 	registrar.http().post("/simple/:userId", async (req) => {

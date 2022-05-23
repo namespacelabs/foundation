@@ -43,10 +43,6 @@ export interface {{.Name}}Deps {
 
 // Input: tmplPackage
 {{define "PackageDef" -}}
-{{- if .Deps}}
-{{template "DefineDeps" .Deps}}
-{{- end}}
-
 export const Package = {
   name: "{{.Name}}",
 
@@ -86,23 +82,15 @@ const initializer = {
 	{{- range .InitializeAfter}}"{{.}}",{{end -}}
 	]{{- end}}
 };
-
-export type Prepare = (
-	{{- if .PackageDepsName}}deps: {{.PackageDepsName}}Deps{{end -}}) => void;
-export const prepare: Prepare = impl.initialize;
 {{- end}}
 
 // Input: tmplProvider
-{{define "ProviderDef"}}
-{{- if .Deps}}
-{{template "DefineDeps" .Deps}}
-{{- end}}
-
+{{define "ProviderInternalDef"}}
 export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
   (graph: DependencyGraph
 	{{- if not .IsParameterized }}, input: {{template "Type" .InputType -}}{{end}}
   {{- if .IsParameterized}}, outputTypeCtr: new (...args: any[]) => T{{end}}) =>
-	provide{{.Name}}(
+	api.provide{{.Name}}(
 		{{if not .IsParameterized}}input{{end}}
 		{{- if .PackageDepsName}},
 		graph.instantiatePackageDeps(Package)
@@ -113,6 +101,14 @@ export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
 		{{- end}}
 		{{- if .IsParameterized}}outputTypeCtr{{end}}
   );
+{{- end}}
+
+// Input: tmplProvider
+{{define "ProviderApiDef"}}
+{{- if .Deps -}}
+{{template "DefineDeps" .Deps}}
+
+{{end -}}
 
 export type Provide{{.Name}} = {{if .IsParameterized}}<T>{{end -}}
     ({{- if not .IsParameterized}}input: {{template "Type" .InputType}}{{end}}
@@ -134,11 +130,13 @@ import * as {{.Alias}} from "{{.Package}}"
 {{if .ImportAlias}}{{.ImportAlias}}.{{end}}{{.Name}}
 {{- end}}` +
 
-			// Node template
-			`{{define "Node"}}{{with $opts := .}}// This file was automatically generated.
+			// Node "internal" template
+			`{{define "NodeInternal"}}{{with $opts := .}}// This file was automatically generated.
+// Contains Foundation-internal wiring, the user doesn't interact directly with it.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundation";
+import * as api from "./api.fn";
+import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 
 {{- template "Imports" . -}}
 
@@ -151,16 +149,42 @@ import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundati
 
 {{- template "TransitiveInitializersDef" .Package}}
 
-{{- if .Service}}
+{{- range $.Providers}}
+{{template "ProviderInternalDef" .}}
+{{- end}}
+{{- end}}
+{{end}}` +
 
+			// Node "api" template
+			`{{define "NodeApi"}}{{with $opts := .}}// This file was automatically generated.
+// Contains type and function definitions that needs to be implemented in "impl.ts".
+
+import * as impl from "./impl";
+import { Registrar } from "@namespacelabs/foundation";
+
+{{- template "Imports" . -}}
+
+{{if .Package.Deps -}}
+{{template "DefineDeps" .Package.Deps}}
+
+{{end}}
+
+{{- if .Package.Initializer -}}
+export type Prepare = (
+	{{- if .Package.Initializer.PackageDepsName}}deps: {{.Package.Initializer.PackageDepsName}}Deps{{end -}}) => void;
+export const prepare: Prepare = impl.initialize;
+
+{{end}}
+
+{{- if .Service -}}
 export type WireService = (
 	{{- if .Package.Deps}}deps: {{.Package.Deps.Name}}Deps, {{end -}}
 	registrar: Registrar) => void;
 export const wireService: WireService = impl.wireService;
 {{- end}}
 
-{{- range $.Providers}}
-{{template "ProviderDef" .}}
+{{- range $.Providers -}}
+{{template "ProviderApiDef" .}}
 {{- end}}
 {{- end}}
 {{end}}` +
@@ -178,7 +202,7 @@ const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
 {{- range $.Services}}
   try {
 		{{.Type.ImportAlias}}.wireService(
-			{{- if .HasDeps}}{{.Type.ImportAlias}}.Package.instantiateDeps(graph), {{ end -}}
+			{{- if .HasDeps}}{{.InternalImportAlias}}.Package.instantiateDeps(graph), {{ end -}}
 			server);
 	} catch (e) {
 		errors.push(e);
@@ -209,7 +233,7 @@ server.start();
 
 			// Node stub template
 			`{{define "Node stub"}}import { Registrar } from "@namespacelabs/foundation";
-import { ServiceDeps, WireService } from "./deps.fn";
+import { ServiceDeps, WireService } from "./api.fn";
 import { {{.ServiceServerName}}, {{.ServiceName}} } from "./{{.ServiceFileName}}_grpc_pb";
 
 export const wireService: WireService = (deps: ServiceDeps, registrar: Registrar): void => {

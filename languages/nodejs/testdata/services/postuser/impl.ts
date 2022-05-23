@@ -5,7 +5,7 @@
 import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
 import { PostRequest } from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/service_pb";
 import { Registrar } from "@namespacelabs/foundation";
-import { ServiceDeps, WireService } from "./deps.fn";
+import { ServiceDeps, WireService } from "./api.fn";
 import { IPostUserServiceServer, PostUserServiceService } from "./service_grpc_pb";
 import { PostUserRequest, PostUserResponse } from "./service_pb";
 
