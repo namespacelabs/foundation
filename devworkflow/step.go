@@ -25,40 +25,36 @@ import (
 )
 
 func setWorkspace(ctx context.Context, env provision.Env, packageName string, additional []string, obs *Session, pfw *endpointfwd.PortForward) error {
-	for {
-		if err := compute.Do(ctx, func(ctx context.Context) error {
-			serverPackages := []schema.PackageName{schema.Name(packageName)}
-			for _, pkg := range additional {
-				serverPackages = append(serverPackages, schema.Name(pkg))
-			}
-
-			focusServers := provision.RequireServers(env, serverPackages...)
-
-			fmt.Fprintf(console.Debug(ctx), "devworkflow: setWorkspace.Do\n")
-
-			// Changing the graph is fairly heavy-weight at this point, as it will lead to
-			// a rebuild of all packages (although they'll likely hit the cache), as well
-			// as a full re-deployment, re-port forward, etc. Ideally this would be more
-			// incremental by having narrower dependencies. E.g. single server would have
-			// a single build, single deployment, etc. And changes to siblings servers
-			// would only impact themselves, not all servers. #362
-			return compute.Continuously(ctx, &buildAndDeploy{
-				obs:            obs,
-				pfw:            pfw,
-				env:            env,
-				serverPackages: serverPackages,
-				focusServers:   focusServers,
-			})
-		}); err != nil {
-			if msg, ok := fnerrors.IsExpected(err); ok {
-				fmt.Fprintf(console.Stderr(ctx), "\n  %s\n\n", msg)
-				continue // Go again.
-			}
-			return err
+	return compute.Do(ctx, func(ctx context.Context) error {
+		serverPackages := []schema.PackageName{schema.Name(packageName)}
+		for _, pkg := range additional {
+			serverPackages = append(serverPackages, schema.Name(pkg))
 		}
 
-		return nil
-	}
+		focusServers := provision.RequireServers(env, serverPackages...)
+
+		fmt.Fprintf(console.Debug(ctx), "devworkflow: setWorkspace.Do\n")
+
+		// Changing the graph is fairly heavy-weight at this point, as it will lead to
+		// a rebuild of all packages (although they'll likely hit the cache), as well
+		// as a full re-deployment, re-port forward, etc. Ideally this would be more
+		// incremental by having narrower dependencies. E.g. single server would have
+		// a single build, single deployment, etc. And changes to siblings servers
+		// would only impact themselves, not all servers. #362
+		return compute.ContinuouslyWithErr(ctx, &buildAndDeploy{
+			obs:            obs,
+			pfw:            pfw,
+			env:            env,
+			serverPackages: serverPackages,
+			focusServers:   focusServers,
+		}, func(err error) error {
+			if msg, ok := fnerrors.IsExpected(err); ok {
+				fmt.Fprintf(console.Stderr(ctx), "\n  %s\n\n", msg)
+				return nil // Go again.
+			}
+			return err
+		})
+	})
 }
 
 type buildAndDeploy struct {
@@ -147,9 +143,20 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		// A channel is used to signal that the child Continuously() has returned, and
 		// thus we can be sure that its Cleanup has been called.
 		done := make(chan struct{})
+		onError := func(err error) error {
+			if err != nil {
+				if msg, ok := fnerrors.IsExpected(err); ok {
+					fmt.Fprintf(console.Stderr(ctx), "\n  %s\n\n", msg)
+					return nil
+				}
+			}
+			return err
+		}
 		cancel := compute.SpawnCancelableOnContinuously(ctx, func(ctx context.Context) error {
 			defer close(done)
-			return compute.Continuously(ctx, newUpdateCluster(focusServers.Env(), stack.Proto(), do.serverPackages, observers, plan, do.pfw))
+			return compute.ContinuouslyWithErr(ctx,
+				newUpdateCluster(focusServers.Env(), stack.Proto(), do.serverPackages, observers, plan, do.pfw),
+				onError)
 		})
 
 		do.cancelRunning = func() {

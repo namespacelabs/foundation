@@ -55,7 +55,14 @@ func Stop(ctx context.Context, err error) {
 }
 
 func Continuously(baseCtx context.Context, sinkable Sinkable) error {
-	g := &sinkInvocation{}
+	onError := func(err error) error { return err }
+	return ContinuouslyWithErr(baseCtx, sinkable, onError)
+}
+
+type onError func(error) error
+
+func ContinuouslyWithErr(baseCtx context.Context, sinkable Sinkable, onError onError) error {
+	g := &sinkInvocation{onError: onError}
 	ctx := context.WithValue(baseCtx, _continuousKey, g)
 	// We want all executions under the executor to be able to obtain the current invocation.
 	eg, wait := executor.New(ctx)
@@ -83,6 +90,7 @@ type sinkInvocation struct {
 
 	mu      sync.Mutex
 	globals map[string]*observable
+	onError onError
 }
 
 func (g *sinkInvocation) sink(ctx context.Context, in *In, updated func(context.Context, Resolved) error) {
@@ -364,8 +372,9 @@ func (o *observable) Loop(ctx context.Context) error {
 				var err error
 				res, err := compute(ctx, orch, o.computable, cacheable, shouldCache, inputs, resolved)
 				if err != nil {
-					// XXX handle failures (e.g. keep last value)
-					return err
+					if err = o.inv.onError(err); err != nil {
+						return err
+					}
 				}
 				o.newValue(ctx, res)
 				return nil
@@ -446,6 +455,7 @@ func (o *observable) doUpdate(result ResultWithTimestamp[any]) func() {
 }
 
 type onResult struct {
-	ID     string
-	Handle func(ResultWithTimestamp[any]) bool
+	ID      string
+	Handle  func(ResultWithTimestamp[any]) bool
+	onError onError
 }

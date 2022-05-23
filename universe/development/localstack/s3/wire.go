@@ -73,7 +73,7 @@ func ProvideBuckets(ctx context.Context, config *BucketConfig, deps ExtensionDep
 
 	// Asynchronously wait until a database connection is ready.
 	deps.ReadinessCheck.RegisterFunc(
-		fmt.Sprintf("iness: %s", core.InstantiationPathFromContext(ctx)),
+		fmt.Sprintf("iess: %s", core.InstantiationPathFromContext(ctx)),
 		func(ctx context.Context) error {
 			_, err := s3client.ListBuckets(ctx, &s3.ListBucketsInput{})
 			return err
