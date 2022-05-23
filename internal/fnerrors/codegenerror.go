@@ -9,10 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"sync"
-
-	"github.com/morikuni/aec"
 )
 
 // CodegenError associates an error with a code generation phase and package.
@@ -140,46 +137,5 @@ func (c *CodegenMultiError) aggregateErrors() {
 				c.addCommonError(rootErr, c1, c2)
 			}
 		}
-	}
-}
-
-func (c *CodegenMultiError) Format(w io.Writer, args ...FormatOption) {
-	opts := &FormatOptions{colors: false, tracing: false}
-	for _, opt := range args {
-		opt(opts)
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.aggregateErrors()
-
-	// Print aggregated errors.
-	for commonErr, whatpkgs := range c.commonerrs {
-		for what, pkgs := range whatpkgs {
-			var pkgnames []string
-			for p := range pkgs {
-				pkgnames = append(pkgnames, p)
-			}
-			phase := what
-			if opts.colors {
-				phase = aec.MagentaF.Apply(phase)
-			}
-			pkgnamesdisplay := strings.Join(pkgnames, ", ")
-			if opts.colors {
-				pkgnamesdisplay = aec.LightBlackF.Apply(pkgnamesdisplay)
-			}
-			fmt.Fprintf(w, "%s at phase [%s] for package %s\n", commonErr.Error(), phase, pkgnamesdisplay)
-		}
-	}
-	// Print all unique CodegenErrors that don't have a common root.
-	var uniqgenerrs []CodegenError
-	for _, generr := range c.errs {
-		_, duplicate := c.duplicateerrs[generr.fingerprint()]
-		if !duplicate {
-			uniqgenerrs = append(uniqgenerrs, generr)
-		}
-	}
-	for _, generr := range uniqgenerrs {
-		formatCodegenError(w, &generr, opts)
 	}
 }
