@@ -428,7 +428,7 @@ func formatCodegenMultiError(w io.Writer, err *CodegenMultiError, opts *FormatOp
 			if opts.colors {
 				pkgnamesdisplay = aec.LightBlackF.Apply(pkgnamesdisplay)
 			}
-			fmt.Fprintf(w, "%s at phase [%s] for package %s\n", commonErr.Error(), phase, pkgnamesdisplay)
+			fmt.Fprintf(w, "%s at phase [%s] for package(s) %s\n", commonErr.Error(), phase, pkgnamesdisplay)
 		}
 	}
 	// Print all unique CodegenErrors that don't have a common root.
