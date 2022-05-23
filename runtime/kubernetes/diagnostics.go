@@ -19,7 +19,7 @@ func (r k8sRuntime) FetchDiagnostics(ctx context.Context, reference runtime.Cont
 		return runtime.Diagnostics{}, fnerrors.InternalError("invalid reference")
 	}
 
-	pod, err := r.cli.CoreV1().Pods(opaque.Namespace).Get(ctx, opaque.Name, metav1.GetOptions{})
+	pod, err := r.cli.CoreV1().Pods(opaque.Namespace).Get(ctx, opaque.PodName, metav1.GetOptions{})
 	if err != nil {
 		return runtime.Diagnostics{}, err
 	}
@@ -36,7 +36,7 @@ func (r k8sRuntime) FetchDiagnostics(ctx context.Context, reference runtime.Cont
 		}
 	}
 
-	return runtime.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.Name, opaque.Container)
+	return runtime.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.PodName, opaque.Container)
 }
 
 func statusToDiagnostic(status v1.ContainerStatus) runtime.Diagnostics {

@@ -146,22 +146,8 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		secCtx = secCtx.WithReadOnlyRootFilesystem(true)
 	}
 
-	if server.RunAs != nil {
-		userId, err := strconv.ParseInt(server.RunAs.UserID, 10, 64)
-		if err != nil {
-			return fnerrors.InternalError("expected server.RunAs.UserID to be an int64: %w", err)
-		}
-
-		podSecCtx = podSecCtx.WithRunAsUser(userId).WithRunAsNonRoot(true)
-
-		if server.RunAs.FSGroup != nil {
-			fsGroup, err := strconv.ParseInt(*server.RunAs.FSGroup, 10, 64)
-			if err != nil {
-				return fnerrors.InternalError("expected server.RunAs.FSGroup to be an int64: %w", err)
-			}
-
-			podSecCtx.WithFSGroup(fsGroup)
-		}
+	if _, err := runAsToPodSecCtx(podSecCtx, server.RunAs); err != nil {
+		return err
 	}
 
 	name := serverCtrName(srv.Proto())
@@ -506,6 +492,30 @@ func makeStorageVolumeName(rs *schema.RequiredStorage) string {
 	h := sha256.New()
 	fmt.Fprint(h, rs.Owner)
 	return "rs-" + hex.EncodeToString(h.Sum(nil))[:8]
+}
+
+func runAsToPodSecCtx(podSecCtx *applycorev1.PodSecurityContextApplyConfiguration, runAs *runtime.RunAs) (*applycorev1.PodSecurityContextApplyConfiguration, error) {
+	if runAs != nil {
+		userId, err := strconv.ParseInt(runAs.UserID, 10, 64)
+		if err != nil {
+			return nil, fnerrors.InternalError("expected server.RunAs.UserID to be an int64: %w", err)
+		}
+
+		podSecCtx = podSecCtx.WithRunAsUser(userId).WithRunAsNonRoot(true)
+
+		if runAs.FSGroup != nil {
+			fsGroup, err := strconv.ParseInt(*runAs.FSGroup, 10, 64)
+			if err != nil {
+				return nil, fnerrors.InternalError("expected server.RunAs.FSGroup to be an int64: %w", err)
+			}
+
+			podSecCtx.WithFSGroup(fsGroup)
+		}
+
+		return podSecCtx, nil
+	}
+
+	return nil, nil
 }
 
 func (r boundEnv) deployEndpoint(ctx context.Context, server runtime.ServerConfig, endpoint *schema.Endpoint, s *serverRunState) error {

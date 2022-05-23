@@ -61,6 +61,9 @@ type Runtime interface {
 	// containers, see #329.
 	StartTerminal(ctx context.Context, server *schema.Server, io TerminalIO, command string, rest ...string) error
 
+	// Attaches to a previously running container.
+	AttachTerminal(ctx context.Context, container ContainerReference, io TerminalIO) error
+
 	// Forwards a single port.
 	ForwardPort(ctx context.Context, server *schema.Server, endpoint *schema.Endpoint, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error)
 
@@ -83,6 +86,9 @@ type Runtime interface {
 	// specified writer. This mechanism is targeted at invoking test runners
 	// within the runtime environment.
 	RunOneShot(context.Context, schema.PackageName, ServerRunOpts, io.Writer) error
+
+	// RunAttached runs the specified container, and attaches to it.
+	RunAttached(context.Context, string, ServerRunOpts, TerminalIO) error
 
 	// Deletes the scoped environment, and all of its associated resources (e.g.
 	// after a test invocation). If wait is true, waits until the target

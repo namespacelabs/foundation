@@ -250,3 +250,12 @@ func (r k8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, ri
 
 	return r.startTerminal(ctx, r.cli, server, rio, cmd)
 }
+
+func (r k8sRuntime) AttachTerminal(ctx context.Context, reference runtime.ContainerReference, rio runtime.TerminalIO) error {
+	opaque, ok := reference.(containerPodReference)
+	if !ok {
+		return fnerrors.InternalError("invalid reference")
+	}
+
+	return r.attachTerminal(ctx, r.cli, opaque, rio)
+}

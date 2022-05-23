@@ -75,7 +75,7 @@ func containerStateLabel(ps *v1.PodStatus, st v1.ContainerState) string {
 func makePodRef(ns, name, containerName string) runtime.ContainerReference {
 	return containerPodReference{
 		Namespace: ns,
-		Name:      name,
+		PodName:   name,
 		Container: containerName,
 	}
 }

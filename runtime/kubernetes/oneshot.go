@@ -16,11 +16,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -30,39 +32,18 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 
 	name := strings.ToLower(parts[len(parts)-1]) + "-" + ids.NewRandomBase32ID(8)
 
-	container := applycorev1.Container().
-		WithName(name).
-		WithImage(runOpts.Image.RepoAndDigest()).
-		WithArgs(runOpts.Args...).
-		WithCommand(runOpts.Command...).
-		WithSecurityContext(
-			applycorev1.SecurityContext().
-				WithReadOnlyRootFilesystem(runOpts.ReadOnlyFilesystem))
-
 	cli, err := client.NewClientFromHostEnv(ctx, r.hostEnv)
 	if err != nil {
 		return err
 	}
 
-	pod := applycorev1.Pod(name, r.moduleNamespace).
-		WithSpec(applycorev1.PodSpec().WithContainers(container).WithRestartPolicy(corev1.RestartPolicyNever)).
-		WithLabels(kubedef.SelectNamespaceDriver())
-
-	if _, err := cli.CoreV1().Pods(r.moduleNamespace).Apply(ctx, pod, kubedef.Ego()); err != nil {
+	spec, err := makePodSpec(name, runOpts)
+	if err != nil {
 		return err
 	}
 
-	if err := r.Wait(ctx, tasks.Action("kubernetes.pod.deploy").Scope(pkg),
-		WaitForPodConditition(fetchPod(r.moduleNamespace, name), func(status corev1.PodStatus) (bool, error) {
-			return (status.Phase == corev1.PodRunning || status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
-		})); err != nil {
-		if _, ok := err.(runtime.ErrContainerFailed); !ok {
-			return err
-		}
-	}
-
-	if ctx.Err() != nil {
-		return ctx.Err()
+	if err := spawnAndWaitPod(ctx, cli, r.moduleNamespace, name, spec, false); err != nil {
+		return err
 	}
 
 	if err := fetchPodLogs(ctx, cli, logOutput, r.moduleNamespace, name, "", runtime.StreamLogsOpts{Follow: true}); err != nil {
@@ -107,6 +88,85 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 			return fnerrors.InternalError("kubernetes: expected pod to have terminated, but didn't see termination status: %w", err)
 		}
 	}
+}
+
+func (r k8sRuntime) RunAttached(ctx context.Context, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO) error {
+	cli, err := client.NewClientFromHostEnv(ctx, r.hostEnv)
+	if err != nil {
+		return err
+	}
+
+	spec, err := makePodSpec(name, runOpts)
+	if err != nil {
+		return err
+	}
+
+	spec.Containers[0].WithStdin(true).WithStdinOnce(true).WithTTY(true)
+
+	if err := spawnAndWaitPod(ctx, cli, r.moduleNamespace, name, spec, true); err != nil {
+		if logsErr := fetchPodLogs(ctx, cli, console.TypedOutput(ctx, name, console.CatOutputTool), r.moduleNamespace, name, "", runtime.StreamLogsOpts{}); logsErr != nil {
+			fmt.Fprintf(console.Errors(ctx), "Failed to fetch failed container logs: %v\n", logsErr)
+		}
+		return err
+	}
+
+	compute.On(ctx).Cleanup(tasks.Action("kubernetes.pod.delete"), func(ctx context.Context) error {
+		return cli.CoreV1().Pods(r.moduleNamespace).Delete(context.Background(), name, metav1.DeleteOptions{})
+	})
+
+	return r.attachTerminal(ctx, cli, containerPodReference{Namespace: r.moduleNamespace, PodName: name}, io)
+}
+
+func makePodSpec(name string, runOpts runtime.ServerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {
+	container := applycorev1.Container().
+		WithName(name).
+		WithImage(runOpts.Image.RepoAndDigest()).
+		WithArgs(runOpts.Args...).
+		WithCommand(runOpts.Command...).
+		WithSecurityContext(
+			applycorev1.SecurityContext().
+				WithReadOnlyRootFilesystem(runOpts.ReadOnlyFilesystem))
+
+	for _, env := range runOpts.Env {
+		container = container.WithEnv(applycorev1.EnvVar().WithName(env.Name).WithValue(env.Value))
+	}
+
+	podSpec := applycorev1.PodSpec().WithContainers(container)
+	podSpecSecCtx, err := runAsToPodSecCtx(&applycorev1.PodSecurityContextApplyConfiguration{}, runOpts.RunAs)
+	if err != nil {
+		return nil, err
+	}
+
+	return podSpec.WithSecurityContext(podSpecSecCtx), nil
+}
+
+func spawnAndWaitPod(ctx context.Context, cli *k8s.Clientset, ns, name string, container *applycorev1.PodSpecApplyConfiguration, allErrors bool) error {
+	pod := applycorev1.Pod(name, ns).
+		WithSpec(container.WithRestartPolicy(corev1.RestartPolicyNever)).
+		WithLabels(kubedef.SelectNamespaceDriver())
+
+	if _, err := cli.CoreV1().Pods(ns).Apply(ctx, pod, kubedef.Ego()); err != nil {
+		return err
+	}
+
+	if err := waitForCondition(ctx, cli, tasks.Action("kubernetes.pod.deploy").Arg("name", name),
+		WaitForPodConditition(fetchPod(ns, name), func(status corev1.PodStatus) (bool, error) {
+			return (status.Phase == corev1.PodRunning || status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
+		})); err != nil {
+		if allErrors {
+			return err
+		}
+
+		if _, ok := err.(runtime.ErrContainerFailed); !ok {
+			return err
+		}
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	return nil
 }
 
 func fetchPod(ns, name string) func(ctx context.Context, c *k8s.Clientset) ([]corev1.Pod, error) {

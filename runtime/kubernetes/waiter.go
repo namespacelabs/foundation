@@ -207,7 +207,7 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 					labels = append(labels, fmt.Sprintf("%s: %s", t[0], t[1]))
 					failed = append(failed, containerPodReference{
 						Namespace: pod.Namespace,
-						Name:      pod.Name,
+						PodName:   pod.Name,
 						Container: t[0],
 					})
 				}
@@ -241,15 +241,15 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 
 type containerPodReference struct {
 	Namespace string
-	Name      string
+	PodName   string
 	Container string
 }
 
 func (cpr containerPodReference) UniqueID() string {
 	if cpr.Container == "" {
-		return fmt.Sprintf("%s/%s", cpr.Namespace, cpr.Name)
+		return fmt.Sprintf("%s/%s", cpr.Namespace, cpr.PodName)
 	}
-	return fmt.Sprintf("%s/%s/%s", cpr.Namespace, cpr.Name, cpr.Container)
+	return fmt.Sprintf("%s/%s/%s", cpr.Namespace, cpr.PodName, cpr.Container)
 }
 
 func (cpr containerPodReference) HumanReference() string {

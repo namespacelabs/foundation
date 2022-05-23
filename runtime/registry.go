@@ -75,6 +75,9 @@ func (r runtimeFwdErr) FetchDiagnostics(context.Context, ContainerReference) (Di
 func (r runtimeFwdErr) StartTerminal(ctx context.Context, server *schema.Server, io TerminalIO, command string, rest ...string) error {
 	return r.err
 }
+func (r runtimeFwdErr) AttachTerminal(ctx context.Context, _ ContainerReference, io TerminalIO) error {
+	return r.err
+}
 func (r runtimeFwdErr) ForwardPort(ctx context.Context, server *schema.Server, endpoint *schema.Endpoint, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error) {
 	return nil, r.err
 }
@@ -84,23 +87,21 @@ func (r runtimeFwdErr) ForwardIngress(ctx context.Context, localAddrs []string, 
 func (r runtimeFwdErr) Observe(context.Context, *schema.Server, ObserveOpts, func(ObserveEvent) error) error {
 	return r.err
 }
-
 func (r runtimeFwdErr) RunOneShot(context.Context, schema.PackageName, ServerRunOpts, io.Writer) error {
 	return r.err
 }
-
+func (r runtimeFwdErr) RunAttached(context.Context, string, ServerRunOpts, TerminalIO) error {
+	return r.err
+}
 func (r runtimeFwdErr) DeleteRecursively(context.Context, bool) (bool, error) {
 	return false, r.err
 }
-
 func (r runtimeFwdErr) DeleteAllRecursively(context.Context, bool, io.Writer) (bool, error) {
 	return false, r.err
 }
-
 func (r runtimeFwdErr) DebugShell(ctx context.Context, img oci.ImageID, io rtypes.IO) error {
 	return r.err
 }
-
 func (r runtimeFwdErr) TargetPlatforms(context.Context) ([]specs.Platform, error) {
 	return nil, r.err
 }
