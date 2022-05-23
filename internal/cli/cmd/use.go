@@ -89,28 +89,26 @@ func NewUseCmd() *cobra.Command {
 				return err
 			}
 
-			data, err := k8s.FetchSecret(ctx, creds.SecretResourceName)
-			if err != nil {
-				return err
-			}
-
-			// XXX mount secret in container instead.
-			password, ok := data[creds.SecretName]
-			if !ok {
-				return fnerrors.BadInputError("%s: no password available in %q", database, creds.SecretResourceName)
-			}
-
 			psqlImage, err := compute.GetValue(ctx, oci.ResolveDigest("postgres:14.3-alpine@sha256:a00af33e23643f497a42bc24d2f6f28cc67f3f48b076135c5626b2e07945ff9c"))
 			if err != nil {
 				return err
 			}
 
 			runOpts := runtime.ServerRunOpts{
-				WorkingDir:         "/",
-				Image:              psqlImage,
-				Command:            []string{"psql"},
-				Args:               []string{"-h", db.HostedAt.Address, "-p", fmt.Sprintf("%d", db.HostedAt.Port), db.Name, "postgres"},
-				Env:                []*schema.BinaryConfig_Entry{{Name: "PGPASSWORD", Value: string(password)}},
+				WorkingDir: "/",
+				Image:      psqlImage,
+				Command:    []string{"psql"},
+				Args: []string{
+					"-h", db.HostedAt.Address,
+					"-p", fmt.Sprintf("%d", db.HostedAt.Port),
+					db.Name, "postgres",
+				},
+				Env: []*schema.BinaryConfig_EnvEntry{
+					{
+						Name:                   "PGPASSWORD",
+						ExperimentalFromSecret: fmt.Sprintf("%s:%s", creds.SecretResourceName, creds.SecretName),
+					},
+				},
 				ReadOnlyFilesystem: true,
 			}
 

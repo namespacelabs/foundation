@@ -240,7 +240,7 @@ message Server {
     repeated Reference reference = 12;
 
     // XXX temporary.
-    repeated BinaryConfig.Entry static_env = 13;
+    repeated BinaryConfig.EnvEntry static_env = 13;
 
     // Set of dependencies specified explicitly by the user.
     repeated string user_imports = 14;

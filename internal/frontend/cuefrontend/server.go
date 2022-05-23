@@ -97,7 +97,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	out.Import = bits.Import
 
 	for k, v := range bits.StaticEnv {
-		out.StaticEnv = append(out.StaticEnv, &schema.BinaryConfig_Entry{
+		out.StaticEnv = append(out.StaticEnv, &schema.BinaryConfig_EnvEntry{
 			Name: k, Value: v,
 		})
 	}

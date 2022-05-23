@@ -40,7 +40,7 @@ func mergePlan(plan *schema.StartupPlan, merged *schema.BinaryConfig) error {
 	merged.Args = append(merged.Args, plan.Args...)
 
 	for k, v := range plan.Env {
-		merged.Env = append(merged.Env, &schema.BinaryConfig_Entry{Name: k, Value: v})
+		merged.Env = append(merged.Env, &schema.BinaryConfig_EnvEntry{Name: k, Value: v})
 	}
 
 	return nil

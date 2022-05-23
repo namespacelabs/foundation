@@ -127,8 +127,8 @@ func makePodSpec(name string, runOpts runtime.ServerRunOpts) (*applycorev1.PodSp
 			applycorev1.SecurityContext().
 				WithReadOnlyRootFilesystem(runOpts.ReadOnlyFilesystem))
 
-	for _, env := range runOpts.Env {
-		container = container.WithEnv(applycorev1.EnvVar().WithName(env.Name).WithValue(env.Value))
+	if _, err := fillEnv(container, runOpts.Env); err != nil {
+		return nil, err
 	}
 
 	podSpec := applycorev1.PodSpec().WithContainers(container)

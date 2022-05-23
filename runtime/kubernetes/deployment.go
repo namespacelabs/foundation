@@ -179,8 +179,8 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		}
 	}
 
-	for _, kv := range server.Env {
-		container = container.WithEnv(applycorev1.EnvVar().WithName(kv.Name).WithValue(kv.Value))
+	if _, err := fillEnv(container, server.Env); err != nil {
+		return err
 	}
 
 	if server.WorkingDir != "" {
@@ -516,6 +516,25 @@ func runAsToPodSecCtx(podSecCtx *applycorev1.PodSecurityContextApplyConfiguratio
 	}
 
 	return nil, nil
+}
+
+func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry) (*applycorev1.ContainerApplyConfiguration, error) {
+	for _, kv := range env {
+		entry := applycorev1.EnvVar().WithName(kv.Name)
+		if kv.ExperimentalFromSecret != "" {
+			parts := strings.SplitN(kv.ExperimentalFromSecret, ":", 2)
+			if len(parts) < 2 {
+				return nil, fnerrors.New("invalid experimental_from_secret format")
+			}
+			entry = entry.WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
+				applycorev1.SecretKeySelector().WithName(parts[0]).WithKey(parts[1])))
+		} else {
+			entry = entry.WithValue(kv.Value)
+		}
+		container = container.WithEnv(entry)
+	}
+
+	return container, nil
 }
 
 func (r boundEnv) deployEndpoint(ctx context.Context, server runtime.ServerConfig, endpoint *schema.Endpoint, s *serverRunState) error {

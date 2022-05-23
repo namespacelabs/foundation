@@ -34,12 +34,13 @@ message Binary {
 
 // Instructions of how to invoke the image, if it includes an invocable binary.
 message BinaryConfig {
-    repeated string command = 1;
-    repeated string args    = 2;
-    repeated Entry  env     = 3;
+    repeated string   command = 1;
+    repeated string   args    = 2;
+    repeated EnvEntry env     = 3;
 
-    message Entry {
-        string name  = 1;
-        string value = 2;
+    message EnvEntry {
+        string name                     = 1;
+        string value                    = 2;
+        string experimental_from_secret = 3;  // Runtime specific.
     }
 }

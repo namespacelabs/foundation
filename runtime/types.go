@@ -125,7 +125,7 @@ type ServerRunOpts struct {
 	Image              oci.ImageID
 	Command            []string
 	Args               []string
-	Env                []*schema.BinaryConfig_Entry
+	Env                []*schema.BinaryConfig_EnvEntry
 	RunAs              *RunAs
 	ReadOnlyFilesystem bool
 }
