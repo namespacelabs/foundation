@@ -111,7 +111,7 @@ func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspa
 
 // The standard grpc extension requires special handling as the provided type is
 // is a usage-specific gRPC client class.
-// TODO: make private once Go is fully migrate to the "shared" API.
+// TODO: make private once Go is fully migrated to the "shared" API.
 func IsStdGrpcExtension(pkgName string, providerName string) bool {
 	return pkgName == "namespacelabs.dev/foundation/std/grpc" && providerName == "Backend"
 }

@@ -31,6 +31,7 @@ import (
 	"namespacelabs.dev/foundation/internal/yarn"
 	"namespacelabs.dev/foundation/languages"
 	nodejsruntime "namespacelabs.dev/foundation/languages/nodejs/runtime"
+	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -507,7 +508,9 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 		list = append(list, svc)
 	}
 
-	if len(list) > 0 {
+	// TODO: bring back proto generation once dependency on the gRPC Backend proto
+	// is supported in node.js.
+	if len(list) > 0 && !shared.IsStdGrpcExtension(string(pkg.PackageName()), "Backend") {
 		dl.Add("Generate Javascript/Typescript proto sources", &source.OpProtoGen{
 			PackageName:         pkg.PackageName().String(),
 			GenerateHttpGateway: pkg.Node().ExportServicesAsHttp,

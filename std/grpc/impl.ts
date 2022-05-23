@@ -3,7 +3,6 @@
 // available at http://github.com/namespacelabs/foundation
 
 import { ChannelCredentials } from "@grpc/grpc-js";
-import { Backend } from "./protos/provider_pb";
 import yargs from "yargs/yargs";
 
 const args = yargs(process.argv)
@@ -12,7 +11,7 @@ const args = yargs(process.argv)
 	})
 	.parse();
 
-export function provideBackend<T>(unused: Backend, outputType: new (...args: any[]) => T): T {
+export function provideBackend<T>(outputType: new (...args: any[]) => T): T {
 	// TODO: support communication with services in other containers.
 	// TODO: support TLS.
 	return new outputType(`127.0.0.1:${args.port}`, ChannelCredentials.createInsecure(), {});
