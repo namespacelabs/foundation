@@ -78,15 +78,15 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	// We also include a JSON version of the map to facilitiate JS-based uses.
 	data["map.json"] = devMapJSON
 
-	name := serverSecretName(r.Focus.Server)
+	serverSecretName := secrets.ServerSecretName(r.Focus.Server)
 
 	out.Definitions = append(out.Definitions, kubedef.Apply{
 		Description: "server secrets",
 		Resource:    "secrets",
 		Namespace:   namespace,
-		Name:        name,
+		Name:        serverSecretName,
 		Body: applycorev1.
-			Secret(name, namespace).
+			Secret(serverSecretName, namespace).
 			WithType(v1.SecretTypeOpaque).
 			WithAnnotations(kubedef.MakeAnnotations(r.Env, r.Stack.GetServer(r.Focus.GetPackageName()))).
 			WithLabels(kubedef.MakeLabels(r.Env, r.Focus.Server)).
@@ -101,7 +101,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				Name: volId,
 				VolumeType: &kubedef.SpecExtension_Volume_Secret_{
 					Secret: &kubedef.SpecExtension_Volume_Secret{
-						SecretName: name,
+						SecretName: serverSecretName,
 					},
 				},
 			}},
@@ -118,7 +118,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		}})
 
 	for _, gen := range collection.Generated {
-		name := gen.ID + ".managed.namespacelabs.dev"
+		generatedName := gen.ResourceName
 		volId := "fn-secret-" + gen.ID
 
 		out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
@@ -127,7 +127,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 					Name: volId,
 					VolumeType: &kubedef.SpecExtension_Volume_Secret_{
 						Secret: &kubedef.SpecExtension_Volume_Secret{
-							SecretName: name,
+							SecretName: generatedName,
 						},
 					},
 				}},
@@ -156,7 +156,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 
 			newSecret := &v1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
+					Name:      generatedName,
 					Namespace: namespace,
 					Labels:    kubedef.MakeLabels(r.Env, nil),
 				},
@@ -168,19 +168,18 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				IfMissing:   true,
 				Resource:    "secrets",
 				Namespace:   namespace,
-				Name:        name,
+				Name:        generatedName,
 				Body:        newSecret,
 			})
 		} else {
 			out.Definitions = append(out.Definitions, kubedef.CreateSecretConditionally{
 				Description:       "Generated server secrets",
 				Namespace:         namespace,
-				Name:              name,
+				Name:              generatedName,
 				UserSpecifiedName: gen.Secret.Name,
 				Invocation:        gen.Secret.InitializeWith,
 			})
 		}
-
 	}
 
 	return nil
@@ -193,14 +192,10 @@ func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure
 		Description: "server secrets",
 		Resource:    "secrets",
 		Namespace:   namespace,
-		Name:        serverSecretName(r.Focus.Server),
+		Name:        secrets.ServerSecretName(r.Focus.Server),
 	})
 
 	return nil
-}
-
-func serverSecretName(srv *schema.Server) string {
-	return strings.Join([]string{srv.Name, srv.Id}, "-") + ".managed.namespacelabs.dev"
 }
 
 func fillData(ctx context.Context, server *schema.Server, env *schema.Environment, col *secrets.Collection, r configure.StackRequest) (map[string][]byte, error) {

@@ -35,9 +35,10 @@ type Collection struct {
 }
 
 type Generated struct {
-	ID     string
-	Path   string
-	Secret *Secret
+	ID           string
+	Path         string
+	ResourceName string
+	Secret       *Secret
 }
 
 var (
@@ -111,8 +112,9 @@ func Collect(server *schema.Server) (*Collection, error) {
 
 					// Tell the runtime where to find the secret data.
 					configure.Secret = append(configure.Secret, &SecretDevMap_SecretSpec{
-						Name:     sec.Name,
-						FromPath: filepath.Join(MountPath, name),
+						Name:         sec.Name,
+						FromPath:     filepath.Join(MountPath, name),
+						ResourceName: ServerSecretName(server),
 					})
 				}
 			}
@@ -124,17 +126,22 @@ func Collect(server *schema.Server) (*Collection, error) {
 					id := strings.Join([]string{sec.Name, sec.Generate.UniqueId}, "-")
 					path := filepath.Join(ScopedMountPath, strings.ReplaceAll(instance.InstanceOwner, "/", "-"), id)
 
+					// XXX This leaks Kubernetes.
+					resourceName := id + ".managed.namespacelabs.dev"
+
 					configure.Secret = append(configure.Secret, &SecretDevMap_SecretSpec{
 						Name: sec.Name,
 						// By convention, the generated k8s secret has a single secret inside, with
 						// the actual secret name.
-						FromPath: filepath.Join(path, sec.Name),
+						FromPath:     filepath.Join(path, sec.Name),
+						ResourceName: resourceName,
 					})
 
 					col.Generated = append(col.Generated, Generated{
-						ID:     id,
-						Path:   path,
-						Secret: sec,
+						ID:           id,
+						ResourceName: resourceName,
+						Path:         path,
+						Secret:       sec,
 					})
 				}
 			}
@@ -187,4 +194,8 @@ func LookupConfig(sdm *SecretDevMap, caller string) *SecretDevMap_Configure {
 	}
 
 	return nil
+}
+
+func ServerSecretName(srv *schema.Server) string {
+	return strings.Join([]string{srv.Name, srv.Id}, "-") + ".managed.namespacelabs.dev"
 }
