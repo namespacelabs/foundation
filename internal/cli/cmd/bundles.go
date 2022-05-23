@@ -52,7 +52,7 @@ func NewBundlesCmd() *cobra.Command {
 
 	upload := &cobra.Command{
 		Use:   "upload",
-		Short: "Encrypts and uploads a command bundle to namespace.",
+		Short: "Encrypts and uploads a command bundle to foundation.",
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -72,7 +72,7 @@ func NewBundlesCmd() *cobra.Command {
 				return err
 			}
 
-			// Create a temporary age file that we encrypt to whose contents will be uploaded.
+			// Create a temporary age file that we encrypt and whose contents will be uploaded.
 			file, err := dirs.CreateUserTemp("action-bundles", "actions-*.tar.gz.age")
 			if err != nil {
 				return fnerrors.InternalError("failed to create the temporary `age` file: %w", err)
@@ -108,7 +108,7 @@ func NewBundlesCmd() *cobra.Command {
 
 	download := &cobra.Command{
 		Use:   "download",
-		Short: "Downloads an encrypted command bundle from Namespace.",
+		Short: "Downloads an encrypted command bundle from foundation.",
 		Args:  cobra.ExactArgs(1),
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
