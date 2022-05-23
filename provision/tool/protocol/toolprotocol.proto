@@ -49,8 +49,9 @@ message ApplyRequest {
 }
 
 message ApplyResponse {
-    repeated schema.DefExtension extension = 1;
-    repeated schema.Definition definition  = 2;
+    repeated schema.DefExtension extension         = 1;
+    repeated schema.Definition definition          = 2;
+    repeated schema.ComputedConfiguration computed = 4;
 
     // The outcome of this tool computation is valid for as long as these
     // inputs don't change.

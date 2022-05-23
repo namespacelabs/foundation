@@ -124,6 +124,8 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, t AllHandlers
 			return nil, err
 		}
 
+		response.ApplyResponse.Computed = out.Computed
+
 	case *protocol.ToolRequest_DeleteRequest:
 		p, err := parseStackRequest(br, x.DeleteRequest.Header)
 		if err != nil {

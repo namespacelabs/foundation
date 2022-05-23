@@ -30,3 +30,26 @@ message Definition {
 message DefinitionList {
     repeated Definition definition = 1;
 }
+
+// Computed configurations are used to then project runtime-specific
+// configuration, such as flags, env vars, etc. Computed configurations are
+// emitted by provisioning tools, and retained in config images. They're used to
+// be able to retain the intersection of implementation version and
+// configuration inputs. Rather than having implementations recompute these
+// values, and have to keep track of versions, a fully denormalized version is
+// retained instead.
+message ComputedConfiguration {
+    // A package name that represents who computed this configuration.
+    string owner = 1;
+    // A domain-specific message which encapsulates a computed configuration.
+    google.protobuf.Any impl = 2;
+}
+
+message ComputedConfigurations {
+    repeated Entry entry = 1;
+
+    message Entry {
+        string                         server_package = 1;  // Which server owns these configurations.
+        repeated ComputedConfiguration configuration  = 2;
+    }
+}

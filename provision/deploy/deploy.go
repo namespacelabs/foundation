@@ -190,7 +190,14 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 		focus.Add(server.PackageName())
 	}
 
-	imgs, err := prepareServerImages(ctx, focus, stack, buildID)
+	computedOnly := compute.Map(tasks.Action("deploy.produce-computed-configurations"), compute.Inputs().Computable("stackDef", stackDef), compute.Output{},
+		func(ctx context.Context, r compute.Resolved) (*schema.ComputedConfigurations, error) {
+			return compute.MustGetDepValue(r, stackDef, "stackDef").Computed, nil
+		})
+
+	// computedOnly is used exclusively by config images. They include the set of
+	// computed configurations that provision tools may have emitted.
+	imgs, err := prepareServerImages(ctx, focus, stack, computedOnly, buildID)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +330,9 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 	return c1, nil
 }
 
-func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *stack.Stack, buildID provision.BuildID) (map[schema.PackageName]images, error) {
+func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *stack.Stack,
+	computedConfigs compute.Computable[*schema.ComputedConfigurations],
+	buildID provision.BuildID) (map[schema.PackageName]images, error) {
 	imageMap := map[schema.PackageName]images{}
 
 	for _, srv := range stack.Servers {
@@ -364,8 +373,8 @@ func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *s
 		// stack at the time of evaluation of the target image and deployment, but also the
 		// source configuration files used to compute a startup configuration, so it can be re-
 		// evaluated on a need basis.
-		if focus.Includes(srv.PackageName()) && !srv.Env().Proto().Ephemeral {
-			configImage := prepareConfigImage(ctx, srv, stack)
+		if focus.Includes(srv.PackageName()) && !srv.Env().Proto().Ephemeral && computedConfigs != nil {
+			configImage := prepareConfigImage(ctx, srv, stack, computedConfigs)
 
 			cfgtag, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName(), config.MakeConfigTag(buildID))
 			if err != nil {
@@ -442,7 +451,7 @@ func ComputeStackAndImages(ctx context.Context, servers []provision.Server, opts
 		return nil, nil, err
 	}
 
-	m, err := prepareServerImages(ctx, provision.ServerPackages(servers), stack, bid)
+	m, err := prepareServerImages(ctx, provision.ServerPackages(servers), stack, nil, bid)
 	if err != nil {
 		return nil, nil, err
 	}

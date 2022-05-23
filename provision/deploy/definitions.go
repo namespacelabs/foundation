@@ -7,7 +7,9 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/stack"
@@ -69,7 +71,8 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 type handlerResult struct {
 	Stack            *stack.Stack
 	Definitions      []*schema.Definition
-	ServerExtensions map[schema.PackageName][]*schema.DefExtension
+	Computed         *schema.ComputedConfigurations
+	ServerExtensions map[schema.PackageName][]*schema.DefExtension // Per server.
 }
 
 type finishInvokeHandlers struct {
@@ -108,6 +111,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 	ops := append([]*schema.Definition{}, r.definitions...)
 
 	extensionsPerServer := map[schema.PackageName][]*schema.DefExtension{}
+	computedPerServer := map[schema.PackageName][]*schema.ComputedConfiguration{}
 
 	for _, ext := range r.extensions {
 		extensionsPerServer[schema.PackageName(ext.For)] = append(extensionsPerServer[schema.PackageName(ext.For)], ext)
@@ -143,10 +147,24 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 
 			ops = append(ops, resp.ApplyResponse.Definition...)
 
+			computedPerServer[schema.PackageName(handler.For)] = append(computedPerServer[schema.PackageName(handler.For)], resp.ApplyResponse.Computed...)
+
 		case protocol.Lifecycle_SHUTDOWN:
 			ops = append(ops, resp.DeleteResponse.Definition...)
 		}
 	}
 
-	return &handlerResult{r.stack, ops, extensionsPerServer}, nil
+	computed := &schema.ComputedConfigurations{}
+	for srv, configurations := range computedPerServer {
+		computed.Entry = append(computed.Entry, &schema.ComputedConfigurations_Entry{
+			ServerPackage: srv.String(),
+			Configuration: configurations,
+		})
+	}
+
+	slices.SortFunc(computed.Entry, func(a, b *schema.ComputedConfigurations_Entry) bool {
+		return strings.Compare(a.GetServerPackage(), b.GetServerPackage()) < 0
+	})
+
+	return &handlerResult{r.stack, ops, computed, extensionsPerServer}, nil
 }

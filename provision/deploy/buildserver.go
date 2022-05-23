@@ -50,15 +50,16 @@ func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (pl
 }
 
 type prepareServerConfig struct {
-	env        *schema.Environment
-	stack      *schema.Stack
-	moduleSrcs []moduleAndFiles
+	env             *schema.Environment
+	stack           *schema.Stack
+	moduleSrcs      []moduleAndFiles
+	computedConfigs compute.Computable[*schema.ComputedConfigurations]
 
 	compute.LocalScoped[fs.FS]
 }
 
 func (c *prepareServerConfig) Inputs() *compute.In {
-	in := compute.Inputs().Proto("env", c.env).Proto("stack", c.stack)
+	in := compute.Inputs().Proto("env", c.env).Proto("stack", c.stack).Computable("computedConfigs", c.computedConfigs)
 
 	return in.Marshal("moduleSrcs", func(ctx context.Context, w io.Writer) error {
 		for _, m := range c.moduleSrcs {
@@ -90,7 +91,12 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 		}
 	}
 
-	messages, err := protos.SerializeMultiple(c.env, c.stack, &schema.IngressFragmentList{IngressFragment: fragment})
+	messages, err := protos.SerializeMultiple(
+		c.env,
+		c.stack,
+		&schema.IngressFragmentList{IngressFragment: fragment},
+		compute.MustGetDepValue(deps, c.computedConfigs, "computedConfigs"),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +104,7 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 	env := messages[0]
 	stack := messages[1]
 	ingress := messages[2]
+	computedConfigs := messages[3]
 
 	files := &memfs.FS{}
 
@@ -108,6 +115,8 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 		{Path: "config/stack.binarypb", Contents: stack.Binary},
 		{Path: "config/ingress.textpb", Contents: ingress.Text},
 		{Path: "config/ingress.binarypb", Contents: ingress.Binary},
+		{Path: "config/computed_configs.textpb", Contents: computedConfigs.Text},
+		{Path: "config/computed_configs.binarypb", Contents: computedConfigs.Binary},
 	} {
 		if err := fnfs.WriteFile(ctx, files, f.Path, f.Contents, 0644); err != nil {
 			return nil, err
@@ -128,7 +137,8 @@ type moduleAndFiles struct {
 	files      fs.FS
 }
 
-func prepareConfigImage(ctx context.Context, server provision.Server, stack *stack.Stack) compute.Computable[oci.Image] {
+func prepareConfigImage(ctx context.Context, server provision.Server, stack *stack.Stack,
+	computedConfigs compute.Computable[*schema.ComputedConfigurations]) compute.Computable[oci.Image] {
 	var modulesSrcs []moduleAndFiles
 	for _, srcs := range server.Env().Sources() {
 		modulesSrcs = append(modulesSrcs, moduleAndFiles{
@@ -145,8 +155,9 @@ func prepareConfigImage(ctx context.Context, server provision.Server, stack *sta
 		oci.Scratch(),
 		oci.MakeLayer("config",
 			&prepareServerConfig{
-				env:        server.Env().Proto(),
-				stack:      stack.Proto(),
-				moduleSrcs: modulesSrcs,
+				env:             server.Env().Proto(),
+				stack:           stack.Proto(),
+				computedConfigs: computedConfigs,
+				moduleSrcs:      modulesSrcs,
 			}))
 }

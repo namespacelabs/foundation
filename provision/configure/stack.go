@@ -27,6 +27,7 @@ type MakeExtension interface {
 type ApplyOutput struct {
 	Definitions []defs.MakeDefinition
 	Extensions  []MakeExtension
+	Computed    []*schema.ComputedConfiguration
 }
 
 type DeleteOutput struct {
