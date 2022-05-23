@@ -49,5 +49,7 @@ func (r *resolveDigest) Compute(ctx context.Context, _ compute.Resolved) (ImageI
 		return ImageID{}, err
 	}
 
+	tasks.Attachments(ctx).AddResult("digest", desc.Digest)
+
 	return imageID.WithDigest(desc.Digest), nil
 }
