@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/kr/text"
@@ -134,6 +135,10 @@ func IsExpected(err error) (string, bool) {
 	if x, ok := unwrap(err).(*internalError); ok && x.expected {
 		return x.Err.Error(), true
 	}
+	if x, ok := unwrap(err).(*userError); ok {
+		return x.Err.Error(), true
+	}
+	fmt.Fprintf(os.Stderr, "%T\n", unwrap(err))
 	return "", false
 }
 
@@ -163,6 +168,8 @@ func (e *invocationError) Error() string {
 func (e *errWithLogs) Error() string {
 	return e.Err.Error()
 }
+
+func (e *errWithLogs) Unwrap() error { return e.Err }
 
 type VersionError struct {
 	Pkg           string
