@@ -71,7 +71,7 @@ func NewBuildCmd() *cobra.Command {
 
 			if continuously {
 				console.SetIdleLabel(ctx, "waiting for workspace changes")
-				return compute.Continuously(ctx, continuousBuild{allImages: buildAll})
+				return compute.Continuously(ctx, continuousBuild{allImages: buildAll}, nil)
 			}
 
 			res, err := compute.GetValue(ctx, buildAll)

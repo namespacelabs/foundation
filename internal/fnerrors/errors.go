@@ -134,6 +134,9 @@ func IsExpected(err error) (string, bool) {
 	if x, ok := unwrap(err).(*internalError); ok && x.expected {
 		return x.Err.Error(), true
 	}
+	if x, ok := unwrap(err).(*userError); ok {
+		return x.Err.Error(), true
+	}
 	return "", false
 }
 
@@ -163,6 +166,8 @@ func (e *invocationError) Error() string {
 func (e *errWithLogs) Error() string {
 	return e.Err.Error()
 }
+
+func (e *errWithLogs) Unwrap() error { return e.Err }
 
 type VersionError struct {
 	Pkg           string
