@@ -31,12 +31,15 @@ const (
 	self             = "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
 	initContainer    = "namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets"
 	localstackServer = "namespacelabs.dev/foundation/universe/development/localstack"
+	minioServer      = "namespacelabs.dev/foundation/universe/storage/minio/server"
 	s3node           = "namespacelabs.dev/foundation/universe/storage/s3"
 
 	useLocalstackFlag = "storage_s3_localstack_endpoint"
+	useMinioFlag      = "storage_s3_minio_endpoint"
 	serializedFlag    = "storage_s3_configured_buckets_protojson"
 
 	localstackEndpoint = "api"
+	minioEndpoint      = "api"
 )
 
 func main() {
@@ -68,6 +71,8 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 	// In development or testing, use localstack.
 	if useLocalstack(req.Env) {
 		resp.PreparedProvisionPlan.DeclaredStack = append(resp.PreparedProvisionPlan.DeclaredStack, localstackServer)
+	} else if useMinio(req.Env) {
+		resp.PreparedProvisionPlan.DeclaredStack = append(resp.PreparedProvisionPlan.DeclaredStack, minioServer)
 	}
 
 	return resp, nil
@@ -112,7 +117,7 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 		return strings.Compare(orderedBuckets[i].GetBucketName(), orderedBuckets[j].GetBucketName()) < 0
 	})
 
-	if useLocalstack(req.Env) {
+	if useLocalstack(req.Env) || useMinio(req.Env) {
 		for _, bucket := range orderedBuckets {
 			if region := bucket.GetRegion(); region == "" {
 				bucket.Region = "us-east-1" // Default to us-east-1 for testing purposes with localstack.
@@ -199,6 +204,19 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 		}
 
 		commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", useLocalstackFlag, localstackService))
+	} else if useMinio(req.Env) {
+		var service string
+		for _, endpoint := range req.Stack.Endpoint {
+			if endpoint.EndpointOwner == minioServer && endpoint.ServiceName == minioEndpoint {
+				service = "http://" + endpoint.Address()
+				break
+			}
+		}
+
+		if service == "" {
+			return fmt.Errorf("minio is required, but no endpoint is present that exports %q in %q", minioEndpoint, service)
+		}
+		commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", useMinioFlag, service))
 	} else {
 		for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/aws/client") {
 			if secret.Name == "aws_credentials_file" {
@@ -227,6 +245,11 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 }
 
 func useLocalstack(env *schema.Environment) bool {
+	// TODO determine when to use localstack.
+	return false
+}
+
+func useMinio(env *schema.Environment) bool {
 	return env.GetPurpose() == schema.Environment_DEVELOPMENT || env.GetPurpose() == schema.Environment_TESTING
 }
 

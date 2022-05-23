@@ -12,12 +12,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"namespacelabs.dev/foundation/std/go/core"
-	fns3 "namespacelabs.dev/foundation/universe/aws/s3"
 )
 
 var (
-	endpoint = flag.String("minio_api_endpoint", "", "Endpoint configuration.")
 	// TODO clean up credentials.
 	accessKey = flag.String("access_key", "access_key_value", "Access key")
 	secretKey = flag.String("secret_key", "secret_key_value", "Secret key")
@@ -59,7 +56,7 @@ func createConfig(ctx context.Context, c Config) (aws.Config, error) {
 
 	cfg, err := config.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
-		return aws.Config{}, fmt.Errorf("failed to load AWS config with error: %w, for endpoint %s", err, *endpoint)
+		return aws.Config{}, fmt.Errorf("failed to load AWS config with error: %w, for endpoint %s", err, c.Endpoint)
 	}
 	return cfg, nil
 }
@@ -75,28 +72,4 @@ func CreateS3Client(ctx context.Context, config Config) (*s3.Client, error) {
 		o.UsePathStyle = true
 	})
 	return s3client, nil
-}
-
-func ProvideBucket(ctx context.Context, config *BucketConfig, deps ExtensionDeps) (*fns3.Bucket, error) {
-	s3client, err := CreateS3Client(ctx,
-		Config{
-			Region:   config.Region,
-			Endpoint: *endpoint,
-		})
-	if err != nil {
-		return nil, err
-	}
-
-	// Asynchronously wait until a database connection is ready.
-	deps.ReadinessCheck.RegisterFunc(
-		fmt.Sprintf("readiness: %s", core.InstantiationPathFromContext(ctx)),
-		func(ctx context.Context) error {
-			_, err := s3client.ListBuckets(ctx, &s3.ListBucketsInput{})
-			return err
-		})
-
-	return &fns3.Bucket{
-		BucketName: config.BucketName,
-		S3Client:   s3client,
-	}, nil
 }

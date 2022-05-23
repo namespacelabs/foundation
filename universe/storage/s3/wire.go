@@ -16,11 +16,13 @@ import (
 	"namespacelabs.dev/foundation/universe/aws/client"
 	fns3 "namespacelabs.dev/foundation/universe/aws/s3"
 	devs3 "namespacelabs.dev/foundation/universe/development/localstack/s3"
+	minio "namespacelabs.dev/foundation/universe/storage/minio/s3"
 )
 
 var (
 	configuredBuckets  = flag.String("storage_s3_configured_buckets_protojson", "", "A serialized MultipleBucketArgs with all of the bucket configurations.")
 	localstackEndpoint = flag.String("storage_s3_localstack_endpoint", "", "If set, use localstack.")
+	minioEndpoint      = flag.String("storage_s3_minio_endpoint", "", "If set, use localstack.")
 
 	parsedConfiguration *MultipleBucketArgs
 	parseOnce           sync.Once
@@ -67,10 +69,16 @@ func ProvideBucketWithFactory(ctx context.Context, args *BucketArgs, factory cli
 }
 
 func createClient(ctx context.Context, factory client.ClientFactory, region string) (*s3.Client, error) {
+	// TODO move client creation with a dedicated endpoint into a factory.
 	if *localstackEndpoint != "" {
 		return devs3.CreateLocalstackS3Client(ctx, devs3.LocalstackConfig{
 			Region:             region,
 			LocalstackEndpoint: *localstackEndpoint,
+		})
+	} else if *minioEndpoint != "" {
+		return minio.CreateS3Client(ctx, minio.Config{
+			Region:   region,
+			Endpoint: *minioEndpoint,
 		})
 	}
 
