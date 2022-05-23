@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"sync"
 )
 
@@ -54,8 +53,7 @@ func NewCodegenMultiError() *CodegenMultiError {
 func (c *CodegenMultiError) Error() string {
 	buf := &bytes.Buffer{}
 	for _, err := range c.errs {
-		_, _ = io.WriteString(buf, err.Error())
-		_, _ = io.WriteString(buf, "\n")
+		fmt.Fprintf(buf, "%s\n", err.Error())
 	}
 	return buf.String()
 }
