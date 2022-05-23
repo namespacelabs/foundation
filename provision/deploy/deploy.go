@@ -110,7 +110,7 @@ func (m *makeDeployGraph) Output() compute.Output {
 }
 
 func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*Plan, error) {
-	pbr := compute.GetDepValue(deps, m.prepare, "prepare")
+	pbr := compute.MustGetDepValue(deps, m.prepare, "prepare")
 
 	g := ops.NewPlan()
 
@@ -272,8 +272,8 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 		finalInputs.Computable("images", imageIDs).Computable("stackAndDefs", stackDef),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (prepareAndBuildResult, error) {
-			imageIDs := compute.GetDepValue(deps, imageIDs, "images")
-			handlerR := compute.GetDepValue(deps, stackDef, "stackAndDefs")
+			imageIDs := compute.MustGetDepValue(deps, imageIDs, "images")
+			handlerR := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
 			stack := handlerR.Stack
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the

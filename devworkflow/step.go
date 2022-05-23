@@ -88,7 +88,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		do.cancelRunning = nil
 	}
 
-	focusServers := compute.GetDepValue(r, do.focusServers, "focusServers")
+	focusServers := compute.MustGetDepValue(r, do.focusServers, "focusServers")
 	focus, err := focusServers.Get(do.serverPackages...)
 	if err != nil {
 		return err

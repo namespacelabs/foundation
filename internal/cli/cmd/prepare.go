@@ -67,7 +67,7 @@ func NewPrepareCmd() *cobra.Command {
 				compute.Inputs().Computable("k8sconfig", k8sconfig),
 				compute.Output{NotCacheable: true},
 				func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-					k8sconfigval := compute.GetDepValue(deps, k8sconfig, "k8sconfig")
+					k8sconfigval := compute.MustGetDepValue(deps, k8sconfig, "k8sconfig")
 					var confs []*schema.DevHost_ConfigureEnvironment
 					registry := k8sconfigval.Registry()
 					if registry != nil {

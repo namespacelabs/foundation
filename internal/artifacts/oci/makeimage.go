@@ -49,7 +49,7 @@ func (al *makeImage) Inputs() *compute.In {
 func (al *makeImage) ImageRef() string { return "(new image)" }
 
 func (al *makeImage) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
-	base := compute.GetDepValue(deps, al.base, "base")
+	base := compute.MustGetDepValue(deps, al.base, "base")
 
 	var layers []v1.Layer
 	for k, layer := range al.layers {

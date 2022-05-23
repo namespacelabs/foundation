@@ -196,8 +196,8 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 	return compute.Map(tasks.Action("test.make-results"), compute.Inputs().Computable("stored", imageID).Computable("bundle", results), compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (StoredTestResults, error) {
 			return StoredTestResults{
-				Bundle:   compute.GetDepValue[*TestBundle](deps, results, "bundle"),
-				ImageRef: compute.GetDepValue(deps, imageID, "stored"),
+				Bundle:   compute.MustGetDepValue[*TestBundle](deps, results, "bundle"),
+				ImageRef: compute.MustGetDepValue(deps, imageID, "stored"),
 				Package:  pkgname,
 			}, nil
 		}), nil

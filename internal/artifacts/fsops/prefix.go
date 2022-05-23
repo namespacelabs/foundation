@@ -38,7 +38,7 @@ func (p *addPrefix) Inputs() *compute.In {
 func (p *addPrefix) Compute(ctx context.Context, d compute.Resolved) (fs.FS, error) {
 	var r memfs.FS
 
-	return &r, fnfs.VisitFiles(ctx, compute.GetDepValue(d, p.fsys, "fsys"), func(path string, contents bytestream.ByteStream, dirent fs.DirEntry) error {
+	return &r, fnfs.VisitFiles(ctx, compute.MustGetDepValue(d, p.fsys, "fsys"), func(path string, contents bytestream.ByteStream, dirent fs.DirEntry) error {
 		st, err := dirent.Info()
 		if err != nil {
 			return err

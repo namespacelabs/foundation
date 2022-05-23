@@ -80,7 +80,7 @@ func SDK(ctx context.Context) (compute.Computable[Grpcurl], error) {
 		compute.Inputs().Computable("fsys", fsys),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (Grpcurl, error) {
-			unpacked := compute.GetDepValue(r, fsys, "fsys")
+			unpacked := compute.MustGetDepValue(r, fsys, "fsys")
 			return Grpcurl(filepath.Join(unpacked.Files, "grpcurl")), nil
 		}), nil
 }

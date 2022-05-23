@@ -103,7 +103,7 @@ func SDK(ctx context.Context) (compute.Computable[K3D], error) {
 		compute.Inputs().Computable("k3d", w),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (K3D, error) {
-			return K3D(filepath.Join(compute.GetDepValue(r, w, "k3d").Files, "k3d")), nil
+			return K3D(filepath.Join(compute.MustGetDepValue(r, w, "k3d").Files, "k3d")), nil
 		}), nil
 }
 

@@ -44,7 +44,7 @@ func (u *makeFS) Inputs() *compute.In {
 }
 
 func (u *makeFS) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-	contents := compute.GetDepValue(deps, u.contents, "contents")
+	contents := compute.MustGetDepValue(deps, u.contents, "contents")
 	if contents.ContentLength() > math.MaxInt64 {
 		return nil, fnerrors.InternalError("file is too large") // Doesn't fit fs.FileInfo
 	}

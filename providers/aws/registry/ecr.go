@@ -92,7 +92,7 @@ func (em ecrManager) AllocateTag(packageName schema.PackageName, buildID provisi
 			return oci.AllocatedName{
 				Keychain: keychain,
 				ImageID: oci.ImageID{
-					Repository: compute.GetDepValue(deps, repo, "repo"),
+					Repository: compute.MustGetDepValue(deps, repo, "repo"),
 					Tag:        buildID.String(),
 				},
 			}, nil
@@ -124,7 +124,7 @@ func (m *makeRepository) Inputs() *compute.In {
 	return compute.Inputs().Computable("caller", m.callerIdentity).Str("packageName", m.packageName)
 }
 func (m *makeRepository) Compute(ctx context.Context, deps compute.Resolved) (string, error) {
-	caller := compute.GetDepValue(deps, m.callerIdentity, "caller")
+	caller := compute.MustGetDepValue(deps, m.callerIdentity, "caller")
 
 	req := &ecr.CreateRepositoryInput{
 		RepositoryName:     aws.String(m.packageName),

@@ -79,7 +79,7 @@ func SDK(ctx context.Context) (compute.Computable[Kubectl], error) {
 		compute.Inputs().Computable("kubectl", w),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (Kubectl, error) {
-			return Kubectl(filepath.Join(compute.GetDepValue(r, w, "kubectl").Files, "kubectl")), nil
+			return Kubectl(filepath.Join(compute.MustGetDepValue(r, w, "kubectl").Files, "kubectl")), nil
 		}), nil
 }
 

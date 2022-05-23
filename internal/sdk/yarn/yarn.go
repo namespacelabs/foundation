@@ -46,7 +46,7 @@ func SDK(ctx context.Context) (compute.Computable[Yarn], error) {
 		compute.Inputs().Computable("yarn", w),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (Yarn, error) {
-			return Yarn(filepath.Join(compute.GetDepValue(r, w, "yarn").Files, "yarn.js")), nil
+			return Yarn(filepath.Join(compute.MustGetDepValue(r, w, "yarn").Files, "yarn.js")), nil
 		}), nil
 }
 

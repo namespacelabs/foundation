@@ -44,7 +44,7 @@ func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*kubernete
 		compute.Inputs().Computable("k8sconfig", k8sconfig).Proto("env", env.Proto()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			config := compute.GetDepValue(deps, k8sconfig, "k8sconfig")
+			config := compute.MustGetDepValue(deps, k8sconfig, "k8sconfig")
 
 			kube, err := kubernetes.NewFromConfig(ctx, config)
 			if err != nil {

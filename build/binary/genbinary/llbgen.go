@@ -52,7 +52,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env ops.Environment, conf bui
 
 	return compute.Map(action, compute.Inputs().Computable("bin", bin).JSON("platform", conf.TargetPlatform()), compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
-			binImage := compute.GetDepValue(deps, bin, "bin")
+			binImage := compute.MustGetDepValue(deps, bin, "bin")
 
 			var targetPlatform string
 			if conf.TargetPlatform() != nil {

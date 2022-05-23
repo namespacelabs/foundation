@@ -25,7 +25,7 @@ func Transform[From, To any](from Computable[From], compute func(context.Context
 	return Map(newAction, Inputs().Computable("from", from), Output{
 		NotCacheable: true, // There's no value in retaining these intermediary artifacts.
 	}, func(ctx context.Context, r Resolved) (To, error) {
-		return compute(ctx, GetDepValue(r, from, "from"))
+		return compute(ctx, MustGetDepValue(r, from, "from"))
 	})
 }
 
@@ -114,7 +114,7 @@ func (in *named[V]) Inputs() *In {
 func (in *named[V]) Output() Output { return in.c.Output().DontCache() } // Caching here is redundant.
 func (in *named[V]) Compute(ctx context.Context, deps Resolved) (V, error) {
 	name, _ := tasks.NameOf(in.action)
-	return GetDepValue(deps, in.c, name), nil
+	return MustGetDepValue(deps, in.c, name), nil
 }
 
 func (in *named[V]) Unwrap() rawComputable { return in.c }

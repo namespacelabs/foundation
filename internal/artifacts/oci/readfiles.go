@@ -39,7 +39,7 @@ func (r *readFiles) Action() *tasks.ActionEvent {
 }
 
 func (r *readFiles) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-	return ReadFilesFromImage(compute.GetDepValue(deps, r.image, "image"), r.paths...)
+	return ReadFilesFromImage(compute.MustGetDepValue(deps, r.image, "image"), r.paths...)
 }
 
 type leftMap map[string]struct{}

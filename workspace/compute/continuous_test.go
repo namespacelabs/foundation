@@ -66,7 +66,7 @@ type simpleSinkable struct {
 
 func (ts simpleSinkable) Inputs() *In { return Inputs().Computable("c", ts.c) }
 func (ts simpleSinkable) Updated(ctx context.Context, deps Resolved) error {
-	v := GetDepValue(deps, ts.c, "c")
+	v := MustGetDepValue(deps, ts.c, "c")
 
 	ts.t.Logf("got value: %v", v)
 
@@ -92,7 +92,7 @@ func (ts *streamSinkable) Updated(ctx context.Context, deps Resolved) error {
 	ts.t.Logf("started Updated w/ expected=%d", ts.expected)
 	defer ts.t.Log("left Updated")
 
-	vint := GetDepValue(deps, ts.c, "c")
+	vint := MustGetDepValue(deps, ts.c, "c")
 
 	ts.t.Logf("got value: %v", vint)
 
@@ -126,7 +126,7 @@ func (tc *testComputable) Action() *tasks.ActionEvent { return tasks.Action("tes
 func (tc *testComputable) Inputs() *In                { return Inputs().Computable("stream", tc.intStream) }
 func (tc *testComputable) Output() Output             { return Output{} }
 func (tc *testComputable) Compute(_ context.Context, deps Resolved) (int, error) {
-	v := GetDepValue(deps, tc.intStream, "stream")
+	v := MustGetDepValue(deps, tc.intStream, "stream")
 	return v.Int() + 100, nil
 }
 

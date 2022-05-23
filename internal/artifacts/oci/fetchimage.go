@@ -68,7 +68,7 @@ func (r *fetchImage) ImageRef() string {
 }
 
 func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
-	descriptor := compute.GetDepValue(deps, r.descriptor, "descriptor")
+	descriptor := compute.MustGetDepValue(deps, r.descriptor, "descriptor")
 
 	switch types.MediaType(descriptor.MediaType) {
 	case types.DockerManifestList:
@@ -88,7 +88,7 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 		})
 
 	case types.DockerManifestSchema2:
-		imageid := compute.GetDepValue(deps, r.imageid, "imageid")
+		imageid := compute.MustGetDepValue(deps, r.imageid, "imageid")
 		name, err := name.NewDigest(imageid.RepoAndDigest())
 		if err != nil {
 			return nil, fnerrors.InternalError("failed to parse: %w", err)
@@ -151,7 +151,7 @@ func (r *fetchDescriptor) ImageRef() string {
 }
 
 func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*RawDescriptor, error) {
-	digest := compute.GetDepValue(deps, r.imageID, "resolved")
+	digest := compute.MustGetDepValue(deps, r.imageID, "resolved")
 	d, err := fetchRemoteDescriptor(ctx, digest.ImageRef())
 	if err != nil {
 		return nil, fnerrors.InvocationError("failed to fetch descriptor: %w", err)

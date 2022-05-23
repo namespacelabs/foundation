@@ -21,7 +21,7 @@ func TarGunzip(contents compute.Computable[bytestream.ByteStream]) compute.Compu
 		compute.Inputs().Computable("contents", contents),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (fs.FS, error) {
-			blob := compute.GetDepValue(r, contents, "contents")
+			blob := compute.MustGetDepValue(r, contents, "contents")
 			return FS{
 				TarStream: func() (io.ReadCloser, error) {
 					r, err := blob.Reader()

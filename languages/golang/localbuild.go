@@ -160,8 +160,8 @@ func (c *compilation) Inputs() *compute.In {
 }
 
 func (c *compilation) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-	w := compute.GetDepValue(deps, c.workspace, "workspace")
-	sdk := compute.GetDepValue(deps, c.sdk, "sdk")
+	w := compute.MustGetDepValue(deps, c.workspace, "workspace")
+	sdk := compute.MustGetDepValue(deps, c.sdk, "sdk")
 
 	targetDir, err := dirs.CreateUserTempDir("go", "build")
 	if err != nil {

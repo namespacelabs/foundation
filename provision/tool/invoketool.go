@@ -77,7 +77,7 @@ func (inv *cacheableInvocation) Output() compute.Output {
 }
 
 func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolved) (*protocol.ToolResponse, error) {
-	resolvedImage := compute.GetDepValue(deps, inv.handler.Invocation.Image, "image")
+	resolvedImage := compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
 	r := inv.handler
 
 	req := &protocol.ToolRequest{

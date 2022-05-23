@@ -36,7 +36,7 @@ func GetDep[V any](deps Resolved, c Computable[V], key string) (ResultWithTimest
 	return GetDepWithType[V](deps, key)
 }
 
-func GetDepValue[V any](deps Resolved, c Computable[V], key string) V {
+func MustGetDepValue[V any](deps Resolved, c Computable[V], key string) V {
 	v, ok := GetDep(deps, c, key)
 	if !ok {
 		panic(key + " not present")

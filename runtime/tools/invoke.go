@@ -73,7 +73,7 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 		// NoNetworking: true, // XXX security
 
 		RunBinaryOpts: rtypes.RunBinaryOpts{
-			Image:      compute.GetDepValue(r, inv.prepared.Image, "image"),
+			Image:      compute.MustGetDepValue(r, inv.prepared.Image, "image"),
 			WorkingDir: "/",
 			Command:    inv.prepared.Command,
 			Env:        map[string]string{"HOME": "/tmp"},

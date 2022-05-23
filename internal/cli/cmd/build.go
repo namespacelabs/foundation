@@ -136,7 +136,7 @@ func (c continuousBuild) Inputs() *compute.In {
 }
 func (c continuousBuild) Cleanup(context.Context) error { return nil }
 func (c continuousBuild) Updated(ctx context.Context, deps compute.Resolved) error {
-	outputResults(ctx, compute.GetDepValue(deps, c.allImages, "all-images"))
+	outputResults(ctx, compute.MustGetDepValue(deps, c.allImages, "all-images"))
 	return nil
 }
 

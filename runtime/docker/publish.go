@@ -42,8 +42,8 @@ func (pi *publishImage) ImageRef() string {
 }
 
 func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (oci.ImageID, error) {
-	tag := compute.GetDepValue(deps, pi.tag, "tag")
-	resolvable := compute.GetDepValue(deps, pi.image, "image")
+	tag := compute.MustGetDepValue(deps, pi.tag, "tag")
+	resolvable := compute.MustGetDepValue(deps, pi.image, "image")
 
 	tasks.Attachments(ctx).AddResult("tag", tag.ImageRef())
 

@@ -119,7 +119,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", handler.For)
 		}
 
-		resp := compute.GetDepValue(deps, r.invocations[k], fmt.Sprintf("invocation%d", k))
+		resp := compute.MustGetDepValue(deps, r.invocations[k], fmt.Sprintf("invocation%d", k))
 
 		switch r.event {
 		case protocol.Lifecycle_PROVISION:

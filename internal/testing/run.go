@@ -63,7 +63,7 @@ func (test *testRun) Inputs() *compute.In {
 }
 
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
-	p := compute.GetDepValue(r, test.Plan, "plan")
+	p := compute.MustGetDepValue(r, test.Plan, "plan")
 
 	waiters, err := p.Deployer.Execute(ctx, runtime.TaskServerDeploy, test.Env)
 	if err != nil {
@@ -98,7 +98,7 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 	}
 
 	testRun := runtime.ServerRunOpts{
-		Image:              compute.GetDepValue(r, test.TestBinImageID, "testBin"),
+		Image:              compute.MustGetDepValue(r, test.TestBinImageID, "testBin"),
 		Command:            test.TestBinCommand,
 		Args:               nil,
 		ReadOnlyFilesystem: true,

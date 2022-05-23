@@ -44,7 +44,7 @@ func (pi *publishImage) ImageRef() string {
 }
 
 func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (ImageID, error) {
-	tag := compute.GetDepValue(deps, pi.tag, "tag")
+	tag := compute.MustGetDepValue(deps, pi.tag, "tag")
 	tasks.Attachments(ctx).AddResult("tag", tag.ImageRef())
-	return compute.GetDepValue(deps, pi.image, "image").push(ctx, tag)
+	return compute.MustGetDepValue(deps, pi.image, "image").push(ctx, tag)
 }

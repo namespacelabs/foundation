@@ -325,7 +325,7 @@ func (g *genGoProtosAtLoc) Compute(ctx context.Context, deps compute.Resolved) (
 		return nil, err
 	}
 
-	bufimg := compute.GetDepValue(deps, g.buf, "buf")
+	bufimg := compute.MustGetDepValue(deps, g.buf, "buf")
 
 	mounts := []*rtypes.LocalMapping{
 		{HostPath: genprotoSrc, ContainerPath: srcDir},

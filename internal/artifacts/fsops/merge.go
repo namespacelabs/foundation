@@ -45,7 +45,7 @@ func (p *merge) Compute(ctx context.Context, d compute.Resolved) (fs.FS, error) 
 	var r memfs.FS
 
 	for k, fsys := range p.fsys {
-		res := compute.GetDepValue(d, fsys, fmt.Sprintf("fsys%d", k))
+		res := compute.MustGetDepValue(d, fsys, fmt.Sprintf("fsys%d", k))
 
 		if err := fnfs.VisitFiles(ctx, res, func(path string, contents bytestream.ByteStream, dirent fs.DirEntry) error {
 			st, err := dirent.Info()

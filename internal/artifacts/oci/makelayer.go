@@ -40,5 +40,5 @@ func (m *makeLayer) Action() *tasks.ActionEvent {
 }
 
 func (m *makeLayer) Compute(ctx context.Context, deps compute.Resolved) (Layer, error) {
-	return LayerFromFS(ctx, compute.GetDepValue(deps, m.vfs, "vfs"))
+	return LayerFromFS(ctx, compute.MustGetDepValue(deps, m.vfs, "vfs"))
 }
