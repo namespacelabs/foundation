@@ -57,18 +57,23 @@ func NewAttachCmd() *cobra.Command {
 type hydrateArgs struct {
 	envRef    string
 	rehydrate bool
+
+	rehydrateOnly bool
 }
 
 type hydrateResult struct {
-	Env     runtime.Selector
-	Stack   *schema.Stack
-	Focus   []schema.PackageName
-	Ingress []*schema.IngressFragment
+	Env        runtime.Selector
+	Stack      *schema.Stack
+	Focus      []schema.PackageName
+	Ingress    []*schema.IngressFragment
+	Rehydrated *config.Rehydrated
 }
 
 func (h *hydrateArgs) Configure(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&h.envRef, "env", h.envRef, "The environment to attach to.")
-	cmd.Flags().BoolVar(&h.rehydrate, "rehydrate", h.rehydrate, "If set to false, compute stack at head, rather than loading the deployed configuration.")
+	if !h.rehydrateOnly {
+		cmd.Flags().BoolVar(&h.rehydrate, "rehydrate", h.rehydrate, "If set to false, compute stack at head, rather than loading the deployed configuration.")
+	}
 }
 
 func (h *hydrateArgs) ComputeStack(ctx context.Context, args []string) (*hydrateResult, error) {
@@ -94,7 +99,7 @@ func (h *hydrateArgs) ComputeStack(ctx context.Context, args []string) (*hydrate
 
 	res.Env = env
 
-	if h.rehydrate {
+	if h.rehydrate || h.rehydrateOnly {
 		if len(servers) != 1 {
 			return nil, fnerrors.UserError(nil, "--rehydrate only supports a single server")
 		}
@@ -111,6 +116,7 @@ func (h *hydrateArgs) ComputeStack(ctx context.Context, args []string) (*hydrate
 
 		res.Stack = rehydrated.Stack
 		res.Ingress = rehydrated.IngressFragments
+		res.Rehydrated = rehydrated
 	} else {
 		stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortBase: 40000})
 		if err != nil {

@@ -18,15 +18,17 @@ import (
 )
 
 const (
-	envBinaryPb     = "config/env.binarypb"
-	stackBinaryPb   = "config/stack.binarypb"
-	ingressBinaryPb = "config/ingress.binarypb"
+	envBinaryPb      = "config/env.binarypb"
+	stackBinaryPb    = "config/stack.binarypb"
+	ingressBinaryPb  = "config/ingress.binarypb"
+	computedBinaryPb = "config/computed_configs.binarypb"
 )
 
 type Rehydrated struct {
 	Env              *schema.Environment
 	Stack            *schema.Stack
 	IngressFragments []*schema.IngressFragment
+	ComputedConfigs  *schema.ComputedConfigurations
 }
 
 func Rehydrate(ctx context.Context, srv provision.Server, imageID oci.ImageID) (*Rehydrated, error) {
@@ -77,6 +79,12 @@ func Rehydrate(ctx context.Context, srv provision.Server, imageID oci.ImageID) (
 				return fnerrors.BadInputError("%s: failed to unmarshal: %w", path, err)
 			}
 			r.IngressFragments = list.IngressFragment
+
+		case computedBinaryPb:
+			r.ComputedConfigs = &schema.ComputedConfigurations{}
+			if err := proto.Unmarshal(contents, r.ComputedConfigs); err != nil {
+				return fnerrors.BadInputError("%s: failed to unmarshal: %w", path, err)
+			}
 		}
 
 		return nil
