@@ -119,8 +119,9 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	var creds *postgres.InstantiatedDatabase_Credentials
 	if credsSecret != nil {
 		creds = &postgres.InstantiatedDatabase_Credentials{
-			SecretName:      credsSecret.Name,
-			SecretMountPath: credsSecret.FromPath,
+			SecretName:         credsSecret.Name,
+			SecretMountPath:    credsSecret.FromPath,
+			SecretResourceName: credsSecret.ResourceName,
 		}
 	}
 

@@ -32,8 +32,9 @@ message InstantiatedDatabase {
     repeated Database database     = 3;
 
     message Credentials {
-        string secret_name       = 1;
-        string secret_mount_path = 2;
+        string secret_name          = 1;
+        string secret_mount_path    = 2;
+        string secret_resource_name = 3;
     }
 }
 
