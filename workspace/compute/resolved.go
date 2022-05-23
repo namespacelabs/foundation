@@ -4,6 +4,11 @@
 
 package compute
 
+import (
+	"fmt"
+	"os"
+)
+
 type Resolved struct {
 	results map[string]ResultWithTimestamp[any]
 }
@@ -20,6 +25,7 @@ func GetDepWithType[V any](deps Resolved, key string) (ResultWithTimestamp[V], b
 
 	typed, ok := v.Value.(V)
 	if !ok {
+		fmt.Fprintf(os.Stderr, "key %T vs %T", typed, v.Value)
 		return ResultWithTimestamp[V]{}, false
 	}
 
