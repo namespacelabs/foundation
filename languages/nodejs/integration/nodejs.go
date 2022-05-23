@@ -260,9 +260,7 @@ func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, 
 	_, err := updatePackageJson(ctx, path, yarnRootData.module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
 		packageJson["private"] = true
 		packageJson["workspaces"] = yarnRootData.workspacePaths
-		packageJson["devDependencies"] = map[string]string{
-			"typescript": builtin().Dependencies["typescript"],
-		}
+		packageJson["devDependencies"] = builtin().DevDependencies
 	})
 
 	return err
@@ -345,9 +343,7 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 		// For servers this dependency is added automatically via "runtimeNode", but not for nodes.
 		runtimeNpmPackage: fmt.Sprintf("fn:%s/%s", foundationModule, runtimePackagePath),
 	}
-	for key, value := range builtin().Dependencies {
-		dependencies[key] = value
-	}
+
 	for _, importName := range depPkgNames {
 		pkg, err := pkgs.LoadByName(ctx, schema.PackageName(importName))
 		if err != nil {
@@ -380,7 +376,6 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 		packageJson["version"] = defaultPackageVersion
 
 		packageJson["dependencies"] = mergeJsonMap(packageJson["dependencies"], dependencies)
-		packageJson["devDependencies"] = mergeJsonMap(packageJson["devDependencies"], builtin().DevDependencies)
 	})
 
 	return err

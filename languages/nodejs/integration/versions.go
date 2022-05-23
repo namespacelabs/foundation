@@ -16,8 +16,8 @@ var (
 )
 
 type versions struct {
-	Dependencies    map[string]string `json:"dependencies"`
-	DevDependencies map[string]string `json:"devDependencies"`
+	DevBuildDependencies map[string]string `json:"devBuildDependencies"`
+	DevDependencies      map[string]string `json:"devDependencies"`
 }
 
 func builtin() *versions {
