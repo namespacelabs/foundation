@@ -33,6 +33,7 @@ extension: fn.#Extension & {
 			}
 			requires: [
 				"namespacelabs.dev/foundation/universe/development/localstack",
+				"namespacelabs.dev/foundation/universe/storage/minio/server",
 				"namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets",
 			]
 		}
