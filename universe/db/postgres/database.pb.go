@@ -182,6 +182,173 @@ func (*WireDatabaseArgs) Descriptor() ([]byte, []int) {
 	return file_universe_db_postgres_database_proto_rawDescGZIP(), []int{2}
 }
 
+// This type represents a fully formed database. This is an internal type, used
+// for internal configuration.
+type InstantiatedDatabase struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	PackageName string                            `protobuf:"bytes,1,opt,name=package_name,json=packageName,proto3" json:"package_name,omitempty"`
+	Credentials *InstantiatedDatabase_Credentials `protobuf:"bytes,2,opt,name=credentials,proto3" json:"credentials,omitempty"`
+	Database    []*Database                       `protobuf:"bytes,3,rep,name=database,proto3" json:"database,omitempty"`
+}
+
+func (x *InstantiatedDatabase) Reset() {
+	*x = InstantiatedDatabase{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_universe_db_postgres_database_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *InstantiatedDatabase) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstantiatedDatabase) ProtoMessage() {}
+
+func (x *InstantiatedDatabase) ProtoReflect() protoreflect.Message {
+	mi := &file_universe_db_postgres_database_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstantiatedDatabase.ProtoReflect.Descriptor instead.
+func (*InstantiatedDatabase) Descriptor() ([]byte, []int) {
+	return file_universe_db_postgres_database_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *InstantiatedDatabase) GetPackageName() string {
+	if x != nil {
+		return x.PackageName
+	}
+	return ""
+}
+
+func (x *InstantiatedDatabase) GetCredentials() *InstantiatedDatabase_Credentials {
+	if x != nil {
+		return x.Credentials
+	}
+	return nil
+}
+
+func (x *InstantiatedDatabase) GetDatabase() []*Database {
+	if x != nil {
+		return x.Database
+	}
+	return nil
+}
+
+type InstantiatedDatabases struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Instantiated []*InstantiatedDatabase `protobuf:"bytes,1,rep,name=instantiated,proto3" json:"instantiated,omitempty"`
+}
+
+func (x *InstantiatedDatabases) Reset() {
+	*x = InstantiatedDatabases{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_universe_db_postgres_database_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *InstantiatedDatabases) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstantiatedDatabases) ProtoMessage() {}
+
+func (x *InstantiatedDatabases) ProtoReflect() protoreflect.Message {
+	mi := &file_universe_db_postgres_database_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstantiatedDatabases.ProtoReflect.Descriptor instead.
+func (*InstantiatedDatabases) Descriptor() ([]byte, []int) {
+	return file_universe_db_postgres_database_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *InstantiatedDatabases) GetInstantiated() []*InstantiatedDatabase {
+	if x != nil {
+		return x.Instantiated
+	}
+	return nil
+}
+
+type InstantiatedDatabase_Credentials struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	SecretName      string `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	SecretMountPath string `protobuf:"bytes,2,opt,name=secret_mount_path,json=secretMountPath,proto3" json:"secret_mount_path,omitempty"`
+}
+
+func (x *InstantiatedDatabase_Credentials) Reset() {
+	*x = InstantiatedDatabase_Credentials{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_universe_db_postgres_database_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *InstantiatedDatabase_Credentials) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstantiatedDatabase_Credentials) ProtoMessage() {}
+
+func (x *InstantiatedDatabase_Credentials) ProtoReflect() protoreflect.Message {
+	mi := &file_universe_db_postgres_database_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstantiatedDatabase_Credentials.ProtoReflect.Descriptor instead.
+func (*InstantiatedDatabase_Credentials) Descriptor() ([]byte, []int) {
+	return file_universe_db_postgres_database_proto_rawDescGZIP(), []int{3, 0}
+}
+
+func (x *InstantiatedDatabase_Credentials) GetSecretName() string {
+	if x != nil {
+		return x.SecretName
+	}
+	return ""
+}
+
+func (x *InstantiatedDatabase_Credentials) GetSecretMountPath() string {
+	if x != nil {
+		return x.SecretMountPath
+	}
+	return ""
+}
+
 var File_universe_db_postgres_database_proto protoreflect.FileDescriptor
 
 var file_universe_db_postgres_database_proto_rawDesc = []byte{
@@ -208,11 +375,38 @@ var file_universe_db_postgres_database_proto_rawDesc = []byte{
 	0x65, 0x72, 0x73, 0x65, 0x2e, 0x64, 0x62, 0x2e, 0x70, 0x6f, 0x73, 0x74, 0x67, 0x72, 0x65, 0x73,
 	0x2e, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x52, 0x08, 0x68, 0x6f, 0x73, 0x74, 0x65,
 	0x64, 0x41, 0x74, 0x22, 0x12, 0x0a, 0x10, 0x57, 0x69, 0x72, 0x65, 0x44, 0x61, 0x74, 0x61, 0x62,
-	0x61, 0x73, 0x65, 0x41, 0x72, 0x67, 0x73, 0x42, 0x33, 0x5a, 0x31, 0x6e, 0x61, 0x6d, 0x65, 0x73,
-	0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75,
-	0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x75, 0x6e, 0x69, 0x76, 0x65, 0x72, 0x73, 0x65,
-	0x2f, 0x64, 0x62, 0x2f, 0x70, 0x6f, 0x73, 0x74, 0x67, 0x72, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x61, 0x73, 0x65, 0x41, 0x72, 0x67, 0x73, 0x22, 0xc1, 0x02, 0x0a, 0x14, 0x49, 0x6e, 0x73, 0x74,
+	0x61, 0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x64, 0x44, 0x61, 0x74, 0x61, 0x62, 0x61, 0x73, 0x65,
+	0x12, 0x21, 0x0a, 0x0c, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x5f, 0x6e, 0x61, 0x6d, 0x65,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x4e,
+	0x61, 0x6d, 0x65, 0x12, 0x63, 0x0a, 0x0b, 0x63, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61,
+	0x6c, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x41, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x75, 0x6e, 0x69, 0x76, 0x65, 0x72, 0x73, 0x65, 0x2e, 0x64,
+	0x62, 0x2e, 0x70, 0x6f, 0x73, 0x74, 0x67, 0x72, 0x65, 0x73, 0x2e, 0x49, 0x6e, 0x73, 0x74, 0x61,
+	0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x64, 0x44, 0x61, 0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x2e,
+	0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x73, 0x52, 0x0b, 0x63, 0x72, 0x65,
+	0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x73, 0x12, 0x45, 0x0a, 0x08, 0x64, 0x61, 0x74, 0x61,
+	0x62, 0x61, 0x73, 0x65, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x29, 0x2e, 0x66, 0x6f, 0x75,
+	0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x75, 0x6e, 0x69, 0x76, 0x65, 0x72, 0x73, 0x65,
+	0x2e, 0x64, 0x62, 0x2e, 0x70, 0x6f, 0x73, 0x74, 0x67, 0x72, 0x65, 0x73, 0x2e, 0x44, 0x61, 0x74,
+	0x61, 0x62, 0x61, 0x73, 0x65, 0x52, 0x08, 0x64, 0x61, 0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x1a,
+	0x5a, 0x0a, 0x0b, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x73, 0x12, 0x1f,
+	0x0a, 0x0b, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x0a, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x4e, 0x61, 0x6d, 0x65, 0x12,
+	0x2a, 0x0a, 0x11, 0x73, 0x65, 0x63, 0x72, 0x65, 0x74, 0x5f, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f,
+	0x70, 0x61, 0x74, 0x68, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0f, 0x73, 0x65, 0x63, 0x72,
+	0x65, 0x74, 0x4d, 0x6f, 0x75, 0x6e, 0x74, 0x50, 0x61, 0x74, 0x68, 0x22, 0x72, 0x0a, 0x15, 0x49,
+	0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x64, 0x44, 0x61, 0x74, 0x61, 0x62,
+	0x61, 0x73, 0x65, 0x73, 0x12, 0x59, 0x0a, 0x0c, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x69,
+	0x61, 0x74, 0x65, 0x64, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x35, 0x2e, 0x66, 0x6f, 0x75,
+	0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x75, 0x6e, 0x69, 0x76, 0x65, 0x72, 0x73, 0x65,
+	0x2e, 0x64, 0x62, 0x2e, 0x70, 0x6f, 0x73, 0x74, 0x67, 0x72, 0x65, 0x73, 0x2e, 0x49, 0x6e, 0x73,
+	0x74, 0x61, 0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x64, 0x44, 0x61, 0x74, 0x61, 0x62, 0x61, 0x73,
+	0x65, 0x52, 0x0c, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x64, 0x42,
+	0x33, 0x5a, 0x31, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73,
+	0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f,
+	0x75, 0x6e, 0x69, 0x76, 0x65, 0x72, 0x73, 0x65, 0x2f, 0x64, 0x62, 0x2f, 0x70, 0x6f, 0x73, 0x74,
+	0x67, 0x72, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -227,21 +421,27 @@ func file_universe_db_postgres_database_proto_rawDescGZIP() []byte {
 	return file_universe_db_postgres_database_proto_rawDescData
 }
 
-var file_universe_db_postgres_database_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_universe_db_postgres_database_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_universe_db_postgres_database_proto_goTypes = []interface{}{
-	(*Endpoint)(nil),         // 0: foundation.universe.db.postgres.Endpoint
-	(*Database)(nil),         // 1: foundation.universe.db.postgres.Database
-	(*WireDatabaseArgs)(nil), // 2: foundation.universe.db.postgres.WireDatabaseArgs
-	(*types.Resource)(nil),   // 3: foundation.std.types.Resource
+	(*Endpoint)(nil),                         // 0: foundation.universe.db.postgres.Endpoint
+	(*Database)(nil),                         // 1: foundation.universe.db.postgres.Database
+	(*WireDatabaseArgs)(nil),                 // 2: foundation.universe.db.postgres.WireDatabaseArgs
+	(*InstantiatedDatabase)(nil),             // 3: foundation.universe.db.postgres.InstantiatedDatabase
+	(*InstantiatedDatabases)(nil),            // 4: foundation.universe.db.postgres.InstantiatedDatabases
+	(*InstantiatedDatabase_Credentials)(nil), // 5: foundation.universe.db.postgres.InstantiatedDatabase.Credentials
+	(*types.Resource)(nil),                   // 6: foundation.std.types.Resource
 }
 var file_universe_db_postgres_database_proto_depIdxs = []int32{
-	3, // 0: foundation.universe.db.postgres.Database.schema_file:type_name -> foundation.std.types.Resource
+	6, // 0: foundation.universe.db.postgres.Database.schema_file:type_name -> foundation.std.types.Resource
 	0, // 1: foundation.universe.db.postgres.Database.hosted_at:type_name -> foundation.universe.db.postgres.Endpoint
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	5, // 2: foundation.universe.db.postgres.InstantiatedDatabase.credentials:type_name -> foundation.universe.db.postgres.InstantiatedDatabase.Credentials
+	1, // 3: foundation.universe.db.postgres.InstantiatedDatabase.database:type_name -> foundation.universe.db.postgres.Database
+	3, // 4: foundation.universe.db.postgres.InstantiatedDatabases.instantiated:type_name -> foundation.universe.db.postgres.InstantiatedDatabase
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_universe_db_postgres_database_proto_init() }
@@ -286,6 +486,42 @@ func file_universe_db_postgres_database_proto_init() {
 				return nil
 			}
 		}
+		file_universe_db_postgres_database_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*InstantiatedDatabase); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_universe_db_postgres_database_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*InstantiatedDatabases); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_universe_db_postgres_database_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*InstantiatedDatabase_Credentials); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -293,7 +529,7 @@ func file_universe_db_postgres_database_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_universe_db_postgres_database_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

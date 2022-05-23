@@ -139,7 +139,6 @@ func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.Package
 		}})
 
 	return nil
-
 }
 
 func Delete(r configure.StackRequest, name string, out *configure.DeleteOutput) error {

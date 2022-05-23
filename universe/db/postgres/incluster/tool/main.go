@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
@@ -74,12 +75,15 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	}
 
 	// TODO: creds should be definable per db instance #217
+	var credsSecret *secrets.SecretDevMap_SecretSpec
 	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/incluster/creds") {
-		switch secret.Name {
-		case "postgres-password-file":
-			args = append(args, fmt.Sprintf("--postgres_password_file=%s", secret.FromPath))
-		default:
+		if secret.Name == "postgres-password-file" {
+			credsSecret = secret
 		}
+	}
+
+	if credsSecret != nil {
+		args = append(args, fmt.Sprintf("--postgres_password_file=%s", credsSecret.FromPath))
 	}
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
@@ -96,6 +100,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	if err != nil {
 		return err
 	}
+
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
 			Args: []string{fmt.Sprintf("--postgresql_endpoint=%s", value)},
@@ -110,6 +115,33 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	if err != nil {
 		return err
 	}
+
+	var creds *postgres.InstantiatedDatabase_Credentials
+	if credsSecret != nil {
+		creds = &postgres.InstantiatedDatabase_Credentials{
+			SecretName:      credsSecret.Name,
+			SecretMountPath: credsSecret.FromPath,
+		}
+	}
+
+	computed := &postgres.InstantiatedDatabases{}
+	for owner, databases := range dbs {
+		computed.Instantiated = append(computed.Instantiated, &postgres.InstantiatedDatabase{
+			PackageName: owner.String(),
+			Credentials: creds,
+			Database:    databases,
+		})
+	}
+
+	serializedComputed, err := anypb.New(computed)
+	if err != nil {
+		return err
+	}
+
+	out.Computed = append(out.Computed, &schema.ComputedConfiguration{
+		Owner: r.PackageOwner(),
+		Impl:  serializedComputed,
+	})
 
 	return toolcommon.Apply(ctx, r, dbs, "incluster", out)
 }

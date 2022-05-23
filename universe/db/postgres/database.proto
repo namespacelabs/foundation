@@ -23,3 +23,20 @@ message Database {
 }
 
 message WireDatabaseArgs {}
+
+// This type represents a fully formed database. This is an internal type, used
+// for internal configuration.
+message InstantiatedDatabase {
+    string            package_name = 1;
+    Credentials       credentials  = 2;
+    repeated Database database     = 3;
+
+    message Credentials {
+        string secret_name       = 1;
+        string secret_mount_path = 2;
+    }
+}
+
+message InstantiatedDatabases {
+    repeated InstantiatedDatabase instantiated = 1;
+}
