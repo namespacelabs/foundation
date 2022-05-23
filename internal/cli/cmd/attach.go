@@ -19,8 +19,7 @@ import (
 )
 
 func NewAttachCmd() *cobra.Command {
-	envRef := "dev"
-	rehydrate := true
+	h := hydrateArgs{envRef: "dev", rehydrate: true}
 
 	cmd := &cobra.Command{
 		Use:   "attach",
@@ -28,74 +27,21 @@ func NewAttachCmd() *cobra.Command {
 		Args:  cobra.ArbitraryArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			env, err := requireEnv(ctx, envRef)
+			res, err := h.ComputeStack(ctx, args)
 			if err != nil {
 				return err
-			}
-
-			serverLocs, specified, err := allServersOrFromArgs(ctx, env, args)
-			if err != nil {
-				return err
-			}
-
-			_, servers, err := loadServers(ctx, env, serverLocs, specified)
-			if err != nil {
-				return err
-			}
-
-			var stackProto *schema.Stack
-			var fragment []*schema.IngressFragment
-
-			if rehydrate {
-				if len(servers) != 1 {
-					return fnerrors.UserError(nil, "--rehydrate only supports a single server")
-				}
-
-				buildID, err := runtime.For(ctx, env).DeployedConfigImageID(ctx, servers[0].Proto())
-				if err != nil {
-					return err
-				}
-
-				rehydrated, err := config.Rehydrate(ctx, servers[0], buildID)
-				if err != nil {
-					return err
-				}
-
-				stackProto = rehydrated.Stack
-				fragment = rehydrated.IngressFragments
-			} else {
-				stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortBase: 40000})
-				if err != nil {
-					return err
-				}
-
-				stackProto = stack.Proto()
-				for _, entry := range stack.Proto().Entry {
-					deferred, err := runtime.ComputeIngress(ctx, env.Proto(), entry, stack.Endpoints)
-					if err != nil {
-						return err
-					}
-					for _, d := range deferred {
-						fragment = append(fragment, d.WithoutAllocation())
-					}
-				}
-			}
-
-			var focus []schema.PackageName
-			for _, srv := range servers {
-				focus = append(focus, srv.PackageName())
 			}
 
 			pfwd := endpointfwd.PortForward{
 				LocalAddr: "localhost",
-				Selector:  env,
+				Selector:  res.Env,
 			}
 
 			pfwd.OnUpdate = func() {
 				console.SetStickyContent(ctx, "ingress", pfwd.Render())
 			}
 
-			pfwd.Update(ctx, stackProto, focus, fragment)
+			pfwd.Update(ctx, res.Stack, res.Focus, res.Ingress)
 
 			// XXX do cmd/logs too.
 			<-ctx.Done()
@@ -103,8 +49,85 @@ func NewAttachCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to attach to.")
-	cmd.Flags().BoolVar(&rehydrate, "rehydrate", rehydrate, "If set to false, compute stack at head, rather than loading the deployed configuration.")
+	h.Configure(cmd)
 
 	return cmd
+}
+
+type hydrateArgs struct {
+	envRef    string
+	rehydrate bool
+}
+
+type hydrateResult struct {
+	Env     runtime.Selector
+	Stack   *schema.Stack
+	Focus   []schema.PackageName
+	Ingress []*schema.IngressFragment
+}
+
+func (h *hydrateArgs) Configure(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&h.envRef, "env", h.envRef, "The environment to attach to.")
+	cmd.Flags().BoolVar(&h.rehydrate, "rehydrate", h.rehydrate, "If set to false, compute stack at head, rather than loading the deployed configuration.")
+}
+
+func (h *hydrateArgs) ComputeStack(ctx context.Context, args []string) (*hydrateResult, error) {
+	env, err := requireEnv(ctx, h.envRef)
+	if err != nil {
+		return nil, err
+	}
+
+	serverLocs, specified, err := allServersOrFromArgs(ctx, env, args)
+	if err != nil {
+		return nil, err
+	}
+
+	_, servers, err := loadServers(ctx, env, serverLocs, specified)
+	if err != nil {
+		return nil, err
+	}
+
+	var res hydrateResult
+	for _, srv := range servers {
+		res.Focus = append(res.Focus, srv.PackageName())
+	}
+
+	res.Env = env
+
+	if h.rehydrate {
+		if len(servers) != 1 {
+			return nil, fnerrors.UserError(nil, "--rehydrate only supports a single server")
+		}
+
+		buildID, err := runtime.For(ctx, env).DeployedConfigImageID(ctx, servers[0].Proto())
+		if err != nil {
+			return nil, err
+		}
+
+		rehydrated, err := config.Rehydrate(ctx, servers[0], buildID)
+		if err != nil {
+			return nil, err
+		}
+
+		res.Stack = rehydrated.Stack
+		res.Ingress = rehydrated.IngressFragments
+	} else {
+		stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortBase: 40000})
+		if err != nil {
+			return nil, err
+		}
+
+		res.Stack = stack.Proto()
+		for _, entry := range stack.Proto().Entry {
+			deferred, err := runtime.ComputeIngress(ctx, env.Proto(), entry, stack.Endpoints)
+			if err != nil {
+				return nil, err
+			}
+			for _, d := range deferred {
+				res.Ingress = append(res.Ingress, d.WithoutAllocation())
+			}
+		}
+	}
+
+	return &res, nil
 }
