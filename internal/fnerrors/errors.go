@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/kr/text"
@@ -300,6 +301,12 @@ func format(w io.Writer, err error, opts *FormatOptions) {
 	case *DependencyFailedError:
 		formatDependencyFailedError(w, x, opts)
 
+	case *CodegenError:
+		formatCodegenError(w, x, opts)
+
+	case *CodegenMultiError:
+		formatCodegenMultiError(w, x, opts)
+
 	default:
 		fmt.Fprintf(w, "%s\n", x.Error())
 	}
@@ -390,6 +397,55 @@ func formatUserError(w io.Writer, err *userError, opts *FormatOptions) {
 		fmt.Fprintf(w, "%s at %s\n", err.Err.Error(), loc)
 	} else {
 		fmt.Fprintf(w, "%s\n", err.Err.Error())
+	}
+}
+
+func formatCodegenError(w io.Writer, err *CodegenError, opts *FormatOptions) {
+	phase := err.What
+	if opts.colors {
+		phase = aec.MagentaF.Apply(phase)
+	}
+	pkgName := err.PackageName
+	if opts.colors {
+		pkgName = aec.LightBlackF.Apply(pkgName)
+	}
+	fmt.Fprintf(w, "%s at phase [%s] for package %s\n", err.Error(), phase, pkgName)
+}
+
+func formatCodegenMultiError(w io.Writer, err *CodegenMultiError, opts *FormatOptions) {
+	err.mu.Lock()
+	defer err.mu.Unlock()
+
+	err.aggregateErrors()
+
+	// Print aggregated errors.
+	for commonErr, whatpkgs := range err.commonerrs {
+		for what, pkgs := range whatpkgs {
+			var pkgnames []string
+			for p := range pkgs {
+				pkgnames = append(pkgnames, p)
+			}
+			phase := what
+			if opts.colors {
+				phase = aec.MagentaF.Apply(phase)
+			}
+			pkgnamesdisplay := strings.Join(pkgnames, ", ")
+			if opts.colors {
+				pkgnamesdisplay = aec.LightBlackF.Apply(pkgnamesdisplay)
+			}
+			fmt.Fprintf(w, "%s at phase [%s] for package(s) %s\n", commonErr.Error(), phase, pkgnamesdisplay)
+		}
+	}
+	// Print all unique CodegenErrors that don't have a common root.
+	var uniqgenerrs []CodegenError
+	for _, generr := range err.errs {
+		_, duplicate := err.duplicateerrs[generr.fingerprint()]
+		if !duplicate {
+			uniqgenerrs = append(uniqgenerrs, generr)
+		}
+	}
+	for _, generr := range uniqgenerrs {
+		formatCodegenError(w, &generr, opts)
 	}
 }
 

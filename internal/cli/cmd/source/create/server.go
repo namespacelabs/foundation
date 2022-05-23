@@ -6,7 +6,6 @@ package create
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -69,11 +68,11 @@ func newServerCmd() *cobra.Command {
 				return err
 			}
 
-			return codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, func(e codegen.GenerateError) {
-				w := console.Stderr(ctx)
-				fmt.Fprintf(w, "%s: %s failed:\n", e.PackageName, e.What)
-				fnerrors.Format(w, e.Err, fnerrors.WithColors(true))
-			})
+			codegenMultiErr := fnerrors.NewCodegenMultiError()
+			// Aggregates and prints all accumulated codegen errors on return.
+			defer fnerrors.Format(console.Stderr(ctx), codegenMultiErr, fnerrors.WithColors(true))
+
+			return codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, codegenMultiErr.Append)
 		}),
 	}
 

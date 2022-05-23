@@ -50,16 +50,15 @@ func newExtensionCmd() *cobra.Command {
 				return err
 			}
 
-			onError := func(e codegen.GenerateError) {
-				w := console.Stderr(ctx)
-				fmt.Fprintf(w, "%s: %s failed:\n", e.PackageName, e.What)
-				fnerrors.Format(w, e.Err, fnerrors.WithColors(true))
-			}
+			codegenMultiErr := fnerrors.NewCodegenMultiError()
+			// Aggregates and prints all accumulated codegen errors on return.
+			defer fnerrors.Format(console.Stderr(ctx), codegenMultiErr, fnerrors.WithColors(true))
+
 			// Generate protos before generating code for this extension as code (our generated code may depend on the protos).
-			if err := codegen.ForLocationsGenProto(ctx, root, []fnfs.Location{loc}, onError); err != nil {
-				return nil
+			if err := codegen.ForLocationsGenProto(ctx, root, []fnfs.Location{loc}, codegenMultiErr.Append); err != nil {
+				return err
 			}
-			return codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, onError)
+			return codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, codegenMultiErr.Append)
 		}),
 	}
 

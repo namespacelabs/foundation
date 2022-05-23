@@ -35,26 +35,27 @@ func NewGenerateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := generateProtos(ctx, root); err != nil {
+
+			codegenMultiErr := fnerrors.NewCodegenMultiError()
+			// Aggregates and prints all accumulated codegen errors on return.
+			defer fnerrors.Format(console.Stderr(ctx), codegenMultiErr, fnerrors.WithColors(true))
+
+			if err := generateProtos(ctx, root, codegenMultiErr.Append); err != nil {
 				return err
 			}
-
 			list, err := workspace.ListSchemas(ctx, root)
 			if err != nil {
 				return err
 			}
 			// Generate code.
-			return codegen.ForLocationsGenCode(ctx, root, list.Locations, func(e codegen.GenerateError) {
-				w := console.Stderr(ctx)
-				fnerrors.Format(w, e.Err, fnerrors.WithColors(true))
-			})
+			return codegen.ForLocationsGenCode(ctx, root, list.Locations, codegenMultiErr.Append)
 		}),
 	}
 
 	return cmd
 }
 
-func generateProtos(ctx context.Context, root *workspace.Root) error {
+func generateProtos(ctx context.Context, root *workspace.Root, handleGenErr func(fnerrors.CodegenError)) error {
 	list, err := workspace.ListSchemas(ctx, root)
 	if err != nil {
 		return err
@@ -93,10 +94,7 @@ func generateProtos(ctx context.Context, root *workspace.Root) error {
 		return err
 	}
 
-	return codegen.ForLocationsGenProto(ctx, root, topoSorted, func(e codegen.GenerateError) {
-		w := console.Stderr(ctx)
-		fnerrors.Format(w, e.Err, fnerrors.WithColors(true))
-	})
+	return codegen.ForLocationsGenProto(ctx, root, topoSorted, handleGenErr)
 }
 
 func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniquestrings.List) ([]fnfs.Location, error) {
