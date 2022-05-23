@@ -89,11 +89,6 @@ func ExitWithCode(err error, code int) error {
 	return &exitError{fnError: fnError{Err: err, stack: stacktrace.New()}, code: code}
 }
 
-// CodegenError associates an error with a code generation phase and a list of packages.
-func CodegenError(err error, phase string, packages ...string) error {
-	return &codegenError{err, phase, packages}
-}
-
 // Wraps an error with a stack trace at the point of invocation.
 type fnError struct {
 	Err   error
@@ -194,16 +189,6 @@ func (e *exitError) Error() string {
 
 func (e *exitError) ExitCode() int {
 	return e.code
-}
-
-type codegenError struct {
-	Err      error
-	phase    string
-	packages []string
-}
-
-func (e *codegenError) Error() string {
-	return e.Err.Error()
 }
 
 type FormatOptions struct {
@@ -311,8 +296,11 @@ func format(w io.Writer, err error, opts *FormatOptions) {
 	case *DependencyFailedError:
 		formatDependencyFailedError(w, x, opts)
 
-	case *codegenError:
+	case *CodegenError:
 		formatCodegenError(w, x, opts)
+
+	case *CodegenMultiError:
+		formatCodegenMultiError(w, x, opts)
 
 	default:
 		fmt.Fprintf(w, "%s\n", x.Error())
@@ -407,8 +395,53 @@ func formatUserError(w io.Writer, err *userError, opts *FormatOptions) {
 	}
 }
 
-func formatCodegenError(w io.Writer, err *codegenError, opts *FormatOptions) {
-	fmt.Fprintf(w, "%s at phase [%s] for package(s) %s\n", err.Error(), aec.MagentaF.Apply(err.phase), aec.LightBlackF.Apply(strings.Join(err.packages, ", ")))
+func formatCodegenError(w io.Writer, err *CodegenError, opts *FormatOptions) {
+	phase := err.What
+	if opts.colors {
+		phase = aec.MagentaF.Apply(phase)
+	}
+	pkgName := err.PackageName
+	if opts.colors {
+		pkgName = aec.LightBlackF.Apply(pkgName)
+	}
+	fmt.Fprintf(w, "%s at phase [%s] for package %s\n", err.Error(), phase, pkgName)
+}
+
+func formatCodegenMultiError(w io.Writer, err *CodegenMultiError, opts *FormatOptions) {
+	err.mu.Lock()
+	defer err.mu.Unlock()
+
+	err.aggregateErrors()
+
+	// Print aggregated errors.
+	for commonErr, whatpkgs := range err.commonerrs {
+		for what, pkgs := range whatpkgs {
+			var pkgnames []string
+			for p := range pkgs {
+				pkgnames = append(pkgnames, p)
+			}
+			phase := what
+			if opts.colors {
+				phase = aec.MagentaF.Apply(phase)
+			}
+			pkgnamesdisplay := strings.Join(pkgnames, ", ")
+			if opts.colors {
+				pkgnamesdisplay = aec.LightBlackF.Apply(pkgnamesdisplay)
+			}
+			fmt.Fprintf(w, "%s at phase [%s] for package %s\n", commonErr.Error(), phase, pkgnamesdisplay)
+		}
+	}
+	// Print all unique CodegenErrors that don't have a common root.
+	var uniqgenerrs []CodegenError
+	for _, generr := range err.errs {
+		_, duplicate := err.duplicateerrs[generr.fingerprint()]
+		if !duplicate {
+			uniqgenerrs = append(uniqgenerrs, generr)
+		}
+	}
+	for _, generr := range uniqgenerrs {
+		formatCodegenError(w, &generr, opts)
+	}
 }
 
 func errorReportRequest(w io.Writer) {

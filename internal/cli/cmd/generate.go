@@ -36,34 +36,30 @@ func NewGenerateCmd() *cobra.Command {
 				return err
 			}
 
-			genErrAggregator := codegen.NewErrorAggregator()
-			genErrAggregator.Start()
-			w := console.Stderr(ctx)
-
-			if err := generateProtos(ctx, root, genErrAggregator); err != nil {
-				genErrAggregator.Flush(w, true)
+			codegenMultiErr := fnerrors.NewCodegenMultiError()
+			onError := func(err fnerrors.CodegenError) {
+				codegenMultiErr.Append(err)
+			}
+			// Aggregates and prints all accumulated codegen errors on return.
+			defer func() {
+				fnerrors.Format(console.Stderr(ctx), codegenMultiErr, fnerrors.WithColors(true))
+			}()
+			if err := generateProtos(ctx, root, onError); err != nil {
 				return err
 			}
-
 			list, err := workspace.ListSchemas(ctx, root)
 			if err != nil {
-				genErrAggregator.Flush(w, true)
 				return err
 			}
-
 			// Generate code.
-			err = codegen.ForLocationsGenCode(ctx, root, list.Locations, func(e codegen.GenerateError) {
-				genErrAggregator.ErrChannel <- e
-			})
-			genErrAggregator.Flush(w, true)
-			return err
+			return codegen.ForLocationsGenCode(ctx, root, list.Locations, onError)
 		}),
 	}
 
 	return cmd
 }
 
-func generateProtos(ctx context.Context, root *workspace.Root, genErrAggregator *codegen.GenerateErrorAggregator) error {
+func generateProtos(ctx context.Context, root *workspace.Root, handleGenErr func(fnerrors.CodegenError)) error {
 	list, err := workspace.ListSchemas(ctx, root)
 	if err != nil {
 		return err
@@ -102,9 +98,7 @@ func generateProtos(ctx context.Context, root *workspace.Root, genErrAggregator 
 		return err
 	}
 
-	return codegen.ForLocationsGenProto(ctx, root, topoSorted, func(e codegen.GenerateError) {
-		genErrAggregator.ErrChannel <- e
-	})
+	return codegen.ForLocationsGenProto(ctx, root, topoSorted, handleGenErr)
 }
 
 func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniquestrings.List) ([]fnfs.Location, error) {

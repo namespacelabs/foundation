@@ -6,7 +6,6 @@ package create
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -74,14 +73,17 @@ func newServiceCmd() *cobra.Command {
 				return err
 			}
 
-			onError := func(e codegen.GenerateError) {
-				w := console.Stderr(ctx)
-				fmt.Fprintf(w, "%s: %s failed:\n", e.PackageName, e.What)
-				fnerrors.Format(w, e.Err, fnerrors.WithColors(true))
+			codegenMultiErr := fnerrors.NewCodegenMultiError()
+			onError := func(err fnerrors.CodegenError) {
+				codegenMultiErr.Append(err)
 			}
+			// Aggregates and prints all accumulated codegen errors on return.
+			defer func() {
+				fnerrors.Format(console.Stderr(ctx), codegenMultiErr, fnerrors.WithColors(true))
+			}()
 			// Generate protos before generating code for this extension as code (our generated code may depend on the protos).
 			if err := codegen.ForLocationsGenProto(ctx, root, []fnfs.Location{loc}, onError); err != nil {
-				return nil
+				return err
 			}
 			return codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, onError)
 		}),
