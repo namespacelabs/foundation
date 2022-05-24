@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 )
 
 // StartHandler processes user keystroke events and dev workflow updates.
