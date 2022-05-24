@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
+// Runs Yarn v3+ for Node.js
 func RunYarn(ctx context.Context, relPath string, args []string, env []string) error {
 	bin, err := yarnsdk.EnsureSDK(ctx)
 	if err != nil {
@@ -27,6 +28,16 @@ func RunYarn(ctx context.Context, relPath string, args []string, env []string) e
 		return err
 	}
 	cmd.AdditionalEnv = append(env, "FN_MODULE_CACHE="+fnModuleCache)
+
+	return cmd.Run(ctx)
+}
+
+// Runs Yarn v1+ for Web.
+func RunYarnV1(ctx context.Context, relPath string, args []string) error {
+	var cmd localexec.Command
+	cmd.Command = "yarn"
+	cmd.Args = args
+	cmd.Dir = relPath
 
 	return cmd.Run(ctx)
 }

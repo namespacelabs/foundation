@@ -269,7 +269,7 @@ func (i impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspac
 		"vite@2.7.13",
 	}
 
-	if err := yarn.RunYarn(ctx, p.Location.Rel(), append([]string{"add", "-D"}, devPackages...), nil); err != nil {
+	if err := yarn.RunYarnV1(ctx, p.Location.Rel(), append([]string{"add", "-D"}, devPackages...)); err != nil {
 		return err
 	}
 
