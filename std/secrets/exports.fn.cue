@@ -19,7 +19,8 @@ import (
 			cacheable?: bool
 			withInput?: types.#Any
 		}
-		optional?: bool
+		optional?:                  bool
+		experimentalMountAsEnvVar?: string
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/std/secrets"

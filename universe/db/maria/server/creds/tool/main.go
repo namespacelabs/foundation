@@ -33,7 +33,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		case "mariadb-password-file":
 			out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 				With: &kubedef.ContainerExtension{
-					Env: []*kubedef.ContainerExtension_Env{{
+					Env: []*schema.BinaryConfig_EnvEntry{{
 						Name:  "MARIADB_ROOT_PASSWORD_FILE",
 						Value: secret.FromPath,
 					}},

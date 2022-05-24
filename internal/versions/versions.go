@@ -8,7 +8,7 @@ package versions
 // are built into Foundation itself (i.e. is not versioned as part of the
 // foundation repository). Whenever new non-backwards compatible semantics are
 // added to Foundation, this number must be bumped.
-const APIVersion = 29
+const APIVersion = 30
 
 // MinimumAPIVersion represents the minimum requested version that this version
 // of foundation supports. If a module requests, e.g. a minimum version of 28,

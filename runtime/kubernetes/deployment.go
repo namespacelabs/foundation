@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -61,14 +62,14 @@ var constants = map[schema.Environment_Purpose]perEnvConf{
 	},
 }
 
-func getEnv(c *applycorev1.ContainerApplyConfiguration, name string) (string, bool) {
-	for _, env := range c.Env {
-		if *env.Name == name {
-			return *env.Value, true
+func lookupByName(env []*schema.BinaryConfig_EnvEntry, name string) (*schema.BinaryConfig_EnvEntry, bool) {
+	for _, env := range env {
+		if env.Name == name {
+			return env, true
 		}
 	}
 
-	return "", false
+	return nil, false
 }
 
 func getArg(c *applycorev1.ContainerApplyConfiguration, name string) (string, bool) {
@@ -218,6 +219,8 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 	var createServiceAccount bool
 	var serviceAccountAnnotations []*kubedef.SpecExtension_Annotation
 
+	var env []*schema.BinaryConfig_EnvEntry
+
 	for _, input := range server.Extensions {
 		specExt := &kubedef.SpecExtension{}
 		containerExt := &kubedef.ContainerExtension{}
@@ -282,11 +285,12 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 			}
 
 			// XXX O(n^2)
-			for _, env := range containerExt.Env {
-				if currentValue, found := getEnv(container, env.Name); found && currentValue != env.Value {
-					return fnerrors.UserError(server.Server.Location, "env variable '%s' is already set to '%s' but would be overwritten to '%s' by container extension", env.Name, currentValue, env.Value)
+			for _, kv := range containerExt.Env {
+				if current, found := lookupByName(env, kv.Name); found && !proto.Equal(current, kv) {
+					return fnerrors.UserError(server.Server.Location, "env variable %q is already set, but would be overwritten by container extension", kv.Name)
 				}
-				container = container.WithEnv(applycorev1.EnvVar().WithName(env.Name).WithValue(env.Value))
+
+				env = append(env, kv)
 			}
 
 			if containerExt.Args != nil {
@@ -318,6 +322,10 @@ func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.Se
 		default:
 			return fnerrors.InternalError("unused startup input: %s", input.Impl.GetTypeUrl())
 		}
+	}
+
+	if _, err := fillEnv(container, env); err != nil {
+		return err
 	}
 
 	for _, rs := range srv.Proto().RequiredStorage {
