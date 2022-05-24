@@ -10,9 +10,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
@@ -159,11 +159,8 @@ func deferStore(ctx context.Context, g *Orch, c hasAction, cacheable *cacheable,
 			}
 
 			if VerifyCaching && result != d {
-				zerolog.Ctx(ctx).Error().
-					Str("type", typeStr(c)).
-					Str("cacheableType", typeStr(cacheable)).
-					Stringer("got", result).Stringer("expected", d).
-					Msg("VerifyCache: source of non-determinism writing to the output cache")
+				fmt.Fprintf(console.Errors(ctx), "VerifyCache: source of non-determinism writing to the output cache; type=%s cacheableType=%s got=%s expected=%s\n",
+					typeStr(c), typeStr(cacheable), result, d)
 			}
 
 			entry := cache.CachedOutput{
@@ -212,18 +209,13 @@ func cacheableFor(outputType interface{}) *cacheable {
 }
 
 func verifyComputedDigest(ctx context.Context, c rawComputable, cacheable *cacheable, v interface{}, outputDigest schema.Digest) {
-	l := zerolog.Ctx(ctx).With().
-		Str("cacheableType", typeStr(cacheable)).
-		Str("type", typeStr(c)).
-		Logger()
+	types := fmt.Sprintf("cacheableType=%s type=%s", typeStr(cacheable), typeStr(c))
 
 	computed, err := cacheable.ComputeDigest(ctx, v)
 	if err != nil {
-		l.Error().Err(err).
-			Msg("VerifyCaching: failed to produce digest to verify")
+		fmt.Fprintf(console.Errors(ctx), "VerifyCaching: failed to produce digest to verify (%s): %v\n", types, err)
 	} else if computed != outputDigest {
-		l.Error().Err(err).
-			Stringer("got", computed).Stringer("expected", outputDigest).
-			Msg("VerifyCaching: computed digest differs on cache load")
+		fmt.Fprintf(console.Errors(ctx), "VerifyCaching: computed digest differs on cache load (%s) got=%s expected=%s\n",
+			types, computed, outputDigest)
 	}
 }

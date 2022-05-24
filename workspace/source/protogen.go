@@ -7,6 +7,7 @@ package source
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -14,7 +15,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/artifacts/fsops"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -342,7 +342,7 @@ func (g *genGoProtosAtLoc) Compute(ctx context.Context, deps compute.Resolved) (
 	// Only initiate a cleanup after we're done compiling.
 	compute.On(ctx).Cleanup(tasks.Action("proto.generate.cleanup"), func(ctx context.Context) error {
 		if err := os.RemoveAll(targetDir); err != nil {
-			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to cleanup target dir")
+			fmt.Fprintf(console.Warnings(ctx), "Failed to cleanup target directory: %v\n", err)
 		}
 		return nil // Never fail.
 	})
