@@ -15,6 +15,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 )
 
+const maxHeight = 20
+
 func Select[V list.DefaultItem](ctx context.Context, title string, items []V) (list.DefaultItem, error) {
 	done := console.EnterInputMode(ctx)
 	defer done()
@@ -24,7 +26,12 @@ func Select[V list.DefaultItem](ctx context.Context, title string, items []V) (l
 		downcast[k] = item
 	}
 
-	p := tea.NewProgram(initialSelectModel(title, downcast))
+	height := 5 + len(items)*3
+	if height > maxHeight {
+		height = maxHeight
+	}
+
+	p := tea.NewProgram(initialSelectModel(title, downcast, height))
 
 	final, err := p.StartReturningModel()
 	if err != nil {
@@ -35,12 +42,13 @@ func Select[V list.DefaultItem](ctx context.Context, title string, items []V) (l
 }
 
 type selectModel struct {
-	list     list.Model
-	selected list.DefaultItem
+	maxHeight int
+	list      list.Model
+	selected  list.DefaultItem
 }
 
-func initialSelectModel(title string, items []list.Item) selectModel {
-	li := list.New(items, itemDelegate{list.NewDefaultItemStyles()}, 20, 14)
+func initialSelectModel(title string, items []list.Item, height int) selectModel {
+	li := list.New(items, itemDelegate{list.NewDefaultItemStyles()}, 40, height)
 	li.Title = title
 	li.SetShowStatusBar(false)
 	li.SetFilteringEnabled(false)
@@ -48,7 +56,7 @@ func initialSelectModel(title string, items []list.Item) selectModel {
 	li.Styles.PaginationStyle = list.DefaultStyles().PaginationStyle
 	li.Styles.HelpStyle = list.DefaultStyles().HelpStyle
 
-	return selectModel{list: li}
+	return selectModel{maxHeight: height, list: li}
 }
 
 func (m selectModel) Init() tea.Cmd {
@@ -71,8 +79,8 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		m.list.SetWidth(msg.Width)
-		if msg.Height > 14 {
-			m.list.SetHeight(14)
+		if msg.Height > m.maxHeight {
+			m.list.SetHeight(m.maxHeight)
 		} else {
 			m.list.SetHeight(msg.Height)
 		}
