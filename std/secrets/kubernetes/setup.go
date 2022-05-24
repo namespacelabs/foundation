@@ -16,6 +16,7 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -54,8 +55,12 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return err
 	}
 
-	// XXX LoadDevMap() assumes textproto; eventually should change this to binary.
 	devMapBytes, err := prototext.Marshal(collection.DevMap)
+	if err != nil {
+		return err
+	}
+
+	devMapBinaryBytes, err := proto.Marshal(collection.DevMap)
 	if err != nil {
 		return err
 	}
@@ -74,6 +79,9 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	// using our regular mechanisms. Within that dev map, we map each
 	// secret to other files mounted as well.
 	data["map.textpb"] = devMapBytes
+
+	// Servers use the binary serialized version.
+	data["map.binarypb"] = devMapBinaryBytes
 
 	// We also include a JSON version of the map to facilitiate JS-based uses.
 	data["map.json"] = devMapJSON
@@ -331,6 +339,17 @@ func fillData(ctx context.Context, server *schema.Server, env *schema.Environmen
 					return nil, fnerrors.UsageError(
 						fmt.Sprintf("Try running `fn secrets set %s --secret %s:%s`", server.PackageName, key.PackageName, key.Key),
 						"secret %q required by %q not specified", key.Key, key.PackageName)
+				} else {
+					// XXX should not mutate DevMap here.
+					for _, x := range col.DevMap.Configure {
+						if x.PackageName == key.PackageName {
+							for k, s := range x.Secret {
+								if s.Name == secret.Name {
+									x.Secret[k] = nil
+								}
+							}
+						}
+					}
 				}
 			case 1:
 				data[col.Names[k][j]] = foundValue
@@ -374,7 +393,7 @@ func loadSnapshot(ctx context.Context, contents, keyDir fs.FS) (fs.FS, error) {
 }
 
 func provideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userManaged ...*secrets.Secret) (map[string][]byte, error) {
-	sdm, err := secrets.LoadDevMap(src)
+	sdm, err := secrets.LoadSourceDevMap(src)
 	if err != nil {
 		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
 	}

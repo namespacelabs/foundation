@@ -22,7 +22,7 @@ func ProvideSecret(ctx context.Context, req *Secret) (*Value, error) {
 	// TODO change secrets to handle scoped instantiation correctly
 	caller := core.InstantiationPathFromContext(ctx).Last()
 
-	sdm, err := LoadDevMap(os.DirFS(*serverSecretsBasepath))
+	sdm, err := LoadBinaryDevMap(os.DirFS(*serverSecretsBasepath))
 	if err != nil {
 		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
 	}
@@ -46,6 +46,10 @@ func ProvideSecret(ctx context.Context, req *Secret) (*Value, error) {
 			}
 			return &Value{Name: secret.Name, Path: secret.FromPath}, nil
 		}
+	}
+
+	if req.Optional {
+		return nil, nil
 	}
 
 	return nil, fmt.Errorf("%v: %s: no secret configuration", caller, req.Name)

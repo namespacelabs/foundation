@@ -172,7 +172,7 @@ func (col *Collection) SecretsOf(packageName string) []*SecretDevMap_SecretSpec 
 	return nil
 }
 
-func LoadDevMap(src fs.FS) (*SecretDevMap, error) {
+func LoadSourceDevMap(src fs.FS) (*SecretDevMap, error) {
 	mapContents, err := fs.ReadFile(src, "map.textpb")
 	if err != nil {
 		return nil, err
@@ -180,6 +180,20 @@ func LoadDevMap(src fs.FS) (*SecretDevMap, error) {
 
 	sdm := &SecretDevMap{}
 	if err := prototext.Unmarshal(mapContents, sdm); err != nil {
+		return nil, err
+	}
+
+	return sdm, nil
+}
+
+func LoadBinaryDevMap(src fs.FS) (*SecretDevMap, error) {
+	mapContents, err := fs.ReadFile(src, "map.binarypb")
+	if err != nil {
+		return nil, err
+	}
+
+	sdm := &SecretDevMap{}
+	if err := proto.Unmarshal(mapContents, sdm); err != nil {
 		return nil, err
 	}
 
