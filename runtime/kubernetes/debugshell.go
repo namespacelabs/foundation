@@ -31,6 +31,18 @@ func (r boundEnv) Kubectl(ctx context.Context, io rtypes.IO, args ...string) err
 	return kubectl.Run()
 }
 
+type KubeConfig struct {
+	Config, Context, Namespace string
+}
+
+func (r boundEnv) KubeConfig() KubeConfig {
+	return KubeConfig{
+		Config:    r.hostEnv.Kubeconfig,
+		Context:   r.hostEnv.Context,
+		Namespace: r.moduleNamespace,
+	}
+}
+
 func (r boundEnv) DebugShell(ctx context.Context, img oci.ImageID, io rtypes.IO) error {
 	return r.Kubectl(ctx, io, "run", "-i", "--tty", "--rm", "debug", "--image="+img.ImageRef(), "--restart=Never", "--", "bash")
 }
