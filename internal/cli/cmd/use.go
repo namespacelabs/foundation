@@ -8,11 +8,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/runtime"
@@ -58,22 +58,28 @@ func NewUseCmd() *cobra.Command {
 				}
 			}
 
-			dbIndex := map[string]*postgres.Database{}
+			dbIndex := map[string]databaseBind{}
 			credsIndex := map[string]*postgres.InstantiatedDatabase_Credentials{}
 			names := uniquestrings.List{}
 			for _, n := range config.Instantiated {
 				for _, db := range n.Database {
-					dbIndex[db.Name] = db
+					dbIndex[db.Name] = databaseBind{
+						PackageName: n.PackageName,
+						Database:    db,
+					}
 					credsIndex[db.Name] = n.Credentials
 					names.Add(db.Name)
 				}
 			}
 
 			if database == "" {
-				return fnerrors.UsageError(fmt.Sprintf("Try one of the following databases: %s", strings.Join(names.Strings(), ", ")), "No database specified.")
+				database, err = selectDatabase(ctx, dbIndex, names.Strings())
+				if err != nil {
+					return err
+				}
 			}
 
-			db, ok := dbIndex[database]
+			bind, ok := dbIndex[database]
 			if !ok {
 				return fnerrors.UsageError(fmt.Sprintf("Try one of the following databases: %v", names.Strings()), "Specified database does not exist.")
 			}
@@ -99,9 +105,9 @@ func NewUseCmd() *cobra.Command {
 				Image:      psqlImage,
 				Command:    []string{"psql"},
 				Args: []string{
-					"-h", db.HostedAt.Address,
-					"-p", fmt.Sprintf("%d", db.HostedAt.Port),
-					db.Name, "postgres",
+					"-h", bind.Database.HostedAt.Address,
+					"-p", fmt.Sprintf("%d", bind.Database.HostedAt.Port),
+					bind.Database.Name, "postgres",
 				},
 				Env: []*schema.BinaryConfig_EnvEntry{
 					{
@@ -129,6 +135,11 @@ func NewUseCmd() *cobra.Command {
 	return cmd
 }
 
+type databaseBind struct {
+	PackageName string
+	Database    *postgres.Database
+}
+
 func determineConfiguration(res *hydrateResult) (*postgres.InstantiatedDatabases, error) {
 	for _, computed := range res.Rehydrated.ComputedConfigs.GetEntry() {
 		if computed.ServerPackage == res.Focus[0].String() {
@@ -147,3 +158,33 @@ func determineConfiguration(res *hydrateResult) (*postgres.InstantiatedDatabases
 
 	return nil, nil
 }
+
+func selectDatabase(ctx context.Context, index map[string]databaseBind, names []string) (string, error) {
+	if len(names) == 0 {
+		return "", fnerrors.New("no database to connect to")
+	}
+
+	var items []databaseItem
+	for _, name := range names {
+		items = append(items, databaseItem{index[name]})
+	}
+
+	item, err := tui.Select(ctx, "Which database to connect to?", items)
+	if err != nil {
+		return "", err
+	}
+
+	if item == nil {
+		return "", context.Canceled
+	}
+
+	return item.(databaseItem).bind.Database.Name, nil
+}
+
+type databaseItem struct {
+	bind databaseBind
+}
+
+func (d databaseItem) Title() string       { return d.bind.Database.Name }
+func (d databaseItem) Description() string { return d.bind.PackageName }
+func (d databaseItem) FilterValue() string { return d.bind.Database.Name }
