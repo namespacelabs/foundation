@@ -19,7 +19,7 @@ import (
 type ClientFactory struct {
 	SharedCredentialsPath string
 
-	openTelemetry *tracing.DeferredTracerProvider
+	openTelemetry *tracing.DeferredTracerProvider // Optional. Not set for e.g. testing env.
 }
 
 func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {

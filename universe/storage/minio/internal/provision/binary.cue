@@ -1,4 +1,4 @@
 binary: {
-	name: "ns.tool"
+	name: "configure-minio"
 	from: go_package: "."
 }

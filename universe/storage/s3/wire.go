@@ -8,7 +8,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 	sync "sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -18,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/universe/aws/client"
 	fns3 "namespacelabs.dev/foundation/universe/aws/s3"
 	devs3 "namespacelabs.dev/foundation/universe/development/localstack/s3"
-	//minio "namespacelabs.dev/foundation/universe/storage/minio/s3"
 )
 
 var (
@@ -78,7 +76,7 @@ func createClient(ctx context.Context, factory client.ClientFactory, region stri
 			LocalstackEndpoint: *localstackEndpoint,
 		})
 	}
-	fmt.Fprintf(os.Stderr, "endpoint: %s\n", *minioEndpoint)
+
 	loadOptFns := [](func(*config.LoadOptions) error){config.WithRegion(region)}
 	optFns := [](func(*s3.Options)){}
 	if *minioEndpoint != "" {

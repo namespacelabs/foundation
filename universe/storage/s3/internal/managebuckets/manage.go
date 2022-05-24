@@ -18,7 +18,6 @@ import (
 
 var (
 	awsCredentialsFile = flag.String("aws_credentials_file", "", "Path to the AWS credentials file.")
-	endpoint           = flag.String("endpoint", "", "Path to the AWS credentials file.")
 )
 
 func main() {
