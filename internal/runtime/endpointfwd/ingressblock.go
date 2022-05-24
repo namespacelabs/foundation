@@ -14,10 +14,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"tailscale.com/util/multierr"
 )
 
 type PortForward struct {

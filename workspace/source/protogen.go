@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/sdk/buf"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -30,7 +31,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 	"namespacelabs.dev/foundation/workspace/tasks"
-	"tailscale.com/util/multierr"
 )
 
 type ProtosOpts struct {

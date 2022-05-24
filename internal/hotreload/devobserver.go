@@ -14,12 +14,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"tailscale.com/util/multierr"
 )
 
 type FileSyncDevObserver struct {

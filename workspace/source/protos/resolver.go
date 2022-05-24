@@ -8,7 +8,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/dynamicpb"
-	"tailscale.com/util/multierr"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 )
 
 type AnyResolver interface {

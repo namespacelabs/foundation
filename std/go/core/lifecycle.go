@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"tailscale.com/util/multierr"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 )
 
 type CtxCloseable interface {

@@ -28,10 +28,10 @@ import (
 	"cuelang.org/go/cue/token"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/schema"
-	"tailscale.com/util/multierr"
 )
 
 type KeyAndPath struct {

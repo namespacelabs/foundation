@@ -10,10 +10,10 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
-	"tailscale.com/util/multierr"
 )
 
 type Handlers struct {

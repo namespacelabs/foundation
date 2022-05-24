@@ -15,9 +15,9 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
-	"tailscale.com/util/multierr"
 )
 
 // Environment represents an execution environment: it puts together a root

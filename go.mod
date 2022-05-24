@@ -92,16 +92,6 @@ require (
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
 	namespacelabs.dev/go-ids v0.0.0-20220216144417-79021816502e
 	sigs.k8s.io/yaml v1.3.0
-	tailscale.com v1.24.2
-)
-
-require (
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.6 // indirect
-	github.com/segmentio/asm v1.1.3 // indirect
-	github.com/segmentio/encoding v0.3.4 // indirect
-	go.lsp.dev/pkg v0.0.0-20210717090340-384b27a52fb2 // indirect
-	go.uber.org/multierr v1.8.0 // indirect
 )
 
 require (
@@ -116,8 +106,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.11 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.5 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.11 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.15.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.5 // indirect
@@ -168,6 +160,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/jxskiss/base62 v1.1.0 // indirect
 	github.com/klauspost/compress v1.15.1 // indirect
+	github.com/kr/pretty v0.3.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
@@ -192,17 +185,21 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/sahilm/fuzzy v0.1.0 // indirect
+	github.com/segmentio/asm v1.1.3 // indirect
+	github.com/segmentio/encoding v0.3.4 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
+	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/tonistiigi/fsutil v0.0.0-20220115021204-b19f7f9cb274 // indirect
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea // indirect
 	github.com/tonistiigi/vt100 v0.0.0-20210615222946-8066bb97264f // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	go.lsp.dev/jsonrpc2 v0.10.0
+	go.lsp.dev/pkg v0.0.0-20210717090340-384b27a52fb2 // indirect
 	go.lsp.dev/protocol v0.12.0
 	go.opencensus.io v0.23.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.7.0 // indirect
@@ -210,6 +207,7 @@ require (
 	go.opentelemetry.io/otel/internal/metric v0.27.0 // indirect
 	go.opentelemetry.io/otel/metric v0.27.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.16.0 // indirect
+	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
 	golang.org/x/text v0.3.7 // indirect
