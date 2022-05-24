@@ -8,21 +8,23 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	sync "sync"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/universe/aws/client"
 	fns3 "namespacelabs.dev/foundation/universe/aws/s3"
 	devs3 "namespacelabs.dev/foundation/universe/development/localstack/s3"
-	minio "namespacelabs.dev/foundation/universe/storage/minio/s3"
+	//minio "namespacelabs.dev/foundation/universe/storage/minio/s3"
 )
 
 var (
 	configuredBuckets  = flag.String("storage_s3_configured_buckets_protojson", "", "A serialized MultipleBucketArgs with all of the bucket configurations.")
 	localstackEndpoint = flag.String("storage_s3_localstack_endpoint", "", "If set, use localstack.")
-	minioEndpoint      = flag.String("storage_s3_minio_endpoint", "", "If set, use localstack.")
+	minioEndpoint      = flag.String("storage_s3_minio_endpoint", "", "If set, use minio.")
 
 	parsedConfiguration *MultipleBucketArgs
 	parseOnce           sync.Once
@@ -75,17 +77,30 @@ func createClient(ctx context.Context, factory client.ClientFactory, region stri
 			Region:             region,
 			LocalstackEndpoint: *localstackEndpoint,
 		})
-	} else if *minioEndpoint != "" {
-		return minio.CreateS3Client(ctx, minio.Config{
-			Region:   region,
-			Endpoint: *minioEndpoint,
+	}
+	fmt.Fprintf(os.Stderr, "endpoint: %s\n", *minioEndpoint)
+	loadOptFns := [](func(*config.LoadOptions) error){config.WithRegion(region)}
+	optFns := [](func(*s3.Options)){}
+	if *minioEndpoint != "" {
+		resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+			return aws.Endpoint{
+				PartitionID:   "aws",
+				URL:           *minioEndpoint,
+				SigningRegion: region,
+			}, nil
+		})
+		loadOptFns = append(loadOptFns, config.WithEndpointResolverWithOptions(resolver))
+		optFns = append(optFns, func(o *s3.Options) {
+			// Make sure the bucket is encoded into the URL after domain is resolved, not as a subdomain.
+			// TODO UsePathStyle is deprecated - use it only if localstack is used before we can dynamically add DNS entries.
+			o.UsePathStyle = true
 		})
 	}
 
-	cfg, err := factory.New(ctx, config.WithRegion(region))
+	cfg, err := factory.New(ctx, loadOptFns...)
 	if err != nil {
 		return nil, err
 	}
 
-	return s3.NewFromConfig(cfg), nil
+	return s3.NewFromConfig(cfg, optFns...), nil
 }

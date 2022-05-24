@@ -19,7 +19,7 @@ import (
 type ClientFactory struct {
 	SharedCredentialsPath string
 
-	openTelemetry tracing.DeferredTracerProvider
+	openTelemetry *tracing.DeferredTracerProvider
 }
 
 func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {
@@ -50,7 +50,7 @@ func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOpti
 }
 
 func ProvideClientFactory(_ context.Context, _ *ClientFactoryArgs, deps ExtensionDeps) (ClientFactory, error) {
-	cf := ClientFactory{openTelemetry: deps.OpenTelemetry}
+	cf := ClientFactory{openTelemetry: &deps.OpenTelemetry}
 	if deps.Credentials != nil {
 		cf.SharedCredentialsPath = deps.Credentials.Path
 	}
