@@ -393,7 +393,7 @@ func loadSnapshot(ctx context.Context, contents, keyDir fs.FS) (fs.FS, error) {
 }
 
 func provideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userManaged ...*secrets.Secret) (map[string][]byte, error) {
-	sdm, err := secrets.LoadDevMap(src)
+	sdm, err := secrets.LoadSourceDevMap(src)
 	if err != nil {
 		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
 	}
