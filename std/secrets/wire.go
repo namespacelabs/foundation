@@ -8,6 +8,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -36,6 +37,8 @@ func ProvideSecret(ctx context.Context, req *Secret) (*Value, error) {
 		return nil, fmt.Errorf("%v: no secret configuration definition in map.textpb", caller)
 	}
 
+	log.Println(cfg)
+
 	for _, secret := range cfg.Secret {
 		if secret.Name == req.Name {
 			if secret.FromPath == "" {
@@ -46,6 +49,10 @@ func ProvideSecret(ctx context.Context, req *Secret) (*Value, error) {
 			}
 			return &Value{Name: secret.Name, Path: secret.FromPath}, nil
 		}
+	}
+
+	if req.Optional {
+		return nil, nil
 	}
 
 	return nil, fmt.Errorf("%v: %s: no secret configuration", caller, req.Name)
