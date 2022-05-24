@@ -5,13 +5,10 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/morikuni/aec"
@@ -19,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -62,15 +60,22 @@ func NewBundlesCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			validBundles := bundlesWithInvocationInfo(ctx, bundles)
-			if err := renderBundleTable(ctx, validBundles, console.Stdout(ctx)); err != nil {
-				return err
+
+			var items []bundleItem
+			for _, bundle := range bundlesWithInvocationInfo(ctx, bundles) {
+				items = append(items, bundleItem{info: bundle, timestamp: humanize.Time(bundle.bundle.Timestamp)})
 			}
 
-			idx, err := promptForBundleIdx(ctx, 1, len(validBundles))
+			selected, err := tui.Select(ctx, "Select which command history to upload:", items)
 			if err != nil {
 				return err
 			}
+
+			if selected == nil {
+				return context.Canceled
+			}
+
+			bundleInfo := selected.(bundleItem).info
 
 			// Create a temporary age file that we encrypt and whose contents will be uploaded.
 			file, err := dirs.CreateUserTemp("action-bundles", "actions-*.tar.gz.age")
@@ -80,7 +85,6 @@ func NewBundlesCmd() *cobra.Command {
 			encBundlePath := file.Name()
 			defer os.Remove(encBundlePath)
 
-			bundleInfo := validBundles[idx-1]
 			if err := bundleInfo.bundle.EncryptTo(ctx, file); err != nil {
 				return err
 			}
@@ -137,21 +141,14 @@ func NewBundlesCmd() *cobra.Command {
 	return cmd
 }
 
-func promptForBundleIdx(ctx context.Context, startIdx int, endIdx int) (int, error) {
-	done := console.EnterInputMode(ctx, fmt.Sprintf("\nEnter a bundle index between [%d - %d]: ", startIdx, endIdx))
-	defer done()
-
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		idx, err := strconv.Atoi(strings.TrimSpace(scanner.Text()))
-		if err != nil || idx < startIdx || idx > endIdx {
-			fmt.Printf("please enter a valid index between [%d - %d]: ", startIdx, endIdx)
-			continue
-		}
-		return idx, nil
-	}
-	return -1, fnerrors.BadInputError("unexpected failure while prompting for the bundle index")
+type bundleItem struct {
+	info      *bundleWithInvocationInfo
+	timestamp string
 }
+
+func (b bundleItem) Title() string       { return b.info.invocationInfo.Command }
+func (b bundleItem) Description() string { return b.timestamp }
+func (b bundleItem) FilterValue() string { return b.Title() }
 
 type bundleWithInvocationInfo struct {
 	bundle         *tasks.Bundle
