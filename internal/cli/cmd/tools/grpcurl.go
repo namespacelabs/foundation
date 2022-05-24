@@ -30,11 +30,11 @@ func newGRPCurlCmd() *cobra.Command {
 			done := console.EnterInputMode(ctx)
 			defer done()
 
-			kubectl := exec.CommandContext(ctx, string(bin), args...)
-			kubectl.Stdout = os.Stdout
-			kubectl.Stderr = os.Stderr
-			kubectl.Stdin = os.Stdin
-			return kubectl.Run()
+			grpcurl := exec.CommandContext(ctx, string(bin), args...)
+			grpcurl.Stdout = os.Stdout
+			grpcurl.Stderr = os.Stderr
+			grpcurl.Stdin = os.Stdin
+			return grpcurl.Run()
 		}),
 	}
 
