@@ -107,8 +107,30 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 			}},
 		}})
 
+	var envVars []*schema.BinaryConfig_EnvEntry
+	for j, user := range collection.UserManaged {
+		for k, x := range user {
+			if x.ExperimentalMountAsEnvVar != "" {
+				envVars = append(envVars, &schema.BinaryConfig_EnvEntry{
+					Name:                   x.ExperimentalMountAsEnvVar,
+					ExperimentalFromSecret: fmt.Sprintf("%s:%s", serverSecretName, collection.Names[j][k]),
+				})
+			}
+		}
+	}
+
+	for _, gen := range collection.Generated {
+		if gen.Secret.ExperimentalMountAsEnvVar != "" {
+			envVars = append(envVars, &schema.BinaryConfig_EnvEntry{
+				Name:                   gen.Secret.ExperimentalMountAsEnvVar,
+				ExperimentalFromSecret: fmt.Sprintf("%s:%s", gen.ResourceName, gen.Secret.Name),
+			})
+		}
+	}
+
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
+			Env: envVars,
 			VolumeMount: []*kubedef.ContainerExtension_VolumeMount{{
 				Name:        volId,
 				ReadOnly:    true,
