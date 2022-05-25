@@ -29,7 +29,10 @@ func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOpti
 		}
 		optFns = append(optFns, config.WithSharedCredentialsFiles([]string{cf.SharedCredentialsPath}))
 	}
+	return cf.NewWithCustomCreds(ctx, optFns...)
+}
 
+func (cf ClientFactory) NewWithCustomCreds(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(ctx, optFns...)
 	if err != nil {
 		return aws.Config{}, fmt.Errorf("failed to create aws client config: %w", err)

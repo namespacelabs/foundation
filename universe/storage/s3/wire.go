@@ -67,7 +67,7 @@ func ProvideBucketWithFactory(ctx context.Context, args *BucketArgs, factory cli
 				return nil, fmt.Errorf("%s: bucket is missing a region configuration", args.BucketName)
 			}
 
-			s3client, err := createClient(ctx, factory, bucket.Region)
+			s3client, err := createClient(ctx, factory, minioCreds, bucket.Region)
 			if err != nil {
 				return nil, err
 			}
@@ -82,7 +82,7 @@ func ProvideBucketWithFactory(ctx context.Context, args *BucketArgs, factory cli
 	return nil, fmt.Errorf("%s: no bucket configuration available", args.BucketName)
 }
 
-func createClient(ctx context.Context, factory client.ClientFactory, region string) (*s3.Client, error) {
+func createClient(ctx context.Context, factory client.ClientFactory, minioCreds *minio.Creds, region string) (*s3.Client, error) {
 	// TODO move client creation with a dedicated endpoint into a factory.
 	if *localstackEndpoint != "" {
 		return devs3.CreateLocalstackS3Client(ctx, devs3.LocalstackConfig{
@@ -93,6 +93,9 @@ func createClient(ctx context.Context, factory client.ClientFactory, region stri
 
 	loadOptFns := [](func(*config.LoadOptions) error){}
 	optFns := [](func(*s3.Options)){}
+
+	var cfg aws.Config
+	var err error
 	if *minioEndpoint != "" {
 		resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 			return aws.Endpoint{
@@ -103,13 +106,15 @@ func createClient(ctx context.Context, factory client.ClientFactory, region stri
 		})
 		loadOptFns = append(loadOptFns,
 			config.WithEndpointResolverWithOptions(resolver),
-			config.WithCredentialsProvider(credProvider{}))
+			config.WithCredentialsProvider(credProvider{minioCreds: minioCreds}))
 		optFns = append(optFns, func(o *s3.Options) {
 			o.UsePathStyle = true
 		})
+		cfg, err = factory.NewWithCustomCreds(ctx, append(loadOptFns, config.WithRegion(region))...)
+	} else {
+		cfg, err = factory.New(ctx, append(loadOptFns, config.WithRegion(region))...)
 	}
 
-	cfg, err := factory.New(ctx, append(loadOptFns, config.WithRegion(region))...)
 	if err != nil {
 		return nil, err
 	}
