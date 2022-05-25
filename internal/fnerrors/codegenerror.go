@@ -51,6 +51,9 @@ func NewCodegenMultiError() *CodegenMultiError {
 }
 
 func (c *CodegenMultiError) Error() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	buf := &bytes.Buffer{}
 	for _, err := range c.errs {
 		fmt.Fprintf(buf, "%s\n", err.Error())
