@@ -5,7 +5,6 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -16,10 +15,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/kr/text"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
@@ -92,12 +93,10 @@ func NewSecretsCmd() *cobra.Command {
 					return fnerrors.BadInputError("%s: failed to load: %w", fromFile, err)
 				}
 			} else {
-				prompt := `Specify a single-line value for %q in %s.
-
-Note: for multi-line input, use the --from_file flag.
-			
-Value: `
-				valueStr := readLine(ctx, fmt.Sprintf(prompt, key.Key, key.PackageName))
+				valueStr, err := tui.Ask(ctx, "Set a new secret value", fmt.Sprintf("Package: %s\nKey: %q\n\n%s", key.PackageName, key.Key, lipgloss.NewStyle().Faint(true).Render("Note: for multi-line input, use the --from_file flag.")), "Value")
+				if err != nil {
+					return err
+				}
 				if valueStr == "" {
 					return fnerrors.New("no value provided, skipping")
 				}
@@ -283,18 +282,6 @@ func loadPackage(ctx context.Context, root *workspace.Root, loc fnfs.Location, m
 		return nil, err
 	}
 	return pkg, nil
-}
-
-func readLine(ctx context.Context, prompt string) string {
-	done := console.EnterInputMode(ctx, prompt)
-	defer done()
-
-	scanner := bufio.NewScanner(os.Stdin)
-	if scanner.Scan() {
-		return strings.TrimSpace(scanner.Text())
-	}
-
-	return ""
 }
 
 func parseKey(v string) (*secrets.ValueKey, error) {
