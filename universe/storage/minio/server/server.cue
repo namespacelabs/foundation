@@ -8,7 +8,7 @@ server: fn.#OpaqueServer & {
 
 	isStateful: true
 
-	binary: image: "minio/minio"
+	binary: image: "minio/minio@sha256:de46799fc1ced82b784554ba4602b677a71966148b77f5028132fc50adf37b1f"
 
 	import: [
 		"namespacelabs.dev/foundation/universe/storage/minio/configure",
