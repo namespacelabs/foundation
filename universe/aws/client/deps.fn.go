@@ -8,11 +8,13 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/secrets"
+	"namespacelabs.dev/foundation/universe/storage/minio/creds"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
 	Credentials   *secrets.Value
+	MinioCreds    *creds.Creds
 	OpenTelemetry tracing.DeferredTracerProvider
 }
 
@@ -37,6 +39,15 @@ func makeDeps__hva50k(ctx context.Context, di core.Dependencies) (_ interface{},
 	// name: "aws_credentials_file"
 	// optional: true
 	if deps.Credentials, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChRhd3NfY3JlZGVudGlhbHNfZmlsZSgB", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+		return nil, err
+	}
+
+	if err := di.Instantiate(ctx, creds.Provider__cld7nf, func(ctx context.Context, v interface{}) (err error) {
+		if deps.MinioCreds, err = creds.ProvideCreds(ctx, nil, v.(creds.ExtensionDeps)); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 

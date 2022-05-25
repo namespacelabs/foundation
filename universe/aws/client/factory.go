@@ -14,20 +14,38 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
+	minio "namespacelabs.dev/foundation/universe/storage/minio/creds"
 )
 
 type ClientFactory struct {
 	SharedCredentialsPath string
+	MinioCreds            *minio.Creds
 
 	openTelemetry *tracing.DeferredTracerProvider // Optional. Not set for e.g. testing env.
 }
 
+type credProvider struct {
+	minioCreds *minio.Creds
+}
+
+var _ aws.CredentialsProvider = credProvider{}
+
+func (cf credProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
+	return aws.Credentials{
+		AccessKeyID:     cf.minioCreds.User,
+		SecretAccessKey: cf.minioCreds.Password,
+	}, nil
+}
+
 func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {
 	if os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE") == "" {
-		if cf.SharedCredentialsPath == "" {
+		if cf.SharedCredentialsPath != "" {
+			optFns = append(optFns, config.WithSharedCredentialsFiles([]string{cf.SharedCredentialsPath}))
+		} else if cf.MinioCreds != nil {
+			optFns = append(optFns, config.WithCredentialsProvider(credProvider{cf.MinioCreds}))
+		} else {
 			return aws.Config{}, errors.New("when running without universe/aws/irsa, aws credentials are required to be set")
 		}
-		optFns = append(optFns, config.WithSharedCredentialsFiles([]string{cf.SharedCredentialsPath}))
 	}
 
 	cfg, err := config.LoadDefaultConfig(ctx, optFns...)
@@ -50,7 +68,7 @@ func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOpti
 }
 
 func ProvideClientFactory(_ context.Context, _ *ClientFactoryArgs, deps ExtensionDeps) (ClientFactory, error) {
-	cf := ClientFactory{openTelemetry: &deps.OpenTelemetry}
+	cf := ClientFactory{openTelemetry: &deps.OpenTelemetry, MinioCreds: deps.MinioCreds}
 	if deps.Credentials != nil {
 		cf.SharedCredentialsPath = deps.Credentials.Path
 	}

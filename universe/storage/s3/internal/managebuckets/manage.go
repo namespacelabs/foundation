@@ -8,16 +8,20 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/universe/aws/client"
 	"namespacelabs.dev/foundation/universe/aws/s3"
+	minio "namespacelabs.dev/foundation/universe/storage/minio/creds"
 	fns3 "namespacelabs.dev/foundation/universe/storage/s3"
 )
 
 var (
 	awsCredentialsFile = flag.String("aws_credentials_file", "", "Path to the AWS credentials file.")
+	minioUserFile      = flag.String("minio_user_file", "", "Path to the AWS credentials file.")
+	minioPasswordFile  = flag.String("minio_password_file", "", "Path to the AWS credentials file.")
 )
 
 func main() {
@@ -35,6 +39,10 @@ func apply(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal: %w", err)
 	}
+	minioCreds, err := getMinioCreds()
+	if err != nil {
+		return fmt.Errorf("failed to read Minio credentials: %w", err)
+	}
 
 	ex, wait := executor.New(ctx)
 
@@ -44,6 +52,7 @@ func apply(ctx context.Context) error {
 		ex.Go(func(ctx context.Context) error {
 			b, err := fns3.ProvideBucketWithFactory(ctx, bucket, client.ClientFactory{
 				SharedCredentialsPath: *awsCredentialsFile,
+				MinioCreds:            minioCreds,
 			})
 			if err != nil {
 				return err
@@ -58,4 +67,23 @@ func apply(ctx context.Context) error {
 	}
 
 	return wait()
+}
+
+func getMinioCreds() (*minio.Creds, error) {
+	if *minioPasswordFile != "" && *minioUserFile != "" {
+		pass, err := ioutil.ReadFile(*minioPasswordFile)
+		if err != nil {
+			return nil, err
+		}
+		user, err := ioutil.ReadFile(*minioUserFile)
+		if err != nil {
+			return nil, err
+		}
+
+		return &minio.Creds{
+			User:     string(user),
+			Password: string(pass),
+		}, nil
+	}
+	return nil, nil
 }

@@ -216,9 +216,11 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 		if service == "" {
 			return fmt.Errorf("minio is required, but no endpoint is present that exports %q in %q", minioEndpoint, service)
 		}
-		for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/aws/client") {
-			if secret.Name == "aws_credentials_file" {
-				initArgs = append(initArgs, fmt.Sprintf("--aws_credentials_file=%s", secret.FromPath))
+		for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/storage/minio/creds") {
+			if secret.Name == "root-password" {
+				initArgs = append(initArgs, fmt.Sprintf("--minio_password_file=%s", secret.FromPath))
+			} else if secret.Name == "root-user" {
+				initArgs = append(initArgs, fmt.Sprintf("--minio_user_file=%s", secret.FromPath))
 			}
 		}
 		commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", useMinioFlag, service))
