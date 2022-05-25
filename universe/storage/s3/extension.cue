@@ -3,6 +3,7 @@ import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
 	awsclient "namespacelabs.dev/foundation/universe/aws/client"
+	"namespacelabs.dev/foundation/universe/storage/minio/creds"
 )
 
 $typesProto: inputs.#Proto & {
@@ -12,6 +13,7 @@ $typesProto: inputs.#Proto & {
 extension: fn.#Extension & {
 	instantiate: {
 		clientFactory: awsclient.#Exports.ClientFactory
+		minio_creds:   creds.#Exports.Creds
 	}
 
 	provides: {

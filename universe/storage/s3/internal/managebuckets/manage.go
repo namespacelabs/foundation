@@ -52,8 +52,7 @@ func apply(ctx context.Context) error {
 		ex.Go(func(ctx context.Context) error {
 			b, err := fns3.ProvideBucketWithFactory(ctx, bucket, client.ClientFactory{
 				SharedCredentialsPath: *awsCredentialsFile,
-				MinioCreds:            minioCreds,
-			})
+			}, minioCreds)
 			if err != nil {
 				return err
 			}

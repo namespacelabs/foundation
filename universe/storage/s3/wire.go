@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/universe/aws/client"
 	fns3 "namespacelabs.dev/foundation/universe/aws/s3"
 	devs3 "namespacelabs.dev/foundation/universe/development/localstack/s3"
+	minio "namespacelabs.dev/foundation/universe/storage/minio/creds"
 )
 
 var (
@@ -29,6 +30,19 @@ var (
 	parseErr            error
 )
 
+type credProvider struct {
+	minioCreds *minio.Creds
+}
+
+var _ aws.CredentialsProvider = credProvider{}
+
+func (cf credProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
+	return aws.Credentials{
+		AccessKeyID:     cf.minioCreds.User,
+		SecretAccessKey: cf.minioCreds.Password,
+	}, nil
+}
+
 func ProvidedConfiguration() (*MultipleBucketArgs, error) {
 	parseOnce.Do(func() {
 		parsedConfiguration = &MultipleBucketArgs{}
@@ -38,10 +52,10 @@ func ProvidedConfiguration() (*MultipleBucketArgs, error) {
 }
 
 func ProvideBucket(ctx context.Context, args *BucketArgs, deps ExtensionDeps) (*fns3.Bucket, error) {
-	return ProvideBucketWithFactory(ctx, args, deps.ClientFactory)
+	return ProvideBucketWithFactory(ctx, args, deps.ClientFactory, deps.MinioCreds)
 }
 
-func ProvideBucketWithFactory(ctx context.Context, args *BucketArgs, factory client.ClientFactory) (*fns3.Bucket, error) {
+func ProvideBucketWithFactory(ctx context.Context, args *BucketArgs, factory client.ClientFactory, minioCreds *minio.Creds) (*fns3.Bucket, error) {
 	conf, err := ProvidedConfiguration()
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %w", err)
@@ -87,7 +101,9 @@ func createClient(ctx context.Context, factory client.ClientFactory, region stri
 				SigningRegion: region,
 			}, nil
 		})
-		loadOptFns = append(loadOptFns, config.WithEndpointResolverWithOptions(resolver))
+		loadOptFns = append(loadOptFns,
+			config.WithEndpointResolverWithOptions(resolver),
+			config.WithCredentialsProvider(credProvider{}))
 		optFns = append(optFns, func(o *s3.Options) {
 			o.UsePathStyle = true
 		})
