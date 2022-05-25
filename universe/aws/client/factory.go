@@ -35,13 +35,15 @@ func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOpti
 		return aws.Config{}, fmt.Errorf("failed to create aws client config: %w", err)
 	}
 
-	provider, err := cf.openTelemetry.GetTracerProvider()
-	if err != nil {
-		return aws.Config{}, err
-	}
+	if cf.openTelemetry != nil {
+		provider, err := cf.openTelemetry.GetTracerProvider()
+		if err != nil {
+			return aws.Config{}, err
+		}
 
-	if provider != nil {
-		otelaws.AppendMiddlewares(&cfg.APIOptions, otelaws.WithTracerProvider(provider))
+		if provider != nil {
+			otelaws.AppendMiddlewares(&cfg.APIOptions, otelaws.WithTracerProvider(provider))
+		}
 	}
 
 	return cfg, nil

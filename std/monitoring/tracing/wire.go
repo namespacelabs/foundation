@@ -152,12 +152,16 @@ func getTracerProvider() (t.TracerProvider, error) {
 	return global.tracerProvider, nil
 }
 
-type DeferredTracerProvider struct{}
-
-func (DeferredTracerProvider) GetTracerProvider() (t.TracerProvider, error) {
-	return getTracerProvider()
+type DeferredTracerProvider interface {
+	GetTracerProvider() (t.TracerProvider, error)
 }
 
 func ProvideTracerProvider(context.Context, *NoArgs, ExtensionDeps) (DeferredTracerProvider, error) {
-	return DeferredTracerProvider{}, nil
+	return deferredTracerProvider{}, nil
+}
+
+type deferredTracerProvider struct{}
+
+func (deferredTracerProvider) GetTracerProvider() (t.TracerProvider, error) {
+	return getTracerProvider()
 }
