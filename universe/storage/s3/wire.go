@@ -89,8 +89,6 @@ func createClient(ctx context.Context, factory client.ClientFactory, region stri
 		})
 		loadOptFns = append(loadOptFns, config.WithEndpointResolverWithOptions(resolver))
 		optFns = append(optFns, func(o *s3.Options) {
-			// Make sure the bucket is encoded into the URL after domain is resolved, not as a subdomain.
-			// TODO UsePathStyle is deprecated - use it only if localstack is used before we can dynamically add DNS entries.
 			o.UsePathStyle = true
 		})
 	}
