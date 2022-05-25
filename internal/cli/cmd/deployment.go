@@ -8,12 +8,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/muesli/reflow/wordwrap"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 )
@@ -39,7 +37,7 @@ func NewDeploymentCmd() *cobra.Command {
 			}
 
 			if !defaultYes {
-				if err := checkDelete(ctx, envRef); err != nil {
+				if err := checkDelete(ctx, envRef, true); err != nil {
 					return err
 				}
 			}
@@ -71,7 +69,7 @@ func NewDeploymentCmd() *cobra.Command {
 			}
 
 			if !defaultYes {
-				if err := checkDelete(ctx, envRef); err != nil {
+				if err := checkDelete(ctx, envRef, false); err != nil {
 					return err
 				}
 			}
@@ -94,75 +92,28 @@ func NewDeploymentCmd() *cobra.Command {
 	return cmd
 }
 
-func checkDelete(ctx context.Context, env string) error {
-	done := console.EnterInputMode(ctx)
-	defer done()
+func checkDelete(ctx context.Context, env string, single bool) error {
+	var title string
+	if single {
+		title = fmt.Sprintf("Remove %s's deployment?", env)
+	} else {
+		title = "Remove all Foundation-managed deployments?"
+	}
 
-	p := tea.NewProgram(initialModel(env))
-
-	final, err := p.StartReturningModel()
+	written, err := tui.Ask(ctx, title,
+		fmt.Sprintf("Removing a deployment is a destructive operation -- any data that is a part of the environment will not be recoverable.\n\nPlease type %q to confirm you'd like to remove all of its resources.", env),
+		env)
 	if err != nil {
 		return err
 	}
 
-	if final.(envInputModel).canceled {
+	if written == "" {
 		return context.Canceled
 	}
 
-	if final.(envInputModel).textInput.Value() != env {
+	if written != env {
 		return fnerrors.New("environment name didn't match, canceling")
 	}
 
 	return nil
-}
-
-type envInputModel struct {
-	env       string
-	textInput textinput.Model
-	canceled  bool
-}
-
-func initialModel(env string) envInputModel {
-	ti := textinput.New()
-	ti.Placeholder = env
-	ti.Focus()
-	ti.CharLimit = 32
-	ti.Width = 32
-
-	return envInputModel{
-		env:       env,
-		textInput: ti,
-	}
-}
-
-func (m envInputModel) Init() tea.Cmd {
-	return textinput.Blink
-}
-
-func (m envInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
-			return m, tea.Quit
-
-		case tea.KeyCtrlC, tea.KeyEsc:
-			m.canceled = true
-			return m, tea.Quit
-		}
-	}
-
-	m.textInput, cmd = m.textInput.Update(msg)
-	return m, cmd
-}
-
-func (m envInputModel) View() string {
-	return wordwrap.String(fmt.Sprintf(
-		"Removing a deployment is a destructive operation -- any data that is a part of the environment will not be recoverable.\n\nPlease type %q to confirm you'd like to remove all of its resources.\n\n%s\n\n%s",
-		m.env,
-		m.textInput.View(),
-		"(esc to quit)",
-	)+"\n", 80)
 }

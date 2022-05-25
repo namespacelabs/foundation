@@ -52,7 +52,7 @@ func initialSelectModel(title string, items []list.Item, height int) selectModel
 	li.Title = title
 	li.SetShowStatusBar(false)
 	li.SetFilteringEnabled(false)
-	li.Styles.Title = lipgloss.NewStyle().Bold(true)
+	li.Styles.Title = titleStyle
 	li.Styles.PaginationStyle = list.DefaultStyles().PaginationStyle
 	li.Styles.HelpStyle = list.DefaultStyles().HelpStyle
 
@@ -92,12 +92,8 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m selectModel) View() string {
-	return selectMainStyle.Render(m.list.View())
+	return mainStyle.Render(m.list.View())
 }
-
-var (
-	selectMainStyle = lipgloss.NewStyle().Margin(0, 2, 1)
-)
 
 type itemDelegate struct {
 	styles list.DefaultItemStyles
