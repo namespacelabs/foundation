@@ -413,11 +413,6 @@ func formatCodegenError(w io.Writer, err *CodegenError, opts *FormatOptions) {
 }
 
 func formatCodegenMultiError(w io.Writer, err *CodegenMultiError, opts *FormatOptions) {
-	err.mu.Lock()
-	defer err.mu.Unlock()
-
-	err.aggregateErrors()
-
 	// Print aggregated errors.
 	for commonErr, whatpkgs := range err.commonerrs {
 		for what, pkgs := range whatpkgs {
@@ -436,15 +431,7 @@ func formatCodegenMultiError(w io.Writer, err *CodegenMultiError, opts *FormatOp
 			fmt.Fprintf(w, "%s at phase [%s] for package(s) %s\n", commonErr.Error(), phase, pkgnamesdisplay)
 		}
 	}
-	// Print all unique CodegenErrors that don't have a common root.
-	var uniqgenerrs []CodegenError
-	for _, generr := range err.errs {
-		_, duplicate := err.duplicateerrs[generr.fingerprint()]
-		if !duplicate {
-			uniqgenerrs = append(uniqgenerrs, generr)
-		}
-	}
-	for _, generr := range uniqgenerrs {
+	for _, generr := range err.uniqgenerrs {
 		formatCodegenError(w, &generr, opts)
 	}
 }
