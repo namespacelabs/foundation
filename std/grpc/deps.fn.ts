@@ -14,11 +14,11 @@ export const TransitiveInitializers: Initializer[] = [
 ];
 
 
-export const BackendProvider = <T>(graph: DependencyGraph, outputTypeCtr: new (...args: any[]) => T) =>
+export const BackendProvider = <T>(graph: DependencyGraph, outputTypeFactory: (...args: any[]) => T) =>
 	provideBackend(
-		outputTypeCtr
+		outputTypeFactory
 	);
 
-export type ProvideBackend = <T>(outputTypeCtr: new (...args: any[]) => T) =>
+export type ProvideBackend = <T>(outputTypeFactory: (...args: any[]) => T) =>
 		T;
 export const provideBackend: ProvideBackend = impl.provideBackend;

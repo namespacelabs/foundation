@@ -1,6 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
+	"namespacelabs.dev/foundation/std/nodejs/grpcgen"
 )
 
 $providerProto: inputs.#Proto & {
@@ -8,6 +9,10 @@ $providerProto: inputs.#Proto & {
 }
 
 extension: fn.#Extension & {
+	import: [
+		"namespacelabs.dev/foundation/std/nodejs/grpcgen",
+	]
+
 	provides: {
 		GrpcRegistrar: {
 			input: $providerProto.types.NoArgs
