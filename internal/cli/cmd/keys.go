@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
@@ -214,16 +215,8 @@ func enc(ctx context.Context, dir string, src fs.FS, reencrypt bool) error {
 	return nil
 }
 
-func readPassword(ctx context.Context, prompt string) ([]byte, error) {
-	if term.IsTerminal(syscall.Stdin) {
-		done := console.EnterInputMode(ctx, prompt)
-		defer done()
-		pass, err := term.ReadPassword(syscall.Stdin)
-		if err != nil {
-			return nil, err
-		}
-		return pass, nil
-	} else {
+func readSecret(ctx context.Context, title, desc, placeholder string) ([]byte, error) {
+	if !term.IsTerminal(syscall.Stdin) {
 		reader := bufio.NewReader(os.Stdin)
 		// Read until (required) newline.
 		s, err := reader.ReadString('\n')
@@ -232,16 +225,29 @@ func readPassword(ctx context.Context, prompt string) ([]byte, error) {
 		}
 		return []byte(s), nil
 	}
+
+	secret, err := tui.Ask(ctx, title, desc, placeholder)
+	if err != nil {
+		return nil, err
+	}
+
+	if secret == "" {
+		return nil, context.Canceled
+	}
+
+	return []byte(secret), nil
 }
 
 func importImpl(ctx context.Context, publicKey string) error {
 	if _, err := age.ParseRecipients(strings.NewReader(publicKey)); err != nil {
 		return fnerrors.BadInputError("key %q is not valid: %w", publicKey, err)
 	}
+
 	keyDir, err := keys.EnsureKeysDir(ctx)
 	if err != nil {
 		return fnerrors.InternalError("failed to fetch keydir: %w", err)
 	}
+
 	// Check if a given key already exists. We should probably ask if overwrite is intended. As for now, bail out.
 	if err := keys.Visit(ctx, keyDir, func(xid *age.X25519Identity) error {
 		if xid.Recipient().String() == publicKey {
@@ -252,15 +258,18 @@ func importImpl(ctx context.Context, publicKey string) error {
 		return err
 	}
 
-	pass, err := readPassword(ctx, "Please paste the private key (the input will not be echo-ed):\n")
+	pass, err := readSecret(ctx, "Please specify the private key to import",
+		"The input will not be echo-ed.", "AGE-SECRET-KEY-... (private key)")
 	if err != nil {
 		return err
 	}
+
 	if identities, err := age.ParseIdentities(bytes.NewReader(pass)); err != nil {
 		return err
 	} else if len(identities) != 1 {
 		return fmt.Errorf("expecting one key to be present, got %d", len(identities))
 	}
+
 	if err := fnfs.WriteFile(ctx, keyDir, publicKey+".txt", append(pass, '\n'), 0600); err != nil {
 		return err
 	}
