@@ -67,6 +67,13 @@ func (c *CodegenMultiError) Append(generr CodegenError) {
 	c.mu.Unlock()
 }
 
+func (c *CodegenMultiError) IsEmpty() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return len(c.errs) == 0
+}
+
 func (c *CodegenMultiError) addCommonError(error error, err1 CodegenError, err2 CodegenError) {
 	_, has := c.commonerrs[error]
 	if !has {

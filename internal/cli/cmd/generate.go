@@ -48,7 +48,14 @@ func NewGenerateCmd() *cobra.Command {
 				return err
 			}
 			// Generate code.
-			return codegen.ForLocationsGenCode(ctx, root, list.Locations, codegenMultiErr.Append)
+			err = codegen.ForLocationsGenCode(ctx, root, list.Locations, codegenMultiErr.Append)
+			if err != nil {
+				return err
+			}
+			if !codegenMultiErr.IsEmpty() {
+				return codegenMultiErr
+			}
+			return nil
 		}),
 	}
 
