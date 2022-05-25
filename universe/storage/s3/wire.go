@@ -77,7 +77,7 @@ func createClient(ctx context.Context, factory client.ClientFactory, region stri
 		})
 	}
 
-	loadOptFns := [](func(*config.LoadOptions) error){config.WithRegion(region)}
+	loadOptFns := [](func(*config.LoadOptions) error){}
 	optFns := [](func(*s3.Options)){}
 	if *minioEndpoint != "" {
 		resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
@@ -95,7 +95,7 @@ func createClient(ctx context.Context, factory client.ClientFactory, region stri
 		})
 	}
 
-	cfg, err := factory.New(ctx, loadOptFns...)
+	cfg, err := factory.New(ctx, append(loadOptFns, config.WithRegion(region))...)
 	if err != nil {
 		return nil, err
 	}
