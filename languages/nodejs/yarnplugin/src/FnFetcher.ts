@@ -11,24 +11,43 @@ import {
 	tgzUtils,
 } from "@yarnpkg/core";
 import { CwdFS, PortablePath } from "@yarnpkg/fslib";
-import * as path from "path";
-import { PROTOCOL } from "./constants";
+import { readFileSync } from "fs";
+import path from "path";
+import { LOCK_FILE_PATH, PROTOCOL } from "./constants";
 
 export class FnFetcher implements Fetcher {
+	readonly #modules: { [key: string]: { path: string } };
+
+	constructor() {
+		const lockFileBytes = readFileSync(LOCK_FILE_PATH, "utf8");
+		const lockFile = JSON.parse(lockFileBytes);
+		this.#modules = lockFile.modules || {};
+	}
+
 	supports(locator: Locator, opts: MinimalFetchOptions) {
 		return locator.reference.startsWith(PROTOCOL);
 	}
 
 	getLocalPath(locator: Locator, opts: FetchOptions) {
-		// Process the file path to point to the Foundation cache location.
-		const basePath = locator.reference.replace(PROTOCOL, "");
-		const fnModuleCacheDir = process.env.FN_MODULE_CACHE;
-		if (!fnModuleCacheDir) {
-			throw new Error(
-				`Foundation Yarn plugin: $FN_MODULE_CACHE is not defined. Please avoid running Yarn manually, use "fn tidy" instead.`
-			);
+		const { selector: packageName } = structUtils.parseRange(locator.reference);
+		if (!packageName) {
+			throw new Error(`locator.reference can't be parsed: ${locator.reference}`);
 		}
-		return path.join(fnModuleCacheDir, basePath) as PortablePath;
+
+		for (const [moduleName, module] of Object.entries(this.#modules)) {
+			if (packageName.startsWith(moduleName)) {
+				const relPath = packageName.substring(moduleName.length);
+				const resolvedPath = path.join(module.path, relPath);
+				return resolvedPath as PortablePath;
+			}
+		}
+		throw new Error(
+			`Package "${packageName}" couldn't be resolved. Known modules:\n${JSON.stringify(
+				this.#modules,
+				undefined,
+				2
+			)}`
+		);
 	}
 
 	async fetch(locator: Locator, opts: FetchOptions) {

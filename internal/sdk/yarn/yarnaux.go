@@ -22,10 +22,6 @@ const (
 	PluginFn      = "plugin-foundation.cjs"
 	YarnRcFn      = ".yarnrc.yml"
 	yarnRcContent = `nodeLinker: node-modules
-
-npmScopes:
-  namespacelabs:
-    npmRegistryServer: "https://us-npm.pkg.dev/foundation-344819/npm-prebuilts/"
 `
 )
 

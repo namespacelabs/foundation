@@ -14,12 +14,25 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
+var (
+	npmNamespaceAliases = map[schema.PackageName]NpmPackage{
+		runtimeNode: runtimeNpmPackage,
+	}
+)
+
 type NpmPackage string
 
+func toNpmNamespace(moduleName string) string {
+	return strings.Join(strings.Split(moduleName, "/"), "-")
+}
+
 func toNpmPackage(loc workspace.Location) (NpmPackage, error) {
+	if pkg, ok := npmNamespaceAliases[loc.PackageName]; ok {
+		return NpmPackage(pkg), nil
+	}
+
 	pkg := strings.Join(strings.Split(loc.Rel(), "/"), "-")
-	namespace := strings.Join(strings.Split(loc.Module.ModuleName(), "/"), "-")
-	return NpmPackage(fmt.Sprintf("@%s/%s", namespace, pkg)), nil
+	return NpmPackage(fmt.Sprintf("@%s/%s", toNpmNamespace(loc.Module.ModuleName()), pkg)), nil
 }
 
 func npmImport(npmPackage NpmPackage, moduleName string) string {
