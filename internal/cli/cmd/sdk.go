@@ -16,8 +16,8 @@ import (
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/grpcurl"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
@@ -147,9 +147,6 @@ func newSdkShellCmd(selectedSdkList func() []sdk) *cobra.Command {
 				updatedPath = prependPath(updatedPath, r.Value)
 			}
 
-			done := console.EnterInputMode(ctx)
-			defer done()
-
 			var shellArgs, shellEnv []string
 			switch filepath.Base(shell) {
 			case "bash":
@@ -171,12 +168,9 @@ func newSdkShellCmd(selectedSdkList func() []sdk) *cobra.Command {
 			}
 
 			cmd := exec.CommandContext(ctx, shell, shellArgs...)
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
 			cmd.Env = append(os.Environ(), "PATH="+updatedPath)
 			cmd.Env = append(cmd.Env, shellEnv...)
-			return cmd.Run()
+			return localexec.RunInteractive(ctx, cmd)
 		}),
 	}
 

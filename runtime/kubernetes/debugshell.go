@@ -9,7 +9,7 @@ import (
 	"os/exec"
 
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 )
@@ -20,15 +20,9 @@ func (r boundEnv) Kubectl(ctx context.Context, io rtypes.IO, args ...string) err
 		return err
 	}
 
-	done := console.EnterInputMode(ctx)
-	defer done()
-
 	kubectl := exec.CommandContext(ctx, string(kubectlBin),
 		append([]string{"--kubeconfig=" + r.hostEnv.Kubeconfig, "--context=" + r.hostEnv.Context, "-n", r.moduleNamespace}, args...)...)
-	kubectl.Stdout = io.Stdout
-	kubectl.Stderr = io.Stderr
-	kubectl.Stdin = io.Stdin
-	return kubectl.Run()
+	return localexec.RunInteractive(ctx, kubectl)
 }
 
 type KubeConfig struct {

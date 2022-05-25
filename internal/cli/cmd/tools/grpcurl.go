@@ -6,12 +6,11 @@ package tools
 
 import (
 	"context"
-	"os"
 	"os/exec"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/sdk/grpcurl"
 )
 
@@ -27,14 +26,7 @@ func newGRPCurlCmd() *cobra.Command {
 				return err
 			}
 
-			done := console.EnterInputMode(ctx)
-			defer done()
-
-			grpcurl := exec.CommandContext(ctx, string(bin), args...)
-			grpcurl.Stdout = os.Stdout
-			grpcurl.Stderr = os.Stderr
-			grpcurl.Stdin = os.Stdin
-			return grpcurl.Run()
+			return localexec.RunInteractive(ctx, exec.CommandContext(ctx, string(bin), args...))
 		}),
 	}
 

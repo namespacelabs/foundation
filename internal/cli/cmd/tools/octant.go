@@ -6,12 +6,11 @@ package tools
 
 import (
 	"context"
-	"os"
 	"os/exec"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/sdk/octant"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
@@ -48,14 +47,7 @@ func newOctantCmd() *cobra.Command {
 
 			cfg := k8s.KubeConfig()
 
-			done := console.EnterInputMode(ctx)
-			defer done()
-
-			octant := exec.CommandContext(ctx, string(bin), "--context="+cfg.Context, "--kubeconfig="+cfg.Config, "-n", cfg.Namespace)
-			octant.Stdout = os.Stdout
-			octant.Stderr = os.Stderr
-			octant.Stdin = os.Stdin
-			return octant.Run()
+			return localexec.RunInteractive(ctx, exec.CommandContext(ctx, string(bin), "--context="+cfg.Context, "--kubeconfig="+cfg.Config, "-n", cfg.Namespace))
 		}),
 	}
 

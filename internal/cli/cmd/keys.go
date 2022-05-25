@@ -26,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/keys"
+	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
@@ -159,16 +160,9 @@ func NewKeysCmd() *cobra.Command {
 			}
 
 			if err := func() error {
-				done := console.EnterInputMode(ctx)
-				defer done()
-
 				bash := exec.CommandContext(ctx, "bash")
-				bash.Stdout = os.Stdout
-				bash.Stderr = os.Stderr
-				bash.Stdin = os.Stdin
 				bash.Dir = tmpDirPath
-
-				return bash.Run()
+				return localexec.RunInteractive(ctx, bash)
 			}(); err != nil {
 				return err
 			}
