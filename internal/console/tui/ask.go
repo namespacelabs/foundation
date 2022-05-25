@@ -46,7 +46,6 @@ func initialAskModel(title, description, placeholder string) askModel {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
 	ti.Focus()
-	ti.CharLimit = 64
 	ti.Width = 64
 
 	help := help.New()
@@ -80,6 +79,7 @@ func (m askModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		m.wordwrap = msg.Width > 80
+		m.textInput.Width = msg.Width - 5
 	}
 
 	m.textInput, cmd = m.textInput.Update(msg)
