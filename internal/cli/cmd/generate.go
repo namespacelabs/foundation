@@ -10,7 +10,6 @@ import (
 	"github.com/philopon/go-toposort"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
@@ -36,11 +35,9 @@ func NewGenerateCmd() *cobra.Command {
 				return err
 			}
 
-			codegenMultiErr := fnerrors.NewCodegenMultiError()
-			// Aggregates and prints all accumulated codegen errors on return.
-			defer fnerrors.Format(console.Stderr(ctx), codegenMultiErr, fnerrors.WithColors(true))
+			errorCollector := fnerrors.ErrorCollector{}
 
-			if err := generateProtos(ctx, root, codegenMultiErr.Append); err != nil {
+			if err := generateProtos(ctx, root, errorCollector.Append); err != nil {
 				return err
 			}
 			list, err := workspace.ListSchemas(ctx, root)
@@ -48,12 +45,11 @@ func NewGenerateCmd() *cobra.Command {
 				return err
 			}
 			// Generate code.
-			err = codegen.ForLocationsGenCode(ctx, root, list.Locations, codegenMultiErr.Append)
-			if err != nil {
+			if err := codegen.ForLocationsGenCode(ctx, root, list.Locations, errorCollector.Append); err != nil {
 				return err
 			}
-			if !codegenMultiErr.IsEmpty() {
-				return codegenMultiErr
+			if !errorCollector.IsEmpty() {
+				return errorCollector.Build()
 			}
 			return nil
 		}),

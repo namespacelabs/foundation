@@ -26,34 +26,91 @@ func (c CodegenError) fingerprint() string {
 	return fmt.Sprintf("%s:%v:%v", c.What, c.PackageName, c.Err)
 }
 
+// A thread-safe container for [CodegenError] that can generate a [CodegenMultiError].
+type ErrorCollector struct {
+	// guards access to fields below.
+	mu sync.Mutex
+
+	// accumulated CodenErrors.
+	errs []CodegenError
+}
+
+func (c *ErrorCollector) Append(generr CodegenError) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.errs = append(c.errs, generr)
+}
+
+func (c *ErrorCollector) IsEmpty() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return len(c.errs) == 0
+}
+
+func (c *ErrorCollector) Build() *CodegenMultiError {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return NewCodegenMultiError(c.errs)
+}
+
 type packages map[string]struct{}
 
 // CodegenMultiError accumulates multiple CodegenError(s).
 type CodegenMultiError struct {
-	// guards access to fields below.
-	mu sync.Mutex
-
 	// accumulated CodenErrors.
 	errs []CodegenError
 
 	// aggregates CodegenErrors by their root cause.
 	commonerrs map[error]map[string]packages
 
-	// tracks duplicate CodegenErrors by fingerprint.
-	duplicateerrs map[string]struct{}
+	// contains errors not grouped in [commonerrs]
+	uniqgenerrs []CodegenError
 }
 
-func NewCodegenMultiError() *CodegenMultiError {
-	return &CodegenMultiError{
-		commonerrs:    make(map[error]map[string]packages),
-		duplicateerrs: make(map[string]struct{}),
+// NewCodegenMultiError walks through accumulated CodegenErrors aggregating
+// those errors whose chains share a common root.
+func NewCodegenMultiError(errs []CodegenError) *CodegenMultiError {
+	// tracks duplicate CodegenErrors by fingerprint.
+	commonerrs := make(map[error]map[string]packages)
+	duplicateerrs := make(map[string]struct{})
+
+	for i := 0; i < len(errs); i++ {
+		for j := 0; j < len(errs); j++ {
+			c1 := errs[i]
+			c2 := errs[j]
+			err1 := c1.Err
+			err2 := c2.Err
+			if rootErr := commonRootError(err1, err2); rootErr != nil {
+				addCommonError(commonerrs, rootErr, c1)
+				addCommonError(commonerrs, rootErr, c1)
+
+				_, has := duplicateerrs[c1.fingerprint()]
+				if !has {
+					duplicateerrs[c1.fingerprint()] = struct{}{}
+				}
+				_, has = duplicateerrs[c2.fingerprint()]
+				if !has {
+					duplicateerrs[c2.fingerprint()] = struct{}{}
+				}
+			}
+		}
 	}
+	// Find all unique CodegenErrors that don't have a common root.
+	var uniqgenerrs []CodegenError
+	for _, generr := range errs {
+		_, duplicate := duplicateerrs[generr.fingerprint()]
+		if !duplicate {
+			uniqgenerrs = append(uniqgenerrs, generr)
+		}
+	}
+
+	err := &CodegenMultiError{errs: errs, commonerrs: commonerrs, uniqgenerrs: uniqgenerrs}
+	return err
 }
 
 func (c *CodegenMultiError) Error() string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	buf := &bytes.Buffer{}
 	for _, err := range c.errs {
 		fmt.Fprintf(buf, "%s\n", err.Error())
@@ -61,48 +118,19 @@ func (c *CodegenMultiError) Error() string {
 	return buf.String()
 }
 
-func (c *CodegenMultiError) Append(generr CodegenError) {
-	c.mu.Lock()
-	c.errs = append(c.errs, generr)
-	c.mu.Unlock()
-}
-
-func (c *CodegenMultiError) IsEmpty() bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	return len(c.errs) == 0
-}
-
-func (c *CodegenMultiError) addCommonError(error error, err1 CodegenError, err2 CodegenError) {
-	_, has := c.commonerrs[error]
+func addCommonError(commonerrs map[error]map[string]packages, root error, err CodegenError) {
+	_, has := commonerrs[root]
 	if !has {
-		c.commonerrs[error] = make(map[string]packages)
+		commonerrs[root] = make(map[string]packages)
 	}
-	whatpkgs := c.commonerrs[error]
+	whatpkgs := commonerrs[root]
 
-	_, has = whatpkgs[err1.What]
+	_, has = whatpkgs[err.What]
 	if !has {
-		whatpkgs[err1.What] = make(packages)
+		whatpkgs[err.What] = make(packages)
 	}
-	pkgs := whatpkgs[err1.What]
-	pkgs[err1.PackageName] = struct{}{}
-
-	_, has = whatpkgs[err2.What]
-	if !has {
-		whatpkgs[err2.What] = make(packages)
-	}
-	pkgs = whatpkgs[err2.What]
-	pkgs[err2.PackageName] = struct{}{}
-
-	_, has = c.duplicateerrs[err1.fingerprint()]
-	if !has {
-		c.duplicateerrs[err1.fingerprint()] = struct{}{}
-	}
-	_, has = c.duplicateerrs[err2.fingerprint()]
-	if !has {
-		c.duplicateerrs[err2.fingerprint()] = struct{}{}
-	}
+	pkgs := whatpkgs[err.What]
+	pkgs[err.PackageName] = struct{}{}
 }
 
 // commonRootError unwraps the chains of err1 and err2
@@ -130,20 +158,4 @@ func commonRootError(err1 error, err2 error) error {
 		}
 	}
 	return nil
-}
-
-// aggregateErrors walks through accumulated CodegenErrors aggregating
-// those errors whose chains share a common root.
-func (c *CodegenMultiError) aggregateErrors() {
-	for i := 0; i < len(c.errs); i++ {
-		for j := 0; j < len(c.errs); j++ {
-			c1 := c.errs[i]
-			c2 := c.errs[j]
-			err1 := c1.Err
-			err2 := c2.Err
-			if rootErr := commonRootError(err1, err2); rootErr != nil {
-				c.addCommonError(rootErr, c1, c2)
-			}
-		}
-	}
 }

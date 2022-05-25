@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/inputs"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cue"
@@ -68,11 +67,16 @@ func newServerCmd() *cobra.Command {
 				return err
 			}
 
-			codegenMultiErr := fnerrors.NewCodegenMultiError()
 			// Aggregates and prints all accumulated codegen errors on return.
-			defer fnerrors.Format(console.Stderr(ctx), codegenMultiErr, fnerrors.WithColors(true))
+			errorCollector := fnerrors.ErrorCollector{}
 
-			return codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, codegenMultiErr.Append)
+			if err := codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, errorCollector.Append); err != nil {
+				return err
+			}
+			if !errorCollector.IsEmpty() {
+				return errorCollector.Build()
+			}
+			return nil
 		}),
 	}
 
