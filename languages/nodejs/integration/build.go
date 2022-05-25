@@ -207,10 +207,18 @@ func prepareYarnBase(ctx context.Context, nodejsBase string, platform specs.Plat
 	for k, v := range YarnEnvArgs("/") {
 		buildBase = buildBase.AddEnv(k, v)
 	}
+	buildBase = buildBase.Run(llb.Shlex(fmt.Sprintf(
+		"yarn global add typescript@%s",
+		builtin().DevDependencies["typescript"],
+	))).Root()
 
 	if isDevBuild {
 		// Nodemon is used to watch for changes in the source code within a container and restart the "ts-node" server.
-		buildBase = buildBase.Run(llb.Shlex("yarn global add nodemon@2.0.15 ts-node@10.7.0 typescript@4.6.2")).Root()
+		buildBase = buildBase.Run(llb.Shlex(fmt.Sprintf(
+			"yarn global add nodemon@%s ts-node@%s",
+			builtin().DevBuildDependencies["nodemon"],
+			builtin().DevBuildDependencies["ts-node"],
+		))).Root()
 	}
 
 	buildBase, err := copyYarnBinaryFromCache(ctx, buildBase)

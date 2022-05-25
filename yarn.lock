@@ -50,17 +50,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@workspace:languages/nodejs/testdata/extensions/batchformatter"
   dependencies:
-    "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
-    "@tsconfig/node16": 1.0.2
-    "@types/google-protobuf": ^3.15.5
-    "@types/node": 16.x
-    "@types/yargs": 16.x
-    google-protobuf: ^3.20.0
-    source-map-support: 0.5.21
-    typescript: 4.6.2
-    yargs: 16.x
   languageName: unknown
   linkType: soft
 
@@ -68,16 +59,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:languages/nodejs/testdata/extensions/numberformatter"
   dependencies:
-    "@grpc/grpc-js": 1.5.8
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
-    "@tsconfig/node16": 1.0.2
-    "@types/google-protobuf": ^3.15.5
-    "@types/node": 16.x
-    "@types/yargs": 16.x
-    google-protobuf: ^3.20.0
-    source-map-support: 0.5.21
-    typescript: 4.6.2
-    yargs: 16.x
   languageName: unknown
   linkType: soft
 
@@ -85,20 +67,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-server@workspace:languages/nodejs/testdata/server"
   dependencies:
-    "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
-    "@tsconfig/node16": 1.0.2
-    "@types/google-protobuf": ^3.15.5
-    "@types/node": 16.x
-    "@types/yargs": 16.x
-    google-protobuf: ^3.20.0
-    source-map-support: 0.5.21
-    typescript: 4.6.2
-    yargs: 16.x
   languageName: unknown
   linkType: soft
 
@@ -106,17 +79,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:languages/nodejs/testdata/services/numberformatter"
   dependencies:
-    "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
-    "@tsconfig/node16": 1.0.2
-    "@types/google-protobuf": ^3.15.5
-    "@types/node": 16.x
-    "@types/yargs": 16.x
-    google-protobuf: ^3.20.0
-    source-map-support: 0.5.21
-    typescript: 4.6.2
-    yargs: 16.x
   languageName: unknown
   linkType: soft
 
@@ -124,17 +88,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser@workspace:languages/nodejs/testdata/services/postuser"
   dependencies:
-    "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/std-grpc": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
-    "@tsconfig/node16": 1.0.2
-    "@types/google-protobuf": ^3.15.5
-    "@types/node": 16.x
-    "@types/yargs": 16.x
-    google-protobuf: ^3.20.0
-    source-map-support: 0.5.21
-    typescript: 4.6.2
-    yargs: 16.x
   languageName: unknown
   linkType: soft
 
@@ -142,16 +97,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple"
   dependencies:
-    "@grpc/grpc-js": 1.5.8
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
-    "@tsconfig/node16": 1.0.2
-    "@types/google-protobuf": ^3.15.5
-    "@types/node": 16.x
-    "@types/yargs": 16.x
-    google-protobuf: ^3.20.0
-    source-map-support: 0.5.21
-    typescript: 4.6.2
-    yargs: 16.x
   languageName: unknown
   linkType: soft
 
@@ -159,16 +105,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp@workspace:languages/nodejs/testdata/services/simplehttp"
   dependencies:
-    "@grpc/grpc-js": 1.5.8
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
-    "@tsconfig/node16": 1.0.2
-    "@types/google-protobuf": ^3.15.5
-    "@types/node": 16.x
-    "@types/yargs": 16.x
-    google-protobuf: ^3.20.0
-    source-map-support: 0.5.21
-    typescript: 4.6.2
-    yargs: 16.x
   languageName: unknown
   linkType: soft
 
@@ -176,28 +113,21 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-grpc@workspace:std/grpc"
   dependencies:
-    "@grpc/grpc-js": 1.5.8
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
-    "@tsconfig/node16": 1.0.2
-    "@types/google-protobuf": ^3.15.5
-    "@types/node": 16.x
-    "@types/yargs": 16.x
-    google-protobuf: ^3.20.0
-    source-map-support: 0.5.21
-    typescript: 4.6.2
-    yargs: 16.x
   languageName: unknown
   linkType: soft
 
 "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/languages/nodejs/runtime":
   version: 0.0.0
-  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/languages/nodejs/runtime::2a7571"
+  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/languages/nodejs/runtime::23a85d"
   dependencies:
+    "@grpc/grpc-js": 1.5.8
     fastify: 3.29.0
+    google-protobuf: 3.20.0
     source-map-support: 0.5.21
     typescript: 4.6.2
-    yargs: 16.x
-  checksum: e392cb68ffadb46b66a4847397b024592599f6aedafc06010fddef4913f4831ebbf89f3afd08607ad0b3e26735621f7b98ae24c7aad4de16a880ab33aba29133
+    yargs: 16.2.0
+  checksum: 318d3d47dc44df031476adf86f69d1b0b49537234902068fe24e077ba21efde8c780522488fe649a62f7693562e15c6b2fc4a8f08dfddc7495b1f1f1127ae410
   languageName: node
   linkType: hard
 
@@ -281,7 +211,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/google-protobuf@npm:^3.15.5":
+"@types/google-protobuf@npm:3.15.6":
   version: 3.15.6
   resolution: "@types/google-protobuf@npm:3.15.6"
   checksum: e8f7cd9d263093cd0a72eb10ff0bb8221e28aa8b9f601eddbe19b286932aae96fbc9ccb1f3a744525e7811fa87a6aeefd431858b6e2034f14a2dc68710a86d54
@@ -295,10 +225,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:16.x":
-  version: 16.11.34
-  resolution: "@types/node@npm:16.11.34"
-  checksum: 8dad6065b13a4b68a036e878989a481795bf80a360224c2c72b49ec7b94c8c68fef27a220f3bf6388f5420ca76b95cb9ffa6ada8d8c346c55b11c379f1cf172d
+"@types/node@npm:17.0.35":
+  version: 17.0.35
+  resolution: "@types/node@npm:17.0.35"
+  checksum: 7a24946ae7fd20267ed92466384f594e448bfb151081158d565cc635d406ecb29ea8fb85fcd2a1f71efccf26fb5bd3c6f509bde56077eb8b832b847a6664bc62
   languageName: node
   linkType: hard
 
@@ -316,12 +246,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/yargs@npm:16.x":
-  version: 16.0.4
-  resolution: "@types/yargs@npm:16.0.4"
+"@types/yargs@npm:16.0.0":
+  version: 16.0.0
+  resolution: "@types/yargs@npm:16.0.0"
   dependencies:
     "@types/yargs-parser": "*"
-  checksum: caa21d2c957592fe2184a8368c8cbe5a82a6c2e2f2893722e489f842dc5963293d2f3120bc06fe3933d60a3a0d1e2eb269649fd6b1947fe1820f8841ba611dd9
+  checksum: 84f6c50364d28a565a470cbea6f014eddd8e3add452c95b45b5c67436151d32b6cc8286a1876ec0ce503f4d2633fd508996e572349a5c358301cb4a71bead285
   languageName: node
   linkType: hard
 
@@ -584,10 +514,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"google-protobuf@npm:^3.20.0":
-  version: 3.20.1
-  resolution: "google-protobuf@npm:3.20.1"
-  checksum: a440fbc329bb441b253bc421b01540918f4b66921c47a3bc57d154d2677dc917cb1a29126ff35ddc4d8872d1b5843ef1ece60b6dff506ba64a9f5807962d3f61
+"google-protobuf@npm:3.20.0":
+  version: 3.20.0
+  resolution: "google-protobuf@npm:3.20.0"
+  checksum: 2d243504362875f24a6e61fa3412cbdf04530166204f568734c2aa1b417336787555c0086c75b065c6972cbcf5cd47c3f1af4cadfe0655f0a75da3e1f962c656
   languageName: node
   linkType: hard
 
@@ -786,6 +716,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
+    "@tsconfig/node16": 1.0.2
+    "@types/google-protobuf": 3.15.6
+    "@types/node": 17.0.35
+    "@types/yargs": 16.0.0
     typescript: 4.6.2
   languageName: unknown
   linkType: soft
@@ -953,7 +887,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yargs@npm:16.x, yargs@npm:^16.2.0":
+"yargs@npm:16.2.0, yargs@npm:^16.2.0":
   version: 16.2.0
   resolution: "yargs@npm:16.2.0"
   dependencies:
