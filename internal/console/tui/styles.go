@@ -7,7 +7,8 @@ package tui
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	mainStyle  = lipgloss.NewStyle().Margin(0, 2, 1)
-	titleStyle = lipgloss.NewStyle().Bold(true)
-	descStyle  = lipgloss.NewStyle()
+	listMainStyle = lipgloss.NewStyle().Margin(0, 2, 1)
+	askMainStyle  = lipgloss.NewStyle().Margin(0, 2, 1, 4) // A wider margin is used to align with lists.
+	titleStyle    = lipgloss.NewStyle().Bold(true)
+	descStyle     = lipgloss.NewStyle()
 )

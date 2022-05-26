@@ -92,7 +92,7 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m selectModel) View() string {
-	return mainStyle.Render(m.list.View())
+	return listMainStyle.Render(m.list.View())
 }
 
 type itemDelegate struct {

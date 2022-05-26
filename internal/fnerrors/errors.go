@@ -279,6 +279,7 @@ func format(w io.Writer, err error, opts *FormatOptions) {
 	if err == nil {
 		return
 	}
+
 	switch x := err.(type) {
 	case *usageError:
 		formatUsageError(w, x, opts)

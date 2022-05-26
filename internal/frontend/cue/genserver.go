@@ -22,7 +22,7 @@ type GenServerOpts struct {
 	Framework schema.Framework
 }
 
-func GenerateServer(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServerOpts) error {
+func CreateServerScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServerOpts) error {
 	return generateCueSource(ctx, fsfs, loc.Rel(serverFileName), serverTmpl, serverTmplOptions{
 		Id:        ids.NewRandomBase32ID(12),
 		Name:      opts.Name,

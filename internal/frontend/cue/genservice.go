@@ -21,7 +21,7 @@ type GenServiceOpts struct {
 	Framework schema.Framework
 }
 
-func GenerateService(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
+func CreateServiceScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
 	return generateCueSource(ctx, fsfs, loc.Rel(serviceFileName), serviceTmpl, opts)
 }
 

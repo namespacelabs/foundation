@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
-func generateProtoSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, data interface{}) error {
+func createProtoScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, data interface{}) error {
 	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsfs, filePath, func(w io.Writer) error {
 		var body bytes.Buffer
 

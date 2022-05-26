@@ -43,7 +43,7 @@ func (c *ErrorCollector) Append(generr CodegenError) {
 
 // Error returns a CodegenMultiError which aggregates all errors that were
 // gathered. If no errors were collected, this method returns nil.
-func (c *ErrorCollector) Error() *CodegenMultiError {
+func (c *ErrorCollector) Error() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -51,7 +51,7 @@ func (c *ErrorCollector) Error() *CodegenMultiError {
 		return nil
 	}
 
-	return NewCodegenMultiError(c.errs)
+	return newCodegenMultiError(c.errs)
 }
 
 type packages map[string]struct{}
@@ -68,9 +68,9 @@ type CodegenMultiError struct {
 	uniqgenerrs []CodegenError
 }
 
-// NewCodegenMultiError walks through accumulated CodegenErrors aggregating
+// newCodegenMultiError walks through accumulated CodegenErrors aggregating
 // those errors whose chains share a common root.
-func NewCodegenMultiError(errs []CodegenError) *CodegenMultiError {
+func newCodegenMultiError(errs []CodegenError) *CodegenMultiError {
 	// tracks duplicate CodegenErrors by fingerprint.
 	commonerrs := make(map[error]map[string]packages)
 	duplicateerrs := make(map[string]struct{})

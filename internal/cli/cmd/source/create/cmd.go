@@ -11,7 +11,7 @@ import (
 func NewCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "create",
-		Short:   "Convenience commands to create nodes.",
+		Short:   "Creates a new extension, service or server.",
 		Aliases: []string{"c"},
 	}
 

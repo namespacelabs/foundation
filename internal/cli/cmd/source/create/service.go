@@ -12,15 +12,62 @@ import (
 	"github.com/iancoleman/strcase"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/cli/inputs"
-	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cue"
 	"namespacelabs.dev/foundation/internal/frontend/proto"
-	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
 const serviceSuffix = "service"
+
+func newServiceCmd() *cobra.Command {
+	use := "service"
+	cmd := &cobra.Command{
+		Use:   use,
+		Short: "Creates a service.",
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			root, loc, err := targetPackage(ctx, args, use)
+			if err != nil {
+				return err
+			}
+
+			fmwk, err := selectFramework(ctx, "Which framework would you like to use?")
+			if err != nil {
+				return err
+			}
+
+			if fmwk == nil {
+				return context.Canceled
+			}
+
+			name, err := tui.Ask(ctx, "How would you like to name your service?",
+				"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
+				serviceName(loc))
+			if err != nil {
+				return err
+			}
+
+			if name == "" {
+				return context.Canceled
+			}
+
+			protoOpts := proto.GenServiceOpts{Name: name, Framework: *fmwk}
+			if err := proto.CreateProtoScaffold(ctx, root.FS(), loc, protoOpts); err != nil {
+				return err
+			}
+
+			cueOpts := cue.GenServiceOpts{Name: name, Framework: *fmwk}
+			if err := cue.CreateServiceScaffold(ctx, root.FS(), loc, cueOpts); err != nil {
+				return err
+			}
+
+			return codegenNode(ctx, root, loc)
+		}),
+	}
+
+	return cmd
+}
 
 func serviceName(loc fnfs.Location) string {
 	var name string
@@ -37,56 +84,4 @@ func serviceName(loc fnfs.Location) string {
 	}
 
 	return name
-}
-
-func newServiceCmd() *cobra.Command {
-	use := "service"
-	cmd := &cobra.Command{
-		Use:   use,
-		Short: "Creates a service.",
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, loc, err := targetPackage(ctx, args, use)
-			if err != nil {
-				return err
-			}
-
-			m := computeModel(use, serviceName(loc))
-			if !m.IsFinal() {
-				// Form aborted
-				return nil
-			}
-
-			fmwk, err := inputs.SelectedFramework(m.framework)
-			if err != nil {
-				return err
-			}
-
-			protoOpts := proto.GenServiceOpts{Name: m.name.Value(), Framework: fmwk}
-			if err := proto.GenerateService(ctx, root.FS(), loc, protoOpts); err != nil {
-				return err
-			}
-
-			cueOpts := cue.GenServiceOpts{Name: m.name.Value(), Framework: fmwk}
-			if err := cue.GenerateService(ctx, root.FS(), loc, cueOpts); err != nil {
-				return err
-			}
-
-			// Aggregates and prints all accumulated codegen errors on return.
-			errorCollector := fnerrors.ErrorCollector{}
-
-			// Generate protos before generating code for this extension as code (our generated code may depend on the protos).
-			if err := codegen.ForLocationsGenProto(ctx, root, []fnfs.Location{loc}, errorCollector.Append); err != nil {
-				return err
-			}
-
-			if err := codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, errorCollector.Append); err != nil {
-				return err
-			}
-
-			return errorCollector.Error()
-		}),
-	}
-
-	return cmd
 }

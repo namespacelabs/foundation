@@ -92,7 +92,7 @@ func (m askModel) View() string {
 		body = wordwrap.String(body, 80)
 	}
 
-	return mainStyle.Render(fmt.Sprintf("%s\n%s\n\n%s", body, m.textInput.View(), m.help.View(escOnly{})))
+	return askMainStyle.Render(fmt.Sprintf("%s\n%s\n\n%s", body, m.textInput.View(), m.help.View(escOnly{})))
 }
 
 type escOnly struct{}

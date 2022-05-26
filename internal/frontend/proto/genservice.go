@@ -24,10 +24,10 @@ type GenServiceOpts struct {
 	Framework schema.Framework
 }
 
-func GenerateService(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
+func CreateProtoScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
 	parts := strings.Split(loc.RelPath, string(os.PathSeparator))
 
-	return generateProtoSource(ctx, fsfs, loc.Rel(serviceFileName), serviceTmpl, serviceTmplOptions{
+	return createProtoScaffold(ctx, fsfs, loc.Rel(serviceFileName), serviceTmpl, serviceTmplOptions{
 		Name:      opts.Name,
 		Package:   strings.Join(parts, "."),
 		GoPackage: filepath.Join(append([]string{loc.ModuleName}, parts...)...),
