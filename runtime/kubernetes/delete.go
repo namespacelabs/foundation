@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -64,18 +65,23 @@ func deleteAllRecursively(ctx context.Context, cli *kubernetes.Clientset, wait b
 		}
 
 		var removed []string
+		var errs []error
 		for _, ns := range namespaces {
 			var grace int64 = 0
 			if err := cli.CoreV1().Namespaces().Delete(ctx, ns, metav1.DeleteOptions{
 				GracePeriodSeconds: &grace,
 			}); err != nil {
-				if k8serrors.IsNotFound(err) {
-					// Namespace already deleted
-					continue
+				// Namespace already deleted?
+				if !k8serrors.IsNotFound(err) {
+					errs = append(errs, err)
 				}
-				return false, err
+			} else {
+				removed = append(removed, ns)
 			}
-			removed = append(removed, ns)
+		}
+
+		if len(errs) > 0 {
+			return false, multierr.New(errs...)
 		}
 
 		if !wait || len(removed) == 0 {
