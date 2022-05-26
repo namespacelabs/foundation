@@ -69,7 +69,7 @@ func deleteAllRecursively(ctx context.Context, cli *kubernetes.Clientset, wait b
 			if err := cli.CoreV1().Namespaces().Delete(ctx, ns, metav1.DeleteOptions{
 				GracePeriodSeconds: &grace,
 			}); err != nil {
-				if !k8serrors.IsNotFound(err) {
+				if k8serrors.IsNotFound(err) {
 					// Namespace already deleted
 					continue
 				}
