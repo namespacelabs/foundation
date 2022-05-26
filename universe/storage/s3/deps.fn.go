@@ -8,11 +8,13 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/universe/aws/client"
 	"namespacelabs.dev/foundation/universe/aws/s3"
+	"namespacelabs.dev/foundation/universe/storage/minio/creds"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
 	ClientFactory client.ClientFactory
+	MinioCreds    *creds.Creds
 }
 
 type _checkProvideBucket func(context.Context, *BucketArgs, ExtensionDeps) (*s3.Bucket, error)
@@ -35,6 +37,15 @@ func makeDeps__4pkegf(ctx context.Context, di core.Dependencies) (_ interface{},
 
 	if err := di.Instantiate(ctx, client.Provider__hva50k, func(ctx context.Context, v interface{}) (err error) {
 		if deps.ClientFactory, err = client.ProvideClientFactory(ctx, nil, v.(client.ExtensionDeps)); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := di.Instantiate(ctx, creds.Provider__cld7nf, func(ctx context.Context, v interface{}) (err error) {
+		if deps.MinioCreds, err = creds.ProvideCreds(ctx, nil, v.(creds.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil

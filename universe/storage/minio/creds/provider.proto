@@ -1,0 +1,17 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.universe.storage.minio.creds;
+
+option go_package = "namespacelabs.dev/foundation/universe/storage/minio/creds";
+
+message CredsRequest {
+}
+
+message Creds {
+    string user = 1;
+    string password = 2;
+}
