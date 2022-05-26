@@ -15,7 +15,7 @@ import (
 func CmdWithServer(cmd *cobra.Command, f func(context.Context, provision.Server) error) *cobra.Command {
 	var envRef string
 
-	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to access (as defined in the workspace).")
+	cmd.Flags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")
 
 	cmd.RunE = RunE(func(ctx context.Context, args []string) error {
 		root, loc, err := module.PackageAtArgs(ctx, args)
