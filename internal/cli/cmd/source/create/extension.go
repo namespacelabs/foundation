@@ -27,7 +27,7 @@ func targetPackage(ctx context.Context, args []string, typ string) (*workspace.R
 
 	if loc.RelPath == "." {
 		cmd := fmt.Sprintf("fn create %s", typ)
-		return nil, fnfs.Location{}, fmt.Errorf("Cannot create %s at workspace root. Please specify %s location or run %s at the target directory.",
+		return nil, fnfs.Location{}, fmt.Errorf("cannot create %s at workspace root. Please specify %s location or run %s at the target directory",
 			typ, typ, colors.Bold(cmd))
 	}
 
@@ -56,13 +56,12 @@ func newExtensionCmd() *cobra.Command {
 			if err := codegen.ForLocationsGenProto(ctx, root, []fnfs.Location{loc}, errorCollector.Append); err != nil {
 				return err
 			}
+
 			if err := codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, errorCollector.Append); err != nil {
 				return err
 			}
-			if !errorCollector.IsEmpty() {
-				return errorCollector.Build()
-			}
-			return nil
+
+			return errorCollector.Error()
 		}),
 	}
 

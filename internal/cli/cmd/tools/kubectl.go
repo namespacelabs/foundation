@@ -14,49 +14,32 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func newKubeCtlCmd() *cobra.Command {
-	var envRef = "dev"
-
 	cmd := &cobra.Command{
 		Use:   "kubectl",
 		Short: "Run kubectl, configured for the specified environment.",
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, err := module.FindRoot(ctx, ".")
-			if err != nil {
-				return err
-			}
-
-			env, err := provision.RequireEnv(root, envRef)
-			if err != nil {
-				return err
-			}
-
-			k8s, err := kubernetes.New(ctx, root.Workspace, root.DevHost, env.Proto())
-			if err != nil {
-				return err
-			}
-
-			kubectlBin, err := kubectl.EnsureSDK(ctx)
-			if err != nil {
-				return err
-			}
-
-			k8sconfig := k8s.KubeConfig()
-			kubectl := exec.CommandContext(ctx, string(kubectlBin),
-				append([]string{
-					"--kubeconfig=" + k8sconfig.Config,
-					"--context=" + k8sconfig.Context,
-					"-n", k8sconfig.Namespace,
-				}, args...)...)
-			return localexec.RunInteractive(ctx, kubectl)
-		}),
 	}
 
-	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to access (as defined in the workspace).")
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
+		k8s, err := kubernetes.New(ctx, env.Workspace(), env.DevHost(), env.Proto())
+		if err != nil {
+			return err
+		}
 
-	return cmd
+		kubectlBin, err := kubectl.EnsureSDK(ctx)
+		if err != nil {
+			return err
+		}
+
+		k8sconfig := k8s.KubeConfig()
+		kubectl := exec.CommandContext(ctx, string(kubectlBin),
+			append([]string{
+				"--kubeconfig=" + k8sconfig.Config,
+				"--context=" + k8sconfig.Context,
+				"-n", k8sconfig.Namespace,
+			}, args...)...)
+		return localexec.RunInteractive(ctx, kubectl)
+	})
 }

@@ -13,41 +13,20 @@ import (
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewLogsCmd() *cobra.Command {
-	envRef := "dev"
-
 	cmd := &cobra.Command{
 		Use:   "logs",
 		Short: "Stream logs of the specified server.",
 		Args:  cobra.RangeArgs(0, 1),
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, loc, err := module.PackageAtArgs(ctx, args)
-			if err != nil {
-				return err
-			}
-
-			env, err := provision.RequireEnv(root, envRef)
-			if err != nil {
-				return err
-			}
-
-			server, err := env.RequireServer(ctx, loc.AsPackageName())
-			if err != nil {
-				return err
-			}
-
-			console.SetIdleLabel(ctx, "listening for deployment changes")
-
-			return logtail.NewLogTail(ctx, env, server.Proto())
-		}),
 	}
 
-	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to stream logs from.")
 	cmd.Flags().BoolVar(&kubernetes.ObserveInitContainerLogs, "observe_init_containers", kubernetes.ObserveInitContainerLogs, "Kubernetes-specific flag to also fetch logs from init containers.")
 
-	return cmd
+	return fncobra.CmdWithServer(cmd, func(ctx context.Context, server provision.Server) error {
+		console.SetIdleLabel(ctx, "listening for deployment changes")
+
+		return logtail.Listen(ctx, server.Env(), server.Proto())
+	})
 }

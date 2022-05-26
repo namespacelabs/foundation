@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 )
 
@@ -21,68 +22,51 @@ func NewDeploymentCmd() *cobra.Command {
 		Use: "deployment",
 	}
 
-	envRef := "dev"
 	defaultYes := false
 	wait := true
 
-	remove := &cobra.Command{
+	remove := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "remove",
 		Short: "Removes all deployment assets associated with the specified environment.",
 		Args:  cobra.NoArgs,
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			env, err := requireEnv(ctx, envRef)
-			if err != nil {
+	}, func(ctx context.Context, env provision.Env, args []string) error {
+		if !defaultYes {
+			if err := checkDelete(ctx, env.Name(), true); err != nil {
 				return err
 			}
+		}
 
-			if !defaultYes {
-				if err := checkDelete(ctx, envRef, true); err != nil {
-					return err
-				}
-			}
+		removed, err := runtime.For(ctx, env).DeleteRecursively(ctx, wait)
+		if removed {
+			fmt.Fprintln(console.Stdout(ctx), "Resources removed.")
+		} else if err == nil {
+			fmt.Fprintln(console.Stdout(ctx), "Nothing to remove.")
+		}
 
-			removed, err := runtime.For(ctx, env).DeleteRecursively(ctx, wait)
-			if removed {
-				fmt.Fprintln(console.Stdout(ctx), "Resources removed.")
-			} else if err == nil {
-				fmt.Fprintln(console.Stdout(ctx), "Nothing to remove.")
-			}
+		return err
+	})
 
-			return err
-		}),
-	}
-
-	remove.Flags().StringVar(&envRef, "env", envRef, "Specifies the environment to apply to.")
 	remove.Flags().BoolVar(&defaultYes, "yes", defaultYes, "If set to true, assume yes on prompts.")
 	remove.Flags().BoolVar(&wait, "wait", wait, "If set to true, waits until all resources are removed before returning.")
 
-	removeAll := &cobra.Command{
+	removeAll := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "remove-all",
 		Short: "Removes all deployment assets associated with the specified environment.",
 		Args:  cobra.NoArgs,
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			env, err := requireEnv(ctx, envRef)
-			if err != nil {
+	}, func(ctx context.Context, env provision.Env, args []string) error {
+		if !defaultYes {
+			if err := checkDelete(ctx, env.Name(), false); err != nil {
 				return err
 			}
+		}
 
-			if !defaultYes {
-				if err := checkDelete(ctx, envRef, false); err != nil {
-					return err
-				}
-			}
+		if _, err := runtime.For(ctx, env).DeleteAllRecursively(ctx, wait, console.Stdout(ctx)); err != nil {
+			return err
+		}
 
-			if _, err := runtime.For(ctx, env).DeleteAllRecursively(ctx, wait, console.Stdout(ctx)); err != nil {
-				return err
-			}
+		return nil
+	})
 
-			return nil
-		}),
-	}
-
-	removeAll.Flags().StringVar(&envRef, "env", envRef, "Specifies the environment to apply to.")
 	removeAll.Flags().BoolVar(&defaultYes, "yes", defaultYes, "If set to true, assume yes on prompts.")
 	removeAll.Flags().BoolVar(&wait, "wait", wait, "If set to true, waits until all resources are removed before returning.")
 

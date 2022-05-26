@@ -125,7 +125,7 @@ func (t *termState) newLogTailMultiple(ctx context.Context, root *workspace.Root
 		go func() {
 			env, err := provision.RequireEnv(root, envRef)
 			if err == nil {
-				err = logtail.NewLogTail(ctxWithCancel, env, server)
+				err = logtail.Listen(ctxWithCancel, env, server)
 			}
 
 			if err != nil && !errors.Is(err, context.Canceled) {

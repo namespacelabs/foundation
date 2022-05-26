@@ -17,8 +17,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-// NewLogTail blocks fetching logs from a container.
-func NewLogTail(ctx context.Context, env runtime.Selector, server *schema.Server) error {
+// Listen blocks fetching logs from a container.
+func Listen(ctx context.Context, env runtime.Selector, server *schema.Server) error {
 	// TODO simplify runtime creation.
 	rt := runtime.For(ctx, env)
 	var mu sync.Mutex

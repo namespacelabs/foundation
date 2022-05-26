@@ -108,7 +108,7 @@ func (m model) View() string {
 	case NAME:
 		fmt.Fprintf(&b, "What's the name of your %s?\n\n%s", m.typ, m.name.View())
 	case FRAMEWORK:
-		fmt.Fprintf(&b, m.framework.View())
+		fmt.Fprint(&b, m.framework.View())
 	}
 
 	fmt.Fprintf(&b, "\n\nPress enter to confirm.")

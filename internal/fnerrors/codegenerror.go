@@ -41,16 +41,15 @@ func (c *ErrorCollector) Append(generr CodegenError) {
 	c.errs = append(c.errs, generr)
 }
 
-func (c *ErrorCollector) IsEmpty() bool {
+// Error returns a CodegenMultiError which aggregates all errors that were
+// gathered. If no errors were collected, this method returns nil.
+func (c *ErrorCollector) Error() *CodegenMultiError {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	return len(c.errs) == 0
-}
-
-func (c *ErrorCollector) Build() *CodegenMultiError {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	if len(c.errs) == 0 {
+		return nil
+	}
 
 	return NewCodegenMultiError(c.errs)
 }

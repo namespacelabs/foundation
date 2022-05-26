@@ -40,18 +40,18 @@ func NewGenerateCmd() *cobra.Command {
 			if err := generateProtos(ctx, root, errorCollector.Append); err != nil {
 				return err
 			}
+
 			list, err := workspace.ListSchemas(ctx, root)
 			if err != nil {
 				return err
 			}
+
 			// Generate code.
 			if err := codegen.ForLocationsGenCode(ctx, root, list.Locations, errorCollector.Append); err != nil {
 				return err
 			}
-			if !errorCollector.IsEmpty() {
-				return errorCollector.Build()
-			}
-			return nil
+
+			return errorCollector.Error()
 		}),
 	}
 

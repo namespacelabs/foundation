@@ -17,71 +17,58 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/go-ids"
 )
 
 func NewDebugShellCmd() *cobra.Command {
 	var imageRef string
-	envRef := "dev"
 
 	cmd := &cobra.Command{
 		Use:   "debug-shell",
 		Short: "Starts a debug shell in the runtime in the specified environment (e.g. kubernetes cluster).",
 		Args:  cobra.NoArgs,
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, err := module.FindRoot(ctx, ".")
-			if err != nil {
-				return err
-			}
-
-			env, err := provision.RequireEnv(root, envRef)
-			if err != nil {
-				return err
-			}
-
-			var imageID oci.ImageID
-			if imageRef == "" {
-				platforms, err := runtime.For(ctx, env).TargetPlatforms(ctx)
-				if err != nil {
-					return err
-				}
-
-				tag, err := registry.AllocateName(ctx, env, schema.PackageName(root.Workspace.ModuleName+"/debug"), provision.NewBuildID())
-				if err != nil {
-					return err
-				}
-
-				img, err := debugshell.Image(ctx, env, platforms, tag)
-				if err != nil {
-					return err
-				}
-
-				imageID, err = compute.GetValue(ctx, img)
-				if err != nil {
-					return err
-				}
-			} else {
-				imageID, err = oci.ParseImageID(imageRef)
-				if err != nil {
-					return err
-				}
-			}
-
-			return runtime.For(ctx, env).RunAttached(ctx, "debug-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
-				Image:   imageID,
-				Command: []string{"bash"},
-			}, runtime.TerminalIO{
-				Stdout: os.Stdout,
-				Stderr: os.Stderr,
-				Stdin:  os.Stdin,
-			})
-		}),
 	}
 
-	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to provision (as defined in the workspace).")
 	cmd.Flags().StringVar(&imageRef, "image", imageRef, "If specified, use this image as the basis of the debug shell.")
 
-	return cmd
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
+		var imageID oci.ImageID
+
+		if imageRef == "" {
+			platforms, err := runtime.For(ctx, env).TargetPlatforms(ctx)
+			if err != nil {
+				return err
+			}
+
+			tag, err := registry.AllocateName(ctx, env, schema.PackageName(env.Workspace().ModuleName+"/debug"), provision.NewBuildID())
+			if err != nil {
+				return err
+			}
+
+			img, err := debugshell.Image(ctx, env, platforms, tag)
+			if err != nil {
+				return err
+			}
+
+			imageID, err = compute.GetValue(ctx, img)
+			if err != nil {
+				return err
+			}
+		} else {
+			var err error
+			imageID, err = oci.ParseImageID(imageRef)
+			if err != nil {
+				return err
+			}
+		}
+
+		return runtime.For(ctx, env).RunAttached(ctx, "debug-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
+			Image:   imageID,
+			Command: []string{"bash"},
+		}, runtime.TerminalIO{
+			Stdout: os.Stdout,
+			Stderr: os.Stderr,
+			Stdin:  os.Stdin,
+		})
+	})
 }

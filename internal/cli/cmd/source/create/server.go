@@ -73,10 +73,8 @@ func newServerCmd() *cobra.Command {
 			if err := codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, errorCollector.Append); err != nil {
 				return err
 			}
-			if !errorCollector.IsEmpty() {
-				return errorCollector.Build()
-			}
-			return nil
+
+			return errorCollector.Error()
 		}),
 	}
 

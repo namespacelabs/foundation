@@ -28,7 +28,6 @@ import (
 
 func NewBuildCmd() *cobra.Command {
 	var (
-		envRef       = "dev"
 		explain      = false
 		continuously = false
 	)
@@ -38,58 +37,50 @@ func NewBuildCmd() *cobra.Command {
 		Short: "Build one, or more servers.",
 		Long:  "Build one, or more servers.\nAutomatically invoked with `deploy`.",
 		Args:  cobra.ArbitraryArgs,
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			env, err := requireEnv(ctx, envRef)
-			if err != nil {
-				return err
-			}
-
-			serverLocs, specified, err := allServersOrFromArgs(ctx, env, args)
-			if err != nil {
-				return err
-			}
-
-			_, servers, err := loadServers(ctx, env, serverLocs, specified)
-			if err != nil {
-				return err
-			}
-
-			var opts deploy.Opts
-			opts.BaseServerPort = 10000
-
-			_, images, err := deploy.ComputeStackAndImages(ctx, servers, opts)
-			if err != nil {
-				return err
-			}
-
-			buildAll := compute.Collect(tasks.Action("build.all-images"), images...)
-
-			if explain {
-				return compute.Explain(ctx, console.Stdout(ctx), buildAll)
-			}
-
-			if continuously {
-				console.SetIdleLabel(ctx, "waiting for workspace changes")
-				return compute.Continuously(ctx, continuousBuild{allImages: buildAll}, nil)
-			}
-
-			res, err := compute.GetValue(ctx, buildAll)
-			if err != nil {
-				return err
-			}
-
-			outputResults(ctx, res)
-			return nil
-		}),
 	}
 
-	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to provision (as defined in the workspace).")
 	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
 	cmd.Flags().BoolVarP(&continuously, "continuously", "c", continuously, "If set to true, builds continuously, listening to changes to the workspace.")
 
-	return cmd
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
+		serverLocs, specified, err := allServersOrFromArgs(ctx, env, args)
+		if err != nil {
+			return err
+		}
+
+		_, servers, err := loadServers(ctx, env, serverLocs, specified)
+		if err != nil {
+			return err
+		}
+
+		var opts deploy.Opts
+		opts.BaseServerPort = 10000
+
+		_, images, err := deploy.ComputeStackAndImages(ctx, servers, opts)
+		if err != nil {
+			return err
+		}
+
+		buildAll := compute.Collect(tasks.Action("build.all-images"), images...)
+
+		if explain {
+			return compute.Explain(ctx, console.Stdout(ctx), buildAll)
+		}
+
+		if continuously {
+			console.SetIdleLabel(ctx, "waiting for workspace changes")
+			return compute.Continuously(ctx, continuousBuild{allImages: buildAll}, nil)
+		}
+
+		res, err := compute.GetValue(ctx, buildAll)
+		if err != nil {
+			return err
+		}
+
+		outputResults(ctx, res)
+		return nil
+	})
 }
 
 func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[oci.ImageID]) {
