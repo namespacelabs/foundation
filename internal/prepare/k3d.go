@@ -101,23 +101,20 @@ func (p *k3dPrepare) createOrRestartRegistry(ctx context.Context, registryName s
 		}
 	}
 
-	const expectedPort = "5000/tcp"
-
-	var registryPortBinding []nat.PortBinding
-	registryPortBinding = findPort(registryCtr, expectedPort)
-
-	if len(registryPortBinding) == 0 {
+	if !registryCtr.State.Running {
 		if err := p.k3dbin.StartNode(ctx, registryName); err != nil {
-			return "", fnerrors.InternalError("failed to re-start registry %q: %w", registryName, err)
+			return "", fnerrors.InternalError("failed to restart registry %q: %w", registryName, err)
+		}
+
+		registryCtr, err = p.dockerclient.ContainerInspect(ctx, registryName)
+		if err != nil {
+			return "", fnerrors.InternalError("failed to inspect registry %q after a restart: %w", registryName, err)
 		}
 	}
 
-	registryCtr, err = p.dockerclient.ContainerInspect(ctx, registryName)
-	if err != nil {
-		return "", fnerrors.InternalError("failed to inspect registry %q: %w", registryName, err)
-	}
+	const expectedPort = "5000/tcp"
 
-	registryPortBinding = findPort(registryCtr, expectedPort)
+	registryPortBinding := findPort(registryCtr, expectedPort)
 	if len(registryPortBinding) == 0 {
 		return "", fnerrors.InternalError("failed to find expected port %q for registry %q", expectedPort, registryName)
 	}
