@@ -6,13 +6,14 @@ package tools
 
 import (
 	"context"
-	"os"
+	"os/exec"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
@@ -39,11 +40,19 @@ func newKubeCtlCmd() *cobra.Command {
 				return err
 			}
 
-			return k8s.Kubectl(ctx, rtypes.IO{
-				Stdin:  os.Stdin,
-				Stdout: os.Stdout,
-				Stderr: os.Stderr,
-			}, args...)
+			kubectlBin, err := kubectl.EnsureSDK(ctx)
+			if err != nil {
+				return err
+			}
+
+			k8sconfig := k8s.KubeConfig()
+			kubectl := exec.CommandContext(ctx, string(kubectlBin),
+				append([]string{
+					"--kubeconfig=" + k8sconfig.Config,
+					"--context=" + k8sconfig.Context,
+					"-n", k8sconfig.Namespace,
+				}, args...)...)
+			return localexec.RunInteractive(ctx, kubectl)
 		}),
 	}
 

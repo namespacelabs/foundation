@@ -15,10 +15,10 @@ import (
 	"namespacelabs.dev/foundation/internal/debugshell"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
+	"namespacelabs.dev/go-ids"
 )
 
 func NewDebugShellCmd() *cobra.Command {
@@ -48,22 +48,20 @@ func NewDebugShellCmd() *cobra.Command {
 					return err
 				}
 
-				img, err := debugshell.Image(ctx, env, platforms)
-				if err != nil {
-					return err
-				}
-
 				tag, err := registry.AllocateName(ctx, env, schema.PackageName(root.Workspace.ModuleName+"/debug"), provision.NewBuildID())
 				if err != nil {
 					return err
 				}
 
-				x, err := compute.GetValue(ctx, oci.PublishResolvable(tag, img))
+				img, err := debugshell.Image(ctx, env, platforms, tag)
 				if err != nil {
 					return err
 				}
 
-				imageID = x
+				imageID, err = compute.GetValue(ctx, img)
+				if err != nil {
+					return err
+				}
 			} else {
 				imageID, err = oci.ParseImageID(imageRef)
 				if err != nil {
@@ -71,7 +69,10 @@ func NewDebugShellCmd() *cobra.Command {
 				}
 			}
 
-			return runtime.For(ctx, env).DebugShell(ctx, imageID, rtypes.IO{
+			return runtime.For(ctx, env).RunAttached(ctx, "debug-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
+				Image:   imageID,
+				Command: []string{"bash"},
+			}, runtime.TerminalIO{
 				Stdout: os.Stdout,
 				Stderr: os.Stderr,
 				Stdin:  os.Stdin,

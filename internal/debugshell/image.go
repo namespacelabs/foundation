@@ -19,11 +19,19 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
-func Image(ctx context.Context, env ops.Environment, platforms []specs.Platform) (compute.Computable[oci.ResolvableImage], error) {
-	return multiplatform.PrepareMultiPlatformImage(ctx, env, build.Plan{
-		Spec:      debugShellBuild{},
-		Platforms: platforms,
+func BuildSpec() build.Spec { return debugShellBuild{} }
+
+func Image(ctx context.Context, env ops.Environment, platforms []specs.Platform, tag compute.Computable[oci.AllocatedName]) (compute.Computable[oci.ImageID], error) {
+	prepared, err := multiplatform.PrepareMultiPlatformImage(ctx, env, build.Plan{
+		Spec:        BuildSpec(),
+		Platforms:   platforms,
+		PublishName: tag,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return oci.PublishResolvable(tag, prepared), nil
 }
 
 type debugShellBuild struct{}

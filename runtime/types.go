@@ -72,12 +72,6 @@ type Runtime interface {
 	// nslocal.host).
 	ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f PortForwardedFunc) (io.Closer, error)
 
-	// Creates a one-shot container, in the same isolation domain as other
-	// servers (in Kubernetes, it would be the same namespace), with the
-	// specified image. This container is meant to be used for debugging
-	// purposes.
-	DebugShell(ctx context.Context, imageID oci.ImageID, io rtypes.IO) error
-
 	// Observes lifecyle events of the specified server. Unless OneShot is set,
 	// Observe runs until the context is cancelled.
 	Observe(context.Context, *schema.Server, ObserveOpts, func(ObserveEvent) error) error

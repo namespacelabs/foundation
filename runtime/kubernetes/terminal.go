@@ -123,7 +123,7 @@ func (r boundEnv) attachTerminal(ctx context.Context, cli *kubernetes.Clientset,
 
 	// XXX move this check somewhere else.
 	if rio.Stdin == os.Stdin {
-		done := console.EnterInputMode(ctx)
+		done := console.EnterInputMode(ctx, "Please enter, if you don't see any output.\n")
 		defer done()
 	}
 
