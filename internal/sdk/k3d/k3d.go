@@ -65,8 +65,20 @@ var Pins = map[string]artifacts.Reference{
 	},
 }
 
+type State struct {
+	Running bool   `json:"running,omitempty"`
+	Status  string `json:"status,omitempty"`
+}
+
+type Node struct {
+	Name  string `json:"name,omitempty"`
+	Role  string `json:"role,omitempty"`
+	State State  `json:"state,omitempty"`
+}
+
 type Cluster struct {
-	Name string `json:"name"`
+	Name  string `json:"name,omitempty"`
+	Nodes []Node `json:"nodes,omitempty"`
 }
 
 type K3D string
@@ -202,6 +214,18 @@ func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, 
 func (k3d K3D) MergeConfiguration(ctx context.Context, name string) error {
 	return tasks.Action("k3d.merge-configuration").Arg("name", name).Run(ctx, func(ctx context.Context) error {
 		return k3d.do(ctx, "kubeconfig", "merge", name, "-d", "--kubeconfig-switch-context=false")
+	})
+}
+
+func (k3d K3D) StartNode(ctx context.Context, nodeName string) error {
+	return tasks.Action("k3d.start-node").Arg("name", nodeName).Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, "node", "start", nodeName)
+	})
+}
+
+func (k3d K3D) StopNode(ctx context.Context, nodeName string) error {
+	return tasks.Action("k3d.stop-node").Arg("name", nodeName).Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, "node", "stop", nodeName)
 	})
 }
 
