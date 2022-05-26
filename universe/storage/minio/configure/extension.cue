@@ -16,5 +16,10 @@ configure: fn.#Configure & {
 			"--address=:9000",
 			"--console-address=:9001",
 		]
+
+		env: {
+			// Disable update checking as self-update will never be used.
+			MINIO_UPDATE: "off"
+		}
 	}
 }
