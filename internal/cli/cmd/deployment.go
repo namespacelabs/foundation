@@ -19,7 +19,8 @@ import (
 
 func NewDeploymentCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "deployment",
+		Use:   "deployment",
+		Short: "Manage deployments for a specified environment.",
 	}
 
 	defaultYes := false

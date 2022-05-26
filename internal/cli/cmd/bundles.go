@@ -25,7 +25,8 @@ import (
 
 func NewBundlesCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "command-history",
+		Use:   "command-history",
+		Short: "List foundation command invocations with the ability to upload and download command diagnostics.",
 	}
 
 	list := &cobra.Command{
@@ -40,6 +41,7 @@ func NewBundlesCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			validBundles := bundlesWithInvocationInfo(ctx, bundles)
 			if err := renderBundleTable(ctx, validBundles, console.Stdout(ctx)); err != nil {
 				return err

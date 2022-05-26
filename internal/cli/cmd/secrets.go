@@ -35,7 +35,8 @@ const bundleName = "server.secrets"
 
 func NewSecretsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "secrets",
+		Use:   "secrets",
+		Short: "Manage secrets for a given server.",
 	}
 
 	list := &cobra.Command{

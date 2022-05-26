@@ -33,7 +33,8 @@ import (
 
 func NewKeysCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "keys",
+		Use:   "keys",
+		Short: "Manage keys used for local secret management.",
 	}
 
 	list := &cobra.Command{
