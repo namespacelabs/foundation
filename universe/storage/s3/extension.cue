@@ -13,7 +13,7 @@ $typesProto: inputs.#Proto & {
 extension: fn.#Extension & {
 	instantiate: {
 		clientFactory: awsclient.#Exports.ClientFactory
-		minio_creds:   creds.#Exports.Creds
+		minioCreds:    creds.#Exports.Creds
 	}
 
 	provides: {
