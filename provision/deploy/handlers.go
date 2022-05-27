@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/invocation"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
@@ -16,16 +17,30 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
+type handlerSource struct {
+	Server  provision.Server
+	Package schema.PackageName
+	Plan    frontend.PreparedProvisionPlan
+}
+
 func computeHandlers(ctx context.Context, in *stack.Stack) ([]*tool.Definition, error) {
 	var handlers []*tool.Definition
+
+	var sources []handlerSource
 	for k, s := range in.ParsedServers {
+		srv := in.Servers[k]
 		for _, n := range s.Deps {
-			h, err := parseHandlers(ctx, in.Servers[k], n)
-			if err != nil {
-				return nil, err
-			}
-			handlers = append(handlers, h...)
+			sources = append(sources, handlerSource{srv, n.Package.PackageName(), n.ProvisionPlan.PreparedProvisionPlan})
 		}
+		sources = append(sources, handlerSource{srv, srv.PackageName(), srv.Provisioning})
+	}
+
+	for _, src := range sources {
+		h, err := parseHandlers(ctx, src.Server, src.Package, src.Plan)
+		if err != nil {
+			return nil, err
+		}
+		handlers = append(handlers, h...)
 	}
 
 	sort.SliceStable(handlers, func(i, j int) bool {
@@ -39,12 +54,11 @@ func computeHandlers(ctx context.Context, in *stack.Stack) ([]*tool.Definition, 
 	return handlers, nil
 }
 
-func parseHandlers(ctx context.Context, server provision.Server, pr *stack.ParsedNode) ([]*tool.Definition, error) {
-	pkg := pr.Package
+func parseHandlers(ctx context.Context, server provision.Server, pkg schema.PackageName, pr frontend.PreparedProvisionPlan) ([]*tool.Definition, error) {
 	source := tool.Source{
-		PackageName: pkg.PackageName(),
+		PackageName: pkg,
 		// The server in context is always implicitly declared.
-		DeclaredStack: append([]schema.PackageName{server.PackageName()}, pr.ProvisionPlan.DeclaredStack...),
+		DeclaredStack: append([]schema.PackageName{server.PackageName()}, pr.DeclaredStack...),
 	}
 
 	// Determinism.
@@ -53,7 +67,7 @@ func parseHandlers(ctx context.Context, server provision.Server, pr *stack.Parse
 	})
 
 	var handlers []*tool.Definition
-	for _, dec := range pr.ProvisionPlan.Provisioning {
+	for _, dec := range pr.Provisioning {
 		invocation, err := invocation.Make(ctx, server.Env(), &server.Location, dec)
 		if err != nil {
 			return nil, err

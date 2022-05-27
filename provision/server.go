@@ -20,6 +20,8 @@ type Server struct {
 	Location workspace.Location
 	Package  *workspace.Package
 
+	Provisioning frontend.PreparedProvisionPlan // A provisioning plan that is attached to the server itself.
+
 	env   ServerEnv            // The environment this server instance is bound to.
 	entry *schema.Stack_Entry  // The stack entry, i.e. all of the server's dependencies.
 	deps  []*workspace.Package // List of parsed deps.
@@ -97,10 +99,7 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 		return Server{}, fnerrors.UserError(t.Location, "servers can't define init containers")
 	}
 
-	if pdata.Provisioning != nil {
-		return Server{}, fnerrors.UserError(t.Location, "servers can't specify a custom provisioning phase")
-	}
-
+	t.Provisioning = pdata.PreparedProvisionPlan
 	t.entry.ServerNaming = pdata.Naming
 
 	return t, nil
