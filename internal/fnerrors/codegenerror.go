@@ -83,7 +83,7 @@ func newCodegenMultiError(errs []CodegenError) *CodegenMultiError {
 			err2 := c2.Err
 			if rootErr := commonRootError(err1, err2); rootErr != nil {
 				addCommonError(commonerrs, rootErr, c1)
-				addCommonError(commonerrs, rootErr, c1)
+				addCommonError(commonerrs, rootErr, c2)
 
 				_, has := duplicateerrs[c1.fingerprint()]
 				if !has {
