@@ -22,10 +22,10 @@ import (
 )
 
 func MakeFilesystem(filename string, mode fs.FileMode, ref artifacts.Reference) compute.Computable[fs.FS] {
-	return &makeFS{url: ref.URL, dirent: memfs.FileDirent{Path: filename, FileMode: mode}, contents: download.URL(ref)}
+	return MakeFilesystemForContents(filename, mode, ref.URL, download.URL(ref))
 }
 
-func MakeFilesystemTheOnly(filename string, mode fs.FileMode, url string, contents compute.Computable[bytestream.ByteStream]) compute.Computable[fs.FS] {
+func MakeFilesystemForContents(filename string, mode fs.FileMode, url string, contents compute.Computable[bytestream.ByteStream]) compute.Computable[fs.FS] {
 	return &makeFS{url: url, dirent: memfs.FileDirent{Path: filename, FileMode: mode}, contents: contents}
 }
 

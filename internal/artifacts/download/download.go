@@ -2,6 +2,8 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
+// available at http://github.com/namespacelabs/foundation
+
 package download
 
 import (
@@ -16,76 +18,61 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+// Returns a `Computable` downloading an artifact. Verifies against a known `schema.Digest`.
 func URL(ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {
-	instantDigest := compute.Map(
-		tasks.Action("artifact.computeddigest"),
-		compute.Inputs(),
-		compute.Output{},
-		func(ctx context.Context, _ compute.Resolved) (schema.Digest, error) {
-			return ref.Digest, nil
-		})
-	return &downloadUrl{url: ref.URL, expected: instantDigest, fetch: FetchUrl(ref.URL)}
+	return &downloadUrl{
+		url:      ref.URL,
+		digest:   compute.Immediate(ref.Digest),
+		artifact: FetchUrl(ref.URL)}
 }
 
-func Url(url string, digest compute.Computable[schema.Digest]) compute.Computable[bytestream.ByteStream] {
-	return &downloadUrl{url: url, expected: digest, fetch: FetchUrl(url)}
-}
-
-func fetchDigest(algorithm, digestUrl string) compute.Computable[schema.Digest] {
-	fetchDigest := FetchUrl(digestUrl)
-	digestC := compute.Map(
-		tasks.Action("artifact.fetch").Arg("algorithm", algorithm).Arg("digesturl", digestUrl),
-		compute.Inputs().Computable("digest", fetchDigest),
-		compute.Output{},
-		func(ctx context.Context, deps compute.Resolved) (schema.Digest, error) {
-			digest, _ := compute.GetDep(deps, fetchDigest, "digest")
-			reader, err := digest.Value.Reader()
+// Returns a `Computable` downloading both an artifact and its expected checksum.
+// Verifies the artifact against the checksum.
+func UrlAndDigest(artifactUrl, digestUrl, digestAlg string) compute.Computable[bytestream.ByteStream] {
+	downloadDigest := compute.Transform(
+		FetchUrl(digestUrl),
+		func(ctx context.Context, digest bytestream.ByteStream) (schema.Digest, error) {
+			r, err := digest.Reader()
 			if err != nil {
 				return schema.Digest{}, err
 			}
-			v, err := ioutil.ReadAll(reader)
+			v, err := ioutil.ReadAll(r)
 			if err != nil {
 				return schema.Digest{}, err
 			}
-			return schema.Digest{Algorithm: algorithm, Hex: string(v)}, nil
+			return schema.Digest{Algorithm: digestAlg, Hex: string(v)}, nil
 		})
-	return digestC
+	return &downloadUrl{url: artifactUrl, digest: downloadDigest, artifact: FetchUrl(artifactUrl)}
 }
 
-func Url22(url, digestUrl, algorithm string) compute.Computable[bytestream.ByteStream] {
-	return &downloadUrl{url: url, expected: fetchDigest(algorithm, digestUrl), fetch: FetchUrl(url)}
-}
-
-// Computable fetching and verifying a URL.
 type downloadUrl struct {
 	url      string
-	expected compute.Computable[schema.Digest]
-	fetch    compute.Computable[bytestream.ByteStream]
+	digest   compute.Computable[schema.Digest]
+	artifact compute.Computable[bytestream.ByteStream]
 
 	compute.LocalScoped[bytestream.ByteStream]
 }
 
 func (dl *downloadUrl) Action() *tasks.ActionEvent {
-	return tasks.Action("artifact.verify").Arg("url", dl.url).Arg("digest", dl.expected)
+	return tasks.Action("artifact.verify").Arg("url", dl.url)
 }
 
 func (dl *downloadUrl) Inputs() *compute.In {
-	return compute.Inputs().Computable("url", dl.fetch).Computable("digest", dl.expected)
+	return compute.Inputs().Computable("artifact", dl.artifact).Computable("digest", dl.digest)
 }
 
 func (dl *downloadUrl) Compute(ctx context.Context, deps compute.Resolved) (bytestream.ByteStream, error) {
-	bs, _ := compute.GetDep(deps, dl.fetch, "url")
-
-	resultDigest, err := bytestream.Digest(ctx, bs.Value)
+	artifactBytes := compute.MustGetDepValue(deps, dl.artifact, "artifact")
+	artifactDigest, err := bytestream.Digest(ctx, artifactBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	digest, _ := compute.GetDep(deps, dl.expected, "digest")
-	if !resultDigest.Equals(digest.Value) {
-		return nil, fnerrors.InternalError("artifact.verify: %s: digest didn't match, got %s expected %s", dl.url, resultDigest, digest.Value)
+	expectedDigest := compute.MustGetDepValue(deps, dl.digest, "digest")
+	if !artifactDigest.Equals(expectedDigest) {
+		return nil, fnerrors.InternalError("artifact.verify: %s: digest didn't match, got %s expected %s", dl.url, artifactDigest, expectedDigest)
 	}
 
 	// XXX support returning a io.Reader here so we don't need to buffer the download.
-	return bs.Value, nil
+	return artifactBytes, nil
 }

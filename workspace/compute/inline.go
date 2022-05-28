@@ -29,6 +29,15 @@ func Transform[From, To any](from Computable[From], compute func(context.Context
 	})
 }
 
+func Immediate[V any](value V) Computable[V] {
+	return Map(
+		// There's no value in retaining these intermediary artifacts.
+		tasks.Action("immediate"), Inputs(), Output{NotCacheable: true},
+		func(ctx context.Context, _ Resolved) (V, error) {
+			return value, nil
+		})
+}
+
 type inline[V any] struct {
 	action  *tasks.ActionEvent
 	inputs  *In

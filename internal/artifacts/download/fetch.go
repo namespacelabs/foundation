@@ -27,7 +27,7 @@ type fetch struct {
 }
 
 func (f *fetch) Action() *tasks.ActionEvent {
-	return tasks.Action("artifact.fetch").Arg("url", f.url)
+	return tasks.Action("artifact.download").Arg("url", f.url)
 }
 
 func (f *fetch) Inputs() *compute.In {

@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const version = "1.23.6"
+const version = "1.24.0"
 const algorithm = "sha256"
 
 type Pin struct {
@@ -57,8 +57,8 @@ func SDK(ctx context.Context) (compute.Computable[Kubectl], error) {
 		return nil, fnerrors.UserError(nil, "platform not supported: %s", key)
 	}
 
-	verifiedContents := download.Url22(ref.url, ref.digestUrl, algorithm)
-	w := unpack.Unpack("kubectl", unpack.MakeFilesystemTheOnly("kubectl", 0755, ref.url, verifiedContents))
+	fetch := download.UrlAndDigest(ref.url, ref.digestUrl, algorithm)
+	w := unpack.Unpack("kubectl", unpack.MakeFilesystemForContents("kubectl", 0755, ref.url, fetch))
 
 	return compute.Map(
 		tasks.Action("kubectl.ensure").Arg("version", version).HumanReadablef("Ensuring kubectl %s is installed", version),
@@ -72,7 +72,7 @@ func SDK(ctx context.Context) (compute.Computable[Kubectl], error) {
 func AllDownloads() []compute.Computable[bytestream.ByteStream] {
 	var downloads []compute.Computable[bytestream.ByteStream]
 	for _, v := range Pins {
-		download := download.Url22(v.url, v.digestUrl, algorithm)
+		download := download.UrlAndDigest(v.url, v.digestUrl, algorithm)
 		downloads = append(downloads, download)
 	}
 	return downloads
