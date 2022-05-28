@@ -30,7 +30,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const version = "5.2.2"
+const version = "5.4.1"
 
 var IgnoreZfsCheck = false
 
@@ -39,28 +39,28 @@ var Pins = map[string]artifacts.Reference{
 		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-linux-amd64", version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "7ddb900e6e50120b65d61568f6af007a82331bf83918608a6a7be8910792faef",
+			Hex:       "50f64747989dc1fcde5db5cb82f8ac132a174b607ca7dfdb13da2f0e509fda11",
 		},
 	},
 	"linux/arm64": {
 		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-linux-arm64", version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "ccf1dafc1eddfef083375377a52ef0ca269a41c5bc4f0f4d7e11a7c56da08833",
+			Hex:       "712ffb338ec1fed6f7c1c8691b79bc80967cc17fef256cd620190d0d7e502052",
 		},
 	},
 	"darwin/arm64": {
 		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-darwin-arm64", version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "d0149ecb9b3fb831d617a0a880d8235722a70b9131f45f1389235e586050f8f9",
+			Hex:       "ddb71b5963ee2d34aa4aa78a49e99a0d4bacd5db61f16e071b99d3a846afe2dc",
 		},
 	},
 	"darwin/amd64": {
 		URL: fmt.Sprintf("https://github.com/rancher/k3d/releases/download/v%s/k3d-darwin-amd64", version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "40ac312bc762611de80daff24cb66d79aaaf17bf90e5e8d61caf90e63b57542d",
+			Hex:       "1e008f1661a5c939cb9a6991b612ee51dd7080e6e2b1443065f3d522378e50a4",
 		},
 	},
 }

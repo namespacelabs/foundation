@@ -22,11 +22,15 @@ import (
 )
 
 func MakeFilesystem(filename string, mode fs.FileMode, ref artifacts.Reference) compute.Computable[fs.FS] {
-	return &makeFS{ref: ref, dirent: memfs.FileDirent{Path: filename, FileMode: mode}, contents: download.URL(ref)}
+	return &makeFS{url: ref.URL, dirent: memfs.FileDirent{Path: filename, FileMode: mode}, contents: download.URL(ref)}
+}
+
+func MakeFilesystemTheOnly(filename string, mode fs.FileMode, url string, contents compute.Computable[bytestream.ByteStream]) compute.Computable[fs.FS] {
+	return &makeFS{url: url, dirent: memfs.FileDirent{Path: filename, FileMode: mode}, contents: contents}
 }
 
 type makeFS struct {
-	ref artifacts.Reference // Presentation only.
+	url string // Presentation only.
 
 	dirent   memfs.FileDirent
 	contents compute.Computable[bytestream.ByteStream]
@@ -37,7 +41,7 @@ type makeFS struct {
 var _ compute.Computable[fs.FS] = &makeFS{}
 
 func (u *makeFS) Action() *tasks.ActionEvent {
-	return tasks.Action("download.make-fs").Arg("url", u.ref.URL)
+	return tasks.Action("download.make-fs").Arg("url", u.url)
 }
 func (u *makeFS) Inputs() *compute.In {
 	return compute.Inputs().JSON("dirent", u.dirent).Computable("contents", u.contents)
