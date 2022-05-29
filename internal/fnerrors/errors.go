@@ -17,10 +17,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
 )
 
-// New returns a new error wrapping the given error message with the stack trace
-// at the point of invocation.
-func New(errmsg string) error {
-	return &fnError{Err: errors.New(errmsg), stack: stacktrace.New()}
+// New returns a new error for a format specifier and optionals args with the
+// stack trace at the point of invocation.
+func New(format string, args ...interface{}) error {
+	return &fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}
 }
 
 func Wrap(loc Location, err error) error {
