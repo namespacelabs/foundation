@@ -16,26 +16,27 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func FetchUrl(url string) compute.Computable[bytestream.ByteStream] {
-	return &fetch{url: url}
+// DownloadUrl returns computable fetching a given url into ByteStream.
+func DownloadUrl(url string) compute.Computable[bytestream.ByteStream] {
+	return &downloadUrl{url: url}
 }
 
-type fetch struct {
+type downloadUrl struct {
 	url string
 
 	compute.LocalScoped[bytestream.ByteStream]
 }
 
-func (f *fetch) Action() *tasks.ActionEvent {
-	return tasks.Action("artifact.download").Arg("url", f.url)
+func (d *downloadUrl) Action() *tasks.ActionEvent {
+	return tasks.Action("artifact.download").Arg("url", d.url)
 }
 
-func (f *fetch) Inputs() *compute.In {
-	return compute.Inputs().Str("url", f.url)
+func (d *downloadUrl) Inputs() *compute.In {
+	return compute.Inputs().Str("url", d.url)
 }
 
-func (f *fetch) Compute(ctx context.Context, _ compute.Resolved) (bytestream.ByteStream, error) {
-	resp, err := http.Get(f.url)
+func (d *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (bytestream.ByteStream, error) {
+	resp, err := http.Get(d.url)
 	if err != nil {
 		return nil, err
 	}

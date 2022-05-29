@@ -2,13 +2,12 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-// available at http://github.com/namespacelabs/foundation
-
 package download
 
 import (
+	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/bytestream"
@@ -19,49 +18,51 @@ import (
 )
 
 // Returns a `Computable` downloading an artifact. Verifies against a known `schema.Digest`.
+// TODO inject computables (to make this code testable).
 func URL(ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {
-	return &downloadUrl{
+	return &urlAndDigest{
 		url:      ref.URL,
 		digest:   compute.Immediate(ref.Digest),
-		artifact: FetchUrl(ref.URL)}
+		artifact: DownloadUrl(ref.URL)}
 }
 
 // Returns a `Computable` downloading both an artifact and its expected checksum.
 // Verifies the artifact against the checksum.
+// TODO inject computables (to make this code testable).
 func UrlAndDigest(artifactUrl, digestUrl, digestAlg string) compute.Computable[bytestream.ByteStream] {
 	downloadDigest := compute.Transform(
-		FetchUrl(digestUrl),
+		DownloadUrl(digestUrl),
 		func(ctx context.Context, digest bytestream.ByteStream) (schema.Digest, error) {
 			r, err := digest.Reader()
 			if err != nil {
 				return schema.Digest{}, err
 			}
-			v, err := ioutil.ReadAll(r)
-			if err != nil {
+			var buf bytes.Buffer
+			if _, err = io.Copy(&buf, r); err != nil {
 				return schema.Digest{}, err
 			}
-			return schema.Digest{Algorithm: digestAlg, Hex: string(v)}, nil
+			return schema.Digest{Algorithm: digestAlg, Hex: buf.String()}, nil
 		})
-	return &downloadUrl{url: artifactUrl, digest: downloadDigest, artifact: FetchUrl(artifactUrl)}
+	return &urlAndDigest{url: artifactUrl, digest: downloadDigest, artifact: DownloadUrl(artifactUrl)}
 }
 
-type downloadUrl struct {
-	url      string
+type urlAndDigest struct {
+	url      string // For presentation only.
 	digest   compute.Computable[schema.Digest]
 	artifact compute.Computable[bytestream.ByteStream]
 
 	compute.LocalScoped[bytestream.ByteStream]
 }
 
-func (dl *downloadUrl) Action() *tasks.ActionEvent {
+func (dl *urlAndDigest) Action() *tasks.ActionEvent {
 	return tasks.Action("artifact.verify").Arg("url", dl.url)
 }
 
-func (dl *downloadUrl) Inputs() *compute.In {
+func (dl *urlAndDigest) Inputs() *compute.In {
 	return compute.Inputs().Computable("artifact", dl.artifact).Computable("digest", dl.digest)
 }
 
-func (dl *downloadUrl) Compute(ctx context.Context, deps compute.Resolved) (bytestream.ByteStream, error) {
+func (dl *urlAndDigest) Compute(ctx context.Context, deps compute.Resolved) (bytestream.ByteStream, error) {
 	artifactBytes := compute.MustGetDepValue(deps, dl.artifact, "artifact")
 	artifactDigest, err := bytestream.Digest(ctx, artifactBytes)
 	if err != nil {
