@@ -51,7 +51,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@workspace:languages/nodejs/testdata/extensions/batchformatter"
   dependencies:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter": 0.0.0
-    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
 
@@ -59,7 +59,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:languages/nodejs/testdata/extensions/numberformatter"
   dependencies:
-    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
 
@@ -71,7 +71,7 @@ __metadata:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp": 0.0.0
-    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
 
@@ -80,7 +80,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:languages/nodejs/testdata/services/numberformatter"
   dependencies:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
-    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
 
@@ -89,7 +89,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser@workspace:languages/nodejs/testdata/services/postuser"
   dependencies:
     "@namespacelabs.dev-foundation/std-grpc": 0.0.0
-    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
 
@@ -97,7 +97,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple"
   dependencies:
-    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
 
@@ -105,7 +105,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp@workspace:languages/nodejs/testdata/services/simplehttp"
   dependencies:
-    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
 
@@ -113,13 +113,13 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-grpc@workspace:std/grpc"
   dependencies:
-    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
 
-"@namespacelabs/foundation@fn:namespacelabs.dev/foundation/languages/nodejs/runtime":
+"@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime":
   version: 0.0.0
-  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/languages/nodejs/runtime::23a85d"
+  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime::23a85d"
   dependencies:
     "@grpc/grpc-js": 1.5.8
     fastify: 3.29.0

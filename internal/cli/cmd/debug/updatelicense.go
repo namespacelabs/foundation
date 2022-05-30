@@ -60,7 +60,7 @@ func newUpdateLicenseCmd() *cobra.Command {
 				}
 
 				if d.IsDir() {
-					// "dist" contains compiled Typescript code, for example, languages/nodejs/runtime.
+					// "dist" contains compiled Typescript code, for example, std/nodejs/runtime.
 					if d.Name() == "node_modules" || d.Name() == "dist" {
 						return fs.SkipDir
 					}

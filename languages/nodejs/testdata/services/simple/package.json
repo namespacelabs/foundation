@@ -1,6 +1,6 @@
 {
 	"dependencies": {
-		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
+		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
 	},
 	"name": "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple",
 	"private": true,

@@ -1,6 +1,6 @@
 {
 	"dependencies": {
-		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/languages/nodejs/runtime"
+		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
 	},
 	"name": "@namespacelabs.dev-foundation/std-grpc",
 	"private": true,

@@ -43,16 +43,19 @@ const (
 	controllerPkg schema.PackageName = "namespacelabs.dev/foundation/std/development/filesync/controller"
 	grpcNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/grpc"
 	httpNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/http"
-	runtimeNode   schema.PackageName = "namespacelabs.dev/foundation/languages/nodejs/runtime"
 	// Short alias of the runtime package.
 	runtimeNpmPackage  = "@namespacelabs/foundation"
-	runtimePackagePath = "languages/nodejs/runtime"
+	runtimePackagePath = "std/nodejs/runtime"
 	// Yarn version of the packages in the same module. Doesn't really matter what the value here is.
 	defaultPackageVersion = "0.0.0"
 	implFileName          = "impl.ts"
 	packageJsonFn         = "package.json"
 	fileSyncPort          = 50000
 	ForceProd             = false
+)
+
+var (
+	runtimeNode = schema.PackageName(fmt.Sprintf("namespacelabs.dev/foundation/%s", runtimePackagePath))
 )
 
 func Register() {
