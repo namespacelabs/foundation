@@ -7,8 +7,8 @@ server: fn.#OpaqueServer & {
 	name: "fn-controller"
 
 	binary: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/img"
+}
 
-	import: [
-		"namespacelabs.dev/foundation/std/runtime/kubernetes/controller/configure",
-	]
+configure: fn.#Configure & {
+	with: binary: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/tool"
 }
