@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/sdk/glooctl"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/grpcurl"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
@@ -29,7 +30,7 @@ import (
 )
 
 func NewSdkCmd() *cobra.Command {
-	sdks := []string{"go", "k3d", "kubectl", "grpcurl", "octant"}
+	sdks := []string{"go", "k3d", "kubectl", "grpcurl", "octant", "glooctl"}
 
 	goSdkVersion := "1.18"
 
@@ -78,6 +79,7 @@ func sdkList(sdks []string, goVersion string) []sdk {
 		simpleFileSDK("kubectl", kubectl.SDK, kubectl.AllDownloads),
 		simpleFileSDK("octant", octant.SDK, octant.AllDownloads),
 		simpleFileSDK("grpcurl", grpcurl.SDK, grpcurl.AllDownloads),
+		simpleFileSDK("glooctl", glooctl.SDK, glooctl.AllDownloads),
 	}
 
 	var ret []sdk
