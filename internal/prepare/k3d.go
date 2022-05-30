@@ -138,7 +138,7 @@ func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName str
 	}
 	if ours == nil {
 		// Create cluster.
-		if err := p.k3dbin.CreateCluster(ctx, clusterName, registryAddr, "rancher/k3s:v1.20.7-k3s1", true); err != nil {
+		if err := p.k3dbin.CreateCluster(ctx, clusterName, registryAddr, "rancher/k3s:v1.22.9-k3s1", true); err != nil {
 			return err
 		}
 	} else {
