@@ -3,15 +3,28 @@ import (
 	"namespacelabs.dev/foundation/std/fn:inputs"
 )
 
-// TODO: consolidate with std/go/http extension.
-
 $inputs: {
 	httpPort: inputs.#Port & {
 		name: "http-port"
 	}
 }
+$providerProto: inputs.#Proto & {
+	source: "provider.proto"
+}
 
-extension: fn.#Extension & {}
+extension: fn.#Extension & {
+	provides: {
+		HttpServer: {
+			input: $providerProto.types.NoArgs
+			availableIn: {
+				nodejs: {
+					import: "httpserver"
+					type:   "Promise<HttpServer>"
+				}
+			}
+		}
+	}
+}
 
 configure: fn.#Configure & {
 	startup: {

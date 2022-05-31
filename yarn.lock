@@ -71,6 +71,7 @@ __metadata:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
@@ -80,6 +81,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:languages/nodejs/testdata/services/numberformatter"
   dependencies:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
@@ -105,6 +107,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp@workspace:languages/nodejs/testdata/services/simplehttp"
   dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
@@ -117,17 +120,26 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@namespacelabs.dev-foundation/std-nodejs-http@0.0.0, @namespacelabs.dev-foundation/std-nodejs-http@workspace:std/nodejs/http":
+  version: 0.0.0-use.local
+  resolution: "@namespacelabs.dev-foundation/std-nodejs-http@workspace:std/nodejs/http"
+  dependencies:
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
+  languageName: unknown
+  linkType: soft
+
 "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime":
   version: 0.0.0
-  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime::23a85d"
+  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime::7cc4aa"
   dependencies:
     "@grpc/grpc-js": 1.5.8
     fastify: 3.29.0
     google-protobuf: 3.20.0
+    middie: 6.1.0
     source-map-support: 0.5.21
     typescript: 4.6.2
     yargs: 16.2.0
-  checksum: 318d3d47dc44df031476adf86f69d1b0b49537234902068fe24e077ba21efde8c780522488fe649a62f7693562e15c6b2fc4a8f08dfddc7495b1f1f1127ae410
+  checksum: 6ea68d0f01d0816c98c8b95c4bcfc1e4e8115122d109b9fd7cf3d55c5e8860cbe6a44491a77a041b2d11959ae14ddcf736983980675cab17fe76464202620c40
   languageName: node
   linkType: hard
 
@@ -449,6 +461,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fastify-plugin@npm:^3.0.0":
+  version: 3.0.1
+  resolution: "fastify-plugin@npm:3.0.1"
+  checksum: 131ba0a388f777829c3fb0fd5b75cf057688ce6d0ca354fb1ebf829767a8c853b0825762b9185b5200097454df0ede2f3095da2efe1aa1b3736d07f194e6d374
+  languageName: node
+  linkType: hard
+
 "fastify@npm:3.29.0":
   version: 3.29.0
   resolution: "fastify@npm:3.29.0"
@@ -584,10 +603,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"middie@npm:6.1.0":
+  version: 6.1.0
+  resolution: "middie@npm:6.1.0"
+  dependencies:
+    fastify-plugin: ^3.0.0
+    path-to-regexp: ^6.1.0
+    reusify: ^1.0.4
+  checksum: dbc6fd5d9891ddc0774dd26fa455e52b042f9a9918bb2fe98ba3784b45a4961bb5ab029e790788589c2d90e7ddaf10b606ae549ec5327080a1cfaaacfaf25ce6
+  languageName: node
+  linkType: hard
+
 "ms@npm:2.1.2":
   version: 2.1.2
   resolution: "ms@npm:2.1.2"
   checksum: 673cdb2c3133eb050c745908d8ce632ed2c02d85640e2edb3ace856a2266a813b30c613569bf3354fdf4ea7d1a1494add3bfa95e2713baa27d0c2c71fc44f58f
+  languageName: node
+  linkType: hard
+
+"path-to-regexp@npm:^6.1.0":
+  version: 6.2.1
+  resolution: "path-to-regexp@npm:6.2.1"
+  checksum: f0227af8284ea13300f4293ba111e3635142f976d4197f14d5ad1f124aebd9118783dd2e5f1fe16f7273743cc3dbeddfb7493f237bb27c10fdae07020cc9b698
   languageName: node
   linkType: hard
 

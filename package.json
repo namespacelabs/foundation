@@ -15,6 +15,7 @@
 		"languages/nodejs/testdata/services/postuser",
 		"languages/nodejs/testdata/services/simple",
 		"languages/nodejs/testdata/services/simplehttp",
-		"std/grpc"
+		"std/grpc",
+		"std/nodejs/http"
 	]
 }
