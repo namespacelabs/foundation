@@ -26,7 +26,6 @@ import (
 
 type InvokeProps struct {
 	Event          protocol.Lifecycle
-	LocalMapping   []*rtypes.LocalMapping
 	ProvisionInput []*anypb.Any
 }
 
@@ -69,7 +68,7 @@ func (inv *cacheableInvocation) Inputs() *compute.In {
 
 func (inv *cacheableInvocation) Output() compute.Output {
 	// To make invocations cacheable we need to enumerate the contents of the mounts.
-	mountCount := len(inv.handler.Invocation.Mounts) + len(inv.props.LocalMapping)
+	mountCount := len(inv.handler.Invocation.Mounts)
 
 	return compute.Output{
 		NotCacheable:     inv.handler.Invocation.NoCache,
@@ -151,7 +150,6 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	}
 
 	opts.Mounts = append(opts.Mounts, r.Invocation.Mounts...)
-	opts.Mounts = append(opts.Mounts, inv.props.LocalMapping...)
 	req.Input = append(req.Input, inv.props.ProvisionInput...)
 
 	return tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{

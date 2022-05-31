@@ -29,7 +29,7 @@ message Port {
 }
 
 message ProvisionProps {
-    repeated LocalMapping local_mapping          = 1;
+    reserved 1;
     repeated google.protobuf.Any provision_input = 2;
     repeated schema.Definition definition        = 3;
     repeated schema.DefExtension extension       = 4;

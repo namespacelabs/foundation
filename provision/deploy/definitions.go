@@ -35,7 +35,6 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 	for k, srv := range stack.ParsedServers {
 		invokeProps := tool.InvokeProps{Event: event}
 
-		invokeProps.LocalMapping = append(invokeProps.LocalMapping, props.LocalMapping...)
 		invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, props.ProvisionInput...)
 
 		for _, dep := range srv.Deps {
