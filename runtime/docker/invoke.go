@@ -69,28 +69,12 @@ func HostPlatform() specs.Platform {
 func (r ToolRuntime) HostPlatform() specs.Platform { return HostPlatform() }
 
 func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
-	computable, err := writeImageOnce(opts.ImageName, opts.Image)
-	if err != nil {
-		return err
-	}
-
-	config, err := compute.GetValue(ctx, computable)
-	if err != nil {
-		return err
-	}
-
-	cli, err := NewClient()
-	if err != nil {
-		return err
-	}
-
 	var cmd []string
 	cmd = append(cmd, opts.Command...)
 	cmd = append(cmd, opts.Args...)
 
 	containerConfig := &container.Config{
 		WorkingDir:   opts.WorkingDir,
-		Image:        config.String(),
 		Tty:          opts.AllocateTTY,
 		AttachStdout: true, // Stdout, Stderr is always attached, even if discarded later (see below).
 		AttachStderr: true,
@@ -113,8 +97,12 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		containerConfig.User = fmt.Sprintf("%s:%s", uid.Uid, uid.Gid)
 	}
 
-	for k, v := range opts.Env {
-		containerConfig.Env = append(containerConfig.Env, fmt.Sprintf("%s=%s", k, v))
+	for _, kv := range opts.Env {
+		if kv.ExperimentalFromSecret != "" {
+			return fnerrors.New("docker: doesn't support env.ExperimentalFromSecret")
+		}
+
+		containerConfig.Env = append(containerConfig.Env, fmt.Sprintf("%s=%s", kv.Name, kv.Value))
 	}
 
 	hostConfig := &container.HostConfig{
@@ -147,6 +135,23 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		}
 
 		hostConfig.Binds = append(hostConfig.Binds, absPath+":"+m.ContainerPath)
+	}
+
+	computable, err := writeImageOnce(opts.ImageName, opts.Image)
+	if err != nil {
+		return err
+	}
+
+	config, err := compute.GetValue(ctx, computable)
+	if err != nil {
+		return err
+	}
+
+	containerConfig.Image = config.String()
+
+	cli, err := NewClient()
+	if err != nil {
+		return err
 	}
 
 	networkConfig := &network.NetworkingConfig{}

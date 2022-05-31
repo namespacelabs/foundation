@@ -76,7 +76,7 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 			Image:      compute.MustGetDepValue(r, inv.prepared.Image, "image"),
 			WorkingDir: "/",
 			Command:    inv.prepared.Command,
-			Env:        map[string]string{"HOME": "/tmp"},
+			Env:        []*schema.BinaryConfig_EnvEntry{{Name: "HOME", Value: "/tmp"}},
 			RunAsUser:  true,
 		}}
 

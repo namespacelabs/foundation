@@ -11,6 +11,7 @@ import (
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"namespacelabs.dev/foundation/internal/console"
+	schema "namespacelabs.dev/foundation/schema"
 )
 
 type RunBinaryOpts struct {
@@ -18,7 +19,7 @@ type RunBinaryOpts struct {
 	Image      v1.Image
 	Command    []string
 	Args       []string
-	Env        map[string]string
+	Env        []*schema.BinaryConfig_EnvEntry
 	RunAsUser  bool
 }
 

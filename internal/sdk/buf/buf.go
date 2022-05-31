@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
@@ -72,7 +73,7 @@ func Run(ctx context.Context, bufImage v1.Image, io rtypes.IO, wd string, mounts
 			WorkingDir: wd,
 			Command:    []string{"buf"},
 			Args:       append([]string{"--config", string(configBytes)}, args...),
-			Env:        map[string]string{"HOME": "/tmp"},
+			Env:        []*schema.BinaryConfig_EnvEntry{{Name: "HOME", Value: "/tmp"}},
 			RunAsUser:  true, // Files written by buf will then be owned by the calling user.
 		}})
 }

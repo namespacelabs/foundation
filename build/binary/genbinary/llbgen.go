@@ -69,8 +69,8 @@ func (l llbBinary) BuildImage(ctx context.Context, env ops.Environment, conf bui
 			run.Image = binImage
 			// XXX security user id
 			run.Command = []string{"/" + binary.LLBGenBinaryName}
-			run.Env = map[string]string{
-				"TARGET_PLATFORM": targetPlatform,
+			run.Env = []*schema.BinaryConfig_EnvEntry{
+				{Name: "TARGET_PLATFORM", Value: targetPlatform},
 			}
 
 			if err := tools.Run(ctx, run); err != nil {
