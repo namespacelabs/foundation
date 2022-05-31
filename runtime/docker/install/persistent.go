@@ -129,7 +129,7 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 	}
 
 	for name, target := range p.Volumes {
-		config.Volumes[fmt.Sprintf("%s:%s", name, target)] = struct{}{}
+		host.Binds = append(host.Binds, fmt.Sprintf("%s:%s", name, target))
 	}
 
 	if p.UseHostNetworking {
