@@ -1,35 +1,35 @@
 // This file was automatically generated.
 
 import { DependencyGraph, Initializer, Server } from "@namespacelabs/foundation";
-import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/deps.fn"
-import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp/deps.fn"
-import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter/deps.fn"
-import * as i3 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser/deps.fn"
+import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/deps.fn";
+import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp/deps.fn";
+import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter/deps.fn";
+import * as i3 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser/deps.fn";
 
 // Returns a list of initialization errors.
 const wireServices = async (server: Server, graph: DependencyGraph): Promise<unknown[]> => {
 	const errors: unknown[] = [];
-  try {
+	try {
 		await i0.wireService(server);
 	} catch (e) {
 		errors.push(e);
 	}
-  try {
+	try {
 		await i1.wireService(server);
 	} catch (e) {
 		errors.push(e);
 	}
-  try {
+	try {
 		await i2.wireService(i2.Package.instantiateDeps(graph), server);
 	} catch (e) {
 		errors.push(e);
 	}
-  try {
+	try {
 		await i3.wireService(i3.Package.instantiateDeps(graph), server);
 	} catch (e) {
 		errors.push(e);
 	}
-  return errors;
+	return errors;
 };
 
 const TransitiveInitializers: Initializer[] = [
@@ -46,7 +46,7 @@ async function main() {
 	const errors = await wireServices(server, graph);
 	if (errors.length > 0) {
 		errors.forEach((e) => console.error(e));
-		console.error("%d services failed to start.", errors.length)
+		console.error("%d services failed to start.", errors.length);
 		process.exit(1);
 	}
 

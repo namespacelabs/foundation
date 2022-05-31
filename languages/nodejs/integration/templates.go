@@ -35,10 +35,10 @@ export interface {{.Name}}Deps {
 			{{template "Type" .ProviderInputType -}}
 			.deserializeBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
 			{{- end -}}
-		  {{- if .IsProviderParameterized}},
+			{{- if .IsProviderParameterized}},
 			{{template "Type" .Type}}{{end}}),
 	{{- end}}
-  })
+	})
 {{- end}}
 
 // Input: tmplPackage
@@ -48,11 +48,11 @@ export interface {{.Name}}Deps {
 {{- end}}
 
 export const Package = {
-  name: "{{.Name}}",
+	name: "{{.Name}}",
 
-  {{- if .Deps}}
-  // Package dependencies are instantiated at most once.
-  instantiateDeps: (graph: DependencyGraph) => {{template "ConstructDeps" .Deps}},
+	{{- if .Deps}}
+	// Package dependencies are instantiated at most once.
+	instantiateDeps: (graph: DependencyGraph) => {{template "ConstructDeps" .Deps}},
 	{{- end}}
 };
 {{- end}}
@@ -73,15 +73,15 @@ export const TransitiveInitializers: Initializer[] = [
 // Input: tmplInitializer
 {{define "InitializerDef" -}}
 const initializer = {
-  package: Package,
+	package: Package,
 	initialize: impl.initialize,
 
-  {{- if .InitializeBefore}}
+	{{- if .InitializeBefore}}
 	before: [
 	{{- range .InitializeBefore}}"{{.}}",{{end -}}
 	]{{- end}}
 
-  {{- if .InitializeAfter}}
+	{{- if .InitializeAfter}}
 	after: [
 	{{- range .InitializeAfter}}"{{.}}",{{end -}}
 	]{{- end}}
@@ -99,9 +99,9 @@ export const prepare: Prepare = impl.initialize;
 {{- end}}
 
 export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
-  (graph: DependencyGraph
+	(graph: DependencyGraph
 	{{- if not .IsParameterized }}, input: {{template "Type" .InputType -}}{{end}}
-  {{- if .IsParameterized}}, outputTypeCtr: new (...args: any[]) => T{{end}}) =>
+	{{- if .IsParameterized}}, outputTypeCtr: new (...args: any[]) => T{{end}}) =>
 	provide{{.Name}}(
 		{{if not .IsParameterized}}input{{end}}
 		{{- if .PackageDepsName}},
@@ -112,12 +112,12 @@ export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
 		graph.instantiateDeps(Package.name, "{{.Deps.Name}}", () => {{template "ConstructDeps" .Deps}})
 		{{- end}}
 		{{- if .IsParameterized}}outputTypeCtr{{end}}
-  );
+	);
 
 export type Provide{{.Name}} = {{if .IsParameterized}}<T>{{end -}}
-    ({{- if not .IsParameterized}}input: {{template "Type" .InputType}}{{end}}
-	  {{- if .PackageDepsName}}, packageDeps: {{.PackageDepsName}}Deps{{end -}}
-	  {{- if .Deps}}, deps: {{.Name}}Deps{{end}}
+		({{- if not .IsParameterized}}input: {{template "Type" .InputType}}{{end}}
+		{{- if .PackageDepsName}}, packageDeps: {{.PackageDepsName}}Deps{{end -}}
+		{{- if .Deps}}, deps: {{.Name}}Deps{{end}}
 		{{- if .IsParameterized}}outputTypeCtr: new (...args: any[]) => T{{end}}) =>
 		{{if .IsParameterized}}T{{else}}{{template "Type" .OutputType}}{{end}};
 export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
@@ -125,7 +125,7 @@ export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
 
 {{define "Imports"}}
 {{range .Imports -}}
-import * as {{.Alias}} from "{{.Package}}"
+import * as {{.Alias}} from "{{.Package}}";
 {{end}}
 {{end}}
 
@@ -134,8 +134,8 @@ import * as {{.Alias}} from "{{.Package}}"
 	{{if .ImportAlias}}{{.ImportAlias}}.{{end}}{{.Name}}
 	{{- if .Parameters}}<
 		{{- range $index, $p := .Parameters}}
-		  {{- if ne $index 0 }}, {{end}}
-		  {{- template "Type" $p}}
+			{{- if ne $index 0 }}, {{end}}
+			{{- template "Type" $p}}
 		{{- end -}}
 	>{{- end}}
 {{- end}}` +
@@ -182,7 +182,7 @@ import { DependencyGraph, Initializer, Server } from "@namespacelabs/foundation"
 const wireServices = async (server: Server, graph: DependencyGraph): Promise<unknown[]> => {
 	const errors: unknown[] = [];
 {{- range $.Services}}
-  try {
+	try {
 		await {{.Type.ImportAlias}}.wireService(
 			{{- if .HasDeps}}{{.Type.ImportAlias}}.Package.instantiateDeps(graph), {{ end -}}
 			server);
@@ -190,7 +190,7 @@ const wireServices = async (server: Server, graph: DependencyGraph): Promise<unk
 		errors.push(e);
 	}
 {{- end}}
-  return errors;
+	return errors;
 };
 
 const TransitiveInitializers: Initializer[] = [
@@ -206,7 +206,7 @@ async function main() {
 	const errors = await wireServices(server, graph);
 	if (errors.length > 0) {
 		errors.forEach((e) => console.error(e));
-		console.error("%d services failed to start.", errors.length)
+		console.error("%d services failed to start.", errors.length);
 		process.exit(1);
 	}
 
@@ -222,10 +222,10 @@ import { ServiceDeps, WireService } from "./deps.fn";
 import { {{.ServiceServerName}}, {{.ServiceName}} } from "./{{.ServiceFileName}}_grpc_pb";
 
 export const wireService: WireService = async (deps: ServiceDeps, registrar: Registrar) => {
-  const service: {{.ServiceServerName}} = {
-    // TODO: implement
-  };
+	const service: {{.ServiceServerName}} = {
+		// TODO: implement
+	};
 
-  registrar.registerGrpcService({{.ServiceName}}, service);
+	registrar.registerGrpcService({{.ServiceName}}, service);
 };{{end}}`))
 )

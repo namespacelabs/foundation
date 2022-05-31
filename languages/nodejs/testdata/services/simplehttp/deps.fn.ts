@@ -6,7 +6,7 @@ import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundati
 
 
 export const Package = {
-  name: "namespacelabs.dev/foundation/languages/nodejs/testdata/services/simplehttp",
+	name: "namespacelabs.dev/foundation/languages/nodejs/testdata/services/simplehttp",
 };
 
 export const TransitiveInitializers: Initializer[] = [
