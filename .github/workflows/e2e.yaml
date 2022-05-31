@@ -63,9 +63,7 @@ jobs:
         if: failure() && github.event_name == 'push'
 
   run_deploy:
-    name:
-      Kubernetes e2e test os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
-      golang_use_buildkit=${{ matrix.golang_use_buildkit }}
+    name: Kubernetes deploy std/testdata/server/gogrpc use_prebuilts=${{ matrix.use_prebuilts }} golang_use_buildkit=${{ matrix.golang_use_buildkit }}
     needs: build_fn
     strategy:
       matrix:
@@ -125,7 +123,7 @@ jobs:
             --wait std/testdata/server/gogrpc
 
   run_e2e_tests:
-    name: e2e tests
+    name: Run all fn test repo=${{ matrix.repo }} regenerate=${{ matrix.regenerate_fn_generate }}
     needs: build_fn
     strategy:
       matrix:
@@ -200,7 +198,8 @@ jobs:
             --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=true \
             --golang_use_buildkit=false \
-            --include_servers
+            --include_servers \
+            --parallel
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
