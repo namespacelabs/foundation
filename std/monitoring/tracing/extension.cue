@@ -34,6 +34,10 @@ extension: fn.#Extension & {
 				go: {
 					type: "HttpClientProvider"
 				}
+				nodejs: {
+					import: "http"
+					type: "HttpClientProvider"
+				}
 			}
 		}
 	}
