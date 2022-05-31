@@ -118,19 +118,6 @@ func fillConfigFromEnv(config *Configuration) {
 	}
 }
 
-func (c *Configuration) asEnv() []string {
-	var env []string
-	env = append(env, "DOCKER_HOST="+c.Host)
-	env = append(env, "DOCKER_API_VERSION="+c.Version)
-	env = append(env, "DOCKER_CERT_PATH="+c.CertPath)
-	if c.VerifyTls {
-		env = append(env, "DOCKER_TLS_VERIFY=1")
-	} else {
-		env = append(env, "DOCKER_TLS_VERIFY=")
-	}
-	return env
-}
-
 // From "github.com/docker/cli/cli/command", but avoiding dep creep.
 func EncodeAuthToBase64(authConfig configtypes.AuthConfig) (string, error) {
 	buf, err := json.Marshal(authConfig)
