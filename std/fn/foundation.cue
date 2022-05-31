@@ -169,7 +169,6 @@ _#ConfigureBase: {
 		// XXX add purpose, e.g. contributes startup inputs.
 		with?: {
 			#InvokeBinary
-			mount: [string]: {fromWorkspace: string}
 			snapshot: [string]: {fromWorkspace: string}
 			noCache:      *false | true
 			requiresKeys: *false | true
@@ -214,7 +213,6 @@ _#ConfigureBase: {
 	binary:     inputs.#Package
 	args:       #Args
 	workingDir: *"/" | string
-	mount: [string]: {fromWorkspace: string}
 	snapshot: [string]: {
 		fromWorkspace: string
 		optional:      *false | true

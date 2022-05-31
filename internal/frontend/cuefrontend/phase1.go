@@ -33,10 +33,6 @@ type cueStack struct {
 	Append []cueWithPackageName `json:"append"`
 }
 
-type cueInvocationMount struct {
-	FromWorkspace string `json:"fromWorkspace"`
-}
-
 type cueInvocationSnapshot struct {
 	FromWorkspace string `json:"fromWorkspace"`
 	Optional      bool   `json:"optional"`
@@ -46,7 +42,6 @@ type cueInvocationSnapshot struct {
 type cueInvokeBinary struct {
 	Binary       string                           `json:"binary"`
 	Args         *argsListOrMap                   `json:"args"`
-	Mounts       map[string]cueInvocationMount    `json:"mount"`
 	WorkingDir   string                           `json:"workingDir"`
 	Snapshots    map[string]cueInvocationSnapshot `json:"snapshot"`
 	NoCache      bool                             `json:"noCache"`
@@ -60,15 +55,6 @@ func (cib cueInvokeBinary) toFrontend() *schema.Invocation {
 		WorkingDir:   cib.WorkingDir,
 		NoCache:      cib.NoCache,
 		RequiresKeys: cib.RequiresKeys,
-	}
-
-	for k, v := range cib.Mounts {
-		if inv.Mounts == nil {
-			inv.Mounts = map[string]*schema.InvocationMount{}
-		}
-		inv.Mounts[k] = &schema.InvocationMount{
-			FromWorkspace: v.FromWorkspace,
-		}
 	}
 
 	for k, v := range cib.Snapshots {

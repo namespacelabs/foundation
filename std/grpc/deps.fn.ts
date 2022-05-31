@@ -6,7 +6,7 @@ import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundati
 
 
 export const Package = {
-	name: "namespacelabs.dev/foundation/std/grpc",
+  name: "namespacelabs.dev/foundation/std/grpc",
 };
 
 export const TransitiveInitializers: Initializer[] = [
@@ -16,7 +16,7 @@ export const TransitiveInitializers: Initializer[] = [
 export const BackendProvider = <T>(graph: DependencyGraph, outputTypeCtr: new (...args: any[]) => T) =>
 	provideBackend(
 		outputTypeCtr
-	);
+  );
 
 export type ProvideBackend = <T>(outputTypeCtr: new (...args: any[]) => T) =>
 		T;

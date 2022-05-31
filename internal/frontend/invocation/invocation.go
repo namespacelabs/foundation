@@ -18,7 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -30,7 +29,6 @@ type Invocation struct {
 	Image      compute.Computable[oci.Image]
 	Command    []string
 	Args       []string
-	Mounts     []*rtypes.LocalMapping
 	Snapshots  []Snapshot
 	WorkingDir string
 	NoCache    bool
@@ -63,14 +61,6 @@ func Make(ctx context.Context, env provision.ServerEnv, serverLocRef *workspace.
 		Image:      bin.Image,
 		WorkingDir: with.WorkingDir,
 		NoCache:    with.NoCache,
-	}
-
-	for target, mount := range with.Mounts {
-		// XXX verify we're not breaking from the workspace.
-		invocation.Mounts = append(invocation.Mounts, &rtypes.LocalMapping{
-			LocalPath:     mount.FromWorkspace,
-			ContainerPath: target,
-		})
 	}
 
 	invocation.Args = with.Args
@@ -141,15 +131,6 @@ func Make(ctx context.Context, env provision.ServerEnv, serverLocRef *workspace.
 	}
 
 	// Make configuration deterministic.
-
-	sort.Slice(invocation.Mounts, func(i, j int) bool {
-		i_l, i_j := invocation.Mounts[i].LocalPath, invocation.Mounts[j].LocalPath
-		if i_l == i_j {
-			return strings.Compare(invocation.Mounts[i].ContainerPath, invocation.Mounts[j].ContainerPath) < 0
-		}
-
-		return strings.Compare(i_l, i_j) < 0
-	})
 
 	sort.Strings(invocation.Args)
 

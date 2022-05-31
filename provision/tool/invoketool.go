@@ -67,12 +67,8 @@ func (inv *cacheableInvocation) Inputs() *compute.In {
 }
 
 func (inv *cacheableInvocation) Output() compute.Output {
-	// To make invocations cacheable we need to enumerate the contents of the mounts.
-	mountCount := len(inv.handler.Invocation.Mounts)
-
 	return compute.Output{
-		NotCacheable:     inv.handler.Invocation.NoCache,
-		NonDeterministic: mountCount > 0,
+		NotCacheable: inv.handler.Invocation.NoCache,
 	}
 }
 
@@ -142,14 +138,12 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 			Args:       r.Invocation.Args,
 			WorkingDir: r.Invocation.WorkingDir,
 		},
-		MountAbsRoot: inv.handler.ServerAbsPath,
 		// Don't let an invocation reach out, it should be hermetic. Tools are
 		// expected to produce operations which can be inspected. And then these
 		// operations are applied by the caller.
 		NoNetworking: true,
 	}
 
-	opts.Mounts = append(opts.Mounts, r.Invocation.Mounts...)
 	req.Input = append(req.Input, inv.props.ProvisionInput...)
 
 	return tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{

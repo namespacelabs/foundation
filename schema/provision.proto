@@ -9,17 +9,13 @@ package foundation.schema;
 option go_package = "namespacelabs.dev/foundation/schema";
 
 message Invocation {
+    reserved 3;
     string                          binary        = 1;
     repeated string                 args          = 2;
-    map<string, InvocationMount>    mounts        = 3;
     string                          working_dir   = 4;
     map<string, InvocationSnapshot> snapshots     = 5;
     bool                            no_cache      = 6;
     bool                            requires_keys = 7;
-}
-
-message InvocationMount {
-    string from_workspace = 1;
 }
 
 message InvocationSnapshot {

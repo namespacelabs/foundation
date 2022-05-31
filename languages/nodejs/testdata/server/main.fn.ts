@@ -1,35 +1,35 @@
 // This file was automatically generated.
 
 import { DependencyGraph, Initializer, Server } from "@namespacelabs/foundation";
-import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/deps.fn";
-import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp/deps.fn";
-import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter/deps.fn";
-import * as i3 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser/deps.fn";
+import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/deps.fn"
+import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp/deps.fn"
+import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter/deps.fn"
+import * as i3 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser/deps.fn"
 
 // Returns a list of initialization errors.
-const wireServices = async (server: Server, graph: DependencyGraph): Promise<unknown[]> => {
+const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
 	const errors: unknown[] = [];
-	try {
-		await i0.wireService(server);
+  try {
+		i0.wireService(server);
 	} catch (e) {
 		errors.push(e);
 	}
-	try {
-		await i1.wireService(server);
+  try {
+		i1.wireService(server);
 	} catch (e) {
 		errors.push(e);
 	}
-	try {
-		await i2.wireService(i2.Package.instantiateDeps(graph), server);
+  try {
+		i2.wireService(i2.Package.instantiateDeps(graph), server);
 	} catch (e) {
 		errors.push(e);
 	}
-	try {
-		await i3.wireService(i3.Package.instantiateDeps(graph), server);
+  try {
+		i3.wireService(i3.Package.instantiateDeps(graph), server);
 	} catch (e) {
 		errors.push(e);
 	}
-	return errors;
+  return errors;
 };
 
 const TransitiveInitializers: Initializer[] = [
@@ -39,18 +39,15 @@ const TransitiveInitializers: Initializer[] = [
 	...i3.TransitiveInitializers,
 ];
 
-async function main() {
-	const server = new Server();
-	const graph = new DependencyGraph();
-	graph.runInitializers(TransitiveInitializers);
-	const errors = await wireServices(server, graph);
-	if (errors.length > 0) {
-		errors.forEach((e) => console.error(e));
-		console.error("%d services failed to start.", errors.length);
-		process.exit(1);
-	}
+const server = new Server();
 
-	server.start();
+const graph = new DependencyGraph();
+graph.runInitializers(TransitiveInitializers);
+const errors = wireServices(server, graph);
+if (errors.length > 0) {
+	errors.forEach((e) => console.error(e));
+	console.error("%d services failed to start.", errors.length)
+	process.exit(1);
 }
 
-main();
+server.start();
