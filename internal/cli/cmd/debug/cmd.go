@@ -28,6 +28,7 @@ func NewDebugCmd() *cobra.Command {
 	cmd.AddCommand(newGoSourcesCmd())
 	cmd.AddCommand(newDownloadCmd())
 	cmd.AddCommand(newPrepareCmd())
+	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newDnsQuery())
 	cmd.AddCommand(newObserveFsCmd())
 	cmd.AddCommand(newDecodeProtoCmd())
