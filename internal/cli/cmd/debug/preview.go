@@ -24,6 +24,10 @@ func newPreviewCmd() *cobra.Command {
 			// clone branch
 			// create eph environment
 			// build/deploy
+			//
+			// try
+			// https://github.com/palantir/go-githubapp
+			// github.com/google/go-github/v43/github
 			return nil
 		}),
 	}
