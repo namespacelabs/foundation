@@ -273,8 +273,15 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.
 		goroutineErrs[i] = <-errCh
 	}
 
-	if exitErr, ok := waitErr.(fnerrors.ExitError); !ok || exitErr.ExitCode() != 0 {
-		return err
+	if waitErr != nil {
+		switch err := waitErr.(type) {
+		case fnerrors.ExitError:
+			if err.ExitCode() == 0 {
+				return nil
+			}
+		}
+
+		return waitErr
 	}
 
 	return multierr.New(goroutineErrs...)
