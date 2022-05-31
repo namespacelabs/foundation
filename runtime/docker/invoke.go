@@ -249,16 +249,24 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.
 		results, errs := cli.ContainerWait(ctx, created.ID, container.WaitConditionNextExit)
 		select {
 		case result := <-results:
-			if result.StatusCode == 0 {
-				return nil
-			}
-			return fnerrors.New("docker: failed with exit code %d", result.StatusCode)
+			// An error is used to signal the parent in order to comply with the
+			// Executor protocol. We want the first error to be recorded as
+			// primary, and in this case that would be the observed exit code.
+			// If for example we fail to read from a stream after observing exit
+			// code 0, we should still not return an error.
+			return fnerrors.ExitWithCode(fmt.Errorf("docker: container exit code %d", result.StatusCode), int(result.StatusCode))
 		case err := <-errs:
 			return err
 		}
 	})
 
-	return wait()
+	if err := wait(); err != nil {
+		if exitErr, ok := err.(fnerrors.ExitError); !ok || exitErr.ExitCode() != 0 {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func writerOrDiscard(w io.Writer) io.Writer {
