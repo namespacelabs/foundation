@@ -7,25 +7,25 @@ import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-ser
 import * as i3 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser/deps.fn"
 
 // Returns a list of initialization errors.
-const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
+const wireServices = async (server: Server, graph: DependencyGraph): Promise<unknown[]> => {
 	const errors: unknown[] = [];
   try {
-		i0.wireService(server);
+		await i0.wireService(server);
 	} catch (e) {
 		errors.push(e);
 	}
   try {
-		i1.wireService(server);
+		await i1.wireService(server);
 	} catch (e) {
 		errors.push(e);
 	}
   try {
-		i2.wireService(i2.Package.instantiateDeps(graph), server);
+		await i2.wireService(i2.Package.instantiateDeps(graph), server);
 	} catch (e) {
 		errors.push(e);
 	}
   try {
-		i3.wireService(i3.Package.instantiateDeps(graph), server);
+		await i3.wireService(i3.Package.instantiateDeps(graph), server);
 	} catch (e) {
 		errors.push(e);
 	}
@@ -39,15 +39,18 @@ const TransitiveInitializers: Initializer[] = [
 	...i3.TransitiveInitializers,
 ];
 
-const server = new Server();
+async function main() {
+	const server = new Server();
+	const graph = new DependencyGraph();
+	graph.runInitializers(TransitiveInitializers);
+	const errors = await wireServices(server, graph);
+	if (errors.length > 0) {
+		errors.forEach((e) => console.error(e));
+		console.error("%d services failed to start.", errors.length)
+		process.exit(1);
+	}
 
-const graph = new DependencyGraph();
-graph.runInitializers(TransitiveInitializers);
-const errors = wireServices(server, graph);
-if (errors.length > 0) {
-	errors.forEach((e) => console.error(e));
-	console.error("%d services failed to start.", errors.length)
-	process.exit(1);
+	server.start();
 }
 
-server.start();
+main();

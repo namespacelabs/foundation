@@ -5,7 +5,7 @@
 import { Registrar } from "@namespacelabs/foundation";
 import { WireService } from "./deps.fn";
 
-export const wireService: WireService = (registrar: Registrar): void => {
+export const wireService: WireService = async (registrar: Registrar) => {
 	registrar.http().post("/simple/:userId", async (req) => {
 		const params = req.params as any;
 		return { output: `Hello world! User ID: ${params["userId"]}` };
