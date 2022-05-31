@@ -23,8 +23,8 @@ import (
 	"github.com/muesli/cancelreader"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -185,58 +185,65 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.
 		return err
 	}
 
-	stdout := writerOrDiscard(opts.Stdout)
-	stderr := writerOrDiscard(opts.Stderr)
-
-	ex, wait := executor.New(ctx)
-
-	ex.Go(func(ctx context.Context) error {
-		// Following Docker's implementation here. When AllocateTTY is set,
-		// Docker multiplexes both output streams into stdout.
-		if opts.AllocateTTY {
-			_, err := io.Copy(stdout, resp.Reader)
-			return err
-		} else {
-			_, err := stdcopy.StdCopy(stdout, stderr, resp.Reader)
-			return err
-		}
-	})
+	var errChs []chan error
 
 	var stdin cancelreader.CancelReader
 	if opts.Stdin != nil {
+		inerr := make(chan error)
+		errChs = append(errChs, inerr)
+
 		stdin, err = cancelreader.NewReader(opts.Stdin)
 		if err != nil {
 			return err
 		}
 
-		ex.Go(func(ctx context.Context) error {
+		go func() {
+			defer close(inerr)
+
 			// This would typically block forever, but we cancel the reader
 			// below when the container returns. That path also handles
 			// cancelation as the ContainerWait() call should observe
 			// cancelation, which will then lead to canceling reads.
 			if _, err := io.Copy(resp.Conn, stdin); err != nil {
-				if errors.Is(err, cancelreader.ErrCanceled) {
-					return nil
+				if !errors.Is(err, cancelreader.ErrCanceled) {
+					inerr <- err
 				}
-
-				return err
+				return
 			}
 
 			// If we reached expected EOF, signal that to the underlying container.
 			if err := resp.CloseWrite(); err != nil {
 				fmt.Fprintln(console.Errors(ctx), "Failed to close stdin", err)
 			}
-
-			return nil
-		})
+		}()
 	}
+
+	go func() {
+		outerr := make(chan error)
+		defer close(outerr)
+
+		errChs = append(errChs, outerr)
+
+		stdout := writerOrDiscard(opts.Stdout)
+		stderr := writerOrDiscard(opts.Stderr)
+
+		// Following Docker's implementation here. When AllocateTTY is set,
+		// Docker multiplexes both output streams into stdout.
+		if opts.AllocateTTY {
+			_, err := io.Copy(stdout, resp.Reader)
+			outerr <- err
+		} else {
+			_, err := stdcopy.StdCopy(stdout, stderr, resp.Reader)
+			outerr <- err
+		}
+	}()
 
 	if additional.OnStart != nil {
 		// Signal OnStart after the various IO-related pipes started getting established.
 		additional.OnStart()
 	}
 
-	ex.Go(func(ctx context.Context) error {
+	waitErr := func() error {
 		if stdin != nil {
 			// Very important to cancel stdin when we're done, else we'll block forever.
 			defer stdin.Cancel()
@@ -258,15 +265,19 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.
 		case err := <-errs:
 			return err
 		}
-	})
+	}()
 
-	if err := wait(); err != nil {
-		if exitErr, ok := err.(fnerrors.ExitError); !ok || exitErr.ExitCode() != 0 {
-			return err
-		}
+	// Wait until the goroutines are done.
+	goroutineErrs := make([]error, len(errChs))
+	for i, errCh := range errChs {
+		goroutineErrs[i] = <-errCh
 	}
 
-	return nil
+	if exitErr, ok := waitErr.(fnerrors.ExitError); !ok || exitErr.ExitCode() != 0 {
+		return err
+	}
+
+	return multierr.New(goroutineErrs...)
 }
 
 func writerOrDiscard(w io.Writer) io.Writer {
