@@ -19,8 +19,11 @@ import (
 	configtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/cli/cli/connhelper"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
@@ -29,9 +32,12 @@ import (
 type Client interface {
 	ServerVersion(ctx context.Context) (types.Version, error)
 	Info(ctx context.Context) (types.Info, error)
+	ContainerCreate(context.Context, *container.Config, *container.HostConfig, *network.NetworkingConfig, *specs.Platform, string) (container.ContainerCreateCreatedBody, error)
+	ContainerAttach(ctx context.Context, container string, options types.ContainerAttachOptions) (types.HijackedResponse, error)
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
 	ContainerStart(ctx context.Context, containerID string, options types.ContainerStartOptions) error
 	ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error
+	ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.ContainerWaitOKBody, <-chan error)
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
 	ImageLoad(ctx context.Context, input io.Reader, quiet bool) (types.ImageLoadResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
@@ -148,6 +154,16 @@ func (w wrappedClient) Info(ctx context.Context) (types.Info, error) {
 	return v, maybeReplaceErr(err)
 }
 
+func (w wrappedClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *specs.Platform, containerName string) (container.ContainerCreateCreatedBody, error) {
+	v, err := w.cli.ContainerCreate(ctx, config, hostConfig, networkingConfig, platform, containerName)
+	return v, maybeReplaceErr(err)
+}
+
+func (w wrappedClient) ContainerAttach(ctx context.Context, container string, options types.ContainerAttachOptions) (types.HijackedResponse, error) {
+	v, err := w.cli.ContainerAttach(ctx, container, options)
+	return v, maybeReplaceErr(err)
+}
+
 func (w wrappedClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
 	v, err := w.cli.ContainerInspect(ctx, containerID)
 	return v, maybeReplaceErr(err)
@@ -159,6 +175,11 @@ func (w wrappedClient) ContainerStart(ctx context.Context, containerID string, o
 
 func (w wrappedClient) ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error {
 	return maybeReplaceErr(w.cli.ContainerRemove(ctx, containerID, options))
+}
+
+func (w wrappedClient) ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.ContainerWaitOKBody, <-chan error) {
+	// XXX we assume wrapping errors is not necessary here as ContainerWait is not used in isolation.
+	return w.cli.ContainerWait(ctx, containerID, condition)
 }
 
 func (w wrappedClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {

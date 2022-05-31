@@ -19,7 +19,6 @@ type RunBinaryOpts struct {
 	Command    []string
 	Args       []string
 	Env        map[string]string
-	PortMap    []*Port
 	RunAsUser  bool
 }
 
