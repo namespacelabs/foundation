@@ -31,7 +31,7 @@ var deprecatedConfigs = []string{
 }
 
 func NewPrepareCmd() *cobra.Command {
-	var dontUpdateDevhost, force bool
+	var dontUpdateDevhost, force, enableGloo bool
 	var contextName string
 	var awsProfile string
 
@@ -45,6 +45,7 @@ func NewPrepareCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&force, "force", "f", force, "Skip checking if the configuration is changing.")
 	cmd.Flags().StringVar(&contextName, "context", "", "If set, configures Foundation to use the specific context.")
 	cmd.Flags().StringVar(&awsProfile, "aws_profile", awsProfile, "Configures the specified AWS configuration profile.")
+	cmd.Flags().BoolVarP(&enableGloo, "enable_gloo", "", enableGloo, "Installs the gloo gateway if true.")
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
 		var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
@@ -99,6 +100,10 @@ func NewPrepareCmd() *cobra.Command {
 			}
 
 			prepares = append(prepares, prepare.PrepareAWSRegistry(env)) // XXX make provider configurable.
+		}
+
+		if enableGloo {
+			prepares = append(prepares, prepare.PrepareGloo(env))
 		}
 
 		prepares = append(prepares, prepare.PrepareIngress(env, k8sconfig))
