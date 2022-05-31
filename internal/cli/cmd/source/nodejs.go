@@ -9,9 +9,10 @@ import (
 	"os"
 	"path/filepath"
 
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -23,9 +24,9 @@ func newNodejsCmd() *cobra.Command {
 		Use:   "node",
 		Short: "Run nodejs.",
 
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runNodejs(cmd.Context(), "node", args...)
-		},
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			return runNodejs(ctx, "node", args...)
+		}),
 	}
 
 	return cmd
@@ -49,17 +50,20 @@ func runNodejs(ctx context.Context, command string, args ...string) error {
 
 	rt := tools.Impl()
 
-	res, err := compute.Get(ctx, oci.ResolveImage("node:16.13", rt.HostPlatform()))
+	image, err := compute.GetValue(ctx, oci.ResolveImage("node:16.13", rt.HostPlatform()))
 	if err != nil {
 		return err
 	}
 
+	done := console.EnterInputMode(ctx)
+	defer done()
+
 	return rt.Run(ctx, rtypes.RunToolOpts{
-		IO:          rtypes.StdIO(ctx),
+		IO:          rtypes.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr},
 		AllocateTTY: true,
 		Mounts:      []*rtypes.LocalMapping{{HostPath: root.Abs(), ContainerPath: "/workspace"}},
 		RunBinaryOpts: rtypes.RunBinaryOpts{
-			Image:      res.Value.(v1.Image),
+			Image:      image,
 			WorkingDir: filepath.Join("/workspace", rel),
 			Command:    []string{command},
 			Args:       args,

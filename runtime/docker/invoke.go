@@ -6,13 +6,24 @@ package docker
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/strslice"
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/muesli/cancelreader"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -71,28 +82,54 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.
 		return err
 	}
 
-	// We don't pull with `docker run` to not interfere with os.Stderr.
-	args := []string{"run", "--rm", "--pull=never"}
-
-	if opts.Stdin != nil {
-		args = append(args, "-i")
-
-		if opts.AllocateTTY {
-			args = append(args, "-t")
-		}
+	cli, err := NewClient()
+	if err != nil {
+		return err
 	}
 
-	if opts.WorkingDir != "" {
-		args = append(args, "-w", opts.WorkingDir)
+	var cmd []string
+	cmd = append(cmd, opts.Command...)
+	cmd = append(cmd, opts.Args...)
+
+	containerConfig := &container.Config{
+		WorkingDir:   opts.WorkingDir,
+		Image:        config.String(),
+		Tty:          opts.AllocateTTY,
+		AttachStdout: true, // Stdout, Stderr is always attached, even if discarded later (see below).
+		AttachStderr: true,
+		Cmd:          strslice.StrSlice(cmd),
+	}
+
+	if opts.Stdin != nil {
+		containerConfig.AttachStdin = true
+		containerConfig.OpenStdin = true
+		// After we're done with Attach, the container should observe a EOF on Stdin.
+		containerConfig.StdinOnce = true
+	}
+
+	if opts.RunAsUser {
+		uid, err := user.Current()
+		if err != nil {
+			return err
+		}
+
+		containerConfig.User = fmt.Sprintf("%s:%s", uid.Uid, uid.Gid)
+	}
+
+	for k, v := range opts.Env {
+		containerConfig.Env = append(containerConfig.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	hostConfig := &container.HostConfig{
+		AutoRemove: true,
 	}
 
 	if opts.NoNetworking {
-		args = append(args, "--net=none")
+		hostConfig.NetworkMode = "none"
 	} else if opts.UseHostNetworking {
-		args = append(args, "--net=host")
+		hostConfig.NetworkMode = "host"
 	}
 
-	// XXX Workspace maps should be approved by the user?
 	for _, m := range opts.Mounts {
 		var absPath string
 
@@ -111,33 +148,124 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.
 				return err
 			}
 		}
-		args = append(args, "-v", absPath+":"+m.ContainerPath)
+
+		hostConfig.Binds = append(hostConfig.Binds, absPath+":"+m.ContainerPath)
 	}
 
-	for _, p := range opts.PortMap {
-		args = append(args, "-p", fmt.Sprintf("%d:%d", p.HostPort, p.ContainerPort))
+	networkConfig := &network.NetworkingConfig{}
+
+	created, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, networkConfig, nil, "")
+	if err != nil {
+		return err
 	}
 
-	if opts.Env != nil {
-		for k, v := range opts.Env {
-			args = append(args, "-e", fmt.Sprintf("%s=%s", k, v))
+	fmt.Fprintf(console.Debug(ctx), "docker: created container %q (image=%s args=%v)\n",
+		created.ID, containerConfig.Image, containerConfig.Cmd)
+
+	compute.On(ctx).Cleanup(tasks.Action("docker.container.remove"), func(ctx context.Context) error {
+		if err := cli.ContainerRemove(ctx, created.ID, types.ContainerRemoveOptions{}); err != nil {
+			if !client.IsErrNotFound(err) {
+				return err
+			}
 		}
+		return nil
+	})
+
+	resp, err := cli.ContainerAttach(ctx, created.ID, types.ContainerAttachOptions{
+		Stream: true,
+		Stdin:  containerConfig.AttachStdin,
+		Stdout: containerConfig.AttachStdout,
+		Stderr: containerConfig.AttachStderr,
+	})
+	if err != nil {
+		return err
 	}
 
-	if opts.RunAsUser {
-		uid, err := user.Current()
+	if err := cli.ContainerStart(ctx, created.ID, types.ContainerStartOptions{}); err != nil {
+		return err
+	}
+
+	stdout := writerOrDiscard(opts.Stdout)
+	stderr := writerOrDiscard(opts.Stderr)
+
+	ex, wait := executor.New(ctx)
+
+	ex.Go(func(ctx context.Context) error {
+		// Following Docker's implementation here. When AllocateTTY is set,
+		// Docker multiplexes both output streams into stdout.
+		if opts.AllocateTTY {
+			_, err := io.Copy(stdout, resp.Reader)
+			return err
+		} else {
+			_, err := stdcopy.StdCopy(stdout, stderr, resp.Reader)
+			return err
+		}
+	})
+
+	var stdin cancelreader.CancelReader
+	if opts.Stdin != nil {
+		stdin, err = cancelreader.NewReader(opts.Stdin)
 		if err != nil {
 			return err
 		}
 
-		args = append(args, fmt.Sprintf("--user=%s:%s", uid.Uid, uid.Gid))
+		ex.Go(func(ctx context.Context) error {
+			// This would typically block forever, but we cancel the reader
+			// below when the container returns. That path also handles
+			// cancelation as the ContainerWait() call should observe
+			// cancelation, which will then lead to canceling reads.
+			if _, err := io.Copy(resp.Conn, stdin); err != nil {
+				if errors.Is(err, cancelreader.ErrCanceled) {
+					return nil
+				}
+
+				return err
+			}
+
+			// If we reached expected EOF, signal that to the underlying container.
+			if err := resp.CloseWrite(); err != nil {
+				fmt.Fprintln(console.Errors(ctx), "Failed to close stdin", err)
+			}
+
+			return nil
+		})
 	}
 
-	args = append(args, config.String())
-	args = append(args, opts.Command...)
-	args = append(args, opts.Args...)
+	if additional.OnStart != nil {
+		// Signal OnStart after the various IO-related pipes started getting established.
+		additional.OnStart()
+	}
 
-	return dockerRun(ctx, args, opts.IO, additional)
+	ex.Go(func(ctx context.Context) error {
+		if stdin != nil {
+			// Very important to cancel stdin when we're done, else we'll block forever.
+			defer stdin.Cancel()
+		}
+
+		// After we're done waiting, we close the connection, which will lead
+		// the stdout/stderr goroutine to exit.
+		defer resp.Close()
+
+		results, errs := cli.ContainerWait(ctx, created.ID, container.WaitConditionNextExit)
+		select {
+		case result := <-results:
+			if result.StatusCode == 0 {
+				return nil
+			}
+			return fnerrors.New("docker: failed with exit code %d", result.StatusCode)
+		case err := <-errs:
+			return err
+		}
+	})
+
+	return wait()
+}
+
+func writerOrDiscard(w io.Writer) io.Writer {
+	if w == nil {
+		return io.Discard
+	}
+	return w
 }
 
 func DockerRun(ctx context.Context, args []string, opts rtypes.IO) error {
