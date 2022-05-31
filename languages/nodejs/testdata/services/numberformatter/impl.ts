@@ -8,7 +8,7 @@ import { ServiceDeps, WireService } from "./deps.fn";
 import { FormatServiceService, IFormatServiceServer } from "./service_grpc_pb";
 import { FormatRequest, FormatResponse } from "./service_pb";
 
-export const wireService: WireService = (deps: ServiceDeps, registrar: Registrar): void => {
+export const wireService: WireService = async (deps: ServiceDeps, registrar: Registrar) => {
 	const service: IFormatServiceServer = {
 		format: function (
 			call: ServerUnaryCall<FormatRequest, FormatResponse>,

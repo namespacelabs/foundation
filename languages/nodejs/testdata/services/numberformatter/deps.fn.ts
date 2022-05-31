@@ -29,5 +29,5 @@ export const TransitiveInitializers: Initializer[] = [
 	...i0.TransitiveInitializers,
 ];
 
-export type WireService = (deps: ServiceDeps, registrar: Registrar) => void;
+export type WireService = (deps: ServiceDeps, registrar: Registrar) => Promise<void>;
 export const wireService: WireService = impl.wireService;

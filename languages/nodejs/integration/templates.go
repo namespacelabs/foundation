@@ -155,7 +155,7 @@ import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundati
 
 export type WireService = (
 	{{- if .Package.Deps}}deps: {{.Package.Deps.Name}}Deps, {{end -}}
-	registrar: Registrar) => void;
+	registrar: Registrar) => Promise<void>;
 export const wireService: WireService = impl.wireService;
 {{- end}}
 
@@ -173,11 +173,11 @@ import { DependencyGraph, Initializer, Server } from "@namespacelabs/foundation"
 {{- template "Imports" . -}}
 
 // Returns a list of initialization errors.
-const wireServices = (server: Server, graph: DependencyGraph): unknown[] => {
+const wireServices = async (server: Server, graph: DependencyGraph): Promise<unknown[]> => {
 	const errors: unknown[] = [];
 {{- range $.Services}}
   try {
-		{{.Type.ImportAlias}}.wireService(
+		await {{.Type.ImportAlias}}.wireService(
 			{{- if .HasDeps}}{{.Type.ImportAlias}}.Package.instantiateDeps(graph), {{ end -}}
 			server);
 	} catch (e) {
@@ -193,18 +193,21 @@ const TransitiveInitializers: Initializer[] = [
 	{{- end}}
 ];
 
-const server = new Server();
+async function main() {
+	const server = new Server();
+	const graph = new DependencyGraph();
+	graph.runInitializers(TransitiveInitializers);
+	const errors = await wireServices(server, graph);
+	if (errors.length > 0) {
+		errors.forEach((e) => console.error(e));
+		console.error("%d services failed to start.", errors.length)
+		process.exit(1);
+	}
 
-const graph = new DependencyGraph();
-graph.runInitializers(TransitiveInitializers);
-const errors = wireServices(server, graph);
-if (errors.length > 0) {
-	errors.forEach((e) => console.error(e));
-	console.error("%d services failed to start.", errors.length)
-	process.exit(1);
+	server.start();
 }
 
-server.start();
+main();
 {{end}}` +
 
 			// Node stub template
@@ -212,7 +215,7 @@ server.start();
 import { ServiceDeps, WireService } from "./deps.fn";
 import { {{.ServiceServerName}}, {{.ServiceName}} } from "./{{.ServiceFileName}}_grpc_pb";
 
-export const wireService: WireService = (deps: ServiceDeps, registrar: Registrar): void => {
+export const wireService: WireService = async (deps: ServiceDeps, registrar: Registrar) => {
   const service: {{.ServiceServerName}} = {
     // TODO: implement
   };
