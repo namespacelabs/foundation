@@ -27,7 +27,8 @@ extension: fn.#Extension & {
 			availableIn: {
 				nodejs: {
 					import: "formatter"
-					type:   "BatchFormatter"
+					// Example of an async provider.
+					type: "Promise<BatchFormatter>"
 				}
 			}
 

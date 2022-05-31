@@ -55,5 +55,5 @@ export const BatchFormatterProvider = (graph: DependencyGraph, input: i3.InputDa
   );
 
 export type ProvideBatchFormatter = (input: i3.InputData, packageDeps: ExtensionDeps, deps: BatchFormatterDeps) =>
-		i4.BatchFormatter;
+		Promise<i4.BatchFormatter>;
 export const provideBatchFormatter: ProvideBatchFormatter = impl.provideBatchFormatter;

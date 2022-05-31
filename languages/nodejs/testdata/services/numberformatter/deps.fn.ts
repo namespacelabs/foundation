@@ -8,8 +8,8 @@ import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-ext
 
 
 export interface ServiceDeps {
-	batch1: i2.BatchFormatter;
-	batch2: i2.BatchFormatter;
+	batch1: Promise<i2.BatchFormatter>;
+	batch2: Promise<i2.BatchFormatter>;
 }
 
 export const Package = {

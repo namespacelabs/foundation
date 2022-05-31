@@ -87,10 +87,26 @@ func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_Node
 		}
 		imp = npmImport(npmPackage, a.Import)
 	}
-	return tmplImportedType{
-		Name:        a.Type,
-		ImportAlias: ic.add(imp),
-	}, nil
+
+	if strings.HasPrefix(a.Type, "Promise<") {
+		innerType, err := convertAvailableIn(ic, &schema.Provides_AvailableIn_NodeJs{
+			Import: a.Import,
+			Type:   strings.TrimSuffix(strings.TrimPrefix(a.Type, "Promise<"), ">"),
+		}, loc)
+		if err != nil {
+			return tmplImportedType{}, err
+		}
+
+		return tmplImportedType{
+			Name:       "Promise",
+			Parameters: []tmplImportedType{innerType},
+		}, nil
+	} else {
+		return tmplImportedType{
+			Name:        a.Type,
+			ImportAlias: ic.add(imp),
+		}, nil
+	}
 }
 
 func convertImportedInitializers(ic *importCollector, locations []workspace.Location) ([]string, error) {

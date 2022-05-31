@@ -6,11 +6,11 @@ import { BatchFormatterDeps, ExtensionDeps, ProvideBatchFormatter } from "./deps
 import { BatchFormatter } from "./formatter";
 import { InputData } from "./input_pb";
 
-export const provideBatchFormatter: ProvideBatchFormatter = (
+export const provideBatchFormatter: ProvideBatchFormatter = async (
 	_: InputData,
 	extensionDeps: ExtensionDeps,
 	providerDeps: BatchFormatterDeps
-): BatchFormatter => ({
+): Promise<BatchFormatter> => ({
 	getFormatResult: (n: number) => ({
 		singleton: extensionDeps.fmt.formatNumber(n),
 		scoped: providerDeps.fmt.formatNumber(n),
