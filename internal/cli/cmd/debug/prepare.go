@@ -20,7 +20,7 @@ func newPrepareCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "prepare",
-		Short: "Prepares a workstation for development, for the most part.",
+		Short: "Prepares a workstation for debugging.",
 		Args:  cobra.RangeArgs(0, 1),
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
