@@ -95,7 +95,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.
 		WorkingDir:   opts.WorkingDir,
 		Image:        config.String(),
 		Tty:          opts.AllocateTTY,
-		AttachStdout: true,
+		AttachStdout: true, // Stdout, Stderr is always attached, even if discarded later (see below).
 		AttachStderr: true,
 		Cmd:          strslice.StrSlice(cmd),
 	}
@@ -103,6 +103,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.
 	if opts.Stdin != nil {
 		containerConfig.AttachStdin = true
 		containerConfig.OpenStdin = true
+		// After we're done with Attach, the container should observe a EOF on Stdin.
 		containerConfig.StdinOnce = true
 	}
 
