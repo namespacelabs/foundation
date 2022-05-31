@@ -131,7 +131,13 @@ import * as {{.Alias}} from "{{.Package}}"
 
 // Type: tmplImportedType
 {{define "Type" -}}
-{{if .ImportAlias}}{{.ImportAlias}}.{{end}}{{.Name}}
+	{{if .ImportAlias}}{{.ImportAlias}}.{{end}}{{.Name}}
+	{{- if .Parameters}}<
+		{{- range $index, $p := .Parameters}}
+		  {{- if ne $index 0 }}, {{end}}
+		  {{- template "Type" $p}}
+		{{- end -}}
+	>{{- end}}
 {{- end}}` +
 
 			// Node template

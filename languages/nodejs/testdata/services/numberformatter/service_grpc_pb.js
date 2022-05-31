@@ -33,7 +33,7 @@ function deserialize_languages_nodejs_testdata_services_numberformatter_FormatRe
 
 
 // grpcurl -plaintext -import-path languages/nodejs/testdata/services/numberformatter -proto service.proto \
-// -d '{"input":12.345445}' 127.0.0.1:XXX \
+// -d '{"input":12.345445}' 127.0.0.1:40000 \
 // languages.nodejs.testdata.services.numberformatter.FormatService/Format
 //
 // Response:

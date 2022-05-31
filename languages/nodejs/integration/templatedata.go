@@ -79,6 +79,7 @@ type tmplSerializedProto struct {
 
 type tmplImportedType struct {
 	ImportAlias, Name string
+	Parameters        []tmplImportedType
 }
 
 type tmplSingleImport struct {
