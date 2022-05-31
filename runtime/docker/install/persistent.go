@@ -8,16 +8,16 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sort"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/rs/zerolog/log"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime/docker"
-	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -105,45 +105,47 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 		return err
 	}
 
-	args := []string{
-		"run",
-		"--pull=never", // We do image management.
-		"-d",
-		"--restart", "always",
-		"--name", p.ContainerName,
+	config := &container.Config{
+		Image:   imageID.ImageRef(),
+		Volumes: map[string]struct{}{},
+	}
+
+	host := &container.HostConfig{
+		RestartPolicy: container.RestartPolicy{Name: "always"},
+		Privileged:    p.Privileged,
+	}
+
+	host.PortBindings = map[nat.Port][]nat.PortBinding{}
+
+	for hostPort, containerPort := range p.Ports {
+		parsed, err := nat.ParsePortSpec(fmt.Sprintf("127.0.0.1:%d:%d", hostPort, containerPort))
+		if err != nil {
+			return err
+		}
+
+		for _, p := range parsed {
+			host.PortBindings[p.Port] = append(host.PortBindings[p.Port], p.Binding)
+		}
+	}
+
+	for name, target := range p.Volumes {
+		host.Binds = append(host.Binds, fmt.Sprintf("%s:%s", name, target))
 	}
 
 	if p.UseHostNetworking {
-		args = append(args, "--net=host")
+		host.NetworkMode = container.NetworkMode("host")
 	}
 
-	var sortableArgs []string
-	for name, target := range p.Volumes {
-		sortableArgs = append(sortableArgs, fmt.Sprintf("--volume=%s:%s", name, target))
+	created, err := tasks.Return(ctx, tasks.Action("docker.container.create").Arg("name", p.ContainerName), func(ctx context.Context) (container.ContainerCreateCreatedBody, error) {
+		return cli.ContainerCreate(ctx, config, host, &network.NetworkingConfig{}, nil, p.ContainerName)
+	})
+	if err != nil {
+		return err
 	}
 
-	for hostPort, containerPort := range p.Ports {
-		sortableArgs = append(sortableArgs, fmt.Sprintf("--publish=%d:%d", hostPort, containerPort))
-	}
-
-	sort.Strings(sortableArgs)
-
-	args = append(args, sortableArgs...)
-
-	if p.Privileged {
-		args = append(args, "--privileged")
-	}
-
-	args = append(args, imageID.ImageRef())
-
-	// XXX consider using our container creation API to support other runtimes in the future.
-
-	var io rtypes.IO
-	out := console.Output(ctx, "docker")
-	io.Stdout = out
-	io.Stderr = out
-
-	if err := docker.DockerRun(ctx, args, io); err != nil {
+	if err := tasks.Action("docker.container.start").Arg("name", p.ContainerName).Arg("id", created.ID).Run(ctx, func(ctx context.Context) error {
+		return cli.ContainerStart(ctx, created.ID, types.ContainerStartOptions{})
+	}); err != nil {
 		return err
 	}
 

@@ -9,8 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 
@@ -292,26 +290,4 @@ func writerOrDiscard(w io.Writer) io.Writer {
 		return io.Discard
 	}
 	return w
-}
-
-func DockerRun(ctx context.Context, args []string, opts rtypes.IO) error {
-	return dockerRun(ctx, args, opts, localexec.RunOpts{})
-}
-
-func dockerRun(ctx context.Context, args []string, opts rtypes.IO, additional localexec.RunOpts) error {
-	return tasks.Action("docker.run").
-		LogLevel(2).
-		Arg("args", args).
-		Run(ctx, func(ctx context.Context) error {
-			c := exec.CommandContext(ctx, "docker", args...)
-
-			c.Stdin = opts.Stdin
-			c.Stdout = opts.Stdout
-			c.Stderr = opts.Stderr
-			c.Env = []string{}
-			c.Env = append(c.Env, os.Environ()...)
-			c.Env = append(c.Env, clientConfiguration().asEnv()...)
-
-			return localexec.RunAndPropagateCancelationWithOpts(ctx, "docker", c, additional)
-		})
 }
