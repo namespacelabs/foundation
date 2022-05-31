@@ -62,7 +62,7 @@ func Run(ctx context.Context, bufImage v1.Image, io rtypes.IO, wd string, mounts
 		return err
 	}
 
-	return tools.Impl().Run(ctx, rtypes.RunToolOpts{
+	return tools.Run(ctx, rtypes.RunToolOpts{
 		ImageName: "namespacelabs/tools/buf", // This is just for local tagging, we never upload these packages.
 		IO:        io,
 		Mounts:    mounts,

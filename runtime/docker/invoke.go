@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
-	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -35,10 +34,10 @@ type ToolRuntime struct{}
 func Impl() ToolRuntime { return ToolRuntime{} }
 
 func (r ToolRuntime) Run(ctx context.Context, opts rtypes.RunToolOpts) error {
-	return r.RunWithOpts(ctx, opts, localexec.RunOpts{})
+	return r.RunWithOpts(ctx, opts, nil)
 }
 
-func (r ToolRuntime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.RunOpts) error {
+func (r ToolRuntime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
 	digest, err := opts.Image.Digest()
 	if err != nil {
 		return err
@@ -57,7 +56,7 @@ func (r ToolRuntime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, a
 		Arg("config", config).
 		Arg("args", opts.Args).
 		Run(ctx, func(ctx context.Context) error {
-			return runImpl(ctx, opts, additional)
+			return runImpl(ctx, opts, onStart)
 		})
 }
 
@@ -69,7 +68,7 @@ func HostPlatform() specs.Platform {
 
 func (r ToolRuntime) HostPlatform() specs.Platform { return HostPlatform() }
 
-func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.RunOpts) error {
+func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
 	computable, err := writeImageOnce(opts.ImageName, opts.Image)
 	if err != nil {
 		return err
@@ -236,9 +235,9 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, additional localexec.
 		}
 	}()
 
-	if additional.OnStart != nil {
+	if onStart != nil {
 		// Signal OnStart after the various IO-related pipes started getting established.
-		additional.OnStart()
+		onStart()
 	}
 
 	waitErr := func() error {

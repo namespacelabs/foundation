@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/grpcstdio"
-	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
@@ -81,37 +80,35 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 	eg, wait := executor.New(ctx)
 
 	eg.Go(func(ctx context.Context) error {
-		return Impl().RunWithOpts(ctx, opts, localexec.RunOpts{
-			OnStart: func() {
-				// Only kick off the session after the binary is started; i.e. after the underlying
-				// image has been loaded. In CI in particular, access to docker has high contention and
-				// we see up to 20 secs waiting time loading an image.
-				eg.Go(func(ctx context.Context) error {
-					session, err := grpcstdio.NewSession(ctx, outr, inw)
-					if err != nil {
-						return err
-					}
-
-					conn, err := grpc.DialContext(ctx, "stdio",
-						grpc.WithTransportCredentials(insecure.NewCredentials()),
-						grpc.WithReadBufferSize(0),
-						grpc.WithWriteBufferSize(0),
-						grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
-							return session.Dial(&grpcstdio.DialArgs{
-								StreamType:  grpcstdio.DialArgs_STREAM_TYPE_GRPC,
-								ServiceName: protocol.InvocationService_ServiceDesc.ServiceName,
-							})
-						}))
-					if err != nil {
-						return err
-					}
-
-					defer conn.Close()
-
-					resp, err = resolve(conn)(ctx, req) // XXX lock?
+		return Impl().RunWithOpts(ctx, opts, func() {
+			// Only kick off the session after the binary is started; i.e. after the underlying
+			// image has been loaded. In CI in particular, access to docker has high contention and
+			// we see up to 20 secs waiting time loading an image.
+			eg.Go(func(ctx context.Context) error {
+				session, err := grpcstdio.NewSession(ctx, outr, inw)
+				if err != nil {
 					return err
-				})
-			},
+				}
+
+				conn, err := grpc.DialContext(ctx, "stdio",
+					grpc.WithTransportCredentials(insecure.NewCredentials()),
+					grpc.WithReadBufferSize(0),
+					grpc.WithWriteBufferSize(0),
+					grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+						return session.Dial(&grpcstdio.DialArgs{
+							StreamType:  grpcstdio.DialArgs_STREAM_TYPE_GRPC,
+							ServiceName: protocol.InvocationService_ServiceDesc.ServiceName,
+						})
+					}))
+				if err != nil {
+					return err
+				}
+
+				defer conn.Close()
+
+				resp, err = resolve(conn)(ctx, req) // XXX lock?
+				return err
+			})
 		})
 	})
 

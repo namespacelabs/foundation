@@ -58,7 +58,7 @@ func runNodejs(ctx context.Context, command string, args ...string) error {
 	done := console.EnterInputMode(ctx)
 	defer done()
 
-	return rt.Run(ctx, rtypes.RunToolOpts{
+	return tools.Run(ctx, rtypes.RunToolOpts{
 		IO:          rtypes.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr},
 		AllocateTTY: true,
 		Mounts:      []*rtypes.LocalMapping{{HostPath: root.Abs(), ContainerPath: "/workspace"}},
