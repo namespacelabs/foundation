@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -16,12 +17,13 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/go-ids"
 )
 
 func NewDebugShellCmd() *cobra.Command {
-	var imageRef string
+	var imageRef, binaryPackage string
 
 	cmd := &cobra.Command{
 		Use:   "debug-shell",
@@ -30,16 +32,61 @@ func NewDebugShellCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&imageRef, "image", imageRef, "If specified, use this image as the basis of the debug shell.")
+	cmd.Flags().StringVar(&binaryPackage, "binary_package", binaryPackage, "If specified, use the resulting image binary as the basis of the debug shell.")
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
 		var imageID oci.ImageID
 
-		if imageRef == "" {
-			platforms, err := runtime.For(ctx, env).TargetPlatforms(ctx)
+		platforms, err := runtime.For(ctx, env).TargetPlatforms(ctx)
+		if err != nil {
+			return err
+		}
+
+		switch {
+		case imageRef != "":
+			var err error
+			imageID, err = oci.ParseImageID(imageRef)
 			if err != nil {
 				return err
 			}
 
+		case binaryPackage != "":
+			pkg, err := workspace.NewPackageLoader(env.Root()).LoadByName(ctx, schema.PackageName(binaryPackage))
+			if err != nil {
+				return err
+			}
+
+			prepared, err := binary.Plan(ctx, pkg, binary.BuildImageOpts{Platforms: platforms, UsePrebuilts: true})
+			if err != nil {
+				return err
+			}
+
+			img, err := prepared.Image(ctx, env)
+			if err != nil {
+				return err
+			}
+
+			resolved, err := compute.GetValue(ctx, img)
+			if err != nil {
+				return err
+			}
+
+			name, err := registry.AllocateName(ctx, env, pkg.PackageName(), provision.NewBuildID())
+			if err != nil {
+				return err
+			}
+
+			resolvedName, err := compute.GetValue(ctx, name)
+			if err != nil {
+				return err
+			}
+
+			imageID, err = resolved.Push(ctx, resolvedName)
+			if err != nil {
+				return err
+			}
+
+		default:
 			tag, err := registry.AllocateName(ctx, env, schema.PackageName(env.Workspace().ModuleName+"/debug"), provision.NewBuildID())
 			if err != nil {
 				return err
@@ -51,12 +98,6 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 
 			imageID, err = compute.GetValue(ctx, img)
-			if err != nil {
-				return err
-			}
-		} else {
-			var err error
-			imageID, err = oci.ParseImageID(imageRef)
 			if err != nil {
 				return err
 			}
