@@ -53,8 +53,7 @@ func prepareDescribeCluster(ctx context.Context, env ops.Environment, srv *schem
 	}
 
 	eksServerDetails := &EKSServerDetails{
-		ComputedIamRoleName: fmt.Sprintf("foundation-%s-%s-%s-%s",
-			sysInfo.EksClusterName, env.Proto().Name, srv.Name, srv.Id),
+		ComputedIamRoleName: fmt.Sprintf("fn-%s-%s-%s", sysInfo.EksClusterName, env.Proto().Name, srv.Id),
 	}
 
 	if len(eksServerDetails.ComputedIamRoleName) > 64 {
