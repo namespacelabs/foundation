@@ -12,4 +12,5 @@ option go_package = "namespacelabs.dev/foundation/runtime/kubernetes/client";
 message HostEnv {
     string kubeconfig = 1;
     string context    = 2;  // If empty, uses default context.
+    bool incluster    = 3;
 }

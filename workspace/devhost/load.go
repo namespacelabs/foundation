@@ -32,6 +32,7 @@ func HostOnlyFiles() []string { return []string{DevHostFilename} }
 func Prepare(ctx context.Context, root *workspace.Root) error {
 	root.DevHost = &schema.DevHost{} // Make sure we always have an instance of DevHost, even if empty.
 
+	// TODO add overwrite
 	devHostBytes, err := fs.ReadFile(root.FS(), DevHostFilename)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
