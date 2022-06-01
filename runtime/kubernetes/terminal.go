@@ -100,7 +100,7 @@ func (r boundEnv) attachTerminal(ctx context.Context, cli *kubernetes.Clientset,
 			Stdin:     true,
 			Stdout:    true,
 			Stderr:    true,
-			TTY:       true,
+			TTY:       rio.TTY,
 		}, scheme.ParameterCodec)
 
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
@@ -112,7 +112,7 @@ func (r boundEnv) attachTerminal(ctx context.Context, cli *kubernetes.Clientset,
 		Stdin:             rio.Stdin,
 		Stdout:            rio.Stdout,
 		Stderr:            rio.Stderr,
-		Tty:               true,
+		Tty:               rio.TTY,
 		TerminalSizeQueue: nil, // Set below.
 	}
 

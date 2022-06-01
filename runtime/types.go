@@ -163,6 +163,8 @@ type DeploymentState interface {
 }
 
 type TerminalIO struct {
+	TTY bool
+
 	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer

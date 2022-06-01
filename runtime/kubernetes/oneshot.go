@@ -27,7 +27,7 @@ import (
 	"namespacelabs.dev/go-ids"
 )
 
-func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runOpts runtime.ServerRunOpts, logOutput io.Writer) error {
+func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runOpts runtime.ServerRunOpts, logOutput io.Writer) error {
 	parts := strings.Split(pkg.String(), "/")
 
 	name := strings.ToLower(parts[len(parts)-1]) + "-" + ids.NewRandomBase32ID(8)
@@ -90,7 +90,11 @@ func (r k8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 	}
 }
 
-func (r k8sRuntime) RunAttached(ctx context.Context, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO) error {
+func (r K8sRuntime) RunAttached(ctx context.Context, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO) error {
+	return r.RunAttachedOpts(ctx, name, runOpts, io, nil)
+}
+
+func (r K8sRuntime) RunAttachedOpts(ctx context.Context, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO, onStart func()) error {
 	cli, err := client.NewClientFromHostEnv(ctx, r.hostEnv)
 	if err != nil {
 		return err
@@ -101,7 +105,13 @@ func (r k8sRuntime) RunAttached(ctx context.Context, name string, runOpts runtim
 		return err
 	}
 
-	spec.Containers[0].WithStdin(true).WithStdinOnce(true).WithTTY(true)
+	if io.Stdin != nil {
+		spec.Containers[0].WithStdin(true).WithStdinOnce(true)
+	}
+
+	if io.TTY {
+		spec.Containers[0].WithTTY(true)
+	}
 
 	if err := spawnAndWaitPod(ctx, cli, r.moduleNamespace, name, spec, true); err != nil {
 		if logsErr := fetchPodLogs(ctx, cli, console.TypedOutput(ctx, name, console.CatOutputTool), r.moduleNamespace, name, "", runtime.StreamLogsOpts{}); logsErr != nil {
@@ -113,6 +123,10 @@ func (r k8sRuntime) RunAttached(ctx context.Context, name string, runOpts runtim
 	compute.On(ctx).Cleanup(tasks.Action("kubernetes.pod.delete"), func(ctx context.Context) error {
 		return cli.CoreV1().Pods(r.moduleNamespace).Delete(context.Background(), name, metav1.DeleteOptions{})
 	})
+
+	if onStart != nil {
+		onStart()
+	}
 
 	return r.attachTerminal(ctx, cli, containerPodReference{Namespace: r.moduleNamespace, PodName: name}, io)
 }

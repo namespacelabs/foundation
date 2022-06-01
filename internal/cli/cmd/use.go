@@ -119,6 +119,7 @@ func NewUseCmd() *cobra.Command {
 			}
 
 			return k8s.RunAttached(ctx, "psql-"+ids.NewRandomBase32ID(8), runOpts, runtime.TerminalIO{
+				TTY:    true,
 				Stdin:  os.Stdin,
 				Stdout: os.Stdout,
 				Stderr: os.Stderr,

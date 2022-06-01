@@ -23,7 +23,10 @@ func DownloadPrebuilts(env ops.Environment, pl *workspace.PackageLoader, package
 		compute.Inputs().Proto("env", env.Proto()).Strs("packages", schema.Strs(packages...)),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]oci.Image, error) {
-			hostPlatform := tools.Impl().HostPlatform()
+			hostPlatform, err := tools.HostPlatform(ctx)
+			if err != nil {
+				return nil, err
+			}
 
 			var images []compute.Computable[oci.Image]
 			for _, pkg := range packages {

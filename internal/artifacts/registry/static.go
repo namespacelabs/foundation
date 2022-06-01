@@ -10,7 +10,6 @@ import (
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
@@ -22,16 +21,21 @@ func (sr staticRegistry) IsInsecure() bool {
 	return sr.r.Insecure
 }
 
-func (sr staticRegistry) AllocateTag(packageName schema.PackageName, version provision.BuildID) compute.Computable[oci.AllocatedName] {
+func (sr staticRegistry) AllocateTag(repository string, version *provision.BuildID) compute.Computable[oci.AllocatedName] {
 	w := sr.r.Url
 
 	if strings.HasSuffix(w, "/") {
-		w += packageName.String()
+		w += repository
 	} else {
-		w += "/" + packageName.String()
+		w += "/" + repository
 	}
 
-	return StaticName(sr.r, oci.ImageID{Repository: w, Tag: version.String()})
+	imgid := oci.ImageID{Repository: w}
+	if version != nil {
+		imgid.Tag = version.String()
+	}
+
+	return StaticName(sr.r, imgid)
 }
 
 func (sr staticRegistry) AuthRepository(img oci.ImageID) (oci.AllocatedName, error) {

@@ -66,6 +66,7 @@ func NewDebugShellCmd() *cobra.Command {
 			Image:   imageID,
 			Command: []string{"bash"},
 		}, runtime.TerminalIO{
+			TTY:    true,
 			Stdout: os.Stdout,
 			Stderr: os.Stderr,
 			Stdin:  os.Stdin,

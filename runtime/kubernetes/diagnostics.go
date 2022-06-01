@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 )
 
-func (r k8sRuntime) FetchDiagnostics(ctx context.Context, reference runtime.ContainerReference) (runtime.Diagnostics, error) {
+func (r K8sRuntime) FetchDiagnostics(ctx context.Context, reference runtime.ContainerReference) (runtime.Diagnostics, error) {
 	opaque, ok := reference.(containerPodReference)
 	if !ok {
 		return runtime.Diagnostics{}, fnerrors.InternalError("invalid reference")

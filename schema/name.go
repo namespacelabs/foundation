@@ -56,6 +56,14 @@ func (pl PackageList) Includes(pkg PackageName) bool {
 
 func (pl PackageList) Len() int { return pl.l.Len() }
 
+func PackageNames(strs ...string) []PackageName {
+	o := make([]PackageName, len(strs))
+	for k, s := range strs {
+		o[k] = PackageName(s)
+	}
+	return o
+}
+
 func Strs(sch ...PackageName) []string {
 	o := make([]string, len(sch))
 	for k, s := range sch {

@@ -28,7 +28,7 @@ type ConditionWaiter interface {
 	Poll(context.Context, *k8s.Clientset) (bool, error)
 }
 
-func (r k8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, waiter ConditionWaiter) error {
+func (r K8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, waiter ConditionWaiter) error {
 	return waitForCondition(ctx, r.cli, action, waiter)
 }
 

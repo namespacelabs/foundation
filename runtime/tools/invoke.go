@@ -25,7 +25,11 @@ func Invoke(ctx context.Context, env ops.Environment, packages workspace.Package
 		return nil, err
 	}
 
-	target := Impl().HostPlatform()
+	target, err := HostPlatform(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	prepared, err := binary.PlanImage(ctx, pkg, env, true, &target)
 	if err != nil {
 		return nil, err

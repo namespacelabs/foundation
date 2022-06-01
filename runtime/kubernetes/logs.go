@@ -15,11 +15,11 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func (r k8sRuntime) StreamLogsTo(ctx context.Context, w io.Writer, server *schema.Server, opts runtime.StreamLogsOpts) error {
+func (r K8sRuntime) StreamLogsTo(ctx context.Context, w io.Writer, server *schema.Server, opts runtime.StreamLogsOpts) error {
 	return r.fetchLogs(ctx, r.cli, w, server, opts)
 }
 
-func (r k8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
+func (r K8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
 	opaque, ok := reference.(containerPodReference)
 	if !ok {
 		return fnerrors.InternalError("invalid reference")

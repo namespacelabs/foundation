@@ -42,7 +42,7 @@ func prepareImage(ctx context.Context, env ops.Environment, p build.Plan) (compu
 		if err != nil {
 			return nil, err
 		}
-		return oci.WrapImage(img), nil
+		return oci.AsResolvable(img), nil
 	}
 
 	platforms := build.PlatformsOrOverrides(p.Platforms)
@@ -71,7 +71,7 @@ func prepareImage(ctx context.Context, env ops.Environment, p build.Plan) (compu
 	}
 
 	if len(r.platformIndex) == 1 {
-		return oci.WrapImage(images[0]), nil
+		return oci.AsResolvable(images[0]), nil
 	}
 
 	var iwp []oci.ImageWithPlatform

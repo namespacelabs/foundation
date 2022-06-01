@@ -20,11 +20,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func (r k8sRuntime) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
+func (r K8sRuntime) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
 	return deleteAllRecursively(ctx, r.cli, wait, nil, []string{r.moduleNamespace})
 }
 
-func (r k8sRuntime) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
+func (r K8sRuntime) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
 	namespaces, err := r.cli.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
 		LabelSelector: kubedef.SerializeSelector(kubedef.ManagedBy()),
 	})

@@ -33,7 +33,7 @@ type Manager interface {
 	// Returns true if calls to the registry should be made over HTTP (instead of HTTPS).
 	IsInsecure() bool
 
-	AllocateTag(schema.PackageName, provision.BuildID) compute.Computable[oci.AllocatedName]
+	AllocateTag(repository string, bid *provision.BuildID) compute.Computable[oci.AllocatedName]
 	AuthRepository(oci.ImageID) (oci.AllocatedName, error)
 }
 
@@ -73,7 +73,11 @@ func StaticName(registry *registry.Registry, imageID oci.ImageID) compute.Comput
 		})
 }
 
-func AllocateName(ctx context.Context, env ops.Environment, pkgName schema.PackageName, buildID provision.BuildID) (compute.Computable[oci.AllocatedName], error) {
+func AllocateName(ctx context.Context, env ops.Environment, pkg schema.PackageName, buildID provision.BuildID) (compute.Computable[oci.AllocatedName], error) {
+	return RawAllocateName(ctx, env, pkg.String(), &buildID)
+}
+
+func RawAllocateName(ctx context.Context, env ops.Environment, repo string, buildID *provision.BuildID) (compute.Computable[oci.AllocatedName], error) {
 	registry, err := GetRegistry(ctx, env)
 	if err != nil {
 		return nil, err
@@ -85,7 +89,7 @@ func AllocateName(ctx context.Context, env ops.Environment, pkgName schema.Packa
 			"No registry configured in the environment %q.", env.Proto().GetName())
 	}
 
-	return registry.AllocateTag(pkgName, buildID), nil
+	return registry.AllocateTag(repo, buildID), nil
 }
 
 func Precomputed(tag oci.AllocatedName) compute.Computable[oci.AllocatedName] {

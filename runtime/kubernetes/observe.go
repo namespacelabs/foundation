@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func (r k8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
+func (r K8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
 	// XXX use a watch
 	announced := map[string]runtime.ContainerReference{}
 

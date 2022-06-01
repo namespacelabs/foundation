@@ -12,7 +12,7 @@ import (
 )
 
 func PublishImage(tag compute.Computable[AllocatedName], image compute.Computable[Image]) compute.Computable[ImageID] {
-	return &publishImage{tag: tag, image: WrapImage(image)}
+	return &publishImage{tag: tag, image: AsResolvable(image)}
 }
 
 func PublishResolvable(tag compute.Computable[AllocatedName], image compute.Computable[ResolvableImage]) compute.Computable[ImageID] {
@@ -46,5 +46,5 @@ func (pi *publishImage) ImageRef() string {
 func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (ImageID, error) {
 	tag := compute.MustGetDepValue(deps, pi.tag, "tag")
 	tasks.Attachments(ctx).AddResult("tag", tag.ImageRef())
-	return compute.MustGetDepValue(deps, pi.image, "image").push(ctx, tag)
+	return compute.MustGetDepValue(deps, pi.image, "image").Push(ctx, tag)
 }

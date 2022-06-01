@@ -80,7 +80,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 	eg, wait := executor.New(ctx)
 
 	eg.Go(func(ctx context.Context) error {
-		return Impl().RunWithOpts(ctx, opts, func() {
+		return RunWithOpts(ctx, opts, func() {
 			// Only kick off the session after the binary is started; i.e. after the underlying
 			// image has been loaded. In CI in particular, access to docker has high contention and
 			// we see up to 20 secs waiting time loading an image.

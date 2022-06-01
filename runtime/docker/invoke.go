@@ -66,7 +66,9 @@ func HostPlatform() specs.Platform {
 	return p
 }
 
-func (r ToolRuntime) HostPlatform() specs.Platform { return HostPlatform() }
+func (r ToolRuntime) HostPlatform(context.Context) (specs.Platform, error) {
+	return HostPlatform(), nil
+}
 
 func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
 	var cmd []string

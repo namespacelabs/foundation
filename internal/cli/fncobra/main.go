@@ -56,6 +56,8 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
+	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -187,6 +189,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Runtimes.
 		kubernetes.Register()
 		kubernetes.RegisterGraphHandlers()
+		kubeops.RegisterCreateSecret()
 
 		// Telemetry.
 		tel.RecordInvocation(ctxWithSink, cmd, args)
@@ -220,6 +223,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, ignores checking whether the base system is ZFS based.")
 	rootCmd.PersistentFlags().BoolVar(&enableErrorTracing, "error_tracing", enableErrorTracing,
 		"If set to true, prints a trace of foundation errors leading to the root cause with source info.")
+	rootCmd.PersistentFlags().BoolVar(&tools.UseKubernetesRuntime, "run_tools_on_kubernetes", tools.UseKubernetesRuntime,
+		"If set to true, runs tools in Kubernetes, instead of Docker.")
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
@@ -231,6 +236,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"send_usage_data",
 		"skip_buildkit_workspace_size_check",
 		"ignore_zfs_check",
+		"run_tools_on_kubernetes",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

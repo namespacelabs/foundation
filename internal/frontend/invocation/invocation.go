@@ -49,7 +49,11 @@ func Make(ctx context.Context, env provision.ServerEnv, serverLocRef *workspace.
 		return nil, err
 	}
 
-	p := tools.Impl().HostPlatform()
+	p, err := tools.HostPlatform(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	bin, err := binary.PlanImage(ctx, binPkg, env, true, &p)
 	if err != nil {
 		return nil, err

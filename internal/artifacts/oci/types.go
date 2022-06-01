@@ -29,17 +29,22 @@ type ResolvableImage interface {
 	Digest() (schema.Digest, error)
 	Image() (Image, error)
 	ImageIndex() (ImageIndex, error)
+	Push(context.Context, AllocatedName) (ImageID, error)
 
-	push(context.Context, AllocatedName) (ImageID, error)
 	cache(context.Context, cache.Cache) (schema.Digest, error)
 }
 
 type imageFetchFunc func(v1.Hash) (Image, error)
 
-func WrapImage(c compute.Computable[Image]) compute.Computable[ResolvableImage] {
+func AsResolvable(c compute.Computable[Image]) compute.Computable[ResolvableImage] {
 	return compute.Transform(c, func(ctx context.Context, img Image) (ResolvableImage, error) {
-		return rawImage{img}, nil
+		return RawAsResolvable(img), nil
 	})
+}
+
+func RawAsResolvable(img Image) ResolvableImage {
+	// XXX check if its an index?
+	return rawImage{img}
 }
 
 type rawImage struct {
@@ -59,7 +64,7 @@ func (raw rawImage) ImageIndex() (ImageIndex, error) {
 	return nil, fnerrors.InternalError("expected an image index, saw an image")
 }
 
-func (raw rawImage) push(ctx context.Context, tag AllocatedName) (ImageID, error) {
+func (raw rawImage) Push(ctx context.Context, tag AllocatedName) (ImageID, error) {
 	return pushImage(ctx, tag, raw.image)
 }
 
@@ -84,7 +89,7 @@ func (raw rawImageIndex) ImageIndex() (ImageIndex, error) {
 	return raw.index, nil
 }
 
-func (raw rawImageIndex) push(ctx context.Context, tag AllocatedName) (ImageID, error) {
+func (raw rawImageIndex) Push(ctx context.Context, tag AllocatedName) (ImageID, error) {
 	digest, err := raw.index.Digest()
 	if err != nil {
 		return ImageID{}, err

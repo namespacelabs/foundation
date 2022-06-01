@@ -12,15 +12,29 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 )
 
+var UseKubernetesRuntime = false
+
 type Runtime interface {
 	RunWithOpts(context.Context, rtypes.RunToolOpts, func()) error
-	HostPlatform() specs.Platform
+	HostPlatform(context.Context) (specs.Platform, error)
 }
 
 func Run(ctx context.Context, opts rtypes.RunToolOpts) error {
-	return Impl().RunWithOpts(ctx, opts, nil)
+	return RunWithOpts(ctx, opts, nil)
 }
 
-func Impl() Runtime {
+func RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
+	return impl().RunWithOpts(ctx, opts, onStart)
+}
+
+func HostPlatform(ctx context.Context) (specs.Platform, error) {
+	return impl().HostPlatform(ctx)
+}
+
+func impl() Runtime {
+	if UseKubernetesRuntime {
+		return k8stools{}
+	}
+
 	return docker.Impl()
 }

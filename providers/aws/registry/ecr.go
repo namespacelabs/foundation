@@ -42,10 +42,6 @@ func Register() {
 	})
 }
 
-func (em ecrManager) client() *ecr.Client {
-	return ecr.NewFromConfig(em.sesh)
-}
-
 func packageURL(repo, packageName string) string {
 	return fmt.Sprintf("%s/%s", repo, packageName)
 }
@@ -74,27 +70,32 @@ func (em ecrManager) Tag(ctx context.Context, packageName schema.PackageName, ve
 	}, nil
 }
 
-func (em ecrManager) AllocateTag(packageName schema.PackageName, buildID provision.BuildID) compute.Computable[oci.AllocatedName] {
+func (em ecrManager) AllocateTag(repository string, buildID *provision.BuildID) compute.Computable[oci.AllocatedName] {
 	keychain := keychainSession(em)
 
 	var repo compute.Computable[string] = &makeRepository{
 		sesh:           em.sesh,
 		callerIdentity: keychain.resolveAccount(),
-		packageName:    packageName.String(),
+		repository:     repository,
 	}
 
 	return compute.Map(tasks.Action("ecr.allocate-tag").Category("aws"),
 		compute.Inputs().
-			Stringer("packageName", packageName).Stringer("buildID", buildID).
+			Str("repository", repository).Stringer("buildID", buildID).
 			Computable("repo", repo),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (oci.AllocatedName, error) {
+			imgid := oci.ImageID{
+				Repository: compute.MustGetDepValue(deps, repo, "repo"),
+			}
+
+			if buildID != nil {
+				imgid.Tag = buildID.String()
+			}
+
 			return oci.AllocatedName{
 				Keychain: keychain,
-				ImageID: oci.ImageID{
-					Repository: compute.MustGetDepValue(deps, repo, "repo"),
-					Tag:        buildID.String(),
-				},
+				ImageID:  imgid,
 			}, nil
 		},
 	)
@@ -112,7 +113,7 @@ func (em ecrManager) AuthRepository(img oci.ImageID) (oci.AllocatedName, error) 
 type makeRepository struct {
 	sesh           aws.Config
 	callerIdentity compute.Computable[*sts.GetCallerIdentityOutput]
-	packageName    string
+	repository     string
 
 	compute.DoScoped[string] // Can share results within a graph invocation.
 }
@@ -121,13 +122,13 @@ func (m *makeRepository) Action() *tasks.ActionEvent {
 	return tasks.Action("ecr.ensure-repository").Category("aws")
 }
 func (m *makeRepository) Inputs() *compute.In {
-	return compute.Inputs().Computable("caller", m.callerIdentity).Str("packageName", m.packageName)
+	return compute.Inputs().Computable("caller", m.callerIdentity).Str("packageName", m.repository)
 }
 func (m *makeRepository) Compute(ctx context.Context, deps compute.Resolved) (string, error) {
 	caller := compute.MustGetDepValue(deps, m.callerIdentity, "caller")
 
 	req := &ecr.CreateRepositoryInput{
-		RepositoryName:     aws.String(m.packageName),
+		RepositoryName:     aws.String(m.repository),
 		ImageTagMutability: types.ImageTagMutabilityImmutable,
 	}
 
@@ -140,5 +141,5 @@ func (m *makeRepository) Compute(ctx context.Context, deps compute.Resolved) (st
 		}
 	}
 
-	return packageURL(repoURL(m.sesh, caller), m.packageName), nil
+	return packageURL(repoURL(m.sesh, caller), m.repository), nil
 }

@@ -35,12 +35,12 @@ var (
 
 	runtimeCache struct {
 		mu    sync.Mutex
-		cache map[string]k8sRuntime
+		cache map[string]K8sRuntime
 	}
 )
 
 func init() {
-	runtimeCache.cache = map[string]k8sRuntime{}
+	runtimeCache.cache = map[string]K8sRuntime{}
 }
 
 func Register() {
@@ -51,13 +51,13 @@ func Register() {
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
 }
 
-func NewFromConfig(ctx context.Context, config *HostConfig) (k8sRuntime, error) {
+func NewFromConfig(ctx context.Context, config *HostConfig) (K8sRuntime, error) {
 	keyBytes, err := json.Marshal(struct {
 		C *client.HostEnv
 		E *schema.Environment
 	}{config.hostEnv, config.env})
 	if err != nil {
-		return k8sRuntime{}, fnerrors.InternalError("failed to serialize config/env key: %w", err)
+		return K8sRuntime{}, fnerrors.InternalError("failed to serialize config/env key: %w", err)
 	}
 
 	key := string(keyBytes)
@@ -68,10 +68,10 @@ func NewFromConfig(ctx context.Context, config *HostConfig) (k8sRuntime, error) 
 	if _, ok := runtimeCache.cache[key]; !ok {
 		cli, err := client.NewClientFromHostEnv(ctx, config.hostEnv)
 		if err != nil {
-			return k8sRuntime{}, err
+			return K8sRuntime{}, err
 		}
 
-		runtimeCache.cache[key] = k8sRuntime{
+		runtimeCache.cache[key] = K8sRuntime{
 			cli,
 			boundEnv{config.ws, config.env, config.hostEnv, moduleNamespace(config.ws, config.env)},
 		}
@@ -82,23 +82,23 @@ func NewFromConfig(ctx context.Context, config *HostConfig) (k8sRuntime, error) 
 	return rt, nil
 }
 
-func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (k8sRuntime, error) {
+func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (K8sRuntime, error) {
 	hostEnv, err := client.ComputeHostEnv(devHost, env)
 	if err != nil {
-		return k8sRuntime{}, err
+		return K8sRuntime{}, err
 	}
 	hostConfig := &HostConfig{ws: ws, devHost: devHost, env: env, hostEnv: hostEnv, registry: nil}
 	return NewFromConfig(ctx, hostConfig)
 }
 
-type k8sRuntime struct {
+type K8sRuntime struct {
 	cli *k8s.Clientset
 	boundEnv
 }
 
-var _ runtime.Runtime = k8sRuntime{}
+var _ runtime.Runtime = K8sRuntime{}
 
-func (r k8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, error) {
+func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, error) {
 	packedHostEnv, err := anypb.New(&kubetool.KubernetesEnv{Namespace: r.moduleNamespace})
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func (r deploymentState) Hints() []string {
 	return r.hints
 }
 
-func (r k8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
+func (r K8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
 	// XXX need a StatefulSet variant.
 	d, err := r.cli.AppsV1().Deployments(serverNamespace(r.boundEnv, server)).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
 	if err != nil {
@@ -169,7 +169,7 @@ func (r k8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Se
 	return oci.ParseImageID(cfgimage)
 }
 
-func (r k8sRuntime) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {
+func (r K8sRuntime) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {
 	var state deploymentState
 
 	ingressDefs, err := ingress.EnsureStack(ctx)
@@ -182,7 +182,7 @@ func (r k8sRuntime) PrepareCluster(ctx context.Context) (runtime.DeploymentState
 	return state, nil
 }
 
-func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
+func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
 	var state deploymentState
 	deployOpts := deployOpts{
 		focus: d.Focus,
@@ -245,13 +245,13 @@ func (r k8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 	return state, nil
 }
 
-func (r k8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
+func (r K8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
 	cmd := append([]string{command}, rest...)
 
 	return r.startTerminal(ctx, r.cli, server, rio, cmd)
 }
 
-func (r k8sRuntime) AttachTerminal(ctx context.Context, reference runtime.ContainerReference, rio runtime.TerminalIO) error {
+func (r K8sRuntime) AttachTerminal(ctx context.Context, reference runtime.ContainerReference, rio runtime.TerminalIO) error {
 	opaque, ok := reference.(containerPodReference)
 	if !ok {
 		return fnerrors.InternalError("invalid reference")

@@ -28,7 +28,11 @@ func Image(ctx context.Context, env ops.Environment, loader workspace.Packages) 
 		return compute.Error[oci.Image](err)
 	}
 
-	platform := tools.Impl().HostPlatform()
+	platform, err := tools.HostPlatform(ctx)
+	if err != nil {
+		return compute.Error[oci.Image](err)
+	}
+
 	prep, err := binary.PlanImage(ctx, pkg, env, true, &platform)
 	if err != nil {
 		return compute.Error[oci.Image](err)

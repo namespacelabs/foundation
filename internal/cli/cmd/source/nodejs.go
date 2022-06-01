@@ -48,9 +48,12 @@ func runNodejs(ctx context.Context, command string, args ...string) error {
 		return err
 	}
 
-	rt := tools.Impl()
+	p, err := tools.HostPlatform(ctx)
+	if err != nil {
+		return err
+	}
 
-	image, err := compute.GetValue(ctx, oci.ResolveImage("node:16.13", rt.HostPlatform()))
+	image, err := compute.GetValue(ctx, oci.ResolveImage("node:16.13", p))
 	if err != nil {
 		return err
 	}

@@ -39,7 +39,7 @@ type fwdArgs struct {
 
 const PortForwardProtocolV1Name = "portforward.k8s.io"
 
-func (r k8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endpoint *schema.Endpoint, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
+func (r K8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endpoint *schema.Endpoint, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
 	if endpoint.GetPort().GetContainerPort() <= 0 {
 		return nil, fnerrors.UserError(server, "%s: no port to forward to", endpoint.GetServiceName())
 	}
