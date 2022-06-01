@@ -62,3 +62,9 @@ changelog:
       - "^nochangelog"
       - "^Merge pull request"
       - "^Merge branch"
+
+brews:
+  -
+    tap:
+      owner: namespacelabs
+      name: homebrew-repo
