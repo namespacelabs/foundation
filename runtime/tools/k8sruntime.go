@@ -28,10 +28,6 @@ func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSt
 		return err
 	}
 
-	if opts.AllocateTTY {
-		return fnerrors.New("not supported: AllocateTTY")
-	}
-
 	if len(opts.Mounts) > 0 {
 		return fnerrors.New("not supported: Mounts")
 	}
