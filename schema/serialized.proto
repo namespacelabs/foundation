@@ -1,0 +1,22 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "schema/definition.proto";
+import "schema/schema.proto";
+import "schema/networking.proto";
+
+message DeployPlan {
+    Stack                    stack            = 1;
+    repeated Server          focus_server     = 2;
+    repeated string          rel_location     = 3;
+    repeated IngressFragment ingress_fragment = 4;
+    repeated string          hints            = 5;
+    DefinitionList           definitions      = 6;
+}

@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/stack"
@@ -95,9 +96,20 @@ func NewDeployCmd() *cobra.Command {
 			return err
 		}
 
+		deployPlan := &schema.DeployPlan{
+			Stack:           stack.Proto(),
+			IngressFragment: computed.IngressFragments,
+			Definitions:     computed.Deployer.Serialize(),
+			Hints:           computed.Hints,
+		}
+
+		for _, srv := range servers {
+			deployPlan.FocusServer = append(deployPlan.FocusServer, srv.Proto())
+			deployPlan.RelLocation = append(deployPlan.RelLocation, srv.Location.Rel())
+		}
+
 		if serializePath != "" {
-			defList := computed.Deployer.Serialize()
-			serialized, err := proto.MarshalOptions{Deterministic: true}.Marshal(defList)
+			serialized, err := proto.MarshalOptions{Deterministic: true}.Marshal(deployPlan)
 			if err != nil {
 				return fnerrors.New("failed to marshal: %w", err)
 			}
@@ -109,62 +121,60 @@ func NewDeployCmd() *cobra.Command {
 			return nil
 		}
 
-		waiters, err := computed.Deployer.Execute(ctx, runtime.TaskServerDeploy, env.BindWith(packages))
-		if err != nil {
+		return completeDeployment(ctx, env.BindWith(packages), computed.Deployer, deployPlan, alsoWait)
+	})
+}
+
+func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, plan *schema.DeployPlan, alsoWait bool) error {
+	waiters, err := p.Execute(ctx, runtime.TaskServerDeploy, env)
+	if err != nil {
+		return err
+	}
+
+	if alsoWait {
+		if err := deploy.Wait(ctx, env, waiters); err != nil {
 			return err
 		}
+	}
 
-		if alsoWait {
-			if err := deploy.Wait(ctx, env, waiters); err != nil {
-				return err
-			}
+	var ports []*deploy.PortFwd
+	for _, endpoint := range plan.Stack.Endpoint {
+		ports = append(ports, &deploy.PortFwd{
+			Endpoint: endpoint,
+		})
+	}
+
+	domains, err := runtime.FilterAndDedupDomains(plan.IngressFragment, nil)
+	if err != nil {
+		domains = nil
+		fmt.Fprintln(console.Stderr(ctx), "Failed to report on ingress:", err)
+	}
+
+	out := console.TypedOutput(ctx, "deploy", console.CatOutputUs)
+
+	deploy.SortPorts(ports, plan.FocusServer)
+	deploy.SortIngresses(plan.IngressFragment)
+	deploy.RenderPortsAndIngresses(false, out, "", plan.Stack, plan.FocusServer, ports, domains, plan.IngressFragment)
+
+	envLabel := fmt.Sprintf("--env=%s ", env.Proto().Name)
+
+	fmt.Fprintf(out, "\n Next steps:\n\n")
+
+	for _, loc := range plan.RelLocation {
+		var hints []string
+		hints = append(hints, fmt.Sprintf("Tail server logs: %s", colors.Bold(fmt.Sprintf("fn logs %s%s", envLabel, loc))))
+		hints = append(hints, fmt.Sprintf("Attach to the deployment (port forward to workstation): %s", colors.Bold(fmt.Sprintf("fn attach %s%s", envLabel, loc))))
+		hints = append(hints, plan.Hints...)
+
+		if env.Proto().Purpose == schema.Environment_DEVELOPMENT {
+			hints = append(hints, fmt.Sprintf("Try out a stateful development session with %s.",
+				colors.Bold(fmt.Sprintf("fn dev %s%s", envLabel, loc))))
 		}
 
-		var focusServers []*schema.Server
-		for _, srv := range servers {
-			focusServers = append(focusServers, srv.Proto())
+		for _, hint := range hints {
+			fmt.Fprintf(out, "   · %s\n", hint)
 		}
+	}
 
-		var ports []*deploy.PortFwd
-		for _, endpoint := range stack.Endpoints {
-			ports = append(ports, &deploy.PortFwd{
-				Endpoint: endpoint,
-			})
-		}
-
-		domains, err := runtime.FilterAndDedupDomains(computed.IngressFragments, nil)
-		if err != nil {
-			domains = nil
-			fmt.Fprintln(console.Stderr(ctx), "Failed to report on ingress:", err)
-		}
-
-		out := console.TypedOutput(ctx, "deploy", console.CatOutputUs)
-
-		deploy.SortPorts(ports, focusServers)
-		deploy.SortIngresses(computed.IngressFragments)
-		deploy.RenderPortsAndIngresses(false, out, "", stack.Proto(),
-			focusServers, ports, domains, computed.IngressFragments)
-
-		envLabel := fmt.Sprintf("--env=%s ", env.Name())
-
-		fmt.Fprintf(out, "\n Next steps:\n\n")
-
-		for _, srv := range servers {
-			var hints []string
-			hints = append(hints, fmt.Sprintf("Tail server logs: %s", colors.Bold(fmt.Sprintf("fn logs %s%s", envLabel, srv.Location.Rel()))))
-			hints = append(hints, fmt.Sprintf("Attach to the deployment (port forward to workstation): %s", colors.Bold(fmt.Sprintf("fn attach %s%s", envLabel, srv.Location.Rel()))))
-			hints = append(hints, computed.Hints...)
-
-			if env.Purpose() == schema.Environment_DEVELOPMENT {
-				hints = append(hints, fmt.Sprintf("Try out a stateful development session with %s.",
-					colors.Bold(fmt.Sprintf("fn dev %s%s", envLabel, srv.Location.Rel()))))
-			}
-
-			for _, hint := range hints {
-				fmt.Fprintf(out, "   · %s\n", hint)
-			}
-		}
-
-		return nil
-	})
+	return nil
 }
