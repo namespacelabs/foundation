@@ -68,3 +68,7 @@ brews:
     tap:
       owner: namespacelabs
       name: homebrew-repo
+    folder: Formula
+    # The following is needed to download artifacts from a private repo:
+    custom_require: "../lib/custom_download_strategy"
+    download_strategy: GitHubPrivateRepositoryReleaseDownloadStrategy
