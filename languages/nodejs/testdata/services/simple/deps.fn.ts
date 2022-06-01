@@ -6,11 +6,11 @@ import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundati
 
 
 export const Package = {
-  name: "namespacelabs.dev/foundation/languages/nodejs/testdata/services/simple",
+	name: "namespacelabs.dev/foundation/languages/nodejs/testdata/services/simple",
 };
 
 export const TransitiveInitializers: Initializer[] = [
 ];
 
-export type WireService = (registrar: Registrar) => void;
+export type WireService = (registrar: Registrar) => Promise<void>;
 export const wireService: WireService = impl.wireService;

@@ -1,9 +1,8 @@
 {
 	"dependencies": {
-		"@namespacelabs.dev-foundation/std-nodejs-http": "0.0.0",
 		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
 	},
-	"name": "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp",
+	"name": "@namespacelabs.dev-foundation/std-nodejs-http",
 	"private": true,
 	"version": "0.0.0"
 }

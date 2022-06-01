@@ -1,12 +1,16 @@
 {
 	"name": "@namespacelabs/foundation",
 	"private": true,
+	"devDependencies": {
+		"@types/connect": "3.4.45"
+	},
 	"dependencies": {
 		"fastify": "3.29.0",
 		"source-map-support": "0.5.21",
 		"typescript": "4.6.2",
 		"yargs": "16.2.0",
 		"google-protobuf": "3.20.0",
-		"@grpc/grpc-js": "1.5.8"
+		"@grpc/grpc-js": "1.5.8",
+		"middie": "6.1.0"
 	}
 }
