@@ -127,7 +127,10 @@ func (r boundEnv) attachTerminal(ctx context.Context, cli *kubernetes.Clientset,
 		if err != nil {
 			return err
 		}
-		defer restore()
+
+		defer func() {
+			_ = restore()
+		}()
 
 		done := console.EnterInputMode(ctx, "Press enter, if you don't see any output.\n")
 		defer done()

@@ -166,7 +166,7 @@ func newStdinReader(ctx context.Context) (*rawStdinReader, error) {
 
 	r.restore = func() {
 		cr.Cancel()
-		restore()
+		_ = restore()
 	}
 
 	go func() {
