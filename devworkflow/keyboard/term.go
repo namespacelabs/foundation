@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"os"
 
-	cons "github.com/containerd/console"
 	"github.com/morikuni/aec"
 	"github.com/muesli/cancelreader"
 	"namespacelabs.dev/foundation/devworkflow"
@@ -160,16 +159,14 @@ func newStdinReader(ctx context.Context) (*rawStdinReader, error) {
 		cancel: cr.Cancel,
 	}
 
-	current := cons.Current()
-	if err := current.SetRaw(); err != nil {
+	restore, err := termios.MakeRaw(os.Stdin)
+	if err != nil {
 		return nil, err
 	}
 
 	r.restore = func() {
 		cr.Cancel()
-		if err := current.Reset(); err != nil {
-			fmt.Fprintf(console.Errors(ctx), "Error : %v:", err)
-		}
+		restore()
 	}
 
 	go func() {

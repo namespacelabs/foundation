@@ -96,6 +96,7 @@ require (
 
 require (
 	cloud.google.com/go/compute v1.6.1 // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
@@ -117,7 +118,7 @@ require (
 	github.com/aws/smithy-go v1.11.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cockroachdb/apd/v2 v2.0.1 // indirect
-	github.com/containerd/console v1.0.3
+	github.com/containerd/console v1.0.3 // indirect
 	github.com/containerd/continuity v0.2.3-0.20220330195504-d132b287edc8 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.11.3 // indirect
 	github.com/containerd/ttrpc v1.1.0 // indirect
