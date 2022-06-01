@@ -7,12 +7,15 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
@@ -25,10 +28,11 @@ import (
 
 func NewDeployCmd() *cobra.Command {
 	var (
-		packageName string
-		runOpts     deploy.Opts
-		alsoWait    = true
-		explain     bool
+		packageName   string
+		runOpts       deploy.Opts
+		alsoWait      = true
+		explain       bool
+		serializePath string
 	)
 
 	cmd := &cobra.Command{
@@ -43,6 +47,7 @@ func NewDeployCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 	cmd.Flags().BoolVar(&runtime.NamingNoTLS, "naming_no_tls", runtime.NamingNoTLS, "If set to true, no TLS certificate is requested for ingress names.")
 	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
+	cmd.Flags().StringVar(&serializePath, "serialize_to", "", "If set, rather than execute on the plan, output a serialization of the plan.")
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
 		var locations []fnfs.Location
@@ -88,6 +93,20 @@ func NewDeployCmd() *cobra.Command {
 		computed, err := compute.GetValue(ctx, plan)
 		if err != nil {
 			return err
+		}
+
+		if serializePath != "" {
+			defList := computed.Deployer.Serialize()
+			serialized, err := proto.MarshalOptions{Deterministic: true}.Marshal(defList)
+			if err != nil {
+				return fnerrors.New("failed to marshal: %w", err)
+			}
+
+			if err := ioutil.WriteFile(serializePath, serialized, 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", serializePath, err)
+			}
+
+			return nil
 		}
 
 		waiters, err := computed.Deployer.Execute(ctx, runtime.TaskServerDeploy, env.BindWith(packages))

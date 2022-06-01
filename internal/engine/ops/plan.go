@@ -104,6 +104,10 @@ func (g *Plan) ExecuteParallel(ctx context.Context, name string, env Environment
 	return
 }
 
+func (g *Plan) Serialize() *schema.DefinitionList {
+	return &schema.DefinitionList{Definition: g.definitions}
+}
+
 func (g *Plan) apply(ctx context.Context, env Environment, parallel bool) ([]Waiter, error) {
 	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 	if err != nil {
