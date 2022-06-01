@@ -113,8 +113,6 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 
 	if opts.NoNetworking {
 		hostConfig.NetworkMode = "none"
-	} else if opts.UseHostNetworking {
-		hostConfig.NetworkMode = "host"
 	}
 
 	for _, m := range opts.Mounts {

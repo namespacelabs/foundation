@@ -26,12 +26,11 @@ type RunBinaryOpts struct {
 type RunToolOpts struct {
 	RunBinaryOpts
 	IO
-	ImageName         string
-	MountAbsRoot      string
-	Mounts            []*LocalMapping
-	AllocateTTY       bool
-	NoNetworking      bool // XXX remove, too specific.
-	UseHostNetworking bool // XXX remove, too specific.
+	ImageName    string
+	MountAbsRoot string
+	Mounts       []*LocalMapping
+	AllocateTTY  bool
+	NoNetworking bool // XXX remove, too specific.
 }
 
 type IO struct {

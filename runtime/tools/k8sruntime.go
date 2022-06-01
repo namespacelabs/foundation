@@ -36,10 +36,6 @@ func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSt
 		return fnerrors.New("not supported: Mounts")
 	}
 
-	if opts.UseHostNetworking {
-		return fnerrors.New("not supported: UseHostNetworking")
-	}
-
 	if opts.RunAsUser {
 		return fnerrors.New("not supported: RunAsUser")
 	}
