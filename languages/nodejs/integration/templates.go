@@ -88,7 +88,7 @@ const initializer = {
 };
 
 export type Prepare = (
-	{{- if .PackageDepsName}}deps: {{.PackageDepsName}}Deps{{end -}}) => void;
+	{{- if .PackageDepsName}}deps: {{.PackageDepsName}}Deps{{end -}}) => Promise<void> | void;
 export const prepare: Prepare = impl.initialize;
 {{- end}}
 
@@ -203,7 +203,7 @@ const TransitiveInitializers: Initializer[] = [
 async function main() {
 	const server = new Server();
 	const graph = new DependencyGraph();
-	graph.runInitializers(TransitiveInitializers);
+	await graph.runInitializers(TransitiveInitializers);
 	const errors = await wireServices(server, graph);
 	if (errors.length > 0) {
 		errors.forEach((e) => console.error(e));

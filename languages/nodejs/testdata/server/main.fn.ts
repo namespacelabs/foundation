@@ -46,7 +46,7 @@ const TransitiveInitializers: Initializer[] = [
 async function main() {
 	const server = new Server();
 	const graph = new DependencyGraph();
-	graph.runInitializers(TransitiveInitializers);
+	await graph.runInitializers(TransitiveInitializers);
 	const errors = await wireServices(server, graph);
 	if (errors.length > 0) {
 		errors.forEach((e) => console.error(e));
