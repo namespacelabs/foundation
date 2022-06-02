@@ -4,4 +4,5 @@ repos:
     hooks:
       - id: check-merge-conflict
       - id: check-yaml
+        args: [--allow-multiple-documents]
       - id: trailing-whitespace
