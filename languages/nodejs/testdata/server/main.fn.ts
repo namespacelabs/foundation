@@ -10,7 +10,7 @@ import * as i5 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing
 import * as i6 from "@namespacelabs.dev-foundation/std-nodejs-http/deps.fn";
 import * as i7 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify/deps.fn";
 
-import {httpServer} from "@namespacelabs.dev-foundation/std-nodejs-http/impl"
+import {provideHttpServer, HttpServerImpl} from "@namespacelabs.dev-foundation/std-nodejs-http/impl"
 
 // Returns a list of initialization errors.
 const wireServices = async (server: Server, graph: DependencyGraph): Promise<unknown[]> => {
@@ -61,7 +61,7 @@ async function main() {
 	}
 
 	server.start();
-	(await httpServer).start();
+	((await provideHttpServer()) as HttpServerImpl).start();
 }
 
 main();
