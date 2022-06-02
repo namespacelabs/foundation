@@ -8,6 +8,7 @@
 		"yargs": "16.2.0",
 		"google-protobuf": "3.20.0",
 		"@grpc/grpc-js": "1.5.8",
-		"middie": "6.1.0"
+		"middie": "6.1.0",
+		"toposort": "2.0.2"
 	}
 }
