@@ -4,5 +4,10 @@ binary: {
 		command: ["/fn-postgres-entrypoint.sh"]
 	}
 
-	from: llb_go_binary: "."
+	from: llb_plan: {
+		output_of: {
+			name: "llbgen"
+			from: go_package: "."
+		}
+	}
 }

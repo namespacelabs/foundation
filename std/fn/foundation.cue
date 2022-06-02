@@ -226,12 +226,15 @@ _#ConfigureBase: {
 	name?:       string
 	repository?: string
 	digest?:     string
-	from: {
-		go_package?:    string
-		dockerfile?:    string
-		web_build?:     string
-		llb_go_binary?: string
+	{from: #BuildPlan} | {build_plan: #BuildPlan}
+
+	#BuildPlan: {
+		go_package?: string
+		dockerfile?: string
+		web_build?:  string
+		llb_plan?: {output_of: #Binary}
 	}
+
 	config?: {
 		command?: [...string]
 		// XXX enable when they can also be used by all binaries.

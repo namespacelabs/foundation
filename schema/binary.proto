@@ -12,24 +12,32 @@ option go_package = "namespacelabs.dev/foundation/schema";
 // with the difference that the mechanism to build a binary is always
 // attached to itself -- i.e. it's a reproducible build.
 message Binary {
-    reserved 3, 4;
+    reserved 3, 4, 5;
 
     // The package name (computed).
     string package_name = 1;
 
     string name = 2;
 
-    From         from   = 5;  // Build instructions.
-    BinaryConfig config = 6;  // Run instructions.
+    BinaryConfig          config     = 6;  // Run instructions.
+    ImageBuildPlan        from       = 7;  // XXX Deprecated, use build_plan.
+    LayeredImageBuildPlan build_plan = 8;
+}
 
-    // XXX make this an arbitrary input.
-    message From {
-        string go_package    = 1;  // Use go binary builder.
-        string dockerfile    = 2;  // Use Dockerfile builder.
-        string web_build     = 3;  // Use Web build (temporary).
-        string llb_go_binary = 4;  // Build a go binary which itself produces LLB.
-        string nix_flake     = 5;  // Build a docker image from a nix flake.
+message ImageBuildPlan {
+    string  go_package = 1;  // Use go binary builder.
+    string  dockerfile = 2;  // Use Dockerfile builder.
+    string  web_build  = 3;  // Use Web build (temporary).
+    LLBPlan llb_plan   = 4;  // Build  binary which itself produces LLB.
+    string  nix_flake  = 5;  // Build a docker image from a nix flake.
+
+    message LLBPlan {
+        Binary output_of = 1;
     }
+}
+
+message LayeredImageBuildPlan {
+    repeated ImageBuildPlan layer_build_plan = 1;  // Each build plan will yield N layers, in order.
 }
 
 // Instructions of how to invoke the image, if it includes an invocable binary.

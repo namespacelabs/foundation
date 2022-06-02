@@ -25,19 +25,23 @@ func NewHostConfig(contextName string, env ops.Environment, options ...func(*Hos
 	if err != nil {
 		return nil, err
 	}
+
 	hostEnv := &client.HostEnv{
 		Kubeconfig: kubeconfig,
 		Context:    contextName,
 	}
+
 	config := &HostConfig{
 		ws:      env.Workspace(),
 		devHost: env.DevHost(),
 		env:     env.Proto(),
 		hostEnv: hostEnv,
 	}
+
 	for _, option := range options {
 		option(config)
 	}
+
 	return config, nil
 }
 

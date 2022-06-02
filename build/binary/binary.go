@@ -126,13 +126,9 @@ func PlanImage(ctx context.Context, pkg *workspace.Package, env ops.Environment,
 }
 
 func planImage(ctx context.Context, loc workspace.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
-	if bin.From == nil {
-		return nil, fnerrors.UserError(loc, "don't know how to build binary image: `from` statement is missing")
-	}
-
 	// We prepare the build spec, as we need information, e.g. whether it's platform independent,
 	// if a prebuilt is specified.
-	spec, err := buildSpec(ctx, loc, bin)
+	spec, err := buildLayeredSpec(ctx, loc, bin)
 	if err != nil {
 		return nil, err
 	}
@@ -155,8 +151,41 @@ func planImage(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 	return spec, nil
 }
 
-func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary) (build.Spec, error) {
-	src := bin.From
+func buildLayeredSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary) (build.Spec, error) {
+	src := bin.BuildPlan
+
+	if src == nil || len(src.LayerBuildPlan) == 0 {
+		if bin.From != nil {
+			return buildSpec(ctx, loc, bin, bin.From)
+		}
+
+		return nil, fnerrors.UserError(loc, "don't know how to build %q: no layers", bin.Name)
+	}
+
+	if len(src.LayerBuildPlan) == 1 {
+		return buildSpec(ctx, loc, bin, src.LayerBuildPlan[0])
+	}
+
+	specs := make([]build.Spec, len(src.LayerBuildPlan))
+	platformIndependent := true
+	for k, plan := range src.LayerBuildPlan {
+		var err error
+		specs[k], err = buildSpec(ctx, loc, bin, plan)
+		if err != nil {
+			return nil, err
+		}
+		if !specs[k].PlatformIndependent() {
+			platformIndependent = false
+		}
+	}
+
+	return mergeSpecs{specs, platformIndependent}, nil
+}
+
+func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary, src *schema.ImageBuildPlan) (build.Spec, error) {
+	if src == nil {
+		return nil, fnerrors.UserError(loc, "don't know how to build %q: no plan", bin.Name)
+	}
 
 	if goPackage := src.GoPackage; goPackage != "" {
 		// Note, regardless of what config.command has been set to, we always build a
@@ -171,13 +200,12 @@ func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary) 
 		return BuildWeb(loc), nil
 	}
 
-	if llb := src.LlbGoBinary; llb != "" {
-		// We allow these Go binaries to be cached because we expect them to be seldom
-		// changed, and the impact of not being able to verify the cache is too big.
-		spec, err := BuildGo(loc, llb, LLBGenBinaryName, true)
+	if llb := src.LlbPlan; llb != nil {
+		spec, err := buildLayeredSpec(ctx, loc, llb.OutputOf)
 		if err != nil {
 			return nil, err
 		}
+
 		return BuildLLBGen(loc.PackageName, loc.Module, spec), nil
 	}
 
@@ -213,3 +241,25 @@ func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary) 
 
 	return nil, fnerrors.UserError(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
 }
+
+type mergeSpecs struct {
+	specs               []build.Spec
+	platformIndependent bool
+}
+
+func (m mergeSpecs) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+	images := make([]compute.Computable[oci.Image], len(m.specs))
+
+	for k, spec := range m.specs {
+		// XXX we ignore whether the request is platform-specific.
+		var err error
+		images[k], err = spec.BuildImage(ctx, env, conf)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return oci.MergeImageLayers(images...), nil
+}
+
+func (m mergeSpecs) PlatformIndependent() bool { return m.platformIndependent }

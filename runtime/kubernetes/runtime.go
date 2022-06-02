@@ -88,7 +88,8 @@ func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env
 	if err != nil {
 		return K8sRuntime{}, err
 	}
-	hostConfig := &HostConfig{ws: ws, devHost: devHost, env: env, hostEnv: hostEnv, registry: nil}
+
+	hostConfig := &HostConfig{ws: ws, devHost: devHost, env: env, hostEnv: hostEnv}
 	return NewFromConfig(ctx, hostConfig)
 }
 

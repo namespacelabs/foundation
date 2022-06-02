@@ -64,6 +64,7 @@ func NewPrepareCmd() *cobra.Command {
 			func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 				k8sconfigval := compute.MustGetDepValue(deps, k8sconfig, "k8sconfig")
 				var confs []*schema.DevHost_ConfigureEnvironment
+
 				registry := k8sconfigval.Registry()
 				if registry != nil {
 					c, err := devhost.MakeConfiguration(registry)
@@ -73,6 +74,7 @@ func NewPrepareCmd() *cobra.Command {
 					c.Purpose = schema.Environment_DEVELOPMENT
 					confs = append(confs, c)
 				}
+
 				hostEnv := k8sconfigval.ClientHostEnv()
 				if hostEnv != nil {
 					c, err := devhost.MakeConfiguration(hostEnv)
@@ -83,6 +85,7 @@ func NewPrepareCmd() *cobra.Command {
 					c.Runtime = "kubernetes"
 					confs = append(confs, c)
 				}
+
 				return confs, nil
 			}))
 
