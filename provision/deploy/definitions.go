@@ -11,11 +11,13 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/stack"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
@@ -155,58 +157,22 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 				var computed []*schema.SerializedInvocation_ComputedValue
 
 				// XXX make this extensible.
-				for _, c := range src.Computable {
-					inv := &types.DeferredInvocationSource{}
 
-					switch {
-					case c.Value.MessageIs(inv):
-						if err := c.Value.UnmarshalTo(inv); err != nil {
-							return nil, fnerrors.New("%s: failed to unmarshal: %w", c.Value.TypeUrl, err)
-						}
-
-						pkg, err := s.Env().LoadByName(ctx, schema.PackageName(inv.Binary))
-						if err != nil {
-							return nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)
-						}
-
-						platform, err := tools.HostPlatform(ctx)
-						if err != nil {
-							return nil, err
-						}
-
-						prepared, err := binary.Plan(ctx, pkg, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
-						if err != nil {
-							return nil, err
-						}
-
-						imageID, err := binary.EnsureImage(ctx, s.Env(), prepared)
-						if err != nil {
-							return nil, err
-						}
-
-						compiled := &types.DeferredInvocation{
-							BinaryPackage: inv.Binary,
-							Image:         imageID.RepoAndDigest(),
-							BinaryConfig: &schema.BinaryConfig{
-								Command: prepared.Command,
-							},
-							Cacheable: inv.Cacheable,
-							WithInput: inv.WithInput,
-						}
-
-						serialized, err := anypb.New(compiled)
-						if err != nil {
-							return nil, err
-						}
-
-						computed = append(computed, &schema.SerializedInvocation_ComputedValue{
-							Name:  c.Name,
-							Value: serialized,
-						})
-
-					default:
-						return nil, fnerrors.New("%s: don't know how to compile this type", c.Value.TypeUrl)
+				for _, computable := range src.Computable {
+					compiled, err := compileComputable(ctx, s.Env(), computable)
+					if err != nil {
+						return nil, err
 					}
+
+					serialized, err := anypb.New(compiled)
+					if err != nil {
+						return nil, err
+					}
+
+					computed = append(computed, &schema.SerializedInvocation_ComputedValue{
+						Name:  computable.Name,
+						Value: serialized,
+					})
 				}
 
 				ops = append(ops, &schema.SerializedInvocation{
@@ -237,4 +203,65 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 	})
 
 	return &handlerResult{r.stack, ops, computed, extensionsPerServer}, nil
+}
+
+func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema.SerializedInvocationSource_ComputableValue) (proto.Message, error) {
+	m, err := src.Value.UnmarshalNew()
+	if err != nil {
+		return nil, fnerrors.New("%s: failed to unmarshal: %w", src.Value.TypeUrl, err)
+	}
+
+	switch x := m.(type) {
+	case *types.DeferredResourceSource:
+		n := &types.DeferredResource{Inline: x.Inline}
+
+		if x.FromInvocation != nil {
+			compiled, err := makeInvocation(ctx, env, x.FromInvocation)
+			if err != nil {
+				return nil, err
+			}
+
+			n.FromInvocation = compiled
+		}
+
+		return n, nil
+
+	case *types.DeferredInvocationSource:
+		return makeInvocation(ctx, env, x)
+
+	default:
+		return nil, fnerrors.New("%s: don't know how to compile this type", src.Value.TypeUrl)
+	}
+}
+
+func makeInvocation(ctx context.Context, env provision.ServerEnv, inv *types.DeferredInvocationSource) (*types.DeferredInvocation, error) {
+	pkg, err := env.LoadByName(ctx, schema.PackageName(inv.Binary))
+	if err != nil {
+		return nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)
+	}
+
+	platform, err := tools.HostPlatform(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	prepared, err := binary.Plan(ctx, pkg, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
+	if err != nil {
+		return nil, err
+	}
+
+	imageID, err := binary.EnsureImage(ctx, env, prepared)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.DeferredInvocation{
+		BinaryPackage: inv.Binary,
+		Image:         imageID.RepoAndDigest(),
+		BinaryConfig: &schema.BinaryConfig{
+			Command: prepared.Command,
+		},
+		Cacheable: inv.Cacheable,
+		WithInput: inv.WithInput,
+	}, nil
 }

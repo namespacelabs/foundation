@@ -9,13 +9,16 @@ import (
 
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
+	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/go-ids"
 )
 
 func main() {
 	configure.HandleInvoke(func(ctx context.Context, r configure.Request) (*protocol.InvokeResponse, error) {
 		return &protocol.InvokeResponse{
-			RawOutput: []byte(ids.NewRandomBase32ID(128)),
+			Resource: &types.Resource{
+				Contents: []byte(ids.NewRandomBase32ID(128)),
+			},
 		}, nil
 	})
 }

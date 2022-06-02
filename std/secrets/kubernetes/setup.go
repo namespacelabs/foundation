@@ -31,6 +31,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/secrets"
+	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -219,14 +220,14 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				return err
 			}
 
-			initializeWith, err := anypb.New(gen.Secret.InitializeWith)
+			resource, err := anypb.New(&types.DeferredResourceSource{FromInvocation: gen.Secret.InitializeWith})
 			if err != nil {
 				return err
 			}
 
 			src.Computable = append(src.Computable, &schema.SerializedInvocationSource_ComputableValue{
 				Name:  "value",
-				Value: initializeWith,
+				Value: resource,
 			})
 
 			out.InvocationSources = append(out.InvocationSources, src)

@@ -12,6 +12,7 @@ import "google/protobuf/any.proto";
 import "schema/defextension.proto";
 import "schema/definition.proto";
 import "schema/schema.proto";
+import "std/types/resource.proto";
 
 message ToolRequest {
     reserved 3;
@@ -70,8 +71,7 @@ message DeleteResponse {
 message InvokeRequest {}
 
 message InvokeResponse {
-    google.protobuf.Any output     = 1;
-    bytes               raw_output = 2;  // Alternative to structured output above.
+    foundation.std.types.Resource resource = 1;
 }
 
 message CacheKey {}

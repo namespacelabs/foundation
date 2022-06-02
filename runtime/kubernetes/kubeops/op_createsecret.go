@@ -13,10 +13,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 func RegisterCreateSecret() {
@@ -29,13 +27,9 @@ func RegisterCreateSecret() {
 			return nil, fnerrors.InternalError("%s: create.Namespace is required", d.Description)
 		}
 
-		v, err := ops.Value[*types.DeferredInvocation](d, "value")
+		v, err := ops.Value[*types.DeferredResource](d, "value")
 		if err != nil {
 			return nil, fnerrors.New("%s: failed to retrieve value: %w", d.Description, err)
-		}
-
-		if v == nil {
-			return nil, fnerrors.New("%s: failed to retrieve value: no value", d.Description)
 		}
 
 		exists, err := checkResourceExists(ctx, env, d.Description, "secrets", create.Name, create.Namespace, schema.PackageNames(d.Scope...))
@@ -47,23 +41,18 @@ func RegisterCreateSecret() {
 			return nil, nil // Nothing to do.
 		}
 
+		resource, err := ResolveResource(ctx, env, v)
+		if err != nil {
+			return nil, fnerrors.New("%s: failed to retrieve value: %w", d.Description, err)
+		}
+
+		if resource.GetContents() == nil {
+			return nil, fnerrors.BadInputError("%s: resource is missing a value", d.Description)
+		}
+
 		cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
 		if err != nil {
 			return nil, err
-		}
-
-		invocation, err := tools.Invoke(ctx, env, v)
-		if err != nil {
-			return nil, err
-		}
-
-		result, err := compute.GetValue(ctx, invocation)
-		if err != nil {
-			return nil, err
-		}
-
-		if result.RawOutput == nil {
-			return nil, fnerrors.BadInputError("%s: tool didn't produce an output", v.Image)
 		}
 
 		newSecret := &v1.Secret{
@@ -73,7 +62,7 @@ func RegisterCreateSecret() {
 				Labels:    kubedef.MakeLabels(env.Proto(), nil),
 			},
 			Data: map[string][]byte{
-				create.UserSpecifiedName: result.RawOutput,
+				create.UserSpecifiedName: resource.GetContents(),
 			},
 		}
 
