@@ -25,11 +25,12 @@ message Binary {
 }
 
 message ImageBuildPlan {
-    string  go_package = 1;  // Use go binary builder.
-    string  dockerfile = 2;  // Use Dockerfile builder.
-    string  web_build  = 3;  // Use Web build (temporary).
-    LLBPlan llb_plan   = 4;  // Build  binary which itself produces LLB.
-    string  nix_flake  = 5;  // Build a docker image from a nix flake.
+    string          go_package     = 1;  // Use go binary builder.
+    string          dockerfile     = 2;  // Use Dockerfile builder.
+    string          web_build      = 3;  // Use Web build (temporary).
+    LLBPlan         llb_plan       = 4;  // Build  binary which itself produces LLB.
+    string          nix_flake      = 5;  // Build a docker image from a nix flake.
+    repeated string snapshot_files = 6;  // Add all referenced files, and directories, recursively visiting their children.
 
     message LLBPlan {
         Binary output_of = 1;

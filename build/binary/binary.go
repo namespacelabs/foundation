@@ -239,27 +239,9 @@ func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 		return spec, nil
 	}
 
-	return nil, fnerrors.UserError(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
-}
-
-type mergeSpecs struct {
-	specs               []build.Spec
-	platformIndependent bool
-}
-
-func (m mergeSpecs) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	images := make([]compute.Computable[oci.Image], len(m.specs))
-
-	for k, spec := range m.specs {
-		// XXX we ignore whether the request is platform-specific.
-		var err error
-		images[k], err = spec.BuildImage(ctx, env, conf)
-		if err != nil {
-			return nil, err
-		}
+	if len(src.SnapshotFiles) > 0 {
+		return snapshotFiles{loc.Rel(), src.SnapshotFiles}, nil
 	}
 
-	return oci.MergeImageLayers(images...), nil
+	return nil, fnerrors.UserError(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
 }
-
-func (m mergeSpecs) PlatformIndependent() bool { return m.platformIndependent }
