@@ -18,7 +18,6 @@ func NewToolsCmd() *cobra.Command {
 	cmd.AddCommand(newGRPCurlCmd())
 	cmd.AddCommand(newKubeCtlCmd())
 	cmd.AddCommand(newOctantCmd())
-	cmd.AddCommand(newGlooctlCmd())
 
 	return cmd
 }
