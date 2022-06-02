@@ -25,10 +25,7 @@ func (r K8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runt
 		return fnerrors.InternalError("invalid reference")
 	}
 
-	return fetchPodLogs(ctx, r.cli, w, opaque.Namespace, opaque.PodName, opaque.Container, runtime.StreamLogsOpts{
-		TailLines:        opts.TailLines,
-		FetchLastFailure: opts.FetchLastFailure,
-	})
+	return fetchPodLogs(ctx, r.cli, w, opaque.Namespace, opaque.PodName, opaque.Container, runtime.StreamLogsOpts(opts))
 }
 
 func (r boundEnv) fetchLogs(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, server *schema.Server, opts runtime.StreamLogsOpts) error {
