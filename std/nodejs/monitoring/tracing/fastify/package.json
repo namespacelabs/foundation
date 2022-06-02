@@ -1,0 +1,11 @@
+{
+	"dependencies": {
+		"@autotelic/fastify-opentelemetry": "0.16.0",
+		"@namespacelabs.dev-foundation/std-nodejs-http": "0.0.0",
+		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime",
+		"@opentelemetry/api": "1.0.4"
+	},
+	"name": "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify",
+	"private": true,
+	"version": "0.0.0"
+}
