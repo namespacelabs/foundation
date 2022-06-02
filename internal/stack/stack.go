@@ -49,7 +49,7 @@ type ParsedNode struct {
 	Allocations   []frontend.ValueWithPath
 	PrepareProps  struct {
 		ProvisionInput []*anypb.Any
-		Definition     []*schema.Definition
+		Invocations    []*schema.SerializedInvocation
 		Extension      []*schema.DefExtension
 	}
 }
@@ -283,7 +283,7 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 					Inits:        resp.GetPreparedProvisionPlan().GetInit(),
 				},
 				ProvisionInput: resp.ProvisionInput,
-				Definition:     resp.Definition,
+				Invocations:    resp.Invocation,
 				Extension:      resp.Extension,
 			})
 		}
@@ -317,7 +317,7 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 
 	node := &ParsedNode{Package: n, ProvisionPlan: pdata}
 	node.PrepareProps.ProvisionInput = combinedProps.ProvisionInput
-	node.PrepareProps.Definition = combinedProps.Definition
+	node.PrepareProps.Invocations = combinedProps.Invocations
 	node.PrepareProps.Extension = combinedProps.Extension
 
 	return node, nil

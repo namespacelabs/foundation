@@ -61,7 +61,7 @@ var (
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenServer) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
 		workspacePackages, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, errors.New("workspace.Packages required")
@@ -79,7 +79,7 @@ func Register() {
 		return nil, nil
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, fnerrors.New("workspace.Packages required")
@@ -93,7 +93,7 @@ func Register() {
 		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNodeStub) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenNodeStub) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, fnerrors.New("workspace.Packages required")
@@ -459,7 +459,7 @@ func updateJson(ctx context.Context, filepath string, fsys fnfs.ReadWriteFS, cal
 	return parsedJson, nil
 }
 
-func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
+func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var dl defs.DefList
 
 	dl.Add("Generate Typescript server dependencies", &OpGenServer{Server: pkg.Server, LoadedNode: nodes}, pkg.PackageName())
@@ -526,7 +526,7 @@ func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
 	return frontend.ProvisionStack{}, nil
 }
 
-func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
+func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var dl defs.DefList
 
 	maybeGenerateNodeImplStub(pkg, &dl)
@@ -570,7 +570,7 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 type yarnRootStatefulGen struct{}
 
 // This is never called but ops.Register requires the Dispatcher.
-func (yarnRootStatefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenYarnRoot) (*ops.HandleResult, error) {
+func (yarnRootStatefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
 	return nil, fnerrors.UserError(nil, "yarnRootStatefulGen.Handle is not supposed to be called")
 }
 
@@ -589,7 +589,7 @@ type yarnRootGenSession struct {
 	yarnRoots map[string]context.Context
 }
 
-func (s *yarnRootGenSession) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenYarnRoot) (*ops.HandleResult, error) {
+func (s *yarnRootGenSession) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
 	if s.yarnRoots[x.YarnRootPkgName] == nil {
 		s.yarnRoots[x.YarnRootPkgName] = ctx
 	}

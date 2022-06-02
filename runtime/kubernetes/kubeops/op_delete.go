@@ -18,7 +18,7 @@ import (
 )
 
 func registerDelete() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, delete *kubedef.OpDelete) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.SerializedInvocation, delete *kubedef.OpDelete) (*ops.HandleResult, error) {
 		if delete.Resource == "" {
 			return nil, fnerrors.InternalError("%s: delete.Resource is required", d.Description)
 		}

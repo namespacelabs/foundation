@@ -29,7 +29,7 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 
 	propsPerServer := map[schema.PackageName]tool.InvokeProps{}
 
-	definitions := props.Definition
+	definitions := props.Invocation
 	extensions := props.Extension
 
 	for k, srv := range stack.ParsedServers {
@@ -40,7 +40,7 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 		for _, dep := range srv.Deps {
 			invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, dep.PrepareProps.ProvisionInput...)
 
-			definitions = append(definitions, dep.PrepareProps.Definition...)
+			definitions = append(definitions, dep.PrepareProps.Invocations...)
 			extensions = append(extensions, dep.PrepareProps.Extension...)
 		}
 
@@ -69,7 +69,7 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 
 type handlerResult struct {
 	Stack            *stack.Stack
-	Definitions      []*schema.Definition
+	Definitions      []*schema.SerializedInvocation
 	Computed         *schema.ComputedConfigurations
 	ServerExtensions map[schema.PackageName][]*schema.DefExtension // Per server.
 }
@@ -79,7 +79,7 @@ type finishInvokeHandlers struct {
 	handlers    []*tool.Definition
 	invocations []compute.Computable[*protocol.ToolResponse]
 	event       protocol.Lifecycle
-	definitions []*schema.Definition
+	definitions []*schema.SerializedInvocation
 	extensions  []*schema.DefExtension
 
 	compute.LocalScoped[*handlerResult]
@@ -107,7 +107,7 @@ func (r *finishInvokeHandlers) Output() compute.Output {
 }
 
 func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolved) (*handlerResult, error) {
-	ops := append([]*schema.Definition{}, r.definitions...)
+	ops := append([]*schema.SerializedInvocation{}, r.definitions...)
 
 	extensionsPerServer := map[schema.PackageName][]*schema.DefExtension{}
 	computedPerServer := map[schema.PackageName][]*schema.ComputedConfiguration{}
@@ -144,12 +144,12 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 				extensionsPerServer[server.PackageName()] = append(extensionsPerServer[server.PackageName()], si)
 			}
 
-			ops = append(ops, resp.ApplyResponse.Definition...)
+			ops = append(ops, resp.ApplyResponse.Invocation...)
 
 			computedPerServer[schema.PackageName(handler.For)] = append(computedPerServer[schema.PackageName(handler.For)], resp.ApplyResponse.Computed...)
 
 		case protocol.Lifecycle_SHUTDOWN:
-			ops = append(ops, resp.DeleteResponse.Definition...)
+			ops = append(ops, resp.DeleteResponse.Invocation...)
 		}
 	}
 

@@ -27,7 +27,7 @@ import (
 
 type generator struct{}
 
-func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenHttpBackend) (*ops.HandleResult, error) {
+func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, msg *OpGenHttpBackend) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, errors.New("workspace.Packages required")

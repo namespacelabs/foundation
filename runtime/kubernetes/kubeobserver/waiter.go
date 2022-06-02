@@ -44,7 +44,7 @@ type WaitOnResource struct {
 	DevHost *schema.DevHost
 	Env     *schema.Environment
 
-	Def             *schema.Definition
+	Invocation      *schema.SerializedInvocation
 	Name, Namespace string
 	ResourceClass   string
 	Scope           schema.PackageName
@@ -70,7 +70,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 			case "deployments", "statefulsets":
 				ev.Category = "Servers deployed"
 			default:
-				ev.Category = w.Def.Description
+				ev.Category = w.Invocation.Description
 			}
 
 			if w.PreviousGen == w.ExpectedGen {

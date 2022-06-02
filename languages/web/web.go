@@ -297,7 +297,7 @@ func parseBackends(n *schema.Node) ([]*OpGenHttpBackend_Backend, error) {
 	return backends, nil
 }
 
-func (i impl) GenerateNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.Definition, error) {
+func (i impl) GenerateNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var dl defs.DefList
 
 	backends, err := parseBackends(pkg.Node())

@@ -46,7 +46,7 @@ type statefulGen struct{}
 
 var _ ops.BatchedDispatcher[*OpProtoGen] = statefulGen{}
 
-func (statefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.HandleResult, error) {
+func (statefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
 	if !ok {
 		return nil, fnerrors.New("WorkspaceEnvironment required")
@@ -84,7 +84,7 @@ type multiGen struct {
 	files []*protos.FileDescriptorSetAndDeps
 }
 
-func (m *multiGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpProtoGen) (*ops.HandleResult, error) {
+func (m *multiGen) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, fnerrors.New("workspace.Packages required")

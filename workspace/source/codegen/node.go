@@ -40,7 +40,7 @@ func Register() {
 
 type generator struct{}
 
-func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.Definition, msg *OpGenNode) (*ops.HandleResult, error) {
+func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, msg *OpGenNode) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, fnerrors.New("workspace.Packages required")
@@ -54,8 +54,8 @@ func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.Defi
 	return nil, generateNode(ctx, loc, msg.Node, msg.Protos, loc.Module.ReadWriteFS())
 }
 
-func ProtosForNode(pkg *workspace.Package) ([]*schema.Definition, error) {
-	var allDefs []*schema.Definition
+func ProtosForNode(pkg *workspace.Package) ([]*schema.SerializedInvocation, error) {
+	var allDefs []*schema.SerializedInvocation
 
 	if len(pkg.Provides) > 0 {
 		var dl defs.DefList
@@ -79,8 +79,8 @@ func ProtosForNode(pkg *workspace.Package) ([]*schema.Definition, error) {
 	return allDefs, nil
 }
 
-func ForNodeForLanguage(pkg *workspace.Package, available []*schema.Node) ([]*schema.Definition, error) {
-	var allDefs []*schema.Definition
+func ForNodeForLanguage(pkg *workspace.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
+	var allDefs []*schema.SerializedInvocation
 	for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
 		defs, err := languages.IntegrationFor(fmwk).GenerateNode(pkg, available)
 		if err != nil {

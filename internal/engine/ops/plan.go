@@ -33,7 +33,7 @@ type Environment interface {
 // A dispatcher provides the implementation for a particular type, i.e. it
 // handles the execution of a particular serialized invocation.
 type Dispatcher[M proto.Message] interface {
-	Handle(context.Context, Environment, *schema.Definition, M) (*HandleResult, error)
+	Handle(context.Context, Environment, *schema.SerializedInvocation, M) (*HandleResult, error)
 }
 
 // A BatchedDispatcher represents an implementation which batches the execution
@@ -54,7 +54,7 @@ type HandleResult struct {
 
 // A plan collects a set of invocations which can then be executed as a batch.
 type Plan struct {
-	definitions []*schema.Definition
+	definitions []*schema.SerializedInvocation
 	nodes       []*rnode
 	scope       schema.PackageList
 }
@@ -63,7 +63,7 @@ func NewPlan() *Plan {
 	return &Plan{}
 }
 
-func (g *Plan) Add(defs ...*schema.Definition) error {
+func (g *Plan) Add(defs ...*schema.SerializedInvocation) error {
 	var nodes []*rnode
 	for _, src := range defs {
 		key := src.Impl.GetTypeUrl()
@@ -104,8 +104,8 @@ func (g *Plan) ExecuteParallel(ctx context.Context, name string, env Environment
 	return
 }
 
-func (g *Plan) Serialize() *schema.DefinitionList {
-	return &schema.DefinitionList{Definition: g.definitions}
+func (g *Plan) Serialize() *schema.SerializedProgram {
+	return &schema.SerializedProgram{Invocation: g.definitions}
 }
 
 func (g *Plan) apply(ctx context.Context, env Environment, parallel bool) ([]Waiter, error) {
@@ -210,8 +210,8 @@ func (g *Plan) apply(ctx context.Context, env Environment, parallel bool) ([]Wai
 	return waiters, multierr.New(errs...)
 }
 
-func (g *Plan) Definitions() []*schema.Definition {
-	var defs []*schema.Definition
+func (g *Plan) Definitions() []*schema.SerializedInvocation {
+	var defs []*schema.SerializedInvocation
 	for _, n := range g.nodes {
 		defs = append(defs, n.def)
 	}

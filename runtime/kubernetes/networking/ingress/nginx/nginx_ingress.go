@@ -34,7 +34,7 @@ var (
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, g *schema.Definition, op *OpGenerateWebhookCert) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, g *schema.SerializedInvocation, op *OpGenerateWebhookCert) (*ops.HandleResult, error) {
 		cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
 		if err != nil {
 			return nil, err
@@ -96,7 +96,7 @@ func RegisterGraphHandlers() {
 	})
 }
 
-func Ensure(ctx context.Context) ([]*schema.Definition, error) {
+func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 	f, err := lib.Open("ingress.yaml")
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func Ensure(ctx context.Context) ([]*schema.Definition, error) {
 		return nil, err
 	}
 
-	var defs []*schema.Definition
+	var defs []*schema.SerializedInvocation
 	var service, webhook kubedef.Apply
 	for _, apply := range applies {
 		if apply.Resource == "validatingwebhookconfigurations" && apply.Name == "ingress-nginx-admission" {
@@ -150,7 +150,7 @@ func Ensure(ctx context.Context) ([]*schema.Definition, error) {
 	}
 
 	// It's important that we create the webhook + CAbundle first, so it's available to the nginx deployment.
-	return append([]*schema.Definition{{Description: "nginx Ingress: Namespace + Webhook + CABundle", Impl: op}}, defs...), nil
+	return append([]*schema.SerializedInvocation{{Description: "nginx Ingress: Namespace + Webhook + CABundle", Impl: op}}, defs...), nil
 }
 
 func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb.Any) (map[string]string, error) {

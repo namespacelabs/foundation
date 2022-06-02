@@ -7,5 +7,5 @@ package defs
 import "namespacelabs.dev/foundation/schema"
 
 type MakeDefinition interface {
-	ToDefinition(...schema.PackageName) (*schema.Definition, error)
+	ToDefinition(...schema.PackageName) (*schema.SerializedInvocation, error)
 }

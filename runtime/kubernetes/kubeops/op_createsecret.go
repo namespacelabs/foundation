@@ -20,7 +20,7 @@ import (
 )
 
 func RegisterCreateSecret() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, create *kubedef.OpCreateSecretConditionally) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.SerializedInvocation, create *kubedef.OpCreateSecretConditionally) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.WorkspaceEnvironment)
 		if !ok {
 			return nil, fnerrors.InternalError("expected a workspace.WorkspaceEnvironment")

@@ -21,7 +21,7 @@ import (
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, g *schema.Definition, op *OpMapAddress) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, g *schema.SerializedInvocation, op *OpMapAddress) (*ops.HandleResult, error) {
 		cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
 		if err != nil {
 			return nil, err

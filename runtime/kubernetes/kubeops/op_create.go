@@ -19,7 +19,7 @@ import (
 )
 
 func registerCreate() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, create *kubedef.OpCreate) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.SerializedInvocation, create *kubedef.OpCreate) (*ops.HandleResult, error) {
 		if create.Resource == "" {
 			return nil, fnerrors.InternalError("%s: create.Resource is required", d.Description)
 		}

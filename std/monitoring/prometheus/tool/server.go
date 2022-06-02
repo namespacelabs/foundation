@@ -39,7 +39,7 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 		return err
 	}
 
-	out.Definitions = append(out.Definitions, kubedef.Apply{
+	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Prometheus ClusterRole",
 		Resource:    "clusterroles",
 		Name:        clusterRoleName,
@@ -59,7 +59,7 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 	})
 
 	serviceAccount := makeServiceAccount(r.Focus.Server)
-	out.Definitions = append(out.Definitions, kubedef.Apply{
+	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Prometheus ClusterRoleBinding",
 		Resource:    "clusterrolebindings",
 		Name:        clusterRoleBindingName,
@@ -74,7 +74,7 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 				WithName(serviceAccount)),
 	})
 
-	out.Definitions = append(out.Definitions, kubedef.Apply{
+	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Prometheus Service Account",
 		Resource:    "serviceaccounts",
 		Namespace:   namespace,
@@ -86,7 +86,7 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 		promYaml: string(promYamlData),
 	}
 
-	out.Definitions = append(out.Definitions, kubedef.Apply{
+	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Prometheus ConfigMap",
 		Resource:    "configmaps",
 		Namespace:   namespace,
@@ -126,19 +126,19 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 }
 
 func (configureServer) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
-	out.Ops = append(out.Ops, kubedef.Delete{
+	out.Invocations = append(out.Invocations, kubedef.Delete{
 		Description: "Prometheus ClusterRoleBinding",
 		Resource:    "clusterrolebindings",
 		Name:        clusterRoleBindingName,
 	})
 
-	out.Ops = append(out.Ops, kubedef.Delete{
+	out.Invocations = append(out.Invocations, kubedef.Delete{
 		Description: "Prometheus ClusterRole",
 		Resource:    "clusterroles",
 		Name:        clusterRoleName,
 	})
 
-	out.Ops = append(out.Ops, kubedef.Delete{
+	out.Invocations = append(out.Invocations, kubedef.Delete{
 		Description: "Prometheus Service Account",
 		Resource:    "serviceaccounts",
 		Name:        makeServiceAccount(r.Focus.Server),

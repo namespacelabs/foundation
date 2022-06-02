@@ -24,7 +24,7 @@ import (
 )
 
 func registerApply() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.Definition, apply *kubedef.OpApply) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.SerializedInvocation, apply *kubedef.OpApply) (*ops.HandleResult, error) {
 		if apply.Resource == "" {
 			return nil, fnerrors.InternalError("%s: apply.Resource is required", d.Description)
 		}
@@ -90,7 +90,7 @@ func registerApply() {
 					w := kobs.WaitOnResource{
 						DevHost:       env.DevHost(),
 						Env:           env.Proto(),
-						Def:           d,
+						Invocation:    d,
 						Namespace:     apply.Namespace,
 						Name:          apply.Name,
 						ResourceClass: apply.Resource,

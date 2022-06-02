@@ -25,14 +25,14 @@ func (d *DefList) Add(description string, impl proto.Message, scope ...schema.Pa
 	d.scopes = append(d.scopes, sl)
 }
 
-func (d *DefList) Serialize() ([]*schema.Definition, error) {
-	var defs []*schema.Definition
+func (d *DefList) Serialize() ([]*schema.SerializedInvocation, error) {
+	var defs []*schema.SerializedInvocation
 	for k := range d.descriptions {
 		serialized, err := anypb.New(d.impls[k])
 		if err != nil {
 			return nil, err
 		}
-		defs = append(defs, &schema.Definition{
+		defs = append(defs, &schema.SerializedInvocation{
 			Description: d.descriptions[k],
 			Impl:        serialized,
 			Scope:       d.scopes[k].PackageNamesAsString(),
@@ -41,8 +41,8 @@ func (d *DefList) Serialize() ([]*schema.Definition, error) {
 	return defs, nil
 }
 
-func Make(ops ...MakeDefinition) ([]*schema.Definition, error) {
-	var defs []*schema.Definition
+func Make(ops ...MakeDefinition) ([]*schema.SerializedInvocation, error) {
+	var defs []*schema.SerializedInvocation
 	for _, m := range ops {
 		def, err := m.ToDefinition()
 		if err != nil {
@@ -64,13 +64,13 @@ type staticDef struct {
 	impl        proto.Message
 }
 
-func (def staticDef) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (def staticDef) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
 	serialized, err := anypb.New(def.impl)
 	if err != nil {
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return &schema.SerializedInvocation{
 		Description: def.description,
 		Impl:        serialized,
 		Scope:       schema.Strs(scope...),

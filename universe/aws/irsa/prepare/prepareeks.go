@@ -114,7 +114,7 @@ func (provisionHook) Apply(ctx context.Context, r configure.StackRequest, out *c
 		return fnerrors.InternalError("failed to serialize policy: %w", err)
 	}
 
-	out.Definitions = append(out.Definitions, makeRole{
+	out.Invocations = append(out.Invocations, makeRole{
 		&fniam.OpEnsureRole{
 			RoleName: eksServerDetails.ComputedIamRoleName,
 			Description: fmt.Sprintf("Foundation-managed IAM role for service account %s/%s in EKS cluster %s",
@@ -139,13 +139,13 @@ type makeRole struct {
 	*fniam.OpEnsureRole
 }
 
-func (m makeRole) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (m makeRole) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
 	packed, err := anypb.New(m.OpEnsureRole)
 	if err != nil {
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return &schema.SerializedInvocation{
 		Description: fmt.Sprintf("AWS IAM role %s", m.RoleName),
 		Impl:        packed,
 		Scope:       schema.Strs(scope...),

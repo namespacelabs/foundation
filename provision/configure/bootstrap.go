@@ -119,7 +119,7 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, t AllHandlers
 			response.ApplyResponse.Extension = append(response.ApplyResponse.Extension, packed)
 		}
 
-		response.ApplyResponse.Definition, err = defs.Make(out.Definitions...)
+		response.ApplyResponse.Invocation, err = defs.Make(out.Invocations...)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +138,7 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, t AllHandlers
 		}
 
 		response.DeleteResponse = &protocol.DeleteResponse{}
-		response.DeleteResponse.Definition, err = defs.Make(out.Ops...)
+		response.DeleteResponse.Invocation, err = defs.Make(out.Invocations...)
 		if err != nil {
 			return nil, err
 		}

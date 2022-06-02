@@ -54,6 +54,7 @@ func collectDatabases(server *schema.Server, owner string, internalEndpoint *sch
 			}
 		}
 	}
+
 	return dbs, nil
 }
 
@@ -63,6 +64,7 @@ func internalEndpoint(s *schema.Stack) *schema.Endpoint {
 			return e
 		}
 	}
+
 	return nil
 }
 

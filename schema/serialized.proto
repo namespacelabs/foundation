@@ -18,5 +18,5 @@ message DeployPlan {
     repeated string          rel_location     = 3;
     repeated IngressFragment ingress_fragment = 4;
     repeated string          hints            = 5;
-    DefinitionList           definitions      = 6;
+    SerializedProgram        program          = 6;
 }

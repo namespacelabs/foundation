@@ -14,7 +14,7 @@ import (
 )
 
 type rnode struct {
-	def *schema.Definition
+	def *schema.SerializedInvocation
 	reg *registration
 	res *HandleResult
 	err error // Error captured from a previous run.
@@ -28,7 +28,7 @@ type registration struct {
 	after        []string
 }
 
-type dispatcherFunc func(context.Context, Environment, *schema.Definition, proto.Message) (*HandleResult, error)
+type dispatcherFunc func(context.Context, Environment, *schema.SerializedInvocation, proto.Message) (*HandleResult, error)
 type startSessionFunc func(context.Context, Environment) (dispatcherFunc, commitSessionFunc)
 type commitSessionFunc func() error
 
@@ -39,7 +39,7 @@ func Register[M proto.Message](mr Dispatcher[M]) {
 	if stateful, ok := mr.(BatchedDispatcher[M]); ok {
 		startSession = func(ctx context.Context, env Environment) (dispatcherFunc, commitSessionFunc) {
 			st := stateful.StartSession(ctx, env)
-			return func(ctx context.Context, env Environment, def *schema.Definition, msg proto.Message) (*HandleResult, error) {
+			return func(ctx context.Context, env Environment, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
 					return st.Handle(ctx, env, def, msg.(M))
 				}, func() error {
 					return st.Commit()
@@ -47,13 +47,13 @@ func Register[M proto.Message](mr Dispatcher[M]) {
 		}
 	}
 
-	register[M](func(ctx context.Context, env Environment, def *schema.Definition, msg proto.Message) (*HandleResult, error) {
+	register[M](func(ctx context.Context, env Environment, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
 		return mr.Handle(ctx, env, def, msg.(M))
 	}, startSession)
 }
 
-func RegisterFunc[M proto.Message](mr func(ctx context.Context, env Environment, def *schema.Definition, m M) (*HandleResult, error)) {
-	register[M](func(ctx context.Context, env Environment, def *schema.Definition, msg proto.Message) (*HandleResult, error) {
+func RegisterFunc[M proto.Message](mr func(ctx context.Context, env Environment, def *schema.SerializedInvocation, m M) (*HandleResult, error)) {
+	register[M](func(ctx context.Context, env Environment, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
 		return mr(ctx, env, def, msg.(M))
 	}, nil)
 }

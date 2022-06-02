@@ -99,7 +99,7 @@ func NewDeployCmd() *cobra.Command {
 		deployPlan := &schema.DeployPlan{
 			Stack:           stack.Proto(),
 			IngressFragment: computed.IngressFragments,
-			Definitions:     computed.Deployer.Serialize(),
+			Program:         computed.Deployer.Serialize(),
 			Hints:           computed.Hints,
 		}
 

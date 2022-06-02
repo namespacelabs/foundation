@@ -88,7 +88,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 
 	serverSecretName := secrets.ServerSecretName(r.Focus.Server)
 
-	out.Definitions = append(out.Definitions, kubedef.Apply{
+	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "server secrets",
 		Resource:    "secrets",
 		Namespace:   namespace,
@@ -193,7 +193,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				Data: data,
 			}
 
-			out.Definitions = append(out.Definitions, kubedef.Create{
+			out.Invocations = append(out.Invocations, kubedef.Create{
 				Description: "Generated server secrets",
 				IfMissing:   true,
 				Resource:    "secrets",
@@ -202,7 +202,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				Body:        newSecret,
 			})
 		} else {
-			out.Definitions = append(out.Definitions, kubedef.CreateSecretConditionally{
+			out.Invocations = append(out.Invocations, kubedef.CreateSecretConditionally{
 				Description:       "Generated server secrets",
 				Namespace:         namespace,
 				Name:              generatedName,
@@ -218,7 +218,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
 	namespace := kubetool.FromRequest(r).Namespace
 
-	out.Ops = append(out.Ops, kubedef.Delete{
+	out.Invocations = append(out.Invocations, kubedef.Delete{
 		Description: "server secrets",
 		Resource:    "secrets",
 		Namespace:   namespace,

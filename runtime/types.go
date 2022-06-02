@@ -158,7 +158,7 @@ type ObserveEvent struct {
 }
 
 type DeploymentState interface {
-	Definitions() []*schema.Definition
+	Definitions() []*schema.SerializedInvocation
 	Hints() []string
 }
 

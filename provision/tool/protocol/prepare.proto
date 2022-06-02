@@ -20,10 +20,10 @@ message PrepareRequest {
 }
 
 message PrepareResponse {
-    PreparedProvisionPlan prepared_provision_plan     = 1;
-    repeated google.protobuf.Any provision_input      = 2;
-    repeated foundation.schema.Definition definition  = 3;
-    repeated foundation.schema.DefExtension extension = 4;
+    PreparedProvisionPlan prepared_provision_plan              = 1;
+    repeated google.protobuf.Any provision_input               = 2;
+    repeated foundation.schema.SerializedInvocation invocation = 3;
+    repeated foundation.schema.DefExtension extension          = 4;
 }
 
 message PreparedProvisionPlan {

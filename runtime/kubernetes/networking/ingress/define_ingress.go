@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func EnsureStack(ctx context.Context) ([]*schema.Definition, error) {
+func EnsureStack(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 	// XXX make this configurable.
 	return nginx.Ensure(ctx)
 }
@@ -243,8 +243,8 @@ func generateForSrv(ns string, env *schema.Environment, srv *schema.Server, name
 	return ingress, managed, nil
 }
 
-func Delete(ns string, stack []provision.Server) ([]*schema.Definition, error) {
-	var defs []*schema.Definition
+func Delete(ns string, stack []provision.Server) ([]*schema.SerializedInvocation, error) {
+	var defs []*schema.SerializedInvocation
 
 	for _, srv := range stack {
 		op := kubedef.DeleteList{

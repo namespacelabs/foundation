@@ -27,14 +27,14 @@ func main() {
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
 	serviceAccount := makeServiceAccount(r.Focus.Server)
 
-	out.Definitions = append(out.Definitions, kubedef.Apply{
+	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Namespace",
 		Resource:    "namespaces",
 		Name:        kubedef.AdminNamespace,
 		Body:        applycorev1.Namespace(kubedef.AdminNamespace),
 	})
 
-	out.Definitions = append(out.Definitions, kubedef.Apply{
+	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Service Account",
 		Resource:    "serviceaccounts",
 		Namespace:   kubedef.AdminNamespace,
@@ -43,7 +43,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	})
 
 	role := adminRole(serviceAccount)
-	out.Definitions = append(out.Definitions, kubedef.Apply{
+	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Cluster Role",
 		Resource:    "clusterroles",
 		Name:        role,
@@ -55,7 +55,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	})
 
 	binding := adminBinding(serviceAccount)
-	out.Definitions = append(out.Definitions, kubedef.Apply{
+	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Cluster Role Binding",
 		Resource:    "clusterrolebindings",
 		Name:        binding,

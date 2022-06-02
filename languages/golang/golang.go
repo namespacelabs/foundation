@@ -41,7 +41,7 @@ func Register() {
 	languages.Register(schema.Framework_GO_GRPC, impl{})
 	runtime.RegisterSupport(schema.Framework_GO_GRPC, impl{})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenNode) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, fnerrors.New("workspace.Packages required")
@@ -55,7 +55,7 @@ func Register() {
 		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.Definition, x *OpGenServer) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, fnerrors.New("workspace.Packages required")
@@ -142,7 +142,7 @@ func execGo(ctx context.Context, loc workspace.Location, sdk golang.LocalSDK, ar
 	})
 }
 
-func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
+func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var dl defs.DefList
 
 	dl.Add("Generate Go node dependencies", &OpGenNode{
@@ -170,7 +170,7 @@ func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schem
 	return dl.Serialize()
 }
 
-func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.Definition, error) {
+func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var dl defs.DefList
 	dl.Add("Generate Go server dependencies", &OpGenServer{Server: pkg.Server, LoadedNode: nodes}, pkg.PackageName())
 	return dl.Serialize()

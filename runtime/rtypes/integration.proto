@@ -30,7 +30,7 @@ message Port {
 
 message ProvisionProps {
     reserved 1;
-    repeated google.protobuf.Any provision_input = 2;
-    repeated schema.Definition definition        = 3;
-    repeated schema.DefExtension extension       = 4;
+    repeated google.protobuf.Any provision_input    = 2;
+    repeated schema.SerializedInvocation invocation = 3;
+    repeated schema.DefExtension extension          = 4;
 }

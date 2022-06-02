@@ -133,7 +133,7 @@ func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 	// Pass the computed namespace to the provisioning tool.
 	return &rtypes.ProvisionProps{
 		ProvisionInput: []*anypb.Any{packedHostEnv, packedSystemInfo},
-		Definition:     []*schema.Definition{def},
+		Invocation:     []*schema.SerializedInvocation{def},
 	}, nil
 }
 
@@ -142,11 +142,11 @@ type serverRunState struct {
 }
 
 type deploymentState struct {
-	definitions []*schema.Definition
+	definitions []*schema.SerializedInvocation
 	hints       []string // Optional messages to pass to the user.
 }
 
-func (r deploymentState) Definitions() []*schema.Definition {
+func (r deploymentState) Definitions() []*schema.SerializedInvocation {
 	return r.definitions
 }
 

@@ -41,7 +41,7 @@ func NewDeployPlanCmd() *cobra.Command {
 		}
 
 		p := ops.NewPlan()
-		if err := p.Add(plan.GetDefinitions().GetDefinition()...); err != nil {
+		if err := p.Add(plan.GetProgram().GetInvocation()...); err != nil {
 			return fnerrors.New("failed to prepare plan: %w", err)
 		}
 

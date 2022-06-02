@@ -11,24 +11,50 @@ option go_package = "namespacelabs.dev/foundation/schema";
 import "google/protobuf/any.proto";
 
 // A definition represents a serialized invocation. It captures the arguments
-// for a a method which is registered by an implementation. It thus provides a
+// for a method which is registered by an implementation. It thus provides a
 // form of decoupling, and allows for a frontend/backend design, with separate
-// planning/execution phases. If this type would be created today, it would be
-// named "SerializedInvocation".
-message Definition {
+// planning/execution phases.
+message SerializedInvocation {
     // Human readable description of the definition, does not affect output.
     // Presented to the user on invocation.
     string description = 1;
-    // Arguments to the method. The type of the arguments is used to select the
-    // method implementation.
-    google.protobuf.Any impl = 2;
     // The list of packages this invocation applies to. Purely informational,
     // does not affect output.
     repeated string scope = 3;
+    // Arguments to the method. The type of the arguments is used to select the
+    // method implementation.
+    google.protobuf.Any impl = 2;
+    // Computed arguments that may be used by the implementation.
+    repeated ComputedValue computed = 4;
+
+    message ComputedValue {
+        string              name  = 1;
+        google.protobuf.Any value = 2;
+    }
 }
 
-message DefinitionList {
-    repeated Definition definition = 1;
+// An invocation that requires compilation, and will yield a SerializedInvocation.
+message SerializedInvocationSource {
+    // Human readable description of the definition, does not affect output.
+    // Presented to the user on invocation.
+    string description = 1;
+    // The list of packages this invocation applies to. Purely informational,
+    // does not affect output.
+    repeated string scope = 2;
+    // Arguments to the method. The type of the arguments is used to select the
+    // method implementation.
+    google.protobuf.Any impl = 3;
+    // Arguments to be computed to pass to the SerializedInvocation.
+    repeated ComputableValue computed = 4;
+
+    message ComputableValue {
+        string              name  = 1;
+        google.protobuf.Any value = 2;
+    }
+}
+
+message SerializedProgram {
+    repeated SerializedInvocation invocation = 1;
 }
 
 // Computed configurations are used to then project runtime-specific

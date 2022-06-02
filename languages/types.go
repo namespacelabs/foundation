@@ -28,8 +28,8 @@ type Integration interface {
 	TidyServer(context.Context, workspace.Packages, workspace.Location, *schema.Server) error
 
 	// Called on `fn generate`.
-	GenerateNode(*workspace.Package, []*schema.Node) ([]*schema.Definition, error)
-	GenerateServer(*workspace.Package, []*schema.Node) ([]*schema.Definition, error)
+	GenerateNode(*workspace.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
+	GenerateServer(*workspace.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
 
 	// Called on `fn dev`.
 	PrepareDev(context.Context, provision.Server) (context.Context, DevObserver, error)
@@ -68,10 +68,10 @@ func (MaybePrepare) PrepareRun(context.Context, provision.Server, *runtime.Serve
 
 type MaybeGenerate struct{}
 
-func (MaybeGenerate) GenerateNode(*workspace.Package, []*schema.Node) ([]*schema.Definition, error) {
+func (MaybeGenerate) GenerateNode(*workspace.Package, []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	return nil, nil
 }
-func (MaybeGenerate) GenerateServer(*workspace.Package, []*schema.Node) ([]*schema.Definition, error) {
+func (MaybeGenerate) GenerateServer(*workspace.Package, []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	return nil, nil
 }
 

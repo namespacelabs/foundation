@@ -17,7 +17,7 @@ import (
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, def *schema.Definition, m *OpEnsureRole) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, def *schema.SerializedInvocation, m *OpEnsureRole) (*ops.HandleResult, error) {
 		if m.AssumeRolePolicyJson == "" || m.RoleName == "" {
 			return nil, fnerrors.BadInputError("both role_name and assume_role_policy_json are required")
 		}
@@ -61,7 +61,7 @@ func RegisterGraphHandlers() {
 		return nil, nil
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, def *schema.Definition, m *OpAssociatePolicy) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, def *schema.SerializedInvocation, m *OpAssociatePolicy) (*ops.HandleResult, error) {
 		if m.PolicyJson == "" || m.PolicyName == "" || m.RoleName == "" {
 			return nil, fnerrors.BadInputError("all of `role_name` and `policy_name` and `policy_json` are required")
 		}

@@ -11,7 +11,7 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-func ForServer(pkg *workspace.Package, available []*schema.Node) ([]*schema.Definition, error) {
+func ForServer(pkg *workspace.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	defs, err := languages.IntegrationFor(pkg.Server.Framework).GenerateServer(pkg, available)
 	if err != nil {
 		return nil, err
@@ -20,8 +20,8 @@ func ForServer(pkg *workspace.Package, available []*schema.Node) ([]*schema.Defi
 	return defs, nil
 }
 
-func ForServerAndDeps(server provision.Server) ([]*schema.Definition, error) {
-	var allDefs []*schema.Definition
+func ForServerAndDeps(server provision.Server) ([]*schema.SerializedInvocation, error) {
+	var allDefs []*schema.SerializedInvocation
 	for _, dep := range server.Deps() {
 		// We only update co-located nodes.
 		if dep.Location.Module.ModuleName() == server.Location.Module.ModuleName() {

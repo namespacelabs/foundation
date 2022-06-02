@@ -95,7 +95,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		})
 	}
 
-	out.Definitions = append(out.Definitions, kubedef.Apply{
+	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Grafana ConfigMap",
 		Resource:    "configmaps",
 		Namespace:   namespace,
@@ -133,7 +133,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
 	namespace := kubetool.FromRequest(r).Namespace
 
-	out.Ops = append(out.Ops, kubedef.Delete{
+	out.Invocations = append(out.Invocations, kubedef.Delete{
 		Description: "Grafana ConfigMap",
 		Resource:    "configmaps",
 		Namespace:   namespace,

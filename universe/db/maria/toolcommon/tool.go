@@ -80,7 +80,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace stri
 
 	configMapName := fmt.Sprintf("%s.%s", name, id)
 
-	out.Definitions = append(out.Definitions, kubedef.Apply{
+	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "MariaDB Init ConfigMap",
 		Resource:    "configmaps",
 		Namespace:   namespace,
@@ -149,7 +149,7 @@ func Delete(r configure.StackRequest, name string, out *configure.DeleteOutput) 
 
 	namespace := kubetool.FromRequest(r).Namespace
 
-	out.Ops = append(out.Ops, kubedef.Delete{
+	out.Invocations = append(out.Invocations, kubedef.Delete{
 		Description: "MariaDB Init ConfigMap",
 		Resource:    "configmaps",
 		Namespace:   namespace,

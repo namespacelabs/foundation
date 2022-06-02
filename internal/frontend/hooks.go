@@ -28,14 +28,14 @@ type PrepareHook struct {
 type PrepareProps struct {
 	PreparedProvisionPlan
 	ProvisionInput []*anypb.Any
-	Definition     []*schema.Definition
+	Invocations    []*schema.SerializedInvocation
 	Extension      []*schema.DefExtension
 }
 
 func (p *PrepareProps) AppendWith(rhs PrepareProps) {
 	p.PreparedProvisionPlan.AppendWith(rhs.PreparedProvisionPlan)
 	p.ProvisionInput = append(p.ProvisionInput, rhs.ProvisionInput...)
-	p.Definition = append(p.Definition, rhs.Definition...)
+	p.Invocations = append(p.Invocations, rhs.Invocations...)
 	p.Extension = append(p.Extension, rhs.Extension...)
 }
 

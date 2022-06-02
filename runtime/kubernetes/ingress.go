@@ -74,7 +74,7 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 			return nil, err
 		}
 
-		state.definitions = append(state.definitions, &schema.Definition{
+		state.definitions = append(state.definitions, &schema.SerializedInvocation{
 			Description: fmt.Sprintf("Update %s's address", frag.FQDN),
 			Impl:        impl,
 		})

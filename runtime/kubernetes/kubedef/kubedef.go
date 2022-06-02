@@ -75,7 +75,7 @@ type ExtendInitContainer struct {
 	With *InitContainerExtension
 }
 
-func (a Apply) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (a Apply) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
 	if a.Body == nil {
 		return nil, fnerrors.InternalError("body is missing")
 	}
@@ -95,7 +95,7 @@ func (a Apply) ToDefinition(scope ...schema.PackageName) (*schema.Definition, er
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return &schema.SerializedInvocation{
 		Description: a.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
@@ -110,7 +110,7 @@ func scopeToStrings(scope []schema.PackageName) []string {
 	return r
 }
 
-func (d Delete) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (d Delete) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
 	x, err := anypb.New(&OpDelete{
 		Resource:  d.Resource,
 		Namespace: d.Namespace,
@@ -120,14 +120,14 @@ func (d Delete) ToDefinition(scope ...schema.PackageName) (*schema.Definition, e
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return &schema.SerializedInvocation{
 		Description: d.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
 	}, nil
 }
 
-func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
 	x, err := anypb.New(&OpDeleteList{
 		Resource:      d.Resource,
 		Namespace:     d.Namespace,
@@ -137,14 +137,14 @@ func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.Definitio
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return &schema.SerializedInvocation{
 		Description: d.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
 	}, nil
 }
 
-func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
 	if c.Body == nil {
 		return nil, fnerrors.InternalError("body is missing")
 	}
@@ -165,14 +165,14 @@ func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.Definition, e
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return &schema.SerializedInvocation{
 		Description: c.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
 	}, nil
 }
 
-func (c CreateSecretConditionally) ToDefinition(scope ...schema.PackageName) (*schema.Definition, error) {
+func (c CreateSecretConditionally) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
 	if c.Invocation == nil {
 		return nil, fnerrors.InternalError("invocation is missing")
 	}
@@ -187,7 +187,7 @@ func (c CreateSecretConditionally) ToDefinition(scope ...schema.PackageName) (*s
 		return nil, err
 	}
 
-	return &schema.Definition{
+	return &schema.SerializedInvocation{
 		Description: c.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),

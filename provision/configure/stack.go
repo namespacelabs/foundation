@@ -25,13 +25,13 @@ type MakeExtension interface {
 }
 
 type ApplyOutput struct {
-	Definitions []defs.MakeDefinition
+	Invocations []defs.MakeDefinition
 	Extensions  []MakeExtension
 	Computed    []*schema.ComputedConfiguration
 }
 
 type DeleteOutput struct {
-	Ops []defs.MakeDefinition
+	Invocations []defs.MakeDefinition
 }
 
 type StackHandler interface {
