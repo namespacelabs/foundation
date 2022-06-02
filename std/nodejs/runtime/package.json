@@ -1,9 +1,6 @@
 {
 	"name": "@namespacelabs/foundation",
 	"private": true,
-	"devDependencies": {
-		"@types/connect": "3.4.45"
-	},
 	"dependencies": {
 		"fastify": "3.29.0",
 		"source-map-support": "0.5.21",

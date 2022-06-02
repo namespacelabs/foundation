@@ -263,7 +263,19 @@ func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, 
 	_, err := updatePackageJson(ctx, path, yarnRootData.module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
 		packageJson["private"] = true
 		packageJson["workspaces"] = yarnRootData.workspacePaths
-		packageJson["devDependencies"] = builtin().DevDependencies
+
+		devDeps := map[string]interface{}{}
+		existingDevDeps, ok := (packageJson["devDependencies"]).(map[string]interface{})
+		if ok {
+			for k, v := range existingDevDeps {
+				devDeps[k] = v
+			}
+		}
+		for k, v := range builtin().DevDependencies {
+			devDeps[k] = v
+		}
+
+		packageJson["devDependencies"] = devDeps
 	})
 
 	return err

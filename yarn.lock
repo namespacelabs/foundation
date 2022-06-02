@@ -130,7 +130,7 @@ __metadata:
 
 "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime":
   version: 0.0.0
-  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime::7cc4aa"
+  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime::f95a24"
   dependencies:
     "@grpc/grpc-js": 1.5.8
     fastify: 3.29.0
@@ -139,7 +139,7 @@ __metadata:
     source-map-support: 0.5.21
     typescript: 4.6.2
     yargs: 16.2.0
-  checksum: 6ea68d0f01d0816c98c8b95c4bcfc1e4e8115122d109b9fd7cf3d55c5e8860cbe6a44491a77a041b2d11959ae14ddcf736983980675cab17fe76464202620c40
+  checksum: 0d78cb97d22581916dd7216c8fc99174f3f66576ecdc9ec290c0573a02e59395d09a68f926c0bb437a2247eabad1d5753f5732839d4bcf29a5e1552ea9d52d5f
   languageName: node
   linkType: hard
 
