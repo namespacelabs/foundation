@@ -13,4 +13,5 @@ import (
 
 const (
 	ioctlGETATTR = unix.TIOCGETA
+	ioctlSETATTR = unix.TIOCSETA
 )

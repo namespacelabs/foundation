@@ -159,7 +159,7 @@ func newStdinReader(ctx context.Context) (*rawStdinReader, error) {
 		cancel: cr.Cancel,
 	}
 
-	restore, err := termios.MakeRaw(os.Stdin)
+	restore, err := termios.MakeRaw(os.Stdin.Fd())
 	if err != nil {
 		return nil, err
 	}

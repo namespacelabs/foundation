@@ -124,7 +124,7 @@ func (r boundEnv) attachTerminal(ctx context.Context, cli *kubernetes.Clientset,
 
 	// XXX move this check somewhere else.
 	if rio.Stdin == os.Stdin {
-		restore, err := termios.MakeRaw(os.Stdin)
+		restore, err := termios.MakeRaw(os.Stdin.Fd())
 		if err != nil {
 			return err
 		}
