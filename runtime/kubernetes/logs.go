@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -20,7 +21,7 @@ func (r K8sRuntime) StreamLogsTo(ctx context.Context, w io.Writer, server *schem
 }
 
 func (r K8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
-	opaque, ok := reference.(containerPodReference)
+	opaque, ok := reference.(kubedef.ContainerPodReference)
 	if !ok {
 		return fnerrors.InternalError("invalid reference")
 	}

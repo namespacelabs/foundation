@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package kubernetes
+package kubeobserver
 
 import (
 	"context"
@@ -26,10 +26,6 @@ import (
 type ConditionWaiter interface {
 	Prepare(context.Context, *k8s.Clientset) error
 	Poll(context.Context, *k8s.Clientset) (bool, error)
-}
-
-func (r K8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, waiter ConditionWaiter) error {
-	return WaitForCondition(ctx, r.cli, action, waiter)
 }
 
 func WaitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.ActionEvent, waiter ConditionWaiter) error {
@@ -121,7 +117,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 					return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.ResourceClass)
 				}
 
-				if rs, err := getReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen); err == nil {
+				if rs, err := fetchReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen); err == nil {
 					if status, err := podWaitingStatus(c, cli, w.Namespace, rs); err == nil {
 						ev.WaitStatus = status
 					}
@@ -204,7 +200,7 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 				var labels []string
 				for _, t := range terminated {
 					labels = append(labels, fmt.Sprintf("%s: %s", t[0], t[1]))
-					failed = append(failed, containerPodReference{
+					failed = append(failed, kubedef.ContainerPodReference{
 						Namespace: pod.Namespace,
 						PodName:   pod.Name,
 						Container: t[0],
@@ -236,23 +232,6 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 	w.matchCount = count
 
 	return count > 0 && count == len(pods), nil
-}
-
-type containerPodReference struct {
-	Namespace string
-	PodName   string
-	Container string
-}
-
-func (cpr containerPodReference) UniqueID() string {
-	if cpr.Container == "" {
-		return fmt.Sprintf("%s/%s", cpr.Namespace, cpr.PodName)
-	}
-	return fmt.Sprintf("%s/%s/%s", cpr.Namespace, cpr.PodName, cpr.Container)
-}
-
-func (cpr containerPodReference) HumanReference() string {
-	return cpr.Container
 }
 
 func WaitForPodConditition(selector func(context.Context, *k8s.Clientset) ([]corev1.Pod, error), isOk func(corev1.PodStatus) (bool, error)) ConditionWaiter {

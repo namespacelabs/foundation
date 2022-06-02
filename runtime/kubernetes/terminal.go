@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -79,7 +80,7 @@ func (r boundEnv) startTerminal(ctx context.Context, cli *kubernetes.Clientset, 
 	return nil
 }
 
-func (r boundEnv) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque containerPodReference, rio runtime.TerminalIO) error {
+func (r boundEnv) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque kubedef.ContainerPodReference, rio runtime.TerminalIO) error {
 	config, err := r.makeDefaultConfig()
 	if err != nil {
 		return err

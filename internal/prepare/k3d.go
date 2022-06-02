@@ -11,7 +11,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	corev1 "k8s.io/api/core/v1"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/environment"
@@ -20,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -154,6 +152,7 @@ func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName str
 				}
 			}
 		}
+
 		if err := multierr.New(errs...); err != nil {
 			return fnerrors.InternalError("failed to start node(s) for cluster %q: %w", clusterName, err)
 		}
@@ -165,11 +164,9 @@ func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName str
 				return err
 			}
 
-			err = kube.Wait(ctx, tasks.Action("kubernetes.ingress.healthy").HumanReadablef("Wait for the ingress to become healthy after a k3d reboot"), kubernetes.WaitForPodConditition(
-				kubernetes.SelectPods(nginx.IngressLoadBalancerService().Namespace, nil, nginx.ControllerSelector()),
-				kubernetes.MatchPodCondition(corev1.PodReady)))
-			if err != nil {
-				return fnerrors.InternalError("failed to ensure a healthy ingress after a k3d reboot %w", err)
+			if err := waitForIngress(ctx, kube, tasks.Action("kubernetes.ingress.healthy").
+				HumanReadablef("Waiting for the ingress to become healthy after a k3d restart")); err != nil {
+				return fnerrors.InternalError("failed to ensure a healthy ingress after a k3d restart %w", err)
 			}
 		}
 	}

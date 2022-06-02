@@ -16,9 +16,9 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	kobs "namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -87,7 +87,7 @@ func registerApply() {
 			if err1 == nil && found1 {
 				var waiters []ops.Waiter
 				for _, sc := range scope {
-					w := kubernetes.WaitOnResource{
+					w := kobs.WaitOnResource{
 						DevHost:       env.DevHost(),
 						Env:           env.Proto(),
 						Def:           d,
@@ -122,8 +122,8 @@ func registerApply() {
 						return err
 					}
 
-					return kubernetes.WaitForCondition(ctx, cli, tasks.Action(runtime.TaskServerStart).Scope(sc),
-						kubernetes.WaitForPodConditition(kubernetes.ResolvePod(apply.Namespace, apply.Name),
+					return kobs.WaitForCondition(ctx, cli, tasks.Action(runtime.TaskServerStart).Scope(sc),
+						kobs.WaitForPodConditition(kobs.ResolvePod(apply.Namespace, apply.Name),
 							func(ps v1.PodStatus) (bool, error) {
 								ev := ops.Event{
 									ResourceID:          fmt.Sprintf("%s/%s", apply.Namespace, apply.Name),
@@ -135,9 +135,9 @@ func registerApply() {
 									RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", apply.Namespace, apply.Name),
 								}
 
-								ev.WaitStatus = append(ev.WaitStatus, kubernetes.WaiterFromPodStatus(apply.Namespace, apply.Name, ps))
+								ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(apply.Namespace, apply.Name, ps))
 
-								ready, _ := kubernetes.MatchPodCondition(v1.PodReady)(ps)
+								ready, _ := kobs.MatchPodCondition(v1.PodReady)(ps)
 								if ready {
 									ev.Ready = ops.Ready
 								}

@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -71,13 +72,17 @@ func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*kubernete
 			}
 
 			// XXX this should be part of WaitUntilReady.
-			if err := kube.Wait(ctx, tasks.Action("kubernetes.ingress.deploy"), kubernetes.WaitForPodConditition(
-				kubernetes.SelectPods(nginx.IngressLoadBalancerService().Namespace, nil, nginx.ControllerSelector()),
-				kubernetes.MatchPodCondition(corev1.PodReady))); err != nil {
+			if err := waitForIngress(ctx, kube, tasks.Action("kubernetes.ingress.deploy")); err != nil {
 				return nil, err
 			}
 
 			// The ingress produces no unique configuration.
 			return nil, nil
 		})
+}
+
+func waitForIngress(ctx context.Context, kube kubernetes.K8sRuntime, action *tasks.ActionEvent) error {
+	return kube.Wait(ctx, action, kubeobserver.WaitForPodConditition(
+		kubeobserver.SelectPods(nginx.IngressLoadBalancerService().Namespace, nil, nginx.ControllerSelector()),
+		kubeobserver.MatchPodCondition(corev1.PodReady)))
 }

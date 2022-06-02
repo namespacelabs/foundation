@@ -2,14 +2,18 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package kubernetes
+package kubeobserver
 
 import (
+	"context"
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 )
 
 func WaiterFromPodStatus(ns, name string, ps v1.PodStatus) ops.WaitStatus {
@@ -21,10 +25,10 @@ func WaiterFromPodStatus(ns, name string, ps v1.PodStatus) ops.WaitStatus {
 	for _, container := range ps.ContainerStatuses {
 		if lbl := containerStateLabel(&ps, container.State); lbl != "" {
 			cw.Containers = append(cw.Containers, runtime.ContainerUnitWaitStatus{
-				Reference:   makePodRef(ns, name, container.Name),
+				Reference:   kubedef.MakePodRef(ns, name, container.Name),
 				Name:        container.Name,
 				StatusLabel: lbl,
-				Status:      statusToDiagnostic(container),
+				Status:      StatusToDiagnostic(container),
 			})
 		}
 	}
@@ -32,10 +36,10 @@ func WaiterFromPodStatus(ns, name string, ps v1.PodStatus) ops.WaitStatus {
 	for _, init := range ps.InitContainerStatuses {
 		if lbl := containerStateLabel(nil, init.State); lbl != "" {
 			cw.Initializers = append(cw.Initializers, runtime.ContainerUnitWaitStatus{
-				Reference:   makePodRef(ns, name, init.Name),
+				Reference:   kubedef.MakePodRef(ns, name, init.Name),
 				Name:        init.Name,
 				StatusLabel: lbl,
-				Status:      statusToDiagnostic(init),
+				Status:      StatusToDiagnostic(init),
 			})
 		}
 	}
@@ -72,10 +76,27 @@ func containerStateLabel(ps *v1.PodStatus, st v1.ContainerState) string {
 	return "(Unknown)"
 }
 
-func makePodRef(ns, name, containerName string) runtime.ContainerReference {
-	return containerPodReference{
-		Namespace: ns,
-		PodName:   name,
-		Container: containerName,
+func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, ns string, replicaset string) ([]ops.WaitStatus, error) {
+	// TODO explore how to limit the list here (e.g. through labels or by using a different API)
+	pods, err := cli.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
 	}
+
+	var statuses []ops.WaitStatus
+	for _, pod := range pods.Items {
+		owned := false
+		for _, owner := range pod.ObjectMeta.OwnerReferences {
+			if owner.Name == replicaset {
+				owned = true
+			}
+		}
+		if !owned {
+			continue
+		}
+
+		statuses = append(statuses, WaiterFromPodStatus(pod.Namespace, pod.Name, pod.Status))
+	}
+
+	return statuses, nil
 }

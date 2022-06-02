@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -252,10 +253,14 @@ func (r K8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, ri
 }
 
 func (r K8sRuntime) AttachTerminal(ctx context.Context, reference runtime.ContainerReference, rio runtime.TerminalIO) error {
-	opaque, ok := reference.(containerPodReference)
+	opaque, ok := reference.(kubedef.ContainerPodReference)
 	if !ok {
 		return fnerrors.InternalError("invalid reference")
 	}
 
 	return r.attachTerminal(ctx, r.cli, opaque, rio)
+}
+
+func (r K8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, waiter kubeobserver.ConditionWaiter) error {
+	return kubeobserver.WaitForCondition(ctx, r.cli, action, waiter)
 }

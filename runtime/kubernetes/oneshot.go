@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -77,9 +78,12 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 
 		fmt.Fprintln(logOutput, "<No longer streaming pod logs, but pod is still running, waiting for completion.>")
 
-		if err := r.Wait(ctx, tasks.Action("kubernetes.pod.wait"), WaitForPodConditition(ResolvePod(r.moduleNamespace, name), func(status corev1.PodStatus) (bool, error) {
-			return (status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
-		})); err != nil {
+		if err := r.Wait(ctx, tasks.Action("kubernetes.pod.wait"),
+			kubeobserver.WaitForPodConditition(
+				kubeobserver.ResolvePod(r.moduleNamespace, name),
+				func(status corev1.PodStatus) (bool, error) {
+					return (status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
+				})); err != nil {
 			var e runtime.ErrContainerFailed
 			if errors.As(err, &e) {
 				return err
@@ -128,7 +132,7 @@ func (r K8sRuntime) RunAttachedOpts(ctx context.Context, name string, runOpts ru
 		onStart()
 	}
 
-	return r.attachTerminal(ctx, cli, containerPodReference{Namespace: r.moduleNamespace, PodName: name}, io)
+	return r.attachTerminal(ctx, cli, kubedef.ContainerPodReference{Namespace: r.moduleNamespace, PodName: name}, io)
 }
 
 func makePodSpec(name string, runOpts runtime.ServerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {
@@ -163,8 +167,8 @@ func spawnAndWaitPod(ctx context.Context, cli *k8s.Clientset, ns, name string, c
 		return err
 	}
 
-	if err := WaitForCondition(ctx, cli, tasks.Action("kubernetes.pod.deploy").Arg("name", name),
-		WaitForPodConditition(ResolvePod(ns, name), func(status corev1.PodStatus) (bool, error) {
+	if err := kubeobserver.WaitForCondition(ctx, cli, tasks.Action("kubernetes.pod.deploy").Arg("name", name),
+		kubeobserver.WaitForPodConditition(kubeobserver.ResolvePod(ns, name), func(status corev1.PodStatus) (bool, error) {
 			return (status.Phase == corev1.PodRunning || status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 		})); err != nil {
 		if allErrors {
@@ -181,15 +185,4 @@ func spawnAndWaitPod(ctx context.Context, cli *k8s.Clientset, ns, name string, c
 	}
 
 	return nil
-}
-
-func ResolvePod(ns, name string) func(ctx context.Context, c *k8s.Clientset) ([]corev1.Pod, error) {
-	return func(ctx context.Context, c *k8s.Clientset) ([]corev1.Pod, error) {
-		pod, err := c.CoreV1().Pods(ns).Get(ctx, name, metav1.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
-
-		return []corev1.Pod{*pod}, nil
-	}
 }
