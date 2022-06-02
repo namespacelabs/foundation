@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/tools"
@@ -35,7 +34,7 @@ func RegisterCreateSecret() {
 			return nil, fnerrors.InternalError("%s: create.Namespace is required", d.Description)
 		}
 
-		exists, err := kubernetes.CheckResourceExists(ctx, env, d.Description, "secrets", create.Name, create.Namespace, schema.PackageNames(d.Scope...))
+		exists, err := checkResourceExists(ctx, env, d.Description, "secrets", create.Name, create.Namespace, schema.PackageNames(d.Scope...))
 		if err != nil {
 			return nil, err
 		}

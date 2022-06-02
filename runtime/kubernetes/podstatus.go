@@ -31,7 +31,7 @@ func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, ns string, replic
 			continue
 		}
 
-		statuses = append(statuses, waiterFromPodStatus(pod.Namespace, pod.Name, pod.Status))
+		statuses = append(statuses, WaiterFromPodStatus(pod.Namespace, pod.Name, pod.Status))
 	}
 
 	return statuses, nil

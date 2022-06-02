@@ -29,10 +29,10 @@ type ConditionWaiter interface {
 }
 
 func (r K8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, waiter ConditionWaiter) error {
-	return waitForCondition(ctx, r.cli, action, waiter)
+	return WaitForCondition(ctx, r.cli, action, waiter)
 }
 
-func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.ActionEvent, waiter ConditionWaiter) error {
+func WaitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.ActionEvent, waiter ConditionWaiter) error {
 	return action.Run(ctx, func(ctx context.Context) error {
 		if err := waiter.Prepare(ctx, cli); err != nil {
 			return err
@@ -44,41 +44,40 @@ func waitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.Act
 	})
 }
 
-type waitOn struct {
-	devHost *schema.DevHost
-	env     *schema.Environment
+type WaitOnResource struct {
+	DevHost *schema.DevHost
+	Env     *schema.Environment
 
-	def      *schema.Definition
-	apply    *kubedef.OpApply
-	resource string
-	scope    schema.PackageName
+	Def             *schema.Definition
+	Name, Namespace string
+	ResourceClass   string
+	Scope           schema.PackageName
 
-	previousGen, expectedGen int64
+	PreviousGen, ExpectedGen int64
 }
 
-func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
+func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 	if ch != nil {
 		defer close(ch)
-
 	}
 
-	return tasks.Action(runtime.TaskServerStart).Scope(w.scope).Run(ctx,
+	return tasks.Action(runtime.TaskServerStart).Scope(w.Scope).Run(ctx,
 		func(ctx context.Context) error {
 			ev := ops.Event{
-				ResourceID:          fmt.Sprintf("%s/%s", w.apply.Namespace, w.apply.Name),
-				Kind:                w.apply.Resource,
-				Scope:               w.scope,
-				RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.apply.Namespace, w.apply.Resource, w.apply.Name),
+				ResourceID:          fmt.Sprintf("%s/%s", w.Namespace, w.Name),
+				Kind:                w.ResourceClass,
+				Scope:               w.Scope,
+				RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.Namespace, w.ResourceClass, w.Name),
 			}
 
-			switch w.resource {
+			switch w.ResourceClass {
 			case "deployments", "statefulsets":
 				ev.Category = "Servers deployed"
 			default:
-				ev.Category = w.def.Description
+				ev.Category = w.Def.Description
 			}
 
-			if w.previousGen == w.expectedGen {
+			if w.PreviousGen == w.ExpectedGen {
 				ev.AlreadyExisted = true
 			}
 
@@ -86,7 +85,7 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 				ch <- ev
 			}
 
-			cli, err := client.NewClient(client.ConfigFromDevHost(ctx, w.devHost, w.env))
+			cli, err := client.NewClient(client.ConfigFromDevHost(ctx, w.DevHost, w.Env))
 			if err != nil {
 				return err
 			}
@@ -95,9 +94,9 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 				var observedGeneration int64
 				var readyReplicas, replicas int32
 
-				switch w.resource {
+				switch w.ResourceClass {
 				case "deployments":
-					res, err := cli.AppsV1().Deployments(w.apply.Namespace).Get(c, w.apply.Name, metav1.GetOptions{})
+					res, err := cli.AppsV1().Deployments(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
 					if err != nil {
 						return false, err
 					}
@@ -108,7 +107,7 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 					ev.ImplMetadata = res.Status
 
 				case "statefulsets":
-					res, err := cli.AppsV1().StatefulSets(w.apply.Namespace).Get(c, w.apply.Name, metav1.GetOptions{})
+					res, err := cli.AppsV1().StatefulSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
 					if err != nil {
 						return false, err
 					}
@@ -119,19 +118,19 @@ func (w waitOn) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
 					ev.ImplMetadata = res.Status
 
 				default:
-					return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.resource)
+					return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.ResourceClass)
 				}
 
-				if rs, err := getReplicaSetName(c, cli, w.apply.Namespace, w.apply.Name, w.expectedGen); err == nil {
-					if status, err := podWaitingStatus(c, cli, w.apply.Namespace, rs); err == nil {
+				if rs, err := getReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen); err == nil {
+					if status, err := podWaitingStatus(c, cli, w.Namespace, rs); err == nil {
 						ev.WaitStatus = status
 					}
 				}
 
 				ev.Ready = ops.NotReady
-				if observedGeneration > w.expectedGen {
+				if observedGeneration > w.ExpectedGen {
 					ev.Ready = ops.Ready
-				} else if observedGeneration == w.expectedGen {
+				} else if observedGeneration == w.ExpectedGen {
 					if readyReplicas == replicas && replicas > 0 {
 						ev.Ready = ops.Ready
 					}

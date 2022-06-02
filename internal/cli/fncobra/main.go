@@ -188,8 +188,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		// Runtimes.
 		kubernetes.Register()
-		kubernetes.RegisterGraphHandlers()
-		kubeops.RegisterCreateSecret()
+		kubeops.Register()
 
 		// Telemetry.
 		tel.RecordInvocation(ctxWithSink, cmd, args)
