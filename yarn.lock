@@ -130,16 +130,17 @@ __metadata:
 
 "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime":
   version: 0.0.0
-  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime::f95a24"
+  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime::26075c"
   dependencies:
     "@grpc/grpc-js": 1.5.8
     fastify: 3.29.0
     google-protobuf: 3.20.0
     middie: 6.1.0
     source-map-support: 0.5.21
+    toposort: 2.0.2
     typescript: 4.6.2
     yargs: 16.2.0
-  checksum: 0d78cb97d22581916dd7216c8fc99174f3f66576ecdc9ec290c0573a02e59395d09a68f926c0bb437a2247eabad1d5753f5732839d4bcf29a5e1552ea9d52d5f
+  checksum: 939608dd0396a858a7dcc129d08a2deb8288135053683099ad564eb8ea2271cb38982ea8e52371270a5199a93136336889cf33352eec20360db6c64c97a61c1b
   languageName: node
   linkType: hard
 
@@ -248,6 +249,13 @@ __metadata:
   version: 17.0.32
   resolution: "@types/node@npm:17.0.32"
   checksum: afb05704b42032566b3da8b2d80a68883cd3b888472d1b8b4dd6c84f8fad371454f083d4e28bd30c10589187296119d92aba255638b30067afe062b5922388a5
+  languageName: node
+  linkType: hard
+
+"@types/toposort@npm:2.0.3":
+  version: 2.0.3
+  resolution: "@types/toposort@npm:2.0.3"
+  checksum: 018a372a899fd417d67ed85cb98bd3f15915020b865257b9e795e443bcfa0df79c6c44693ba88cbdd9e54ca872cecb91bf46764ec03c5b63968b2234804d14d2
   languageName: node
   linkType: hard
 
@@ -756,6 +764,7 @@ __metadata:
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": 3.15.6
     "@types/node": 17.0.35
+    "@types/toposort": 2.0.3
     "@types/yargs": 16.0.0
     typescript: 4.6.2
   languageName: unknown
@@ -860,6 +869,13 @@ __metadata:
   version: 8.0.2
   resolution: "tiny-lru@npm:8.0.2"
   checksum: ec4d884914626760eef05cd57850f21a153adeeb7c4242eb8d44a031f1bd8489f18c1bf5d6f10f0a11c5dcfe03b302f26b00f2b879b38853599486bf0dca8c97
+  languageName: node
+  linkType: hard
+
+"toposort@npm:2.0.2":
+  version: 2.0.2
+  resolution: "toposort@npm:2.0.2"
+  checksum: d64c74b570391c9432873f48e231b439ee56bc49f7cb9780b505cfdf5cb832f808d0bae072515d93834dd6bceca5bb34448b5b4b408335e4d4716eaf68195dcb
   languageName: node
   linkType: hard
 
