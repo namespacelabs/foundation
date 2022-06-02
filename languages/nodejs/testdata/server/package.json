@@ -5,6 +5,9 @@
 		"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": "0.0.0",
 		"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp": "0.0.0",
 		"@namespacelabs.dev-foundation/std-nodejs-http": "0.0.0",
+		"@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing": "0.0.0",
+		"@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify": "0.0.0",
+		"@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-jaeger": "0.0.0",
 		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
 	},
 	"name": "@namespacelabs.dev-foundation/languages-nodejs-testdata-server",

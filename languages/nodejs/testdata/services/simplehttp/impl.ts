@@ -8,6 +8,8 @@ export const wireService: WireService = async (deps: ServiceDeps): Promise<void>
 	const server = await deps.httpServer;
 
 	server.fastify().post("/simple/:userId", async (req) => {
+		const { tracer } = req.openTelemetry();
+		tracer.startSpan(`test manual span`).end();
 		const params = req.params as any;
 		return { output: `Hello world! User ID: ${params["userId"]}` };
 	});

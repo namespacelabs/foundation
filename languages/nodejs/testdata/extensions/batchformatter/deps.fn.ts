@@ -29,7 +29,7 @@ const initializer = {
 	initialize: impl.initialize,
 };
 
-export type Prepare = (deps: ExtensionDeps) => void;
+export type Prepare = (deps: ExtensionDeps) => Promise<void> | void;
 export const prepare: Prepare = impl.initialize;
 
 export const TransitiveInitializers: Initializer[] = [

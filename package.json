@@ -3,6 +3,7 @@
 		"@tsconfig/node16": "1.0.2",
 		"@types/google-protobuf": "3.15.6",
 		"@types/node": "17.0.35",
+		"@types/toposort": "2.0.3",
 		"@types/yargs": "16.0.0",
 		"typescript": "4.6.2"
 	},
@@ -16,6 +17,9 @@
 		"languages/nodejs/testdata/services/simple",
 		"languages/nodejs/testdata/services/simplehttp",
 		"std/grpc",
-		"std/nodejs/http"
+		"std/nodejs/http",
+		"std/nodejs/monitoring/tracing",
+		"std/nodejs/monitoring/tracing/fastify",
+		"std/nodejs/monitoring/tracing/jaeger"
 	]
 }

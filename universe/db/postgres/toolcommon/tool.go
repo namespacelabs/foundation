@@ -149,7 +149,7 @@ func Delete(r configure.StackRequest, name string, out *configure.DeleteOutput) 
 	namespace := kubetool.FromRequest(r).Namespace
 
 	out.Invocations = append(out.Invocations, kubedef.Delete{
-		Description: "Postgres Init ConfigMap",
+		Description: "Postgres Delete ConfigMap",
 		Resource:    "configmaps",
 		Namespace:   namespace,
 		Name:        fmt.Sprintf("%s.%s", name, id),

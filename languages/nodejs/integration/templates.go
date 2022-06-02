@@ -88,7 +88,7 @@ const initializer = {
 };
 
 export type Prepare = (
-	{{- if .PackageDepsName}}deps: {{.PackageDepsName}}Deps{{end -}}) => void;
+	{{- if .PackageDepsName}}deps: {{.PackageDepsName}}Deps{{end -}}) => Promise<void> | void;
 export const prepare: Prepare = impl.initialize;
 {{- end}}
 
@@ -177,7 +177,7 @@ export const wireService: WireService = impl.wireService;
 import { DependencyGraph, Initializer, Server } from "@namespacelabs/foundation";
 
 {{- template "Imports" . -}}
-import {httpServer} from "@namespacelabs.dev-foundation/std-nodejs-http/impl"
+import {provideHttpServer, HttpServerImpl} from "@namespacelabs.dev-foundation/std-nodejs-http/impl"
 
 // Returns a list of initialization errors.
 const wireServices = async (server: Server, graph: DependencyGraph): Promise<unknown[]> => {
@@ -203,7 +203,7 @@ const TransitiveInitializers: Initializer[] = [
 async function main() {
 	const server = new Server();
 	const graph = new DependencyGraph();
-	graph.runInitializers(TransitiveInitializers);
+	await graph.runInitializers(TransitiveInitializers);
 	const errors = await wireServices(server, graph);
 	if (errors.length > 0) {
 		errors.forEach((e) => console.error(e));
@@ -212,7 +212,7 @@ async function main() {
 	}
 
 	server.start();
-	(await httpServer).start();
+	((await provideHttpServer()) as HttpServerImpl).start();
 }
 
 main();

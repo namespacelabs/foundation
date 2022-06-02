@@ -1,0 +1,12 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.std.nodejs.monitoring.tracing;
+
+message ExporterArgs {
+    // Exporter name is only needed for debug logging.
+    string name = 1;
+}

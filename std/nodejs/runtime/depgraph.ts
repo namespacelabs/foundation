@@ -3,6 +3,7 @@
 // available at http://github.com/namespacelabs/foundation
 
 import { performance } from "perf_hooks";
+import toposort from "toposort";
 
 const maximumInitTimeMs = 10;
 
@@ -17,7 +18,7 @@ export interface Initializer {
 	// List of packages that need to be initialized before this package. Enforced at runtime.
 	before?: string[];
 	after?: string[];
-	initialize: (deps: any) => void;
+	initialize: (deps: any) => Promise<void> | void;
 }
 
 export class DependencyGraph {
@@ -43,27 +44,55 @@ export class DependencyGraph {
 		);
 	}
 
-	runInitializers(initializers: Initializer[]) {
-		const dedupedInitializers = new Set(initializers);
+	async runInitializers(initializers: Initializer[]): Promise<void> {
+		const initializerMap = new Map(initializers.map((i) => [i.package.name, i]));
+		const edges: [string, string][] = [];
+		initializers.forEach((i) => {
+			if (i.before) {
+				edges.push(...i.before.map((b) => [i.package.name, b] as [string, string]));
+			}
+			if (i.after) {
+				edges.push(...i.after.map((a) => [a, i.package.name] as [string, string]));
+			}
+		});
+
+		let sortedPackageNames: string[] | undefined;
+		try {
+			sortedPackageNames = toposort.array([...initializerMap.keys()], edges);
+		} catch (e) {
+			console.error(`Internal failure: initializer order not fulfillable: ${e}`);
+			process.exit(1);
+		}
+
+		const dedupedInitializers = sortedPackageNames.map((name) => initializerMap.get(name)!);
 
 		try {
-			// TODO: take before/after into account
-			dedupedInitializers.forEach((i) => this.#runInitializer(i));
+			for (const initializer of dedupedInitializers) {
+				await this.#profileAsyncCall(`Initializing ${initializer.package.name}`, async () => {
+					await initializer.initialize(this.instantiatePackageDeps(initializer.package));
+				});
+			}
 		} catch (e) {
 			console.error(`Error running initializers: ${e}`);
 			process.exit(1);
 		}
 	}
 
-	#runInitializer(initializer: Initializer) {
-		this.#profileCall(`Initializing ${initializer.package.name}`, () => {
-			initializer.initialize(this.instantiatePackageDeps(initializer.package));
-		});
-	}
-
 	#profileCall<T>(loggingName: string, factory: () => T): T {
 		const startMs = performance.now();
 		const result = factory();
+		const durationMs = performance.now() - startMs;
+		if (durationMs > maximumInitTimeMs) {
+			console.warn(
+				`[${loggingName}] took ${durationMs.toFixed(3)}ms (log threshold is ${maximumInitTimeMs}).`
+			);
+		}
+		return result;
+	}
+
+	async #profileAsyncCall<T>(loggingName: string, factory: () => Promise<T>): Promise<T> {
+		const startMs = performance.now();
+		const result = await factory();
 		const durationMs = performance.now() - startMs;
 		if (durationMs > maximumInitTimeMs) {
 			console.warn(
