@@ -18,7 +18,7 @@ export interface Initializer {
 	// List of packages that need to be initialized before this package. Enforced at runtime.
 	before?: string[];
 	after?: string[];
-	initialize: (deps: any) => void;
+	initialize: (deps: any) => Promise<void> | void;
 }
 
 export class DependencyGraph {
@@ -44,7 +44,7 @@ export class DependencyGraph {
 		);
 	}
 
-	runInitializers(initializers: Initializer[]) {
+	async runInitializers(initializers: Initializer[]): Promise<void> {
 		const initializerMap = new Map(initializers.map((i) => [i.package.name, i]));
 		const edges: [string, string][] = [];
 		initializers.forEach((i) => {
@@ -67,22 +67,32 @@ export class DependencyGraph {
 		const dedupedInitializers = sortedPackageNames.map((name) => initializerMap.get(name)!);
 
 		try {
-			dedupedInitializers.forEach((i) => this.#runInitializer(i));
+			for (const initializer of dedupedInitializers) {
+				await this.#profileAsyncCall(`Initializing ${initializer.package.name}`, async () => {
+					await initializer.initialize(this.instantiatePackageDeps(initializer.package));
+				});
+			}
 		} catch (e) {
 			console.error(`Error running initializers: ${e}`);
 			process.exit(1);
 		}
 	}
 
-	#runInitializer(initializer: Initializer) {
-		this.#profileCall(`Initializing ${initializer.package.name}`, () => {
-			initializer.initialize(this.instantiatePackageDeps(initializer.package));
-		});
-	}
-
 	#profileCall<T>(loggingName: string, factory: () => T): T {
 		const startMs = performance.now();
 		const result = factory();
+		const durationMs = performance.now() - startMs;
+		if (durationMs > maximumInitTimeMs) {
+			console.warn(
+				`[${loggingName}] took ${durationMs.toFixed(3)}ms (log threshold is ${maximumInitTimeMs}).`
+			);
+		}
+		return result;
+	}
+
+	async #profileAsyncCall<T>(loggingName: string, factory: () => Promise<T>): Promise<T> {
+		const startMs = performance.now();
+		const result = await factory();
 		const durationMs = performance.now() - startMs;
 		if (durationMs > maximumInitTimeMs) {
 			console.warn(
