@@ -7,53 +7,52 @@ package tools
 import (
 	"context"
 
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
-	"namespacelabs.dev/foundation/build/binary"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Invoke(ctx context.Context, env ops.Environment, packages workspace.Packages, inv *types.DeferredInvocation) (compute.Computable[*protocol.InvokeResponse], error) {
-	pkg, err := packages.LoadByName(ctx, schema.PackageName(inv.Binary))
-	if err != nil {
-		return nil, err
-	}
-
+func Invoke(ctx context.Context, env ops.Environment, inv *types.DeferredInvocation) (compute.Computable[*protocol.InvokeResponse], error) {
 	target, err := HostPlatform(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	prepared, err := binary.PlanImage(ctx, pkg, env, true, &target)
+	m, err := registry.GetRegistry(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 
+	// XXX there is an assumption here that the image passed shares the same
+	// registry, i.e. the configuration was shared with the producer of the
+	// image.
 	return &invokeTool{
 		invocation: inv,
-		prepared:   prepared,
+		image:      oci.ImageP(inv.Image, &target, m.IsInsecure()),
 	}, nil
 }
 
 type invokeTool struct {
 	invocation *types.DeferredInvocation
-	prepared   *binary.PreparedImage
+	image      compute.Computable[oci.Image]
 
 	compute.LocalScoped[*protocol.InvokeResponse]
 }
 
 func (inv *invokeTool) Action() *tasks.ActionEvent {
-	return tasks.Action("tool.invoke").Arg("package_name", inv.invocation.Binary)
+	return tasks.Action("tool.invoke").Arg("package_name", inv.invocation.BinaryPackage)
 }
 
 func (inv *invokeTool) Inputs() *compute.In {
-	return compute.Inputs().Str("name", inv.prepared.Name).Strs("command", inv.prepared.Command).Computable("image", inv.prepared.Image).Proto("invocation", inv.invocation)
+	return compute.Inputs().Proto("invocation", inv.invocation).Computable("image", inv.image)
 }
 
 func (inv *invokeTool) Output() compute.Output {
@@ -62,7 +61,7 @@ func (inv *invokeTool) Output() compute.Output {
 
 func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protocol.InvokeResponse, error) {
 	req := &protocol.ToolRequest{
-		ToolPackage: inv.invocation.Binary,
+		ToolPackage: inv.invocation.BinaryPackage,
 		RequestType: &protocol.ToolRequest_InvokeRequest{
 			InvokeRequest: &protocol.InvokeRequest{},
 		},
@@ -73,20 +72,21 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 	}
 
 	run := rtypes.RunToolOpts{
-		ImageName: inv.invocation.Binary,
+		ImageName: inv.invocation.BinaryPackage,
 		// NoNetworking: true, // XXX security
 
 		RunBinaryOpts: rtypes.RunBinaryOpts{
-			Image:      compute.MustGetDepValue(r, inv.prepared.Image, "image"),
+			Image:      compute.MustGetDepValue(r, inv.image, "image"),
 			WorkingDir: "/",
-			Command:    inv.prepared.Command,
-			Env:        []*schema.BinaryConfig_EnvEntry{{Name: "HOME", Value: "/tmp"}},
+			Command:    inv.invocation.BinaryConfig.Command,
+			Args:       inv.invocation.BinaryConfig.Args,
+			Env:        append(slices.Clone(inv.invocation.BinaryConfig.Env), &schema.BinaryConfig_EnvEntry{Name: "HOME", Value: "/tmp"}),
 			RunAsUser:  true,
 		}}
 
 	invoke := LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{}
 
-	resp, err := invoke.Invoke(ctx, schema.PackageName(inv.invocation.Binary), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
+	resp, err := invoke.Invoke(ctx, schema.PackageName(inv.invocation.BinaryPackage), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
 		return protocol.NewInvocationServiceClient(conn).Invoke
 	})
 	if err != nil {

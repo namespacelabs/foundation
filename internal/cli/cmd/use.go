@@ -95,7 +95,7 @@ func NewUseCmd() *cobra.Command {
 				return err
 			}
 
-			psqlImage, err := compute.GetValue(ctx, oci.ResolveDigest("postgres:14.3-alpine@sha256:a00af33e23643f497a42bc24d2f6f28cc67f3f48b076135c5626b2e07945ff9c"))
+			psqlImage, err := compute.GetValue(ctx, oci.ResolveDigest("postgres:14.3-alpine@sha256:a00af33e23643f497a42bc24d2f6f28cc67f3f48b076135c5626b2e07945ff9c", false))
 			if err != nil {
 				return err
 			}

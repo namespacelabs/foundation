@@ -49,9 +49,10 @@ message ApplyRequest {
 }
 
 message ApplyResponse {
-    repeated schema.DefExtension extension          = 1;
-    repeated schema.SerializedInvocation invocation = 2;
-    repeated schema.ComputedConfiguration computed  = 4;
+    repeated schema.DefExtension extension                       = 1;
+    repeated schema.SerializedInvocation invocation              = 2;
+    repeated schema.SerializedInvocationSource invocation_source = 5;
+    repeated schema.ComputedConfiguration computed               = 4;
 
     // The outcome of this tool computation is valid for as long as these
     // inputs don't change.

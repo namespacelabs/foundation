@@ -124,6 +124,7 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, t AllHandlers
 			return nil, err
 		}
 
+		response.ApplyResponse.InvocationSource = out.InvocationSources
 		response.ApplyResponse.Computed = out.Computed
 
 	case *protocol.ToolRequest_DeleteRequest:

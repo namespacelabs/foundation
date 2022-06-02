@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -244,4 +245,18 @@ func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 	}
 
 	return nil, fnerrors.UserError(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
+}
+
+func EnsureImage(ctx context.Context, env ops.Environment, prepared *Prepared) (oci.ImageID, error) {
+	img, err := prepared.Image(ctx, env)
+	if err != nil {
+		return oci.ImageID{}, err
+	}
+
+	name, err := registry.RawAllocateName(ctx, env, prepared.Name, nil)
+	if err != nil {
+		return oci.ImageID{}, err
+	}
+
+	return compute.GetValue(ctx, oci.PublishResolvable(name, img))
 }

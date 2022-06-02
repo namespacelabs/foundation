@@ -61,27 +61,7 @@ func NewDebugShellCmd() *cobra.Command {
 				return err
 			}
 
-			img, err := prepared.Image(ctx, env)
-			if err != nil {
-				return err
-			}
-
-			resolved, err := compute.GetValue(ctx, img)
-			if err != nil {
-				return err
-			}
-
-			name, err := registry.AllocateName(ctx, env, pkg.PackageName(), provision.NewBuildID())
-			if err != nil {
-				return err
-			}
-
-			resolvedName, err := compute.GetValue(ctx, name)
-			if err != nil {
-				return err
-			}
-
-			imageID, err = resolved.Push(ctx, resolvedName)
+			imageID, err = binary.EnsureImage(ctx, env, prepared)
 			if err != nil {
 				return err
 			}

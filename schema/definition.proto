@@ -45,7 +45,7 @@ message SerializedInvocationSource {
     // method implementation.
     google.protobuf.Any impl = 3;
     // Arguments to be computed to pass to the SerializedInvocation.
-    repeated ComputableValue computed = 4;
+    repeated ComputableValue computable = 4;
 
     message ComputableValue {
         string              name  = 1;

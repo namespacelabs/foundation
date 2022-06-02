@@ -25,9 +25,10 @@ type MakeExtension interface {
 }
 
 type ApplyOutput struct {
-	Invocations []defs.MakeDefinition
-	Extensions  []MakeExtension
-	Computed    []*schema.ComputedConfiguration
+	Invocations       []defs.MakeDefinition
+	InvocationSources []*schema.SerializedInvocationSource
+	Extensions        []MakeExtension
+	Computed          []*schema.ComputedConfiguration
 }
 
 type DeleteOutput struct {

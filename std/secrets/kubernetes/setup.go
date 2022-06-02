@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -202,13 +203,33 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				Body:        newSecret,
 			})
 		} else {
-			out.Invocations = append(out.Invocations, kubedef.CreateSecretConditionally{
-				Description:       "Generated server secrets",
+			src := &schema.SerializedInvocationSource{
+				Description: "Generated server secrets",
+			}
+
+			create := &kubedef.OpCreateSecretConditionally{
 				Namespace:         namespace,
 				Name:              generatedName,
 				UserSpecifiedName: gen.Secret.Name,
-				Invocation:        gen.Secret.InitializeWith,
+			}
+
+			var err error
+			src.Impl, err = anypb.New(create)
+			if err != nil {
+				return err
+			}
+
+			initializeWith, err := anypb.New(gen.Secret.InitializeWith)
+			if err != nil {
+				return err
+			}
+
+			src.Computable = append(src.Computable, &schema.SerializedInvocationSource_ComputableValue{
+				Name:  "value",
+				Value: initializeWith,
 			})
+
+			out.InvocationSources = append(out.InvocationSources, src)
 		}
 	}
 

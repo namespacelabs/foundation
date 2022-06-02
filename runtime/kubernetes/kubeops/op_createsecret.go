@@ -15,23 +15,27 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 func RegisterCreateSecret() {
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.SerializedInvocation, create *kubedef.OpCreateSecretConditionally) (*ops.HandleResult, error) {
-		wenv, ok := env.(workspace.WorkspaceEnvironment)
-		if !ok {
-			return nil, fnerrors.InternalError("expected a workspace.WorkspaceEnvironment")
-		}
-
 		if create.Name == "" {
 			return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
 		}
 
 		if create.Namespace == "" {
 			return nil, fnerrors.InternalError("%s: create.Namespace is required", d.Description)
+		}
+
+		v, err := ops.Value[*types.DeferredInvocation](d, "value")
+		if err != nil {
+			return nil, fnerrors.New("%s: failed to retrieve value: %w", d.Description, err)
+		}
+
+		if v == nil {
+			return nil, fnerrors.New("%s: failed to retrieve value: no value", d.Description)
 		}
 
 		exists, err := checkResourceExists(ctx, env, d.Description, "secrets", create.Name, create.Namespace, schema.PackageNames(d.Scope...))
@@ -48,7 +52,7 @@ func RegisterCreateSecret() {
 			return nil, err
 		}
 
-		invocation, err := tools.Invoke(ctx, env, wenv, create.GetInvocation())
+		invocation, err := tools.Invoke(ctx, env, v)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +63,7 @@ func RegisterCreateSecret() {
 		}
 
 		if result.RawOutput == nil {
-			return nil, fnerrors.BadInputError("%s: tool didn't produce an output", create.Invocation.Binary)
+			return nil, fnerrors.BadInputError("%s: tool didn't produce an output", v.Image)
 		}
 
 		newSecret := &v1.Secret{

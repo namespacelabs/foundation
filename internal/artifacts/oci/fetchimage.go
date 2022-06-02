@@ -22,13 +22,18 @@ import (
 )
 
 func ResolveImage(ref string, platform specs.Platform) compute.Computable[Image] {
-	return ImageP(ref, &platform)
+	return ImageP(ref, &platform, false)
 }
 
 // Returns a Computable which constraints on platform if one is specified.
-func ImageP(ref string, platform *specs.Platform) compute.Computable[Image] {
-	imageID := ResolveDigest(ref)
-	return &fetchImage{imageid: imageID, descriptor: &fetchDescriptor{imageID: imageID}, platform: platform}
+func ImageP(ref string, platform *specs.Platform, insecure bool) compute.Computable[Image] {
+	imageID := ResolveDigest(ref, insecure)
+	return &fetchImage{
+		imageid:    imageID,
+		descriptor: &fetchDescriptor{imageID: imageID, insecure: insecure},
+		platform:   platform,
+		insecure:   insecure,
+	}
 }
 
 func toV1Plat(p *specs.Platform) *v1.Platform {
@@ -47,6 +52,7 @@ type fetchImage struct {
 	imageid    compute.Computable[ImageID]
 	descriptor compute.Computable[*RawDescriptor]
 	platform   *specs.Platform
+	insecure   bool
 
 	compute.DoScoped[Image] // Need long-lived ctx, as it's captured to fetch Layers.
 }
@@ -84,12 +90,17 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 			// When we do a recursive lookup we don't constrain platform anymore, as more
 			// often than not images that are referred to from an index don't carry a platform
 			// specification.
-			return compute.GetValue(ctx, ImageP(d.ImageRef(), nil))
+			return compute.GetValue(ctx, ImageP(d.ImageRef(), nil, r.insecure))
 		})
 
 	case types.DockerManifestSchema2:
 		imageid := compute.MustGetDepValue(deps, r.imageid, "imageid")
-		name, err := name.NewDigest(imageid.RepoAndDigest())
+
+		var nameOpts []name.Option
+		if r.insecure {
+			nameOpts = append(nameOpts, name.Insecure)
+		}
+		name, err := name.NewDigest(imageid.RepoAndDigest(), nameOpts...)
 		if err != nil {
 			return nil, fnerrors.InternalError("failed to parse: %w", err)
 		}
@@ -105,16 +116,25 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 	return nil, fnerrors.BadInputError("unexpected media type: %s (expected image or image index)", descriptor.MediaType)
 }
 
-func fetchRemoteDescriptor(ctx context.Context, ref string, moreOpts ...remote.Option) (*remote.Descriptor, error) {
+func fetchRemoteDescriptor(ctx context.Context, ref string, insecure bool, moreOpts ...remote.Option) (*remote.Descriptor, error) {
 	opts := RemoteOpts(ctx)
 	opts = append(opts, moreOpts...)
 
-	baseRef, err := name.ParseReference(ref)
+	baseRef, err := ParseRef(ref, insecure)
 	if err != nil {
 		return nil, err
 	}
 
 	return remote.Get(baseRef, opts...)
+}
+
+func ParseRef(imageRef string, insecure bool) (name.Reference, error) {
+	var nameOpts []name.Option
+	if insecure {
+		nameOpts = append(nameOpts, name.Insecure)
+	}
+
+	return name.ParseReference(imageRef, nameOpts...)
 }
 
 type HasImageRef interface {
@@ -134,12 +154,13 @@ func RefFrom(c any) string {
 }
 
 type fetchDescriptor struct {
-	imageID compute.Computable[ImageID]
+	imageID  compute.Computable[ImageID]
+	insecure bool
 	compute.LocalScoped[*RawDescriptor]
 }
 
 func (r *fetchDescriptor) Inputs() *compute.In {
-	return compute.Inputs().Computable("resolved", r.imageID)
+	return compute.Inputs().Computable("resolved", r.imageID).Bool("insecure", r.insecure)
 }
 
 func (r *fetchDescriptor) Action() *tasks.ActionEvent {
@@ -152,7 +173,7 @@ func (r *fetchDescriptor) ImageRef() string {
 
 func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*RawDescriptor, error) {
 	digest := compute.MustGetDepValue(deps, r.imageID, "resolved")
-	d, err := fetchRemoteDescriptor(ctx, digest.ImageRef())
+	d, err := fetchRemoteDescriptor(ctx, digest.ImageRef(), r.insecure)
 	if err != nil {
 		return nil, fnerrors.InvocationError("failed to fetch descriptor: %w", err)
 	}

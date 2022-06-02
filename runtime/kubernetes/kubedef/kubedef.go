@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/types"
 )
 
 const (
@@ -50,17 +49,6 @@ type Create struct {
 	Namespace   string // XXX this can be implied from `namespace` in the body. See #339.
 	Name        string // XXX this can be implied from `name` in the body. See #339.
 	Body        interface{}
-}
-
-// This is a temporary type; usage should be limited. It's a workaround until we
-// can compose invocations, so secrets can wrap a "create secret payload" invocation
-// around the user-provided invocation.
-type CreateSecretConditionally struct {
-	Description       string
-	Namespace         string
-	Name              string
-	UserSpecifiedName string
-	Invocation        *types.DeferredInvocation
 }
 
 type ExtendSpec struct {
@@ -160,28 +148,6 @@ func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInv
 		Namespace: c.Namespace,
 		Name:      c.Name,
 		BodyJson:  string(body), // We use strings for better debuggability.
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &schema.SerializedInvocation{
-		Description: c.Description,
-		Impl:        x,
-		Scope:       scopeToStrings(scope),
-	}, nil
-}
-
-func (c CreateSecretConditionally) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
-	if c.Invocation == nil {
-		return nil, fnerrors.InternalError("invocation is missing")
-	}
-
-	x, err := anypb.New(&OpCreateSecretConditionally{
-		Namespace:         c.Namespace,
-		Name:              c.Name,
-		UserSpecifiedName: c.UserSpecifiedName,
-		Invocation:        c.Invocation,
 	})
 	if err != nil {
 		return nil, err

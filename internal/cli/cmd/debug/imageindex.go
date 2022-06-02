@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -46,17 +45,8 @@ func newImageIndexCmd() *cobra.Command {
 	return cmd
 }
 
-func parseRef(baseImage string, insecure bool) (name.Reference, error) {
-	var nameOpts []name.Option
-	if insecure {
-		nameOpts = append(nameOpts, name.Insecure)
-	}
-
-	return name.ParseReference(baseImage, nameOpts...)
-}
-
 func fetchImage(baseImage string, insecure bool, opts ...remote.Option) (*remote.Descriptor, error) {
-	baseRef, err := parseRef(baseImage, insecure)
+	baseRef, err := oci.ParseRef(baseImage, insecure)
 	if err != nil {
 		return nil, err
 	}

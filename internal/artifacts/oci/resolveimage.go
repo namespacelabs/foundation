@@ -12,18 +12,19 @@ import (
 )
 
 // Resolves the image tag into a digest. If one is already specified, this is a no-op.
-func ResolveDigest(ref string) compute.Computable[ImageID] {
-	return &resolveDigest{ref: ref}
+func ResolveDigest(ref string, insecure bool) compute.Computable[ImageID] {
+	return &resolveDigest{ref: ref, insecure: insecure}
 }
 
 type resolveDigest struct {
-	ref string
+	ref      string
+	insecure bool
 
 	compute.LocalScoped[ImageID]
 }
 
 func (r *resolveDigest) Inputs() *compute.In {
-	return compute.Inputs().Str("ref", r.ref)
+	return compute.Inputs().Str("ref", r.ref).Bool("insecure", r.insecure)
 }
 
 func (r *resolveDigest) ImageRef() string {
@@ -44,7 +45,7 @@ func (r *resolveDigest) Compute(ctx context.Context, _ compute.Resolved) (ImageI
 		return imageID, nil
 	}
 
-	desc, err := fetchRemoteDescriptor(ctx, r.ref)
+	desc, err := fetchRemoteDescriptor(ctx, r.ref, r.insecure)
 	if err != nil {
 		return ImageID{}, err
 	}

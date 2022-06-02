@@ -35,7 +35,7 @@ func newImageCmd() *cobra.Command {
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			for _, arg := range args {
 				if docker {
-					ref, err := parseRef(arg, insecure)
+					ref, err := oci.ParseRef(arg, insecure)
 					if err != nil {
 						return err
 					}
