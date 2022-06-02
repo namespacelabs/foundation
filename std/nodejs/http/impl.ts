@@ -2,11 +2,10 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import yargs from "yargs";
-import { ProvideHttpServer } from "./deps.fn";
-import { HttpServer } from "./httpserver";
-import middie from "middie";
 import fastify from "fastify";
+import middie from "middie";
+import yargs from "yargs";
+import { HttpServer } from "./httpserver";
 
 const argv = yargs(process.argv.slice(2))
 	.options({
@@ -14,7 +13,7 @@ const argv = yargs(process.argv.slice(2))
 	})
 	.parse();
 
-class HttpServerImpl implements HttpServer {
+export class HttpServerImpl implements HttpServer {
 	readonly #fastifyServer = fastify({
 		logger: true,
 	});
@@ -45,12 +44,16 @@ class HttpServerImpl implements HttpServer {
 	}
 }
 
-export const httpServer = (async () => {
-	const server = new HttpServerImpl();
-	await server.init();
-	return server;
-})();
+let httpServer: Promise<HttpServerImpl> | undefined;
 
-export const provideHttpServer: ProvideHttpServer = (): Promise<HttpServer> => {
+export const provideHttpServer = (): Promise<HttpServer> => {
+	if (!httpServer) {
+		httpServer = (async () => {
+			console.log("Initializing the HTTP server.");
+			const server = new HttpServerImpl();
+			await server.init();
+			return server;
+		})();
+	}
 	return httpServer;
 };
