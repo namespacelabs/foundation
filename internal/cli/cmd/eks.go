@@ -88,9 +88,9 @@ func NewEksCmd() *cobra.Command {
 	computeIrsa.Flags().StringVar(&serviceAccount, "service_account", "", "Which service account to bind to IAM role.")
 	computeIrsa.Flags().BoolVar(&dryRun, "dry_run", true, "If true, print invocations, rather than executing them.")
 
-	computeIrsa.MarkFlagRequired("iam_role")
-	computeIrsa.MarkFlagRequired("namespace")
-	computeIrsa.MarkFlagRequired("service_account")
+	_ = computeIrsa.MarkFlagRequired("iam_role")
+	_ = computeIrsa.MarkFlagRequired("namespace")
+	_ = computeIrsa.MarkFlagRequired("service_account")
 
 	cmd.AddCommand(computeIrsa)
 
