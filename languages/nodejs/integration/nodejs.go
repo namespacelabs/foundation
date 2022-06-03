@@ -359,7 +359,10 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 		runtimeNpmPackage: fmt.Sprintf("fn:%s/%s", foundationModule, runtimePackagePath),
 	}
 
-	for _, importName := range depPkgNames {
+	// Force all nodes to depend on both http and grpc for now.
+	allPackageNames := append(depPkgNames, string(httpNode), string(grpcNode))
+
+	for _, importName := range allPackageNames {
 		pkg, err := pkgs.LoadByName(ctx, schema.PackageName(importName))
 		if err != nil {
 			return err
@@ -485,7 +488,7 @@ func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *wor
 	// - grpcNode sets up correct flags for the server startup.
 	// - runtimeNode allows to treat the Foundation Node.js runtime as a regular node that has a Location,
 	// and copy it to the build image in the same way as other nodes.
-	ext.Include = append(ext.Include, grpcNode, runtimeNode)
+	ext.Include = append(ext.Include, grpcNode, httpNode, runtimeNode)
 	return nil
 }
 

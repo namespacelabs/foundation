@@ -1,6 +1,8 @@
 {
 	"dependencies": {
-		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
+		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime",
+		"fastify": "3.29.0",
+		"middie": "6.1.0"
 	},
 	"name": "@namespacelabs.dev-foundation/std-nodejs-http",
 	"private": true,
