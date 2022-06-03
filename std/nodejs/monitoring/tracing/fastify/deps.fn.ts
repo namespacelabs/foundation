@@ -24,6 +24,7 @@ export const Package = {
 const initializer = {
 	package: Package,
 	initialize: impl.initialize,
+	after: ["namespacelabs.dev/foundation/std/nodejs/monitoring/tracing",]
 };
 
 export type Prepare = (deps: ExtensionDeps) => Promise<void> | void;

@@ -8,6 +8,7 @@ import (
 
 extension: fn.#Extension & {
 	hasInitializerIn: "NODEJS"
+	initializeAfter: ["namespacelabs.dev/foundation/std/nodejs/monitoring/tracing"]
 
 	instantiate: {
 		httpServer: http.#Exports.HttpServer
