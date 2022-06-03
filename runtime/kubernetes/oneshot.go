@@ -95,10 +95,10 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 }
 
 func (r K8sRuntime) RunAttached(ctx context.Context, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO) error {
-	return r.RunAttachedOpts(ctx, name, runOpts, io, nil)
+	return r.RunAttachedOpts(ctx, r.moduleNamespace, name, runOpts, io, nil)
 }
 
-func (r K8sRuntime) RunAttachedOpts(ctx context.Context, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO, onStart func()) error {
+func (r K8sRuntime) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO, onStart func()) error {
 	cli, err := client.NewClientFromHostEnv(ctx, r.hostEnv)
 	if err != nil {
 		return err
@@ -117,22 +117,22 @@ func (r K8sRuntime) RunAttachedOpts(ctx context.Context, name string, runOpts ru
 		spec.Containers[0].WithTTY(true)
 	}
 
-	if err := spawnAndWaitPod(ctx, cli, r.moduleNamespace, name, spec, true); err != nil {
-		if logsErr := fetchPodLogs(ctx, cli, console.TypedOutput(ctx, name, console.CatOutputTool), r.moduleNamespace, name, "", runtime.StreamLogsOpts{}); logsErr != nil {
+	if err := spawnAndWaitPod(ctx, cli, ns, name, spec, true); err != nil {
+		if logsErr := fetchPodLogs(ctx, cli, console.TypedOutput(ctx, name, console.CatOutputTool), ns, name, "", runtime.StreamLogsOpts{}); logsErr != nil {
 			fmt.Fprintf(console.Errors(ctx), "Failed to fetch failed container logs: %v\n", logsErr)
 		}
 		return err
 	}
 
 	compute.On(ctx).Cleanup(tasks.Action("kubernetes.pod.delete"), func(ctx context.Context) error {
-		return cli.CoreV1().Pods(r.moduleNamespace).Delete(context.Background(), name, metav1.DeleteOptions{})
+		return cli.CoreV1().Pods(ns).Delete(context.Background(), name, metav1.DeleteOptions{})
 	})
 
 	if onStart != nil {
 		onStart()
 	}
 
-	return r.attachTerminal(ctx, cli, kubedef.ContainerPodReference{Namespace: r.moduleNamespace, PodName: name}, io)
+	return r.attachTerminal(ctx, cli, kubedef.ContainerPodReference{Namespace: ns, PodName: name}, io)
 }
 
 func makePodSpec(name string, runOpts runtime.ServerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {

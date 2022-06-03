@@ -1,0 +1,15 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.tools;
+
+option go_package = "namespacelabs.dev/foundation/tools";
+
+message Kubernetes {
+    // Which namespace to run provisioning tools in if run on kubernetes.
+    // This namespace must exist already.
+    string namespace = 1;
+}

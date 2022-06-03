@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/go-ids"
 )
@@ -58,8 +59,15 @@ func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSt
 		return err
 	}
 
+	p, err := HostPlatform(ctx)
+	if err != nil {
+		return err
+	}
+	conf := &Kubernetes{}
+	devhost.PlatformConf(env.DevHost(), p).Get(conf)
+
 	// XXX use more meaningful names.
-	return k8s.RunAttachedOpts(ctx, "tool-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
+	return k8s.RunAttachedOpts(ctx, conf.Namespace, "tool-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
 		Image:      imgid,
 		WorkingDir: opts.WorkingDir,
 		Command:    opts.Command,
