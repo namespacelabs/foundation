@@ -1,7 +1,8 @@
 // This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundation";
+import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
+import {GrpcRegistrar} from "@namespacelabs.dev-foundation/std-nodejs-grpc"
 
 
 
@@ -12,5 +13,5 @@ export const Package = {
 export const TransitiveInitializers: Initializer[] = [
 ];
 
-export type WireService = (registrar: Registrar) => Promise<void> | void;
+export type WireService = (registrar: GrpcRegistrar) => Promise<void> | void;
 export const wireService: WireService = impl.wireService;

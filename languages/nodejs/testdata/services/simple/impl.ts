@@ -3,12 +3,12 @@
 // available at http://github.com/namespacelabs/foundation
 
 import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
-import { Registrar } from "@namespacelabs/foundation";
+import { GrpcRegistrar } from "@namespacelabs.dev-foundation/std-nodejs-grpc";
 import { WireService } from "./deps.fn";
 import { IPostServiceServer, PostServiceService } from "./service_grpc_pb";
 import { PostRequest, PostResponse } from "./service_pb";
 
-export const wireService: WireService = (registrar: Registrar) => {
+export const wireService: WireService = (registrar: GrpcRegistrar) => {
 	const service: IPostServiceServer = {
 		post: function (
 			call: ServerUnaryCall<PostRequest, PostResponse>,

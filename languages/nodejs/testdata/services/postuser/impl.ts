@@ -4,12 +4,12 @@
 
 import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
 import { PostRequest } from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/service_pb";
-import { Registrar } from "@namespacelabs/foundation";
+import { GrpcRegistrar } from "@namespacelabs.dev-foundation/std-nodejs-grpc";
 import { ServiceDeps, WireService } from "./deps.fn";
 import { IPostUserServiceServer, PostUserServiceService } from "./service_grpc_pb";
 import { PostUserRequest, PostUserResponse } from "./service_pb";
 
-export const wireService: WireService = (deps: ServiceDeps, registrar: Registrar) => {
+export const wireService: WireService = (deps: ServiceDeps, registrar: GrpcRegistrar) => {
 	const service: IPostUserServiceServer = {
 		getUserPosts: function (
 			call: ServerUnaryCall<PostUserRequest, PostUserResponse>,
