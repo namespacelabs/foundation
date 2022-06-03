@@ -7,9 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"sync"
 
 	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,16 +31,7 @@ import (
 
 var (
 	ObserveInitContainerLogs = false
-
-	runtimeCache struct {
-		mu    sync.Mutex
-		cache map[string]K8sRuntime
-	}
 )
-
-func init() {
-	runtimeCache.cache = map[string]K8sRuntime{}
-}
 
 func Register() {
 	runtime.Register("kubernetes", func(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (runtime.Runtime, error) {
@@ -53,34 +42,15 @@ func Register() {
 }
 
 func NewFromConfig(ctx context.Context, config *client.HostConfig) (K8sRuntime, error) {
-	keyBytes, err := json.Marshal(struct {
-		C *client.HostEnv
-		E *schema.Environment
-	}{config.HostEnv, config.Env})
+	cli, err := client.NewClient(ctx, config)
 	if err != nil {
-		return K8sRuntime{}, fnerrors.InternalError("failed to serialize config/env key: %w", err)
+		return K8sRuntime{}, err
 	}
 
-	key := string(keyBytes)
-
-	runtimeCache.mu.Lock()
-	defer runtimeCache.mu.Unlock()
-
-	if _, ok := runtimeCache.cache[key]; !ok {
-		cli, err := client.NewClient(ctx, config)
-		if err != nil {
-			return K8sRuntime{}, err
-		}
-
-		runtimeCache.cache[key] = K8sRuntime{
-			cli,
-			boundEnv{config, moduleNamespace(config.Workspace, config.Env)},
-		}
-	}
-
-	rt := runtimeCache.cache[key]
-
-	return rt, nil
+	return K8sRuntime{
+		cli,
+		boundEnv{config, moduleNamespace(config.Workspace, config.Env)},
+	}, nil
 }
 
 func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (K8sRuntime, error) {

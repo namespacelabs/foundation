@@ -6,6 +6,8 @@ package client
 
 import (
 	"context"
+	"encoding/json"
+	sync "sync"
 
 	k8s "k8s.io/client-go/kubernetes"
 	tadmissionregistrationv1 "k8s.io/client-go/kubernetes/typed/admissionregistration/v1"
@@ -22,6 +24,17 @@ import (
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
+
+var (
+	clientCache struct {
+		mu    sync.Mutex
+		cache map[string]*k8s.Clientset
+	}
+)
+
+func init() {
+	clientCache.cache = map[string]*k8s.Clientset{}
+}
 
 func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*restclient.Config, error) {
 	cfg := host.HostEnv
@@ -51,17 +64,34 @@ func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*restclien
 }
 
 func NewClient(ctx context.Context, host *HostConfig) (*k8s.Clientset, error) {
-	config, err := NewRestConfigFromHostEnv(ctx, host)
+	keyBytes, err := json.Marshal(struct {
+		C *HostEnv
+		E *schema.Environment
+	}{host.HostEnv, host.Env})
 	if err != nil {
-		return nil, err
+		return nil, fnerrors.InternalError("failed to serialize config/env key: %w", err)
 	}
 
-	clientset, err := k8s.NewForConfig(config)
-	if err != nil {
-		return nil, err
+	key := string(keyBytes)
+
+	clientCache.mu.Lock()
+	defer clientCache.mu.Unlock()
+
+	if _, ok := clientCache.cache[key]; !ok {
+		config, err := NewRestConfigFromHostEnv(ctx, host)
+		if err != nil {
+			return nil, err
+		}
+
+		clientset, err := k8s.NewForConfig(config)
+		if err != nil {
+			return nil, err
+		}
+
+		clientCache.cache[key] = clientset
 	}
 
-	return clientset, nil
+	return clientCache.cache[key], nil
 }
 
 func MakeResourceSpecificClient(resource string, cfg *restclient.Config) (restclient.Interface, error) {
