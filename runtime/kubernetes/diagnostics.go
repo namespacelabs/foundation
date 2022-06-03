@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 )
 
-func (r K8sRuntime) FetchDiagnostics(ctx context.Context, reference runtime.ContainerReference) (runtime.Diagnostics, error) {
+func (r Unbound) FetchDiagnostics(ctx context.Context, reference runtime.ContainerReference) (runtime.Diagnostics, error) {
 	opaque, ok := reference.(kubedef.ContainerPodReference)
 	if !ok {
 		return runtime.Diagnostics{}, fnerrors.InternalError("invalid reference")

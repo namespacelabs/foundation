@@ -108,7 +108,7 @@ type deployOpts struct {
 	stackIds []string
 }
 
-func (r boundEnv) prepareServerDeployment(ctx context.Context, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
+func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
 	srv := server.Server
 	isController := controller.IsController(srv.PackageName())
 	ns := serverNamespace(r, srv.Proto())
@@ -545,7 +545,7 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 	return container, nil
 }
 
-func (r boundEnv) deployEndpoint(ctx context.Context, server runtime.ServerConfig, endpoint *schema.Endpoint, s *serverRunState) error {
+func (r K8sRuntime) deployEndpoint(ctx context.Context, server runtime.ServerConfig, endpoint *schema.Endpoint, s *serverRunState) error {
 	t := server.Server
 	ns := serverNamespace(r, t.Proto())
 

@@ -42,7 +42,7 @@ func (p noPackageEnv) KubeconfigProvider() (*client.HostConfig, error) {
 func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.ingress").HumanReadablef("Prepare and deploy the Kubernetes ingress controller"),
-		compute.Inputs().Computable("k8sconfig", k8sconfig).Proto("env", env.Proto()),
+		compute.Inputs().Computable("k8sconfig", k8sconfig).Proto("env", env.Proto()).Proto("workspace", env.Workspace()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			config := compute.MustGetDepValue(deps, k8sconfig, "k8sconfig")
@@ -81,7 +81,7 @@ func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*client.Ho
 		})
 }
 
-func waitForIngress(ctx context.Context, kube kubernetes.K8sRuntime, action *tasks.ActionEvent) error {
+func waitForIngress(ctx context.Context, kube kubernetes.Unbound, action *tasks.ActionEvent) error {
 	return kube.Wait(ctx, action, kubeobserver.WaitForPodConditition(
 		kubeobserver.SelectPods(nginx.IngressLoadBalancerService().Namespace, nil, nginx.ControllerSelector()),
 		kubeobserver.MatchPodCondition(corev1.PodReady)))

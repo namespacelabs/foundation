@@ -12,10 +12,9 @@ import (
 )
 
 type HostConfig struct {
-	Workspace *fnschema.Workspace
-	DevHost   *fnschema.DevHost
-	Env       *fnschema.Environment
-	HostEnv   *HostEnv
+	DevHost *fnschema.DevHost
+	Env     *fnschema.Environment
+	HostEnv *HostEnv
 
 	registry *registry.Registry
 }
@@ -32,10 +31,9 @@ func NewHostConfig(contextName string, env ops.Environment, options ...func(*Hos
 	}
 
 	config := &HostConfig{
-		Workspace: env.Workspace(),
-		DevHost:   env.DevHost(),
-		Env:       env.Proto(),
-		HostEnv:   hostEnv,
+		DevHost: env.DevHost(),
+		Env:     env.Proto(),
+		HostEnv: hostEnv,
 	}
 
 	for _, option := range options {

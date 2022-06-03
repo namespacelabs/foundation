@@ -64,7 +64,7 @@ func prepareDescribeCluster(ctx context.Context, env ops.Environment, srv *schem
 }
 
 func PrepareClusterInfo(ctx context.Context, env runtime.Selector) (*EKSCluster, error) {
-	rt, err := kubernetes.New(ctx, env.Workspace(), env.DevHost(), env.Proto())
+	rt, err := kubernetes.New(ctx, env.DevHost(), env.Proto())
 	if err != nil {
 		return nil, err
 	}

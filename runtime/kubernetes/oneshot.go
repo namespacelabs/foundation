@@ -92,7 +92,7 @@ func (r K8sRuntime) RunAttached(ctx context.Context, name string, runOpts runtim
 	return r.RunAttachedOpts(ctx, r.moduleNamespace, name, runOpts, io, nil)
 }
 
-func (r K8sRuntime) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO, onStart func()) error {
+func (r Unbound) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO, onStart func()) error {
 	spec, err := makePodSpec(name, runOpts)
 	if err != nil {
 		return err

@@ -8,7 +8,7 @@ type KubeConfig struct {
 	Config, Context, Namespace string
 }
 
-func (r boundEnv) KubeConfig() KubeConfig {
+func (r K8sRuntime) KubeConfig() KubeConfig {
 	return KubeConfig{
 		Config:    r.host.HostEnv.Kubeconfig,
 		Context:   r.host.HostEnv.Context,

@@ -10,16 +10,19 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 )
 
-type boundEnv struct {
-	host            *client.HostConfig
+type K8sRuntime struct {
+	Unbound
 	moduleNamespace string
 }
 
-func (r boundEnv) resolveConfig(ctx context.Context) (*rest.Config, error) {
-	config, err := client.NewRestConfigFromHostEnv(ctx, r.host)
+var _ runtime.Runtime = K8sRuntime{}
+
+func resolveConfig(ctx context.Context, host *client.HostConfig) (*rest.Config, error) {
+	config, err := client.NewRestConfigFromHostEnv(ctx, host)
 	if err != nil {
 		return nil, err
 	}

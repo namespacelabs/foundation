@@ -47,7 +47,7 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 			continue
 		}
 
-		defs, m, err := ingress.Ensure(ctx, serverNamespace(r.boundEnv, srv.Server), r.host.Env, srv.Server, frags, certSecretMap)
+		defs, m, err := ingress.Ensure(ctx, serverNamespace(r, srv.Server), r.host.Env, srv.Server, frags, certSecretMap)
 		if err != nil {
 			return nil, err
 		}
@@ -83,8 +83,9 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 	return state, nil
 }
 
-func (r K8sRuntime) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
+func (r Unbound) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
 	svc := nginx.IngressLoadBalancerService()
+
 	// XXX watch?
 	resolved, err := r.cli.CoreV1().Services(svc.Namespace).Get(ctx, svc.ServiceName, metav1.GetOptions{})
 	if err != nil {
@@ -99,7 +100,7 @@ func (r K8sRuntime) ForwardIngress(ctx context.Context, localAddrs []string, loc
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 
 	go func() {
-		if err := r.boundEnv.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
+		if err := r.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
 			Namespace:     svc.Namespace,
 			Identifier:    "ingress",
 			LocalAddrs:    localAddrs,

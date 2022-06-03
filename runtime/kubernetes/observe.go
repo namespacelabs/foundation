@@ -21,7 +21,7 @@ func (r K8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 	// XXX use a watch
 	announced := map[string]runtime.ContainerReference{}
 
-	ns := serverNamespace(r.boundEnv, srv)
+	ns := serverNamespace(r, srv)
 
 	for {
 		select {

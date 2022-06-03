@@ -90,7 +90,7 @@ func NewUseCmd() *cobra.Command {
 			}
 
 			// XXX generalize.
-			k8s, err := kubernetes.New(ctx, res.Env.Workspace(), res.Env.DevHost(), res.Env.Proto())
+			k8s, err := kubernetes.New(ctx, res.Env.DevHost(), res.Env.Proto())
 			if err != nil {
 				return err
 			}
@@ -118,7 +118,7 @@ func NewUseCmd() *cobra.Command {
 				ReadOnlyFilesystem: true,
 			}
 
-			return k8s.RunAttached(ctx, "psql-"+ids.NewRandomBase32ID(8), runOpts, runtime.TerminalIO{
+			return k8s.Bind(res.Env.Workspace()).RunAttached(ctx, "psql-"+ids.NewRandomBase32ID(8), runOpts, runtime.TerminalIO{
 				TTY:    true,
 				Stdin:  os.Stdin,
 				Stdout: os.Stdout,

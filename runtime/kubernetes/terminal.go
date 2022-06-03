@@ -22,8 +22,8 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func (r boundEnv) startTerminal(ctx context.Context, cli *kubernetes.Clientset, server *schema.Server, rio runtime.TerminalIO, cmd []string) error {
-	config, err := r.resolveConfig(ctx)
+func (r K8sRuntime) startTerminal(ctx context.Context, cli *kubernetes.Clientset, server *schema.Server, rio runtime.TerminalIO, cmd []string) error {
+	config, err := resolveConfig(ctx, r.host)
 	if err != nil {
 		return err
 	}
@@ -80,8 +80,8 @@ func (r boundEnv) startTerminal(ctx context.Context, cli *kubernetes.Clientset, 
 	return nil
 }
 
-func (r boundEnv) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque kubedef.ContainerPodReference, rio runtime.TerminalIO) error {
-	config, err := r.resolveConfig(ctx)
+func (r Unbound) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque kubedef.ContainerPodReference, rio runtime.TerminalIO) error {
+	config, err := resolveConfig(ctx, r.host)
 	if err != nil {
 		return err
 	}

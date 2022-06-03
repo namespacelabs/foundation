@@ -93,23 +93,23 @@ func (k k8stools) HostPlatform(ctx context.Context) (specs.Platform, error) {
 	return platforms[0], nil
 }
 
-func (k8stools) k8s(ctx context.Context) (kubernetes.K8sRuntime, provision.Env, error) {
+func (k8stools) k8s(ctx context.Context) (kubernetes.Unbound, provision.Env, error) {
 	// XXX this is completely wrong; we're just abusing the fact that the user
 	// is likely running from within a workspace, and they have dev configured.
 	// A proper k8s integration here should have an explicit configuration.
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
-		return kubernetes.K8sRuntime{}, provision.Env{}, err
+		return kubernetes.Unbound{}, provision.Env{}, err
 	}
 
 	env, err := provision.RequireEnv(root, "dev")
 	if err != nil {
-		return kubernetes.K8sRuntime{}, provision.Env{}, err
+		return kubernetes.Unbound{}, provision.Env{}, err
 	}
 
-	k, err := kubernetes.New(ctx, env.Workspace(), env.DevHost(), env.Proto())
+	k, err := kubernetes.New(ctx, env.DevHost(), env.Proto())
 	if err != nil {
-		return kubernetes.K8sRuntime{}, provision.Env{}, err
+		return kubernetes.Unbound{}, provision.Env{}, err
 	}
 
 	return k, env, nil

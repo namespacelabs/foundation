@@ -44,7 +44,7 @@ func (r K8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 		return nil, fnerrors.UserError(server, "%s: no port to forward to", endpoint.GetServiceName())
 	}
 
-	ns := serverNamespace(r.boundEnv, server)
+	ns := serverNamespace(r, server)
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 	p := newPodObserver(r.cli, ns, map[string]string{
@@ -54,7 +54,7 @@ func (r K8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 	p.Start(ctxWithCancel)
 
 	go func() {
-		if err := r.boundEnv.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
+		if err := r.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
 			Namespace:     ns,
 			Identifier:    server.PackageName,
 			LocalAddrs:    localAddrs,
@@ -73,8 +73,8 @@ func (r K8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 	return closerCallback(cancel), nil
 }
 
-func (r boundEnv) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error {
-	config, err := r.resolveConfig(ctx)
+func (r Unbound) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error {
+	config, err := resolveConfig(ctx, r.host)
 	if err != nil {
 		return err
 	}

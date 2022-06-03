@@ -66,7 +66,7 @@ func packageId(pkg schema.PackageName) string {
 	return base32encoding.EncodeToString(digest[:8])
 }
 
-func serverNamespace(r boundEnv, srv *schema.Server) string {
+func serverNamespace(r K8sRuntime, srv *schema.Server) string {
 	if controller.IsController(schema.PackageName(srv.PackageName)) {
 		return kubedef.AdminNamespace
 	}

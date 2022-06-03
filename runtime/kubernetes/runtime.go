@@ -12,17 +12,13 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
-	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -35,39 +31,15 @@ var (
 
 func Register() {
 	runtime.Register("kubernetes", func(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (runtime.Runtime, error) {
-		return New(ctx, ws, devHost, env)
+		unbound, err := New(ctx, devHost, env)
+		if err != nil {
+			return nil, err
+		}
+		return unbound.Bind(ws), nil
 	})
 
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
 }
-
-func NewFromConfig(ctx context.Context, config *client.HostConfig) (K8sRuntime, error) {
-	cli, err := client.NewClient(ctx, config)
-	if err != nil {
-		return K8sRuntime{}, err
-	}
-
-	return K8sRuntime{
-		cli,
-		boundEnv{config, moduleNamespace(config.Workspace, config.Env)},
-	}, nil
-}
-
-func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (K8sRuntime, error) {
-	hostConfig, err := client.ComputeHostConfig(ws, devHost, env)
-	if err != nil {
-		return K8sRuntime{}, err
-	}
-
-	return NewFromConfig(ctx, hostConfig)
-}
-
-type K8sRuntime struct {
-	cli *k8s.Clientset
-	boundEnv
-}
-
-var _ runtime.Runtime = K8sRuntime{}
 
 func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, error) {
 	packedHostEnv, err := anypb.New(&kubetool.KubernetesEnv{Namespace: r.moduleNamespace})
@@ -125,7 +97,7 @@ func (r deploymentState) Hints() []string {
 
 func (r K8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
 	// XXX need a StatefulSet variant.
-	d, err := r.cli.AppsV1().Deployments(serverNamespace(r.boundEnv, server)).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
+	d, err := r.cli.AppsV1().Deployments(serverNamespace(r, server)).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
 	if err != nil {
 		// XXX better error messages.
 		return oci.ImageID{}, err
@@ -138,19 +110,6 @@ func (r K8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Se
 	}
 
 	return oci.ParseImageID(cfgimage)
-}
-
-func (r K8sRuntime) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {
-	var state deploymentState
-
-	ingressDefs, err := ingress.EnsureStack(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	state.definitions = ingressDefs
-
-	return state, nil
 }
 
 func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
@@ -229,8 +188,4 @@ func (r K8sRuntime) AttachTerminal(ctx context.Context, reference runtime.Contai
 	}
 
 	return r.attachTerminal(ctx, r.cli, opaque, rio)
-}
-
-func (r K8sRuntime) Wait(ctx context.Context, action *tasks.ActionEvent, waiter kubeobserver.ConditionWaiter) error {
-	return kubeobserver.WaitForCondition(ctx, r.cli, action, waiter)
 }

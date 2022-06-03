@@ -23,7 +23,7 @@ func newOctantCmd() *cobra.Command {
 	}
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
-		k8s, err := kubernetes.New(ctx, env.Workspace(), env.DevHost(), env.Proto())
+		k8s, err := kubernetes.New(ctx, env.DevHost(), env.Proto())
 		if err != nil {
 			return err
 		}
@@ -33,7 +33,7 @@ func newOctantCmd() *cobra.Command {
 			return err
 		}
 
-		cfg := k8s.KubeConfig()
+		cfg := k8s.Bind(env.Workspace()).KubeConfig()
 
 		return localexec.RunInteractive(ctx, exec.CommandContext(ctx, string(bin), "--context="+cfg.Context, "--kubeconfig="+cfg.Config, "-n", cfg.Namespace))
 	})

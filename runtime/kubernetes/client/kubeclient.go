@@ -149,7 +149,7 @@ func ResolveConfig(ctx context.Context, env ops.Environment) (*restclient.Config
 		return NewRestConfigFromHostEnv(ctx, cfg)
 	}
 
-	cfg, err := ComputeHostConfig(env.Workspace(), env.DevHost(), env.Proto())
+	cfg, err := ComputeHostConfig(env.DevHost(), env.Proto())
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func ResolveConfig(ctx context.Context, env ops.Environment) (*restclient.Config
 	return NewRestConfigFromHostEnv(ctx, cfg)
 }
 
-func ComputeHostConfig(ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (*HostConfig, error) {
+func ComputeHostConfig(devHost *schema.DevHost, env *schema.Environment) (*HostConfig, error) {
 	cfg := devhost.ConfigurationForEnvParts(devHost, env)
 
 	hostEnv := &HostEnv{}
@@ -171,5 +171,5 @@ func ComputeHostConfig(ws *schema.Workspace, devHost *schema.DevHost, env *schem
 		return nil, fnerrors.InternalError("failed to expand %q", hostEnv.Kubeconfig)
 	}
 
-	return &HostConfig{Workspace: ws, DevHost: devHost, Env: env, HostEnv: hostEnv}, nil
+	return &HostConfig{DevHost: devHost, Env: env, HostEnv: hostEnv}, nil
 }

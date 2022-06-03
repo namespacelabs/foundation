@@ -14,14 +14,14 @@ import (
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
-func (r K8sRuntime) SystemInfo(ctx context.Context) (*kubedef.SystemInfo, error) {
+func (r Unbound) SystemInfo(ctx context.Context) (*kubedef.SystemInfo, error) {
 	return compute.GetValue[*kubedef.SystemInfo](ctx, &fetchSystemInfo{
 		cli: r.cli,
 		cfg: r.host.HostEnv,
 	})
 }
 
-func (r K8sRuntime) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
+func (r Unbound) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
 	if r.host.Env.Purpose == schema.Environment_PRODUCTION {
 		// XXX make this configurable.
 		return parsePlatforms([]string{"linux/amd64", "linux/arm64"})
