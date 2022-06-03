@@ -22,6 +22,8 @@ import (
 
 type k8stools struct{}
 
+const toolNamespace = "fn-build-invocation"
+
 func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
 	k8s, env, err := k.k8s(ctx)
 	if err != nil {
@@ -59,7 +61,7 @@ func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSt
 	}
 
 	// XXX use more meaningful names.
-	return k8s.RunAttachedOpts(ctx, "tool-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
+	return k8s.RunAttachedOpts(ctx, toolNamespace, "tool-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
 		Image:      imgid,
 		WorkingDir: opts.WorkingDir,
 		Command:    opts.Command,
