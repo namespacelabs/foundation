@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -50,7 +50,7 @@ func NewPrepareCmd() *cobra.Command {
 		var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
 		prepares = append(prepares, prepare.PrepareBuildkit(env))
 
-		var k8sconfig compute.Computable[*kubernetes.HostConfig]
+		var k8sconfig compute.Computable[*client.HostConfig]
 		if contextName != "" {
 			k8sconfig = prepare.PrepareExistingK8s(contextName, env)
 		} else if env.Purpose() == schema.Environment_DEVELOPMENT {

@@ -10,8 +10,8 @@ type KubeConfig struct {
 
 func (r boundEnv) KubeConfig() KubeConfig {
 	return KubeConfig{
-		Config:    r.hostEnv.Kubeconfig,
-		Context:   r.hostEnv.Context,
+		Config:    r.host.HostEnv.Kubeconfig,
+		Context:   r.host.HostEnv.Context,
 		Namespace: r.moduleNamespace,
 	}
 }

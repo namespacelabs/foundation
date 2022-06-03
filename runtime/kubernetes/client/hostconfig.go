@@ -2,21 +2,21 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package kubernetes
+package client
 
 import (
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 type HostConfig struct {
-	ws       *fnschema.Workspace
-	devHost  *fnschema.DevHost
-	env      *fnschema.Environment
-	hostEnv  *client.HostEnv
+	Workspace *fnschema.Workspace
+	DevHost   *fnschema.DevHost
+	Env       *fnschema.Environment
+	HostEnv   *HostEnv
+
 	registry *registry.Registry
 }
 
@@ -26,16 +26,16 @@ func NewHostConfig(contextName string, env ops.Environment, options ...func(*Hos
 		return nil, err
 	}
 
-	hostEnv := &client.HostEnv{
+	hostEnv := &HostEnv{
 		Kubeconfig: kubeconfig,
 		Context:    contextName,
 	}
 
 	config := &HostConfig{
-		ws:      env.Workspace(),
-		devHost: env.DevHost(),
-		env:     env.Proto(),
-		hostEnv: hostEnv,
+		Workspace: env.Workspace(),
+		DevHost:   env.DevHost(),
+		Env:       env.Proto(),
+		HostEnv:   hostEnv,
 	}
 
 	for _, option := range options {
@@ -53,4 +53,4 @@ func WithRegistry(r *registry.Registry) func(*HostConfig) {
 
 func (h *HostConfig) Registry() *registry.Registry { return h.registry }
 
-func (h *HostConfig) ClientHostEnv() *client.HostEnv { return h.hostEnv }
+func (h *HostConfig) ClientHostEnv() *HostEnv { return h.HostEnv }

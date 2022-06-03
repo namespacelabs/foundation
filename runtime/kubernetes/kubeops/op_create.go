@@ -28,8 +28,13 @@ func registerCreate() {
 			return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
 		}
 
+		restcfg, err := client.ResolveConfig(ctx, env)
+		if err != nil {
+			return nil, fnerrors.New("failed to resolve config: %w", err)
+		}
+
 		if create.IfMissing {
-			exists, err := checkResourceExists(ctx, env, d.Description, create.Resource, create.Name,
+			exists, err := checkResourceExists(ctx, restcfg, d.Description, create.Resource, create.Name,
 				create.Namespace, schema.PackageNames(d.Scope...))
 			if err != nil {
 				return nil, err
@@ -45,11 +50,6 @@ func registerCreate() {
 			Arg("resource", create.Resource).
 			Arg("name", create.Name).
 			Arg("namespace", create.Namespace).Run(ctx, func(ctx context.Context) error {
-			restcfg, err := client.ResolveConfig(env)
-			if err != nil {
-				return err
-			}
-
 			client, err := client.MakeResourceSpecificClient(create.Resource, restcfg)
 			if err != nil {
 				return err

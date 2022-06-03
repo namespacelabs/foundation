@@ -22,7 +22,12 @@ import (
 
 func RegisterGraphHandlers() {
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, g *schema.SerializedInvocation, op *OpMapAddress) (*ops.HandleResult, error) {
-		cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
+		restcfg, err := client.ResolveConfig(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+
+		cli, err := k8s.NewForConfig(restcfg)
 		if err != nil {
 			return nil, err
 		}

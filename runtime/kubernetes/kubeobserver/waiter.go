@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
@@ -41,8 +42,7 @@ func WaitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.Act
 }
 
 type WaitOnResource struct {
-	DevHost *schema.DevHost
-	Env     *schema.Environment
+	RestConfig *rest.Config
 
 	Invocation      *schema.SerializedInvocation
 	Name, Namespace string
@@ -53,6 +53,11 @@ type WaitOnResource struct {
 }
 
 func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
+	cli, err := k8s.NewForConfig(w.RestConfig)
+	if err != nil {
+		return err
+	}
+
 	if ch != nil {
 		defer close(ch)
 	}
@@ -79,11 +84,6 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 
 			if ch != nil {
 				ch <- ev
-			}
-
-			cli, err := client.NewClient(client.ConfigFromDevHost(ctx, w.DevHost, w.Env))
-			if err != nil {
-				return err
 			}
 
 			return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(c context.Context) (done bool, err error) {

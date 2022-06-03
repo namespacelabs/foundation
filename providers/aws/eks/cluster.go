@@ -15,12 +15,24 @@ import (
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func Register() {
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster", prepareDescribeCluster)
+
+	client.RegisterBearerTokenProvider("eks", func(ctx context.Context, ck *client.ConfigKey) (string, error) {
+		conf := &EKSCluster{}
+		if !devhost.ConfigurationForEnvParts(ck.DevHost, ck.Env).Get(conf) {
+			return "", fnerrors.BadInputError("eks bearer token provider configured, but missing EKSCluster")
+		}
+
+		token, _, err := ComputeToken(ctx, ck.DevHost, ck.Env, conf.Name)
+		return token.Token, err
+	})
 }
 
 func prepareDescribeCluster(ctx context.Context, env ops.Environment, srv *schema.Server) (*frontend.PrepareProps, error) {

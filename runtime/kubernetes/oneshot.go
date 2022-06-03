@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/schema"
@@ -33,26 +32,21 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 
 	name := strings.ToLower(parts[len(parts)-1]) + "-" + ids.NewRandomBase32ID(8)
 
-	cli, err := client.NewClientFromHostEnv(ctx, r.hostEnv)
-	if err != nil {
-		return err
-	}
-
 	spec, err := makePodSpec(name, runOpts)
 	if err != nil {
 		return err
 	}
 
-	if err := spawnAndWaitPod(ctx, cli, r.moduleNamespace, name, spec, false); err != nil {
+	if err := spawnAndWaitPod(ctx, r.cli, r.moduleNamespace, name, spec, false); err != nil {
 		return err
 	}
 
-	if err := fetchPodLogs(ctx, cli, logOutput, r.moduleNamespace, name, "", runtime.StreamLogsOpts{Follow: true}); err != nil {
+	if err := fetchPodLogs(ctx, r.cli, logOutput, r.moduleNamespace, name, "", runtime.StreamLogsOpts{Follow: true}); err != nil {
 		return err
 	}
 
 	for k := 0; ; k++ {
-		finalState, err := cli.CoreV1().Pods(r.moduleNamespace).Get(ctx, name, metav1.GetOptions{})
+		finalState, err := r.cli.CoreV1().Pods(r.moduleNamespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return fnerrors.InvocationError("kubernetes: failed to fetch final pod status: %w", err)
 		}
@@ -65,7 +59,7 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 					ctxWithTimeout, cancel := context.WithTimeout(ctx, 3*time.Second)
 					defer cancel()
 
-					_ = fetchPodLogs(ctxWithTimeout, cli, logOutput, r.moduleNamespace, name, "", runtime.StreamLogsOpts{TailLines: 50})
+					_ = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, r.moduleNamespace, name, "", runtime.StreamLogsOpts{TailLines: 50})
 				}
 
 				if term.ExitCode != 0 {
@@ -99,11 +93,6 @@ func (r K8sRuntime) RunAttached(ctx context.Context, name string, runOpts runtim
 }
 
 func (r K8sRuntime) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO, onStart func()) error {
-	cli, err := client.NewClientFromHostEnv(ctx, r.hostEnv)
-	if err != nil {
-		return err
-	}
-
 	spec, err := makePodSpec(name, runOpts)
 	if err != nil {
 		return err
@@ -117,22 +106,22 @@ func (r K8sRuntime) RunAttachedOpts(ctx context.Context, ns, name string, runOpt
 		spec.Containers[0].WithTTY(true)
 	}
 
-	if err := spawnAndWaitPod(ctx, cli, ns, name, spec, true); err != nil {
-		if logsErr := fetchPodLogs(ctx, cli, console.TypedOutput(ctx, name, console.CatOutputTool), ns, name, "", runtime.StreamLogsOpts{}); logsErr != nil {
+	if err := spawnAndWaitPod(ctx, r.cli, ns, name, spec, true); err != nil {
+		if logsErr := fetchPodLogs(ctx, r.cli, console.TypedOutput(ctx, name, console.CatOutputTool), ns, name, "", runtime.StreamLogsOpts{}); logsErr != nil {
 			fmt.Fprintf(console.Errors(ctx), "Failed to fetch failed container logs: %v\n", logsErr)
 		}
 		return err
 	}
 
 	compute.On(ctx).Cleanup(tasks.Action("kubernetes.pod.delete"), func(ctx context.Context) error {
-		return cli.CoreV1().Pods(ns).Delete(context.Background(), name, metav1.DeleteOptions{})
+		return r.cli.CoreV1().Pods(ns).Delete(context.Background(), name, metav1.DeleteOptions{})
 	})
 
 	if onStart != nil {
 		onStart()
 	}
 
-	return r.attachTerminal(ctx, cli, kubedef.ContainerPodReference{Namespace: ns, PodName: name}, io)
+	return r.attachTerminal(ctx, r.cli, kubedef.ContainerPodReference{Namespace: ns, PodName: name}, io)
 }
 
 func makePodSpec(name string, runOpts runtime.ServerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {

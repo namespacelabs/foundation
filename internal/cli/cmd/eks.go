@@ -92,7 +92,22 @@ func NewEksCmd() *cobra.Command {
 	_ = computeIrsa.MarkFlagRequired("namespace")
 	_ = computeIrsa.MarkFlagRequired("service_account")
 
+	generateToken := fncobra.CmdWithEnv(&cobra.Command{
+		Use:   "generate-token",
+		Short: "Generates a EKS session token.",
+		Args:  cobra.ExactArgs(1),
+	}, func(ctx context.Context, env provision.Env, args []string) error {
+		token, gen, err := eks.ComputeToken(ctx, env.DevHost(), env.Proto(), args[0])
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(console.Stdout(ctx), gen.FormatJSON(token))
+		return nil
+	})
+
 	cmd.AddCommand(computeIrsa)
+	cmd.AddCommand(generateToken)
 
 	return cmd
 }

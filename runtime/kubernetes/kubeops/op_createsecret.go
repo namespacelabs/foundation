@@ -9,6 +9,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -32,7 +33,12 @@ func RegisterCreateSecret() {
 			return nil, fnerrors.New("%s: failed to retrieve value: %w", d.Description, err)
 		}
 
-		exists, err := checkResourceExists(ctx, env, d.Description, "secrets", create.Name, create.Namespace, schema.PackageNames(d.Scope...))
+		restcfg, err := client.ResolveConfig(ctx, env)
+		if err != nil {
+			return nil, fnerrors.New("resolve config failed: %w", err)
+		}
+
+		exists, err := checkResourceExists(ctx, restcfg, d.Description, "secrets", create.Name, create.Namespace, schema.PackageNames(d.Scope...))
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +56,7 @@ func RegisterCreateSecret() {
 			return nil, fnerrors.BadInputError("%s: resource is missing a value", d.Description)
 		}
 
-		cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
+		cli, err := k8s.NewForConfig(restcfg)
 		if err != nil {
 			return nil, err
 		}

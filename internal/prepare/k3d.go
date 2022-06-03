@@ -19,16 +19,17 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
+	kubeclient "namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareK3d(clusterName string, env ops.Environment) compute.Computable[*kubernetes.HostConfig] {
+func PrepareK3d(clusterName string, env ops.Environment) compute.Computable[*kubeclient.HostConfig] {
 	return compute.Map(
 		tasks.Action("prepare.k3d").HumanReadablef("Prepare the local k3d environment"),
 		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Proto()),
 		compute.Output{NotCacheable: true},
-		func(ctx context.Context, _ compute.Resolved) (*kubernetes.HostConfig, error) {
+		func(ctx context.Context, _ compute.Resolved) (*kubeclient.HostConfig, error) {
 			// download k3d
 			k3dbin, err := k3d.EnsureSDK(ctx)
 			if err != nil {
@@ -56,7 +57,7 @@ func PrepareK3d(clusterName string, env ops.Environment) compute.Computable[*kub
 			}
 
 			r := &registry.Registry{Url: "http://" + registryAddr}
-			hostconf, err := kubernetes.NewHostConfig("k3d-"+clusterName, env, kubernetes.WithRegistry(r))
+			hostconf, err := kubeclient.NewHostConfig("k3d-"+clusterName, env, kubeclient.WithRegistry(r))
 			if err != nil {
 				return nil, err
 			}
@@ -122,7 +123,7 @@ func (p *k3dPrepare) createOrRestartRegistry(ctx context.Context, registryName s
 	return registryAddr, nil
 }
 
-func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName string, registryAddr string, hostconf *kubernetes.HostConfig) error {
+func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName string, registryAddr string, hostconf *kubeclient.HostConfig) error {
 	clusters, err := p.k3dbin.ListClusters(ctx)
 	if err != nil {
 		return err

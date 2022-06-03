@@ -52,11 +52,11 @@ func Register() {
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
 }
 
-func NewFromConfig(ctx context.Context, config *HostConfig) (K8sRuntime, error) {
+func NewFromConfig(ctx context.Context, config *client.HostConfig) (K8sRuntime, error) {
 	keyBytes, err := json.Marshal(struct {
 		C *client.HostEnv
 		E *schema.Environment
-	}{config.hostEnv, config.env})
+	}{config.HostEnv, config.Env})
 	if err != nil {
 		return K8sRuntime{}, fnerrors.InternalError("failed to serialize config/env key: %w", err)
 	}
@@ -67,14 +67,14 @@ func NewFromConfig(ctx context.Context, config *HostConfig) (K8sRuntime, error) 
 	defer runtimeCache.mu.Unlock()
 
 	if _, ok := runtimeCache.cache[key]; !ok {
-		cli, err := client.NewClientFromHostEnv(ctx, config.hostEnv)
+		cli, err := client.NewClient(ctx, config)
 		if err != nil {
 			return K8sRuntime{}, err
 		}
 
 		runtimeCache.cache[key] = K8sRuntime{
 			cli,
-			boundEnv{config.ws, config.env, config.hostEnv, moduleNamespace(config.ws, config.env)},
+			boundEnv{config, moduleNamespace(config.Workspace, config.Env)},
 		}
 	}
 
@@ -84,12 +84,11 @@ func NewFromConfig(ctx context.Context, config *HostConfig) (K8sRuntime, error) 
 }
 
 func New(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (K8sRuntime, error) {
-	hostEnv, err := client.ComputeHostEnv(devHost, env)
+	hostConfig, err := client.ComputeHostConfig(ws, devHost, env)
 	if err != nil {
 		return K8sRuntime{}, err
 	}
 
-	hostConfig := &HostConfig{ws: ws, devHost: devHost, env: env, hostEnv: hostEnv}
 	return NewFromConfig(ctx, hostConfig)
 }
 
@@ -123,8 +122,8 @@ func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 		Resource:    "namespaces",
 		Name:        r.moduleNamespace,
 		Body: applycorev1.Namespace(r.moduleNamespace).
-			WithLabels(kubedef.MakeLabels(r.env, nil)).
-			WithAnnotations(kubedef.MakeAnnotations(r.env, nil)),
+			WithLabels(kubedef.MakeLabels(r.host.Env, nil)).
+			WithAnnotations(kubedef.MakeAnnotations(r.host.Env, nil)),
 	}).ToDefinition()
 	if err != nil {
 		return nil, err
