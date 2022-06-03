@@ -33,7 +33,10 @@ func ParseBuildID(v string) (BuildID, error) {
 	}
 }
 
-func (b BuildID) String() string {
+func (b *BuildID) String() string {
+	if b == nil {
+		return ""
+	}
 	if b.Suffix != "" {
 		return fmt.Sprintf("%s-%s", b.Version, b.Suffix)
 	}
