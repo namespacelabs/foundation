@@ -21,18 +21,22 @@ func (r Unbound) SystemInfo(ctx context.Context) (*kubedef.SystemInfo, error) {
 	})
 }
 
-func (r Unbound) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
-	if r.host.Env.Purpose == schema.Environment_PRODUCTION {
-		// XXX make this configurable.
-		return parsePlatforms([]string{"linux/amd64", "linux/arm64"})
-	}
-
+func (r Unbound) UnmatchedTargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
 	sysInfo, err := r.SystemInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	return parsePlatforms(sysInfo.NodePlatform)
+}
+
+func (r K8sRuntime) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
+	if r.env.Purpose == schema.Environment_PRODUCTION {
+		// XXX make this configurable.
+		return parsePlatforms([]string{"linux/amd64", "linux/arm64"})
+	}
+
+	return r.UnmatchedTargetPlatforms(ctx)
 }
 
 func parsePlatforms(plats []string) ([]specs.Platform, error) {

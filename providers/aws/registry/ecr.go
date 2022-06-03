@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -33,7 +34,7 @@ var _ registry.Manager = ecrManager{}
 
 func Register() {
 	registry.Register("aws/ecr", func(ctx context.Context, env ops.Environment) (m registry.Manager, finalErr error) {
-		sesh, profile, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), env.Proto())
+		sesh, profile, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 		if err != nil {
 			return nil, err
 		}

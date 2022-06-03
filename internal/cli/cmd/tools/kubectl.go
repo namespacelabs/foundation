@@ -23,7 +23,7 @@ func newKubeCtlCmd() *cobra.Command {
 	}
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
-		k8s, err := kubernetes.New(ctx, env.DevHost(), env.Proto())
+		k8s, err := kubernetes.NewFromEnv(ctx, env)
 		if err != nil {
 			return err
 		}
@@ -33,7 +33,7 @@ func newKubeCtlCmd() *cobra.Command {
 			return err
 		}
 
-		k8sconfig := k8s.Bind(env.Workspace()).KubeConfig()
+		k8sconfig := k8s.Bind(env.Workspace(), env.Proto()).KubeConfig()
 		kubectl := exec.CommandContext(ctx, string(kubectlBin),
 			append([]string{
 				"--kubeconfig=" + k8sconfig.Config,

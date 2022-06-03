@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/go-ids"
 )
@@ -81,7 +82,7 @@ func (k k8stools) HostPlatform(ctx context.Context) (specs.Platform, error) {
 		return specs.Platform{}, err
 	}
 
-	platforms, err := k8s.TargetPlatforms(ctx)
+	platforms, err := k8s.UnmatchedTargetPlatforms(ctx)
 	if err != nil {
 		return specs.Platform{}, err
 	}
@@ -107,7 +108,7 @@ func (k8stools) k8s(ctx context.Context) (kubernetes.Unbound, provision.Env, err
 		return kubernetes.Unbound{}, provision.Env{}, err
 	}
 
-	k, err := kubernetes.New(ctx, env.DevHost(), env.Proto())
+	k, err := kubernetes.New(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 	if err != nil {
 		return kubernetes.Unbound{}, provision.Env{}, err
 	}

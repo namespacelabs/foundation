@@ -6,7 +6,6 @@ package aws
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -16,10 +15,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
-func ConfiguredSessionV1(ctx context.Context, devHost *schema.DevHost, env *schema.Environment) (*session.Session, string, error) {
+func ConfiguredSessionV1(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*session.Session, string, error) {
 	conf := &Conf{}
-	if !devhost.ConfigurationForEnvParts(devHost, env).Get(conf) {
-		return nil, "", fnerrors.UsageError(fmt.Sprintf("Run `fn prepare --env=%s`.", env.GetName()), "Foundation has not been configured to access AWS.")
+
+	if !selector.Select(devHost).Get(conf) {
+		return nil, "", fnerrors.UsageError("Run `fn prepare`.", "Foundation has not been configured to access AWS.")
 	}
 
 	profile := conf.Profile
@@ -31,10 +31,10 @@ func ConfiguredSessionV1(ctx context.Context, devHost *schema.DevHost, env *sche
 	return sess, profile, err
 }
 
-func ConfiguredSession(ctx context.Context, devHost *schema.DevHost, env *schema.Environment) (aws.Config, string, error) {
+func ConfiguredSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (aws.Config, string, error) {
 	conf := &Conf{}
-	if !devhost.ConfigurationForEnvParts(devHost, env).Get(conf) {
-		return aws.Config{}, "", fnerrors.UsageError(fmt.Sprintf("Run `fn prepare --env=%s`.", env.GetName()), "Foundation has not been configured to access AWS.")
+	if !selector.Select(devHost).Get(conf) {
+		return aws.Config{}, "", fnerrors.UsageError("Run `fn prepare`.", "Foundation has not been configured to access AWS.")
 	}
 
 	profile := conf.Profile

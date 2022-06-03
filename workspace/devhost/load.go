@@ -101,27 +101,7 @@ func (conf ConfSlice) WithoutConstraints() []*schema.DevHost_ConfigureEnvironmen
 }
 
 func ConfigurationForEnv(env ops.Environment) ConfSlice {
-	return ConfigurationForEnvParts(env.DevHost(), env.Proto())
-}
-
-func ConfigurationForEnvParts(devHost *schema.DevHost, env *schema.Environment) ConfSlice {
-	var slice ConfSlice
-
-	for _, cfg := range devHost.GetConfigure() {
-		if cfg.Purpose != 0 && cfg.Purpose != env.GetPurpose() {
-			continue
-		}
-		if cfg.Runtime != "" && cfg.Runtime != env.GetRuntime() {
-			continue
-		}
-		if cfg.Name != "" && cfg.Name != env.GetName() {
-			continue
-		}
-
-		slice.merged = append(slice.merged, cfg)
-	}
-
-	return slice
+	return Select(env.DevHost(), ByEnvironment(env.Proto()))
 }
 
 func PlatformConf(devHost *schema.DevHost, platform specs.Platform) PlatformConfSlice {

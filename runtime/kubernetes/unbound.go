@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -30,8 +31,12 @@ func NewFromConfig(ctx context.Context, config *client.HostConfig) (Unbound, err
 	return Unbound{cli, config}, nil
 }
 
-func New(ctx context.Context, devHost *schema.DevHost, env *schema.Environment) (Unbound, error) {
-	hostConfig, err := client.ComputeHostConfig(devHost, env)
+func NewFromEnv(ctx context.Context, env runtime.Selector) (Unbound, error) {
+	return New(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+}
+
+func New(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (Unbound, error) {
+	hostConfig, err := client.ComputeHostConfig(devHost, selector)
 	if err != nil {
 		return Unbound{}, err
 	}
@@ -39,8 +44,8 @@ func New(ctx context.Context, devHost *schema.DevHost, env *schema.Environment) 
 	return NewFromConfig(ctx, hostConfig)
 }
 
-func (u Unbound) Bind(ws *schema.Workspace) K8sRuntime {
-	return K8sRuntime{Unbound: u, moduleNamespace: moduleNamespace(ws, u.host.Env)}
+func (u Unbound) Bind(ws *schema.Workspace, env *schema.Environment) K8sRuntime {
+	return K8sRuntime{Unbound: u, moduleNamespace: moduleNamespace(ws, env)}
 }
 
 func (r Unbound) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {

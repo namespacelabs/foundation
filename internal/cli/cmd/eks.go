@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 func NewEksCmd() *cobra.Command {
@@ -33,7 +34,7 @@ func NewEksCmd() *cobra.Command {
 		Short: "Sets up IRSA for the specified IAM role and Service Account.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env provision.Env, args []string) error {
-		eksCluster, err := eks.PrepareClusterInfo(ctx, env)
+		eksCluster, err := eks.PrepareClusterInfo(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 		if err != nil {
 			return err
 		}
@@ -97,7 +98,7 @@ func NewEksCmd() *cobra.Command {
 		Short: "Generates a EKS session token.",
 		Args:  cobra.ExactArgs(1),
 	}, func(ctx context.Context, env provision.Env, args []string) error {
-		token, gen, err := eks.ComputeToken(ctx, env.DevHost(), env.Proto(), args[0])
+		token, gen, err := eks.ComputeToken(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()), args[0])
 		if err != nil {
 			return err
 		}

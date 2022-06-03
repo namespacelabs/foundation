@@ -29,8 +29,8 @@ import (
 )
 
 type manager struct {
-	devHost *schema.DevHost
-	env     *schema.Environment
+	devHost  *schema.DevHost
+	selector devhost.Selector
 }
 
 var _ registry.Manager = manager{}
@@ -39,7 +39,7 @@ var DefaultKeychain oci.Keychain = defaultKeychain{}
 
 func Register() {
 	registry.Register("gcp/artifactregistry", func(ctx context.Context, env ops.Environment) (m registry.Manager, finalErr error) {
-		return manager{devHost: env.DevHost(), env: env.Proto()}, nil
+		return manager{devHost: env.DevHost(), selector: devhost.ByEnvironment(env.Proto())}, nil
 	})
 }
 
@@ -72,7 +72,7 @@ func (em manager) RefreshAuth(ctx context.Context) ([]*dockertypes.AuthConfig, e
 	}
 
 	conf := &gcp.ArtifactRegistryConf{}
-	if !devhost.ConfigurationForEnvParts(em.devHost, em.env).Get(conf) {
+	if !em.selector.Select(em.devHost).Get(conf) {
 		return nil, nil
 	}
 

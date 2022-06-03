@@ -12,10 +12,12 @@ import (
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	fnschema "namespacelabs.dev/foundation/schema"
 )
 
 type K8sRuntime struct {
 	Unbound
+	env             *fnschema.Environment
 	moduleNamespace string
 }
 

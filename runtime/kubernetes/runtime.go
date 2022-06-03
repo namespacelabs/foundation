@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"sigs.k8s.io/yaml"
 )
@@ -31,11 +32,11 @@ var (
 
 func Register() {
 	runtime.Register("kubernetes", func(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (runtime.Runtime, error) {
-		unbound, err := New(ctx, devHost, env)
+		unbound, err := New(ctx, devHost, devhost.ByEnvironment(env))
 		if err != nil {
 			return nil, err
 		}
-		return unbound.Bind(ws), nil
+		return unbound.Bind(ws, env), nil
 	})
 
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
@@ -64,8 +65,8 @@ func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 		Resource:    "namespaces",
 		Name:        r.moduleNamespace,
 		Body: applycorev1.Namespace(r.moduleNamespace).
-			WithLabels(kubedef.MakeLabels(r.host.Env, nil)).
-			WithAnnotations(kubedef.MakeAnnotations(r.host.Env, nil)),
+			WithLabels(kubedef.MakeLabels(r.env, nil)).
+			WithAnnotations(kubedef.MakeAnnotations(r.env, nil)),
 	}).ToDefinition()
 	if err != nil {
 		return nil, err

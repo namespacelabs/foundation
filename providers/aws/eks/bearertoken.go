@@ -10,11 +10,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"sigs.k8s.io/aws-iam-authenticator/pkg/token"
 )
 
-func ComputeToken(ctx context.Context, devHost *schema.DevHost, env *schema.Environment, name string) (token.Token, token.Generator, error) {
-	sess, _, err := aws.ConfiguredSessionV1(ctx, devHost, env)
+func ComputeToken(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector, name string) (token.Token, token.Generator, error) {
+	sess, _, err := aws.ConfiguredSessionV1(ctx, devHost, selector)
 	if err != nil {
 		return token.Token{}, nil, err
 	}

@@ -8,13 +8,14 @@ import (
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 type HostConfig struct {
-	DevHost *fnschema.DevHost
-	Env     *fnschema.Environment
-	HostEnv *HostEnv
+	DevHost  *fnschema.DevHost
+	Selector devhost.Selector
+	HostEnv  *HostEnv
 
 	registry *registry.Registry
 }
@@ -31,9 +32,9 @@ func NewHostConfig(contextName string, env ops.Environment, options ...func(*Hos
 	}
 
 	config := &HostConfig{
-		DevHost: env.DevHost(),
-		Env:     env.Proto(),
-		HostEnv: hostEnv,
+		DevHost:  env.DevHost(),
+		Selector: devhost.ByEnvironment(env.Proto()),
+		HostEnv:  hostEnv,
 	}
 
 	for _, option := range options {

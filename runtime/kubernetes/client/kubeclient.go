@@ -66,8 +66,8 @@ func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*restclien
 func NewClient(ctx context.Context, host *HostConfig) (*k8s.Clientset, error) {
 	keyBytes, err := json.Marshal(struct {
 		C *HostEnv
-		E *schema.Environment
-	}{host.HostEnv, host.Env})
+		S string
+	}{host.HostEnv, host.Selector.HashKey()})
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to serialize config/env key: %w", err)
 	}
@@ -149,7 +149,7 @@ func ResolveConfig(ctx context.Context, env ops.Environment) (*restclient.Config
 		return NewRestConfigFromHostEnv(ctx, cfg)
 	}
 
-	cfg, err := ComputeHostConfig(env.DevHost(), env.Proto())
+	cfg, err := ComputeHostConfig(env.DevHost(), devhost.ByEnvironment(env.Proto()))
 	if err != nil {
 		return nil, err
 	}
@@ -157,12 +157,12 @@ func ResolveConfig(ctx context.Context, env ops.Environment) (*restclient.Config
 	return NewRestConfigFromHostEnv(ctx, cfg)
 }
 
-func ComputeHostConfig(devHost *schema.DevHost, env *schema.Environment) (*HostConfig, error) {
-	cfg := devhost.ConfigurationForEnvParts(devHost, env)
+func ComputeHostConfig(devHost *schema.DevHost, selector devhost.Selector) (*HostConfig, error) {
+	cfg := devhost.Select(devHost, selector)
 
 	hostEnv := &HostEnv{}
 	if !cfg.Get(hostEnv) {
-		return nil, fnerrors.UserError(nil, "%s: no kubernetes runtime configuration available", env.Name)
+		return nil, fnerrors.UserError(nil, "%s: no kubernetes runtime configuration available", selector.Description())
 	}
 
 	var err error
@@ -171,5 +171,5 @@ func ComputeHostConfig(devHost *schema.DevHost, env *schema.Environment) (*HostC
 		return nil, fnerrors.InternalError("failed to expand %q", hostEnv.Kubeconfig)
 	}
 
-	return &HostConfig{DevHost: devHost, Env: env, HostEnv: hostEnv}, nil
+	return &HostConfig{DevHost: devHost, Selector: selector, HostEnv: hostEnv}, nil
 }

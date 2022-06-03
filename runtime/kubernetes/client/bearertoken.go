@@ -11,6 +11,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -19,8 +20,8 @@ var (
 )
 
 type ConfigKey struct {
-	DevHost *schema.DevHost
-	Env     *schema.Environment
+	DevHost  *schema.DevHost
+	Selector devhost.Selector
 }
 
 func RegisterBearerTokenProvider(name string, provider func(context.Context, *ConfigKey) (string, error)) {
@@ -39,7 +40,7 @@ func computeBearerToken(ctx context.Context, cfg *HostConfig, out *rest.Config) 
 
 	token, err := compute.GetValue[string](ctx, &cachedToken{
 		providerName: cfg.HostEnv.BearerTokenProvider,
-		configKey:    &ConfigKey{DevHost: cfg.DevHost, Env: cfg.Env},
+		configKey:    &ConfigKey{DevHost: cfg.DevHost, Selector: cfg.Selector},
 		provider:     provider,
 	})
 	if err != nil {
@@ -66,7 +67,7 @@ func (t *cachedToken) Action() *tasks.ActionEvent {
 	return tasks.Action("kubernetes.compute-bearer-token").Arg("provider", t.providerName)
 }
 func (t *cachedToken) Inputs() *compute.In {
-	return compute.Inputs().Str("provider", t.providerName).Proto("devhost", t.configKey.DevHost).Proto("env", t.configKey.Env)
+	return compute.Inputs().Str("provider", t.providerName).Proto("devhost", t.configKey.DevHost)
 }
 func (t *cachedToken) Output() compute.Output { return compute.Output{NotCacheable: true} }
 func (t *cachedToken) Compute(ctx context.Context, _ compute.Resolved) (string, error) {

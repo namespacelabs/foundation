@@ -117,9 +117,9 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", server.Image)
 	}
 
-	c, ok := constants[r.host.Env.Purpose]
+	c, ok := constants[r.env.Purpose]
 	if !ok {
-		return fnerrors.InternalError("%s: no constants configured", r.host.Env.Name)
+		return fnerrors.InternalError("%s: no constants configured", r.env.Name)
 	}
 
 	kubepkg, err := srv.Env().LoadByName(ctx, kubeNode)
@@ -196,10 +196,10 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		// Controllers are environment agnostic (deployed in a single global namespace).
 		labels = kubedef.MakeLabels(nil, srv.Proto())
 	} else {
-		labels = kubedef.MakeLabels(r.host.Env, srv.Proto())
+		labels = kubedef.MakeLabels(r.env, srv.Proto())
 	}
 
-	annotations := kubedef.MakeAnnotations(r.host.Env, srv.StackEntry())
+	annotations := kubedef.MakeAnnotations(r.env, srv.StackEntry())
 
 	if opts.focus.Includes(srv.PackageName()) {
 		labels = kubedef.WithFocusMark(labels)
@@ -441,7 +441,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
 	// Controllers are excluded here as they run as singletons in a global namespace.
-	if r.host.Env.Purpose == schema.Environment_TESTING && !controller.IsController(srv.PackageName()) {
+	if r.env.Purpose == schema.Environment_TESTING && !controller.IsController(srv.PackageName()) {
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server",
 			Resource:    "pods",
@@ -568,7 +568,7 @@ func (r K8sRuntime) deployEndpoint(ctx context.Context, server runtime.ServerCon
 			Name:        endpoint.AllocatedName,
 			Body: applycorev1.
 				Service(endpoint.AllocatedName, ns).
-				WithLabels(kubedef.MakeServiceLabels(r.host.Env, t.Proto(), endpoint)).
+				WithLabels(kubedef.MakeServiceLabels(r.env, t.Proto(), endpoint)).
 				WithAnnotations(serviceAnnotations).
 				WithSpec(serviceSpec),
 		})
