@@ -30,9 +30,14 @@ import (
 type KubeconfigProvider interface {
 	GetKubeconfig() string
 	GetContext() string
+	GetIncluster() bool
 }
 
 func NewRestConfigFromHostEnv(cfg KubeconfigProvider) (*restclient.Config, error) {
+	if cfg.GetIncluster() {
+		return restclient.InClusterConfig()
+	}
+
 	if cfg.GetKubeconfig() == "" {
 		return nil, fnerrors.New("hostEnv.Kubeconfig is required")
 	}
