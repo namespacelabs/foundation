@@ -232,7 +232,7 @@ func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error
 		}
 	}
 
-	if needGatewayCount > 0 && !sealed.HasDep(gatewayNode) {
+	if runtime.UseGoInternalGrpcGateway && needGatewayCount > 0 && !sealed.HasDep(gatewayNode) {
 		return fnerrors.UserError(sealed.Location, "server exposes gRPC services as HTTP, it must depend on %s", gatewayNode)
 	}
 
@@ -266,30 +266,6 @@ func packageFrom(loc workspace.Location) (string, error) {
 }
 
 func (impl) FillEndpoint(n *schema.Node, e *schema.Endpoint) error {
-	for _, exported := range n.ExportService {
-		details, err := anypb.New(exported)
-		if err != nil {
-			return err
-		}
-		e.ServiceMetadata = append(e.ServiceMetadata, &schema.ServiceMetadata{
-			Kind:     exported.ProtoTypename,
-			Protocol: schema.GrpcProtocol,
-			Details:  details,
-		})
-
-		if n.ExportServicesAsHttp {
-			details, err := anypb.New(&schema.GrpcExportService{ProtoTypename: exported.ProtoTypename})
-			if err != nil {
-				return err
-			}
-
-			e.ServiceMetadata = append(e.ServiceMetadata, &schema.ServiceMetadata{
-				Kind:    runtime.KindNeedsGrpcGateway,
-				Details: details,
-			})
-		}
-	}
-
 	// Don't set protocol to avoid confusing ingress computation.
 	// XXX this is now deprecated.
 	metadata, err := toServiceMetadata([][2]string{{"/metrics", "prometheus.io/metrics"}}, "")

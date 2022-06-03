@@ -19,15 +19,9 @@ import (
 )
 
 const (
-	// XXX this is not quite right; it's just a simple mechanism for language and runtime
-	// to communicate. Ideally the schema would incorporate a gRPC map.
-	KindNeedsGrpcGateway = "needs-grpc-gateway"
-
-	HttpServiceName        = "http"
-	GrpcGatewayServiceName = "grpc-gateway"
-	GrpcGatewayServiceKind = "grpc-gateway"
-	IngressServiceName     = "ingress"
-	IngressServiceKind     = "ingress"
+	HttpServiceName    = "http"
+	IngressServiceName = "ingress"
+	IngressServiceKind = "ingress"
 
 	ManualInternalService = "internal-service"
 )
@@ -67,6 +61,31 @@ func computeServiceEndpoint(server *schema.Server, n *schema.Node, t schema.Endp
 
 	if slices.Contains(reservedServiceNames, endpoint.ServiceName) {
 		return nil, fnerrors.InternalError("%s: %q is a reserved service name", n.PackageName, endpoint.ServiceName)
+	}
+
+	for _, exported := range n.ExportService {
+		details, err := anypb.New(exported)
+		if err != nil {
+			return nil, err
+		}
+
+		endpoint.ServiceMetadata = append(endpoint.ServiceMetadata, &schema.ServiceMetadata{
+			Kind:     exported.ProtoTypename,
+			Protocol: schema.GrpcProtocol,
+			Details:  details,
+		})
+
+		if n.ExportServicesAsHttp {
+			details, err := anypb.New(&schema.GrpcExportService{ProtoTypename: exported.ProtoTypename})
+			if err != nil {
+				return nil, err
+			}
+
+			endpoint.ServiceMetadata = append(endpoint.ServiceMetadata, &schema.ServiceMetadata{
+				Kind:    kindNeedsGrpcGateway,
+				Details: details,
+			})
+		}
 	}
 
 	if f, ok := supportByFramework[server.Framework.String()]; ok {
@@ -125,7 +144,7 @@ func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocate
 	var publicGateway bool
 	for _, endpoint := range endpoints {
 		for _, md := range endpoint.ServiceMetadata {
-			if md.Kind == KindNeedsGrpcGateway {
+			if md.Kind == kindNeedsGrpcGateway {
 				exported := &schema.GrpcExportService{}
 				if err := md.Details.UnmarshalTo(exported); err != nil {
 					return nil, nil, err
@@ -170,53 +189,21 @@ func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocate
 	gatewayServices = slices.Compact(gatewayServices)
 
 	if len(gatewayServices) > 0 {
-		var gwPort *schema.Endpoint_Port
-		for _, port := range serverPorts {
-			if port.Name == "grpc-gateway-port" {
-				gwPort = port
-				break
+		switch server.Framework {
+		case schema.Framework_GO_GRPC:
+			if UseGoInternalGrpcGateway {
+				gwEndpoint, err := makeGrpcGatewayEndpoint(sch.Server, serverPorts, gatewayServices, publicGateway)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				// We need a http service to hit.
+				endpoints = append(endpoints, gwEndpoint)
 			}
-		}
 
-		// This entrypoint is otherwise open to any caller, so follow the same
-		// policy for browser-based requests.
-		cors := &schema.HttpCors{Enabled: true, AllowedOrigin: []string{"*"}}
-		packedCors, err := anypb.New(cors)
-		if err != nil {
-			return nil, nil, fnerrors.UserError(nil, "failed to pack CORS' configuration: %v", err)
+		default:
+			return nil, nil, fnerrors.New("server includes grpc gateway requirements, but it's not of a supported framework")
 		}
-
-		urlMap := &schema.HttpUrlMap{}
-		for _, svc := range gatewayServices {
-			urlMap.Entry = append(urlMap.Entry, &schema.HttpUrlMap_Entry{
-				PathPrefix: fmt.Sprintf("/%s/", svc),
-				Kind:       GrpcGatewayServiceKind,
-			})
-		}
-		packedUrlMap, err := anypb.New(urlMap)
-		if err != nil {
-			return nil, nil, fnerrors.InternalError("failed to marshal url map: %w", err)
-		}
-
-		gwEndpoint := &schema.Endpoint{
-			Type:          schema.Endpoint_PRIVATE,
-			ServiceName:   GrpcGatewayServiceName,
-			Port:          gwPort,
-			AllocatedName: grpcGatewayName(sch.Server),
-			EndpointOwner: sch.Server.GetPackageName(),
-			ServerOwner:   sch.Server.GetPackageName(),
-			ServiceMetadata: []*schema.ServiceMetadata{
-				{Protocol: "http", Details: packedUrlMap},
-				{Protocol: "http", Kind: "http-extension", Details: packedCors},
-			},
-		}
-
-		if publicGateway {
-			gwEndpoint.Type = schema.Endpoint_INTERNET_FACING
-		}
-
-		// We need a http service to hit.
-		endpoints = append(endpoints, gwEndpoint)
 	}
 
 	var internal []*schema.InternalEndpoint
@@ -230,10 +217,6 @@ func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocate
 	}
 
 	return endpoints, internal, nil
-}
-
-func grpcGatewayName(srv *schema.Server) string {
-	return GrpcGatewayServiceName + "-" + srv.Id
 }
 
 func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]DeferredIngress, error) {

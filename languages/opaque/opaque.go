@@ -21,7 +21,6 @@ import (
 
 func Register() {
 	languages.Register(schema.Framework_OPAQUE, impl{})
-	runtime.RegisterSupport(schema.Framework_OPAQUE, impl{})
 }
 
 type impl struct {
@@ -98,18 +97,10 @@ func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *worksp
 	return nil
 }
 
-func (impl) FillEndpoint(*schema.Node, *schema.Endpoint) error {
-	return nil
-}
-
 func (impl) DevelopmentPackages() []schema.PackageName {
 	return nil
 }
 
 func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
 	return frontend.ProvisionStack{}, nil
-}
-
-func (impl) InternalEndpoints(*schema.Environment, *schema.Server, []*schema.Endpoint_Port) ([]*schema.InternalEndpoint, error) {
-	return nil, nil
 }

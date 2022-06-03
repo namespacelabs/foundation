@@ -16,16 +16,13 @@ import (
 	"github.com/gorilla/mux"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/automaxprocs/maxprocs"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/go/grpc/client"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/http/middleware"
 )
@@ -34,7 +31,6 @@ var (
 	listenHostname = flag.String("listen_hostname", "localhost", "Hostname to listen on.")
 	port           = flag.Int("port", 0, "Port to listen on.")
 	httpPort       = flag.Int("http_port", 0, "Port to listen HTTP on.")
-	gatewayPort    = flag.Int("gateway_port", 0, "Port to listen gRPC Gateway on.")
 )
 
 func ListenPort() int { return *port }
@@ -89,8 +85,8 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 	core.RegisterDebugEndpoints(debugMux)
 
 	debugHTTP := &http.Server{Handler: debugMux}
-	go func() { listen("http/debug", debugHTTP.Serve(httpL)) }()
-	go func() { listen("grpc", grpcServer.Serve(anyL)) }()
+	go func() { checkReturn("http/debug", debugHTTP.Serve(httpL)) }()
+	go func() { checkReturn("grpc", grpcServer.Serve(anyL)) }()
 
 	if *httpPort != 0 {
 		httpServer := &http.Server{Handler: httpMux}
@@ -102,32 +98,11 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 
 		core.Log.Printf("Starting HTTP listen on %v", gwLis.Addr())
 
-		go func() { listen("http", httpServer.Serve(gwLis)) }()
+		go func() { checkReturn("http", httpServer.Serve(gwLis)) }()
 	}
 
-	if *gatewayPort != 0 {
-		loopback, err := client.Dial(context.Background(), fmt.Sprintf("127.0.0.1:%d", *port), grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			return fmt.Errorf("grpc-gateway loopback connection failed: %w", err)
-		}
-
-		gatewayMux := runtime.NewServeMux()
-		for _, f := range s.gatewayRegistrations {
-			if err := f(ctx, gatewayMux, loopback); err != nil {
-				return fmt.Errorf("grpc-gateway registration failed: %w", err)
-			}
-		}
-
-		httpServer := &http.Server{Handler: gatewayMux}
-
-		gwLis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *listenHostname, *gatewayPort))
-		if err != nil {
-			return err
-		}
-
-		core.Log.Printf("Starting gRPC gateway listen on %v", gwLis.Addr())
-
-		go func() { listen("grpc-gateway", httpServer.Serve(gwLis)) }()
+	if err := setupGrpcGateway(ctx, s.gatewayRegistrations); err != nil {
+		return err
 	}
 
 	return m.Serve()
@@ -142,7 +117,7 @@ func interceptorsAsOpts() []grpc.ServerOption {
 	}
 }
 
-func listen(what string, err error) {
+func checkReturn(what string, err error) {
 	if err != nil {
 		core.Log.Fatalf("%s: serving failed: %v", what, err)
 	}
