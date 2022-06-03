@@ -153,12 +153,12 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 			Statement: []fniam.StatementEntry{
 				{
 					Effect:   "Allow",
-					Action:   []string{"s3:ListBucket"},
+					Action:   []string{"s3:*"},
 					Resource: buckets,
 				},
 				{
 					Effect:   "Allow",
-					Action:   []string{"s3:*Object"},
+					Action:   []string{"s3:*"},
 					Resource: bucketsWildcard,
 				},
 			},

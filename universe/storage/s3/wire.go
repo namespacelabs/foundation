@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"google.golang.org/protobuf/encoding/protojson"
+	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/universe/aws/client"
 	fns3 "namespacelabs.dev/foundation/universe/aws/s3"
 	devs3 "namespacelabs.dev/foundation/universe/development/localstack/s3"
@@ -91,12 +92,16 @@ func createClient(ctx context.Context, factory client.ClientFactory, minioCreds 
 		})
 	}
 
-	loadOptFns := [](func(*config.LoadOptions) error){}
-	optFns := [](func(*s3.Options)){}
+	var loadOptFns [](func(*config.LoadOptions) error)
+	var optFns [](func(*s3.Options))
+
+	loadOptFns = append(loadOptFns, config.WithRegion(region))
 
 	var cfg aws.Config
 	var err error
 	if *minioEndpoint != "" {
+		core.Log.Printf("[storage/s3] creating minio client: %s", *minioEndpoint)
+
 		resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 			return aws.Endpoint{
 				PartitionID:   "aws",
@@ -104,19 +109,29 @@ func createClient(ctx context.Context, factory client.ClientFactory, minioCreds 
 				SigningRegion: region,
 			}, nil
 		})
+
 		loadOptFns = append(loadOptFns,
 			config.WithEndpointResolverWithOptions(resolver),
 			config.WithCredentialsProvider(credProvider{minioCreds: minioCreds}))
+
 		optFns = append(optFns, func(o *s3.Options) {
 			o.UsePathStyle = true
 		})
-		cfg, err = factory.NewWithCustomCreds(ctx, append(loadOptFns, config.WithRegion(region))...)
+
+		cfg, err = factory.New(ctx, loadOptFns...)
 	} else {
-		cfg, err = factory.New(ctx, append(loadOptFns, config.WithRegion(region))...)
+		cfg, err = factory.NewWithCreds(ctx, loadOptFns...)
 	}
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Verify we can retrieve credentials. Had a weird failure previously, where
+	// the lack of credentials still led to requests being signed, but without
+	// access key.
+	if _, err := cfg.Credentials.Retrieve(ctx); err != nil {
+		return nil, fmt.Errorf("failed to retrieve credentials: %w", err)
 	}
 
 	return s3.NewFromConfig(cfg, optFns...), nil

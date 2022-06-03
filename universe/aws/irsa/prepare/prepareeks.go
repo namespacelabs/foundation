@@ -102,7 +102,7 @@ func (provisionHook) Apply(ctx context.Context, r configure.StackRequest, out *c
 				Condition: &fniam.Condition{
 					StringEquals: []fniam.Condition_KeyValue{
 						{Key: fmt.Sprintf("%s:aud", oidcProvider), Value: "sts.amazonaws.com"},
-						{Key: fmt.Sprintf("%s:sub", oidcProvider), Value: fmt.Sprintf("system:serviceaccount:%s:%s", namespace, serviceAccount)},
+						{Key: fmt.Sprintf("%s:sub", oidcProvider), Value: fmt.Sprintf("system:serviceaccount:%s:%s", namespace, serviceAccount.ServiceAccountName)},
 					},
 				},
 			},

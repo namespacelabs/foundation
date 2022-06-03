@@ -18,7 +18,7 @@ type AwsConfig struct {
 }
 
 func ProvideBucket(ctx context.Context, bc *BucketConfig, deps ExtensionDeps) (*Bucket, error) {
-	cfg, err := deps.ClientFactory.New(ctx, config.WithRegion(bc.Region))
+	cfg, err := deps.ClientFactory.NewWithCreds(ctx, config.WithRegion(bc.Region))
 	if err != nil {
 		return nil, err
 	}
