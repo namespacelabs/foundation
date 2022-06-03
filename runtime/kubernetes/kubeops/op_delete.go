@@ -53,7 +53,7 @@ func registerDelete() {
 				Body(&opts).
 				Do(ctx).Error()
 		}); err != nil && !errors.IsNotFound(err) {
-			return nil, fnerrors.InvocationError("%s: %w", d.Description, err)
+			return nil, fnerrors.InvocationError("%s: failed to delete: %w", d.Description, err)
 		}
 
 		return nil, nil

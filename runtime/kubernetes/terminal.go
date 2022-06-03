@@ -71,7 +71,7 @@ func (r boundEnv) startTerminal(ctx context.Context, cli *kubernetes.Clientset, 
 
 	if err := exec.Stream(opts); err != nil {
 		if s, ok := err.(*k8serrors.StatusError); ok {
-			return fnerrors.InvocationError("%+v: %w", s.ErrStatus, err)
+			return fnerrors.InvocationError("%+v: failed to start terminal: %w", s.ErrStatus, err)
 		}
 
 		return fnerrors.InvocationError("stream failed: %w", err)
@@ -139,7 +139,7 @@ func (r boundEnv) attachTerminal(ctx context.Context, cli *kubernetes.Clientset,
 
 	if err := exec.Stream(opts); err != nil {
 		if s, ok := err.(*k8serrors.StatusError); ok {
-			return fnerrors.InvocationError("%+v: %w", s.ErrStatus, err)
+			return fnerrors.InvocationError("%+v: failed to attach terminal: %w", s.ErrStatus, err)
 		}
 
 		return fnerrors.InvocationError("stream failed: %w", err)

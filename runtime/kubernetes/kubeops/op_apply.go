@@ -67,7 +67,7 @@ func registerApply() {
 				Body([]byte(apply.BodyJson)).
 				Do(ctx).Into(&res)
 		}); err != nil {
-			return nil, fnerrors.InvocationError("%s: %w", d.Description, err)
+			return nil, fnerrors.InvocationError("%s: failed to apply: %w", d.Description, err)
 		}
 
 		if apply.Namespace == kubedef.AdminNamespace {
