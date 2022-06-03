@@ -32,7 +32,7 @@ func registerDelete() {
 			Arg("resource", delete.Resource).
 			Arg("name", delete.Name).
 			Arg("namespace", delete.Namespace).Run(ctx, func(ctx context.Context) error {
-			restcfg, err := client.ResolveConfig(env)
+			restcfg, err := client.ResolveConfig(ctx, env)
 			if err != nil {
 				return err
 			}

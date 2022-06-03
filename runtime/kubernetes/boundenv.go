@@ -5,22 +5,21 @@
 package kubernetes
 
 import (
+	"context"
+
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	fnschema "namespacelabs.dev/foundation/schema"
 )
 
 type boundEnv struct {
-	ws              *fnschema.Workspace
-	env             *fnschema.Environment
-	hostEnv         *client.HostEnv
+	host            *client.HostConfig
 	moduleNamespace string
 }
 
-func (r boundEnv) makeDefaultConfig() (*rest.Config, error) {
-	config, err := client.NewRestConfigFromHostEnv(r.hostEnv)
+func (r boundEnv) resolveConfig(ctx context.Context) (*rest.Config, error) {
+	config, err := client.NewRestConfigFromHostEnv(ctx, r.host)
 	if err != nil {
 		return nil, err
 	}

@@ -6,7 +6,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 
 	k8s "k8s.io/client-go/kubernetes"
 	tadmissionregistrationv1 "k8s.io/client-go/kubernetes/typed/admissionregistration/v1"
@@ -17,23 +16,16 @@ import (
 	trbacv1 "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/providers/aws/auth"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
-type KubeconfigProvider interface {
-	GetKubeconfig() string
-	GetContext() string
-	GetIncluster() bool
-}
+func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*restclient.Config, error) {
+	cfg := host.HostEnv
 
-func NewRestConfigFromHostEnv(cfg KubeconfigProvider) (*restclient.Config, error) {
 	if cfg.GetIncluster() {
 		return restclient.InClusterConfig()
 	}
@@ -42,52 +34,26 @@ func NewRestConfigFromHostEnv(cfg KubeconfigProvider) (*restclient.Config, error
 		return nil, fnerrors.New("hostEnv.Kubeconfig is required")
 	}
 
-	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+	kubecfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: cfg.GetKubeconfig()},
-		&clientcmd.ConfigOverrides{CurrentContext: cfg.GetContext()}).ClientConfig()
-}
+		&clientcmd.ConfigOverrides{CurrentContext: cfg.GetContext()})
 
-func NewClient(ctx context.Context, cfg KubeconfigProvider, err error) (*k8s.Clientset, error) {
+	computed, err := kubecfg.ClientConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	return NewClientFromHostEnv(ctx, cfg)
-}
-
-func NewClientFromHostEnv(ctx context.Context, cfg KubeconfigProvider) (*k8s.Clientset, error) {
-	config, err := NewRestConfigFromHostEnv(cfg)
-	if err != nil {
+	if err := computeBearerToken(ctx, host, computed); err != nil {
 		return nil, err
 	}
 
-	// If the auth provider is AWS, check for credentials on our side first.
-	// This will allow us to produce a better error message, if the credentials
-	// are out of date. In the future, our AWS integration may also issue tokens,
-	// which amortize this cost.
-	//
-	// This uses an heuristic: if the configuration is setup to use an exec-based
-	// authenticator that is called "aws-iam-authenticator", then we're likely
-	// hitting EKS. But if the user sets up some other authenticator, that's fine,
-	// it still work, but any information
-	if config.ExecProvider != nil && config.ExecProvider.Command == "aws-iam-authenticator" {
-		var profile string
-		for _, kv := range config.ExecProvider.Env {
-			if kv.Name == "AWS_PROFILE" {
-				profile = kv.Value
-			}
-		}
+	return computed, nil
+}
 
-		r, err := auth.ResolveWithProfile(ctx, profile)
-		if err != nil {
-			return nil, fnerrors.Wrap(nil, err)
-		}
-
-		// If we're not able to resolve our own account, then auth is likely needed. The error
-		// will contain user instructions.
-		if _, err := compute.GetValue(ctx, r); err != nil {
-			return nil, fnerrors.Wrap(nil, err)
-		}
+func NewClient(ctx context.Context, host *HostConfig) (*k8s.Clientset, error) {
+	config, err := NewRestConfigFromHostEnv(ctx, host)
+	if err != nil {
+		return nil, err
 	}
 
 	clientset, err := k8s.NewForConfig(config)
@@ -141,26 +107,27 @@ func MakeResourceSpecificClient(resource string, cfg *restclient.Config) (restcl
 	return nil, fnerrors.InternalError("%s: don't know how to construct client", resource)
 }
 
-func ResolveConfig(env ops.Environment) (*restclient.Config, error) {
+func ResolveConfig(ctx context.Context, env ops.Environment) (*restclient.Config, error) {
 	if x, ok := env.(interface {
-		KubeconfigProvider() (KubeconfigProvider, error)
+		KubeconfigProvider() (*HostConfig, error)
 	}); ok {
-		provider, err := x.KubeconfigProvider()
+		cfg, err := x.KubeconfigProvider()
 		if err != nil {
 			return nil, err
 		}
-		return NewRestConfigFromHostEnv(provider)
+
+		return NewRestConfigFromHostEnv(ctx, cfg)
 	}
 
-	cfg, err := ComputeHostEnv(env.DevHost(), env.Proto())
+	cfg, err := ComputeHostConfig(env.Workspace(), env.DevHost(), env.Proto())
 	if err != nil {
 		return nil, err
 	}
 
-	return NewRestConfigFromHostEnv(cfg)
+	return NewRestConfigFromHostEnv(ctx, cfg)
 }
 
-func ComputeHostEnv(devHost *schema.DevHost, env *schema.Environment) (*HostEnv, error) {
+func ComputeHostConfig(ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (*HostConfig, error) {
 	cfg := devhost.ConfigurationForEnvParts(devHost, env)
 
 	hostEnv := &HostEnv{}
@@ -174,26 +141,5 @@ func ComputeHostEnv(devHost *schema.DevHost, env *schema.Environment) (*HostEnv,
 		return nil, fnerrors.InternalError("failed to expand %q", hostEnv.Kubeconfig)
 	}
 
-	return hostEnv, nil
-}
-
-func ConfigFromEnv(ctx context.Context, env ops.Environment) (context.Context, KubeconfigProvider, error) {
-	if x, ok := env.(interface {
-		KubeconfigProvider() (KubeconfigProvider, error)
-	}); ok {
-		p, err := x.KubeconfigProvider()
-		return ctx, p, err
-	}
-	return ConfigFromDevHost(ctx, env.DevHost(), env.Proto())
-}
-
-func ConfigFromDevHost(ctx context.Context, devhost *schema.DevHost, env *schema.Environment) (context.Context, KubeconfigProvider, error) {
-	cfg, err := ComputeHostEnv(devhost, env)
-	if err != nil {
-		return ctx, nil, err
-	}
-
-	fmt.Fprintf(console.Debug(ctx), "kubernetes: using configuration: %+v\n", cfg)
-
-	return ctx, cfg, nil
+	return &HostConfig{Workspace: ws, DevHost: devHost, Env: env, HostEnv: hostEnv}, nil
 }

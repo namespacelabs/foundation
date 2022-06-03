@@ -6,6 +6,7 @@ require (
 	cuelang.org/go v0.4.3
 	filippo.io/age v1.0.0
 	github.com/andybalholm/brotli v1.0.4
+	github.com/aws/aws-sdk-go v1.43.28
 	github.com/aws/aws-sdk-go-v2 v1.16.4
 	github.com/aws/aws-sdk-go-v2/config v1.15.5
 	github.com/aws/aws-sdk-go-v2/credentials v1.12.0
@@ -94,8 +95,6 @@ require (
 	sigs.k8s.io/aws-iam-authenticator v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/yaml v1.3.0
 )
-
-require github.com/aws/aws-sdk-go v1.43.28 // indirect
 
 require (
 	cloud.google.com/go/compute v1.6.1 // indirect

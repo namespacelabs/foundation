@@ -74,7 +74,7 @@ func (r K8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 }
 
 func (r boundEnv) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error {
-	config, err := r.makeDefaultConfig()
+	config, err := r.resolveConfig(ctx)
 	if err != nil {
 		return err
 	}

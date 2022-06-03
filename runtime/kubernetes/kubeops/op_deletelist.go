@@ -35,7 +35,7 @@ func registerDeleteList() {
 			Arg("resource", deleteList.Resource).
 			Arg("selector", deleteList.LabelSelector).
 			Arg("namespace", deleteList.Namespace).Run(ctx, func(ctx context.Context) error {
-			restcfg, err := client.ResolveConfig(env)
+			restcfg, err := client.ResolveConfig(ctx, env)
 			if err != nil {
 				return err
 			}

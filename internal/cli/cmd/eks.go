@@ -14,10 +14,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/provision"
-	"sigs.k8s.io/aws-iam-authenticator/pkg/token"
 )
 
 func NewEksCmd() *cobra.Command {
@@ -97,29 +95,14 @@ func NewEksCmd() *cobra.Command {
 	generateToken := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "generate-token",
 		Short: "Generates a EKS session token.",
-		Args:  cobra.NoArgs,
+		Args:  cobra.ExactArgs(1),
 	}, func(ctx context.Context, env provision.Env, args []string) error {
-		sess, _, err := aws.ConfiguredSessionV1(ctx, env.DevHost(), env.Proto())
+		token, gen, err := eks.ComputeToken(ctx, env.DevHost(), env.Proto(), args[0])
 		if err != nil {
 			return err
 		}
 
-		gen, err := token.NewGenerator(false, false)
-		if err != nil {
-			return fnerrors.New("could not get token: %w", err)
-		}
-
-		tok, err := gen.GetWithOptions(&token.GetTokenOptions{
-			ClusterID:            "matterhorn",
-			AssumeRoleARN:        "", // Keeping these explicitly blank for future expansion.
-			AssumeRoleExternalID: "",
-			Session:              sess,
-		})
-		if err != nil {
-			return fnerrors.New("could not get token: %w", err)
-		}
-
-		fmt.Fprintln(console.Stdout(ctx), gen.FormatJSON(tok))
+		fmt.Fprintln(console.Stdout(ctx), gen.FormatJSON(token))
 		return nil
 	})
 

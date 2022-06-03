@@ -22,7 +22,7 @@ import (
 )
 
 type noPackageEnv struct {
-	hostEnv *client.HostEnv
+	hostConfig *client.HostConfig
 	ops.Environment
 }
 
@@ -35,11 +35,11 @@ func (noPackageEnv) LoadByName(ctx context.Context, packageName schema.PackageNa
 	return nil, fnerrors.New("not supported")
 }
 
-func (p noPackageEnv) KubeconfigProvider() (client.KubeconfigProvider, error) {
-	return p.hostEnv, nil
+func (p noPackageEnv) KubeconfigProvider() (*client.HostConfig, error) {
+	return p.hostConfig, nil
 }
 
-func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*kubernetes.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.ingress").HumanReadablef("Prepare and deploy the Kubernetes ingress controller"),
 		compute.Inputs().Computable("k8sconfig", k8sconfig).Proto("env", env.Proto()),
@@ -62,7 +62,7 @@ func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*kubernete
 				return nil, err
 			}
 
-			waiters, err := g.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{config.ClientHostEnv(), env})
+			waiters, err := g.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{config, env})
 			if err != nil {
 				return nil, err
 			}

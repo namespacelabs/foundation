@@ -47,7 +47,7 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 			continue
 		}
 
-		defs, m, err := ingress.Ensure(ctx, serverNamespace(r.boundEnv, srv.Server), r.env, srv.Server, frags, certSecretMap)
+		defs, m, err := ingress.Ensure(ctx, serverNamespace(r.boundEnv, srv.Server), r.host.Env, srv.Server, frags, certSecretMap)
 		if err != nil {
 			return nil, err
 		}

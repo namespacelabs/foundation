@@ -23,7 +23,7 @@ import (
 )
 
 func (r boundEnv) startTerminal(ctx context.Context, cli *kubernetes.Clientset, server *schema.Server, rio runtime.TerminalIO, cmd []string) error {
-	config, err := r.makeDefaultConfig()
+	config, err := r.resolveConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (r boundEnv) startTerminal(ctx context.Context, cli *kubernetes.Clientset, 
 }
 
 func (r boundEnv) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque kubedef.ContainerPodReference, rio runtime.TerminalIO) error {
-	config, err := r.makeDefaultConfig()
+	config, err := r.resolveConfig(ctx)
 	if err != nil {
 		return err
 	}

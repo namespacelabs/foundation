@@ -11,6 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
@@ -37,19 +38,18 @@ func registerApply() {
 			return nil, fnerrors.InternalError("%s: apply.Body is required", d.Description)
 		}
 
-		scope := schema.PackageNames(d.Scope...)
+		restcfg, err := client.ResolveConfig(ctx, env)
+		if err != nil {
+			return nil, err
+		}
 
+		scope := schema.PackageNames(d.Scope...)
 		var res unstructured.Unstructured
 		if err := tasks.Action("kubernetes.apply").Scope(scope...).
 			HumanReadablef(d.Description).
 			Arg("resource", apply.Resource).
 			Arg("name", apply.Name).
 			Arg("namespace", apply.Namespace).Run(ctx, func(ctx context.Context) error {
-			restcfg, err := client.ResolveConfig(env)
-			if err != nil {
-				return err
-			}
-
 			client, err := client.MakeResourceSpecificClient(apply.Resource, restcfg)
 			if err != nil {
 				return err
@@ -88,8 +88,7 @@ func registerApply() {
 				var waiters []ops.Waiter
 				for _, sc := range scope {
 					w := kobs.WaitOnResource{
-						DevHost:       env.DevHost(),
-						Env:           env.Proto(),
+						RestConfig:    restcfg,
 						Invocation:    d,
 						Namespace:     apply.Namespace,
 						Name:          apply.Name,
@@ -117,7 +116,7 @@ func registerApply() {
 						defer close(ch)
 					}
 
-					cli, err := client.NewClient(client.ConfigFromEnv(ctx, env))
+					cli, err := k8s.NewForConfig(restcfg)
 					if err != nil {
 						return err
 					}
