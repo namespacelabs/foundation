@@ -29,6 +29,10 @@ func prepareDescribeCluster(ctx context.Context, env ops.Environment, srv *schem
 		return nil, err
 	}
 
+	if eksCluster == nil {
+		return nil, nil
+	}
+
 	eksServerDetails := &EKSServerDetails{
 		ComputedIamRoleName: fmt.Sprintf("fn-%s-%s-%s", eksCluster.Name, env.Proto().Name, srv.Id),
 	}
