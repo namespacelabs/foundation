@@ -3,6 +3,7 @@
 // available at http://github.com/namespacelabs/foundation
 
 import { performance } from "perf_hooks";
+import "source-map-support/register";
 import toposort from "toposort";
 
 const maximumInitTimeMs = 10;

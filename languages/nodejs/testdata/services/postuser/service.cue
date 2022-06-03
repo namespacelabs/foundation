@@ -2,6 +2,7 @@ import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
 	"namespacelabs.dev/foundation/std/grpc"
+	nodejsgrpc "namespacelabs.dev/foundation/std/nodejs/grpc"
 )
 
 $proto: inputs.#Proto & {
@@ -14,7 +15,8 @@ service: fn.#Service & {
 	framework: "NODEJS"
 
 	instantiate: {
-		postService: grpc.#Exports.Backend & {
+		grpcRegistrar: nodejsgrpc.#Exports.GrpcRegistrar
+		postService:   grpc.#Exports.Backend & {
 			packageName: "namespacelabs.dev/foundation/languages/nodejs/testdata/services/simple"
 		}
 	}

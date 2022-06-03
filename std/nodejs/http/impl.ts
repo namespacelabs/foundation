@@ -44,7 +44,7 @@ export class HttpServerImpl implements HttpServer {
 	}
 }
 
-let httpServer: Promise<HttpServerImpl> | undefined;
+let httpServer: Promise<HttpServer> | undefined;
 
 export const provideHttpServer = (): Promise<HttpServer> => {
 	if (!httpServer) {

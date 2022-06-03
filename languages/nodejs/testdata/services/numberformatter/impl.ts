@@ -3,12 +3,11 @@
 // available at http://github.com/namespacelabs/foundation
 
 import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
-import { Registrar } from "@namespacelabs/foundation";
 import { ServiceDeps, WireService } from "./deps.fn";
 import { FormatServiceService, IFormatServiceServer } from "./service_grpc_pb";
 import { FormatRequest, FormatResponse } from "./service_pb";
 
-export const wireService: WireService = async (deps: ServiceDeps, registrar: Registrar) => {
+export const wireService: WireService = async (deps: ServiceDeps) => {
 	const bf1 = await deps.batch1;
 	const bf2 = await deps.batch2;
 
@@ -34,5 +33,5 @@ Second instance of the "batchformatter" extension:
 		},
 	};
 
-	registrar.registerGrpcService(FormatServiceService, service);
+	deps.grpcRegistrar.registerGrpcService(FormatServiceService, service);
 };

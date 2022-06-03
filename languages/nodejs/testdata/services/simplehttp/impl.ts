@@ -4,7 +4,7 @@
 
 import { ServiceDeps, WireService } from "./deps.fn";
 
-export const wireService: WireService = async (deps: ServiceDeps): Promise<void> => {
+export const wireService: WireService = async (deps: ServiceDeps) => {
 	const server = await deps.httpServer;
 
 	server.fastify().post("/simple/:userId", async (req) => {

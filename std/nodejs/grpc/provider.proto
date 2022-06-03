@@ -2,4 +2,8 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-export { DependencyGraph, Initializer } from "./depgraph";
+syntax = "proto3";
+
+package std.nodejs.grpc;
+
+message NoArgs {}

@@ -144,7 +144,7 @@ import * as {{.Alias}} from "{{.Package}}";
 			`{{define "Node"}}{{with $opts := .}}// This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundation";
+import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 
 {{- template "Imports" . -}}
 
@@ -160,8 +160,7 @@ import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundati
 {{- if .Service}}
 
 export type WireService = (
-	{{- if .Package.Deps}}deps: {{.Package.Deps.Name}}Deps, {{end -}}
-	registrar: Registrar) => Promise<void>;
+	{{- if .Package.Deps}}deps: {{.Package.Deps.Name}}Deps{{end -}}) => Promise<void>;
 export const wireService: WireService = impl.wireService;
 {{- end}}
 
@@ -174,19 +173,19 @@ export const wireService: WireService = impl.wireService;
 			// Server template
 			`{{define "Server"}}// This file was automatically generated.
 
-import { DependencyGraph, Initializer, Server } from "@namespacelabs/foundation";
+import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 
 {{- template "Imports" . -}}
+import {provideGrpcRegistrar, GrpcServer} from "@namespacelabs.dev-foundation/std-nodejs-grpc/impl"
 import {provideHttpServer, HttpServerImpl} from "@namespacelabs.dev-foundation/std-nodejs-http/impl"
 
 // Returns a list of initialization errors.
-const wireServices = async (server: Server, graph: DependencyGraph): Promise<unknown[]> => {
+const wireServices = async (graph: DependencyGraph): Promise<unknown[]> => {
 	const errors: unknown[] = [];
 {{- range $.Services}}
 	try {
 		await {{.Type.ImportAlias}}.wireService(
-			{{- if .HasDeps}}{{.Type.ImportAlias}}.Package.instantiateDeps(graph), {{ end -}}
-			server);
+			{{- if .HasDeps}}{{.Type.ImportAlias}}.Package.instantiateDeps(graph){{ end -}});
 	} catch (e) {
 		errors.push(e);
 	}
@@ -201,17 +200,16 @@ const TransitiveInitializers: Initializer[] = [
 ];
 
 async function main() {
-	const server = new Server();
 	const graph = new DependencyGraph();
 	await graph.runInitializers(TransitiveInitializers);
-	const errors = await wireServices(server, graph);
+	const errors = await wireServices(graph);
 	if (errors.length > 0) {
 		errors.forEach((e) => console.error(e));
 		console.error("%d services failed to start.", errors.length);
 		process.exit(1);
 	}
 
-	server.start();
+	(provideGrpcRegistrar() as GrpcServer).start();
 	((await provideHttpServer()) as HttpServerImpl).start();
 }
 
@@ -219,15 +217,15 @@ main();
 {{end}}` +
 
 			// Node stub template
-			`{{define "Node stub"}}import { Registrar } from "@namespacelabs/foundation";
+			`{{define "Node stub" -}}
 import { ServiceDeps, WireService } from "./deps.fn";
 import { {{.ServiceServerName}}, {{.ServiceName}} } from "./{{.ServiceFileName}}_grpc_pb";
 
-export const wireService: WireService = async (deps: ServiceDeps, registrar: Registrar) => {
+export const wireService: WireService = async (deps: ServiceDeps) => {
 	const service: {{.ServiceServerName}} = {
 		// TODO: implement
 	};
 
-	registrar.registerGrpcService({{.ServiceName}}, service);
+	deps.grpc.registerGrpcService({{.ServiceName}}, service);
 };{{end}}`))
 )

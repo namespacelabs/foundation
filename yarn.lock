@@ -95,6 +95,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:languages/nodejs/testdata/services/numberformatter"
   dependencies:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
@@ -105,6 +106,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser@workspace:languages/nodejs/testdata/services/postuser"
   dependencies:
     "@namespacelabs.dev-foundation/std-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
@@ -113,6 +115,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple"
   dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
@@ -134,11 +137,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@namespacelabs.dev-foundation/std-nodejs-grpc@0.0.0, @namespacelabs.dev-foundation/std-nodejs-grpc@workspace:std/nodejs/grpc":
+  version: 0.0.0-use.local
+  resolution: "@namespacelabs.dev-foundation/std-nodejs-grpc@workspace:std/nodejs/grpc"
+  dependencies:
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
+  languageName: unknown
+  linkType: soft
+
 "@namespacelabs.dev-foundation/std-nodejs-http@0.0.0, @namespacelabs.dev-foundation/std-nodejs-http@workspace:std/nodejs/http":
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-nodejs-http@workspace:std/nodejs/http"
   dependencies:
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
+    fastify: 3.29.0
+    middie: 6.1.0
   languageName: unknown
   linkType: soft
 
@@ -178,17 +191,15 @@ __metadata:
 
 "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime":
   version: 0.0.0
-  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime::1f5496"
+  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime::f2c19c"
   dependencies:
     "@grpc/grpc-js": 1.5.8
-    fastify: 3.29.0
     google-protobuf: 3.20.0
-    middie: 6.1.0
     source-map-support: 0.5.21
     toposort: 2.0.2
     typescript: 4.6.2
     yargs: 16.2.0
-  checksum: 5586e110a547898b39f83b27f03045e8f31018011e3920da74f76297898d6abb77c2af45fdbdb61fd3d536b7c1ba52c36d22a0f3ddea381d726a966df6200f0d
+  checksum: 7bf74bf325b7902a449861be0bdb73c706900259e836a993593bd23a529422f7f1a8873580d109890e36a7fb3e875c9dca11b0426c91ad795026d89bb7d8f7da
   languageName: node
   linkType: hard
 

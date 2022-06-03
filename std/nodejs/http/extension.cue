@@ -3,11 +3,6 @@ import (
 	"namespacelabs.dev/foundation/std/fn:inputs"
 )
 
-$inputs: {
-	httpPort: inputs.#Port & {
-		name: "http-port"
-	}
-}
 $providerProto: inputs.#Proto & {
 	source: "provider.proto"
 }
@@ -23,6 +18,12 @@ extension: fn.#Extension & {
 				}
 			}
 		}
+	}
+}
+
+$inputs: {
+	httpPort: inputs.#Port & {
+		name: "http-port"
 	}
 }
 

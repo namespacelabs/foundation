@@ -3,7 +3,22 @@ import (
 	"namespacelabs.dev/foundation/std/fn:inputs"
 )
 
+$providerProto: inputs.#Proto & {
+	source: "provider.proto"
+}
+
 extension: fn.#Extension & {
+	provides: {
+		GrpcRegistrar: {
+			input: $providerProto.types.NoArgs
+			availableIn: {
+				nodejs: {
+					import: "registrar"
+					type:   "GrpcRegistrar"
+				}
+			}
+		}
+	}
 }
 
 $inputs: {

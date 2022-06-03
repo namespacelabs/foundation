@@ -4,7 +4,7 @@
 
 import * as grpc from "@grpc/grpc-js";
 
-export interface Registrar {
+export interface GrpcRegistrar {
 	registerGrpcService(
 		service: grpc.ServiceDefinition,
 		implementation: grpc.UntypedServiceImplementation

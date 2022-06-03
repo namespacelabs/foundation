@@ -4,12 +4,11 @@
 
 import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
 import { PostRequest } from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/service_pb";
-import { Registrar } from "@namespacelabs/foundation";
 import { ServiceDeps, WireService } from "./deps.fn";
 import { IPostUserServiceServer, PostUserServiceService } from "./service_grpc_pb";
 import { PostUserRequest, PostUserResponse } from "./service_pb";
 
-export const wireService: WireService = async (deps: ServiceDeps, registrar: Registrar) => {
+export const wireService: WireService = async (deps: ServiceDeps) => {
 	const service: IPostUserServiceServer = {
 		getUserPosts: function (
 			call: ServerUnaryCall<PostUserRequest, PostUserResponse>,
@@ -30,5 +29,5 @@ export const wireService: WireService = async (deps: ServiceDeps, registrar: Reg
 		},
 	};
 
-	registrar.registerGrpcService(PostUserServiceService, service);
+	deps.grpcRegistrar.registerGrpcService(PostUserServiceService, service);
 };

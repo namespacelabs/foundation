@@ -1,7 +1,7 @@
 // This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundation";
+import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 import * as i0 from "@namespacelabs.dev-foundation/std-nodejs-http/deps.fn";
 import * as i1 from "@namespacelabs.dev-foundation/std-nodejs-http/provider_pb";
 import * as i2 from "@namespacelabs.dev-foundation/std-nodejs-http/httpserver";
@@ -25,5 +25,5 @@ export const TransitiveInitializers: Initializer[] = [
 	...i0.TransitiveInitializers,
 ];
 
-export type WireService = (deps: ServiceDeps, registrar: Registrar) => Promise<void>;
+export type WireService = (deps: ServiceDeps) => Promise<void>;
 export const wireService: WireService = impl.wireService;
