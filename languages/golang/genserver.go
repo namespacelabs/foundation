@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/gosupport"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
@@ -93,7 +94,7 @@ func prepareGenerate(ctx context.Context, loader workspace.Packages, imports []s
 				n.IsService = true
 				n.Typename = serviceDepsType
 
-				if dep.Parent.ExportServicesAsHttp {
+				if dep.Parent.ExportServicesAsHttp && runtime.UseGoInternalGrpcGateway {
 					for _, svc := range dep.Parent.ExportService {
 						if len(svc.Proto) == 0 {
 							return fnerrors.UserError(dep.Location, "%s: can't compute go package, no sources", svc.ProtoTypename)

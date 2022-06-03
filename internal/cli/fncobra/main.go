@@ -224,6 +224,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, prints a trace of foundation errors leading to the root cause with source info.")
 	rootCmd.PersistentFlags().BoolVar(&tools.UseKubernetesRuntime, "run_tools_on_kubernetes", tools.UseKubernetesRuntime,
 		"If set to true, runs tools in Kubernetes, instead of Docker.")
+	rootCmd.PersistentFlags().BoolVar(&runtime.UseGoInternalGrpcGateway, "golang_use_internal_grpc_gateway", runtime.UseGoInternalGrpcGateway,
+		"If set to true, the grpc gateway support built into Go servers is used.")
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
@@ -236,6 +238,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"skip_buildkit_workspace_size_check",
 		"ignore_zfs_check",
 		"run_tools_on_kubernetes",
+		"golang_use_internal_grpc_gateway",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
