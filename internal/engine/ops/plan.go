@@ -86,8 +86,8 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) error {
 	return nil
 }
 
-func (g *Plan) Execute(ctx context.Context, name string, env Environment) (waiters []Waiter, err error) {
-	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
+func (g *Plan) Execute(ctx context.Context, actionName string, env Environment) (waiters []Waiter, err error) {
+	err = tasks.Action(actionName).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, false)
 			return

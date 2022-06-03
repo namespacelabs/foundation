@@ -9,3 +9,7 @@ import "namespacelabs.dev/foundation/schema"
 type MakeDefinition interface {
 	ToDefinition(...schema.PackageName) (*schema.SerializedInvocation, error)
 }
+
+type MakeExtension interface {
+	ToDefinition() (*schema.DefExtension, error)
+}

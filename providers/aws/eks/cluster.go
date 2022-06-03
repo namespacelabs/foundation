@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -23,6 +24,30 @@ func Register() {
 }
 
 func prepareDescribeCluster(ctx context.Context, env ops.Environment, srv *schema.Server) (*frontend.PrepareProps, error) {
+	eksCluster, err := PrepareClusterInfo(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	eksServerDetails := &EKSServerDetails{
+		ComputedIamRoleName: fmt.Sprintf("fn-%s-%s-%s", eksCluster.Name, env.Proto().Name, srv.Id),
+	}
+
+	if len(eksServerDetails.ComputedIamRoleName) > 64 {
+		return nil, fnerrors.InternalError("generated a role name that is too long (%d): %s",
+			len(eksServerDetails.ComputedIamRoleName), eksServerDetails.ComputedIamRoleName)
+	}
+
+	props := &frontend.PrepareProps{}
+
+	if err := props.AppendInputs(eksCluster, eksServerDetails); err != nil {
+		return nil, err
+	}
+
+	return props, nil
+}
+
+func PrepareClusterInfo(ctx context.Context, env runtime.Selector) (*EKSCluster, error) {
 	rt, err := kubernetes.New(ctx, env.Workspace(), env.DevHost(), env.Proto())
 	if err != nil {
 		return nil, err
@@ -52,22 +77,7 @@ func prepareDescribeCluster(ctx context.Context, env ops.Environment, srv *schem
 		eksCluster.OidcIssuer = *description.Cluster.Identity.Oidc.Issuer
 	}
 
-	eksServerDetails := &EKSServerDetails{
-		ComputedIamRoleName: fmt.Sprintf("fn-%s-%s-%s", sysInfo.EksClusterName, env.Proto().Name, srv.Id),
-	}
-
-	if len(eksServerDetails.ComputedIamRoleName) > 64 {
-		return nil, fnerrors.InternalError("generated a role name that is too long (%d): %s",
-			len(eksServerDetails.ComputedIamRoleName), eksServerDetails.ComputedIamRoleName)
-	}
-
-	props := &frontend.PrepareProps{}
-
-	if err := props.AppendInputs(eksCluster, eksServerDetails); err != nil {
-		return nil, err
-	}
-
-	return props, nil
+	return eksCluster, nil
 }
 
 func DescribeCluster(ctx context.Context, devHost *schema.DevHost, env *schema.Environment, name string) (out *eks.DescribeClusterOutput, _ error) {

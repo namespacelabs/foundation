@@ -20,14 +20,10 @@ type StackRequest struct {
 	Stack *schema.Stack
 }
 
-type MakeExtension interface {
-	ToDefinition() (*schema.DefExtension, error)
-}
-
 type ApplyOutput struct {
 	Invocations       []defs.MakeDefinition
 	InvocationSources []*schema.SerializedInvocationSource
-	Extensions        []MakeExtension
+	Extensions        []defs.MakeExtension
 	Computed          []*schema.ComputedConfiguration
 }
 
