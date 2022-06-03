@@ -9,22 +9,16 @@ import (
 
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 var (
-	tokenProviders = map[string]func(context.Context, *ConfigKey) (string, error){}
+	tokenProviders = map[string]func(context.Context, *devhost.ConfigKey) (string, error){}
 )
 
-type ConfigKey struct {
-	DevHost  *schema.DevHost
-	Selector devhost.Selector
-}
-
-func RegisterBearerTokenProvider(name string, provider func(context.Context, *ConfigKey) (string, error)) {
+func RegisterBearerTokenProvider(name string, provider func(context.Context, *devhost.ConfigKey) (string, error)) {
 	tokenProviders[name] = provider
 }
 
@@ -40,7 +34,7 @@ func computeBearerToken(ctx context.Context, cfg *HostConfig, out *rest.Config) 
 
 	token, err := compute.GetValue[string](ctx, &cachedToken{
 		providerName: cfg.HostEnv.BearerTokenProvider,
-		configKey:    &ConfigKey{DevHost: cfg.DevHost, Selector: cfg.Selector},
+		configKey:    &devhost.ConfigKey{DevHost: cfg.DevHost, Selector: cfg.Selector},
 		provider:     provider,
 	})
 	if err != nil {
@@ -54,9 +48,9 @@ func computeBearerToken(ctx context.Context, cfg *HostConfig, out *rest.Config) 
 // Only compute bearer token once per `fn` invocation.
 type cachedToken struct {
 	providerName string
-	configKey    *ConfigKey
+	configKey    *devhost.ConfigKey
 
-	provider func(context.Context, *ConfigKey) (string, error)
+	provider func(context.Context, *devhost.ConfigKey) (string, error)
 
 	compute.DoScoped[string]
 }

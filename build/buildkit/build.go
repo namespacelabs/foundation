@@ -35,7 +35,8 @@ type clientInstance struct {
 
 func connectToClient(devHost *schema.DevHost, targetPlatform specs.Platform) compute.Computable[*client.Client] {
 	conf := &Overrides{}
-	devhost.PlatformConf(devHost, targetPlatform).Get(conf)
+
+	devhost.ByBuildPlatform(targetPlatform).Select(devHost).Get(conf)
 
 	if conf.BuildkitAddr == "" && conf.ContainerName == "" {
 		conf.ContainerName = DefaultContainerName

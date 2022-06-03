@@ -11,7 +11,6 @@ import (
 	"io"
 	"io/fs"
 
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -53,31 +52,12 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 }
 
 type ConfSlice struct {
-	merged []*schema.DevHost_ConfigureEnvironment
-}
-
-type PlatformConfSlice struct {
-	merged []*schema.DevHost_ConfigurePlatform
+	merged [][]*anypb.Any
 }
 
 func (conf ConfSlice) Get(msg proto.Message) bool {
 	for _, m := range conf.merged {
-		for _, conf := range m.Configuration {
-			if conf.MessageIs(msg) {
-				// XXX we're swallowing errors here.
-				if conf.UnmarshalTo(msg) == nil {
-					return true
-				}
-			}
-		}
-	}
-
-	return false
-}
-
-func (conf PlatformConfSlice) Get(msg proto.Message) bool {
-	for _, m := range conf.merged {
-		for _, conf := range m.Configuration {
+		for _, conf := range m {
 			if conf.MessageIs(msg) {
 				// XXX we're swallowing errors here.
 				if conf.UnmarshalTo(msg) == nil {
@@ -94,7 +74,7 @@ func (conf ConfSlice) WithoutConstraints() []*schema.DevHost_ConfigureEnvironmen
 	var parsed []*schema.DevHost_ConfigureEnvironment
 	for _, p := range conf.merged {
 		parsed = append(parsed, &schema.DevHost_ConfigureEnvironment{
-			Configuration: p.Configuration,
+			Configuration: p,
 		})
 	}
 	return parsed
@@ -102,23 +82,6 @@ func (conf ConfSlice) WithoutConstraints() []*schema.DevHost_ConfigureEnvironmen
 
 func ConfigurationForEnv(env ops.Environment) ConfSlice {
 	return Select(env.DevHost(), ByEnvironment(env.Proto()))
-}
-
-func PlatformConf(devHost *schema.DevHost, platform specs.Platform) PlatformConfSlice {
-	var slice PlatformConfSlice
-	for _, cfg := range devHost.GetConfigurePlatform() {
-		if cfg.Architecture != "" && cfg.Architecture != platform.Architecture {
-			continue
-		}
-		if cfg.Os != "" && cfg.Os != platform.OS {
-			continue
-		}
-		if cfg.Variant != "" && cfg.Variant != platform.Variant {
-			continue
-		}
-		slice.merged = append(slice.merged, cfg)
-	}
-	return slice
 }
 
 func MakeConfiguration(msg proto.Message) (*schema.DevHost_ConfigureEnvironment, error) {

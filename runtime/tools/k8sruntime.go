@@ -11,7 +11,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -26,7 +25,7 @@ type k8stools struct{}
 const toolNamespace = "fn-build-invocation"
 
 func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
-	k8s, env, err := k.k8s(ctx)
+	k8s, ck, err := k.k8s(ctx)
 	if err != nil {
 		return err
 	}
@@ -45,7 +44,7 @@ func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSt
 
 	// XXX handle opts.NoNetworking
 
-	name, err := registry.RawAllocateName(ctx, env, opts.ImageName, nil)
+	name, err := registry.RawAllocateName(ctx, ck, opts.ImageName, nil)
 	if err != nil {
 		return err
 	}
@@ -94,24 +93,18 @@ func (k k8stools) HostPlatform(ctx context.Context) (specs.Platform, error) {
 	return platforms[0], nil
 }
 
-func (k8stools) k8s(ctx context.Context) (kubernetes.Unbound, provision.Env, error) {
-	// XXX this is completely wrong; we're just abusing the fact that the user
-	// is likely running from within a workspace, and they have dev configured.
-	// A proper k8s integration here should have an explicit configuration.
+func (k8stools) k8s(ctx context.Context) (kubernetes.Unbound, *devhost.ConfigKey, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
-		return kubernetes.Unbound{}, provision.Env{}, err
+		return kubernetes.Unbound{}, nil, err
 	}
 
-	env, err := provision.RequireEnv(root, "dev")
+	ck := &devhost.ConfigKey{DevHost: root.DevHost, Selector: devhost.ForToolsRuntime()}
+
+	k, err := kubernetes.New(ctx, ck.DevHost, ck.Selector)
 	if err != nil {
-		return kubernetes.Unbound{}, provision.Env{}, err
+		return kubernetes.Unbound{}, nil, err
 	}
 
-	k, err := kubernetes.New(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
-	if err != nil {
-		return kubernetes.Unbound{}, provision.Env{}, err
-	}
-
-	return k, env, nil
+	return k, ck, nil
 }

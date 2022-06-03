@@ -23,7 +23,7 @@ import (
 func Register() {
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster", prepareDescribeCluster)
 
-	client.RegisterBearerTokenProvider("eks", func(ctx context.Context, ck *client.ConfigKey) (string, error) {
+	client.RegisterBearerTokenProvider("eks", func(ctx context.Context, ck *devhost.ConfigKey) (string, error) {
 		conf := &EKSCluster{}
 
 		if !ck.Selector.Select(ck.DevHost).Get(conf) {

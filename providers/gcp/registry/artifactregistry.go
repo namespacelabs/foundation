@@ -18,7 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/gcp"
 	"namespacelabs.dev/foundation/provision"
@@ -38,8 +37,8 @@ var _ registry.Manager = manager{}
 var DefaultKeychain oci.Keychain = defaultKeychain{}
 
 func Register() {
-	registry.Register("gcp/artifactregistry", func(ctx context.Context, env ops.Environment) (m registry.Manager, finalErr error) {
-		return manager{devHost: env.DevHost(), selector: devhost.ByEnvironment(env.Proto())}, nil
+	registry.Register("gcp/artifactregistry", func(ctx context.Context, ck *devhost.ConfigKey) (m registry.Manager, finalErr error) {
+		return manager{devHost: ck.DevHost, selector: ck.Selector}, nil
 	})
 }
 

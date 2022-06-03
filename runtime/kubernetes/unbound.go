@@ -45,7 +45,7 @@ func New(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector
 }
 
 func (u Unbound) Bind(ws *schema.Workspace, env *schema.Environment) K8sRuntime {
-	return K8sRuntime{Unbound: u, moduleNamespace: moduleNamespace(ws, env)}
+	return K8sRuntime{Unbound: u, env: env, moduleNamespace: moduleNamespace(ws, env)}
 }
 
 func (r Unbound) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {

@@ -15,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/provision"
@@ -33,8 +32,8 @@ type ecrManager struct {
 var _ registry.Manager = ecrManager{}
 
 func Register() {
-	registry.Register("aws/ecr", func(ctx context.Context, env ops.Environment) (m registry.Manager, finalErr error) {
-		sesh, profile, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	registry.Register("aws/ecr", func(ctx context.Context, ck *devhost.ConfigKey) (m registry.Manager, finalErr error) {
+		sesh, profile, err := awsprovider.ConfiguredSession(ctx, ck.DevHost, ck.Selector)
 		if err != nil {
 			return nil, err
 		}
