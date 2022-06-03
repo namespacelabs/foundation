@@ -91,12 +91,14 @@ require (
 	k8s.io/client-go v0.24.0
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
 	namespacelabs.dev/go-ids v0.0.0-20220216144417-79021816502e
+	sigs.k8s.io/aws-iam-authenticator v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/yaml v1.3.0
 )
 
+require github.com/aws/aws-sdk-go v1.43.28 // indirect
+
 require (
 	cloud.google.com/go/compute v1.6.1 // indirect
-	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
@@ -227,3 +229,5 @@ require (
 )
 
 replace github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220121014307-40bb9831756f+incompatible
+
+replace sigs.k8s.io/aws-iam-authenticator => namespacelabs.dev/aws-iam-authenticator v0.5.8-0.20220603141112-71d1e80cc0c1
