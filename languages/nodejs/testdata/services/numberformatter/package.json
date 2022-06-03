@@ -1,6 +1,7 @@
 {
 	"dependencies": {
 		"@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": "0.0.0",
+		"@namespacelabs.dev-foundation/std-nodejs-grpc": "0.0.0",
 		"@namespacelabs.dev-foundation/std-nodejs-http": "0.0.0",
 		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
 	},

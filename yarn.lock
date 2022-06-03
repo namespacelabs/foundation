@@ -62,6 +62,8 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@workspace:languages/nodejs/testdata/extensions/batchformatter"
   dependencies:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
@@ -70,6 +72,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:languages/nodejs/testdata/extensions/numberformatter"
   dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
@@ -82,6 +86,7 @@ __metadata:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify": 0.0.0
@@ -95,6 +100,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:languages/nodejs/testdata/services/numberformatter"
   dependencies:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
@@ -105,6 +111,8 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser@workspace:languages/nodejs/testdata/services/postuser"
   dependencies:
     "@namespacelabs.dev-foundation/std-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
@@ -113,6 +121,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple"
   dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
@@ -121,6 +131,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp@workspace:languages/nodejs/testdata/services/simplehttp"
   dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
@@ -130,14 +141,18 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-grpc@workspace:std/grpc"
   dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
 
-"@namespacelabs.dev-foundation/std-nodejs-grpc@workspace:std/nodejs/grpc":
+"@namespacelabs.dev-foundation/std-nodejs-grpc@0.0.0, @namespacelabs.dev-foundation/std-nodejs-grpc@workspace:std/nodejs/grpc":
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-nodejs-grpc@workspace:std/nodejs/grpc"
   dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   languageName: unknown
   linkType: soft
@@ -146,6 +161,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-nodejs-http@workspace:std/nodejs/http"
   dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     fastify: 3.29.0
     middie: 6.1.0
@@ -157,6 +174,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify@workspace:std/nodejs/monitoring/tracing/fastify"
   dependencies:
     "@autotelic/fastify-opentelemetry": 0.16.0
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
@@ -167,6 +185,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-jaeger@workspace:std/nodejs/monitoring/tracing/jaeger"
   dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
@@ -178,6 +198,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing@workspace:std/nodejs/monitoring/tracing"
   dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
