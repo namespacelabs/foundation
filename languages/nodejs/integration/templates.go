@@ -161,7 +161,7 @@ import { DependencyGraph, Initializer, Registrar } from "@namespacelabs/foundati
 
 export type WireService = (
 	{{- if .Package.Deps}}deps: {{.Package.Deps.Name}}Deps, {{end -}}
-	registrar: Registrar) => Promise<void>;
+	registrar: Registrar) => Promise<void> | void;
 export const wireService: WireService = impl.wireService;
 {{- end}}
 
@@ -223,7 +223,7 @@ main();
 import { ServiceDeps, WireService } from "./deps.fn";
 import { {{.ServiceServerName}}, {{.ServiceName}} } from "./{{.ServiceFileName}}_grpc_pb";
 
-export const wireService: WireService = async (deps: ServiceDeps, registrar: Registrar) => {
+export const wireService: WireService = (deps: ServiceDeps, registrar: Registrar) => {
 	const service: {{.ServiceServerName}} = {
 		// TODO: implement
 	};

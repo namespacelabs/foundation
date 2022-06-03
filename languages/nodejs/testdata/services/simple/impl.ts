@@ -8,7 +8,7 @@ import { WireService } from "./deps.fn";
 import { IPostServiceServer, PostServiceService } from "./service_grpc_pb";
 import { PostRequest, PostResponse } from "./service_pb";
 
-export const wireService: WireService = async (registrar: Registrar) => {
+export const wireService: WireService = (registrar: Registrar) => {
 	const service: IPostServiceServer = {
 		post: function (
 			call: ServerUnaryCall<PostRequest, PostResponse>,

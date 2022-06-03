@@ -12,5 +12,5 @@ export const Package = {
 export const TransitiveInitializers: Initializer[] = [
 ];
 
-export type WireService = (registrar: Registrar) => Promise<void>;
+export type WireService = (registrar: Registrar) => Promise<void> | void;
 export const wireService: WireService = impl.wireService;
