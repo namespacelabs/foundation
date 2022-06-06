@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logoutput"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision"
@@ -94,7 +95,7 @@ func (s *Session) NewClient(needsHistory bool) (*Observer, error) {
 	s.mu.Lock()
 	// When a new client connects, send them the latest information immediately.
 	// XXX keep latest computed stack in `s`.
-	tu := &Update{TaskUpdate: taskHistory, StackUpdate: proto.Clone(s.currentStack).(*Stack)}
+	tu := &Update{TaskUpdate: taskHistory, StackUpdate: protos.Clone(s.currentStack)}
 	s.mu.Unlock()
 
 	return s.obs.New(tu)
@@ -278,14 +279,14 @@ func (s *Session) updateStackInPlace(f func(stack *Stack)) {
 	s.mu.Lock()
 	f(s.currentStack)
 	s.currentStack.Revision++
-	copy := proto.Clone(s.currentStack).(*Stack)
+	copy := protos.Clone(s.currentStack)
 	s.mu.Unlock()
 
 	s.obs.Publish(&Update{StackUpdate: copy})
 }
 
 func resetStack(out *Stack, env provision.Env) {
-	workspace := proto.Clone(env.Root().Workspace).(*schema.Workspace)
+	workspace := protos.Clone(env.Root().Workspace)
 
 	// XXX handling broken web ui builds.
 	if workspace.Env == nil {

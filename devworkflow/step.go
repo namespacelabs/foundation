@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"sync"
 
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/languages"
@@ -201,7 +201,7 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 }
 
 func setFirstStack(out *Stack, env provision.Env, t provision.Server) {
-	workspace := proto.Clone(env.Root().Workspace).(*schema.Workspace)
+	workspace := protos.Clone(env.Root().Workspace)
 
 	// XXX handling broken web ui builds.
 	if workspace.Env == nil {

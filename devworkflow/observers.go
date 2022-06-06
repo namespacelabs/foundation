@@ -10,8 +10,8 @@ import (
 
 	"go.uber.org/atomic"
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/protos"
 )
 
 type opType int
@@ -62,7 +62,7 @@ func (obs *Observers) New(update *Update) (*Observer, error) {
 }
 
 func (obs *Observers) Publish(data *Update) {
-	copy := proto.Clone(data).(*Update)
+	copy := protos.Clone(data)
 	obs.pushCheckClosed(obsMsg{op: pOpNewData, message: copy})
 }
 

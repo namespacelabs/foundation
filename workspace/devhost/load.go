@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
@@ -95,7 +96,7 @@ func MakeConfiguration(msg proto.Message) (*schema.DevHost_ConfigureEnvironment,
 }
 
 func Update(root *workspace.Root, confs ...*schema.DevHost_ConfigureEnvironment) (*schema.DevHost, bool) {
-	copy := proto.Clone(root.DevHost).(*schema.DevHost)
+	copy := protos.Clone(root.DevHost)
 
 	var totalChangeCount int
 	for _, conf := range confs {

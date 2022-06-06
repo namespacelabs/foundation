@@ -7,9 +7,9 @@ import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-ser
 import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp/deps.fn";
 import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter/deps.fn";
 import * as i3 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser/deps.fn";
-import * as i4 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing/deps.fn";
-import * as i5 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-jaeger/deps.fn";
-import * as i6 from "@namespacelabs.dev-foundation/std-nodejs-http/deps.fn";
+import * as i4 from "@namespacelabs.dev-foundation/std-nodejs-http/deps.fn";
+import * as i5 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing/deps.fn";
+import * as i6 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-jaeger/deps.fn";
 import * as i7 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify/deps.fn";
 
 // Returns a list of initialization errors.

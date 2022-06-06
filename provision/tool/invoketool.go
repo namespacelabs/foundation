@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -150,7 +151,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		RedactRequest: func(req proto.Message) proto.Message {
 			// XXX security: think through whether it is OK or not to expose Snapshots here.
 			// For now, assume not.
-			reqcopy := proto.Clone(req).(*protocol.ToolRequest)
+			reqcopy := protos.Clone(req).(*protocol.ToolRequest)
 			reqcopy.Snapshot = nil
 			return reqcopy
 		},
