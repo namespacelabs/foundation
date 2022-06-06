@@ -16,18 +16,23 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
 )
 
-const WorkspaceFilename = "workspace.ns.textpb"
+const workspaceFilename = "workspace.ns.textpb"
 
-func ModuleAt(path string) (*schema.Workspace, error) {
-	file := filepath.Join(path, WorkspaceFilename)
+func FindModuleRoot(dir string) (string, error) {
+	return findroot.Find("workspace", dir, findroot.LookForFile(workspaceFilename))
+}
+
+func ModuleAt(path string) (*schema.Workspace, string, error) {
+	file := filepath.Join(path, workspaceFilename)
 	moduleBytes, err := ioutil.ReadFile(file)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// So we do a first-pass at the module definition, with loose parsing on, to
@@ -35,16 +40,16 @@ func ModuleAt(path string) (*schema.Workspace, error) {
 
 	firstPass := &schema.Workspace{}
 	if err := (prototext.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(moduleBytes, firstPass); err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "failed to parse %s for validation", file)
+		return nil, "", fnerrors.Wrapf(nil, err, "failed to parse %s for validation", file)
 	}
 
 	if firstPass.GetFoundation().GetMinimumApi() > versions.APIVersion {
-		return nil, fnerrors.DoesNotMeetVersionRequirements(firstPass.ModuleName, firstPass.GetFoundation().GetMinimumApi(), versions.APIVersion)
+		return nil, "", fnerrors.DoesNotMeetVersionRequirements(firstPass.ModuleName, firstPass.GetFoundation().GetMinimumApi(), versions.APIVersion)
 	}
 
 	if firstPass.GetFoundation().GetMinimumApi() > 0 &&
 		firstPass.GetFoundation().GetMinimumApi() < versions.MinimumAPIVersion {
-		return nil, fnerrors.UserError(nil, `Unfortunately, this version of Foundation is too recent to be used with the
+		return nil, "", fnerrors.UserError(nil, `Unfortunately, this version of Foundation is too recent to be used with the
 current repository. If you're testing out an existing repository that uses
 Foundation, try fetching a newer version of the repository. If this is your
 own codebase, then you'll need to either revert to a previous version of
@@ -56,10 +61,10 @@ Foundation, which establish a stable longer term supported API surface.`)
 
 	w := &schema.Workspace{}
 	if err := prototext.Unmarshal(moduleBytes, w); err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "failed to parse %s", file)
+		return nil, "", fnerrors.Wrapf(nil, err, "failed to parse %s", file)
 	}
 
-	return w, nil
+	return w, workspaceFilename, nil
 }
 
 func FormatWorkspace(w io.Writer, ws *schema.Workspace) error {

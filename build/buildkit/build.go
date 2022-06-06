@@ -89,7 +89,7 @@ func MakeLocalState(src LocalContents) llb.State {
 	for _, dir := range dirs.AllDirsToAvoid {
 		excludePatterns = append(excludePatterns, "**/"+dir+"/")
 	}
-	excludePatterns = append(excludePatterns, devhost.DevHostFilename)
+	excludePatterns = append(excludePatterns, devhost.HostOnlyFiles()...)
 
 	return llb.Local(src.Name(),
 		llb.WithCustomName(fmt.Sprintf("Workspace %s (from %s)", src.Path, src.Module.ModuleName())),

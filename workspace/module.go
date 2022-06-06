@@ -28,8 +28,9 @@ import (
 )
 
 type Module struct {
-	Workspace *schema.Workspace
-	DevHost   *schema.DevHost
+	Workspace     *schema.Workspace
+	WorkspaceFile string
+	DevHost       *schema.DevHost
 
 	absPath string
 	// If not empty, this is an external module.

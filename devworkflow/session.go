@@ -148,7 +148,7 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 			return err
 		}
 
-		resetStack(s.currentStack, env)
+		resetStack(s.currentStack, env, provision.Server{})
 		pfw := s.setEnvironment(env)
 
 		go func() {
@@ -283,18 +283,4 @@ func (s *Session) updateStackInPlace(f func(stack *Stack)) {
 	s.mu.Unlock()
 
 	s.obs.Publish(&Update{StackUpdate: copy})
-}
-
-func resetStack(out *Stack, env provision.Env) {
-	workspace := protos.Clone(env.Root().Workspace)
-
-	// XXX handling broken web ui builds.
-	if workspace.Env == nil {
-		workspace.Env = provision.EnvsOrDefault(workspace)
-	}
-
-	out.AbsRoot = env.Root().Abs()
-	out.Env = env.Proto()
-	out.Workspace = workspace
-	out.AvailableEnv = workspace.Env
 }

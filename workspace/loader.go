@@ -84,16 +84,17 @@ var MakeFrontend func(EarlyPackageLoader) Frontend
 // complete whole sub-trees. During a single root load, we maintain a cache of
 // already loaded packages to minimize this fan-out cost.
 type PackageLoader struct {
-	absPath     string
-	workspace   *schema.Workspace
-	devHost     *schema.DevHost
-	frontend    Frontend
-	rootmodule  *Module
-	moduleCache *moduleCache
-	mu          sync.RWMutex
-	fsys        map[string]*memfs.IncrementalFS        // module name -> IncrementalFS
-	loaded      map[schema.PackageName]*Package        // package name -> Package
-	loading     map[schema.PackageName]*loadingPackage // Package name -> loadingPackage
+	absPath       string
+	workspace     *schema.Workspace
+	workspaceFile string
+	devHost       *schema.DevHost
+	frontend      Frontend
+	rootmodule    *Module
+	moduleCache   *moduleCache
+	mu            sync.RWMutex
+	fsys          map[string]*memfs.IncrementalFS        // module name -> IncrementalFS
+	loaded        map[schema.PackageName]*Package        // package name -> Package
+	loading       map[schema.PackageName]*loadingPackage // Package name -> loadingPackage
 }
 
 type sealedPackages struct {
@@ -122,9 +123,10 @@ func NewPackageLoader(root *Root) *PackageLoader {
 	pl := &PackageLoader{}
 	pl.absPath = root.absPath
 	pl.workspace = root.Workspace
+	pl.workspaceFile = root.WorkspaceFile
 	pl.devHost = root.DevHost
 	pl.moduleCache = &moduleCache{loaded: map[string]*Module{}, pl: pl}
-	pl.rootmodule = pl.moduleCache.inject(root.absPath, root.Workspace, "" /* version */)
+	pl.rootmodule = pl.moduleCache.inject(root.absPath, root.Workspace, root.WorkspaceFile, "" /* version */)
 	pl.loaded = map[schema.PackageName]*Package{}
 	pl.loading = map[schema.PackageName]*loadingPackage{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
@@ -201,7 +203,7 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 		}
 	}
 
-	return Location{}, fnerrors.UsageError("Run `fn tidy`.", "%s: missing entry in %s: run:\n  fn tidy", packageName, WorkspaceFilename)
+	return Location{}, fnerrors.UsageError("Run `fn tidy`.", "%s: missing entry in %s: run:\n  fn tidy", packageName, pl.workspaceFile)
 }
 
 func (pl *PackageLoader) MatchModuleReplace(packageName schema.PackageName) (*Location, error) {
@@ -431,10 +433,11 @@ type moduleCache struct {
 	loaded map[string]*Module
 }
 
-func (cache *moduleCache) inject(absPath string, w *schema.Workspace, version string) *Module {
+func (cache *moduleCache) inject(absPath string, w *schema.Workspace, workspaceFile string, version string) *Module {
 	m := &Module{
-		Workspace: w,
-		DevHost:   cache.pl.devHost,
+		Workspace:     w,
+		WorkspaceFile: workspaceFile,
+		DevHost:       cache.pl.devHost,
 
 		absPath: absPath,
 		version: version,
@@ -460,10 +463,10 @@ func (cache *moduleCache) resolveExternal(moduleName string, download func() (*D
 		return nil, err
 	}
 
-	w, err := ModuleAt(downloaded.LocalPath)
+	w, workspaceFile, err := ModuleAt(downloaded.LocalPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fnerrors.UserError(nil, "%s: is not a workspace, %q missing.", moduleName, WorkspaceFilename)
+			return nil, fnerrors.UserError(nil, "%s: is not a workspace, %q missing.", moduleName, cache.pl.workspaceFile)
 		}
 		return nil, err
 	}
@@ -472,7 +475,7 @@ func (cache *moduleCache) resolveExternal(moduleName string, download func() (*D
 		return nil, fnerrors.InternalError("%s: inconsistent definition, module specified %q", moduleName, w.ModuleName)
 	}
 
-	return cache.inject(downloaded.LocalPath, w, downloaded.Version), nil
+	return cache.inject(downloaded.LocalPath, w, workspaceFile, downloaded.Version), nil
 }
 
 func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.PackageName) (Location, error) {

@@ -12,16 +12,17 @@ import (
 )
 
 type Root struct {
-	Workspace *schema.Workspace
-	DevHost   *schema.DevHost
+	Workspace     *schema.Workspace
+	WorkspaceFile string // Relative path where the workspace definition was loaded from.
+	DevHost       *schema.DevHost
+	DevHostFile   string // Relative path where the devhost definition was loaded from.
 
 	absPath string
 }
 
-func NewRoot(absPath string, w *schema.Workspace) *Root {
+func NewRoot(absPath string) *Root {
 	return &Root{
-		Workspace: w,
-		absPath:   absPath,
+		absPath: absPath,
 	}
 }
 
