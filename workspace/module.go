@@ -29,7 +29,7 @@ import (
 
 type Module struct {
 	Workspace     *schema.Workspace
-	WorkspaceFile string
+	WorkspaceData *schema.WorkspaceData
 	DevHost       *schema.DevHost
 
 	absPath string
@@ -37,7 +37,8 @@ type Module struct {
 	version string
 }
 
-type DownloadedModule struct {
+// LocalModule represents a module that is present in the specified LocalPath.
+type LocalModule struct {
 	ModuleName string
 	LocalPath  string
 	Version    string
@@ -227,13 +228,13 @@ func getAttr(attrs []html.Attribute, key string) *html.Attribute {
 	return nil
 }
 
-func DownloadModule(ctx context.Context, dep *schema.Workspace_Dependency, force bool) (*DownloadedModule, error) {
-	var dl DownloadedModule
+func DownloadModule(ctx context.Context, dep *schema.Workspace_Dependency, force bool) (*LocalModule, error) {
+	var dl LocalModule
 	err := downloadModuleTo(ctx, dep, force, &dl)
 	return &dl, err
 }
 
-func downloadModuleTo(ctx context.Context, dep *schema.Workspace_Dependency, force bool, downloaded *DownloadedModule) error {
+func downloadModuleTo(ctx context.Context, dep *schema.Workspace_Dependency, force bool, downloaded *LocalModule) error {
 	return tasks.Action("workspace.module.download").Arg("name", dep.ModuleName).Arg("version", dep.Version).Run(ctx, func(ctx context.Context) error {
 		modDir, err := dirs.ModuleCache(dep.ModuleName, dep.Version)
 		if err != nil {
@@ -244,7 +245,7 @@ func downloadModuleTo(ctx context.Context, dep *schema.Workspace_Dependency, for
 		if !force {
 			if _, err := os.Stat(modDir); err == nil {
 				// Already exists.
-				*downloaded = DownloadedModule{ModuleName: dep.ModuleName, LocalPath: modDir, Version: dep.Version}
+				*downloaded = LocalModule{ModuleName: dep.ModuleName, LocalPath: modDir, Version: dep.Version}
 				return nil
 			}
 		}
@@ -293,7 +294,7 @@ func downloadModuleTo(ctx context.Context, dep *schema.Workspace_Dependency, for
 
 		tmpModDir = "" // Inhibit the os.RemoveAll() above.
 
-		*downloaded = DownloadedModule{ModuleName: dep.ModuleName, LocalPath: modDir, Version: dep.Version}
+		*downloaded = LocalModule{ModuleName: dep.ModuleName, LocalPath: modDir, Version: dep.Version}
 		return nil
 	})
 }
