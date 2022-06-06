@@ -8,7 +8,6 @@ import (
 	"context"
 	"path/filepath"
 
-	"namespacelabs.dev/foundation/internal/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -24,17 +23,19 @@ func FindRoot(ctx context.Context, dir string) (*workspace.Root, error) {
 }
 
 func findWorkspaceRoot(ctx context.Context, dir string) (*workspace.Root, error) {
-	path, err := findroot.Find("workspace", dir, findroot.LookForFile(workspace.WorkspaceFilename))
+	path, err := workspace.FindModuleRoot(dir)
 	if err != nil {
 		return nil, fnerrors.UserError(nil, "workspace: %w", err)
 	}
 
-	w, err := workspace.ModuleAt(path)
+	w, workspaceFile, err := workspace.ModuleAt(path)
 	if err != nil {
 		return nil, err
 	}
 
-	r := workspace.NewRoot(path, w)
+	r := workspace.NewRoot(path)
+	r.Workspace = w
+	r.WorkspaceFile = workspaceFile
 
 	if err := devhost.Prepare(ctx, r); err != nil {
 		return r, err

@@ -180,7 +180,7 @@ func rewriteWorkspace(ctx context.Context, root *workspace.Root, ws *schema.Work
 	})
 
 	// Write an updated workspace.ns.textpb before continuing.
-	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), workspace.WorkspaceFilename, func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), root.WorkspaceFile, func(w io.Writer) error {
 		return workspace.FormatWorkspace(w, ws)
 	})
 }

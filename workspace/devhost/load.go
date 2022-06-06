@@ -23,23 +23,23 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const DevHostFilename = "devhost.textpb"
+const devHostFilename = "devhost.textpb"
 
 var HasRuntime func(string) bool
 
-func HostOnlyFiles() []string { return []string{DevHostFilename} }
+func HostOnlyFiles() []string { return []string{devHostFilename} }
 
 func Prepare(ctx context.Context, root *workspace.Root) error {
 	root.DevHost = &schema.DevHost{} // Make sure we always have an instance of DevHost, even if empty.
 
-	devHostBytes, err := fs.ReadFile(root.FS(), DevHostFilename)
+	devHostBytes, err := fs.ReadFile(root.FS(), devHostFilename)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
 	} else {
 		if err := prototext.Unmarshal(devHostBytes, root.DevHost); err != nil {
-			return fnerrors.BadInputError("Failed to parse %q. If you changed it manually, try to undo your changes.", DevHostFilename)
+			return fnerrors.BadInputError("Failed to parse %q. If you changed it manually, try to undo your changes.", devHostFilename)
 		}
 	}
 
@@ -48,6 +48,8 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 			return fnerrors.InternalError("%s is not a supported runtime type", env.Runtime)
 		}
 	}
+
+	root.DevHostFile = devHostFilename
 
 	return nil
 }
@@ -149,7 +151,7 @@ func RewriteWith(ctx context.Context, root *workspace.Root, devhost *schema.DevH
 		return err
 	}
 
-	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), DevHostFilename, func(w io.Writer) error {
+	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), root.DevHostFile, func(w io.Writer) error {
 		_, err := w.Write(serialized)
 		return err
 	}); err != nil {
