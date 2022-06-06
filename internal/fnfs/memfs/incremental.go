@@ -65,3 +65,5 @@ func (inc *IncrementalFS) SnapshotDir(dir string, opts SnapshotOpts) (*FS, error
 func (inc *IncrementalFS) Clone() fs.FS {
 	return inc.snapshot.Clone()
 }
+
+func (inc *IncrementalFS) Direct() *FS { return &inc.snapshot }

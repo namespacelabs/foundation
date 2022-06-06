@@ -86,15 +86,15 @@ var MakeFrontend func(EarlyPackageLoader) Frontend
 type PackageLoader struct {
 	absPath       string
 	workspace     *schema.Workspace
-	workspaceFile string
+	workspaceData *schema.WorkspaceData
 	devHost       *schema.DevHost
 	frontend      Frontend
 	rootmodule    *Module
-	moduleCache   *moduleCache
 	mu            sync.RWMutex
 	fsys          map[string]*memfs.IncrementalFS        // module name -> IncrementalFS
 	loaded        map[schema.PackageName]*Package        // package name -> Package
 	loading       map[schema.PackageName]*loadingPackage // Package name -> loadingPackage
+	loadedModules map[string]*Module                     // module name -> Module
 }
 
 type sealedPackages struct {
@@ -123,14 +123,14 @@ func NewPackageLoader(root *Root) *PackageLoader {
 	pl := &PackageLoader{}
 	pl.absPath = root.absPath
 	pl.workspace = root.Workspace
-	pl.workspaceFile = root.WorkspaceFile
+	pl.workspaceData = root.WorkspaceData
 	pl.devHost = root.DevHost
-	pl.moduleCache = &moduleCache{loaded: map[string]*Module{}, pl: pl}
-	pl.rootmodule = pl.moduleCache.inject(root.absPath, root.Workspace, root.WorkspaceFile, "" /* version */)
 	pl.loaded = map[schema.PackageName]*Package{}
 	pl.loading = map[schema.PackageName]*loadingPackage{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
+	pl.loadedModules = map[string]*Module{}
 	pl.frontend = MakeFrontend(pl)
+	pl.rootmodule = pl.inject(root.absPath, root.WorkspaceData, "" /* version */)
 	return pl
 }
 
@@ -140,13 +140,11 @@ func (pl *PackageLoader) Seal() SealedPackages {
 		packages: map[schema.PackageName]*Package{},
 	}
 
-	pl.moduleCache.mu.Lock()
-	for name, module := range pl.moduleCache.loaded {
+	pl.mu.Lock()
+
+	for name, module := range pl.loadedModules {
 		sealed.modules[name] = module
 	}
-	pl.moduleCache.mu.Unlock()
-
-	pl.mu.Lock()
 
 	for name, fs := range pl.fsys {
 		sealed.sources = append(sealed.sources, ModuleSources{
@@ -203,15 +201,15 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 		}
 	}
 
-	return Location{}, fnerrors.UsageError("Run `fn tidy`.", "%s: missing entry in %s: run:\n  fn tidy", packageName, pl.workspaceFile)
+	return Location{}, fnerrors.UsageError("Run `fn tidy`.", "%s: missing entry in %s: run:\n  fn tidy", packageName, pl.workspaceData.DefinitionFile)
 }
 
 func (pl *PackageLoader) MatchModuleReplace(packageName schema.PackageName) (*Location, error) {
 	for _, replace := range pl.workspace.Replace {
 		rel, ok := schema.IsParent(replace.ModuleName, packageName)
 		if ok {
-			module, err := pl.moduleCache.resolveExternal(replace.ModuleName, func() (*DownloadedModule, error) {
-				return &DownloadedModule{
+			module, err := pl.resolveExternal(replace.ModuleName, func() (*LocalModule, error) {
+				return &LocalModule{
 					ModuleName: replace.ModuleName,
 					LocalPath:  filepath.Join(pl.absPath, replace.Path),
 				}, nil
@@ -238,24 +236,9 @@ func (pl *PackageLoader) WorkspaceOf(ctx context.Context, module *Module) (*memf
 	fsys := pl.fsys[moduleName]
 	pl.mu.RUnlock()
 
-	if fsys != nil {
-		return fsys, nil
+	if fsys == nil {
+		return nil, fnerrors.InternalError("%s: no fsys?", moduleName)
 	}
-
-	loc, err := pl.Resolve(ctx, schema.PackageName(moduleName))
-	if err != nil {
-		return nil, err
-	}
-
-	if loc.Module.ModuleName() != moduleName {
-		return nil, fnerrors.InternalError("internal inconsistency, attempting to load module %q, but saw %q", moduleName, loc.Module.ModuleName())
-	}
-
-	fsys = memfs.IncrementalSnapshot(fnfs.Local(loc.Module.absPath))
-
-	pl.mu.Lock()
-	pl.fsys[moduleName] = fsys
-	pl.mu.Unlock()
 
 	return fsys, nil
 }
@@ -306,7 +289,7 @@ func (pl *PackageLoader) LoadPackage(ctx context.Context, loc Location, opt ...L
 }
 
 func (pl *PackageLoader) ExternalLocation(ctx context.Context, mod *schema.Workspace_Dependency, packageName schema.PackageName) (Location, error) {
-	module, err := pl.moduleCache.resolveExternal(mod.ModuleName, func() (*DownloadedModule, error) {
+	module, err := pl.resolveExternal(mod.ModuleName, func() (*LocalModule, error) {
 		return DownloadModule(ctx, mod, false)
 	})
 	if err != nil {
@@ -333,6 +316,55 @@ func (pl *PackageLoader) ExternalLocation(ctx context.Context, mod *schema.Works
 	}, nil
 }
 
+func (pl *PackageLoader) inject(absPath string, w *schema.WorkspaceData, version string) *Module {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+
+	m := &Module{
+		Workspace:     w.Parsed,
+		WorkspaceData: w,
+		DevHost:       pl.devHost,
+
+		absPath: absPath,
+		version: version,
+	}
+
+	pl.loadedModules[m.ModuleName()] = m
+	pl.fsys[m.ModuleName()] = memfs.IncrementalSnapshot(fnfs.Local(w.AbsPath))
+
+	pl.fsys[m.ModuleName()].Direct().Add(w.DefinitionFile, w.Data)
+
+	return m
+}
+
+func (pl *PackageLoader) resolveExternal(moduleName string, download func() (*LocalModule, error)) (*Module, error) {
+	pl.mu.RLock()
+	m := pl.loadedModules[moduleName]
+	pl.mu.RUnlock()
+	if m != nil {
+		return m, nil
+	}
+
+	downloaded, err := download()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := ModuleAt(downloaded.LocalPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fnerrors.UserError(nil, "%s: is not a workspace, %q missing.", moduleName, data.GetDefinitionFile())
+		}
+		return nil, err
+	}
+
+	if data.Parsed.ModuleName != moduleName {
+		return nil, fnerrors.InternalError("%s: inconsistent definition, module specified %q", moduleName, data.Parsed.ModuleName)
+	}
+
+	return pl.inject(downloaded.LocalPath, data, downloaded.Version), nil
+}
+
 type PackageLoaderStats struct {
 	LoadedPackageCount int
 	LoadedModuleCount  int
@@ -343,6 +375,8 @@ func (pl *PackageLoader) Stats(ctx context.Context) PackageLoaderStats {
 	var stats PackageLoaderStats
 
 	pl.mu.Lock()
+	defer pl.mu.Unlock()
+
 	stats.LoadedPackageCount = len(pl.loaded)
 	stats.PerModule = map[string][]string{}
 	for name, mod := range pl.fsys {
@@ -354,11 +388,8 @@ func (pl *PackageLoader) Stats(ctx context.Context) PackageLoaderStats {
 			return nil
 		})
 	}
-	pl.mu.Unlock()
 
-	pl.moduleCache.mu.Lock()
-	stats.LoadedModuleCount = len(pl.moduleCache.loaded)
-	pl.moduleCache.mu.Unlock()
+	stats.LoadedModuleCount = len(pl.loadedModules)
 
 	return stats
 }
@@ -425,57 +456,6 @@ func (l *loadingPackage) Load(ctx context.Context) (*Package, error) {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-}
-
-type moduleCache struct {
-	pl     *PackageLoader
-	mu     sync.RWMutex
-	loaded map[string]*Module
-}
-
-func (cache *moduleCache) inject(absPath string, w *schema.Workspace, workspaceFile string, version string) *Module {
-	m := &Module{
-		Workspace:     w,
-		WorkspaceFile: workspaceFile,
-		DevHost:       cache.pl.devHost,
-
-		absPath: absPath,
-		version: version,
-	}
-
-	cache.mu.Lock()
-	cache.loaded[w.ModuleName] = m
-	cache.mu.Unlock()
-
-	return m
-}
-
-func (cache *moduleCache) resolveExternal(moduleName string, download func() (*DownloadedModule, error)) (*Module, error) {
-	cache.mu.RLock()
-	m := cache.loaded[moduleName]
-	cache.mu.RUnlock()
-	if m != nil {
-		return m, nil
-	}
-
-	downloaded, err := download()
-	if err != nil {
-		return nil, err
-	}
-
-	w, workspaceFile, err := ModuleAt(downloaded.LocalPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fnerrors.UserError(nil, "%s: is not a workspace, %q missing.", moduleName, cache.pl.workspaceFile)
-		}
-		return nil, err
-	}
-
-	if w.ModuleName != moduleName {
-		return nil, fnerrors.InternalError("%s: inconsistent definition, module specified %q", moduleName, w.ModuleName)
-	}
-
-	return cache.inject(downloaded.LocalPath, w, workspaceFile, downloaded.Version), nil
 }
 
 func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.PackageName) (Location, error) {
