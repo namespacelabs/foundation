@@ -14,6 +14,7 @@ import (
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -419,7 +420,7 @@ type DeferredIngress struct {
 }
 
 func (d DeferredIngress) WithoutAllocation() *schema.IngressFragment {
-	fragment := proto.Clone(d.fragment).(*schema.IngressFragment)
+	fragment := protos.Clone(d.fragment)
 	fragment.Domain = d.domain.Domain
 	return fragment
 }
@@ -434,7 +435,7 @@ func (d DeferredIngress) Allocate(ctx context.Context) (*schema.IngressFragment,
 		}
 	}
 
-	fragment := proto.Clone(d.fragment).(*schema.IngressFragment)
+	fragment := protos.Clone(d.fragment)
 	fragment.Domain = domain
 	return fragment, nil
 }
