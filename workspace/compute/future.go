@@ -54,7 +54,7 @@ type atom[V any] struct {
 }
 
 func initializePromise[V any](p *Promise[V], c hasAction, id string) *Promise[V] {
-	p.actionID = tasks.ActionID(id)
+	p.actionID = tasks.ActionIDFrom(id)
 	p.c = c
 	return p
 }

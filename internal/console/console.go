@@ -64,7 +64,7 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutput
 	if t, ok := unwrapped.(writerLiner); ok {
 		actionID := tasks.Attachments(ctx).ActionID()
 		id := actionID.String()
-		if actionID == "" {
+		if id == "" {
 			id = ids.NewRandomBase32ID(8)
 		}
 
@@ -73,7 +73,7 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutput
 		}
 
 		buf := &consoleBuffer{actual: t, name: name, cat: cat, id: common.IdAndHashFrom(id)}
-		if actionID != "" {
+		if !actionID.IsEmpty() {
 			buf.actionID = actionID
 		}
 		return buf

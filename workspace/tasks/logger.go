@@ -17,7 +17,7 @@ type jsonLogger struct{ logger *zerolog.Logger }
 
 func (sl *jsonLogger) start(ev EventData, withArgs bool) *zerolog.Event {
 	e := sl.logger.Info().Str("action_id", ev.ActionID.String()).Str("name", ev.Name).Int("log_level", ev.Level)
-	if ev.ParentID != "" {
+	if !ev.ParentID.IsEmpty() {
 		e = e.Str("parent_id", ev.ParentID.String())
 	}
 	if withArgs {

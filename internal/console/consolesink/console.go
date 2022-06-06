@@ -285,7 +285,7 @@ loop:
 				}
 			}
 
-			if msg.attachmentUpdatedForID != "" {
+			if !msg.attachmentUpdatedForID.IsEmpty() {
 				item := c.addOrGet(msg.attachmentUpdatedForID, false)
 				if item != nil {
 					item.results = msg.results
@@ -297,7 +297,7 @@ loop:
 				}
 			}
 
-			if msg.ev.ActionID != "" {
+			if !msg.ev.ActionID.IsEmpty() {
 				item := c.addOrGet(msg.ev.ActionID, true)
 				item.data = msg.ev
 				item.results = msg.results
@@ -354,7 +354,7 @@ func (li *lineItem) precompute() {
 
 	var serialized []atom
 
-	if data.AnchorID != "" {
+	if !data.AnchorID.IsEmpty() {
 		serialized = append(serialized, atom{key: "anchor", value: data.AnchorID.String()})
 	}
 
@@ -425,7 +425,7 @@ func (c *ConsoleSink) recomputeTree() {
 		parent := parentOf(root, nodes, r.ParentID)
 		parent.children = append(parent.children, r.ActionID)
 
-		if r.AnchorID != "" && nodes[r.AnchorID] != nil {
+		if !r.AnchorID.IsEmpty() && nodes[r.AnchorID] != nil {
 			// We used to replace "waiting" nodes with the lines they're waiting on.
 			// But that turned out to be confusing when there are multiple waiters,
 			// because it seems like we're doing the same work N times. So now we
@@ -490,7 +490,7 @@ func follow(n *node) *node {
 }
 
 func parentOf(root *node, tree map[tasks.ActionID]*node, id tasks.ActionID) *node {
-	if id == "" {
+	if id.IsEmpty() {
 		return root
 	} else {
 		if p, ok := tree[id]; !ok {
@@ -709,7 +709,7 @@ func (c *ConsoleSink) countStates() (running, waiting, anchored int) {
 	for _, r := range c.running {
 		if r.data.State == tasks.ActionRunning {
 			if !r.data.Indefinite {
-				if r.data.AnchorID != "" {
+				if !r.data.AnchorID.IsEmpty() {
 					anchored++
 				} else {
 					running++
@@ -734,14 +734,14 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	for _, r := range c.running {
 		if r.data.State != tasks.ActionWaiting && r.data.State != tasks.ActionRunning {
 			hasError := (r.data.Err != nil && tasks.ErrorType(r.data.Err) == tasks.ErrTypeIsRegular)
-			shouldLog := c.logActions() && (DisplayWaitingActions || r.data.AnchorID == "")
+			shouldLog := c.logActions() && (DisplayWaitingActions || r.data.AnchorID.IsEmpty())
 
 			if (shouldLog || hasError) && r.data.Level <= c.maxLevel {
 				printableCompleted = append(printableCompleted, r)
 			}
 
 			completed++
-			if r.data.AnchorID != "" {
+			if !r.data.AnchorID.IsEmpty() {
 				completedAnchors++
 			}
 		}

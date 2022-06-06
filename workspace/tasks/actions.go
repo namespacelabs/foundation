@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/atomic"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
@@ -53,9 +54,52 @@ type OnDoneFunc func(*protocol.Task)
 
 type WellKnown string
 
-type ActionID string
+type ActionID struct {
+	val *atomic.String
+}
 
-func (a ActionID) String() string { return string(a) }
+func ActionIDFrom(id string) ActionID {
+	return ActionID{val: atomic.NewString(id)}
+}
+
+func (a ActionID) IsEmpty() bool {
+	var aVal string
+	if a.val != nil {
+		aVal = a.val.Load()
+	}
+	return aVal == ""
+}
+
+func (a ActionID) Store(val string) {
+	if a.val == nil {
+		a.val = &atomic.String{}
+	}
+	a.val.Store(val)
+}
+
+func (a ActionID) String() string {
+	if a.val == nil {
+		return ""
+	}
+	return a.val.Load()
+}
+
+func (a ActionID) Compare(b ActionID) int {
+	var aVal string
+	if a.val != nil {
+		aVal = a.val.Load()
+	}
+	var bVal string
+	if b.val != nil {
+		bVal = b.val.Load()
+	}
+	if aVal < bVal {
+		return -1
+	} else if aVal == bVal {
+		return 0
+	}
+	return 1
+}
 
 const (
 	WkAction   = "action"
@@ -200,11 +244,13 @@ func (ev *ActionEvent) WellKnown(key WellKnown, value string) *ActionEvent {
 	return ev
 }
 
-func NewActionID() ActionID { return ActionID(ids.NewRandomBase62ID(16)) }
+func NewActionID() ActionID {
+	return ActionID{val: atomic.NewString(ids.NewRandomBase32ID(16))}
+}
 
 func (ev *ActionEvent) initMissing() {
-	if ev.data.ActionID == "" {
-		ev.data.ActionID = NewActionID()
+	if ev.data.ActionID.IsEmpty() {
+		ev.data.ActionID.Store(ids.NewRandomBase62ID(16))
 	}
 	ev.data.Created = time.Now()
 }
@@ -492,7 +538,7 @@ func startSpan(ctx context.Context, data EventData) trace.Span {
 
 	if span.IsRecording() {
 		span.SetAttributes(attribute.String("actionID", data.ActionID.String()))
-		if data.AnchorID != "" {
+		if data.AnchorID.String() != "" {
 			span.SetAttributes(attribute.String("anchorID", data.AnchorID.String()))
 		}
 
@@ -767,7 +813,7 @@ func (ev *EventAttachments) Output(name OutputName) io.Writer {
 
 func (ev *EventAttachments) ActionID() ActionID {
 	if ev == nil {
-		return ""
+		return ActionID{}
 	}
 	return ev.actionID
 }

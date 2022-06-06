@@ -249,7 +249,7 @@ func (s *Session) Run(ctx context.Context) error {
 }
 
 func (s *Session) TaskLogByName(taskID, name string) io.ReadCloser {
-	return s.sink.HistoricReaderByName(tasks.ActionID(taskID), name)
+	return s.sink.HistoricReaderByName(tasks.ActionIDFrom(taskID), name)
 }
 
 func (s *Session) setEnvironment(env runtime.Selector) *endpointfwd.PortForward {
