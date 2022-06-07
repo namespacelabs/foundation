@@ -136,6 +136,23 @@ func parseValue(val cue.Value) (*schema.Workspace, error) {
 		})
 	}
 
+	for name, env := range m.Environments {
+		purpose, ok := schema.Environment_Purpose_value[strings.ToUpper(env.Purpose)]
+		if !ok || purpose == 0 {
+			return nil, fnerrors.UserError(nil, "%s: no such environment purpose %q", name, env.Purpose)
+		}
+
+		w.Env = append(w.Env, &schema.Environment{
+			Name:    name,
+			Runtime: env.Runtime,
+			Purpose: schema.Environment_Purpose(purpose),
+		})
+	}
+
+	slices.SortFunc(w.Env, func(a, b *schema.Environment) bool {
+		return strings.Compare(a.Name, b.Name) < 0
+	})
+
 	return w, nil
 }
 
@@ -295,6 +312,7 @@ type cueModule struct {
 	Replaces     map[string]string           `json:"replace"` // Map: module name -> relative path.
 	Dependencies map[string]cueModuleVersion `json:"dependency"`
 	Prebuilts    *cueWorkspacePrebuilts      `json:"prebuilts"`
+	Environments map[string]cueEnvironment   `json:"environment"`
 }
 
 type cueModuleFoundation struct {
@@ -308,4 +326,9 @@ type cueModuleVersion struct {
 type cueWorkspacePrebuilts struct {
 	Digests        map[string]string `json:"digest"` // Map: package name -> digest.
 	BaseRepository string            `json:"baseRepository"`
+}
+
+type cueEnvironment struct {
+	Runtime string `json:"runtime"`
+	Purpose string `json:"purpose"`
 }
