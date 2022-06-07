@@ -91,14 +91,6 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 		return Server{}, fnerrors.UserError(t.Location, "servers can't add servers to the stack")
 	}
 
-	if len(pdata.Sidecars) > 0 {
-		return Server{}, fnerrors.UserError(t.Location, "servers can't define sidecar containers")
-	}
-
-	if len(pdata.Inits) > 0 {
-		return Server{}, fnerrors.UserError(t.Location, "servers can't define init containers")
-	}
-
 	t.Provisioning = pdata.PreparedProvisionPlan
 	t.entry.ServerNaming = pdata.Naming
 
