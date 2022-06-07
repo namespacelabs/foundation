@@ -22,20 +22,24 @@ import (
 var (
 	adminPort = flag.Uint("admin_port", 19000, "Envoy admin port")
 
-	xdsServerPort = flag.Uint("xds_server_port", 18000, "xDS management server port")
+	xdsServerPort = flag.Uint("xds_server_port", 18000, "Port that the Envoy controller is listening on")
 
 	alsListenerPort = flag.Uint("als_listener_port", 18090, "gRPC Access Log Service (ALS) listener port")
+
+	nodeCluster = flag.String("node_cluster", "envoy_cluster", "Node cluster name")
+
+	nodeID = flag.String("node_id", "envoy_node", "Node Identifier")
 )
 
 // go:embed bootstrap-xds.yaml.tmpl
 var bootstrapTmpl string
 
 type tmplData struct {
-	AdminPort uint32
-
-	XDSServerPort uint32
-
+	AdminPort       uint32
+	XDSServerPort   uint32
 	ALSListenerPort uint32
+	NodeCluster     string
+	NodeId          string
 }
 
 func main() {
@@ -59,6 +63,8 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		AdminPort:       uint32(*adminPort),
 		XDSServerPort:   uint32(*xdsServerPort),
 		ALSListenerPort: uint32(*alsListenerPort),
+		NodeCluster:     *nodeCluster,
+		NodeId:          *nodeID,
 	}
 	bootstrapData := &bytes.Buffer{}
 

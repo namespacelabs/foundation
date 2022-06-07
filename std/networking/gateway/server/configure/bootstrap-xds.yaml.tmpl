@@ -25,8 +25,8 @@ dynamic_resources:
           cluster_name: xds_cluster
       set_node_on_first_message_only: true
 node:
-  cluster: test-cluster
-  id: test-id
+  cluster: {{.NodeCluster}}
+  id: {{.NodeId}}
 static_resources:
   clusters:
   - connect_timeout: 1s
