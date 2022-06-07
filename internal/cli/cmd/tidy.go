@@ -7,8 +7,6 @@ package cmd
 import (
 	"context"
 	"io"
-	"sort"
-	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
@@ -159,29 +157,25 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 		}
 	}
 
-	root.Workspace.Dep = nil
-
 	modules := map[string]*schema.Workspace_Dependency{}
+
+	var deps []*schema.Workspace_Dependency
 	for _, dep := range alloc.resolved {
 		if modules[dep.ModuleName] != nil {
 			continue
 		}
 
 		modules[dep.ModuleName] = dep
-		root.Workspace.Dep = append(root.Workspace.Dep, dep)
+		deps = append(deps, dep)
 	}
 
-	return rewriteWorkspace(ctx, root, root.Workspace)
+	return rewriteWorkspace(ctx, root, root.WorkspaceData.ReplaceDependencies(deps))
 }
 
-func rewriteWorkspace(ctx context.Context, root *workspace.Root, ws *schema.Workspace) error {
-	sort.Slice(ws.Dep, func(i, j int) bool {
-		return strings.Compare(ws.Dep[i].ModuleName, ws.Dep[j].ModuleName) < 0
-	})
-
+func rewriteWorkspace(ctx context.Context, root *workspace.Root, data workspace.WorkspaceData) error {
 	// Write an updated workspace.ns.textpb before continuing.
-	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), root.WorkspaceData.DefinitionFile, func(w io.Writer) error {
-		return workspace.FormatWorkspace(w, ws)
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), data.DefinitionFile(), func(w io.Writer) error {
+		return data.FormatTo(w)
 	})
 }
 
@@ -228,7 +222,7 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 	var didResolve bool
 	if resolved == nil {
 		// First, is there a replace statement that applies to this package?
-		replaced, err := alloc.loader.MatchModuleReplace(sch)
+		replaced, err := alloc.loader.MatchModuleReplace(ctx, sch)
 		if err != nil {
 			return workspace.Location{}, err
 		}

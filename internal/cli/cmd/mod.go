@@ -80,24 +80,9 @@ func newModGetCmd() *cobra.Command {
 				return err
 			}
 
-			var mods, changes int
-			for _, existing := range root.Workspace.Dep {
-				if existing.ModuleName == dep.ModuleName {
-					mods++
-					if existing.Version != dep.Version {
-						existing.Version = dep.Version
-						changes++
-					}
-				}
-			}
-
-			if mods == 0 {
-				root.Workspace.Dep = append(root.Workspace.Dep, dep)
-				changes++
-			}
-
-			if changes > 0 {
-				return rewriteWorkspace(ctx, root, root.Workspace)
+			newData := root.WorkspaceData.SetDependency(dep)
+			if newData != nil {
+				return rewriteWorkspace(ctx, root, newData)
 			}
 
 			return nil

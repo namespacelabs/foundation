@@ -7,10 +7,13 @@ package cmd
 import (
 	"context"
 	"fmt"
+
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"cuelang.org/go/cue/ast"
+	"cuelang.org/go/cue/format"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/build"
@@ -22,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/docker"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -154,26 +156,34 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 		fmt.Fprintf(console.Stdout(ctx), "%s: %s\n", pkgs[k].PackageName(), r.Value)
 	}
 
-	if outputPrebuilts {
-		ws := &schema.Workspace{}
+	if outputPrebuilts && len(res.Value) > 0 {
+		var digestFields []interface{}
 
-		if baseRepository != "" {
-			ws.PrebuiltBaseRepository = baseRepository
-
+		for k, pkg := range pkgs {
+			digestFields = append(digestFields, &ast.Field{
+				Label: ast.NewString(pkg.PackageName().String()),
+				Value: ast.NewString(res.Value[k].Value.Digest),
+			})
 		}
 
-		for k, r := range res.Value {
-			prebuilt := &schema.Workspace_BinaryDigest{
-				PackageName: pkgs[k].PackageName().String(),
-				Digest:      r.Value.Digest,
-			}
-			if baseRepository == "" {
-				prebuilt.Repository = r.Value.Repository
-			}
-			ws.PrebuiltBinary = append(ws.PrebuiltBinary, prebuilt)
+		p := ast.NewStruct(&ast.Field{
+			Label: ast.NewIdent("prebuilts"),
+			Value: ast.NewStruct(&ast.Field{
+				Label: ast.NewIdent("digest"),
+				Value: ast.NewStruct(digestFields...),
+			}, &ast.Field{
+				Label: ast.NewIdent("baseRepository"),
+				Value: ast.NewString(baseRepository),
+			}),
+		})
+
+		formatted, err := format.Node(p)
+		if err != nil {
+			return err
 		}
 
-		return workspace.FormatWorkspace(console.Stdout(ctx), ws)
+		fmt.Fprintf(console.Stdout(ctx), "%s\n", formatted)
+		return nil
 	}
 
 	return nil

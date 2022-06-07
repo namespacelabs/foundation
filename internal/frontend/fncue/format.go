@@ -37,18 +37,22 @@ func Format(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, name 
 	opts.EnsureFileMode = false
 
 	return fnfs.WriteFileExtended(ctx, fsfs, loc.Rel(name), 0644, opts, func(w io.Writer) error {
-		formatted, err := format.Source(contents)
-		if err != nil {
-			switch e := errors.Unwrap(err).(type) {
-			case errors.Error:
-				format, args := e.Msg()
-				return fnerrors.Wrapf(loc, err, format, args...)
-			default:
-				return fnerrors.Wrapf(loc, err, "failed to format")
-			}
-		}
-
-		_, err = w.Write(formatted)
-		return err
+		return FormatSource(loc, w, contents)
 	})
+}
+
+func FormatSource(loc fnerrors.Location, w io.Writer, contents []byte) error {
+	formatted, err := format.Source(contents)
+	if err != nil {
+		switch e := errors.Unwrap(err).(type) {
+		case errors.Error:
+			format, args := e.Msg()
+			return fnerrors.Wrapf(loc, err, format, args...)
+		default:
+			return fnerrors.Wrapf(loc, err, "failed to format")
+		}
+	}
+
+	_, err = w.Write(formatted)
+	return err
 }

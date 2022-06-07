@@ -89,7 +89,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts wo
 }
 
 func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (workspace.PackageType, error) {
-	firstPass, err := ft.evalctx.Eval(ctx, pkg.String())
+	firstPass, err := ft.evalctx.EvalPackage(ctx, pkg.String())
 	if err != nil {
 		return workspace.PackageType_None, err
 	}
@@ -111,7 +111,7 @@ func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (wo
 }
 
 func (ft impl) HasNodePackage(ctx context.Context, pkg schema.PackageName) (bool, error) {
-	firstPass, err := ft.evalctx.Eval(ctx, pkg.String())
+	firstPass, err := ft.evalctx.EvalPackage(ctx, pkg.String())
 	if err != nil {
 		return false, err
 	}

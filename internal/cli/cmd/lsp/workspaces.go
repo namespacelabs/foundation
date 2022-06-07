@@ -71,7 +71,7 @@ func (ws *FnWorkspace) AbsPathForPkgName(ctx context.Context, pkgName string) (s
 }
 
 func (ws *FnWorkspace) EvalPackage(ctx context.Context, pkgName string) (cue.Value, error) {
-	value, err := ws.evalCtx.Eval(ctx, pkgName)
+	value, err := ws.evalCtx.EvalPackage(ctx, pkgName)
 	if err != nil && value == nil {
 		// Retain Cue-level errors inside the "successful" value so that we can
 		// provide exploration features while having errors.

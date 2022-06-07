@@ -86,7 +86,7 @@ var MakeFrontend func(EarlyPackageLoader) Frontend
 type PackageLoader struct {
 	absPath       string
 	workspace     *schema.Workspace
-	workspaceData *schema.WorkspaceData
+	workspaceData WorkspaceData
 	devHost       *schema.DevHost
 	frontend      Frontend
 	rootmodule    *Module
@@ -183,7 +183,7 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 		}, nil
 	}
 
-	replaced, err := pl.MatchModuleReplace(packageName)
+	replaced, err := pl.MatchModuleReplace(ctx, packageName)
 	if err != nil {
 		return Location{}, err
 	}
@@ -201,14 +201,14 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 		}
 	}
 
-	return Location{}, fnerrors.UsageError("Run `fn tidy`.", "%s: missing entry in %s: run:\n  fn tidy", packageName, pl.workspaceData.DefinitionFile)
+	return Location{}, fnerrors.UsageError("Run `fn tidy`.", "%s: missing entry in %s: run:\n  fn tidy", packageName, pl.workspaceData.DefinitionFile())
 }
 
-func (pl *PackageLoader) MatchModuleReplace(packageName schema.PackageName) (*Location, error) {
+func (pl *PackageLoader) MatchModuleReplace(ctx context.Context, packageName schema.PackageName) (*Location, error) {
 	for _, replace := range pl.workspace.Replace {
 		rel, ok := schema.IsParent(replace.ModuleName, packageName)
 		if ok {
-			module, err := pl.resolveExternal(replace.ModuleName, func() (*LocalModule, error) {
+			module, err := pl.resolveExternal(ctx, replace.ModuleName, func() (*LocalModule, error) {
 				return &LocalModule{
 					ModuleName: replace.ModuleName,
 					LocalPath:  filepath.Join(pl.absPath, replace.Path),
@@ -289,7 +289,7 @@ func (pl *PackageLoader) LoadPackage(ctx context.Context, loc Location, opt ...L
 }
 
 func (pl *PackageLoader) ExternalLocation(ctx context.Context, mod *schema.Workspace_Dependency, packageName schema.PackageName) (Location, error) {
-	module, err := pl.resolveExternal(mod.ModuleName, func() (*LocalModule, error) {
+	module, err := pl.resolveExternal(ctx, mod.ModuleName, func() (*LocalModule, error) {
 		return DownloadModule(ctx, mod, false)
 	})
 	if err != nil {
@@ -316,12 +316,12 @@ func (pl *PackageLoader) ExternalLocation(ctx context.Context, mod *schema.Works
 	}, nil
 }
 
-func (pl *PackageLoader) inject(absPath string, w *schema.WorkspaceData, version string) *Module {
+func (pl *PackageLoader) inject(absPath string, w WorkspaceData, version string) *Module {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
 	m := &Module{
-		Workspace:     w.Parsed,
+		Workspace:     w.Parsed(),
 		WorkspaceData: w,
 		DevHost:       pl.devHost,
 
@@ -330,14 +330,14 @@ func (pl *PackageLoader) inject(absPath string, w *schema.WorkspaceData, version
 	}
 
 	pl.loadedModules[m.ModuleName()] = m
-	pl.fsys[m.ModuleName()] = memfs.IncrementalSnapshot(fnfs.Local(w.AbsPath))
+	pl.fsys[m.ModuleName()] = memfs.IncrementalSnapshot(fnfs.Local(w.AbsPath()))
 
-	pl.fsys[m.ModuleName()].Direct().Add(w.DefinitionFile, w.Data)
+	pl.fsys[m.ModuleName()].Direct().Add(w.DefinitionFile(), w.RawData())
 
 	return m
 }
 
-func (pl *PackageLoader) resolveExternal(moduleName string, download func() (*LocalModule, error)) (*Module, error) {
+func (pl *PackageLoader) resolveExternal(ctx context.Context, moduleName string, download func() (*LocalModule, error)) (*Module, error) {
 	pl.mu.RLock()
 	m := pl.loadedModules[moduleName]
 	pl.mu.RUnlock()
@@ -350,16 +350,16 @@ func (pl *PackageLoader) resolveExternal(moduleName string, download func() (*Lo
 		return nil, err
 	}
 
-	data, err := ModuleAt(downloaded.LocalPath)
+	data, err := ModuleAt(ctx, downloaded.LocalPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fnerrors.UserError(nil, "%s: is not a workspace, %q missing.", moduleName, data.GetDefinitionFile())
+			return nil, fnerrors.UserError(nil, "%s: is not a workspace, %q missing.", moduleName, data.DefinitionFile())
 		}
 		return nil, err
 	}
 
-	if data.Parsed.ModuleName != moduleName {
-		return nil, fnerrors.InternalError("%s: inconsistent definition, module specified %q", moduleName, data.Parsed.ModuleName)
+	if data.Parsed().ModuleName != moduleName {
+		return nil, fnerrors.InternalError("%s: inconsistent definition, module specified %q", moduleName, data.Parsed().ModuleName)
 	}
 
 	return pl.inject(downloaded.LocalPath, data, downloaded.Version), nil

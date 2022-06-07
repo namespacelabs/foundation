@@ -28,13 +28,13 @@ func findWorkspaceRoot(ctx context.Context, dir string) (*workspace.Root, error)
 		return nil, fnerrors.UserError(nil, "workspace: %w", err)
 	}
 
-	data, err := workspace.ModuleAt(path)
+	data, err := workspace.ModuleAt(ctx, path)
 	if err != nil {
 		return nil, err
 	}
 
 	r := workspace.NewRoot(path)
-	r.Workspace = data.Parsed
+	r.Workspace = data.Parsed()
 	r.WorkspaceData = data
 
 	if err := devhost.Prepare(ctx, r); err != nil {
