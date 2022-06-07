@@ -6,6 +6,7 @@ package aws
 
 import (
 	"context"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -15,10 +16,24 @@ import (
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
+const identityTokenEnv = "AWS_WEB_IDENTITY_TOKEN_FILE"
+
+func useInclusterConfig() bool {
+	// Check if we run inside an AWS cluster with a configured IAM role.
+	token := os.Getenv(identityTokenEnv)
+	return token != ""
+}
+
 func ConfiguredSessionV1(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*session.Session, string, error) {
 	conf := &Conf{}
 
 	if !selector.Select(devHost).Get(conf) {
+		if useInclusterConfig() {
+			sess, err := session.NewSession()
+			// TODO remove profile?
+			return sess, "default", err
+		}
+
 		return nil, "", fnerrors.UsageError("Run `fn prepare`.", "Foundation has not been configured to access AWS.")
 	}
 
@@ -34,6 +49,12 @@ func ConfiguredSessionV1(ctx context.Context, devHost *schema.DevHost, selector 
 func ConfiguredSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (aws.Config, string, error) {
 	conf := &Conf{}
 	if !selector.Select(devHost).Get(conf) {
+		if useInclusterConfig() {
+			cfg, err := config.LoadDefaultConfig(ctx)
+			// TODO remove profile?
+			return cfg, "default", err
+		}
+
 		return aws.Config{}, "", fnerrors.UsageError("Run `fn prepare`.", "Foundation has not been configured to access AWS.")
 	}
 

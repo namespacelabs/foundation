@@ -61,7 +61,7 @@ message WorkspaceData {
 message DevHost {
     repeated ConfigureEnvironment configure          = 1;
     repeated ConfigurePlatform    configure_platform = 2;
-    repeated google.protobuf.Any configure_tools     = 3;
+    repeated google.protobuf.Any  configure_tools    = 3;
 
     message ConfigureEnvironment {
         string              name                   = 1;
