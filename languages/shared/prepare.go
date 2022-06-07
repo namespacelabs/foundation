@@ -6,7 +6,6 @@ package shared
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/protocolbuffers/txtpbfmt/parser"
@@ -225,7 +224,7 @@ func PrepareGrpcBackendDep(ctx context.Context, loader workspace.Packages, dep *
 	}
 
 	return &ProtoTypeData{
-		Name:           fmt.Sprintf("%sClient", simpleServiceName(exportedService.ProtoTypename)),
+		Name:           simpleServiceName(exportedService.ProtoTypename),
 		SourceFileName: exportedService.GetProto()[0],
 		Location:       pkg.Location,
 		Kind:           ProtoService,
