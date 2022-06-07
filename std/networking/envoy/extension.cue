@@ -8,7 +8,14 @@ import (
 extension: fn.#Extension & {
 }
 
+$envoyProxy: inputs.#Server & {
+	packageName: "namespacelabs.dev/foundation/std/networking/envoy/proxy"
+}
+
 configure: fn.#Configure & {
+	stack: {
+		append: [$envoyProxy]
+	}
 	sidecar: [{
 		binary: "namespacelabs.dev/foundation/std/networking/envoy/controller"
 	}]
