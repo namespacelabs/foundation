@@ -6,22 +6,10 @@ import (
 )
 
 extension: fn.#Extension & {
-	requirePersistentStorage: {
-		persistentId: "envoy-data"
-		byteCount:    "10MiB"
-		mountPath:    "/config"
-	}
-}
-
-$envoyProxy: inputs.#Server & {
-	packageName: "namespacelabs.dev/foundation/std/networking/envoy/proxy"
 }
 
 configure: fn.#Configure & {
-	stack: {
-		append: [$envoyProxy]
-	}
-	init: [{
-		binary: "namespacelabs.dev/foundation/std/networking/envoy/init"
+	sidecar: [{
+		binary: "namespacelabs.dev/foundation/std/networking/envoy/proxy"
 	}]
 }
