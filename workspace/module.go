@@ -29,7 +29,7 @@ import (
 
 type Module struct {
 	Workspace     *schema.Workspace
-	WorkspaceData *schema.WorkspaceData
+	WorkspaceData WorkspaceData
 	DevHost       *schema.DevHost
 
 	absPath string

@@ -27,7 +27,7 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.Earl
 			return nil, fnerrors.UserError(loc, "expected a directory")
 		}
 
-		firstPass, err := evalctx.Eval(ctx, loc.PackageName.String())
+		firstPass, err := evalctx.EvalPackage(ctx, loc.PackageName.String())
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing package")
 		}

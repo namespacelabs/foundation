@@ -50,13 +50,6 @@ message Workspace {
     }
 }
 
-message WorkspaceData {
-    string    abs_path        = 1;
-    string    definition_file = 2;
-    bytes     data            = 3;
-    Workspace parsed          = 4;
-}
-
 // Configure a developer workstation.
 message DevHost {
     repeated ConfigureEnvironment configure          = 1;

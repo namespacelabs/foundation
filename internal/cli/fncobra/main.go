@@ -142,6 +142,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = runtime.HasRuntime
 
+		workspace.ModuleLoader = cuefrontend.ModuleLoader
 		workspace.MakeFrontend = cuefrontend.NewFrontend
 
 		binary.BuildGo = func(loc workspace.Location, goPackage, binName string, unsafeCacheable bool) (build.Spec, error) {

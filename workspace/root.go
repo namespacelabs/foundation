@@ -13,7 +13,7 @@ import (
 
 type Root struct {
 	Workspace     *schema.Workspace
-	WorkspaceData *schema.WorkspaceData
+	WorkspaceData WorkspaceData
 	DevHost       *schema.DevHost
 	DevHostFile   string // Relative path where the devhost definition was loaded from.
 

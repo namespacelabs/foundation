@@ -11,7 +11,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -173,7 +172,7 @@ func newSnapshotCache() *snapshotCache {
 	}
 }
 
-func (ev *EvalCtx) Eval(ctx context.Context, pkgname string) (*Partial, error) {
+func (ev *EvalCtx) EvalPackage(ctx context.Context, pkgname string) (*Partial, error) {
 	// We work around Cue's limited package management. Rather than maintaining package copies under
 	// a top-level cue.mod directory, we want instead a system more similar to Go's, with explicit
 	// version locking, and downloads into a common shared cache.
@@ -193,6 +192,32 @@ func (ev *EvalCtx) Eval(ctx context.Context, pkgname string) (*Partial, error) {
 	return ev.cache.Eval(ctx, *pkg, pkgname+":_", collectedImports)
 }
 
+func EvalWorkspace(ctx context.Context, fsys fs.FS, dir string, files []string) (*Partial, error) {
+	bldctx := build.NewContext()
+
+	p := bldctx.NewInstance(dir, func(pos token.Pos, path string) *build.Instance {
+		if IsStandardImportPath(path) {
+			return nil // Builtin.
+		}
+
+		berr := bldctx.NewInstance(dir, nil)
+		berr.Err = errors.Promote(fnerrors.New("imports not allowed"), "")
+		return berr
+	})
+
+	pkg := CuePackage{
+		RelPath: ".",
+		Files:   files,
+		Sources: fsys,
+	}
+
+	if err := parseSources(ctx, p, "_", pkg); err != nil {
+		return nil, err
+	}
+
+	return finishInstance(nil, cuecontext.New(), p, pkg, nil)
+}
+
 func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage) (*Partial, error) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
@@ -203,35 +228,45 @@ func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 		if len(p.DepsErrors) > 0 {
 			return nil, multierr.New(p.DepsErrors...)
 		}
-		vv := sc.cuectx.BuildInstance(p)
 
-		partial := &Partial{Ctx: sc}
-		partial.Package = pkg
-		partial.Val = vv
-
-		var err error
-		partial.Left, err = parseTags(&partial.CueV)
+		partial, err := finishInstance(sc, sc.cuectx, p, pkg, collectedImports)
 		if err != nil {
-			return nil, err
-		}
-
-		for _, dep := range collectedImports {
-			partial.CueImports = append(partial.CueImports, *dep)
-		}
-		sort.Slice(partial.CueImports, func(i, j int) bool {
-			return strings.Compare(partial.CueImports[i].ModuleName, partial.CueImports[j].ModuleName) < 0
-		})
-
-		if vv.Err() != nil {
-			// Even if there are errors, return the partially valid Cue value.
-			// This is useful to provide language features in LSP for not fully valid files.
-			return partial, vv.Err()
+			return partial, err
 		}
 
 		sc.built[pkgname] = partial
 	}
 
 	return sc.built[pkgname], nil
+}
+
+func finishInstance(sc *snapshotCache, cuectx *cue.Context, p *build.Instance, pkg CuePackage, collectedImports map[string]*CuePackage) (*Partial, error) {
+	vv := cuectx.BuildInstance(p)
+
+	partial := &Partial{Ctx: sc}
+	partial.Package = pkg
+	partial.Val = vv
+
+	var err error
+	partial.Left, err = parseTags(&partial.CueV)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, dep := range collectedImports {
+		partial.CueImports = append(partial.CueImports, *dep)
+	}
+	sort.Slice(partial.CueImports, func(i, j int) bool {
+		return strings.Compare(partial.CueImports[i].ModuleName, partial.CueImports[j].ModuleName) < 0
+	})
+
+	if vv.Err() != nil {
+		// Even if there are errors, return the partially valid Cue value.
+		// This is useful to provide language features in LSP for not fully valid files.
+		return partial, vv.Err()
+	}
+
+	return partial, nil
 }
 
 func (sc *snapshotCache) parseAndCacheInstance(ctx context.Context, pkg CuePackage, info astutil.ImportInfo, collectedImports map[string]*CuePackage) *build.Instance {
@@ -245,7 +280,7 @@ func (sc *snapshotCache) parseAndCacheInstance(ctx context.Context, pkg CuePacka
 }
 
 func (sc *snapshotCache) parseInstance(ctx context.Context, collectedImports map[string]*CuePackage, info astutil.ImportInfo, pkg CuePackage) *build.Instance {
-	p := sc.bldctx.NewInstance(fmt.Sprintf("%s/%s", pkg.ModuleName, pkg.RelPath), func(pos token.Pos, path string) *build.Instance {
+	p := sc.bldctx.NewInstance(join(pkg.ModuleName, pkg.RelPath), func(pos token.Pos, path string) *build.Instance {
 		if IsStandardImportPath(path) {
 			return nil // Builtin.
 		}
@@ -258,6 +293,14 @@ func (sc *snapshotCache) parseInstance(ctx context.Context, collectedImports map
 		return nil
 	})
 
+	if err := parseSources(ctx, p, info.PkgName, pkg); err != nil {
+		fmt.Fprintln(console.Errors(ctx), "internal error: ", err)
+	}
+
+	return p
+}
+
+func parseSources(ctx context.Context, p *build.Instance, expectedPkg string, pkg CuePackage) error {
 	for _, f := range pkg.Files {
 		contents, err := fs.ReadFile(pkg.Sources, filepath.Join(pkg.RelPath, f))
 		if err != nil {
@@ -266,7 +309,7 @@ func (sc *snapshotCache) parseInstance(ctx context.Context, collectedImports map
 		}
 
 		// Filename recorded is "example.com/module/package/file.cue".
-		importPath := path.Join(pkg.ModuleName, pkg.RelPath, f)
+		importPath := filepath.Join(pkg.ModuleName, pkg.RelPath, f)
 		parsed, err := parser.ParseFile(importPath, contents, parser.ParseComments)
 		if err != nil {
 			p.Err = errors.Append(p.Err, errors.Promote(err, "ParseFile"))
@@ -274,19 +317,26 @@ func (sc *snapshotCache) parseInstance(ctx context.Context, collectedImports map
 		}
 
 		if pkgName := parsed.PackageName(); pkgName == "" {
-			if info.PkgName != "_" {
+			if expectedPkg != "_" {
 				continue
 			}
-		} else if info.PkgName != pkgName {
+		} else if expectedPkg != pkgName {
 			continue
 		}
 
 		if err := p.AddSyntax(parsed); err != nil {
-			fmt.Fprintln(console.Stderr(ctx), "internal error: ", err)
+			return err
 		}
 	}
 
-	return p
+	return nil
+}
+
+func join(dir, base string) string {
+	if base == "." {
+		return dir
+	}
+	return fmt.Sprintf("%s/%s", dir, base)
 }
 
 func IsStandardImportPath(path string) bool {

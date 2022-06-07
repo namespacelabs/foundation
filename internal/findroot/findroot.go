@@ -6,28 +6,29 @@ package findroot
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 )
 
-type Matcher struct {
-	Entname string
-	Test    func(fi fs.FileInfo) bool
-}
+type MatcherFunc func(string) bool
 
-func LookForFile(name string) Matcher {
-	return Matcher{
-		Entname: name,
-		Test:    func(fi fs.FileInfo) bool { return !fi.IsDir() },
+func LookForFile(names ...string) MatcherFunc {
+	return func(dir string) bool {
+		for _, name := range names {
+			if fi, err := os.Stat(filepath.Join(dir, name)); err == nil && !fi.IsDir() {
+				return true
+			}
+		}
+
+		return false
 	}
 }
 
-func Find(label, startAt string, match Matcher) (string, error) {
+func Find(label, startAt string, match MatcherFunc) (string, error) {
 	dir := filepath.Clean(startAt)
 
 	for {
-		if fi, err := os.Stat(filepath.Join(dir, match.Entname)); err == nil && match.Test(fi) {
+		if match(dir) {
 			return dir, nil
 		}
 

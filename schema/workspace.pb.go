@@ -132,77 +132,6 @@ func (x *Workspace) GetFoundation() *Workspace_FoundationRequirements {
 	return nil
 }
 
-type WorkspaceData struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	AbsPath        string     `protobuf:"bytes,1,opt,name=abs_path,json=absPath,proto3" json:"abs_path,omitempty"`
-	DefinitionFile string     `protobuf:"bytes,2,opt,name=definition_file,json=definitionFile,proto3" json:"definition_file,omitempty"`
-	Data           []byte     `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
-	Parsed         *Workspace `protobuf:"bytes,4,opt,name=parsed,proto3" json:"parsed,omitempty"`
-}
-
-func (x *WorkspaceData) Reset() {
-	*x = WorkspaceData{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_workspace_proto_msgTypes[1]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *WorkspaceData) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WorkspaceData) ProtoMessage() {}
-
-func (x *WorkspaceData) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_workspace_proto_msgTypes[1]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WorkspaceData.ProtoReflect.Descriptor instead.
-func (*WorkspaceData) Descriptor() ([]byte, []int) {
-	return file_schema_workspace_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *WorkspaceData) GetAbsPath() string {
-	if x != nil {
-		return x.AbsPath
-	}
-	return ""
-}
-
-func (x *WorkspaceData) GetDefinitionFile() string {
-	if x != nil {
-		return x.DefinitionFile
-	}
-	return ""
-}
-
-func (x *WorkspaceData) GetData() []byte {
-	if x != nil {
-		return x.Data
-	}
-	return nil
-}
-
-func (x *WorkspaceData) GetParsed() *Workspace {
-	if x != nil {
-		return x.Parsed
-	}
-	return nil
-}
-
 // Configure a developer workstation.
 type DevHost struct {
 	state         protoimpl.MessageState
@@ -217,7 +146,7 @@ type DevHost struct {
 func (x *DevHost) Reset() {
 	*x = DevHost{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_workspace_proto_msgTypes[2]
+		mi := &file_schema_workspace_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -230,7 +159,7 @@ func (x *DevHost) String() string {
 func (*DevHost) ProtoMessage() {}
 
 func (x *DevHost) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_workspace_proto_msgTypes[2]
+	mi := &file_schema_workspace_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -243,7 +172,7 @@ func (x *DevHost) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DevHost.ProtoReflect.Descriptor instead.
 func (*DevHost) Descriptor() ([]byte, []int) {
-	return file_schema_workspace_proto_rawDescGZIP(), []int{2}
+	return file_schema_workspace_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *DevHost) GetConfigure() []*DevHost_ConfigureEnvironment {
@@ -279,7 +208,7 @@ type Workspace_Dependency struct {
 func (x *Workspace_Dependency) Reset() {
 	*x = Workspace_Dependency{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_workspace_proto_msgTypes[3]
+		mi := &file_schema_workspace_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -292,7 +221,7 @@ func (x *Workspace_Dependency) String() string {
 func (*Workspace_Dependency) ProtoMessage() {}
 
 func (x *Workspace_Dependency) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_workspace_proto_msgTypes[3]
+	mi := &file_schema_workspace_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -334,7 +263,7 @@ type Workspace_Replace struct {
 func (x *Workspace_Replace) Reset() {
 	*x = Workspace_Replace{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_workspace_proto_msgTypes[4]
+		mi := &file_schema_workspace_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -347,7 +276,7 @@ func (x *Workspace_Replace) String() string {
 func (*Workspace_Replace) ProtoMessage() {}
 
 func (x *Workspace_Replace) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_workspace_proto_msgTypes[4]
+	mi := &file_schema_workspace_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -390,7 +319,7 @@ type Workspace_BinaryDigest struct {
 func (x *Workspace_BinaryDigest) Reset() {
 	*x = Workspace_BinaryDigest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_workspace_proto_msgTypes[5]
+		mi := &file_schema_workspace_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -403,7 +332,7 @@ func (x *Workspace_BinaryDigest) String() string {
 func (*Workspace_BinaryDigest) ProtoMessage() {}
 
 func (x *Workspace_BinaryDigest) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_workspace_proto_msgTypes[5]
+	mi := &file_schema_workspace_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -451,7 +380,7 @@ type Workspace_FoundationRequirements struct {
 func (x *Workspace_FoundationRequirements) Reset() {
 	*x = Workspace_FoundationRequirements{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_workspace_proto_msgTypes[6]
+		mi := &file_schema_workspace_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -464,7 +393,7 @@ func (x *Workspace_FoundationRequirements) String() string {
 func (*Workspace_FoundationRequirements) ProtoMessage() {}
 
 func (x *Workspace_FoundationRequirements) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_workspace_proto_msgTypes[6]
+	mi := &file_schema_workspace_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -501,7 +430,7 @@ type DevHost_ConfigureEnvironment struct {
 func (x *DevHost_ConfigureEnvironment) Reset() {
 	*x = DevHost_ConfigureEnvironment{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_workspace_proto_msgTypes[7]
+		mi := &file_schema_workspace_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -514,7 +443,7 @@ func (x *DevHost_ConfigureEnvironment) String() string {
 func (*DevHost_ConfigureEnvironment) ProtoMessage() {}
 
 func (x *DevHost_ConfigureEnvironment) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_workspace_proto_msgTypes[7]
+	mi := &file_schema_workspace_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -527,7 +456,7 @@ func (x *DevHost_ConfigureEnvironment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DevHost_ConfigureEnvironment.ProtoReflect.Descriptor instead.
 func (*DevHost_ConfigureEnvironment) Descriptor() ([]byte, []int) {
-	return file_schema_workspace_proto_rawDescGZIP(), []int{2, 0}
+	return file_schema_workspace_proto_rawDescGZIP(), []int{1, 0}
 }
 
 func (x *DevHost_ConfigureEnvironment) GetName() string {
@@ -572,7 +501,7 @@ type DevHost_ConfigurePlatform struct {
 func (x *DevHost_ConfigurePlatform) Reset() {
 	*x = DevHost_ConfigurePlatform{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_workspace_proto_msgTypes[8]
+		mi := &file_schema_workspace_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -585,7 +514,7 @@ func (x *DevHost_ConfigurePlatform) String() string {
 func (*DevHost_ConfigurePlatform) ProtoMessage() {}
 
 func (x *DevHost_ConfigurePlatform) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_workspace_proto_msgTypes[8]
+	mi := &file_schema_workspace_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -598,7 +527,7 @@ func (x *DevHost_ConfigurePlatform) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DevHost_ConfigurePlatform.ProtoReflect.Descriptor instead.
 func (*DevHost_ConfigurePlatform) Descriptor() ([]byte, []int) {
-	return file_schema_workspace_proto_rawDescGZIP(), []int{2, 1}
+	return file_schema_workspace_proto_rawDescGZIP(), []int{1, 1}
 }
 
 func (x *DevHost_ConfigurePlatform) GetArchitecture() string {
@@ -686,17 +615,7 @@ var file_schema_workspace_proto_rawDesc = []byte{
 	0x79, 0x1a, 0x39, 0x0a, 0x16, 0x46, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52,
 	0x65, 0x71, 0x75, 0x69, 0x72, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x12, 0x1f, 0x0a, 0x0b, 0x6d,
 	0x69, 0x6e, 0x69, 0x6d, 0x75, 0x6d, 0x5f, 0x61, 0x70, 0x69, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05,
-	0x52, 0x0a, 0x6d, 0x69, 0x6e, 0x69, 0x6d, 0x75, 0x6d, 0x41, 0x70, 0x69, 0x22, 0x9d, 0x01, 0x0a,
-	0x0d, 0x57, 0x6f, 0x72, 0x6b, 0x73, 0x70, 0x61, 0x63, 0x65, 0x44, 0x61, 0x74, 0x61, 0x12, 0x19,
-	0x0a, 0x08, 0x61, 0x62, 0x73, 0x5f, 0x70, 0x61, 0x74, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x07, 0x61, 0x62, 0x73, 0x50, 0x61, 0x74, 0x68, 0x12, 0x27, 0x0a, 0x0f, 0x64, 0x65, 0x66,
-	0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x66, 0x69, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x0e, 0x64, 0x65, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x46, 0x69,
-	0x6c, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x61, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c,
-	0x52, 0x04, 0x64, 0x61, 0x74, 0x61, 0x12, 0x34, 0x0a, 0x06, 0x70, 0x61, 0x72, 0x73, 0x65, 0x64,
-	0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x57, 0x6f, 0x72, 0x6b, 0x73,
-	0x70, 0x61, 0x63, 0x65, 0x52, 0x06, 0x70, 0x61, 0x72, 0x73, 0x65, 0x64, 0x22, 0xd9, 0x04, 0x0a,
+	0x52, 0x0a, 0x6d, 0x69, 0x6e, 0x69, 0x6d, 0x75, 0x6d, 0x41, 0x70, 0x69, 0x22, 0xd9, 0x04, 0x0a,
 	0x07, 0x44, 0x65, 0x76, 0x48, 0x6f, 0x73, 0x74, 0x12, 0x4d, 0x0a, 0x09, 0x63, 0x6f, 0x6e, 0x66,
 	0x69, 0x67, 0x75, 0x72, 0x65, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x2f, 0x2e, 0x66, 0x6f,
 	0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e,
@@ -752,39 +671,37 @@ func file_schema_workspace_proto_rawDescGZIP() []byte {
 	return file_schema_workspace_proto_rawDescData
 }
 
-var file_schema_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_schema_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_schema_workspace_proto_goTypes = []interface{}{
 	(*Workspace)(nil),                        // 0: foundation.schema.Workspace
-	(*WorkspaceData)(nil),                    // 1: foundation.schema.WorkspaceData
-	(*DevHost)(nil),                          // 2: foundation.schema.DevHost
-	(*Workspace_Dependency)(nil),             // 3: foundation.schema.Workspace.Dependency
-	(*Workspace_Replace)(nil),                // 4: foundation.schema.Workspace.Replace
-	(*Workspace_BinaryDigest)(nil),           // 5: foundation.schema.Workspace.BinaryDigest
-	(*Workspace_FoundationRequirements)(nil), // 6: foundation.schema.Workspace.FoundationRequirements
-	(*DevHost_ConfigureEnvironment)(nil),     // 7: foundation.schema.DevHost.ConfigureEnvironment
-	(*DevHost_ConfigurePlatform)(nil),        // 8: foundation.schema.DevHost.ConfigurePlatform
-	(*Environment)(nil),                      // 9: foundation.schema.Environment
-	(*anypb.Any)(nil),                        // 10: google.protobuf.Any
-	(Environment_Purpose)(0),                 // 11: foundation.schema.Environment.Purpose
+	(*DevHost)(nil),                          // 1: foundation.schema.DevHost
+	(*Workspace_Dependency)(nil),             // 2: foundation.schema.Workspace.Dependency
+	(*Workspace_Replace)(nil),                // 3: foundation.schema.Workspace.Replace
+	(*Workspace_BinaryDigest)(nil),           // 4: foundation.schema.Workspace.BinaryDigest
+	(*Workspace_FoundationRequirements)(nil), // 5: foundation.schema.Workspace.FoundationRequirements
+	(*DevHost_ConfigureEnvironment)(nil),     // 6: foundation.schema.DevHost.ConfigureEnvironment
+	(*DevHost_ConfigurePlatform)(nil),        // 7: foundation.schema.DevHost.ConfigurePlatform
+	(*Environment)(nil),                      // 8: foundation.schema.Environment
+	(*anypb.Any)(nil),                        // 9: google.protobuf.Any
+	(Environment_Purpose)(0),                 // 10: foundation.schema.Environment.Purpose
 }
 var file_schema_workspace_proto_depIdxs = []int32{
-	9,  // 0: foundation.schema.Workspace.env:type_name -> foundation.schema.Environment
-	3,  // 1: foundation.schema.Workspace.dep:type_name -> foundation.schema.Workspace.Dependency
-	4,  // 2: foundation.schema.Workspace.replace:type_name -> foundation.schema.Workspace.Replace
-	5,  // 3: foundation.schema.Workspace.prebuilt_binary:type_name -> foundation.schema.Workspace.BinaryDigest
-	6,  // 4: foundation.schema.Workspace.foundation:type_name -> foundation.schema.Workspace.FoundationRequirements
-	0,  // 5: foundation.schema.WorkspaceData.parsed:type_name -> foundation.schema.Workspace
-	7,  // 6: foundation.schema.DevHost.configure:type_name -> foundation.schema.DevHost.ConfigureEnvironment
-	8,  // 7: foundation.schema.DevHost.configure_platform:type_name -> foundation.schema.DevHost.ConfigurePlatform
-	10, // 8: foundation.schema.DevHost.configure_tools:type_name -> google.protobuf.Any
-	11, // 9: foundation.schema.DevHost.ConfigureEnvironment.purpose:type_name -> foundation.schema.Environment.Purpose
-	10, // 10: foundation.schema.DevHost.ConfigureEnvironment.configuration:type_name -> google.protobuf.Any
-	10, // 11: foundation.schema.DevHost.ConfigurePlatform.configuration:type_name -> google.protobuf.Any
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	8,  // 0: foundation.schema.Workspace.env:type_name -> foundation.schema.Environment
+	2,  // 1: foundation.schema.Workspace.dep:type_name -> foundation.schema.Workspace.Dependency
+	3,  // 2: foundation.schema.Workspace.replace:type_name -> foundation.schema.Workspace.Replace
+	4,  // 3: foundation.schema.Workspace.prebuilt_binary:type_name -> foundation.schema.Workspace.BinaryDigest
+	5,  // 4: foundation.schema.Workspace.foundation:type_name -> foundation.schema.Workspace.FoundationRequirements
+	6,  // 5: foundation.schema.DevHost.configure:type_name -> foundation.schema.DevHost.ConfigureEnvironment
+	7,  // 6: foundation.schema.DevHost.configure_platform:type_name -> foundation.schema.DevHost.ConfigurePlatform
+	9,  // 7: foundation.schema.DevHost.configure_tools:type_name -> google.protobuf.Any
+	10, // 8: foundation.schema.DevHost.ConfigureEnvironment.purpose:type_name -> foundation.schema.Environment.Purpose
+	9,  // 9: foundation.schema.DevHost.ConfigureEnvironment.configuration:type_name -> google.protobuf.Any
+	9,  // 10: foundation.schema.DevHost.ConfigurePlatform.configuration:type_name -> google.protobuf.Any
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_schema_workspace_proto_init() }
@@ -807,18 +724,6 @@ func file_schema_workspace_proto_init() {
 			}
 		}
 		file_schema_workspace_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WorkspaceData); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_schema_workspace_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DevHost); i {
 			case 0:
 				return &v.state
@@ -830,7 +735,7 @@ func file_schema_workspace_proto_init() {
 				return nil
 			}
 		}
-		file_schema_workspace_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_workspace_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Workspace_Dependency); i {
 			case 0:
 				return &v.state
@@ -842,7 +747,7 @@ func file_schema_workspace_proto_init() {
 				return nil
 			}
 		}
-		file_schema_workspace_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_workspace_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Workspace_Replace); i {
 			case 0:
 				return &v.state
@@ -854,7 +759,7 @@ func file_schema_workspace_proto_init() {
 				return nil
 			}
 		}
-		file_schema_workspace_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_workspace_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Workspace_BinaryDigest); i {
 			case 0:
 				return &v.state
@@ -866,7 +771,7 @@ func file_schema_workspace_proto_init() {
 				return nil
 			}
 		}
-		file_schema_workspace_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_workspace_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Workspace_FoundationRequirements); i {
 			case 0:
 				return &v.state
@@ -878,7 +783,7 @@ func file_schema_workspace_proto_init() {
 				return nil
 			}
 		}
-		file_schema_workspace_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_workspace_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DevHost_ConfigureEnvironment); i {
 			case 0:
 				return &v.state
@@ -890,7 +795,7 @@ func file_schema_workspace_proto_init() {
 				return nil
 			}
 		}
-		file_schema_workspace_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_workspace_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DevHost_ConfigurePlatform); i {
 			case 0:
 				return &v.state
@@ -909,7 +814,7 @@ func file_schema_workspace_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_workspace_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
