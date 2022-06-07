@@ -159,9 +159,9 @@ _#ConfigureBase: {
 		append: [...#WithPackageName]
 	}
 	startup?: #Startup
-	sidecar?: [...#Container]
-	init?: [...#Container]
-	naming?: #Naming
+	sidecar?: *{[string]: #Container} | [...#Container]
+	init?:    *{[string]: #Container} | [...#Container]
+	naming?:  #Naming
 	...
 
 	provisioning?: #Provisioning

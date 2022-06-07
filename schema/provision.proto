@@ -25,6 +25,7 @@ message InvocationSnapshot {
 }
 
 message SidecarContainer {
+    string          name   = 3;  // Optional.
     string          binary = 1;
     repeated string args   = 2;
 }

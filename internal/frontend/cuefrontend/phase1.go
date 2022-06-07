@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 
+	"cuelang.org/go/cue"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -78,6 +79,7 @@ type cueNaming struct {
 }
 
 type cueContainer struct {
+	Name   string         `json:"name"`
 	Binary string         `json:"binary"`
 	Args   *argsListOrMap `json:"args"`
 }
@@ -119,32 +121,16 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 	}
 
 	if sidecar := lookupTransition(vv, "sidecar"); sidecar.Exists() {
-		var sidecards []cueContainer
-
-		if err := sidecar.Val.Decode(&sidecards); err != nil {
+		pdata.Sidecars, err = parseContainers(sidecar.Val)
+		if err != nil {
 			return pdata, err
-		}
-
-		for _, data := range sidecards {
-			pdata.Sidecars = append(pdata.Sidecars, &schema.SidecarContainer{
-				Binary: data.Binary,
-				Args:   data.Args.Parsed(),
-			})
 		}
 	}
 
 	if init := lookupTransition(vv, "init"); init.Exists() {
-		var inits []cueContainer
-
-		if err := init.Val.Decode(&inits); err != nil {
+		pdata.Inits, err = parseContainers(init.Val)
+		if err != nil {
 			return pdata, err
-		}
-
-		for _, data := range inits {
-			pdata.Inits = append(pdata.Inits, &schema.SidecarContainer{
-				Binary: data.Binary,
-				Args:   data.Args.Parsed(),
-			})
 		}
 	}
 
@@ -181,6 +167,47 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 	}
 
 	return pdata, nil
+}
+
+func parseContainers(v cue.Value) ([]*schema.SidecarContainer, error) {
+	if v.Kind() == cue.ListKind {
+		var containers []cueContainer
+
+		if err := v.Decode(&containers); err != nil {
+			return nil, err
+		}
+
+		var parsed []*schema.SidecarContainer
+		for _, data := range containers {
+			parsed = append(parsed, &schema.SidecarContainer{
+				Name:   data.Name,
+				Binary: data.Binary,
+				Args:   data.Args.Parsed(),
+			})
+		}
+
+		return parsed, nil
+	}
+
+	var containers map[string]cueContainer
+	if err := v.Decode(&containers); err != nil {
+		return nil, err
+	}
+
+	var parsed []*schema.SidecarContainer
+	for name, data := range containers {
+		if data.Name != "" && data.Name != name {
+			return nil, fnerrors.UserError(nil, "%s: inconsistent container name %q", name, data.Name)
+		}
+
+		parsed = append(parsed, &schema.SidecarContainer{
+			Name:   name,
+			Binary: data.Binary,
+			Args:   data.Args.Parsed(),
+		})
+	}
+
+	return parsed, nil
 }
 
 func sortAdditional(a, b *schema.Naming_AdditionalDomainName) bool {

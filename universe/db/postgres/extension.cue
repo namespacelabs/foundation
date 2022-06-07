@@ -29,7 +29,7 @@ extension: fn.#Extension & {
 }
 
 configure: fn.#Configure & {
-	init: [{
+	init: setup: {
 		binary: "namespacelabs.dev/foundation/universe/db/postgres/init"
-	}]
+	}
 }
