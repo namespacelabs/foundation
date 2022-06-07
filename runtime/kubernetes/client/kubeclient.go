@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	sync "sync"
 
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	tadmissionregistrationv1 "k8s.io/client-go/kubernetes/typed/admissionregistration/v1"
 	tappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -128,6 +129,12 @@ func MakeResourceSpecificClient(resource string, cfg *restclient.Config) (restcl
 		return c.RESTClient(), nil
 	case "jobs":
 		c, err := tbatchv1.NewForConfig(cfg)
+		if err != nil {
+			return nil, err
+		}
+		return c.RESTClient(), nil
+	case "customresourcedefinitions":
+		c, err := apiextensionsv1.NewForConfig(cfg)
 		if err != nil {
 			return nil, err
 		}
