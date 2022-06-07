@@ -190,20 +190,31 @@ func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocate
 	gatewayServices = slices.Compact(gatewayServices)
 
 	if len(gatewayServices) > 0 {
-		switch server.Framework {
-		case schema.Framework_GO_GRPC:
-			if UseGoInternalGrpcGateway {
-				gwEndpoint, err := makeGrpcGatewayEndpoint(sch.Server, serverPorts, gatewayServices, publicGateway)
-				if err != nil {
-					return nil, nil, err
+		var hasTranscodeNode bool
+
+		for _, imp := range sch.Server.Import {
+			if GrpcHttpTranscodeNode.Equals(imp) {
+				hasTranscodeNode = true
+				break
+			}
+		}
+
+		if !hasTranscodeNode {
+			switch server.Framework {
+			case schema.Framework_GO_GRPC:
+				if UseGoInternalGrpcGateway {
+					gwEndpoint, err := makeGrpcGatewayEndpoint(sch.Server, serverPorts, gatewayServices, publicGateway)
+					if err != nil {
+						return nil, nil, err
+					}
+
+					// We need a http service to hit.
+					endpoints = append(endpoints, gwEndpoint)
 				}
 
-				// We need a http service to hit.
-				endpoints = append(endpoints, gwEndpoint)
+			default:
+				return nil, nil, fnerrors.New("server includes grpc gateway requirements, but it's not of a supported framework")
 			}
-
-		default:
-			return nil, nil, fnerrors.New("server includes grpc gateway requirements, but it's not of a supported framework")
 		}
 	}
 
