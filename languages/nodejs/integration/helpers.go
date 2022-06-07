@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/languages/nodejs/imports"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -43,7 +43,7 @@ func nodeDepsNpmImport(npmPackage NpmPackage) string {
 	return npmImport(npmPackage, "deps.fn")
 }
 
-func convertProtoType(ic *importCollector, t shared.ProtoTypeData) (tmplImportedType, error) {
+func convertProtoType(ic *imports.ImportCollector, t shared.ProtoTypeData) (tmplImportedType, error) {
 	tsModuleName := t.SourceFileName
 
 	if strings.HasSuffix(tsModuleName, ".proto") {
@@ -64,11 +64,11 @@ func convertProtoType(ic *importCollector, t shared.ProtoTypeData) (tmplImported
 	return tmplImportedType{
 		Name: t.Name,
 		// TODO: handle the case when the source type is not in the same package.
-		ImportAlias: ic.add(npmImport(npmPackage, tsModuleName)),
+		ImportAlias: ic.Add(npmImport(npmPackage, tsModuleName)),
 	}, nil
 }
 
-func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_NodeJs, loc workspace.Location) (tmplImportedType, error) {
+func convertAvailableIn(ic *imports.ImportCollector, a *schema.Provides_AvailableIn_NodeJs, loc workspace.Location) (tmplImportedType, error) {
 	// Empty import means that the type is generated at runtime when the provider is used as a dependency,
 	// and here were are generating the provider definition. In this case this type is not used from the templates.
 	if a.Import == "" {
@@ -104,65 +104,20 @@ func convertAvailableIn(ic *importCollector, a *schema.Provides_AvailableIn_Node
 	} else {
 		return tmplImportedType{
 			Name:        a.Type,
-			ImportAlias: ic.add(imp),
+			ImportAlias: ic.Add(imp),
 		}, nil
 	}
 }
 
-func convertImportedInitializers(ic *importCollector, locations []workspace.Location) ([]string, error) {
+func convertImportedInitializers(ic *imports.ImportCollector, locations []workspace.Location) ([]string, error) {
 	result := []string{}
 	for _, loc := range locations {
 		npmPackage, err := toNpmPackage(loc)
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, ic.add(nodeDepsNpmImport(npmPackage)))
+		result = append(result, ic.Add(nodeDepsNpmImport(npmPackage)))
 	}
 
 	return result, nil
-}
-
-type importCollector struct {
-	// Key: pkg
-	pkgToImport map[string]tmplSingleImport
-	aliasIndex  int
-}
-
-func newImportCollector() *importCollector {
-	return &importCollector{
-		pkgToImport: make(map[string]tmplSingleImport),
-	}
-}
-
-// Returns the assigned alias or an empty string if no alias has been assigned.
-func (ic *importCollector) add(npmImport string) string {
-	if npmImport == "" {
-		return ""
-	}
-
-	var alias string
-	if im, ok := ic.pkgToImport[npmImport]; ok {
-		alias = im.Alias
-	} else {
-		alias = fmt.Sprintf("i%d", ic.aliasIndex)
-		ic.aliasIndex++
-		ic.pkgToImport[npmImport] = tmplSingleImport{
-			Alias:   alias,
-			Package: npmImport,
-		}
-	}
-
-	return alias
-}
-
-func (ic *importCollector) imports() []tmplSingleImport {
-	imports := make([]tmplSingleImport, 0, len(ic.pkgToImport))
-	for _, imp := range ic.pkgToImport {
-		imports = append(imports, imp)
-	}
-	slices.SortFunc(imports, func(i1, i2 tmplSingleImport) bool {
-		return i1.Alias < i2.Alias
-	})
-
-	return imports
 }

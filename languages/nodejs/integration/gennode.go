@@ -10,6 +10,7 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/languages/nodejs/imports"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -36,7 +37,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 }
 
 func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, error) {
-	ic := newImportCollector()
+	ic := imports.NewImportCollector()
 
 	var packageBaseName string
 	if nodeData.Kind == schema.Node_SERVICE {
@@ -109,7 +110,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 	}
 
 	return nodeTmplOptions{
-		Imports: ic.imports(),
+		Imports: ic.Imports(),
 		Package: tmplPackage{
 			Name:                 nodeData.PackageName,
 			Deps:                 packageDeps,
@@ -121,7 +122,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 	}, nil
 }
 
-func convertProviderType(ic *importCollector, providerTypeData shared.ProviderTypeData, loc workspace.Location) (tmplImportedType, error) {
+func convertProviderType(ic *imports.ImportCollector, providerTypeData shared.ProviderTypeData, loc workspace.Location) (tmplImportedType, error) {
 	if providerTypeData.ParsedType != nil {
 		return convertAvailableIn(ic, providerTypeData.ParsedType.Nodejs, loc)
 	} else {
@@ -129,12 +130,12 @@ func convertProviderType(ic *importCollector, providerTypeData shared.ProviderTy
 	}
 }
 
-func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDependency, error) {
+func convertDependency(ic *imports.ImportCollector, dep shared.DependencyData) (tmplDependency, error) {
 	npmPackage, err := toNpmPackage(dep.ProviderLocation)
 	if err != nil {
 		return tmplDependency{}, err
 	}
-	alias := ic.add(nodeDepsNpmImport(npmPackage))
+	alias := ic.Add(nodeDepsNpmImport(npmPackage))
 
 	inputType := tmplImportedType{}
 	// TODO: remove this condition once dependency on the gRPC Backend proto
@@ -168,7 +169,7 @@ func convertDependency(ic *importCollector, dep shared.DependencyData) (tmplDepe
 }
 
 // Returns nil if the input list is empty.
-func convertDependencyList(ic *importCollector, name string, deps []shared.DependencyData) (*tmplDeps, error) {
+func convertDependencyList(ic *imports.ImportCollector, name string, deps []shared.DependencyData) (*tmplDeps, error) {
 	if deps == nil {
 		return nil, nil
 	}

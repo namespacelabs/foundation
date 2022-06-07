@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/languages/nodejs/imports"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -22,7 +23,7 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 		return err
 	}
 
-	ic := newImportCollector()
+	ic := imports.NewImportCollector()
 	tplServices := []tmplServerService{}
 	for _, srv := range serverData.Services {
 		npmPackage, err := toNpmPackage(srv.Location)
@@ -37,7 +38,7 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 			HasDeps: srv.HasDeps,
 			Type: tmplImportedType{
 				Name:        srvName,
-				ImportAlias: ic.add(nodeDepsNpmImport(npmPackage)),
+				ImportAlias: ic.Add(nodeDepsNpmImport(npmPackage)),
 			}})
 	}
 
@@ -47,7 +48,7 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 	}
 
 	return generateSource(ctx, fs, loc.Rel(ServerFilename), tmpl, "Server", serverTmplOptions{
-		Imports:                     ic.imports(),
+		Imports:                     ic.Imports(),
 		Services:                    tplServices,
 		ImportedInitializersAliases: importedInitializersAliases,
 	})

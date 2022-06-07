@@ -4,15 +4,17 @@
 
 package integration
 
+import "namespacelabs.dev/foundation/languages/nodejs/imports"
+
 type nodeTmplOptions struct {
-	Imports   []tmplSingleImport
+	Imports   []imports.SingleImport
 	Service   *tmplNodeService
 	Package   tmplPackage
 	Providers []tmplProvider
 }
 
 type serverTmplOptions struct {
-	Imports                     []tmplSingleImport
+	Imports                     []imports.SingleImport
 	Services                    []tmplServerService
 	ImportedInitializersAliases []string
 }
@@ -80,8 +82,4 @@ type tmplSerializedProto struct {
 type tmplImportedType struct {
 	ImportAlias, Name string
 	Parameters        []tmplImportedType
-}
-
-type tmplSingleImport struct {
-	Alias, Package string
 }
