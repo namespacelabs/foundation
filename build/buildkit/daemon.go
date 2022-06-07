@@ -66,7 +66,7 @@ func makeAddr(containerName string) string {
 func waitForBuildkit(ctx context.Context, containerName string) error {
 	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
 		return backoff.Retry(func() error {
-			c, err := buildkit.New(ctx, "docker-container://"+containerName)
+			c, err := buildkit.New(ctx, makeAddr(containerName))
 			if err != nil {
 				return err
 			}
