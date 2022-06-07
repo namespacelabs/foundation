@@ -40,7 +40,22 @@ type ProvisionOpts struct {
 }
 
 type ParsedServer struct {
-	Deps []*ParsedNode
+	Deps                        []*ParsedNode
+	ServerSidecars, ServerInits []*schema.SidecarContainer
+}
+
+func (p ParsedServer) SidecarsAndInits() ([]*schema.SidecarContainer, []*schema.SidecarContainer) {
+	var sidecars, inits []*schema.SidecarContainer
+
+	sidecars = append(sidecars, p.ServerSidecars...)
+	inits = append(inits, p.ServerInits...)
+
+	for _, dep := range p.Deps {
+		sidecars = append(sidecars, dep.ProvisionPlan.Sidecars...)
+		inits = append(inits, dep.ProvisionPlan.Inits...)
+	}
+
+	return sidecars, inits
 }
 
 type ParsedNode struct {
@@ -207,6 +222,8 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 		}
 
 		ps.Deps = parsedDeps
+		ps.ServerSidecars = server.Provisioning.Sidecars
+		ps.ServerInits = server.Provisioning.Inits
 
 		// Fill in env-bound data now, post ports allocation.
 		endpoints, internal, err := runtime.ComputeEndpoints(server.Env().Proto(), server.StackEntry(), allocatedPorts.Ports)

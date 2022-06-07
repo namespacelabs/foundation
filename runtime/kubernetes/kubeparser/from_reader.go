@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	batchv1 "k8s.io/client-go/applyconfigurations/batch/v1"
@@ -119,6 +120,8 @@ func msgFromKind(kind string) (interface{}, string) {
 		return &networkingv1.IngressClassApplyConfiguration{}, "ingressclasses"
 	case "ValidatingWebhookConfiguration":
 		return &admissionregistrationv1.ValidatingWebhookConfigurationApplyConfiguration{}, "validatingwebhookconfigurations"
+	case "CustomResourceDefinition":
+		return &apiextensionsv1.CustomResourceDefinition{}, "customresourcedefinitions"
 	case "Job":
 		return &batchv1.JobApplyConfiguration{}, "jobs"
 	}

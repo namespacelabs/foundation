@@ -297,13 +297,14 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 					return prepareAndBuildResult{}, err
 				}
 
-				for _, dep := range stack.ParsedServers[k].Deps {
-					if err := prepareContainerRunOpts(dep.ProvisionPlan.Sidecars, imageIDs, sidecarCommands, &run.Sidecars); err != nil {
-						return prepareAndBuildResult{}, err
-					}
-					if err := prepareContainerRunOpts(dep.ProvisionPlan.Inits, imageIDs, sidecarCommands, &run.Inits); err != nil {
-						return prepareAndBuildResult{}, err
-					}
+				sidecars, inits := stack.ParsedServers[k].SidecarsAndInits()
+
+				if err := prepareContainerRunOpts(sidecars, imageIDs, sidecarCommands, &run.Sidecars); err != nil {
+					return prepareAndBuildResult{}, err
+				}
+
+				if err := prepareContainerRunOpts(inits, imageIDs, sidecarCommands, &run.Inits); err != nil {
+					return prepareAndBuildResult{}, err
 				}
 
 				run.Extensions = handlerR.ServerExtensions[s.PackageName()]
@@ -403,40 +404,38 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildI
 			return nil, err
 		}
 
-		for _, dep := range stack.ParsedServers[k].Deps {
-			containers := append([]*schema.SidecarContainer{}, dep.ProvisionPlan.Sidecars...)
-			containers = append(containers, dep.ProvisionPlan.Inits...)
+		sidecars, inits := stack.ParsedServers[k].SidecarsAndInits()
+		sidecars = append(sidecars, inits...) // For our purposes, they are the same.
 
-			for _, container := range containers {
-				pkgname := schema.PackageName(container.Binary)
-				bin, err := srv.Env().LoadByName(ctx, pkgname)
-				if err != nil {
-					return nil, err
-				}
+		for _, container := range sidecars {
+			pkgname := schema.PackageName(container.Binary)
+			bin, err := srv.Env().LoadByName(ctx, pkgname)
+			if err != nil {
+				return nil, err
+			}
 
-				prepared, err := binary.Plan(ctx, bin,
-					binary.BuildImageOpts{
-						UsePrebuilts: true,
-						Platforms:    platforms,
-					})
-				if err != nil {
-					return nil, err
-				}
+			prepared, err := binary.Plan(ctx, bin,
+				binary.BuildImageOpts{
+					UsePrebuilts: true,
+					Platforms:    platforms,
+				})
+			if err != nil {
+				return nil, err
+			}
 
-				image, err := prepared.Image(ctx, srv.Env())
-				if err != nil {
-					return nil, err
-				}
+			image, err := prepared.Image(ctx, srv.Env())
+			if err != nil {
+				return nil, err
+			}
 
-				tag, err := registry.AllocateName(ctx, srv.Env(), bin.PackageName(), buildID)
-				if err != nil {
-					return nil, err
-				}
+			tag, err := registry.AllocateName(ctx, srv.Env(), bin.PackageName(), buildID)
+			if err != nil {
+				return nil, err
+			}
 
-				res[pkgname] = containerImage{
-					Image:   oci.PublishResolvable(tag, image),
-					Command: prepared.Command,
-				}
+			res[pkgname] = containerImage{
+				Image:   oci.PublishResolvable(tag, image),
+				Command: prepared.Command,
 			}
 		}
 	}

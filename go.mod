@@ -88,9 +88,10 @@ require (
 	google.golang.org/grpc v1.46.0
 	google.golang.org/protobuf v1.28.0
 	gotest.tools v2.2.0+incompatible
-	k8s.io/api v0.24.0
-	k8s.io/apimachinery v0.24.0
-	k8s.io/client-go v0.24.0
+	k8s.io/api v0.24.1
+	k8s.io/apiextensions-apiserver v0.24.1
+	k8s.io/apimachinery v0.24.1
+	k8s.io/client-go v0.24.1
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
 	namespacelabs.dev/go-ids v0.0.0-20220216144417-79021816502e
 	sigs.k8s.io/aws-iam-authenticator v0.0.0-00010101000000-000000000000
