@@ -4,7 +4,7 @@ import * as impl from "./impl";
 import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 import {GrpcRegistrar} from "@namespacelabs.dev-foundation/std-nodejs-grpc"
 import * as i0 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing/types_pb";
-import * as i1 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing/exporter";
+import * as i1 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing/api";
 
 
 
@@ -33,3 +33,13 @@ export const ExporterProvider = (graph: DependencyGraph, input: i0.ExporterArgs)
 export type ProvideExporter = (input: i0.ExporterArgs) =>
 		i1.Exporter;
 export const provideExporter: ProvideExporter = impl.provideExporter;
+
+
+export const InstrumentationRegistrarProvider = (graph: DependencyGraph, input: i0.NoArgs) =>
+	provideInstrumentationRegistrar(
+		input
+	);
+
+export type ProvideInstrumentationRegistrar = (input: i0.NoArgs) =>
+		i1.InstrumentationRegistrar;
+export const provideInstrumentationRegistrar: ProvideInstrumentationRegistrar = impl.provideInstrumentationRegistrar;

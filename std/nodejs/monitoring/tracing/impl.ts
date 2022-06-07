@@ -3,12 +3,9 @@
 // available at http://github.com/namespacelabs/foundation
 
 import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
+import { Instrumentation, registerInstrumentations } from "@opentelemetry/instrumentation";
 import { Resource } from "@opentelemetry/resources";
-import {
-	ConsoleSpanExporter,
-	SimpleSpanProcessor,
-	SpanProcessor,
-} from "@opentelemetry/sdk-trace-base";
+import { SpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
 import { ExporterArgs } from "./types_pb";
@@ -22,6 +19,16 @@ export const provideExporter = (args: ExporterArgs) => {
 	return {
 		addSpanProcessor(spanProcessor: SpanProcessor) {
 			spanProcessors.push({ spanProcessor, name: args.getName() });
+		},
+	};
+};
+
+const instrumentations: Instrumentation[] = [];
+
+export const provideInstrumentationRegistrar = () => {
+	return {
+		addInstrumentation(instrumentation: Instrumentation) {
+			instrumentations.push(instrumentation);
 		},
 	};
 };
@@ -41,6 +48,10 @@ export const initialize = () => {
 	});
 
 	provider.register();
+
+	registerInstrumentations({
+		instrumentations: instrumentations,
+	});
 
 	console.log(`Initialized OpenTelemetry.`);
 };

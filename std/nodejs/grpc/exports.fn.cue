@@ -2,6 +2,18 @@
 package grpc
 
 #Exports: {
+	GrpcInterceptorRegistrar: {
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/nodejs/grpc"
+			type:        "GrpcInterceptorRegistrar"
+			typeDefinition: {
+				"typename": "std.nodejs.grpc.NoArgs"
+				"source": [
+					"provider.proto",
+				]
+			}
+		}
+	}
 	GrpcRegistrar: {
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/std/nodejs/grpc"

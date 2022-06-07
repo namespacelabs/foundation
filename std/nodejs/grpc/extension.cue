@@ -18,6 +18,15 @@ extension: fn.#Extension & {
 				}
 			}
 		}
+		GrpcInterceptorRegistrar: {
+			input: $providerProto.types.NoArgs
+			availableIn: {
+				nodejs: {
+					import: "interceptor"
+					type:   "GrpcInterceptorRegistrar"
+				}
+			}
+		}
 	}
 }
 

@@ -21,6 +21,7 @@
 		"std/nodejs/http",
 		"std/nodejs/monitoring/tracing",
 		"std/nodejs/monitoring/tracing/fastify",
+		"std/nodejs/monitoring/tracing/grpc",
 		"std/nodejs/monitoring/tracing/jaeger"
 	]
 }

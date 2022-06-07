@@ -10,3 +10,6 @@ message ExporterArgs {
     // Exporter name is only needed for debug logging.
     string name = 1;
 }
+
+message NoArgs {
+}

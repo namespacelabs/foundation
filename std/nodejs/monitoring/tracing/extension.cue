@@ -17,8 +17,17 @@ extension: fn.#Extension & {
 			input: $typesProto.types.ExporterArgs
 			availableIn: {
 				nodejs: {
-					import: "exporter"
+					import: "api"
 					type:   "Exporter"
+				}
+			}
+		}
+		InstrumentationRegistrar: {
+			input: $typesProto.types.NoArgs
+			availableIn: {
+				nodejs: {
+					import: "api"
+					type:   "InstrumentationRegistrar"
 				}
 			}
 		}

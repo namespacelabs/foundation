@@ -3,7 +3,12 @@
 // available at http://github.com/namespacelabs/foundation
 
 import { SpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { Instrumentation } from "@opentelemetry/instrumentation";
 
 export interface Exporter {
 	addSpanProcessor(spanProcessor: SpanProcessor): void;
+}
+
+export interface InstrumentationRegistrar {
+	addInstrumentation(instrumentation: Instrumentation): void;
 }

@@ -16,4 +16,16 @@ package tracing
 			}
 		}
 	}
+	InstrumentationRegistrar: {
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/nodejs/monitoring/tracing"
+			type:        "InstrumentationRegistrar"
+			typeDefinition: {
+				"typename": "foundation.std.nodejs.monitoring.tracing.NoArgs"
+				"source": [
+					"types.proto",
+				]
+			}
+		}
+	}
 }
