@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"embed"
 	"flag"
 	"path/filepath"
 	"text/template"
@@ -20,19 +21,15 @@ import (
 )
 
 var (
-	adminPort = flag.Uint("admin_port", 19000, "Envoy admin port")
-
-	xdsServerPort = flag.Uint("xds_server_port", 18000, "Port that the Envoy controller is listening on")
-
+	adminPort       = flag.Uint("admin_port", 19000, "Envoy admin port")
+	xdsServerPort   = flag.Uint("xds_server_port", 18000, "Port that the Envoy controller is listening on")
 	alsListenerPort = flag.Uint("als_listener_port", 18090, "gRPC Access Log Service (ALS) listener port")
-
-	nodeCluster = flag.String("node_cluster", "envoy_cluster", "Node cluster name")
-
-	nodeID = flag.String("node_id", "envoy_node", "Node Identifier")
+	nodeCluster     = flag.String("node_cluster", "envoy_cluster", "Node cluster name")
+	nodeID          = flag.String("node_id", "envoy_node", "Node Identifier")
 )
 
-// go:embed bootstrap-xds.yaml.tmpl
-var bootstrapTmpl string
+//go:embed bootstrap-xds.yaml.tmpl
+var embeddedBootstrapTmpl embed.FS
 
 type tmplData struct {
 	AdminPort       uint32
@@ -66,13 +63,19 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		NodeCluster:     *nodeCluster,
 		NodeId:          *nodeID,
 	}
-	bootstrapData := &bytes.Buffer{}
 
-	t := template.Must(template.New("bootstrap-xds").Parse(bootstrapTmpl))
-	if err := t.Execute(bootstrapData, tmplData); err != nil {
+	var bootstrapData bytes.Buffer
+
+	t, err := template.ParseFS(embeddedBootstrapTmpl, "bootstrap-xds.yaml.tmpl")
+	if err != nil {
+		return fnerrors.InternalError("failed to parse bootstrap template: %w", err)
+	}
+
+	if err := t.Execute(&bootstrapData, tmplData); err != nil {
 		return fnerrors.InternalError("failed to render bootstrap template: %w", err)
 	}
 
+	// XXX use immutable ConfigMaps.
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Network Gateway ConfigMap",
 		Resource:    "configmaps",
