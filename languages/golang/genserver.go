@@ -48,11 +48,14 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 	return nil
 }
 
-func prepareGenerate(ctx context.Context, loader workspace.Packages, imports []schema.PackageName, opts *genTmplOptions) error {
-	allDeps, err := expandInstancedDeps(ctx, loader, imports)
+func prepareGenerate(ctx context.Context, loader workspace.Packages, importList []schema.PackageName, opts *genTmplOptions) error {
+	allDeps, err := expandInstancedDeps(ctx, loader, importList)
 	if err != nil {
 		return err
 	}
+
+	var imports schema.PackageList
+	imports.AddMultiple(importList...)
 
 	// Prepopulate variable names that are used in serverPrepareTmpl.
 	usedNames := map[string]bool{
@@ -94,7 +97,7 @@ func prepareGenerate(ctx context.Context, loader workspace.Packages, imports []s
 				n.IsService = true
 				n.Typename = serviceDepsType
 
-				if dep.Parent.ExportServicesAsHttp && runtime.UseGoInternalGrpcGateway {
+				if dep.Parent.ExportServicesAsHttp && runtime.UseGoInternalGrpcGateway && !imports.Includes(runtime.GrpcHttpTranscodeNode) {
 					for _, svc := range dep.Parent.ExportService {
 						if len(svc.Proto) == 0 {
 							return fnerrors.UserError(dep.Location, "%s: can't compute go package, no sources", svc.ProtoTypename)

@@ -232,8 +232,12 @@ func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error
 		}
 	}
 
-	if runtime.UseGoInternalGrpcGateway && needGatewayCount > 0 && !sealed.HasDep(gatewayNode) {
-		return fnerrors.UserError(sealed.Location, "server exposes gRPC services as HTTP, it must depend on %s", gatewayNode)
+	if needGatewayCount > 0 {
+		if !sealed.HasDep(runtime.GrpcHttpTranscodeNode) {
+			if runtime.UseGoInternalGrpcGateway && !sealed.HasDep(gatewayNode) {
+				return fnerrors.UserError(sealed.Location, "server exposes gRPC services as HTTP, it must depend on %s", gatewayNode)
+			}
+		}
 	}
 
 	if len(sealed.Proto.Server.UrlMap) > 0 && !sealed.HasDep(httpNode) {
