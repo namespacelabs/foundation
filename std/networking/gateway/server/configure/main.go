@@ -5,15 +5,38 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"flag"
 	"path/filepath"
+	"text/template"
 
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
 )
+
+var (
+	adminPort = flag.Uint("admin_port", 19000, "Envoy admin port")
+
+	xdsServerPort = flag.Uint("xds_server_port", 18000, "xDS management server port")
+
+	alsListenerPort = flag.Uint("als_listener_port", 18090, "gRPC Access Log Service (ALS) listener port")
+)
+
+// go:embed bootstrap-xds.yaml.tmpl
+var bootstrapTmpl string
+
+type tmplData struct {
+	AdminPort uint32
+
+	XDSServerPort uint32
+
+	ALSListenerPort uint32
+}
 
 func main() {
 	h := configure.NewHandlers()
@@ -32,7 +55,17 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	namespace := kubetool.FromRequest(req).Namespace
 
-	bootstrapData := "{}" // XXX TODO
+	tmplData := tmplData{
+		AdminPort:       uint32(*adminPort),
+		XDSServerPort:   uint32(*xdsServerPort),
+		ALSListenerPort: uint32(*alsListenerPort),
+	}
+	bootstrapData := &bytes.Buffer{}
+
+	t := template.Must(template.New("bootstrap-xds").Parse(bootstrapTmpl))
+	if err := t.Execute(bootstrapData, tmplData); err != nil {
+		return fnerrors.InternalError("failed to render bootstrap template: %w", err)
+	}
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Network Gateway ConfigMap",
@@ -41,7 +74,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		Name:        configVolume,
 		Body: corev1.ConfigMap(configVolume, namespace).WithData(
 			map[string]string{
-				filename: bootstrapData,
+				filename: bootstrapData.String(),
 			},
 		),
 	})
