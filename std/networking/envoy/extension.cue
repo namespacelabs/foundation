@@ -10,6 +10,6 @@ extension: fn.#Extension & {
 
 configure: fn.#Configure & {
 	sidecar: [{
-		binary: "namespacelabs.dev/foundation/std/networking/envoy/proxy"
+		binary: "namespacelabs.dev/foundation/std/networking/envoy/controller"
 	}]
 }
