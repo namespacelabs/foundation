@@ -11,4 +11,8 @@ server: fn.#OpaqueServer & {
 
 configure: fn.#Configure & {
 	with: binary: "namespacelabs.dev/foundation/std/networking/gateway/server/configure"
+
+	sidecar: controller: {
+		binary: "namespacelabs.dev/foundation/std/networking/gateway/controller"
+	}
 }
