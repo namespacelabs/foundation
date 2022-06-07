@@ -1,0 +1,120 @@
+// This file was automatically generated.
+
+import * as grpc from "@grpc/grpc-js";
+import * as i0 from "./test1_pb";
+import * as i1 from "./nested/test2_pb";
+
+// TestServiceA
+
+export interface TestServiceAServer {
+	myMethod1: (request: i0.TestRequest) => Promise<i0.TestResponse>;
+	myMethod2: (request: i0.TestRequest) => Promise<i0.TestResponse>;
+}
+
+export class TestServiceAClient {
+	readonly #wrappedClient: { [methodName: string]: Function };
+
+	constructor(address: string, credentials: grpc.ChannelCredentials, options?: object) {
+		this.#wrappedClient = new wrappedTestServiceAClientConstructor(address, credentials, options);
+	}
+
+	async myMethod1(request: i0.TestRequest): Promise<i0.TestResponse> {
+		const method = this.#wrappedClient.myMethod1.bind(this.#wrappedClient);
+		return new Promise<i0.TestResponse>((resolve, reject) => {
+			method(
+				request,
+				(err: any, response: any) => {
+					if (err != null) {
+						reject(err);
+					} else {
+						resolve(response);
+					}
+				},
+			);
+		});
+	}
+
+	async myMethod2(request: i0.TestRequest): Promise<i0.TestResponse> {
+		const method = this.#wrappedClient.myMethod2.bind(this.#wrappedClient);
+		return new Promise<i0.TestResponse>((resolve, reject) => {
+			method(
+				request,
+				(err: any, response: any) => {
+					if (err != null) {
+						reject(err);
+					} else {
+						resolve(response);
+					}
+				},
+			);
+		});
+	}
+}
+
+
+const wrappedTestServiceAClientConstructor = grpc.makeGenericClientConstructor({
+
+	myMethod1: {
+		path: "/grpcgen.tests.TestServiceA/MyMethod1",
+		requestStream: false,
+		responseStream: false,
+		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		requestDeserialize: (arg) => i0.TestRequest.deserializeBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		responseDeserialize: (arg) => i0.TestResponse.deserializeBinary(new Uint8Array(arg)),
+	},
+
+	myMethod2: {
+		path: "/grpcgen.tests.TestServiceA/MyMethod2",
+		requestStream: false,
+		responseStream: false,
+		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		requestDeserialize: (arg) => i0.TestRequest.deserializeBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		responseDeserialize: (arg) => i0.TestResponse.deserializeBinary(new Uint8Array(arg)),
+	},
+}, "Unused service name");
+
+// TestServiceB
+
+export interface TestServiceBServer {
+	method1: (request: i1.TestRequest2) => Promise<i1.TestResponse2>;
+}
+
+export class TestServiceBClient {
+	readonly #wrappedClient: { [methodName: string]: Function };
+
+	constructor(address: string, credentials: grpc.ChannelCredentials, options?: object) {
+		this.#wrappedClient = new wrappedTestServiceBClientConstructor(address, credentials, options);
+	}
+
+	async method1(request: i1.TestRequest2): Promise<i1.TestResponse2> {
+		const method = this.#wrappedClient.method1.bind(this.#wrappedClient);
+		return new Promise<i1.TestResponse2>((resolve, reject) => {
+			method(
+				request,
+				(err: any, response: any) => {
+					if (err != null) {
+						reject(err);
+					} else {
+						resolve(response);
+					}
+				},
+			);
+		});
+	}
+}
+
+
+const wrappedTestServiceBClientConstructor = grpc.makeGenericClientConstructor({
+
+	method1: {
+		path: "/grpcgen.tests.TestServiceB/Method1",
+		requestStream: false,
+		responseStream: false,
+		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		requestDeserialize: (arg) => i1.TestRequest2.deserializeBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		responseDeserialize: (arg) => i1.TestResponse2.deserializeBinary(new Uint8Array(arg)),
+	},
+}, "Unused service name");
