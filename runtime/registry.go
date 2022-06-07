@@ -63,9 +63,6 @@ func (r runtimeFwdErr) PlanDeployment(context.Context, Deployment) (DeploymentSt
 func (r runtimeFwdErr) PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error) {
 	return nil, r.err
 }
-func (r runtimeFwdErr) StreamLogsTo(context.Context, io.Writer, *schema.Server, StreamLogsOpts) error {
-	return r.err
-}
 func (r runtimeFwdErr) FetchLogsTo(context.Context, io.Writer, ContainerReference, FetchLogsOpts) error {
 	return r.err
 }

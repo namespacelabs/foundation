@@ -151,7 +151,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		return err
 	}
 
-	name := serverCtrName(srv.Proto())
+	name := kubedef.ServerCtrName(srv.Proto())
 	containers := []string{name}
 	container := applycorev1.Container().
 		WithName(name).
@@ -490,10 +490,6 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	return nil
-}
-
-func serverCtrName(server *schema.Server) string {
-	return strings.ToLower(server.Name) // k8s doesn't accept uppercase names.
 }
 
 func makeStorageVolumeName(rs *schema.RequiredStorage) string {

@@ -50,9 +50,6 @@ type Runtime interface {
 	// Returns a list of containers that the server has deployed.
 	ResolveContainers(context.Context, *schema.Server) ([]ContainerReference, error)
 
-	// Streams logs from a previously deployed server.
-	StreamLogsTo(context.Context, io.Writer, *schema.Server, StreamLogsOpts) error
-
 	// Fetch logs of a specific container reference.
 	FetchLogsTo(context.Context, io.Writer, ContainerReference, FetchLogsOpts) error
 
@@ -135,12 +132,6 @@ type RunAs struct {
 type SidecarRunOpts struct {
 	PackageName schema.PackageName
 	ServerRunOpts
-}
-
-type StreamLogsOpts struct {
-	TailLines        int // Only used if it's a positive value.
-	Follow           bool
-	FetchLastFailure bool
 }
 
 type FetchLogsOpts struct {
@@ -229,9 +220,18 @@ type ContainerUnitWaitStatus struct {
 	Status Diagnostics
 }
 
+type ContainerKind int
+
+const (
+	ContainerKind_Unknown   ContainerKind = iota // We don't know what this container represents.
+	ContainerKind_Secondary                      // This container represents a support container.
+	ContainerKind_Primary                        // This container represents the main server container.
+)
+
 type ContainerReference interface {
 	UniqueID() string
 	HumanReference() string
+	Kind() ContainerKind
 }
 
 func (cw ContainerWaitStatus) WaitStatus() string {

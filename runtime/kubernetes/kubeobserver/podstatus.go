@@ -25,7 +25,7 @@ func WaiterFromPodStatus(ns, name string, ps v1.PodStatus) ops.WaitStatus {
 	for _, container := range ps.ContainerStatuses {
 		if lbl := containerStateLabel(&ps, container.State); lbl != "" {
 			cw.Containers = append(cw.Containers, runtime.ContainerUnitWaitStatus{
-				Reference:   kubedef.MakePodRef(ns, name, container.Name),
+				Reference:   kubedef.MakePodRef(ns, name, container.Name, nil),
 				Name:        container.Name,
 				StatusLabel: lbl,
 				Status:      StatusToDiagnostic(container),
@@ -36,7 +36,7 @@ func WaiterFromPodStatus(ns, name string, ps v1.PodStatus) ops.WaitStatus {
 	for _, init := range ps.InitContainerStatuses {
 		if lbl := containerStateLabel(nil, init.State); lbl != "" {
 			cw.Initializers = append(cw.Initializers, runtime.ContainerUnitWaitStatus{
-				Reference:   kubedef.MakePodRef(ns, name, init.Name),
+				Reference:   kubedef.MakePodRef(ns, name, init.Name, nil),
 				Name:        init.Name,
 				StatusLabel: lbl,
 				Status:      StatusToDiagnostic(init),

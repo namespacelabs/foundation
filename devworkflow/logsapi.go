@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 )
 
@@ -22,7 +23,19 @@ func serveLogs(s *Session, w http.ResponseWriter, r *http.Request, serverID stri
 			return err
 		}
 
-		return runtime.For(ctx, env).StreamLogsTo(ctx, wsWriter, server, runtime.StreamLogsOpts{})
+		rt := runtime.For(ctx, env)
+		refs, err := rt.ResolveContainers(ctx, server)
+		if err != nil {
+			return err
+		}
+
+		for _, ref := range refs {
+			if ref.Kind() == runtime.ContainerKind_Primary {
+				return runtime.For(ctx, env).FetchLogsTo(ctx, wsWriter, ref, runtime.FetchLogsOpts{Follow: true})
+			}
+		}
+
+		return fnerrors.InvocationError("server has no identifiable primary container")
 	})
 }
 

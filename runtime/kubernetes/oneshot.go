@@ -41,7 +41,7 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 		return err
 	}
 
-	if err := fetchPodLogs(ctx, r.cli, logOutput, r.moduleNamespace, name, "", runtime.StreamLogsOpts{Follow: true}); err != nil {
+	if err := fetchPodLogs(ctx, r.cli, logOutput, r.moduleNamespace, name, "", runtime.FetchLogsOpts{Follow: true}); err != nil {
 		return err
 	}
 
@@ -59,7 +59,7 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 					ctxWithTimeout, cancel := context.WithTimeout(ctx, 3*time.Second)
 					defer cancel()
 
-					_ = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, r.moduleNamespace, name, "", runtime.StreamLogsOpts{TailLines: 50})
+					_ = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, r.moduleNamespace, name, "", runtime.FetchLogsOpts{TailLines: 50})
 				}
 
 				if term.ExitCode != 0 {
@@ -107,7 +107,7 @@ func (r Unbound) RunAttachedOpts(ctx context.Context, ns, name string, runOpts r
 	}
 
 	if err := spawnAndWaitPod(ctx, r.cli, ns, name, spec, true); err != nil {
-		if logsErr := fetchPodLogs(ctx, r.cli, console.TypedOutput(ctx, name, console.CatOutputTool), ns, name, "", runtime.StreamLogsOpts{}); logsErr != nil {
+		if logsErr := fetchPodLogs(ctx, r.cli, console.TypedOutput(ctx, name, console.CatOutputTool), ns, name, "", runtime.FetchLogsOpts{}); logsErr != nil {
 			fmt.Fprintf(console.Errors(ctx), "Failed to fetch failed container logs: %v\n", logsErr)
 		}
 		return err

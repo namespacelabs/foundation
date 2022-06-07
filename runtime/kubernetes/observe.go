@@ -47,7 +47,7 @@ func (r K8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 		labels := map[string]string{}
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == v1.PodRunning {
-				instance := kubedef.MakePodRef(ns, pod.Name, serverCtrName(srv))
+				instance := kubedef.MakePodRef(ns, pod.Name, kubedef.ServerCtrName(srv), srv)
 				keys = append(keys, Key{
 					Instance:  instance,
 					CreatedAt: pod.CreationTimestamp.Time,
@@ -57,7 +57,7 @@ func (r K8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 
 				if ObserveInitContainerLogs {
 					for _, container := range pod.Spec.InitContainers {
-						instance := kubedef.MakePodRef(ns, pod.Name, container.Name)
+						instance := kubedef.MakePodRef(ns, pod.Name, container.Name, srv)
 						keys = append(keys, Key{Instance: instance, CreatedAt: pod.CreationTimestamp.Time})
 						newM[instance.UniqueID()] = struct{}{}
 						labels[instance.UniqueID()] = fmt.Sprintf("%s:%s (%s)", srv.Name, container.Name, pod.ResourceVersion)

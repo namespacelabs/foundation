@@ -32,10 +32,10 @@ func (r K8sRuntime) ResolveContainers(ctx context.Context, srv *schema.Server) (
 	var refs []runtime.ContainerReference
 
 	for _, init := range ps.InitContainerStatuses {
-		refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name))
+		refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, srv))
 	}
 	for _, container := range ps.ContainerStatuses {
-		refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name))
+		refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, srv))
 	}
 
 	return refs, nil
