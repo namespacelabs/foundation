@@ -15,6 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.18.4
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.10
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.4
+	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cenkalti/backoff/v4 v4.1.3
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/charmbracelet/bubbles v0.10.3
@@ -95,6 +96,8 @@ require (
 	sigs.k8s.io/aws-iam-authenticator v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/yaml v1.3.0
 )
+
+require github.com/pmezard/go-difflib v1.0.0 // indirect
 
 require (
 	cloud.google.com/go/compute v1.6.1 // indirect

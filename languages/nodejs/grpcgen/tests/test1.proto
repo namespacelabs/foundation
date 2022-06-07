@@ -1,0 +1,25 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package grpcgen.tests;
+
+import "nested/test2.proto";
+
+service TestServiceA {
+    rpc MyMethod1(TestRequest) returns (TestResponse) {};
+    rpc MyMethod2(TestRequest) returns (TestResponse) {};
+}
+
+service TestServiceB {
+    rpc Method1(nested.TestRequest2) returns (nested.TestResponse2) {};
+}
+
+message TestRequest {
+    string id = 1;
+}
+message TestResponse {
+    string id = 1;
+}
