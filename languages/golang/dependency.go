@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"path/filepath"
 
 	"github.com/kr/text"
@@ -171,19 +172,19 @@ func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instant
 	// a way to define how to generate the types. Or we need to use generics (although generics
 	// don't replace all of the uses).
 	if shared.IsStdGrpcExtension(dep.PackageName, dep.Type) {
-		grpcClientType, err := shared.PrepareGrpcBackendDep(ctx, loader, dep)
+		grpcServiceType, err := shared.PrepareGrpcBackendDep(ctx, loader, dep)
 		if err != nil {
 			return err
 		}
 
 		// XXX not hermetic.
-		path := filepath.Dir(grpcClientType.Location.Rel(grpcClientType.SourceFileName))
+		path := filepath.Dir(grpcServiceType.Location.Rel(grpcServiceType.SourceFileName))
 		gopkg, err := gosupport.ComputeGoPackage(path)
 		if err != nil {
 			return err
 		}
 
-		clientType := grpcClientType.Name
+		clientType := fmt.Sprintf("%sClient", grpcServiceType.Name)
 
 		prov.GoPackage = gopkg
 		prov.Method = "New" + clientType

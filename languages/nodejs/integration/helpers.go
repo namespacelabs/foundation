@@ -61,8 +61,15 @@ func convertProtoType(ic *importCollector, t shared.ProtoTypeData) (tmplImported
 		return tmplImportedType{}, err
 	}
 
+	var typeName string
+	if t.Kind == shared.ProtoService {
+		typeName = fmt.Sprintf("%sClient", t.Name)
+	} else {
+		typeName = t.Name
+	}
+
 	return tmplImportedType{
-		Name: t.Name,
+		Name: typeName,
 		// TODO: handle the case when the source type is not in the same package.
 		ImportAlias: ic.add(npmImport(npmPackage, tsModuleName)),
 	}, nil
