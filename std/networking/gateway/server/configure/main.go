@@ -54,7 +54,7 @@ type configuration struct{}
 func (configuration) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
 	const (
 		configVolume = "fn--gateway-bootstrap"
-		filename     = "boostrap-xds.json"
+		filename     = "boostrap-xds.yaml"
 	)
 
 	namespace := kubetool.FromRequest(req).Namespace
