@@ -19,6 +19,7 @@ message TestResult {
 }
 
 message Log {
-    string package_name = 1;
-    bytes  output       = 2;
+    string package_name   = 1;
+    string container_name = 3;
+    bytes  output         = 2;
 }

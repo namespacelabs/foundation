@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"golang.org/x/exp/slices"
@@ -170,24 +171,58 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, focus []string, printLogs bool) (*TestBundle, error) {
 	ex, wait := executor.New(ctx)
 
-	var serverLogs []*syncbuffer.ByteBuffer // Follows same indexing as rt.Focus.
+	type serverLog struct {
+		PackageName   string
+		ContainerName string
+		Buffer        *syncbuffer.ByteBuffer
+	}
+
+	var serverLogs []serverLog
+	var mu sync.Mutex // Protects concurrent access to serverLogs.
 
 	for _, entry := range stack.Entry {
 		srv := entry.Server // Close on srv.
 
-		var extraOutput []io.Writer
-		if printLogs && slices.Contains(focus, srv.PackageName) {
-			extraOutput = append(extraOutput, console.Output(ctx, srv.Name))
-		}
-		w, serverLog := makeLog(extraOutput...)
-		serverLogs = append(serverLogs, serverLog)
+		rt := runtime.For(ctx, env)
 
 		ex.Go(func(ctx context.Context) error {
-			err := runtime.For(ctx, env).StreamLogsTo(ctx, w, srv, runtime.StreamLogsOpts{})
-			if errors.Is(err, context.Canceled) {
-				return nil
+			containers, err := rt.ResolveContainers(ctx, srv)
+			if err != nil {
+				return err
 			}
-			return err
+
+			for _, ctr := range containers {
+				ctr := ctr // Close on ctr.
+
+				var extraOutput []io.Writer
+				if printLogs && slices.Contains(focus, srv.PackageName) {
+					name := srv.Name
+					if len(containers) > 0 {
+						name = ctr.HumanReference()
+					}
+					extraOutput = append(extraOutput, console.Output(ctx, name))
+				}
+
+				w, log := makeLog(extraOutput...)
+
+				mu.Lock()
+				serverLogs = append(serverLogs, serverLog{
+					PackageName:   srv.PackageName,
+					ContainerName: ctr.HumanReference(),
+					Buffer:        log,
+				})
+				mu.Unlock()
+
+				ex.Go(func(ctx context.Context) error {
+					err := runtime.For(ctx, env).FetchLogsTo(ctx, w, ctr, runtime.FetchLogsOpts{})
+					if errors.Is(err, context.Canceled) {
+						return nil
+					}
+					return err
+				})
+			}
+
+			return nil
 		})
 	}
 
@@ -197,10 +232,11 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 
 	bundle := &TestBundle{}
 
-	for k, entry := range stack.Entry {
+	for _, entry := range serverLogs {
 		bundle.ServerLog = append(bundle.ServerLog, &Log{
-			PackageName: entry.GetPackageName().String(),
-			Output:      serverLogs[k].Seal().Bytes(),
+			PackageName:   entry.PackageName,
+			ContainerName: entry.ContainerName,
+			Output:        entry.Buffer.Seal().Bytes(),
 		})
 	}
 

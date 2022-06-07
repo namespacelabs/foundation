@@ -102,3 +102,6 @@ func (r runtimeFwdErr) DeleteAllRecursively(context.Context, bool, io.Writer) (b
 func (r runtimeFwdErr) TargetPlatforms(context.Context) ([]specs.Platform, error) {
 	return nil, r.err
 }
+func (r runtimeFwdErr) ResolveContainers(context.Context, *schema.Server) ([]ContainerReference, error) {
+	return nil, r.err
+}

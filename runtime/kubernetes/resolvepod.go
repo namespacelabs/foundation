@@ -16,9 +16,30 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
+
+func (r K8sRuntime) ResolveContainers(ctx context.Context, srv *schema.Server) ([]runtime.ContainerReference, error) {
+	pod, err := r.resolvePod(ctx, r.cli, io.Discard, srv)
+	if err != nil {
+		return nil, err
+	}
+
+	ps := pod.Status
+
+	var refs []runtime.ContainerReference
+
+	for _, init := range ps.InitContainerStatuses {
+		refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name))
+	}
+	for _, container := range ps.ContainerStatuses {
+		refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name))
+	}
+
+	return refs, nil
+}
 
 func (r K8sRuntime) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, server *schema.Server) (corev1.Pod, error) {
 	return resolvePodByLabels(ctx, cli, w, serverNamespace(r, server), map[string]string{

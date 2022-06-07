@@ -47,6 +47,9 @@ type Runtime interface {
 	// applied when the generated plan is applied.
 	PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error)
 
+	// Returns a list of containers that the server has deployed.
+	ResolveContainers(context.Context, *schema.Server) ([]ContainerReference, error)
+
 	// Streams logs from a previously deployed server.
 	StreamLogsTo(context.Context, io.Writer, *schema.Server, StreamLogsOpts) error
 
