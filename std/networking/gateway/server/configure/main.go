@@ -33,8 +33,8 @@ var (
 //go:embed bootstrap-xds.yaml.tmpl
 var embeddedBootstrapTmpl embed.FS
 
-//go:embed grpcservicecrd.yaml
-var embeddedGrpcServiceCrd embed.FS
+//go:embed httpgrpctranscodercrd.yaml
+var httpGrpcTranscoderCrd embed.FS
 
 type tmplData struct {
 	AdminPort       uint32
@@ -55,9 +55,9 @@ type configuration struct{}
 
 func (configuration) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
 	const (
-		configVolume   = "fn--gateway-bootstrap"
-		filename       = "boostrap-xds.yaml"
-		gRPCServiceCrd = "GRPCService"
+		configVolume           = "fn--gateway-bootstrap"
+		filename               = "boostrap-xds.yaml"
+		httpGrpcTranscoderName = "HttpGrpcTranscoder"
 	)
 
 	tmplData := tmplData{
@@ -94,13 +94,13 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		),
 	})
 
-	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Network Gateway gRPC Service CustomResourceDefinition",
-		Resource:    "customresourcedefinitions",
-		Namespace:   namespace,
-		Name:        gRPCServiceCrd,
-		Body:        embeddedGrpcServiceCrd,
-	})
+	// out.Invocations = append(out.Invocations, kubedef.Apply{
+	// 	Description: "Network Gateway gRPC Service CustomResourceDefinition",
+	// 	Resource:    "customresourcedefinitions",
+	// 	Namespace:   namespace,
+	// 	Name:        httpGrpcTranscoderName,
+	// 	Body:        httpGrpcTranscoderCrd,
+	// })
 
 	serviceAccount := makeServiceAccount(req.Focus.Server)
 	out.Invocations = append(out.Invocations, kubedef.Apply{
@@ -117,7 +117,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		Resource:    "clusterroles",
 		Name:        clusterRole,
 		Body: rbacv1.ClusterRole(clusterRole).WithRules(
-			rbacv1.PolicyRule().WithAPIGroups("k8s.namespacelabs.dev").WithResources("grpcservices").WithVerbs("get", "list", "watch", "create", "update", "delete"),
+			rbacv1.PolicyRule().WithAPIGroups("k8s.namespacelabs.dev").WithResources("httpgrpctranscoders").WithVerbs("get", "list", "watch", "create", "update", "delete"),
 		),
 	})
 
