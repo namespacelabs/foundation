@@ -7,12 +7,10 @@ package buildkit
 import (
 	"context"
 	"fmt"
-	"runtime/debug"
 
 	"github.com/cenkalti/backoff/v4"
 	buildkit "github.com/moby/buildkit/client"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/docker/install"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -20,21 +18,9 @@ import (
 const DefaultContainerName = "fn-buildkitd"
 
 func EnsureBuildkitd(ctx context.Context, containerName string) (*Instance, error) {
-	bi, ok := debug.ReadBuildInfo()
-	if !ok {
-		return nil, fnerrors.InternalError("no builtin debug information?")
-	}
-
-	var vendoredVersion string
-	for _, d := range bi.Deps {
-		if d.Path == "github.com/moby/buildkit" {
-			vendoredVersion = d.Version
-			break
-		}
-	}
-
-	if vendoredVersion == "" {
-		return nil, fnerrors.InternalError("buildkit: vendored version is empty")
+	vendoredVersion, err := Version()
+	if err != nil {
+		return nil, err
 	}
 
 	var spec = install.PersistentSpec{
