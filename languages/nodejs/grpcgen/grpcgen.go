@@ -16,13 +16,23 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-func Generate(fdp *descriptor.FileDescriptorProto, deps *protos.FileDescriptorSetAndDeps) ([]byte, error) {
+type GenOpts struct {
+	GenClients bool
+	GenServers bool
+}
+
+func Generate(fdp *descriptor.FileDescriptorProto, deps *protos.FileDescriptorSetAndDeps, opts GenOpts) ([]byte, error) {
+	if !opts.GenClients && !opts.GenServers {
+		return nil, fnerrors.InternalError("Grpc Coodegen: both GenClients and GenServers options can't be false")
+	}
+
 	if len(fdp.Service) == 0 {
-		return []byte(`// This file was automatically generated. No services in proto.`), nil
+		return nil, nil
 	}
 
 	file := tmplProtoFile{
 		Services: []tmplProtoService{},
+		Opts:     opts,
 	}
 
 	ic := imports.NewImportCollector()
@@ -48,6 +58,7 @@ func Generate(fdp *descriptor.FileDescriptorProto, deps *protos.FileDescriptorSe
 
 			mtdTmpl := tmplProtoMethod{
 				Name:         methodName,
+				OriginalName: mtd.GetName(),
 				RequestType:  requestType,
 				ResponseType: responseType,
 				Path:         fmt.Sprintf("/%s.%s/%s", fdp.GetPackage(), svc.GetName(), mtd.GetName()),
