@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -94,12 +95,22 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		),
 	})
 
+	body, err := httpGrpcTranscoderCrd.ReadFile("httpgrpctranscodercrd.yaml")
+	if err != nil {
+		return fnerrors.InternalError("failed to read the HTTP gRPC Transcoder CRD: %w", err)
+	}
+
+	apply, err := kubeparser.Single(body)
+	if err != nil {
+		return fnerrors.InternalError("failed to parse the HTTP gRPC Transcoder CRD: %w", err)
+	}
+
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Network Gateway HTTP gRPC Transcoder CustomResourceDefinition",
 		Resource:    "customresourcedefinitions",
 		Namespace:   namespace,
 		Name:        httpGrpcTranscoderName,
-		Body:        httpGrpcTranscoderCrd,
+		Body:        apply,
 	})
 
 	serviceAccount := makeServiceAccount(req.Focus.Server)
@@ -117,7 +128,10 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		Resource:    "clusterroles",
 		Name:        clusterRole,
 		Body: rbacv1.ClusterRole(clusterRole).WithRules(
-			rbacv1.PolicyRule().WithAPIGroups("k8s.namespacelabs.dev").WithResources("httpgrpctranscoders").WithVerbs("get", "list", "watch", "create", "update", "delete"),
+			rbacv1.PolicyRule().
+				WithAPIGroups("k8s.namespacelabs.dev").
+				WithResources("httpgrpctranscoders").
+				WithVerbs("get", "list", "watch", "create", "update", "delete"),
 		),
 	})
 
@@ -174,5 +188,5 @@ func (configuration) Delete(context.Context, configure.StackRequest, *configure.
 }
 
 func makeServiceAccount(srv *schema.Server) string {
-	return fmt.Sprintf("fn-gateway-%s", kubedef.MakeDeploymentId(srv))
+	return fmt.Sprintf("fn-%s", kubedef.MakeDeploymentId(srv))
 }
