@@ -9,19 +9,21 @@ import (
 	"encoding/json"
 	sync "sync"
 
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8s "k8s.io/client-go/kubernetes"
-	tadmissionregistrationv1 "k8s.io/client-go/kubernetes/typed/admissionregistration/v1"
-	tappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-	tbatchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
-	tcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	tnetworkv1 "k8s.io/client-go/kubernetes/typed/networking/v1"
-	trbacv1 "k8s.io/client-go/kubernetes/typed/rbac/v1"
-	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/schema"
+	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
@@ -37,11 +39,11 @@ func init() {
 	clientCache.cache = map[string]*k8s.Clientset{}
 }
 
-func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*restclient.Config, error) {
+func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*rest.Config, error) {
 	cfg := host.HostEnv
 
 	if cfg.GetIncluster() {
-		return restclient.InClusterConfig()
+		return rest.InClusterConfig()
 	}
 
 	if cfg.GetKubeconfig() == "" {
@@ -95,56 +97,68 @@ func NewClient(ctx context.Context, host *HostConfig) (*k8s.Clientset, error) {
 	return clientCache.cache[key], nil
 }
 
-func MakeResourceSpecificClient(resource string, cfg *restclient.Config) (restclient.Interface, error) {
-	switch resource {
-	case "configmaps", "secrets", "serviceaccounts", "pods", "services", "endpoints", "namespaces", "persistentvolumeclaims":
-		c, err := tcorev1.NewForConfig(cfg)
-		if err != nil {
-			return nil, err
-		}
-		return c.RESTClient(), nil
-	case "deployments", "statefulsets":
-		c, err := tappsv1.NewForConfig(cfg)
-		if err != nil {
-			return nil, err
-		}
-		return c.RESTClient(), nil
-	case "clusterroles", "clusterrolebindings", "roles", "rolebindings":
-		c, err := trbacv1.NewForConfig(cfg)
-		if err != nil {
-			return nil, err
-		}
-		return c.RESTClient(), nil
-	case "ingresses", "ingressclasses":
-		c, err := tnetworkv1.NewForConfig(cfg)
-		if err != nil {
-			return nil, err
-		}
-		return c.RESTClient(), nil
-	case "validatingwebhookconfigurations":
-		c, err := tadmissionregistrationv1.NewForConfig(cfg)
-		if err != nil {
-			return nil, err
-		}
-		return c.RESTClient(), nil
-	case "jobs":
-		c, err := tbatchv1.NewForConfig(cfg)
-		if err != nil {
-			return nil, err
-		}
-		return c.RESTClient(), nil
-	case "customresourcedefinitions":
-		c, err := apiextensionsv1.NewForConfig(cfg)
-		if err != nil {
-			return nil, err
-		}
-		return c.RESTClient(), nil
-	}
+var groups = map[string]schema.GroupVersion{
+	"configmaps":             corev1.SchemeGroupVersion,
+	"secrets":                corev1.SchemeGroupVersion,
+	"serviceaccounts":        corev1.SchemeGroupVersion,
+	"pods":                   corev1.SchemeGroupVersion,
+	"services":               corev1.SchemeGroupVersion,
+	"endpoints":              corev1.SchemeGroupVersion,
+	"namespaces":             corev1.SchemeGroupVersion,
+	"persistentvolumeclaims": corev1.SchemeGroupVersion,
 
-	return nil, fnerrors.InternalError("%s: don't know how to construct client", resource)
+	"deployments":  appsv1.SchemeGroupVersion,
+	"statefulsets": appsv1.SchemeGroupVersion,
+
+	"clusterroles":        rbacv1.SchemeGroupVersion,
+	"clusterrolebindings": rbacv1.SchemeGroupVersion,
+	"roles":               rbacv1.SchemeGroupVersion,
+	"rolebindings":        rbacv1.SchemeGroupVersion,
+
+	"ingresses":      networkingv1.SchemeGroupVersion,
+	"ingressclasses": networkingv1.SchemeGroupVersion,
+
+	"validatingwebhookconfigurations": admissionregistrationv1.SchemeGroupVersion,
+
+	"jobs": batchv1.SchemeGroupVersion,
+
+	"customresourcedefinitions": apiextensionsv1.SchemeGroupVersion,
 }
 
-func ResolveConfig(ctx context.Context, env ops.Environment) (*restclient.Config, error) {
+func MakeResourceSpecificClient(resource string, cfg *rest.Config) (rest.Interface, error) {
+	gv, ok := groups[resource]
+	if !ok {
+		return nil, fnerrors.InternalError("%s: don't know how to construct a client for this resource", resource)
+	}
+
+	return newForConfigAndGroupVersion(cfg, gv)
+}
+
+func setConfigDefaults(config *rest.Config, gv schema.GroupVersion) error {
+	config.GroupVersion = &gv
+	config.APIPath = "/api"
+	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+
+	if config.UserAgent == "" {
+		config.UserAgent = rest.DefaultKubernetesUserAgent()
+	}
+
+	return nil
+}
+
+func newForConfigAndGroupVersion(c *rest.Config, gv schema.GroupVersion) (*rest.RESTClient, error) {
+	config := *c
+	if err := setConfigDefaults(&config, gv); err != nil {
+		return nil, err
+	}
+	httpClient, err := rest.HTTPClientFor(&config)
+	if err != nil {
+		return nil, err
+	}
+	return rest.RESTClientForConfigAndClient(&config, httpClient)
+}
+
+func ResolveConfig(ctx context.Context, env ops.Environment) (*rest.Config, error) {
 	if x, ok := env.(interface {
 		KubeconfigProvider() (*HostConfig, error)
 	}); ok {
@@ -164,7 +178,7 @@ func ResolveConfig(ctx context.Context, env ops.Environment) (*restclient.Config
 	return NewRestConfigFromHostEnv(ctx, cfg)
 }
 
-func ComputeHostConfig(devHost *schema.DevHost, selector devhost.Selector) (*HostConfig, error) {
+func ComputeHostConfig(devHost *fnschema.DevHost, selector devhost.Selector) (*HostConfig, error) {
 	cfg := devhost.Select(devHost, selector)
 
 	hostEnv := &HostEnv{}
