@@ -33,7 +33,8 @@ func registerCreate() {
 			return nil, fnerrors.New("failed to resolve config: %w", err)
 		}
 
-		if create.IfMissing {
+		updateResource := false
+		if create.SkipIfAlreadyExists || create.UpdateIfExisting {
 			exists, err := checkResourceExists(ctx, restcfg, d.Description, create.Resource, create.Name,
 				create.Namespace, schema.PackageNames(d.Scope...))
 			if err != nil {
@@ -41,11 +42,20 @@ func registerCreate() {
 			}
 
 			if exists {
-				return nil, nil // Nothing to do.
+				if create.UpdateIfExisting {
+					updateResource = true
+				} else {
+					return nil, nil // Nothing to do.
+				}
 			}
 		}
 
-		if err := tasks.Action("kubernetes.create").Scope(schema.PackageNames(d.Scope...)...).
+		actionName := "kubernetes.create"
+		if updateResource {
+			actionName = "kubernetes.update"
+		}
+
+		if err := tasks.Action(actionName).Scope(schema.PackageNames(d.Scope...)...).
 			HumanReadablef(d.Description).
 			Arg("resource", create.Resource).
 			Arg("name", create.Name).
@@ -57,6 +67,9 @@ func registerCreate() {
 
 			opts := metav1.CreateOptions{}
 			req := client.Post()
+			if updateResource {
+				req = client.Put()
+			}
 			if create.Namespace != "" {
 				req.Namespace(create.Namespace)
 			}
