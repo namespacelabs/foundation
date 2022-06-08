@@ -280,7 +280,9 @@ func (ev *ActionEvent) toAction(ctx context.Context, state ActionState) *Running
 
 func (ev *ActionEvent) Start(ctx context.Context) *RunningAction {
 	ra := ev.toAction(ctx, ActionRunning)
-	ra.markStarted(ctx)
+	if ra != nil {
+		ra.markStarted(ctx)
+	}
 	return ra
 }
 
@@ -569,10 +571,12 @@ func (af *RunningAction) CustomDone(t time.Time, err error) bool {
 }
 
 func (af *RunningAction) Call(ctx context.Context, f func(context.Context) error) error {
-	ctx = context.WithValue(ctx, _actionKey, af)
+	if af != nil {
+		ctx = context.WithValue(ctx, _actionKey, af)
 
-	if af.span != nil {
-		return f(trace.ContextWithSpan(ctx, af.span))
+		if af.span != nil {
+			return f(trace.ContextWithSpan(ctx, af.span))
+		}
 	}
 
 	return f(ctx)
