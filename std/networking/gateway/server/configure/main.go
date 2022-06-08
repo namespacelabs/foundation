@@ -95,7 +95,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	})
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Network Gateway gRPC Service CustomResourceDefinition",
+		Description: "Network Gateway HTTP gRPC Transcoder CustomResourceDefinition",
 		Resource:    "customresourcedefinitions",
 		Namespace:   namespace,
 		Name:        httpGrpcTranscoderName,
