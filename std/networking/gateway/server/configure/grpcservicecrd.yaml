@@ -18,9 +18,11 @@ spec:
           type: object
           properties:
             # Fully qualified `package.service` name of the exported gRPC service. 
-            # For E.g. "api.todos.TodosService"
+            # For E.g. "api.todos.TodosService".
             serviceName:
-              type: string  
+              type: string
+            # Upstream port that the HTTP listener routes to for paths matching
+            # `/serviceName`.    
             servicePort:
               type: integer
             # Base64 encoded `descriptorpb.FileDescriptorSet` of the gRPC service .proto file
