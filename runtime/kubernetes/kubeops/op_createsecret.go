@@ -73,7 +73,7 @@ func RegisterCreateSecret() {
 		}
 
 		if _, err := cli.CoreV1().Secrets(create.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
-			FieldManager: kubedef.Ego().FieldManager,
+			FieldManager: kubedef.K8sFieldManager,
 		}); err != nil {
 			return nil, err
 		}

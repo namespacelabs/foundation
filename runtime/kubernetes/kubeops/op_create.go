@@ -9,7 +9,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -33,7 +35,7 @@ func registerCreate() {
 			return nil, fnerrors.New("failed to resolve config: %w", err)
 		}
 
-		updateResource := false
+		createResource := true
 		if create.SkipIfAlreadyExists || create.UpdateIfExisting {
 			exists, err := checkResourceExists(ctx, restcfg, d.Description, create, create.Name,
 				create.Namespace, schema.PackageNames(d.Scope...))
@@ -43,7 +45,7 @@ func registerCreate() {
 
 			if exists {
 				if create.UpdateIfExisting {
-					updateResource = true
+					createResource = false
 				} else {
 					return nil, nil // Nothing to do.
 				}
@@ -51,7 +53,7 @@ func registerCreate() {
 		}
 
 		actionName := "kubernetes.create"
-		if updateResource {
+		if createResource {
 			actionName = "kubernetes.update"
 		}
 
@@ -65,17 +67,29 @@ func registerCreate() {
 				return err
 			}
 
-			opts := metav1.CreateOptions{}
-			req := client.Post()
-			if updateResource {
+			var req *rest.Request
+			var obj runtime.Object
+
+			if createResource {
+				req = client.Post()
+				opts := metav1.CreateOptions{
+					FieldManager: kubedef.K8sFieldManager,
+				}
+				obj = &opts
+			} else {
 				req = client.Put()
+				opts := metav1.UpdateOptions{
+					FieldManager: kubedef.K8sFieldManager,
+				}
+				obj = &opts
 			}
+
 			if create.Namespace != "" {
 				req.Namespace(create.Namespace)
 			}
 
 			return req.Resource(resourceName(create)).
-				VersionedParams(&opts, scheme.ParameterCodec).
+				VersionedParams(obj, scheme.ParameterCodec).
 				Body([]byte(create.BodyJson)).
 				Do(ctx).Error()
 		}); err != nil && !errors.IsNotFound(err) {
