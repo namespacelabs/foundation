@@ -27,7 +27,7 @@ export interface {{.Name}}Deps {
 	{{- range .Deps}}
 		{{.Name}}: {{template "Type" .Provider}}Provider(
 			graph
-			{{- if not .IsProviderParameterized}},
+			{{- if .ProviderInputType}},
 			{{range .ProviderInput.Comments -}}
 			{{if .}}// {{.}}
 			{{end}}
@@ -35,8 +35,8 @@ export interface {{.Name}}Deps {
 			{{template "Type" .ProviderInputType -}}
 			.deserializeBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
 			{{- end -}}
-			{{- if .IsProviderParameterized}},
-			{{template "Type" .Type}}{{end}}),
+			{{- if .ProviderOutputFactoryType}},
+			{{template "Type" .ProviderOutputFactoryType}}{{end}}),
 	{{- end}}
 	})
 {{- end}}
@@ -100,10 +100,10 @@ export const prepare: Prepare = impl.initialize;
 
 export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
 	(graph: DependencyGraph
-	{{- if not .IsParameterized }}, input: {{template "Type" .InputType -}}{{end}}
+	{{- if .InputType }}, input: {{template "Type" .InputType -}}{{end}}
 	{{- if .IsParameterized}}, outputTypeCtr: new (...args: any[]) => T{{end}}) =>
 	provide{{.Name}}(
-		{{if not .IsParameterized}}input{{end}}
+		{{if .InputType}}input{{end}}
 		{{- if .PackageDepsName}},
 		graph.instantiatePackageDeps(Package)
 		{{- end}}
@@ -115,7 +115,7 @@ export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
 	);
 
 export type Provide{{.Name}} = {{if .IsParameterized}}<T>{{end -}}
-		({{- if not .IsParameterized}}input: {{template "Type" .InputType}}{{end}}
+		({{- if .InputType}}input: {{template "Type" .InputType}}{{end}}
 		{{- if .PackageDepsName}}, packageDeps: {{.PackageDepsName}}Deps{{end -}}
 		{{- if .Deps}}, deps: {{.Name}}Deps{{end}}
 		{{- if .IsParameterized}}outputTypeCtr: new (...args: any[]) => T{{end}}) =>

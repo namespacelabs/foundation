@@ -48,7 +48,7 @@ type tmplInitializer struct {
 
 type tmplProvider struct {
 	Name       string
-	InputType  tmplImportedType
+	InputType  *tmplImportedType
 	OutputType tmplImportedType
 	// nil if the provider has no dependencis.
 	Deps            *tmplDeps
@@ -69,10 +69,10 @@ type tmplDependency struct {
 	Name              string
 	Type              tmplImportedType
 	Provider          tmplImportedType
-	ProviderInputType tmplImportedType
+	ProviderInputType *tmplImportedType
 	ProviderInput     tmplSerializedProto
-	// See tmplProvider.IsParameterized.
-	IsProviderParameterized bool
+	// If the provider is parameterized, this contains a factory function for creating instances of the provided value.
+	ProviderOutputFactoryType *tmplImportedType
 }
 type tmplSerializedProto struct {
 	Base64Content string
