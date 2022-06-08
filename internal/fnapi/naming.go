@@ -55,16 +55,13 @@ type AllocateOpts struct {
 	Stored *NameResource `json:"-"`
 }
 
-func AllocateName(ctx context.Context, srv *schema.Server, opts AllocateOpts) (nr *NameResource, err error) {
-	err = tasks.Action("dns.allocate-name").Scope(schema.PackageName(srv.PackageName)).Arg("opts", opts).Run(ctx, func(ctx context.Context) error {
-		var err error
-		nr, err = doAllocateName(ctx, srv, opts)
-		return err
+func AllocateName(ctx context.Context, srv *schema.Server, opts AllocateOpts) (*NameResource, error) {
+	return tasks.Return(ctx, tasks.Action("dns.allocate-name").Scope(schema.PackageName(srv.PackageName)).Arg("opts", opts), func(ctx context.Context) (*NameResource, error) {
+		return RawAllocateName(ctx, opts)
 	})
-	return
 }
 
-func doAllocateName(ctx context.Context, srv *schema.Server, opts AllocateOpts) (*NameResource, error) {
+func RawAllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error) {
 	userAuth, err := LoadUser()
 	if err != nil {
 		return nil, err

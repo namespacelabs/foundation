@@ -9,6 +9,7 @@ import "namespacelabs.dev/foundation/languages/nodejs/imports"
 type tmplProtoFile struct {
 	Imports  []imports.SingleImport
 	Services []tmplProtoService
+	Opts     GenOpts
 }
 
 type tmplProtoService struct {
@@ -18,6 +19,7 @@ type tmplProtoService struct {
 
 type tmplProtoMethod struct {
 	Name         string
+	OriginalName string
 	Path         string
 	RequestType  tmplImportedType
 	ResponseType tmplImportedType

@@ -43,7 +43,7 @@ func nodeDepsNpmImport(npmPackage NpmPackage) string {
 	return npmImport(npmPackage, "deps.fn")
 }
 
-func convertProtoType(ic *imports.ImportCollector, t shared.ProtoTypeData) (tmplImportedType, error) {
+func convertProtoType(ic *imports.ImportCollector, t shared.ProtoTypeData) (*tmplImportedType, error) {
 	tsModuleName := t.SourceFileName
 
 	if strings.HasSuffix(tsModuleName, ".proto") {
@@ -58,7 +58,7 @@ func convertProtoType(ic *imports.ImportCollector, t shared.ProtoTypeData) (tmpl
 
 	npmPackage, err := toNpmPackage(t.Location)
 	if err != nil {
-		return tmplImportedType{}, err
+		return nil, err
 	}
 
 	var typeName string
@@ -68,18 +68,18 @@ func convertProtoType(ic *imports.ImportCollector, t shared.ProtoTypeData) (tmpl
 		typeName = t.Name
 	}
 
-	return tmplImportedType{
+	return &tmplImportedType{
 		Name: typeName,
 		// TODO: handle the case when the source type is not in the same package.
 		ImportAlias: ic.Add(npmImport(npmPackage, tsModuleName)),
 	}, nil
 }
 
-func convertAvailableIn(ic *imports.ImportCollector, a *schema.Provides_AvailableIn_NodeJs, loc workspace.Location) (tmplImportedType, error) {
+func convertAvailableIn(ic *imports.ImportCollector, a *schema.Provides_AvailableIn_NodeJs, loc workspace.Location) (*tmplImportedType, error) {
 	// Empty import means that the type is generated at runtime when the provider is used as a dependency,
 	// and here were are generating the provider definition. In this case this type is not used from the templates.
 	if a.Import == "" {
-		return tmplImportedType{}, nil
+		return &tmplImportedType{}, nil
 	}
 
 	var imp string
@@ -90,7 +90,7 @@ func convertAvailableIn(ic *imports.ImportCollector, a *schema.Provides_Availabl
 		// As a shortcut, the user can specify the file from the same package without the full NPM package.
 		npmPackage, err := toNpmPackage(loc)
 		if err != nil {
-			return tmplImportedType{}, err
+			return nil, err
 		}
 		imp = npmImport(npmPackage, a.Import)
 	}
@@ -101,15 +101,15 @@ func convertAvailableIn(ic *imports.ImportCollector, a *schema.Provides_Availabl
 			Type:   strings.TrimSuffix(strings.TrimPrefix(a.Type, "Promise<"), ">"),
 		}, loc)
 		if err != nil {
-			return tmplImportedType{}, err
+			return nil, err
 		}
 
-		return tmplImportedType{
+		return &tmplImportedType{
 			Name:       "Promise",
-			Parameters: []tmplImportedType{innerType},
+			Parameters: []tmplImportedType{*innerType},
 		}, nil
 	} else {
-		return tmplImportedType{
+		return &tmplImportedType{
 			Name:        a.Type,
 			ImportAlias: ic.Add(imp),
 		}, nil

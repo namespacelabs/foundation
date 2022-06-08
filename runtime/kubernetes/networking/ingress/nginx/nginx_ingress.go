@@ -109,7 +109,7 @@ func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 	}
 	defer f.Close()
 
-	applies, err := kubeparser.FromReader("nginx Ingress", f)
+	applies, err := kubeparser.MultipleFromReader("nginx Ingress", f)
 	if err != nil {
 		return nil, err
 	}

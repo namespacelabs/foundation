@@ -43,12 +43,13 @@ type DeleteList struct {
 }
 
 type Create struct {
-	Description string
-	IfMissing   bool
-	Resource    string // XXX this can be implied from `kind` in the body. See #339.
-	Namespace   string // XXX this can be implied from `namespace` in the body. See #339.
-	Name        string // XXX this can be implied from `name` in the body. See #339.
-	Body        interface{}
+	Description         string
+	SkipIfAlreadyExists bool
+	UpdateIfExisting    bool
+	Resource            string // XXX this can be implied from `kind` in the body. See #339.
+	Namespace           string // XXX this can be implied from `namespace` in the body. See #339.
+	Name                string // XXX this can be implied from `name` in the body. See #339.
+	Body                interface{}
 }
 
 type ExtendSpec struct {
@@ -143,11 +144,12 @@ func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInv
 	}
 
 	x, err := anypb.New(&OpCreate{
-		Resource:  c.Resource,
-		IfMissing: c.IfMissing,
-		Namespace: c.Namespace,
-		Name:      c.Name,
-		BodyJson:  string(body), // We use strings for better debuggability.
+		Resource:            c.Resource,
+		SkipIfAlreadyExists: c.SkipIfAlreadyExists,
+		UpdateIfExisting:    c.UpdateIfExisting,
+		Namespace:           c.Namespace,
+		Name:                c.Name,
+		BodyJson:            string(body), // We use strings for better debuggability.
 	})
 	if err != nil {
 		return nil, err

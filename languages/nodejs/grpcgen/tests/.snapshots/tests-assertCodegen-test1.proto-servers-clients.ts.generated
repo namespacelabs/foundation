@@ -1,0 +1,105 @@
+// This file was automatically generated.
+
+import * as grpc from "@grpc/grpc-js";
+import * as i0 from "./test1_pb";
+import * as i1 from "./nested/test2_pb";
+import {adaptClient, CallOptions} from "@namespacelabs.dev-foundation/std-nodejs-grpcgen/client";
+import {CallContext} from "@namespacelabs.dev-foundation/std-nodejs-grpcgen/server";
+
+// API
+
+// TestServiceA - Client
+
+export interface TestServiceAClient {
+	myMethod1(request: i0.TestRequest, options?: CallOptions): Promise<i0.TestResponse>;
+	myMethod2(request: i0.TestRequest, options?: CallOptions): Promise<i0.TestResponse>;
+}
+
+export function newTestServiceAClient(address: string, credentials: grpc.ChannelCredentials, options?: object): TestServiceAClient {
+	return adaptClient(wrappedTestServiceAClientConstructor, address, credentials, options) as TestServiceAClient;
+}
+
+// TestServiceB - Client
+
+export interface TestServiceBClient {
+	method1(request: i1.TestRequest2, options?: CallOptions): Promise<i1.TestResponse2>;
+}
+
+export function newTestServiceBClient(address: string, credentials: grpc.ChannelCredentials, options?: object): TestServiceBClient {
+	return adaptClient(wrappedTestServiceBClientConstructor, address, credentials, options) as TestServiceBClient;
+}
+
+// TestServiceA - Server
+
+export interface TestServiceAServer {
+	myMethod1(request: i0.TestRequest, context: CallContext): Promise<i0.TestResponse>;
+	myMethod2(request: i0.TestRequest, context: CallContext): Promise<i0.TestResponse>;
+}
+
+export function bindTestServiceAServer(server: TestServiceAServer) {
+	return {
+		impl: server,
+		definition: TestServiceADefinition,
+	}
+}
+
+// TestServiceB - Server
+
+export interface TestServiceBServer {
+	method1(request: i1.TestRequest2, context: CallContext): Promise<i1.TestResponse2>;
+}
+
+export function bindTestServiceBServer(server: TestServiceBServer) {
+	return {
+		impl: server,
+		definition: TestServiceBDefinition,
+	}
+}
+
+// Wiring
+
+// TestServiceA
+
+const TestServiceADefinition: grpc.ServiceDefinition = {
+	myMethod1: {
+		path: "/grpcgen.tests.TestServiceA/MyMethod1",
+		originalName: "MyMethod1",
+		requestStream: false,
+		responseStream: false,
+		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		requestDeserialize: (arg) => i0.TestRequest.deserializeBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		responseDeserialize: (arg) => i0.TestResponse.deserializeBinary(new Uint8Array(arg)),
+	},
+	myMethod2: {
+		path: "/grpcgen.tests.TestServiceA/MyMethod2",
+		originalName: "MyMethod2",
+		requestStream: false,
+		responseStream: false,
+		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		requestDeserialize: (arg) => i0.TestRequest.deserializeBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		responseDeserialize: (arg) => i0.TestResponse.deserializeBinary(new Uint8Array(arg)),
+	},
+};
+
+// TestServiceB
+
+const TestServiceBDefinition: grpc.ServiceDefinition = {
+	method1: {
+		path: "/grpcgen.tests.TestServiceB/Method1",
+		originalName: "Method1",
+		requestStream: false,
+		responseStream: false,
+		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		requestDeserialize: (arg) => i1.TestRequest2.deserializeBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		responseDeserialize: (arg) => i1.TestResponse2.deserializeBinary(new Uint8Array(arg)),
+	},
+};
+
+const wrappedTestServiceAClientConstructor = grpc.makeGenericClientConstructor(TestServiceADefinition, "Unused service name");
+
+const wrappedTestServiceBClientConstructor = grpc.makeGenericClientConstructor(TestServiceBDefinition, "Unused service name");
+
+

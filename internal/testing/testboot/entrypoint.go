@@ -35,6 +35,16 @@ func (t TestData) MustEndpoint(owner, name string) *schema.Endpoint {
 	return nil
 }
 
+func (t TestData) InternalOf(serverOwner string) []*schema.InternalEndpoint {
+	var filtered []*schema.InternalEndpoint
+	for _, ie := range t.Request.InternalEndpoint {
+		if ie.ServerOwner == serverOwner {
+			filtered = append(filtered, ie)
+		}
+	}
+	return filtered
+}
+
 func BootstrapTest() TestData {
 	flag.Parse()
 

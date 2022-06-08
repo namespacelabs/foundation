@@ -196,12 +196,12 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 			}
 
 			out.Invocations = append(out.Invocations, kubedef.Create{
-				Description: "Generated server secrets",
-				IfMissing:   true,
-				Resource:    "secrets",
-				Namespace:   namespace,
-				Name:        generatedName,
-				Body:        newSecret,
+				Description:         "Generated server secrets",
+				SkipIfAlreadyExists: true,
+				Resource:            "secrets",
+				Namespace:           namespace,
+				Name:                generatedName,
+				Body:                newSecret,
 			})
 		} else {
 			src := &schema.SerializedInvocationSource{

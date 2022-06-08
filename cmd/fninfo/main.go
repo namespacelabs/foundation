@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 
+	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -26,8 +27,9 @@ func main() {
 }
 
 type Output struct {
-	ModuleName   string                                  `json:"moduleName"`
-	Dependencies map[string]*schema.Workspace_Dependency `json:"dependencies,omitempty"`
+	ModuleName      string                                  `json:"moduleName"`
+	Dependencies    map[string]*schema.Workspace_Dependency `json:"dependencies,omitempty"`
+	BuildkitVersion string                                  `json:"buildkitVersion"`
 }
 
 func Do(ctx context.Context, workspaceDir string) error {
@@ -47,6 +49,11 @@ func Do(ctx context.Context, workspaceDir string) error {
 		for _, dep := range w.Dep {
 			output.Dependencies[dep.ModuleName] = dep
 		}
+	}
+
+	output.BuildkitVersion, err = buildkit.Version()
+	if err != nil {
+		return err
 	}
 
 	enc := json.NewEncoder(os.Stdout)

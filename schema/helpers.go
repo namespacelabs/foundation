@@ -5,7 +5,6 @@
 package schema
 
 import (
-	"fmt"
 	"sort"
 )
 
@@ -166,23 +165,6 @@ func (se *Stack_Entry) ImportsOf(pkg PackageName) []PackageName {
 	}
 
 	return nil
-}
-
-func (e *Endpoint) GetServerOwnerPackage() PackageName {
-	return PackageName(e.ServerOwner)
-}
-
-func (e *Endpoint) HasKind(str string) bool {
-	for _, md := range e.ServiceMetadata {
-		if md.GetKind() == str {
-			return true
-		}
-	}
-	return false
-}
-
-func (e *Endpoint) Address() string {
-	return fmt.Sprintf("%s:%d", e.AllocatedName, e.GetPort().GetContainerPort())
 }
 
 func (p *Provides_AvailableIn) ProvidedInFrameworks() map[Framework]bool {

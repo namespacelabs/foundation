@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/bradleyjkemp/cupaloy"
+	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"gotest.tools/assert"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/languages/nodejs/grpcgen"
@@ -40,9 +41,19 @@ func TestCodegen(t *testing.T) {
 	assert.NilError(t, err)
 
 	for _, fd := range fds.File {
-		generatedCode, err := grpcgen.Generate(fd, fds)
-		assert.NilError(t, err)
-		// Adding ".generated" extension so the ".ts" files don't appear broken (due to missing dependencies) in the IDE.
-		assert.NilError(t, cupaloy.SnapshotMulti(fmt.Sprintf("%s.ts.generated", filepath.Base(fd.GetName())), generatedCode))
+		if fd.GetName() != testFile1 {
+			continue
+		}
+
+		assertCodegen(t, fd, fds, "servers-clients", grpcgen.GenOpts{GenClients: true, GenServers: true})
+		assertCodegen(t, fd, fds, "servers", grpcgen.GenOpts{GenServers: true})
+		assertCodegen(t, fd, fds, "clients", grpcgen.GenOpts{GenClients: true})
 	}
+}
+
+func assertCodegen(t *testing.T, fd *descriptor.FileDescriptorProto, fds *protos.FileDescriptorSetAndDeps, suffix string, opts grpcgen.GenOpts) {
+	generatedCode, err := grpcgen.Generate(fd, fds, opts)
+	assert.NilError(t, err)
+	// Adding ".generated" extension so the ".ts" files don't appear broken (due to missing dependencies) in the IDE.
+	assert.NilError(t, cupaloy.SnapshotMulti(fmt.Sprintf("%s-%s.ts.generated", filepath.Base(fd.GetName()), suffix), generatedCode))
 }

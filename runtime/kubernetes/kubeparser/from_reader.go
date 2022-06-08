@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func FromReader(description string, r io.Reader) ([]kubedef.Apply, error) {
+func MultipleFromReader(description string, r io.Reader) ([]kubedef.Apply, error) {
 	br := bufio.NewReader(r)
 
 	var sections [][]byte
@@ -54,46 +54,72 @@ func FromReader(description string, r io.Reader) ([]kubedef.Apply, error) {
 	var actuals []kubedef.Apply
 
 	for _, sec := range sections {
-		var m obj
-		if err := yaml.Unmarshal(sec, &m); err != nil {
+		p, err := Single(sec)
+		if err != nil {
 			return nil, err
-		}
-
-		if m.Kind == nil {
-			return nil, fnerrors.BadInputError("kind is required")
-		}
-		if m.Name == nil {
-			return nil, fnerrors.BadInputError("name is required")
-		}
-
-		msg, typ := msgFromKind(*m.Kind)
-		name := *m.Name
-
-		if msg == nil {
-			return nil, fnerrors.BadInputError("don't know how to handle %q", *m.Kind)
-		}
-
-		var ns string
-		if m.Namespace != nil {
-			ns = *m.Namespace
 		}
 
 		actuals = append(actuals, kubedef.Apply{
-			Description: fmt.Sprintf("%s: %s %s", description, *m.Kind, name),
-			Name:        name,
-			Namespace:   ns,
-			Resource:    typ,
-			Body:        msg,
+			Description: fmt.Sprintf("%s: %s %s", description, p.Kind, p.Name),
+			Name:        p.Name,
+			Namespace:   p.Namespace,
+			Resource:    p.Resource,
+			Body:        p.Body,
 		})
 	}
 
-	for k, apply := range actuals {
-		if err := yaml.Unmarshal(sections[k], apply.Body); err != nil {
-			return nil, err
-		}
+	return actuals, nil
+}
+
+type Parsed struct {
+	Kind      string
+	Name      string
+	Namespace string
+	Resource  string
+	Body      interface{}
+}
+
+func Single(contents []byte) (Parsed, error) {
+	// For simplicity, we do a two pass parse, first we walk through all resource
+	// types to instantiate the appropriate types, and then we actually parse them.
+
+	var m objHeader
+	if err := yaml.Unmarshal(contents, &m); err != nil {
+		return Parsed{}, err
 	}
 
-	return actuals, nil
+	if m.Kind == nil {
+		return Parsed{}, fnerrors.BadInputError("kind is required")
+	}
+	if m.Name == nil {
+		return Parsed{}, fnerrors.BadInputError("name is required")
+	}
+
+	msg, typ := msgFromKind(*m.Kind)
+	name := *m.Name
+
+	if msg == nil {
+		return Parsed{}, fnerrors.BadInputError("don't know how to handle %q", *m.Kind)
+	}
+
+	var ns string
+	if m.Namespace != nil {
+		ns = *m.Namespace
+	}
+
+	parsed := Parsed{
+		Kind:      *m.Kind,
+		Name:      name,
+		Namespace: ns,
+		Resource:  typ,
+		Body:      msg,
+	}
+
+	if err := yaml.Unmarshal(contents, parsed.Body); err != nil {
+		return Parsed{}, err
+	}
+
+	return parsed, nil
 }
 
 func msgFromKind(kind string) (interface{}, string) {
@@ -129,7 +155,7 @@ func msgFromKind(kind string) (interface{}, string) {
 	return nil, ""
 }
 
-type obj struct {
+type objHeader struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 }

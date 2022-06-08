@@ -86,6 +86,11 @@ func EnvsOrDefault(workspace *schema.Workspace) []*schema.Environment {
 			Purpose: schema.Environment_DEVELOPMENT,
 		},
 		{
+			Name:    "staging",
+			Runtime: "kubernetes",
+			Purpose: schema.Environment_PRODUCTION,
+		},
+		{
 			Name:    "prod",
 			Runtime: "kubernetes",
 			Purpose: schema.Environment_PRODUCTION,
