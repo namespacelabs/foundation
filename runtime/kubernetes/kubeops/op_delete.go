@@ -37,7 +37,7 @@ func registerDelete() {
 				return err
 			}
 
-			client, err := client.MakeResourceSpecificClient(delete.Resource, restcfg)
+			client, err := client.MakeResourceSpecificClient(ctx, delete.Resource, restcfg)
 			if err != nil {
 				return err
 			}

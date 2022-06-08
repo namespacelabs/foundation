@@ -125,37 +125,29 @@ var groups = map[string]schema.GroupVersion{
 	"customresourcedefinitions": apiextensionsv1.SchemeGroupVersion,
 }
 
-func MakeResourceSpecificClient(resource string, cfg *rest.Config) (rest.Interface, error) {
+func MakeResourceSpecificClient(ctx context.Context, resource string, cfg *rest.Config) (rest.Interface, error) {
 	gv, ok := groups[resource]
 	if !ok {
 		return nil, fnerrors.InternalError("%s: don't know how to construct a client for this resource", resource)
 	}
 
-	return newForConfigAndGroupVersion(cfg, gv)
+	return rest.RESTClientFor(CopyAndSetDefaults(*cfg, gv))
 }
 
-func setConfigDefaults(config *rest.Config, gv schema.GroupVersion) error {
+func CopyAndSetDefaults(config rest.Config, gv schema.GroupVersion) *rest.Config {
 	config.GroupVersion = &gv
-	config.APIPath = "/api"
+	if gv.Group == "" {
+		config.APIPath = "/api"
+	} else {
+		config.APIPath = "/apis"
+	}
 	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()
 	}
 
-	return nil
-}
-
-func newForConfigAndGroupVersion(c *rest.Config, gv schema.GroupVersion) (*rest.RESTClient, error) {
-	config := *c
-	if err := setConfigDefaults(&config, gv); err != nil {
-		return nil, err
-	}
-	httpClient, err := rest.HTTPClientFor(&config)
-	if err != nil {
-		return nil, err
-	}
-	return rest.RESTClientForConfigAndClient(&config, httpClient)
+	return &config
 }
 
 func ResolveConfig(ctx context.Context, env ops.Environment) (*rest.Config, error) {

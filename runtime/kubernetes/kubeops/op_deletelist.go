@@ -40,7 +40,7 @@ func registerDeleteList() {
 				return err
 			}
 
-			client, err := client.MakeResourceSpecificClient(deleteList.Resource, restcfg)
+			client, err := client.MakeResourceSpecificClient(ctx, deleteList.Resource, restcfg)
 			if err != nil {
 				return err
 			}

@@ -50,7 +50,7 @@ func registerApply() {
 			Arg("resource", apply.Resource).
 			Arg("name", apply.Name).
 			Arg("namespace", apply.Namespace).Run(ctx, func(ctx context.Context) error {
-			client, err := client.MakeResourceSpecificClient(apply.Resource, restcfg)
+			client, err := client.MakeResourceSpecificClient(ctx, apply.Resource, restcfg)
 			if err != nil {
 				return err
 			}
@@ -61,11 +61,12 @@ func registerApply() {
 				req = req.Namespace(apply.Namespace)
 			}
 
-			return req.Resource(apply.Resource).
+			prepReq := req.Resource(apply.Resource).
 				Name(apply.Name).
 				VersionedParams(&patchOpts, scheme.ParameterCodec).
-				Body([]byte(apply.BodyJson)).
-				Do(ctx).Into(&res)
+				Body([]byte(apply.BodyJson))
+
+			return prepReq.Do(ctx).Into(&res)
 		}); err != nil {
 			return nil, fnerrors.InvocationError("%s: failed to apply: %w", d.Description, err)
 		}

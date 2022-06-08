@@ -60,7 +60,7 @@ func registerCreate() {
 			Arg("resource", create.Resource).
 			Arg("name", create.Name).
 			Arg("namespace", create.Namespace).Run(ctx, func(ctx context.Context) error {
-			client, err := client.MakeResourceSpecificClient(create.Resource, restcfg)
+			client, err := client.MakeResourceSpecificClient(ctx, create.Resource, restcfg)
 			if err != nil {
 				return err
 			}

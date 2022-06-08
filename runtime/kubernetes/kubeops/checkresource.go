@@ -23,7 +23,7 @@ func checkResourceExists(ctx context.Context, restcfg *rest.Config, description,
 		Arg("resource", resource).
 		Arg("name", name).
 		Arg("namespace", namespace).Run(ctx, func(ctx context.Context) error {
-		client, err := client.MakeResourceSpecificClient(resource, restcfg)
+		client, err := client.MakeResourceSpecificClient(ctx, resource, restcfg)
 		if err != nil {
 			return err
 		}
