@@ -24,19 +24,11 @@ func main() {
 	testing.Do(func(ctx context.Context, t testing.Test) error {
 		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/testdata/service/post", "post")
 
-		var metrics *schema.HttpExportedService
-		for _, ie := range t.Request.InternalEndpoint {
-			if ie.ServerOwner == "namespacelabs.dev/foundation/std/testdata/server/gogrpc" {
-				for _, md := range ie.ServiceMetadata {
-					if md.Kind == "prometheus.io/metrics" {
-						metrics = &schema.HttpExportedService{}
-						if err := md.Details.UnmarshalTo(metrics); err != nil {
-							return err
-						}
-						break
-					}
-				}
-			}
+		metrics, err := schema.UnmarshalServiceMetadata[*schema.HttpExportedService](
+			schema.CombineServiceMetadata(t.InternalOf(endpoint.ServerOwner)),
+			"prometheus.io/metrics")
+		if err != nil {
+			return err
 		}
 
 		if metrics == nil {

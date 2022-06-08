@@ -72,18 +72,16 @@ func ComputeEndpoints(srv provision.Server, allocatedPorts []*schema.Endpoint_Po
 	var gatewayServices []string
 	var publicGateway bool
 	for _, endpoint := range endpoints {
-		for _, md := range endpoint.ServiceMetadata {
-			if md.Kind == kindNeedsGrpcGateway {
-				exported := &schema.GrpcExportService{}
-				if err := md.Details.UnmarshalTo(exported); err != nil {
-					return nil, nil, err
-				}
+		exported, err := schema.UnmarshalServiceMetadata[*schema.GrpcExportService](endpoint.ServiceMetadata, kindNeedsGrpcGateway)
+		if err != nil {
+			return nil, nil, err
+		}
 
-				gatewayServices = append(gatewayServices, exported.ProtoTypename)
+		if exported != nil {
+			gatewayServices = append(gatewayServices, exported.ProtoTypename)
 
-				if endpoint.Type == schema.Endpoint_INTERNET_FACING {
-					publicGateway = true
-				}
+			if endpoint.Type == schema.Endpoint_INTERNET_FACING {
+				publicGateway = true
 			}
 		}
 	}
