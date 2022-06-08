@@ -21,7 +21,7 @@ var (
 	port = flag.Uint("port", 18000, "xDS management server port")
 
 	// Tell Envoy to use this Node ID
-	nodeID = flag.String("nodeID", "test-id", "Node ID")
+	nodeID = flag.String("node_id", "envoy_node", "Node ID")
 )
 
 func main() {
