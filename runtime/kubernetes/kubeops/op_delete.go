@@ -29,7 +29,7 @@ func registerDelete() {
 
 		if err := tasks.Action("kubernetes.delete").Scope(schema.PackageNames(d.Scope...)...).
 			HumanReadablef(d.Description).
-			Arg("resource", delete.Resource).
+			Arg("resource", resourceName(delete)).
 			Arg("name", delete.Name).
 			Arg("namespace", delete.Namespace).Run(ctx, func(ctx context.Context) error {
 			restcfg, err := client.ResolveConfig(ctx, env)
@@ -37,7 +37,7 @@ func registerDelete() {
 				return err
 			}
 
-			client, err := client.MakeResourceSpecificClient(ctx, delete.Resource, restcfg)
+			client, err := client.MakeResourceSpecificClient(ctx, delete, restcfg)
 			if err != nil {
 				return err
 			}
@@ -48,7 +48,7 @@ func registerDelete() {
 				req.Namespace(delete.Namespace)
 			}
 
-			return req.Resource(delete.Resource).
+			return req.Resource(resourceName(delete)).
 				Name(delete.Name).
 				Body(&opts).
 				Do(ctx).Error()

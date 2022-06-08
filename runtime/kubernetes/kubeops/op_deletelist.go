@@ -32,7 +32,7 @@ func registerDeleteList() {
 
 		if err := tasks.Action("kubernetes.delete-collection").Scope(schema.PackageNames(d.Scope...)...).
 			HumanReadablef(d.Description).
-			Arg("resource", deleteList.Resource).
+			Arg("resource", resourceName(deleteList)).
 			Arg("selector", deleteList.LabelSelector).
 			Arg("namespace", deleteList.Namespace).Run(ctx, func(ctx context.Context) error {
 			restcfg, err := client.ResolveConfig(ctx, env)
@@ -40,7 +40,7 @@ func registerDeleteList() {
 				return err
 			}
 
-			client, err := client.MakeResourceSpecificClient(ctx, deleteList.Resource, restcfg)
+			client, err := client.MakeResourceSpecificClient(ctx, deleteList, restcfg)
 			if err != nil {
 				return err
 			}
@@ -50,7 +50,7 @@ func registerDeleteList() {
 			var res unstructured.UnstructuredList
 			if err := client.Get().
 				Namespace(deleteList.Namespace).
-				Resource(deleteList.Resource).
+				Resource(resourceName(deleteList)).
 				VersionedParams(&listOpts, scheme.ParameterCodec).
 				Do(ctx).
 				Into(&res); err != nil {
@@ -79,7 +79,7 @@ func registerDeleteList() {
 
 				return client.Delete().
 					Namespace(deleteList.Namespace).
-					Resource(deleteList.Resource).
+					Resource(resourceName(deleteList)).
 					Name(u.GetName()).
 					Body(&opts).
 					Do(ctx).Error()

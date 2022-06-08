@@ -35,7 +35,7 @@ func registerCreate() {
 
 		updateResource := false
 		if create.SkipIfAlreadyExists || create.UpdateIfExisting {
-			exists, err := checkResourceExists(ctx, restcfg, d.Description, create.Resource, create.Name,
+			exists, err := checkResourceExists(ctx, restcfg, d.Description, create, create.Name,
 				create.Namespace, schema.PackageNames(d.Scope...))
 			if err != nil {
 				return nil, err
@@ -57,10 +57,10 @@ func registerCreate() {
 
 		if err := tasks.Action(actionName).Scope(schema.PackageNames(d.Scope...)...).
 			HumanReadablef(d.Description).
-			Arg("resource", create.Resource).
+			Arg("resource", resourceName(create)).
 			Arg("name", create.Name).
 			Arg("namespace", create.Namespace).Run(ctx, func(ctx context.Context) error {
-			client, err := client.MakeResourceSpecificClient(ctx, create.Resource, restcfg)
+			client, err := client.MakeResourceSpecificClient(ctx, create, restcfg)
 			if err != nil {
 				return err
 			}
@@ -74,7 +74,7 @@ func registerCreate() {
 				req.Namespace(create.Namespace)
 			}
 
-			return req.Resource(create.Resource).
+			return req.Resource(resourceName(create)).
 				VersionedParams(&opts, scheme.ParameterCodec).
 				Body([]byte(create.BodyJson)).
 				Do(ctx).Error()

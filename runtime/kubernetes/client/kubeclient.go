@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -125,10 +126,22 @@ var groups = map[string]schema.GroupVersion{
 	"customresourcedefinitions": apiextensionsv1.SchemeGroupVersion,
 }
 
-func MakeResourceSpecificClient(ctx context.Context, resource string, cfg *rest.Config) (rest.Interface, error) {
-	gv, ok := groups[resource]
+type ResourceClassLike interface {
+	GetResource() string
+	GetResourceClass() *kubedef.ResourceClass
+}
+
+func MakeResourceSpecificClient(ctx context.Context, resource ResourceClassLike, cfg *rest.Config) (rest.Interface, error) {
+	if klass := resource.GetResourceClass(); klass != nil {
+		return rest.RESTClientFor(CopyAndSetDefaults(*cfg, schema.GroupVersion{
+			Group:   klass.Group,
+			Version: klass.Version,
+		}))
+	}
+
+	gv, ok := groups[resource.GetResource()]
 	if !ok {
-		return nil, fnerrors.InternalError("%s: don't know how to construct a client for this resource", resource)
+		return nil, fnerrors.InternalError("%s: don't know how to construct a client for this resource", resource.GetResource())
 	}
 
 	return rest.RESTClientFor(CopyAndSetDefaults(*cfg, gv))

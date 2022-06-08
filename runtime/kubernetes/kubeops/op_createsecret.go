@@ -38,7 +38,7 @@ func RegisterCreateSecret() {
 			return nil, fnerrors.New("resolve config failed: %w", err)
 		}
 
-		exists, err := checkResourceExists(ctx, restcfg, d.Description, "secrets", create.Name, create.Namespace, schema.PackageNames(d.Scope...))
+		exists, err := checkResourceExists(ctx, restcfg, d.Description, inlineClass("secrets"), create.Name, create.Namespace, schema.PackageNames(d.Scope...))
 		if err != nil {
 			return nil, err
 		}
@@ -81,3 +81,8 @@ func RegisterCreateSecret() {
 		return nil, nil
 	})
 }
+
+type inlineClass string
+
+func (s inlineClass) GetResource() string                      { return string(s) }
+func (s inlineClass) GetResourceClass() *kubedef.ResourceClass { return nil }

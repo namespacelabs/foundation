@@ -15,12 +15,12 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func checkResourceExists(ctx context.Context, restcfg *rest.Config, description, resource, name, namespace string, scope []schema.PackageName) (bool, error) {
+func checkResourceExists(ctx context.Context, restcfg *rest.Config, description string, resource client.ResourceClassLike, name, namespace string, scope []schema.PackageName) (bool, error) {
 	var exists bool
 	// XXX this is racy here, we need to have a loop and a callback for contents.
 	if err := tasks.Action("kubernetes.get").Scope(scope...).
 		HumanReadablef("Check: "+description).
-		Arg("resource", resource).
+		Arg("resource", resourceName(resource)).
 		Arg("name", name).
 		Arg("namespace", namespace).Run(ctx, func(ctx context.Context) error {
 		client, err := client.MakeResourceSpecificClient(ctx, resource, restcfg)
@@ -34,7 +34,7 @@ func checkResourceExists(ctx context.Context, restcfg *rest.Config, description,
 			req.Namespace(namespace)
 		}
 
-		if err := req.Resource(resource).
+		if err := req.Resource(resourceName(resource)).
 			Name(name).
 			Body(&opts).
 			Do(ctx).Error(); err != nil {
@@ -52,4 +52,12 @@ func checkResourceExists(ctx context.Context, restcfg *rest.Config, description,
 	}
 
 	return exists, nil
+}
+
+func resourceName(r client.ResourceClassLike) string {
+	if klass := r.GetResourceClass(); klass != nil {
+		return klass.Resource
+	}
+
+	return r.GetResource()
 }

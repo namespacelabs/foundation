@@ -47,10 +47,10 @@ func registerApply() {
 		var res unstructured.Unstructured
 		if err := tasks.Action("kubernetes.apply").Scope(scope...).
 			HumanReadablef(d.Description).
-			Arg("resource", apply.Resource).
+			Arg("resource", resourceName(apply)).
 			Arg("name", apply.Name).
 			Arg("namespace", apply.Namespace).Run(ctx, func(ctx context.Context) error {
-			client, err := client.MakeResourceSpecificClient(ctx, apply.Resource, restcfg)
+			client, err := client.MakeResourceSpecificClient(ctx, apply, restcfg)
 			if err != nil {
 				return err
 			}
@@ -61,7 +61,7 @@ func registerApply() {
 				req = req.Namespace(apply.Namespace)
 			}
 
-			prepReq := req.Resource(apply.Resource).
+			prepReq := req.Resource(resourceName(apply)).
 				Name(apply.Name).
 				VersionedParams(&patchOpts, scheme.ParameterCodec).
 				Body([]byte(apply.BodyJson))
