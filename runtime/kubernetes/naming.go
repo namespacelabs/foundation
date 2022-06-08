@@ -26,18 +26,6 @@ var (
 	base32encoding = base32.NewEncoding(lowerCaseEncodeBase32).WithPadding(base32.NoPadding)
 )
 
-// Only lowercase alphanumeric characters or '-', may not start/end with '-', max length 63 chars
-// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
-
-func labelName(command []string) string {
-	var parts []string
-	for _, c := range command {
-		parts = append(parts, validChars.FindAllString(strings.ToLower(c), -1)...)
-	}
-
-	return strings.Join(parts, "-")
-}
-
 // We use namespaces to isolate deployments per workspace and environment.
 // Using the path base plus a digest provides short, memorable names and avoids collision.
 // TODO add knob to allow namespace overwrites if the need arises.

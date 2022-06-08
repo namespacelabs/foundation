@@ -362,7 +362,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	for _, sidecar := range server.Sidecars {
-		name := fmt.Sprintf("sidecar-%s", shortPackageName(sidecar.PackageName))
+		name := sidecarName(sidecar, "sidecar")
 		for _, c := range containers {
 			if name == c {
 				return fnerrors.UserError(server.Server.Location, "duplicate sidecar container name: %s", name)
@@ -383,7 +383,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	for _, init := range server.Inits {
-		name := fmt.Sprintf("init-%v", labelName(init.Command))
+		name := sidecarName(init, "init")
 		for _, c := range containers {
 			if name == c {
 				return fnerrors.UserError(server.Server.Location, "duplicate init container name: %s", name)
@@ -490,6 +490,14 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	return nil
+}
+
+func sidecarName(o runtime.SidecarRunOpts, prefix string) string {
+	if o.Name != "" {
+		return fmt.Sprintf("%s-%s", prefix, o.Name)
+	}
+
+	return fmt.Sprintf("%s-%s", prefix, shortPackageName(o.PackageName))
 }
 
 func makeStorageVolumeName(rs *schema.RequiredStorage) string {

@@ -130,6 +130,7 @@ type RunAs struct {
 }
 
 type SidecarRunOpts struct {
+	Name        string
 	PackageName schema.PackageName
 	ServerRunOpts
 }

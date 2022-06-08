@@ -518,6 +518,7 @@ func prepareContainerRunOpts(containers []*schema.SidecarContainer, imageIDs bui
 		}
 
 		*out = append(*out, runtime.SidecarRunOpts{
+			Name:        container.Name,
 			PackageName: pkg,
 			ServerRunOpts: runtime.ServerRunOpts{
 				Image:   imgs.Binary,
