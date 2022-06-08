@@ -226,7 +226,7 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 		ps.ServerInits = server.Provisioning.Inits
 
 		// Fill in env-bound data now, post ports allocation.
-		endpoints, internal, err := runtime.ComputeEndpoints(server.Env().Proto(), server.StackEntry(), allocatedPorts.Ports)
+		endpoints, internal, err := runtime.ComputeEndpoints(server, allocatedPorts.Ports)
 		if err != nil {
 			return err
 		}

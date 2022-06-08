@@ -9,6 +9,7 @@ package foundation.schema;
 option go_package = "namespacelabs.dev/foundation/schema";
 
 import "google/protobuf/any.proto";
+import "google/protobuf/descriptor.proto";
 
 message Endpoint {
     enum Type {
@@ -119,4 +120,9 @@ message HttpUrlMap {
         string path_prefix = 1;
         string kind        = 2;
     }
+}
+
+message GrpcHttpTranscoding {
+    // Includes the service proto definition, and its dependencies.
+    google.protobuf.FileDescriptorSet file_descriptor_set = 1;
 }
