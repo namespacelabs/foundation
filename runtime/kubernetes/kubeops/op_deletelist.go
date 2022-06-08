@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -51,7 +50,7 @@ func registerDeleteList() {
 			if err := client.Get().
 				Namespace(deleteList.Namespace).
 				Resource(deleteList.Resource).
-				VersionedParams(&listOpts, scheme.ParameterCodec).
+				VersionedParams(&listOpts, metav1.ParameterCodec).
 				Do(ctx).
 				Into(&res); err != nil {
 				return err

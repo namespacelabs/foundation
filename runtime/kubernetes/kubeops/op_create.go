@@ -9,7 +9,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -75,7 +74,7 @@ func registerCreate() {
 			}
 
 			return req.Resource(create.Resource).
-				VersionedParams(&opts, scheme.ParameterCodec).
+				VersionedParams(&opts, metav1.ParameterCodec).
 				Body([]byte(create.BodyJson)).
 				Do(ctx).Error()
 		}); err != nil && !errors.IsNotFound(err) {
