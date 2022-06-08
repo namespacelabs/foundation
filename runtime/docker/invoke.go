@@ -17,6 +17,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/muesli/cancelreader"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
@@ -166,7 +167,11 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 
 	compute.On(ctx).Cleanup(tasks.Action("docker.container.remove"), func(ctx context.Context) error {
 		if err := cli.ContainerRemove(ctx, created.ID, types.ContainerRemoveOptions{}); err != nil {
-			if !client.IsErrNotFound(err) {
+			// If the docker daemon is already removing the container, because
+			// e.g. it has returned from execution, then we may observe a
+			// conflict with `removal of container XYZ is already in progress`.
+			// We ignore that error here.
+			if !client.IsErrNotFound(err) && !errdefs.IsConflict(err) {
 				return err
 			}
 		}
