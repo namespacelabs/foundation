@@ -31,6 +31,9 @@ var (
 //go:embed bootstrap-xds.yaml.tmpl
 var embeddedBootstrapTmpl embed.FS
 
+//go:embed grpcservicecrd.yaml
+var embeddedGrpcServiceCrd embed.FS
+
 type tmplData struct {
 	AdminPort       uint32
 	XDSServerPort   uint32
@@ -50,8 +53,9 @@ type configuration struct{}
 
 func (configuration) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
 	const (
-		configVolume = "fn--gateway-bootstrap"
-		filename     = "boostrap-xds.yaml"
+		configVolume   = "fn--gateway-bootstrap"
+		filename       = "boostrap-xds.yaml"
+		gRPCServiceCrd = "GRPCService"
 	)
 
 	namespace := kubetool.FromRequest(req).Namespace
@@ -86,6 +90,14 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				filename: bootstrapData.String(),
 			},
 		),
+	})
+
+	out.Invocations = append(out.Invocations, kubedef.Apply{
+		Description: "Network Gateway gRPC Service CustomResourceDefinition",
+		Resource:    "customresourcedefinitions",
+		Namespace:   namespace,
+		Name:        gRPCServiceCrd,
+		Body:        embeddedGrpcServiceCrd,
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
