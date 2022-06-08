@@ -94,13 +94,13 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		),
 	})
 
-	// out.Invocations = append(out.Invocations, kubedef.Apply{
-	// 	Description: "Network Gateway gRPC Service CustomResourceDefinition",
-	// 	Resource:    "customresourcedefinitions",
-	// 	Namespace:   namespace,
-	// 	Name:        httpGrpcTranscoderName,
-	// 	Body:        httpGrpcTranscoderCrd,
-	// })
+	out.Invocations = append(out.Invocations, kubedef.Apply{
+		Description: "Network Gateway gRPC Service CustomResourceDefinition",
+		Resource:    "customresourcedefinitions",
+		Namespace:   namespace,
+		Name:        httpGrpcTranscoderName,
+		Body:        httpGrpcTranscoderCrd,
+	})
 
 	serviceAccount := makeServiceAccount(req.Focus.Server)
 	out.Invocations = append(out.Invocations, kubedef.Apply{
