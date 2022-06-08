@@ -9,10 +9,10 @@ import (
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	k8s "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -63,7 +63,7 @@ func registerApply() {
 
 			prepReq := req.Resource(resourceName(apply)).
 				Name(apply.Name).
-				VersionedParams(&patchOpts, scheme.ParameterCodec).
+				VersionedParams(&patchOpts, metav1.ParameterCodec).
 				Body([]byte(apply.BodyJson))
 
 			return prepReq.Do(ctx).Into(&res)

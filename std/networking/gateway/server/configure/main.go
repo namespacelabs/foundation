@@ -105,12 +105,13 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		return fnerrors.InternalError("failed to parse the HTTP gRPC Transcoder CRD: %w", err)
 	}
 
-	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Network Gateway HTTP gRPC Transcoder CustomResourceDefinition",
-		Resource:    "customresourcedefinitions",
-		Namespace:   namespace,
-		Name:        httpGrpcTranscoderName,
-		Body:        apply.Body,
+	out.Invocations = append(out.Invocations, kubedef.Create{
+		Description:      "Network Gateway HTTP gRPC Transcoder CustomResourceDefinition",
+		Resource:         "customresourcedefinitions",
+		Namespace:        namespace,
+		Name:             httpGrpcTranscoderName,
+		Body:             apply.Body,
+		UpdateIfExisting: true,
 	})
 
 	serviceAccount := makeServiceAccount(req.Focus.Server)
