@@ -8,12 +8,17 @@ import (
 	"fmt"
 
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/types/descriptorpb"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 )
 
-func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
+func ComputeEndpoints(srv provision.Server, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
+	sch := srv.StackEntry()
+
 	serverPorts := append([]*schema.Endpoint_Port{}, sch.Server.StaticPort...)
 	serverPorts = append(serverPorts, allocatedPorts...)
 
@@ -31,7 +36,15 @@ func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocate
 	}
 
 	for _, service := range sch.Services() {
-		nd, err := computeServiceEndpoint(sch.Server, service, service.GetIngress(), serverPort)
+		var pkg *workspace.Package
+		for _, p := range srv.Deps() {
+			if p.PackageName().Equals(service.PackageName) {
+				pkg = p
+				break
+			}
+		}
+
+		nd, err := computeServiceEndpoint(sch.Server, pkg, service, service.GetIngress(), serverPort)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -39,17 +52,17 @@ func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocate
 	}
 
 	// Handle statically defined services.
-	srv := sch.Server
-	for _, s := range srv.GetService() {
-		spec, err := ServiceSpecToEndpoint(srv, s, schema.Endpoint_PRIVATE)
+	server := sch.Server
+	for _, s := range server.GetService() {
+		spec, err := ServiceSpecToEndpoint(server, s, schema.Endpoint_PRIVATE)
 		if err != nil {
 			return nil, nil, err
 		}
 		endpoints = append(endpoints, spec)
 	}
 
-	for _, s := range srv.GetIngress() {
-		spec, err := ServiceSpecToEndpoint(srv, s, schema.Endpoint_INTERNET_FACING)
+	for _, s := range server.GetIngress() {
+		spec, err := ServiceSpecToEndpoint(server, s, schema.Endpoint_INTERNET_FACING)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -74,8 +87,6 @@ func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocate
 			}
 		}
 	}
-
-	server := sch.Server
 
 	// Handle HTTP.
 	if needsHTTP := len(server.UrlMap) > 0; needsHTTP {
@@ -137,7 +148,7 @@ func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocate
 
 	if f, ok := supportByFramework[server.Framework.String()]; ok {
 		var err error
-		internal, err = f.InternalEndpoints(env, server, allocatedPorts)
+		internal, err = f.InternalEndpoints(srv.Env().Proto(), server, allocatedPorts)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -147,7 +158,7 @@ func ComputeEndpoints(env *schema.Environment, sch *schema.Stack_Entry, allocate
 }
 
 // XXX this should be somewhere else.
-func computeServiceEndpoint(server *schema.Server, n *schema.Node, t schema.Endpoint_Type, serverPort *schema.Endpoint_Port) ([]*schema.Endpoint, error) {
+func computeServiceEndpoint(server *schema.Server, pkg *workspace.Package, n *schema.Node, t schema.Endpoint_Type, serverPort *schema.Endpoint_Port) ([]*schema.Endpoint, error) {
 	if len(n.ExportService) == 0 {
 		return nil, nil
 	}
@@ -189,6 +200,23 @@ func computeServiceEndpoint(server *schema.Server, n *schema.Node, t schema.Endp
 				Kind:    kindNeedsGrpcGateway,
 				Details: details,
 			})
+
+			if pkg != nil {
+				if def := pkg.Services[exported.ProtoTypename]; def != nil {
+					fds := &descriptorpb.FileDescriptorSet{}
+					fds.File = append(fds.File, def.GetFile()...)
+					fds.File = append(fds.File, def.GetDependency()...)
+
+					details, err := anypb.New(&schema.GrpcHttpTranscoding{
+						FileDescriptorSet: fds,
+					})
+					if err != nil {
+						return nil, err
+					}
+
+					endpoint.ServiceMetadata = append(endpoint.ServiceMetadata, &schema.ServiceMetadata{Details: details})
+				}
+			}
 		}
 	}
 
