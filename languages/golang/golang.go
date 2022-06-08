@@ -269,18 +269,6 @@ func packageFrom(loc workspace.Location) (string, error) {
 	return gosupport.ComputeGoPackage(loc.Abs())
 }
 
-func (impl) FillEndpoint(n *schema.Node, e *schema.Endpoint) error {
-	// Don't set protocol to avoid confusing ingress computation.
-	// XXX this is now deprecated.
-	metadata, err := toServiceMetadata([][2]string{{"/metrics", "prometheus.io/metrics"}}, "")
-	if err != nil {
-		return err
-	}
-
-	e.ServiceMetadata = append(e.ServiceMetadata, metadata...)
-	return nil
-}
-
 func (impl) InternalEndpoints(_ *schema.Environment, srv *schema.Server, ports []*schema.Endpoint_Port) ([]*schema.InternalEndpoint, error) {
 	// XXX have these defined in std/go/core/fn.cue so they're versioned.
 	var internals = [][2]string{
