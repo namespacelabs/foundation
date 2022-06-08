@@ -15,6 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.18.4
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.10
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.4
+	github.com/bradleyfalzon/ghinstallation/v2 v2.0.4
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cenkalti/backoff/v4 v4.1.3
 	github.com/cespare/xxhash/v2 v2.1.2
@@ -96,6 +97,12 @@ require (
 	namespacelabs.dev/go-ids v0.0.0-20220216144417-79021816502e
 	sigs.k8s.io/aws-iam-authenticator v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/yaml v1.3.0
+)
+
+require (
+	github.com/golang-jwt/jwt/v4 v4.1.0 // indirect
+	github.com/google/go-github/v41 v41.0.0 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 )
 
 require (
