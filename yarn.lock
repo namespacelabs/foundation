@@ -157,6 +157,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@namespacelabs.dev-foundation/std-nodejs-grpcgen@workspace:std/nodejs/grpcgen":
+  version: 0.0.0-use.local
+  resolution: "@namespacelabs.dev-foundation/std-nodejs-grpcgen@workspace:std/nodejs/grpcgen"
+  dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
+  languageName: unknown
+  linkType: soft
+
 "@namespacelabs.dev-foundation/std-nodejs-http@0.0.0, @namespacelabs.dev-foundation/std-nodejs-http@workspace:std/nodejs/http":
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-nodejs-http@workspace:std/nodejs/http"

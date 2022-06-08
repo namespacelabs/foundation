@@ -1,0 +1,10 @@
+{
+	"dependencies": {
+		"@namespacelabs.dev-foundation/std-nodejs-grpc": "0.0.0",
+		"@namespacelabs.dev-foundation/std-nodejs-http": "0.0.0",
+		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
+	},
+	"name": "@namespacelabs.dev-foundation/std-nodejs-grpcgen",
+	"private": true,
+	"version": "0.0.0"
+}

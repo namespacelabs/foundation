@@ -18,6 +18,7 @@
 		"languages/nodejs/testdata/services/simplehttp",
 		"std/grpc",
 		"std/nodejs/grpc",
+		"std/nodejs/grpcgen",
 		"std/nodejs/http",
 		"std/nodejs/monitoring/tracing",
 		"std/nodejs/monitoring/tracing/fastify",
