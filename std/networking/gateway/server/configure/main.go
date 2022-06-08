@@ -110,7 +110,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		Resource:    "customresourcedefinitions",
 		Namespace:   namespace,
 		Name:        httpGrpcTranscoderName,
-		Body:        apply,
+		Body:        apply.Body,
 	})
 
 	serviceAccount := makeServiceAccount(req.Focus.Server)
