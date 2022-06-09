@@ -10,6 +10,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
@@ -35,15 +36,29 @@ func registerCreate() {
 			return nil, fnerrors.New("failed to resolve config: %w", err)
 		}
 
-		if create.SkipIfAlreadyExists {
-			exists, err := checkResourceExists(ctx, restcfg, d.Description, create, create.Name,
+		if create.SkipIfAlreadyExists || create.UpdateIfExisting {
+			obj, err := fetchResource(ctx, restcfg, d.Description, create, create.Name,
 				create.Namespace, schema.PackageNames(d.Scope...))
 			if err != nil {
-				return nil, err
+				return nil, fnerrors.New("failed to fetch resource: %w", err)
 			}
 
-			if exists {
-				return nil, nil // Nothing to do.
+			if create.SkipIfAlreadyExists {
+				if obj != nil {
+					return nil, nil // Nothing to do.
+				}
+			}
+
+			if create.UpdateIfExisting {
+				msg := &unstructured.Unstructured{Object: map[string]interface{}{}}
+				if err := msg.UnmarshalJSON([]byte(create.BodyJson)); err != nil {
+					return nil, fnerrors.New("failed to parse create body: %w", err)
+				}
+
+				// This is not advised. Overwriting without reading.
+				msg.SetResourceVersion(obj.GetResourceVersion())
+
+				return nil, updateResource(ctx, d, create, msg, restcfg)
 			}
 		}
 
@@ -75,10 +90,6 @@ func registerCreate() {
 			}
 
 			if err := r.Do(ctx).Error(); err != nil {
-				if errors.IsAlreadyExists(err) && create.UpdateIfExisting {
-					return updateResource(ctx, d, create, restcfg)
-				}
-
 				return err
 			}
 
@@ -93,7 +104,7 @@ func registerCreate() {
 	})
 }
 
-func updateResource(ctx context.Context, d *schema.SerializedInvocation, create *kubedef.OpCreate, restcfg *rest.Config) error {
+func updateResource(ctx context.Context, d *schema.SerializedInvocation, create *kubedef.OpCreate, body interface{}, restcfg *rest.Config) error {
 	return tasks.Action("kubernetes.update").Scope(schema.PackageNames(d.Scope...)...).
 		HumanReadablef(d.Description).
 		Arg("resource", resourceName(create)).
@@ -116,7 +127,7 @@ func updateResource(ctx context.Context, d *schema.SerializedInvocation, create 
 		r := req.Resource(resourceName(create)).
 			Name(create.Name).
 			VersionedParams(&opts, metav1.ParameterCodec).
-			Body([]byte(create.BodyJson))
+			Body(body)
 
 		if OutputKubeApiURLs {
 			fmt.Fprintf(console.Debug(ctx), "kubernetes: api put call %q\n", r.URL())

@@ -38,12 +38,12 @@ func RegisterCreateSecret() {
 			return nil, fnerrors.New("resolve config failed: %w", err)
 		}
 
-		exists, err := checkResourceExists(ctx, restcfg, d.Description, inlineClass("secrets"), create.Name, create.Namespace, schema.PackageNames(d.Scope...))
+		existing, err := fetchResource(ctx, restcfg, d.Description, inlineClass("secrets"), create.Name, create.Namespace, schema.PackageNames(d.Scope...))
 		if err != nil {
 			return nil, err
 		}
 
-		if exists {
+		if existing != nil {
 			return nil, nil // Nothing to do.
 		}
 

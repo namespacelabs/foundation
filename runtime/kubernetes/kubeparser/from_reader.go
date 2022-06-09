@@ -11,11 +11,12 @@ import (
 	"io"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	batchv1 "k8s.io/client-go/applyconfigurations/batch/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	networkingv1 "k8s.io/client-go/applyconfigurations/networking/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -79,38 +80,41 @@ type Parsed struct {
 	Body      interface{}
 }
 
+func Header(contents []byte) (ObjHeader, error) {
+	var m ObjHeader
+	if err := yaml.Unmarshal(contents, &m); err != nil {
+		return ObjHeader{}, err
+	}
+
+	if m.Kind == "" {
+		return ObjHeader{}, fnerrors.BadInputError("kind is required")
+	}
+	if m.Name == "" {
+		return ObjHeader{}, fnerrors.BadInputError("name is required")
+	}
+
+	return m, nil
+}
+
 func Single(contents []byte) (Parsed, error) {
 	// For simplicity, we do a two pass parse, first we walk through all resource
 	// types to instantiate the appropriate types, and then we actually parse them.
 
-	var m objHeader
-	if err := yaml.Unmarshal(contents, &m); err != nil {
+	m, err := Header(contents)
+	if err != nil {
 		return Parsed{}, err
 	}
 
-	if m.Kind == nil {
-		return Parsed{}, fnerrors.BadInputError("kind is required")
-	}
-	if m.Name == nil {
-		return Parsed{}, fnerrors.BadInputError("name is required")
-	}
-
-	msg, typ := msgFromKind(*m.Kind)
-	name := *m.Name
+	msg, typ := msgFromKind(m.Kind)
 
 	if msg == nil {
-		return Parsed{}, fnerrors.BadInputError("don't know how to handle %q", *m.Kind)
-	}
-
-	var ns string
-	if m.Namespace != nil {
-		ns = *m.Namespace
+		return Parsed{}, fnerrors.BadInputError("don't know how to handle %q", m.Kind)
 	}
 
 	parsed := Parsed{
-		Kind:      *m.Kind,
-		Name:      name,
-		Namespace: ns,
+		Kind:      m.Kind,
+		Name:      m.Name,
+		Namespace: m.Namespace,
 		Resource:  typ,
 		Body:      msg,
 	}
@@ -155,7 +159,11 @@ func msgFromKind(kind string) (interface{}, string) {
 	return nil, ""
 }
 
-type objHeader struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
-	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
+type ObjHeader struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+}
+
+func (obj ObjHeader) GetObjectKind() schema.ObjectKind {
+	return &obj.TypeMeta
 }
