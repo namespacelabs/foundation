@@ -12,4 +12,5 @@ $gateway: inputs.#Server & {
 
 configure: fn.#Configure & {
 	stack: append: [$gateway]
+	with: binary: "namespacelabs.dev/foundation/std/grpc/httptranscoding/configure"
 }

@@ -22,8 +22,9 @@ const (
 )
 
 type Apply struct {
-	Description string
-	Resource    interface{}
+	Description   string
+	ResourceClass *ResourceClass
+	Resource      interface{}
 }
 
 type Delete struct {
@@ -72,7 +73,8 @@ func (a Apply) ToDefinition(scope ...fnschema.PackageName) (*fnschema.Serialized
 	}
 
 	x, err := anypb.New(&OpApply{
-		BodyJson: string(body), // We use strings for better debuggability.
+		BodyJson:      string(body), // We use strings for better debuggability.
+		ResourceClass: a.ResourceClass,
 	})
 	if err != nil {
 		return nil, err
