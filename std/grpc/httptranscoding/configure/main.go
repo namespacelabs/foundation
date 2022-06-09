@@ -73,10 +73,12 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 						Namespace: kubetool.FromRequest(req).Namespace,
 						Labels:    kubedef.MakeLabels(req.Env, req.Focus.Server),
 					},
-					FullyQualifiedProtoServiceName: protoService,
-					ServiceAddress:                 endpoint.AllocatedName,
-					ServicePort:                    int(endpoint.Port.ContainerPort),
-					EncodedProtoDescriptor:         base64.StdEncoding.EncodeToString(fds),
+					Spec: httpGrpcTranscoderSpec{
+						FullyQualifiedProtoServiceName: protoService,
+						ServiceAddress:                 endpoint.AllocatedName,
+						ServicePort:                    int(endpoint.Port.ContainerPort),
+						EncodedProtoDescriptor:         base64.StdEncoding.EncodeToString(fds),
+					},
 				},
 				ResourceClass: &kubedef.ResourceClass{
 					Resource: "httpgrpctranscoders",
@@ -100,6 +102,10 @@ type httpGrpcTranscoder struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	Spec httpGrpcTranscoderSpec `json:"spec"`
+}
+
+type httpGrpcTranscoderSpec struct {
 	FullyQualifiedProtoServiceName string `json:"fullyQualifiedProtoServiceName"`
 	ServiceAddress                 string `json:"serviceAddress"`
 	ServicePort                    int    `json:"servicePort"`

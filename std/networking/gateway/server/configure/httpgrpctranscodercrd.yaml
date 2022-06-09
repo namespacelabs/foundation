@@ -1,12 +1,14 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  # name must match the spec fields below, and be in the form: <plural>.<group>
   name: httpgrpctranscoders.k8s.namespacelabs.dev
 spec:
-  # group name to use for REST API: /apis/<group>/<version>
   group: k8s.namespacelabs.dev
-  # list of versions supported by this CustomResourceDefinition
+  scope: Namespaced
+  names:
+    plural: httpgrpctranscoders
+    singular: httpgrpctranscoder
+    kind: HttpGrpcTranscoder
   versions:
     - name: v1
       # Each version can be enabled/disabled by Served flag.
@@ -17,27 +19,30 @@ spec:
         openAPIV3Schema:
           type: object
           properties:
-            # Fully qualified `package.service` name of the exported gRPC service. 
-            # For E.g. "api.todos.TodosService".
-            fullyQualifiedProtoServiceName:
+            apiVersion:
+              description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources"
               type: string
-            # Upstream address of the gRPC service. For E.g. `127.0.0.1` or `docker.host.internal`.  
-            serviceAddress:
-              type: string  
-            # Upstream port that the HTTP listener routes to for paths matching
-            # `/serviceName`.    
-            servicePort:
-              type: integer
-            # Base64 encoded `descriptorpb.FileDescriptorSet` of the gRPC service .proto file
-            # and it's transitive .proto dependencies.   
-            encodedProtoDescriptor:
+            kind:
+              description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds"
               type: string
-  # either Namespaced or Cluster
-  scope: Namespaced
-  names:
-    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
-    plural: httpgrpctranscoders
-    # singular name to be used as an alias on the CLI and for display
-    singular: httpgrpctranscoder
-    # kind is normally the CamelCased singular type. Your resource manifests use this.
-    kind: HttpGrpcTranscoder
+            metadata:
+              type: object
+            spec:
+              description: Holds the desired state of the Configuration (from the client).
+              type: object
+              properties:
+                # Fully qualified `package.service` name of the exported gRPC service.
+                # For E.g. "api.todos.TodosService".
+                fullyQualifiedProtoServiceName:
+                  type: string
+                # Upstream address of the gRPC service. For E.g. `127.0.0.1` or `docker.host.internal`.
+                serviceAddress:
+                  type: string
+                # Upstream port that the HTTP listener routes to for paths matching
+                # `/serviceName`.
+                servicePort:
+                  type: integer
+                # Base64 encoded `descriptorpb.FileDescriptorSet` of the gRPC service .proto file
+                # and it's transitive .proto dependencies.
+                encodedProtoDescriptor:
+                  type: string
