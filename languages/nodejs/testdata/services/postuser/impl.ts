@@ -2,33 +2,23 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
 import { PostRequest } from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/service_pb";
 import { GrpcRegistrar } from "@namespacelabs.dev-foundation/std-nodejs-grpc";
 import { ServiceDeps, WireService } from "./deps.fn";
-import { IPostUserServiceServer, PostUserServiceService } from "./service_grpc_pb";
+import { bindPostUserServiceServer, PostUserServiceServer } from "./service_grpc.fn";
 import { PostUserRequest, PostUserResponse } from "./service_pb";
 
 export const wireService: WireService = (deps: ServiceDeps, registrar: GrpcRegistrar) => {
-	const service: IPostUserServiceServer = {
-		getUserPosts: function (
-			call: ServerUnaryCall<PostUserRequest, PostUserResponse>,
-			callback: sendUnaryData<PostUserResponse>
-		): void {
-			const request = new PostRequest();
-			request.setInput(call.request.getUserName());
-			deps.postService.post(request, (err, postResponse) => {
-				if (!postResponse) {
-					callback(err, null);
-				} else {
-					const response: PostUserResponse = new PostUserResponse();
-					response.setOutput(`Response: ${postResponse.getOutput()}`);
-
-					callback(null, response);
-				}
-			});
+	const service: PostUserServiceServer = {
+		getUserPosts: async (request: PostUserRequest) => {
+			const postRequest = new PostRequest();
+			postRequest.setInput(request.getUserName());
+			const postResponse = await deps.postService.post(postRequest);
+			const response: PostUserResponse = new PostUserResponse();
+			response.setOutput(`Response: ${postResponse.getOutput()}`);
+			return response;
 		},
 	};
 
-	registrar.registerGrpcService(PostUserServiceService, service);
+	registrar.registerGrpcService(bindPostUserServiceServer(service));
 };

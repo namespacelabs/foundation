@@ -20,7 +20,7 @@ type serverTmplOptions struct {
 }
 
 type nodeImplTmplOptions struct {
-	ServiceServerName, ServiceName, ServiceFileName string
+	ServiceServerName, DefineServiceFunName, ServiceFileName string
 }
 
 type tmplServerService struct {

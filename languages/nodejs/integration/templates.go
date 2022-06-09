@@ -101,7 +101,7 @@ export const prepare: Prepare = impl.initialize;
 export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
 	(graph: DependencyGraph
 	{{- if .InputType }}, input: {{template "Type" .InputType -}}{{end}}
-	{{- if .IsParameterized}}, outputTypeCtr: new (...args: any[]) => T{{end}}) =>
+	{{- if .IsParameterized}}, outputTypeFactory: (...args: any[]) => T{{end}}) =>
 	provide{{.Name}}(
 		{{if .InputType}}input{{end}}
 		{{- if .PackageDepsName}},
@@ -111,14 +111,14 @@ export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
 		// Scoped dependencies that are instantiated for each call to Provide{{.Name}}.
 		graph.instantiateDeps(Package.name, "{{.Deps.Name}}", () => {{template "ConstructDeps" .Deps}})
 		{{- end}}
-		{{- if .IsParameterized}}outputTypeCtr{{end}}
+		{{- if .IsParameterized}}outputTypeFactory{{end}}
 	);
 
 export type Provide{{.Name}} = {{if .IsParameterized}}<T>{{end -}}
 		({{- if .InputType}}input: {{template "Type" .InputType}}{{end}}
 		{{- if .PackageDepsName}}, packageDeps: {{.PackageDepsName}}Deps{{end -}}
 		{{- if .Deps}}, deps: {{.Name}}Deps{{end}}
-		{{- if .IsParameterized}}outputTypeCtr: new (...args: any[]) => T{{end}}) =>
+		{{- if .IsParameterized}}outputTypeFactory: (...args: any[]) => T{{end}}) =>
 		{{if .IsParameterized}}T{{else}}{{template "Type" .OutputType}}{{end}};
 export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
 {{- end}}
@@ -225,13 +225,13 @@ main();
 			`{{define "Node stub" -}}
 import {GrpcRegistrar} from "@namespacelabs.dev-foundation/std-nodejs-grpc"
 import { ServiceDeps, WireService } from "./deps.fn";
-import { {{.ServiceServerName}}, {{.ServiceName}} } from "./{{.ServiceFileName}}_grpc_pb";
+import { {{.ServiceServerName}}, {{.DefineServiceFunName}} } from "./{{.ServiceFileName}}_grpc.fn";
 
 export const wireService: WireService = (deps: ServiceDeps, registrar: GrpcRegistrar) => {
 	const service: {{.ServiceServerName}} = {
 		// TODO: implement
 	};
 
-	registrar.registerGrpcService({{.ServiceName}}, service);
+	registrar.registerAsyncGrpcService({{.DefineServiceFunName}}(service));
 };{{end}}`))
 )

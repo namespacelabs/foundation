@@ -3,6 +3,7 @@
 // available at http://github.com/namespacelabs/foundation
 
 import * as grpc from "@grpc/grpc-js";
+import { adaptServer, BoundService } from "@namespacelabs.dev-foundation/std-nodejs-grpcgen/server";
 import yargs from "yargs/yargs";
 import { GrpcRegistrar } from "./registrar";
 
@@ -16,11 +17,8 @@ const argv = yargs(process.argv.slice(2))
 export class GrpcServer implements GrpcRegistrar {
 	readonly #server = new grpc.Server();
 
-	registerGrpcService(
-		service: grpc.ServiceDefinition,
-		implementation: grpc.UntypedServiceImplementation
-	): void {
-		this.#server.addService(service, implementation);
+	registerGrpcService<T>(serviceDef: BoundService<T>): void {
+		this.#server.addService(...adaptServer(serviceDef));
 	}
 
 	async start() {

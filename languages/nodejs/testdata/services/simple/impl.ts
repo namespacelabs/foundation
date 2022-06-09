@@ -2,24 +2,18 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
 import { GrpcRegistrar } from "@namespacelabs.dev-foundation/std-nodejs-grpc";
 import { WireService } from "./deps.fn";
-import { IPostServiceServer, PostServiceService } from "./service_grpc_pb";
+import { bindPostServiceServer } from "./service_grpc.fn";
 import { PostRequest, PostResponse } from "./service_pb";
 
-export const wireService: WireService = (registrar: GrpcRegistrar) => {
-	const service: IPostServiceServer = {
-		post: function (
-			call: ServerUnaryCall<PostRequest, PostResponse>,
-			callback: sendUnaryData<PostResponse>
-		): void {
-			const response: PostResponse = new PostResponse();
-			response.setOutput(`Input: ${call.request.getInput()}`);
-
-			callback(null, response);
-		},
-	};
-
-	registrar.registerGrpcService(PostServiceService, service);
-};
+export const wireService: WireService = async (registrar: GrpcRegistrar) =>
+	registrar.registerGrpcService(
+		bindPostServiceServer({
+			post: async (request: PostRequest): Promise<PostResponse> => {
+				const response: PostResponse = new PostResponse();
+				response.setOutput(`Input: ${request.getInput()}`);
+				return response;
+			},
+		})
+	);
