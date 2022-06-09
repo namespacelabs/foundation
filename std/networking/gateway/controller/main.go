@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"flag"
+	"log"
 	"os"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
@@ -22,6 +23,9 @@ var (
 
 	// Tell Envoy to use this Node ID
 	nodeID = flag.String("node_id", "envoy_node", "Node ID")
+
+	// HTTP listening address:port pair.
+	httpEnvoyListenAddr = flag.String("http_envoy_listen_addr", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
 )
 
 func main() {
@@ -34,7 +38,11 @@ func main() {
 	cache := cache.NewSnapshotCache(false, cache.IDHash{}, l)
 
 	// Create the snapshot that we'll serve to Envoy
-	snapshot := GenerateSnapshot()
+	snapshot, err := GenerateSnapshot(*httpEnvoyListenAddr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if err := snapshot.Consistent(); err != nil {
 		l.Errorf("snapshot inconsistency: %+v\n%+v", snapshot, err)
 		os.Exit(1)

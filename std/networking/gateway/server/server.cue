@@ -13,6 +13,12 @@ server: fn.#OpaqueServer & {
 			containerPort: 19000
 			metadata: protocol: "http"
 		}
+
+		// Must be consistent with controller's configuration.
+		"grpc-http-transcoder": {
+			containerPort: 10000
+			metadata: protocol: "http"
+		}
 	}
 }
 

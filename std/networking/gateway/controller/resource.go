@@ -5,6 +5,9 @@
 package main
 
 import (
+	"net"
+	"strconv"
+
 	"google.golang.org/protobuf/types/known/anypb"
 
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -23,7 +26,17 @@ const (
 	ListenerPort = 10000
 )
 
-func makeHTTPListener(listenerName string, route string) *listener.Listener {
+func makeHTTPListener(listenerAddr, listenerName, route string) (*listener.Listener, error) {
+	addr, portStr, err := net.SplitHostPort(listenerAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	port, err := strconv.ParseInt(portStr, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
 	// HTTP filter configuration
 	manager := &hcm.HttpConnectionManager{
 		CodecType:  hcm.HttpConnectionManager_AUTO,
@@ -40,7 +53,7 @@ func makeHTTPListener(listenerName string, route string) *listener.Listener {
 	}
 	pbst, err := anypb.New(manager)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &listener.Listener{
@@ -49,9 +62,9 @@ func makeHTTPListener(listenerName string, route string) *listener.Listener {
 			Address: &core.Address_SocketAddress{
 				SocketAddress: &core.SocketAddress{
 					Protocol: core.SocketAddress_TCP,
-					Address:  "0.0.0.0",
+					Address:  addr,
 					PortSpecifier: &core.SocketAddress_PortValue{
-						PortValue: ListenerPort,
+						PortValue: uint32(port),
 					},
 				},
 			},
@@ -64,7 +77,7 @@ func makeHTTPListener(listenerName string, route string) *listener.Listener {
 				},
 			}},
 		}},
-	}
+	}, nil
 }
 
 func makeRoute(routeName string) *route.RouteConfiguration {
@@ -96,12 +109,18 @@ func makeConfigSource() *core.ConfigSource {
 	return source
 }
 
-func GenerateSnapshot() *cache.Snapshot {
+func GenerateSnapshot(listenerAddr string) (*cache.Snapshot, error) {
+	listener, err := makeHTTPListener(listenerAddr, ListenerName, RouteName)
+	if err != nil {
+		return nil, err
+	}
+
 	snap, _ := cache.NewSnapshot("1",
 		map[resource.Type][]types.Resource{
 			resource.RouteType:    {makeRoute(RouteName)},
-			resource.ListenerType: {makeHTTPListener(ListenerName, RouteName)},
+			resource.ListenerType: {listener},
 		},
 	)
-	return snap
+
+	return snap, nil
 }
