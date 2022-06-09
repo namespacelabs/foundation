@@ -15,10 +15,10 @@ jobs:
         os: [[self-hosted, linux], [self-hosted, macOS]]
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Install Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: ${{ matrix.go-version }}
+      # - name: Install Go
+      #   uses: actions/setup-go@v3
+      #   with:
+      #     go-version: ${{ matrix.go-version }}
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Setup cross-invocation caching
