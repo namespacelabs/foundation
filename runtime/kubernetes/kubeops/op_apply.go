@@ -54,7 +54,7 @@ func registerApply() {
 			Arg("resource", header.Kind).
 			Arg("name", header.Name).
 			Arg("namespace", header.Namespace).Run(ctx, func(ctx context.Context) error {
-			client, err := client.MakeResourceSpecificClient2(ctx, gvk.GroupVersion(), restcfg)
+			client, err := client.MakeGroupVersionBasedClient(ctx, gvk.GroupVersion(), restcfg)
 			if err != nil {
 				return err
 			}
