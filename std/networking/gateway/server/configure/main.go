@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"text/template"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -178,14 +177,4 @@ func (configuration) Delete(context.Context, configure.StackRequest, *configure.
 
 func makeServiceAccount(srv *schema.Server) string {
 	return fmt.Sprintf("fn-%s", kubedef.MakeDeploymentId(srv))
-}
-
-type o struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	FullyQualifiedProtoServiceName string `json:"fullyQualifiedProtoServiceName"`
-	ServiceAddress                 string `json:"serviceAddress"`
-	ServicePort                    int    `json:"servicePort"`
-	EncodedProtoDescriptor         string `json:"encodedProtoDescriptor"`
 }
