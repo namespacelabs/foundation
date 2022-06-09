@@ -22,10 +22,7 @@ const (
 
 type Apply struct {
 	Description string
-	Resource    string // XXX this can be implied from `kind` in the body. See #339.
-	Namespace   string // XXX this can be implied from `namespace` in the body. See #339.
-	Name        string // XXX this can be implied from `name` in the body. See #339.
-	Body        interface{}
+	Resource    interface{}
 }
 
 type Delete struct {
@@ -46,9 +43,7 @@ type Create struct {
 	Description         string
 	SkipIfAlreadyExists bool
 	UpdateIfExisting    bool
-	Resource            string // XXX this can be implied from `kind` in the body. See #339.
-	Namespace           string // XXX this can be implied from `namespace` in the body. See #339.
-	Name                string // XXX this can be implied from `name` in the body. See #339.
+	Resource            string
 	Body                interface{}
 }
 
@@ -65,20 +60,17 @@ type ExtendInitContainer struct {
 }
 
 func (a Apply) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
-	if a.Body == nil {
+	if a.Resource == nil {
 		return nil, fnerrors.InternalError("body is missing")
 	}
 
-	body, err := json.Marshal(a.Body)
+	body, err := json.Marshal(a.Resource)
 	if err != nil {
 		return nil, err
 	}
 
 	x, err := anypb.New(&OpApply{
-		Resource:  a.Resource,
-		Namespace: a.Namespace,
-		Name:      a.Name,
-		BodyJson:  string(body), // We use strings for better debuggability.
+		BodyJson: string(body), // We use strings for better debuggability.
 	})
 	if err != nil {
 		return nil, err
@@ -147,8 +139,6 @@ func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInv
 		Resource:            c.Resource,
 		SkipIfAlreadyExists: c.SkipIfAlreadyExists,
 		UpdateIfExisting:    c.UpdateIfExisting,
-		Namespace:           c.Namespace,
-		Name:                c.Name,
 		BodyJson:            string(body), // We use strings for better debuggability.
 	})
 	if err != nil {

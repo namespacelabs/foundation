@@ -40,11 +40,6 @@ type IngressRef struct {
 func Ensure(ctx context.Context, ns string, env *schema.Environment, srv *schema.Server, fragments []*schema.IngressFragment, certSecrets map[string]string) ([]kubedef.Apply, []MapAddress, error) {
 	var applies []kubedef.Apply
 
-	// Since we built the Cert list from a map, it's order is non-deterministic.
-	sort.Slice(applies, func(i, j int) bool {
-		return strings.Compare(applies[i].Name, applies[j].Name) < 0
-	})
-
 	groups := groupByName(fragments)
 
 	var managed []MapAddress
@@ -56,14 +51,16 @@ func Ensure(ctx context.Context, ns string, env *schema.Environment, srv *schema
 
 		applies = append(applies, kubedef.Apply{
 			Description: fmt.Sprintf("Ingress %s", g[0].Name),
-			Resource:    "ingresses",
-			Namespace:   ns,
-			Name:        g[0].Name,
-			Body:        apply,
+			Resource:    apply,
 		})
 
 		managed = append(managed, m...)
 	}
+
+	// Since we built the Cert list from a map, it's order is non-deterministic.
+	sort.Slice(applies, func(i, j int) bool {
+		return strings.Compare(applies[i].Description, applies[j].Description) < 0
+	})
 
 	return applies, managed, nil
 }
@@ -85,10 +82,7 @@ func MakeCertificateSecrets(ns string, fragments []*schema.IngressFragment) (map
 		certSecrets[domain.Fqdn] = name
 		applies = append(applies, kubedef.Apply{
 			Description: fmt.Sprintf("Certificate for %s", domain.Fqdn),
-			Resource:    "secrets",
-			Namespace:   ns,
-			Name:        name,
-			Body: applycorev1.
+			Resource: applycorev1.
 				Secret(name, ns).
 				WithType(corev1.SecretTypeTLS).
 				WithLabels(kubedef.ManagedBy()).
@@ -101,7 +95,7 @@ func MakeCertificateSecrets(ns string, fragments []*schema.IngressFragment) (map
 
 	// Since we built the Cert list from a map, it's order is non-deterministic.
 	sort.Slice(applies, func(i, j int) bool {
-		return strings.Compare(applies[i].Name, applies[j].Name) < 0
+		return strings.Compare(applies[i].Description, applies[j].Description) < 0
 	})
 
 	return certSecrets, applies

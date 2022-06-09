@@ -115,13 +115,18 @@ func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 	}
 
 	var defs []*schema.SerializedInvocation
-	var service, webhook kubedef.Apply
+	var webhook kubedef.Apply
+	var serviceNamespace string
 	for _, apply := range applies {
-		if apply.Resource == "validatingwebhookconfigurations" && apply.Name == "ingress-nginx-admission" {
-			webhook = apply
-			continue
-		} else if apply.Resource == "services" && apply.Name == "ingress-nginx-controller-admission" {
-			service = apply
+		switch x := apply.Resource.(type) {
+		case *admissionregistrationv1.ValidatingWebhookConfigurationApplyConfiguration:
+			if x.Name != nil && *x.Name == "ingress-nginx-admission" {
+				webhook = apply
+			}
+		case *corev1.ServiceApplyConfiguration:
+			if x.Name != nil && *x.Name == "ingress-nginx-controller-admission" && x.Namespace != nil {
+				serviceNamespace = *x.Namespace
+			}
 		}
 
 		def, err := apply.ToDefinition()
@@ -131,24 +136,24 @@ func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 		defs = append(defs, def)
 	}
 
-	if webhook.Body == nil {
+	if webhook.Resource == nil {
 		return nil, fnerrors.InternalError("nginx: webhook definition is missing")
 	}
 
-	if service.Body == nil {
+	if serviceNamespace == "" {
 		return nil, fnerrors.InternalError("nginx: service definition is missing")
 	}
 
-	serializedWebhook, err := json.Marshal(webhook.Body)
+	serializedWebhook, err := json.Marshal(webhook.Resource)
 	if err != nil {
 		return nil, fnerrors.InternalError("nginx: failed to serialize webhook: %w", err)
 	}
 
 	op, err := anypb.New(&OpGenerateWebhookCert{
-		Namespace:         service.Namespace,
+		Namespace:         serviceNamespace,
 		SecretName:        "ingress-nginx-admission",
 		WebhookDefinition: serializedWebhook,
-		TargetHost:        fmt.Sprintf("ingress-nginx-controller-admission,ingress-nginx-controller-admission.%s.svc", service.Namespace),
+		TargetHost:        fmt.Sprintf("ingress-nginx-controller-admission,ingress-nginx-controller-admission.%s.svc", serviceNamespace),
 	})
 
 	if err != nil {

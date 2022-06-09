@@ -81,11 +81,11 @@ func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace stri
 	configMapName := fmt.Sprintf("%s.%s", name, id)
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "MariaDB Init ConfigMap",
-		Resource:    "configmaps",
-		Namespace:   namespace,
-		Name:        configMapName,
-		Body:        corev1.ConfigMap(configMapName, namespace).WithData(data),
+		Description:      "MariaDB Init ConfigMap",
+		OverrideResource: "configmaps",
+		Namespace:        namespace,
+		Name:             configMapName,
+		Resource:         corev1.ConfigMap(configMapName, namespace).WithData(data),
 	})
 
 	volumeName := strings.Replace(configMapName, ".", "-", -1)

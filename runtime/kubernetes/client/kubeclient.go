@@ -131,12 +131,16 @@ type ResourceClassLike interface {
 	GetResourceClass() *kubedef.ResourceClass
 }
 
+func MakeResourceSpecificClient2(ctx context.Context, gv schema.GroupVersion, cfg *rest.Config) (rest.Interface, error) {
+	return rest.RESTClientFor(CopyAndSetDefaults(*cfg, gv))
+}
+
 func MakeResourceSpecificClient(ctx context.Context, resource ResourceClassLike, cfg *rest.Config) (rest.Interface, error) {
 	if klass := resource.GetResourceClass(); klass != nil {
-		return rest.RESTClientFor(CopyAndSetDefaults(*cfg, schema.GroupVersion{
+		return MakeResourceSpecificClient2(ctx, schema.GroupVersion{
 			Group:   klass.Group,
 			Version: klass.Version,
-		}))
+		}, cfg)
 	}
 
 	gv, ok := groups[resource.GetResource()]

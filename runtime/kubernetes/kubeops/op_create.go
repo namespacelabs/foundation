@@ -6,6 +6,7 @@ package kubeops
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -23,11 +24,23 @@ import (
 
 func registerCreate() {
 	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.SerializedInvocation, create *kubedef.OpCreate) (*ops.HandleResult, error) {
+		if create.BodyJson == "" {
+			return nil, fnerrors.InternalError("%s: apply.Body is required", d.Description)
+		}
+
+		var obj struct {
+			Metadata metav1.ObjectMeta `json:"metadata"`
+		}
+
+		if err := json.Unmarshal([]byte(create.BodyJson), &obj); err != nil {
+			return nil, fnerrors.BadInputError("kubernetes.create: failed to parse resource: %w", err)
+		}
+
 		if create.Resource == "" {
 			return nil, fnerrors.InternalError("%s: create.Resource is required", d.Description)
 		}
 
-		if create.Name == "" {
+		if obj.Metadata.Name == "" {
 			return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
 		}
 
@@ -37,8 +50,8 @@ func registerCreate() {
 		}
 
 		if create.SkipIfAlreadyExists || create.UpdateIfExisting {
-			obj, err := fetchResource(ctx, restcfg, d.Description, create, create.Name,
-				create.Namespace, schema.PackageNames(d.Scope...))
+			obj, err := fetchResource(ctx, restcfg, d.Description, create, obj.Metadata.Name,
+				obj.Metadata.Namespace, schema.PackageNames(d.Scope...))
 			if err != nil {
 				return nil, fnerrors.New("failed to fetch resource: %w", err)
 			}
@@ -65,8 +78,8 @@ func registerCreate() {
 		if err := tasks.Action("kubernetes.create").Scope(schema.PackageNames(d.Scope...)...).
 			HumanReadablef(d.Description).
 			Arg("resource", resourceName(create)).
-			Arg("name", create.Name).
-			Arg("namespace", create.Namespace).Run(ctx, func(ctx context.Context) error {
+			Arg("name", obj.Metadata.Name).
+			Arg("namespace", obj.Metadata.Namespace).Run(ctx, func(ctx context.Context) error {
 			client, err := client.MakeResourceSpecificClient(ctx, create, restcfg)
 			if err != nil {
 				return err
@@ -77,8 +90,8 @@ func registerCreate() {
 				FieldManager: kubedef.K8sFieldManager,
 			}
 
-			if create.Namespace != "" {
-				req.Namespace(create.Namespace)
+			if obj.Metadata.Namespace != "" {
+				req.Namespace(obj.Metadata.Namespace)
 			}
 
 			r := req.Resource(resourceName(create)).
@@ -104,13 +117,13 @@ func registerCreate() {
 	})
 }
 
-func updateResource(ctx context.Context, d *schema.SerializedInvocation, create *kubedef.OpCreate, body interface{}, restcfg *rest.Config) error {
+func updateResource(ctx context.Context, d *schema.SerializedInvocation, resourceClass client.ResourceClassLike, body *unstructured.Unstructured, restcfg *rest.Config) error {
 	return tasks.Action("kubernetes.update").Scope(schema.PackageNames(d.Scope...)...).
 		HumanReadablef(d.Description).
-		Arg("resource", resourceName(create)).
-		Arg("name", create.Name).
-		Arg("namespace", create.Namespace).Run(ctx, func(ctx context.Context) error {
-		client, err := client.MakeResourceSpecificClient(ctx, create, restcfg)
+		Arg("resource", resourceName(resourceClass)).
+		Arg("name", body.GetName()).
+		Arg("namespace", body.GetNamespace()).Run(ctx, func(ctx context.Context) error {
+		client, err := client.MakeResourceSpecificClient(ctx, resourceClass, restcfg)
 		if err != nil {
 			return err
 		}
@@ -120,12 +133,12 @@ func updateResource(ctx context.Context, d *schema.SerializedInvocation, create 
 			FieldManager: kubedef.K8sFieldManager,
 		}
 
-		if create.Namespace != "" {
-			req.Namespace(create.Namespace)
+		if body.GetNamespace() != "" {
+			req.Namespace(body.GetNamespace())
 		}
 
-		r := req.Resource(resourceName(create)).
-			Name(create.Name).
+		r := req.Resource(resourceName(resourceClass)).
+			Name(body.GetName()).
 			VersionedParams(&opts, metav1.ParameterCodec).
 			Body(body)
 

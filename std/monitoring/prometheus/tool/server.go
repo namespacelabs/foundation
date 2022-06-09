@@ -40,10 +40,10 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 	}
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Prometheus ClusterRole",
-		Resource:    "clusterroles",
-		Name:        clusterRoleName,
-		Body: rbacv1.ClusterRole(clusterRoleName).WithRules(
+		Description:      "Prometheus ClusterRole",
+		OverrideResource: "clusterroles",
+		Name:             clusterRoleName,
+		Resource: rbacv1.ClusterRole(clusterRoleName).WithRules(
 			rbacv1.PolicyRule().
 				WithAPIGroups("").
 				WithResources("nodes", "nodes/proxy", "services", "endpoints", "pods").
@@ -60,10 +60,10 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 
 	serviceAccount := makeServiceAccount(r.Focus.Server)
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Prometheus ClusterRoleBinding",
-		Resource:    "clusterrolebindings",
-		Name:        clusterRoleBindingName,
-		Body: rbacv1.ClusterRoleBinding(clusterRoleBindingName).
+		Description:      "Prometheus ClusterRoleBinding",
+		OverrideResource: "clusterrolebindings",
+		Name:             clusterRoleBindingName,
+		Resource: rbacv1.ClusterRoleBinding(clusterRoleBindingName).
 			WithRoleRef(rbacv1.RoleRef().
 				WithAPIGroup("rbac.authorization.k8s.io").
 				WithKind("ClusterRole").
@@ -75,11 +75,11 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 	})
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Prometheus Service Account",
-		Resource:    "serviceaccounts",
-		Namespace:   namespace,
-		Name:        serviceAccount,
-		Body:        corev1.ServiceAccount(serviceAccount, namespace).WithLabels(map[string]string{}),
+		Description:      "Prometheus Service Account",
+		OverrideResource: "serviceaccounts",
+		Namespace:        namespace,
+		Name:             serviceAccount,
+		Resource:         corev1.ServiceAccount(serviceAccount, namespace).WithLabels(map[string]string{}),
 	})
 
 	configs := map[string]string{
@@ -87,11 +87,11 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 	}
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Prometheus ConfigMap",
-		Resource:    "configmaps",
-		Namespace:   namespace,
-		Name:        configMapName,
-		Body:        corev1.ConfigMap(configMapName, namespace).WithData(configs),
+		Description:      "Prometheus ConfigMap",
+		OverrideResource: "configmaps",
+		Namespace:        namespace,
+		Name:             configMapName,
+		Resource:         corev1.ConfigMap(configMapName, namespace).WithData(configs),
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
