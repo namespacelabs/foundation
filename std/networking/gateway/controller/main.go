@@ -85,7 +85,10 @@ func main() {
 	groupVersion := schema.GroupVersion{Group: "k8s.namespacelabs.dev", Version: "v1"}
 	schemeBuilder := &controllerscheme.Builder{GroupVersion: groupVersion}
 	schemeBuilder.Register(&HttpGrpcTranscoder{}, &HttpGrpcTranscoderList{})
-	schemeBuilder.AddToScheme(scheme)
+	if err := schemeBuilder.AddToScheme(scheme); err != nil {
+		l.Errorf("failed to add the HttpGrpcTranscoder scheme: %+v", err)
+		os.Exit(1)
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
