@@ -62,7 +62,7 @@ func MultipleFromReader(description string, r io.Reader) ([]kubedef.Apply, error
 
 		actuals = append(actuals, kubedef.Apply{
 			Description: fmt.Sprintf("%s: %s %s", description, p.Kind, p.Name),
-			Resource:    p.Body,
+			Resource:    p.Resource,
 		})
 	}
 
@@ -73,8 +73,7 @@ type Parsed struct {
 	Kind      string
 	Name      string
 	Namespace string
-	Resource  string
-	Body      interface{}
+	Resource  interface{}
 }
 
 func Header(contents []byte) (ObjHeader, error) {
@@ -102,7 +101,7 @@ func Single(contents []byte) (Parsed, error) {
 		return Parsed{}, err
 	}
 
-	msg, typ := ResourceFromKind(m.Kind)
+	msg := MessageTypeFromKind(m.Kind)
 
 	if msg == nil {
 		return Parsed{}, fnerrors.BadInputError("don't know how to handle %q", m.Kind)
@@ -112,11 +111,10 @@ func Single(contents []byte) (Parsed, error) {
 		Kind:      m.Kind,
 		Name:      m.Name,
 		Namespace: m.Namespace,
-		Resource:  typ,
-		Body:      msg,
+		Resource:  msg,
 	}
 
-	if err := yaml.Unmarshal(contents, parsed.Body); err != nil {
+	if err := yaml.Unmarshal(contents, parsed.Resource); err != nil {
 		return Parsed{}, err
 	}
 

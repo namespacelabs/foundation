@@ -9,6 +9,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"strings"
 
 	"github.com/jet/kube-webhook-certgen/pkg/certs"
@@ -30,7 +31,7 @@ import (
 )
 
 var (
-	//go:embed ingress.yaml
+	//go:embed ingress.yaml ingress_webhook.yaml
 	lib embed.FS
 )
 
@@ -114,21 +115,18 @@ func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 		return nil, err
 	}
 
-	var defs []*schema.SerializedInvocation
-	var webhook kubedef.Apply
-	var serviceNamespace string
-	for _, apply := range applies {
-		switch x := apply.Resource.(type) {
-		case *admissionregistrationv1.ValidatingWebhookConfigurationApplyConfiguration:
-			if x.Name != nil && *x.Name == "ingress-nginx-admission" {
-				webhook = apply
-			}
-		case *corev1.ServiceApplyConfiguration:
-			if x.Name != nil && *x.Name == "ingress-nginx-controller-admission" && x.Namespace != nil {
-				serviceNamespace = *x.Namespace
-			}
-		}
+	webhookDef, err := fs.ReadFile(lib, "ingress_webhook.yaml")
+	if err != nil {
+		return nil, err
+	}
 
+	webhook, err := kubeparser.Single(webhookDef)
+	if err != nil {
+		return nil, err
+	}
+
+	var defs []*schema.SerializedInvocation
+	for _, apply := range applies {
 		def, err := apply.ToDefinition()
 		if err != nil {
 			return nil, err
@@ -136,24 +134,17 @@ func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 		defs = append(defs, def)
 	}
 
-	if webhook.Resource == nil {
-		return nil, fnerrors.InternalError("nginx: webhook definition is missing")
-	}
-
-	if serviceNamespace == "" {
-		return nil, fnerrors.InternalError("nginx: service definition is missing")
-	}
-
 	serializedWebhook, err := json.Marshal(webhook.Resource)
 	if err != nil {
 		return nil, fnerrors.InternalError("nginx: failed to serialize webhook: %w", err)
 	}
 
+	const ns = "ingress-nginx"
 	op, err := anypb.New(&OpGenerateWebhookCert{
-		Namespace:         serviceNamespace,
+		Namespace:         ns,
 		SecretName:        "ingress-nginx-admission",
 		WebhookDefinition: serializedWebhook,
-		TargetHost:        fmt.Sprintf("ingress-nginx-controller-admission,ingress-nginx-controller-admission.%s.svc", serviceNamespace),
+		TargetHost:        fmt.Sprintf("ingress-nginx-controller-admission,ingress-nginx-controller-admission.%s.svc", ns),
 	})
 
 	if err != nil {
