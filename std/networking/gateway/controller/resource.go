@@ -23,7 +23,6 @@ import (
 const (
 	RouteName    = "local_route"
 	ListenerName = "listener_0"
-	ListenerPort = 10000
 )
 
 func makeHTTPListener(listenerAddr, listenerName, route string) (*listener.Listener, error) {
