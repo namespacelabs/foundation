@@ -29,25 +29,18 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Namespace",
-		Resource:    "namespaces",
-		Name:        kubedef.AdminNamespace,
-		Body:        applycorev1.Namespace(kubedef.AdminNamespace),
+		Resource:    applycorev1.Namespace(kubedef.AdminNamespace),
 	})
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Service Account",
-		Resource:    "serviceaccounts",
-		Namespace:   kubedef.AdminNamespace,
-		Name:        serviceAccount,
-		Body:        applycorev1.ServiceAccount(serviceAccount, kubedef.AdminNamespace),
+		Resource:    applycorev1.ServiceAccount(serviceAccount, kubedef.AdminNamespace),
 	})
 
 	role := adminRole(serviceAccount)
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Cluster Role",
-		Resource:    "clusterroles",
-		Name:        role,
-		Body: applyrbacv1.ClusterRole(role).WithRules(
+		Resource: applyrbacv1.ClusterRole(role).WithRules(
 			applyrbacv1.PolicyRule().WithAPIGroups("").WithResources("namespaces").WithVerbs("watch", "delete"),
 			applyrbacv1.PolicyRule().WithAPIGroups("").WithResources("pods").WithVerbs("watch"),
 			applyrbacv1.PolicyRule().WithAPIGroups("apps").WithResources("deployments").WithVerbs("watch", "list", "delete"),
@@ -57,9 +50,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	binding := adminBinding(serviceAccount)
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Cluster Role Binding",
-		Resource:    "clusterrolebindings",
-		Name:        binding,
-		Body: applyrbacv1.ClusterRoleBinding(binding).
+		Resource: applyrbacv1.ClusterRoleBinding(binding).
 			WithRoleRef(applyrbacv1.RoleRef().
 				WithAPIGroup("rbac.authorization.k8s.io").
 				WithKind("ClusterRole").

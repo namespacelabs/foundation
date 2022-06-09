@@ -12,8 +12,9 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/schema"
+	fnschema "namespacelabs.dev/foundation/schema"
 )
 
 const (
@@ -22,10 +23,7 @@ const (
 
 type Apply struct {
 	Description string
-	Resource    string // XXX this can be implied from `kind` in the body. See #339.
-	Namespace   string // XXX this can be implied from `namespace` in the body. See #339.
-	Name        string // XXX this can be implied from `name` in the body. See #339.
-	Body        interface{}
+	Resource    interface{}
 }
 
 type Delete struct {
@@ -46,9 +44,8 @@ type Create struct {
 	Description         string
 	SkipIfAlreadyExists bool
 	UpdateIfExisting    bool
-	Resource            string // XXX this can be implied from `kind` in the body. See #339.
-	Namespace           string // XXX this can be implied from `namespace` in the body. See #339.
-	Name                string // XXX this can be implied from `name` in the body. See #339.
+	Resource            string
+	ResourceClass       *ResourceClass
 	Body                interface{}
 }
 
@@ -64,34 +61,31 @@ type ExtendInitContainer struct {
 	With *InitContainerExtension
 }
 
-func (a Apply) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
-	if a.Body == nil {
+func (a Apply) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
+	if a.Resource == nil {
 		return nil, fnerrors.InternalError("body is missing")
 	}
 
-	body, err := json.Marshal(a.Body)
+	body, err := json.Marshal(a.Resource)
 	if err != nil {
 		return nil, err
 	}
 
 	x, err := anypb.New(&OpApply{
-		Resource:  a.Resource,
-		Namespace: a.Namespace,
-		Name:      a.Name,
-		BodyJson:  string(body), // We use strings for better debuggability.
+		BodyJson: string(body), // We use strings for better debuggability.
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &schema.SerializedInvocation{
+	return &fnschema.SerializedInvocation{
 		Description: a.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
 	}, nil
 }
 
-func scopeToStrings(scope []schema.PackageName) []string {
+func scopeToStrings(scope []fnschema.PackageName) []string {
 	r := make([]string, len(scope))
 	for k, s := range scope {
 		r[k] = s.String()
@@ -99,7 +93,7 @@ func scopeToStrings(scope []schema.PackageName) []string {
 	return r
 }
 
-func (d Delete) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
+func (d Delete) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
 	x, err := anypb.New(&OpDelete{
 		Resource:  d.Resource,
 		Namespace: d.Namespace,
@@ -109,14 +103,14 @@ func (d Delete) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInv
 		return nil, err
 	}
 
-	return &schema.SerializedInvocation{
+	return &fnschema.SerializedInvocation{
 		Description: d.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
 	}, nil
 }
 
-func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
+func (d DeleteList) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
 	x, err := anypb.New(&OpDeleteList{
 		Resource:      d.Resource,
 		Namespace:     d.Namespace,
@@ -126,14 +120,14 @@ func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.Serialize
 		return nil, err
 	}
 
-	return &schema.SerializedInvocation{
+	return &fnschema.SerializedInvocation{
 		Description: d.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
 	}, nil
 }
 
-func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
+func (c Create) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
 	if c.Body == nil {
 		return nil, fnerrors.InternalError("body is missing")
 	}
@@ -145,48 +139,47 @@ func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInv
 
 	x, err := anypb.New(&OpCreate{
 		Resource:            c.Resource,
+		ResourceClass:       c.ResourceClass,
 		SkipIfAlreadyExists: c.SkipIfAlreadyExists,
 		UpdateIfExisting:    c.UpdateIfExisting,
-		Namespace:           c.Namespace,
-		Name:                c.Name,
 		BodyJson:            string(body), // We use strings for better debuggability.
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &schema.SerializedInvocation{
+	return &fnschema.SerializedInvocation{
 		Description: c.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
 	}, nil
 }
 
-func (es ExtendSpec) ToDefinition() (*schema.DefExtension, error) {
+func (es ExtendSpec) ToDefinition() (*fnschema.DefExtension, error) {
 	x, err := anypb.New(es.With)
 	if err != nil {
 		return nil, err
 	}
 
-	return &schema.DefExtension{Impl: x}, nil
+	return &fnschema.DefExtension{Impl: x}, nil
 }
 
-func (ec ExtendContainer) ToDefinition() (*schema.DefExtension, error) {
+func (ec ExtendContainer) ToDefinition() (*fnschema.DefExtension, error) {
 	x, err := anypb.New(ec.With)
 	if err != nil {
 		return nil, err
 	}
 
-	return &schema.DefExtension{Impl: x}, nil
+	return &fnschema.DefExtension{Impl: x}, nil
 }
 
-func (ec ExtendInitContainer) ToDefinition() (*schema.DefExtension, error) {
+func (ec ExtendInitContainer) ToDefinition() (*fnschema.DefExtension, error) {
 	x, err := anypb.New(ec.With)
 	if err != nil {
 		return nil, err
 	}
 
-	return &schema.DefExtension{Impl: x}, nil
+	return &fnschema.DefExtension{Impl: x}, nil
 }
 
 func SerializeSelector(selector map[string]string) string {
@@ -200,4 +193,11 @@ func SerializeSelector(selector map[string]string) string {
 
 func Ego() metav1.ApplyOptions {
 	return metav1.ApplyOptions{FieldManager: K8sFieldManager}
+}
+
+func (rc *ResourceClass) GroupVersion() schema.GroupVersion {
+	return schema.GroupVersion{
+		Group:   rc.Group,
+		Version: rc.Version,
+	}
 }
