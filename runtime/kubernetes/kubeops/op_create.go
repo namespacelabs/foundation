@@ -114,6 +114,7 @@ func updateResource(ctx context.Context, d *schema.SerializedInvocation, create 
 		}
 
 		r := req.Resource(resourceName(create)).
+			Name(create.Name).
 			VersionedParams(&opts, metav1.ParameterCodec).
 			Body([]byte(create.BodyJson))
 
