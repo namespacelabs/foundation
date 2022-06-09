@@ -56,9 +56,8 @@ type configuration struct{}
 
 func (configuration) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
 	const (
-		configVolume           = "fn--gateway-bootstrap"
-		filename               = "boostrap-xds.yaml"
-		httpGrpcTranscoderName = "HttpGrpcTranscoder"
+		configVolume = "fn--gateway-bootstrap"
+		filename     = "boostrap-xds.yaml"
 	)
 
 	tmplData := tmplData{
@@ -108,7 +107,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	out.Invocations = append(out.Invocations, kubedef.Create{
 		Description:      "Network Gateway HTTP gRPC Transcoder CustomResourceDefinition",
 		Resource:         "customresourcedefinitions",
-		Name:             httpGrpcTranscoderName,
+		Name:             "httpgrpctranscoders.k8s.namespacelabs.dev",
 		Body:             apply.Body,
 		UpdateIfExisting: true,
 	})
