@@ -1,10 +1,10 @@
 {
 	"dependencies": {
 		"@autotelic/fastify-opentelemetry": "0.16.0",
-		"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp": "0.0.0",
-		"@namespacelabs.dev-foundation/std-nodejs-grpc": "0.0.0",
-		"@namespacelabs.dev-foundation/std-nodejs-grpcgen": "0.0.0",
-		"@namespacelabs.dev-foundation/std-nodejs-http": "0.0.0",
+		"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp": "fn:namespacelabs.dev/foundation/languages/nodejs/testdata/services/simplehttp",
+		"@namespacelabs.dev-foundation/std-nodejs-grpc": "fn:namespacelabs.dev/foundation/std/nodejs/grpc",
+		"@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen",
+		"@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http",
 		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime",
 		"@opentelemetry/api": "1.0.4",
 		"fastify": "3.29.0",

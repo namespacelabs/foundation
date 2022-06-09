@@ -141,7 +141,6 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 
 	// When building an image we simply put all the dependencies under "depsRootPath" by their module name.
 	for moduleName, module := range lockFileStruct.Modules {
-		// Special case: for the Foundation module itself keeping the root path.
 		if module.Path != appRootPath {
 			lockFileStruct.Modules[moduleName] = lockFileModule{
 				Path: filepath.Join(depsRootPath, moduleName),

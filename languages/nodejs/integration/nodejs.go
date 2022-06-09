@@ -399,17 +399,7 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 				return err
 			}
 
-			var ref string
-			// IsExternal() woudn't work here since it would return "false" for local modules
-			// used via "replace". Dependencies from all non-main modules are handled via "fn:"
-			// protocol.
-			if pkg.Location.Module.ModuleName() == loc.Module.ModuleName() {
-				ref = defaultPackageVersion
-			} else {
-				ref = "fn:" + pkg.Location.String()
-			}
-
-			dependencies[string(importNpmPackage)] = ref
+			dependencies[string(importNpmPackage)] = "fn:" + pkg.Location.String()
 		}
 	}
 
