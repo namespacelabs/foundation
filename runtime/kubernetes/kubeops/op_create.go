@@ -10,7 +10,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
@@ -36,8 +35,7 @@ func registerCreate() {
 			return nil, fnerrors.New("failed to resolve config: %w", err)
 		}
 
-		createResource := true
-		if create.SkipIfAlreadyExists || create.UpdateIfExisting {
+		if create.SkipIfAlreadyExists {
 			exists, err := checkResourceExists(ctx, restcfg, d.Description, create, create.Name,
 				create.Namespace, schema.PackageNames(d.Scope...))
 			if err != nil {
@@ -45,20 +43,11 @@ func registerCreate() {
 			}
 
 			if exists {
-				if create.UpdateIfExisting {
-					createResource = false
-				} else {
-					return nil, nil // Nothing to do.
-				}
+				return nil, nil // Nothing to do.
 			}
 		}
 
-		actionName := "kubernetes.create"
-		if createResource {
-			actionName = "kubernetes.update"
-		}
-
-		if err := tasks.Action(actionName).Scope(schema.PackageNames(d.Scope...)...).
+		if err := tasks.Action("kubernetes.create").Scope(schema.PackageNames(d.Scope...)...).
 			HumanReadablef(d.Description).
 			Arg("resource", resourceName(create)).
 			Arg("name", create.Name).
@@ -68,21 +57,9 @@ func registerCreate() {
 				return err
 			}
 
-			var req *rest.Request
-			var obj runtime.Object
-
-			if createResource {
-				req = client.Post()
-				opts := metav1.CreateOptions{
-					FieldManager: kubedef.K8sFieldManager,
-				}
-				obj = &opts
-			} else {
-				req = client.Put()
-				opts := metav1.UpdateOptions{
-					FieldManager: kubedef.K8sFieldManager,
-				}
-				obj = &opts
+			req := client.Post()
+			opts := metav1.CreateOptions{
+				FieldManager: kubedef.K8sFieldManager,
 			}
 
 			if create.Namespace != "" {
@@ -90,22 +67,60 @@ func registerCreate() {
 			}
 
 			r := req.Resource(resourceName(create)).
-				VersionedParams(obj, metav1.ParameterCodec).
+				VersionedParams(&opts, metav1.ParameterCodec).
 				Body([]byte(create.BodyJson))
 
 			if OutputKubeApiURLs {
-				verb := "post"
-				if !createResource {
-					verb = "put"
-				}
-				fmt.Fprintf(console.Debug(ctx), "kubernetes: api %s call %q\n", verb, r.URL())
+				fmt.Fprintf(console.Debug(ctx), "kubernetes: api post call %q\n", r.URL())
 			}
 
-			return r.Do(ctx).Error()
-		}); err != nil && !errors.IsNotFound(err) {
-			return nil, fnerrors.InvocationError("%s: failed to create: %w", d.Description, err)
+			if err := r.Do(ctx).Error(); err != nil {
+				if errors.IsAlreadyExists(err) && create.UpdateIfExisting {
+					return updateResource(ctx, d, create, restcfg)
+				}
+
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			if !errors.IsNotFound(err) {
+				return nil, fnerrors.InvocationError("%s: failed to create: %w", d.Description, err)
+			}
 		}
 
 		return nil, nil
+	})
+}
+
+func updateResource(ctx context.Context, d *schema.SerializedInvocation, create *kubedef.OpCreate, restcfg *rest.Config) error {
+	return tasks.Action("kubernetes.update").Scope(schema.PackageNames(d.Scope...)...).
+		HumanReadablef(d.Description).
+		Arg("resource", resourceName(create)).
+		Arg("name", create.Name).
+		Arg("namespace", create.Namespace).Run(ctx, func(ctx context.Context) error {
+		client, err := client.MakeResourceSpecificClient(ctx, create, restcfg)
+		if err != nil {
+			return err
+		}
+
+		req := client.Put()
+		opts := metav1.UpdateOptions{
+			FieldManager: kubedef.K8sFieldManager,
+		}
+
+		if create.Namespace != "" {
+			req.Namespace(create.Namespace)
+		}
+
+		r := req.Resource(resourceName(create)).
+			VersionedParams(&opts, metav1.ParameterCodec).
+			Body([]byte(create.BodyJson))
+
+		if OutputKubeApiURLs {
+			fmt.Fprintf(console.Debug(ctx), "kubernetes: api put call %q\n", r.URL())
+		}
+
+		return r.Do(ctx).Error()
 	})
 }
