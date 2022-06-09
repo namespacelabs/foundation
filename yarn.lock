@@ -218,8 +218,8 @@ __metadata:
   linkType: soft
 
 "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime":
-  version: 0.0.0
-  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime::00934a"
+  version: 0.0.0-use.local
+  resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   dependencies:
     "@grpc/grpc-js": 1.5.8
     google-protobuf: 3.20.0
@@ -227,9 +227,8 @@ __metadata:
     toposort: 2.0.2
     typescript: 4.7.3
     yargs: 16.2.0
-  checksum: c34149dc06fe8bab828014eb8ef4da931c091dfe10e5be1ebda523fc8685992c12297fa730a6d8dc230caf16a34c71b4d82bac3d18840c040829e4fb16d6e076
   languageName: node
-  linkType: hard
+  linkType: soft
 
 "@opentelemetry/api@npm:1.0.4":
   version: 1.0.4

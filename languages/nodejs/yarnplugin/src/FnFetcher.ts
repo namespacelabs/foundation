@@ -2,14 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import {
-	Fetcher,
-	FetchOptions,
-	Locator,
-	MinimalFetchOptions,
-	structUtils,
-	tgzUtils,
-} from "@yarnpkg/core";
+import { Fetcher, FetchOptions, Locator, MinimalFetchOptions, structUtils } from "@yarnpkg/core";
 import { CwdFS, PortablePath } from "@yarnpkg/fslib";
 import { readFileSync } from "fs";
 import path from "path";
@@ -51,40 +44,12 @@ export class FnFetcher implements Fetcher {
 	}
 
 	async fetch(locator: Locator, opts: FetchOptions) {
-		const expectedChecksum = opts.checksums.get(locator.locatorHash) || null;
-
-		const [packageFs, releaseFs, checksum] = await opts.cache.fetchPackageFromCache(
-			locator,
-			expectedChecksum,
-			{
-				onHit: () => opts.report.reportCacheHit(locator),
-				onMiss: () =>
-					opts.report.reportCacheMiss(
-						locator,
-						`${structUtils.prettyLocator(
-							opts.project.configuration,
-							locator
-						)} can't be found in the cache and will be fetched from the disk`
-					),
-				loader: () => this.fetchFromDisk(locator, opts),
-				skipIntegrityCheck: opts.skipIntegrityCheck,
-				...opts.cacheOptions,
-			}
-		);
+		const path = this.getLocalPath(locator, opts);
 
 		return {
-			packageFs,
-			releaseFs,
-			prefixPath: "" as PortablePath,
-			localPath: this.getLocalPath(locator, opts),
-			checksum,
+			packageFs: new CwdFS(path),
+			prefixPath: PortablePath.dot,
+			localPath: path,
 		};
-	}
-
-	private async fetchFromDisk(locator: Locator, fetchOptions: FetchOptions) {
-		return tgzUtils.makeArchiveFromDirectory(this.getLocalPath(locator, fetchOptions), {
-			baseFs: new CwdFS(PortablePath.root),
-			compressionLevel: fetchOptions.project.configuration.get(`compressionLevel`),
-		});
 	}
 }
