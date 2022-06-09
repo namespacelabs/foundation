@@ -137,10 +137,7 @@ func MakeGroupVersionBasedClient(ctx context.Context, gv schema.GroupVersion, cf
 
 func MakeResourceSpecificClient(ctx context.Context, resource ResourceClassLike, cfg *rest.Config) (rest.Interface, error) {
 	if klass := resource.GetResourceClass(); klass != nil {
-		return MakeGroupVersionBasedClient(ctx, schema.GroupVersion{
-			Group:   klass.Group,
-			Version: klass.Version,
-		}, cfg)
+		return MakeGroupVersionBasedClient(ctx, klass.GroupVersion(), cfg)
 	}
 
 	gv, ok := groups[resource.GetResource()]

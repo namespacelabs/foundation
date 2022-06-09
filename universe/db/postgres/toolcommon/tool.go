@@ -81,11 +81,8 @@ func mountConfigs(dbMap map[schema.PackageName][]*postgres.Database, namespace s
 	configMapName := fmt.Sprintf("%s.%s", name, id)
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description:      "Postgres Init ConfigMap",
-		OverrideResource: "configmaps",
-		Namespace:        namespace,
-		Name:             configMapName,
-		Resource:         corev1.ConfigMap(configMapName, namespace).WithData(data),
+		Description: "Postgres Init ConfigMap",
+		Resource:    corev1.ConfigMap(configMapName, namespace).WithData(data),
 	})
 
 	volumeName := strings.Replace(configMapName, ".", "-", -1)

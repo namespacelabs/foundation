@@ -11,6 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/console"
@@ -36,9 +37,9 @@ func registerApply() {
 			return nil, fnerrors.BadInputError("kubernetes.apply: failed to parse resource: %w", err)
 		}
 
-		gvk := header.GetObjectKind().GroupVersionKind()
+		gv := header.GetObjectKind().GroupVersionKind().GroupVersion()
 
-		if gvk.Version == "" {
+		if gv.Version == "" {
 			return nil, fnerrors.InternalError("%s: APIVersion is required", d.Description)
 		}
 
@@ -47,14 +48,27 @@ func registerApply() {
 			return nil, err
 		}
 
+		resourceName := apply.GetResourceClass().GetResource()
+		if resourceName == "" {
+			resourceName = kubeparser.ResourceEndpointFromKind(header.Kind)
+			if resourceName == "" {
+				return nil, fnerrors.InternalError("don't know the resource mapping for %q", header.Kind)
+			}
+		}
+
+		if rc := apply.GetResourceClass(); rc != nil {
+			gv = kubeschema.GroupVersion{Group: rc.Group, Version: rc.Version}
+		}
+
 		scope := schema.PackageNames(d.Scope...)
 		var res unstructured.Unstructured
 		if err := tasks.Action("kubernetes.apply").Scope(scope...).
 			HumanReadablef(d.Description).
-			Arg("resource", header.Kind).
+			Arg("resource", resourceName).
 			Arg("name", header.Name).
 			Arg("namespace", header.Namespace).Run(ctx, func(ctx context.Context) error {
-			client, err := client.MakeGroupVersionBasedClient(ctx, gvk.GroupVersion(), restcfg)
+
+			client, err := client.MakeGroupVersionBasedClient(ctx, gv, restcfg)
 			if err != nil {
 				return err
 			}
@@ -63,14 +77,6 @@ func registerApply() {
 			req := client.Patch(types.ApplyPatchType)
 			if header.Namespace != "" {
 				req = req.Namespace(header.Namespace)
-			}
-
-			resourceName := apply.ResourceEndpoint
-			if resourceName == "" {
-				resourceName = kubeparser.ResourceEndpointFromKind(gvk.Kind)
-				if resourceName == "" {
-					return fnerrors.InternalError("don't know the resource mapping for %q", gvk.Kind)
-				}
 			}
 
 			prepReq := req.Resource(resourceName).
@@ -121,7 +127,7 @@ func registerApply() {
 				}, nil
 			} else {
 				fmt.Fprintf(console.Warnings(ctx), "missing generation data from %s: %v / %v [found1=%v found2=%v]\n",
-					gvk.Kind, err1, err2, found1, found2)
+					header.Kind, err1, err2, found1, found2)
 			}
 
 		case "Pod":

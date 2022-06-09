@@ -83,10 +83,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	// XXX use immutable ConfigMaps.
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description:      "Network Gateway ConfigMap",
-		OverrideResource: "configmaps",
-		Namespace:        namespace,
-		Name:             configVolume,
+		Description: "Network Gateway ConfigMap",
 		Resource: corev1.ConfigMap(configVolume, namespace).WithData(
 			map[string]string{
 				filename: bootstrapData.String(),
@@ -106,26 +103,20 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	out.Invocations = append(out.Invocations, kubedef.Create{
 		Description:      "Network Gateway HTTP gRPC Transcoder CustomResourceDefinition",
-		OverrideResource: "customresourcedefinitions",
-		Name:             "httpgrpctranscoders.k8s.namespacelabs.dev",
+		Resource:         "customresourcedefinitions",
 		Body:             apply.Body,
 		UpdateIfExisting: true,
 	})
 
 	serviceAccount := makeServiceAccount(req.Focus.Server)
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description:      "Network Gateway Service Account",
-		OverrideResource: "serviceaccounts",
-		Namespace:        namespace,
-		Name:             serviceAccount,
-		Resource:         corev1.ServiceAccount(serviceAccount, namespace),
+		Description: "Network Gateway Service Account",
+		Resource:    corev1.ServiceAccount(serviceAccount, namespace),
 	})
 
 	clusterRole := "fn-gateway-cluster-role"
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description:      "Network Gateway Cluster Role",
-		OverrideResource: "clusterroles",
-		Name:             clusterRole,
+		Description: "Network Gateway Cluster Role",
 		Resource: rbacv1.ClusterRole(clusterRole).WithRules(
 			rbacv1.PolicyRule().
 				WithAPIGroups("k8s.namespacelabs.dev").
@@ -136,9 +127,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	clusterRoleBinding := "fn-gateway-cluster-role-binding"
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description:      "Network Gateway Cluster Role Binding",
-		OverrideResource: "clusterrolebindings",
-		Name:             clusterRoleBinding,
+		Description: "Network Gateway Cluster Role Binding",
 		Resource: rbacv1.ClusterRoleBinding(clusterRoleBinding).
 			WithRoleRef(rbacv1.RoleRef().
 				WithAPIGroup("rbac.authorization.k8s.io").

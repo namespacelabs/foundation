@@ -139,6 +139,8 @@ func ResourceEndpointFromKind(kind string) string {
 		return "roles"
 	case "RoleBinding":
 		return "rolebindings"
+	case "Pod":
+		return "pods"
 	case "Service":
 		return "services"
 	case "Secret":
