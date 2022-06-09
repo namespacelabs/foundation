@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -17,6 +18,7 @@ import (
 )
 
 var workspaceDir = flag.String("workspace", ".", "The workspace directory to parse.")
+var depVersion = flag.String("dep_version", "", "Print the version of a given dependency only.")
 
 func main() {
 	flag.Parse()
@@ -49,6 +51,15 @@ func Do(ctx context.Context, workspaceDir string) error {
 		for _, dep := range w.Dep {
 			output.Dependencies[dep.ModuleName] = dep
 		}
+	}
+
+	if *depVersion != "" {
+		if dep, ok := output.Dependencies[*depVersion]; ok && dep.Version != "" {
+			fmt.Println(dep.Version)
+		} else {
+			fmt.Println("HEAD")
+		}
+		return nil
 	}
 
 	output.BuildkitVersion, err = buildkit.Version()
