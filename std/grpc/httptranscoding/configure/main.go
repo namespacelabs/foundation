@@ -19,6 +19,11 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
+const (
+	transcoderServiceName = "grpc-http-transcoder"
+	gatewayServer         = "namespacelabs.dev/foundation/std/networking/gateway/server"
+)
+
 func main() {
 	h := configure.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
@@ -29,6 +34,18 @@ func main() {
 type configuration struct{}
 
 func (configuration) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
+	var transcoderEndpoint *schema.Endpoint
+	for _, endpoint := range req.Stack.Endpoint {
+		if endpoint.ServerOwner == gatewayServer && endpoint.ServiceName == transcoderServiceName {
+			transcoderEndpoint = endpoint
+			break
+		}
+	}
+
+	if transcoderEndpoint == nil {
+		return fnerrors.New("%s: missing endpoint", transcoderServiceName)
+	}
+
 	for _, endpoint := range req.Stack.Endpoint {
 		if endpoint.ServerOwner != req.Focus.Server.PackageName {
 			continue
