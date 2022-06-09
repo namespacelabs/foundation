@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -125,13 +126,9 @@ func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 		return nil, err
 	}
 
-	var defs []*schema.SerializedInvocation
-	for _, apply := range applies {
-		def, err := apply.ToDefinition()
-		if err != nil {
-			return nil, err
-		}
-		defs = append(defs, def)
+	defs, err := defs.Make(applies...)
+	if err != nil {
+		return nil, err
 	}
 
 	serializedWebhook, err := json.Marshal(webhook.Resource)
