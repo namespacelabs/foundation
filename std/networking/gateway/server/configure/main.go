@@ -105,12 +105,11 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	}
 
 	out.Invocations = append(out.Invocations, kubedef.Create{
-		Description:         "Network Gateway HTTP gRPC Transcoder CustomResourceDefinition",
-		Resource:            "customresourcedefinitions",
-		Name:                "httpgrpctranscoders.k8s.namespacelabs.dev",
-		Body:                apply.Body,
-		UpdateIfExisting:    true,
-		SkipIfAlreadyExists: true, // XXX to fix red head.
+		Description:      "Network Gateway HTTP gRPC Transcoder CustomResourceDefinition",
+		Resource:         "customresourcedefinitions",
+		Name:             "httpgrpctranscoders.k8s.namespacelabs.dev",
+		Body:             apply.Body,
+		UpdateIfExisting: true,
 	})
 
 	serviceAccount := makeServiceAccount(req.Focus.Server)
