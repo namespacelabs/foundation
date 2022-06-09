@@ -22,7 +22,7 @@ import (
 
 type k8stools struct{}
 
-const toolNamespace = "fn-build-invocation"
+const toolNamespace = "fn-pipelines"
 
 func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
 	k8s, ck, err := k.k8s(ctx)
