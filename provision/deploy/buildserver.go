@@ -26,6 +26,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+var RunCodegen = true
+
 func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (plan build.Plan, err error) {
 	platforms, err := runtime.For(ctx, server.Env()).TargetPlatforms(ctx)
 	if err != nil {
@@ -36,11 +38,18 @@ func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (pl
 		Scope(server.PackageName()).
 		Arg("platforms", platforms).
 		Run(ctx, func(ctx context.Context) error {
+			var ws build.Workspace
+			if RunCodegen {
+				ws = codegenWorkspace{server}
+			} else {
+				ws = server.Module()
+			}
+
 			plan = build.Plan{
 				SourceLabel:   fmt.Sprintf("Server %s", server.PackageName()),
 				SourcePackage: server.PackageName(),
 				Spec:          spec,
-				Workspace:     codegenWorkspace{server},
+				Workspace:     ws,
 				Platforms:     platforms,
 			}
 
