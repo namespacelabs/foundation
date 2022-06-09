@@ -43,22 +43,22 @@ func registerCreate() {
 				return nil, fnerrors.New("failed to fetch resource: %w", err)
 			}
 
-			if create.SkipIfAlreadyExists {
-				if obj != nil {
+			if obj != nil {
+				if create.SkipIfAlreadyExists {
 					return nil, nil // Nothing to do.
 				}
-			}
 
-			if create.UpdateIfExisting {
-				msg := &unstructured.Unstructured{Object: map[string]interface{}{}}
-				if err := msg.UnmarshalJSON([]byte(create.BodyJson)); err != nil {
-					return nil, fnerrors.New("failed to parse create body: %w", err)
+				if create.UpdateIfExisting {
+					msg := &unstructured.Unstructured{Object: map[string]interface{}{}}
+					if err := msg.UnmarshalJSON([]byte(create.BodyJson)); err != nil {
+						return nil, fnerrors.New("failed to parse create body: %w", err)
+					}
+
+					// This is not advised. Overwriting without reading.
+					msg.SetResourceVersion(obj.GetResourceVersion())
+
+					return nil, updateResource(ctx, d, create, msg, restcfg)
 				}
-
-				// This is not advised. Overwriting without reading.
-				msg.SetResourceVersion(obj.GetResourceVersion())
-
-				return nil, updateResource(ctx, d, create, msg, restcfg)
 			}
 		}
 
