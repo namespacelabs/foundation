@@ -6,11 +6,13 @@ package kubeops
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -87,10 +89,19 @@ func registerCreate() {
 				req.Namespace(create.Namespace)
 			}
 
-			return req.Resource(resourceName(create)).
+			r := req.Resource(resourceName(create)).
 				VersionedParams(obj, metav1.ParameterCodec).
-				Body([]byte(create.BodyJson)).
-				Do(ctx).Error()
+				Body([]byte(create.BodyJson))
+
+			if OutputKubeApiURLs {
+				verb := "post"
+				if !createResource {
+					verb = "put"
+				}
+				fmt.Fprintf(console.Debug(ctx), "kubernetes: api %s call %q\n", verb, r.URL())
+			}
+
+			return r.Do(ctx).Error()
 		}); err != nil && !errors.IsNotFound(err) {
 			return nil, fnerrors.InvocationError("%s: failed to create: %w", d.Description, err)
 		}

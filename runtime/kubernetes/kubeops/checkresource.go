@@ -6,10 +6,12 @@ package kubeops
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -34,10 +36,15 @@ func checkResourceExists(ctx context.Context, restcfg *rest.Config, description 
 			req.Namespace(namespace)
 		}
 
-		if err := req.Resource(resourceName(resource)).
+		r := req.Resource(resourceName(resource)).
 			Name(name).
-			Body(&opts).
-			Do(ctx).Error(); err != nil {
+			Body(&opts)
+
+		if OutputKubeApiURLs {
+			fmt.Fprintf(console.Debug(ctx), "kubernetes: api get call %q\n", r.URL())
+		}
+
+		if err := r.Do(ctx).Error(); err != nil {
 			if errors.IsNotFound(err) {
 				return nil
 			} else {
@@ -51,6 +58,7 @@ func checkResourceExists(ctx context.Context, restcfg *rest.Config, description 
 		return false, err
 	}
 
+	tasks.Attachments(ctx).AddResult("exists", exists)
 	return exists, nil
 }
 

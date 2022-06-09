@@ -6,9 +6,11 @@ package kubeops
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -48,10 +50,15 @@ func registerDelete() {
 				req.Namespace(delete.Namespace)
 			}
 
-			return req.Resource(resourceName(delete)).
+			r := req.Resource(resourceName(delete)).
 				Name(delete.Name).
-				Body(&opts).
-				Do(ctx).Error()
+				Body(&opts)
+
+			if OutputKubeApiURLs {
+				fmt.Fprintf(console.Debug(ctx), "kubernetes: api delete call %q\n", r.URL())
+			}
+
+			return r.Do(ctx).Error()
 		}); err != nil && !errors.IsNotFound(err) {
 			return nil, fnerrors.InvocationError("%s: failed to delete: %w", d.Description, err)
 		}

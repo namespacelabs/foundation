@@ -66,6 +66,10 @@ func registerApply() {
 				VersionedParams(&patchOpts, metav1.ParameterCodec).
 				Body([]byte(apply.BodyJson))
 
+			if OutputKubeApiURLs {
+				fmt.Fprintf(console.Debug(ctx), "kubernetes: api patch call %q\n", prepReq.URL())
+			}
+
 			return prepReq.Do(ctx).Into(&res)
 		}); err != nil {
 			return nil, fnerrors.InvocationError("%s: failed to apply: %w", d.Description, err)
