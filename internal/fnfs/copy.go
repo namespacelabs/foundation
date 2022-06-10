@@ -24,7 +24,8 @@ func CopyTo(ctx context.Context, dst WriteFS, dstBasePath string, src fs.FS) err
 
 		if mkdir, has := dst.(MkdirFS); has {
 			dir := filepath.Dir(target)
-			if err := mkdir.MkdirAll(dir, addExecToRead(st.Mode())); err != nil {
+			// Not using as we may not have write permissions then: addExecToRead(st.Mode())
+			if err := mkdir.MkdirAll(dir, 0700); err != nil {
 				return err
 			}
 		}

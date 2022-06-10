@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
+	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
@@ -33,7 +34,9 @@ func NewImagesCmd() *cobra.Command {
 		Short: "Unpack an image to the local filesystem.",
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			img, err := compute.GetValue(ctx, oci.ImageP(image, nil, insecure))
+			platform := docker.HostPlatform()
+
+			img, err := compute.GetValue(ctx, oci.ImageP(image, &platform, insecure))
 			if err != nil {
 				return err
 			}
