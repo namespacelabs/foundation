@@ -32,16 +32,16 @@ func NewTidyCmd() *cobra.Command {
 			// their dependencies locally. If we don't do this here, package parsing below
 			// will fail.
 
+			if err := maybeUpdateWorkspace(ctx); err != nil {
+				return err
+			}
+
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
 				return err
 			}
 
 			pl := workspace.NewPackageLoader(root)
-
-			if err := fillDependencies(ctx, root, pl); err != nil {
-				return err
-			}
 
 			list, err := workspace.ListSchemas(ctx, root)
 			if err != nil {
@@ -95,6 +95,21 @@ func NewTidyCmd() *cobra.Command {
 	}
 
 	return cmd
+}
+
+func maybeUpdateWorkspace(ctx context.Context) error {
+	root, err := module.FindRoot(ctx, ".")
+	if err != nil {
+		return err
+	}
+
+	pl := workspace.NewPackageLoader(root)
+
+	if err := fillDependencies(ctx, root, pl); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.PackageLoader) error {
