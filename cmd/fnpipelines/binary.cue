@@ -1,4 +1,4 @@
 binary: {
-	name: "fninfo"
+	name: "fnpipelines"
 	from: go_package: "."
 }

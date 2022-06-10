@@ -20,31 +20,24 @@ import (
 )
 
 var (
+	// Required flags:
 	installationID = flag.Int64("installation_id", -1, "Installation ID that we're requesting an access token to.")
 	appID          = flag.Int64("app_id", -1, "app ID of the app we're requesting an access token to.")
 	privateKey     = flag.String("private_key", "", "Path to the app's private key.")
+	owner          = flag.String("owner", "", "Organization name.")
+	repo           = flag.String("repo", "", "Repository name.")
+	commit         = flag.String("commit", "", "Commit's SHA.")
 
-	owner  = flag.String("owner", "", "Organization name.")
-	repo   = flag.String("repo", "", "Repository name.")
-	commit = flag.String("commit", "", "Commit's SHA.")
-
+	// Optional - setting commit's status.
 	status            = flag.String("status", "", "Sets the status of the commit to either pending/success/error/failure")
 	statusDescription = flag.String("status_description", "", "Sets the description of the status")
-	deployOutput      = flag.String("deploy_output", "", "Structured data for de")
+
+	// Optional - adding a comment to a commit.
+	deployOutput = flag.String("deploy_output", "", "Structured data for de")
 )
 
 func main() {
 	flag.Parse()
-
-	if *repo == "" {
-		log.Fatal("--repo is required")
-	}
-	if *owner == "" {
-		log.Fatal("--owner is required")
-	}
-	if *commit == "" {
-		log.Fatal("--commit is required")
-	}
 
 	if err := Do(context.Background()); err != nil {
 		log.Fatal(err)
