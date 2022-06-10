@@ -43,5 +43,29 @@ func NewLoginCmd() *cobra.Command {
 		}),
 	}
 
+	robotLogin := &cobra.Command{
+		Use:    "robot",
+		Short:  "Login as a robot.",
+		Args:   cobra.ExactArgs(1),
+		Hidden: true,
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			accessToken, err := tui.AskSecret(ctx, "Which Access Token would you like to use today?", "That would be a Github access token.", "access token")
+			if err != nil {
+				return err
+			}
+
+			username, err := fnapi.LoginAsRobotAndStore(ctx, args[0], string(accessToken))
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintf(console.Stdout(ctx), "\nHi %s, you are now logged in, have a nice day.\n", username)
+			return nil
+		}),
+	}
+
+	cmd.AddCommand(robotLogin)
+
 	return cmd
 }
