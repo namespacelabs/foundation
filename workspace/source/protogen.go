@@ -33,6 +33,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+const (
+	// Change this number if the inputs remain the same but the proto codegen result changes.
+	codegenVersion = 2
+)
+
 type ProtosOpts struct {
 	HTTPGateway bool
 	Framework   OpProtoGen_Framework
@@ -239,7 +244,11 @@ func (g *genGoProtosAtLoc) Action() *tasks.ActionEvent {
 }
 
 func (g *genGoProtosAtLoc) Inputs() *compute.In {
-	return compute.Inputs().Computable("buf", g.buf).Proto("filedescset", g.fileDescSet).JSON("opts", g.opts)
+	return compute.Inputs().
+		Computable("buf", g.buf).
+		Proto("filedescset", g.fileDescSet).
+		JSON("opts", g.opts).
+		Version(codegenVersion)
 }
 
 func (g *genGoProtosAtLoc) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
