@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 
-	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -15,11 +15,28 @@ import (
 
 type HttpGrpcTranscoderReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	cache  cache.SnapshotCache
+	Scheme   *runtime.Scheme
+	snapshot *TranscoderSnapshot
 }
 
 func (r *HttpGrpcTranscoderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	transcoder := &HttpGrpcTranscoder{}
+	if err := r.Get(ctx, req.NamespacedName, transcoder); err != nil {
+		if apierrors.IsNotFound(err) {
+			r.snapshot.DeleteTranscoder(transcoder)
+			// Generate a new envoy snapshot since we have deleted a transcoder.
+			if err := r.snapshot.GenerateSnapshot(ctx); err != nil {
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, client.IgnoreNotFound(err)
+		}
+	}
+	r.snapshot.AddTranscoder(transcoder)
+	// Generate a new envoy snapshot since we have added a transcoder.
+	if err := r.snapshot.GenerateSnapshot(ctx); err != nil {
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, nil
 }
 

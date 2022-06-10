@@ -15,7 +15,7 @@ type HttpGrpcTranscoderSpec struct {
 
 	FullyQualifiedProtoServiceName string `json:"fullyQualifiedProtoServiceName,omitempty"`
 	ServiceAddress                 string `json:"serviceAddress,omitempty"`
-	ServicePort                    int    `json:"servicePort,omitempty"`
+	ServicePort                    uint32 `json:"servicePort,omitempty"`
 	EncodedProtoDescriptor         string `json:"encodedProtoDescriptor,omitempty"`
 }
 
