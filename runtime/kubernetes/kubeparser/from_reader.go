@@ -145,6 +145,8 @@ func ResourceEndpointFromKind(kind string) string {
 		return "secrets"
 	case "Deployment":
 		return "deployments"
+	case "StatefulSet":
+		return "statefulsets"
 	case "Ingress":
 		return "ingresses"
 	case "IngressClass":
