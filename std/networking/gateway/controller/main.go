@@ -58,10 +58,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := transcodersnapshot.GenerateSnapshot(context.Background()); err != nil {
-		log.Fatal(err)
-	}
-
 	// Run the xDS server.
 	ctx := context.Background()
 	cb := &test.Callbacks{Debug: l.Debug}
