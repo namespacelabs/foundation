@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,11 +19,13 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 
+	accesslogv3 "github.com/envoyproxy/go-control-plane/envoy/config/accesslog/v3"
 	cluster "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	filev3 "github.com/envoyproxy/go-control-plane/envoy/extensions/access_loggers/file/v3"
 	grpcjsontranscoder "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/grpc_json_transcoder/v3"
 	routerfilter "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
@@ -121,7 +124,7 @@ func (t *TranscoderSnapshot) GenerateSnapshot(ctx context.Context) error {
 
 	var clusters []types.Resource
 	for _, transcoder := range t.transcoders {
-		clusterName := fmt.Sprintf("cluster-%s", transcoder.Spec.FullyQualifiedProtoServiceName)
+		clusterName := fmt.Sprintf("cluster-%s", strings.ReplaceAll(transcoder.Spec.FullyQualifiedProtoServiceName, ".", "-"))
 		transcoders = append(transcoders, transcoderWithCluster{transcoder, clusterName})
 
 		clusters = append(clusters, makeCluster(clusterName, transcoder.Spec))
@@ -262,7 +265,8 @@ func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWit
 		return nil, fnerrors.InternalError("failed to marshal the FiledescriptorSet: %w", err)
 	}
 	transcoderPb := &grpcjsontranscoder.GrpcJsonTranscoder{
-		Services: serviceNames,
+		Services:    serviceNames,
+		AutoMapping: true,
 		DescriptorSet: &grpcjsontranscoder.GrpcJsonTranscoder_ProtoDescriptorBin{
 			ProtoDescriptorBin: bytes,
 		},
@@ -275,10 +279,21 @@ func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWit
 	if err != nil {
 		return nil, fnerrors.BadInputError("failed to create the routerconfig anypb: %w", err)
 	}
+	fileAccessLog, err := anypb.New(&filev3.FileAccessLog{Path: "/dev/stdout"})
+	if err != nil {
+		return nil, fnerrors.BadInputError("failed to create fileaccesslog anypb: %w", err)
+	}
+
 	// HTTP filter configuration
 	manager := &hcm.HttpConnectionManager{
 		CodecType:  hcm.HttpConnectionManager_AUTO,
 		StatPrefix: StatPrefix,
+		AccessLog: []*accesslogv3.AccessLog{{
+			Name: wellknown.FileAccessLog,
+			ConfigType: &accesslogv3.AccessLog_TypedConfig{
+				TypedConfig: fileAccessLog,
+			},
+		}},
 		RouteSpecifier: &hcm.HttpConnectionManager_RouteConfig{
 			RouteConfig: &route.RouteConfiguration{
 				Name: LocalRouteName,
