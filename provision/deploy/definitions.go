@@ -192,6 +192,10 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 
 	computed := &schema.ComputedConfigurations{}
 	for srv, configurations := range computedPerServer {
+		slices.SortFunc(configurations, func(a, b *schema.ComputedConfiguration) bool {
+			return strings.Compare(a.GetOwner(), b.GetOwner()) < 0
+		})
+
 		computed.Entry = append(computed.Entry, &schema.ComputedConfigurations_Entry{
 			ServerPackage: srv.String(),
 			Configuration: configurations,

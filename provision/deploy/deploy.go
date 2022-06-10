@@ -74,7 +74,32 @@ func PrepareDeployStack(ctx context.Context, env ops.Environment, stack *stack.S
 
 	g := &makeDeployGraph{prepare: prepare}
 	if AlsoComputeIngress {
-		g.ingress = PlanIngress(env, env.Proto(), stack.Proto())
+		computedOnly := compute.Transform(prepare, func(_ context.Context, h prepareAndBuildResult) ([]*schema.IngressFragmentPlan, error) {
+			var plans []*schema.IngressFragmentPlan
+
+			for _, computed := range h.HandlerResult.Computed.GetEntry() {
+				for _, conf := range computed.Configuration {
+					p := &schema.IngressFragmentPlan{}
+					if !conf.Impl.MessageIs(p) {
+						continue
+					}
+
+					if err := conf.Impl.UnmarshalTo(p); err != nil {
+						return nil, err
+					}
+
+					if p.AllocatedName == "" {
+						return nil, fnerrors.BadInputError("%s: AllocatedName is missing in IngressFragmentPlan", conf.Owner)
+					}
+
+					plans = append(plans, p)
+				}
+			}
+
+			return plans, nil
+		})
+
+		g.ingress = PlanIngress(env, env.Proto(), stack.Proto(), computedOnly)
 	}
 
 	return g, nil
@@ -190,10 +215,9 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 		focus.Add(server.PackageName())
 	}
 
-	computedOnly := compute.Map(tasks.Action("deploy.produce-computed-configurations"), compute.Inputs().Computable("stackDef", stackDef), compute.Output{},
-		func(ctx context.Context, r compute.Resolved) (*schema.ComputedConfigurations, error) {
-			return compute.MustGetDepValue(r, stackDef, "stackDef").Computed, nil
-		})
+	computedOnly := compute.Transform(stackDef, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
+		return h.Computed, nil
+	})
 
 	// computedOnly is used exclusively by config images. They include the set of
 	// computed configurations that provision tools may have emitted.

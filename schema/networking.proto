@@ -53,7 +53,7 @@ message InternalEndpoint {
 
 message IngressFragment {
     string                      name         = 1;
-    string                      owner        = 2;  // Package name.
+    string                      owner        = 2;  // Server package name.
     Domain                      domain       = 3;
     Endpoint                    endpoint     = 6;
     repeated IngressHttpPath    http_path    = 4;
@@ -81,6 +81,11 @@ message IngressFragment {
 
 message IngressFragmentList {
     repeated IngressFragment ingress_fragment = 1;
+}
+
+message IngressFragmentPlan {
+    string          allocated_name   = 1;
+    IngressFragment ingress_fragment = 2;
 }
 
 message HttpCors {

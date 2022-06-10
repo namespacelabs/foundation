@@ -135,31 +135,19 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 			}
 		}
 
-		domains, err := ComputeDomains(env, sch.Server, sch.ServerNaming, endpoint.AllocatedName)
+		attached, err := AttachDomains(env, sch, &schema.IngressFragment{
+			Name:        endpoint.ServiceName,
+			Owner:       endpoint.ServerOwner,
+			Endpoint:    endpoint,
+			Extension:   extensions,
+			HttpPath:    paths,
+			GrpcService: grpc,
+		}, endpoint.AllocatedName)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, domain := range domains {
-			// XXX security this exposes all services registered at port: #102.
-			t := DeferredIngress{
-				domain: domain,
-				fragment: &schema.IngressFragment{
-					Name:        endpoint.ServiceName,
-					Owner:       endpoint.ServerOwner,
-					Endpoint:    endpoint,
-					Extension:   extensions,
-					HttpPath:    paths,
-					GrpcService: grpc,
-				},
-			}
-
-			if domain.Domain.Managed == schema.Domain_CLOUD_MANAGED || domain.Domain.Managed == schema.Domain_LOCAL_MANAGED {
-				t.fragment.Name += "-managed"
-			}
-
-			ingresses = append(ingresses, t)
-		}
+		ingresses = append(ingresses, attached...)
 	}
 
 	// Handle HTTP.
@@ -207,28 +195,41 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 				})
 			}
 
-			domains, err := ComputeDomains(env, sch.Server, sch.ServerNaming, name)
+			attached, err := AttachDomains(env, sch, &schema.IngressFragment{
+				Name:     serverScoped(sch.Server, name),
+				Owner:    sch.GetPackageName().String(),
+				HttpPath: paths,
+			}, name)
 			if err != nil {
 				return nil, err
 			}
 
-			for _, domain := range domains {
-				t := DeferredIngress{
-					domain: domain,
-					fragment: &schema.IngressFragment{
-						Name:     serverScoped(sch.Server, name),
-						Owner:    sch.GetPackageName().String(),
-						HttpPath: paths,
-					},
-				}
-
-				if domain.Domain.Managed == schema.Domain_CLOUD_MANAGED || domain.Domain.Managed == schema.Domain_LOCAL_MANAGED {
-					t.fragment.Name += "-managed"
-				}
-
-				ingresses = append(ingresses, t)
-			}
+			ingresses = append(ingresses, attached...)
 		}
+	}
+
+	return ingresses, nil
+}
+
+func AttachDomains(env *schema.Environment, sch *schema.Stack_Entry, fragment *schema.IngressFragment, allocatedName string) ([]DeferredIngress, error) {
+	domains, err := ComputeDomains(env, sch.Server, sch.ServerNaming, allocatedName)
+	if err != nil {
+		return nil, err
+	}
+
+	var ingresses []DeferredIngress
+	for _, domain := range domains {
+		// XXX security this exposes all services registered at port: #102.
+		t := DeferredIngress{
+			domain:   domain,
+			fragment: fragment,
+		}
+
+		if domain.Domain.Managed == schema.Domain_CLOUD_MANAGED || domain.Domain.Managed == schema.Domain_LOCAL_MANAGED {
+			t.fragment.Name += "-managed"
+		}
+
+		ingresses = append(ingresses, t)
 	}
 
 	return ingresses, nil
