@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-type HttpGrpcTranscoder struct {
+type HttpGrpcTranscoderSpec struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -22,7 +22,7 @@ type HttpGrpcTranscoder struct {
 // DeepCopyInto, DeepCopy, and DeepCopyObject are generated typically with
 // https://github.com/kubernetes/code-generator and are necessary to fulfil the API contract
 // for custom resources.
-func (in *HttpGrpcTranscoder) DeepCopyInto(out *HttpGrpcTranscoder) {
+func (in *HttpGrpcTranscoderSpec) DeepCopyInto(out *HttpGrpcTranscoderSpec) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
@@ -30,6 +30,36 @@ func (in *HttpGrpcTranscoder) DeepCopyInto(out *HttpGrpcTranscoder) {
 	out.ServiceAddress = in.ServiceAddress
 	out.ServicePort = in.ServicePort
 	out.EncodedProtoDescriptor = in.EncodedProtoDescriptor
+}
+
+func (in *HttpGrpcTranscoderSpec) DeepCopy() *HttpGrpcTranscoderSpec {
+	if in == nil {
+		return nil
+	}
+	out := new(HttpGrpcTranscoderSpec)
+	in.DeepCopyInto(out)
+	return out
+}
+
+func (in *HttpGrpcTranscoderSpec) DeepCopyObject() runtime.Object {
+	if c := in.DeepCopy(); c != nil {
+		return c
+	}
+	return nil
+}
+
+type HttpGrpcTranscoder struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec HttpGrpcTranscoderSpec `json:"spec,omitempty"`
+}
+
+func (in *HttpGrpcTranscoder) DeepCopyInto(out *HttpGrpcTranscoder) {
+	*out = *in
+	out.TypeMeta = in.TypeMeta
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+	in.Spec.DeepCopyInto(&out.Spec)
 }
 
 func (in *HttpGrpcTranscoder) DeepCopy() *HttpGrpcTranscoder {
