@@ -5,6 +5,7 @@ requirements: {
 
 prebuilts: {
 	digest: {
+		"namespacelabs.dev/foundation/cmd/fn":                                                         "sha256:2c670e15032e2adb798d72b03222c82893198a2800fc6b83406c2de84758b753"
 		"namespacelabs.dev/foundation/cmd/fncighauth":                                                 "sha256:ae71cd856c132eb4a77c946a7647e1a631b971dc2dea256f11776bf72fe25d65"
 		"namespacelabs.dev/foundation/cmd/fninfo":                                                     "sha256:36bb06b2eea2b0482f8e78d59052e229c06bb39e2af0c9c37f488963569d8325"
 		"namespacelabs.dev/foundation/devworkflow/web":                                                "sha256:0d52c0b3b6d6bce69044ab12c66e40c08c58b63ab9dcdf445df9dacd21e07ba6"
