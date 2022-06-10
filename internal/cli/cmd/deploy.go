@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 
@@ -19,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/stack"
+	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
@@ -31,9 +33,9 @@ func NewDeployCmd() *cobra.Command {
 	var (
 		packageName   string
 		runOpts       deploy.Opts
-		alsoWait      = true
 		explain       bool
 		serializePath string
+		deployOpts    deployOpts
 	)
 
 	cmd := &cobra.Command{
@@ -44,11 +46,12 @@ func NewDeployCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&packageName, "package_name", packageName, "Instead of running the specified local server, run the specified package resolved against the local workspace.")
 	cmd.Flags().Int32Var(&runOpts.BaseServerPort, "port_base", 40000, "Base port to listen on (additional requested ports will be base port + n).")
-	cmd.Flags().BoolVar(&alsoWait, "wait", alsoWait, "Wait for the deployment after running.")
+	cmd.Flags().BoolVar(&deployOpts.alsoWait, "wait", true, "Wait for the deployment after running.")
 	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 	cmd.Flags().BoolVar(&runtime.NamingNoTLS, "naming_no_tls", runtime.NamingNoTLS, "If set to true, no TLS certificate is requested for ingress names.")
 	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
 	cmd.Flags().StringVar(&serializePath, "serialize_to", "", "If set, rather than execute on the plan, output a serialization of the plan.")
+	cmd.Flags().StringVar(&deployOpts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
 		var locations []fnfs.Location
@@ -122,17 +125,32 @@ func NewDeployCmd() *cobra.Command {
 			return nil
 		}
 
-		return completeDeployment(ctx, env.BindWith(packages), computed.Deployer, deployPlan, alsoWait)
+		return completeDeployment(ctx, env.BindWith(packages), computed.Deployer, deployPlan, deployOpts)
 	})
 }
 
-func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, plan *schema.DeployPlan, alsoWait bool) error {
+type deployOpts struct {
+	alsoWait   bool
+	outputPath string
+}
+
+type Output struct {
+	Ingress []Ingress `json:"ingress"`
+}
+
+type Ingress struct {
+	Owner    string   `json:"owner"`
+	Fdqn     string   `json:"fdqn"`
+	Protocol []string `json:"protocol"`
+}
+
+func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
 	waiters, err := p.Execute(ctx, runtime.TaskServerDeploy, env)
 	if err != nil {
 		return err
 	}
 
-	if alsoWait {
+	if opts.alsoWait {
 		if err := deploy.Wait(ctx, env, waiters); err != nil {
 			return err
 		}
@@ -156,6 +174,34 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 	deploy.SortPorts(ports, plan.FocusServer)
 	deploy.SortIngresses(plan.IngressFragment)
 	deploy.RenderPortsAndIngresses(false, out, "", plan.Stack, plan.FocusServer, ports, domains, plan.IngressFragment)
+
+	if opts.outputPath != "" {
+		var out Output
+		for _, frag := range plan.IngressFragment {
+			ingress := Ingress{
+				Owner: frag.Owner,
+				Fdqn:  frag.Domain.Fqdn,
+			}
+
+			var protocols uniquestrings.List
+			for _, md := range frag.Endpoint.ServiceMetadata {
+				if md.Protocol != "" {
+					protocols.Add(md.Protocol)
+				}
+			}
+			ingress.Protocol = protocols.Strings()
+
+			out.Ingress = append(out.Ingress, ingress)
+		}
+		serialized, err := json.MarshalIndent(out, "", " ")
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(opts.outputPath, serialized, 0644); err != nil {
+			return fnerrors.New("failed to write %q: %w", opts.outputPath, err)
+		}
+	}
 
 	envLabel := fmt.Sprintf("--env=%s ", env.Proto().Name)
 

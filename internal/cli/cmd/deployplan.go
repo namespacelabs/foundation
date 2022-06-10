@@ -19,7 +19,7 @@ import (
 )
 
 func NewDeployPlanCmd() *cobra.Command {
-	var alsoWait = true
+	var opts deployOpts
 
 	cmd := &cobra.Command{
 		Use:    "deploy-plan",
@@ -28,7 +28,8 @@ func NewDeployPlanCmd() *cobra.Command {
 		Hidden: true,
 	}
 
-	cmd.Flags().BoolVar(&alsoWait, "wait", alsoWait, "Wait for the deployment after running.")
+	cmd.Flags().BoolVar(&opts.alsoWait, "wait", true, "Wait for the deployment after running.")
+	cmd.Flags().StringVar(&opts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		root, err := module.FindRoot(ctx, ".")
@@ -51,7 +52,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return fnerrors.New("failed to prepare plan: %w", err)
 		}
 
-		return completeDeployment(ctx, serializedEnvironment{root, plan.Environment}, p, plan, alsoWait)
+		return completeDeployment(ctx, serializedEnvironment{root, plan.Environment}, p, plan, opts)
 	})
 
 	return cmd
