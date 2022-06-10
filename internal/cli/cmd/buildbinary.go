@@ -5,8 +5,10 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 
 	"path/filepath"
 	"sort"
@@ -22,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/docker"
@@ -33,11 +36,10 @@ import (
 
 func NewBuildBinaryCmd() *cobra.Command {
 	var (
-		all             = false
-		envRef          = "dev"
-		publishToDocker = false
-		outputPrebuilts = false
-		baseRepository  string
+		all            = false
+		envRef         = "dev"
+		baseRepository string
+		buildOpts      buildOpts
 	)
 
 	cmd := &cobra.Command{
@@ -69,21 +71,28 @@ func NewBuildBinaryCmd() *cobra.Command {
 				}
 			}
 
-			return buildLocations(ctx, root, locs, envRef, baseRepository, publishToDocker, outputPrebuilts)
+			return buildLocations(ctx, root, locs, envRef, baseRepository, buildOpts)
 		}),
 	}
 
 	cmd.Flags().BoolVar(&all, "all", all, "Build all images in the current workspace.")
 	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to build for (as defined in the workspace).")
 	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
-	cmd.Flags().BoolVar(&publishToDocker, "docker", publishToDocker, "If set to true, don't push to registries, but to local docker.")
+	cmd.Flags().BoolVar(&buildOpts.publishToDocker, "docker", false, "If set to true, don't push to registries, but to local docker.")
 	cmd.Flags().StringVar(&baseRepository, "base_repository", baseRepository, "If set, overrides the registry we'll upload the images to.")
-	cmd.Flags().BoolVar(&outputPrebuilts, "output_prebuilts", outputPrebuilts, "If true, also outputs a prebuilt configuration which can be embedded in your workspace configuration.")
+	cmd.Flags().BoolVar(&buildOpts.outputPrebuilts, "output_prebuilts", false, "If true, also outputs a prebuilt configuration which can be embedded in your workspace configuration.")
+	cmd.Flags().StringVar(&buildOpts.outputPath, "output_to", "", "If set, a list of all binaries is emitted to the specified file.")
 
 	return cmd
 }
 
-func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Location, envRef, baseRepository string, publishToDocker, outputPrebuilts bool) error {
+type buildOpts struct {
+	publishToDocker bool
+	outputPrebuilts bool
+	outputPath      string
+}
+
+func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Location, envRef, baseRepository string, opts buildOpts) error {
 	bid := provision.NewBuildID()
 
 	env, err := provision.RequireEnv(root, envRef)
@@ -111,13 +120,13 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 		return strings.Compare(pkgs[i].PackageName().String(), pkgs[j].PackageName().String()) < 0
 	})
 
-	var opts binary.BuildImageOpts
-	opts.UsePrebuilts = false
-	opts.Platforms = []specs.Platform{docker.HostPlatform()}
+	var imgOpts binary.BuildImageOpts
+	imgOpts.UsePrebuilts = false
+	imgOpts.Platforms = []specs.Platform{docker.HostPlatform()}
 
 	var images []compute.Computable[oci.ImageID]
 	for _, pkg := range pkgs {
-		bin, err := binary.Plan(ctx, pkg, opts)
+		bin, err := binary.Plan(ctx, pkg, imgOpts)
 		if err != nil {
 			return err
 		}
@@ -140,7 +149,7 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 			}
 		}
 
-		if publishToDocker {
+		if opts.publishToDocker {
 			images = append(images, docker.PublishImage(tag, image))
 		} else {
 			images = append(images, oci.PublishResolvable(tag, image))
@@ -152,6 +161,16 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 		return err
 	}
 
+	if opts.outputPath != "" {
+		out := &bytes.Buffer{}
+		for _, r := range res.Value {
+			fmt.Fprintf(out, "%s\n", r.Value)
+		}
+		if err := ioutil.WriteFile(opts.outputPath, out.Bytes(), 0644); err != nil {
+			return fnerrors.New("failed to write %q: %w", opts.outputPath, err)
+		}
+	}
+
 	if len(res.Value) == 1 {
 		fmt.Fprintf(console.Stdout(ctx), "%s\n", res.Value[0].Value)
 	} else {
@@ -160,7 +179,7 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 		}
 	}
 
-	if outputPrebuilts && len(res.Value) > 0 {
+	if opts.outputPrebuilts && len(res.Value) > 0 {
 		var digestFields []interface{}
 
 		for k, pkg := range pkgs {
