@@ -17,6 +17,7 @@ import (
 type LocalFS interface {
 	fs.ReadDirFS
 	WriteFS
+	MkdirFS
 }
 
 func Local(path string) LocalFS {
