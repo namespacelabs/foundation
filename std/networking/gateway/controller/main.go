@@ -62,8 +62,15 @@ func main() {
 	ctx := context.Background()
 	cb := &test.Callbacks{Debug: l.Debug}
 	srv := server.NewServer(ctx, transcodersnapshot.cache, cb)
-	if err := RunXdsServer(ctx, srv, *xdsPort); err != nil {
-		log.Fatalf("failed to start the xDS server on port %d: %+v", *xdsPort, err)
+	go func() {
+		if err := RunXdsServer(ctx, srv, *xdsPort); err != nil {
+			log.Fatalf("failed to start the xDS server on port %d: %v", *xdsPort, err)
+		}
+	}()
+
+	// Generate the initial snapshot.
+	if err := transcodersnapshot.GenerateSnapshot(ctx); err != nil {
+		log.Fatal(err)
 	}
 
 	// Run the Kubernetes controller responsible for handling the `HttpGrpcTranscoder` custom resource.
