@@ -6,6 +6,7 @@ package buildkit
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/moby/buildkit/session/sshforward/sshprovider"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -26,6 +28,8 @@ import (
 
 	_ "github.com/moby/buildkit/client/connhelper/dockercontainer"
 )
+
+var buildkitSecrets = flag.String("buildkit_secrets", "", "A list of secrets to pass in to buildkit.")
 
 type clientInstance struct {
 	conf *Overrides
@@ -114,6 +118,28 @@ func formatPlatforms(ps []specs.Platform) string {
 
 func prepareSession(ctx context.Context) ([]session.Attachable, error) {
 	var fs []secretsprovider.Source
+
+	for _, def := range strings.Split(*buildkitSecrets, ";") {
+		parts := strings.Split(def, ":")
+		if len(parts) != 3 {
+			return nil, fnerrors.BadInputError("bad secret definition, expected {name}:env|file:{value}")
+		}
+
+		src := secretsprovider.Source{
+			ID: parts[0],
+		}
+
+		switch parts[1] {
+		case "env":
+			src.Env = parts[2]
+		case "file":
+			src.FilePath = parts[2]
+		default:
+			return nil, fnerrors.BadInputError("expected env or file, got %q", parts[1])
+		}
+
+		fs = append(fs, src)
+	}
 
 	store, err := secretsprovider.NewStore(fs)
 	if err != nil {
