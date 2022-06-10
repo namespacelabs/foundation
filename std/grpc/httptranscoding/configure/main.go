@@ -104,6 +104,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				},
 			})
 
+			// XXX missing ingress configuration.
 		}
 	}
 
