@@ -135,7 +135,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 			}
 		}
 
-		attached, err := AttachDomains(env, sch, &schema.IngressFragment{
+		attached, err := AttachDomains(ctx, env, sch, &schema.IngressFragment{
 			Name:        endpoint.ServiceName,
 			Owner:       endpoint.ServerOwner,
 			Endpoint:    endpoint,
@@ -195,7 +195,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 				})
 			}
 
-			attached, err := AttachDomains(env, sch, &schema.IngressFragment{
+			attached, err := AttachDomains(ctx, env, sch, &schema.IngressFragment{
 				Name:     serverScoped(sch.Server, name),
 				Owner:    sch.GetPackageName().String(),
 				HttpPath: paths,
@@ -211,7 +211,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 	return ingresses, nil
 }
 
-func AttachDomains(env *schema.Environment, sch *schema.Stack_Entry, fragment *schema.IngressFragment, allocatedName string) ([]DeferredIngress, error) {
+func AttachDomains(ctx context.Context, env *schema.Environment, sch *schema.Stack_Entry, fragment *schema.IngressFragment, allocatedName string) ([]DeferredIngress, error) {
 	domains, err := ComputeDomains(env, sch.Server, sch.ServerNaming, allocatedName)
 	if err != nil {
 		return nil, err
@@ -219,6 +219,9 @@ func AttachDomains(env *schema.Environment, sch *schema.Stack_Entry, fragment *s
 
 	var ingresses []DeferredIngress
 	for _, domain := range domains {
+		// It can be modified below.
+		fragment := protos.Clone(fragment)
+
 		// XXX security this exposes all services registered at port: #102.
 		t := DeferredIngress{
 			domain:   domain,
@@ -270,13 +273,13 @@ type DeferredDomain struct {
 func ComputeDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) ([]DeferredDomain, error) {
 	var domains []DeferredDomain
 
-	d, err := GuessAllocatedName(env, srv, naming, allocatedName)
+	domain, err := GuessAllocatedName(env, srv, naming, allocatedName)
 	if err != nil {
 		return nil, err
 	}
 
 	domains = append(domains, DeferredDomain{
-		Domain: d,
+		Domain: domain,
 		AllocateDomain: func(ctx context.Context) (*schema.Domain, error) {
 			return allocateWildcard(ctx, env, srv, naming, allocatedName)
 		},

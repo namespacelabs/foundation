@@ -44,7 +44,7 @@ func Ensure(ctx context.Context, ns string, env *schema.Environment, srv *schema
 
 	var managed []MapAddress
 	for _, g := range groups {
-		apply, m, err := generateForSrv(ns, env, srv, g[0].Name, g, certSecrets)
+		apply, m, err := generateForSrv(ctx, ns, env, srv, g[0].Name, g, certSecrets)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -128,7 +128,7 @@ func groupByName(ngs []*schema.IngressFragment) [][]*schema.IngressFragment {
 	return groups
 }
 
-func generateForSrv(ns string, env *schema.Environment, srv *schema.Server, name string, ngs []*schema.IngressFragment, certSecrets map[string]string) (*applynetworkingv1.IngressApplyConfiguration, []MapAddress, error) {
+func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv *schema.Server, name string, fragments []*schema.IngressFragment, certSecrets map[string]string) (*applynetworkingv1.IngressApplyConfiguration, []MapAddress, error) {
 	backendProtocol := "http"
 
 	var grpcCount, nonGrpcCount int
@@ -136,12 +136,12 @@ func generateForSrv(ns string, env *schema.Environment, srv *schema.Server, name
 	spec := applynetworkingv1.IngressSpec()
 
 	var managedType schema.Domain_ManagedType
-	for _, ng := range ngs {
+	for _, ng := range fragments {
 		if ng.GetDomain().GetManaged() == schema.Domain_MANAGED_UNKNOWN {
 			continue
 		}
 		if managedType != schema.Domain_MANAGED_UNKNOWN && managedType != ng.GetDomain().GetManaged() {
-			return nil, nil, fnerrors.InternalError("inconsistent domain definition, %q vs %q", managedType, ng.GetDomain().GetManaged())
+			return nil, nil, fnerrors.InternalError("%s: inconsistent domain definition, %q vs %q", ng.GetDomain().Fqdn, managedType, ng.GetDomain().GetManaged())
 		}
 		managedType = ng.GetDomain().GetManaged()
 	}
@@ -149,7 +149,7 @@ func generateForSrv(ns string, env *schema.Environment, srv *schema.Server, name
 	var tlsCount int
 	var managed []MapAddress
 	var extensions []*anypb.Any
-	for _, ng := range ngs {
+	for _, ng := range fragments {
 		extensions = append(extensions, ng.Extension...)
 
 		var paths []*applynetworkingv1.HTTPIngressPathApplyConfiguration
