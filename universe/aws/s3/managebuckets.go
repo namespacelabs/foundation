@@ -37,12 +37,15 @@ func EnsureBucketExistsByName(ctx context.Context, client *s3.Client, name, regi
 		}
 
 		if _, err := client.CreateBucket(ctx, input); err != nil {
-			var e *types.BucketAlreadyOwnedByYou
-			if !errors.As(err, &e) {
-				err = fmt.Errorf("failed to create bucket: %w", err)
-				log.Println(err)
-				return err
+			var alreadyExists *types.BucketAlreadyExists
+			var alreadyOwned *types.BucketAlreadyOwnedByYou
+			if errors.As(err, &alreadyExists) || errors.As(err, &alreadyOwned) {
+				return nil
 			}
+
+			err = fmt.Errorf("failed to create bucket: %w", err)
+			log.Println(err)
+			return err
 		}
 
 		return nil
