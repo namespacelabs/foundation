@@ -209,6 +209,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	rootCmd.PersistentFlags().Var(buildkit.ImportCacheVar, "buildkit_import_cache", "Internal, set buildkit import-cache.")
 	rootCmd.PersistentFlags().Var(buildkit.ExportCacheVar, "buildkit_export_cache", "Internal, set buildkit export-cache.")
+	rootCmd.PersistentFlags().StringVar(&buildkit.BuildkitSecrets, "buildkit_secrets", "", "A list of secrets to pass in to buildkit.")
 	rootCmd.PersistentFlags().BoolVar(&compute.VerifyCaching, "verify_compute_caching", compute.VerifyCaching,
 		"Internal, do not use cached contents of compute graph, verify that the cached content matches instead.")
 	rootCmd.PersistentFlags().BoolVar(&golang.UseBuildKitForBuilding, "golang_use_buildkit", golang.UseBuildKitForBuilding,
@@ -233,6 +234,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	for _, noisy := range []string{
 		"buildkit_import_cache",
 		"buildkit_export_cache",
+		"buildkit_secrets",
 		"verify_compute_caching",
 		"also_compute_ingress",
 		"golang_use_buildkit",

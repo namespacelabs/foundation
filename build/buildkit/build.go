@@ -6,7 +6,6 @@ package buildkit
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -29,7 +28,7 @@ import (
 	_ "github.com/moby/buildkit/client/connhelper/dockercontainer"
 )
 
-var buildkitSecrets = flag.String("buildkit_secrets", "", "A list of secrets to pass in to buildkit.")
+var BuildkitSecrets string
 
 type clientInstance struct {
 	conf *Overrides
@@ -119,7 +118,7 @@ func formatPlatforms(ps []specs.Platform) string {
 func prepareSession(ctx context.Context) ([]session.Attachable, error) {
 	var fs []secretsprovider.Source
 
-	for _, def := range strings.Split(*buildkitSecrets, ";") {
+	for _, def := range strings.Split(BuildkitSecrets, ";") {
 		parts := strings.Split(def, ":")
 		if len(parts) != 3 {
 			return nil, fnerrors.BadInputError("bad secret definition, expected {name}:env|file:{value}")
