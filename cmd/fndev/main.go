@@ -15,5 +15,6 @@ func main() {
 	fncobra.DoMain("fndev", func(root *cobra.Command) {
 		cmd.RegisterCommands(root)
 		root.AddCommand(debug.NewDebugCmd())
+		root.AddCommand(debug.NewFnServicesCmd())
 	})
 }
