@@ -52,7 +52,7 @@ func Rehydrate(ctx context.Context, srv provision.Server, imageID oci.ImageID) (
 		return nil, err
 	}
 
-	img, err := remote.Image(ref, oci.RemoteOptsWithAuth(ctx, allocated.Keychain)...)
+	img, err := remote.Image(ref, oci.ReadRemoteOptsWithAuth(ctx, allocated.Keychain)...)
 	if err != nil {
 		return nil, err
 	}

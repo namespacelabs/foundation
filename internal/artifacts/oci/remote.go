@@ -19,26 +19,39 @@ var (
 	staticMapping = []keychainMap{}
 )
 
+type KeychainWhen int
+
+const (
+	Keychain_UseAlways KeychainWhen = iota
+	Keychain_UseOnWrites
+)
+
 type keychainMap struct {
 	Suffix   string
 	Keychain Keychain
+	When     KeychainWhen
 }
 
-func RegisterDomainKeychain(suffix string, keychain Keychain) {
-	staticMapping = append(staticMapping, keychainMap{"." + suffix, keychain})
+func RegisterDomainKeychain(suffix string, keychain Keychain, purpose KeychainWhen) {
+	staticMapping = append(staticMapping, keychainMap{"." + suffix, keychain, purpose})
 }
 
-func RemoteOpts(ctx context.Context) []remote.Option {
-	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain)}
+func ReadRemoteOpts(ctx context.Context) []remote.Option {
+	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(defaultKeychain{ctx, false})}
 }
 
-func RemoteOptsWithAuth(ctx context.Context, keychain Keychain) []remote.Option {
-	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(keychainSequence{ctx, keychain})}
+func ReadRemoteOptsWithAuth(ctx context.Context, keychain Keychain) []remote.Option {
+	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(keychainSequence{ctx, keychain, false})}
+}
+
+func WriteRemoteOptsWithAuth(ctx context.Context, keychain Keychain) []remote.Option {
+	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(keychainSequence{ctx, keychain, true})}
 }
 
 type keychainSequence struct {
 	ctx      context.Context
 	provided Keychain
+	writing  bool
 }
 
 func (ks keychainSequence) Resolve(resource authn.Resource) (authn.Authenticator, error) {
@@ -53,17 +66,20 @@ func (ks keychainSequence) Resolve(resource authn.Resource) (authn.Authenticator
 		}
 	}
 
-	return defaultKeychain{ks.ctx}.Resolve(resource)
+	return defaultKeychain{ks.ctx, ks.writing}.Resolve(resource)
 }
 
 type defaultKeychain struct {
-	ctx context.Context
+	ctx     context.Context
+	writing bool
 }
 
 func (ks defaultKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
 	for _, kc := range staticMapping {
 		if strings.HasSuffix(resource.RegistryStr(), kc.Suffix) {
-			return kc.Keychain.Resolve(ks.ctx, resource)
+			if kc.When == Keychain_UseAlways || (kc.When == Keychain_UseOnWrites && ks.writing) {
+				return kc.Keychain.Resolve(ks.ctx, resource)
+			}
 		}
 	}
 

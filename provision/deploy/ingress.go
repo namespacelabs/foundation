@@ -65,7 +65,7 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 			return nil, fnerrors.BadInputError("%s: not present in the stack", plan.GetIngressFragment().GetOwner())
 		}
 
-		attached, err := runtime.AttachDomains(ci.env, sch, plan.GetIngressFragment(), plan.AllocatedName)
+		attached, err := runtime.AttachDomains(ctx, ci.env, sch, plan.GetIngressFragment(), plan.AllocatedName)
 		if err != nil {
 			return nil, err
 		}

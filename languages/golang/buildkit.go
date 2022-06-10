@@ -113,7 +113,7 @@ func makeGoBuildBase(version string, platform specs.Platform) llb.State {
 			llb.WithCustomName("[prepare build image] apk add --no-cache git")).Root()
 
 	if llbutil.GitCredentialsBuildkitSecret != "" {
-		st = st.Run(llb.Shlex("git config credential.helper store")).Root()
+		st = st.Run(llb.Shlex("git config --global credential.helper store")).Root()
 	}
 
 	return st

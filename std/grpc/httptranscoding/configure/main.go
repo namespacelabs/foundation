@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/configure"
@@ -46,24 +48,34 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		return fnerrors.New("%s: missing endpoint", transcoderServiceName)
 	}
 
-	for _, endpoint := range req.Stack.Endpoint {
-		if endpoint.ServerOwner != req.Focus.Server.PackageName {
-			continue
-		}
+	type endpoint struct {
+		ProtoService string
+		Server       *schema.Stack_Entry
+		Endpoint     *schema.Endpoint
+		Transcoding  *schema.GrpcHttpTranscoding
+	}
 
+	perServer := map[string][]endpoint{}
+
+	for _, e := range req.Stack.Endpoint {
 		var protoService string
-		for _, md := range endpoint.ServiceMetadata {
+		for _, md := range e.ServiceMetadata {
 			if md.Protocol == schema.GrpcProtocol {
 				protoService = md.Kind
 				break
 			}
 		}
 
-		if protoService == "" || endpoint.Port == nil {
+		sch := req.Stack.GetServer(e.GetServerOwnerPackage())
+		if sch == nil {
 			continue
 		}
 
-		for _, md := range endpoint.ServiceMetadata {
+		if protoService == "" || e.Port == nil {
+			continue
+		}
+
+		for _, md := range e.ServiceMetadata {
 			t := &schema.GrpcHttpTranscoding{}
 			if !md.Details.MessageIs(t) {
 				continue
@@ -73,27 +85,50 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				return fnerrors.New("failed to unmarshal GrpcHttpTranscoding: %w", err)
 			}
 
-			fds, err := proto.Marshal(t.FileDescriptorSet)
+			perServer[e.ServerOwner] = append(perServer[e.ServerOwner], endpoint{
+				ProtoService: protoService,
+				Server:       sch,
+				Endpoint:     e,
+				Transcoding:  t,
+			})
+		}
+	}
+
+	var sorted [][]endpoint
+	for _, services := range perServer {
+		if len(services) > 0 {
+			sorted = append(sorted, services)
+		}
+	}
+
+	slices.SortFunc(sorted, func(a, b []endpoint) bool {
+		// Each slice of endpoints is guaranteed to be of the same server.
+		return strings.Compare(a[0].Endpoint.ServerOwner, b[0].Endpoint.ServerOwner) < 0
+	})
+
+	for _, serverEndpoints := range sorted {
+		for _, x := range serverEndpoints {
+			fds, err := proto.Marshal(x.Transcoding.FileDescriptorSet)
 			if err != nil {
 				return fnerrors.New("failed to marshal FileDescriptorSet: %w", err)
 			}
 
 			out.Invocations = append(out.Invocations, kubedef.Apply{
-				Description: fmt.Sprintf("HTTP/gRPC transcoder: %s", protoService),
+				Description: fmt.Sprintf("HTTP/gRPC transcoder: %s", x.ProtoService),
 				Resource: &httpGrpcTranscoder{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "HttpGrpcTranscoder",
 						APIVersion: "k8s.namespacelabs.dev/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      strings.ToLower(fmt.Sprintf("%s-%s", protoService, req.Focus.Server.Id)),
+						Name:      strings.ToLower(fmt.Sprintf("%s-%s", x.ProtoService, req.Focus.Server.Id)),
 						Namespace: kubetool.FromRequest(req).Namespace,
 						Labels:    kubedef.MakeLabels(req.Env, req.Focus.Server),
 					},
 					Spec: httpGrpcTranscoderSpec{
-						FullyQualifiedProtoServiceName: protoService,
-						ServiceAddress:                 endpoint.AllocatedName,
-						ServicePort:                    int(endpoint.Port.ContainerPort),
+						FullyQualifiedProtoServiceName: x.ProtoService,
+						ServiceAddress:                 x.Endpoint.AllocatedName,
+						ServicePort:                    int(x.Endpoint.Port.ContainerPort),
 						EncodedProtoDescriptor:         base64.StdEncoding.EncodeToString(fds),
 					},
 				},
@@ -104,7 +139,43 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				},
 			})
 
-			// XXX missing ingress configuration.
+			// Only emit ingress entries for internet facing services.
+			if x.Endpoint.Type != schema.Endpoint_INTERNET_FACING {
+				continue
+			}
+
+			cors := &schema.HttpCors{Enabled: true, AllowedOrigin: []string{"*"}}
+			packedCors, err := anypb.New(cors)
+			if err != nil {
+				return fnerrors.UserError(nil, "failed to pack CORS' configuration: %v", err)
+			}
+
+			srv := x.Server.Server
+			name := fmt.Sprintf("grpc-gateway-%s", srv.Id)
+			fragment, err := anypb.New(&schema.IngressFragmentPlan{
+				AllocatedName: name,
+				IngressFragment: &schema.IngressFragment{
+					Name:     name,
+					Owner:    srv.PackageName,
+					Endpoint: x.Endpoint,
+					// Point HTTP calls under /{serviceName}/ to Envoy.
+					HttpPath: []*schema.IngressFragment_IngressHttpPath{{
+						Path:    fmt.Sprintf("/%s/", x.ProtoService),
+						Owner:   x.Endpoint.EndpointOwner,
+						Service: transcoderEndpoint.AllocatedName,
+						Port:    transcoderEndpoint.Port,
+					}},
+					Extension: []*anypb.Any{packedCors},
+				},
+			})
+			if err != nil {
+				return err
+			}
+
+			out.Computed = append(out.Computed, &schema.ComputedConfiguration{
+				Owner: "namespacelabs.dev/foundation/std/grpc/httptranscoding",
+				Impl:  fragment,
+			})
 		}
 	}
 

@@ -6,6 +6,7 @@ package tui
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"os"
 	"syscall"
@@ -21,7 +22,7 @@ func AskSecret(ctx context.Context, title, desc, placeholder string) ([]byte, er
 		if err != nil {
 			return nil, err
 		}
-		return []byte(s), nil
+		return bytes.TrimSpace([]byte(s)), nil
 	}
 
 	secret, err := Ask(ctx, title, desc, placeholder)
@@ -33,5 +34,5 @@ func AskSecret(ctx context.Context, title, desc, placeholder string) ([]byte, er
 		return nil, context.Canceled
 	}
 
-	return []byte(secret), nil
+	return bytes.TrimSpace([]byte(secret)), nil
 }
