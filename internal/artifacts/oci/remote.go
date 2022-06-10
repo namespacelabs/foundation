@@ -29,7 +29,7 @@ func RegisterDomainKeychain(suffix string, keychain Keychain) {
 }
 
 func RemoteOpts(ctx context.Context) []remote.Option {
-	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain)}
+	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(defaultKeychain{ctx})}
 }
 
 func RemoteOptsWithAuth(ctx context.Context, keychain Keychain) []remote.Option {
