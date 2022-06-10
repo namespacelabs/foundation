@@ -26,12 +26,25 @@ type UserAuth struct {
 
 const userAuthJson = "auth.json"
 
+func LoginAsRobotAndStore(ctx context.Context, repository, accessToken string) (string, error) {
+	userAuth, err := RobotLogin(ctx, repository, accessToken)
+	if err != nil {
+		return "", err
+	}
+
+	return storeUser(ctx, userAuth)
+}
+
 func StoreUser(ctx context.Context, userData string) (string, error) {
 	userAuth, err := CheckSignin(ctx, strings.TrimSpace(userData))
 	if err != nil {
 		return "", err
 	}
 
+	return storeUser(ctx, userAuth)
+}
+
+func storeUser(ctx context.Context, userAuth *UserAuth) (string, error) {
 	userAuthData, err := json.Marshal(userAuth)
 	if err != nil {
 		return "", err
