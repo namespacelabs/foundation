@@ -26,7 +26,7 @@ func newImageIndexCmd() *cobra.Command {
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			for _, arg := range args {
-				d, err := fetchImage(arg, insecure, oci.RemoteOpts(ctx)...)
+				d, err := fetchImage(arg, insecure, oci.ReadRemoteOpts(ctx)...)
 				if err != nil {
 					return err
 				}

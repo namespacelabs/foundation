@@ -105,7 +105,7 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 			return nil, fnerrors.InternalError("failed to parse: %w", err)
 		}
 
-		img, err := remote.Image(name, RemoteOpts(ctx)...)
+		img, err := remote.Image(name, ReadRemoteOpts(ctx)...)
 		if err != nil {
 			return nil, fnerrors.InvocationError("failed to fetch image: %w", err)
 		}
@@ -117,7 +117,7 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 }
 
 func fetchRemoteDescriptor(ctx context.Context, ref string, insecure bool, moreOpts ...remote.Option) (*remote.Descriptor, error) {
-	opts := RemoteOpts(ctx)
+	opts := ReadRemoteOpts(ctx)
 	opts = append(opts, moreOpts...)
 
 	baseRef, err := ParseRef(ref, insecure)

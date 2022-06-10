@@ -55,7 +55,7 @@ func newImageCmd() *cobra.Command {
 						}
 					}
 				} else {
-					d, err := fetchImage(arg, insecure, oci.RemoteOpts(ctx)...)
+					d, err := fetchImage(arg, insecure, oci.ReadRemoteOpts(ctx)...)
 					if err != nil {
 						return err
 					}
