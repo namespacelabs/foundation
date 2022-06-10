@@ -8,9 +8,7 @@ import (
 	"context"
 	"flag"
 	"log"
-	"os"
 
-	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/server/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/test/v3"
 
@@ -53,34 +51,23 @@ func main() {
 	l := Logger{}
 	l.Debug = *debug
 
-	// Create a cache
-	cache := cache.NewSnapshotCache(false, cache.IDHash{}, l)
+	// Create a transcoder snapshot.
+	transcodersnapshot := NewTranscoderSnapshot(*nodeID, l)
 
-	// Create the snapshot that we'll serve to Envoy
-	snapshot, err := GenerateSnapshot(*httpEnvoyListenAddr)
-	if err != nil {
+	if err := transcodersnapshot.RegisterHttpListener(*httpEnvoyListenAddr); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := snapshot.Consistent(); err != nil {
-		l.Errorf("snapshot inconsistency: %+v\n%+v", snapshot, err)
-		os.Exit(1)
-	}
-	l.Debugf("will serve snapshot %+v", snapshot)
-
-	// Add the snapshot to the cache.
-	if err := cache.SetSnapshot(context.Background(), *nodeID, snapshot); err != nil {
-		l.Errorf("snapshot error %+v for %+v", err, snapshot)
-		os.Exit(1)
+	if err := transcodersnapshot.GenerateSnapshot(context.Background()); err != nil {
+		log.Fatal(err)
 	}
 
 	// Run the xDS server.
 	ctx := context.Background()
 	cb := &test.Callbacks{Debug: l.Debug}
-	srv := server.NewServer(ctx, cache, cb)
+	srv := server.NewServer(ctx, transcodersnapshot.cache, cb)
 	if err := RunXdsServer(ctx, srv, *xdsPort); err != nil {
-		l.Errorf("failed to start the xDS server on port %d: %+v", *xdsPort, err)
-		os.Exit(1)
+		log.Fatalf("failed to start the xDS server on port %d: %+v", *xdsPort, err)
 	}
 
 	// Run the Kubernetes controller responsible for handling the `HttpGrpcTranscoder` custom resource.
@@ -94,8 +81,7 @@ func main() {
 	schemeBuilder := &controllerscheme.Builder{GroupVersion: groupVersion}
 	schemeBuilder.Register(&HttpGrpcTranscoder{}, &HttpGrpcTranscoderList{})
 	if err := schemeBuilder.AddToScheme(scheme); err != nil {
-		l.Errorf("failed to add the HttpGrpcTranscoder scheme: %+v", err)
-		os.Exit(1)
+		log.Fatalf("failed to add the HttpGrpcTranscoder scheme: %+v", err)
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -109,34 +95,29 @@ func main() {
 		LeaderElectionID: "63245986.k8s.namespacelabs.dev",
 	})
 	if err != nil {
-		l.Errorf("failed to start the controller manager: %+v", err)
-		os.Exit(1)
+		log.Fatalf("failed to start the controller manager: %+v", err)
 	}
 
 	// Add healthz.
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		l.Errorf("failed to set up healthz: %+v", err)
-		os.Exit(1)
+		log.Fatalf("failed to set up healthz: %+v", err)
 	}
 	// Add readyz.
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		l.Errorf("failed to set up readyz: %+v", err)
-		os.Exit(1)
+		log.Fatalf("failed to set up readyz: %+v", err)
 	}
 
 	httpGrpcTranscoderReconciler := HttpGrpcTranscoderReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		cache:  cache,
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		snapshot: transcodersnapshot,
 	}
 	if err := httpGrpcTranscoderReconciler.SetupWithManager(mgr); err != nil {
-		l.Errorf("failed to set up the HTTP gRPC Transcoder reconciler: %+v", err)
-		os.Exit(1)
+		log.Fatalf("failed to set up the HTTP gRPC Transcoder reconciler: %+v", err)
 	}
 
 	l.Infof("starting the controller manager on port %d", *controllerPort)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		l.Errorf("failed to start the controller manager: %+v", err)
-		os.Exit(1)
+		log.Fatalf("failed to start the controller manager: %+v", err)
 	}
 }
