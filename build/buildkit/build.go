@@ -119,6 +119,10 @@ func prepareSession(ctx context.Context) ([]session.Attachable, error) {
 	var fs []secretsprovider.Source
 
 	for _, def := range strings.Split(BuildkitSecrets, ";") {
+		if def == "" {
+			continue
+		}
+
 		parts := strings.Split(def, ":")
 		if len(parts) != 3 {
 			return nil, fnerrors.BadInputError("bad secret definition, expected {name}:env|file:{value}")
