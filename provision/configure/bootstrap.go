@@ -124,6 +124,12 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, t AllHandlers
 			return nil, err
 		}
 
+		for _, x := range out.Compilables {
+			if err := x.Compile(p, &out); err != nil {
+				return nil, err
+			}
+		}
+
 		response.ApplyResponse = &protocol.ApplyResponse{}
 		for _, input := range out.Extensions {
 			packed, err := input.ToDefinition()

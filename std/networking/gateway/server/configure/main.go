@@ -9,7 +9,6 @@ import (
 	"context"
 	"embed"
 	"flag"
-	"fmt"
 	"path/filepath"
 	"text/template"
 
@@ -17,6 +16,7 @@ import (
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/configure"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeblueprint"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
@@ -108,35 +108,12 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		UpdateIfExisting: true,
 	})
 
-	serviceAccount := makeServiceAccount(req.Focus.Server)
-	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Network Gateway Service Account",
-		Resource:    corev1.ServiceAccount(serviceAccount, namespace),
-	})
-
-	clusterRole := "fn-gateway-cluster-role"
-	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Network Gateway Cluster Role",
-		Resource: rbacv1.ClusterRole(clusterRole).WithRules(
-			rbacv1.PolicyRule().
-				WithAPIGroups("k8s.namespacelabs.dev").
-				WithResources("httpgrpctranscoders").
-				WithVerbs("get", "list", "watch", "create", "update", "delete"),
-		),
-	})
-
-	clusterRoleBinding := "fn-gateway-cluster-role-binding"
-	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Network Gateway Cluster Role Binding",
-		Resource: rbacv1.ClusterRoleBinding(clusterRoleBinding).
-			WithRoleRef(rbacv1.RoleRef().
-				WithAPIGroup("rbac.authorization.k8s.io").
-				WithKind("ClusterRole").
-				WithName(clusterRole)).
-			WithSubjects(rbacv1.Subject().
-				WithKind("ServiceAccount").
-				WithNamespace(namespace).
-				WithName(serviceAccount)),
+	out.Compilables = append(out.Compilables, kubeblueprint.GrantKubeACLs{
+		DescriptionBase: "Network Gateway",
+		Rules: rbacv1.PolicyRule().
+			WithAPIGroups("k8s.namespacelabs.dev").
+			WithResources("httpgrpctranscoders").
+			WithVerbs("get", "list", "watch", "create", "update", "delete"),
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
@@ -173,8 +150,4 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 func (configuration) Delete(context.Context, configure.StackRequest, *configure.DeleteOutput) error {
 	// XXX unimplemented
 	return nil
-}
-
-func makeServiceAccount(srv *schema.Server) string {
-	return fmt.Sprintf("fn-%s", kubedef.MakeDeploymentId(srv))
 }

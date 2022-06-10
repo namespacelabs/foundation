@@ -25,6 +25,11 @@ type ApplyOutput struct {
 	InvocationSources []*schema.SerializedInvocationSource
 	Extensions        []defs.MakeExtension
 	Computed          []*schema.ComputedConfiguration
+	Compilables       []Compilable
+}
+
+type Compilable interface {
+	Compile(StackRequest, *ApplyOutput) error
 }
 
 type DeleteOutput struct {
