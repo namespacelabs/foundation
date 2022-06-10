@@ -22,8 +22,8 @@ prebuilts: {
 		"namespacelabs.dev/foundation/std/startup/testdriver":                                         "sha256:7ea188a4a7d5ea59a127f2bdcc56189d5a31af9f8d9e6d7ee242ae77c37adf5a"
 		"namespacelabs.dev/foundation/std/testdata/datastore/keygen":                                  "sha256:3af31c69e50e156eb208afde803a3fd1deeae3cb7f01fb4ffb7076e80beb85b3"
 		"namespacelabs.dev/foundation/universe/aws/irsa/prepare":                                      "sha256:44bb7a8352e292f9717e467b4cf0138b4baeb5bc8936a65069e20672ce03ca18"
-		"namespacelabs.dev/foundation/universe/aws/s3/internal/configure":                             "sha256:9d60f157d7ec2a36577552e899ee94f998a264054393ad609a5eb676e648877b"
-		"namespacelabs.dev/foundation/universe/aws/s3/internal/managebuckets/init":                    "sha256:921fe3758b2720d4e6d76777892c7a55dbed7b17d70d5eceb631464d22fd5dce"
+		"namespacelabs.dev/foundation/universe/aws/s3/internal/configure":                             "sha256:eb64ab74c7a1f56c14b89bec454f2694ea71a0c7e2f706464fe3f1983dc66ab4"
+		"namespacelabs.dev/foundation/universe/aws/s3/internal/managebuckets/init":                    "sha256:6b484b763a24de96b23e809306ae582d0a51356fdd5a365cc15360e073595a54"
 		"namespacelabs.dev/foundation/universe/db/maria/incluster/tool":                               "sha256:1b80f395f249cd373674971590af59f106edbb6ad5f9ec40ce0ce7ef948972c9"
 		"namespacelabs.dev/foundation/universe/db/maria/init":                                         "sha256:68f82d6ddf094ad9ff03c93bb0e4d222f2ad0c19e29b61f686e3c055e50a7993"
 		"namespacelabs.dev/foundation/universe/db/maria/server/creds/tool":                            "sha256:816654523894cca56e40f7d5f81587b2f2d91db20169b0cc0e51ce29996deeaa"
@@ -35,8 +35,8 @@ prebuilts: {
 		"namespacelabs.dev/foundation/universe/development/localstack/s3/internal/configure":          "sha256:aa2f552d371d3f27e8752e011680db0c18b9ea4cd6d4ddaa93dc6a496079bb3f"
 		"namespacelabs.dev/foundation/universe/development/localstack/s3/internal/managebuckets/init": "sha256:4740b806a5fcd81a7d44190265b7dd99a8e028e36b5750d21bd3df9cca63060e"
 		"namespacelabs.dev/foundation/universe/networking/tailscale/image":                            "sha256:713a22cbb2582bdb05dcc83101c552677d216321f38ae125dfa11274c3699132"
-		"namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets":                     "sha256:99b6cafd56501e1d96e06889c4fcb2b2a3aab735fbe5d4e0c5acddd8f8e30a5c"
-		"namespacelabs.dev/foundation/universe/storage/s3/internal/prepare":                           "sha256:d5c5f500ba0acf6158670d4bd4161d1f601eb4a1c2af27a9930514cf5b40730c"
+		"namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets":                     "sha256:10a66dcd1a3ff1a6ff47b6d32ac8591cd0106fa30a520638e7b5c456cf621f4f"
+		"namespacelabs.dev/foundation/universe/storage/s3/internal/prepare":                           "sha256:972bdab90b381f2a4a2f78681851786404f2b182d350ec5f1b1c0156942a0560"
 	}
 	baseRepository: "us-docker.pkg.dev/foundation-344819/prebuilts/"
 }
