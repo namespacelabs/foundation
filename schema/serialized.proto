@@ -13,6 +13,7 @@ import "schema/schema.proto";
 import "schema/networking.proto";
 
 message DeployPlan {
+    Environment              environment      = 7;
     Stack                    stack            = 1;
     repeated Server          focus_server     = 2;
     repeated string          rel_location     = 3;

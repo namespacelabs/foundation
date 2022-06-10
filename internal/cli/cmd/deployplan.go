@@ -13,8 +13,9 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewDeployPlanCmd() *cobra.Command {
@@ -29,7 +30,12 @@ func NewDeployPlanCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&alsoWait, "wait", alsoWait, "Wait for the deployment after running.")
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		root, err := module.FindRoot(ctx, ".")
+		if err != nil {
+			return err
+		}
+
 		raw, err := ioutil.ReadFile(args[0])
 		if err != nil {
 			return fnerrors.New("failed to load %q: %w", args[0], err)
@@ -45,6 +51,18 @@ func NewDeployPlanCmd() *cobra.Command {
 			return fnerrors.New("failed to prepare plan: %w", err)
 		}
 
-		return completeDeployment(ctx, env, p, plan, alsoWait)
+		return completeDeployment(ctx, serializedEnvironment{root, plan.Environment}, p, plan, alsoWait)
 	})
+
+	return cmd
 }
+
+type serializedEnvironment struct {
+	root *workspace.Root
+	env  *schema.Environment
+}
+
+func (se serializedEnvironment) Workspace() *schema.Workspace { return se.root.Workspace }
+func (se serializedEnvironment) DevHost() *schema.DevHost     { return se.root.DevHost }
+func (se serializedEnvironment) Proto() *schema.Environment   { return se.env }
+func (se serializedEnvironment) ErrorLocation() string        { return se.root.Abs() }
