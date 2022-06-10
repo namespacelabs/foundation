@@ -16,6 +16,7 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/schemahelper"
 	"namespacelabs.dev/foundation/std/testdata/service/proto"
 	"namespacelabs.dev/foundation/testing"
 )
@@ -24,8 +25,8 @@ func main() {
 	testing.Do(func(ctx context.Context, t testing.Test) error {
 		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/testdata/service/post", "post")
 
-		metrics, err := schema.UnmarshalServiceMetadata[*schema.HttpExportedService](
-			schema.CombineServiceMetadata(t.InternalOf(endpoint.ServerOwner)),
+		metrics, err := schemahelper.UnmarshalServiceMetadata[*schema.HttpExportedService](
+			schemahelper.CombineServiceMetadata(t.InternalOf(endpoint.ServerOwner)),
 			"prometheus.io/metrics")
 		if err != nil {
 			return err

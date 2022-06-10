@@ -13,6 +13,11 @@ type CheckRequest struct {
 	UserData string `json:"userData"`
 }
 
+type RobotLoginRequest struct {
+	Repository  string `json:"repository"`
+	AccessToken string `json:"accessToken"`
+}
+
 func CheckSignin(ctx context.Context, userData string) (*UserAuth, error) {
 	req := CheckRequest{
 		UserData: userData,
@@ -20,6 +25,19 @@ func CheckSignin(ctx context.Context, userData string) (*UserAuth, error) {
 
 	userAuth := &UserAuth{}
 	err := callProdAPI(ctx, "nsl.signin.SigninService/Check", req, func(dec *json.Decoder) error {
+		return dec.Decode(userAuth)
+	})
+	return userAuth, err
+}
+
+func RobotLogin(ctx context.Context, repository, accessToken string) (*UserAuth, error) {
+	req := RobotLoginRequest{
+		Repository:  repository,
+		AccessToken: accessToken,
+	}
+
+	userAuth := &UserAuth{}
+	err := callProdAPI(ctx, "nsl.signin.SigninService/RobotLogin", req, func(dec *json.Decoder) error {
 		return dec.Decode(userAuth)
 	})
 	return userAuth, err

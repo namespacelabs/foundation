@@ -23,7 +23,9 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-var useSeparateGoModPhase = false
+var (
+	useSeparateGoModPhase = false
+)
 
 type buildConf interface {
 	build.BuildTarget
@@ -103,10 +105,16 @@ func goAlpine(version string, platform specs.Platform) llb.State {
 }
 
 func makeGoBuildBase(version string, platform specs.Platform) llb.State {
-	return goAlpine(version, platform).
+	st := goAlpine(version, platform).
 		AddEnv("CGO_ENABLED", "0").
 		AddEnv("PATH", "/usr/local/go/bin:"+system.DefaultPathEnvUnix).
 		AddEnv("GOPATH", "/go").
 		Run(llb.Shlex("apk add --no-cache git"),
 			llb.WithCustomName("[prepare build image] apk add --no-cache git")).Root()
+
+	if llbutil.GitCredentialsBuildkitSecret != "" {
+		st = st.Run(llb.Shlex("git config credential.helper store")).Root()
+	}
+
+	return st
 }

@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/schemahelper"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -72,7 +73,7 @@ func ComputeEndpoints(srv provision.Server, allocatedPorts []*schema.Endpoint_Po
 	var gatewayServices []string
 	var publicGateway bool
 	for _, endpoint := range endpoints {
-		exported, err := schema.UnmarshalServiceMetadata[*schema.GrpcExportService](endpoint.ServiceMetadata, kindNeedsGrpcGateway)
+		exported, err := schemahelper.UnmarshalServiceMetadata[*schema.GrpcExportService](endpoint.ServiceMetadata, kindNeedsGrpcGateway)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -9,6 +9,7 @@ package foundation.languages.nodejs.integration;
 option go_package = "namespacelabs.dev/foundation/languages/nodejs/integration";
 
 import "schema/schema.proto";
+import "workspace/source/protos/filedescset.proto";
 
 message OpGenServer {
     foundation.schema.Server server             = 1;
@@ -23,6 +24,11 @@ message OpGenNode {
 message OpGenNodeStub {
     foundation.schema.Node node     = 1;
     string                 filename = 2;
+}
+
+message OpGenGrpc {
+    string                                                      package_name = 1;
+    foundation.workspace.source.protos.FileDescriptorSetAndDeps protos       = 2;
 }
 
 // Generate required files in a Yarn root.

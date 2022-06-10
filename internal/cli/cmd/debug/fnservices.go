@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package cmd
+package debug
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/provision"
 )
@@ -21,6 +22,26 @@ func NewFnServicesCmd() *cobra.Command {
 		Short:  "Foundation services-related activities (internal only).",
 		Hidden: true,
 	}
+
+	robotLogin := fncobra.CmdWithEnv(&cobra.Command{
+		Use:   "robot-login",
+		Short: "Attempts to login as a robot.",
+		Args:  cobra.ExactArgs(1),
+	}, func(ctx context.Context, env provision.Env, args []string) error {
+		accessToken, err := tui.Ask(ctx, "Which Access Token would you like to use today?", "That would be a Github access token.", "access token")
+		if err != nil {
+			return err
+		}
+
+		userAuth, err := fnapi.RobotLogin(ctx, args[0], accessToken)
+		if err != nil {
+			return err
+		}
+
+		w := json.NewEncoder(console.Stdout(ctx))
+		w.SetIndent("", "  ")
+		return w.Encode(userAuth)
+	})
 
 	var fqdn, target string
 
@@ -63,6 +84,7 @@ func NewFnServicesCmd() *cobra.Command {
 
 	_ = allocateName.MarkFlagRequired("fqdn")
 
+	cmd.AddCommand(robotLogin)
 	cmd.AddCommand(mapAddr)
 	cmd.AddCommand(allocateName)
 

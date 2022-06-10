@@ -11,11 +11,12 @@ import (
 	"io"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	batchv1 "k8s.io/client-go/applyconfigurations/batch/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	networkingv1 "k8s.io/client-go/applyconfigurations/networking/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -61,10 +62,7 @@ func MultipleFromReader(description string, r io.Reader) ([]kubedef.Apply, error
 
 		actuals = append(actuals, kubedef.Apply{
 			Description: fmt.Sprintf("%s: %s %s", description, p.Kind, p.Name),
-			Name:        p.Name,
-			Namespace:   p.Namespace,
 			Resource:    p.Resource,
-			Body:        p.Body,
 		})
 	}
 
@@ -75,87 +73,143 @@ type Parsed struct {
 	Kind      string
 	Name      string
 	Namespace string
-	Resource  string
-	Body      interface{}
+	Resource  interface{}
+}
+
+func Header(contents []byte) (ObjHeader, error) {
+	var m ObjHeader
+	if err := yaml.Unmarshal(contents, &m); err != nil {
+		return ObjHeader{}, err
+	}
+
+	if m.Kind == "" {
+		return ObjHeader{}, fnerrors.BadInputError("kind is required")
+	}
+	if m.Name == "" {
+		return ObjHeader{}, fnerrors.BadInputError("name is required")
+	}
+
+	return m, nil
 }
 
 func Single(contents []byte) (Parsed, error) {
 	// For simplicity, we do a two pass parse, first we walk through all resource
 	// types to instantiate the appropriate types, and then we actually parse them.
 
-	var m objHeader
-	if err := yaml.Unmarshal(contents, &m); err != nil {
+	m, err := Header(contents)
+	if err != nil {
 		return Parsed{}, err
 	}
 
-	if m.Kind == nil {
-		return Parsed{}, fnerrors.BadInputError("kind is required")
-	}
-	if m.Name == nil {
-		return Parsed{}, fnerrors.BadInputError("name is required")
-	}
-
-	msg, typ := msgFromKind(*m.Kind)
-	name := *m.Name
+	msg := MessageTypeFromKind(m.Kind)
 
 	if msg == nil {
-		return Parsed{}, fnerrors.BadInputError("don't know how to handle %q", *m.Kind)
-	}
-
-	var ns string
-	if m.Namespace != nil {
-		ns = *m.Namespace
+		return Parsed{}, fnerrors.BadInputError("don't know how to handle %q", m.Kind)
 	}
 
 	parsed := Parsed{
-		Kind:      *m.Kind,
-		Name:      name,
-		Namespace: ns,
-		Resource:  typ,
-		Body:      msg,
+		Kind:      m.Kind,
+		Name:      m.Name,
+		Namespace: m.Namespace,
+		Resource:  msg,
 	}
 
-	if err := yaml.Unmarshal(contents, parsed.Body); err != nil {
+	if err := yaml.Unmarshal(contents, parsed.Resource); err != nil {
 		return Parsed{}, err
 	}
 
 	return parsed, nil
 }
 
-func msgFromKind(kind string) (interface{}, string) {
+func ResourceEndpointFromKind(kind string) string {
 	switch kind {
 	case "Namespace":
-		return &corev1.NamespaceApplyConfiguration{}, "namespaces"
+		return "namespaces"
 	case "ServiceAccount":
-		return &corev1.ServiceAccountApplyConfiguration{}, "serviceaccounts"
+		return "serviceaccounts"
 	case "ConfigMap":
-		return &corev1.ConfigMapApplyConfiguration{}, "configmaps"
+		return "configmaps"
 	case "ClusterRole":
-		return &rbacv1.ClusterRoleApplyConfiguration{}, "clusterroles"
+		return "clusterroles"
 	case "ClusterRoleBinding":
-		return &rbacv1.ClusterRoleBindingApplyConfiguration{}, "clusterrolebindings"
+		return "clusterrolebindings"
 	case "Role":
-		return &rbacv1.RoleApplyConfiguration{}, "roles"
+		return "roles"
 	case "RoleBinding":
-		return &rbacv1.RoleBindingApplyConfiguration{}, "rolebindings"
+		return "rolebindings"
+	case "Pod":
+		return "pods"
 	case "Service":
-		return &corev1.ServiceApplyConfiguration{}, "services"
+		return "services"
+	case "Secret":
+		return "secrets"
 	case "Deployment":
-		return &appsv1.DeploymentApplyConfiguration{}, "deployments"
+		return "deployments"
+	case "StatefulSet":
+		return "statefulsets"
+	case "Ingress":
+		return "ingresses"
 	case "IngressClass":
-		return &networkingv1.IngressClassApplyConfiguration{}, "ingressclasses"
+		return "ingressclasses"
 	case "ValidatingWebhookConfiguration":
-		return &admissionregistrationv1.ValidatingWebhookConfigurationApplyConfiguration{}, "validatingwebhookconfigurations"
+		return "validatingwebhookconfigurations"
 	case "CustomResourceDefinition":
-		return &apiextensionsv1.CustomResourceDefinition{}, "customresourcedefinitions"
+		return "customresourcedefinitions"
 	case "Job":
-		return &batchv1.JobApplyConfiguration{}, "jobs"
+		return "jobs"
+	case "PersistentVolumeClaim":
+		return "persistentvolumeclaims"
 	}
 
-	return nil, ""
+	return ""
 }
 
-type objHeader struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
-	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
+func MessageTypeFromKind(kind string) interface{} {
+	switch kind {
+	case "Namespace":
+		return &corev1.NamespaceApplyConfiguration{}
+	case "ServiceAccount":
+		return &corev1.ServiceAccountApplyConfiguration{}
+	case "ConfigMap":
+		return &corev1.ConfigMapApplyConfiguration{}
+	case "ClusterRole":
+		return &rbacv1.ClusterRoleApplyConfiguration{}
+	case "ClusterRoleBinding":
+		return &rbacv1.ClusterRoleBindingApplyConfiguration{}
+	case "Role":
+		return &rbacv1.RoleApplyConfiguration{}
+	case "RoleBinding":
+		return &rbacv1.RoleBindingApplyConfiguration{}
+	case "Service":
+		return &corev1.ServiceApplyConfiguration{}
+	case "Secret":
+		return &corev1.SecretApplyConfiguration{}
+	case "Deployment":
+		return &appsv1.DeploymentApplyConfiguration{}
+	case "Ingress":
+		return &networkingv1.IngressApplyConfiguration{}
+	case "IngressClass":
+		return &networkingv1.IngressClassApplyConfiguration{}
+	case "ValidatingWebhookConfiguration":
+		return &admissionregistrationv1.ValidatingWebhookConfigurationApplyConfiguration{}
+	case "CustomResourceDefinition":
+		return &apiextensionsv1.CustomResourceDefinition{}
+	case "Job":
+		return &batchv1.JobApplyConfiguration{}
+	}
+
+	return nil
+}
+
+func ResourceFromKind(kind string) (interface{}, string) {
+	return MessageTypeFromKind(kind), ResourceEndpointFromKind(kind)
+}
+
+type ObjHeader struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+}
+
+func (obj ObjHeader) GetObjectKind() schema.ObjectKind {
+	return &obj.TypeMeta
 }

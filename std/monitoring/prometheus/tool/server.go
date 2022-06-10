@@ -41,9 +41,7 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Prometheus ClusterRole",
-		Resource:    "clusterroles",
-		Name:        clusterRoleName,
-		Body: rbacv1.ClusterRole(clusterRoleName).WithRules(
+		Resource: rbacv1.ClusterRole(clusterRoleName).WithRules(
 			rbacv1.PolicyRule().
 				WithAPIGroups("").
 				WithResources("nodes", "nodes/proxy", "services", "endpoints", "pods").
@@ -61,9 +59,7 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 	serviceAccount := makeServiceAccount(r.Focus.Server)
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Prometheus ClusterRoleBinding",
-		Resource:    "clusterrolebindings",
-		Name:        clusterRoleBindingName,
-		Body: rbacv1.ClusterRoleBinding(clusterRoleBindingName).
+		Resource: rbacv1.ClusterRoleBinding(clusterRoleBindingName).
 			WithRoleRef(rbacv1.RoleRef().
 				WithAPIGroup("rbac.authorization.k8s.io").
 				WithKind("ClusterRole").
@@ -76,10 +72,7 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Prometheus Service Account",
-		Resource:    "serviceaccounts",
-		Namespace:   namespace,
-		Name:        serviceAccount,
-		Body:        corev1.ServiceAccount(serviceAccount, namespace).WithLabels(map[string]string{}),
+		Resource:    corev1.ServiceAccount(serviceAccount, namespace).WithLabels(map[string]string{}),
 	})
 
 	configs := map[string]string{
@@ -88,10 +81,7 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Prometheus ConfigMap",
-		Resource:    "configmaps",
-		Namespace:   namespace,
-		Name:        configMapName,
-		Body:        corev1.ConfigMap(configMapName, namespace).WithData(configs),
+		Resource:    corev1.ConfigMap(configMapName, namespace).WithData(configs),
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{

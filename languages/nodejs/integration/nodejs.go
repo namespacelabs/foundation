@@ -107,6 +107,20 @@ func Register() {
 		return nil, generateNodeImplStub(ctx, pkg, x.Filename, x.Node)
 	})
 
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenGrpc) (*ops.HandleResult, error) {
+		wenv, ok := env.(workspace.Packages)
+		if !ok {
+			return nil, fnerrors.New("workspace.Packages required")
+		}
+
+		loc, err := wenv.Resolve(ctx, schema.PackageName(x.PackageName))
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, generateGrpcApi(ctx, x.Protos, loc)
+	})
+
 	ops.Register[*OpGenYarnRoot](yarnRootStatefulGen{})
 }
 
@@ -317,8 +331,8 @@ func generateNodeImplStub(ctx context.Context, pkg *workspace.Package, filename 
 	for key, srv := range pkg.Services {
 		srvNameParts := strings.Split(key, ".")
 		srvName := srvNameParts[len(srvNameParts)-1]
-		tmplOptions.ServiceServerName = fmt.Sprintf("I%sServer", srvName)
-		tmplOptions.ServiceName = fmt.Sprintf("%sService", srvName)
+		tmplOptions.ServiceServerName = fmt.Sprintf("%sServer", srvName)
+		tmplOptions.DefineServiceFunName = fmt.Sprintf("define%sServer", srvName)
 
 		srvFullFn, err := fileNameForService(srvName, srv.File)
 		if err != nil {
@@ -549,12 +563,16 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 
 	// TODO: bring back proto generation once dependency on the gRPC Backend proto
 	// is supported in node.js.
-	if len(list) > 0 && !shared.IsStdGrpcExtension(string(pkg.PackageName()), "Backend") {
-		dl.Add("Generate Javascript/Typescript proto sources", &source.OpProtoGen{
+	if len(list) > 0 && !shared.IsStdGrpcExtension(pkg.PackageName().String(), "Backend") {
+		dl.Add("Generate Typescript proto sources", &source.OpProtoGen{
 			PackageName:         pkg.PackageName().String(),
 			GenerateHttpGateway: pkg.Node().ExportServicesAsHttp,
 			Protos:              protos.Merge(list...),
 			Framework:           source.OpProtoGen_TYPESCRIPT,
+		})
+		dl.Add("Generate Typescript gRPC proto sources", &OpGenGrpc{
+			PackageName: pkg.PackageName().String(),
+			Protos:      protos.Merge(list...),
 		})
 	}
 

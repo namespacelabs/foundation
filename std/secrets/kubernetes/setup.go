@@ -92,10 +92,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "server secrets",
-		Resource:    "secrets",
-		Namespace:   namespace,
-		Name:        serverSecretName,
-		Body: applycorev1.
+		Resource: applycorev1.
 			Secret(serverSecretName, namespace).
 			WithType(v1.SecretTypeOpaque).
 			WithAnnotations(kubedef.MakeAnnotations(r.Env, r.Stack.GetServer(r.Focus.GetPackageName()))).
@@ -199,8 +196,6 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				Description:         "Generated server secrets",
 				SkipIfAlreadyExists: true,
 				Resource:            "secrets",
-				Namespace:           namespace,
-				Name:                generatedName,
 				Body:                newSecret,
 			})
 		} else {

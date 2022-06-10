@@ -9,6 +9,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"strings"
 
 	"github.com/jet/kube-webhook-certgen/pkg/certs"
@@ -21,6 +22,7 @@ import (
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -30,7 +32,7 @@ import (
 )
 
 var (
-	//go:embed ingress.yaml
+	//go:embed ingress.yaml ingress_webhook.yaml
 	lib embed.FS
 )
 
@@ -114,41 +116,32 @@ func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 		return nil, err
 	}
 
-	var defs []*schema.SerializedInvocation
-	var service, webhook kubedef.Apply
-	for _, apply := range applies {
-		if apply.Resource == "validatingwebhookconfigurations" && apply.Name == "ingress-nginx-admission" {
-			webhook = apply
-			continue
-		} else if apply.Resource == "services" && apply.Name == "ingress-nginx-controller-admission" {
-			service = apply
-		}
-
-		def, err := apply.ToDefinition()
-		if err != nil {
-			return nil, err
-		}
-		defs = append(defs, def)
+	webhookDef, err := fs.ReadFile(lib, "ingress_webhook.yaml")
+	if err != nil {
+		return nil, err
 	}
 
-	if webhook.Body == nil {
-		return nil, fnerrors.InternalError("nginx: webhook definition is missing")
+	webhook, err := kubeparser.Single(webhookDef)
+	if err != nil {
+		return nil, err
 	}
 
-	if service.Body == nil {
-		return nil, fnerrors.InternalError("nginx: service definition is missing")
+	defs, err := defs.Make(applies...)
+	if err != nil {
+		return nil, err
 	}
 
-	serializedWebhook, err := json.Marshal(webhook.Body)
+	serializedWebhook, err := json.Marshal(webhook.Resource)
 	if err != nil {
 		return nil, fnerrors.InternalError("nginx: failed to serialize webhook: %w", err)
 	}
 
+	const ns = "ingress-nginx"
 	op, err := anypb.New(&OpGenerateWebhookCert{
-		Namespace:         service.Namespace,
+		Namespace:         ns,
 		SecretName:        "ingress-nginx-admission",
 		WebhookDefinition: serializedWebhook,
-		TargetHost:        fmt.Sprintf("ingress-nginx-controller-admission,ingress-nginx-controller-admission.%s.svc", service.Namespace),
+		TargetHost:        fmt.Sprintf("ingress-nginx-controller-admission,ingress-nginx-controller-admission.%s.svc", ns),
 	})
 
 	if err != nil {

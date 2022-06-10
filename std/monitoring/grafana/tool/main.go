@@ -97,10 +97,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Grafana ConfigMap",
-		Resource:    "configmaps",
-		Namespace:   namespace,
-		Name:        configMapName,
-		Body:        corev1.ConfigMap(configMapName, namespace).WithData(configs),
+		Resource:    corev1.ConfigMap(configMapName, namespace).WithData(configs),
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{

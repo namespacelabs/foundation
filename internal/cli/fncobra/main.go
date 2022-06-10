@@ -41,6 +41,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/git"
+	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/ulimit"
@@ -209,10 +210,13 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	rootCmd.PersistentFlags().Var(buildkit.ImportCacheVar, "buildkit_import_cache", "Internal, set buildkit import-cache.")
 	rootCmd.PersistentFlags().Var(buildkit.ExportCacheVar, "buildkit_export_cache", "Internal, set buildkit export-cache.")
+	rootCmd.PersistentFlags().StringVar(&buildkit.BuildkitSecrets, "buildkit_secrets", "", "A list of secrets to pass in to buildkit.")
 	rootCmd.PersistentFlags().BoolVar(&compute.VerifyCaching, "verify_compute_caching", compute.VerifyCaching,
 		"Internal, do not use cached contents of compute graph, verify that the cached content matches instead.")
 	rootCmd.PersistentFlags().BoolVar(&golang.UseBuildKitForBuilding, "golang_use_buildkit", golang.UseBuildKitForBuilding,
 		"If set to true, buildkit is used for building, instead of a ko-style builder.")
+	rootCmd.PersistentFlags().StringVar(&llbutil.GitCredentialsBuildkitSecret, "golang_buildkit_git_credentials_secret", "",
+		"If set, go invocations in buildkit get the specified secret mounted as ~/.git-credentials")
 	rootCmd.PersistentFlags().BoolVar(&deploy.AlsoComputeIngress, "also_compute_ingress", deploy.AlsoComputeIngress,
 		"[development] Set to false, to skip ingress computation.")
 	rootCmd.PersistentFlags().BoolVar(&tel.UseTelemetry, "send_usage_data", tel.UseTelemetry,
@@ -225,6 +229,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, prints a trace of foundation errors leading to the root cause with source info.")
 	rootCmd.PersistentFlags().BoolVar(&tools.UseKubernetesRuntime, "run_tools_on_kubernetes", tools.UseKubernetesRuntime,
 		"If set to true, runs tools in Kubernetes, instead of Docker.")
+	rootCmd.PersistentFlags().BoolVar(&deploy.RunCodegen, "run_codegen", deploy.RunCodegen, "If set to false, skip codegen.")
 	rootCmd.PersistentFlags().BoolVar(&runtime.UseGoInternalGrpcGateway, "golang_use_internal_grpc_gateway", runtime.UseGoInternalGrpcGateway,
 		"If set to true, the grpc gateway support built into Go servers is used.")
 
@@ -232,13 +237,16 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	for _, noisy := range []string{
 		"buildkit_import_cache",
 		"buildkit_export_cache",
+		"buildkit_secrets",
 		"verify_compute_caching",
 		"also_compute_ingress",
 		"golang_use_buildkit",
+		"golang_buildkit_git_credentials_secret",
 		"send_usage_data",
 		"skip_buildkit_workspace_size_check",
 		"ignore_zfs_check",
 		"run_tools_on_kubernetes",
+		"run_codegen",
 		"golang_use_internal_grpc_gateway",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)

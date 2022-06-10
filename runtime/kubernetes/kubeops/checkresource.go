@@ -6,26 +6,27 @@ package kubeops
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/rest"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func checkResourceExists(ctx context.Context, restcfg *rest.Config, description string, resource client.ResourceClassLike, name, namespace string, scope []schema.PackageName) (bool, error) {
-	var exists bool
-	// XXX this is racy here, we need to have a loop and a callback for contents.
-	if err := tasks.Action("kubernetes.get").Scope(scope...).
+func fetchResource(ctx context.Context, restcfg *rest.Config, description string, resource client.ResourceClassLike, name, namespace string, scope []schema.PackageName) (*unstructured.Unstructured, error) {
+	return tasks.Return(ctx, tasks.Action("kubernetes.get").Scope(scope...).
 		HumanReadablef("Check: "+description).
 		Arg("resource", resourceName(resource)).
 		Arg("name", name).
-		Arg("namespace", namespace).Run(ctx, func(ctx context.Context) error {
+		Arg("namespace", namespace), func(ctx context.Context) (*unstructured.Unstructured, error) {
 		client, err := client.MakeResourceSpecificClient(ctx, resource, restcfg)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		opts := metav1.GetOptions{}
@@ -34,24 +35,27 @@ func checkResourceExists(ctx context.Context, restcfg *rest.Config, description 
 			req.Namespace(namespace)
 		}
 
-		if err := req.Resource(resourceName(resource)).
+		r := req.Resource(resourceName(resource)).
 			Name(name).
-			Body(&opts).
-			Do(ctx).Error(); err != nil {
+			Body(&opts)
+
+		if OutputKubeApiURLs {
+			fmt.Fprintf(console.Debug(ctx), "kubernetes: api get call %q\n", r.URL())
+		}
+
+		var res unstructured.Unstructured
+		if err := r.Do(ctx).Into(&res); err != nil {
 			if errors.IsNotFound(err) {
-				return nil
+				tasks.Attachments(ctx).AddResult("exists", false)
+				return nil, nil
 			} else {
-				return err
+				return nil, err
 			}
 		}
 
-		exists = true
-		return nil
-	}); err != nil {
-		return false, err
-	}
-
-	return exists, nil
+		tasks.Attachments(ctx).AddResult("exists", true)
+		return &res, nil
+	})
 }
 
 func resourceName(r client.ResourceClassLike) string {

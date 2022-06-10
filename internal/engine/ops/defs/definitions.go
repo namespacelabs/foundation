@@ -41,7 +41,7 @@ func (d *DefList) Serialize() ([]*schema.SerializedInvocation, error) {
 	return defs, nil
 }
 
-func Make(ops ...MakeDefinition) ([]*schema.SerializedInvocation, error) {
+func Make[V MakeDefinition](ops ...V) ([]*schema.SerializedInvocation, error) {
 	var defs []*schema.SerializedInvocation
 	for _, m := range ops {
 		def, err := m.ToDefinition()

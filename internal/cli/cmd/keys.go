@@ -5,7 +5,6 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -14,11 +13,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"filippo.io/age"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -216,29 +213,6 @@ func enc(ctx context.Context, dir string, src fs.FS, reencrypt bool) error {
 	return nil
 }
 
-func readSecret(ctx context.Context, title, desc, placeholder string) ([]byte, error) {
-	if !term.IsTerminal(syscall.Stdin) {
-		reader := bufio.NewReader(os.Stdin)
-		// Read until (required) newline.
-		s, err := reader.ReadString('\n')
-		if err != nil {
-			return nil, err
-		}
-		return []byte(s), nil
-	}
-
-	secret, err := tui.Ask(ctx, title, desc, placeholder)
-	if err != nil {
-		return nil, err
-	}
-
-	if secret == "" {
-		return nil, context.Canceled
-	}
-
-	return []byte(secret), nil
-}
-
 func importImpl(ctx context.Context, publicKey string) error {
 	if _, err := age.ParseRecipients(strings.NewReader(publicKey)); err != nil {
 		return fnerrors.BadInputError("key %q is not valid: %w", publicKey, err)
@@ -259,7 +233,7 @@ func importImpl(ctx context.Context, publicKey string) error {
 		return err
 	}
 
-	pass, err := readSecret(ctx, "Please specify the private key to import",
+	pass, err := tui.AskSecret(ctx, "Please specify the private key to import",
 		"The input will not be echo-ed.", "AGE-SECRET-KEY-... (private key)")
 	if err != nil {
 		return err

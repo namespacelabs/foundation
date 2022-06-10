@@ -8,6 +8,7 @@ import (
 	"context"
 	"io/fs"
 	"log"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
@@ -15,6 +16,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
+)
+
+const (
+	maxToolWait = 2 * time.Minute
 )
 
 func init() {
@@ -65,11 +70,25 @@ func (p Request) PackageOwner() string {
 }
 
 func Handle(h *Handlers) {
-	if err := RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
-		protocol.RegisterInvocationServiceServer(sr, h.ServiceHandler())
-	}); err != nil {
-		log.Fatal(err)
+	done := make(chan struct{})
+
+	go func() {
+		if err := RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
+			protocol.RegisterInvocationServiceServer(sr, h.ServiceHandler())
+		}); err != nil {
+			log.Fatal(err)
+		}
+
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-time.After(maxToolWait):
+		log.Fatalf("aborting tool after %v", maxToolWait)
+	case <-done:
+		// graceful exit
 	}
+
 }
 
 func HandleInvoke(f InvokeFunc) {

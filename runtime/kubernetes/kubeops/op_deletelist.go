@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -46,13 +47,17 @@ func registerDeleteList() {
 
 			listOpts := metav1.ListOptions{LabelSelector: deleteList.LabelSelector}
 
-			var res unstructured.UnstructuredList
-			if err := client.Get().
+			get := client.Get().
 				Namespace(deleteList.Namespace).
 				Resource(resourceName(deleteList)).
-				VersionedParams(&listOpts, metav1.ParameterCodec).
-				Do(ctx).
-				Into(&res); err != nil {
+				VersionedParams(&listOpts, metav1.ParameterCodec)
+
+			if OutputKubeApiURLs {
+				fmt.Fprintf(console.Debug(ctx), "kubernetes: api get call %q\n", get.URL())
+			}
+
+			var res unstructured.UnstructuredList
+			if err := get.Do(ctx).Into(&res); err != nil {
 				return err
 			}
 
@@ -76,12 +81,17 @@ func registerDeleteList() {
 
 				opts := metav1.DeleteOptions{}
 
-				return client.Delete().
+				r := client.Delete().
 					Namespace(deleteList.Namespace).
 					Resource(resourceName(deleteList)).
 					Name(u.GetName()).
-					Body(&opts).
-					Do(ctx).Error()
+					Body(&opts)
+
+				if OutputKubeApiURLs {
+					fmt.Fprintf(console.Debug(ctx), "kubernetes: api delete call %q\n", r.URL())
+				}
+
+				return r.Do(ctx).Error()
 			})
 		}); err != nil {
 			return nil, fnerrors.InvocationError("%s: %w", d.Description, err)

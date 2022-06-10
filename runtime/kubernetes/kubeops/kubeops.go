@@ -6,6 +6,8 @@ package kubeops
 
 import "namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 
+var OutputKubeApiURLs = true
+
 func Register() {
 	registerApply()
 	registerCreate()

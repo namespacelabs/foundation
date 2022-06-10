@@ -50,7 +50,7 @@ func convertProtoType(ic *imports.ImportCollector, t shared.ProtoTypeData) (*tmp
 		// strip suffix
 		tsModuleName = strings.TrimSuffix(tsModuleName, ".proto")
 		if t.Kind == shared.ProtoService {
-			tsModuleName += "_grpc_pb"
+			tsModuleName = strings.TrimSuffix(generatedGrpcFilePath(tsModuleName), ".ts")
 		} else {
 			tsModuleName += "_pb"
 		}

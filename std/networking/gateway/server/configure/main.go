@@ -56,9 +56,8 @@ type configuration struct{}
 
 func (configuration) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
 	const (
-		configVolume           = "fn--gateway-bootstrap"
-		filename               = "boostrap-xds.yaml"
-		httpGrpcTranscoderName = "HttpGrpcTranscoder"
+		configVolume = "fn--gateway-bootstrap"
+		filename     = "boostrap-xds.yaml"
 	)
 
 	tmplData := tmplData{
@@ -85,10 +84,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	// XXX use immutable ConfigMaps.
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Network Gateway ConfigMap",
-		Resource:    "configmaps",
-		Namespace:   namespace,
-		Name:        configVolume,
-		Body: corev1.ConfigMap(configVolume, namespace).WithData(
+		Resource: corev1.ConfigMap(configVolume, namespace).WithData(
 			map[string]string{
 				filename: bootstrapData.String(),
 			},
@@ -108,27 +104,20 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	out.Invocations = append(out.Invocations, kubedef.Create{
 		Description:      "Network Gateway HTTP gRPC Transcoder CustomResourceDefinition",
 		Resource:         "customresourcedefinitions",
-		Namespace:        namespace,
-		Name:             httpGrpcTranscoderName,
-		Body:             apply.Body,
+		Body:             apply.Resource,
 		UpdateIfExisting: true,
 	})
 
 	serviceAccount := makeServiceAccount(req.Focus.Server)
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Network Gateway Service Account",
-		Resource:    "serviceaccounts",
-		Namespace:   namespace,
-		Name:        serviceAccount,
-		Body:        corev1.ServiceAccount(serviceAccount, namespace),
+		Resource:    corev1.ServiceAccount(serviceAccount, namespace),
 	})
 
 	clusterRole := "fn-gateway-cluster-role"
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Network Gateway Cluster Role",
-		Resource:    "clusterroles",
-		Name:        clusterRole,
-		Body: rbacv1.ClusterRole(clusterRole).WithRules(
+		Resource: rbacv1.ClusterRole(clusterRole).WithRules(
 			rbacv1.PolicyRule().
 				WithAPIGroups("k8s.namespacelabs.dev").
 				WithResources("httpgrpctranscoders").
@@ -139,9 +128,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	clusterRoleBinding := "fn-gateway-cluster-role-binding"
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Network Gateway Cluster Role Binding",
-		Resource:    "clusterrolebindings",
-		Name:        clusterRoleBinding,
-		Body: rbacv1.ClusterRoleBinding(clusterRoleBinding).
+		Resource: rbacv1.ClusterRoleBinding(clusterRoleBinding).
 			WithRoleRef(rbacv1.RoleRef().
 				WithAPIGroup("rbac.authorization.k8s.io").
 				WithKind("ClusterRole").

@@ -11,8 +11,8 @@ const args = yargs(process.argv)
 	})
 	.parse();
 
-export function provideBackend<T>(outputType: new (...args: any[]) => T): T {
+export function provideBackend<T>(clientFactory: (...args: any[]) => T): T {
 	// TODO: support communication with services in other containers.
 	// TODO: support TLS.
-	return new outputType(`127.0.0.1:${args.port}`, ChannelCredentials.createInsecure(), {});
+	return clientFactory(`127.0.0.1:${args.port}`, ChannelCredentials.createInsecure());
 }

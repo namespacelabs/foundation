@@ -62,9 +62,7 @@ func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 	// assumes that a namespace already exists.
 	def, err := (kubedef.Apply{
 		Description: "Namespace",
-		Resource:    "namespaces",
-		Name:        r.moduleNamespace,
-		Body: applycorev1.Namespace(r.moduleNamespace).
+		Resource: applycorev1.Namespace(r.moduleNamespace).
 			WithLabels(kubedef.MakeLabels(r.env, nil)).
 			WithAnnotations(kubedef.MakeAnnotations(r.env, nil)),
 	}).ToDefinition()
@@ -152,7 +150,7 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 					fmt.Fprintln(output, "---")
 				}
 
-				b, err := yaml.Marshal(decl.Body)
+				b, err := yaml.Marshal(decl.Resource)
 				if err == nil {
 					fmt.Fprintf(output, "%s\n", b)
 					// XXX ignoring errors

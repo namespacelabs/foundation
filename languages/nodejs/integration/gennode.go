@@ -7,6 +7,7 @@ package integration
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 
 	"github.com/iancoleman/strcase"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -152,7 +153,11 @@ func convertDependency(ic *imports.ImportCollector, dep shared.DependencyData) (
 
 	var outputFactoryType *tmplImportedType
 	if dep.ProviderType.IsParameterized {
-		outputFactoryType = providerType
+		outputFactoryType = &tmplImportedType{
+			// This only works for Foundation's gRPC codegen.
+			Name:        fmt.Sprintf("new%s", providerType.Name),
+			ImportAlias: providerType.ImportAlias,
+		}
 	}
 
 	return tmplDependency{

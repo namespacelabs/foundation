@@ -152,8 +152,12 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 		return err
 	}
 
-	for k, r := range res.Value {
-		fmt.Fprintf(console.Stdout(ctx), "%s: %s\n", pkgs[k].PackageName(), r.Value)
+	if len(res.Value) == 1 {
+		fmt.Fprintf(console.Stdout(ctx), "%s\n", res.Value[0].Value)
+	} else {
+		for k, r := range res.Value {
+			fmt.Fprintf(console.Stdout(ctx), "%s: %s\n", pkgs[k].PackageName(), r.Value)
+		}
 	}
 
 	if outputPrebuilts && len(res.Value) > 0 {

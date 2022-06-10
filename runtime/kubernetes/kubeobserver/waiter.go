@@ -46,7 +46,7 @@ type WaitOnResource struct {
 
 	Invocation      *schema.SerializedInvocation
 	Name, Namespace string
-	ResourceClass   string
+	ResourceKind    string
 	Scope           schema.PackageName
 
 	PreviousGen, ExpectedGen int64
@@ -66,13 +66,13 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 		func(ctx context.Context) error {
 			ev := ops.Event{
 				ResourceID:          fmt.Sprintf("%s/%s", w.Namespace, w.Name),
-				Kind:                w.ResourceClass,
+				Kind:                w.ResourceKind,
 				Scope:               w.Scope,
-				RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.Namespace, w.ResourceClass, w.Name),
+				RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.Namespace, strings.ToLower(w.ResourceKind), w.Name),
 			}
 
-			switch w.ResourceClass {
-			case "deployments", "statefulsets":
+			switch w.ResourceKind {
+			case "Deployment", "StatefulSet":
 				ev.Category = "Servers deployed"
 			default:
 				ev.Category = w.Invocation.Description
@@ -90,8 +90,8 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 				var observedGeneration int64
 				var readyReplicas, replicas int32
 
-				switch w.ResourceClass {
-				case "deployments":
+				switch w.ResourceKind {
+				case "Deployment":
 					res, err := cli.AppsV1().Deployments(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
 					if err != nil {
 						return false, err
@@ -102,7 +102,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 					readyReplicas = res.Status.ReadyReplicas
 					ev.ImplMetadata = res.Status
 
-				case "statefulsets":
+				case "StatefulSet":
 					res, err := cli.AppsV1().StatefulSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
 					if err != nil {
 						return false, err
@@ -114,7 +114,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 					ev.ImplMetadata = res.Status
 
 				default:
-					return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.ResourceClass)
+					return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.ResourceKind)
 				}
 
 				if rs, err := fetchReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen); err == nil {

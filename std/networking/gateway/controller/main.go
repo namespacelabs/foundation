@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"flag"
+	"log"
 	"os"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
@@ -41,6 +42,9 @@ var (
 
 	enableLeaderElection = flag.Bool("controller_enable_leader_election", false,
 		"Enable leader election for the Kubernetes controller manager, with true guaranteeing only one active controller manager.")
+
+	// HTTP listening address:port pair.
+	httpEnvoyListenAddr = flag.String("http_envoy_listen_addr", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
 )
 
 func main() {
@@ -52,8 +56,12 @@ func main() {
 	// Create a cache
 	cache := cache.NewSnapshotCache(false, cache.IDHash{}, l)
 
-	// Create the snapshot that we'll serve to Envoy.
-	snapshot := GenerateSnapshot()
+	// Create the snapshot that we'll serve to Envoy
+	snapshot, err := GenerateSnapshot(*httpEnvoyListenAddr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if err := snapshot.Consistent(); err != nil {
 		l.Errorf("snapshot inconsistency: %+v\n%+v", snapshot, err)
 		os.Exit(1)

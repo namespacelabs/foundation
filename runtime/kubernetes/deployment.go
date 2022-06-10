@@ -349,10 +349,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: fmt.Sprintf("Persistent storage for %s", rs.Owner),
-			Resource:    "persistentvolumeclaims",
-			Namespace:   ns,
-			Name:        rs.PersistentId,
-			Body: applycorev1.PersistentVolumeClaim(rs.PersistentId, ns).
+			Resource: applycorev1.PersistentVolumeClaim(rs.PersistentId, ns).
 				WithSpec(applycorev1.PersistentVolumeClaimSpec().
 					WithAccessModes(corev1.ReadWriteOnce).
 					WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
@@ -423,10 +420,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Service Account",
-			Resource:    "serviceaccounts",
-			Namespace:   ns,
-			Name:        serviceAccount,
-			Body: applycorev1.ServiceAccount(serviceAccount, ns).
+			Resource: applycorev1.ServiceAccount(serviceAccount, ns).
 				WithLabels(labels).
 				WithAnnotations(annotations),
 		})
@@ -444,10 +438,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	if r.env.Purpose == schema.Environment_TESTING && !controller.IsController(srv.PackageName()) {
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server",
-			Resource:    "pods",
-			Namespace:   ns,
-			Name:        deploymentId,
-			Body: applycorev1.Pod(deploymentId, ns).
+			Resource: applycorev1.Pod(deploymentId, ns).
 				WithAnnotations(annotations).
 				WithAnnotations(tmpl.Annotations).
 				WithLabels(labels).
@@ -460,10 +451,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	if server.Server.IsStateful() {
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server StatefulSet",
-			Resource:    "statefulsets",
-			Namespace:   ns,
-			Name:        deploymentId,
-			Body: appsv1.
+			Resource: appsv1.
 				StatefulSet(deploymentId, ns).
 				WithAnnotations(annotations).
 				WithLabels(labels).
@@ -475,10 +463,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	} else {
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server Deployment",
-			Resource:    "deployments",
-			Namespace:   ns,
-			Name:        deploymentId,
-			Body: appsv1.
+			Resource: appsv1.
 				Deployment(deploymentId, ns).
 				WithAnnotations(annotations).
 				WithLabels(labels).
@@ -567,10 +552,7 @@ func (r K8sRuntime) deployEndpoint(ctx context.Context, server runtime.ServerCon
 
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: fmt.Sprintf("Service %s", endpoint.ServiceName),
-			Resource:    "services",
-			Namespace:   ns,
-			Name:        endpoint.AllocatedName,
-			Body: applycorev1.
+			Resource: applycorev1.
 				Service(endpoint.AllocatedName, ns).
 				WithLabels(kubedef.MakeServiceLabels(r.env, t.Proto(), endpoint)).
 				WithAnnotations(serviceAnnotations).

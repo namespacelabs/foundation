@@ -11,6 +11,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -22,7 +23,7 @@ import (
 
 type k8stools struct{}
 
-const toolNamespace = "fn-build-invocation"
+const toolNamespace = "fn-pipelines"
 
 func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
 	k8s, ck, err := k.k8s(ctx)
@@ -44,7 +45,8 @@ func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSt
 
 	// XXX handle opts.NoNetworking
 
-	name, err := registry.RawAllocateName(ctx, ck, opts.ImageName, nil)
+	id := provision.NewBuildID()
+	name, err := registry.RawAllocateName(ctx, ck, opts.ImageName, &id)
 	if err != nil {
 		return err
 	}
