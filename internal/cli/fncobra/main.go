@@ -41,6 +41,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/git"
+	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/ulimit"
@@ -214,6 +215,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"Internal, do not use cached contents of compute graph, verify that the cached content matches instead.")
 	rootCmd.PersistentFlags().BoolVar(&golang.UseBuildKitForBuilding, "golang_use_buildkit", golang.UseBuildKitForBuilding,
 		"If set to true, buildkit is used for building, instead of a ko-style builder.")
+	rootCmd.PersistentFlags().StringVar(&llbutil.GitCredentialsBuildkitSecret, "golang_buildkit_git_credentials_secret", "",
+		"If set, go invocations in buildkit get the specified secret mounted as ~/.git-credentials")
 	rootCmd.PersistentFlags().BoolVar(&deploy.AlsoComputeIngress, "also_compute_ingress", deploy.AlsoComputeIngress,
 		"[development] Set to false, to skip ingress computation.")
 	rootCmd.PersistentFlags().BoolVar(&tel.UseTelemetry, "send_usage_data", tel.UseTelemetry,
@@ -238,6 +241,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"verify_compute_caching",
 		"also_compute_ingress",
 		"golang_use_buildkit",
+		"golang_buildkit_git_credentials_secret",
 		"send_usage_data",
 		"skip_buildkit_workspace_size_check",
 		"ignore_zfs_check",

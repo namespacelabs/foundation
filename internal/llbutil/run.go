@@ -12,6 +12,8 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
+var GitCredentialsBuildkitSecret string
+
 type RunGo struct {
 	Base       llb.State
 	SrcMount   llb.State
@@ -25,6 +27,11 @@ func (r RunGo) withSrc(src llb.State, ro ...llb.RunOption) llb.ExecState {
 	if r.Platform != nil {
 		es = es.AddEnv("GOOS", r.Platform.OS).AddEnv("GOARCH", r.Platform.Architecture)
 	}
+
+	if GitCredentialsBuildkitSecret != "" {
+		ro = append(ro, llb.AddSecret("/root/.git-credentials", llb.SecretID(GitCredentialsBuildkitSecret)))
+	}
+
 	run := es.Run(ro...)
 	run.AddMount("/src", src, llb.Readonly)
 	run.AddMount("/go/pkg/mod", llb.Scratch(), llb.AsPersistentCacheDir("go-pkg-mod", llb.CacheMountShared))
