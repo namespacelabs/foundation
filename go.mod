@@ -102,6 +102,7 @@ require (
 require (
 	github.com/golang-jwt/jwt/v4 v4.1.0 // indirect
 	github.com/google/go-github/v41 v41.0.0 // indirect
+	github.com/google/go-github/v45 v45.1.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 )
 

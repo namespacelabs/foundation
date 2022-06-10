@@ -1,0 +1,18 @@
+{
+ "ingress": [
+  {
+   "owner": "namespacelabs.dev/foundation/std/testdata/server/multidb",
+   "fdqn": "grpc-gateway-inar7bsnjhsfptlp50r0.dev.nslocal.host",
+   "protocol": [
+    "http"
+   ]
+  },
+  {
+   "owner": "namespacelabs.dev/foundation/std/testdata/server/multidb",
+   "fdqn": "multidb-grpc.dev.nslocal.host",
+   "protocol": [
+    "grpc"
+   ]
+  }
+ ]
+}

@@ -611,6 +611,8 @@ github.com/google/go-containerregistry v0.7.1-0.20211203164431-c75901cce627 h1:8
 github.com/google/go-containerregistry v0.7.1-0.20211203164431-c75901cce627/go.mod h1:IwJblnDNiCs8sxubbfPNniYsUqr8m+nt7YbPzecsGuE=
 github.com/google/go-github/v41 v41.0.0 h1:HseJrM2JFf2vfiZJ8anY2hqBjdfY1Vlj/K27ueww4gg=
 github.com/google/go-github/v41 v41.0.0/go.mod h1:XgmCA5H323A9rtgExdTcnDkcqp6S30AVACCBDOonIxg=
+github.com/google/go-github/v45 v45.1.0 h1:SbUjHMRiCe9cHfu6Me4idWxLQEV8ZW9DLPz69zopyWo=
+github.com/google/go-github/v45 v45.1.0/go.mod h1:FObaZJEDSTa/WGCzZ2Z3eoCDXWJKMenWWTrd8jrta28=
 github.com/google/go-querystring v1.1.0 h1:AnCroh3fv4ZBgVIf1Iwtovgjaw/GiKJo8M8yD/fhyJ8=
 github.com/google/go-querystring v1.1.0/go.mod h1:Kcdr2DB4koayq7X8pmAG4sNG59So17icRSOU623lUBU=
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
