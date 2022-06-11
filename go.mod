@@ -36,6 +36,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.8
 	github.com/google/go-containerregistry v0.7.1-0.20211203164431-c75901cce627
+	github.com/google/go-github/v45 v45.1.0
 	github.com/gorilla/csrf v1.7.1
 	github.com/gorilla/handlers v0.0.0-20150720190736-60c7bfde3e33
 	github.com/gorilla/mux v1.8.0
@@ -103,7 +104,6 @@ require (
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/golang-jwt/jwt/v4 v4.1.0 // indirect
 	github.com/google/go-github/v41 v41.0.0 // indirect
-	github.com/google/go-github/v45 v45.1.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	k8s.io/component-base v0.24.1 // indirect

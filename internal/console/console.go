@@ -46,11 +46,11 @@ func Debug(ctx context.Context) io.Writer {
 }
 
 func Warnings(ctx context.Context) io.Writer {
-	return TypedOutput(ctx, "warnings", common.CatOutputWarnings)
+	return TypedOutput(ctx, "warning", common.CatOutputWarnings)
 }
 
 func Errors(ctx context.Context) io.Writer {
-	return TypedOutput(ctx, "errors", common.CatOutputErrors)
+	return TypedOutput(ctx, "error", common.CatOutputErrors)
 }
 
 func TypedOutput(ctx context.Context, name string, cat common.CatOutputType) io.Writer {
