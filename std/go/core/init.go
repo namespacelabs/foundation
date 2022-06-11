@@ -92,7 +92,7 @@ func (di *DependencyGraph) Instantiate(ctx context.Context, provider Provider, f
 	}
 	took := time.Since(start)
 	if took > maximumInitTime {
-		Log.Printf("[provider] %s took %d (log thresh is %d)", provider.key(), took, maximumInitTime)
+		Log.Printf("[provider] %s took %v (log thresh is %v)", provider.key(), took, maximumInitTime)
 	}
 
 	return f(ctx, res)
