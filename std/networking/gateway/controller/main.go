@@ -18,27 +18,27 @@ import (
 )
 
 var (
-	debug = flag.Bool("debug", false, "Enable xDS server debug logging")
+	debug = flag.Bool("debug", true, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update.")
 
 	// The port that this xDS server listens on
-	xdsPort = flag.Uint("xds_server_port", 18000, "xDS management server port")
+	xdsPort = flag.Uint("xds_server_port", 18000, "xDS gRPC management server port.")
 
 	// Tell Envoy to use this Node ID
-	nodeID = flag.String("node_id", "envoy_node", "Node ID")
+	nodeID = flag.String("node_id", "envoy_node", "Envoy Node ID used for cache snapshots.")
 
-	controllerPort = flag.Int("controller_port", 18443, "Port that the Kubernetes controller binds to")
+	controllerPort = flag.Int("controller_port", 18443, "Port that the Kubernetes controller binds to.")
 
 	metricsAddress = flag.String("controller_metrics_address", ":18080",
-		"Address that the Kubernetes controller metrics endpoint binds to")
+		"Address that the Kubernetes controller metrics endpoint binds to.")
 
 	probeAddress = flag.String("controller_health_probe_bind_address", ":18081",
-		"Address that the Kubernetes controller health probe endpoint binds to")
+		"Address that the Kubernetes controller health probe endpoint binds to.")
 
 	enableLeaderElection = flag.Bool("controller_enable_leader_election", false,
 		"Enable leader election for the Kubernetes controller manager, with true guaranteeing only one active controller manager.")
 
 	// HTTP listening address:port pair.
-	httpEnvoyListenAddr = flag.String("http_envoy_listen_addr", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
+	httpEnvoyListenAddr = flag.String("http_envoy_listen_address", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
 )
 
 func main() {
