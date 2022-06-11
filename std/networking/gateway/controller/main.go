@@ -5,12 +5,8 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
-
-	"github.com/envoyproxy/go-control-plane/pkg/server/v3"
-	"github.com/envoyproxy/go-control-plane/pkg/test/v3"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -52,26 +48,21 @@ func main() {
 	l.Debug = *debug
 
 	// Create a transcoder snapshot.
-	transcodersnapshot := NewTranscoderSnapshot(*nodeID, l)
+	transcoderSnapshot := NewTranscoderSnapshot(*nodeID, l)
 
-	if err := transcodersnapshot.RegisterHttpListener(*httpEnvoyListenAddr); err != nil {
+	if err := transcoderSnapshot.RegisterHttpListener(*httpEnvoyListenAddr); err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("registered HTTP listener on %s\n", *httpEnvoyListenAddr)
 
-	// Run the xDS server.
-	ctx := context.Background()
-	cb := &test.Callbacks{Debug: l.Debug}
-	srv := server.NewServer(ctx, transcodersnapshot.cache, cb)
-	go func() {
-		if err := RunXdsServer(ctx, srv, *xdsPort); err != nil {
-			log.Fatalf("failed to start the xDS server on port %d: %v", *xdsPort, err)
-		}
-	}()
+	// SetupSignalHandler registers for SIGTERM and SIGINT. A context is returned
+	// which is canceled on one of these signals. If a second signal is caught, the program
+	// is terminated with exit code 1.
+	ctx := ctrl.SetupSignalHandler()
 
-	// Generate the initial snapshot.
-	if err := transcodersnapshot.GenerateSnapshot(ctx); err != nil {
-		log.Fatal(err)
-	}
+	xdsServer := NewXdsServer(ctx, transcoderSnapshot.cache, l)
+	xdsServer.RegisterServices()
+	log.Println("registered xDS services")
 
 	// Run the Kubernetes controller responsible for handling the `HttpGrpcTranscoder` custom resource.
 
@@ -105,22 +96,39 @@ func main() {
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		log.Fatalf("failed to set up healthz: %+v", err)
 	}
+	log.Println("set up healthz for the controller manager")
+
 	// Add readyz.
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		log.Fatalf("failed to set up readyz: %+v", err)
 	}
+	log.Println("set up readyz for the controller manager")
 
 	httpGrpcTranscoderReconciler := HttpGrpcTranscoderReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
-		snapshot: transcodersnapshot,
+		snapshot: transcoderSnapshot,
 	}
 	if err := httpGrpcTranscoderReconciler.SetupWithManager(mgr); err != nil {
 		log.Fatalf("failed to set up the HTTP gRPC Transcoder reconciler: %+v", err)
 	}
+	log.Println("set up the HTTP gRPC Transcoder reconciler")
 
-	l.Infof("starting the controller manager on port %d", *controllerPort)
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		log.Fatalf("failed to start the controller manager: %+v", err)
+	errChan := make(chan error)
+	go func() {
+		log.Printf("starting xDS server on port %d\n", *xdsPort)
+		errChan <- xdsServer.Start(ctx, *xdsPort)
+	}()
+
+	go func() {
+		log.Printf("starting the controller manager on port %d\n", *controllerPort)
+		errChan <- mgr.Start(ctx)
+	}()
+
+	select {
+	case err := <-errChan:
+		log.Fatalf("killing the controller manager: %v", err)
+	case <-ctx.Done():
+		log.Fatalf("killing the controller manager: %v", ctx.Err())
 	}
 }
