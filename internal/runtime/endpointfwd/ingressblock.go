@@ -108,6 +108,9 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 
 		instance.closer = closer
 		instance.err = err
+		if err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "failed to forward endpoint: %v\n", err)
+		}
 
 		pi.endpointPortFwds[key] = instance
 	}
@@ -154,6 +157,9 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 					pi.OnUpdate()
 				}
 			})
+			if pi.ingressPortfwd.err != nil {
+				fmt.Fprintf(console.Warnings(ctx), "failed to forward ingress: %v\n", pi.ingressPortfwd.err)
+			}
 		}
 	} else if pi.ingressPortfwd.closer != nil {
 		pi.ingressPortfwd.closer.Close()
