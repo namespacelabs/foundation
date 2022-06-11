@@ -1,6 +1,6 @@
 // This file was automatically generated.
 
-import * as grpc from "@grpc/grpc-js";
+import {grpc} from "@namespacelabs.dev-foundation/std-nodejs-grpcgen";
 import * as i0 from "./test1_pb";
 import * as i1 from "./nested/test2_pb";
 import {CallContext} from "@namespacelabs.dev-foundation/std-nodejs-grpcgen/server";
