@@ -74,7 +74,7 @@ func (x *XdsServer) RegisterServices() {
 }
 
 // Serve serves the GRPC endpoint on the given port, returning only when it fails or is stopped.
-func (x *XdsServer) Serve(port uint) error {
+func (x *XdsServer) Serve(port uint32) error {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return fnerrors.InternalError("xDS server failed to listen on %d: %w", port, err)
@@ -95,7 +95,7 @@ func (x *XdsServer) Stop() {
 // Start runs the xDRS GRPC server on the given port, returning
 // only when the server is stopped by the context closing, or when
 // it fails.
-func (x *XdsServer) Start(ctx context.Context, port uint) error {
+func (x *XdsServer) Start(ctx context.Context, port uint32) error {
 	errChan := make(chan error)
 
 	go func() {
