@@ -46,6 +46,8 @@ func (t TestData) InternalOf(serverOwner string) []*schema.InternalEndpoint {
 }
 
 func BootstrapTest() TestData {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
+
 	flag.Parse()
 
 	go func() {

@@ -6,7 +6,6 @@ package testing
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"google.golang.org/grpc"
@@ -20,7 +19,7 @@ type Test struct {
 }
 
 func (t Test) Connect(ctx context.Context, endpoint *schema.Endpoint) (*grpc.ClientConn, error) {
-	return grpc.DialContext(ctx, fmt.Sprintf("%s:%d", endpoint.AllocatedName, endpoint.Port.ContainerPort),
+	return grpc.DialContext(ctx, endpoint.Address(),
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials())) ///  XXX mTLS etc.
 }

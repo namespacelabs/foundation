@@ -113,6 +113,11 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				return fnerrors.New("failed to marshal FileDescriptorSet: %w", err)
 			}
 
+			annotations, err := kubedef.MakeServiceAnnotations(x.Server.Server, x.Endpoint)
+			if err != nil {
+				return fnerrors.New("failed to calculation annotations: %w", err)
+			}
+
 			out.Invocations = append(out.Invocations, kubedef.Apply{
 				Description: fmt.Sprintf("HTTP/gRPC transcoder: %s", x.ProtoService),
 				Resource: &httpGrpcTranscoder{
@@ -121,9 +126,10 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 						APIVersion: "k8s.namespacelabs.dev/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      strings.ToLower(fmt.Sprintf("%s-%s", x.ProtoService, req.Focus.Server.Id)),
-						Namespace: kubetool.FromRequest(req).Namespace,
-						Labels:    kubedef.MakeLabels(req.Env, req.Focus.Server),
+						Name:        strings.ToLower(fmt.Sprintf("%s-%s", x.ProtoService, x.Server.Server.Id)),
+						Namespace:   kubetool.FromRequest(req).Namespace,
+						Labels:      kubedef.MakeLabels(req.Env, x.Server.Server),
+						Annotations: annotations,
 					},
 					Spec: httpGrpcTranscoderSpec{
 						FullyQualifiedProtoServiceName: x.ProtoService,

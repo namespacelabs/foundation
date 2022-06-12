@@ -10,5 +10,6 @@ $proto: inputs.#Proto & {
 service: fn.#Service & {
 	framework: "NODEJS"
 
-	exportService: $proto.services.PostService
+	exportService:        $proto.services.PostService
+	exportServicesAsHttp: true
 }

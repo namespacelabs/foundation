@@ -4,7 +4,7 @@ import * as impl from "./impl";
 import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
 import {GrpcRegistrar} from "@namespacelabs.dev-foundation/std-nodejs-grpc"
 import * as i0 from "@namespacelabs.dev-foundation/std-grpc/deps.fn";
-import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/service_grpc.fn";
+import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/service_grpc_pb";
 
 
 export interface ServiceDeps {
@@ -17,7 +17,7 @@ export const Package = {
 	instantiateDeps: (graph: DependencyGraph) => ({
 		postService: i0.BackendProvider(
 			graph,
-			i1.newPostServiceClient),
+			i1.PostServiceClient),
 	}),
 };
 

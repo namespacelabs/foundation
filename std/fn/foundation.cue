@@ -246,10 +246,10 @@ _#ConfigureBase: {
 #Test: {
 	name: string
 	*{driver: #Binary} | {binary: #Binary}
-	fixture: *{
+	fixture: {
 		sut: inputs.#Package
 		serversUnderTest: [sut]
-	} | {
+	} | *{
 		serversUnderTest: [inputs.#Package, ...inputs.#Package]
 	}
 }

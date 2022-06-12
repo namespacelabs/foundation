@@ -9,9 +9,7 @@ server: fn.#Server & {
 	framework: "GO_GRPC"
 
 	import: [
-		"namespacelabs.dev/foundation/std/go/grpc/gateway",
-		// Work in progress: replace std/go/grpc/gateway with package below.
-		// "namespacelabs.dev/foundation/std/grpc/httptranscoding",
+		"namespacelabs.dev/foundation/std/grpc/httptranscoding",
 		"namespacelabs.dev/foundation/std/testdata/service/post",
 		"namespacelabs.dev/foundation/std/grpc/logging",
 		"namespacelabs.dev/foundation/std/monitoring/tracing/jaeger",
