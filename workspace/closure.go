@@ -16,11 +16,15 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
+var ExtendServerHook []func(Location, *schema.Server) ExtendServerHookResult
 var ExtendNodeHook []func(Location, *schema.Node) ExtendNodeHookResult
 
-type ExtendNodeHookResult struct {
-	Imports           []schema.PackageName
+type ExtendServerHookResult struct {
 	AdditionalImports []schema.PackageName
+}
+
+type ExtendNodeHookResult struct {
+	Imports []schema.PackageName
 }
 
 type Sealed struct {
@@ -89,6 +93,11 @@ func (g *sealer) DoServer(loc Location, srv *schema.Server, pp *Package) error {
 		include = append(include, deps...)
 	}
 
+	for _, hook := range ExtendServerHook {
+		r := hook(loc, srv)
+		include = append(include, r.AdditionalImports...)
+	}
+
 	include = append(include, srv.GetImportedPackages()...)
 
 	g.Do(include...)
@@ -109,16 +118,6 @@ func (g *sealer) DoServer(loc Location, srv *schema.Server, pp *Package) error {
 
 func (g *sealer) DoNode(loc Location, n *schema.Node, parsed *Package) error {
 	g.Do(n.GetImportedPackages()...)
-
-	for _, hook := range ExtendNodeHook {
-		r := hook(loc, n)
-		g.Do(r.Imports...)
-		g.Do(r.AdditionalImports...)
-
-		for _, x := range r.Imports {
-			n.Import = append(n.Import, x.String())
-		}
-	}
 
 	g.mu.Lock()
 	defer g.mu.Unlock()

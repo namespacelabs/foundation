@@ -31,6 +31,7 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 	for _, p := range node.Provides {
 		instances = append(instances, p.Instantiate...)
 	}
+
 	for _, dep := range instances {
 		// Checking language compatibility
 
@@ -85,6 +86,12 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 
 	for _, imp := range node.Import {
 		deps.Add(schema.PackageName(imp))
+	}
+
+	for _, hook := range ExtendNodeHook {
+		r := hook(loc, node)
+		// These are dependencies that depend on the properties of the node, and as such as still considered user-provided imports.
+		deps.AddMultiple(r.Imports...)
 	}
 
 	node.UserImports = deps.PackageNamesAsString()
