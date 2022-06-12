@@ -19,7 +19,7 @@ import (
 
 var (
 	// HTTP listening address:port pair.
-	httpEnvoyListenAddr = flag.String("http_envoy_listen_address", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
+	httpEnvoyListenAddress = flag.String("http_envoy_listen_address", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
 
 	debug = flag.Bool("debug", true, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update.")
 
@@ -72,10 +72,10 @@ func main() {
 		WithAlsCluster(*alsClusterName, alsAddrPort),
 	)
 
-	if err := transcoderSnapshot.RegisterHttpListener(*httpEnvoyListenAddr); err != nil {
+	if err := transcoderSnapshot.RegisterHttpListener(*httpEnvoyListenAddress); err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("registered HTTP listener on %s\n", *httpEnvoyListenAddr)
+	log.Printf("registered HTTP listener on %s\n", *httpEnvoyListenAddress)
 
 	// SetupSignalHandler registers for SIGTERM and SIGINT. A context is returned
 	// which is canceled on one of these signals. If a second signal is caught, the program
