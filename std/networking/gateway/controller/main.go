@@ -24,12 +24,12 @@ var (
 	debug = flag.Bool("debug", true, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update.")
 
 	// The address:port pair that the xDS server listens on.
-	xdsServerAddress = flag.String("xds_server_port", "127.0.0.1:18000", "xDS gRPC management server port.")
+	xdsServerAddress = flag.String("xds_server_port", "127.0.0.1:18000", "xDS gRPC management address:port pair.")
 
 	xdsClusterName = flag.String("xds_cluster_name", "xds_cluster", "xDS cluster name.")
 
 	// The address:port pair that the ALS server listens on.
-	alsServerAddress = flag.String("als_server_address", "127.0.0.1:18090", "ALS gRPC server port.")
+	alsServerAddress = flag.String("als_server_address", "127.0.0.1:18090", "ALS gRPC server address:port pair.")
 
 	alsClusterName = flag.String("als_cluster_name", "als_cluster", "ALS cluster name.")
 
@@ -40,10 +40,10 @@ var (
 	controllerPort = flag.Int("controller_port", 18443, "Port that the Kubernetes controller binds to.")
 
 	metricsAddress = flag.String("controller_metrics_address", ":18080",
-		"Address that the Kubernetes controller metrics endpoint binds to.")
+		"Address port pair that the Kubernetes controller metrics endpoint binds to.")
 
 	probeAddress = flag.String("controller_health_probe_bind_address", ":18081",
-		"Address that the Kubernetes controller health probe endpoint binds to.")
+		"Address port pair that the Kubernetes controller health probe endpoint binds to.")
 
 	enableLeaderElection = flag.Bool("controller_enable_leader_election", false,
 		"Enable leader election for the Kubernetes controller manager, with true guaranteeing only one active controller manager.")
