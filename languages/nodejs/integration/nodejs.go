@@ -565,10 +565,9 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 	// is supported in node.js.
 	if len(list) > 0 && !shared.IsStdGrpcExtension(pkg.PackageName().String(), "Backend") {
 		dl.Add("Generate Typescript proto sources", &source.OpProtoGen{
-			PackageName:         pkg.PackageName().String(),
-			GenerateHttpGateway: pkg.Node().ExportServicesAsHttp,
-			Protos:              protos.Merge(list...),
-			Framework:           source.OpProtoGen_TYPESCRIPT,
+			PackageName: pkg.PackageName().String(),
+			Protos:      protos.Merge(list...),
+			Framework:   source.OpProtoGen_TYPESCRIPT,
 		})
 		dl.Add("Generate Typescript gRPC proto sources", &OpGenGrpc{
 			PackageName: pkg.PackageName().String(),

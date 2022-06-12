@@ -15,7 +15,7 @@ import (
 const GrpcHttpTranscodeNode schema.PackageName = "namespacelabs.dev/foundation/std/grpc/httptranscoding"
 
 var (
-	UseGoInternalGrpcGateway = true
+	UseGoInternalGrpcGateway = false
 )
 
 const (

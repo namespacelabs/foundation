@@ -161,7 +161,7 @@ func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schem
 	if len(list) > 0 {
 		dl.Add("Generate Go proto sources", &source.OpProtoGen{
 			PackageName:         pkg.PackageName().String(),
-			GenerateHttpGateway: pkg.Node().ExportServicesAsHttp,
+			GenerateHttpGateway: runtime.UseGoInternalGrpcGateway && pkg.Node().ExportServicesAsHttp,
 			Protos:              protos.Merge(list...),
 			Framework:           source.OpProtoGen_GO,
 		})

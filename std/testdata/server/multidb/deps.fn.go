@@ -10,7 +10,6 @@ import (
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/testdata/service/multidb"
-	"namespacelabs.dev/foundation/std/testdata/service/proto"
 )
 
 func RegisterInitializers(di *core.DependencyGraph) {
@@ -27,8 +26,6 @@ func WireServices(ctx context.Context, srv server.Server, depgraph core.Dependen
 	}); err != nil {
 		errs = append(errs, err)
 	}
-
-	srv.InternalRegisterGrpcGateway(proto.RegisterMultiDbListServiceHandler)
 
 	return errs
 }
