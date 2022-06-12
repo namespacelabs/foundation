@@ -6,7 +6,6 @@ server: fn.#Server & {
 	framework: "NODEJS"
 
 	import: [
-		"namespacelabs.dev/foundation/std/grpc/httptranscoding",
 		"namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/jaeger",
 		"namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/fastify",
 		"namespacelabs.dev/foundation/std/nodejs/monitoring/tracing",

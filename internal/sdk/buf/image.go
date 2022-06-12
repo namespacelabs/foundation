@@ -19,7 +19,11 @@ import (
 const baseImgPkg schema.PackageName = "namespacelabs.dev/foundation/std/sdk/buf/baseimg"
 
 func init() {
-	workspace.StaticDeps = append(workspace.StaticDeps, baseImgPkg)
+	workspace.ExtendNodeHook = append(workspace.ExtendNodeHook, func(workspace.Location, *schema.Node) workspace.ExtendNodeHookResult {
+		return workspace.ExtendNodeHookResult{
+			AdditionalImports: []schema.PackageName{baseImgPkg},
+		}
+	})
 }
 
 func Image(ctx context.Context, env ops.Environment, loader workspace.Packages) compute.Computable[oci.Image] {

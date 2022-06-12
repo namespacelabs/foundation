@@ -16,8 +16,12 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-// XXX rethink this.
-var StaticDeps []schema.PackageName
+var ExtendNodeHook []func(Location, *schema.Node) ExtendNodeHookResult
+
+type ExtendNodeHookResult struct {
+	Imports           []schema.PackageName
+	AdditionalImports []schema.PackageName
+}
 
 type Sealed struct {
 	Location      Location
@@ -89,9 +93,6 @@ func (g *sealer) DoServer(loc Location, srv *schema.Server, pp *Package) error {
 
 	g.Do(include...)
 
-	// Make sure that any static dependencies are always loaded.
-	g.Do(StaticDeps...)
-
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -109,8 +110,15 @@ func (g *sealer) DoServer(loc Location, srv *schema.Server, pp *Package) error {
 func (g *sealer) DoNode(loc Location, n *schema.Node, parsed *Package) error {
 	g.Do(n.GetImportedPackages()...)
 
-	// Make sure that any static dependencies are always loaded.
-	g.Do(StaticDeps...)
+	for _, hook := range ExtendNodeHook {
+		r := hook(loc, n)
+		g.Do(r.Imports...)
+		g.Do(r.AdditionalImports...)
+
+		for _, x := range r.Imports {
+			n.Import = append(n.Import, x.String())
+		}
+	}
 
 	g.mu.Lock()
 	defer g.mu.Unlock()

@@ -59,6 +59,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/runtime/tools"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -163,6 +164,16 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		// Setting up container registry logging, which is unfortunately global.
 		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
+
+		workspace.ExtendNodeHook = append(workspace.ExtendNodeHook, func(l workspace.Location, n *schema.Node) workspace.ExtendNodeHookResult {
+			if n.ExportServicesAsHttp && !runtime.UseGoInternalGrpcGateway {
+				return workspace.ExtendNodeHookResult{
+					Imports: []schema.PackageName{runtime.GrpcHttpTranscodeNode},
+				}
+			}
+
+			return workspace.ExtendNodeHookResult{}
+		})
 
 		// Compute cacheables.
 		compute.RegisterProtoCacheable()
