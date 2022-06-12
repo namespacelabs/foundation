@@ -18,14 +18,25 @@ import (
 )
 
 var (
+	// HTTP listening address:port pair.
+	httpEnvoyListenAddr = flag.String("http_envoy_listen_address", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
+
 	debug = flag.Bool("debug", true, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update.")
 
-	// The port that this xDS server listens on
-	xdsPort = flag.Uint("xds_server_port", 18000, "xDS gRPC management server port.")
+	// The address:port pair that the xDS server listens on.
+	xdsServerAddress = flag.String("xds_server_port", "127.0.0.1:18000", "xDS gRPC management server port.")
 
-	// Tell Envoy to use this Node ID
+	xdsClusterName = flag.String("xds_cluster_name", "xds_cluster", "xDS cluster name.")
+
+	// The address:port pair that the ALS server listens on.
+	alsServerAddress = flag.String("als_server_address", "127.0.0.1:18090", "ALS gRPC server port.")
+
+	alsClusterName = flag.String("als_cluster_name", "als_cluster", "ALS cluster name.")
+
+	// Tell Envoy to use this Node ID.
 	nodeID = flag.String("node_id", "envoy_node", "Envoy Node ID used for cache snapshots.")
 
+	// Kubernetes controller settings.
 	controllerPort = flag.Int("controller_port", 18443, "Port that the Kubernetes controller binds to.")
 
 	metricsAddress = flag.String("controller_metrics_address", ":18080",
@@ -36,19 +47,30 @@ var (
 
 	enableLeaderElection = flag.Bool("controller_enable_leader_election", false,
 		"Enable leader election for the Kubernetes controller manager, with true guaranteeing only one active controller manager.")
-
-	// HTTP listening address:port pair.
-	httpEnvoyListenAddr = flag.String("http_envoy_listen_address", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
 )
 
 func main() {
 	flag.Parse()
 
-	l := Logger{}
-	l.Debug = *debug
+	xdsAddrPort, err := ParseAddressPort(*xdsServerAddress)
+	if err != nil {
+		log.Fatalf("failed to parse xDS server address: %v", err)
+	}
 
-	// Create a transcoder snapshot.
-	transcoderSnapshot := NewTranscoderSnapshot(*nodeID, l)
+	alsAddrPort, err := ParseAddressPort(*alsServerAddress)
+	if err != nil {
+		log.Fatalf("failed to parse ALS server address: %v", err)
+	}
+
+	logger := Logger{}
+	logger.Debug = *debug
+
+	transcoderSnapshot := NewTranscoderSnapshot(
+		WithEnvoyNodeId(*nodeID),
+		WithLogger(logger),
+		WithXdsCluster(*xdsClusterName, xdsAddrPort),
+		WithAlsCluster(*alsClusterName, alsAddrPort),
+	)
 
 	if err := transcoderSnapshot.RegisterHttpListener(*httpEnvoyListenAddr); err != nil {
 		log.Fatal(err)
@@ -60,7 +82,7 @@ func main() {
 	// is terminated with exit code 1.
 	ctx := ctrl.SetupSignalHandler()
 
-	xdsServer := NewXdsServer(ctx, transcoderSnapshot.cache, l)
+	xdsServer := NewXdsServer(ctx, transcoderSnapshot.cache, logger)
 	xdsServer.RegisterServices()
 	log.Println("registered xDS services")
 
@@ -116,8 +138,8 @@ func main() {
 
 	errChan := make(chan error)
 	go func() {
-		log.Printf("starting xDS server on port %d\n", *xdsPort)
-		errChan <- xdsServer.Start(ctx, *xdsPort)
+		log.Printf("starting xDS server on port %d\n", xdsAddrPort.port)
+		errChan <- xdsServer.Start(ctx, xdsAddrPort.port)
 	}()
 
 	go func() {

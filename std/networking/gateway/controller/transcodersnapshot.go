@@ -8,8 +8,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"net"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -45,9 +43,8 @@ const (
 )
 
 type httpListenerConfig struct {
-	name    string
-	address string
-	port    uint32
+	name     string
+	addrPort *AddressPort
 }
 
 type transcoderWithCluster struct {
@@ -71,15 +68,69 @@ type TranscoderSnapshot struct {
 
 	// Maps fully qualified proto service names to the corresponding HttpGrpcTranscoder.
 	transcoders map[string]*HttpGrpcTranscoder
+
+	// Default clusters that should be always created. Since each envoy snapshot overrides
+	// the previous value, we need to keep a copy of the default bootstrapped clusters.
+	defaultClusters []types.Resource
 }
 
-func NewTranscoderSnapshot(envoyNodeId string, logger Logger) *TranscoderSnapshot {
-	cache := cache.NewSnapshotCache(false, cache.IDHash{}, logger)
+type SnapshotOptions struct {
+	envoyNodeId string
+
+	logger Logger
+
+	xdsClusterName string
+	xdsClusterAddr *AddressPort
+
+	alsClusterName string
+	alsClusterAddr *AddressPort
+}
+
+type SnapshotOption func(*SnapshotOptions)
+
+func WithEnvoyNodeId(envoyNodeId string) SnapshotOption {
+	return func(o *SnapshotOptions) {
+		o.envoyNodeId = envoyNodeId
+	}
+}
+
+func WithLogger(logger Logger) SnapshotOption {
+	return func(o *SnapshotOptions) {
+		o.logger = logger
+	}
+}
+
+func WithXdsCluster(xdsClusterName string, xdsClusterAddr *AddressPort) SnapshotOption {
+	return func(o *SnapshotOptions) {
+		o.xdsClusterName = xdsClusterName
+		o.xdsClusterAddr = xdsClusterAddr
+	}
+}
+
+func WithAlsCluster(alsClusterName string, alsClusterAddr *AddressPort) SnapshotOption {
+	return func(o *SnapshotOptions) {
+		o.alsClusterName = alsClusterName
+		o.alsClusterAddr = alsClusterAddr
+	}
+}
+
+func NewTranscoderSnapshot(args ...SnapshotOption) *TranscoderSnapshot {
+	opts := &SnapshotOptions{}
+	for _, opt := range args {
+		opt(opts)
+	}
+
+	var defaultClusters []types.Resource
+	defaultClusters = append(defaultClusters, makeCluster(opts.xdsClusterName, opts.xdsClusterAddr.addr, opts.xdsClusterAddr.port))
+	defaultClusters = append(defaultClusters, makeCluster(opts.alsClusterName, opts.alsClusterAddr.addr, opts.alsClusterAddr.port))
+
+	cache := cache.NewSnapshotCache(false, cache.IDHash{}, opts.logger)
 	return &TranscoderSnapshot{
-		envoyNodeId: envoyNodeId,
-		snapshotId:  1,
-		cache:       cache,
-		transcoders: make(map[string]*HttpGrpcTranscoder),
+		envoyNodeId:     opts.envoyNodeId,
+		snapshotId:      1,
+		cache:           cache,
+		transcoders:     make(map[string]*HttpGrpcTranscoder),
+		defaultClusters: defaultClusters,
 	}
 }
 
@@ -87,17 +138,12 @@ func (t *TranscoderSnapshot) RegisterHttpListener(listenerAddr string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	addr, portStr, err := net.SplitHostPort(listenerAddr)
+	addrPort, err := ParseAddressPort(listenerAddr)
 	if err != nil {
 		return err
 	}
 
-	port, err := strconv.ParseInt(portStr, 10, 32)
-	if err != nil {
-		return err
-	}
-
-	t.httpConfig = httpListenerConfig{ListenerName, addr, uint32(port)}
+	t.httpConfig = httpListenerConfig{ListenerName, addrPort}
 	return nil
 }
 
@@ -123,11 +169,12 @@ func (t *TranscoderSnapshot) GenerateSnapshot(ctx context.Context) error {
 	var transcoders []transcoderWithCluster
 
 	var clusters []types.Resource
+	clusters = append(clusters, t.defaultClusters...)
+
 	for _, transcoder := range t.transcoders {
 		clusterName := fmt.Sprintf("cluster-%s", strings.ReplaceAll(transcoder.Spec.FullyQualifiedProtoServiceName, ".", "-"))
 		transcoders = append(transcoders, transcoderWithCluster{transcoder, clusterName})
-
-		clusters = append(clusters, makeCluster(clusterName, transcoder.Spec))
+		clusters = append(clusters, makeCluster(clusterName, transcoder.Spec.ServiceAddress, transcoder.Spec.ServicePort))
 	}
 
 	httpListener, err := makeHTTPListener(t.httpConfig, transcoders)
@@ -135,7 +182,7 @@ func (t *TranscoderSnapshot) GenerateSnapshot(ctx context.Context) error {
 		return fnerrors.InternalError("failed to create the http listener: %w", err)
 	}
 
-	snapshot, err := cache.NewSnapshot(strconv.Itoa(t.snapshotId),
+	snapshot, err := cache.NewSnapshot(fmt.Sprintf("v.%d", t.snapshotId),
 		map[resource.Type][]types.Resource{
 			resource.ClusterType:  clusters,
 			resource.ListenerType: {httpListener},
@@ -159,18 +206,19 @@ func (t *TranscoderSnapshot) GenerateSnapshot(ctx context.Context) error {
 	return nil
 }
 
-func makeCluster(clusterName string, transcoderSpec HttpGrpcTranscoderSpec) *cluster.Cluster {
+func makeCluster(clusterName string, socketAddress string, port uint32) *cluster.Cluster {
 	return &cluster.Cluster{
 		Name:                 clusterName,
 		ConnectTimeout:       durationpb.New(60 * time.Second),
 		ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_LOGICAL_DNS},
 		LbPolicy:             cluster.Cluster_ROUND_ROBIN,
-		LoadAssignment:       makeEndpoint(clusterName, transcoderSpec),
+		LoadAssignment:       makeEndpoint(clusterName, socketAddress, port),
 		DnsLookupFamily:      cluster.Cluster_V4_ONLY,
+		Http2ProtocolOptions: &core.Http2ProtocolOptions{},
 	}
 }
 
-func makeEndpoint(clusterName string, transcoderSpec HttpGrpcTranscoderSpec) *endpoint.ClusterLoadAssignment {
+func makeEndpoint(clusterName string, socketAddress string, port uint32) *endpoint.ClusterLoadAssignment {
 	return &endpoint.ClusterLoadAssignment{
 		ClusterName: clusterName,
 		Endpoints: []*endpoint.LocalityLbEndpoints{{
@@ -181,9 +229,9 @@ func makeEndpoint(clusterName string, transcoderSpec HttpGrpcTranscoderSpec) *en
 							Address: &core.Address_SocketAddress{
 								SocketAddress: &core.SocketAddress{
 									Protocol: core.SocketAddress_TCP,
-									Address:  transcoderSpec.ServiceAddress,
+									Address:  socketAddress,
 									PortSpecifier: &core.SocketAddress_PortValue{
-										PortValue: transcoderSpec.ServicePort,
+										PortValue: port,
 									},
 								},
 							},
@@ -231,7 +279,6 @@ func makeFiledescriptorSet(transcoders []transcoderWithCluster) (*descriptorpb.F
 
 func makeRoute(clusterName string, transcoderSpec HttpGrpcTranscoderSpec) *route.Route {
 	return &route.Route{
-		Name: "route-" + clusterName,
 		Match: &route.RouteMatch{
 			PathSpecifier: &route.RouteMatch_Prefix{
 				Prefix: "/" + transcoderSpec.FullyQualifiedProtoServiceName,
@@ -327,9 +374,9 @@ func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWit
 			Address: &core.Address_SocketAddress{
 				SocketAddress: &core.SocketAddress{
 					Protocol: core.SocketAddress_TCP,
-					Address:  httpConfig.address,
+					Address:  httpConfig.addrPort.addr,
 					PortSpecifier: &core.SocketAddress_PortValue{
-						PortValue: httpConfig.port,
+						PortValue: httpConfig.addrPort.port,
 					},
 				},
 			},
