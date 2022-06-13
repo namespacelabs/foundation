@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/provision/startup"
+	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 func newComputeConfigCmd() *cobra.Command {
@@ -32,12 +33,17 @@ func newComputeConfigCmd() *cobra.Command {
 				return err
 			}
 
-			bid := provision.NewBuildID()
-
-			stack, err := deploy.ComputeStack(ctx, t, deploy.StackOpts{BaseServerPort: 39999}, bid)
+			plan, err := deploy.PrepareDeployServers(ctx, t.Env(), []provision.Server{t}, deploy.Opts{StackOpts: deploy.StackOpts{BaseServerPort: 39999}}, nil)
 			if err != nil {
 				return err
 			}
+
+			computedPlan, err := compute.GetValue(ctx, plan)
+			if err != nil {
+				return err
+			}
+
+			stack := computedPlan.ComputedStack
 
 			s := stack.Get(t.PackageName())
 			if s == nil {

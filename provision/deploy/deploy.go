@@ -72,7 +72,7 @@ func PrepareDeployStack(ctx context.Context, env ops.Environment, stack *stack.S
 		return nil, err
 	}
 
-	g := &makeDeployGraph{prepare: prepare}
+	g := &makeDeployGraph{stack: stack, prepare: prepare}
 	if AlsoComputeIngress {
 		computedOnly := compute.Transform(prepare, func(_ context.Context, h prepareAndBuildResult) ([]*schema.IngressFragmentPlan, error) {
 			var plans []*schema.IngressFragmentPlan
@@ -106,6 +106,7 @@ func PrepareDeployStack(ctx context.Context, env ops.Environment, stack *stack.S
 }
 
 type makeDeployGraph struct {
+	stack   *stack.Stack
 	prepare compute.Computable[prepareAndBuildResult]
 	ingress compute.Computable[*ingressResult]
 
@@ -114,6 +115,7 @@ type makeDeployGraph struct {
 
 type Plan struct {
 	Deployer         *ops.Plan
+	ComputedStack    *stack.Stack
 	IngressFragments []*schema.IngressFragment
 	Hints            []string // Optional messages to pass to the user.
 }
@@ -123,7 +125,7 @@ func (m *makeDeployGraph) Action() *tasks.ActionEvent {
 }
 
 func (m *makeDeployGraph) Inputs() *compute.In {
-	in := compute.Inputs().Computable("prepare", m.prepare)
+	in := compute.Inputs().Computable("prepare", m.prepare).Indigestible("stack", m.stack)
 	if m.ingress != nil {
 		in = in.Computable("ingress", m.ingress)
 	}
@@ -148,8 +150,9 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 	}
 
 	plan := &Plan{
-		Deployer: g,
-		Hints:    pbr.DeploymentState.Hints(),
+		Deployer:      g,
+		ComputedStack: m.stack,
+		Hints:         pbr.DeploymentState.Hints(),
 	}
 
 	if ingress, ok := compute.GetDep(deps, m.ingress, "ingress"); ok {
@@ -161,10 +164,6 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 	}
 
 	return plan, nil
-}
-
-func ComputeStack(ctx context.Context, server provision.Server, opts StackOpts, bid provision.BuildID) (*stack.Stack, error) {
-	return stack.Compute(ctx, []provision.Server{server}, stack.ProvisionOpts{PortBase: opts.BaseServerPort})
 }
 
 func prepareHandlerInvocations(ctx context.Context, env ops.Environment, stack *stack.Stack) (c compute.Computable[*handlerResult], err error) {
