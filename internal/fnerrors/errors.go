@@ -420,11 +420,11 @@ func formatDependencyFailedError(w io.Writer, err *DependencyFailedError, opts *
 func formatUserError(w io.Writer, err *userError, opts *FormatOptions) {
 	what := err.What
 	if len(what) > 0 {
-		what = ": " + what
+		what = what + ": "
 	}
 	if err.Location != nil {
 		loc := formatLabel(err.Location.ErrorLocation(), opts.colors)
-		fmt.Fprintf(w, "%s%s: %s\n", loc, what, err.Err.Error())
+		fmt.Fprintf(w, "%s%s at %s\n", what, err.Err.Error(), loc)
 	} else {
 		fmt.Fprintf(w, "%s%s\n", what, err.Err.Error())
 	}
