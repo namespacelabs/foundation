@@ -17,7 +17,7 @@ import (
 )
 
 var ExtendServerHook []func(Location, *schema.Server) ExtendServerHookResult
-var ExtendNodeHook []func(Location, *schema.Node) ExtendNodeHookResult
+var ExtendNodeHook []func(context.Context, Packages, Location, *schema.Node) (*ExtendNodeHookResult, error)
 
 type ExtendServerHookResult struct {
 	AdditionalImports []schema.PackageName

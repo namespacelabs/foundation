@@ -45,6 +45,7 @@ import (
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/ulimit"
+	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/languages/golang"
 	nodejs "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/languages/opaque"
@@ -165,14 +166,24 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Setting up container registry logging, which is unfortunately global.
 		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
 
-		workspace.ExtendNodeHook = append(workspace.ExtendNodeHook, func(l workspace.Location, n *schema.Node) workspace.ExtendNodeHookResult {
-			if n.ExportServicesAsHttp && !runtime.UseGoInternalGrpcGateway {
-				return workspace.ExtendNodeHookResult{
-					Imports: []schema.PackageName{runtime.GrpcHttpTranscodeNode},
+		workspace.ExtendNodeHook = append(workspace.ExtendNodeHook, func(ctx context.Context, packages workspace.Packages, l workspace.Location, n *schema.Node) (*workspace.ExtendNodeHookResult, error) {
+			// Resolve doesn't require that the package actually exists. It just forces loading the module.
+			nodeloc, err := packages.Resolve(ctx, runtime.GrpcHttpTranscodeNode)
+			if err != nil {
+				return nil, err
+			}
+
+			// Check if the foundation version we depend on would have the transcode node.
+			ws := nodeloc.Module.Workspace
+			if ws.GetFoundation().MinimumApi >= versions.IntroducedGrpcTranscodeNode {
+				if n.ExportServicesAsHttp && !runtime.UseGoInternalGrpcGateway {
+					return &workspace.ExtendNodeHookResult{
+						Imports: []schema.PackageName{runtime.GrpcHttpTranscodeNode},
+					}, nil
 				}
 			}
 
-			return workspace.ExtendNodeHookResult{}
+			return nil, nil
 		})
 
 		// Compute cacheables.

@@ -89,9 +89,14 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 	}
 
 	for _, hook := range ExtendNodeHook {
-		r := hook(loc, node)
-		// These are dependencies that depend on the properties of the node, and as such as still considered user-provided imports.
-		deps.AddMultiple(r.Imports...)
+		r, err := hook(ctx, pl, loc, node)
+		if err != nil {
+			return fnerrors.InternalError("%s: hook failed: %w", loc.PackageName, err)
+		}
+		if r != nil {
+			// These are dependencies that depend on the properties of the node, and as such as still considered user-provided imports.
+			deps.AddMultiple(r.Imports...)
+		}
 	}
 
 	node.UserImports = deps.PackageNamesAsString()

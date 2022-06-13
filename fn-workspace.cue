@@ -1,6 +1,6 @@
 module: "namespacelabs.dev/foundation"
 requirements: {
-	api: 34
+	api: 35
 }
 
 prebuilts: {
