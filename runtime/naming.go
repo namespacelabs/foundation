@@ -20,7 +20,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
-const LocalBaseDomain = "nslocal.host"
+const (
+	LocalBaseDomain = "nslocal.host"
+	CloudBaseDomain = "nscloud.dev"
+)
 
 var NamingNoTLS = false // Set to true in CI.
 
@@ -57,47 +60,32 @@ func GuessAllocatedName(env *schema.Environment, srv *schema.Server, naming *sch
 
 	return &schema.Domain{
 		// XXX include stack?
-		Fqdn:    fmt.Sprintf("%s.%s.%s.nscloud.dev", name, env.Name, org),
+		Fqdn:    fmt.Sprintf("%s.%s.%s.%s", name, env.Name, org, CloudBaseDomain),
 		Managed: schema.Domain_CLOUD_MANAGED,
 	}, nil
 }
 
-func allocateWildcard(ctx context.Context, env *schema.Environment, srv *schema.Server, naming *schema.Naming, name string) (*schema.Domain, error) {
-	subdomain := fmt.Sprintf("%s.%s", name, env.Name)
+func allocateName(ctx context.Context, srv *schema.Server, naming *schema.Naming, startopts fnapi.AllocateOpts) (*schema.Domain_Certificate, error) {
+	var cacheKey string
 
-	if env.Purpose != schema.Environment_PRODUCTION {
-		return &schema.Domain{
-			Fqdn:    fmt.Sprintf("%s.%s.%s", name, env.Name, LocalBaseDomain),
-			Managed: schema.Domain_LOCAL_MANAGED,
-		}, nil
-	}
-
-	return allocateName(ctx, srv, naming, fnapi.AllocateOpts{Subdomain: subdomain}, schema.Domain_CLOUD_MANAGED, subdomain)
-}
-
-func allocateName(ctx context.Context, srv *schema.Server, naming *schema.Naming, startopts fnapi.AllocateOpts, managed schema.Domain_ManagedType, cacheKey string) (*schema.Domain, error) {
-	userAuth, err := fnapi.LoadUser()
-	if err != nil {
-		if errors.Is(err, fnapi.ErrRelogin) {
-			return nil, errLogin
+	if startopts.Subdomain != "" {
+		if startopts.Org == "" {
+			return nil, fnerrors.InternalError("%s: org must be specified", startopts.Subdomain)
 		}
-
-		return nil, err
+		cacheKey = startopts.Subdomain
+	} else if startopts.FQDN != "" {
+		cacheKey = startopts.FQDN + ".specific"
+	} else {
+		return nil, fnerrors.BadInputError("either FQDN or Subdomain must be set")
 	}
 
-	org := userAuth.Org
-	if orgOverride := naming.GetWithOrg(); orgOverride != "" {
-		org = orgOverride
-	}
-
-	previous, _ := checkStored(ctx, srv, org, cacheKey)
+	previous, _ := checkStored(ctx, srv, startopts.Org, cacheKey)
 	if previous != nil && isResourceValid(previous) {
 		// We ignore errors.
-		return domainFromResource(previous, managed), nil
+		return certFromResource(previous), nil
 	}
 
 	startopts.NoTLS = NamingNoTLS
-	startopts.Org = org
 	startopts.Stored = previous
 
 	nr, err := fnapi.AllocateName(ctx, srv, startopts)
@@ -105,24 +93,22 @@ func allocateName(ctx context.Context, srv *schema.Server, naming *schema.Naming
 		return nil, err
 	}
 
-	if err := storeCert(ctx, srv, org, cacheKey, nr); err != nil {
+	if err := storeCert(ctx, srv, startopts.Org, cacheKey, nr); err != nil {
 		fmt.Fprintf(console.Warnings(ctx), "failed to persistent certificate for cacheKey=%s: %v\n", cacheKey, err)
 	}
 
-	return domainFromResource(nr, managed), nil
+	return certFromResource(nr), nil
 }
 
-func domainFromResource(res *fnapi.NameResource, managed schema.Domain_ManagedType) *schema.Domain {
-	domain := &schema.Domain{Fqdn: res.FQDN, Managed: managed}
-
+func certFromResource(res *fnapi.NameResource) *schema.Domain_Certificate {
 	if res.Certificate.PrivateKey != nil && res.Certificate.CertificateBundle != nil {
-		domain.Certificate = &schema.Domain_Certificate{
+		return &schema.Domain_Certificate{
 			PrivateKey:        res.Certificate.PrivateKey,
 			CertificateBundle: res.Certificate.CertificateBundle,
 		}
 	}
 
-	return domain
+	return nil
 }
 
 func isResourceValid(nr *fnapi.NameResource) bool {

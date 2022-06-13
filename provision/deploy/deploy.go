@@ -65,7 +65,7 @@ func PrepareDeployStack(ctx context.Context, env ops.Environment, stack *stack.S
 		return nil, err
 	}
 
-	ingressFragments := computeIngressWithHandlerResult(env, stack.Proto(), def)
+	ingressFragments := computeIngressWithHandlerResult(env, stack, def)
 
 	buildID := provision.NewBuildID()
 	prepare, err := prepareBuildAndDeployment(ctx, env, focus, stack, def, makeBuildAssets(ingressFragments), buildID)
@@ -94,7 +94,7 @@ func makeBuildAssets(ingressFragments compute.Computable[*ComputeIngressResult])
 	}
 }
 
-func computeIngressWithHandlerResult(env ops.Environment, stack *schema.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
+func computeIngressWithHandlerResult(env ops.Environment, stack *stack.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
 	computedIngressFragments := compute.Transform(def, func(_ context.Context, h *handlerResult) ([]*schema.IngressFragmentPlan, error) {
 		var plans []*schema.IngressFragmentPlan
 
@@ -120,7 +120,7 @@ func computeIngressWithHandlerResult(env ops.Environment, stack *schema.Stack, d
 		return plans, nil
 	})
 
-	return ComputeIngress(env, stack, computedIngressFragments, AlsoDeployIngress)
+	return ComputeIngress(env, stack.Proto(), computedIngressFragments, AlsoDeployIngress)
 }
 
 type makeDeployGraph struct {
@@ -498,7 +498,7 @@ func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []p
 		return nil, nil, err
 	}
 
-	ingressFragments := computeIngressWithHandlerResult(env, stack.Proto(), def)
+	ingressFragments := computeIngressWithHandlerResult(env, stack, def)
 
 	computedOnly := compute.Transform(def, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
 		return h.Computed, nil

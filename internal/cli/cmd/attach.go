@@ -129,9 +129,8 @@ func (h *hydrateArgs) ComputeStack(ctx context.Context, args []string) (*hydrate
 			if err != nil {
 				return nil, err
 			}
-			for _, d := range deferred {
-				res.Ingress = append(res.Ingress, d.WithoutAllocation())
-			}
+
+			res.Ingress = deferred
 		}
 	}
 

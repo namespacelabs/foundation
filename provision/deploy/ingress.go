@@ -46,8 +46,11 @@ func (ci *computeIngress) Action() *tasks.ActionEvent { return tasks.Action("dep
 func (ci *computeIngress) Inputs() *compute.In {
 	return compute.Inputs().Indigestible("rootenv", ci.rootenv).Proto("env", ci.env).Proto("stack", ci.stack).Computable("plans", ci.plans)
 }
+func (ci *computeIngress) Output() compute.Output {
+	return compute.Output{NotCacheable: true}
+}
 func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*ComputeIngressResult, error) {
-	deferred, err := computeDeferredIngresses(ctx, ci.env, ci.stack)
+	allFragments, err := computeDeferredIngresses(ctx, ci.env, ci.stack)
 	if err != nil {
 		return nil, err
 	}
@@ -59,26 +62,31 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 			return nil, fnerrors.BadInputError("%s: not present in the stack", plan.GetIngressFragment().GetOwner())
 		}
 
-		attached, err := runtime.AttachDomains(ctx, ci.env, sch, plan.GetIngressFragment(), plan.AllocatedName)
+		attached, err := runtime.AttachComputedDomains(ctx, ci.env, sch, plan.GetIngressFragment(), plan.AllocatedName)
 		if err != nil {
 			return nil, err
 		}
 
-		deferred = append(deferred, attached...)
+		allFragments = append(allFragments, attached...)
 	}
 
 	var fragments []*schema.IngressFragment
 	// XXX parallelism
-	for _, d := range deferred {
+	for _, fragment := range allFragments {
+		sch := ci.stack.GetServer(schema.PackageName(fragment.Owner))
+		if sch == nil {
+			return nil, fnerrors.BadInputError("%s: not present in the stack", fragment.Owner)
+		}
+
 		if ci.allocate {
-			fragment, err := d.Allocate(ctx)
+			fragment.Domain, err = runtime.MaybeAllocateDomainCertificate(ctx, sch, fragment.Domain)
 			if err != nil {
 				return nil, err
 			}
 			fragments = append(fragments, fragment)
-		} else {
-			fragments = append(fragments, d.WithoutAllocation())
 		}
+
+		fragments = append(fragments, fragment)
 	}
 
 	return &ComputeIngressResult{
@@ -88,8 +96,8 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 	}, nil
 }
 
-func computeDeferredIngresses(ctx context.Context, env *schema.Environment, stack *schema.Stack) ([]runtime.DeferredIngress, error) {
-	var fragments []runtime.DeferredIngress
+func computeDeferredIngresses(ctx context.Context, env *schema.Environment, stack *schema.Stack) ([]*schema.IngressFragment, error) {
+	var fragments []*schema.IngressFragment
 
 	// XXX parallelism.
 	for _, srv := range stack.Entry {

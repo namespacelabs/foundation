@@ -91,12 +91,10 @@ func (c *prepareServerConfig) Action() *tasks.ActionEvent {
 func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
 	var fragment []*schema.IngressFragment
 	for _, entry := range c.stack.Entry {
-		deferred, err := runtime.ComputeIngress(ctx, c.env, entry, c.stack.Endpoint)
+		var err error
+		fragment, err = runtime.ComputeIngress(ctx, c.env, entry, c.stack.Endpoint)
 		if err != nil {
 			return nil, err
-		}
-		for _, d := range deferred {
-			fragment = append(fragment, d.WithoutAllocation())
 		}
 	}
 

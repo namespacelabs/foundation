@@ -6,6 +6,7 @@ package runtime
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"google.golang.org/protobuf/proto"
@@ -40,8 +41,8 @@ func RegisterSupport(fmwk schema.Framework, f LanguageRuntimeSupport) {
 	supportByFramework[fmwk.String()] = f
 }
 
-func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]DeferredIngress, error) {
-	var ingresses []DeferredIngress
+func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]*schema.IngressFragment, error) {
+	var ingresses []*schema.IngressFragment
 
 	var serverEndpoints []*schema.Endpoint
 	for _, endpoint := range allEndpoints {
@@ -135,7 +136,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 			}
 		}
 
-		attached, err := AttachDomains(ctx, env, sch, &schema.IngressFragment{
+		attached, err := AttachComputedDomains(ctx, env, sch, &schema.IngressFragment{
 			Name:        endpoint.ServiceName,
 			Owner:       endpoint.ServerOwner,
 			Endpoint:    endpoint,
@@ -195,7 +196,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 				})
 			}
 
-			attached, err := AttachDomains(ctx, env, sch, &schema.IngressFragment{
+			attached, err := AttachComputedDomains(ctx, env, sch, &schema.IngressFragment{
 				Name:     serverScoped(sch.Server, name),
 				Owner:    sch.GetPackageName().String(),
 				HttpPath: paths,
@@ -211,93 +212,86 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 	return ingresses, nil
 }
 
-func AttachDomains(ctx context.Context, env *schema.Environment, sch *schema.Stack_Entry, fragment *schema.IngressFragment, allocatedName string) ([]DeferredIngress, error) {
+func AttachComputedDomains(ctx context.Context, env *schema.Environment, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName string) ([]*schema.IngressFragment, error) {
 	domains, err := computeDomains(env, sch.Server, sch.ServerNaming, allocatedName)
 	if err != nil {
 		return nil, err
 	}
 
-	var ingresses []DeferredIngress
+	var ingresses []*schema.IngressFragment
 	for _, domain := range domains {
 		// It can be modified below.
-		fragment := protos.Clone(fragment)
-
-		// XXX security this exposes all services registered at port: #102.
-		t := DeferredIngress{
-			domain:   domain,
-			fragment: fragment,
-		}
-
-		ingresses = append(ingresses, t)
+		fragment := protos.Clone(template)
+		fragment.Domain = domain
+		ingresses = append(ingresses, fragment)
 	}
 
 	return ingresses, nil
 }
 
-type DeferredIngress struct {
-	domain   DeferredDomain
-	fragment *schema.IngressFragment
-}
+func MaybeAllocateDomainCertificate(ctx context.Context, entry *schema.Stack_Entry, template *schema.Domain) (*schema.Domain, error) {
+	domain := protos.Clone(template)
 
-func (d DeferredIngress) WithoutAllocation() *schema.IngressFragment {
-	fragment := protos.Clone(d.fragment)
-	fragment.Domain = d.domain.Domain
-	return fragment
-}
+	switch domain.Managed {
+	case schema.Domain_LOCAL_MANAGED:
+		// Nothing to do
 
-func (d DeferredIngress) Allocate(ctx context.Context) (*schema.IngressFragment, error) {
-	domain := d.domain.Domain
-	if d.domain.AllocateDomain != nil {
-		var err error
-		domain, err = d.domain.AllocateDomain(ctx)
+	case schema.Domain_CLOUD_MANAGED:
+		if !strings.HasSuffix(domain.Fqdn, "."+CloudBaseDomain) {
+			return nil, fnerrors.InternalError("%s: expected a %q suffix", domain.Fqdn, CloudBaseDomain)
+		}
+
+		withoutSuffix := strings.TrimSuffix(domain.Fqdn, "."+CloudBaseDomain)
+		parts := strings.Split(withoutSuffix, ".") // Name, Env, Org
+		if len(parts) != 3 {
+			return nil, fnerrors.InternalError("%s: expected domain to be {name}.{env}.{org}", domain.Fqdn)
+		}
+
+		cert, err := allocateName(ctx, entry.Server, entry.ServerNaming, fnapi.AllocateOpts{
+			Subdomain: fmt.Sprintf("%s.%s", parts[0], parts[1]),
+			Org:       parts[2],
+		})
 		if err != nil {
 			return nil, err
 		}
+		domain.Certificate = cert
+
+	case schema.Domain_USER_SPECIFIED_TLS_MANAGED:
+		cert, err := allocateName(ctx, entry.Server, entry.ServerNaming, fnapi.AllocateOpts{
+			FQDN: domain.Fqdn,
+		})
+		if err != nil {
+			return nil, err
+		}
+		domain.Certificate = cert
+
+	case schema.Domain_USER_SPECIFIED:
+		// Nothing to do.
 	}
 
-	fragment := protos.Clone(d.fragment)
-	fragment.Domain = domain
-	return fragment, nil
+	return domain, nil
 }
 
-type DeferredDomain struct {
-	Domain *schema.Domain
-
-	AllocateDomain func(context.Context) (*schema.Domain, error)
-}
-
-func computeDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) ([]DeferredDomain, error) {
-	var domains []DeferredDomain
+func computeDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) ([]*schema.Domain, error) {
+	var domains []*schema.Domain
 
 	domain, err := GuessAllocatedName(env, srv, naming, allocatedName)
 	if err != nil {
 		return nil, err
 	}
 
-	domains = append(domains, DeferredDomain{
-		Domain: domain,
-		AllocateDomain: func(ctx context.Context) (*schema.Domain, error) {
-			return allocateWildcard(ctx, env, srv, naming, allocatedName)
-		},
-	})
+	domains = append(domains, domain)
 
 	for _, d := range naming.GetAdditionalTlsManaged() {
 		d := d // Capture d.
 		if d.AllocatedName == allocatedName {
-			domains = append(domains, DeferredDomain{
-				Domain: &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED_TLS_MANAGED},
-				AllocateDomain: func(ctx context.Context) (*schema.Domain, error) {
-					return allocateName(ctx, srv, naming, fnapi.AllocateOpts{FQDN: d.Fqdn}, schema.Domain_USER_SPECIFIED_TLS_MANAGED, d.Fqdn+".specific")
-				},
-			})
+			domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED_TLS_MANAGED})
 		}
 	}
 
 	for _, d := range naming.GetAdditionalUserSpecified() {
 		if d.AllocatedName == allocatedName {
-			domains = append(domains, DeferredDomain{
-				Domain: &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED},
-			})
+			domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED})
 		}
 	}
 
