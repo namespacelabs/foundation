@@ -31,13 +31,15 @@ func Wrap(loc Location, err error) error {
 			return userErr
 		}
 	}
-
 	return &userError{fnError: fnError{Err: err, stack: stacktrace.New()}, Location: loc}
 }
 
 func Wrapf(loc Location, err error, whatFmt string, args ...interface{}) error {
-	args = append(args, err)
-	return &userError{fnError: fnError{Err: fmt.Errorf(whatFmt+": %w", args...), stack: stacktrace.New()}, Location: loc}
+	return &userError{
+		fnError:  fnError{Err: err, stack: stacktrace.New()},
+		Location: loc,
+		What:     fmt.Sprintf(whatFmt, args...),
+	}
 }
 
 func WithLogs(err error, readerF func() io.Reader) error {
@@ -45,37 +47,59 @@ func WithLogs(err error, readerF func() io.Reader) error {
 }
 
 func UserError(loc Location, format string, args ...interface{}) error {
-	return &userError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, Location: loc}
+	return &userError{
+		fnError:  fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()},
+		Location: loc,
+	}
 }
 
 // Configuration or system setup is not correct and requires user intervention.
 func UsageError(what, whyFmt string, args ...interface{}) error {
-	return &usageError{fnError: fnError{Err: fmt.Errorf(whyFmt, args...), stack: stacktrace.New()}, Why: fmt.Sprintf(whyFmt, args...), What: what}
+	return &usageError{
+		fnError: fnError{Err: fmt.Errorf(whyFmt, args...), stack: stacktrace.New()},
+		Why:     fmt.Sprintf(whyFmt, args...),
+		What:    what,
+	}
 }
 
 // Unexpected situation.
 func InternalError(format string, args ...interface{}) error {
-	return &internalError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
+	return &internalError{
+		fnError:  fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()},
+		expected: false,
+	}
 }
 
 // A call to a remote endpoint failed, perhaps due to a transient issue.
 func InvocationError(format string, args ...interface{}) error {
-	return &invocationError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
+	return &invocationError{
+		fnError:  fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()},
+		expected: false,
+	}
 }
 
 // The input does match our expectations (e.g. missing bits, wrong version, etc).
 func BadInputError(format string, args ...interface{}) error {
-	return &internalError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
+	return &internalError{
+		fnError:  fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()},
+		expected: false,
+	}
 }
 
 // We failed but it may be due a transient issue.
 func TransientError(format string, args ...interface{}) error {
-	return &internalError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
+	return &internalError{
+		fnError:  fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()},
+		expected: false,
+	}
 }
 
 // This error is expected, e.g. a rebuild is required.
 func ExpectedError(format string, args ...interface{}) error {
-	return &internalError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: true}
+	return &internalError{
+		fnError:  fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()},
+		expected: true,
+	}
 }
 
 // This error means that Foundation does not meet the minimum version requirements.
@@ -107,6 +131,7 @@ func (f *fnError) StackTrace() stacktrace.StackTrace {
 
 type userError struct {
 	fnError
+	What     string
 	Location Location
 }
 
@@ -393,11 +418,15 @@ func formatDependencyFailedError(w io.Writer, err *DependencyFailedError, opts *
 }
 
 func formatUserError(w io.Writer, err *userError, opts *FormatOptions) {
+	what := err.What
+	if len(what) > 0 {
+		what = ": " + what
+	}
 	if err.Location != nil {
 		loc := formatLabel(err.Location.ErrorLocation(), opts.colors)
-		fmt.Fprintf(w, "%s at %s\n", err.Err.Error(), loc)
+		fmt.Fprintf(w, "%s%s: %s\n", loc, what, err.Err.Error())
 	} else {
-		fmt.Fprintf(w, "%s\n", err.Err.Error())
+		fmt.Fprintf(w, "%s%s\n", what, err.Err.Error())
 	}
 }
 
