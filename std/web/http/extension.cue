@@ -16,4 +16,12 @@ extension: fn.#Extension & {
 			}
 		}
 	}
+
+	on: {
+		prepare: {
+			invokeBinary: {
+				binary: "namespacelabs.dev/foundation/std/web/http/configure"
+			}
+		}
+	}
 }

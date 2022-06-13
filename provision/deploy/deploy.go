@@ -98,9 +98,9 @@ func computeIngressWithHandlerResult(env ops.Environment, stack *schema.Stack, d
 	computedIngressFragments := compute.Transform(def, func(_ context.Context, h *handlerResult) ([]*schema.IngressFragmentPlan, error) {
 		var plans []*schema.IngressFragmentPlan
 
+		p := &schema.IngressFragmentPlan{}
 		for _, computed := range h.Computed.GetEntry() {
 			for _, conf := range computed.Configuration {
-				p := &schema.IngressFragmentPlan{}
 				if !conf.Impl.MessageIs(p) {
 					continue
 				}

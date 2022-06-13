@@ -16,10 +16,10 @@ import (
 	kubenode "namespacelabs.dev/foundation/std/runtime/kubernetes"
 )
 
-func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv *schema.Server) (*frontend.PrepareProps, error) {
+func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv *schema.Stack_Entry) (*frontend.PrepareProps, error) {
 	var ensureServiceAccount bool
 
-	if err := configure.VisitAllocs(srv.Allocation, kubeNode, &kubenode.ServerExtensionArgs{},
+	if err := configure.VisitAllocs(srv.Server.Allocation, kubeNode, &kubenode.ServerExtensionArgs{},
 		func(instance *schema.Allocation_Instance, instantiate *schema.Instantiate, args *kubenode.ServerExtensionArgs) error {
 			if args.EnsureServiceAccount {
 				ensureServiceAccount = true
@@ -33,7 +33,7 @@ func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv 
 		return nil, nil
 	}
 
-	serviceAccount := kubedef.MakeDeploymentId(srv)
+	serviceAccount := kubedef.MakeDeploymentId(srv.Server)
 
 	saDetails := &kubedef.ServiceAccountDetails{ServiceAccountName: serviceAccount}
 	packedSaDetails, err := anypb.New(saDetails)
@@ -52,7 +52,7 @@ func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv 
 	return &frontend.PrepareProps{
 		ProvisionInput: []*anypb.Any{packedSaDetails},
 		Extension: []*schema.DefExtension{{
-			For:  srv.PackageName,
+			For:  srv.Server.PackageName,
 			Impl: packedExt,
 		}},
 	}, nil

@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/yarn"
 	"namespacelabs.dev/foundation/languages"
@@ -74,24 +73,6 @@ func (impl) InjectService(workspace.Location, *schema.Node, *workspace.CueServic
 
 func (impl) DevelopmentPackages() []schema.PackageName {
 	return []schema.PackageName{controllerPkg}
-}
-
-func (impl) EvalProvision(n *schema.Node) (frontend.ProvisionStack, error) {
-	var pdata frontend.ProvisionStack
-	for _, inst := range n.Instantiate {
-		backend := &http.Backend{}
-		// XXX this is provisional: we need an additional lifecyle hook before provisioning,
-		// which extensions can hook to.
-		if ok, err := fnany.CheckUnmarshal(inst.Constructor, webPkg, backend); ok {
-			if err != nil {
-				return pdata, err
-			}
-
-			pdata.DeclaredStack = append(pdata.DeclaredStack, schema.PackageName(backend.EndpointOwner))
-		}
-	}
-
-	return pdata, nil
 }
 
 func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBuildAssets, srv provision.Server, isFocus bool) (build.Spec, error) {

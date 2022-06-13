@@ -102,15 +102,10 @@ func (stack *Stack) GetParsed(srv schema.PackageName) []*ParsedNode {
 }
 
 func Compute(ctx context.Context, servers []provision.Server, opts ProvisionOpts) (*Stack, error) {
-	var s *Stack
-	err := tasks.Action(runtime.TaskGraphCompute).Scope(provision.ServerPackages(servers).PackageNames()...).Run(ctx,
-		func(ctx context.Context) error {
-			var err error
-			s, err = computeStack(ctx, opts, servers...)
-			return err
+	return tasks.Return(ctx, tasks.Action(runtime.TaskGraphCompute).Scope(provision.ServerPackages(servers).PackageNames()...),
+		func(ctx context.Context) (*Stack, error) {
+			return computeStack(ctx, opts, servers...)
 		})
-
-	return s, err
 }
 
 // XXX Unfortunately as we are today we need to pass provisioning information to stack computation
@@ -235,7 +230,7 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 	var combinedProps frontend.PrepareProps
 	for _, hook := range n.PrepareHooks {
 		if hook.InvokeInternal != "" {
-			props, err := frontend.InvokeInternalPrepareHook(ctx, hook.InvokeInternal, server.Env(), server.Proto())
+			props, err := frontend.InvokeInternalPrepareHook(ctx, hook.InvokeInternal, server.Env(), server.StackEntry())
 			if err != nil {
 				return nil, fnerrors.Wrap(n.Location, err)
 			}
@@ -268,7 +263,7 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 				// XXX security prepare invocations have network access.
 			}
 
-			invoke := tools.LowLevelInvokeOptions[*protocol.PrepareRequest, *protocol.PrepareResponse]{}
+			var invoke tools.LowLevelInvokeOptions[*protocol.PrepareRequest, *protocol.PrepareResponse]
 
 			resp, err := invoke.Invoke(ctx, n.PackageName(), opts, &protocol.PrepareRequest{
 				Env:    server.Env().Proto(),
@@ -313,16 +308,6 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 
 	if pdata.Naming != nil {
 		return nil, fnerrors.UserError(n.Location, "nodes can't provide naming specifications")
-	}
-
-	if node := n.Node(); node != nil {
-		if handler, ok := workspace.FrameworkHandlers[server.Framework()]; ok {
-			fmwkData, err := handler.EvalProvision(node)
-			if err != nil {
-				return nil, err
-			}
-			pdata.DeclaredStack = append(pdata.DeclaredStack, fmwkData.DeclaredStack...)
-		}
 	}
 
 	pdata.AppendWith(combinedProps.PreparedProvisionPlan)

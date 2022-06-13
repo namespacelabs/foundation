@@ -10,7 +10,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -32,9 +31,6 @@ type FrameworkHandler interface {
 	InjectService(Location, *schema.Node, *CueService) error
 	// List of packages that should be added as server dependencies, when the target environment's purpose is DEVELOPMENT.
 	DevelopmentPackages() []schema.PackageName
-	// XXX this is provisional: we need an additional lifecyle hook before provisioning,
-	// which extensions can hook to.
-	EvalProvision(*schema.Node) (frontend.ProvisionStack, error)
 }
 
 type CueService struct {

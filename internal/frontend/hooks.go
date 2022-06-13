@@ -50,7 +50,7 @@ func (p *PrepareProps) AppendInputs(msgs ...proto.Message) error {
 	return nil
 }
 
-type PrepareHookFunc func(context.Context, ops.Environment, *schema.Server) (*PrepareProps, error)
+type PrepareHookFunc func(context.Context, ops.Environment, *schema.Stack_Entry) (*PrepareProps, error)
 
 func RegisterPrepareHook(name string, f PrepareHookFunc) {
 	if registrations.prepare == nil {
@@ -60,9 +60,9 @@ func RegisterPrepareHook(name string, f PrepareHookFunc) {
 	registrations.prepare[name] = f
 }
 
-func InvokeInternalPrepareHook(ctx context.Context, name string, env ops.Environment, srv *schema.Server) (*PrepareProps, error) {
+func InvokeInternalPrepareHook(ctx context.Context, name string, env ops.Environment, srv *schema.Stack_Entry) (*PrepareProps, error) {
 	if f, ok := registrations.prepare[name]; ok {
-		return tasks.Return(ctx, tasks.Action("prepare.invoke-hook").Scope(schema.PackageName(srv.PackageName)).Arg("name", name), func(ctx context.Context) (*PrepareProps, error) {
+		return tasks.Return(ctx, tasks.Action("prepare.invoke-hook").Scope(srv.GetPackageName()).Arg("name", name), func(ctx context.Context) (*PrepareProps, error) {
 			return f(ctx, env, srv)
 		})
 	}

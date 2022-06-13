@@ -10,8 +10,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 )
 
-func VisitAllocs[V proto.Message](allocs []*schema.Allocation, pkg schema.PackageName, tmpl V, f func(*schema.Allocation_Instance, *schema.Instantiate, V) error) error {
-	typeURL := fnany.TypeURL(pkg, tmpl)
+func VisitAllocs[V proto.Message](allocs []*schema.Allocation, owner schema.PackageName, tmpl V, f func(*schema.Allocation_Instance, *schema.Instantiate, V) error) error {
+	typeURL := fnany.TypeURL(owner, tmpl)
 
 	for _, alloc := range allocs {
 		for _, instance := range alloc.Instance {
@@ -28,7 +28,7 @@ func VisitAllocs[V proto.Message](allocs []*schema.Allocation, pkg schema.Packag
 				}
 			}
 
-			if err := VisitAllocs(instance.DownstreamAllocation, pkg, tmpl, f); err != nil {
+			if err := VisitAllocs(instance.DownstreamAllocation, owner, tmpl, f); err != nil {
 				return err
 			}
 		}

@@ -35,7 +35,7 @@ func Register() {
 	})
 }
 
-func prepareDescribeCluster(ctx context.Context, env ops.Environment, srv *schema.Server) (*frontend.PrepareProps, error) {
+func prepareDescribeCluster(ctx context.Context, env ops.Environment, se *schema.Stack_Entry) (*frontend.PrepareProps, error) {
 	eksCluster, err := PrepareClusterInfo(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 	if err != nil {
 		return nil, err
@@ -45,6 +45,7 @@ func prepareDescribeCluster(ctx context.Context, env ops.Environment, srv *schem
 		return nil, nil
 	}
 
+	srv := se.Server
 	eksServerDetails := &EKSServerDetails{
 		ComputedIamRoleName: fmt.Sprintf("fn-%s-%s-%s", eksCluster.Name, env.Proto().Name, srv.Id),
 	}

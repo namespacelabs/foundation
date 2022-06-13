@@ -11,7 +11,6 @@ import (
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -99,8 +98,4 @@ func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *worksp
 
 func (impl) DevelopmentPackages() []schema.PackageName {
 	return nil
-}
-
-func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
-	return frontend.ProvisionStack{}, nil
 }

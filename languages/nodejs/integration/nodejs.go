@@ -25,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/yarn"
@@ -537,10 +536,6 @@ func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *worksp
 
 func (impl) DevelopmentPackages() []schema.PackageName {
 	return []schema.PackageName{controllerPkg}
-}
-
-func (impl) EvalProvision(*schema.Node) (frontend.ProvisionStack, error) {
-	return frontend.ProvisionStack{}, nil
 }
 
 func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
