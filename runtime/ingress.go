@@ -339,7 +339,7 @@ func FilterAndDedupDomains(fragments []*schema.IngressFragment, filter func(*sch
 
 		if previous, ok := seenFQDN[d.Fqdn]; ok {
 			if !proto.Equal(previous.Domain, d) {
-				return nil, fnerrors.InternalError("%s: inconsistency in domain definitions", d.Fqdn)
+				return nil, fnerrors.InternalError("inconsistency in domain definitions -- was: %#v now: %#v", previous.Domain, d)
 			}
 		} else {
 			fd := &FilteredDomain{Domain: d}
