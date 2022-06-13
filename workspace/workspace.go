@@ -77,20 +77,8 @@ func RawModuleAt(ctx context.Context, path string) (WorkspaceData, error) {
 			return data, fnerrors.Wrapf(nil, err, "failed to parse %s for validation", file)
 		}
 
-		if firstPass.GetFoundation().GetMinimumApi() > versions.APIVersion {
-			return data, fnerrors.DoesNotMeetVersionRequirements(firstPass.ModuleName, firstPass.GetFoundation().GetMinimumApi(), versions.APIVersion)
-		}
-
-		if firstPass.GetFoundation().GetMinimumApi() > 0 &&
-			firstPass.GetFoundation().GetMinimumApi() < versions.MinimumAPIVersion {
-			return data, fnerrors.UserError(nil, `Unfortunately, this version of Foundation is too recent to be used with the
-current repository. If you're testing out an existing repository that uses
-Foundation, try fetching a newer version of the repository. If this is your
-own codebase, then you'll need to either revert to a previous version of
-"fn", or update your dependency versions with "fn mod tidy".
-
-This version check will be removed in future non-alpha versions of
-Foundation, which establish a stable longer term supported API surface.`)
+		if err := ValidateAPIRequirements(firstPass.ModuleName, firstPass.Foundation); err != nil {
+			return data, err
 		}
 
 		w := &schema.Workspace{}
@@ -102,6 +90,25 @@ Foundation, which establish a stable longer term supported API surface.`)
 		data.parsed = w
 		return data, nil
 	})
+}
+
+func ValidateAPIRequirements(moduleName string, w *schema.Workspace_FoundationRequirements) error {
+	if w.GetMinimumApi() > versions.APIVersion {
+		return fnerrors.DoesNotMeetVersionRequirements(moduleName, w.GetMinimumApi(), versions.APIVersion)
+	}
+
+	if w.GetMinimumApi() > 0 && w.GetMinimumApi() < versions.MinimumAPIVersion {
+		return fnerrors.UserError(nil, `Unfortunately, this version of Foundation is too recent to be used with the
+current repository. If you're testing out an existing repository that uses
+Foundation, try fetching a newer version of the repository. If this is your
+own codebase, then you'll need to either revert to a previous version of
+"fn", or update your dependency versions with "fn mod tidy".
+
+This version check will be removed in future non-alpha versions of
+Foundation, which establish a stable longer term supported API surface.`)
+	}
+
+	return nil
 }
 
 func writeTextMessage(w io.Writer, msg proto.Message) {

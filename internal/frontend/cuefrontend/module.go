@@ -59,7 +59,7 @@ func (moduleLoader) ModuleAt(ctx context.Context, dir string) (workspace.Workspa
 			return nil, err
 		}
 
-		w, err := parseValue(p.Val)
+		w, err := parseWorkspaceValue(p.Val)
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +74,7 @@ func (moduleLoader) ModuleAt(ctx context.Context, dir string) (workspace.Workspa
 	})
 }
 
-func parseValue(val cue.Value) (*schema.Workspace, error) {
+func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 	var m cueModule
 	if err := val.Decode(&m); err != nil {
 		return nil, fnerrors.New("failed to decode workspace contents: %w", err)
@@ -87,6 +87,10 @@ func parseValue(val cue.Value) (*schema.Workspace, error) {
 	if m.Foundation != nil {
 		w.Foundation = &schema.Workspace_FoundationRequirements{
 			MinimumApi: int32(m.Foundation.MinimumAPI),
+		}
+
+		if err := workspace.ValidateAPIRequirements(m.ModuleName, w.Foundation); err != nil {
+			return nil, err
 		}
 	}
 
