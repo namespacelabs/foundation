@@ -27,5 +27,6 @@ message FetchResponse {
 
 service PostService {
     rpc Post(PostRequest) returns (PostResponse);
+    rpc StreamingPost(PostRequest) returns (stream PostResponse);
     rpc Fetch(FetchRequest) returns (FetchResponse);
 }

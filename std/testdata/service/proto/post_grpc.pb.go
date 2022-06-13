@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PostServiceClient interface {
 	Post(ctx context.Context, in *PostRequest, opts ...grpc.CallOption) (*PostResponse, error)
+	StreamingPost(ctx context.Context, in *PostRequest, opts ...grpc.CallOption) (PostService_StreamingPostClient, error)
 	Fetch(ctx context.Context, in *FetchRequest, opts ...grpc.CallOption) (*FetchResponse, error)
 }
 
@@ -43,6 +44,38 @@ func (c *postServiceClient) Post(ctx context.Context, in *PostRequest, opts ...g
 	return out, nil
 }
 
+func (c *postServiceClient) StreamingPost(ctx context.Context, in *PostRequest, opts ...grpc.CallOption) (PostService_StreamingPostClient, error) {
+	stream, err := c.cc.NewStream(ctx, &PostService_ServiceDesc.Streams[0], "/std.testdata.service.proto.PostService/StreamingPost", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &postServiceStreamingPostClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type PostService_StreamingPostClient interface {
+	Recv() (*PostResponse, error)
+	grpc.ClientStream
+}
+
+type postServiceStreamingPostClient struct {
+	grpc.ClientStream
+}
+
+func (x *postServiceStreamingPostClient) Recv() (*PostResponse, error) {
+	m := new(PostResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *postServiceClient) Fetch(ctx context.Context, in *FetchRequest, opts ...grpc.CallOption) (*FetchResponse, error) {
 	out := new(FetchResponse)
 	err := c.cc.Invoke(ctx, "/std.testdata.service.proto.PostService/Fetch", in, out, opts...)
@@ -57,6 +90,7 @@ func (c *postServiceClient) Fetch(ctx context.Context, in *FetchRequest, opts ..
 // for forward compatibility
 type PostServiceServer interface {
 	Post(context.Context, *PostRequest) (*PostResponse, error)
+	StreamingPost(*PostRequest, PostService_StreamingPostServer) error
 	Fetch(context.Context, *FetchRequest) (*FetchResponse, error)
 }
 
@@ -66,6 +100,9 @@ type UnimplementedPostServiceServer struct {
 
 func (UnimplementedPostServiceServer) Post(context.Context, *PostRequest) (*PostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Post not implemented")
+}
+func (UnimplementedPostServiceServer) StreamingPost(*PostRequest, PostService_StreamingPostServer) error {
+	return status.Errorf(codes.Unimplemented, "method StreamingPost not implemented")
 }
 func (UnimplementedPostServiceServer) Fetch(context.Context, *FetchRequest) (*FetchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Fetch not implemented")
@@ -98,6 +135,27 @@ func _PostService_Post_Handler(srv interface{}, ctx context.Context, dec func(in
 		return srv.(PostServiceServer).Post(ctx, req.(*PostRequest))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_StreamingPost_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(PostRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(PostServiceServer).StreamingPost(m, &postServiceStreamingPostServer{stream})
+}
+
+type PostService_StreamingPostServer interface {
+	Send(*PostResponse) error
+	grpc.ServerStream
+}
+
+type postServiceStreamingPostServer struct {
+	grpc.ServerStream
+}
+
+func (x *postServiceStreamingPostServer) Send(m *PostResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _PostService_Fetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -134,6 +192,12 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PostService_Fetch_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamingPost",
+			Handler:       _PostService_StreamingPost_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "std/testdata/service/proto/post.proto",
 }
