@@ -21,13 +21,19 @@ func TestGroupByName(t *testing.T) {
 
 	got := groupByName(x)
 
-	if d := cmp.Diff([][]*schema.IngressFragment{
+	if d := cmp.Diff([]ingressGroup{
 		{
-			{Name: "a"},
-			{Name: "a"},
+			Name: "a",
+			Fragments: []*schema.IngressFragment{
+				{Name: "a"},
+				{Name: "a"},
+			},
 		},
 		{
-			{Name: "b"},
+			Name: "b",
+			Fragments: []*schema.IngressFragment{
+				{Name: "b"},
+			},
 		},
 	}, got, protocmp.Transform()); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)

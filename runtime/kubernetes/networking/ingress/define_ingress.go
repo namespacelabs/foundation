@@ -11,12 +11,14 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applynetworkingv1 "k8s.io/client-go/applyconfigurations/networking/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
@@ -37,24 +39,26 @@ type IngressRef struct {
 	Namespace, Name string
 }
 
-func Ensure(ctx context.Context, ns string, env *schema.Environment, srv *schema.Server, fragments []*schema.IngressFragment, certSecrets map[string]string) ([]kubedef.Apply, []MapAddress, error) {
+func Ensure(ctx context.Context, ns string, env *schema.Environment, srv *schema.Server, fragments []*schema.IngressFragment, certSecrets map[string]string) ([]kubedef.Apply, *MapAddressList, error) {
 	var applies []kubedef.Apply
 
 	groups := groupByName(fragments)
 
-	var managed []MapAddress
+	var allManaged MapAddressList
 	for _, g := range groups {
-		apply, m, err := generateForSrv(ctx, ns, env, srv, g[0].Name, g, certSecrets)
+		apply, managed, err := generateForSrv(ctx, ns, env, srv, g.Name, g.Fragments, certSecrets)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		applies = append(applies, kubedef.Apply{
-			Description: fmt.Sprintf("Ingress %s", g[0].Name),
+			Description: fmt.Sprintf("Ingress %s", g.Name),
 			Resource:    apply,
 		})
 
-		managed = append(managed, m...)
+		if err := allManaged.Merge(managed); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Since we built the Cert list from a map, it's order is non-deterministic.
@@ -62,7 +66,7 @@ func Ensure(ctx context.Context, ns string, env *schema.Environment, srv *schema
 		return strings.Compare(applies[i].Description, applies[j].Description) < 0
 	})
 
-	return applies, managed, nil
+	return applies, &allManaged, nil
 }
 
 func MakeCertificateSecrets(ns string, fragments []*schema.IngressFragment) (map[string]string, []kubedef.Apply) {
@@ -101,19 +105,27 @@ func MakeCertificateSecrets(ns string, fragments []*schema.IngressFragment) (map
 	return certSecrets, applies
 }
 
-func groupByName(ngs []*schema.IngressFragment) [][]*schema.IngressFragment {
+type ingressGroup struct {
+	Name      string
+	Fragments []*schema.IngressFragment
+}
+
+func groupByName(ngs []*schema.IngressFragment) []ingressGroup {
 	sort.Slice(ngs, func(i, j int) bool {
 		return strings.Compare(ngs[i].Name, ngs[j].Name) < 0
 	})
 
-	var groups [][]*schema.IngressFragment
+	var groups []ingressGroup
 
 	var currentName string
 	var g []*schema.IngressFragment
 	for _, ng := range ngs {
 		if ng.Name != currentName {
 			if len(g) > 0 {
-				groups = append(groups, g)
+				groups = append(groups, ingressGroup{
+					Name:      g[0].Name,
+					Fragments: g,
+				})
 			}
 			g = nil
 			currentName = ng.Name
@@ -122,32 +134,72 @@ func groupByName(ngs []*schema.IngressFragment) [][]*schema.IngressFragment {
 		g = append(g, ng)
 	}
 	if len(g) > 0 {
-		groups = append(groups, g)
+		groups = append(groups, ingressGroup{
+			Name:      g[0].Name,
+			Fragments: g,
+		})
 	}
 
 	return groups
 }
 
-func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv *schema.Server, name string, fragments []*schema.IngressFragment, certSecrets map[string]string) (*applynetworkingv1.IngressApplyConfiguration, []MapAddress, error) {
-	backendProtocol := "http"
+type MapAddressList struct {
+	index   map[string]MapAddress // fqdn -> MapAddress
+	sources map[string][]string   // fqdn -> list of sources
+}
 
+func (m *MapAddressList) Add(ma MapAddress, sources ...string) error {
+	if existing, has := m.index[ma.FQDN]; has {
+		if existing.Ingress.Name != ma.Ingress.Name || existing.Ingress.Namespace != ma.Ingress.Namespace {
+			return fnerrors.InternalError("%s: incompatible map address definitions: %s/%s (from %s) vs %s/%s",
+				ma.FQDN, existing.Ingress.Namespace, existing.Ingress.Name,
+				strings.Join(m.sources[ma.FQDN], ", "), ma.Ingress.Namespace, ma.Ingress.Name)
+		}
+
+		return nil
+	}
+
+	if m.index == nil {
+		m.index = map[string]MapAddress{}
+		m.sources = map[string][]string{}
+	}
+
+	m.index[ma.FQDN] = ma
+	m.sources[ma.FQDN] = append(m.sources[ma.FQDN], sources...)
+
+	return nil
+}
+
+func (m *MapAddressList) Merge(rhs *MapAddressList) error {
+	if m == nil {
+		return nil
+	}
+
+	var errs []error
+	for _, ma := range m.index {
+		errs = append(errs, m.Add(ma, m.sources[ma.FQDN]...))
+	}
+	return multierr.New(errs...)
+}
+
+func (m *MapAddressList) Sorted() []MapAddress {
+	var mas []MapAddress
+	for _, ma := range m.index {
+		mas = append(mas, ma)
+	}
+	slices.SortFunc(mas, func(a, b MapAddress) bool {
+		return strings.Compare(a.FQDN, b.FQDN) < 0
+	})
+	return mas
+}
+
+func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv *schema.Server, name string, fragments []*schema.IngressFragment, certSecrets map[string]string) (*applynetworkingv1.IngressApplyConfiguration, *MapAddressList, error) {
 	var grpcCount, nonGrpcCount int
 
 	spec := applynetworkingv1.IngressSpec()
 
-	var managedType schema.Domain_ManagedType
-	for _, ng := range fragments {
-		if ng.GetDomain().GetManaged() == schema.Domain_MANAGED_UNKNOWN {
-			continue
-		}
-		if managedType != schema.Domain_MANAGED_UNKNOWN && managedType != ng.GetDomain().GetManaged() {
-			return nil, nil, fnerrors.InternalError("%s: inconsistent domain definition, %q vs %q", ng.GetDomain().Fqdn, managedType, ng.GetDomain().GetManaged())
-		}
-		managedType = ng.GetDomain().GetManaged()
-	}
-
 	var tlsCount int
-	var managed []MapAddress
+	var managed MapAddressList
 	var extensions []*anypb.Any
 	for _, ng := range fragments {
 		extensions = append(extensions, ng.Extension...)
@@ -207,10 +259,12 @@ func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv
 		}
 
 		if ng.Domain.Managed == schema.Domain_CLOUD_MANAGED {
-			managed = append(managed, MapAddress{
+			if err := managed.Add(MapAddress{
 				FQDN:    ng.Domain.Fqdn,
 				Ingress: IngressRef{ns, name},
-			})
+			}, name); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 
@@ -218,6 +272,7 @@ func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv
 		return nil, nil, fnerrors.InternalError("can't mix grpc and non-grpc backends in the same ingress")
 	}
 
+	backendProtocol := "http"
 	if grpcCount > 0 {
 		// XXX grpc vs grpcs
 		backendProtocol = "grpc"
@@ -234,7 +289,7 @@ func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv
 		WithAnnotations(annotations).
 		WithSpec(spec)
 
-	return ingress, managed, nil
+	return ingress, &managed, nil
 }
 
 func Delete(ns string, stack []provision.Server) ([]*schema.SerializedInvocation, error) {

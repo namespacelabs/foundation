@@ -34,7 +34,7 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 	}
 
 	// XXX ensure that any single domain is only used by a single ingress.
-	var managed []ingress.MapAddress
+	var allManaged ingress.MapAddressList
 	for _, srv := range stack.Entry {
 		var frags []*schema.IngressFragment
 		for _, fr := range allFragments {
@@ -47,7 +47,7 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 			continue
 		}
 
-		defs, m, err := ingress.Ensure(ctx, serverNamespace(r, srv.Server), r.env, srv.Server, frags, certSecretMap)
+		defs, managed, err := ingress.Ensure(ctx, serverNamespace(r, srv.Server), r.env, srv.Server, frags, certSecretMap)
 		if err != nil {
 			return nil, err
 		}
@@ -60,11 +60,13 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 			state.definitions = append(state.definitions, def)
 		}
 
-		managed = append(managed, m...)
+		if err := allManaged.Merge(managed); err != nil {
+			return nil, err
+		}
 	}
 
 	// XXX this could be reduced in effort (e.g. batched).
-	for _, frag := range managed {
+	for _, frag := range allManaged.Sorted() {
 		impl, err := anypb.New(&ingress.OpMapAddress{
 			Fdqn:        frag.FQDN,
 			IngressNs:   frag.Ingress.Namespace,

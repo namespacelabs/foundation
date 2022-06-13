@@ -169,9 +169,10 @@ func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb
 	var cors *schema.HttpCors
 
 	for _, ext := range extensions {
-		switch ext.TypeUrl {
-		case "type.googleapis.com/foundation.schema.HttpCors":
-			corsConf := &schema.HttpCors{}
+		corsConf := &schema.HttpCors{}
+
+		switch {
+		case ext.MessageIs(corsConf):
 			if err := ext.UnmarshalTo(corsConf); err != nil {
 				return nil, fnerrors.InternalError("nginx: failed to unpack CORS configuration: %v", err)
 			}
@@ -189,7 +190,6 @@ func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb
 
 	if cors != nil {
 		// XXX validate allowed origin syntax.
-
 		annotations["nginx.ingress.kubernetes.io/enable-cors"] = "true"
 		annotations["nginx.ingress.kubernetes.io/cors-allow-origin"] = strings.Join(cors.AllowedOrigin, ", ")
 	}

@@ -212,7 +212,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 }
 
 func AttachDomains(ctx context.Context, env *schema.Environment, sch *schema.Stack_Entry, fragment *schema.IngressFragment, allocatedName string) ([]DeferredIngress, error) {
-	domains, err := ComputeDomains(env, sch.Server, sch.ServerNaming, allocatedName)
+	domains, err := computeDomains(env, sch.Server, sch.ServerNaming, allocatedName)
 	if err != nil {
 		return nil, err
 	}
@@ -226,10 +226,6 @@ func AttachDomains(ctx context.Context, env *schema.Environment, sch *schema.Sta
 		t := DeferredIngress{
 			domain:   domain,
 			fragment: fragment,
-		}
-
-		if domain.Domain.Managed == schema.Domain_CLOUD_MANAGED || domain.Domain.Managed == schema.Domain_LOCAL_MANAGED {
-			t.fragment.Name += "-managed"
 		}
 
 		ingresses = append(ingresses, t)
@@ -270,7 +266,7 @@ type DeferredDomain struct {
 	AllocateDomain func(context.Context) (*schema.Domain, error)
 }
 
-func ComputeDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) ([]DeferredDomain, error) {
+func computeDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) ([]DeferredDomain, error) {
 	var domains []DeferredDomain
 
 	domain, err := GuessAllocatedName(env, srv, naming, allocatedName)
