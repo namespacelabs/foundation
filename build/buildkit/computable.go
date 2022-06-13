@@ -294,7 +294,7 @@ If you don't think this is an actual issue, please re-run with --skip_buildkit_w
 		}
 	}
 
-	fillInCaching(&solveOpt)
+	fillInCaching(e, &solveOpt)
 
 	ch := make(chan *client.SolveStatus)
 
@@ -323,6 +323,8 @@ type exporter[V any] interface {
 	Prepare(context.Context) error
 	Exports() []client.ExportEntry
 	Provide(context.Context, *client.SolveResponse) (V, error)
+	ImportCache() *cacheVar
+	ExportCache() *cacheVar
 }
 
 func exportToImage() exporter[oci.Image] { return &exportImage{} }
@@ -358,6 +360,14 @@ func (e *exportImage) Exports() []client.ExportEntry {
 
 func (e *exportImage) Provide(ctx context.Context, _ *client.SolveResponse) (oci.Image, error) {
 	return IngestFromFS(ctx, fnfs.Local(filepath.Dir(e.output.Name())), filepath.Base(e.output.Name()), false)
+}
+
+func (e *exportImage) ImportCache() *cacheVar {
+	return nil
+}
+
+func (e *exportImage) ExportCache() *cacheVar {
+	return nil
 }
 
 func IngestFromFS(ctx context.Context, fsys fs.FS, path string, compressed bool) (oci.Image, error) {
@@ -440,6 +450,14 @@ func (e *exportFS) Provide(context.Context, *client.SolveResponse) (fs.FS, error
 	return fnfs.Local(e.outputDir), nil
 }
 
+func (e *exportFS) ImportCache() *cacheVar {
+	return nil
+}
+
+func (e *exportFS) ExportCache() *cacheVar {
+	return nil
+}
+
 func exportToRegistry(ref string, insecure bool) exporter[oci.Image] {
 	return &exportRegistry{ref: ref, insecure: insecure}
 }
@@ -499,6 +517,25 @@ func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse)
 	}
 
 	return canonical(ctx, img)
+}
+
+func (e *exportRegistry) ImportCache() *cacheVar {
+	return &cacheVar{
+		cacheType: "registry",
+		args: map[string]string{
+			"ref": e.ref,
+		},
+	}
+}
+
+func (e *exportRegistry) ExportCache() *cacheVar {
+	return &cacheVar{
+		cacheType: "registry",
+		args: map[string]string{
+			"ref":  e.ref,
+			"mode": "max",
+		},
+	}
 }
 
 func canonical(ctx context.Context, original oci.Image) (oci.Image, error) {
