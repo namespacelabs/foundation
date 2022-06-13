@@ -115,7 +115,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 
 			annotations, err := kubedef.MakeServiceAnnotations(x.Server.Server, x.Endpoint)
 			if err != nil {
-				return fnerrors.New("failed to calculation annotations: %w", err)
+				return fnerrors.New("failed to calculate annotations: %w", err)
 			}
 
 			out.Invocations = append(out.Invocations, kubedef.Apply{
