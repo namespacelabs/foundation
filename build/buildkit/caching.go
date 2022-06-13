@@ -53,30 +53,31 @@ func (c *cacheVar) Set(v string) error {
 func (*cacheVar) Type() string { return "" }
 
 func fillInCaching[V any](e exporter[V], sopt *client.SolveOpt) {
-	if c := e.ImportCache(); c != nil {
-		sopt.CacheImports = append(sopt.CacheImports, client.CacheOptionsEntry{
-			Type:  c.cacheType,
-			Attrs: c.args,
-		})
-	}
-	if c := e.ExportCache(); c != nil {
-		sopt.CacheExports = append(sopt.CacheExports, client.CacheOptionsEntry{
-			Type:  c.cacheType,
-			Attrs: c.args,
-		})
-	}
+	// Buildkit only allows a single cache exporter. For consistency, we align the behavior of imports, too.
+	// https://github.com/moby/buildkit/blob/86c33b66e176a6fc74b88d6f46798d3ec18e2e73/control/control.go#L284
 
 	if ImportCacheVar.cacheType != "" {
 		sopt.CacheImports = append(sopt.CacheImports, checkUseGithubCache(client.CacheOptionsEntry{
 			Type:  ImportCacheVar.cacheType,
 			Attrs: ImportCacheVar.args,
 		}))
+	} else if c := e.ImportCache(); c != nil {
+		sopt.CacheImports = append(sopt.CacheImports, client.CacheOptionsEntry{
+			Type:  c.cacheType,
+			Attrs: c.args,
+		})
 	}
+
 	if ExportCacheVar.cacheType != "" {
 		sopt.CacheExports = append(sopt.CacheExports, checkUseGithubCache(client.CacheOptionsEntry{
 			Type:  ExportCacheVar.cacheType,
 			Attrs: ExportCacheVar.args,
 		}))
+	} else if c := e.ExportCache(); c != nil {
+		sopt.CacheExports = append(sopt.CacheExports, client.CacheOptionsEntry{
+			Type:  c.cacheType,
+			Attrs: c.args,
+		})
 	}
 }
 
