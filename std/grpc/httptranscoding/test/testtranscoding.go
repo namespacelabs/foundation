@@ -22,6 +22,8 @@ func main() {
 	testing.Do(func(ctx context.Context, t testing.Test) error {
 		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/networking/gateway/server", "grpc-http-transcoder")
 
+		// XXX we're missing a synchronization mechanism that waits for the transcoder configuration to have been applied.
+
 		// Lets check if the grpc service is being transcoded to http.
 
 		// std.testdata.service.proto.PostService is hosted in server/gogrpc.
@@ -46,21 +48,21 @@ func main() {
 		}
 
 		// languages.nodejs.testdata.services.simple.PostService is hosted in nodejs/testdata/server.
-		// if err := makeTest(endpoint.Address(), match[*tsPostResponse]{
-		// 	ServiceName: "languages.nodejs.testdata.services.simple.PostService",
-		// 	MethodName:  "Post",
-		// 	Request:     tsPostRequest{Input: "xyz"},
-		// 	Response:    &tsPostResponse{},
-		// 	Match: func(pr *tsPostResponse) error {
-		// 		if pr.Output != "Input: xyz" {
-		// 			return fmt.Errorf("unexpected response %q", pr.Output)
-		// 		}
+		if err := makeTest(endpoint.Address(), match[*tsPostResponse]{
+			ServiceName: "languages.nodejs.testdata.services.simple.PostService",
+			MethodName:  "Post",
+			Request:     tsPostRequest{Input: "xyz"},
+			Response:    &tsPostResponse{},
+			Match: func(pr *tsPostResponse) error {
+				if pr.Output != "Input: xyz" {
+					return fmt.Errorf("unexpected response %q", pr.Output)
+				}
 
-		// 		return nil
-		// 	},
-		// }); err != nil {
-		// 	log.Fatal(err)
-		// }
+				return nil
+			},
+		}); err != nil {
+			log.Fatal(err)
+		}
 
 		return nil
 	})
@@ -101,10 +103,10 @@ func makeTest[V any](address string, m match[V]) error {
 	return m.Match(m.Response)
 }
 
-// type tsPostRequest struct {
-// 	Input string `json:"input"`
-// }
+type tsPostRequest struct {
+	Input string `json:"input"`
+}
 
-// type tsPostResponse struct {
-// 	Output string `json:"output"`
-// }
+type tsPostResponse struct {
+	Output string `json:"output"`
+}
