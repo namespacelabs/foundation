@@ -30,7 +30,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-var AlsoComputeIngress = true
+var AlsoDeployIngress = true
 
 type StackOpts struct {
 	BaseServerPort int32
@@ -60,55 +60,74 @@ func PrepareDeployServers(ctx context.Context, env ops.Environment, focus []prov
 }
 
 func PrepareDeployStack(ctx context.Context, env ops.Environment, stack *stack.Stack, focus []provision.Server) (compute.Computable[*Plan], error) {
-	buildID := provision.NewBuildID()
-
 	def, err := prepareHandlerInvocations(ctx, env, stack)
 	if err != nil {
 		return nil, err
 	}
 
-	prepare, err := prepareBuildAndDeployment(ctx, env, focus, stack, def, buildID)
+	ingressFragments := computeIngressWithHandlerResult(env, stack.Proto(), def)
+
+	buildID := provision.NewBuildID()
+	prepare, err := prepareBuildAndDeployment(ctx, env, focus, stack, def, makeBuildAssets(ingressFragments), buildID)
 	if err != nil {
 		return nil, err
 	}
 
-	g := &makeDeployGraph{stack: stack, prepare: prepare}
-	if AlsoComputeIngress {
-		computedOnly := compute.Transform(prepare, func(_ context.Context, h prepareAndBuildResult) ([]*schema.IngressFragmentPlan, error) {
-			var plans []*schema.IngressFragmentPlan
+	g := &makeDeployGraph{
+		stack:            stack,
+		prepare:          prepare,
+		ingressFragments: ingressFragments,
+	}
 
-			for _, computed := range h.HandlerResult.Computed.GetEntry() {
-				for _, conf := range computed.Configuration {
-					p := &schema.IngressFragmentPlan{}
-					if !conf.Impl.MessageIs(p) {
-						continue
-					}
-
-					if err := conf.Impl.UnmarshalTo(p); err != nil {
-						return nil, err
-					}
-
-					if p.AllocatedName == "" {
-						return nil, fnerrors.BadInputError("%s: AllocatedName is missing in IngressFragmentPlan", conf.Owner)
-					}
-
-					plans = append(plans, p)
-				}
-			}
-
-			return plans, nil
-		})
-
-		g.ingress = PlanIngress(env, env.Proto(), stack.Proto(), computedOnly)
+	if AlsoDeployIngress {
+		g.ingressPlan = PlanIngressDeployment(g.ingressFragments)
 	}
 
 	return g, nil
 }
 
+func makeBuildAssets(ingressFragments compute.Computable[*ComputeIngressResult]) languages.AvailableBuildAssets {
+	return languages.AvailableBuildAssets{
+		IngressFragments: compute.Transform(ingressFragments, func(_ context.Context, res *ComputeIngressResult) ([]*schema.IngressFragment, error) {
+			return res.Fragments, nil
+		}),
+	}
+}
+
+func computeIngressWithHandlerResult(env ops.Environment, stack *schema.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
+	computedIngressFragments := compute.Transform(def, func(_ context.Context, h *handlerResult) ([]*schema.IngressFragmentPlan, error) {
+		var plans []*schema.IngressFragmentPlan
+
+		for _, computed := range h.Computed.GetEntry() {
+			for _, conf := range computed.Configuration {
+				p := &schema.IngressFragmentPlan{}
+				if !conf.Impl.MessageIs(p) {
+					continue
+				}
+
+				if err := conf.Impl.UnmarshalTo(p); err != nil {
+					return nil, err
+				}
+
+				if p.AllocatedName == "" {
+					return nil, fnerrors.BadInputError("%s: AllocatedName is missing in IngressFragmentPlan", conf.Owner)
+				}
+
+				plans = append(plans, p)
+			}
+		}
+
+		return plans, nil
+	})
+
+	return ComputeIngress(env, stack, computedIngressFragments, AlsoDeployIngress)
+}
+
 type makeDeployGraph struct {
-	stack   *stack.Stack
-	prepare compute.Computable[prepareAndBuildResult]
-	ingress compute.Computable[*ingressResult]
+	stack            *stack.Stack
+	prepare          compute.Computable[prepareAndBuildResult]
+	ingressFragments compute.Computable[*ComputeIngressResult]
+	ingressPlan      compute.Computable[runtime.DeploymentState]
 
 	compute.LocalScoped[*Plan]
 }
@@ -126,14 +145,14 @@ func (m *makeDeployGraph) Action() *tasks.ActionEvent {
 
 func (m *makeDeployGraph) Inputs() *compute.In {
 	in := compute.Inputs().Computable("prepare", m.prepare).Indigestible("stack", m.stack)
-	if m.ingress != nil {
-		in = in.Computable("ingress", m.ingress)
+	if m.ingressFragments != nil {
+		in = in.Computable("ingress", m.ingressFragments).Computable("ingressPlan", m.ingressPlan)
 	}
 	return in
 }
 
 func (m *makeDeployGraph) Output() compute.Output {
-	return compute.Output{NonDeterministic: true}
+	return compute.Output{NotCacheable: true}
 }
 
 func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*Plan, error) {
@@ -155,13 +174,13 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 		Hints:         pbr.DeploymentState.Hints(),
 	}
 
-	if ingress, ok := compute.GetDep(deps, m.ingress, "ingress"); ok {
-		if err := g.Add(ingress.Value.DeploymentState.Definitions()...); err != nil {
+	if ingress, ok := compute.GetDep(deps, m.ingressPlan, "ingressPlan"); ok {
+		if err := g.Add(ingress.Value.Definitions()...); err != nil {
 			return nil, err
 		}
-
-		plan.IngressFragments = ingress.Value.Fragments
 	}
+
+	plan.IngressFragments = compute.MustGetDepValue(deps, m.ingressFragments, "ingress").Fragments
 
 	return plan, nil
 }
@@ -208,7 +227,7 @@ func (bi builtImages) get(pkg schema.PackageName) (builtImage, bool) {
 	return builtImage{}, false
 }
 
-func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers []provision.Server, stack *stack.Stack, stackDef compute.Computable[*handlerResult], buildID provision.BuildID) (compute.Computable[prepareAndBuildResult], error) {
+func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers []provision.Server, stack *stack.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets, buildID provision.BuildID) (compute.Computable[prepareAndBuildResult], error) {
 	var focus schema.PackageList
 	for _, server := range servers {
 		focus.Add(server.PackageName())
@@ -220,7 +239,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 
 	// computedOnly is used exclusively by config images. They include the set of
 	// computed configurations that provision tools may have emitted.
-	imgs, err := prepareServerImages(ctx, focus, stack, computedOnly, buildID)
+	imgs, err := prepareServerImages(ctx, focus, stack, buildAssets, computedOnly, buildID)
 	if err != nil {
 		return nil, err
 	}
@@ -355,6 +374,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 }
 
 func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *stack.Stack,
+	buildAssets languages.AvailableBuildAssets,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations],
 	buildID provision.BuildID) (map[schema.PackageName]images, error) {
 	imageMap := map[schema.PackageName]images{}
@@ -362,7 +382,7 @@ func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *s
 	for _, srv := range stack.Servers {
 		var images images
 
-		spec, err := languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, stack, srv, focus.Includes(srv.PackageName()))
+		spec, err := languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, buildAssets, srv, focus.Includes(srv.PackageName()))
 		if err != nil {
 			return nil, err
 		}
@@ -465,7 +485,7 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildI
 	return res, nil
 }
 
-func ComputeStackAndImages(ctx context.Context, servers []provision.Server, opts Opts) (*stack.Stack, []compute.Computable[oci.ImageID], error) {
+func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []provision.Server, opts Opts) (*stack.Stack, []compute.Computable[oci.ImageID], error) {
 	bid := provision.NewBuildID()
 
 	stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortBase: opts.BaseServerPort})
@@ -473,7 +493,18 @@ func ComputeStackAndImages(ctx context.Context, servers []provision.Server, opts
 		return nil, nil, err
 	}
 
-	m, err := prepareServerImages(ctx, provision.ServerPackages(servers), stack, nil, bid)
+	def, err := prepareHandlerInvocations(ctx, env, stack)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ingressFragments := computeIngressWithHandlerResult(env, stack.Proto(), def)
+
+	computedOnly := compute.Transform(def, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
+		return h.Computed, nil
+	})
+
+	m, err := prepareServerImages(ctx, provision.ServerPackages(servers), stack, makeBuildAssets(ingressFragments), computedOnly, bid)
 	if err != nil {
 		return nil, nil, err
 	}

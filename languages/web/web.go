@@ -94,9 +94,7 @@ func (impl) EvalProvision(n *schema.Node) (frontend.ProvisionStack, error) {
 	return pdata, nil
 }
 
-func (impl) PrepareBuild(ctx context.Context, endpoints languages.Endpoints, srv provision.Server, isFocus bool) (build.Spec, error) {
-	schemaEndpoints := endpoints.GetEndpoints()
-
+func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBuildAssets, srv provision.Server, isFocus bool) (build.Spec, error) {
 	if useDevBuild(srv.Env().Proto()) {
 		pkg, err := srv.Env().LoadByName(ctx, controllerPkg)
 		if err != nil {
@@ -108,15 +106,15 @@ func (impl) PrepareBuild(ctx context.Context, endpoints languages.Endpoints, srv
 			return nil, err
 		}
 
-		return buildDevServer{p.Plan, srv, isFocus, schemaEndpoints}, nil
+		return buildDevServer{p.Plan, srv, isFocus, buildAssets.IngressFragments}, nil
 	}
 
 	return buildProdWebServer{
-		srv, isFocus, schemaEndpoints,
+		srv, isFocus, buildAssets.IngressFragments,
 	}, nil
 }
 
-func buildWebApps(ctx context.Context, conf build.BuildTarget, endpoints []*schema.Endpoint, srv provision.Server, isFocus bool) ([]compute.Computable[oci.Image], error) {
+func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments compute.Computable[[]*schema.IngressFragment], srv provision.Server, isFocus bool) ([]compute.Computable[oci.Image], error) {
 	var builds []compute.Computable[oci.Image]
 
 	for _, m := range srv.Proto().UrlMap {
@@ -132,7 +130,12 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, endpoints []*sche
 
 		var extra []*memfs.FS
 		if len(backends) > 0 {
-			resolveFunc := resolveBackend(srv.Env(), endpoints)
+			fragments, err := compute.GetValue(ctx, ingressFragments)
+			if err != nil {
+				return nil, fnerrors.InternalError("failed to build web app while waiting on ingress computation: %w", err)
+			}
+
+			resolveFunc := resolveBackend(srv.Env(), fragments)
 			backend := &OpGenHttpBackend{Backend: backends}
 			fsys, err := generateBackendConf(ctx, dep.Location, backend, resolveFunc, false)
 			if err != nil {
@@ -290,6 +293,8 @@ func parseBackends(n *schema.Node) ([]*OpGenHttpBackend_Backend, error) {
 				InstanceName:  p.Name,
 				EndpointOwner: backend.EndpointOwner,
 				ServiceName:   backend.ServiceName,
+				IngressName:   backend.IngressName,
+				Manager:       backend.Manager,
 			})
 		}
 	}
@@ -316,14 +321,14 @@ func (i impl) GenerateNode(pkg *workspace.Package, available []*schema.Node) ([]
 }
 
 type buildDevServer struct {
-	baseImage       build.Plan
-	srv             provision.Server
-	isFocus         bool
-	schemaEndpoints []*schema.Endpoint
+	baseImage        build.Plan
+	srv              provision.Server
+	isFocus          bool
+	ingressFragments compute.Computable[[]*schema.IngressFragment]
 }
 
 func (bws buildDevServer) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	builds, err := buildWebApps(ctx, conf, bws.schemaEndpoints, bws.srv, bws.isFocus)
+	builds, err := buildWebApps(ctx, conf, bws.ingressFragments, bws.srv, bws.isFocus)
 	if err != nil {
 		return nil, err
 	}
@@ -346,13 +351,13 @@ func (bws buildDevServer) BuildImage(ctx context.Context, env ops.Environment, c
 func (bws buildDevServer) PlatformIndependent() bool { return false }
 
 type buildProdWebServer struct {
-	srv             provision.Server
-	isFocus         bool
-	schemaEndpoints []*schema.Endpoint
+	srv              provision.Server
+	isFocus          bool
+	ingressFragments compute.Computable[[]*schema.IngressFragment]
 }
 
 func (bws buildProdWebServer) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	builds, err := buildWebApps(ctx, conf, bws.schemaEndpoints, bws.srv, bws.isFocus)
+	builds, err := buildWebApps(ctx, conf, bws.ingressFragments, bws.srv, bws.isFocus)
 	if err != nil {
 		return nil, err
 	}

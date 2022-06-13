@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -76,46 +75,53 @@ func generatePlaceholder(loader workspace.Packages) genFunc {
 	}
 }
 
-func resolveBackend(wenv workspace.WorkspaceEnvironment, endpoints []*schema.Endpoint) genFunc {
+func resolveBackend(wenv workspace.WorkspaceEnvironment, fragments []*schema.IngressFragment) genFunc {
 	return func(ctx context.Context, loc workspace.Location, backend *OpGenHttpBackend_Backend) (*backendDefinition, error) {
-		for _, endpoint := range endpoints {
-			if endpoint.EndpointOwner == backend.EndpointOwner && endpoint.ServiceName == backend.ServiceName {
-				pkg, err := wenv.LoadByName(ctx, schema.PackageName(endpoint.EndpointOwner))
-				if err != nil {
-					return nil, fnerrors.Wrapf(loc, err, "failed to load dependency")
-				}
+		var matching []*schema.IngressFragment
 
-				if pkg.Server == nil {
-					return nil, fnerrors.InternalError("expected %q to be a server", endpoint.EndpointOwner)
-				}
-
-				plan, err := pkg.Parsed.EvalProvision(ctx, wenv, frontend.ProvisionInputs{ServerLocation: pkg.Location})
-				if err != nil {
-					return nil, fnerrors.InternalError("%s: failed to determine naming configuration: %w", pkg.Location.PackageName, err)
-				}
-
-				domains, err := runtime.ComputeDomains(wenv.Proto(), pkg.Server, plan.Naming, endpoint.AllocatedName)
-				if err != nil {
-					return nil, fnerrors.Wrapf(loc, err, "failed to compute domains")
-				}
-
-				bd := &backendDefinition{}
-				for _, deferred := range domains {
-					d := deferred.Domain
-					if d.Managed == schema.Domain_LOCAL_MANAGED {
-						bd.Managed = fmt.Sprintf("http://%s:%d", d.Fqdn, runtime.LocalIngressPort)
-					} else if d.Managed == schema.Domain_CLOUD_MANAGED {
-						bd.Managed = fmt.Sprintf("https://%s", d.Fqdn)
-					} else {
-						bd.Unmanaged = append(bd.Unmanaged, d.Fqdn)
-					}
-				}
-				return bd, nil
+		for _, fragment := range fragments {
+			if fragment.GetOwner() != backend.EndpointOwner {
+				continue
 			}
+
+			if backend.ServiceName != "" {
+				if fragment.GetEndpoint().GetServiceName() != backend.ServiceName {
+					continue
+				}
+			}
+
+			if backend.IngressName != "" {
+				if fragment.GetName() != backend.IngressName {
+					continue
+				}
+			}
+
+			if backend.Manager != "" {
+				if fragment.GetManager() != backend.Manager {
+					continue
+				}
+			}
+
+			matching = append(matching, fragment)
 		}
 
-		return nil, fnerrors.UserError(loc, "no such endpoint, endpoint_owner=%q service_name=%q",
-			backend.EndpointOwner, backend.ServiceName)
+		if len(matching) == 0 {
+			return nil, fnerrors.UserError(loc, "no such ingress, endpoint_owner=%q service_name=%q instance_name=%q",
+				backend.EndpointOwner, backend.ServiceName, backend.InstanceName)
+		}
+
+		bd := &backendDefinition{}
+		for _, fragment := range matching {
+			d := fragment.Domain
+			if d.Managed == schema.Domain_LOCAL_MANAGED {
+				bd.Managed = fmt.Sprintf("http://%s:%d", d.Fqdn, runtime.LocalIngressPort)
+			} else if d.Managed == schema.Domain_CLOUD_MANAGED {
+				bd.Managed = fmt.Sprintf("https://%s", d.Fqdn)
+			} else {
+				bd.Unmanaged = append(bd.Unmanaged, d.Fqdn)
+			}
+		}
+		return bd, nil
 	}
 }
 

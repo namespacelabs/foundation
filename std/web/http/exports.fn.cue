@@ -9,6 +9,8 @@ import (
 	Backend: {
 		endpointOwner?: inputs.#Package
 		serviceName?:   string
+		ingressName?:   string
+		manager?:       string
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/std/web/http"

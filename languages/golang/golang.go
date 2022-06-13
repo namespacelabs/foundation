@@ -75,7 +75,7 @@ type impl struct {
 	languages.NoDev
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server provision.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
 	ext := &FrameworkExt{}
 	if err := workspace.MustExtension(server.Proto().Ext, ext); err != nil {
 		return nil, fnerrors.Wrap(server.Location, err)

@@ -134,7 +134,7 @@ type impl struct {
 	languages.NoDev
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server provision.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
 	deps := []workspace.Location{}
 	for _, dep := range server.Deps() {
 		// The runtime node doesn't have codegen for node.js so it needs to be included explicitly.

@@ -172,6 +172,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 						Port:    transcoderEndpoint.Port,
 					}},
 					Extension: []*anypb.Any{packedCors},
+					Manager:   "namespacelabs.dev/foundation/std/grpc/httptranscoding",
 				},
 			})
 			if err != nil {

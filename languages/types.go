@@ -13,13 +13,18 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/workspace/compute"
 )
+
+type AvailableBuildAssets struct {
+	IngressFragments compute.Computable[[]*schema.IngressFragment]
+}
 
 type Integration interface {
 	workspace.FrameworkHandler
 
 	// Called on `fn build`, `fn deploy`.
-	PrepareBuild(context.Context, Endpoints, provision.Server, bool /*isFocus*/) (build.Spec, error)
+	PrepareBuild(context.Context, AvailableBuildAssets, provision.Server, bool /*isFocus*/) (build.Spec, error)
 	PrepareRun(context.Context, provision.Server, *runtime.ServerRunOpts) error
 
 	// Called on `fn tidy`
@@ -40,10 +45,6 @@ type DevObserver interface {
 	OnDeployment()
 }
 
-type Endpoints interface {
-	GetEndpoints() []*schema.Endpoint
-}
-
 var (
 	mapping = map[string]Integration{}
 )
@@ -59,7 +60,7 @@ func IntegrationFor(fmwk schema.Framework) Integration {
 
 type MaybePrepare struct{}
 
-func (MaybePrepare) PrepareBuild(context.Context, Endpoints, provision.Server, bool) (build.Spec, error) {
+func (MaybePrepare) PrepareBuild(context.Context, AvailableBuildAssets, provision.Server, bool) (build.Spec, error) {
 	return nil, nil
 }
 func (MaybePrepare) PrepareRun(context.Context, provision.Server, *runtime.ServerRunOpts) error {

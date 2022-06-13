@@ -42,7 +42,7 @@ func (moduleLoader) ModuleAt(ctx context.Context, dir string) (workspace.Workspa
 				wd, werr := workspace.RawModuleAt(ctx, dir)
 				if werr != nil {
 					if os.IsNotExist(werr) {
-						return nil, fnerrors.New("failed to load workspace")
+						return nil, fnerrors.New("%s: failed to load workspace", dir)
 					}
 				}
 				return wd, werr

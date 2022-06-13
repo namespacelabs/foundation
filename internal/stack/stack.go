@@ -91,11 +91,6 @@ func (stack *Stack) Get(pkg schema.PackageName) *provision.Server {
 	return nil
 }
 
-// Implements `languages.Endpoints`.
-func (stack *Stack) GetEndpoints() []*schema.Endpoint {
-	return stack.Endpoints
-}
-
 func (stack *Stack) GetParsed(srv schema.PackageName) []*ParsedNode {
 	for k, s := range stack.Servers {
 		if s.PackageName() == srv {

@@ -58,6 +58,7 @@ message IngressFragment {
     Endpoint                    endpoint     = 6;
     repeated IngressHttpPath    http_path    = 4;
     repeated IngressGrpcService grpc_service = 7;
+    string                      manager      = 8;  // If this is a specialized ingress, it may be annotated as such. E.g. with namespacelabs.dev/foundation/std/grp/httptranscoding.
 
     // Accepted: HttpCors.
     repeated google.protobuf.Any extension = 5;

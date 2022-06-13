@@ -29,7 +29,7 @@ type impl struct {
 	languages.NoDev
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ languages.Endpoints, server provision.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
 	bin := server.Proto().GetBinary()
 	if bin.GetPackageName() != "" {
 		pkg, err := server.Env().LoadByName(ctx, schema.PackageName(bin.GetPackageName()))

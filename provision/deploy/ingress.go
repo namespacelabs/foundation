@@ -15,45 +15,39 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PlanIngress(rootenv ops.Environment, env *schema.Environment, stack *schema.Stack, plans compute.Computable[[]*schema.IngressFragmentPlan]) compute.Computable[*ingressResult] {
-	return &computeIngress{rootenv: rootenv, env: env, stack: stack, plans: plans}
+type ComputeIngressResult struct {
+	Fragments []*schema.IngressFragment
+
+	rootenv ops.Environment
+	stack   *schema.Stack
 }
 
-func ComputeIngress(ctx context.Context, env *schema.Environment, stack *schema.Stack) ([]runtime.DeferredIngress, error) {
-	var fragments []runtime.DeferredIngress
+func ComputeIngress(rootenv ops.Environment, stack *schema.Stack, plans compute.Computable[[]*schema.IngressFragmentPlan], allocate bool) compute.Computable[*ComputeIngressResult] {
+	return &computeIngress{rootenv: rootenv, env: rootenv.Proto(), stack: stack, plans: plans, allocate: allocate}
+}
 
-	// XXX parallelism.
-	for _, srv := range stack.Entry {
-		frags, err := runtime.ComputeIngress(ctx, env, srv, stack.Endpoint)
-		if err != nil {
-			return nil, err
-		}
-		fragments = append(fragments, frags...)
-	}
-
-	return fragments, nil
+func PlanIngressDeployment(c compute.Computable[*ComputeIngressResult]) compute.Computable[runtime.DeploymentState] {
+	return compute.Transform(c, func(ctx context.Context, res *ComputeIngressResult) (runtime.DeploymentState, error) {
+		return runtime.For(ctx, res.rootenv).PlanIngress(ctx, res.stack, res.Fragments)
+	})
 }
 
 type computeIngress struct {
-	rootenv ops.Environment
-	env     *schema.Environment
-	stack   *schema.Stack
-	plans   compute.Computable[[]*schema.IngressFragmentPlan]
+	rootenv  ops.Environment
+	env      *schema.Environment
+	stack    *schema.Stack
+	plans    compute.Computable[[]*schema.IngressFragmentPlan]
+	allocate bool // Actually fetch SSL certificates etc.
 
-	compute.LocalScoped[*ingressResult]
-}
-
-type ingressResult struct {
-	DeploymentState runtime.DeploymentState
-	Fragments       []*schema.IngressFragment
+	compute.LocalScoped[*ComputeIngressResult]
 }
 
 func (ci *computeIngress) Action() *tasks.ActionEvent { return tasks.Action("deploy.compute-ingress") }
 func (ci *computeIngress) Inputs() *compute.In {
 	return compute.Inputs().Indigestible("rootenv", ci.rootenv).Proto("env", ci.env).Proto("stack", ci.stack).Computable("plans", ci.plans)
 }
-func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*ingressResult, error) {
-	deferred, err := ComputeIngress(ctx, ci.env, ci.stack)
+func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*ComputeIngressResult, error) {
+	deferred, err := computeDeferredIngresses(ctx, ci.env, ci.stack)
 	if err != nil {
 		return nil, err
 	}
@@ -76,17 +70,35 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 	var fragments []*schema.IngressFragment
 	// XXX parallelism
 	for _, d := range deferred {
-		fragment, err := d.Allocate(ctx)
+		if ci.allocate {
+			fragment, err := d.Allocate(ctx)
+			if err != nil {
+				return nil, err
+			}
+			fragments = append(fragments, fragment)
+		} else {
+			fragments = append(fragments, d.WithoutAllocation())
+		}
+	}
+
+	return &ComputeIngressResult{
+		rootenv:   ci.rootenv,
+		stack:     ci.stack,
+		Fragments: fragments,
+	}, nil
+}
+
+func computeDeferredIngresses(ctx context.Context, env *schema.Environment, stack *schema.Stack) ([]runtime.DeferredIngress, error) {
+	var fragments []runtime.DeferredIngress
+
+	// XXX parallelism.
+	for _, srv := range stack.Entry {
+		frags, err := runtime.ComputeIngress(ctx, env, srv, stack.Endpoint)
 		if err != nil {
 			return nil, err
 		}
-		fragments = append(fragments, fragment)
+		fragments = append(fragments, frags...)
 	}
 
-	ds, err := runtime.For(ctx, ci.rootenv).PlanIngress(ctx, ci.stack, fragments)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ingressResult{DeploymentState: ds, Fragments: fragments}, nil
+	return fragments, nil
 }

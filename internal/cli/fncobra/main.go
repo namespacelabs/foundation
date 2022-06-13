@@ -239,7 +239,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, buildkit is used for building, instead of a ko-style builder.")
 	rootCmd.PersistentFlags().StringVar(&llbutil.GitCredentialsBuildkitSecret, "golang_buildkit_git_credentials_secret", "",
 		"If set, go invocations in buildkit get the specified secret mounted as ~/.git-credentials")
-	rootCmd.PersistentFlags().BoolVar(&deploy.AlsoComputeIngress, "also_compute_ingress", deploy.AlsoComputeIngress,
+	rootCmd.PersistentFlags().BoolVar(&deploy.AlsoDeployIngress, "also_compute_ingress", deploy.AlsoDeployIngress,
 		"[development] Set to false, to skip ingress computation.")
 	rootCmd.PersistentFlags().BoolVar(&tel.UseTelemetry, "send_usage_data", tel.UseTelemetry,
 		"If set to false, fn does not upload any usage data.")
