@@ -52,7 +52,20 @@ func (c *cacheVar) Set(v string) error {
 
 func (*cacheVar) Type() string { return "" }
 
-func fillInCaching(sopt *client.SolveOpt) {
+func fillInCaching[V any](e exporter[V], sopt *client.SolveOpt) {
+	if c := e.ImportCache(); c != nil {
+		sopt.CacheImports = append(sopt.CacheImports, client.CacheOptionsEntry{
+			Type:  c.cacheType,
+			Attrs: c.args,
+		})
+	}
+	if c := e.ExportCache(); c != nil {
+		sopt.CacheExports = append(sopt.CacheExports, client.CacheOptionsEntry{
+			Type:  c.cacheType,
+			Attrs: c.args,
+		})
+	}
+
 	if ImportCacheVar.cacheType != "" {
 		sopt.CacheImports = append(sopt.CacheImports, checkUseGithubCache(client.CacheOptionsEntry{
 			Type:  ImportCacheVar.cacheType,
