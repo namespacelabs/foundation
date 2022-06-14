@@ -84,11 +84,6 @@ message IngressFragmentList {
     repeated IngressFragment ingress_fragment = 1;
 }
 
-message IngressFragmentPlan {
-    string          allocated_name   = 1;
-    IngressFragment ingress_fragment = 2;
-}
-
 message HttpCors {
     bool            enabled        = 1;
     repeated string allowed_origin = 2;

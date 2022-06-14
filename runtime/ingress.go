@@ -213,7 +213,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 }
 
 func AttachComputedDomains(ctx context.Context, env *schema.Environment, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName string) ([]*schema.IngressFragment, error) {
-	domains, err := computeDomains(env, sch.Server, sch.ServerNaming, allocatedName)
+	domains, err := computeDomains(env, sch.ServerNaming, allocatedName)
 	if err != nil {
 		return nil, err
 	}
@@ -272,19 +272,25 @@ func MaybeAllocateDomainCertificate(ctx context.Context, entry *schema.Stack_Ent
 	return domain, nil
 }
 
-func computeDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) ([]*schema.Domain, error) {
-	var domains []*schema.Domain
-
+func computeDomains(env *schema.Environment, naming *schema.Naming, allocatedName string) ([]*schema.Domain, error) {
 	computed, err := ComputeNaming(env, naming)
 	if err != nil {
 		return nil, err
 	}
+
+	return CalculateDomains(env, computed, allocatedName)
+}
+
+func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, allocatedName string) ([]*schema.Domain, error) {
+	var domains []*schema.Domain
 
 	domains = append(domains, &schema.Domain{
 		// XXX include stack?
 		Fqdn:    fmt.Sprintf("%s.%s.%s", allocatedName, env.Name, computed.BaseDomain),
 		Managed: computed.Managed,
 	})
+
+	naming := computed.Source
 
 	for _, d := range naming.GetAdditionalTlsManaged() {
 		d := d // Capture d.

@@ -22,8 +22,8 @@ type ComputeIngressResult struct {
 	stack   *schema.Stack
 }
 
-func ComputeIngress(rootenv ops.Environment, stack *schema.Stack, plans compute.Computable[[]*schema.IngressFragmentPlan], allocate bool) compute.Computable[*ComputeIngressResult] {
-	return &computeIngress{rootenv: rootenv, env: rootenv.Proto(), stack: stack, plans: plans, allocate: allocate}
+func ComputeIngress(rootenv ops.Environment, stack *schema.Stack, plans compute.Computable[[]*schema.IngressFragment], allocate bool) compute.Computable[*ComputeIngressResult] {
+	return &computeIngress{rootenv: rootenv, env: rootenv.Proto(), stack: stack, fragments: plans, allocate: allocate}
 }
 
 func PlanIngressDeployment(c compute.Computable[*ComputeIngressResult]) compute.Computable[runtime.DeploymentState] {
@@ -33,18 +33,22 @@ func PlanIngressDeployment(c compute.Computable[*ComputeIngressResult]) compute.
 }
 
 type computeIngress struct {
-	rootenv  ops.Environment
-	env      *schema.Environment
-	stack    *schema.Stack
-	plans    compute.Computable[[]*schema.IngressFragmentPlan]
-	allocate bool // Actually fetch SSL certificates etc.
+	rootenv   ops.Environment
+	env       *schema.Environment
+	stack     *schema.Stack
+	fragments compute.Computable[[]*schema.IngressFragment]
+	allocate  bool // Actually fetch SSL certificates etc.
 
 	compute.LocalScoped[*ComputeIngressResult]
 }
 
 func (ci *computeIngress) Action() *tasks.ActionEvent { return tasks.Action("deploy.compute-ingress") }
 func (ci *computeIngress) Inputs() *compute.In {
-	return compute.Inputs().Indigestible("rootenv", ci.rootenv).Proto("env", ci.env).Proto("stack", ci.stack).Computable("plans", ci.plans)
+	return compute.Inputs().
+		Indigestible("rootenv", ci.rootenv).
+		Proto("env", ci.env).
+		Proto("stack", ci.stack).
+		Computable("fragments", ci.fragments)
 }
 func (ci *computeIngress) Output() compute.Output {
 	return compute.Output{NotCacheable: true}
@@ -55,22 +59,8 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 		return nil, err
 	}
 
-	plans := compute.MustGetDepValue(deps, ci.plans, "plans")
-	for _, plan := range plans {
-		sch := ci.stack.GetServer(schema.PackageName(plan.GetIngressFragment().GetOwner()))
-		if sch == nil {
-			return nil, fnerrors.BadInputError("%s: not present in the stack", plan.GetIngressFragment().GetOwner())
-		}
+	allFragments = append(allFragments, compute.MustGetDepValue(deps, ci.fragments, "fragments")...)
 
-		attached, err := runtime.AttachComputedDomains(ctx, ci.env, sch, plan.GetIngressFragment(), plan.AllocatedName)
-		if err != nil {
-			return nil, err
-		}
-
-		allFragments = append(allFragments, attached...)
-	}
-
-	var fragments []*schema.IngressFragment
 	// XXX parallelism
 	for _, fragment := range allFragments {
 		sch := ci.stack.GetServer(schema.PackageName(fragment.Owner))
@@ -83,16 +73,13 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 			if err != nil {
 				return nil, err
 			}
-			fragments = append(fragments, fragment)
 		}
-
-		fragments = append(fragments, fragment)
 	}
 
 	return &ComputeIngressResult{
 		rootenv:   ci.rootenv,
 		stack:     ci.stack,
-		Fragments: fragments,
+		Fragments: allFragments,
 	}, nil
 }
 
