@@ -317,6 +317,12 @@ func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWit
 		DescriptorSet: &grpcjsontranscoder.GrpcJsonTranscoder_ProtoDescriptorBin{
 			ProtoDescriptorBin: bytes,
 		},
+		PrintOptions: &grpcjsontranscoder.GrpcJsonTranscoder_PrintOptions{
+			AddWhitespace:              true,
+			AlwaysPrintPrimitiveFields: true,
+			AlwaysPrintEnumsAsInts:     false,
+			PreserveProtoFieldNames:    true,
+		},
 	}
 	transcoderpbst, err := anypb.New(transcoderPb)
 	if err != nil {
