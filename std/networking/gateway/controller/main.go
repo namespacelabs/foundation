@@ -21,7 +21,7 @@ var (
 	// HTTP listening address:port pair.
 	httpEnvoyListenAddress = flag.String("http_envoy_listen_address", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
 
-	debug = flag.Bool("debug", true, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update.")
+	debug = flag.Bool("debug", false, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update.")
 
 	// The address:port pair that the xDS server listens on.
 	xdsServerAddress = flag.String("xds_server_port", "127.0.0.1:18000", "xDS gRPC management address:port pair.")
