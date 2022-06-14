@@ -32,6 +32,7 @@ type Invocation struct {
 	Snapshots  []Snapshot
 	WorkingDir string
 	NoCache    bool
+	Inject     []string
 }
 
 type Snapshot struct {
@@ -65,6 +66,7 @@ func Make(ctx context.Context, env provision.ServerEnv, serverLocRef *workspace.
 		Image:      bin.Image,
 		WorkingDir: with.WorkingDir,
 		NoCache:    with.NoCache,
+		Inject:     with.Inject,
 	}
 
 	invocation.Args = with.Args

@@ -351,3 +351,9 @@ message Naming {
         string fqdn           = 2;
     }
 }
+
+message ComputedNaming {
+    Naming             source      = 1;
+    string             base_domain = 2;  // E.g. {org}.nscloud.dev
+    Domain.ManagedType managed     = 3;
+}

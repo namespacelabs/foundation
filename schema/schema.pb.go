@@ -1674,6 +1674,69 @@ func (x *Naming) GetAdditionalTlsManaged() []*Naming_AdditionalDomainName {
 	return nil
 }
 
+type ComputedNaming struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Source     *Naming            `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	BaseDomain string             `protobuf:"bytes,2,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"` // E.g. {org}.nscloud.dev
+	Managed    Domain_ManagedType `protobuf:"varint,3,opt,name=managed,proto3,enum=foundation.schema.Domain_ManagedType" json:"managed,omitempty"`
+}
+
+func (x *ComputedNaming) Reset() {
+	*x = ComputedNaming{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_schema_schema_proto_msgTypes[18]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ComputedNaming) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ComputedNaming) ProtoMessage() {}
+
+func (x *ComputedNaming) ProtoReflect() protoreflect.Message {
+	mi := &file_schema_schema_proto_msgTypes[18]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ComputedNaming.ProtoReflect.Descriptor instead.
+func (*ComputedNaming) Descriptor() ([]byte, []int) {
+	return file_schema_schema_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ComputedNaming) GetSource() *Naming {
+	if x != nil {
+		return x.Source
+	}
+	return nil
+}
+
+func (x *ComputedNaming) GetBaseDomain() string {
+	if x != nil {
+		return x.BaseDomain
+	}
+	return ""
+}
+
+func (x *ComputedNaming) GetManaged() Domain_ManagedType {
+	if x != nil {
+		return x.Managed
+	}
+	return Domain_MANAGED_UNKNOWN
+}
+
 type Stack_Entry struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1687,7 +1750,7 @@ type Stack_Entry struct {
 func (x *Stack_Entry) Reset() {
 	*x = Stack_Entry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[18]
+		mi := &file_schema_schema_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1700,7 +1763,7 @@ func (x *Stack_Entry) String() string {
 func (*Stack_Entry) ProtoMessage() {}
 
 func (x *Stack_Entry) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[18]
+	mi := &file_schema_schema_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1748,7 +1811,7 @@ type Need_Port struct {
 func (x *Need_Port) Reset() {
 	*x = Need_Port{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[19]
+		mi := &file_schema_schema_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1761,7 +1824,7 @@ func (x *Need_Port) String() string {
 func (*Need_Port) ProtoMessage() {}
 
 func (x *Need_Port) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[19]
+	mi := &file_schema_schema_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1797,7 +1860,7 @@ type Provides_AvailableIn struct {
 func (x *Provides_AvailableIn) Reset() {
 	*x = Provides_AvailableIn{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[20]
+		mi := &file_schema_schema_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1810,7 +1873,7 @@ func (x *Provides_AvailableIn) String() string {
 func (*Provides_AvailableIn) ProtoMessage() {}
 
 func (x *Provides_AvailableIn) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[20]
+	mi := &file_schema_schema_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1859,7 +1922,7 @@ type Provides_AvailableIn_Go struct {
 func (x *Provides_AvailableIn_Go) Reset() {
 	*x = Provides_AvailableIn_Go{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[21]
+		mi := &file_schema_schema_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1872,7 +1935,7 @@ func (x *Provides_AvailableIn_Go) String() string {
 func (*Provides_AvailableIn_Go) ProtoMessage() {}
 
 func (x *Provides_AvailableIn_Go) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[21]
+	mi := &file_schema_schema_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1911,7 +1974,7 @@ type Provides_AvailableIn_Web struct {
 func (x *Provides_AvailableIn_Web) Reset() {
 	*x = Provides_AvailableIn_Web{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[22]
+		mi := &file_schema_schema_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1924,7 +1987,7 @@ func (x *Provides_AvailableIn_Web) String() string {
 func (*Provides_AvailableIn_Web) ProtoMessage() {}
 
 func (x *Provides_AvailableIn_Web) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[22]
+	mi := &file_schema_schema_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1952,7 +2015,7 @@ type Provides_AvailableIn_NodeJs struct {
 func (x *Provides_AvailableIn_NodeJs) Reset() {
 	*x = Provides_AvailableIn_NodeJs{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[23]
+		mi := &file_schema_schema_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1965,7 +2028,7 @@ func (x *Provides_AvailableIn_NodeJs) String() string {
 func (*Provides_AvailableIn_NodeJs) ProtoMessage() {}
 
 func (x *Provides_AvailableIn_NodeJs) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[23]
+	mi := &file_schema_schema_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2007,7 +2070,7 @@ type Server_Binary struct {
 func (x *Server_Binary) Reset() {
 	*x = Server_Binary{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[24]
+		mi := &file_schema_schema_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2020,7 +2083,7 @@ func (x *Server_Binary) String() string {
 func (*Server_Binary) ProtoMessage() {}
 
 func (x *Server_Binary) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[24]
+	mi := &file_schema_schema_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2064,7 +2127,7 @@ type Server_ServiceSpec struct {
 func (x *Server_ServiceSpec) Reset() {
 	*x = Server_ServiceSpec{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[25]
+		mi := &file_schema_schema_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2077,7 +2140,7 @@ func (x *Server_ServiceSpec) String() string {
 func (*Server_ServiceSpec) ProtoMessage() {}
 
 func (x *Server_ServiceSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[25]
+	mi := &file_schema_schema_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2135,7 +2198,7 @@ type Server_URLMapEntry struct {
 func (x *Server_URLMapEntry) Reset() {
 	*x = Server_URLMapEntry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[26]
+		mi := &file_schema_schema_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2148,7 +2211,7 @@ func (x *Server_URLMapEntry) String() string {
 func (*Server_URLMapEntry) ProtoMessage() {}
 
 func (x *Server_URLMapEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[26]
+	mi := &file_schema_schema_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2212,7 +2275,7 @@ type Allocation_Instance struct {
 func (x *Allocation_Instance) Reset() {
 	*x = Allocation_Instance{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[27]
+		mi := &file_schema_schema_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2225,7 +2288,7 @@ func (x *Allocation_Instance) String() string {
 func (*Allocation_Instance) ProtoMessage() {}
 
 func (x *Allocation_Instance) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[27]
+	mi := &file_schema_schema_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2288,7 +2351,7 @@ type Naming_AdditionalDomainName struct {
 func (x *Naming_AdditionalDomainName) Reset() {
 	*x = Naming_AdditionalDomainName{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_schema_proto_msgTypes[28]
+		mi := &file_schema_schema_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2301,7 +2364,7 @@ func (x *Naming_AdditionalDomainName) String() string {
 func (*Naming_AdditionalDomainName) ProtoMessage() {}
 
 func (x *Naming_AdditionalDomainName) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_schema_proto_msgTypes[28]
+	mi := &file_schema_schema_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2687,15 +2750,25 @@ var file_schema_schema_proto_rawDesc = []byte{
 	0x61, 0x74, 0x65, 0x64, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
 	0x0d, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x65, 0x64, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x12,
 	0x0a, 0x04, 0x66, 0x71, 0x64, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x66, 0x71,
-	0x64, 0x6e, 0x2a, 0x54, 0x0a, 0x09, 0x46, 0x72, 0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72, 0x6b, 0x12,
-	0x19, 0x0a, 0x15, 0x46, 0x52, 0x41, 0x4d, 0x45, 0x57, 0x4f, 0x52, 0x4b, 0x5f, 0x55, 0x4e, 0x53,
-	0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x0b, 0x0a, 0x07, 0x47, 0x4f,
-	0x5f, 0x47, 0x52, 0x50, 0x43, 0x10, 0x01, 0x12, 0x07, 0x0a, 0x03, 0x57, 0x45, 0x42, 0x10, 0x02,
-	0x12, 0x0a, 0x0a, 0x06, 0x4e, 0x4f, 0x44, 0x45, 0x4a, 0x53, 0x10, 0x03, 0x12, 0x0a, 0x0a, 0x06,
-	0x4f, 0x50, 0x41, 0x51, 0x55, 0x45, 0x10, 0x04, 0x42, 0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d, 0x65,
-	0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f,
-	0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x62,
-	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x64, 0x6e, 0x22, 0xa5, 0x01, 0x0a, 0x0e, 0x43, 0x6f, 0x6d, 0x70, 0x75, 0x74, 0x65, 0x64, 0x4e,
+	0x61, 0x6d, 0x69, 0x6e, 0x67, 0x12, 0x31, 0x0a, 0x06, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x4e, 0x61, 0x6d, 0x69, 0x6e, 0x67,
+	0x52, 0x06, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x12, 0x1f, 0x0a, 0x0b, 0x62, 0x61, 0x73, 0x65,
+	0x5f, 0x64, 0x6f, 0x6d, 0x61, 0x69, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x62,
+	0x61, 0x73, 0x65, 0x44, 0x6f, 0x6d, 0x61, 0x69, 0x6e, 0x12, 0x3f, 0x0a, 0x07, 0x6d, 0x61, 0x6e,
+	0x61, 0x67, 0x65, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x25, 0x2e, 0x66, 0x6f, 0x75,
+	0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x44,
+	0x6f, 0x6d, 0x61, 0x69, 0x6e, 0x2e, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x64, 0x54, 0x79, 0x70,
+	0x65, 0x52, 0x07, 0x6d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x64, 0x2a, 0x54, 0x0a, 0x09, 0x46, 0x72,
+	0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72, 0x6b, 0x12, 0x19, 0x0a, 0x15, 0x46, 0x52, 0x41, 0x4d, 0x45,
+	0x57, 0x4f, 0x52, 0x4b, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44,
+	0x10, 0x00, 0x12, 0x0b, 0x0a, 0x07, 0x47, 0x4f, 0x5f, 0x47, 0x52, 0x50, 0x43, 0x10, 0x01, 0x12,
+	0x07, 0x0a, 0x03, 0x57, 0x45, 0x42, 0x10, 0x02, 0x12, 0x0a, 0x0a, 0x06, 0x4e, 0x4f, 0x44, 0x45,
+	0x4a, 0x53, 0x10, 0x03, 0x12, 0x0a, 0x0a, 0x06, 0x4f, 0x50, 0x41, 0x51, 0x55, 0x45, 0x10, 0x04,
+	0x42, 0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62,
+	0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -2711,7 +2784,7 @@ func file_schema_schema_proto_rawDescGZIP() []byte {
 }
 
 var file_schema_schema_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_schema_schema_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_schema_schema_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_schema_schema_proto_goTypes = []interface{}{
 	(Framework)(0),                      // 0: foundation.schema.Framework
 	(Node_Kind)(0),                      // 1: foundation.schema.Node.Kind
@@ -2735,81 +2808,85 @@ var file_schema_schema_proto_goTypes = []interface{}{
 	(*HttpExportedService)(nil),         // 19: foundation.schema.HttpExportedService
 	(*RequiredStorage)(nil),             // 20: foundation.schema.RequiredStorage
 	(*Naming)(nil),                      // 21: foundation.schema.Naming
-	(*Stack_Entry)(nil),                 // 22: foundation.schema.Stack.Entry
-	(*Need_Port)(nil),                   // 23: foundation.schema.Need.Port
-	(*Provides_AvailableIn)(nil),        // 24: foundation.schema.Provides.AvailableIn
-	(*Provides_AvailableIn_Go)(nil),     // 25: foundation.schema.Provides.AvailableIn.Go
-	(*Provides_AvailableIn_Web)(nil),    // 26: foundation.schema.Provides.AvailableIn.Web
-	(*Provides_AvailableIn_NodeJs)(nil), // 27: foundation.schema.Provides.AvailableIn.NodeJs
-	(*Server_Binary)(nil),               // 28: foundation.schema.Server.Binary
-	(*Server_ServiceSpec)(nil),          // 29: foundation.schema.Server.ServiceSpec
-	(*Server_URLMapEntry)(nil),          // 30: foundation.schema.Server.URLMapEntry
-	(*Allocation_Instance)(nil),         // 31: foundation.schema.Allocation.Instance
-	(*Naming_AdditionalDomainName)(nil), // 32: foundation.schema.Naming.AdditionalDomainName
-	(*Endpoint)(nil),                    // 33: foundation.schema.Endpoint
-	(*InternalEndpoint)(nil),            // 34: foundation.schema.InternalEndpoint
-	(Endpoint_Type)(0),                  // 35: foundation.schema.Endpoint.Type
-	(*anypb.Any)(nil),                   // 36: google.protobuf.Any
-	(*BinaryConfig_EnvEntry)(nil),       // 37: foundation.schema.BinaryConfig.EnvEntry
-	(*Endpoint_Port)(nil),               // 38: foundation.schema.Endpoint.Port
-	(*ServiceMetadata)(nil),             // 39: foundation.schema.ServiceMetadata
+	(*ComputedNaming)(nil),              // 22: foundation.schema.ComputedNaming
+	(*Stack_Entry)(nil),                 // 23: foundation.schema.Stack.Entry
+	(*Need_Port)(nil),                   // 24: foundation.schema.Need.Port
+	(*Provides_AvailableIn)(nil),        // 25: foundation.schema.Provides.AvailableIn
+	(*Provides_AvailableIn_Go)(nil),     // 26: foundation.schema.Provides.AvailableIn.Go
+	(*Provides_AvailableIn_Web)(nil),    // 27: foundation.schema.Provides.AvailableIn.Web
+	(*Provides_AvailableIn_NodeJs)(nil), // 28: foundation.schema.Provides.AvailableIn.NodeJs
+	(*Server_Binary)(nil),               // 29: foundation.schema.Server.Binary
+	(*Server_ServiceSpec)(nil),          // 30: foundation.schema.Server.ServiceSpec
+	(*Server_URLMapEntry)(nil),          // 31: foundation.schema.Server.URLMapEntry
+	(*Allocation_Instance)(nil),         // 32: foundation.schema.Allocation.Instance
+	(*Naming_AdditionalDomainName)(nil), // 33: foundation.schema.Naming.AdditionalDomainName
+	(*Endpoint)(nil),                    // 34: foundation.schema.Endpoint
+	(*InternalEndpoint)(nil),            // 35: foundation.schema.InternalEndpoint
+	(Endpoint_Type)(0),                  // 36: foundation.schema.Endpoint.Type
+	(*anypb.Any)(nil),                   // 37: google.protobuf.Any
+	(*BinaryConfig_EnvEntry)(nil),       // 38: foundation.schema.BinaryConfig.EnvEntry
+	(*Endpoint_Port)(nil),               // 39: foundation.schema.Endpoint.Port
+	(Domain_ManagedType)(0),             // 40: foundation.schema.Domain.ManagedType
+	(*ServiceMetadata)(nil),             // 41: foundation.schema.ServiceMetadata
 }
 var file_schema_schema_proto_depIdxs = []int32{
 	6,  // 0: foundation.schema.Schema.service:type_name -> foundation.schema.Node
 	6,  // 1: foundation.schema.Schema.extension:type_name -> foundation.schema.Node
 	14, // 2: foundation.schema.Schema.server:type_name -> foundation.schema.Server
-	22, // 3: foundation.schema.Stack.entry:type_name -> foundation.schema.Stack.Entry
-	33, // 4: foundation.schema.Stack.endpoint:type_name -> foundation.schema.Endpoint
-	34, // 5: foundation.schema.Stack.internal_endpoint:type_name -> foundation.schema.InternalEndpoint
+	23, // 3: foundation.schema.Stack.entry:type_name -> foundation.schema.Stack.Entry
+	34, // 4: foundation.schema.Stack.endpoint:type_name -> foundation.schema.Endpoint
+	35, // 5: foundation.schema.Stack.internal_endpoint:type_name -> foundation.schema.InternalEndpoint
 	1,  // 6: foundation.schema.Node.kind:type_name -> foundation.schema.Node.Kind
 	16, // 7: foundation.schema.Node.instantiate:type_name -> foundation.schema.Instantiate
 	9,  // 8: foundation.schema.Node.need:type_name -> foundation.schema.Need
 	10, // 9: foundation.schema.Node.provides:type_name -> foundation.schema.Provides
 	12, // 10: foundation.schema.Node.export_service:type_name -> foundation.schema.GrpcExportService
 	8,  // 11: foundation.schema.Node.export_http:type_name -> foundation.schema.HttpPath
-	35, // 12: foundation.schema.Node.ingress:type_name -> foundation.schema.Endpoint.Type
+	36, // 12: foundation.schema.Node.ingress:type_name -> foundation.schema.Endpoint.Type
 	7,  // 13: foundation.schema.Node.initializers:type_name -> foundation.schema.NodeInitializer
 	0,  // 14: foundation.schema.Node.service_framework:type_name -> foundation.schema.Framework
 	13, // 15: foundation.schema.Node.reference:type_name -> foundation.schema.Reference
-	36, // 16: foundation.schema.Node.ext:type_name -> google.protobuf.Any
+	37, // 16: foundation.schema.Node.ext:type_name -> google.protobuf.Any
 	20, // 17: foundation.schema.Node.required_storage:type_name -> foundation.schema.RequiredStorage
 	0,  // 18: foundation.schema.NodeInitializer.framework:type_name -> foundation.schema.Framework
-	23, // 19: foundation.schema.Need.port:type_name -> foundation.schema.Need.Port
+	24, // 19: foundation.schema.Need.port:type_name -> foundation.schema.Need.Port
 	11, // 20: foundation.schema.Provides.type:type_name -> foundation.schema.TypeDef
-	24, // 21: foundation.schema.Provides.available_in:type_name -> foundation.schema.Provides.AvailableIn
+	25, // 21: foundation.schema.Provides.available_in:type_name -> foundation.schema.Provides.AvailableIn
 	16, // 22: foundation.schema.Provides.instantiate:type_name -> foundation.schema.Instantiate
 	2,  // 23: foundation.schema.Reference.kind:type_name -> foundation.schema.Reference.Kind
-	36, // 24: foundation.schema.Server.ext:type_name -> google.protobuf.Any
+	37, // 24: foundation.schema.Server.ext:type_name -> google.protobuf.Any
 	15, // 25: foundation.schema.Server.allocation:type_name -> foundation.schema.Allocation
 	0,  // 26: foundation.schema.Server.framework:type_name -> foundation.schema.Framework
-	28, // 27: foundation.schema.Server.binary:type_name -> foundation.schema.Server.Binary
-	29, // 28: foundation.schema.Server.service:type_name -> foundation.schema.Server.ServiceSpec
-	29, // 29: foundation.schema.Server.ingress:type_name -> foundation.schema.Server.ServiceSpec
+	29, // 27: foundation.schema.Server.binary:type_name -> foundation.schema.Server.Binary
+	30, // 28: foundation.schema.Server.service:type_name -> foundation.schema.Server.ServiceSpec
+	30, // 29: foundation.schema.Server.ingress:type_name -> foundation.schema.Server.ServiceSpec
 	13, // 30: foundation.schema.Server.reference:type_name -> foundation.schema.Reference
-	37, // 31: foundation.schema.Server.static_env:type_name -> foundation.schema.BinaryConfig.EnvEntry
-	30, // 32: foundation.schema.Server.url_map:type_name -> foundation.schema.Server.URLMapEntry
-	38, // 33: foundation.schema.Server.static_port:type_name -> foundation.schema.Endpoint.Port
+	38, // 31: foundation.schema.Server.static_env:type_name -> foundation.schema.BinaryConfig.EnvEntry
+	31, // 32: foundation.schema.Server.url_map:type_name -> foundation.schema.Server.URLMapEntry
+	39, // 33: foundation.schema.Server.static_port:type_name -> foundation.schema.Endpoint.Port
 	20, // 34: foundation.schema.Server.required_storage:type_name -> foundation.schema.RequiredStorage
-	31, // 35: foundation.schema.Allocation.instance:type_name -> foundation.schema.Allocation.Instance
-	36, // 36: foundation.schema.Instantiate.constructor:type_name -> google.protobuf.Any
+	32, // 35: foundation.schema.Allocation.instance:type_name -> foundation.schema.Allocation.Instance
+	37, // 36: foundation.schema.Instantiate.constructor:type_name -> google.protobuf.Any
 	3,  // 37: foundation.schema.Environment.purpose:type_name -> foundation.schema.Environment.Purpose
-	32, // 38: foundation.schema.Naming.additional_user_specified:type_name -> foundation.schema.Naming.AdditionalDomainName
-	32, // 39: foundation.schema.Naming.additional_tls_managed:type_name -> foundation.schema.Naming.AdditionalDomainName
-	14, // 40: foundation.schema.Stack.Entry.server:type_name -> foundation.schema.Server
-	21, // 41: foundation.schema.Stack.Entry.server_naming:type_name -> foundation.schema.Naming
-	6,  // 42: foundation.schema.Stack.Entry.node:type_name -> foundation.schema.Node
-	25, // 43: foundation.schema.Provides.AvailableIn.go:type_name -> foundation.schema.Provides.AvailableIn.Go
-	26, // 44: foundation.schema.Provides.AvailableIn.web:type_name -> foundation.schema.Provides.AvailableIn.Web
-	27, // 45: foundation.schema.Provides.AvailableIn.nodejs:type_name -> foundation.schema.Provides.AvailableIn.NodeJs
-	39, // 46: foundation.schema.Server.ServiceSpec.metadata:type_name -> foundation.schema.ServiceMetadata
-	38, // 47: foundation.schema.Server.ServiceSpec.port:type_name -> foundation.schema.Endpoint.Port
-	16, // 48: foundation.schema.Allocation.Instance.instantiated:type_name -> foundation.schema.Instantiate
-	15, // 49: foundation.schema.Allocation.Instance.downstream_allocation:type_name -> foundation.schema.Allocation
-	50, // [50:50] is the sub-list for method output_type
-	50, // [50:50] is the sub-list for method input_type
-	50, // [50:50] is the sub-list for extension type_name
-	50, // [50:50] is the sub-list for extension extendee
-	0,  // [0:50] is the sub-list for field type_name
+	33, // 38: foundation.schema.Naming.additional_user_specified:type_name -> foundation.schema.Naming.AdditionalDomainName
+	33, // 39: foundation.schema.Naming.additional_tls_managed:type_name -> foundation.schema.Naming.AdditionalDomainName
+	21, // 40: foundation.schema.ComputedNaming.source:type_name -> foundation.schema.Naming
+	40, // 41: foundation.schema.ComputedNaming.managed:type_name -> foundation.schema.Domain.ManagedType
+	14, // 42: foundation.schema.Stack.Entry.server:type_name -> foundation.schema.Server
+	21, // 43: foundation.schema.Stack.Entry.server_naming:type_name -> foundation.schema.Naming
+	6,  // 44: foundation.schema.Stack.Entry.node:type_name -> foundation.schema.Node
+	26, // 45: foundation.schema.Provides.AvailableIn.go:type_name -> foundation.schema.Provides.AvailableIn.Go
+	27, // 46: foundation.schema.Provides.AvailableIn.web:type_name -> foundation.schema.Provides.AvailableIn.Web
+	28, // 47: foundation.schema.Provides.AvailableIn.nodejs:type_name -> foundation.schema.Provides.AvailableIn.NodeJs
+	41, // 48: foundation.schema.Server.ServiceSpec.metadata:type_name -> foundation.schema.ServiceMetadata
+	39, // 49: foundation.schema.Server.ServiceSpec.port:type_name -> foundation.schema.Endpoint.Port
+	16, // 50: foundation.schema.Allocation.Instance.instantiated:type_name -> foundation.schema.Instantiate
+	15, // 51: foundation.schema.Allocation.Instance.downstream_allocation:type_name -> foundation.schema.Allocation
+	52, // [52:52] is the sub-list for method output_type
+	52, // [52:52] is the sub-list for method input_type
+	52, // [52:52] is the sub-list for extension type_name
+	52, // [52:52] is the sub-list for extension extendee
+	0,  // [0:52] is the sub-list for field type_name
 }
 
 func init() { file_schema_schema_proto_init() }
@@ -3037,7 +3114,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Stack_Entry); i {
+			switch v := v.(*ComputedNaming); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3049,7 +3126,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Need_Port); i {
+			switch v := v.(*Stack_Entry); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3061,7 +3138,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Provides_AvailableIn); i {
+			switch v := v.(*Need_Port); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3073,7 +3150,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Provides_AvailableIn_Go); i {
+			switch v := v.(*Provides_AvailableIn); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3085,7 +3162,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Provides_AvailableIn_Web); i {
+			switch v := v.(*Provides_AvailableIn_Go); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3097,7 +3174,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Provides_AvailableIn_NodeJs); i {
+			switch v := v.(*Provides_AvailableIn_Web); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3109,7 +3186,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Binary); i {
+			switch v := v.(*Provides_AvailableIn_NodeJs); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3121,7 +3198,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_ServiceSpec); i {
+			switch v := v.(*Server_Binary); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3133,7 +3210,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_URLMapEntry); i {
+			switch v := v.(*Server_ServiceSpec); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3145,7 +3222,7 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Allocation_Instance); i {
+			switch v := v.(*Server_URLMapEntry); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3157,6 +3234,18 @@ func file_schema_schema_proto_init() {
 			}
 		}
 		file_schema_schema_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Allocation_Instance); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_schema_schema_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Naming_AdditionalDomainName); i {
 			case 0:
 				return &v.state
@@ -3178,7 +3267,7 @@ func file_schema_schema_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_schema_proto_rawDesc,
 			NumEnums:      4,
-			NumMessages:   29,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -147,6 +147,20 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 
 	req.Input = append(req.Input, inv.props.ProvisionInput...)
 
+	for _, inject := range r.Invocation.Inject {
+		provider, ok := registrations[inject]
+		if !ok {
+			return nil, fnerrors.BadInputError("%s: no such provider", inject)
+		}
+
+		input, err := provider(ctx, inv.env, inv.stack.GetServer(inv.focus))
+		if err != nil {
+			return nil, err
+		}
+
+		req.Input = append(req.Input, input)
+	}
+
 	return tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{
 		RedactRequest: func(req proto.Message) proto.Message {
 			// XXX security: think through whether it is OK or not to expose Snapshots here.

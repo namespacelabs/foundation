@@ -8,7 +8,7 @@ package versions
 // are built into Foundation itself (i.e. is not versioned as part of the
 // foundation repository). Whenever new non-backwards compatible semantics are
 // added to Foundation, this number must be bumped.
-const APIVersion = 35
+const APIVersion = 36
 
 const IntroducedGrpcTranscodeNode = 35
 

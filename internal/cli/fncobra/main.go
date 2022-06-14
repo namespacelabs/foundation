@@ -55,6 +55,7 @@ import (
 	ecr "namespacelabs.dev/foundation/providers/aws/registry"
 	artifactregistry "namespacelabs.dev/foundation/providers/gcp/registry"
 	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
@@ -184,6 +185,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			}
 
 			return nil, nil
+		})
+
+		// Runtime
+		tool.RegisterInjection("schema.ComputedNaming", func(ctx context.Context, env *schema.Environment, s *schema.Stack_Entry) (*schema.ComputedNaming, error) {
+			return runtime.ComputeNaming(env, s.ServerNaming)
 		})
 
 		// Compute cacheables.

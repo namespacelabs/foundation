@@ -47,6 +47,7 @@ type cueInvokeBinary struct {
 	Snapshots    map[string]cueInvocationSnapshot `json:"snapshot"`
 	NoCache      bool                             `json:"noCache"`
 	RequiresKeys bool                             `json:"requiresKeys"`
+	Inject       []string                         `json:"inject"`
 }
 
 func (cib cueInvokeBinary) toFrontend() *schema.Invocation {
@@ -56,6 +57,7 @@ func (cib cueInvokeBinary) toFrontend() *schema.Invocation {
 		WorkingDir:   cib.WorkingDir,
 		NoCache:      cib.NoCache,
 		RequiresKeys: cib.RequiresKeys,
+		Inject:       cib.Inject,
 	}
 
 	for k, v := range cib.Snapshots {

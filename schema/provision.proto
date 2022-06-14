@@ -16,6 +16,7 @@ message Invocation {
     map<string, InvocationSnapshot> snapshots     = 5;
     bool                            no_cache      = 6;
     bool                            requires_keys = 7;
+    repeated string                 inject        = 8;
 }
 
 message InvocationSnapshot {

@@ -275,12 +275,16 @@ func MaybeAllocateDomainCertificate(ctx context.Context, entry *schema.Stack_Ent
 func computeDomains(env *schema.Environment, srv *schema.Server, naming *schema.Naming, allocatedName string) ([]*schema.Domain, error) {
 	var domains []*schema.Domain
 
-	domain, err := GuessAllocatedName(env, srv, naming, allocatedName)
+	computed, err := ComputeNaming(env, naming)
 	if err != nil {
 		return nil, err
 	}
 
-	domains = append(domains, domain)
+	domains = append(domains, &schema.Domain{
+		// XXX include stack?
+		Fqdn:    fmt.Sprintf("%s.%s.%s", allocatedName, env.Name, computed.BaseDomain),
+		Managed: computed.Managed,
+	})
 
 	for _, d := range naming.GetAdditionalTlsManaged() {
 		d := d // Capture d.

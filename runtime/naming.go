@@ -30,14 +30,12 @@ var NamingNoTLS = false // Set to true in CI.
 var errLogin = fnerrors.UsageError("Please run `fn login` to login.",
 	"Foundation automatically manages nscloud.dev-based sub-domains and issues SSL certificates on your behalf. To use these features, you'll need to login to Foundation using your Github account.")
 
-// GuessAllocatedName does not RPC out to figure out what names we would use.
-// If we do end up being able to deploy, the names are correct, but we just
-// don't know ahead of time we will be able to use them.
-func GuessAllocatedName(env *schema.Environment, srv *schema.Server, naming *schema.Naming, name string) (*schema.Domain, error) {
+func ComputeNaming(env *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
 	if env.Purpose != schema.Environment_PRODUCTION {
-		return &schema.Domain{
-			Fqdn:    fmt.Sprintf("%s.%s.%s", name, env.Name, LocalBaseDomain),
-			Managed: schema.Domain_LOCAL_MANAGED,
+		return &schema.ComputedNaming{
+			Source:     source,
+			BaseDomain: LocalBaseDomain,
+			Managed:    schema.Domain_LOCAL_MANAGED,
 		}, nil
 	}
 
@@ -53,15 +51,15 @@ func GuessAllocatedName(env *schema.Environment, srv *schema.Server, naming *sch
 	org := userAuth.Org
 
 	if env.Purpose == schema.Environment_PRODUCTION {
-		if orgOverride := naming.GetWithOrg(); orgOverride != "" {
+		if orgOverride := source.GetWithOrg(); orgOverride != "" {
 			org = orgOverride
 		}
 	}
 
-	return &schema.Domain{
-		// XXX include stack?
-		Fqdn:    fmt.Sprintf("%s.%s.%s.%s", name, env.Name, org, CloudBaseDomain),
-		Managed: schema.Domain_CLOUD_MANAGED,
+	return &schema.ComputedNaming{
+		Source:     source,
+		BaseDomain: fmt.Sprintf("%s.%s", org, CloudBaseDomain),
+		Managed:    schema.Domain_CLOUD_MANAGED,
 	}, nil
 }
 

@@ -247,6 +247,10 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 				return nil, err
 			}
 
+			if len(inv.Inject) > 0 {
+				return nil, fnerrors.BadInputError("injection requested when it's not possible: %v", inv.Inject)
+			}
+
 			image, err := compute.GetValue(ctx, inv.Image)
 			if err != nil {
 				return nil, err

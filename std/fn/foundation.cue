@@ -220,6 +220,7 @@ _#ConfigureBase: {
 	}
 	noCache:      *false | true
 	requiresKeys: *false | true
+	inject: [...string]
 }
 
 #Binary: {
