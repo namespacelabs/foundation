@@ -32,7 +32,7 @@ type Invocation struct {
 	Snapshots  []Snapshot
 	WorkingDir string
 	NoCache    bool
-	Inject     []string
+	Inject     []*schema.Invocation_ValueInjection
 }
 
 type Snapshot struct {
