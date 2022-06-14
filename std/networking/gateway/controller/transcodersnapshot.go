@@ -258,22 +258,45 @@ func decodeBase64FiledescriptorSet(encoded string) (*descriptorpb.FileDescriptor
 	return &fds, nil
 }
 
+// topoSort sorts FileDesciptorProtos such that imported files (dependencies) come first.
+// If the file descriptor set is not topologically sorted and a dependency descriptor comes later,
+// Envoy fails to build the descriptor pool correctly and throws an exception.
+func topoSort(names []string, files map[string]*descriptorpb.FileDescriptorProto) []*descriptorpb.FileDescriptorProto {
+	var result []*descriptorpb.FileDescriptorProto
+	for _, name := range names {
+		if file := files[name]; file != nil {
+			result = append(result, topoSort(file.Dependency, files)...)
+			result = append(result, file)
+			delete(files, name)
+		}
+	}
+	return result
+}
+
 func makeFiledescriptorSet(transcoders []transcoderWithCluster) (*descriptorpb.FileDescriptorSet, error) {
-	var files []*descriptorpb.FileDescriptorProto
+	files := map[string]*descriptorpb.FileDescriptorProto{}
+	var names []string
 	var errors []error
+
 	for _, t := range transcoders {
 		fileDescriptor, err := decodeBase64FiledescriptorSet(t.transcoder.Spec.EncodedProtoDescriptor)
 		if err != nil {
 			errors = append(errors, err)
 		} else {
-			files = append(files, fileDescriptor.File...)
+			for _, f := range fileDescriptor.File {
+				name := f.GetName()
+				if files[name] == nil {
+					files[name] = f
+					names = append(names, name)
+				}
+			}
 		}
 	}
 	if len(errors) > 0 {
 		return nil, multierr.New(errors...)
 	}
 	return &descriptorpb.FileDescriptorSet{
-		File: files,
+		File: topoSort(names, files),
 	}, nil
 }
 
