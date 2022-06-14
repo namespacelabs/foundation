@@ -57,7 +57,12 @@ func (cib cueInvokeBinary) toFrontend() *schema.Invocation {
 		WorkingDir:   cib.WorkingDir,
 		NoCache:      cib.NoCache,
 		RequiresKeys: cib.RequiresKeys,
-		Inject:       cib.Inject,
+	}
+
+	for _, inject := range cib.Inject {
+		inv.Inject = append(inv.Inject, &schema.Invocation_ValueInjection{
+			Type: inject,
+		})
 	}
 
 	for k, v := range cib.Snapshots {

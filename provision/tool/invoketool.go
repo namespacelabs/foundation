@@ -148,7 +148,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	req.Input = append(req.Input, inv.props.ProvisionInput...)
 
 	for _, inject := range r.Invocation.Inject {
-		provider, ok := registrations[inject]
+		provider, ok := registrations[inject.Type]
 		if !ok {
 			return nil, fnerrors.BadInputError("%s: no such provider", inject)
 		}
