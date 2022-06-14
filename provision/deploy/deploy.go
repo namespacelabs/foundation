@@ -95,10 +95,10 @@ func makeBuildAssets(ingressFragments compute.Computable[*ComputeIngressResult])
 }
 
 func computeIngressWithHandlerResult(env ops.Environment, stack *stack.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
-	computedIngressFragments := compute.Transform(def, func(_ context.Context, h *handlerResult) ([]*schema.IngressFragmentPlan, error) {
-		var plans []*schema.IngressFragmentPlan
+	computedIngressFragments := compute.Transform(def, func(_ context.Context, h *handlerResult) ([]*schema.IngressFragment, error) {
+		var fragments []*schema.IngressFragment
 
-		p := &schema.IngressFragmentPlan{}
+		p := &schema.IngressFragment{}
 		for _, computed := range h.Computed.GetEntry() {
 			for _, conf := range computed.Configuration {
 				if !conf.Impl.MessageIs(p) {
@@ -109,15 +109,11 @@ func computeIngressWithHandlerResult(env ops.Environment, stack *stack.Stack, de
 					return nil, err
 				}
 
-				if p.AllocatedName == "" {
-					return nil, fnerrors.BadInputError("%s: AllocatedName is missing in IngressFragmentPlan", conf.Owner)
-				}
-
-				plans = append(plans, p)
+				fragments = append(fragments, p)
 			}
 		}
 
-		return plans, nil
+		return fragments, nil
 	})
 
 	return ComputeIngress(env, stack.Proto(), computedIngressFragments, AlsoDeployIngress)

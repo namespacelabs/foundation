@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"strings"
 
-	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/configure"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
@@ -48,6 +48,13 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		return fnerrors.New("%s: missing endpoint", transcoderServiceName)
 	}
 
+	computedNaming := &schema.ComputedNaming{}
+	if ok, err := req.CheckUnpackInput(computedNaming); err != nil {
+		return err
+	} else if !ok {
+		return fnerrors.InternalError("ComputedNaming is required")
+	}
+
 	type endpoint struct {
 		ProtoService string
 		Server       *schema.Stack_Entry
@@ -55,8 +62,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		Transcoding  *schema.GrpcHttpTranscoding
 	}
 
-	perServer := map[string][]endpoint{}
-
+	var endpoints []endpoint
 	for _, e := range req.Stack.Endpoint {
 		var protoService string
 		for _, md := range e.ServiceMetadata {
@@ -66,8 +72,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 			}
 		}
 
-		sch := req.Stack.GetServer(e.GetServerOwnerPackage())
-		if sch == nil {
+		if e.GetServerOwnerPackage() != req.Focus.GetPackageName() {
 			continue
 		}
 
@@ -85,95 +90,89 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				return fnerrors.New("failed to unmarshal GrpcHttpTranscoding: %w", err)
 			}
 
-			perServer[e.ServerOwner] = append(perServer[e.ServerOwner], endpoint{
+			endpoints = append(endpoints, endpoint{
 				ProtoService: protoService,
-				Server:       sch,
+				Server:       req.Focus,
 				Endpoint:     e,
 				Transcoding:  t,
 			})
 		}
 	}
 
-	var sorted [][]endpoint
-	for _, services := range perServer {
-		if len(services) > 0 {
-			sorted = append(sorted, services)
-		}
+	// This block embeds runtime logic into the transcoding handler; this means
+	// that version will be at odds with the fn scheduler. Ideally we'd receive
+	// these set of domains in.
+	ingressName := fmt.Sprintf("grpc-gateway-%s", req.Focus.Server.Id)
+	domains, err := runtime.CalculateDomains(req.Env, computedNaming, ingressName)
+	if err != nil {
+		return err
 	}
 
-	slices.SortFunc(sorted, func(a, b []endpoint) bool {
-		// Each slice of endpoints is guaranteed to be of the same server.
-		return strings.Compare(a[0].Endpoint.ServerOwner, b[0].Endpoint.ServerOwner) < 0
-	})
+	cors := &schema.HttpCors{Enabled: true, AllowedOrigin: []string{"*"}}
+	packedCors, err := anypb.New(cors)
+	if err != nil {
+		return fnerrors.UserError(nil, "failed to pack CORS' configuration: %v", err)
+	}
 
-	for _, serverEndpoints := range sorted {
-		for _, x := range serverEndpoints {
-			fds, err := proto.Marshal(x.Transcoding.FileDescriptorSet)
-			if err != nil {
-				return fnerrors.New("failed to marshal FileDescriptorSet: %w", err)
-			}
+	for _, x := range endpoints {
+		fds, err := proto.Marshal(x.Transcoding.FileDescriptorSet)
+		if err != nil {
+			return fnerrors.New("failed to marshal FileDescriptorSet: %w", err)
+		}
 
-			annotations, err := kubedef.MakeServiceAnnotations(x.Server.Server, x.Endpoint)
-			if err != nil {
-				return fnerrors.New("failed to calculate annotations: %w", err)
-			}
+		annotations, err := kubedef.MakeServiceAnnotations(x.Server.Server, x.Endpoint)
+		if err != nil {
+			return fnerrors.New("failed to calculate annotations: %w", err)
+		}
 
-			out.Invocations = append(out.Invocations, kubedef.Apply{
-				Description: fmt.Sprintf("HTTP/gRPC transcoder: %s", x.ProtoService),
-				Resource: &httpGrpcTranscoder{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       "HttpGrpcTranscoder",
-						APIVersion: "k8s.namespacelabs.dev/v1",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        strings.ToLower(fmt.Sprintf("%s-%s", x.ProtoService, x.Server.Server.Id)),
-						Namespace:   kubetool.FromRequest(req).Namespace,
-						Labels:      kubedef.MakeLabels(req.Env, x.Server.Server),
-						Annotations: annotations,
-					},
-					Spec: httpGrpcTranscoderSpec{
-						FullyQualifiedProtoServiceName: x.ProtoService,
-						ServiceAddress:                 x.Endpoint.AllocatedName,
-						ServicePort:                    int(x.Endpoint.Port.ContainerPort),
-						EncodedProtoDescriptor:         base64.StdEncoding.EncodeToString(fds),
-					},
+		out.Invocations = append(out.Invocations, kubedef.Apply{
+			Description: fmt.Sprintf("HTTP/gRPC transcoder: %s", x.ProtoService),
+			Resource: &httpGrpcTranscoder{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "HttpGrpcTranscoder",
+					APIVersion: "k8s.namespacelabs.dev/v1",
 				},
-				ResourceClass: &kubedef.ResourceClass{
-					Resource: "httpgrpctranscoders",
-					Group:    "k8s.namespacelabs.dev",
-					Version:  "v1",
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        strings.ToLower(fmt.Sprintf("%s-%s", x.ProtoService, x.Server.Server.Id)),
+					Namespace:   kubetool.FromRequest(req).Namespace,
+					Labels:      kubedef.MakeLabels(req.Env, x.Server.Server),
+					Annotations: annotations,
 				},
-			})
-
-			// Only emit ingress entries for internet facing services.
-			if x.Endpoint.Type != schema.Endpoint_INTERNET_FACING {
-				continue
-			}
-
-			cors := &schema.HttpCors{Enabled: true, AllowedOrigin: []string{"*"}}
-			packedCors, err := anypb.New(cors)
-			if err != nil {
-				return fnerrors.UserError(nil, "failed to pack CORS' configuration: %v", err)
-			}
-
-			srv := x.Server.Server
-			name := fmt.Sprintf("grpc-gateway-%s", srv.Id)
-			fragment, err := anypb.New(&schema.IngressFragmentPlan{
-				AllocatedName: name,
-				IngressFragment: &schema.IngressFragment{
-					Name:     name,
-					Owner:    srv.PackageName,
-					Endpoint: x.Endpoint,
-					// Point HTTP calls under /{serviceName}/ to Envoy.
-					HttpPath: []*schema.IngressFragment_IngressHttpPath{{
-						Path:    fmt.Sprintf("/%s/", x.ProtoService),
-						Owner:   x.Endpoint.EndpointOwner,
-						Service: transcoderEndpoint.AllocatedName,
-						Port:    transcoderEndpoint.Port,
-					}},
-					Extension: []*anypb.Any{packedCors},
-					Manager:   "namespacelabs.dev/foundation/std/grpc/httptranscoding",
+				Spec: httpGrpcTranscoderSpec{
+					FullyQualifiedProtoServiceName: x.ProtoService,
+					ServiceAddress:                 x.Endpoint.AllocatedName,
+					ServicePort:                    int(x.Endpoint.Port.ContainerPort),
+					EncodedProtoDescriptor:         base64.StdEncoding.EncodeToString(fds),
 				},
+			},
+			ResourceClass: &kubedef.ResourceClass{
+				Resource: "httpgrpctranscoders",
+				Group:    "k8s.namespacelabs.dev",
+				Version:  "v1",
+			},
+		})
+
+		// Only emit ingress entries for internet facing services.
+		if x.Endpoint.Type != schema.Endpoint_INTERNET_FACING {
+			continue
+		}
+
+		// XXX handle method level routing.
+		for _, domain := range domains {
+			fragment, err := anypb.New(&schema.IngressFragment{
+				Name:     ingressName,
+				Domain:   domain,
+				Owner:    req.Focus.Server.PackageName,
+				Endpoint: x.Endpoint,
+				// Point HTTP calls under /{serviceName}/ to Envoy.
+				HttpPath: []*schema.IngressFragment_IngressHttpPath{{
+					Path:    fmt.Sprintf("/%s/", x.ProtoService),
+					Owner:   x.Endpoint.EndpointOwner,
+					Service: transcoderEndpoint.AllocatedName,
+					Port:    transcoderEndpoint.Port,
+				}},
+				Extension: []*anypb.Any{packedCors},
+				Manager:   "namespacelabs.dev/foundation/std/grpc/httptranscoding",
 			})
 			if err != nil {
 				return err
