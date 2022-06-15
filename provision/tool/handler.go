@@ -15,10 +15,9 @@ type Source struct {
 }
 
 type Definition struct {
-	For           schema.PackageName
-	ServerAbsPath string
-	Source        Source
-	Invocation    *invocation.Invocation
+	TargetServer schema.PackageName
+	Source       Source
+	Invocation   *invocation.Invocation
 }
 
 func (s Source) Contains(pkg schema.PackageName) bool {

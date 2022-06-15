@@ -345,7 +345,9 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 					return prepareAndBuildResult{}, err
 				}
 
-				run.Extensions = handlerR.ServerExtensions[s.PackageName()]
+				if sr := handlerR.ServerDefs[s.PackageName()]; sr != nil {
+					run.Extensions = sr.Extensions
+				}
 
 				serverRuns = append(serverRuns, run)
 			}
