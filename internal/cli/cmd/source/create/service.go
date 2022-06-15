@@ -15,7 +15,9 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cue"
+	"namespacelabs.dev/foundation/internal/frontend/golang"
 	"namespacelabs.dev/foundation/internal/frontend/proto"
+	"namespacelabs.dev/foundation/schema"
 )
 
 const serviceSuffix = "service"
@@ -60,6 +62,13 @@ func newServiceCmd() *cobra.Command {
 			cueOpts := cue.GenServiceOpts{Name: name, Framework: *fmwk}
 			if err := cue.CreateServiceScaffold(ctx, root.FS(), loc, cueOpts); err != nil {
 				return err
+			}
+
+			switch *fmwk {
+			case schema.Framework_GO_GRPC:
+				if err := golang.CreateGolangScaffold(ctx, root.FS(), loc); err != nil {
+					return err
+				}
 			}
 
 			return codegenNode(ctx, root, loc)

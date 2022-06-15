@@ -50,6 +50,16 @@ package {{.Package}};{{if eq .Framework "GO_GRPC"}}
 option go_package = "{{.GoPackage}}";{{end}}
 
 service {{.Name}} {
-    // TODO add RPCs here
+    // TODO change to desired RPC methods
+	rpc Echo(EchoRequest) returns (EchoResponse);
 }
+
+message EchoRequest {
+	string text = 1;
+}
+
+message EchoResponse {
+	string text = 1;
+}
+
 `))
