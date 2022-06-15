@@ -184,7 +184,7 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 			}
 
 			var protocols uniquestrings.List
-			for _, md := range frag.Endpoint.ServiceMetadata {
+			for _, md := range frag.GetEndpoint().GetServiceMetadata() {
 				if md.Protocol != "" {
 					protocols.Add(md.Protocol)
 				}
