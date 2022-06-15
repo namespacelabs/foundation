@@ -6,6 +6,7 @@ package ingress
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/runtime/naming"
 	"namespacelabs.dev/foundation/schema"
@@ -36,6 +38,38 @@ func RegisterGraphHandlers() {
 			ingressSvc := nginx.IngressLoadBalancerService() // Make nginx reference configurable.
 
 			return waitForIngress(ctx, cli, ingressSvc, op)
+		})
+	})
+
+	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, g *schema.SerializedInvocation, op *OpCleanupMigration) (*ops.HandleResult, error) {
+		restcfg, err := client.ResolveConfig(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+
+		cli, err := k8s.NewForConfig(restcfg)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, tasks.Action("kubernetes.ingress.cleanup-migration").Run(ctx, func(ctx context.Context) error {
+			ingresses, err := cli.NetworkingV1().Ingresses(op.Namespace).List(ctx, metav1.ListOptions{
+				LabelSelector: kubedef.SerializeSelector(kubedef.ManagedBy()),
+			})
+			if err != nil {
+				return err
+			}
+
+			// We no longer emit "-managed" ingresses.
+			for _, ingress := range ingresses.Items {
+				if strings.HasSuffix(ingress.Name, "-managed") {
+					if err := cli.NetworkingV1().Ingresses(op.Namespace).Delete(ctx, ingress.Name, metav1.DeleteOptions{}); err != nil {
+						return err
+					}
+				}
+			}
+
+			return nil
 		})
 	})
 

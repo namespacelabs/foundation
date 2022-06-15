@@ -22,6 +22,16 @@ import (
 func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
 	var state deploymentState
 
+	cleanup, err := anypb.New(&ingress.OpCleanupMigration{Namespace: r.moduleNamespace})
+	if err != nil {
+		return nil, err
+	}
+
+	state.definitions = append(state.definitions, &schema.SerializedInvocation{
+		Description: "Ingress migration cleanup",
+		Impl:        cleanup,
+	})
+
 	certSecretMap, secrets := ingress.MakeCertificateSecrets(r.moduleNamespace, allFragments)
 
 	for _, apply := range secrets {
