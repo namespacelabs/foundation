@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
@@ -206,7 +207,29 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 		return strings.Compare(a.GetServerPackage(), b.GetServerPackage()) < 0
 	})
 
+	// XXX this breaks encapsulation, and is temporary to address test failures.
+	slices.SortStableFunc(ops, func(a, b *schema.SerializedInvocation) bool {
+		rankA := orderRank(a)
+		rankB := orderRank(b)
+
+		return rankA < rankB
+	})
+
 	return &handlerResult{r.stack, ops, computed, extensionsPerServer}, nil
+}
+
+func orderRank(sh *schema.SerializedInvocation) int {
+	create := &kubedef.OpCreate{}
+
+	if sh.Impl.MessageIs(create) {
+		if sh.Impl.UnmarshalTo(create) == nil {
+			if create.Resource == "customresourcedefinitions" {
+				return 0
+			}
+		}
+	}
+
+	return 10
 }
 
 func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema.SerializedInvocationSource_ComputableValue) (proto.Message, error) {
