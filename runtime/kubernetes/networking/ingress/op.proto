@@ -9,7 +9,11 @@ package foundation.runtime.kubernetes.networking.ingress;
 option go_package = "namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress";
 
 message OpMapAddress {
-    string fdqn = 1;
-    string ingress_ns = 2;
+    string fdqn         = 1;
+    string ingress_ns   = 2;
     string ingress_name = 3;
+}
+
+message OpCleanupMigration {
+    string namespace = 1;
 }
