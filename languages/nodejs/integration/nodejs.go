@@ -358,7 +358,7 @@ func fileNameForService(srvName string, descriptors []*descriptorpb.FileDescript
 }
 
 func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, server *schema.Server) error {
-	return tidyPackageJson(ctx, pkgs, loc, server.Import)
+	return tidyPackageJson(ctx, pkgs, loc, server.UserImports)
 }
 
 func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, depPkgNames []string) error {
