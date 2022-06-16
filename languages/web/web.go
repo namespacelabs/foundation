@@ -21,8 +21,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
-	"namespacelabs.dev/foundation/internal/yarn"
 	"namespacelabs.dev/foundation/languages"
+	nodejs "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -245,7 +245,7 @@ func (i impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspac
 		"vite@2.7.13",
 	}
 
-	if err := yarn.RunYarnV1(ctx, p.Location.Rel(), append([]string{"add", "-D"}, devPackages...)); err != nil {
+	if err := nodejs.RunNodejsYarn(ctx, p.Location.Rel(), append([]string{"add", "-D"}, devPackages...)); err != nil {
 		return err
 	}
 

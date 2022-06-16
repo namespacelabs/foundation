@@ -12,7 +12,13 @@ export class FnFetcher implements Fetcher {
 	readonly #modules: { [key: string]: { path: string } };
 
 	constructor() {
-		const lockFileBytes = readFileSync(LOCK_FILE_PATH, "utf8");
+		let lockFileBytes = "{}";
+		try {
+			lockFileBytes = readFileSync(LOCK_FILE_PATH, "utf8");
+		} catch (e) {
+			// File can be not there for WEB at the moment.
+			// TODO: remove catching the exception once WEB is unified with NODEJS.
+		}
 		const lockFile = JSON.parse(lockFileBytes);
 		this.#modules = lockFile.modules || {};
 	}

@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/yarn"
+	nodejs "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -85,7 +86,10 @@ func viteBase(ctx context.Context, target string, module build.Workspace, rel st
 		return buildkit.LocalContents{}, llb.State{}, err
 	}
 
-	buildBase := PrepareYarn(target, nodeImage, src, buildkit.HostPlatform())
+	buildBase, err := PrepareYarn(ctx, target, nodeImage, src, buildkit.HostPlatform())
+	if err != nil {
+		return buildkit.LocalContents{}, llb.State{}, err
+	}
 
 	// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
 	base := llbutil.Image(nodeImage, buildkit.HostPlatform()).
@@ -103,17 +107,18 @@ func viteBase(ctx context.Context, target string, module build.Workspace, rel st
 	return local, base, nil
 }
 
-func PrepareYarn(target, nodejsBase string, src llb.State, platform specs.Platform) llb.State {
-	base := llbutil.Image(nodejsBase, platform)
-	buildBase := base.Run(llb.Shlex("apk add --no-cache python2 make g++")).
-		Root().
-		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn").
-		With(
-			llbutil.CopyFrom(src, "package.json", filepath.Join(target, "package.json")),
-			llbutil.CopyFrom(src, "yarn.lock", filepath.Join(target, "yarn.lock")))
+func PrepareYarn(ctx context.Context, target, nodejsBase string, src llb.State, platform specs.Platform) (llb.State, error) {
+	base, err := nodejs.PrepareYarnBase(ctx, nodejsBase, platform)
+	if err != nil {
+		return llb.State{}, err
+	}
 
-	yarnInstall := buildBase.Run(llb.Shlex("yarn install --frozen-lockfile"), llb.Dir(target))
+	buildBase := base.With(
+		llbutil.CopyFrom(src, "package.json", filepath.Join(target, "package.json")),
+		llbutil.CopyFrom(src, "yarn.lock", filepath.Join(target, "yarn.lock")))
+
+	yarnInstall := buildBase.Run(nodejs.RunYarnShlex("install", "--immutable"), llb.Dir(target))
 	yarnInstall.AddMount("/cache/yarn", llb.Scratch(), llb.AsPersistentCacheDir("yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
 
-	return yarnInstall.Root()
+	return yarnInstall.Root(), nil
 }

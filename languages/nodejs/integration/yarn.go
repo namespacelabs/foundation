@@ -12,7 +12,8 @@ import (
 	"namespacelabs.dev/foundation/internal/yarn"
 )
 
-// Runs Yarn that is pre-configured for server-side Node.js use-case.
+// Runs a configured Yarn.
+// TODO: move to a shared place, both nodejs and web integrations use this.
 func RunNodejsYarn(ctx context.Context, relPath string, args []string) error {
 	yarnAuxDir, err := yarnsdk.EnsureYarnAuxFilesDir(ctx)
 	if err != nil {

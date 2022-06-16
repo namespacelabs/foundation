@@ -11,7 +11,7 @@ import (
 	yarnsdk "namespacelabs.dev/foundation/internal/sdk/yarn"
 )
 
-// Runs Yarn v3+ for Node.js
+// Runs Yarn v3+
 func RunYarn(ctx context.Context, relPath string, args []string, env []string) error {
 	bin, err := yarnsdk.EnsureSDK(ctx)
 	if err != nil {
@@ -23,16 +23,6 @@ func RunYarn(ctx context.Context, relPath string, args []string, env []string) e
 	cmd.Args = append([]string{string(bin)}, args...)
 	cmd.Dir = relPath
 	cmd.AdditionalEnv = env
-
-	return cmd.Run(ctx)
-}
-
-// Runs Yarn v1+ for Web.
-func RunYarnV1(ctx context.Context, relPath string, args []string) error {
-	var cmd localexec.Command
-	cmd.Command = "yarn"
-	cmd.Args = args
-	cmd.Dir = relPath
 
 	return cmd.Run(ctx)
 }

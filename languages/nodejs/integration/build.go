@@ -128,7 +128,7 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	locals := []buildkit.LocalContents{local}
 
 	yarnRoot := filepath.Join(appRootPath, bnj.yarnRoot)
-	buildBase, err := prepareYarnBase(ctx, n.NodeJsBase, *conf.TargetPlatform(), bnj.isDevBuild)
+	buildBase, err := prepareYarnNodejsBase(ctx, n.NodeJsBase, *conf.TargetPlatform(), bnj.isDevBuild)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
@@ -199,7 +199,7 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	return out, locals, nil
 }
 
-func prepareYarnBase(ctx context.Context, nodejsBase string, platform specs.Platform, isDevBuild bool) (llb.State, error) {
+func PrepareYarnBase(ctx context.Context, nodejsBase string, platform specs.Platform) (llb.State, error) {
 	base := llbutil.Image(nodejsBase, platform)
 	buildBase := base.Run(llb.Shlex("apk add --no-cache python2 make g++")).
 		Root().
@@ -207,6 +207,26 @@ func prepareYarnBase(ctx context.Context, nodejsBase string, platform specs.Plat
 	for k, v := range YarnEnvArgs("/") {
 		buildBase = buildBase.AddEnv(k, v)
 	}
+
+	buildBase, err := copyYarnBinaryFromCache(ctx, buildBase)
+	if err != nil {
+		return llb.State{}, err
+	}
+
+	buildBase, err = copyYarnAuxFilesFromCache(ctx, buildBase)
+	if err != nil {
+		return llb.State{}, err
+	}
+
+	return buildBase, nil
+}
+
+func prepareYarnNodejsBase(ctx context.Context, nodejsBase string, platform specs.Platform, isDevBuild bool) (llb.State, error) {
+	buildBase, err := PrepareYarnBase(ctx, nodejsBase, platform)
+	if err != nil {
+		return llb.State{}, err
+	}
+
 	buildBase = buildBase.Run(llb.Shlex(fmt.Sprintf(
 		"yarn global add typescript@%s",
 		builtin().DevDependencies["typescript"],
@@ -221,12 +241,7 @@ func prepareYarnBase(ctx context.Context, nodejsBase string, platform specs.Plat
 		))).Root()
 	}
 
-	buildBase, err := copyYarnBinaryFromCache(ctx, buildBase)
-	if err != nil {
-		return llb.State{}, err
-	}
-
-	return copyYarnAuxFilesFromCache(ctx, buildBase)
+	return buildBase, nil
 }
 
 func copyYarnBinaryFromCache(ctx context.Context, base llb.State) (llb.State, error) {
@@ -341,7 +356,7 @@ func generateNodemonConfig(ctx context.Context, base llb.State) (llb.State, erro
 
 func runYarnInstall(platform specs.Platform, buildBase llb.State, yarnRoot string, isDevBuild bool) llb.State {
 	yarnInstall := buildBase.
-		Run(llb.Shlex(fmt.Sprintf("node %s install --immutable", yarnBinaryPath)), llb.Dir(yarnRoot))
+		Run(RunYarnShlex("install", "--immutable"), llb.Dir(yarnRoot))
 	yarnInstall.AddMount("/cache/yarn", llb.Scratch(), llb.AsPersistentCacheDir(
 		"yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
 
@@ -349,8 +364,12 @@ func runYarnInstall(platform specs.Platform, buildBase llb.State, yarnRoot strin
 
 	// No need to compile Typescript for dev builds, "nodemon" does it itself.
 	if !isDevBuild {
-		out = out.Run(llb.Shlex(fmt.Sprintf("node %s tsc --project %s", yarnBinaryPath, tsConfigPath)), llb.Dir(yarnRoot)).Root()
+		out = out.Run(RunYarnShlex("tsc", "--project", tsConfigPath), llb.Dir(yarnRoot)).Root()
 	}
 
 	return out
+}
+
+func RunYarnShlex(args ...string) llb.RunOption {
+	return llb.Shlex(fmt.Sprintf("node %s %s", yarnBinaryPath, strings.Join(args, " ")))
 }
