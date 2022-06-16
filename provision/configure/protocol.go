@@ -7,13 +7,25 @@ package configure
 import (
 	"context"
 	"flag"
+	"log"
 	"os"
+	"time"
 
 	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/internal/grpcstdio"
 )
 
+const (
+	maximumWallclockTime = 2 * time.Minute
+)
+
 func RunServer(ctx context.Context, register func(grpc.ServiceRegistrar)) error {
+	go func() {
+		log.Printf("will abort tool after %v", maximumWallclockTime)
+		time.Sleep(maximumWallclockTime)
+		log.Fatalf("aborting tool after %v", maximumWallclockTime)
+	}()
+
 	flag.Parse()
 
 	s := grpc.NewServer()

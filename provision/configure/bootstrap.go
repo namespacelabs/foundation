@@ -8,7 +8,6 @@ import (
 	"context"
 	"io/fs"
 	"log"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
@@ -16,10 +15,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
-)
-
-const (
-	maxToolWait = 2 * time.Minute
 )
 
 func init() {
@@ -70,12 +65,6 @@ func (p Request) PackageOwner() string {
 }
 
 func Handle(h *Handlers) {
-	go func() {
-		log.Printf("will abort tool after %v", maxToolWait)
-		time.Sleep(maxToolWait)
-		log.Fatalf("aborting tool after %v", maxToolWait)
-	}()
-
 	if err := RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
 		protocol.RegisterInvocationServiceServer(sr, h.ServiceHandler())
 	}); err != nil {
