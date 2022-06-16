@@ -6,7 +6,7 @@ import (
 server: fn.#Server & {
 	id:        "7hzne001dff2rpdxav703bwqwc"
 	name:      "gogrpcserver"
-	framework: "GO_GRPC"
+	framework: "GO"
 
 	import: [
 		"namespacelabs.dev/foundation/std/testdata/service/post",

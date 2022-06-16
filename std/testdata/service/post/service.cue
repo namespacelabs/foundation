@@ -11,7 +11,7 @@ $proto: inputs.#Proto & {
 }
 
 service: fn.#Service & {
-	framework: "GO_GRPC"
+	framework: "GO"
 
 	instantiate: {
 		main: datastore.#Exports.Database & {

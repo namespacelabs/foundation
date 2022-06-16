@@ -5,7 +5,7 @@ import (
 server: fn.#Server & {
 	id:        "q311n9u9uvirr2i42ms0"
 	name:      "postgresserver"
-	framework: "GO_GRPC"
+	framework: "GO"
 
 	import: [
 		"namespacelabs.dev/foundation/std/go/grpc/gateway",

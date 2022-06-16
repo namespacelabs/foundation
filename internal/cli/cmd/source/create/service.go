@@ -65,7 +65,7 @@ func newServiceCmd() *cobra.Command {
 			}
 
 			switch *fmwk {
-			case schema.Framework_GO_GRPC:
+			case schema.Framework_GO:
 				if err := golang.CreateGolangScaffold(ctx, root.FS(), loc); err != nil {
 					return err
 				}

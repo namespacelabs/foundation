@@ -109,10 +109,9 @@ message NodeInitializer {
 
 enum Framework {
     FRAMEWORK_UNSPECIFIED = 0;
-    // TODO(@nicolasalt): rename to GO. Careful with version skew.
-    GO_GRPC = 1;
-    WEB     = 2;
-    NODEJS  = 3;
+    GO                    = 1;
+    WEB                   = 2;
+    NODEJS                = 3;
     // Only for servers
     OPAQUE = 4;
 }

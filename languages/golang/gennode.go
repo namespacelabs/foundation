@@ -74,7 +74,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 		}
 	}
 
-	hasInitialization := n.InitializerFor(schema.Framework_GO_GRPC) != nil
+	hasInitialization := n.InitializerFor(schema.Framework_GO) != nil
 	var providesCount int
 	for _, p := range n.Provides {
 		for _, prov := range p.AvailableIn {

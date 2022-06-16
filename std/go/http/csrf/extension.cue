@@ -5,7 +5,7 @@ import (
 )
 
 extension: fn.#Extension & {
-	hasInitializerIn: "GO_GRPC"
+	hasInitializerIn: "GO"
 
 	instantiate: token: secrets.#Exports.Secret & {
 		name: "http-csrf-token"

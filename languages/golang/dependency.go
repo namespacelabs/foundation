@@ -86,7 +86,7 @@ func expandInstancedDeps(ctx context.Context, loader workspace.Packages, include
 			e.services = append(e.services, nodeLoc{Location: pkg.Location, Node: referenced})
 		}
 
-		if x := referenced.InitializerFor(schema.Framework_GO_GRPC); x != nil {
+		if x := referenced.InitializerFor(schema.Framework_GO); x != nil {
 			e.initializers = append(e.initializers, initializer{
 				nodeLoc:          nodeLoc{Location: pkg.Location, Node: referenced},
 				initializeBefore: x.InitializeBefore,
@@ -143,11 +143,11 @@ func expandNode(ctx context.Context, loader workspace.Packages, loc workspace.Lo
 }
 
 func isGoNode(n *schema.Node) bool {
-	if n.ServiceFramework == schema.Framework_GO_GRPC {
+	if n.ServiceFramework == schema.Framework_GO {
 		return true
 	}
 
-	if n.InitializerFor(schema.Framework_GO_GRPC) != nil {
+	if n.InitializerFor(schema.Framework_GO) != nil {
 		return true
 	}
 

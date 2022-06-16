@@ -126,7 +126,7 @@ func ComputeEndpoints(srv provision.Server, allocatedPorts []*schema.Endpoint_Po
 
 		if !hasTranscodeNode {
 			switch server.Framework {
-			case schema.Framework_GO_GRPC:
+			case schema.Framework_GO:
 				if UseGoInternalGrpcGateway {
 					gwEndpoint, err := makeGrpcGatewayEndpoint(sch.Server, serverPorts, gatewayServices, publicGateway)
 					if err != nil {

@@ -7,7 +7,7 @@ import (
 )
 
 extension: fn.#Extension & {
-	hasInitializerIn: "GO_GRPC"
+	hasInitializerIn: "GO"
 
 	instantiate: {
 		dsn: secrets.#Exports.Secret & {

@@ -5,7 +5,7 @@ import (
 server: fn.#Server & {
 	id:        "rn5q3mcug1dnkbtue3cg"
 	name:      "localstacks3"
-	framework: "GO_GRPC"
+	framework: "GO"
 
 	import: [
 		"namespacelabs.dev/foundation/std/go/grpc/gateway",

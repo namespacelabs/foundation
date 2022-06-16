@@ -47,7 +47,7 @@ server: fn.#Server & {
 	framework: "{{.Framework}}"
 
 	import: [
-		{{- if eq .Framework "GO_GRPC"}}
+		{{- if eq .Framework "GO"}}
 		// To expose GRPC endpoints via HTTP, add this import:
 		// "namespacelabs.dev/foundation/std/go/grpc/gateway",
 		{{end}}

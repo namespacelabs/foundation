@@ -10,7 +10,7 @@ $providerProto: inputs.#Proto & {
 }
 
 extension: fn.#Extension & {
-	hasInitializerIn: "GO_GRPC"
+	hasInitializerIn: "GO"
 
 	instantiate: {
 		"interceptors": interceptors.#Exports.InterceptorRegistration
