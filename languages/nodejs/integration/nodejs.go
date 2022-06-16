@@ -492,11 +492,11 @@ func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*sch
 	return dl.Serialize()
 }
 
-func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Node, ext *workspace.FrameworkExt) error {
+func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Node, ext *workspace.NodeFrameworkExt) error {
 	return nil
 }
 
-func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
+func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.ServerFrameworkExt) error {
 	// Adding extra nodes here:
 	// - grpcNode sets up correct flags for the server startup.
 	// - runtimeNode allows to treat the Foundation Node.js runtime as a regular node that has a Location,
@@ -527,10 +527,6 @@ func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error
 		return fnerrors.UserError(sealed.Location, "node.js server exposes HTTP paths, it must depend on %s", httpNode)
 	}
 
-	return nil
-}
-
-func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *workspace.CueService) error {
 	return nil
 }
 

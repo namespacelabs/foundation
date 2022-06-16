@@ -14,16 +14,6 @@ import fntypes "namespacelabs.dev/foundation/std/fn:types"
 	string
 }
 
-#Service: {
-	@fn(input=service)
-
-	packageName: #Package
-
-	// Set by the runtime.
-	protoTypename?: string
-	goPackage?:     string
-}
-
 #Server: {
 	@fn(input=server_dep)
 

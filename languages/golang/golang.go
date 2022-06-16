@@ -175,11 +175,11 @@ func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*sch
 	return dl.Serialize()
 }
 
-func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Node, ext *workspace.FrameworkExt) error {
+func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Node, ext *workspace.NodeFrameworkExt) error {
 	return nil
 }
 
-func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
+func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.ServerFrameworkExt) error {
 	f, gomodFile, err := gosupport.LookupGoModule(loc.Abs())
 	if err != nil {
 		return err
@@ -243,16 +243,6 @@ func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error
 		return fnerrors.UserError(sealed.Location, "server exposes HTTP paths, it must depend on %s", httpNode)
 	}
 
-	return nil
-}
-
-func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *workspace.CueService) error {
-	pkg, err := packageFrom(loc)
-	if err != nil {
-		return err
-	}
-
-	svc.GoPackage = pkg
 	return nil
 }
 

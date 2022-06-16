@@ -77,7 +77,7 @@ func (g *sealer) DoServer(loc Location, srv *schema.Server, pp *Package) error {
 	var include []schema.PackageName
 
 	if handler, ok := FrameworkHandlers[srv.Framework]; ok {
-		var ext FrameworkExt
+		var ext ServerFrameworkExt
 		if err := handler.PreParseServer(g.gctx, loc, &ext); err != nil {
 			return err
 		}

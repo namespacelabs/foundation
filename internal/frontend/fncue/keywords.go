@@ -9,7 +9,6 @@ const (
 	AllocKeyword      = "alloc"
 	PackageIKW        = "package"
 	ServerDepIKw      = "server_dep"
-	ServiceIKw        = "service"
 	FocusServerIKw    = "focus_server"
 	ImageIKw          = "image"
 	EnvIKw            = "env"
@@ -21,6 +20,6 @@ const (
 )
 
 var (
-	knownInputs = []string{ServerDepIKw, ServiceIKw, ImageIKw, EnvIKw, WorkspaceIKw, ProtoloadIKw, FocusServerIKw, ResourceIKw, PackageIKW, VCSIKw}
+	knownInputs = []string{ServerDepIKw, ImageIKw, EnvIKw, WorkspaceIKw, ProtoloadIKw, FocusServerIKw, ResourceIKw, PackageIKW, VCSIKw}
 	knownAllocs = []string{ServerPortAllocKw}
 )

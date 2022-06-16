@@ -54,20 +54,16 @@ type impl struct {
 	languages.MaybeTidy
 }
 
-func (impl) ParseNode(context.Context, workspace.Location, *schema.Node, *workspace.FrameworkExt) error {
+func (impl) ParseNode(context.Context, workspace.Location, *schema.Node, *workspace.NodeFrameworkExt) error {
 	return nil
 }
 
-func (impl) PreParseServer(_ context.Context, _ workspace.Location, ext *workspace.FrameworkExt) error {
+func (impl) PreParseServer(_ context.Context, _ workspace.Location, ext *workspace.ServerFrameworkExt) error {
 	return nil
 }
 
 func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error {
 	sealed.Proto.Server.StaticPort = []*schema.Endpoint_Port{{Name: httpPortName, ContainerPort: httpPort}}
-	return nil
-}
-
-func (impl) InjectService(workspace.Location, *schema.Node, *workspace.CueService) error {
 	return nil
 }
 

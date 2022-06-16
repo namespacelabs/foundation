@@ -37,7 +37,7 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 	srv.UserImports = srv.Import
 
 	if handler, ok := FrameworkHandlers[srv.Framework]; ok {
-		var ext FrameworkExt
+		var ext ServerFrameworkExt
 		if err := handler.PreParseServer(ctx, loc, &ext); err != nil {
 			return nil, err
 		}

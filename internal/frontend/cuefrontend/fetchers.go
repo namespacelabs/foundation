@@ -25,10 +25,6 @@ type cueWorkspace struct {
 	ServerPath string `json:"serverPath"`
 }
 
-type cueServiceRequest struct {
-	PackageName string `json:"packageName"`
-}
-
 type cueServerReference struct {
 	PackageName string        `json:"packageName"`
 	Id          string        `json:"id"`
@@ -41,48 +37,6 @@ type cueEndpoint struct {
 	ServiceName   string `json:"serviceName"`
 	AllocatedName string `json:"allocatedName"`
 	ContainerPort int32  `json:"containerPort"`
-}
-
-func FetchService(pl workspace.Packages) FetcherFunc {
-	return func(ctx context.Context, v cue.Value) (interface{}, error) {
-		var req cueServiceRequest
-		if err := v.Decode(&req); err != nil {
-			return nil, err
-		}
-
-		pkg, err := pl.LoadByName(ctx, schema.PackageName(req.PackageName))
-		if err != nil {
-			return nil, err
-		}
-
-		if pkg.Service == nil {
-			return nil, fnerrors.UserError(pkg.Location, "%v: expected schema to contain a single service", req.PackageName)
-		}
-
-		svc := pkg.Service
-
-		if len(svc.ExportService) != 1 {
-			return nil, fnerrors.UserError(nil, "#input.Service can only be used on nodes which export exactly one service, saw %d", len(svc.ExportService))
-		}
-
-		// XXX use protoreflect.FullName(svc.ExportService[0].ProtoTypename).Name()
-		peer := workspace.CueService{
-			ProtoTypename: simpleName(svc.ExportService[0].ProtoTypename),
-		}
-
-		for _, handler := range workspace.FrameworkHandlers {
-			if err := handler.InjectService(pkg.Location, svc, &peer); err != nil {
-				return nil, err
-			}
-		}
-
-		return peer, nil
-	}
-}
-
-func simpleName(serviceProtoType string) string {
-	parts := strings.Split(serviceProtoType, ".")
-	return parts[len(parts)-1]
 }
 
 func FetchServer(packages workspace.Packages, stack *schema.Stack) FetcherFunc {

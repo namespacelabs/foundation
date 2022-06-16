@@ -80,19 +80,15 @@ func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtim
 	return nil
 }
 
-func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Node, ext *workspace.FrameworkExt) error {
+func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Node, ext *workspace.NodeFrameworkExt) error {
 	return nil
 }
 
-func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.FrameworkExt) error {
+func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.ServerFrameworkExt) error {
 	return nil
 }
 
 func (impl) PostParseServer(ctx context.Context, _ *workspace.Sealed) error {
-	return nil
-}
-
-func (impl) InjectService(loc workspace.Location, node *schema.Node, svc *workspace.CueService) error {
 	return nil
 }
 

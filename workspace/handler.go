@@ -13,9 +13,13 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-type FrameworkExt struct {
+type ServerFrameworkExt struct {
 	Include           []schema.PackageName
 	FrameworkSpecific *anypb.Any
+}
+
+type NodeFrameworkExt struct {
+	Include []schema.PackageName
 }
 
 type ServerInputs struct {
@@ -25,10 +29,9 @@ type ServerInputs struct {
 // XXX we're injection Location in these, which allows for loading arbitrary files for the workspace;
 // Ideally we'd pass a PackageLoader instead.
 type FrameworkHandler interface {
-	ParseNode(context.Context, Location, *schema.Node, *FrameworkExt) error
-	PreParseServer(context.Context, Location, *FrameworkExt) error
+	ParseNode(context.Context, Location, *schema.Node, *NodeFrameworkExt) error
+	PreParseServer(context.Context, Location, *ServerFrameworkExt) error
 	PostParseServer(context.Context, *Sealed) error
-	InjectService(Location, *schema.Node, *CueService) error
 	// List of packages that should be added as server dependencies, when the target environment's purpose is DEVELOPMENT.
 	DevelopmentPackages() []schema.PackageName
 }
