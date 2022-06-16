@@ -55,8 +55,8 @@ func (l LocalContents) Name() string {
 	return filepath.Join(l.Module.ModuleName(), l.Path)
 }
 
-func DefinitionToImage(env ops.Environment, platform *specs.Platform, def *llb.Definition) compute.Computable[oci.Image] {
-	return makeImage(env, platform, &frontendReq{Def: def}, nil, nil)
+func DefinitionToImage(env ops.Environment, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {
+	return makeImage(env, conf, &frontendReq{Def: def}, nil, nil)
 }
 
 func LLBToImage(ctx context.Context, env ops.Environment, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
@@ -65,28 +65,41 @@ func LLBToImage(ctx context.Context, env ops.Environment, conf build.BuildTarget
 		return nil, err
 	}
 
-	return makeImage(env, conf.TargetPlatform(), &frontendReq{Def: serialized}, localDirs, conf.PublishName()), nil
+	return makeImage(env, conf, &frontendReq{Def: serialized}, localDirs, conf.PublishName()), nil
 }
 
-func LLBToFS(ctx context.Context, env ops.Environment, platform *specs.Platform, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
+func LLBToFS(ctx context.Context, env ops.Environment, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
 	serialized, err := state.Marshal(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	base := reqBase{devHost: env.DevHost(), targetPlatform: platformOrDefault(platform), req: &frontendReq{Def: serialized}, localDirs: localDirs}
+	base := reqBase{
+		sourcePackage:  conf.SourcePackage(),
+		devHost:        env.DevHost(),
+		targetPlatform: platformOrDefault(conf.TargetPlatform()),
+		req:            &frontendReq{Def: serialized},
+		localDirs:      localDirs,
+	}
 	return &reqToFS{reqBase: base}, nil
 }
 
 type reqBase struct {
-	devHost        *schema.DevHost // Doesn't affect the output.
+	sourcePackage  schema.PackageName // For description purposes only, does not affect output.
+	devHost        *schema.DevHost    // Doesn't affect the output.
 	targetPlatform specs.Platform
 	req            *frontendReq
 	localDirs      []LocalContents // If set, the output is not cachable by us.
 }
 
-func makeImage(env ops.Environment, platform *specs.Platform, req *frontendReq, localDirs []LocalContents, targetName compute.Computable[oci.AllocatedName]) compute.Computable[oci.Image] {
-	base := reqBase{devHost: env.DevHost(), targetPlatform: platformOrDefault(platform), req: req, localDirs: localDirs}
+func makeImage(env ops.Environment, conf build.BuildTarget, req *frontendReq, localDirs []LocalContents, targetName compute.Computable[oci.AllocatedName]) compute.Computable[oci.Image] {
+	base := reqBase{
+		sourcePackage:  conf.SourcePackage(),
+		devHost:        env.DevHost(),
+		targetPlatform: platformOrDefault(conf.TargetPlatform()),
+		req:            req,
+		localDirs:      localDirs,
+	}
 	return &reqToImage{reqBase: base, targetName: targetName}
 }
 
@@ -164,10 +177,16 @@ type reqToImage struct {
 }
 
 func (l *reqToImage) Action() *tasks.ActionEvent {
-	return tasks.Action("buildkit.build-image").
+	ev := tasks.Action("buildkit.build-image").
 		Arg("platform", devhost.FormatPlatform(l.targetPlatform)).
 		WellKnown(tasks.WkCategory, "build").
 		WellKnown(tasks.WkRuntime, "docker")
+
+	if l.sourcePackage != "" {
+		return ev.Scope(l.sourcePackage)
+	}
+
+	return ev
 }
 
 func (l *reqToImage) Inputs() *compute.In {

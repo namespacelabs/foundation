@@ -113,6 +113,7 @@ func PlanImage(ctx context.Context, pkg *workspace.Package, env ops.Environment,
 	}
 
 	img, err := spec.BuildImage(ctx, env, build.NewBuildTarget(platform).
+		WithSourcePackage(loc.PackageName).
 		WithSourceLabel("Binary %s", loc.PackageName).
 		WithWorkspace(loc.Module))
 	if err != nil {

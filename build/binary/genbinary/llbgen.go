@@ -86,7 +86,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env ops.Environment, conf bui
 				return nil, err
 			}
 
-			return compute.GetValue(ctx, buildkit.DefinitionToImage(env, conf.TargetPlatform(), def))
+			return compute.GetValue(ctx, buildkit.DefinitionToImage(env, conf, def))
 		}), nil
 }
 

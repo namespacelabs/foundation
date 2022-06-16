@@ -73,7 +73,7 @@ filter-syscalls = false
 		Run(llb.Shlexf("cp -L /tmp/result /out/" + outputImageFile))
 	out := postCopy.AddMount("/out", llb.Scratch())
 
-	fsys, err := buildkit.LLBToFS(ctx, env, conf.TargetPlatform(), out)
+	fsys, err := buildkit.LLBToFS(ctx, env, conf, out)
 	if err != nil {
 		return nil, err
 	}

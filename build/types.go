@@ -49,6 +49,9 @@ type Workspace interface {
 }
 
 type BuildTarget interface {
+	SourcePackage() schema.PackageName
+	SourceLabel() string
+
 	TargetPlatform() *specs.Platform
 	// See Plan.PublishName.
 	PublishName() compute.Computable[oci.AllocatedName]
@@ -58,12 +61,7 @@ type BuildWorkspace interface {
 	Workspace() Workspace
 }
 
-type BuildDescription interface {
-	SourceLabel() string
-}
-
 type Configuration interface {
-	BuildDescription
 	BuildTarget
 	BuildWorkspace
 }

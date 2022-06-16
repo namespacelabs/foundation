@@ -38,7 +38,10 @@ func prefix(p, label string) string {
 
 func prepareImage(ctx context.Context, env ops.Environment, p build.Plan) (compute.Computable[oci.ResolvableImage], error) {
 	if p.Spec.PlatformIndependent() {
-		img, err := p.Spec.BuildImage(ctx, env, build.NewBuildTarget(nil).WithTargetName(p.PublishName).WithSourceLabel(p.SourceLabel))
+		img, err := p.Spec.BuildImage(ctx, env, build.NewBuildTarget(nil).
+			WithTargetName(p.PublishName).
+			WithSourcePackage(p.SourcePackage).
+			WithSourceLabel(p.SourceLabel))
 		if err != nil {
 			return nil, err
 		}
@@ -108,6 +111,7 @@ func prepareMultiPlatformPlan(ctx context.Context, plan build.Plan, platforms []
 			Configuration: build.NewBuildTarget(nil /* Plan says it is agnostic. */).
 				WithTargetName(plan.PublishName).
 				WithWorkspace(plan.Workspace).
+				WithSourcePackage(plan.SourcePackage).
 				WithSourceLabel(plan.SourceLabel),
 		}
 		requests = append(requests, br)
@@ -127,6 +131,7 @@ func prepareMultiPlatformPlan(ctx context.Context, plan build.Plan, platforms []
 				Configuration: build.NewBuildTarget(platformPtr(plat)).
 					WithTargetName(plan.PublishName).
 					WithWorkspace(plan.Workspace).
+					WithSourcePackage(plan.SourcePackage).
 					WithSourceLabel(label),
 			}
 
