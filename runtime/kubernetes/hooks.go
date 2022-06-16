@@ -10,16 +10,16 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/frontend"
-	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/allocations"
 	kubenode "namespacelabs.dev/foundation/std/runtime/kubernetes"
 )
 
 func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv *schema.Stack_Entry) (*frontend.PrepareProps, error) {
 	var ensureServiceAccount bool
 
-	if err := configure.VisitAllocs(srv.Server.Allocation, kubeNode, &kubenode.ServerExtensionArgs{},
+	if err := allocations.Visit(srv.Server.Allocation, kubeNode, &kubenode.ServerExtensionArgs{},
 		func(instance *schema.Allocation_Instance, instantiate *schema.Instantiate, args *kubenode.ServerExtensionArgs) error {
 			if args.EnsureServiceAccount {
 				ensureServiceAccount = true

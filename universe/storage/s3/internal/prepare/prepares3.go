@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/storage/s3"
 )
@@ -94,7 +95,7 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 	}
 
 	buckets := map[string]*s3.BucketArgs{}
-	if err := configure.VisitAllocs(req.Focus.Server.Allocation, s3node, &s3.BucketArgs{},
+	if err := allocations.Visit(req.Focus.Server.Allocation, s3node, &s3.BucketArgs{},
 		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, args *s3.BucketArgs) error {
 			if existing, ok := buckets[args.GetBucketName()]; ok {
 				if !proto.Equal(existing, args) {

@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/web/http"
 )
 
@@ -29,7 +30,7 @@ type prepareHook struct{}
 func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*protocol.PrepareResponse, error) {
 	var serverList uniquestrings.List
 
-	if err := configure.VisitAllocs(req.Server.Allocation, "namespacelabs.dev/foundation/std/web/http", &http.Backend{},
+	if err := allocations.Visit(req.Server.Allocation, "namespacelabs.dev/foundation/std/web/http", &http.Backend{},
 		func(_ *schema.Allocation_Instance, _ *schema.Instantiate, backend *http.Backend) error {
 			serverList.Add(backend.EndpointOwner)
 			return nil

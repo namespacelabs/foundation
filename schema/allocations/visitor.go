@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package configure
+package allocations
 
 import (
 	"google.golang.org/protobuf/proto"
@@ -10,7 +10,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 )
 
-func VisitAllocs[V proto.Message](allocs []*schema.Allocation, owner schema.PackageName, tmpl V, f func(*schema.Allocation_Instance, *schema.Instantiate, V) error) error {
+func Visit[V proto.Message](allocs []*schema.Allocation, owner schema.PackageName, tmpl V, f func(*schema.Allocation_Instance, *schema.Instantiate, V) error) error {
 	typeURL := fnany.TypeURL(owner, tmpl)
 
 	for _, alloc := range allocs {
@@ -28,7 +28,7 @@ func VisitAllocs[V proto.Message](allocs []*schema.Allocation, owner schema.Pack
 				}
 			}
 
-			if err := VisitAllocs(instance.DownstreamAllocation, owner, tmpl, f); err != nil {
+			if err := Visit(instance.DownstreamAllocation, owner, tmpl, f); err != nil {
 				return err
 			}
 		}
