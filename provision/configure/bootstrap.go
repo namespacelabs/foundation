@@ -70,25 +70,17 @@ func (p Request) PackageOwner() string {
 }
 
 func Handle(h *Handlers) {
-	done := make(chan struct{})
-
 	go func() {
-		if err := RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
-			protocol.RegisterInvocationServiceServer(sr, h.ServiceHandler())
-		}); err != nil {
-			log.Fatal(err)
-		}
-
-		done <- struct{}{}
+		log.Printf("will abort tool after %v", maxToolWait)
+		time.Sleep(maxToolWait)
+		log.Fatalf("aborting tool after %v", maxToolWait)
 	}()
 
-	select {
-	case <-time.After(maxToolWait):
-		log.Fatalf("aborting tool after %v", maxToolWait)
-	case <-done:
-		// graceful exit
+	if err := RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
+		protocol.RegisterInvocationServiceServer(sr, h.ServiceHandler())
+	}); err != nil {
+		log.Fatal(err)
 	}
-
 }
 
 func HandleInvoke(f InvokeFunc) {
