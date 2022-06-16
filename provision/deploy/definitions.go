@@ -250,8 +250,9 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 	}
 
 	for srv, deps := range edges {
+		// Deps need to show up before the server that depends on them.
 		for _, dep := range deps {
-			graph.AddEdge(srv, dep)
+			graph.AddEdge(dep, srv)
 		}
 	}
 
