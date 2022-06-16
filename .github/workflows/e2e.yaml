@@ -136,7 +136,7 @@ jobs:
           - repo: foundation
             root_path: foundation
           - repo: examples
-            root_path: examples/todos
+            root_path: examples
     runs-on: ${{ matrix.os }}
     env:
       GOPRIVATE: namespacelabs.dev/*
