@@ -492,10 +492,6 @@ func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*sch
 	return dl.Serialize()
 }
 
-func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Node, ext *workspace.NodeFrameworkExt) error {
-	return nil
-}
-
 func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.ServerFrameworkExt) error {
 	// Adding extra nodes here:
 	// - grpcNode sets up correct flags for the server startup.

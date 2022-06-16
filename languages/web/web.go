@@ -54,10 +54,6 @@ type impl struct {
 	languages.MaybeTidy
 }
 
-func (impl) ParseNode(context.Context, workspace.Location, *schema.Node, *workspace.NodeFrameworkExt) error {
-	return nil
-}
-
 func (impl) PreParseServer(_ context.Context, _ workspace.Location, ext *workspace.ServerFrameworkExt) error {
 	return nil
 }

@@ -116,18 +116,6 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 		}
 	}
 
-	// XXX stable order is missing
-	for _, handler := range FrameworkHandlers {
-		var ext NodeFrameworkExt
-		if err := handler.ParseNode(ctx, loc, node, &ext); err != nil {
-			return err
-		}
-
-		for _, incl := range ext.Include {
-			deps.Add(schema.PackageName(incl))
-		}
-	}
-
 	node.Import = deps.PackageNamesAsString()
 	return nil
 }

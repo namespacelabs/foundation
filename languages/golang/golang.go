@@ -110,23 +110,27 @@ func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspa
 
 	sdk, err := golang.MatchSDK(ext.GoVersion, golang.HostPlatform())
 	if err != nil {
-		return err
+		return fnerrors.Wrap(loc, err)
 	}
 
 	localSDK, err := compute.GetValue(ctx, sdk)
 	if err != nil {
-		return err
+		return fnerrors.Wrap(loc, err)
 	}
 
 	for _, dep := range loc.Module.Workspace.Dep {
 		if dep.ModuleName == "namespacelabs.dev/foundation" {
 			if err := execGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", dep.ModuleName, dep.Version)); err != nil {
-				return err
+				return fnerrors.Wrap(loc, err)
 			}
 		}
 	}
 
-	return execGo(ctx, loc, localSDK, "mod", "tidy")
+	if err := execGo(ctx, loc, localSDK, "mod", "tidy"); err != nil {
+		return fnerrors.Wrap(loc, err)
+	}
+
+	return nil
 }
 
 func execGo(ctx context.Context, loc workspace.Location, sdk golang.LocalSDK, args ...string) error {
@@ -173,10 +177,6 @@ func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*sch
 	var dl defs.DefList
 	dl.Add("Generate Go server dependencies", &OpGenServer{Server: pkg.Server, LoadedNode: nodes}, pkg.PackageName())
 	return dl.Serialize()
-}
-
-func (impl) ParseNode(ctx context.Context, loc workspace.Location, _ *schema.Node, ext *workspace.NodeFrameworkExt) error {
-	return nil
 }
 
 func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.ServerFrameworkExt) error {
