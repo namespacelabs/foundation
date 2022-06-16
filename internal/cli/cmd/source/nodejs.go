@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -28,6 +29,17 @@ func newNodejsCmd() *cobra.Command {
 			return runNodejs(ctx, "node", args...)
 		}),
 	}
+
+	yarn := &cobra.Command{
+		Use:   "yarn",
+		Short: "Run Yarn.",
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			return integration.RunNodejsYarn(ctx, ".", args)
+		}),
+	}
+
+	cmd.AddCommand(yarn)
 
 	return cmd
 }

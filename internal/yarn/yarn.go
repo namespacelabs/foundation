@@ -18,6 +18,7 @@ func RunYarn(ctx context.Context, relPath string, args []string, env []string) e
 		return err
 	}
 
+	// XXX this relies on a local installation of node.
 	var cmd localexec.Command
 	cmd.Command = "node"
 	cmd.Args = append([]string{string(bin)}, args...)
