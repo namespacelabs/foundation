@@ -84,7 +84,7 @@ const wrapped{{.Name}}ClientConstructor = grpc.makeGenericClientConstructor({{.N
 ` +
 			`{{define "File"}}// This file was automatically generated.
 
-import * as grpc from "@grpc/grpc-js";
+import {grpc} from "@namespacelabs.dev-foundation/std-nodejs-grpcgen";
 
 {{- template "Imports" .Imports}}
 {{- if .Opts.GenClients}}
