@@ -62,7 +62,7 @@ func (inv *cacheableInvocation) Inputs() *compute.In {
 	invocation.Image = nil // To make the invocation JSON serializable.
 	return compute.Inputs().
 		Computable("image", inv.handler.Invocation.Image).
-		JSON("handler", Definition{For: inv.handler.For, Source: inv.handler.Source, Invocation: &invocation}). // Without image and PackageAbsPath.
+		JSON("handler", Definition{TargetServer: inv.handler.TargetServer, Source: inv.handler.Source, Invocation: &invocation}). // Without image and PackageAbsPath.
 		Proto("stack", inv.stack).Stringer("focus", inv.focus).Proto("env", inv.env).
 		JSON("props", inv.props)
 }

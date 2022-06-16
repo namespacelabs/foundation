@@ -44,11 +44,11 @@ func computeHandlers(ctx context.Context, in *stack.Stack) ([]*tool.Definition, 
 	}
 
 	sort.SliceStable(handlers, func(i, j int) bool {
-		if handlers[i].For == handlers[j].For {
+		if handlers[i].TargetServer == handlers[j].TargetServer {
 			return strings.Compare(handlers[i].Source.PackageName.String(), handlers[j].Source.PackageName.String()) < 0
 		}
 
-		return strings.Compare(handlers[i].For.String(), handlers[j].For.String()) < 0
+		return strings.Compare(handlers[i].TargetServer.String(), handlers[j].TargetServer.String()) < 0
 	})
 
 	return handlers, nil
@@ -74,10 +74,9 @@ func parseHandlers(ctx context.Context, server provision.Server, pkg schema.Pack
 		}
 
 		handlers = append(handlers, &tool.Definition{
-			For:           server.PackageName(),
-			ServerAbsPath: server.Location.Abs(),
-			Source:        source,
-			Invocation:    invocation,
+			TargetServer: server.PackageName(),
+			Source:       source,
+			Invocation:   invocation,
 		})
 	}
 

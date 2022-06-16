@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/philopon/go-toposort"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -21,7 +22,6 @@ import (
 	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
@@ -57,9 +57,9 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 
 	var invocations []compute.Computable[*protocol.ToolResponse]
 	for _, r := range handlers {
-		focus := stack.Get(r.For)
+		focus := stack.Get(r.TargetServer)
 		if focus == nil {
-			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", r.For)
+			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", r.TargetServer)
 		}
 
 		invocations = append(invocations, tool.Invoke(ctx, env, r, stack.Proto(), focus.PackageName(), propsPerServer[focus.PackageName()]))
@@ -76,10 +76,17 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 }
 
 type handlerResult struct {
-	Stack            *stack.Stack
-	Definitions      []*schema.SerializedInvocation
-	Computed         *schema.ComputedConfigurations
-	ServerExtensions map[schema.PackageName][]*schema.DefExtension // Per server.
+	Stack       *stack.Stack
+	Definitions []*schema.SerializedInvocation
+	Computed    *schema.ComputedConfigurations
+	ServerDefs  map[schema.PackageName]*serverDefs // Per server.
+}
+
+type serverDefs struct {
+	Server     schema.PackageName
+	Ops        []*schema.SerializedInvocation
+	Extensions []*schema.DefExtension
+	Computed   []*schema.ComputedConfiguration
 }
 
 type finishInvokeHandlers struct {
@@ -115,20 +122,30 @@ func (r *finishInvokeHandlers) Output() compute.Output {
 }
 
 func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolved) (*handlerResult, error) {
-	ops := append([]*schema.SerializedInvocation{}, r.definitions...)
+	allOps := append([]*schema.SerializedInvocation{}, r.definitions...)
 
-	extensionsPerServer := map[schema.PackageName][]*schema.DefExtension{}
-	computedPerServer := map[schema.PackageName][]*schema.ComputedConfiguration{}
+	perServer := map[schema.PackageName]*serverDefs{}
+
+	def := func(pkg schema.PackageName) *serverDefs {
+		if existing, ok := perServer[pkg]; ok {
+			return existing
+		}
+		perServer[pkg] = &serverDefs{Server: pkg}
+		return perServer[pkg]
+	}
 
 	for _, ext := range r.extensions {
-		extensionsPerServer[schema.PackageName(ext.For)] = append(extensionsPerServer[schema.PackageName(ext.For)], ext)
+		targetServer := def(schema.PackageName(ext.For))
+		targetServer.Extensions = append(targetServer.Extensions, ext)
 	}
 
 	for k, handler := range r.handlers {
-		s := r.stack.Get(handler.For)
+		s := r.stack.Get(handler.TargetServer)
 		if s == nil {
-			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", handler.For)
+			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", handler.TargetServer)
 		}
+
+		sr := def(handler.TargetServer)
 
 		resp := compute.MustGetDepValue(deps, r.invocations[k], fmt.Sprintf("invocation%d", k))
 
@@ -149,10 +166,10 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 						handler.Source.PackageName, si.For)
 				}
 
-				extensionsPerServer[server.PackageName()] = append(extensionsPerServer[server.PackageName()], si)
+				sr.Extensions = append(sr.Extensions, si)
 			}
 
-			ops = append(ops, resp.ApplyResponse.Invocation...)
+			sr.Ops = append(sr.Ops, resp.ApplyResponse.Invocation...)
 
 			for _, src := range resp.ApplyResponse.InvocationSource {
 				var computed []*schema.SerializedInvocation_ComputedValue
@@ -176,7 +193,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 					})
 				}
 
-				ops = append(ops, &schema.SerializedInvocation{
+				sr.Ops = append(sr.Ops, &schema.SerializedInvocation{
 					Description: src.Description,
 					Scope:       src.Scope,
 					Impl:        src.Impl,
@@ -184,22 +201,22 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 				})
 			}
 
-			computedPerServer[schema.PackageName(handler.For)] = append(computedPerServer[schema.PackageName(handler.For)], resp.ApplyResponse.Computed...)
+			sr.Computed = append(sr.Computed, resp.ApplyResponse.Computed...)
 
 		case protocol.Lifecycle_SHUTDOWN:
-			ops = append(ops, resp.DeleteResponse.Invocation...)
+			sr.Ops = append(sr.Ops, resp.DeleteResponse.Invocation...)
 		}
 	}
 
 	computed := &schema.ComputedConfigurations{}
-	for srv, configurations := range computedPerServer {
-		slices.SortFunc(configurations, func(a, b *schema.ComputedConfiguration) bool {
+	for srv, sr := range perServer {
+		slices.SortFunc(sr.Computed, func(a, b *schema.ComputedConfiguration) bool {
 			return strings.Compare(a.GetOwner(), b.GetOwner()) < 0
 		})
 
 		computed.Entry = append(computed.Entry, &schema.ComputedConfigurations_Entry{
 			ServerPackage: srv.String(),
-			Configuration: configurations,
+			Configuration: sr.Computed,
 		})
 	}
 
@@ -207,29 +224,104 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 		return strings.Compare(a.GetServerPackage(), b.GetServerPackage()) < 0
 	})
 
-	// XXX this breaks encapsulation, and is temporary to address test failures.
-	slices.SortStableFunc(ops, func(a, b *schema.SerializedInvocation) bool {
-		rankA := orderRank(a)
-		rankB := orderRank(b)
+	// We make sure that serialized invocations produced by a server A, that
+	// depends on server B, are always run after B's serialized invocations.
+	// This guarantees the pattern where B is a provider of an API -- and A is
+	// the consumer, works. For example, B may create a CRD definition, and A
+	// may instantiate that CRD.
+	edges := map[string][]string{} // Server --> depends on list of servers.
 
-		return rankA < rankB
-	})
+	for _, handler := range r.handlers {
+		target := handler.TargetServer.String()
+		edges[target] = []string{} // Make sure that all nodes exist.
 
-	return &handlerResult{r.stack, ops, computed, extensionsPerServer}, nil
-}
-
-func orderRank(sh *schema.SerializedInvocation) int {
-	create := &kubedef.OpCreate{}
-
-	if sh.Impl.MessageIs(create) {
-		if sh.Impl.UnmarshalTo(create) == nil {
-			if create.Resource == "customresourcedefinitions" {
-				return 0
+		for _, pkg := range handler.Source.DeclaredStack {
+			// The server itself is always part of the declared stack, but
+			// shouldn't be a dependency of itself.
+			if pkg != handler.TargetServer {
+				edges[target] = append(edges[target], pkg.String())
 			}
 		}
 	}
 
-	return 10
+	graph := toposort.NewGraph(0)
+	for srv := range edges {
+		graph.AddNode(srv)
+	}
+
+	for srv, deps := range edges {
+		// Deps need to show up before the server that depends on them.
+		for _, dep := range deps {
+			graph.AddEdge(dep, srv)
+		}
+	}
+
+	sorted, ok := graph.Toposort()
+	if !ok {
+		return nil, fnerrors.InternalError("failed to sort servers by dependency order")
+	}
+
+	for _, pkg := range sorted {
+		if sr := perServer[schema.PackageName(pkg)]; sr != nil {
+			allOps = append(allOps, sr.Ops...)
+		}
+	}
+
+	orderedOps, err := ensureInvocationOrder(r.handlers, perServer)
+	if err != nil {
+		return nil, err
+	}
+
+	allOps = append(allOps, orderedOps...)
+
+	return &handlerResult{r.stack, allOps, computed, perServer}, nil
+}
+
+func ensureInvocationOrder(handlers []*tool.Definition, perServer map[schema.PackageName]*serverDefs) ([]*schema.SerializedInvocation, error) {
+	// We make sure that serialized invocations produced by a server A, that
+	// depends on server B, are always run after B's serialized invocations.
+	// This guarantees the pattern where B is a provider of an API -- and A is
+	// the consumer, works. For example, B may create a CRD definition, and A
+	// may instantiate that CRD.
+	edges := map[string][]string{} // Server --> depends on list of servers.
+
+	for _, handler := range handlers {
+		target := handler.TargetServer.String()
+		edges[target] = []string{} // Make sure that all nodes exist.
+
+		for _, pkg := range handler.Source.DeclaredStack {
+			// The server itself is always part of the declared stack, but
+			// shouldn't be a dependency of itself.
+			if pkg != handler.TargetServer {
+				edges[target] = append(edges[target], pkg.String())
+			}
+		}
+	}
+
+	graph := toposort.NewGraph(0)
+	for srv := range edges {
+		graph.AddNode(srv)
+	}
+
+	for srv, deps := range edges {
+		for _, dep := range deps {
+			graph.AddEdge(dep, srv)
+		}
+	}
+
+	sorted, ok := graph.Toposort()
+	if !ok {
+		return nil, fnerrors.InternalError("failed to sort servers by dependency order")
+	}
+
+	var allOps []*schema.SerializedInvocation
+	for _, pkg := range sorted {
+		if sr := perServer[schema.PackageName(pkg)]; sr != nil {
+			allOps = append(allOps, sr.Ops...)
+		}
+	}
+
+	return allOps, nil
 }
 
 func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema.SerializedInvocationSource_ComputableValue) (proto.Message, error) {
