@@ -39,9 +39,9 @@ type StoredTestResults struct {
 }
 
 type TestOpts struct {
-	Debug       bool
-	Parallel    bool
-	KeepRuntime bool // If true, don't release test-specific runtime resources (e.g. Kubernetes namespace).
+	Debug          bool
+	OutputProgress bool
+	KeepRuntime    bool // If true, don't release test-specific runtime resources (e.g. Kubernetes namespace).
 }
 
 type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) ([]provision.Server, *stack.Stack, error)
@@ -153,7 +153,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		TestBinCommand: testBin.Command,
 		TestBinImageID: fixtureImage,
 		Debug:          opts.Debug,
-		OutputProgress: !opts.Parallel,
+		OutputProgress: opts.OutputProgress,
 	}
 
 	if !opts.KeepRuntime {

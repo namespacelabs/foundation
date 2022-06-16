@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -34,6 +35,7 @@ func NewTestCmd() *cobra.Command {
 		runOpts        deploy.Opts
 		testOpts       testing.TestOpts
 		includeServers bool
+		parallel       bool
 	)
 
 	cmd := &cobra.Command{
@@ -84,6 +86,8 @@ func NewTestCmd() *cobra.Command {
 
 			var parallelTests []compute.Computable[testing.StoredTestResults]
 
+			testOpts.OutputProgress = !parallel
+
 			for _, loc := range locs {
 				// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
 				env := testing.PrepareEnvFrom(devEnv, !testOpts.KeepRuntime)
@@ -113,14 +117,15 @@ func NewTestCmd() *cobra.Command {
 					return err
 				}
 
-				if testOpts.Parallel {
+				if parallel {
 					parallelTests = append(parallelTests, test)
 				} else {
 					v, err := compute.Get(ctx, test)
 					if err != nil {
 						return err
 					}
-					printResult(v, stderr)
+
+					printResult(stderr, v, false)
 
 					if !v.Value.Bundle.Result.Success {
 						return fnerrors.ExitWithCode(fmt.Errorf("test %s failed", v.Value.Package), exitCode)
@@ -138,13 +143,13 @@ func NewTestCmd() *cobra.Command {
 				}
 
 				for _, res := range results {
-					printResult(res, stderr)
+					printResult(stderr, res, true)
 					if !res.Value.Bundle.Result.Success {
 						failed = append(failed, string(res.Value.Package))
 					}
-
 				}
 			}
+
 			if len(failed) > 0 {
 				return fnerrors.ExitWithCode(fmt.Errorf("failed tests: [%s]", strings.Join(failed, ",")), exitCode)
 			}
@@ -157,14 +162,21 @@ func NewTestCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
 	cmd.Flags().BoolVar(&testOpts.KeepRuntime, "keep_runtime", testOpts.KeepRuntime, "If true, don't cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
 	cmd.Flags().BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
-	cmd.Flags().BoolVar(&testOpts.Parallel, "parallel", testOpts.Parallel, "If true, run tests in parallel. This skips most debug output.")
+	cmd.Flags().BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel. This skips most debug output.")
 
 	return cmd
 }
 
-func printResult(res compute.ResultWithTimestamp[testing.StoredTestResults], out io.Writer) {
+func printResult(out io.Writer, res compute.ResultWithTimestamp[testing.StoredTestResults], printResults bool) {
 	status := aec.GreenF.Apply("PASSED")
 	if !res.Value.Bundle.Result.Success {
+		if printResults {
+			for _, srv := range res.Value.Bundle.ServerLog {
+				printLog(out, srv)
+			}
+			printLog(out, res.Value.Bundle.TestLog)
+		}
+
 		status = aec.RedF.Apply("FAILED")
 	}
 
@@ -174,4 +186,10 @@ func printResult(res compute.ResultWithTimestamp[testing.StoredTestResults], out
 	}
 
 	fmt.Fprintf(out, "%s: Test %s%s %s\n", res.Value.Package, status, cached, aec.LightBlackF.Apply(res.Value.ImageRef.ImageRef()))
+}
+
+func printLog(out io.Writer, log *testing.Log) {
+	for _, line := range bytes.Split(log.Output, []byte("\n")) {
+		fmt.Fprintf(out, "%s:%s: %s\n", log.PackageName, log.ContainerName, line)
+	}
 }
