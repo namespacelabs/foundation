@@ -10,11 +10,9 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/devhost"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type Unbound struct {
@@ -44,6 +42,10 @@ func New(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector
 	return NewFromConfig(ctx, hostConfig)
 }
 
+func (u Unbound) Client() *k8s.Clientset {
+	return u.cli
+}
+
 func (u Unbound) Bind(ws *schema.Workspace, env *schema.Environment) K8sRuntime {
 	return K8sRuntime{Unbound: u, env: env, moduleNamespace: moduleNamespace(ws, env)}
 }
@@ -59,8 +61,4 @@ func (r Unbound) PrepareCluster(ctx context.Context) (runtime.DeploymentState, e
 	state.definitions = ingressDefs
 
 	return state, nil
-}
-
-func (r Unbound) Wait(ctx context.Context, action *tasks.ActionEvent, waiter kubeobserver.ConditionWaiter) error {
-	return kubeobserver.WaitForCondition(ctx, r.cli, action, waiter)
 }

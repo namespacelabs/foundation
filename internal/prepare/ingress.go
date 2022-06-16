@@ -82,7 +82,7 @@ func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*client.Ho
 }
 
 func waitForIngress(ctx context.Context, kube kubernetes.Unbound, action *tasks.ActionEvent) error {
-	return kube.Wait(ctx, action, kubeobserver.WaitForPodConditition(
+	return kubeobserver.WaitForCondition(ctx, kube.Client(), action, kubeobserver.WaitForPodConditition(
 		kubeobserver.SelectPods(nginx.IngressLoadBalancerService().Namespace, nil, nginx.ControllerSelector()),
 		kubeobserver.MatchPodCondition(corev1.PodReady)))
 }

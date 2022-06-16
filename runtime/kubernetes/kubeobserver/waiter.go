@@ -24,12 +24,12 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type ConditionWaiter interface {
-	Prepare(context.Context, *k8s.Clientset) error
-	Poll(context.Context, *k8s.Clientset) (bool, error)
+type ConditionWaiter[Client any] interface {
+	Prepare(context.Context, Client) error
+	Poll(context.Context, Client) (bool, error)
 }
 
-func WaitForCondition(ctx context.Context, cli *k8s.Clientset, action *tasks.ActionEvent, waiter ConditionWaiter) error {
+func WaitForCondition[Client any](ctx context.Context, cli Client, action *tasks.ActionEvent, waiter ConditionWaiter[Client]) error {
 	return action.Run(ctx, func(ctx context.Context) error {
 		if err := waiter.Prepare(ctx, cli); err != nil {
 			return err
@@ -234,7 +234,7 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 	return count > 0 && count == len(pods), nil
 }
 
-func WaitForPodConditition(selector func(context.Context, *k8s.Clientset) ([]corev1.Pod, error), isOk func(corev1.PodStatus) (bool, error)) ConditionWaiter {
+func WaitForPodConditition(selector func(context.Context, *k8s.Clientset) ([]corev1.Pod, error), isOk func(corev1.PodStatus) (bool, error)) ConditionWaiter[*k8s.Clientset] {
 	return &podWaiter{selector: selector, isOk: isOk}
 }
 

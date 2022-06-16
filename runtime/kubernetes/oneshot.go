@@ -72,7 +72,8 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 
 		fmt.Fprintln(logOutput, "<No longer streaming pod logs, but pod is still running, waiting for completion.>")
 
-		if err := r.Wait(ctx, tasks.Action("kubernetes.pod.wait"),
+		if err := kubeobserver.WaitForCondition(ctx, r.cli,
+			tasks.Action("kubernetes.pod.wait"),
 			kubeobserver.WaitForPodConditition(
 				kubeobserver.ResolvePod(r.moduleNamespace, name),
 				func(status corev1.PodStatus) (bool, error) {

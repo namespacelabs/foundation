@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	v1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -20,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	kobs "namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/schema"
@@ -66,30 +68,53 @@ func registerApply() {
 			HumanReadablef(d.Description).
 			Arg("resource", resourceName).
 			Arg("name", header.Name).
-			Arg("namespace", header.Namespace).Run(ctx, func(ctx context.Context) error {
+			Arg("namespace", header.Namespace).RunWithOpts(ctx, tasks.RunOpts{
+			Wait: func(ctx context.Context) (bool, error) {
+				// CRDs are funky in that they take a moment to apply, and
+				// before that happens the api server doesn't accept patches
+				// for them. So we first check if the CRD does exist, and we
+				// wait for its paths to become ready.
+				// XXX we should have metadata that identifies the resource class as a CRD.
+				if apply.ResourceClass != nil && apply.ResourceClass.GetGroup() == "k8s.namespacelabs.dev" {
+					crd := fmt.Sprintf("%s.%s", apply.ResourceClass.GetResource(), apply.ResourceClass.GetGroup())
 
-			client, err := client.MakeGroupVersionBasedClient(ctx, gv, restcfg)
-			if err != nil {
-				return err
-			}
+					cli, err := apiextensionsv1.NewForConfig(restcfg)
+					if err != nil {
+						return false, err
+					}
 
-			patchOpts := kubedef.Ego().ToPatchOptions()
-			req := client.Patch(types.ApplyPatchType)
-			if header.Namespace != "" {
-				req = req.Namespace(header.Namespace)
-			}
+					if err := kubeobserver.WaitForCondition[*apiextensionsv1.ApiextensionsV1Client](
+						ctx, cli, tasks.Action("kubernetes.wait-for-crd").Arg("crd", crd),
+						waitForCRD{apply.ResourceClass.Resource, crd}); err != nil {
+						return false, err
+					}
+				}
 
-			prepReq := req.Resource(resourceName).
-				Name(header.Name).
-				VersionedParams(&patchOpts, metav1.ParameterCodec).
-				Body([]byte(apply.BodyJson))
+				return false, nil
+			},
+			Run: func(ctx context.Context) error {
+				client, err := client.MakeGroupVersionBasedClient(ctx, gv, restcfg)
+				if err != nil {
+					return err
+				}
 
-			if OutputKubeApiURLs {
-				fmt.Fprintf(console.Debug(ctx), "kubernetes: api patch call %q\n", prepReq.URL())
-			}
+				patchOpts := kubedef.Ego().ToPatchOptions()
+				req := client.Patch(types.ApplyPatchType)
+				if header.Namespace != "" {
+					req = req.Namespace(header.Namespace)
+				}
 
-			return prepReq.Do(ctx).Into(&res)
-		}); err != nil {
+				prepReq := req.Resource(resourceName).
+					Name(header.Name).
+					VersionedParams(&patchOpts, metav1.ParameterCodec).
+					Body([]byte(apply.BodyJson))
+
+				if OutputKubeApiURLs {
+					fmt.Fprintf(console.Debug(ctx), "kubernetes: api patch call %q\n", prepReq.URL())
+				}
+
+				return prepReq.Do(ctx).Into(&res)
+			}}); err != nil {
 			return nil, fnerrors.InvocationError("%s: failed to apply: %w", d.Description, err)
 		}
 
@@ -178,4 +203,22 @@ func registerApply() {
 
 		return nil, nil
 	})
+}
+
+type waitForCRD struct {
+	plural string
+	crd    string
+}
+
+func (w waitForCRD) Prepare(context.Context, *apiextensionsv1.ApiextensionsV1Client) error {
+	return nil
+}
+
+func (w waitForCRD) Poll(ctx context.Context, cli *apiextensionsv1.ApiextensionsV1Client) (bool, error) {
+	crd, err := cli.CustomResourceDefinitions().Get(ctx, w.crd, metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	return crd.Status.AcceptedNames.Plural == w.plural, nil
 }
