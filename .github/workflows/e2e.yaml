@@ -200,8 +200,7 @@ jobs:
             --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=true \
             --golang_use_buildkit=false \
-            --include_servers \
-            --parallel
+            --include_servers
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
