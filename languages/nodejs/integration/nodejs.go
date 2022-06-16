@@ -264,7 +264,7 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 
 		// `fn tidy` could update dependencies of some nodes/servers, running `yarn install` to update
 		// `node_modules`.
-		if err := RunNodejsYarn(ctx, yarnRoot, []string{"install"}); err != nil {
+		if err := RunNodejsYarn(ctx, yarnRoot, []string{"install", "--mode=skip-build"}); err != nil {
 			return err
 		}
 	}
