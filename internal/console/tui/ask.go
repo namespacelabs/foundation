@@ -31,7 +31,12 @@ func Ask(ctx context.Context, title, description, placeholder string) (string, e
 		return "", nil
 	}
 
-	return final.(askModel).textInput.Value(), nil
+	res := final.(askModel).textInput.Value()
+	if res == "" {
+		return placeholder, nil
+	}
+
+	return res, nil
 }
 
 type askModel struct {

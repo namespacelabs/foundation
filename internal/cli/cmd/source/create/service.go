@@ -50,10 +50,6 @@ func newServiceCmd() *cobra.Command {
 				return err
 			}
 
-			if name == "" {
-				return context.Canceled
-			}
-
 			protoOpts := proto.GenServiceOpts{Name: name, Framework: *fmwk}
 			if err := proto.CreateProtoScaffold(ctx, root.FS(), loc, protoOpts); err != nil {
 				return err
@@ -66,7 +62,8 @@ func newServiceCmd() *cobra.Command {
 
 			switch *fmwk {
 			case schema.Framework_GO:
-				if err := golang.CreateGolangScaffold(ctx, root.FS(), loc); err != nil {
+				goOpts := golang.GenServiceOpts{Name: name}
+				if err := golang.CreateGolangScaffold(ctx, root.FS(), loc, goOpts); err != nil {
 					return err
 				}
 			}

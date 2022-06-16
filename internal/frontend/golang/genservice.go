@@ -18,7 +18,11 @@ const (
 	implFileName = "impl.go"
 )
 
-func CreateGolangScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location) error {
+type GenServiceOpts struct {
+	Name string
+}
+
+func CreateGolangScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
 	parts := strings.Split(loc.RelPath, string(os.PathSeparator))
 
 	if len(parts) < 1 {
@@ -26,11 +30,13 @@ func CreateGolangScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.L
 	}
 
 	return generateGoSource(ctx, fsfs, loc.Rel(implFileName), serviceTmpl, serviceTmplOptions{
+		Name:    opts.Name,
 		Package: parts[len(parts)-1],
 	})
 }
 
 type serviceTmplOptions struct {
+	Name    string
 	Package string
 }
 
@@ -48,12 +54,12 @@ type Service struct {
 
 func (svc *Service) Echo(ctx context.Context, req *EchoRequest) (*EchoResponse, error) {
 	// TODO add business logic here
-	return EchoResponse{ Text: req.Text }
+	return &EchoResponse{ Text: req.Text }, nil
 }
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	svc := &Service{}
-	proto.RegisterCountServiceServer(srv, svc)
+	Register{{.Name}}Server(srv, svc)
 }
 
 `))
