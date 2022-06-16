@@ -260,6 +260,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&deploy.RunCodegen, "run_codegen", deploy.RunCodegen, "If set to false, skip codegen.")
 	rootCmd.PersistentFlags().BoolVar(&runtime.UseGoInternalGrpcGateway, "golang_use_internal_grpc_gateway", runtime.UseGoInternalGrpcGateway,
 		"If set to true, the grpc gateway support built into Go servers is used.")
+	rootCmd.PersistentFlags().BoolVar(&tool.InvocationDebug, "invocation_debug", tool.InvocationDebug,
+		"If set to true, pass --debug to invocations.")
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
@@ -276,6 +278,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"run_tools_on_kubernetes",
 		"run_codegen",
 		"golang_use_internal_grpc_gateway",
+		"invocation_debug",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

@@ -25,6 +25,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+var InvocationDebug = false
+
 type InvokeProps struct {
 	Event          protocol.Lifecycle
 	ProvisionInput []*anypb.Any
@@ -143,6 +145,10 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		// expected to produce operations which can be inspected. And then these
 		// operations are applied by the caller.
 		NoNetworking: true,
+	}
+
+	if InvocationDebug {
+		opts.RunBinaryOpts.Args = append(opts.RunBinaryOpts.Args, "--debug")
 	}
 
 	req.Input = append(req.Input, inv.props.ProvisionInput...)

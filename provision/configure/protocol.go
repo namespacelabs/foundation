@@ -19,9 +19,14 @@ const (
 	maximumWallclockTime = 2 * time.Minute
 )
 
+var debug = flag.Bool("debug", false, "If set to true, emits debugging information.")
+
 func RunServer(ctx context.Context, register func(grpc.ServiceRegistrar)) error {
 	go func() {
-		log.Printf("will abort tool after %v", maximumWallclockTime)
+		if *debug {
+			log.Printf("Setup kill-switch: %v", maximumWallclockTime)
+		}
+
 		time.Sleep(maximumWallclockTime)
 		log.Fatalf("aborting tool after %v", maximumWallclockTime)
 	}()
