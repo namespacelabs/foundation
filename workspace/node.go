@@ -95,14 +95,22 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 		}
 		if r != nil {
 			// These are dependencies that depend on the properties of the node, and as such as still considered user-provided imports.
-			deps.AddMultiple(r.Imports...)
+			deps.AddMultiple(r.Import...)
+
+			if opts.LoadPackageReferences {
+				for _, pkg := range r.LoadPackages {
+					if _, err := pl.LoadByName(ctx, pkg); err != nil {
+						return err
+					}
+				}
+			}
 		}
 	}
 
 	node.UserImports = deps.PackageNamesAsString()
 
 	if opts.LoadPackageReferences {
-		err := visitDeps(ctx, pl, loc, deps.PackageNames(), &deps, nil)
+		err := validateDependencies(ctx, pl, loc, deps.PackageNames(), &deps)
 		if err != nil {
 			return err
 		}
@@ -128,21 +136,10 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 	return nil
 }
 
-func visitDeps(ctx context.Context, pl Packages, loc Location, includes []schema.PackageName, dl *schema.PackageList, visit func(n *schema.Node) error) error {
+func validateDependencies(ctx context.Context, pl Packages, loc Location, includes []schema.PackageName, dl *schema.PackageList) error {
 	for _, include := range includes {
-		dep, err := loadDep(ctx, pl, include)
-		if err != nil {
+		if _, err := loadDep(ctx, pl, include); err != nil {
 			return fnerrors.Wrapf(loc, err, "loading dependency: %s", include)
-		}
-
-		for _, v := range dep.Node().GetImport() {
-			dl.Add(schema.PackageName(v))
-		}
-
-		if visit != nil {
-			if err := visit(dep.Node()); err != nil {
-				return err
-			}
 		}
 
 		dl.Add(include)

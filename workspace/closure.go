@@ -20,11 +20,12 @@ var ExtendServerHook []func(Location, *schema.Server) ExtendServerHookResult
 var ExtendNodeHook []func(context.Context, Packages, Location, *schema.Node) (*ExtendNodeHookResult, error)
 
 type ExtendServerHookResult struct {
-	AdditionalImports []schema.PackageName
+	Import []schema.PackageName
 }
 
 type ExtendNodeHookResult struct {
-	Imports []schema.PackageName
+	Import       []schema.PackageName
+	LoadPackages []schema.PackageName // Packages to also be loaded by nodes, but that won't be listed as dependencies.
 }
 
 type Sealed struct {
@@ -95,7 +96,7 @@ func (g *sealer) DoServer(loc Location, srv *schema.Server, pp *Package) error {
 
 	for _, hook := range ExtendServerHook {
 		r := hook(loc, srv)
-		include = append(include, r.AdditionalImports...)
+		include = append(include, r.Import...)
 	}
 
 	include = append(include, srv.GetImportedPackages()...)

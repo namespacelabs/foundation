@@ -19,9 +19,14 @@ import (
 const baseImgPkg schema.PackageName = "namespacelabs.dev/foundation/std/sdk/buf/baseimg"
 
 func init() {
+	workspace.ExtendNodeHook = append(workspace.ExtendNodeHook, func(context.Context, workspace.Packages, workspace.Location, *schema.Node) (*workspace.ExtendNodeHookResult, error) {
+		return &workspace.ExtendNodeHookResult{
+			LoadPackages: []schema.PackageName{baseImgPkg},
+		}, nil
+	})
 	workspace.ExtendServerHook = append(workspace.ExtendServerHook, func(workspace.Location, *schema.Server) workspace.ExtendServerHookResult {
 		return workspace.ExtendServerHookResult{
-			AdditionalImports: []schema.PackageName{baseImgPkg},
+			Import: []schema.PackageName{baseImgPkg},
 		}
 	})
 }

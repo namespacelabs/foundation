@@ -179,7 +179,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			if ws.GetFoundation().MinimumApi >= versions.IntroducedGrpcTranscodeNode {
 				if n.ExportServicesAsHttp && !runtime.UseGoInternalGrpcGateway {
 					return &workspace.ExtendNodeHookResult{
-						Imports: []schema.PackageName{runtime.GrpcHttpTranscodeNode},
+						Import: []schema.PackageName{runtime.GrpcHttpTranscodeNode},
 					}, nil
 				}
 			}
