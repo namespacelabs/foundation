@@ -62,7 +62,7 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", r.TargetServer)
 		}
 
-		invocations = append(invocations, tool.Invoke(ctx, env, r, stack.Proto(), focus.PackageName(), propsPerServer[focus.PackageName()]))
+		invocations = append(invocations, tool.MakeInvocation(ctx, env, r, stack.Proto(), focus.PackageName(), propsPerServer[focus.PackageName()]))
 	}
 
 	return &finishInvokeHandlers{
@@ -241,29 +241,6 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 			if pkg != handler.TargetServer {
 				edges[target] = append(edges[target], pkg.String())
 			}
-		}
-	}
-
-	graph := toposort.NewGraph(0)
-	for srv := range edges {
-		graph.AddNode(srv)
-	}
-
-	for srv, deps := range edges {
-		// Deps need to show up before the server that depends on them.
-		for _, dep := range deps {
-			graph.AddEdge(dep, srv)
-		}
-	}
-
-	sorted, ok := graph.Toposort()
-	if !ok {
-		return nil, fnerrors.InternalError("failed to sort servers by dependency order")
-	}
-
-	for _, pkg := range sorted {
-		if sr := perServer[schema.PackageName(pkg)]; sr != nil {
-			allOps = append(allOps, sr.Ops...)
 		}
 	}
 

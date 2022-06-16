@@ -30,7 +30,7 @@ type InvokeProps struct {
 	ProvisionInput []*anypb.Any
 }
 
-func Invoke(ctx context.Context, env ops.Environment, r *Definition, stack *schema.Stack, focus schema.PackageName, props InvokeProps) compute.Computable[*protocol.ToolResponse] {
+func MakeInvocation(ctx context.Context, env ops.Environment, r *Definition, stack *schema.Stack, focus schema.PackageName, props InvokeProps) compute.Computable[*protocol.ToolResponse] {
 	return &cacheableInvocation{
 		handler: *r,
 		stack:   stack,
