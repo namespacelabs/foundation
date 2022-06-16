@@ -5,6 +5,7 @@
 package deploy
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -26,7 +27,7 @@ func TestEnsureInvocationOrder(t *testing.T) {
 		"c": {Ops: []*schema.SerializedInvocation{{Description: "c"}}},
 	}
 
-	got, err := ensureInvocationOrder(handlers, perServer)
+	got, err := ensureInvocationOrder(context.Background(), handlers, perServer)
 	if err != nil {
 		t.Fatal(err)
 	}

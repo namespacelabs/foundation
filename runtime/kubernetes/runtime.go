@@ -61,7 +61,7 @@ func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 	// Ensure the namespace exist, before we go and apply definitions to it. Also, deployServer
 	// assumes that a namespace already exists.
 	def, err := (kubedef.Apply{
-		Description: "Namespace",
+		Description: fmt.Sprintf("Namespace for %q", r.env.Name),
 		Resource: applycorev1.Namespace(r.moduleNamespace).
 			WithLabels(kubedef.MakeLabels(r.env, nil)).
 			WithAnnotations(kubedef.MakeAnnotations(r.env, nil)),

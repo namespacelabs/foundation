@@ -6,6 +6,7 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/binary"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/stack"
@@ -244,7 +246,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 		}
 	}
 
-	orderedOps, err := ensureInvocationOrder(r.handlers, perServer)
+	orderedOps, err := ensureInvocationOrder(ctx, r.handlers, perServer)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +256,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 	return &handlerResult{r.stack, allOps, computed, perServer}, nil
 }
 
-func ensureInvocationOrder(handlers []*tool.Definition, perServer map[schema.PackageName]*serverDefs) ([]*schema.SerializedInvocation, error) {
+func ensureInvocationOrder(ctx context.Context, handlers []*tool.Definition, perServer map[schema.PackageName]*serverDefs) ([]*schema.SerializedInvocation, error) {
 	// We make sure that serialized invocations produced by a server A, that
 	// depends on server B, are always run after B's serialized invocations.
 	// This guarantees the pattern where B is a provider of an API -- and A is
@@ -264,7 +266,9 @@ func ensureInvocationOrder(handlers []*tool.Definition, perServer map[schema.Pac
 
 	for _, handler := range handlers {
 		target := handler.TargetServer.String()
-		edges[target] = []string{} // Make sure that all nodes exist.
+		if _, ok := edges[target]; !ok {
+			edges[target] = []string{} // Make sure that all nodes exist.
+		}
 
 		for _, pkg := range handler.Source.DeclaredStack {
 			// The server itself is always part of the declared stack, but
@@ -274,6 +278,9 @@ func ensureInvocationOrder(handlers []*tool.Definition, perServer map[schema.Pac
 			}
 		}
 	}
+
+	edgesDebug, _ := json.MarshalIndent(edges, "", "  ")
+	fmt.Fprintf(console.Debug(ctx), "invocation edges: %s\n", edgesDebug)
 
 	graph := toposort.NewGraph(0)
 	for srv := range edges {
@@ -290,6 +297,8 @@ func ensureInvocationOrder(handlers []*tool.Definition, perServer map[schema.Pac
 	if !ok {
 		return nil, fnerrors.InternalError("failed to sort servers by dependency order")
 	}
+
+	fmt.Fprintf(console.Debug(ctx), "invocation sorted: %v\n", sorted)
 
 	var allOps []*schema.SerializedInvocation
 	for _, pkg := range sorted {
