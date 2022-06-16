@@ -126,6 +126,10 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 		left:     append([]fnfs.Location{}, list.Locations...),
 	}
 
+	for _, dep := range root.Workspace.Dep {
+		alloc.modules[dep.ModuleName] = dep
+	}
+
 	for {
 		alloc.mu.Lock()
 		var loc *fnfs.Location
@@ -205,9 +209,9 @@ const foundationModule = "namespacelabs.dev/foundation"
 type allocator struct {
 	loader   *workspace.PackageLoader
 	root     *workspace.Root
-	mu       sync.Mutex // Protects resolved and left.
-	resolved map[string]*schema.Workspace_Dependency
-	modules  map[string]*schema.Workspace_Dependency
+	mu       sync.Mutex                              // Protects resolved and left.
+	modules  map[string]*schema.Workspace_Dependency // Previously loaded modules (i.e. already part of the workspace definition.)
+	resolved map[string]*schema.Workspace_Dependency // Newly resolved modules.
 	left     []fnfs.Location
 }
 
