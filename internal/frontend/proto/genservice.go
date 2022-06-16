@@ -45,7 +45,7 @@ type serviceTmplOptions struct {
 // TODO clean up template once we run a proto formatter.
 var serviceTmpl = template.Must(template.New(serviceFileName).Parse(`syntax = "proto3";
 
-package {{.Package}};{{if eq .Framework "GO_GRPC"}}
+package {{.Package}};{{if eq .Framework "GO"}}
 
 option go_package = "{{.GoPackage}}";{{end}}
 

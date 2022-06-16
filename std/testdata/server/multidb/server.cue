@@ -5,7 +5,7 @@ import (
 server: fn.#Server & {
 	id:        "inar7bsnjhsfptlp50r0"
 	name:      "multidbserver"
-	framework: "GO_GRPC"
+	framework: "GO"
 
 	import: [
 		"namespacelabs.dev/foundation/std/go/grpc/gateway",

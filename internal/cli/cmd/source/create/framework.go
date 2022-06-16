@@ -13,7 +13,7 @@ import (
 
 func selectFramework(ctx context.Context, title string) (*schema.Framework, error) {
 	frameworks := []frameworkItem{
-		{schema.Framework_GO_GRPC, "Go gRPC and HTTP handlers (beta)."},
+		{schema.Framework_GO, "Go gRPC and HTTP handlers (beta)."},
 		{schema.Framework_WEB, "Typescript-based web application, built with Vite (alpha)."},
 		{schema.Framework_NODEJS, "Typescript on Node.JS, gRPC and HTTP handlers (work in progress)."},
 	}

@@ -4,7 +4,7 @@ import (
 )
 
 extension: fn.#Extension & {
-	hasInitializerIn: "GO_GRPC"
+	hasInitializerIn: "GO"
 
 	instantiate: {
 		debugHandler: core.#Exports.DebugHandler

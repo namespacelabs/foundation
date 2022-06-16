@@ -11,7 +11,7 @@ $typesProto: inputs.#Proto & {
 }
 
 extension: fn.#Extension & {
-	hasInitializerIn: "GO_GRPC"
+	hasInitializerIn: "GO"
 
 	provides: {
 		Exporter: {

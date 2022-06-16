@@ -6,7 +6,7 @@ import (
 )
 
 extension: fn.#Extension & {
-	hasInitializerIn: "GO_GRPC"
+	hasInitializerIn: "GO"
 	initializeBefore: ["namespacelabs.dev/foundation/std/monitoring/tracing"]
 
 	instantiate: {

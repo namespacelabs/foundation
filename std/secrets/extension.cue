@@ -50,8 +50,8 @@ configure: fn.#Configure & {
 	// The required secrets are then mounted to /secrets, where this extension can
 	// pick them up. A map.textpb is also synthesized.
 	startup: {
-		// Only Go/gRPC servers embed our library.
-		if $focus.framework == "GO_GRPC" {
+		// Only Go servers embed our library.
+		if $focus.framework == "GO" {
 			args: {
 				server_secrets_basepath: "/secrets/server"
 			}
