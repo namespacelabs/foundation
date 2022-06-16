@@ -164,7 +164,13 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 		}
 	}
 
-	if root.Workspace.ModuleName != foundationModule {
+	var hasFoundationDep bool
+	for _, dep := range root.Workspace.Dep {
+		if dep.ModuleName == foundationModule {
+			hasFoundationDep = true
+		}
+	}
+	if !hasFoundationDep && root.Workspace.ModuleName != foundationModule {
 		// Always add a dep on the foundation module.
 		// E.g. to run namespacelabs.dev/foundation/std/sdk/buf/baseimg
 		if _, err := alloc.checkResolve(ctx, schema.PackageName(foundationModule)); err != nil {
