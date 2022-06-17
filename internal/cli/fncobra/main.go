@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	httppprof "net/http/pprof"
 	"os"
 	"runtime/pprof"
@@ -85,11 +84,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	setupViper()
 
 	if viper.GetBool("enable_pprof") {
-		h := mux.NewRouter()
-		RegisterPprof(h)
-		go func() {
-			log.Println(http.ListenAndServe("localhost:6061", h))
-		}()
+		go ListenPProf()
 	}
 
 	ctx := context.Background()

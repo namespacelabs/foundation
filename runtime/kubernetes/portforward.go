@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnnet"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
@@ -158,7 +159,7 @@ func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPor
 	defer closeWatcher()
 
 	for _, localAddr := range args.LocalAddrs {
-		lst, err := listenPort(ctx, localAddr, args.LocalPort, args.ContainerPort)
+		lst, err := fnnet.ListenPort(ctx, localAddr, args.LocalPort, args.ContainerPort)
 		if err != nil {
 			return err
 		}
@@ -197,23 +198,6 @@ func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPor
 	}
 
 	return wait()
-}
-
-func listenPort(ctx context.Context, localAddr string, localPort, containerPort int) (net.Listener, error) {
-	var cfg net.ListenConfig
-
-	if localPort == 0 {
-		// First we try to listen on a local port that matches the container port.
-
-		lst, err := cfg.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", localAddr, containerPort))
-		if err == nil {
-			return lst, nil
-		}
-
-		// Any failures fallback to the open any port path.
-	}
-
-	return cfg.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", localAddr, localPort))
 }
 
 func handleConnection(ctx context.Context, streamConn httpstream.Connection, conn net.Conn, requestID int, debugid string, containerPort int, errch chan error) error {
