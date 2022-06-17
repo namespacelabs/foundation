@@ -42,7 +42,7 @@ type watcherRegistration struct {
 	f  func(*v1.Pod, int64, error)
 }
 
-func newPodObserver(client *k8s.Clientset, namespace string, labels map[string]string) *podObserver {
+func NewPodObserver(client *k8s.Clientset, namespace string, labels map[string]string) *podObserver {
 	p := &podObserver{
 		client:    client,
 		namespace: namespace,

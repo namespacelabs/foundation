@@ -112,7 +112,7 @@ func (r Unbound) ForwardIngress(ctx context.Context, localAddrs []string, localP
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 
 	go func() {
-		if err := r.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
+		if err := r.StartAndBlockPortFwd(ctxWithCancel, StartAndBlockPortFwdArgs{
 			Namespace:     svc.Namespace,
 			Identifier:    "ingress",
 			LocalAddrs:    localAddrs,

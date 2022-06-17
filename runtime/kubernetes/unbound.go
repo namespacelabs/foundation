@@ -47,7 +47,11 @@ func (u Unbound) Client() *k8s.Clientset {
 }
 
 func (u Unbound) Bind(ws *schema.Workspace, env *schema.Environment) K8sRuntime {
-	return K8sRuntime{Unbound: u, env: env, moduleNamespace: moduleNamespace(ws, env)}
+	return u.BindToNamespace(env, moduleNamespace(ws, env))
+}
+
+func (u Unbound) BindToNamespace(env *schema.Environment, ns string) K8sRuntime {
+	return K8sRuntime{Unbound: u, env: env, moduleNamespace: ns}
 }
 
 func (r Unbound) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {

@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -41,33 +42,95 @@ func init() {
 }
 
 func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*rest.Config, error) {
-	cfg := host.HostEnv
+	return NewClientConfig(ctx, host).ClientConfig()
+}
 
-	if cfg.GetIncluster() {
-		return rest.InClusterConfig()
+func NewClientConfig(ctx context.Context, host *HostConfig) clientcmd.ClientConfig {
+	return &configWithToken{ctx: ctx, host: host}
+}
+
+type configWithToken struct {
+	ctx  context.Context
+	host *HostConfig
+
+	mu       sync.Mutex
+	computed clientcmd.ClientConfig
+}
+
+func (cfg *configWithToken) computeConfig() (clientcmd.ClientConfig, error) {
+	cfg.mu.Lock()
+	defer cfg.mu.Unlock()
+
+	if cfg.computed != nil {
+		return cfg.computed, nil
 	}
 
-	if cfg.GetKubeconfig() == "" {
+	c := cfg.host.HostEnv
+
+	if c.GetKubeconfig() == "" {
 		return nil, fnerrors.New("hostEnv.Kubeconfig is required")
 	}
 
-	kubecfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{ExplicitPath: cfg.GetKubeconfig()},
-		&clientcmd.ConfigOverrides{CurrentContext: cfg.GetContext()})
+	cfg.computed = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: c.GetKubeconfig()},
+		&clientcmd.ConfigOverrides{CurrentContext: c.GetContext()})
 
-	computed, err := kubecfg.ClientConfig()
+	return cfg.computed, nil
+}
+
+func (cfg *configWithToken) RawConfig() (clientcmdapi.Config, error) {
+	x, err := cfg.computeConfig()
+	if err != nil {
+		return clientcmdapi.Config{}, err
+	}
+
+	return x.RawConfig()
+}
+
+func (cfg *configWithToken) ClientConfig() (*rest.Config, error) {
+	if cfg.host.HostEnv.GetIncluster() {
+		return rest.InClusterConfig()
+	}
+
+	x, err := cfg.computeConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	if err := computeBearerToken(ctx, host, computed); err != nil {
+	computed, err := x.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := computeBearerToken(cfg.ctx, cfg.host, computed); err != nil {
 		return nil, err
 	}
 
 	return computed, nil
 }
 
+func (cfg *configWithToken) Namespace() (string, bool, error) {
+	x, err := cfg.computeConfig()
+	if err != nil {
+		return "", false, err
+	}
+	return x.Namespace()
+}
+
+func (cfg *configWithToken) ConfigAccess() clientcmd.ConfigAccess {
+	panic("ConfigAccess is not implemented")
+}
+
 func NewClient(ctx context.Context, host *HostConfig) (*k8s.Clientset, error) {
+	if host.Selector == nil {
+		config, err := NewRestConfigFromHostEnv(ctx, host)
+		if err != nil {
+			return nil, err
+		}
+
+		return k8s.NewForConfig(config)
+	}
+
 	keyBytes, err := json.Marshal(struct {
 		C *HostEnv
 		S string

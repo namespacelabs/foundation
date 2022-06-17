@@ -62,6 +62,15 @@ func UnpackCache() (string, error) {
 	return filepath.Join(cacheDir, "unpack"), nil
 }
 
+func Subdir(rel string) (string, error) {
+	cacheDir, err := Cache()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(cacheDir, rel), nil
+}
+
 func Ensure(dir string, err error) (string, error) {
 	if err != nil {
 		return dir, err

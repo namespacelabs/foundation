@@ -27,7 +27,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-type fwdArgs struct {
+type StartAndBlockPortFwdArgs struct {
 	Namespace     string
 	Identifier    string
 	LocalAddrs    []string
@@ -46,34 +46,38 @@ func (r K8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, endp
 
 	ns := serverNamespace(r, server)
 
-	ctxWithCancel, cancel := context.WithCancel(ctx)
-	p := newPodObserver(r.cli, ns, map[string]string{
+	return r.RawForwardPort(ctx, server.PackageName, ns, map[string]string{
 		kubedef.K8sServerId: server.Id,
-	})
+	}, int(endpoint.GetPort().ContainerPort), localAddrs, callback)
+}
+
+func (u Unbound) RawForwardPort(ctx context.Context, desc, ns string, podLabels map[string]string, containerPort int, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	p := NewPodObserver(u.cli, ns, podLabels)
 
 	p.Start(ctxWithCancel)
 
 	go func() {
-		if err := r.startAndBlockPortFwd(ctxWithCancel, fwdArgs{
+		if err := u.StartAndBlockPortFwd(ctxWithCancel, StartAndBlockPortFwdArgs{
 			Namespace:     ns,
-			Identifier:    server.PackageName,
+			Identifier:    desc,
 			LocalAddrs:    localAddrs,
 			LocalPort:     0,
-			ContainerPort: int(endpoint.GetPort().ContainerPort),
+			ContainerPort: containerPort,
 
 			Watch: func(ctx context.Context, f func(*v1.Pod, int64, error)) func() {
 				return p.Watch(f)
 			},
 			ReportPorts: callback,
 		}); err != nil {
-			fmt.Fprintf(console.Errors(ctx), "port forwarding for %s (%d) failed: %v\n", server.PackageName, endpoint.GetPort().ContainerPort, err)
+			fmt.Fprintf(console.Errors(ctx), "port forwarding for %s (%d) failed: %v\n", desc, containerPort, err)
 		}
 	}()
 
 	return closerCallback(cancel), nil
 }
 
-func (r Unbound) startAndBlockPortFwd(ctx context.Context, args fwdArgs) error {
+func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPortFwdArgs) error {
 	config, err := resolveConfig(ctx, r.host)
 	if err != nil {
 		return err

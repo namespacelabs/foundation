@@ -88,7 +88,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		h := mux.NewRouter()
 		RegisterPprof(h)
 		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", h))
+			log.Println(http.ListenAndServe("localhost:6061", h))
 		}()
 	}
 
