@@ -39,7 +39,7 @@ throttle_configuration {
         key: "action"
         value: "vcluster.create"
     }
-    capacity: 2
+    capacity: 3
 }
 
 throttle_configuration {
@@ -47,5 +47,5 @@ throttle_configuration {
         key: "action"
         value: "vcluster.access"
     }
-    capacity: 2
+    capacity: 3
 }
