@@ -189,7 +189,8 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	spec := applycorev1.PodSpec().
-		WithSecurityContext(podSecCtx)
+		WithSecurityContext(podSecCtx).
+		WithEnableServiceLinks(false) // Disable service injection via environment variables.
 
 	var labels map[string]string
 	if isController {
