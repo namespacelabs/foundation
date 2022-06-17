@@ -23,7 +23,7 @@ var (
 type NpmPackage string
 
 func toNpmNamespace(moduleName string) string {
-	return strings.Join(strings.Split(moduleName, "/"), "-")
+	return "@" + strings.Join(strings.Split(moduleName, "/"), "-")
 }
 
 func toNpmPackage(loc workspace.Location) (NpmPackage, error) {
@@ -32,7 +32,7 @@ func toNpmPackage(loc workspace.Location) (NpmPackage, error) {
 	}
 
 	pkg := strings.Join(strings.Split(loc.Rel(), "/"), "-")
-	return NpmPackage(fmt.Sprintf("@%s/%s", toNpmNamespace(loc.Module.ModuleName()), pkg)), nil
+	return NpmPackage(fmt.Sprintf("%s/%s", toNpmNamespace(loc.Module.ModuleName()), pkg)), nil
 }
 
 func npmImport(npmPackage NpmPackage, moduleName string) string {
