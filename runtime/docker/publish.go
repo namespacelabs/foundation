@@ -47,14 +47,18 @@ func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (oci
 
 	tasks.Attachments(ctx).AddResult("tag", tag.ImageRef())
 
-	ref, err := oci.ParseTag(tag)
-	if err != nil {
-		return oci.ImageID{}, err
-	}
-
 	img, err := resolvable.Image()
 	if err != nil {
 		return oci.ImageID{}, fnerrors.InternalError("docker: %w", err)
+	}
+
+	digest, err := img.Digest()
+	if err != nil {
+		return oci.ImageID{}, err
+	}
+	ref, err := oci.ParseTag(tag, digest)
+	if err != nil {
+		return oci.ImageID{}, err
 	}
 
 	err = WriteImage(ctx, img, ref, true)

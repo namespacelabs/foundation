@@ -20,7 +20,7 @@ func pushImage(ctx context.Context, tag AllocatedName, img v1.Image) (ImageID, e
 		return ImageID{}, fnerrors.InternalError("digest missing on %q: %w", reflect.TypeOf(img).String(), err)
 	}
 
-	ref, err := ParseTag(tag)
+	ref, err := ParseTag(tag, digest)
 	if err != nil {
 		return ImageID{}, fnerrors.InternalError("failed to parse tag: %w", err)
 	}
@@ -43,7 +43,12 @@ func pushImage(ctx context.Context, tag AllocatedName, img v1.Image) (ImageID, e
 }
 
 func pushImageIndex(ctx context.Context, tag AllocatedName, img v1.ImageIndex) error {
-	ref, err := ParseTag(tag)
+	digest, err := img.Digest()
+	if err != nil {
+		return err
+	}
+
+	ref, err := ParseTag(tag, digest)
 	if err != nil {
 		return err
 	}
