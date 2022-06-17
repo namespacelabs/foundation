@@ -6,6 +6,7 @@ package yarn
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/internal/artifacts"
@@ -17,13 +18,13 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const version = "3.2.0"
+const version = "3.2.1"
 
 var Pin = artifacts.Reference{
-	URL: "https://repo.yarnpkg.com/3.2.0/packages/yarnpkg-cli/bin/yarn.js",
+	URL: fmt.Sprintf("https://repo.yarnpkg.com/%s/packages/yarnpkg-cli/bin/yarn.js", version),
 	Digest: schema.Digest{
 		Algorithm: "sha256",
-		Hex:       "99a7f42f678b8ccd9c8e97a9e65fe7a5043033dd0e074e6d1f13fbe2d5ff2734",
+		Hex:       "f1c9f039ab3b236c7abb7bafa0a0f266aa6bc5a3dbe7c684b561f03c0005d043",
 	},
 }
 
