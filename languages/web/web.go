@@ -189,7 +189,7 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 				PackageName: m.PackageName,
 				Execution: &admin.Execution{
 					Args: []string{
-						"node_modules/.bin/vite",
+						"node_modules/vite/bin/vite.js",
 						"--config=devweb.config.js",
 						"--clearScreen=false",
 						"--host=127.0.0.1",
