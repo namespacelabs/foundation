@@ -245,7 +245,7 @@ func (i impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspac
 		"vite@2.7.13",
 	}
 
-	if err := nodejs.RunNodejsYarn(ctx, p.Location.Rel(), append([]string{"add", "-D"}, devPackages...)); err != nil {
+	if err := nodejs.RunNodejsYarn(ctx, p.Location.Rel(), append([]string{"add", "-D"}, devPackages...), p.Location.Module.WorkspaceData); err != nil {
 		return err
 	}
 

@@ -258,13 +258,9 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 			return err
 		}
 
-		if err := writeLockFile(ctx, yarnRootData.workspace, yarnRootData.module, yarnRoot); err != nil {
-			return err
-		}
-
 		// `fn tidy` could update dependencies of some nodes/servers, running `yarn install` to update
 		// `node_modules`.
-		if err := RunNodejsYarn(ctx, yarnRoot, []string{"install", "--mode=skip-build"}); err != nil {
+		if err := RunNodejsYarn(ctx, yarnRoot, []string{"install", "--mode=skip-build"}, yarnRootData.module.WorkspaceData); err != nil {
 			return err
 		}
 	}

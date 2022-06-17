@@ -10,11 +10,16 @@ import (
 
 	yarnsdk "namespacelabs.dev/foundation/internal/sdk/yarn"
 	"namespacelabs.dev/foundation/internal/yarn"
+	"namespacelabs.dev/foundation/workspace"
+)
+
+const (
+	FnYarnLockEnvVar = "FN_YARN_LOCK_FILENAME"
 )
 
 // Runs a configured Yarn.
 // TODO: move to a shared place, both nodejs and web integrations use this.
-func RunNodejsYarn(ctx context.Context, relPath string, args []string) error {
+func RunNodejsYarn(ctx context.Context, relPath string, args []string, workspaceData workspace.WorkspaceData) error {
 	yarnAuxDir, err := yarnsdk.EnsureYarnAuxFilesDir(ctx)
 	if err != nil {
 		return err
@@ -24,6 +29,11 @@ func RunNodejsYarn(ctx context.Context, relPath string, args []string) error {
 	for k, v := range YarnEnvArgs(yarnAuxDir) {
 		envArgs = append(envArgs, k+"="+v)
 	}
+	lockFn, err := writeLockFileToTemp(workspaceData)
+	if err != nil {
+		return err
+	}
+	envArgs = append(envArgs, FnYarnLockEnvVar+"="+lockFn)
 
 	return yarn.RunYarn(ctx, relPath, args, envArgs)
 }

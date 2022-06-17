@@ -35,7 +35,12 @@ func newNodejsCmd() *cobra.Command {
 		Short: "Run Yarn.",
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			return integration.RunNodejsYarn(ctx, ".", args)
+			root, err := module.FindRoot(ctx, ".")
+			if err != nil {
+				return err
+			}
+
+			return integration.RunNodejsYarn(ctx, ".", args, root.WorkspaceData)
 		}),
 	}
 
