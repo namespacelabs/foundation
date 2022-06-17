@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
+	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -69,7 +70,7 @@ func newKubernetesCmd() *cobra.Command {
 			return err
 		}
 
-		vc, err := vcluster.Create(ctx, hostConfig, args[0])
+		vc, err := compute.GetValue(ctx, vcluster.Create(nil, hostConfig, args[0]))
 		if err != nil {
 			return err
 		}

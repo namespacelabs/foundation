@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -42,6 +43,9 @@ type testRun struct {
 	Debug          bool
 	OutputProgress bool
 
+	// If VClusters are enabled.
+	VCluster compute.Computable[*vcluster.VCluster]
+
 	compute.LocalScoped[*TestBundle]
 }
 
@@ -52,7 +56,7 @@ func (test *testRun) Action() *tasks.ActionEvent {
 }
 
 func (test *testRun) Inputs() *compute.In {
-	return compute.Inputs().
+	in := compute.Inputs().
 		Str("testName", test.TestName).
 		Stringer("testBinPkg", test.TestBinPkg).
 		Strs("testBinCommand", test.TestBinCommand).
@@ -61,20 +65,44 @@ func (test *testRun) Inputs() *compute.In {
 		Strs("focus", test.Focus).
 		Computable("plan", test.Plan).
 		Bool("debug", test.Debug)
+	if test.VCluster != nil {
+		return in.Computable("vcluster", test.VCluster)
+	}
+
+	return in
+}
+
+func (test *testRun) prepareDeployEnv(ctx context.Context, r compute.Resolved) (ops.Environment, func(context.Context) error, error) {
+	if test.VCluster != nil {
+		return envWithVCluster(ctx, test.Env, compute.MustGetDepValue(r, test.VCluster, "vcluster"))
+	}
+
+	return test.Env, makeDeleteEnv(test.Env), nil
 }
 
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
 	p := compute.MustGetDepValue(r, test.Plan, "plan")
 
-	waiters, err := p.Deployer.Execute(ctx, runtime.TaskServerDeploy, test.Env)
+	env, cleanup, err := test.prepareDeployEnv(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	rt := runtime.For(ctx, test.Env)
+	defer func() {
+		if err := cleanup(ctx); err != nil {
+			fmt.Fprintln(console.Errors(ctx), "Failed to cleanup: ", err)
+		}
+	}()
+
+	waiters, err := p.Deployer.Execute(ctx, runtime.TaskServerDeploy, env)
+	if err != nil {
+		return nil, err
+	}
+
+	rt := runtime.For(ctx, env)
 
 	if test.OutputProgress {
-		if err := deploy.Wait(ctx, test.Env, waiters); err != nil {
+		if err := deploy.Wait(ctx, env, waiters); err != nil {
 			var e runtime.ErrContainerFailed
 			if errors.As(err, &e) {
 				// Don't spend more than N time waiting for logs.
@@ -154,7 +182,7 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 		fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
 	}
 
-	bundle, err := collectLogs(ctx, test.Env, test.Stack, test.Focus, test.OutputProgress)
+	bundle, err := collectLogs(ctx, env, test.Stack, test.Focus, test.OutputProgress)
 	if err != nil {
 		return nil, err
 	}

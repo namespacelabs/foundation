@@ -21,7 +21,7 @@ import (
 )
 
 func (r K8sRuntime) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
-	return deleteAllRecursively(ctx, r.cli, wait, nil, []string{r.moduleNamespace})
+	return DeleteAllRecursively(ctx, r.cli, wait, nil, r.moduleNamespace)
 }
 
 func (r Unbound) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
@@ -42,10 +42,10 @@ func (r Unbound) DeleteAllRecursively(ctx context.Context, wait bool, progress i
 		filtered = append(filtered, ns.Name)
 	}
 
-	return deleteAllRecursively(ctx, r.cli, wait, progress, filtered)
+	return DeleteAllRecursively(ctx, r.cli, wait, progress, filtered...)
 }
 
-func deleteAllRecursively(ctx context.Context, cli *kubernetes.Clientset, wait bool, progress io.Writer, namespaces []string) (bool, error) {
+func DeleteAllRecursively(ctx context.Context, cli *kubernetes.Clientset, wait bool, progress io.Writer, namespaces ...string) (bool, error) {
 	if len(namespaces) == 0 {
 		return false, nil
 	}

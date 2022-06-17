@@ -12,6 +12,7 @@ import (
 	"github.com/loft-sh/vcluster/cmd/vclusterctl/cmd"
 	"github.com/loft-sh/vcluster/cmd/vclusterctl/log"
 	"github.com/loft-sh/vcluster/pkg/util/servicecidr"
+	"helm.sh/helm/v3/pkg/chart"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -21,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/helm"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -41,39 +43,80 @@ type VCluster struct {
 	kr          kubernetes.Unbound
 	clusterName string
 	namespace   string
+	kubeconfig  *api.Config
 }
 
-func Create(ctx context.Context, host *client.HostConfig, namespace string) (*VCluster, error) {
-	return tasks.Return(ctx, tasks.Action("vcluster.create").Arg("namespace", namespace),
-		func(ctx context.Context) (*VCluster, error) {
-			chart, err := compute.GetValue(ctx, helm.Chart(chartRepo, chartName, chartVersion, chartDigest))
-			if err != nil {
-				return nil, err
-			}
+func Create(env *schema.Environment, host *client.HostConfig, namespace string) compute.Computable[*VCluster] {
+	return &vclusterCreation{
+		env:       env,
+		namespace: namespace,
+		host:      host,
+		chart:     helm.Chart(chartRepo, chartName, chartVersion, chartDigest),
+	}
+}
 
-			kr, err := kubernetes.NewFromConfig(ctx, host)
-			if err != nil {
-				return nil, err
-			}
+type vclusterCreation struct {
+	env       *schema.Environment
+	namespace string
+	host      *client.HostConfig
+	chart     compute.Computable[*chart.Chart]
 
-			cidr := servicecidr.GetServiceCIDR(kr.Client(), namespace)
+	compute.LocalScoped[*VCluster]
+}
 
-			values := map[string]interface{}{
-				"serviceCIDR": cidr,
-				"syncer": map[string]interface{}{
-					"extraArgs": []string{"--disable-sync-resources=ingresses"},
-				},
-				"storage": map[string]interface{}{
-					"persistence": false,
-				},
-			}
+var _ compute.Computable[*VCluster] = &vclusterCreation{}
 
-			if _, err := helm.NewInstall(ctx, host, namespace, namespace, chart, values); err != nil {
-				return nil, err
-			}
+func (vc *vclusterCreation) Action() *tasks.ActionEvent {
+	return tasks.Action("vcluster.create").Arg("namespace", vc.namespace)
+}
 
-			return &VCluster{kr: kr, clusterName: namespace, namespace: namespace}, nil
-		})
+func (vc *vclusterCreation) Inputs() *compute.In {
+	return compute.Inputs().Str("namespace", vc.namespace).Indigestible("host", vc.host).Computable("chart", vc.chart)
+}
+
+func (vc *vclusterCreation) Output() compute.Output {
+	return compute.Output{NotCacheable: true}
+}
+
+func (vc *vclusterCreation) Compute(ctx context.Context, deps compute.Resolved) (*VCluster, error) {
+	kr, err := kubernetes.NewFromConfig(ctx, vc.host)
+	if err != nil {
+		return nil, err
+	}
+
+	// XXX consolidate with kubernetes runtime.
+	if _, err := kr.Client().CoreV1().Namespaces().Apply(ctx, kubernetes.MakeNamespace(vc.env, vc.namespace), kubedef.Ego()); err != nil {
+		return nil, err
+	}
+
+	cidr := servicecidr.GetServiceCIDR(kr.Client(), vc.namespace)
+
+	values := map[string]interface{}{
+		"serviceCIDR": cidr,
+		"syncer": map[string]interface{}{
+			"extraArgs": []string{"--disable-sync-resources=ingresses"},
+		},
+		"storage": map[string]interface{}{
+			"persistence": false,
+		},
+	}
+
+	chart := compute.MustGetDepValue(deps, vc.chart, "chart")
+
+	if _, err := helm.NewInstall(ctx, vc.host, vc.namespace, vc.namespace, chart, values); err != nil {
+		return nil, err
+	}
+
+	// XXX add deadline.
+	kubeConfig, err := tasks.Return(ctx, tasks.Action("vcluster.wait-for-deployment"), func(ctx context.Context) (*api.Config, error) {
+		// Wait until one of the pods is available.
+		return cmd.GetKubeConfig(ctx, kr.Client(), vc.namespace, vc.namespace, log.Discard)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &VCluster{kr: kr, clusterName: vc.namespace, namespace: vc.namespace, kubeconfig: kubeConfig}, nil
 }
 
 func (vc *VCluster) Access(parentCtx context.Context) (*Connection, error) {
@@ -89,17 +132,6 @@ func (vc *VCluster) Access(parentCtx context.Context) (*Connection, error) {
 		conn.cancel = cancel
 
 		p.Start(ctx)
-
-		// XXX add deadline.
-		kubeConfig, err := tasks.Return(ctx, tasks.Action("vcluster.wait-for-deployment"), func(ctx context.Context) (*api.Config, error) {
-			// Wait until one of the pods is available.
-			// _, err := p.Wait(ctx)
-			return cmd.GetKubeConfig(ctx, vc.kr.Client(), vc.clusterName, vc.namespace, log.Discard)
-		})
-		if err != nil {
-			cancel()
-			return nil, err
-		}
 
 		errch := make(chan error, 1)
 		portch := make(chan runtime.ForwardedPort)
@@ -142,11 +174,15 @@ func (vc *VCluster) Access(parentCtx context.Context) (*Connection, error) {
 
 			tasks.Attachments(ctx).AddResult("local_port", port.LocalPort)
 
-			for _, cluster := range kubeConfig.Clusters {
+			kubeConfig := *vc.kubeconfig
+
+			for key, original := range kubeConfig.Clusters {
+				cluster := *original
 				cluster.Server = fmt.Sprintf("https://127.0.0.1:%d", port.LocalPort)
+				kubeConfig.Clusters[key] = &cluster
 			}
 
-			configFile, err := writeTempConfig(ctx, vc.clusterName, *kubeConfig)
+			configFile, err := writeTempConfig(ctx, vc.clusterName, kubeConfig)
 			if err != nil {
 				conn.Close()
 				return nil, err
@@ -171,13 +207,17 @@ func (c *Connection) Close() error {
 	return nil
 }
 
+func (c *Connection) HostEnv() *client.HostEnv {
+	return &client.HostEnv{
+		Kubeconfig: c.configFile,
+	}
+}
+
 func (c *Connection) Runtime(ctx context.Context) (kubernetes.Unbound, error) {
 	return kubernetes.NewFromConfig(ctx, &client.HostConfig{
 		DevHost:  nil,
 		Selector: nil,
-		HostEnv: &client.HostEnv{
-			Kubeconfig: c.configFile,
-		},
+		HostEnv:  c.HostEnv(),
 	})
 }
 

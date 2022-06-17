@@ -36,6 +36,7 @@ func NewTestCmd() *cobra.Command {
 		testOpts       testing.TestOpts
 		includeServers bool
 		parallel       bool
+		ephemeral      bool = true
 	)
 
 	cmd := &cobra.Command{
@@ -90,16 +91,16 @@ func NewTestCmd() *cobra.Command {
 
 			for _, loc := range locs {
 				// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
-				env := testing.PrepareEnvFrom(devEnv, !testOpts.KeepRuntime)
+				buildEnv := testing.PrepareBuildEnv(ctx, devEnv, ephemeral)
 
 				status := aec.LightBlackF.Apply("RUNNING")
 				fmt.Fprintf(stderr, "%s: Test %s\n", loc.AsPackageName(), status)
 
-				test, err := testing.PrepareTest(ctx, pl, env, loc.AsPackageName(), testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
+				test, err := testing.PrepareTest(ctx, pl, buildEnv, loc.AsPackageName(), testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
 					var suts []provision.Server
 
 					for _, pkg := range test.ServersUnderTest {
-						sut, err := env.RequireServerWith(ctx, pl, schema.PackageName(pkg))
+						sut, err := buildEnv.RequireServerWith(ctx, pl, schema.PackageName(pkg))
 						if err != nil {
 							return nil, nil, err
 						}
@@ -160,9 +161,10 @@ func NewTestCmd() *cobra.Command {
 
 	cmd.Flags().Int32Var(&runOpts.BaseServerPort, "port_base", 40000, "Base port to listen on (additional requested ports will be base port + n).")
 	cmd.Flags().BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
-	cmd.Flags().BoolVar(&testOpts.KeepRuntime, "keep_runtime", testOpts.KeepRuntime, "If true, don't cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
+	cmd.Flags().BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, don't cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
 	cmd.Flags().BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
 	cmd.Flags().BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel. This skips most debug output.")
+	cmd.Flags().BoolVar(&testing.UseVClusters, "vcluster", testing.UseVClusters, "If true, creates a separate vcluster per test invocation.")
 
 	return cmd
 }

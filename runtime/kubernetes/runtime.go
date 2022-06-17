@@ -42,6 +42,12 @@ func Register() {
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
 }
 
+func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApplyConfiguration {
+	return applycorev1.Namespace(ns).
+		WithLabels(kubedef.MakeLabels(env, nil)).
+		WithAnnotations(kubedef.MakeAnnotations(env, nil))
+}
+
 func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, error) {
 	packedHostEnv, err := anypb.New(&kubetool.KubernetesEnv{Namespace: r.moduleNamespace})
 	if err != nil {
@@ -62,9 +68,7 @@ func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 	// assumes that a namespace already exists.
 	def, err := (kubedef.Apply{
 		Description: fmt.Sprintf("Namespace for %q", r.env.Name),
-		Resource: applycorev1.Namespace(r.moduleNamespace).
-			WithLabels(kubedef.MakeLabels(r.env, nil)).
-			WithAnnotations(kubedef.MakeAnnotations(r.env, nil)),
+		Resource:    MakeNamespace(r.env, r.moduleNamespace),
 	}).ToDefinition()
 	if err != nil {
 		return nil, err

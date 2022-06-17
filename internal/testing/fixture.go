@@ -24,9 +24,13 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -154,16 +158,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		TestBinImageID: fixtureImage,
 		Debug:          opts.Debug,
 		OutputProgress: opts.OutputProgress,
-	}
-
-	if !opts.KeepRuntime {
-		compute.On(ctx).Cleanup(tasks.Action("test.cleanup"), func(ctx context.Context) error {
-			if _, err := runtime.For(ctx, env).DeleteRecursively(ctx, false); err != nil {
-				return err
-			}
-
-			return nil
-		})
+		VCluster:       maybeCreateVCluster(env),
 	}
 
 	toFS := compute.Map(tasks.Action("test.to-fs"), compute.Inputs().Computable("bundle", results), compute.Output{},
@@ -218,4 +213,19 @@ func (b buildAndAttachDataLayer) BuildImage(ctx context.Context, env ops.Environ
 
 func (b buildAndAttachDataLayer) PlatformIndependent() bool {
 	return b.spec.PlatformIndependent()
+}
+
+func maybeCreateVCluster(env provision.Env) compute.Computable[*vcluster.VCluster] {
+	if !UseVClusters {
+		return nil
+	}
+
+	hostConfig, err := client.ComputeHostConfig(env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	if err != nil {
+		return compute.Error[*vcluster.VCluster](err)
+	}
+
+	ns := kubernetes.ModuleNamespace(env.Workspace(), env.Proto())
+
+	return vcluster.Create(env.Proto(), hostConfig, ns)
 }

@@ -14,7 +14,7 @@ func TestNamespaceGenerator(t *testing.T) {
 	w := &schema.Workspace{ModuleName: "namespacelabs.dev/foundation"}
 	env := &schema.Environment{Name: "prod"}
 
-	x := moduleNamespace(w, env)
+	x := ModuleNamespace(w, env)
 	expected := "prod-foundation-7l67u"
 
 	if x != expected {

@@ -47,7 +47,7 @@ func (u Unbound) Client() *k8s.Clientset {
 }
 
 func (u Unbound) Bind(ws *schema.Workspace, env *schema.Environment) K8sRuntime {
-	return u.BindToNamespace(env, moduleNamespace(ws, env))
+	return u.BindToNamespace(env, ModuleNamespace(ws, env))
 }
 
 func (u Unbound) BindToNamespace(env *schema.Environment, ns string) K8sRuntime {
