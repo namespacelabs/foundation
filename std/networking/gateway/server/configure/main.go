@@ -132,9 +132,12 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		},
 	})
 
+	envoyArgs := []string{"-c", filepath.Join("/config/", filename)}
+
+	envoyArgs = append(envoyArgs, "--use-dynamic-base-id")
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
-			Args: []string{"-c", filepath.Join("/config/", filename)},
+			Args: envoyArgs,
 			// Mount the generated configuration under /config.
 			VolumeMount: []*kubedef.ContainerExtension_VolumeMount{{
 				Name:      configVolume,
