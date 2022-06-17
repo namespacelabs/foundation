@@ -13,6 +13,10 @@ extension: fn.#Extension & {
 
 			availableIn: {
 				go: type: "*Value"
+				nodejs: {
+					import: "provider_pb"
+					type: "Promise<Value>"
+				}
 			}
 		}
 	}
@@ -52,6 +56,11 @@ configure: fn.#Configure & {
 	startup: {
 		// Only Go servers embed our library.
 		if $focus.framework == "GO" {
+			args: {
+				server_secrets_basepath: "/secrets/server"
+			}
+		}
+		if $focus.framework == "NODEJS" {
 			args: {
 				server_secrets_basepath: "/secrets/server"
 			}

@@ -40,7 +40,11 @@ func makeDeps__hfr5jb(ctx context.Context, di core.Dependencies) (_ interface{},
 	var deps ExtensionDeps
 
 	// name: "http-csrf-token"
-	if deps.Token, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("Cg9odHRwLWNzcmYtdG9rZW4=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+	// generate: {
+	//   random_byte_count: 32
+	//   format: FORMAT_BASE64
+	// }
+	if deps.Token, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("Cg9odHRwLWNzcmYtdG9rZW4aBBAgGAE=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
 		return nil, err
 	}
 

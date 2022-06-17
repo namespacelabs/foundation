@@ -68,11 +68,11 @@ func Collect(server *schema.Server) (*Collection, error) {
 						return nil, fnerrors.UserError(nil, "bad secret name: %q (must be alphanumeric, up to 32 characters)", secret.Name)
 					}
 
-					if secret.InitializeWith != nil {
-						if secret.Generate == nil {
-							secret.Generate = &GenerateSpecification{}
-						}
-					}
+					// if secret.InitializeWith != nil {
+					// 	if secret.Generate == nil {
+					// 		secret.Generate = &GenerateSpecification{}
+					// 	}
+					// }
 
 					if secret.Generate != nil {
 						if secret.Generate.UniqueId == "" {

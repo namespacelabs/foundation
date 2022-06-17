@@ -3,16 +3,17 @@
 // available at http://github.com/namespacelabs/foundation
 
 import { GrpcRegistrar } from "@namespacelabs.dev-foundation/std-nodejs-grpc";
-import { WireService } from "./deps.fn";
+import { WireService, ServiceDeps } from "./deps.fn";
 import { bindPostServiceServer } from "./service_grpc.fn";
 import { PostRequest, PostResponse } from "./service_pb";
 
-export const wireService: WireService = async (registrar: GrpcRegistrar) =>
+export const wireService: WireService = async (deps: ServiceDeps, registrar: GrpcRegistrar) =>
 	registrar.registerGrpcService(
 		bindPostServiceServer({
 			post: async (request: PostRequest): Promise<PostResponse> => {
 				const response: PostResponse = new PostResponse();
-				response.setOutput(`Input: ${request.getInput()}`);
+				const secrets = await deps.testSecrets;
+				response.setOutput(`Input: ${request.getInput()} - ${JSON.stringify(secrets.toObject())}`);
 				return response;
 			},
 		})

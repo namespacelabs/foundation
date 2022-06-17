@@ -22,9 +22,9 @@ extension: fn.#Extension & {
 		}
 		keygen: secrets.#Exports.Secret & {
 			name: "keygen"
-			initializeWith: {
-				binary: "namespacelabs.dev/foundation/std/testdata/datastore/keygen"
-			}
+			// initializeWith: {
+			// 	binary: "namespacelabs.dev/foundation/std/testdata/datastore/keygen"
+			// }
 		}
 		readinessCheck: core.#Exports.ReadinessCheck
 	}

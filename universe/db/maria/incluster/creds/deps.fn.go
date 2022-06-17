@@ -33,7 +33,11 @@ func makeDeps__bihnv9(ctx context.Context, di core.Dependencies) (_ interface{},
 	var deps ExtensionDeps
 
 	// name: "mariadb-password-file"
-	if deps.Password, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGU=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+	// generate: {
+	//   random_byte_count: 32
+	//   format: FORMAT_BASE32
+	// }
+	if deps.Password, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChVtYXJpYWRiLXBhc3N3b3JkLWZpbGUaBBAgGAI=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
 		return nil, err
 	}
 

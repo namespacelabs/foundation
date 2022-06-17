@@ -41,7 +41,10 @@ func makeDeps__38f4mh(ctx context.Context, di core.Dependencies) (_ interface{},
 	}
 
 	// name: "gen"
-	if deps.Gen, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("CgNnZW4=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+	// generate: {
+	//   random_byte_count: 32
+	// }
+	if deps.Gen, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("CgNnZW4aAhAg", &secrets.Secret{}).(*secrets.Secret)); err != nil {
 		return nil, err
 	}
 

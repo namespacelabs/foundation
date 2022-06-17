@@ -34,14 +34,22 @@ func makeDeps__cld7nf(ctx context.Context, di core.Dependencies) (_ interface{},
 	var deps ExtensionDeps
 
 	// name: "root-password"
+	// generate: {
+	//   random_byte_count: 16
+	//   format: FORMAT_BASE32
+	// }
 	// experimental_mount_as_env_var: "MINIO_ROOT_PASSWORD"
-	if deps.RootPassword, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("Cg1yb290LXBhc3N3b3JkMhNNSU5JT19ST09UX1BBU1NXT1JE", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+	if deps.RootPassword, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("Cg1yb290LXBhc3N3b3JkGgQQEBgCMhNNSU5JT19ST09UX1BBU1NXT1JE", &secrets.Secret{}).(*secrets.Secret)); err != nil {
 		return nil, err
 	}
 
 	// name: "root-user"
+	// generate: {
+	//   random_byte_count: 8
+	//   format: FORMAT_BASE32
+	// }
 	// experimental_mount_as_env_var: "MINIO_ROOT_USER"
-	if deps.User, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("Cglyb290LXVzZXIyD01JTklPX1JPT1RfVVNFUg==", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+	if deps.User, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("Cglyb290LXVzZXIaBBAIGAIyD01JTklPX1JPT1RfVVNFUg==", &secrets.Secret{}).(*secrets.Secret)); err != nil {
 		return nil, err
 	}
 

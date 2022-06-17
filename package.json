@@ -23,6 +23,7 @@
 		"std/nodejs/monitoring/tracing",
 		"std/nodejs/monitoring/tracing/fastify",
 		"std/nodejs/monitoring/tracing/jaeger",
-		"std/nodejs/runtime"
+		"std/nodejs/runtime",
+		"std/secrets"
 	]
 }

@@ -6,8 +6,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"io/fs"
 	"os"
@@ -19,7 +17,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -32,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/types"
-	"namespacelabs.dev/go-ids"
 )
 
 type tool struct{}
@@ -172,61 +168,61 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				}},
 			}})
 
-		if gen.Secret.InitializeWith == nil {
-			data := map[string][]byte{}
-			switch gen.Secret.Generate.Format {
-			case secrets.GenerateSpecification_FORMAT_BASE32:
-				data[gen.Secret.Name] = []byte(ids.NewRandomBase32ID(int(gen.Secret.Generate.RandomByteCount)))
-			default: // Including BASE64
-				raw := make([]byte, gen.Secret.Generate.RandomByteCount)
-				_, _ = rand.Reader.Read(raw)
-				data[gen.Secret.Name] = []byte(base64.RawStdEncoding.EncodeToString(raw))
-			}
+		// if gen.Secret.InitializeWith == nil {
+		// 	data := map[string][]byte{}
+		// 	switch gen.Secret.Generate.Format {
+		// 	case secrets.GenerateSpecification_FORMAT_BASE32:
+		// 		data[gen.Secret.Name] = []byte(ids.NewRandomBase32ID(int(gen.Secret.Generate.RandomByteCount)))
+		// 	default: // Including BASE64
+		// 		raw := make([]byte, gen.Secret.Generate.RandomByteCount)
+		// 		_, _ = rand.Reader.Read(raw)
+		// 		data[gen.Secret.Name] = []byte(base64.RawStdEncoding.EncodeToString(raw))
+		// 	}
 
-			newSecret := &v1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      generatedName,
-					Namespace: namespace,
-					Labels:    kubedef.MakeLabels(r.Env, nil),
-				},
-				Data: data,
-			}
+		// 	newSecret := &v1.Secret{
+		// 		ObjectMeta: metav1.ObjectMeta{
+		// 			Name:      generatedName,
+		// 			Namespace: namespace,
+		// 			Labels:    kubedef.MakeLabels(r.Env, nil),
+		// 		},
+		// 		Data: data,
+		// 	}
 
-			out.Invocations = append(out.Invocations, kubedef.Create{
-				Description:         "Generated server secrets",
-				SkipIfAlreadyExists: true,
-				Resource:            "secrets",
-				Body:                newSecret,
-			})
-		} else {
-			src := &schema.SerializedInvocationSource{
-				Description: "Generated server secrets",
-			}
-
-			create := &kubedef.OpCreateSecretConditionally{
-				Namespace:         namespace,
-				Name:              generatedName,
-				UserSpecifiedName: gen.Secret.Name,
-			}
-
-			var err error
-			src.Impl, err = anypb.New(create)
-			if err != nil {
-				return err
-			}
-
-			resource, err := anypb.New(&types.DeferredResourceSource{FromInvocation: gen.Secret.InitializeWith})
-			if err != nil {
-				return err
-			}
-
-			src.Computable = append(src.Computable, &schema.SerializedInvocationSource_ComputableValue{
-				Name:  "value",
-				Value: resource,
-			})
-
-			out.InvocationSources = append(out.InvocationSources, src)
+		// 	out.Invocations = append(out.Invocations, kubedef.Create{
+		// 		Description:         "Generated server secrets",
+		// 		SkipIfAlreadyExists: true,
+		// 		Resource:            "secrets",
+		// 		Body:                newSecret,
+		// 	})
+		// } else {
+		src := &schema.SerializedInvocationSource{
+			Description: "Generated server secrets",
 		}
+
+		create := &kubedef.OpCreateSecretConditionally{
+			Namespace:         namespace,
+			Name:              generatedName,
+			UserSpecifiedName: gen.Secret.Name,
+		}
+
+		var err error
+		src.Impl, err = anypb.New(create)
+		if err != nil {
+			return err
+		}
+
+		resource, err := anypb.New(&types.DeferredResourceSource{})
+		if err != nil {
+			return err
+		}
+
+		src.Computable = append(src.Computable, &schema.SerializedInvocationSource_ComputableValue{
+			Name:  "value",
+			Value: resource,
+		})
+
+		out.InvocationSources = append(out.InvocationSources, src)
+		// }
 	}
 
 	return nil

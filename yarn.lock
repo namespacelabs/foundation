@@ -266,6 +266,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@namespacelabs.dev-foundation/std-secrets@0.0.0, @namespacelabs.dev-foundation/std-secrets@workspace:std/secrets":
+  version: 0.0.0-use.local
+  resolution: "@namespacelabs.dev-foundation/std-secrets@workspace:std/secrets"
+  dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
+    "@namespacelabs.dev-foundation/std-secrets": 0.0.0
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
+    google-protobuf: 3.20.0
+  languageName: unknown
+  linkType: soft
+
 "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime":
   version: 0.0.0-use.local
   resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime"

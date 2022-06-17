@@ -33,7 +33,11 @@ func makeDeps__9gpcgr(ctx context.Context, di core.Dependencies) (_ interface{},
 	var deps ExtensionDeps
 
 	// name: "postgres-password-file"
-	if deps.Password, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxl", &secrets.Secret{}).(*secrets.Secret)); err != nil {
+	// generate: {
+	//   random_byte_count: 32
+	//   format: FORMAT_BASE32
+	// }
+	if deps.Password, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChZwb3N0Z3Jlcy1wYXNzd29yZC1maWxlGgQQIBgC", &secrets.Secret{}).(*secrets.Secret)); err != nil {
 		return nil, err
 	}
 
