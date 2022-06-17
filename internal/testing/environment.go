@@ -64,6 +64,7 @@ func envWithVCluster(ctx context.Context, sourceEnv ops.Environment, vcluster *v
 
 	c, err := devhost.MakeConfiguration(conn.HostEnv())
 	if err != nil {
+		conn.Close()
 		return provision.Env{}, nil, err
 	}
 

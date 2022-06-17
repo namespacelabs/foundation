@@ -21,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	kobs "namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/schema"
@@ -83,7 +82,7 @@ func registerApply() {
 						return false, err
 					}
 
-					if err := kubeobserver.WaitForCondition[*apiextensionsv1.ApiextensionsV1Client](
+					if err := kobs.WaitForCondition[*apiextensionsv1.ApiextensionsV1Client](
 						ctx, cli, tasks.Action("kubernetes.wait-for-crd").Arg("crd", crd),
 						waitForCRD{apply.ResourceClass.Resource, crd}); err != nil {
 						return false, err
@@ -137,7 +136,7 @@ func registerApply() {
 				for _, sc := range scope {
 					w := kobs.WaitOnResource{
 						RestConfig:   restcfg,
-						Invocation:   d,
+						Description:  d.Description,
 						Namespace:    header.Namespace,
 						Name:         header.Name,
 						ResourceKind: header.Kind,

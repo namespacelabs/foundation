@@ -410,10 +410,15 @@ func (g *Orch) DetachWith(d Detach) {
 
 	g.exec.Go(func(ctx context.Context) error {
 		err := d.Action.Run(ctx, d.Do)
-		if err != nil && d.BestEffort && !errors.Is(err, context.Canceled) {
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+
+		if err != nil && d.BestEffort {
 			zerolog.Ctx(ctx).Warn().Err(err).Msg("detach failed")
 			return nil // Ignore errors.
 		}
+
 		return err
 	})
 }

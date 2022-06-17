@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/helm"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -157,7 +158,7 @@ func (vc *VCluster) Access(parentCtx context.Context) (*Connection, error) {
 			})
 		}()
 
-		return tasks.Return(ctx, tasks.Action("vcluster.wait-for-portfwd"), func(ctx context.Context) (*Connection, error) {
+		conn, err := tasks.Return(ctx, tasks.Action("vcluster.wait-for-portfwd"), func(ctx context.Context) (*Connection, error) {
 			// If the context is canceled, the port will be closed above.
 			port, ok := <-portch
 			if !ok {
@@ -194,6 +195,17 @@ func (vc *VCluster) Access(parentCtx context.Context) (*Connection, error) {
 
 			return conn, nil
 		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		if err := conn.WaitUntilSystemReady(ctx); err != nil {
+			conn.Close()
+			return nil, err
+		}
+
+		return conn, nil
 	})
 }
 
@@ -219,6 +231,23 @@ func (c *Connection) Runtime(ctx context.Context) (kubernetes.Unbound, error) {
 		Selector: nil,
 		HostEnv:  c.HostEnv(),
 	})
+}
+
+func (c *Connection) WaitUntilSystemReady(ctx context.Context) error {
+	cfg, err := client.NewRestConfigFromHostEnv(ctx, &client.HostConfig{HostEnv: c.HostEnv()})
+	if err != nil {
+		return err
+	}
+
+	w := kubeobserver.WaitOnResource{
+		RestConfig:   cfg,
+		Name:         "coredns",
+		Namespace:    "kube-system",
+		ResourceKind: "Deployment",
+		ExpectedGen:  1,
+	}
+
+	return w.WaitUntilReady(ctx, nil)
 }
 
 func writeTempConfig(ctx context.Context, clusterName string, cfg api.Config) (string, error) {

@@ -115,7 +115,7 @@ func NewTestCmd() *cobra.Command {
 					return suts, stack, nil
 				})
 				if err != nil {
-					return err
+					return fnerrors.UserError(loc, "failed to prepare test: %w", err)
 				}
 
 				if parallel {

@@ -33,3 +33,19 @@ throttle_configuration {
     }
     capacity: 5
 }
+
+throttle_configuration {
+    labels {
+        key: "action"
+        value: "vcluster.create"
+    }
+    capacity: 2
+}
+
+throttle_configuration {
+    labels {
+        key: "action"
+        value: "vcluster.access"
+    }
+    capacity: 2
+}

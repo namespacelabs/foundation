@@ -44,8 +44,8 @@ func WaitForCondition[Client any](ctx context.Context, cli Client, action *tasks
 type WaitOnResource struct {
 	RestConfig *rest.Config
 
-	Invocation      *schema.SerializedInvocation
 	Name, Namespace string
+	Description     string
 	ResourceKind    string
 	Scope           schema.PackageName
 
@@ -62,83 +62,89 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 		defer close(ch)
 	}
 
-	return tasks.Action(runtime.TaskServerStart).Scope(w.Scope).Run(ctx,
-		func(ctx context.Context) error {
-			ev := ops.Event{
-				ResourceID:          fmt.Sprintf("%s/%s", w.Namespace, w.Name),
-				Kind:                w.ResourceKind,
-				Scope:               w.Scope,
-				RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.Namespace, strings.ToLower(w.ResourceKind), w.Name),
-			}
+	ev := tasks.Action(runtime.TaskServerStart)
+	if w.Scope != "" {
+		ev = ev.Scope(w.Scope)
+	} else {
+		ev = ev.Arg("kind", w.ResourceKind).Arg("name", w.Name).Arg("namespace", w.Namespace)
+	}
+
+	return ev.Run(ctx, func(ctx context.Context) error {
+		ev := ops.Event{
+			ResourceID:          fmt.Sprintf("%s/%s", w.Namespace, w.Name),
+			Kind:                w.ResourceKind,
+			Scope:               w.Scope,
+			RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.Namespace, strings.ToLower(w.ResourceKind), w.Name),
+		}
+
+		switch w.ResourceKind {
+		case "Deployment", "StatefulSet":
+			ev.Category = "Servers deployed"
+		default:
+			ev.Category = w.Description
+		}
+
+		if w.PreviousGen == w.ExpectedGen {
+			ev.AlreadyExisted = true
+		}
+
+		if ch != nil {
+			ch <- ev
+		}
+
+		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(c context.Context) (done bool, err error) {
+			var observedGeneration int64
+			var readyReplicas, replicas int32
 
 			switch w.ResourceKind {
-			case "Deployment", "StatefulSet":
-				ev.Category = "Servers deployed"
+			case "Deployment":
+				res, err := cli.AppsV1().Deployments(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+
+				observedGeneration = res.Status.ObservedGeneration
+				replicas = res.Status.Replicas
+				readyReplicas = res.Status.ReadyReplicas
+				ev.ImplMetadata = res.Status
+
+			case "StatefulSet":
+				res, err := cli.AppsV1().StatefulSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+
+				observedGeneration = res.Status.ObservedGeneration
+				replicas = res.Status.Replicas
+				readyReplicas = res.Status.ReadyReplicas
+				ev.ImplMetadata = res.Status
+
 			default:
-				ev.Category = w.Invocation.Description
+				return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.ResourceKind)
 			}
 
-			if w.PreviousGen == w.ExpectedGen {
-				ev.AlreadyExisted = true
+			if rs, err := fetchReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen); err == nil {
+				if status, err := podWaitingStatus(c, cli, w.Namespace, rs); err == nil {
+					ev.WaitStatus = status
+				}
+			}
+
+			ev.Ready = ops.NotReady
+			if observedGeneration > w.ExpectedGen {
+				ev.Ready = ops.Ready
+			} else if observedGeneration == w.ExpectedGen {
+				if readyReplicas == replicas && replicas > 0 {
+					ev.Ready = ops.Ready
+				}
 			}
 
 			if ch != nil {
 				ch <- ev
 			}
 
-			return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(c context.Context) (done bool, err error) {
-				var observedGeneration int64
-				var readyReplicas, replicas int32
-
-				switch w.ResourceKind {
-				case "Deployment":
-					res, err := cli.AppsV1().Deployments(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
-					if err != nil {
-						return false, err
-					}
-
-					observedGeneration = res.Status.ObservedGeneration
-					replicas = res.Status.Replicas
-					readyReplicas = res.Status.ReadyReplicas
-					ev.ImplMetadata = res.Status
-
-				case "StatefulSet":
-					res, err := cli.AppsV1().StatefulSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
-					if err != nil {
-						return false, err
-					}
-
-					observedGeneration = res.Status.ObservedGeneration
-					replicas = res.Status.Replicas
-					readyReplicas = res.Status.ReadyReplicas
-					ev.ImplMetadata = res.Status
-
-				default:
-					return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.ResourceKind)
-				}
-
-				if rs, err := fetchReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen); err == nil {
-					if status, err := podWaitingStatus(c, cli, w.Namespace, rs); err == nil {
-						ev.WaitStatus = status
-					}
-				}
-
-				ev.Ready = ops.NotReady
-				if observedGeneration > w.ExpectedGen {
-					ev.Ready = ops.Ready
-				} else if observedGeneration == w.ExpectedGen {
-					if readyReplicas == replicas && replicas > 0 {
-						ev.Ready = ops.Ready
-					}
-				}
-
-				if ch != nil {
-					ch <- ev
-				}
-
-				return ev.Ready == ops.Ready, nil
-			})
+			return ev.Ready == ops.Ready, nil
 		})
+	})
 }
 
 type podWaiter struct {
