@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build"
@@ -140,11 +139,7 @@ func planImage(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 	if opts.UsePrebuilts && UsePrebuilts {
 		for _, prebuilt := range loc.Module.Workspace.PrebuiltBinary {
 			if prebuilt.PackageName == loc.PackageName.String() {
-				// TODO revisit tag generation.
-				// Registry protocol requires a tag. go-containerregistry uses "latest" by default.
-				// ECR treats all tags as immutable. This does not combine well, so we infer a stable tag here.
-				tag := strings.TrimPrefix(prebuilt.Digest, "sha256:")
-				imgid := oci.ImageID{Repository: prebuilt.Repository, Tag: tag, Digest: prebuilt.Digest}
+				imgid := oci.ImageID{Repository: prebuilt.Repository, Digest: prebuilt.Digest}
 				if imgid.Repository == "" {
 					if loc.Module.Workspace.PrebuiltBaseRepository == "" {
 						break // Silently fail.
