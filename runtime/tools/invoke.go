@@ -81,7 +81,6 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 			Command:    inv.invocation.BinaryConfig.Command,
 			Args:       inv.invocation.BinaryConfig.Args,
 			Env:        append(slices.Clone(inv.invocation.BinaryConfig.Env), &schema.BinaryConfig_EnvEntry{Name: "HOME", Value: "/tmp"}),
-			RunAsUser:  true,
 		}}
 
 	invoke := LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{}
