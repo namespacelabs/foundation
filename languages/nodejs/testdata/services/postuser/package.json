@@ -1,5 +1,6 @@
 {
 	"dependencies": {
+		"@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": "0.0.0",
 		"@namespacelabs.dev-foundation/std-grpc": "0.0.0",
 		"@namespacelabs.dev-foundation/std-nodejs-grpc": "0.0.0",
 		"@namespacelabs.dev-foundation/std-nodejs-grpcgen": "0.0.0",

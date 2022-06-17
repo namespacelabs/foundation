@@ -298,6 +298,16 @@ func (impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.
 			depPkgNames = append(depPkgNames, ref.PackageName)
 		}
 	}
+	// Dependencies on the gRPC service package need to be added to the package.json.
+	for _, dep := range p.Node().Instantiate {
+		if shared.IsStdGrpcExtension(dep.PackageName, dep.Type) {
+			grpcClientType, err := shared.PrepareGrpcBackendDep(ctx, pkgs, dep)
+			if err != nil {
+				return err
+			}
+			depPkgNames = append(depPkgNames, string(grpcClientType.Location.PackageName))
+		}
+	}
 
 	return tidyPackageJson(ctx, pkgs, p.Location, depPkgNames)
 }
