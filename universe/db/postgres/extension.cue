@@ -23,6 +23,10 @@ extension: fn.#Extension & {
 
 			availableIn: {
 				go: type: "WireDatabase"
+				nodejs: {
+					import: "api"
+					type: "WireDatabase"
+				}
 			}
 		}
 	}
