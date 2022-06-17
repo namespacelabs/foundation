@@ -46,3 +46,7 @@ spec:
                 # and it's transitive .proto dependencies.
                 encodedProtoDescriptor:
                   type: string
+       # subresources describes the subresources for custom resources.           
+      subresources:
+        # enables the status subresource.
+        status: {}      
