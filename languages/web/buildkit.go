@@ -40,7 +40,7 @@ func ViteBuild(ctx context.Context, loc workspace.Location, env ops.Environment,
 
 	out := base.
 		AddEnv("NODE_ENV", "production").
-		Run(llb.Shlexf("node_modules/.bin/vite build --base=%s --outDir=%s --emptyOutDir", basePath, filepath.Join("/out", baseOutput)), llb.Dir("/app")).
+		Run(llb.Shlexf("node_modules/vite/bin/vite.js build --base=%s --outDir=%s --emptyOutDir", basePath, filepath.Join("/out", baseOutput)), llb.Dir("/app")).
 		AddMount("/out", llb.Scratch())
 
 	image, err := buildkit.LLBToImage(ctx, env, conf, out, local)

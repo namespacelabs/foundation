@@ -26,7 +26,7 @@ func StartDevServer(ctx context.Context, root *workspace.Root, pkg schema.Packag
 	go func() {
 		var cmd localexec.Command
 		cmd.Label = "vite"
-		cmd.Command = "node_modules/.bin/vite"
+		cmd.Command = "node_modules/vite/bin/vite.js"
 		cmd.Args = []string{"--config=devweb.config.js", "--clearScreen=false", "--host=" + host, fmt.Sprintf("--port=%d", webPort)}
 		cmd.Dir = loc.Abs()
 		cmd.AdditionalEnv = []string{fmt.Sprintf("CMD_DEV_PORT=%d", mainPort)}
