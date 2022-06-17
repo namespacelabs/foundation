@@ -1,9 +1,12 @@
 {
 	"dependencies": {
+		"@autotelic/fastify-opentelemetry": "0.16.0",
 		"@namespacelabs.dev-foundation/std-nodejs-grpc": "0.0.0",
 		"@namespacelabs.dev-foundation/std-nodejs-grpcgen": "0.0.0",
 		"@namespacelabs.dev-foundation/std-nodejs-http": "0.0.0",
 		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime",
+		"@opentelemetry/api": "1.0.4",
+		"fastify": "3.29.0",
 		"google-protobuf": "3.20.0"
 	},
 	"name": "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp",

@@ -4,11 +4,7 @@
 
 import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
 import { Resource } from "@opentelemetry/resources";
-import {
-	ConsoleSpanExporter,
-	SimpleSpanProcessor,
-	SpanProcessor,
-} from "@opentelemetry/sdk-trace-base";
+import { SpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
 import { ExporterArgs } from "./types_pb";

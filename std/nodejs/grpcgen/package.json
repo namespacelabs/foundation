@@ -1,5 +1,6 @@
 {
 	"dependencies": {
+		"@grpc/grpc-js": "1.5.8",
 		"@namespacelabs.dev-foundation/std-nodejs-grpc": "0.0.0",
 		"@namespacelabs.dev-foundation/std-nodejs-grpcgen": "0.0.0",
 		"@namespacelabs.dev-foundation/std-nodejs-http": "0.0.0",

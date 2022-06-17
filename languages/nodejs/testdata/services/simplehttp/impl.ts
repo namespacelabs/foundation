@@ -2,7 +2,15 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
+import type { OpenTelemetryReqInstance } from "@autotelic/fastify-opentelemetry";
 import { ServiceDeps, WireService } from "./deps.fn";
+
+// TODO: find out why the "fastify" module augmentation from "@autotelic/fastify-opentelemetry" doesn't work.
+declare module "fastify" {
+	interface FastifyRequest {
+		readonly openTelemetry: () => OpenTelemetryReqInstance;
+	}
+}
 
 export const wireService: WireService = async (deps: ServiceDeps): Promise<void> => {
 	const server = await deps.httpServer;

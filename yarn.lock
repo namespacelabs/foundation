@@ -143,10 +143,13 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp@workspace:languages/nodejs/testdata/services/simplehttp"
   dependencies:
+    "@autotelic/fastify-opentelemetry": 0.16.0
     "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
+    "@opentelemetry/api": 1.0.4
+    fastify: 3.29.0
     google-protobuf: 3.20.0
   languageName: unknown
   linkType: soft
@@ -181,6 +184,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-nodejs-grpcgen@workspace:std/nodejs/grpcgen"
   dependencies:
+    "@grpc/grpc-js": 1.5.8
     "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
@@ -241,8 +245,10 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
+    "@opentelemetry/resources": 1.3.0
     "@opentelemetry/sdk-trace-base": 1.3.0
     "@opentelemetry/sdk-trace-node": 1.3.0
+    "@opentelemetry/semantic-conventions": 1.3.0
     google-protobuf: 3.20.0
   languageName: unknown
   linkType: soft
@@ -251,12 +257,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs/foundation@fn:namespacelabs.dev/foundation/std/nodejs/runtime"
   dependencies:
-    "@grpc/grpc-js": 1.5.8
-    google-protobuf: 3.20.0
     source-map-support: 0.5.21
     toposort: 2.0.2
-    typescript: 4.7.3
-    yargs: 16.2.0
   languageName: node
   linkType: soft
 
