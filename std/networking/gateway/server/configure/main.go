@@ -133,8 +133,11 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	})
 
 	envoyArgs := []string{"-c", filepath.Join("/config/", filename)}
-
+	// Envoy uses shared memory regions during hot restarts and this flag guarantees that
+	// shared memory regions do not conflict when there are multiple running Envoy instances
+	// on the same machine.
 	envoyArgs = append(envoyArgs, "--use-dynamic-base-id")
+
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
 			Args: envoyArgs,
