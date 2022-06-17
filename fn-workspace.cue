@@ -2,7 +2,6 @@ module: "namespacelabs.dev/foundation"
 requirements: {
 	api: 36
 }
-
 prebuilts: {
 	digest: {
 		"namespacelabs.dev/foundation/cmd/fn":                                                         "sha256:6dc1bd45327b03d6aa492d76ec387757726a3e078ae6632d579624fea4a7d1ed"
