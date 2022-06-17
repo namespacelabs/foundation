@@ -41,6 +41,7 @@ import (
 const (
 	controllerPkg schema.PackageName = "namespacelabs.dev/foundation/std/development/filesync/controller"
 	grpcNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/grpc"
+	grpcGenNode   schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/grpcgen"
 	httpNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/http"
 	// Short alias of the runtime package.
 	runtimeNpmPackage  = "@namespacelabs/foundation"
@@ -368,8 +369,12 @@ func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace
 		runtimeNpmPackage: fmt.Sprintf("fn:%s/%s", foundationModule, runtimePackagePath),
 	}
 
+	for k, v := range builtin().Dependencies {
+		dependencies[k] = v
+	}
+
 	// Force all nodes to depend on both http and grpc for now.
-	allPackageNames := append(depPkgNames, string(httpNode), string(grpcNode))
+	allPackageNames := append(depPkgNames, string(httpNode), string(grpcNode), string(grpcGenNode))
 
 	for _, importName := range allPackageNames {
 		pkg, err := pkgs.LoadByName(ctx, schema.PackageName(importName))

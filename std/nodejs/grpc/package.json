@@ -3,7 +3,9 @@
 		"@namespacelabs.dev-foundation/std-nodejs-grpc": "0.0.0",
 		"@namespacelabs.dev-foundation/std-nodejs-grpcgen": "0.0.0",
 		"@namespacelabs.dev-foundation/std-nodejs-http": "0.0.0",
-		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
+		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime",
+		"google-protobuf": "3.20.0",
+		"yargs": "16.2.0"
 	},
 	"name": "@namespacelabs.dev-foundation/std-nodejs-grpc",
 	"private": true,

@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import { ChannelCredentials } from "@grpc/grpc-js";
+import { grpc } from "@namespacelabs.dev-foundation/std-nodejs-grpcgen";
 import yargs from "yargs/yargs";
 
 const args = yargs(process.argv)
@@ -14,5 +14,5 @@ const args = yargs(process.argv)
 export function provideBackend<T>(clientFactory: (...args: any[]) => T): T {
 	// TODO: support communication with services in other containers.
 	// TODO: support TLS.
-	return clientFactory(`127.0.0.1:${args.port}`, ChannelCredentials.createInsecure());
+	return clientFactory(`127.0.0.1:${args.port}`, grpc.ChannelCredentials.createInsecure());
 }

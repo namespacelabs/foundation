@@ -16,6 +16,7 @@ var (
 )
 
 type versions struct {
+	Dependencies         map[string]string `json:"dependencies"`
 	DevBuildDependencies map[string]string `json:"devBuildDependencies"`
 	DevDependencies      map[string]string `json:"devDependencies"`
 }

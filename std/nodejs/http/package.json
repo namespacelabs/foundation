@@ -1,9 +1,11 @@
 {
 	"dependencies": {
 		"@namespacelabs.dev-foundation/std-nodejs-grpc": "0.0.0",
+		"@namespacelabs.dev-foundation/std-nodejs-grpcgen": "0.0.0",
 		"@namespacelabs.dev-foundation/std-nodejs-http": "0.0.0",
 		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime",
 		"fastify": "3.29.0",
+		"google-protobuf": "3.20.0",
 		"middie": "6.1.0"
 	},
 	"name": "@namespacelabs.dev-foundation/std-nodejs-http",
