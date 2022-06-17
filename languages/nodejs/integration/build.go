@@ -44,6 +44,7 @@ var (
 	yarnBinaryPath    = "/yarn.cjs"
 	tsConfigPath      = filepath.Join(appRootPath, "tsconfig.production.fn.json")
 	nodemonConfigPath = filepath.Join(appRootPath, "nodemon.fn.json")
+	lockFilePath      = "/fn.lock.json"
 )
 
 type buildNodeJS struct {
@@ -147,7 +148,7 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 			}
 		}
 	}
-	buildBase, err = writeJsonAsFile(ctx, buildBase, lockFileStruct, filepath.Join(appRootPath, lockFilePath))
+	buildBase, err = writeJsonAsFile(ctx, buildBase, lockFileStruct, lockFilePath)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
@@ -207,6 +208,7 @@ func PrepareYarnBase(ctx context.Context, nodejsBase string, platform specs.Plat
 	for k, v := range YarnEnvArgs("/") {
 		buildBase = buildBase.AddEnv(k, v)
 	}
+	buildBase = buildBase.AddEnv(FnYarnLockEnvVar, lockFilePath)
 
 	buildBase, err := copyYarnBinaryFromCache(ctx, buildBase)
 	if err != nil {

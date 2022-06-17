@@ -5,21 +5,17 @@
 package integration
 
 import (
-	"context"
 	"encoding/json"
-	"io"
 	"path/filepath"
 
-	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 const (
-	// Must be consistent with the path in the Foundation plugin for Yarn in Typescript.
-	lockFilePath     = "node_modules/fn.lock.json"
+	lockFn           = "fn.lock.json"
 	foundationModule = "namespacelabs.dev/foundation"
 )
 
@@ -64,19 +60,23 @@ func generateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string) (
 	return lock, nil
 }
 
-func writeLockFile(ctx context.Context, workspace *schema.Workspace, module *workspace.Module, yarnRoot string) error {
-	lockStruct, err := generateLockFileStruct(workspace, module.Abs())
+// Returns the filename
+func writeLockFileToTemp(workspaceData workspace.WorkspaceData) (string, error) {
+	lockStruct, err := generateLockFileStruct(workspaceData.Parsed(), workspaceData.AbsPath())
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	lock, err := json.MarshalIndent(lockStruct, "", "\t")
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), module.ReadWriteFS(), filepath.Join(yarnRoot, lockFilePath), func(w io.Writer) error {
-		_, err := w.Write(lock)
-		return err
-	})
+	file, err := dirs.CreateUserTemp("nodejs", lockFn)
+	if err != nil {
+		return "", fnerrors.InternalError("failed to create the %s file: %w", lockFn, err)
+	}
+
+	_, err = file.Write(lock)
+	return file.Name(), err
 }

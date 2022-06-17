@@ -6,15 +6,19 @@ import { Fetcher, FetchOptions, Locator, MinimalFetchOptions, structUtils } from
 import { CwdFS, PortablePath } from "@yarnpkg/fslib";
 import { readFileSync } from "fs";
 import path from "path";
-import { LOCK_FILE_PATH, PROTOCOL } from "./constants";
+import { LOCK_FILE_PATH_ENV, PROTOCOL } from "./constants";
 
 export class FnFetcher implements Fetcher {
 	readonly #modules: { [key: string]: { path: string } };
 
 	constructor() {
+		const lockFn = process.env[LOCK_FILE_PATH_ENV];
+		if (!lockFn) {
+			throw new Error(`Lock file can't be found: ${LOCK_FILE_PATH_ENV} is not set.`);
+		}
 		let lockFileBytes = "{}";
 		try {
-			lockFileBytes = readFileSync(LOCK_FILE_PATH, "utf8");
+			lockFileBytes = readFileSync(lockFn, "utf8");
 		} catch (e) {
 			// File can be not there for WEB at the moment.
 			// TODO: remove catching the exception once WEB is unified with NODEJS.
