@@ -226,7 +226,7 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 	yarnRootsMap := map[string]*yarnRootData{}
 	yarnRoots := []string{}
 	for _, pkg := range packages {
-		if pkgSupportsNodejs(pkg) {
+		if pkg.PackageName() == runtimeNode || pkgSupportsNodejs(pkg) {
 			yarnRoot, err := findYarnRoot(pkg.Location)
 			if err != nil {
 				// If we can't find yarn root, using the workspace root.
@@ -292,7 +292,8 @@ func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, 
 }
 
 func (impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
-	depPkgNames := []string{}
+	// Adding a dependency on the package itself so fully qualified imports work.
+	depPkgNames := []string{string(p.PackageName())}
 	for _, ref := range p.Node().Reference {
 		if ref.PackageName != "" {
 			depPkgNames = append(depPkgNames, ref.PackageName)

@@ -325,13 +325,14 @@ func generateTsConfig(ctx context.Context, base llb.State, locs []workspace.Loca
 		if err != nil {
 			return llb.State{}, err
 		}
-		if strings.HasPrefix(string(npmPackage), rootNamespace) {
+		// TODO: clean up the "runtime" package special handling.
+		if strings.HasPrefix(string(npmPackage), rootNamespace) || (npmPackage == "@namespacelabs/foundation" && rootModuleName == "namespacelabs.dev/foundation") {
 			tsConfig.Include = append(tsConfig.Include, loc.Rel())
 		} else {
 			// Locations with a different namespace live in node_modules.
 			// This includes the runtime package even when building something inside the Foundation
 			// module, because the runtime package has a namespace alias.
-			tsConfig.Include = append(tsConfig.Include, fmt.Sprintf("node_modules/%s", npmPackage))
+			tsConfig.Include = append(tsConfig.Include, fmt.Sprintf("%s/%s", depsRootPath, loc.Module.ModuleName()))
 		}
 	}
 

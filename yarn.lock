@@ -61,6 +61,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter@workspace:languages/nodejs/testdata/extensions/batchformatter"
   dependencies:
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
@@ -74,6 +75,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter@workspace:languages/nodejs/testdata/extensions/numberformatter"
   dependencies:
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-numberformatter": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
@@ -106,6 +108,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter@workspace:languages/nodejs/testdata/services/numberformatter"
   dependencies:
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-extensions-batchformatter": 0.0.0
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
@@ -118,6 +121,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser@workspace:languages/nodejs/testdata/services/postuser"
   dependencies:
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser": 0.0.0
     "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
     "@namespacelabs.dev-foundation/std-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
@@ -132,6 +136,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple"
   dependencies:
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
@@ -145,6 +150,7 @@ __metadata:
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp@workspace:languages/nodejs/testdata/services/simplehttp"
   dependencies:
     "@autotelic/fastify-opentelemetry": 0.16.0
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
@@ -159,6 +165,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/std-grpc@workspace:std/grpc"
   dependencies:
+    "@namespacelabs.dev-foundation/std-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
@@ -205,6 +212,7 @@ __metadata:
     fastify: 3.29.0
     google-protobuf: 3.20.0
     middie: 6.1.0
+    yargs: 16.2.0
   languageName: unknown
   linkType: soft
 
@@ -216,6 +224,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
     google-protobuf: 3.20.0
@@ -230,10 +239,12 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-jaeger": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
     "@opentelemetry/exporter-jaeger": 1.3.0
     google-protobuf: 3.20.0
+    yargs: 16.2.0
   languageName: unknown
   linkType: soft
 
@@ -244,6 +255,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
     "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
     "@opentelemetry/resources": 1.3.0
@@ -261,6 +273,15 @@ __metadata:
     source-map-support: 0.5.21
     toposort: 2.0.2
   languageName: node
+  linkType: soft
+
+"@namespacelabs/foundation@workspace:std/nodejs/runtime":
+  version: 0.0.0-use.local
+  resolution: "@namespacelabs/foundation@workspace:std/nodejs/runtime"
+  dependencies:
+    source-map-support: 0.5.21
+    toposort: 2.0.2
+  languageName: unknown
   linkType: soft
 
 "@opentelemetry/api@npm:1.0.4":
