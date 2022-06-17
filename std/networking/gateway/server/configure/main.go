@@ -112,8 +112,8 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		DescriptionBase: "Network Gateway",
 		Rules: rbacv1.PolicyRule().
 			WithAPIGroups("k8s.namespacelabs.dev").
-			WithResources("httpgrpctranscoders").
-			WithVerbs("get", "list", "watch", "create", "update", "delete"),
+			WithResources("httpgrpctranscoders", "httpgrpctranscoders/status").
+			WithVerbs("get", "list", "watch", "create", "update", "delete", "patch"),
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
