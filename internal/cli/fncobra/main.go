@@ -502,8 +502,9 @@ func outputType() logoutput.OutputType {
 func consoleToSink(out *os.File, interactive bool) (*zerolog.Logger, tasks.ActionSink, func()) {
 	logout := logoutput.OutputTo{Writer: out, WithColors: interactive, OutputType: outputType()}
 
+	maxLogLevel := viper.GetInt("console_log_level")
 	if (interactive || environment.IsRunningInCI()) && !viper.GetBool("console_no_colors") {
-		consoleSink := consolesink.NewSink(out, interactive, viper.GetInt("console_log_level"))
+		consoleSink := consolesink.NewSink(out, interactive, maxLogLevel)
 		cleanup := consoleSink.Start()
 		logout.Writer = console.ConsoleOutput(consoleSink, common.KnownStderr)
 
@@ -512,7 +513,7 @@ func consoleToSink(out *os.File, interactive bool) (*zerolog.Logger, tasks.Actio
 
 	logger := logout.ZeroLogger()
 
-	return logger, tasks.NewJsonLoggerSink(logger), nil
+	return logger, tasks.NewJsonLoggerSink(logger, maxLogLevel), nil
 }
 
 func cpuprofile(cpuprofile string) func() {
