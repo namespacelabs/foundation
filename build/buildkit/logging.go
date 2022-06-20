@@ -135,7 +135,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 				if vertex.Completed != nil && existing != nil {
 					var err error
 					if vertex.Error != "" {
-						err = fnerrors.New("(buildkit) vertex %s returned error %s", vertex.Name, vertex.Error)
+						err = fnerrors.New(vertex.Error)
 						// TODO mark a buffer storing the error message.
 					}
 
