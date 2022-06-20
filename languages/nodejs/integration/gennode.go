@@ -68,14 +68,9 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 
 	providers := []tmplProvider{}
 	for _, p := range nodeData.Providers {
-		var inputType *tmplImportedType
-		// TODO: remove this condition once dependency on the gRPC Backend proto
-		// is supported in node.js.
-		if !p.ProviderType.IsParameterized {
-			inputType, err = convertProtoType(ic, p.InputType)
-			if err != nil {
-				return nodeTmplOptions{}, err
-			}
+		inputType, err := convertProtoType(ic, p.InputType)
+		if err != nil {
+			return nodeTmplOptions{}, err
 		}
 
 		scopeDeps, err := convertDependencyList(ic, p.Name, p.ScopedDeps)
@@ -138,12 +133,9 @@ func convertDependency(ic *imports.ImportCollector, dep shared.DependencyData) (
 	}
 	alias := ic.Add(nodeDepsNpmImport(npmPackage))
 
-	var inputType *tmplImportedType
-	if !dep.ProviderType.IsParameterized {
-		inputType, err = convertProtoType(ic, dep.ProviderInputType)
-		if err != nil {
-			return tmplDependency{}, err
-		}
+	inputType, err := convertProtoType(ic, dep.ProviderInputType)
+	if err != nil {
+		return tmplDependency{}, err
 	}
 
 	providerType, err := convertProviderType(ic, dep.ProviderType, dep.ProviderLocation)
