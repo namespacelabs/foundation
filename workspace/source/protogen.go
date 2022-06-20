@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -15,7 +16,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/moby/buildkit/client/llb"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/fsops"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
@@ -23,8 +28,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/internal/sdk/buf"
 	"namespacelabs.dev/foundation/runtime/rtypes"
+	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -58,7 +65,7 @@ func (statefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Se
 
 	mod := &perModuleGen{}
 	mod.descriptors.add(msg.Framework, msg.Protos)
-	return nil, generateProtoSrcs(ctx, buf.Image(ctx, env, wenv), mod, wenv.OutputFS())
+	return nil, generateProtoSrcs(ctx, env, mod, wenv.OutputFS())
 }
 
 func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Session[*OpProtoGen] {
@@ -68,12 +75,11 @@ func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Se
 		wenv = nil
 	}
 
-	return &multiGen{ctx: ctx, buf: buf.Image(ctx, env, wenv), wenv: wenv}
+	return &multiGen{ctx: ctx, wenv: wenv}
 }
 
 type multiGen struct {
 	ctx  context.Context
-	buf  compute.Computable[oci.Image]
 	wenv workspace.MutableWorkspaceEnvironment
 
 	mu    sync.Mutex
@@ -158,7 +164,7 @@ func (m *multiGen) Commit() error {
 
 	var errs []error
 	for _, mod := range mods {
-		if err := generateProtoSrcs(m.ctx, m.buf, mod, m.wenv.OutputFS()); err != nil {
+		if err := generateProtoSrcs(m.ctx, m.wenv, mod, m.wenv.OutputFS()); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -166,21 +172,92 @@ func (m *multiGen) Commit() error {
 	return multierr.New(errs...)
 }
 
-func makeProtoSrcs(buf compute.Computable[oci.Image], parsed *protos.FileDescriptorSetAndDeps, opts ProtosOpts) compute.Computable[fs.FS] {
-	return &genProtosAtLoc{
-		buf:         buf,
-		fileDescSet: parsed,
-		opts:        opts,
+func makeProtoSrcs(ctx context.Context, env ops.Environment, parsed *protos.FileDescriptorSetAndDeps, opts ProtosOpts) (compute.Computable[fs.FS], error) {
+	platform, err := tools.HostPlatform(ctx)
+	if err != nil {
+		return nil, err
 	}
+
+	// These directories are used within the container. Both will be mapped to temp dirs in the host
+	// which are managed below, and will be deleted on completion.
+	const outDir = "/out"
+	const srcDir = "/src"
+
+	t := buf.GenerateTmpl{
+		Version: "v1",
+	}
+
+	if opts.Framework == OpProtoGen_GO {
+		t.Plugins = append(t.Plugins,
+			buf.PluginTmpl{Name: "go", Out: outDir, Opt: []string{"paths=source_relative"}},
+			buf.PluginTmpl{Name: "go-grpc", Out: outDir, Opt: []string{"paths=source_relative", "require_unimplemented_servers=false"}})
+	}
+
+	if opts.Framework == OpProtoGen_TYPESCRIPT {
+		// Generates "_pb.js" file
+		t.Plugins = append(t.Plugins,
+			buf.PluginTmpl{Name: "js", Out: outDir, Opt: []string{"import_style=commonjs,binary"}})
+		// Generates "_pb.d.ts" files
+		t.Plugins = append(t.Plugins,
+			buf.PluginTmpl{Name: "ts", Out: outDir, Opt: []string{}})
+	}
+
+	templateBytes, err := json.Marshal(t)
+	if err != nil {
+		return nil, err
+	}
+
+	// Make all files available to buf, but then constrain below which files we request
+	// generation on.
+	fdsBytes, err := proto.Marshal(parsed.AsFileDescriptorSet())
+	if err != nil {
+		return nil, err
+	}
+
+	const srcfile = "image.bin"
+	src := llb.Scratch().File(llb.Mkfile(srcfile, 0600, fdsBytes))
+
+	args := []string{"buf", "generate", "--template", string(templateBytes), filepath.Join(srcDir, srcfile)}
+
+	for _, p := range parsed.File {
+		args = append(args, "--path", p.GetName())
+	}
+
+	out := llb.Scratch()
+
+	r := buf.State(platform).Run(
+		llb.Args(args),
+		llb.Network(llb.NetModeNone)) // protogen should not have network access.
+	r.AddMount(srcDir, src)
+	// The strategy here is to produce all results onto a directory structure that mimics the workspace,
+	// but to a location off-workspace. This allow us to read the results into a snapshot without modifying
+	// the workspace in-place. We can then decide to commit those results to the workspace.
+	r.AddMount(outDir, out)
+
+	img, err := buildkit.LLBToImage(ctx, env, build.NewBuildTarget(&platform).WithSourceLabel("Proto codegen"), out)
+	if err != nil {
+		return nil, err
+	}
+
+	return compute.Transform(img, func(ctx context.Context, img oci.Image) (fs.FS, error) {
+		return tarfs.FS{
+			TarStream: func() (io.ReadCloser, error) {
+				return mutate.Extract(img), nil
+			},
+		}, nil
+	}), nil
 }
 
-func generateProtoSrcs(ctx context.Context, buf compute.Computable[oci.Image], mod *perModuleGen, out fnfs.ReadWriteFS) error {
+func generateProtoSrcs(ctx context.Context, env ops.Environment, mod *perModuleGen, out fnfs.ReadWriteFS) error {
 	var fsys []compute.Computable[fs.FS]
 
 	for framework, descriptors := range mod.descriptors.descriptorsMap {
 		if len(descriptors) != 0 {
-			fsys = append(fsys, makeProtoSrcs(buf, protos.Merge(descriptors...),
-				ProtosOpts{Framework: framework}))
+			srcs, err := makeProtoSrcs(ctx, env, protos.Merge(descriptors...), ProtosOpts{Framework: framework})
+			if err != nil {
+				return err
+			}
+			fsys = append(fsys, srcs)
 		}
 	}
 
@@ -319,7 +396,7 @@ func (g *genProtosAtLoc) Compute(ctx context.Context, deps compute.Resolved) (fs
 	return result, nil
 }
 
-func GenProtosAtPaths(ctx context.Context, env ops.Environment, loader workspace.Packages, src fs.FS, opts ProtosOpts, paths []string, out fnfs.ReadWriteFS) error {
+func GenProtosAtPaths(ctx context.Context, env ops.Environment, src fs.FS, opts ProtosOpts, paths []string, out fnfs.ReadWriteFS) error {
 	parsed, err := protos.Parse(src, paths)
 	if err != nil {
 		return err
@@ -328,5 +405,5 @@ func GenProtosAtPaths(ctx context.Context, env ops.Environment, loader workspace
 	mod := &perModuleGen{}
 	mod.descriptors.add(opts.Framework, parsed)
 
-	return generateProtoSrcs(ctx, buf.Image(ctx, env, loader), mod, out)
+	return generateProtoSrcs(ctx, env, mod, out)
 }
