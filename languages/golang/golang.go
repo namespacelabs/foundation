@@ -31,9 +31,8 @@ import (
 )
 
 const (
-	grpcNode    schema.PackageName = "namespacelabs.dev/foundation/std/go/grpc"
-	gatewayNode schema.PackageName = "namespacelabs.dev/foundation/std/go/grpc/gateway"
-	httpNode    schema.PackageName = "namespacelabs.dev/foundation/std/go/http"
+	grpcNode schema.PackageName = "namespacelabs.dev/foundation/std/go/grpc"
+	httpNode schema.PackageName = "namespacelabs.dev/foundation/std/go/http"
 )
 
 func Register() {
