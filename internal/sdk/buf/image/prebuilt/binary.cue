@@ -1,5 +1,5 @@
 binary: {
-	name: "baseimg"
+	name: "bufbuild"
 	from: llb_plan: {
 		output_of: {
 			name: "llbgen"

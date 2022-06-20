@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package baseimg
+package image
 
 import (
 	"embed"
@@ -23,8 +23,6 @@ import (
 var (
 	//go:embed versions.json
 	lib embed.FS
-
-	golangImage, alpineImage string
 )
 
 type versionsJSON struct {
@@ -37,27 +35,21 @@ type versionsJSON struct {
 }
 
 type bufDef struct {
-	Go string `json:"go"`
+	Go       string `json:"go"`
+	Prebuilt string `json:"prebuilt"`
 }
 
-var (
-	versions versionsJSON
-)
-
-func init() {
-	versionData, err := fs.ReadFile(lib, "versions.json")
-	if err != nil {
-		panic(err)
-	}
-	if err := json.Unmarshal(versionData, &versions); err != nil {
-		panic(err)
-	}
-
-	golangImage = pins.Image(versions.Buf.Go)
-	alpineImage = pins.Default("alpine")
+func Prebuilt(target specs.Platform) llb.State {
+	versions := loadVersions()
+	return llbutil.Image(versions.Buf.Prebuilt, target)
 }
 
-func MakeBufImageState(platform specs.Platform) llb.State {
+func ImageSource(platform specs.Platform) llb.State {
+	versions := loadVersions()
+
+	golangImage := pins.Image(versions.Buf.Go)
+	alpineImage := pins.Default("alpine")
+
 	gobase := llbutil.Image(golangImage, platform).
 		AddEnv("CGO_ENABLED", "0").
 		AddEnv("PATH", "/usr/local/go/bin:"+system.DefaultPathEnvUnix).
@@ -94,4 +86,18 @@ func MakeBufImageState(platform specs.Platform) llb.State {
 	target = target.Run(llb.Shlex(fmt.Sprintf("yarn global add ts-protoc-gen@%s", versions.TsProtocGen))).Root()
 
 	return target.With(copies...)
+}
+
+func loadVersions() versionsJSON {
+	versionData, err := fs.ReadFile(lib, "versions.json")
+	if err != nil {
+		panic(err)
+	}
+
+	var versions versionsJSON
+	if err := json.Unmarshal(versionData, &versions); err != nil {
+		panic(err)
+	}
+
+	return versions
 }
