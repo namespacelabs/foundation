@@ -65,7 +65,7 @@ spec:
                       status:
                         type: string
                       # observedGeneration represents the .metadata.generation that the condition was set based upon.  
-                      observeredGeneration:
+                      observedGeneration:
                         type: integer
                       # lastTransitionTime is the last time the condition transitioned from one status to another.
                       lastTransitionTime:
