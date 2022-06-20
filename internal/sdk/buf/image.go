@@ -7,13 +7,15 @@ package buf
 import (
 	"context"
 
+	"github.com/moby/buildkit/client/llb"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/internal/sdk/buf/baseimg"
+	"namespacelabs.dev/foundation/internal/sdk/buf/image"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -26,7 +28,7 @@ func Image(ctx context.Context, env ops.Environment, loader workspace.Packages) 
 	}
 
 	prepared, err := multiplatform.PrepareMultiPlatformImage(ctx, env, build.Plan{
-		SourceLabel: "buf.build",
+		SourceLabel: "buf.build (including protoc)",
 		Spec:        bufBuild{},
 		Platforms:   []specs.Platform{platform},
 	})
@@ -44,9 +46,15 @@ type bufBuild struct{}
 var _ build.Spec = bufBuild{}
 
 func (bufBuild) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	state := baseimg.MakeBufImageState(*conf.TargetPlatform())
+	return buildkit.LLBToImage(ctx, env, conf, state(*conf.TargetPlatform()))
+}
 
-	return buildkit.LLBToImage(ctx, env, conf, state)
+func state(target specs.Platform) llb.State {
+	if binary.UsePrebuilts {
+		return image.Prebuilt(target)
+	}
+
+	return image.ImageSource(target)
 }
 
 func (bufBuild) PlatformIndependent() bool { return false }

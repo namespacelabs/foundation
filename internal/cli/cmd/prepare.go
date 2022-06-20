@@ -107,7 +107,6 @@ func NewPrepareCmd() *cobra.Command {
 		prepares = append(prepares, prepare.PrepareIngress(env, k8sconfig))
 
 		var prebuilts = []schema.PackageName{
-			"namespacelabs.dev/foundation/std/sdk/buf/baseimg",
 			"namespacelabs.dev/foundation/devworkflow/web",
 			"namespacelabs.dev/foundation/std/dev/controller",
 			"namespacelabs.dev/foundation/std/monitoring/grafana/tool",
