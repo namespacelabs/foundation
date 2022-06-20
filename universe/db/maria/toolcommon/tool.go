@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	id       = "init.mariadb.foundation.namespacelabs.dev"
+	id       = "init.mariadb.fn"
 	basePath = "/mariadb/init"
 )
 
@@ -33,7 +33,7 @@ func makeKey(s string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace string, name string, out *configure.ApplyOutput) ([]string, error) {
+func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace string, name string, focus string, out *configure.ApplyOutput) ([]string, error) {
 	args := []string{}
 
 	data := map[string]string{}
@@ -78,7 +78,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace stri
 		}
 	}
 
-	configMapName := fmt.Sprintf("%s.%s", name, id)
+	configMapName := fmt.Sprintf("%s.%s.%s", focus, name, id)
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "MariaDB Init ConfigMap",
@@ -122,7 +122,7 @@ func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.Package
 
 	namespace := kubetool.FromRequest(r).Namespace
 
-	args, err := mountConfigs(dbs, namespace, name, out)
+	args, err := mountConfigs(dbs, namespace, name, r.Focus.Server.Id, out)
 	if err != nil {
 		return err
 	}
