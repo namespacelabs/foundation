@@ -11,9 +11,14 @@ import (
 	"namespacelabs.dev/foundation/internal/console/common"
 )
 
-func NewJsonLoggerSink(logger *zerolog.Logger) ActionSink { return &jsonLogger{logger} }
+func NewJsonLoggerSink(logger *zerolog.Logger, maxLevel int) ActionSink {
+	return &jsonLogger{logger, maxLevel}
+}
 
-type jsonLogger struct{ logger *zerolog.Logger }
+type jsonLogger struct {
+	logger   *zerolog.Logger
+	maxLevel int // Only display actions at this level or below (all actions are still computed).
+}
 
 func (sl *jsonLogger) start(ev EventData, withArgs bool) *zerolog.Event {
 	e := sl.logger.Info().Str("action_id", ev.ActionID.String()).Str("name", ev.Name).Int("log_level", ev.Level)
@@ -37,15 +42,25 @@ func (sl *jsonLogger) start(ev EventData, withArgs bool) *zerolog.Event {
 	return e
 }
 
+func (sl jsonLogger) skipRendering(ev EventData) bool {
+	return ev.Level > sl.maxLevel
+}
+
 func (sl *jsonLogger) Waiting(ra *RunningAction) {
 	// Do nothing.
 }
 
 func (sl *jsonLogger) Started(ra *RunningAction) {
+	if sl.skipRendering(ra.Data) {
+		return
+	}
 	sl.start(ra.Data, true).Msg("start")
 }
 
 func (sl *jsonLogger) Done(ra *RunningAction) {
+	if sl.skipRendering(ra.Data) {
+		return
+	}
 	ev := sl.start(ra.Data, true)
 	if ra.Data.Err != nil {
 		t := ErrorType(ra.Data.Err)
@@ -61,6 +76,9 @@ func (sl *jsonLogger) Done(ra *RunningAction) {
 }
 
 func (sl *jsonLogger) Instant(ev *EventData) {
+	if sl.skipRendering(*ev) {
+		return
+	}
 	sl.start(*ev, true).Msg(ev.Name)
 }
 
