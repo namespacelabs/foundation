@@ -24,7 +24,6 @@ import (
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/termios"
-	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -502,83 +501,6 @@ func parentOf(root *node, tree map[tasks.ActionID]*node, id tasks.ActionID) *nod
 	}
 }
 
-func renderLine(w io.Writer, li lineItem) {
-	data := li.data
-
-	base := aec.EmptyBuilder.ANSI
-
-	if data.State.IsDone() {
-		// XXX using UTC() here to be consistent with zerolog.ConsoleWriter.
-		t := data.Completed.UTC().Format(logoutput.StampMilliTZ)
-		fmt.Fprint(w, base.With(aec.LightBlackF).Apply(t), " ")
-
-		if OutputActionID {
-			fmt.Fprint(w, aec.LightBlackF.Apply("["+data.ActionID.String()[:8]+"] "))
-		}
-	}
-
-	if data.Category != "" {
-		fmt.Fprint(w, base.With(aec.LightBlueF).Apply("("+data.Category+") "))
-	}
-
-	name := data.HumanReadable
-	if name == "" {
-		name = data.Name
-	}
-
-	if li.cached {
-		fmt.Fprint(w, base.With(aec.LightBlackF).Apply(name))
-	} else {
-		fmt.Fprint(w, name)
-	}
-
-	if progress := li.progress; progress != nil && data.State == tasks.ActionRunning {
-		if p := progress.FormatProgress(); p != "" {
-			fmt.Fprint(w, " ", base.With(aec.LightBlackF).Apply(p))
-		}
-	}
-
-	if data.HumanReadable == "" && len(li.scope) > 0 {
-		fmt.Fprint(w, " "+ColorPackage.String()+"[")
-		scope := li.scope
-		var origlen int
-		if len(scope) > 3 {
-			origlen = len(scope)
-			scope = scope[:3]
-		}
-
-		for k, pkg := range scope {
-			if k > 0 {
-				fmt.Fprint(w, " ")
-			}
-			fmt.Fprint(w, pkg)
-		}
-
-		if origlen > 0 {
-			fmt.Fprintf(w, " and %d more", origlen-len(scope))
-		}
-
-		fmt.Fprint(w, "]"+aec.Reset)
-	}
-
-	for _, kv := range li.serialized {
-		color := aec.CyanF
-		if kv.result {
-			color = aec.BlueF
-		}
-		fmt.Fprint(w, " ", base.With(color).Apply(kv.key+"="), kv.value)
-	}
-
-	if data.Err != nil {
-		t := tasks.ErrorType(data.Err)
-		if t == tasks.ErrTypeIsCancelled || t == tasks.ErrTypeIsDependencyFailed {
-			fmt.Fprint(w, " ", base.With(aec.BlueF).Apply(string(t)))
-		} else {
-			fmt.Fprint(w, " ", base.With(aec.RedF).Apply("err="), base.With(aec.RedF).Apply(data.Err.Error()))
-		}
-	}
-}
-
 type debugData struct {
 	Width       uint
 	Height      uint
@@ -754,7 +676,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 		for _, r := range printableCompleted {
 			fmt.Fprint(raw, aec.EraseLine(aec.EraseModes.Tail))
-			renderCompletedAction(raw, r)
+			WithColors.renderCompletedAction(raw, r)
 		}
 	}
 
@@ -992,7 +914,7 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 
 			fmt.Fprint(&lineb, prefix)
 
-			renderLine(&lineb, *child.item)
+			WithColors.renderLine(&lineb, *child.item)
 
 			suffix := ""
 			if data.State == tasks.ActionRunning {
@@ -1079,30 +1001,4 @@ func (c *ConsoleSink) EnterInputMode(ctx context.Context, prompt ...string) func
 		reenableRendering()
 		return func() {}
 	}
-}
-
-func renderCompletedAction(raw io.Writer, r lineItem) {
-	renderLine(raw, r)
-	if !r.data.Started.IsZero() && !r.cached {
-		if !r.data.Started.Equal(r.data.Created) {
-			d := r.data.Started.Sub(r.data.Created)
-			if d >= 1*time.Microsecond {
-				fmt.Fprint(raw, " ", aec.LightBlackF.Apply("waited="), timefmt.Format(d))
-			}
-		}
-
-		d := r.data.Completed.Sub(r.data.Started)
-		fmt.Fprint(raw, " ", aec.LightBlackF.Apply("took="), timefmt.Format(d))
-	}
-	fmt.Fprintln(raw)
-}
-
-func LogAction(w io.Writer, ev tasks.EventData) {
-	item := lineItem{
-		data: ev,
-	}
-
-	item.precompute()
-
-	renderCompletedAction(w, item)
 }

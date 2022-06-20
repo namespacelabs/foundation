@@ -66,6 +66,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/foundation/workspace/tasks/actiontracing"
+	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
 )
 
 var (
@@ -511,9 +512,7 @@ func consoleToSink(out *os.File, interactive bool) (zerolog.Logger, tasks.Action
 		return logout.ZeroLogger(), consoleSink, cleanup
 	}
 
-	logger := logout.ZeroLogger()
-
-	return logger, tasks.NewJsonLoggerSink(logger, maxLogLevel), nil
+	return logout.ZeroLogger(), simplelog.NewSink(out, maxLogLevel), nil
 }
 
 func cpuprofile(cpuprofile string) func() {
