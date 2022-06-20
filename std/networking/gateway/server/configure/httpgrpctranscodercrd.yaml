@@ -15,6 +15,9 @@ spec:
       served: true
       # One and only one version must be marked as the storage version.
       storage: true
+      # subresources describes the subresources for custom resources.
+      subresources:
+        status: {}
       schema:
         openAPIV3Schema:
           type: object
@@ -46,7 +49,32 @@ spec:
                 # and it's transitive .proto dependencies.
                 encodedProtoDescriptor:
                   type: string
-       # subresources describes the subresources for custom resources.           
-      subresources:
-        # enables the status subresource.
-        status: {}      
+            status:
+              description: Holds the applied state of the Configuration (from the server).
+              type: object
+              properties:
+                conditions: 
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      # type of condition in CamelCase or in foo.example.com/CamelCase.
+                      type:
+                        type: string 
+                      # status of the condition, one of `True`, `False`, or `Unknown`.  
+                      status:
+                        type: string
+                      # observedGeneration represents the .metadata.generation that the condition was set based upon.  
+                      observeredGeneration:
+                        type: integer
+                      # lastTransitionTime is the last time the condition transitioned from one status to another.
+                      lastTransitionTime:
+                        type: string
+                      # reason contains a programmatic identifier indicating the reason for the condition's last transition
+                      # and is populated normally for errors.
+                      reason:
+                        type: string
+                      # message is a human readable message indicating details about the transition. This field again
+                      # is populated for errors.  
+                      message:
+                        type: string
