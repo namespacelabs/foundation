@@ -165,25 +165,31 @@ func loadServers(ctx context.Context, env provision.Env, locations []fnfs.Locati
 
 	var servers []provision.Server
 	for _, loc := range locations {
-		pp, err := loader.LoadByName(ctx, loc.AsPackageName())
-		if err != nil {
-			return nil, nil, fnerrors.Wrap(loc, err)
-		}
+		if err := tasks.Action("package.load-server").Scope(loc.AsPackageName()).Run(ctx, func(ctx context.Context) error {
 
-		if pp.Server == nil {
-			if specified {
-				return nil, nil, fnerrors.UserError(loc, "expected a server")
+			pp, err := loader.LoadByName(ctx, loc.AsPackageName())
+			if err != nil {
+				return fnerrors.Wrap(loc, err)
 			}
 
-			continue
-		}
+			if pp.Server == nil {
+				if specified {
+					return fnerrors.UserError(loc, "expected a server")
+				}
 
-		srv, err := env.RequireServerWith(ctx, loader, loc.AsPackageName())
-		if err != nil {
-			return nil, nil, fnerrors.Wrap(loc, err)
-		}
+				return nil
+			}
 
-		servers = append(servers, srv)
+			srv, err := env.RequireServerWith(ctx, loader, loc.AsPackageName())
+			if err != nil {
+				return fnerrors.Wrap(loc, err)
+			}
+
+			servers = append(servers, srv)
+			return nil
+		}); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	return loader.Seal(), servers, nil

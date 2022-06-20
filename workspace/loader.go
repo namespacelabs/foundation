@@ -253,10 +253,10 @@ func (pl *PackageLoader) LoadByNameWithOpts(ctx context.Context, packageName sch
 		return nil, err
 	}
 
-	return pl.LoadPackage(ctx, loc, opt...)
+	return pl.loadPackage(ctx, loc, opt...)
 }
 
-func (pl *PackageLoader) LoadPackage(ctx context.Context, loc Location, opt ...LoadPackageOpt) (parsed *Package, err error) {
+func (pl *PackageLoader) loadPackage(ctx context.Context, loc Location, opt ...LoadPackageOpt) (*Package, error) {
 	opts := LoadPackageOpts{LoadPackageReferences: true}
 	for _, o := range opt {
 		o(&opts)

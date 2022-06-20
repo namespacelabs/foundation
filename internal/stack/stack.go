@@ -127,7 +127,9 @@ func computeStack(ctx context.Context, opts ProvisionOpts, servers ...provision.
 
 	state := eval.NewAllocState()
 	for k, server := range servers {
-		if err := computeStackContents(ctx, server, ps[k], state, opts, builder); err != nil {
+		if err := tasks.Action("provision.evaluate").Scope(server.PackageName()).Run(ctx, func(ctx context.Context) error {
+			return computeStackContents(ctx, server, ps[k], state, opts, builder)
+		}); err != nil {
 			return nil, err
 		}
 	}
@@ -145,37 +147,34 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 		for k, n := range deps {
 			k := k // Close k.
 			n := n // Close n.
-			loc := n.Location
 
 			exec.Go(func(ctx context.Context) error {
-				return tasks.Action("package.eval.provisioning").Scope(loc.PackageName).Run(ctx, func(ctx context.Context) error {
-					ev, err := EvalProvision(ctx, server, n, state)
-					if err != nil {
-						return fnerrors.Wrap(loc, err)
-					}
+				ev, err := EvalProvision(ctx, server, n, state)
+				if err != nil {
+					return err
+				}
 
-					parsedDeps[k] = ev
+				parsedDeps[k] = ev
 
-					for _, pkg := range ev.ProvisionPlan.DeclaredStack {
-						pkg := pkg // Close pkg.
+				for _, pkg := range ev.ProvisionPlan.DeclaredStack {
+					pkg := pkg // Close pkg.
 
-						exec.Go(func(ctx context.Context) error {
-							server, ps, err := out.CheckAdd(ctx, server.Env(), pkg)
-							if err != nil {
-								return err
-							}
+					exec.Go(func(ctx context.Context) error {
+						server, ps, err := out.CheckAdd(ctx, server.Env(), pkg)
+						if err != nil {
+							return err
+						}
 
-							if ps == nil {
-								// Already exists.
-								return nil
-							}
+						if ps == nil {
+							// Already exists.
+							return nil
+						}
 
-							return computeStackContents(ctx, *server, ps, state, opts, out)
-						})
-					}
+						return computeStackContents(ctx, *server, ps, state, opts, out)
+					})
+				}
 
-					return nil
-				})
+				return nil
 			})
 		}
 
@@ -227,6 +226,17 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 }
 
 func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Package, state *eval.AllocState) (*ParsedNode, error) {
+	return tasks.Return(ctx, tasks.Action("package.eval.provisioning").Scope(n.PackageName()), func(ctx context.Context) (*ParsedNode, error) {
+		pn, err := evalProvision(ctx, server, n, state)
+		if err != nil {
+			return nil, fnerrors.Wrap(n.Location, err)
+		}
+
+		return pn, nil
+	})
+}
+
+func evalProvision(ctx context.Context, server provision.Server, n *workspace.Package, state *eval.AllocState) (*ParsedNode, error) {
 	var combinedProps frontend.PrepareProps
 	for _, hook := range n.PrepareHooks {
 		if hook.InvokeInternal != "" {
