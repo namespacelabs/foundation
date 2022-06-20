@@ -48,11 +48,36 @@ func (in *HttpGrpcTranscoderSpec) DeepCopyObject() runtime.Object {
 	return nil
 }
 
+type HttpGrpcTranscoderStatus struct {
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+func (in *HttpGrpcTranscoderStatus) DeepCopyInto(out *HttpGrpcTranscoderStatus) {
+	*out = *in
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]metav1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+}
+
+func (in *HttpGrpcTranscoderStatus) DeepCopy() *HttpGrpcTranscoderStatus {
+	if in == nil {
+		return nil
+	}
+	out := new(HttpGrpcTranscoderStatus)
+	in.DeepCopyInto(out)
+	return out
+}
+
 type HttpGrpcTranscoder struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec HttpGrpcTranscoderSpec `json:"spec,omitempty"`
+	Spec   HttpGrpcTranscoderSpec   `json:"spec,omitempty"`
+	Status HttpGrpcTranscoderStatus `json:"status"`
 }
 
 func (in *HttpGrpcTranscoder) DeepCopyInto(out *HttpGrpcTranscoder) {
@@ -60,6 +85,7 @@ func (in *HttpGrpcTranscoder) DeepCopyInto(out *HttpGrpcTranscoder) {
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	in.Spec.DeepCopyInto(&out.Spec)
+	in.Status.DeepCopyInto(&out.Status)
 }
 
 func (in *HttpGrpcTranscoder) DeepCopy() *HttpGrpcTranscoder {
