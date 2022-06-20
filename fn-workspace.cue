@@ -7,7 +7,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/cmd/fn":                                                         "sha256:4db0c0eb2c0714bb12cf107b6fcd5cc66607c4fcd877cbdc831be04001ffcd61"
 		"namespacelabs.dev/foundation/cmd/fncighauth":                                                 "sha256:d77dba9562811afcb0d137386961e18dce75ca3a3dcfb2d2ff34791f53f4724c"
 		"namespacelabs.dev/foundation/cmd/fninfo":                                                     "sha256:ab061c68259a3416e8e00687957d96a52e7fca98305269770fef427bc11e3944"
-		"namespacelabs.dev/foundation/cmd/fnpipelines":                                                "sha256:e1774135165ba9c23cfdfb31c19c9a4b4eb82859ca592abe93330224135f6f21"
+		"namespacelabs.dev/foundation/cmd/fnpipelines":                                                "sha256:528087827c86050c662449750879faed833909e4e52000b0f3e0a5ef2f8df45c"
 		"namespacelabs.dev/foundation/devworkflow/web":                                                "sha256:1a36a2c1f24a39d6a30f954beb009e78920584f3955006f031d81a716101f120"
 		"namespacelabs.dev/foundation/std/dev/controller":                                             "sha256:cb54c221ba43039e728e4e9e2f15d739f189aa7990867b2051e3d74f6c798d45"
 		"namespacelabs.dev/foundation/std/development/filesync/controller":                            "sha256:bca9f5d7150facebf922fd6069bbbafb54612b8c40ad9394a52df8fe3e3cbe8c"
