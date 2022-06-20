@@ -255,6 +255,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&deploy.RunCodegen, "run_codegen", deploy.RunCodegen, "If set to false, skip codegen.")
 	rootCmd.PersistentFlags().BoolVar(&tool.InvocationDebug, "invocation_debug", tool.InvocationDebug,
 		"If set to true, pass --debug to invocations.")
+	rootCmd.PersistentFlags().BoolVar(&kubernetes.UseNodePlatformsForProduction, "kubernetes_use_node_platforms_in_production_builds",
+		kubernetes.UseNodePlatformsForProduction, "If set to true, queries the target node platforms to determine what platforms to build for.")
+	rootCmd.PersistentFlags().StringSliceVar(&kubernetes.ProductionPlatforms, "production_platforms", kubernetes.ProductionPlatforms,
+		"The set of platforms that we build production images for.")
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
@@ -271,6 +275,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"run_tools_on_kubernetes",
 		"run_codegen",
 		"invocation_debug",
+		"kubernetes_use_node_platforms_in_production_builds",
+		"production_platforms",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

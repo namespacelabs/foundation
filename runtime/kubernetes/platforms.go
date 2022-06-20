@@ -14,6 +14,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
+var (
+	UseNodePlatformsForProduction = false
+	ProductionPlatforms           = []string{"linux/amd64", "linux/arm64"}
+)
+
 func (r Unbound) SystemInfo(ctx context.Context) (*kubedef.SystemInfo, error) {
 	return compute.GetValue[*kubedef.SystemInfo](ctx, &fetchSystemInfo{
 		cli: r.cli,
@@ -31,9 +36,8 @@ func (r Unbound) UnmatchedTargetPlatforms(ctx context.Context) ([]specs.Platform
 }
 
 func (r K8sRuntime) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
-	if r.env.Purpose == schema.Environment_PRODUCTION {
-		// XXX make this configurable.
-		return parsePlatforms([]string{"linux/amd64", "linux/arm64"})
+	if !UseNodePlatformsForProduction && r.env.Purpose == schema.Environment_PRODUCTION {
+		return parsePlatforms(ProductionPlatforms)
 	}
 
 	return r.UnmatchedTargetPlatforms(ctx)
