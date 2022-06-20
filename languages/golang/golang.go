@@ -163,10 +163,9 @@ func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schem
 
 	if len(list) > 0 {
 		dl.Add("Generate Go proto sources", &source.OpProtoGen{
-			PackageName:         pkg.PackageName().String(),
-			GenerateHttpGateway: runtime.UseGoInternalGrpcGateway && pkg.Node().ExportServicesAsHttp,
-			Protos:              protos.Merge(list...),
-			Framework:           source.OpProtoGen_GO,
+			PackageName: pkg.PackageName().String(),
+			Protos:      protos.Merge(list...),
+			Framework:   source.OpProtoGen_GO,
 		})
 	}
 
@@ -228,14 +227,6 @@ func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error
 				Kind:        p.Kind,
 				PackageName: svc.PackageName,
 			})
-		}
-	}
-
-	if needGatewayCount > 0 {
-		if !sealed.HasDep(runtime.GrpcHttpTranscodeNode) {
-			if runtime.UseGoInternalGrpcGateway && !sealed.HasDep(gatewayNode) {
-				return fnerrors.UserError(sealed.Location, "server exposes gRPC services as HTTP, it must depend on %s", gatewayNode)
-			}
 		}
 	}
 

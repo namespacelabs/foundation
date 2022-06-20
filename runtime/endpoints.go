@@ -13,7 +13,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/schema/schemahelper"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -70,23 +69,6 @@ func ComputeEndpoints(srv provision.Server, allocatedPorts []*schema.Endpoint_Po
 		endpoints = append(endpoints, spec)
 	}
 
-	var gatewayServices []string
-	var publicGateway bool
-	for _, endpoint := range endpoints {
-		exported, err := schemahelper.UnmarshalServiceMetadata[*schema.GrpcExportService](endpoint.ServiceMetadata, kindNeedsGrpcGateway)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if exported != nil {
-			gatewayServices = append(gatewayServices, exported.ProtoTypename)
-
-			if endpoint.Type == schema.Endpoint_INTERNET_FACING {
-				publicGateway = true
-			}
-		}
-	}
-
 	// Handle HTTP.
 	if needsHTTP := len(server.UrlMap) > 0; needsHTTP {
 		var httpPort *schema.Endpoint_Port
@@ -109,38 +91,6 @@ func ComputeEndpoints(srv provision.Server, allocatedPorts []*schema.Endpoint_Po
 				{Protocol: "http"},
 			},
 		})
-	}
-
-	slices.Sort(gatewayServices)
-	gatewayServices = slices.Compact(gatewayServices)
-
-	if len(gatewayServices) > 0 {
-		var hasTranscodeNode bool
-
-		for _, imp := range sch.Server.Import {
-			if GrpcHttpTranscodeNode.Equals(imp) {
-				hasTranscodeNode = true
-				break
-			}
-		}
-
-		if !hasTranscodeNode {
-			switch server.Framework {
-			case schema.Framework_GO:
-				if UseGoInternalGrpcGateway {
-					gwEndpoint, err := makeGrpcGatewayEndpoint(sch.Server, serverPorts, gatewayServices, publicGateway)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					// We need a http service to hit.
-					endpoints = append(endpoints, gwEndpoint)
-				}
-
-			default:
-				return nil, nil, fnerrors.New("server includes grpc gateway requirements, but it's not of a supported framework")
-			}
-		}
 	}
 
 	var internal []*schema.InternalEndpoint

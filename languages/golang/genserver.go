@@ -11,11 +11,9 @@ import (
 	"strings"
 	"text/template"
 
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/gosupport"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
@@ -96,26 +94,6 @@ func prepareGenerate(ctx context.Context, loader workspace.Packages, importList 
 				n.VarName = fmt.Sprintf("%sDeps", n.Name)
 				n.IsService = true
 				n.Typename = serviceDepsType
-
-				if dep.Parent.ExportServicesAsHttp && runtime.UseGoInternalGrpcGateway && !imports.Includes(runtime.GrpcHttpTranscodeNode) {
-					for _, svc := range dep.Parent.ExportService {
-						if len(svc.Proto) == 0 {
-							return fnerrors.UserError(dep.Location, "%s: can't compute go package, no sources", svc.ProtoTypename)
-						}
-
-						gopkg, err := gosupport.ComputeGoPackage(dep.Location.Abs(filepath.Dir(svc.Proto[0])))
-						if err != nil {
-							return err
-						}
-
-						typedef := gosupport.TypeDef{
-							GoImportURL: gopkg,
-							GoName:      fmt.Sprintf("Register%sHandler", protoreflect.FullName(svc.ProtoTypename).Name()),
-						}
-
-						n.GrpcGatewayServices = append(n.GrpcGatewayServices, typedef)
-					}
-				}
 
 				opts.Services = append(opts.Services, n)
 			} else if dep.Scope != nil {
@@ -291,15 +269,14 @@ type Refs struct {
 
 type nodeWithDeps struct {
 	goPackage
-	PackageName         schema.PackageName
-	Name                string
-	VarName             string
-	Typename            string
-	Scope               string
-	IsService           bool
-	GrpcGatewayServices []gosupport.TypeDef
-	Provisioned         []*typeProvider
-	Refs                []Refs // Same indexing as `Provisioned`.
+	PackageName schema.PackageName
+	Name        string
+	VarName     string
+	Typename    string
+	Scope       string
+	IsService   bool
+	Provisioned []*typeProvider
+	Refs        []Refs // Same indexing as `Provisioned`.
 }
 
 type genTmplOptions struct {
@@ -331,8 +308,6 @@ func WireServices(ctx context.Context, srv {{$opts.Imports.Ensure "namespacelabs
 			errs = append(errs, err)
 		}
 
-{{range $v.GrpcGatewayServices}}srv.InternalRegisterGrpcGateway({{$opts.Imports.Ensure .GoImportURL}}{{.GoName}})
-{{end -}}
 {{end}}
 	return errs
 }

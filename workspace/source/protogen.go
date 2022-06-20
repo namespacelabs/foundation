@@ -39,8 +39,7 @@ const (
 )
 
 type ProtosOpts struct {
-	HTTPGateway bool
-	Framework   OpProtoGen_Framework
+	Framework OpProtoGen_Framework
 }
 
 func RegisterGraphHandlers() {
@@ -58,13 +57,7 @@ func (statefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Se
 	}
 
 	mod := &perModuleGen{}
-
-	if msg.GenerateHttpGateway {
-		mod.withHTTP.add(msg.Framework, msg.Protos)
-	} else {
-		mod.withoutHTTP.add(msg.Framework, msg.Protos)
-	}
-
+	mod.descriptors.add(msg.Framework, msg.Protos)
 	return nil, generateProtoSrcs(ctx, buf.Image(ctx, env, wenv), mod, wenv.OutputFS())
 }
 
@@ -105,8 +98,7 @@ func (m *multiGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Se
 
 	m.locs = append(m.locs, loc)
 	m.opts = append(m.opts, ProtosOpts{
-		HTTPGateway: msg.GenerateHttpGateway,
-		Framework:   msg.Framework,
+		Framework: msg.Framework,
 	})
 	m.files = append(m.files, msg.Protos)
 
@@ -133,8 +125,7 @@ func (p *perLanguageDescriptors) add(framework OpProtoGen_Framework, fileDescSet
 
 type perModuleGen struct {
 	root        *workspace.Module
-	withHTTP    perLanguageDescriptors
-	withoutHTTP perLanguageDescriptors
+	descriptors perLanguageDescriptors
 }
 
 func ensurePerModule(mods []*perModuleGen, root *workspace.Module) ([]*perModuleGen, *perModuleGen) {
@@ -160,12 +151,7 @@ func (m *multiGen) Commit() error {
 
 	for k := range m.locs {
 		mods, mod = ensurePerModule(mods, m.locs[k].Module)
-
-		if m.opts[k].HTTPGateway {
-			mod.withHTTP.add(m.opts[k].Framework, m.files[k])
-		} else {
-			mod.withoutHTTP.add(m.opts[k].Framework, m.files[k])
-		}
+		mod.descriptors.add(m.opts[k].Framework, m.files[k])
 	}
 
 	m.mu.Unlock()
@@ -191,17 +177,10 @@ func makeProtoSrcs(buf compute.Computable[oci.Image], parsed *protos.FileDescrip
 func generateProtoSrcs(ctx context.Context, buf compute.Computable[oci.Image], mod *perModuleGen, out fnfs.ReadWriteFS) error {
 	var fsys []compute.Computable[fs.FS]
 
-	for framework, descriptors := range mod.withHTTP.descriptorsMap {
+	for framework, descriptors := range mod.descriptors.descriptorsMap {
 		if len(descriptors) != 0 {
 			fsys = append(fsys, makeProtoSrcs(buf, protos.Merge(descriptors...),
-				ProtosOpts{HTTPGateway: true, Framework: framework}))
-		}
-	}
-
-	for framework, descriptors := range mod.withoutHTTP.descriptorsMap {
-		if len(descriptors) != 0 {
-			fsys = append(fsys, makeProtoSrcs(buf, protos.Merge(descriptors...),
-				ProtosOpts{HTTPGateway: false, Framework: framework}))
+				ProtosOpts{Framework: framework}))
 		}
 	}
 
@@ -238,7 +217,6 @@ func (g *genProtosAtLoc) Action() *tasks.ActionEvent {
 	}
 
 	return tasks.Action("proto.generate").
-		Arg("http_gateway", g.opts.HTTPGateway).
 		Arg("framework", strings.ToLower(g.opts.Framework.String())).
 		Arg("files", files)
 }
@@ -274,14 +252,6 @@ func (g *genProtosAtLoc) Compute(ctx context.Context, deps compute.Resolved) (fs
 		// Generates "_pb.d.ts" files
 		t.Plugins = append(t.Plugins,
 			buf.PluginTmpl{Name: "ts", Out: outDir, Opt: []string{}})
-	}
-
-	if g.opts.HTTPGateway {
-		t.Plugins = append(t.Plugins, buf.PluginTmpl{
-			Name: "grpc-gateway",
-			Out:  outDir,
-			Opt:  []string{"paths=source_relative", "generate_unbound_methods=true"},
-		})
 	}
 
 	templateBytes, err := json.Marshal(t)
@@ -356,11 +326,7 @@ func GenProtosAtPaths(ctx context.Context, env ops.Environment, loader workspace
 	}
 
 	mod := &perModuleGen{}
-	if opts.HTTPGateway {
-		mod.withHTTP.add(opts.Framework, parsed)
-	} else {
-		mod.withoutHTTP.add(opts.Framework, parsed)
-	}
+	mod.descriptors.add(opts.Framework, parsed)
 
 	return generateProtoSrcs(ctx, buf.Image(ctx, env, loader), mod, out)
 }
