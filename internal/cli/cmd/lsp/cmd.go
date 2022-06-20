@@ -32,7 +32,7 @@ func NewLSPCmd() *cobra.Command {
 			stream := jsonrpc2.NewStream(pipe)
 			conn := jsonrpc2.NewConn(stream)
 			client := protocol.ClientDispatcher(conn, zap.New(nil))
-			srv := newServer(conn, client)
+			srv := newServer(ctx, conn, client)
 			conn.Go(ctx, goroutineHandler(protocol.ServerHandler(srv, nil)))
 			<-conn.Done()
 			return nil

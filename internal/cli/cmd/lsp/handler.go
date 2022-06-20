@@ -7,6 +7,7 @@ package lsp
 import (
 	"context"
 	"fmt"
+	"io"
 	"math"
 	"net/url"
 	"os"
@@ -21,10 +22,10 @@ import (
 	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/parser"
 	"cuelang.org/go/cue/token"
-	"github.com/rs/zerolog/log"
 	"go.lsp.dev/jsonrpc2"
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 )
@@ -33,10 +34,11 @@ type server struct {
 	conn      jsonrpc2.Conn
 	client    protocol.Client
 	openFiles *OpenFiles
+	log       io.Writer
 }
 
-func newServer(conn jsonrpc2.Conn, client protocol.Client) *server {
-	return &server{conn, client, NewOpenFiles()}
+func newServer(ctx context.Context, conn jsonrpc2.Conn, client protocol.Client) *server {
+	return &server{conn, client, NewOpenFiles(), console.Output(ctx, "lsp")}
 }
 
 const generateCommandID = "fn_generate"
@@ -44,7 +46,7 @@ const generateCommandID = "fn_generate"
 // Lifecycle
 
 func (s *server) Initialize(ctx context.Context, params *protocol.InitializeParams) (result *protocol.InitializeResult, err error) {
-	log.Ctx(ctx).Info().Msgf("Initialize %v", params)
+	fmt.Fprintln(s.log, "Initialize", params)
 	return &protocol.InitializeResult{
 		Capabilities: protocol.ServerCapabilities{
 			DocumentFormattingProvider: true,
@@ -65,15 +67,15 @@ func (s *server) Initialize(ctx context.Context, params *protocol.InitializePara
 	}, nil
 }
 func (s *server) Initialized(ctx context.Context, params *protocol.InitializedParams) (err error) {
-	log.Ctx(ctx).Info().Msgf("Initialized %v", params)
+	fmt.Fprintln(s.log, "Initialized", params)
 	return nil
 }
 func (s *server) Shutdown(ctx context.Context) (err error) {
-	log.Ctx(ctx).Info().Msgf("Shutdown")
+	fmt.Fprintln(s.log, "Shutdown")
 	return nil
 }
 func (s *server) Exit(ctx context.Context) (err error) {
-	log.Ctx(ctx).Info().Msgf("Exit")
+	fmt.Fprintln(s.log, "Exit")
 	s.conn.Close()
 	return nil
 }
@@ -107,7 +109,7 @@ func (s *server) DidChange(ctx context.Context, params *protocol.DidChangeTextDo
 }
 
 func (s *server) DidSave(ctx context.Context, params *protocol.DidSaveTextDocumentParams) (err error) {
-	log.Ctx(ctx).Info().Msgf("DidSave")
+	fmt.Fprintln(s.log, "DidSave")
 
 	config, err := s.loadConfig(ctx)
 	if err != nil {
@@ -221,7 +223,7 @@ func (s *server) runGenerate(ctx context.Context, path string) error {
 }
 
 func (s *server) CodeAction(ctx context.Context, params *protocol.CodeActionParams) (result []protocol.CodeAction, err error) {
-	log.Ctx(ctx).Info().Msgf("CodeAction %v", params.TextDocument.URI)
+	fmt.Fprintln(s.log, "CodeAction", params.TextDocument.URI)
 	// This surfaces the generate command in the context menus.
 	path, err := uriFilePath(params.TextDocument.URI)
 	if err != nil {
@@ -269,7 +271,7 @@ func (s *server) updateDiagnostics(ctx context.Context, document protocol.Versio
 		for _, pos := range err.InputPositions() {
 			fmt.Fprintf(&buf, "(%s %d %d) ", pos.Filename(), pos.Line(), pos.Column())
 		}
-		log.Ctx(ctx).Info().Msgf("updateDiagnostics root=%v err=%v ipos=%s",
+		fmt.Fprintf(s.log, "updateDiagnostics root=%v err=%v ipos=%s\n",
 			path.Dir(absPath), err, buf.String())
 		var startPosition protocol.Position
 		if err.Position().Line() > 0 && err.Position().Column() > 0 {
@@ -323,7 +325,7 @@ func (s *server) Definition(ctx context.Context, params *protocol.DefinitionPara
 	if err != nil {
 		return nil, err
 	}
-	log.Ctx(ctx).Info().Msgf("Definition %s:%d:%d", absPath, params.Position.Line, params.Position.Character)
+	fmt.Fprintf(s.log, "Definition %s:%d:%d\n", absPath, params.Position.Line, params.Position.Character)
 
 	ws, wsPath, err := s.WorkspaceForFile(ctx, absPath)
 	if err != nil {
@@ -342,9 +344,9 @@ func (s *server) Definition(ctx context.Context, params *protocol.DefinitionPara
 		return nil, err
 	}
 	matchingImport := cueImportAtPosition(parsed, parsePos)
-	log.Ctx(ctx).Info().Msgf("matching import %v", matchingImport)
+	fmt.Fprintf(s.log, "matching import %v\n", matchingImport)
 	if matchingImport != nil {
-		return packageLocations(ctx, ws, matchingImport)
+		return s.packageLocations(ctx, ws, matchingImport)
 	}
 
 	// Then interpret Cue values.
@@ -354,7 +356,7 @@ func (s *server) Definition(ctx context.Context, params *protocol.DefinitionPara
 		return nil, err
 	}
 
-	log.Ctx(ctx).Info().Msgf("updateDiagnostics pkg=%v err=%v val=%s",
+	fmt.Fprintf(s.log, "updateDiagnostics pkg=%v err=%v val=%s\n",
 		fqName, err, describeValue(val, ""))
 
 	cuePos := lspPosToCue(fqName, params.Position)
@@ -404,7 +406,7 @@ func (s *server) Hover(ctx context.Context, params *protocol.HoverParams) (resul
 
 	cuePos := lspPosToCue(importPath, params.Position)
 	bestMatch := cueValueAtPosition(val, cuePos)
-	log.Ctx(ctx).Info().Msgf("Hover %v", bestMatch)
+	fmt.Fprintln(s.log, "Hover", bestMatch)
 
 	if bestMatch == nil {
 		return nil, nil
@@ -508,12 +510,12 @@ func cueImportAtPosition(parsed *ast.File, pos token.Position) (matchingImport *
 	return
 }
 
-func packageLocations(ctx context.Context, ws *FnWorkspace, importSpec *ast.ImportSpec) ([]protocol.Location, error) {
+func (s *server) packageLocations(ctx context.Context, ws *FnWorkspace, importSpec *ast.ImportSpec) ([]protocol.Location, error) {
 	importInfo, err := astutil.ParseImportSpec(importSpec)
 	if err != nil {
 		return nil, err
 	}
-	log.Ctx(ctx).Info().Msgf("parsed %v", importInfo)
+	fmt.Fprintln(s.log, "parsed", importInfo)
 	if fncue.IsStandardImportPath(importInfo.Dir) {
 		// Built-in package import
 		return nil, nil

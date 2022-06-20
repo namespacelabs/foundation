@@ -7,14 +7,15 @@ package lsp
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/fs"
 	"path"
 	"sync"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/errors"
-	"github.com/rs/zerolog/log"
 	"go.lsp.dev/uri"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
@@ -93,7 +94,7 @@ func (ws *FnWorkspace) SnapshotDir(ctx context.Context, pkgname schema.PackageNa
 
 	loc, err := packageLoader.Resolve(ctx, pkgname) // This may download external modules.
 	if err != nil {
-		log.Ctx(ctx).Warn().Msgf("Resolve: %s", pkgname)
+		fmt.Fprintf(console.Warnings(ctx), "%s: resolve failed: %v\n", pkgname, err)
 		return fnfs.Location{}, err
 	}
 
