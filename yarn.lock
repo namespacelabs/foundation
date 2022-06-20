@@ -67,7 +67,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: node
   linkType: soft
 
@@ -81,7 +81,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: unknown
   linkType: soft
 
@@ -94,7 +94,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: node
   linkType: soft
 
@@ -107,7 +107,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: unknown
   linkType: soft
 
@@ -126,7 +126,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify": "fn:namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/fastify"
     "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-jaeger": "fn:namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/jaeger"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: unknown
   linkType: soft
 
@@ -140,7 +140,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: node
   linkType: soft
 
@@ -154,7 +154,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: unknown
   linkType: soft
 
@@ -169,7 +169,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: node
   linkType: soft
 
@@ -184,7 +184,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: unknown
   linkType: soft
 
@@ -197,7 +197,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: node
   linkType: soft
 
@@ -210,7 +210,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: unknown
   linkType: soft
 
@@ -225,8 +225,8 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
+    "@protobuf-ts/runtime": 2.7.0
     fastify: 3.29.0
-    google-protobuf: 3.20.0
   languageName: node
   linkType: soft
 
@@ -241,8 +241,8 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
+    "@protobuf-ts/runtime": 2.7.0
     fastify: 3.29.0
-    google-protobuf: 3.20.0
   languageName: unknown
   linkType: soft
 
@@ -255,7 +255,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
     yargs: 16.2.0
   languageName: node
   linkType: soft
@@ -269,7 +269,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
     yargs: 16.2.0
   languageName: unknown
   linkType: soft
@@ -282,7 +282,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
     yargs: 16.2.0
   languageName: node
   linkType: soft
@@ -295,7 +295,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
     yargs: 16.2.0
   languageName: unknown
   linkType: soft
@@ -309,7 +309,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: node
   linkType: soft
 
@@ -322,7 +322,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: unknown
   linkType: soft
 
@@ -334,8 +334,8 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
+    "@protobuf-ts/runtime": 2.7.0
     fastify: 3.29.0
-    google-protobuf: 3.20.0
     middie: 6.1.0
     yargs: 16.2.0
   languageName: node
@@ -349,8 +349,8 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
     "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
+    "@protobuf-ts/runtime": 2.7.0
     fastify: 3.29.0
-    google-protobuf: 3.20.0
     middie: 6.1.0
     yargs: 16.2.0
   languageName: unknown
@@ -367,7 +367,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify": "fn:namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/fastify"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: node
   linkType: soft
 
@@ -382,7 +382,7 @@ __metadata:
     "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify": "fn:namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/fastify"
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: unknown
   linkType: soft
 
@@ -398,7 +398,7 @@ __metadata:
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
     "@opentelemetry/exporter-jaeger": 1.3.0
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
     yargs: 16.2.0
   languageName: node
   linkType: soft
@@ -415,7 +415,7 @@ __metadata:
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@opentelemetry/api": 1.0.4
     "@opentelemetry/exporter-jaeger": 1.3.0
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
     yargs: 16.2.0
   languageName: unknown
   linkType: soft
@@ -434,7 +434,7 @@ __metadata:
     "@opentelemetry/sdk-trace-base": 1.3.0
     "@opentelemetry/sdk-trace-node": 1.3.0
     "@opentelemetry/semantic-conventions": 1.3.0
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: node
   linkType: soft
 
@@ -452,7 +452,7 @@ __metadata:
     "@opentelemetry/sdk-trace-base": 1.3.0
     "@opentelemetry/sdk-trace-node": 1.3.0
     "@opentelemetry/semantic-conventions": 1.3.0
-    google-protobuf: 3.20.0
+    "@protobuf-ts/runtime": 2.7.0
   languageName: unknown
   linkType: soft
 
@@ -582,6 +582,13 @@ __metadata:
   version: 1.3.0
   resolution: "@opentelemetry/semantic-conventions@npm:1.3.0"
   checksum: 96bfaf685299eee7e957f77462a1879c6ab0cddf4edd8e5ca48f4805e85470106d844ab876a37873b77b720d33b0f198e80fe1cd3c85dd02874f58d181ee0460
+  languageName: node
+  linkType: hard
+
+"@protobuf-ts/runtime@npm:2.7.0":
+  version: 2.7.0
+  resolution: "@protobuf-ts/runtime@npm:2.7.0"
+  checksum: 4fad2a9da293e2fb96c54d1ff5f893d3291ec7106746e7563beb0a3d287fffef4dde18ce7f79244fe793a6542168b8e1c29440f06be319745114407b20521fad
   languageName: node
   linkType: hard
 
@@ -1017,13 +1024,6 @@ __metadata:
   version: 2.0.5
   resolution: "get-caller-file@npm:2.0.5"
   checksum: b9769a836d2a98c3ee734a88ba712e62703f1df31b94b784762c433c27a386dd6029ff55c2a920c392e33657d80191edbf18c61487e198844844516f843496b9
-  languageName: node
-  linkType: hard
-
-"google-protobuf@npm:3.20.0":
-  version: 3.20.0
-  resolution: "google-protobuf@npm:3.20.0"
-  checksum: 2d243504362875f24a6e61fa3412cbdf04530166204f568734c2aa1b417336787555c0086c75b065c6972cbcf5cd47c3f1af4cadfe0655f0a75da3e1f962c656
   languageName: node
   linkType: hard
 

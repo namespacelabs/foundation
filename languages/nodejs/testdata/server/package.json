@@ -11,7 +11,7 @@
 		"@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify": "fn:namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/fastify",
 		"@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-jaeger": "fn:namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/jaeger",
 		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime",
-		"google-protobuf": "3.20.0"
+		"@protobuf-ts/runtime": "2.7.0"
 	},
 	"name": "@namespacelabs.dev-foundation/languages-nodejs-testdata-server",
 	"private": true,

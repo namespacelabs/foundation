@@ -26,13 +26,12 @@ var (
 )
 
 type versionsJSON struct {
-	Images      map[string]string `json:"images"`
-	Buf         bufDef            `json:"buf"`
-	GoPackages  map[string]string `json:"goPackages"`
-	Protoc      string            `json:"protoc"`
-	Yarn        string            `json:"yarn"`
-	TsProtocGen string            `json:"ts-protoc-gen"`
-	ProtobufTs  string            `json:"protobuf-ts"`
+	Images     map[string]string `json:"images"`
+	Buf        bufDef            `json:"buf"`
+	GoPackages map[string]string `json:"goPackages"`
+	Protoc     string            `json:"protoc"`
+	Yarn       string            `json:"yarn"`
+	ProtobufTs string            `json:"protobuf-ts"`
 }
 
 type bufDef struct {
@@ -83,8 +82,6 @@ func ImageSource(platform specs.Platform) llb.State {
 
 	target := llbutil.Image(alpineImage, platform)
 	target = target.Run(llb.Shlex(fmt.Sprintf("apk add --no-cache protoc=%s", versions.Protoc))).Root()
-	target = target.Run(llb.Shlex(fmt.Sprintf("apk add --no-cache yarn=%s", versions.Yarn))).Root()
-	target = target.Run(llb.Shlex(fmt.Sprintf("yarn global add ts-protoc-gen@%s", versions.TsProtocGen))).Root()
 
 	// Compiling forked protobuf-ts from sources. Takes ~1 minute.
 	// This is temporary, eventually we need to migrate to a published version.

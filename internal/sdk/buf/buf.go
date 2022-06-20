@@ -10,8 +10,8 @@ type GenerateTmpl struct {
 }
 
 type PluginTmpl struct {
-	Name   string   `json:"name,omitempty"`
-	Remote string   `json:"remote,omitempty"`
-	Out    string   `json:"out"`
-	Opt    []string `json:"opt"`
+	Name string   `json:"name,omitempty"`
+	Path string   `json:"path,omitempty"`
+	Out  string   `json:"out"`
+	Opt  []string `json:"opt"`
 }

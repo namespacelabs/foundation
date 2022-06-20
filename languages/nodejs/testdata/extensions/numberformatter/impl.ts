@@ -9,9 +9,7 @@ export function provideFmt(input: FormattingSettings): NumberFormatter {
 	let index = 0;
 	return {
 		formatNumber(n: number): string {
-			return `Formatted value: ${n.toFixed(
-				input.getPrecision()
-			)}. This is called ${++index} times.`;
+			return `Formatted value: ${n.toFixed(input.precision)}. This is called ${++index} times.`;
 		},
 	};
 }

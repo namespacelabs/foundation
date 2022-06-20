@@ -4,8 +4,8 @@
 		"@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen",
 		"@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http",
 		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime",
+		"@protobuf-ts/runtime": "2.7.0",
 		"fastify": "3.29.0",
-		"google-protobuf": "3.20.0",
 		"middie": "6.1.0",
 		"yargs": "16.2.0"
 	},

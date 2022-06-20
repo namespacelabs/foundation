@@ -10,7 +10,7 @@
 		"@opentelemetry/sdk-trace-base": "1.3.0",
 		"@opentelemetry/sdk-trace-node": "1.3.0",
 		"@opentelemetry/semantic-conventions": "1.3.0",
-		"google-protobuf": "3.20.0"
+		"@protobuf-ts/runtime": "2.7.0"
 	},
 	"name": "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing",
 	"private": true,

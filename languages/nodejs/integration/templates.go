@@ -33,7 +33,7 @@ export interface {{.Name}}Deps {
 			{{end}}
 			{{- end -}}
 			{{template "Type" .ProviderInputType -}}
-			.deserializeBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
+			.fromBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
 			{{- end -}}
 			{{- if .ProviderOutputFactoryType}},
 			{{template "Type" .ProviderOutputFactoryType}}{{end}}),

@@ -35,10 +35,10 @@ const {{.Name}}Definition: grpc.ServiceDefinition = {
 		originalName: "{{.OriginalName}}",
 		requestStream: false,
 		responseStream: false,
-		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
-		requestDeserialize: (arg) => {{template "Type" .RequestType}}.deserializeBinary(new Uint8Array(arg)),
-		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
-		responseDeserialize: (arg) => {{template "Type" .ResponseType}}.deserializeBinary(new Uint8Array(arg)),
+		requestSerialize: (arg) => Buffer.from({{template "Type" .RequestType}}.toBinary(arg)),
+		requestDeserialize: (arg) => {{template "Type" .RequestType}}.fromBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from({{template "Type" .ResponseType}}.toBinary(arg)),
+		responseDeserialize: (arg) => {{template "Type" .ResponseType}}.fromBinary(new Uint8Array(arg)),
 	},
   {{- end}}
 };

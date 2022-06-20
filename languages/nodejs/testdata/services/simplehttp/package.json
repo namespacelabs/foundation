@@ -7,8 +7,8 @@
 		"@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http",
 		"@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime",
 		"@opentelemetry/api": "1.0.4",
-		"fastify": "3.29.0",
-		"google-protobuf": "3.20.0"
+		"@protobuf-ts/runtime": "2.7.0",
+		"fastify": "3.29.0"
 	},
 	"name": "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp",
 	"private": true,
