@@ -9,17 +9,12 @@ package foundation.workspace.source;
 option go_package = "namespacelabs.dev/foundation/workspace/source";
 
 import "workspace/source/protos/filedescset.proto";
+import "schema/schema.proto";
 
 message OpProtoGen {
     string                          package_name = 1;
     protos.FileDescriptorSetAndDeps protos       = 3;
-    Framework                       framework    = 4;
+    foundation.schema.Framework     framework    = 5;
 
-    reserved 2;
-
-    enum Framework {
-        FRAMEWORK_UNSPECIFIED = 0;
-        GO                    = 1;
-        TYPESCRIPT            = 2;
-    }
+    reserved 2, 4;
 }

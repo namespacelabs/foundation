@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/source"
 )
@@ -44,17 +45,17 @@ func newBufGenerateCmd() *cobra.Command {
 				clean = []string{"."}
 			}
 
-			var fmwk source.OpProtoGen_Framework
+			var fmwk schema.Framework
 			switch lang {
 			case "go":
-				fmwk = source.OpProtoGen_GO
+				fmwk = schema.Framework_GO
 			case "typescript":
-				fmwk = source.OpProtoGen_TYPESCRIPT
+				fmwk = schema.Framework_NODEJS
 			default:
 				return fmt.Errorf("unsupported language: %s", lang)
 			}
 
-			return source.GenProtosAtPaths(ctx, env, root.FS(), source.ProtosOpts{Framework: fmwk}, clean, root.FS())
+			return source.GenProtosAtPaths(ctx, env, root.FS(), fmwk, clean, root.FS())
 		}),
 	}
 

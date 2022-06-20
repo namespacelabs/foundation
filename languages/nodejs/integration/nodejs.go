@@ -566,7 +566,7 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 		dl.Add("Generate Typescript proto sources", &source.OpProtoGen{
 			PackageName: pkg.PackageName().String(),
 			Protos:      protos.Merge(list...),
-			Framework:   source.OpProtoGen_TYPESCRIPT,
+			Framework:   schema.Framework_NODEJS,
 		})
 		dl.Add("Generate Typescript gRPC proto sources", &OpGenGrpc{
 			PackageName: pkg.PackageName().String(),
