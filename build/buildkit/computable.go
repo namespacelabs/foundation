@@ -7,6 +7,7 @@ package buildkit
 import (
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -22,6 +23,8 @@ import (
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/exporter/containerimage/exptypes"
+	"github.com/moby/buildkit/solver/pb"
+	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/build"
@@ -119,7 +122,7 @@ type keyValue struct {
 func (l reqBase) buildInputs() *compute.In {
 	in := compute.Inputs().
 		Str("frontend", l.req.Frontend).
-		StrMap("frontendOpts", l.req.FrontendOpt)
+		StrMap("frontendOpt", l.req.FrontendOpt)
 
 	for k, local := range l.localDirs {
 		in = in.
@@ -151,11 +154,74 @@ func (l reqBase) buildInputs() *compute.In {
 			}
 		}
 
-		if l.req.Def == nil {
+		if l.req.Def != nil {
 			return nil
 		}
 
 		return llb.WriteTo(l.req.Def, w)
+	})
+}
+
+// Implements the explain protocol.
+func (l reqBase) Explain(ctx context.Context, w io.Writer) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+
+	type ent struct {
+		Op         pb.Op
+		Digest     digest.Digest
+		OpMetadata pb.OpMetadata
+	}
+
+	type input struct {
+		Name string
+		Ops  []ent
+	}
+
+	var ops []ent
+	var inputs []input
+
+	toOp := func(def *llb.Definition) ([]ent, error) {
+		var ents []ent
+		for _, dt := range def.Def {
+			op := &pb.Op{}
+			if err := op.Unmarshal(dt); err != nil {
+				return nil, fnerrors.New("failed to parse op: %w", err)
+			}
+
+			digest := digest.FromBytes(dt)
+			ents = append(ents, ent{Op: *op, Digest: digest, OpMetadata: def.Metadata[digest]})
+		}
+		return ents, nil
+	}
+
+	if def := l.req.Def; def != nil {
+		var err error
+		ops, err = toOp(def)
+		if err != nil {
+			return err
+		}
+	}
+
+	for k, v := range l.req.FrontendInputs {
+		def, err := v.Marshal(ctx)
+		if err != nil {
+			return err
+		}
+
+		ops, err := toOp(def)
+		if err != nil {
+			return err
+		}
+
+		inputs = append(inputs, input{Name: k, Ops: ops})
+	}
+
+	return enc.Encode(map[string]interface{}{
+		"frontend":    l.req.Frontend,
+		"frontendOpt": l.req.FrontendOpt,
+		"ops":         ops,
+		"inputs":      inputs,
 	})
 }
 

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/kr/text"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -54,8 +55,15 @@ func explain(ctx context.Context, w io.Writer, c rawComputable, indent string) e
 	if opts.NotCacheable {
 		fmt.Fprintf(w, "❗ ")
 	}
-	fmt.Fprintf(w, "= {\n")
 
+	if e, ok := c.(interface {
+		Explain(context.Context, io.Writer) error
+	}); ok {
+		fmt.Fprintf(w, "= ")
+		return e.Explain(ctx, text.NewIndentWriter(w, []byte(indent+"  ")))
+	}
+
+	fmt.Fprintf(w, "= {\n")
 	for _, in := range c.Inputs().ins {
 		fmt.Fprintf(w, "  %s%s ", indent, in.Name)
 
