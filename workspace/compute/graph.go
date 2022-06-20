@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -572,6 +573,8 @@ func verifyCacheHits(ctx context.Context, c rawComputable, hits []cacheHit, d sc
 				Interface("inputs.digests", hit.Inputs.digests).
 				Bool("inputs.nonDeterministic", hit.Inputs.nonDeterministic).
 				Msgf("VerifyCache: found non-determinism evaluating %q", typeStr(c))
+
+			_ = Explain(ctx, console.Debug(ctx), c)
 		}
 	}
 }

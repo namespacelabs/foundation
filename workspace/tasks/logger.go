@@ -11,12 +11,12 @@ import (
 	"namespacelabs.dev/foundation/internal/console/common"
 )
 
-func NewJsonLoggerSink(logger *zerolog.Logger, maxLevel int) ActionSink {
+func NewJsonLoggerSink(logger zerolog.Logger, maxLevel int) ActionSink {
 	return &jsonLogger{logger, maxLevel}
 }
 
 type jsonLogger struct {
-	logger   *zerolog.Logger
+	logger   zerolog.Logger
 	maxLevel int // Only display actions at this level or below (all actions are still computed).
 }
 

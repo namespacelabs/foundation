@@ -38,13 +38,8 @@ func MakeProtoSrcs(ctx context.Context, env ops.Environment, request map[schema.
 	slices.Sort(keys)
 
 	base := State(platform)
-	out := llb.Scratch()
 
-	// We run the proto generations in sequence to simplify the result
-	// extraction (they'll all end up in the same output state). The alternative
-	// would be to setup N invocations in parallel, into separate directories,
-	// and then collect the files from those directories manually. We expect the
-	// invocations to be quick though, so leaving that optimization for later.
+	out := llb.Scratch()
 	for _, fmwk := range keys {
 		if len(request[fmwk].File) == 0 {
 			continue
@@ -100,12 +95,13 @@ func MakeProtoSrcs(ctx context.Context, env ops.Environment, request map[schema.
 
 		r := base.Run(
 			llb.Args(args),
-			llb.Network(llb.NetModeNone)) // protogen should not have network access.
+			llb.Network(llb.NetModeNone), llb.WithCustomNamef("generating %s proto sources", fmwk)) // protogen should not have network access.
 		r.AddMount(srcDir, src, llb.Readonly)
 		// The strategy here is to produce all results onto a directory structure that mimics the workspace,
 		// but to a location off-workspace. This allow us to read the results into a snapshot without modifying
 		// the workspace in-place. We can then decide to commit those results to the workspace.
-		out = r.AddMount(outDir, out)
+		result := r.AddMount(outDir, llb.Scratch())
+		out = out.File(llb.Copy(result, ".", "."), llb.WithCustomNamef("copying %s generated sources", fmwk))
 	}
 
 	img, err := buildkit.LLBToImage(ctx, env, build.NewBuildTarget(&platform).WithSourceLabel("Proto codegen"), out)

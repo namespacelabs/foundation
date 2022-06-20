@@ -65,9 +65,14 @@ func ProtosForNode(pkg *workspace.Package) ([]*schema.SerializedInvocation, erro
 			list = append(list, dl)
 		}
 
+		merged, err := protos.Merge(list...)
+		if err != nil {
+			return nil, err
+		}
+
 		dl.Add("Generate Foundation exports", &OpGenNode{
 			Node:   pkg.Node(),
-			Protos: protos.Merge(list...),
+			Protos: merged,
 		}, pkg.PackageName())
 
 		if lst, err := dl.Serialize(); err != nil {

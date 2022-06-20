@@ -155,10 +155,10 @@ func (l reqBase) buildInputs() *compute.In {
 		}
 
 		if l.req.Def != nil {
-			return nil
+			return llb.WriteTo(l.req.Def, w)
 		}
 
-		return llb.WriteTo(l.req.Def, w)
+		return nil
 	})
 }
 

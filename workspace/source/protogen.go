@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/sdk/buf"
 	"namespacelabs.dev/foundation/schema"
@@ -84,10 +85,17 @@ func (m *multiGen) Commit() error {
 
 	m.mu.Lock()
 	request := map[schema.Framework]*protos.FileDescriptorSetAndDeps{}
+	var errs []error
 	for fmwk, p := range m.request {
-		request[fmwk] = protos.Merge(p...)
+		var err error
+		request[fmwk], err = protos.Merge(p...)
+		errs = append(errs, err)
 	}
 	m.mu.Unlock()
+
+	if mergeErr := multierr.New(errs...); mergeErr != nil {
+		return mergeErr
+	}
 
 	return generateProtoSrcs(m.ctx, m.wenv, request, m.wenv.OutputFS())
 }

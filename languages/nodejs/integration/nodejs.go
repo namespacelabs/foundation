@@ -563,14 +563,20 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 	// TODO: bring back proto generation once dependency on the gRPC Backend proto
 	// is supported in node.js.
 	if len(list) > 0 && !shared.IsStdGrpcExtension(pkg.PackageName().String(), "Backend") {
+		merged, err := protos.Merge(list...)
+		if err != nil {
+			return nil, err
+		}
+
 		dl.Add("Generate Typescript proto sources", &source.OpProtoGen{
 			PackageName: pkg.PackageName().String(),
-			Protos:      protos.Merge(list...),
+			Protos:      merged,
 			Framework:   schema.Framework_NODEJS,
 		})
+
 		dl.Add("Generate Typescript gRPC proto sources", &OpGenGrpc{
 			PackageName: pkg.PackageName().String(),
-			Protos:      protos.Merge(list...),
+			Protos:      merged,
 		})
 	}
 

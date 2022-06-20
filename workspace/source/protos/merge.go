@@ -5,45 +5,59 @@
 package protos
 
 import (
-	"sort"
 	"strings"
 
+	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 // Merge produces a filename-only merge of all provided files. It is the caller's
 // responsibility to make sure the contents of the protos are consistent and
 // mergeable.
-func Merge(files ...*FileDescriptorSetAndDeps) *FileDescriptorSetAndDeps {
+func Merge(files ...*FileDescriptorSetAndDeps) (*FileDescriptorSetAndDeps, error) {
 	filemap := map[string]*descriptorpb.FileDescriptorProto{}
 	depmap := map[string]*descriptorpb.FileDescriptorProto{}
 
+	merged := &FileDescriptorSetAndDeps{}
 	for _, file := range files {
 		for _, f := range file.File {
-			filemap[f.GetName()] = f
-			delete(depmap, f.GetName())
+			if previous, ok := filemap[f.GetName()]; ok {
+				if !proto.Equal(previous, f) {
+					return nil, fnerrors.BadInputError("%s: incompatible protos", f.GetName())
+				}
+			} else {
+				merged.File = append(merged.File, f)
+				filemap[f.GetName()] = f
+			}
 		}
+	}
+
+	for _, file := range files {
 		for _, dep := range file.Dependency {
-			if _, has := filemap[dep.GetName()]; !has {
+			if _, ok := filemap[dep.GetName()]; ok {
+				continue
+			}
+
+			if previous, ok := depmap[dep.GetName()]; ok {
+				if !proto.Equal(previous, dep) {
+					return nil, fnerrors.BadInputError("%s: incompatible dependency", dep.GetName())
+				}
+			} else {
+				merged.Dependency = append(merged.Dependency, dep)
 				depmap[dep.GetName()] = dep
 			}
 		}
 	}
 
-	merged := &FileDescriptorSetAndDeps{}
-	for _, f := range filemap {
-		merged.File = append(merged.File, f)
-	}
-	for _, dep := range depmap {
-		merged.Dependency = append(merged.Dependency, dep)
-	}
-
-	sort.Slice(merged.File, func(i, j int) bool {
-		return strings.Compare(merged.File[i].GetName(), merged.File[j].GetName()) < 0
-	})
-	sort.Slice(merged.Dependency, func(i, j int) bool {
-		return strings.Compare(merged.Dependency[i].GetName(), merged.Dependency[j].GetName()) < 0
+	slices.SortFunc(merged.File, func(a, b *descriptorpb.FileDescriptorProto) bool {
+		return strings.Compare(a.GetName(), b.GetName()) < 0
 	})
 
-	return merged
+	slices.SortFunc(merged.Dependency, func(a, b *descriptorpb.FileDescriptorProto) bool {
+		return strings.Compare(a.GetName(), b.GetName()) < 0
+	})
+
+	return merged, nil
 }

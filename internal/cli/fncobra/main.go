@@ -8,21 +8,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
-	httppprof "net/http/pprof"
 	"os"
 	"runtime/pprof"
 	"strings"
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/logs"
-	"github.com/gorilla/mux"
 	"github.com/muesli/reflow/indent"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/binary/genbinary"
@@ -65,7 +63,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
-	src "namespacelabs.dev/foundation/workspace/source"
+	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/foundation/workspace/tasks/actiontracing"
@@ -113,7 +111,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	// and thus we don't do it if the user has opted-out from providing data.
 	if tel.IsTelemetryEnabled() {
 		remoteStatusChan = make(chan remoteStatus)
-		go checkRemoteStatus(logger, remoteStatusChan)
+		go checkRemoteStatus(console.Debug(ctxWithSink), remoteStatusChan)
 	}
 
 	bundler := tasks.NewActionBundler()
@@ -201,7 +199,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		// Codegen
 		codegen.Register()
-		src.RegisterGraphHandlers()
+		source.RegisterGraphHandlers()
 
 		// Providers.
 		ecr.Register()
@@ -502,7 +500,7 @@ func outputType() logoutput.OutputType {
 	return logoutput.OutputText
 }
 
-func consoleToSink(out *os.File, interactive bool) (*zerolog.Logger, tasks.ActionSink, func()) {
+func consoleToSink(out *os.File, interactive bool) (zerolog.Logger, tasks.ActionSink, func()) {
 	logout := logoutput.OutputTo{Writer: out, WithColors: interactive, OutputType: outputType()}
 
 	maxLogLevel := viper.GetInt("console_log_level")
@@ -515,6 +513,10 @@ func consoleToSink(out *os.File, interactive bool) (*zerolog.Logger, tasks.Actio
 	}
 
 	logger := logout.ZeroLogger()
+
+	if !consolesink.LogActions {
+		logger = zerolog.New(io.Discard)
+	}
 
 	return logger, tasks.NewJsonLoggerSink(logger, maxLogLevel), nil
 }
@@ -531,44 +533,4 @@ func cpuprofile(cpuprofile string) func() {
 		pprof.StopCPUProfile()
 		f.Close()
 	}
-}
-
-// Checks for updates and messages from Foundation developers.
-// Does nothing if a check for remote status failed
-func checkRemoteStatus(logger *zerolog.Logger, channel chan remoteStatus) {
-	defer close(channel)
-
-	ver, err := version.Version()
-	if err != nil {
-		logger.Debug().Err(err).Msg("failed to obtain version information")
-		return
-	}
-
-	if ver.BuildTime == nil || ver.Version == version.DevelopmentBuildVersion {
-		return // Nothing to check.
-	}
-
-	logger.Debug().Stringer("binary_build_time", ver.BuildTime).Msg("version check")
-
-	status, err := FetchLatestRemoteStatus(context.Background(), versionCheckEndpoint, ver.GitCommit)
-	if err != nil {
-		logger.Debug().Err(err).Msg("version check failed")
-	} else {
-		logger.Debug().Stringer("latest_release_version", status.BuildTime).Msg("version check")
-
-		if semver.Compare(status.Version, ver.Version) > 0 {
-			status.NewVersion = true
-		}
-
-		channel <- *status
-	}
-}
-
-func RegisterPprof(r *mux.Router) {
-	r.PathPrefix("/debug/pprof/").HandlerFunc(httppprof.Index)
-	r.PathPrefix("/debug/pprof/cmdline").HandlerFunc(httppprof.Cmdline)
-	r.PathPrefix("/debug/pprof/profile").HandlerFunc(httppprof.Profile)
-	r.PathPrefix("/debug/pprof/symbol").HandlerFunc(httppprof.Symbol)
-	r.PathPrefix("/debug/pprof/trace").HandlerFunc(httppprof.Trace)
-	r.PathPrefix("/debug/pprof/goroutine").HandlerFunc(httppprof.Index)
 }
