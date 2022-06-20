@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"runtime/pprof"
@@ -513,10 +512,6 @@ func consoleToSink(out *os.File, interactive bool) (zerolog.Logger, tasks.Action
 	}
 
 	logger := logout.ZeroLogger()
-
-	if !consolesink.LogActions {
-		logger = zerolog.New(io.Discard)
-	}
 
 	return logger, tasks.NewJsonLoggerSink(logger, maxLogLevel), nil
 }

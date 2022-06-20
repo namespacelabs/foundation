@@ -9,7 +9,10 @@ import (
 
 	"github.com/rs/zerolog"
 	"namespacelabs.dev/foundation/internal/console/common"
+	"namespacelabs.dev/foundation/internal/text/timefmt"
 )
+
+var AlsoReportStartEvents = false
 
 func NewJsonLoggerSink(logger zerolog.Logger, maxLevel int) ActionSink {
 	return &jsonLogger{logger, maxLevel}
@@ -20,8 +23,8 @@ type jsonLogger struct {
 	maxLevel int // Only display actions at this level or below (all actions are still computed).
 }
 
-func (sl *jsonLogger) start(ev EventData, withArgs bool) *zerolog.Event {
-	e := sl.logger.Info().Str("action_id", ev.ActionID.String()).Str("name", ev.Name).Int("log_level", ev.Level)
+func (sl *jsonLogger) event(ev EventData, withArgs bool) *zerolog.Event {
+	e := sl.logger.Info().Str("action_id", ev.ActionID.String()).Int("log_level", ev.Level)
 	if ev.ParentID != "" {
 		e = e.Str("parent_id", ev.ParentID.String())
 	}
@@ -39,6 +42,9 @@ func (sl *jsonLogger) start(ev EventData, withArgs bool) *zerolog.Event {
 			}
 		}
 	}
+	if AlsoReportStartEvents {
+		e = e.Str("name", ev.Name)
+	}
 	return e
 }
 
@@ -51,35 +57,49 @@ func (sl *jsonLogger) Waiting(ra *RunningAction) {
 }
 
 func (sl *jsonLogger) Started(ra *RunningAction) {
+	if !AlsoReportStartEvents {
+		return
+	}
+
 	if !sl.shouldLog(ra.Data) {
 		return
 	}
-	sl.start(ra.Data, true).Msg("start")
+
+	sl.event(ra.Data, true).Msg("start")
 }
 
 func (sl *jsonLogger) Done(ra *RunningAction) {
 	if !sl.shouldLog(ra.Data) {
 		return
 	}
-	ev := sl.start(ra.Data, true)
+
+	ev := sl.event(ra.Data, true)
 	if ra.Data.Err != nil {
 		t := ErrorType(ra.Data.Err)
 		switch t {
 		case ErrTypeIsCancelled, ErrTypeIsDependencyFailed:
-			ev.Msg(string(t))
+			ev.Str("reason", string(t))
 			return
 		default:
 			ev = ev.Stack().Err(ra.Data.Err)
 		}
 	}
-	ev.Dur("took", ra.Data.Completed.Sub(ra.Data.Started)).Msg("done")
+
+	ev = ev.Str("took", timefmt.Format(ra.Data.Completed.Sub(ra.Data.Started)))
+
+	if AlsoReportStartEvents {
+		ev.Msg("done")
+	} else {
+		ev.Msg(ra.Data.Name)
+	}
 }
 
 func (sl *jsonLogger) Instant(ev *EventData) {
 	if !sl.shouldLog(*ev) {
 		return
 	}
-	sl.start(*ev, true).Msg(ev.Name)
+
+	sl.event(*ev, true).Msg(ev.Name)
 }
 
 func (sl *jsonLogger) AttachmentsUpdated(ActionID, *ResultData) { /* nothing to do */ }
