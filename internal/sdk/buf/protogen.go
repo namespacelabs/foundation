@@ -89,9 +89,9 @@ func MakeProtoSrcs(ctx context.Context, env ops.Environment, parsed *protos.File
 	// The strategy here is to produce all results onto a directory structure that mimics the workspace,
 	// but to a location off-workspace. This allow us to read the results into a snapshot without modifying
 	// the workspace in-place. We can then decide to commit those results to the workspace.
-	r.AddMount(outDir, out)
+	result := r.AddMount(outDir, out)
 
-	img, err := buildkit.LLBToImage(ctx, env, build.NewBuildTarget(&platform).WithSourceLabel("Proto codegen"), r.GetMount(outDir))
+	img, err := buildkit.LLBToImage(ctx, env, build.NewBuildTarget(&platform).WithSourceLabel("Proto codegen"), result)
 	if err != nil {
 		return nil, err
 	}
