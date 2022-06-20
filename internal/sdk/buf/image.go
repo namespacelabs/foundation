@@ -17,11 +17,10 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/sdk/buf/image"
 	"namespacelabs.dev/foundation/runtime/tools"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
-func Image(ctx context.Context, env ops.Environment, loader workspace.Packages) compute.Computable[oci.Image] {
+func Image(ctx context.Context, env ops.Environment) compute.Computable[oci.Image] {
 	platform, err := tools.HostPlatform(ctx)
 	if err != nil {
 		return compute.Error[oci.Image](err)
@@ -46,10 +45,10 @@ type bufBuild struct{}
 var _ build.Spec = bufBuild{}
 
 func (bufBuild) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	return buildkit.LLBToImage(ctx, env, conf, state(*conf.TargetPlatform()))
+	return buildkit.LLBToImage(ctx, env, conf, State(*conf.TargetPlatform()))
 }
 
-func state(target specs.Platform) llb.State {
+func State(target specs.Platform) llb.State {
 	if binary.UsePrebuilts {
 		return image.Prebuilt(target)
 	}

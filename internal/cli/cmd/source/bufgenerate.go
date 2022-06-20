@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/source"
 )
@@ -55,8 +54,7 @@ func newBufGenerateCmd() *cobra.Command {
 				return fmt.Errorf("unsupported language: %s", lang)
 			}
 
-			return source.GenProtosAtPaths(ctx, env, workspace.NewPackageLoader(root), root.FS(),
-				source.ProtosOpts{Framework: fmwk}, clean, root.FS())
+			return source.GenProtosAtPaths(ctx, env, root.FS(), source.ProtosOpts{Framework: fmwk}, clean, root.FS())
 		}),
 	}
 
