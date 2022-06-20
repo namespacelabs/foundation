@@ -89,9 +89,10 @@ type frontendReq struct {
 
 func MakeLocalState(src LocalContents) llb.State {
 	var excludePatterns []string
-	for _, dir := range dirs.AllDirsToAvoid {
+	for _, dir := range dirs.DirsToExclude {
 		excludePatterns = append(excludePatterns, "**/"+dir+"/")
 	}
+	excludePatterns = append(excludePatterns, dirs.FilesToExclude...)
 	excludePatterns = append(excludePatterns, devhost.HostOnlyFiles()...)
 
 	return llb.Local(src.Name(),

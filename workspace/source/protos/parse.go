@@ -119,7 +119,7 @@ func expandProtoList(fsys fs.FS, files []string) ([]string, error) {
 		}
 
 		if st.IsDir() {
-			if slices.Contains(dirs.AllDirsToAvoid, st.Name()) {
+			if slices.Contains(dirs.DirsToExclude, st.Name()) {
 				continue
 			}
 			dirents, err := fs.ReadDir(fsys, f)

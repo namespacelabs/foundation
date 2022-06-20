@@ -117,7 +117,7 @@ func snapshotContents(modulePath, rel string) (*memfs.FS, error) {
 		if de.IsDir() {
 			name := de.Name()
 			// Skip hidden directories, and directories marked for skipping.
-			if (len(name) > 1 && name[0] == '.') || slices.Contains(dirs.DirsToAvoid, name) {
+			if (len(name) > 1 && name[0] == '.') || slices.Contains(dirs.DirsToExclude, name) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -288,7 +288,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 			return err
 		}
 
-		if (path != "." && path[0] == '.') || slices.Contains(dirs.DirsToAvoid, d.Name()) {
+		if (path != "." && path[0] == '.') || slices.Contains(dirs.DirsToExclude, d.Name()) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}

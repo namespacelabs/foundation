@@ -4,5 +4,8 @@
 
 package dirs
 
-var DirsToAvoid = []string{"node_modules"}
-var AllDirsToAvoid = append([]string{".git", ".parcel-cache"}, DirsToAvoid...)
+// Any sub-directory.
+var DirsToExclude = []string{".git", ".parcel-cache", "node_modules"}
+
+// Relative to the workspace.
+var FilesToExclude = []string{}
