@@ -6,14 +6,14 @@ package source
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"sync"
 
-	"namespacelabs.dev/foundation/internal/artifacts/fsops"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/sdk/buf"
 	"namespacelabs.dev/foundation/schema"
@@ -21,10 +21,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
-
-type ProtosOpts struct {
-	Framework schema.Framework
-}
 
 func RegisterGraphHandlers() {
 	ops.Register[*OpProtoGen](statefulGen{})
@@ -40,9 +36,9 @@ func (statefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Se
 		return nil, fnerrors.New("WorkspaceEnvironment required")
 	}
 
-	mod := &perModuleGen{}
-	mod.descriptors.add(msg.Framework, msg.Protos)
-	return nil, generateProtoSrcs(ctx, env, mod, wenv.OutputFS())
+	return nil, generateProtoSrcs(ctx, env, map[schema.Framework]*protos.FileDescriptorSetAndDeps{
+		msg.Framework: msg.Protos,
+	}, wenv.OutputFS())
 }
 
 func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Session[*OpProtoGen] {
@@ -52,74 +48,33 @@ func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Se
 		wenv = nil
 	}
 
-	return &multiGen{ctx: ctx, wenv: wenv}
+	return &multiGen{ctx: ctx, wenv: wenv, request: map[schema.Framework][]*protos.FileDescriptorSetAndDeps{}}
 }
 
 type multiGen struct {
 	ctx  context.Context
 	wenv workspace.MutableWorkspaceEnvironment
 
-	mu    sync.Mutex
-	locs  []workspace.Location
-	opts  []ProtosOpts
-	files []*protos.FileDescriptorSetAndDeps
+	mu      sync.Mutex
+	request map[schema.Framework][]*protos.FileDescriptorSetAndDeps
 }
 
 func (m *multiGen) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
-	wenv, ok := env.(workspace.Packages)
-	if !ok {
-		return nil, fnerrors.New("workspace.Packages required")
-	}
-
-	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.PackageName))
+	loc, err := m.wenv.Resolve(ctx, schema.PackageName(msg.PackageName))
 	if err != nil {
 		return nil, err
+	}
+
+	if loc.Module.ModuleName() != m.wenv.ModuleName() {
+		return nil, fnerrors.BadInputError("%s: can't perform codegen for packages in %q", m.wenv.ModuleName(), loc.Module.ModuleName())
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.locs = append(m.locs, loc)
-	m.opts = append(m.opts, ProtosOpts{
-		Framework: msg.Framework,
-	})
-	m.files = append(m.files, msg.Protos)
+	m.request[msg.Framework] = append(m.request[msg.Framework], msg.Protos)
 
 	return nil, nil
-}
-
-type perLanguageDescriptors struct {
-	descriptorsMap map[schema.Framework][]*protos.FileDescriptorSetAndDeps
-}
-
-func (p *perLanguageDescriptors) add(framework schema.Framework, fileDescSet *protos.FileDescriptorSetAndDeps) {
-	if p.descriptorsMap == nil {
-		p.descriptorsMap = map[schema.Framework][]*protos.FileDescriptorSetAndDeps{}
-	}
-
-	descriptors, ok := p.descriptorsMap[framework]
-	if !ok {
-		descriptors = []*protos.FileDescriptorSetAndDeps{}
-	}
-
-	descriptors = append(descriptors, fileDescSet)
-	p.descriptorsMap[framework] = descriptors
-}
-
-type perModuleGen struct {
-	root        *workspace.Module
-	descriptors perLanguageDescriptors
-}
-
-func ensurePerModule(mods []*perModuleGen, root *workspace.Module) ([]*perModuleGen, *perModuleGen) {
-	for _, mod := range mods {
-		if mod.root.Abs() == root.Abs() {
-			return mods, mod
-		}
-	}
-
-	mod := &perModuleGen{root: root}
-	return append(mods, mod), mod
 }
 
 func (m *multiGen) Commit() error {
@@ -127,51 +82,38 @@ func (m *multiGen) Commit() error {
 		return fnerrors.New("WorkspaceEnvironment required")
 	}
 
-	var mods []*perModuleGen
-	var mod *perModuleGen
-
 	m.mu.Lock()
-
-	for k := range m.locs {
-		mods, mod = ensurePerModule(mods, m.locs[k].Module)
-		mod.descriptors.add(m.opts[k].Framework, m.files[k])
+	request := map[schema.Framework]*protos.FileDescriptorSetAndDeps{}
+	for fmwk, p := range m.request {
+		request[fmwk] = protos.Merge(p...)
 	}
-
 	m.mu.Unlock()
 
-	var errs []error
-	for _, mod := range mods {
-		if err := generateProtoSrcs(m.ctx, m.wenv, mod, m.wenv.OutputFS()); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	return multierr.New(errs...)
+	return generateProtoSrcs(m.ctx, m.wenv, request, m.wenv.OutputFS())
 }
 
-func generateProtoSrcs(ctx context.Context, env ops.Environment, mod *perModuleGen, out fnfs.ReadWriteFS) error {
-	var fsys []compute.Computable[fs.FS]
-
-	for framework, descriptors := range mod.descriptors.descriptorsMap {
-		if len(descriptors) != 0 {
-			srcs, err := buf.MakeProtoSrcs(ctx, env, protos.Merge(descriptors...), framework)
-			if err != nil {
-				return err
-			}
-			fsys = append(fsys, srcs)
-		}
-	}
-
-	if len(fsys) == 0 {
-		return nil
-	}
-
-	merged, err := compute.Get(ctx, fsops.Merge(fsys))
+func generateProtoSrcs(ctx context.Context, env ops.Environment, request map[schema.Framework]*protos.FileDescriptorSetAndDeps, out fnfs.ReadWriteFS) error {
+	protogen, err := buf.MakeProtoSrcs(ctx, env, request)
 	if err != nil {
 		return err
 	}
 
-	if err := fnfs.WriteFSToWorkspace(ctx, console.Stdout(ctx), out, merged.Value); err != nil {
+	merged, err := compute.GetValue(ctx, protogen)
+	if err != nil {
+		return err
+	}
+
+	if console.DebugToConsole {
+		d := console.Debug(ctx)
+
+		fmt.Fprintln(d, "Codegen results:")
+		_ = fnfs.VisitFiles(ctx, merged, func(path string, _ bytestream.ByteStream, _ fs.DirEntry) error {
+			fmt.Fprintf(d, "  %s\n", path)
+			return nil
+		})
+	}
+
+	if err := fnfs.WriteFSToWorkspace(ctx, console.Stdout(ctx), out, merged); err != nil {
 		return err
 	}
 
@@ -184,8 +126,7 @@ func GenProtosAtPaths(ctx context.Context, env ops.Environment, src fs.FS, fmwk 
 		return err
 	}
 
-	mod := &perModuleGen{}
-	mod.descriptors.add(fmwk, parsed)
-
-	return generateProtoSrcs(ctx, env, mod, out)
+	return generateProtoSrcs(ctx, env, map[schema.Framework]*protos.FileDescriptorSetAndDeps{
+		fmwk: parsed,
+	}, out)
 }

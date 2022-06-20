@@ -16,5 +16,7 @@ type WorkspaceEnvironment interface {
 
 type MutableWorkspaceEnvironment interface {
 	WorkspaceEnvironment
+
+	ModuleName() string // The module that this workspace corresponds to.
 	OutputFS() fnfs.ReadWriteFS
 }

@@ -63,6 +63,7 @@ type codegenEnv struct {
 func (ce codegenEnv) ErrorLocation() string        { return ce.root.ErrorLocation() }
 func (ce codegenEnv) DevHost() *schema.DevHost     { return ce.root.DevHost }
 func (ce codegenEnv) Proto() *schema.Environment   { return ce.env }
+func (ce codegenEnv) ModuleName() string           { return ce.root.ModuleName() }
 func (ce codegenEnv) OutputFS() fnfs.ReadWriteFS   { return ce.fs }
 func (ce codegenEnv) Workspace() *schema.Workspace { return ce.root.Workspace }
 
