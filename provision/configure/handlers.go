@@ -6,12 +6,10 @@ package configure
 
 import (
 	"context"
-	"os"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
-	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -142,5 +140,5 @@ type protocolHandler struct {
 }
 
 func (i protocolHandler) Invoke(ctx context.Context, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {
-	return handleRequest(logoutput.WithOutput(ctx, logoutput.OutputTo{Writer: os.Stderr}), req, i.Handlers)
+	return handleRequest(ctx, req, i.Handlers)
 }

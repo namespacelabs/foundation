@@ -17,7 +17,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/logs"
 	"github.com/muesli/reflow/indent"
 	"github.com/muesli/reflow/wordwrap"
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"namespacelabs.dev/foundation/build"
@@ -94,9 +93,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	out, interactive := consoleFromFile()
 
-	logger, sink, flushLogs := consoleToSink(out, interactive)
-
-	ctxWithSink := tasks.WithSink(logger.WithContext(ctx), sink)
+	sink, flushLogs := consoleToSink(out, interactive)
+	ctxWithSink := tasks.WithSink(ctx, sink)
 
 	// Some of our builds can go fairly wide on parallelism, requiring opening
 	// hundreds of files, between cache reads, cache writes, etc. This is a best
@@ -493,15 +491,8 @@ func consoleFromFile() (*os.File, bool) {
 	return out, termios.IsTerm(out.Fd())
 }
 
-func outputType() logoutput.OutputType {
-	if strings.ToLower(viper.GetString("console_output")) == "json" {
-		return logoutput.OutputJSON
-	}
-	return logoutput.OutputText
-}
-
-func consoleToSink(out *os.File, interactive bool) (zerolog.Logger, tasks.ActionSink, func()) {
-	logout := logoutput.OutputTo{Writer: out, WithColors: interactive, OutputType: outputType()}
+func consoleToSink(out *os.File, interactive bool) (tasks.ActionSink, func()) {
+	logout := logoutput.OutputTo{Writer: out, WithColors: interactive}
 
 	maxLogLevel := viper.GetInt("console_log_level")
 	if (interactive || environment.IsRunningInCI()) && !viper.GetBool("console_no_colors") {
@@ -509,10 +500,10 @@ func consoleToSink(out *os.File, interactive bool) (zerolog.Logger, tasks.Action
 		cleanup := consoleSink.Start()
 		logout.Writer = console.ConsoleOutput(consoleSink, common.KnownStderr)
 
-		return logout.ZeroLogger(), consoleSink, cleanup
+		return consoleSink, cleanup
 	}
 
-	return logout.ZeroLogger(), simplelog.NewSink(out, maxLogLevel), nil
+	return simplelog.NewSink(out, maxLogLevel), nil
 }
 
 func cpuprofile(cpuprofile string) func() {
