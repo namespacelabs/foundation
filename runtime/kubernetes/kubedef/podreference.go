@@ -35,7 +35,7 @@ func (cpr ContainerPodReference) Kind() runtime.ContainerKind {
 	return cpr.kind
 }
 
-func MakePodRef(ns, name, containerName string, srv *schema.Server) runtime.ContainerReference {
+func MakePodRef(ns, name, containerName string, srv *schema.Server) ContainerPodReference {
 	return ContainerPodReference{
 		Namespace: ns,
 		PodName:   name,

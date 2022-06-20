@@ -10,6 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	k8srt "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -23,64 +24,31 @@ import (
 )
 
 func (r K8sRuntime) startTerminal(ctx context.Context, cli *kubernetes.Clientset, server *schema.Server, rio runtime.TerminalIO, cmd []string) error {
-	config, err := resolveConfig(ctx, r.host)
-	if err != nil {
-		return err
-	}
-
 	pod, err := r.resolvePod(ctx, cli, rio.Stderr, server)
 	if err != nil {
 		return err
 	}
 
-	restClient, err := rest.RESTClientFor(config)
-	if err != nil {
-		return err
-	}
-
-	req := restClient.Post().
-		Resource("pods").
-		Name(pod.Name).
-		Namespace(pod.Namespace).
-		SubResource("exec").
-		VersionedParams(&corev1.PodExecOptions{
-			Command: cmd,
-			Stdin:   true,
-			Stdout:  true,
-			Stderr:  true,
-			TTY:     true,
-		}, scheme.ParameterCodec)
-
-	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
-	if err != nil {
-		return fnerrors.InvocationError("creating executor failed: %w", err)
-	}
-
-	opts := remotecommand.StreamOptions{
-		Stdin:             rio.Stdin,
-		Stdout:            rio.Stdout,
-		Stderr:            rio.Stdout,
-		Tty:               true,
-		TerminalSizeQueue: nil, // Set below.
-	}
-
-	if rio.ResizeQueue != nil {
-		defer close(rio.ResizeQueue)
-		opts.TerminalSizeQueue = readResizeQueue{rio.ResizeQueue}
-	}
-
-	if err := exec.Stream(opts); err != nil {
-		if s, ok := err.(*k8serrors.StatusError); ok {
-			return fnerrors.InvocationError("%+v: failed to start terminal: %w", s.ErrStatus, err)
-		}
-
-		return fnerrors.InvocationError("stream failed: %w", err)
-	}
-
-	return nil
+	return r.lowLevelAttachTerm(ctx, cli, pod.Namespace, pod.Name, rio, "exec", &corev1.PodExecOptions{
+		Command: cmd,
+		Stdin:   true,
+		Stdout:  true,
+		Stderr:  true,
+		TTY:     rio.TTY,
+	})
 }
 
 func (r Unbound) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque kubedef.ContainerPodReference, rio runtime.TerminalIO) error {
+	return r.lowLevelAttachTerm(ctx, cli, opaque.Namespace, opaque.PodName, rio, "attach", &corev1.PodAttachOptions{
+		Container: opaque.Container,
+		Stdin:     true,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       rio.TTY,
+	})
+}
+
+func (r Unbound) lowLevelAttachTerm(ctx context.Context, cli *kubernetes.Clientset, ns, podname string, rio runtime.TerminalIO, subresource string, params k8srt.Object) error {
 	config, err := resolveConfig(ctx, r.host)
 	if err != nil {
 		return err
@@ -93,16 +61,10 @@ func (r Unbound) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, 
 
 	req := restClient.Post().
 		Resource("pods").
-		Name(opaque.PodName).
-		Namespace(opaque.Namespace).
-		SubResource("attach").
-		VersionedParams(&corev1.PodAttachOptions{
-			Container: opaque.Container,
-			Stdin:     true,
-			Stdout:    true,
-			Stderr:    true,
-			TTY:       rio.TTY,
-		}, scheme.ParameterCodec)
+		Name(podname).
+		Namespace(ns).
+		SubResource(subresource).
+		VersionedParams(params, scheme.ParameterCodec)
 
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 	if err != nil {
@@ -118,7 +80,6 @@ func (r Unbound) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, 
 	}
 
 	if rio.ResizeQueue != nil {
-		defer close(rio.ResizeQueue)
 		opts.TerminalSizeQueue = readResizeQueue{rio.ResizeQueue}
 	}
 

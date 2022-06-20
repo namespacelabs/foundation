@@ -31,6 +31,7 @@ func serveTerminal(s *Session, w http.ResponseWriter, r *http.Request, serverID 
 
 		go func() {
 			defer inr.Close()
+			defer close(resizeCh)
 
 			readerLoop(ctx, ws, func(b []byte) error {
 				ti := &TerminalInput{}
