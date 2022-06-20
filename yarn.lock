@@ -205,10 +205,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple@workspace:languages/nodejs/testdata/services/simple"
   dependencies:
-    "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": "fn:namespacelabs.dev/foundation/languages/nodejs/testdata/services/simple"
-    "@namespacelabs.dev-foundation/std-nodejs-grpc": "fn:namespacelabs.dev/foundation/std/nodejs/grpc"
-    "@namespacelabs.dev-foundation/std-nodejs-grpcgen": "fn:namespacelabs.dev/foundation/std/nodejs/grpcgen"
-    "@namespacelabs.dev-foundation/std-nodejs-http": "fn:namespacelabs.dev/foundation/std/nodejs/http"
+    "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
+    "@namespacelabs.dev-foundation/std-secrets": 0.0.0
     "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@protobuf-ts/runtime": 2.7.0
   languageName: unknown
@@ -452,6 +453,19 @@ __metadata:
     "@opentelemetry/sdk-trace-base": 1.3.0
     "@opentelemetry/sdk-trace-node": 1.3.0
     "@opentelemetry/semantic-conventions": 1.3.0
+    "@protobuf-ts/runtime": 2.7.0
+  languageName: unknown
+  linkType: soft
+
+"@namespacelabs.dev-foundation/std-secrets@0.0.0, @namespacelabs.dev-foundation/std-secrets@workspace:std/secrets":
+  version: 0.0.0-use.local
+  resolution: "@namespacelabs.dev-foundation/std-secrets@workspace:std/secrets"
+  dependencies:
+    "@namespacelabs.dev-foundation/std-nodejs-grpc": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-grpcgen": 0.0.0
+    "@namespacelabs.dev-foundation/std-nodejs-http": 0.0.0
+    "@namespacelabs.dev-foundation/std-secrets": 0.0.0
+    "@namespacelabs/foundation": "fn:namespacelabs.dev/foundation/std/nodejs/runtime"
     "@protobuf-ts/runtime": 2.7.0
   languageName: unknown
   linkType: soft
@@ -1302,6 +1316,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
+    "@protobuf-ts/runtime": 2.7.0
     "@tsconfig/node16": 1.0.2
     "@types/google-protobuf": 3.15.6
     "@types/node": 17.0.35

@@ -16,7 +16,7 @@ import * as i7 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing
 const wireServices = async (server: GrpcServer, graph: DependencyGraph): Promise<unknown[]> => {
 	const errors: unknown[] = [];
 	try {
-		await i0.wireService(server);
+		await i0.wireService(i0.Package.instantiateDeps(graph), server);
 	} catch (e) {
 		errors.push(e);
 	}

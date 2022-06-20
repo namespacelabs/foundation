@@ -96,6 +96,7 @@ func MakeProtoSrcs(ctx context.Context, env ops.Environment, request map[schema.
 
 		r := base.Run(
 			llb.Args(args),
+			llb.AddEnv("PROTOBUF_TS_RUNTIME_WELL_KNOWN_TYPES_IMPORT_PATH", "@namespacelabs/fn-protos"),
 			llb.Network(llb.NetModeNone), llb.WithCustomNamef("generating %s proto sources", fmwk)) // protogen should not have network access.
 		r.AddMount(srcDir, src, llb.Readonly)
 		// The strategy here is to produce all results onto a directory structure that mimics the workspace,

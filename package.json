@@ -1,4 +1,7 @@
 {
+	"dependencies": {
+		"@protobuf-ts/runtime": "2.7.0"
+	},
 	"devDependencies": {
 		"@tsconfig/node16": "1.0.2",
 		"@types/google-protobuf": "3.15.6",
@@ -23,6 +26,7 @@
 		"std/nodejs/monitoring/tracing",
 		"std/nodejs/monitoring/tracing/fastify",
 		"std/nodejs/monitoring/tracing/jaeger",
-		"std/nodejs/runtime"
+		"std/nodejs/runtime",
+		"std/secrets"
 	]
 }

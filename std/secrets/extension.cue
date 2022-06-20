@@ -13,6 +13,10 @@ extension: fn.#Extension & {
 
 			availableIn: {
 				go: type: "*Value"
+				nodejs: {
+          import: "impl"
+          type: "Value2"
+        }
 			}
 		}
 	}
