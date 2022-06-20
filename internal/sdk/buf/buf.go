@@ -9,12 +9,9 @@ import (
 	"encoding/json"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 type bufConfig struct {
@@ -37,16 +34,6 @@ type PluginTmpl struct {
 	Remote string   `json:"remote,omitempty"`
 	Out    string   `json:"out"`
 	Opt    []string `json:"opt"`
-}
-
-func BuildAndrun(ctx context.Context, env ops.Environment, root *workspace.Root, packages workspace.Packages, io rtypes.IO, args ...string) error {
-	// Wait for `buf` build to complete.
-	result, err := compute.Get(ctx, Image(ctx, env, packages))
-	if err != nil {
-		return err
-	}
-
-	return Run(ctx, result.Value.(v1.Image), io, "/workspace", []*rtypes.LocalMapping{{HostPath: root.Abs(), ContainerPath: "/workspace"}}, args)
 }
 
 func Run(ctx context.Context, bufImage v1.Image, io rtypes.IO, wd string, mounts []*rtypes.LocalMapping, args []string) error {

@@ -16,7 +16,6 @@ func NewSourceCmd() *cobra.Command {
 		Aliases: []string{"src"},
 	}
 
-	cmd.AddCommand(newBufCmd())
 	cmd.AddCommand(newBufGenerateCmd())
 	cmd.AddCommand(create.NewCreateCmd())
 	cmd.AddCommand(newNodejsCmd())
