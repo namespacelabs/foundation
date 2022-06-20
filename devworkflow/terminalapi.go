@@ -6,12 +6,13 @@ package devworkflow
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/encoding/protojson"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/runtime"
 )
@@ -31,7 +32,7 @@ func serveTerminal(s *Session, w http.ResponseWriter, r *http.Request, serverID 
 		go func() {
 			defer inr.Close()
 
-			readerLoop(zerolog.Ctx(ctx).With().Logger(), ws, func(b []byte) error {
+			readerLoop(ctx, ws, func(b []byte) error {
 				ti := &TerminalInput{}
 				if err := protojson.Unmarshal(b, ti); err != nil {
 					return err
@@ -55,7 +56,8 @@ func serveTerminal(s *Session, w http.ResponseWriter, r *http.Request, serverID 
 						h = 0xffff
 					}
 
-					zerolog.Ctx(ctx).Info().Uint32("width", w).Uint32("height", h).Msg("resizing terminal")
+					fmt.Fprintf(console.Debug(ctx), "(%s) resizing terminal %dx%d\n", r.RemoteAddr, w, h)
+
 					resizeCh <- termios.WinSize{
 						Width:  uint16(w),
 						Height: uint16(h),

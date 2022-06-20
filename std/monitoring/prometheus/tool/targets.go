@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rs/zerolog"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
@@ -54,11 +53,6 @@ func (configureTargets) Apply(ctx context.Context, r configure.StackRequest, out
 						{Key: "prometheus.io/port", Value: fmt.Sprintf("%d", port.ContainerPort)},
 					},
 				}})
-
-			zerolog.Ctx(ctx).Debug().
-				Str("server", r.Focus.Server.PackageName).
-				Int32("port", port.ContainerPort).
-				Msg("Annotating server for scraping.")
 		}
 	}
 

@@ -6,11 +6,12 @@ package devworkflow
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/encoding/protojson"
+	"namespacelabs.dev/foundation/internal/console"
 )
 
 func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
@@ -20,24 +21,22 @@ func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
 		EnableCompression: true,
 	}
 
-	l := zerolog.Ctx(r.Context()).With().Str("remoteAddr", r.RemoteAddr).Logger()
-
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
-			l.Err(err).Msg("failed to handshake websocket")
+			fmt.Fprintf(console.Errors(r.Context()), "(%s) websocket: failed to handshake: %v\n", r.RemoteAddr, err)
 		}
 		return
 	}
 
 	_ = ws.SetCompressionLevel(6)
 
-	l.Debug().Str("url", r.URL.String()).Msg("connected")
+	fmt.Fprintf(console.Debug(r.Context()), "(%s) websocket: connected\n", r.RemoteAddr)
 
 	ch, err := s.NewClient(true)
 	if err != nil {
 		w.WriteHeader(500)
-		l.Err(err).Msg("failed to create client")
+		fmt.Fprintf(console.Errors(r.Context()), "(%s) websocket: failed to create client: %v\n", r.RemoteAddr, err)
 		return
 	}
 	defer ch.Close()
@@ -47,7 +46,7 @@ func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
 
 	go writeJSONLoop(ctx, ws, ch.Events())
 
-	readerLoop(zerolog.Ctx(r.Context()).With().Logger(), ws, func(msg []byte) error {
+	readerLoop(r.Context(), ws, func(msg []byte) error {
 		m := &DevWorkflowRequest{}
 		if err := protojson.Unmarshal(msg, m); err != nil {
 			return err

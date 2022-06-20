@@ -7,7 +7,6 @@ package renderwait
 import (
 	"context"
 
-	"github.com/rs/zerolog"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 )
@@ -20,9 +19,8 @@ type Consumer interface {
 func NewBlock(ctx context.Context, name string) Consumer {
 	if !console.IsConsoleLike(ctx) {
 		rwb := logRenderer{
-			ch:     make(chan ops.Event),
-			done:   make(chan struct{}),
-			logger: zerolog.Ctx(ctx),
+			ch:   make(chan ops.Event),
+			done: make(chan struct{}),
 		}
 		go rwb.Loop(ctx)
 		return rwb

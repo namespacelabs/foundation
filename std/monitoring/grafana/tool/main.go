@@ -12,7 +12,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/rs/zerolog"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -73,9 +72,6 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		}
 
 		if endpoint.GetPort().GetContainerPort() <= 0 {
-			zerolog.Ctx(ctx).Warn().
-				Str("package_name", endpoint.GetServerOwner()).
-				Msg("skipping endpoint, no container port")
 			continue
 		}
 

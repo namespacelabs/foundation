@@ -6,6 +6,8 @@ package console
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 
@@ -92,4 +94,12 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutput
 // ConsoleOutput returns a writer, whose output will be managed by the specified ConsoleSink.
 func ConsoleOutput(console writerLiner, name string) io.Writer {
 	return &consoleBuffer{actual: console, name: name}
+}
+
+func JSON(w io.Writer, message string, data interface{}) {
+	fmt.Fprint(w, message, " ")
+	enc := json.NewEncoder(w)
+	if err := enc.Encode(data); err != nil {
+		fmt.Fprintf(w, "<failed to serialize: %v>", err)
+	}
 }

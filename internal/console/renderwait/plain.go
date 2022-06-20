@@ -6,15 +6,15 @@ package renderwait
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/rs/zerolog"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 )
 
 type logRenderer struct {
-	ch     chan ops.Event
-	done   chan struct{}
-	logger *zerolog.Logger
+	ch   chan ops.Event
+	done chan struct{}
 }
 
 func (rwb logRenderer) Ch() chan ops.Event { return rwb.ch }
@@ -30,6 +30,8 @@ func (rwb logRenderer) Wait(ctx context.Context) error {
 func (rwb logRenderer) Loop(ctx context.Context) {
 	defer close(rwb.done) // Signal parent we're done.
 
+	l := console.Output(ctx, "rwb")
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -44,15 +46,8 @@ func (rwb logRenderer) Loop(ctx context.Context) {
 				continue
 			}
 
-			l := rwb.logger.Info().Str("id", ev.ResourceID).
-				Str("category", ev.Category).
-				Interface("scope", ev.Scope).
-				Interface("impl", ev.ImplMetadata).
-				Bool("ready", ev.Ready == ops.Ready)
-			if ev.AlreadyExisted {
-				l = l.Bool("alreadyExisted", ev.AlreadyExisted)
-			}
-			l.Msg("waiting")
+			fmt.Fprintf(l, "waiting (ready=%v alreadyExisted=%v) for id %s category %s scope %s impl %v\n",
+				ev.Ready == ops.Ready, ev.AlreadyExisted, ev.ResourceID, ev.Category, ev.Scope, ev.ImplMetadata)
 		}
 	}
 }

@@ -15,8 +15,8 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/rs/zerolog/log"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -73,7 +73,7 @@ func (p PersistentSpec) Ensure(ctx context.Context, progress io.Writer) error {
 }
 
 func (p PersistentSpec) start(ctx context.Context, cli docker.Client) error {
-	log.Ctx(ctx).Debug().Str("version", p.Version).Msgf("starting %s", p.Name)
+	fmt.Fprintf(console.Debug(ctx), "Starting %s version %s\n", p.Name, p.Version)
 
 	if err := cli.ContainerStart(ctx, p.ContainerName, types.ContainerStartOptions{}); err != nil {
 		return err

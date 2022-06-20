@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/internal/console"
@@ -300,7 +299,7 @@ func compute(ctx context.Context, g *Orch, opts computeInstance, cacheable *cach
 	if err != nil {
 		d = schema.Digest{} // Ignore errors, but don't cache.
 		if VerifyCaching {
-			zerolog.Ctx(ctx).Error().Err(err).Msgf("VerifyCache: failed to compute digest for %q", typeStr(opts.Computable))
+			fmt.Fprintf(console.Errors(ctx), "VerifyCache: failed to compute digest for %q: %v", typeStr(opts.Computable), err)
 		}
 	}
 
@@ -416,7 +415,7 @@ func (g *Orch) DetachWith(d Detach) {
 		}
 
 		if err != nil && d.BestEffort {
-			zerolog.Ctx(ctx).Warn().Err(err).Msg("detach failed")
+			fmt.Fprintf(console.Warnings(ctx), "detach failed: %v\n", err)
 			return nil // Ignore errors.
 		}
 
@@ -564,15 +563,17 @@ func addOutputsToSpan(ctx context.Context, results map[string]ResultWithTimestam
 func verifyCacheHits(ctx context.Context, c rawComputable, hits []cacheHit, d schema.Digest) {
 	for _, hit := range hits {
 		if hit.Hit && hit.OutputDigest != d {
-			zerolog.Ctx(ctx).Error().
-				Stringer("expected", hit.OutputDigest).
-				Stringer("got", d).
-				Stringer("matching", hit.Input).
-				Stringer("inputs.digest", hit.Inputs.Digest).
-				Stringer("inputs.postDigest", hit.Inputs.PostComputeDigest).
-				Interface("inputs.digests", hit.Inputs.digests).
-				Bool("inputs.nonDeterministic", hit.Inputs.nonDeterministic).
-				Msgf("VerifyCache: found non-determinism evaluating %q", typeStr(c))
+			console.JSON(console.Errors(ctx),
+				fmt.Sprintf("VerifyCache: found non-determinism evaluating %q", typeStr(c)),
+				map[string]interface{}{
+					"expected":                hit.OutputDigest,
+					"got":                     d,
+					"matching":                hit.Input,
+					"inputs.digest":           hit.Inputs.Digest,
+					"inputs.postDigest":       hit.Inputs.PostComputeDigest,
+					"inputs.digests":          hit.Inputs.digests,
+					"inputs.nonDeterministic": hit.Inputs.nonDeterministic,
+				})
 
 			_ = Explain(ctx, console.Debug(ctx), c)
 		}

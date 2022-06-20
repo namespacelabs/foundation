@@ -502,7 +502,7 @@ func parentOf(root *node, tree map[tasks.ActionID]*node, id tasks.ActionID) *nod
 	}
 }
 
-func renderLine(w io.Writer, li *lineItem) {
+func renderLine(w io.Writer, li lineItem) {
 	data := li.data
 
 	base := aec.EmptyBuilder.ANSI
@@ -730,14 +730,14 @@ func (c *ConsoleSink) logActions() bool {
 func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height uint, flush bool) {
 	running, waiting, anchored := c.countStates()
 	var completed, completedAnchors int
-	var printableCompleted []*lineItem
+	var printableCompleted []lineItem
 	for _, r := range c.running {
 		if r.data.State != tasks.ActionWaiting && r.data.State != tasks.ActionRunning {
 			hasError := (r.data.Err != nil && tasks.ErrorType(r.data.Err) == tasks.ErrTypeIsRegular)
 			shouldLog := c.logActions() && (DisplayWaitingActions || r.data.AnchorID == "")
 
 			if (shouldLog || hasError) && r.data.Level <= c.maxLevel {
-				printableCompleted = append(printableCompleted, r)
+				printableCompleted = append(printableCompleted, *r)
 			}
 
 			completed++
@@ -754,19 +754,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 		for _, r := range printableCompleted {
 			fmt.Fprint(raw, aec.EraseLine(aec.EraseModes.Tail))
-			renderLine(raw, r)
-			if !r.data.Started.IsZero() && !r.cached {
-				if !r.data.Started.Equal(r.data.Created) {
-					d := r.data.Started.Sub(r.data.Created)
-					if d >= 1*time.Microsecond {
-						fmt.Fprint(raw, " ", aec.LightBlackF.Apply("waited="), timefmt.Format(d))
-					}
-				}
-
-				d := r.data.Completed.Sub(r.data.Started)
-				fmt.Fprint(raw, " ", aec.LightBlackF.Apply("took="), timefmt.Format(d))
-			}
-			fmt.Fprintln(raw)
+			renderCompletedAction(raw, r)
 		}
 	}
 
@@ -1004,7 +992,7 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 
 			fmt.Fprint(&lineb, prefix)
 
-			renderLine(&lineb, child.item)
+			renderLine(&lineb, *child.item)
 
 			suffix := ""
 			if data.State == tasks.ActionRunning {
@@ -1091,4 +1079,30 @@ func (c *ConsoleSink) EnterInputMode(ctx context.Context, prompt ...string) func
 		reenableRendering()
 		return func() {}
 	}
+}
+
+func renderCompletedAction(raw io.Writer, r lineItem) {
+	renderLine(raw, r)
+	if !r.data.Started.IsZero() && !r.cached {
+		if !r.data.Started.Equal(r.data.Created) {
+			d := r.data.Started.Sub(r.data.Created)
+			if d >= 1*time.Microsecond {
+				fmt.Fprint(raw, " ", aec.LightBlackF.Apply("waited="), timefmt.Format(d))
+			}
+		}
+
+		d := r.data.Completed.Sub(r.data.Started)
+		fmt.Fprint(raw, " ", aec.LightBlackF.Apply("took="), timefmt.Format(d))
+	}
+	fmt.Fprintln(raw)
+}
+
+func LogAction(w io.Writer, ev tasks.EventData) {
+	item := lineItem{
+		data: ev,
+	}
+
+	item.precompute()
+
+	renderCompletedAction(w, item)
 }

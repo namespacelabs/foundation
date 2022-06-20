@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/rs/zerolog"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -75,7 +74,7 @@ func Continuously(baseCtx context.Context, sinkable Sinkable, transformErr Trans
 	err := wait()
 
 	if err := sinkable.Cleanup(ctx); err != nil {
-		zerolog.Ctx(ctx).Warn().Err(err).Msg("cleanup failed")
+		fmt.Fprintf(console.Warnings(ctx), "clean failed: %v\n", err)
 	}
 
 	if err == ErrDoneSinking {

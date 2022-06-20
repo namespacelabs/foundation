@@ -11,16 +11,14 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func readerLoop(l zerolog.Logger, ws *websocket.Conn, f func([]byte) error) {
+func readerLoop(ctx context.Context, ws *websocket.Conn, f func([]byte) error) {
 	ws.SetReadLimit(4096)
-
-	l = l.With().Str("remoteAddr", ws.RemoteAddr().String()).Logger()
 
 	for {
 		t, msg, err := ws.ReadMessage()
@@ -29,21 +27,18 @@ func readerLoop(l zerolog.Logger, ws *websocket.Conn, f func([]byte) error) {
 			// Not reporting CloseError's.
 			// Closing the websocket may happen for various reasons and it is not an exception.
 			if _, ok := err.(*websocket.CloseError); !ok {
-				l.Err(err).Msg("WebSocket.ReadMessage failed, bailing out")
+				fmt.Fprintf(console.Errors(ctx), "(%s) websocket: read message failed: %v\n", ws.RemoteAddr(), err)
 			}
 			break
 		}
 
 		if (t == websocket.TextMessage || t == websocket.BinaryMessage) && f != nil {
 			if err := f(msg); err != nil {
-				l.Err(err).Str("msg", string(msg)).Msg("WebSocket.ReadMessage failed on user, bailing out")
+				fmt.Fprintf(console.Errors(ctx), "(%s) websocket: message handler failed: %v\n", ws.RemoteAddr(), err)
 				break
 			}
 		} else {
-			l.Warn().
-				Int("type", t).
-				Int("len", len(msg)).
-				Msg("unhandled websocket message")
+			fmt.Fprintf(console.Errors(ctx), "(%s) websocket: unhandled message type: %d\n", ws.RemoteAddr(), t)
 		}
 	}
 }
@@ -51,26 +46,21 @@ func readerLoop(l zerolog.Logger, ws *websocket.Conn, f func([]byte) error) {
 func writeJSONLoop(ctx context.Context, ws *websocket.Conn, ch chan *Update) {
 	defer ws.Close() // On error, close the ws so the reader loop also exits.
 
-	l := zerolog.Ctx(ctx).With().Str("remoteAddr", ws.RemoteAddr().String()).Logger()
-
 	for {
 		select {
 		case <-ctx.Done():
-			l.Debug().Msg("done")
 			return
 
 		case newUpdate := <-ch:
 			data, err := tasks.TryProtoAsJson(nil, newUpdate, false)
 			if err != nil {
-				l.Err(err).Msg("failed to serialize")
+				fmt.Fprintf(console.Errors(ctx), "(%s) websocket: failed to serialize: %v\n", ws.RemoteAddr(), err)
 				return
 			}
 			if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
-				l.Err(err).Msg("failed to write")
+				fmt.Fprintf(console.Errors(ctx), "(%s) websocket: failed to write: %v\n", ws.RemoteAddr(), err)
 				return
 			}
-
-			l.Trace().Int("len", len(data)).Msg("pushed JSON")
 		}
 	}
 }
@@ -82,12 +72,10 @@ func serveStream(kind string, w http.ResponseWriter, r *http.Request, handler fu
 		EnableCompression: true,
 	}
 
-	l := zerolog.Ctx(r.Context()).With().Str("remoteAddr", r.RemoteAddr).Str("websocket", kind).Logger()
-
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
-			l.Err(err).Msg("websocket upgrade failed")
+			fmt.Fprintf(console.Errors(r.Context()), "(%s) websocket: upgrade failed: %v\n", r.RemoteAddr, err)
 		}
 		return
 	}
@@ -102,9 +90,9 @@ func serveStream(kind string, w http.ResponseWriter, r *http.Request, handler fu
 
 	defer ws.Close()
 
-	if err := handler(l.WithContext(ctxWithCancel), ws, writer); err != nil {
+	if err := handler(ctxWithCancel, ws, writer); err != nil {
 		fmt.Fprintf(writer, "failed: %v\n", err)
-		l.Err(err).Msg("websocket failed")
+		fmt.Fprintf(console.Errors(r.Context()), "(%s) websocket: failed: %v\n", r.RemoteAddr, err)
 	}
 }
 
@@ -123,16 +111,16 @@ func copyStream(kind string, w http.ResponseWriter, r *http.Request, f func(cont
 
 		go func() {
 			if _, err := io.Copy(writer, stream); err != nil {
-				zerolog.Ctx(ctx).Err(err).Msg("websocket stream write failed")
+				fmt.Fprintf(console.Errors(ctx), "(%s) websocket: stream write failed: %v\n", ws.RemoteAddr(), err)
 			}
 
 			// Tell the reader to bail out.
 			if err := ws.Close(); err != nil {
-				zerolog.Ctx(ctx).Err(err).Msg("websocket close failed")
+				fmt.Fprintf(console.Errors(ctx), "(%s) websocket: stream close failed: %v\n", ws.RemoteAddr(), err)
 			}
 		}()
 
-		readerLoop(zerolog.Ctx(ctx).With().Logger(), ws, nil)
+		readerLoop(ctx, ws, nil)
 		return nil
 	})
 }
