@@ -1,8 +1,0 @@
-{
-  "name": "buf-yarn-deps",
-  "version": "0.0.0",
-  "private": true,
-  "dependencies": {
-    "ts-protoc-gen": "^0.15.0"
-  }
-}
