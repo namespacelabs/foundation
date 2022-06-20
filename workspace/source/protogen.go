@@ -181,7 +181,7 @@ func (m *multiGen) Commit() error {
 }
 
 func makeProtoSrcs(buf compute.Computable[oci.Image], parsed *protos.FileDescriptorSetAndDeps, opts ProtosOpts) compute.Computable[fs.FS] {
-	return &genGoProtosAtLoc{
+	return &genProtosAtLoc{
 		buf:         buf,
 		fileDescSet: parsed,
 		opts:        opts,
@@ -221,7 +221,7 @@ func generateProtoSrcs(ctx context.Context, buf compute.Computable[oci.Image], m
 	return nil
 }
 
-type genGoProtosAtLoc struct {
+type genProtosAtLoc struct {
 	buf         compute.Computable[oci.Image]
 	fileDescSet *protos.FileDescriptorSetAndDeps
 	opts        ProtosOpts
@@ -229,9 +229,9 @@ type genGoProtosAtLoc struct {
 	compute.LocalScoped[fs.FS]
 }
 
-var _ compute.Computable[fs.FS] = &genGoProtosAtLoc{}
+var _ compute.Computable[fs.FS] = &genProtosAtLoc{}
 
-func (g *genGoProtosAtLoc) Action() *tasks.ActionEvent {
+func (g *genProtosAtLoc) Action() *tasks.ActionEvent {
 	var files []string
 	for _, fds := range g.fileDescSet.File {
 		files = append(files, fds.GetName())
@@ -243,7 +243,7 @@ func (g *genGoProtosAtLoc) Action() *tasks.ActionEvent {
 		Arg("files", files)
 }
 
-func (g *genGoProtosAtLoc) Inputs() *compute.In {
+func (g *genProtosAtLoc) Inputs() *compute.In {
 	return compute.Inputs().
 		Computable("buf", g.buf).
 		Proto("filedescset", g.fileDescSet).
@@ -251,7 +251,7 @@ func (g *genGoProtosAtLoc) Inputs() *compute.In {
 		Version(codegenVersion)
 }
 
-func (g *genGoProtosAtLoc) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
+func (g *genProtosAtLoc) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
 	// These directories are used within the container. Both will be mapped to temp dirs in the host
 	// which are managed below, and will be deleted on completion.
 	const outDir = "/out"
