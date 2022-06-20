@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package main
+package baseimg
 
 import (
 	"embed"
@@ -57,7 +57,7 @@ func init() {
 	alpineImage = pins.Default("alpine")
 }
 
-func makeBufImageState(platform specs.Platform) llb.State {
+func MakeBufImageState(platform specs.Platform) llb.State {
 	gobase := llbutil.Image(golangImage, platform).
 		AddEnv("CGO_ENABLED", "0").
 		AddEnv("PATH", "/usr/local/go/bin:"+system.DefaultPathEnvUnix).
