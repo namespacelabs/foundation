@@ -164,7 +164,7 @@ func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schem
 		dl.Add("Generate Go proto sources", &source.OpProtoGen{
 			PackageName: pkg.PackageName().String(),
 			Protos:      protos.Merge(list...),
-			Framework:   source.OpProtoGen_GO,
+			Framework:   schema.Framework_GO,
 		})
 	}
 
