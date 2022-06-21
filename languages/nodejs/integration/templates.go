@@ -144,8 +144,8 @@ import * as {{.Alias}} from "{{.Package}}";
 			`{{define "Node"}}{{with $opts := .}}// This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import {GrpcRegistrar} from "@namespacelabs.dev-foundation/std-nodejs-grpc"
+import { DependencyGraph, Initializer } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
+import {GrpcRegistrar} from "@namespacelabs.dev/foundation/std/nodejs/grpc"
 
 
 {{- template "Imports" . -}}
@@ -176,9 +176,9 @@ export const wireService: WireService = impl.wireService;
 			// Server template
 			`{{define "Server"}}// This file was automatically generated.
 
-import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import {provideHttpServer, HttpServerImpl} from "@namespacelabs.dev-foundation/std-nodejs-http/impl";
-import {provideGrpcRegistrar, GrpcServer} from "@namespacelabs.dev-foundation/std-nodejs-grpc";
+import { DependencyGraph, Initializer } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
+import {provideHttpServer, HttpServerImpl} from "@namespacelabs.dev/foundation/std/nodejs/http/impl";
+import {provideGrpcRegistrar, GrpcServer} from "@namespacelabs.dev/foundation/std/nodejs/grpc";
 
 {{- template "Imports" . -}}
 
@@ -223,7 +223,7 @@ main();
 
 			// Node stub template
 			`{{define "Node stub" -}}
-import {GrpcRegistrar} from "@namespacelabs.dev-foundation/std-nodejs-grpc"
+import {GrpcRegistrar} from "@namespacelabs.dev/foundation/std/nodejs/grpc"
 import { ServiceDeps, WireService } from "./deps.fn";
 import { {{.ServiceServerName}}, {{.DefineServiceFunName}} } from "./{{.ServiceFileName}}_grpc.fn";
 

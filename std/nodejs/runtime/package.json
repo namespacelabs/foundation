@@ -1,8 +1,0 @@
-{
-	"name": "@namespacelabs/foundation",
-	"private": true,
-	"dependencies": {
-		"source-map-support": "0.5.21",
-		"toposort": "2.0.2"
-	}
-}

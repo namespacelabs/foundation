@@ -21,7 +21,7 @@ import (
 const (
 	PluginFn      = "plugin-foundation.cjs"
 	YarnRcFn      = ".yarnrc.yml"
-	yarnRcContent = `nodeLinker: pnpm
+	yarnRcContent = `nodeLinker: node-modules
 `
 )
 
