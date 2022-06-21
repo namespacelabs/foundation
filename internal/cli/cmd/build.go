@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -44,7 +45,7 @@ func NewBuildCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&continuously, "continuously", "c", continuously, "If set to true, builds continuously, listening to changes to the workspace.")
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
-		serverLocs, specified, err := allServersOrFromArgs(ctx, env, args)
+		serverLocs, specified, err := allServersOrFromArgs(ctx, env, false, args)
 		if err != nil {
 			return err
 		}
@@ -140,7 +141,24 @@ func requireEnv(ctx context.Context, envRef string) (provision.Env, error) {
 	return provision.RequireEnv(root, envRef)
 }
 
-func allServersOrFromArgs(ctx context.Context, env provision.Env, args []string) ([]fnfs.Location, bool, error) {
+func allServersOrFromArgs(ctx context.Context, env provision.Env, usePackageNames bool, args []string) ([]fnfs.Location, bool, error) {
+	var locations []fnfs.Location
+	if usePackageNames {
+		for _, packageName := range args {
+			loc, err := workspace.NewPackageLoader(env.Root()).Resolve(ctx, schema.PackageName(packageName))
+			if err != nil {
+				return nil, false, err
+			}
+
+			locations = append(locations, fnfs.Location{
+				ModuleName: loc.Module.ModuleName(),
+				RelPath:    loc.Rel(),
+			})
+		}
+
+		return locations, true, nil
+	}
+
 	if len(args) == 0 {
 		schemaList, err := workspace.ListSchemas(ctx, env.Root())
 		if err != nil {
@@ -150,7 +168,6 @@ func allServersOrFromArgs(ctx context.Context, env provision.Env, args []string)
 		return schemaList.Locations, false, nil
 	}
 
-	var locations []fnfs.Location
 	for _, arg := range args {
 		// XXX RelPackage should probably validate that it's a valid path (e.g. doesn't escape module).
 		loc := env.Root().RelPackage(arg)

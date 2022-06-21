@@ -18,24 +18,22 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 func NewDeployCmd() *cobra.Command {
 	var (
-		packageName   string
-		runOpts       deploy.Opts
-		explain       bool
-		serializePath string
-		deployOpts    deployOpts
+		usePackageNames bool
+		runOpts         deploy.Opts
+		explain         bool
+		serializePath   string
+		deployOpts      deployOpts
 	)
 
 	cmd := &cobra.Command{
@@ -44,7 +42,7 @@ func NewDeployCmd() *cobra.Command {
 		Args:  cobra.ArbitraryArgs,
 	}
 
-	cmd.Flags().StringVar(&packageName, "package_name", packageName, "Instead of running the specified local server, run the specified package resolved against the local workspace.")
+	cmd.Flags().BoolVar(&usePackageNames, "use_package_names", usePackageNames, "Specify servers by using their fully qualified package name instead.")
 	cmd.Flags().Int32Var(&runOpts.BaseServerPort, "port_base", 40000, "Base port to listen on (additional requested ports will be base port + n).")
 	cmd.Flags().BoolVar(&deployOpts.alsoWait, "wait", true, "Wait for the deployment after running.")
 	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
@@ -54,25 +52,9 @@ func NewDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployOpts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
-		var locations []fnfs.Location
-		var specified bool
-		if packageName != "" {
-			loc, err := workspace.NewPackageLoader(env.Root()).Resolve(ctx, schema.PackageName(packageName))
-			if err != nil {
-				return err
-			}
-
-			locations = append(locations, fnfs.Location{
-				ModuleName: loc.Module.ModuleName(),
-				RelPath:    loc.Rel(),
-			})
-			specified = true
-		} else {
-			var err error
-			locations, specified, err = allServersOrFromArgs(ctx, env, args)
-			if err != nil {
-				return err
-			}
+		locations, specified, err := allServersOrFromArgs(ctx, env, usePackageNames, args)
+		if err != nil {
+			return err
 		}
 
 		packages, servers, err := loadServers(ctx, env, locations, specified)

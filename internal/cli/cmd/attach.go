@@ -55,8 +55,9 @@ func NewAttachCmd() *cobra.Command {
 }
 
 type hydrateArgs struct {
-	envRef    string
-	rehydrate bool
+	envRef          string
+	usePackageNames bool
+	rehydrate       bool
 
 	rehydrateOnly bool
 }
@@ -71,6 +72,7 @@ type hydrateResult struct {
 
 func (h *hydrateArgs) Configure(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&h.envRef, "env", h.envRef, "The environment to attach to.")
+	cmd.Flags().BoolVar(&h.usePackageNames, "use_package_names", h.usePackageNames, "Specify servers by using their fully qualified package name instead.")
 	if !h.rehydrateOnly {
 		cmd.Flags().BoolVar(&h.rehydrate, "rehydrate", h.rehydrate, "If set to false, compute stack at head, rather than loading the deployed configuration.")
 	}
@@ -82,7 +84,7 @@ func (h *hydrateArgs) ComputeStack(ctx context.Context, args []string) (*hydrate
 		return nil, err
 	}
 
-	serverLocs, specified, err := allServersOrFromArgs(ctx, env, args)
+	serverLocs, specified, err := allServersOrFromArgs(ctx, env, h.usePackageNames, args)
 	if err != nil {
 		return nil, err
 	}
