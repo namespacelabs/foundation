@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
@@ -41,7 +42,7 @@ func buildUsingBuildkit(ctx context.Context, env ops.Environment, bin GoBinary, 
 
 	src := buildkit.MakeLocalState(local)
 
-	base := makeGoBuildBase(bin.GoVersion, buildkit.HostPlatform())
+	base := makeGoBuildBase(ctx, bin.GoVersion, buildkit.HostPlatform())
 
 	prodBase, err := production.ServerImageLLB(production.Distroless, *conf.TargetPlatform())
 	if err != nil {
@@ -94,18 +95,20 @@ func makeGoImage(version string) string {
 	return fmt.Sprintf("docker.io/library/golang:%s-alpine", version)
 }
 
-func goAlpine(version string, platform specs.Platform) llb.State {
+func goAlpine(ctx context.Context, version string, platform specs.Platform) llb.State {
 	img := makeGoImage(version)
 
 	if r, err := pins.CheckImage(img); err == nil {
 		return llbutil.Image(r, platform)
 	}
 
+	fmt.Fprintf(console.Warnings(ctx), "go: no pinned version of %q\n", img)
+
 	return llbutil.Image(img, platform)
 }
 
-func makeGoBuildBase(version string, platform specs.Platform) llb.State {
-	st := goAlpine(version, platform).
+func makeGoBuildBase(ctx context.Context, version string, platform specs.Platform) llb.State {
+	st := goAlpine(ctx, version, platform).
 		AddEnv("CGO_ENABLED", "0").
 		AddEnv("PATH", "/usr/local/go/bin:"+system.DefaultPathEnvUnix).
 		AddEnv("GOPATH", "/go").
