@@ -52,7 +52,6 @@ import (
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/runtime/tools"
@@ -69,7 +68,8 @@ import (
 )
 
 var (
-	enableErrorTracing = false
+	enableErrorTracing   = false
+	disableCommandBundle = false
 )
 
 func DoMain(name string, registerCommands func(*cobra.Command)) {
@@ -112,23 +112,23 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		go checkRemoteStatus(console.Debug(ctxWithSink), remoteStatusChan)
 	}
 
-	bundler := tasks.NewActionBundler()
-	// Delete stale bundles asynchronously on startup.
-	defer func() {
-		_ = bundler.RemoveStaleBundles()
-	}()
+	var cmdBundle *CommandBundle
+	if !disableCommandBundle {
+		cmdBundle := NewCommandBundle()
 
-	// Create a new in-memory bundle to track actions. The bundle
-	// is flushed at the end of command invocation.
-	bundle := bundler.NewInMemoryBundle()
+		// Delete stale commands asynchronously on startup.
+		defer func() {
+			_ = cmdBundle.RemoveStaleCommands()
+		}()
+	}
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
-		err := bundle.WriteInvocationInfo(cmd.Context(), cmd, args)
-		if err != nil {
-			return err
+		if cmdBundle != nil {
+			if err := cmdBundle.RegisterCommand(cmd, args); err != nil {
+				return err
+			}
+			tasks.ActionStorer = cmdBundle.CreateActionStorer(cmd.Context(), flushLogs)
 		}
-
-		tasks.ActionStorer = tasks.NewStorer(cmd.Context(), bundler, bundle, tasks.StorerWithFlushLogs(flushLogs))
 
 		if err := tasks.SetupThrottler(console.Debug(cmd.Context())); err != nil {
 			return err
@@ -218,6 +218,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 		"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
+	rootCmd.PersistentFlags().BoolVar(&disableCommandBundle, "disable_command_bundle", disableCommandBundle,
+		"If set to true, diagnostics and error information are tracked for the command and it's listed with `fn command-history`.")
 	rootCmd.PersistentFlags().BoolVar(&consolesink.LogActions, "log_actions", consolesink.LogActions,
 		"If set to true, each completed action is also output as a log message.")
 	rootCmd.PersistentFlags().BoolVar(&console.DebugToConsole, "debug_to_console", console.DebugToConsole,
@@ -323,21 +325,23 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	// Ensures deferred routines after invoked gracefully before os.Exit.
 	defer handleExit()
-	defer func() {
-		// Capture useful information about the environment helpful for diagnostics in the bundle.
-		_ = writeExitInfo(ctxWithSink, bundle)
-
-		// Commit the bundle to the filesystem.
-		_ = bundler.Flush(ctxWithSink, bundle)
-	}()
+	if cmdBundle != nil {
+		defer func() {
+			// Capture useful information about the environment helpful for diagnostics in the bundle.
+			_ = cmdBundle.FlushWithExitInfo(ctxWithSink)
+		}()
+	}
 
 	if err != nil && !errors.Is(err, context.Canceled) {
 		exitCode := handleExitError(interactive, err)
 		// Record errors only after the user sees them to hide potential latency implications.
 		// We pass the original ctx without sink since logs have already been flushed.
 		tel.RecordError(ctx, err)
-		_ = bundle.WriteError(ctx, err)
 
+		// Ensure that the error with stack trace is a part of the command bundle.
+		if cmdBundle != nil {
+			_ = cmdBundle.WriteError(ctx, err)
+		}
 		// Ensures graceful invocation of deferred routines in the block above before we exit.
 		panic(exitWithCode{exitCode})
 	}
@@ -353,22 +357,6 @@ func handleExit() {
 		}
 		panic(e) // not an Exit, bubble up
 	}
-}
-
-func writeExitInfo(ctx context.Context, bundle *tasks.Bundle) error {
-	err := bundle.WriteMemStats(ctx)
-	if err != nil {
-		return err
-	}
-	client, err := docker.NewClient()
-	if err != nil {
-		return err
-	}
-	dockerInfo, err := client.Info(ctx)
-	if err != nil {
-		return err
-	}
-	return bundle.WriteDockerInfo(ctx, &dockerInfo)
 }
 
 func handleExitError(colors bool, err error) int {
