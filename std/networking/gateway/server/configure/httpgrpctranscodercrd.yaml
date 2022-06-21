@@ -34,20 +34,17 @@ spec:
               description: Holds the desired state of the Configuration (from the client).
               type: object
               properties:
-                # Fully qualified `package.service` name of the exported gRPC service.
-                # For E.g. "api.todos.TodosService".
                 fullyQualifiedProtoServiceName:
+                  description: Fully qualified `package.service` name of the exported gRPC service. For E.g. `api.todos.TodosService`.
                   type: string
-                # Upstream address of the gRPC service. For E.g. `127.0.0.1` or `docker.host.internal`.
                 serviceAddress:
+                  description: Upstream address of the gRPC service. For E.g. `127.0.0.1`.
                   type: string
-                # Upstream port that the HTTP listener routes to for paths matching
-                # `/serviceName`.
                 servicePort:
+                  description: Upstream port that the HTTP listener routes to for paths matching `/serviceName`.
                   type: integer
-                # Base64 encoded `descriptorpb.FileDescriptorSet` of the gRPC service .proto file
-                # and it's transitive .proto dependencies.
                 encodedProtoDescriptor:
+                  description: Base64 encoded `descriptorpb.FileDescriptorSet` of the gRPC service .proto file and it's transitive .proto dependencies.
                   type: string
             status:
               description: Holds the applied state of the Configuration (from the server).
@@ -58,23 +55,21 @@ spec:
                   items:
                     type: object
                     properties:
-                      # type of condition in CamelCase or in foo.example.com/CamelCase.
                       type:
+                        description: Type of condition in CamelCase or in foo.example.com/CamelCase.
                         type: string 
-                      # status of the condition, one of `True`, `False`, or `Unknown`.  
                       status:
+                        description: Status of the condition, one of `True`, `False`, or `Unknown`.
                         type: string
-                      # observedGeneration represents the .metadata.generation that the condition was set based upon.  
                       observedGeneration:
+                        description: Represents the .metadata.generation that the condition was based on.
                         type: integer
-                      # lastTransitionTime is the last time the condition transitioned from one status to another.
                       lastTransitionTime:
+                        description: Last time the condition transitioned from one status to another.
                         type: string
-                      # reason contains a programmatic identifier indicating the reason for the condition's last transition
-                      # and is populated normally for errors.
                       reason:
+                        description: Contains a programmatic identifier indicating the reason for the condition's last transition and is populated normally for errors.
                         type: string
-                      # message is a human readable message indicating details about the transition. This field again
-                      # is populated for errors.  
                       message:
+                        description: Human readable message indicating details about the transition. Like `description`, this is populated normally for errors.
                         type: string
