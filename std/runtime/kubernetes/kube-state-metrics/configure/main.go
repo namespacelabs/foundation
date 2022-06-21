@@ -87,10 +87,12 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		rules = append(rules, rbacv1.PolicyRule().WithAPIGroups(r.ApiGroups...).WithResources(r.Resources...).WithVerbs("list", "watch"))
 	}
 
-	out.Compilables = append(out.Compilables, kubeblueprint.GrantKubeACLs{
+	if err := (kubeblueprint.GrantKubeACLs{
 		DescriptionBase: "kube-state-metrics",
 		Rules:           rules,
-	})
+	}).Compile(req, out); err != nil {
+		return err
+	}
 
 	return nil
 }
