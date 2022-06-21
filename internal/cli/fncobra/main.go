@@ -128,7 +128,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
 		if cmdBundle != nil {
-			if err := cmdBundle.RegisterCommand(ctx, cmd, args); err != nil {
+			if err := cmdBundle.RegisterCommand(cmd, args); err != nil {
 				return err
 			}
 			tasks.ActionStorer = cmdBundle.CreateActionStorer(cmd.Context(), flushLogs)

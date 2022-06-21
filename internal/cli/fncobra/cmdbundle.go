@@ -34,12 +34,8 @@ func (c *CommandBundle) RemoveStaleCommands() error {
 }
 
 // RegisterCommand writes invocation information about the command to the bundle.
-func (c *CommandBundle) RegisterCommand(ctx context.Context, cmd *cobra.Command, args []string) error {
-	err := c.bundle.WriteInvocationInfo(cmd.Context(), cmd, args)
-	if err != nil {
-		return err
-	}
-	return nil
+func (c *CommandBundle) RegisterCommand(cmd *cobra.Command, args []string) error {
+	return c.bundle.WriteInvocationInfo(cmd.Context(), cmd, args)
 }
 
 func (c *CommandBundle) CreateActionStorer(ctx context.Context, flushLogs func()) *tasks.Storer {
