@@ -247,7 +247,7 @@ func MaybeAllocateDomainCertificate(ctx context.Context, entry *schema.Stack_Ent
 			return nil, fnerrors.InternalError("%s: expected domain to be {name}.{env}.{org}", domain.Fqdn)
 		}
 
-		cert, err := allocateName(ctx, entry.Server, entry.ServerNaming, fnapi.AllocateOpts{
+		cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
 			Subdomain: fmt.Sprintf("%s.%s", parts[0], parts[1]),
 			Org:       parts[2],
 		})
@@ -257,8 +257,9 @@ func MaybeAllocateDomainCertificate(ctx context.Context, entry *schema.Stack_Ent
 		domain.Certificate = cert
 
 	case schema.Domain_USER_SPECIFIED_TLS_MANAGED:
-		cert, err := allocateName(ctx, entry.Server, entry.ServerNaming, fnapi.AllocateOpts{
+		cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
 			FQDN: domain.Fqdn,
+			Org:  entry.ServerNaming.GetWithOrg(),
 		})
 		if err != nil {
 			return nil, err

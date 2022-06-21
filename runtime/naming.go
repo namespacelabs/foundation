@@ -63,36 +63,35 @@ func ComputeNaming(env *schema.Environment, source *schema.Naming) (*schema.Comp
 	}, nil
 }
 
-func allocateName(ctx context.Context, srv *schema.Server, naming *schema.Naming, startopts fnapi.AllocateOpts) (*schema.Domain_Certificate, error) {
+func allocateName(ctx context.Context, srv *schema.Server, opts fnapi.AllocateOpts) (*schema.Domain_Certificate, error) {
 	var cacheKey string
 
-	if startopts.Subdomain != "" {
-		if startopts.Org == "" {
-			return nil, fnerrors.InternalError("%s: org must be specified", startopts.Subdomain)
+	if opts.Subdomain != "" {
+		if opts.Org == "" {
+			return nil, fnerrors.InternalError("%s: org must be specified", opts.Subdomain)
 		}
-		cacheKey = startopts.Subdomain
-	} else if startopts.FQDN != "" {
-		cacheKey = startopts.FQDN + ".specific"
+		cacheKey = opts.Subdomain
+	} else if opts.FQDN != "" {
+		cacheKey = opts.FQDN + ".specific"
 	} else {
 		return nil, fnerrors.BadInputError("either FQDN or Subdomain must be set")
 	}
 
-	previous, _ := checkStored(ctx, srv, startopts.Org, cacheKey)
+	previous, _ := checkStored(ctx, srv, opts.Org, cacheKey)
 	if previous != nil && isResourceValid(previous) {
 		// We ignore errors.
 		return certFromResource(previous), nil
 	}
 
-	startopts.NoTLS = NamingNoTLS
-	startopts.Stored = previous
-	startopts.Org = naming.WithOrg
+	opts.NoTLS = NamingNoTLS
+	opts.Stored = previous
 
-	nr, err := fnapi.AllocateName(ctx, srv, startopts)
+	nr, err := fnapi.AllocateName(ctx, srv, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := storeCert(ctx, srv, startopts.Org, cacheKey, nr); err != nil {
+	if err := storeCert(ctx, srv, opts.Org, cacheKey, nr); err != nil {
 		fmt.Fprintf(console.Warnings(ctx), "failed to persistent certificate for cacheKey=%s: %v\n", cacheKey, err)
 	}
 
