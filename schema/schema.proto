@@ -201,6 +201,7 @@ message Reference {
     }
 }
 
+// Next ID: 22
 message Server {
     reserved 17, 19;
 
@@ -230,6 +231,9 @@ message Server {
     Framework framework = 8;
 
     bool is_stateful = 20;
+
+    // This server is meant to be used for tests, and should not be deployed by default.
+    bool testonly = 21;
 
     Binary binary = 9;
 

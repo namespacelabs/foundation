@@ -23,6 +23,7 @@ type cueServer struct {
 	Name       string                    `json:"name"`
 	Framework  string                    `json:"framework"`
 	IsStateful bool                      `json:"isStateful"`
+	TestOnly   bool                      `json:"testonly"`
 	Import     []string                  `json:"import"`
 	Services   map[string]cueServiceSpec `json:"service"`
 	StaticEnv  map[string]string         `json:"env"`
@@ -94,6 +95,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	}
 
 	out.IsStateful = bits.IsStateful
+	out.Testonly = bits.TestOnly
 	out.Import = bits.Import
 
 	for k, v := range bits.StaticEnv {

@@ -89,6 +89,7 @@ _#Node: {
 	framework: #Framework | "OPAQUE"
 
 	isStateful?: bool
+	testonly?: bool
 
 	if framework == "OPAQUE" || framework == "NODEJS" {
 		service: [string]: #ServiceSpec

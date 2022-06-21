@@ -166,7 +166,6 @@ func loadServers(ctx context.Context, env provision.Env, locations []fnfs.Locati
 	var servers []provision.Server
 	for _, loc := range locations {
 		if err := tasks.Action("package.load-server").Scope(loc.AsPackageName()).Run(ctx, func(ctx context.Context) error {
-
 			pp, err := loader.LoadByName(ctx, loc.AsPackageName())
 			if err != nil {
 				return fnerrors.Wrap(loc, err)
@@ -183,6 +182,11 @@ func loadServers(ctx context.Context, env provision.Env, locations []fnfs.Locati
 			srv, err := env.RequireServerWith(ctx, loader, loc.AsPackageName())
 			if err != nil {
 				return fnerrors.Wrap(loc, err)
+			}
+
+			// If the user doesn't explicitly specify this server should be loaded, don't load it, if it's tagged as being testonly.
+			if !specified && srv.Package.Server.Testonly {
+				return nil
 			}
 
 			servers = append(servers, srv)
