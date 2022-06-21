@@ -21,11 +21,15 @@ func New(ctx context.Context, name string) (Executor, func() error) {
 	eg, ctx := errgroup.WithContext(ctx)
 	wait := func() error {
 		if err := eg.Wait(); err != nil {
-			return fmt.Errorf("executor %q returned %w", name, err)
+			return fmt.Errorf("%s: failed: %w", name, err)
 		}
 		return nil
 	}
 	return fromErrGroup(eg, ctx), wait
+}
+
+func Newf(ctx context.Context, format string, args ...interface{}) (Executor, func() error) {
+	return New(ctx, fmt.Sprintf(format, args...))
 }
 
 func Serial(ctx context.Context) (Executor, func() error) {

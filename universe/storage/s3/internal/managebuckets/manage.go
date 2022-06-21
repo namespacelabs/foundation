@@ -44,12 +44,11 @@ func apply(ctx context.Context) error {
 		return fmt.Errorf("failed to read Minio credentials: %w", err)
 	}
 
-	ex, wait := executor.New(ctx, "provideBuckets")
-
+	eg, wait := executor.New(ctx, "s3.ensure-buckets")
 	for _, bucket := range conf.Bucket {
 		bucket := bucket // Close bucket.
 
-		ex.Go(func(ctx context.Context) error {
+		eg.Go(func(ctx context.Context) error {
 			b, err := fns3.ProvideBucketWithFactory(ctx, bucket, client.ClientFactory{
 				SharedCredentialsPath: *awsCredentialsFile,
 			}, minioCreds)

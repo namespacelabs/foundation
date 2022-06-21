@@ -92,7 +92,7 @@ func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPor
 	debug := console.Debug(ctx)
 
 	ids := atomic.NewInt32(0)
-	ex, wait := executor.New(ctx, "portforward")
+	eg, wait := executor.New(ctx, "kubernetes.portforward")
 
 	var mu sync.Mutex
 	var currentConn httpstream.Connection
@@ -114,7 +114,7 @@ func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPor
 	}()
 
 	closeWatcher := args.Watch(ctx, func(pod *v1.Pod, revision int64, err error) {
-		ex.Go(func(ctx context.Context) error {
+		eg.Go(func(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
@@ -164,7 +164,7 @@ func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPor
 			return err
 		}
 
-		ex.Go(func(ctx context.Context) error {
+		eg.Go(func(ctx context.Context) error {
 			defer lst.Close()
 
 			localPort := lst.Addr().(*net.TCPAddr).Port
@@ -183,7 +183,7 @@ func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPor
 
 				fmt.Fprintf(debug, "kube/portfwd: %s: %d: accepted new connection: %v\n", args.Identifier, args.ContainerPort, conn.RemoteAddr())
 
-				ex.Go(func(ctx context.Context) error {
+				eg.Go(func(ctx context.Context) error {
 					streamConn, err := cancelableWait(ctx, cond, func() (httpstream.Connection, bool) {
 						return currentConn, currentConn != nil
 					})

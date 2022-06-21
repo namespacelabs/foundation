@@ -140,7 +140,7 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 	localCtx, cancelAll := context.WithCancel(ctx)
 	defer cancelAll()
 
-	ex, wait := executor.New(localCtx, fmt.Sprintf("testing.run(%s)", test.TestName))
+	ex, wait := executor.Newf(localCtx, "testing.run(%s)", test.TestName)
 
 	var extraOutput []io.Writer
 	if test.OutputProgress {
@@ -197,7 +197,7 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBund
 }
 
 func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, focus []string, printLogs bool) (*TestBundle, error) {
-	ex, wait := executor.New(ctx, "testing.collectLogs")
+	ex, wait := executor.New(ctx, "test.collect-logs")
 
 	type serverLog struct {
 		PackageName   string

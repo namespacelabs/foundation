@@ -68,7 +68,7 @@ func Continuously(baseCtx context.Context, sinkable Sinkable, transformErr Trans
 	}
 	ctx := context.WithValue(baseCtx, _continuousKey, g)
 	// We want all executions under the executor to be able to obtain the current invocation.
-	eg, wait := executor.New(ctx, "compute.Continously")
+	eg, wait := executor.New(ctx, "compute.continuously")
 	g.eg = eg
 	g.sink(ctx, sinkable.Inputs(), sinkable.Updated)
 	err := wait()

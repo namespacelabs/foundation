@@ -210,7 +210,11 @@ func waitCompute(ctx context.Context, g *Orch, p *Promise[any], opts computeInst
 
 	var resolved *Resolved
 	var hits []cacheHit
-	if err := opts.Action().ID(p.actionID).RunWithOpts(ctx, tasks.RunOpts{
+
+	ev := opts.Action()
+	name, _ := tasks.NameOf(ev)
+
+	if err := ev.ID(p.actionID).RunWithOpts(ctx, tasks.RunOpts{
 		Wait: func(ctx context.Context) (bool, error) {
 			// If we've already calculated an inputs' digest, then attempt to load from the cache
 			// directly. If not, we'll need to wait on our dependencies to determine whether a
@@ -224,7 +228,7 @@ func waitCompute(ctx context.Context, g *Orch, p *Promise[any], opts computeInst
 			}
 
 			// If we come in through the "digest-compute" path, then we've already computed the results.
-			results, err := waitDeps(ctx, g, inputs.computable)
+			results, err := waitDeps(ctx, g, name, inputs.computable)
 			if err != nil {
 				return false, err
 			}
@@ -341,13 +345,13 @@ func checkCache(ctx context.Context, g *Orch, opts computeInstance, cacheable *c
 	return cacheHit{}
 }
 
-func waitDeps(ctx context.Context, g *Orch, computable map[string]rawComputable) (map[string]ResultWithTimestamp[any], error) {
+func waitDeps(ctx context.Context, g *Orch, desc string, computable map[string]rawComputable) (map[string]ResultWithTimestamp[any], error) {
 	var rmu sync.Mutex // Protects resolved and digests.
 
 	// We wait in parallel to create N actions so that the full dependency
 	// graph is also visible in the action log. This is a bit wasteful though
 	// and should be rethinked.
-	eg, wait := executor.New(ctx, "compute.waitDeps")
+	eg, wait := executor.Newf(ctx, "compute.wait-deps(%s)", desc)
 
 	results := map[string]ResultWithTimestamp[any]{}
 
