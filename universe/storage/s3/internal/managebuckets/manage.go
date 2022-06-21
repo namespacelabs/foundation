@@ -44,7 +44,7 @@ func apply(ctx context.Context) error {
 		return fmt.Errorf("failed to read Minio credentials: %w", err)
 	}
 
-	ex, wait := executor.New(ctx)
+	ex, wait := executor.New(ctx, "provideBuckets")
 
 	for _, bucket := range conf.Bucket {
 		bucket := bucket // Close bucket.

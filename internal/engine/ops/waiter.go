@@ -57,7 +57,7 @@ func WaitMultiple(ctx context.Context, waiters []Waiter, ch chan Event) error {
 		return nil
 	}
 
-	eg, wait := executor.New(ctx)
+	eg, wait := executor.New(ctx, "ops.waitMultiple")
 
 	for _, w := range waiters {
 		w := w // Close on w.

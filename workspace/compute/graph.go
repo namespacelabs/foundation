@@ -347,7 +347,7 @@ func waitDeps(ctx context.Context, g *Orch, computable map[string]rawComputable)
 	// We wait in parallel to create N actions so that the full dependency
 	// graph is also visible in the action log. This is a bit wasteful though
 	// and should be rethinked.
-	eg, wait := executor.New(ctx)
+	eg, wait := executor.New(ctx, "compute.waitDeps")
 
 	results := map[string]ResultWithTimestamp[any]{}
 
@@ -477,7 +477,7 @@ func Do(parent context.Context, do func(context.Context) error) error {
 		promises: map[string]*Promise[any]{},
 	}
 	ctx := context.WithValue(parent, _graphKey, g)
-	exec, wait := executor.New(ctx)
+	exec, wait := executor.New(ctx, "compute.Do")
 	g.origctx = ctx
 	g.exec = exec
 

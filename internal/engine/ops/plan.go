@@ -186,7 +186,7 @@ func (g *Plan) apply(ctx context.Context, env Environment, parallel bool) ([]Wai
 	var wait func() error
 
 	if parallel {
-		ex, wait = executor.New(ctx)
+		ex, wait = executor.New(ctx, "plan.apply")
 	} else {
 		ex, wait = executor.Serial(ctx)
 	}

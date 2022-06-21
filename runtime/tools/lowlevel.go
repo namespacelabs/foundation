@@ -77,7 +77,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 		ctx = ctxWithTimeout
 	}
 
-	eg, wait := executor.New(ctx)
+	eg, wait := executor.New(ctx, fmt.Sprintf("lowlevel.invoke(%s)", pkg))
 
 	eg.Go(func(ctx context.Context) error {
 		return RunWithOpts(ctx, opts, func() {

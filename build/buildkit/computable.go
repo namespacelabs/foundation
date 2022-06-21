@@ -364,7 +364,7 @@ If you don't think this is an actual issue, please re-run with --skip_buildkit_w
 
 	ch := make(chan *client.SolveStatus)
 
-	eg, wait := executor.New(ctx)
+	eg, wait := executor.New(ctx, "buildkit.solve")
 
 	var solveRes *client.SolveResponse
 	eg.Go(func(ctx context.Context) error {

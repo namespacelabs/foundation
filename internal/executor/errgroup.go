@@ -7,6 +7,7 @@ package executor
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -16,9 +17,15 @@ type Executor interface {
 	GoCancelable(func(context.Context) error) func()
 }
 
-func New(ctx context.Context) (Executor, func() error) {
+func New(ctx context.Context, name string) (Executor, func() error) {
 	eg, ctx := errgroup.WithContext(ctx)
-	return fromErrGroup(eg, ctx), eg.Wait
+	wait := func() error {
+		if err := eg.Wait(); err != nil {
+			return fmt.Errorf("executor %q returned %w", name, err)
+		}
+		return nil
+	}
+	return fromErrGroup(eg, ctx), wait
 }
 
 func Serial(ctx context.Context) (Executor, func() error) {

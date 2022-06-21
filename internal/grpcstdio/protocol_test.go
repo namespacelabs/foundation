@@ -27,7 +27,7 @@ func TestProtocol(t *testing.T) {
 
 	ctx := context.Background()
 
-	eg, wait := executor.New(ctx)
+	eg, wait := executor.New(ctx, "testprotocol")
 
 	s := grpc.NewServer()
 

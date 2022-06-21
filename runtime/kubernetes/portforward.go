@@ -92,7 +92,7 @@ func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPor
 	debug := console.Debug(ctx)
 
 	ids := atomic.NewInt32(0)
-	ex, wait := executor.New(ctx)
+	ex, wait := executor.New(ctx, "portforward")
 
 	var mu sync.Mutex
 	var currentConn httpstream.Connection

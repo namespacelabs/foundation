@@ -41,7 +41,7 @@ func newPruneCmd() *cobra.Command {
 				return err
 			}
 
-			eg, wait := executor.New(ctx)
+			eg, wait := executor.New(ctx, "fn.prune")
 
 			if slices.Contains(what, "foundation") {
 				eg.Go(func(ctx context.Context) error {
