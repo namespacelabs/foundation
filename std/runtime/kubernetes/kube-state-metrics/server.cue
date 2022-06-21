@@ -3,8 +3,8 @@ import (
 )
 
 server: fn.#OpaqueServer & {
-	id:        "c9kf8ejnhamknruls850"
-	name:      "kube-state-metrics"
+	id:   "c9kf8ejnhamknruls850"
+	name: "kube-state-metrics"
 
 	binary: image: "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.5.0"
 }
