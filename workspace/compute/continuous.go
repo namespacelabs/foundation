@@ -77,7 +77,7 @@ func Continuously(baseCtx context.Context, sinkable Sinkable, transformErr Trans
 		fmt.Fprintf(console.Warnings(ctx), "clean failed: %v\n", err)
 	}
 
-	if err == ErrDoneSinking {
+	if errors.Is(err, ErrDoneSinking) {
 		return nil
 	}
 
@@ -213,7 +213,7 @@ func (g *sinkInvocation) sink(ctx context.Context, in *In, updated func(context.
 				defer close(invokeUpdateCh)
 
 				if err := updated(ctx, r); err != nil {
-					if err == ErrDoneSinking {
+					if errors.Is(err, ErrDoneSinking) {
 						invokeUpdateCh <- true
 						return nil
 					}
