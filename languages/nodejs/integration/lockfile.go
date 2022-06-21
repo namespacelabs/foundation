@@ -49,12 +49,9 @@ func generateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string) (
 		}
 	}
 
-	_, ok := lock.Modules[foundationModule]
-	if !ok {
-		// This is the Foundation module itself.
-		lock.Modules[foundationModule] = lockFileModule{
-			Path: moduleAbsPath,
-		}
+	// The module itself is needed to resolve dependencies between nodes within the module.
+	lock.Modules[workspace.ModuleName] = lockFileModule{
+		Path: moduleAbsPath,
 	}
 
 	return lock, nil
