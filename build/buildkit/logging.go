@@ -78,7 +78,11 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 			// that will lead to it never returning from a cancelation (8h+ were spent on this issue).
 			_, err := progressui.DisplaySolveStatus(context.Background(), "", nil,
 				logAsWriter{log.New(writers[k], "[buildkit] ", log.Ldate|log.Ltime|log.Lmicroseconds)}, chs[k])
-			return err
+			if err != nil {
+				return fnerrors.InternalError("buildkit progress ui failed: %w", err)
+			}
+
+			return nil
 		})
 	}
 
@@ -160,7 +164,6 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 					if existing == nil {
 						existing = tasks.Action(sid).Category("buildkit").Parent(parent.action.ID()).StartTimestamp(*status.Started).Start(ctx)
 						parent.statuses[sid] = existing
-					} else {
 						// XXX implement progress tracking, buildkit will send updated `Current` counts.
 					}
 				}
