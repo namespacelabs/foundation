@@ -6,16 +6,10 @@ package fncobra
 
 import (
 	"context"
-	"time"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/workspace/tasks"
-)
-
-const (
-	defaultBundlesToKeep  = 10
-	defaultBundleDuration = 48 * time.Hour
 )
 
 // CommandBundle tracks all actions stored while invoking the command in addition to
@@ -26,7 +20,7 @@ type CommandBundle struct {
 }
 
 func NewCommandBundle() *CommandBundle {
-	bundler := tasks.NewActionBundler(defaultBundlesToKeep, defaultBundleDuration)
+	bundler := tasks.NewActionBundler()
 	return &CommandBundle{
 		bundler: bundler,
 		bundle:  bundler.NewInMemoryBundle(),
