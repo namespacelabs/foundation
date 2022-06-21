@@ -20,9 +20,7 @@ import (
 )
 
 const (
-	bundleTimeFormat      = "2006-01-02T15-04-05"
-	defaultBundlesToKeep  = 10
-	defaultBundleDuration = 48 * time.Hour
+	bundleTimeFormat = "2006-01-02T15-04-05"
 )
 
 // Bundler manages creation and rolling of subdirectory `Bundle`s in a local fs.
@@ -42,7 +40,7 @@ type Bundler struct {
 }
 
 // Returns a new instance of Bundler with default values.
-func NewActionBundler() *Bundler {
+func NewActionBundler(maxBundles int, maxAge time.Duration) *Bundler {
 	cacheDir, err := dirs.Cache()
 	if err != nil {
 		log.Fatalf("unexpected failure accessing the user cache: %v", err)
@@ -52,8 +50,8 @@ func NewActionBundler() *Bundler {
 		root:       root,
 		fsys:       fnfs.ReadWriteLocalFS(root),
 		namePrefix: "actions",
-		maxBundles: defaultBundlesToKeep,
-		maxAge:     defaultBundleDuration,
+		maxBundles: maxBundles,
+		maxAge:     maxAge,
 	}
 }
 
