@@ -140,7 +140,7 @@ func makePodSpec(name string, runOpts runtime.ServerRunOpts) (*applycorev1.PodSp
 	}
 
 	podSpec := applycorev1.PodSpec().WithContainers(container)
-	podSpecSecCtx, err := runAsToPodSecCtx(&applycorev1.PodSecurityContextApplyConfiguration{}, runOpts.RunAs)
+	podSpecSecCtx, err := runAsToPodSecCtx(name, &applycorev1.PodSecurityContextApplyConfiguration{}, runOpts.RunAs)
 	if err != nil {
 		return nil, err
 	}

@@ -108,13 +108,15 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		UpdateIfExisting: true,
 	})
 
-	out.Compilables = append(out.Compilables, kubeblueprint.GrantKubeACLs{
+	grant := kubeblueprint.GrantKubeACLs{
 		DescriptionBase: "Network Gateway",
-		Rules: rbacv1.PolicyRule().
-			WithAPIGroups("k8s.namespacelabs.dev").
-			WithResources("httpgrpctranscoders", "httpgrpctranscoders/status").
-			WithVerbs("get", "list", "watch", "create", "update", "delete", "patch"),
-	})
+	}
+	grant.Rules = append(grant.Rules, rbacv1.PolicyRule().
+		WithAPIGroups("k8s.namespacelabs.dev").
+		WithResources("httpgrpctranscoders", "httpgrpctranscoders/status").
+		WithVerbs("get", "list", "watch", "create", "update", "delete", "patch"))
+
+	out.Compilables = append(out.Compilables, grant)
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
 		With: &kubedef.SpecExtension{

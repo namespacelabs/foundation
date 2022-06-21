@@ -128,27 +128,9 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	secCtx := applycorev1.SecurityContext()
-	podSecCtx := applycorev1.PodSecurityContext()
-
-	toparse := map[string]interface{}{
-		"defaults/container.securitycontext.yaml": secCtx,
-		"defaults/pod.podsecuritycontext.yaml":    podSecCtx,
-	}
-
-	for _, data := range kubepkg.PackageData {
-		if obj, ok := toparse[data.Path]; ok {
-			if err := yaml.Unmarshal(data.Contents, obj); err != nil {
-				return fnerrors.InternalError("%s: failed to parse defaults: %w", data.Path, err)
-			}
-		}
-	}
 
 	if server.ReadOnlyFilesystem {
 		secCtx = secCtx.WithReadOnlyRootFilesystem(true)
-	}
-
-	if _, err := runAsToPodSecCtx(podSecCtx, server.RunAs); err != nil {
-		return err
 	}
 
 	name := kubedef.ServerCtrName(srv.Proto())
@@ -189,7 +171,6 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	spec := applycorev1.PodSpec().
-		WithSecurityContext(podSecCtx).
 		WithEnableServiceLinks(false) // Disable service injection via environment variables.
 
 	var labels map[string]string
@@ -221,6 +202,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	var serviceAccountAnnotations []*kubedef.SpecExtension_Annotation
 
 	var env []*schema.BinaryConfig_EnvEntry
+	var specifiedSec *kubedef.SpecExtension_SecurityContext
 
 	for _, input := range server.Extensions {
 		specExt := &kubedef.SpecExtension{}
@@ -264,6 +246,15 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 						serviceAccount, specExt.ServiceAccount)
 				}
 				serviceAccount = specExt.ServiceAccount
+			}
+
+			if specExt.SecurityContext != nil {
+				if specifiedSec == nil {
+					specifiedSec = specExt.SecurityContext
+				} else if !proto.Equal(specifiedSec, specExt.SecurityContext) {
+					return fnerrors.UserError(server.Server.Package.Server, "incompatible securitycontext defined, %v vs %v",
+						specifiedSec, specExt.SecurityContext)
+				}
 			}
 
 		case input.Impl.MessageIs(containerExt):
@@ -398,7 +389,38 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				WithVolumeMounts(initVolumeMounts...))
 	}
 
+	podSecCtx := applycorev1.PodSecurityContext()
+	if specifiedSec == nil {
+		toparse := map[string]interface{}{
+			"defaults/container.securitycontext.yaml": secCtx,
+			"defaults/pod.podsecuritycontext.yaml":    podSecCtx,
+		}
+
+		for _, data := range kubepkg.PackageData {
+			if obj, ok := toparse[data.Path]; ok {
+				if err := yaml.Unmarshal(data.Contents, obj); err != nil {
+					return fnerrors.InternalError("%s: failed to parse defaults: %w", data.Path, err)
+				}
+			}
+		}
+	} else {
+		if specifiedSec.RunAsUser != 0 {
+			podSecCtx = podSecCtx.WithRunAsUser(specifiedSec.RunAsUser)
+		}
+		if specifiedSec.RunAsGroup != 0 {
+			podSecCtx = podSecCtx.WithRunAsGroup(specifiedSec.RunAsGroup)
+		}
+		if specifiedSec.FsGroup != 0 {
+			podSecCtx = podSecCtx.WithFSGroup(specifiedSec.FsGroup)
+		}
+	}
+
+	if _, err := runAsToPodSecCtx(server.Server.PackageName().String(), podSecCtx, server.RunAs); err != nil {
+		return err
+	}
+
 	spec = spec.
+		WithSecurityContext(podSecCtx).
 		WithContainers(container).
 		WithAutomountServiceAccountToken(serviceAccount != "")
 
@@ -492,19 +514,29 @@ func makeStorageVolumeName(rs *schema.RequiredStorage) string {
 	return "rs-" + hex.EncodeToString(h.Sum(nil))[:8]
 }
 
-func runAsToPodSecCtx(podSecCtx *applycorev1.PodSecurityContextApplyConfiguration, runAs *runtime.RunAs) (*applycorev1.PodSecurityContextApplyConfiguration, error) {
+func runAsToPodSecCtx(name string, podSecCtx *applycorev1.PodSecurityContextApplyConfiguration, runAs *runtime.RunAs) (*applycorev1.PodSecurityContextApplyConfiguration, error) {
 	if runAs != nil {
-		userId, err := strconv.ParseInt(runAs.UserID, 10, 64)
-		if err != nil {
-			return nil, fnerrors.InternalError("expected server.RunAs.UserID to be an int64: %w", err)
-		}
+		if runAs.UserID != "" {
+			userId, err := strconv.ParseInt(runAs.UserID, 10, 64)
+			if err != nil {
+				return nil, fnerrors.InternalError("expected server.RunAs.UserID to be an int64: %w", err)
+			}
 
-		podSecCtx = podSecCtx.WithRunAsUser(userId).WithRunAsNonRoot(true)
+			if podSecCtx.RunAsUser != nil && *podSecCtx.RunAsUser != userId {
+				return nil, fnerrors.BadInputError("%s: incompatible userid %d vs %d (in RunAs)", name, *podSecCtx.RunAsUser, userId)
+			}
+
+			podSecCtx = podSecCtx.WithRunAsUser(userId).WithRunAsNonRoot(true)
+		}
 
 		if runAs.FSGroup != nil {
 			fsGroup, err := strconv.ParseInt(*runAs.FSGroup, 10, 64)
 			if err != nil {
 				return nil, fnerrors.InternalError("expected server.RunAs.FSGroup to be an int64: %w", err)
+			}
+
+			if podSecCtx.FSGroup != nil && *podSecCtx.FSGroup != fsGroup {
+				return nil, fnerrors.BadInputError("%s: incompatible fsgroup %d vs %d (in RunAs)", name, *podSecCtx.FSGroup, fsGroup)
 			}
 
 			podSecCtx.WithFSGroup(fsGroup)

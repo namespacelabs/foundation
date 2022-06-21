@@ -19,7 +19,7 @@ type GrantKubeACLs struct {
 	DescriptionBase string
 	ServiceAccount  string
 	ClusterRole     string
-	Rules           *rbacv1.PolicyRuleApplyConfiguration
+	Rules           []*rbacv1.PolicyRuleApplyConfiguration
 }
 
 func (g GrantKubeACLs) Compile(req configure.StackRequest, out *configure.ApplyOutput) error {
@@ -53,7 +53,7 @@ func (g GrantKubeACLs) Compile(req configure.StackRequest, out *configure.ApplyO
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: fmt.Sprintf("%s: Cluster Role", g.DescriptionBase),
-		Resource:    rbacv1.ClusterRole(clusterRole).WithRules(g.Rules).WithLabels(labels),
+		Resource:    rbacv1.ClusterRole(clusterRole).WithRules(g.Rules...).WithLabels(labels),
 	})
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
