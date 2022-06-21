@@ -85,6 +85,7 @@ func allocateName(ctx context.Context, srv *schema.Server, naming *schema.Naming
 
 	startopts.NoTLS = NamingNoTLS
 	startopts.Stored = previous
+	startopts.Org = naming.WithOrg
 
 	nr, err := fnapi.AllocateName(ctx, srv, startopts)
 	if err != nil {
