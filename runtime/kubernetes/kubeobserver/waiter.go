@@ -53,13 +53,13 @@ type WaitOnResource struct {
 }
 
 func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
+	if ch != nil {
+		defer close(ch)
+	}
+
 	cli, err := k8s.NewForConfig(w.RestConfig)
 	if err != nil {
 		return err
-	}
-
-	if ch != nil {
-		defer close(ch)
 	}
 
 	ev := tasks.Action(runtime.TaskServerStart)

@@ -150,6 +150,12 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				Group:    "k8s.namespacelabs.dev",
 				Version:  "v1",
 			},
+			// This instructs the runtime to wait until the CRD above has a
+			// status.conditions of type Applied, which matches the observed
+			// generation.
+			CheckGenerationCondition: &kubedef.CheckGenerationCondition{
+				Type: "Applied",
+			},
 		})
 
 		// Only emit ingress entries for internet facing services.

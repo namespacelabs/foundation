@@ -122,6 +122,25 @@ func registerApply() {
 			return &ops.HandleResult{}, nil
 		}
 
+		if apply.CheckGenerationCondition.GetType() != "" {
+			generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
+			if err1 != nil {
+				return nil, fnerrors.InternalError("failed to wait on resource: %w", err)
+			}
+			if !found1 {
+				return nil, fnerrors.InternalError("failed to wait on resource: no metadata.generation")
+			}
+
+			return &ops.HandleResult{Waiters: []ops.Waiter{kobs.WaitOnGenerationCondition{
+				RestConfig:         restcfg,
+				Namespace:          header.Namespace,
+				Name:               header.Name,
+				ExpectedGeneration: generation,
+				ConditionType:      apply.CheckGenerationCondition.Type,
+				ResourceClass:      apply.ResourceClass,
+			}.WaitUntilReady}}, nil
+		}
+
 		switch header.Kind {
 		case "Deployment", "StatefulSet":
 			generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")

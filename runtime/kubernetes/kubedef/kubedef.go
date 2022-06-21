@@ -25,6 +25,14 @@ type Apply struct {
 	Description   string
 	ResourceClass *ResourceClass
 	Resource      interface{}
+
+	// If set, we wait until a status.conditions entry of matching type exists,
+	// that matches the resource's generation.
+	CheckGenerationCondition *CheckGenerationCondition
+}
+
+type CheckGenerationCondition struct {
+	Type string
 }
 
 type Delete struct {
@@ -72,10 +80,16 @@ func (a Apply) ToDefinition(scope ...fnschema.PackageName) (*fnschema.Serialized
 		return nil, err
 	}
 
-	x, err := anypb.New(&OpApply{
+	op := &OpApply{
 		BodyJson:      string(body), // We use strings for better debuggability.
 		ResourceClass: a.ResourceClass,
-	})
+	}
+
+	if a.CheckGenerationCondition != nil {
+		op.CheckGenerationCondition = &OpApply_CheckGenerationCondition{Type: a.CheckGenerationCondition.Type}
+	}
+
+	x, err := anypb.New(op)
 	if err != nil {
 		return nil, err
 	}
