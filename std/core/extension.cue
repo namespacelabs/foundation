@@ -44,7 +44,7 @@ extension: fn.#Extension & {
 			input: $coreTypesProto.types.ServerInfoArgs
 			availableIn: {
 				go: {
-					package: "namespacelabs.dev/foundation/std/go/core"
+					package: "namespacelabs.dev/foundation/std/core/types"
 					type: "*ServerInfo"	
 				}
 			}

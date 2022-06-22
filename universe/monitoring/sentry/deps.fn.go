@@ -6,6 +6,7 @@ package sentry
 import (
 	"context"
 	fncore "namespacelabs.dev/foundation/std/core"
+	"namespacelabs.dev/foundation/std/core/types"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/http/middleware"
@@ -17,7 +18,7 @@ type ExtensionDeps struct {
 	Dsn          *secrets.Value
 	Interceptors interceptors.Registration
 	Middleware   middleware.Middleware
-	ServerInfo   *core.ServerInfo
+	ServerInfo   *types.ServerInfo
 }
 
 var (

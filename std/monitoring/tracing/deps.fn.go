@@ -6,6 +6,7 @@ package tracing
 import (
 	"context"
 	fncore "namespacelabs.dev/foundation/std/core"
+	"namespacelabs.dev/foundation/std/core/types"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/http/middleware"
@@ -15,7 +16,7 @@ import (
 type ExtensionDeps struct {
 	Interceptors interceptors.Registration
 	Middleware   middleware.Middleware
-	ServerInfo   *core.ServerInfo
+	ServerInfo   *types.ServerInfo
 }
 
 type _checkProvideExporter func(context.Context, *ExporterArgs, ExtensionDeps) (Exporter, error)
