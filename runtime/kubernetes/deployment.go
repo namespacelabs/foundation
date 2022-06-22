@@ -162,38 +162,6 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		}
 	}
 
-	var readinessProbe, livenessProbe *kubedef.ContainerExtension_Probe
-	for _, probe := range probes {
-		switch probe.Kind {
-		case runtime.FnServiceLivez:
-			if livenessProbe == nil {
-				livenessProbe = probe
-			} else if !proto.Equal(probe, livenessProbe) {
-				return fnerrors.BadInputError("inconsistent probe definition")
-			}
-		case runtime.FnServiceReadyz:
-			if readinessProbe == nil {
-				readinessProbe = probe
-			} else if !proto.Equal(probe, readinessProbe) {
-				return fnerrors.BadInputError("inconsistent probe definition")
-			}
-		default:
-			return fnerrors.BadInputError("%s: unknown probe kind", probe.Kind)
-		}
-	}
-
-	if readinessProbe != nil {
-		container = container.WithReadinessProbe(
-			toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.readinessInitialDelay),
-				probevalues, readinessProbe))
-	}
-
-	if livenessProbe != nil {
-		container = container.WithLivenessProbe(
-			toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.livenessInitialDelay),
-				probevalues, livenessProbe))
-	}
-
 	if _, err := fillEnv(container, server.Env); err != nil {
 		return err
 	}
@@ -329,6 +297,8 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				}
 			}
 
+			probes = append(probes, containerExt.Probe...)
+
 			// Deprecated path.
 			for _, initContainer := range containerExt.InitContainer {
 				pkg := schema.PackageName(initContainer.PackageName)
@@ -346,6 +316,38 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		default:
 			return fnerrors.InternalError("unused startup input: %s", input.Impl.GetTypeUrl())
 		}
+	}
+
+	var readinessProbe, livenessProbe *kubedef.ContainerExtension_Probe
+	for _, probe := range probes {
+		switch probe.Kind {
+		case runtime.FnServiceLivez:
+			if livenessProbe == nil {
+				livenessProbe = probe
+			} else if !proto.Equal(probe, livenessProbe) {
+				return fnerrors.BadInputError("inconsistent probe definition")
+			}
+		case runtime.FnServiceReadyz:
+			if readinessProbe == nil {
+				readinessProbe = probe
+			} else if !proto.Equal(probe, readinessProbe) {
+				return fnerrors.BadInputError("inconsistent probe definition")
+			}
+		default:
+			return fnerrors.BadInputError("%s: unknown probe kind", probe.Kind)
+		}
+	}
+
+	if readinessProbe != nil {
+		container = container.WithReadinessProbe(
+			toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.readinessInitialDelay),
+				probevalues, readinessProbe))
+	}
+
+	if livenessProbe != nil {
+		container = container.WithLivenessProbe(
+			toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.livenessInitialDelay),
+				probevalues, livenessProbe))
 	}
 
 	if _, err := fillEnv(container, env); err != nil {

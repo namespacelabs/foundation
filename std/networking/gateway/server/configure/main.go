@@ -17,6 +17,7 @@ import (
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/configure"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeblueprint"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
@@ -158,6 +159,9 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				ReadOnly:  true,
 				MountPath: "/config/",
 			}},
+			Probe: []*kubedef.ContainerExtension_Probe{
+				{Kind: runtime.FnServiceReadyz, Path: "/ready", ContainerPort: int32(*adminPort)},
+			},
 		},
 	})
 
