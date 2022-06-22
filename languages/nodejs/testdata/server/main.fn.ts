@@ -1,16 +1,16 @@
 // This file was automatically generated.
 
-import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import {provideHttpServer, HttpServerImpl} from "@namespacelabs.dev-foundation/std-nodejs-http/impl";
-import {provideGrpcRegistrar, GrpcServer} from "@namespacelabs.dev-foundation/std-nodejs-grpc";
-import * as i0 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simple/deps.fn";
-import * as i1 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-simplehttp/deps.fn";
-import * as i2 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-numberformatter/deps.fn";
-import * as i3 from "@namespacelabs.dev-foundation/languages-nodejs-testdata-services-postuser/deps.fn";
-import * as i4 from "@namespacelabs.dev-foundation/std-nodejs-http/deps.fn";
-import * as i5 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing/deps.fn";
-import * as i6 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-jaeger/deps.fn";
-import * as i7 from "@namespacelabs.dev-foundation/std-nodejs-monitoring-tracing-fastify/deps.fn";
+import { DependencyGraph, Initializer, rootContextForPackage } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
+import {provideHttpServer, HttpServerImpl} from "@namespacelabs.dev/foundation/std/nodejs/http/impl";
+import {provideGrpcRegistrar, GrpcServer} from "@namespacelabs.dev/foundation/std/nodejs/grpc";
+import * as i0 from "@namespacelabs.dev/foundation/languages/nodejs/testdata/services/simple/deps.fn";
+import * as i1 from "@namespacelabs.dev/foundation/languages/nodejs/testdata/services/simplehttp/deps.fn";
+import * as i2 from "@namespacelabs.dev/foundation/languages/nodejs/testdata/services/numberformatter/deps.fn";
+import * as i3 from "@namespacelabs.dev/foundation/languages/nodejs/testdata/services/postuser/deps.fn";
+import * as i4 from "@namespacelabs.dev/foundation/std/nodejs/http/deps.fn";
+import * as i5 from "@namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/deps.fn";
+import * as i6 from "@namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/jaeger/deps.fn";
+import * as i7 from "@namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/fastify/deps.fn";
 
 // Returns a list of initialization errors.
 const wireServices = async (server: GrpcServer, graph: DependencyGraph): Promise<unknown[]> => {
@@ -21,17 +21,20 @@ const wireServices = async (server: GrpcServer, graph: DependencyGraph): Promise
 		errors.push(e);
 	}
 	try {
-		await i1.wireService(i1.Package.instantiateDeps(graph), server);
+		await i1.wireService(i1.Package.instantiateDeps(
+				graph, rootContextForPackage(i1.Package)), server);
 	} catch (e) {
 		errors.push(e);
 	}
 	try {
-		await i2.wireService(i2.Package.instantiateDeps(graph), server);
+		await i2.wireService(i2.Package.instantiateDeps(
+				graph, rootContextForPackage(i2.Package)), server);
 	} catch (e) {
 		errors.push(e);
 	}
 	try {
-		await i3.wireService(i3.Package.instantiateDeps(graph), server);
+		await i3.wireService(i3.Package.instantiateDeps(
+				graph, rootContextForPackage(i3.Package)), server);
 	} catch (e) {
 		errors.push(e);
 	}

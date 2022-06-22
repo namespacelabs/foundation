@@ -41,22 +41,15 @@ import (
 const (
 	controllerPkg schema.PackageName = "namespacelabs.dev/foundation/std/development/filesync/controller"
 	grpcNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/grpc"
-	grpcGenNode   schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/grpcgen"
 	httpNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/http"
-	// Short alias of the runtime package.
-	runtimeNpmPackage  = "@namespacelabs/foundation"
-	runtimePackagePath = "std/nodejs/runtime"
-	// Yarn version of the packages in the same module. Doesn't really matter what the value here is.
-	defaultPackageVersion = "0.0.0"
-	implFileName          = "impl.ts"
-	packageJsonFn         = "package.json"
-	fileSyncPort          = 50000
-	ForceProd             = false
+	runtimeNode   schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/runtime"
+	implFileName                     = "impl.ts"
+	packageJsonFn                    = "package.json"
+	fileSyncPort                     = 50000
+	ForceProd                        = false
 )
 
-var (
-	runtimeNode = schema.PackageName(fmt.Sprintf("namespacelabs.dev/foundation/%s", runtimePackagePath))
-)
+var ()
 
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
@@ -135,20 +128,21 @@ type impl struct {
 }
 
 func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
-	deps := []workspace.Location{}
+	moduleMap := map[string]*workspace.Module{}
 	for _, dep := range server.Deps() {
-		// The runtime node doesn't have codegen for node.js so it needs to be included explicitly.
-		if dep.PackageName() == runtimeNode || pkgSupportsNodejs(dep) {
-			deps = append(deps, dep.Location)
+		if dep.Location.Module.ModuleName() != server.Module().ModuleName() {
+			moduleMap[dep.Location.Module.ModuleName()] = dep.Location.Module
 		}
+	}
+	modules := []build.Workspace{}
+	for _, module := range moduleMap {
+		modules = append(modules, module)
 	}
 
 	yarnRoot, err := findYarnRoot(server.Location)
 	if err != nil {
 		return nil, err
 	}
-
-	locs := append(deps, server.Location)
 
 	isDevBuild := useDevBuild(server.Env().Proto())
 
@@ -165,13 +159,13 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 	}
 
 	return buildNodeJS{
-		module:     module,
-		workspace:  server.Location.Module.Workspace,
-		locs:       locs,
-		yarnRoot:   yarnRoot,
-		serverEnv:  server.Env(),
-		isDevBuild: isDevBuild,
-		isFocus:    isFocus,
+		module:          module,
+		workspace:       server.Location.Module.Workspace,
+		externalModules: modules,
+		yarnRoot:        yarnRoot,
+		serverEnv:       server.Env(),
+		isDevBuild:      isDevBuild,
+		isFocus:         isFocus,
 	}, nil
 }
 
@@ -226,7 +220,7 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 	yarnRootsMap := map[string]*yarnRootData{}
 	yarnRoots := []string{}
 	for _, pkg := range packages {
-		if pkg.PackageName() == runtimeNode || pkgSupportsNodejs(pkg) {
+		if pkgSupportsNodejs(pkg) {
 			yarnRoot, err := findYarnRoot(pkg.Location)
 			if err != nil {
 				// If we can't find yarn root, using the workspace root.
@@ -270,47 +264,32 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 }
 
 func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, path string) error {
-	_, err := updatePackageJson(ctx, path, yarnRootData.module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
+	lockFileStruct, err := generateLockFileStruct(yarnRootData.workspace, "")
+	if err != nil {
+		return err
+	}
+
+	dependencies := map[string]string{}
+	for k, v := range builtin().Dependencies {
+		dependencies[k] = v
+	}
+	for moduleName := range lockFileStruct.Modules {
+		dependencies[toNpmNamespace(moduleName)] = "fn:" + moduleName
+	}
+
+	_, err = updatePackageJson(ctx, path, yarnRootData.module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
 		packageJson["private"] = true
-		packageJson["workspaces"] = yarnRootData.workspacePaths
+		packageJson["name"] = toNpmNamespace(yarnRootData.workspace.ModuleName)
 
-		devDeps := map[string]interface{}{}
-		existingDevDeps, ok := (packageJson["devDependencies"]).(map[string]interface{})
-		if ok {
-			for k, v := range existingDevDeps {
-				devDeps[k] = v
-			}
-		}
-		for k, v := range builtin().DevDependencies {
-			devDeps[k] = v
-		}
-
-		packageJson["devDependencies"] = devDeps
+		packageJson["dependencies"] = mergeJsonMap(packageJson["dependencies"], dependencies)
+		packageJson["devDependencies"] = mergeJsonMap(packageJson["devDependencies"], builtin().DevDependencies)
 	})
 
 	return err
 }
 
 func (impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
-	// Adding a dependency on the package itself so fully qualified imports work.
-	depPkgNames := []string{string(p.PackageName())}
-	for _, ref := range p.Node().Reference {
-		if ref.PackageName != "" {
-			depPkgNames = append(depPkgNames, ref.PackageName)
-		}
-	}
-	// Dependencies on the gRPC service package need to be added to the package.json.
-	for _, dep := range p.Node().Instantiate {
-		if shared.IsStdGrpcExtension(dep.PackageName, dep.Type) {
-			grpcClientType, err := shared.PrepareGrpcBackendDep(ctx, pkgs, dep)
-			if err != nil {
-				return err
-			}
-			depPkgNames = append(depPkgNames, string(grpcClientType.Location.PackageName))
-		}
-	}
-
-	return tidyPackageJson(ctx, pkgs, p.Location, depPkgNames)
+	return nil
 }
 
 func maybeGenerateNodeImplStub(pkg *workspace.Package, dl *defs.DefList) {
@@ -366,52 +345,7 @@ func fileNameForService(srvName string, descriptors []*descriptorpb.FileDescript
 }
 
 func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, server *schema.Server) error {
-	return tidyPackageJson(ctx, pkgs, loc, server.UserImports)
-}
-
-func tidyPackageJson(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, depPkgNames []string) error {
-	npmPackage, err := toNpmPackage(loc)
-	if err != nil {
-		return err
-	}
-
-	dependencies := map[string]string{
-		// For servers this dependency is added automatically via "runtimeNode", but not for nodes.
-		runtimeNpmPackage: fmt.Sprintf("fn:%s/%s", foundationModule, runtimePackagePath),
-	}
-
-	for k, v := range builtin().Dependencies {
-		dependencies[k] = v
-	}
-
-	// Force all nodes to depend on both http and grpc for now.
-	allPackageNames := append(depPkgNames, string(httpNode), string(grpcNode), string(grpcGenNode))
-
-	for _, importName := range allPackageNames {
-		pkg, err := pkgs.LoadByName(ctx, schema.PackageName(importName))
-		if err != nil {
-			return err
-		}
-
-		if pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS) {
-			importNpmPackage, err := toNpmPackage(pkg.Location)
-			if err != nil {
-				return err
-			}
-
-			dependencies[string(importNpmPackage)] = "fn:" + pkg.Location.String()
-		}
-	}
-
-	_, err = updatePackageJson(ctx, loc.Rel(), loc.Module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
-		packageJson["name"] = npmPackage
-		packageJson["private"] = true
-		packageJson["version"] = defaultPackageVersion
-
-		packageJson["dependencies"] = mergeJsonMap(packageJson["dependencies"], dependencies)
-	})
-
-	return err
+	return nil
 }
 
 func mergeJsonMap(existingValues interface{}, newValues map[string]string) map[string]string {

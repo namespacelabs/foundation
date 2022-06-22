@@ -92,15 +92,21 @@ func getArg(c *applycorev1.ContainerApplyConfiguration, name string) (string, bo
 	return "", false
 }
 
-func toProbe(endpoint *schema.InternalEndpoint, md *schema.ServiceMetadata) (*applycorev1.ProbeApplyConfiguration, error) {
+func toProbe(port *schema.Endpoint_Port, md *schema.ServiceMetadata) (*kubedef.ContainerExtension_Probe, error) {
 	exported := &schema.HttpExportedService{}
 	if err := md.Details.UnmarshalTo(exported); err != nil {
 		return nil, fnerrors.InternalError("expected a HttpExportedService: %w", err)
 	}
 
-	return applycorev1.Probe().WithHTTPGet(
-		applycorev1.HTTPGetAction().WithPath(exported.GetPath()).
-			WithPort(intstr.FromInt(int(endpoint.GetPort().GetContainerPort())))), nil
+	return &kubedef.ContainerExtension_Probe{Path: exported.GetPath(), ContainerPort: port.GetContainerPort(), Kind: md.Kind}, nil
+}
+
+func toK8sProbe(p *applycorev1.ProbeApplyConfiguration, probevalues perEnvConf, probe *kubedef.ContainerExtension_Probe) *applycorev1.ProbeApplyConfiguration {
+	return p.WithHTTPGet(applycorev1.HTTPGetAction().WithPath(probe.GetPath()).
+		WithPort(intstr.FromInt(int(probe.GetContainerPort())))).
+		WithPeriodSeconds(probevalues.dashnessPeriod).
+		WithFailureThreshold(probevalues.failureThreshold).
+		WithTimeoutSeconds(probevalues.probeTimeout)
 }
 
 type deployOpts struct {
@@ -117,7 +123,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", server.Image)
 	}
 
-	c, ok := constants[r.env.Purpose]
+	probevalues, ok := constants[r.env.Purpose]
 	if !ok {
 		return fnerrors.InternalError("%s: no constants configured", r.env.Name)
 	}
@@ -142,22 +148,16 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		WithCommand(server.Command...).
 		WithSecurityContext(secCtx)
 
+	var probes []*kubedef.ContainerExtension_Probe
 	for _, internal := range internalEndpoints {
 		for _, md := range internal.ServiceMetadata {
 			if md.Kind == runtime.FnServiceLivez || md.Kind == runtime.FnServiceReadyz {
-				probe, err := toProbe(internal, md)
+				probe, err := toProbe(internal.GetPort(), md)
 				if err != nil {
 					return err
 				}
 
-				probe = probe.WithPeriodSeconds(c.dashnessPeriod).WithFailureThreshold(c.failureThreshold).WithTimeoutSeconds(c.probeTimeout)
-
-				switch md.Kind {
-				case runtime.FnServiceLivez:
-					container = container.WithLivenessProbe(probe.WithInitialDelaySeconds(c.livenessInitialDelay))
-				case runtime.FnServiceReadyz:
-					container = container.WithReadinessProbe(probe.WithInitialDelaySeconds(c.readinessInitialDelay))
-				}
+				probes = append(probes, probe)
 			}
 		}
 	}
@@ -297,6 +297,8 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				}
 			}
 
+			probes = append(probes, containerExt.Probe...)
+
 			// Deprecated path.
 			for _, initContainer := range containerExt.InitContainer {
 				pkg := schema.PackageName(initContainer.PackageName)
@@ -314,6 +316,38 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		default:
 			return fnerrors.InternalError("unused startup input: %s", input.Impl.GetTypeUrl())
 		}
+	}
+
+	var readinessProbe, livenessProbe *kubedef.ContainerExtension_Probe
+	for _, probe := range probes {
+		switch probe.Kind {
+		case runtime.FnServiceLivez:
+			if livenessProbe == nil {
+				livenessProbe = probe
+			} else if !proto.Equal(probe, livenessProbe) {
+				return fnerrors.BadInputError("inconsistent probe definition")
+			}
+		case runtime.FnServiceReadyz:
+			if readinessProbe == nil {
+				readinessProbe = probe
+			} else if !proto.Equal(probe, readinessProbe) {
+				return fnerrors.BadInputError("inconsistent probe definition")
+			}
+		default:
+			return fnerrors.BadInputError("%s: unknown probe kind", probe.Kind)
+		}
+	}
+
+	if readinessProbe != nil {
+		container = container.WithReadinessProbe(
+			toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.readinessInitialDelay),
+				probevalues, readinessProbe))
+	}
+
+	if livenessProbe != nil {
+		container = container.WithLivenessProbe(
+			toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.livenessInitialDelay),
+				probevalues, livenessProbe))
 	}
 
 	if _, err := fillEnv(container, env); err != nil {

@@ -1,9 +1,9 @@
 // This file was automatically generated.
 
-import {grpc} from "@namespacelabs.dev-foundation/std-nodejs-grpcgen";
+import {grpc} from "@namespacelabs.dev/foundation/std/nodejs/grpcgen";
 import * as i0 from "./test1_pb";
 import * as i1 from "./nested/test2_pb";
-import {adaptClient, CallOptions} from "@namespacelabs.dev-foundation/std-nodejs-grpcgen/client";
+import {adaptClient, CallOptions} from "@namespacelabs.dev/foundation/std/nodejs/grpcgen/client";
 
 // API
 
@@ -38,20 +38,20 @@ const TestServiceADefinition: grpc.ServiceDefinition = {
 		originalName: "MyMethod1",
 		requestStream: false,
 		responseStream: false,
-		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
-		requestDeserialize: (arg) => i0.TestRequest.deserializeBinary(new Uint8Array(arg)),
-		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
-		responseDeserialize: (arg) => i0.TestResponse.deserializeBinary(new Uint8Array(arg)),
+		requestSerialize: (arg) => Buffer.from(i0.TestRequest.toBinary(arg)),
+		requestDeserialize: (arg) => i0.TestRequest.fromBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(i0.TestResponse.toBinary(arg)),
+		responseDeserialize: (arg) => i0.TestResponse.fromBinary(new Uint8Array(arg)),
 	},
 	myMethod2: {
 		path: "/grpcgen.tests.TestServiceA/MyMethod2",
 		originalName: "MyMethod2",
 		requestStream: false,
 		responseStream: false,
-		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
-		requestDeserialize: (arg) => i0.TestRequest.deserializeBinary(new Uint8Array(arg)),
-		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
-		responseDeserialize: (arg) => i0.TestResponse.deserializeBinary(new Uint8Array(arg)),
+		requestSerialize: (arg) => Buffer.from(i0.TestRequest.toBinary(arg)),
+		requestDeserialize: (arg) => i0.TestRequest.fromBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(i0.TestResponse.toBinary(arg)),
+		responseDeserialize: (arg) => i0.TestResponse.fromBinary(new Uint8Array(arg)),
 	},
 };
 
@@ -63,10 +63,10 @@ const TestServiceBDefinition: grpc.ServiceDefinition = {
 		originalName: "Method1",
 		requestStream: false,
 		responseStream: false,
-		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
-		requestDeserialize: (arg) => i1.TestRequest2.deserializeBinary(new Uint8Array(arg)),
-		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
-		responseDeserialize: (arg) => i1.TestResponse2.deserializeBinary(new Uint8Array(arg)),
+		requestSerialize: (arg) => Buffer.from(i1.TestRequest2.toBinary(arg)),
+		requestDeserialize: (arg) => i1.TestRequest2.fromBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(i1.TestResponse2.toBinary(arg)),
+		responseDeserialize: (arg) => i1.TestResponse2.fromBinary(new Uint8Array(arg)),
 	},
 };
 

@@ -5,6 +5,7 @@
 package consolesink
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"time"
@@ -16,14 +17,15 @@ import (
 )
 
 type Style struct {
-	Header   aec.ANSI // aec.LightBlackF
-	Category aec.ANSI // aec.LightBlueF
-	Cached   aec.ANSI // aec.LightBlackF
-	Progress aec.ANSI // aec.LightBlackF
-	Argument aec.ANSI // aec.CyanF
-	Result   aec.ANSI // aec.BlueF
-	Notice   aec.ANSI // aec.BlueF
-	Error    aec.ANSI // aec.RedF
+	Header   aec.ANSI
+	Category aec.ANSI
+	Cached   aec.ANSI
+	Progress aec.ANSI
+	Argument aec.ANSI
+	Result   aec.ANSI
+	Notice   aec.ANSI
+	Error    aec.ANSI
+	Scope    aec.ANSI
 }
 
 var WithColors = Style{
@@ -35,17 +37,19 @@ var WithColors = Style{
 	Result:   aec.BlueF,
 	Notice:   aec.BlueF,
 	Error:    aec.RedF,
+	Scope:    aec.Italic,
 }
 
 var NoColors = Style{
-	Header:   aec.EmptyBuilder.ANSI,
-	Category: aec.EmptyBuilder.ANSI,
-	Cached:   aec.EmptyBuilder.ANSI,
-	Progress: aec.EmptyBuilder.ANSI,
-	Argument: aec.EmptyBuilder.ANSI,
-	Result:   aec.EmptyBuilder.ANSI,
-	Notice:   aec.EmptyBuilder.ANSI,
-	Error:    aec.EmptyBuilder.ANSI,
+	Header:   noOpANSI,
+	Category: noOpANSI,
+	Cached:   noOpANSI,
+	Progress: noOpANSI,
+	Argument: noOpANSI,
+	Result:   noOpANSI,
+	Notice:   noOpANSI,
+	Error:    noOpANSI,
+	Scope:    noOpANSI,
 }
 
 func (s Style) renderLine(w io.Writer, li lineItem) {
@@ -83,7 +87,8 @@ func (s Style) renderLine(w io.Writer, li lineItem) {
 	}
 
 	if data.HumanReadable == "" && len(li.scope) > 0 {
-		fmt.Fprint(w, " "+ColorPackage.String()+"[")
+		var ws bytes.Buffer
+
 		scope := li.scope
 		var origlen int
 		if len(scope) > 3 {
@@ -95,14 +100,14 @@ func (s Style) renderLine(w io.Writer, li lineItem) {
 			if k > 0 {
 				fmt.Fprint(w, " ")
 			}
-			fmt.Fprint(w, pkg)
+			fmt.Fprint(&ws, pkg)
 		}
 
 		if origlen > 0 {
-			fmt.Fprintf(w, " and %d more", origlen-len(scope))
+			fmt.Fprintf(&ws, " and %d more", origlen-len(scope))
 		}
 
-		fmt.Fprint(w, "]"+aec.Reset)
+		fmt.Fprintf(w, " %s", s.Scope.Apply(ws.String()))
 	}
 
 	for _, kv := range li.serialized {
@@ -148,3 +153,22 @@ func (s Style) LogAction(w io.Writer, ev tasks.EventData) {
 
 	s.renderCompletedAction(w, item)
 }
+
+// An implementation of aec.ANSI that does completely nothing.
+// It is more appropriate to use it in for non-TTY output since
+// [aec.EmptyBuilder.ANSI] inserts reset codes "ESC[0m" regardless.
+type noOpANSIImpl struct{}
+
+func (noOpANSIImpl) String() string {
+	return ""
+}
+
+func (noOpANSIImpl) With(as ...aec.ANSI) aec.ANSI {
+	return aec.EmptyBuilder.ANSI.With(as...)
+}
+
+func (noOpANSIImpl) Apply(s string) string {
+	return s
+}
+
+var noOpANSI = noOpANSIImpl{}

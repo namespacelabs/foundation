@@ -49,7 +49,6 @@ var (
 	ColorFade     = aec.LightBlackF
 	ColorToolName = aec.Color8BitF(aec.NewRGB8Bit(0x30, 0x30, 0x30))
 	ColorToolId   = aec.Color8BitF(aec.NewRGB8Bit(0x30, 0x30, 0x30))
-	ColorPackage  = aec.Italic
 
 	ColorsToolBar = []aec.RGB8Bit{
 		// 7 items to provide for better distribution against ids.

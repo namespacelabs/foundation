@@ -36,6 +36,7 @@ func NewTestCmd() *cobra.Command {
 		testOpts       testing.TestOpts
 		includeServers bool
 		parallel       bool
+		parallelWork   bool
 		ephemeral      bool = true
 	)
 
@@ -118,7 +119,7 @@ func NewTestCmd() *cobra.Command {
 					return fnerrors.UserError(loc, "failed to prepare test: %w", err)
 				}
 
-				if parallel {
+				if parallel || parallelWork {
 					parallelTests = append(parallelTests, test)
 				} else {
 					v, err := compute.Get(ctx, test)
@@ -134,11 +135,21 @@ func NewTestCmd() *cobra.Command {
 				}
 			}
 
+			testCtx := ctx
+			if parallelWork {
+				configs := &tasks.ThrottleConfigurations{}
+				configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, tasks.BaseDefaultConfig...)
+				configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, &tasks.ThrottleConfiguration{
+					Labels: map[string]string{"action": testing.TestRunAction}, Capacity: 1,
+				})
+				testCtx = tasks.ContextWithThrottler(testCtx, console.Debug(testCtx), configs)
+			}
+
 			var failed []string
 			if len(parallelTests) > 0 {
 				runTests := compute.Collect(tasks.Action("test.all-tests"), parallelTests...)
 
-				results, err := compute.GetValue(ctx, runTests)
+				results, err := compute.GetValue(testCtx, runTests)
 				if err != nil {
 					return err
 				}
@@ -163,7 +174,8 @@ func NewTestCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
 	cmd.Flags().BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, don't cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
 	cmd.Flags().BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
-	cmd.Flags().BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel. This skips most debug output.")
+	cmd.Flags().BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
+	cmd.Flags().BoolVar(&parallelWork, "parallel_work", false, "If true, performs all work in parallel except running the actual test (e.g. builds).")
 	cmd.Flags().BoolVar(&testing.UseVClusters, "vcluster", testing.UseVClusters, "If true, creates a separate vcluster per test invocation.")
 
 	return cmd

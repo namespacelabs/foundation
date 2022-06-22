@@ -178,7 +178,7 @@ func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instant
 		}
 
 		// XXX not hermetic.
-		path := filepath.Dir(grpcServiceType.Location.Rel(grpcServiceType.SourceFileName))
+		path := filepath.Dir(grpcServiceType.Location.Abs(grpcServiceType.SourceFileName))
 		gopkg, err := gosupport.ComputeGoPackage(path)
 		if err != nil {
 			return err

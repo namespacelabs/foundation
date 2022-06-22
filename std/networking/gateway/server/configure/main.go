@@ -9,6 +9,7 @@ import (
 	"context"
 	"embed"
 	"flag"
+	"fmt"
 	"path/filepath"
 	"text/template"
 
@@ -16,6 +17,7 @@ import (
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/configure"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeblueprint"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
@@ -123,6 +125,11 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
 		With: &kubedef.SpecExtension{
+			Annotation: []*kubedef.SpecExtension_Annotation{
+				{Key: "prometheus.io/scrape", Value: "true"},
+				{Key: "prometheus.io/port", Value: fmt.Sprintf("%d", *adminPort)},
+				{Key: "prometheus.io/path", Value: "/stats/prometheus"},
+			},
 			Volume: []*kubedef.SpecExtension_Volume{{
 				Name: configVolume,
 				VolumeType: &kubedef.SpecExtension_Volume_ConfigMap_{
@@ -152,6 +159,9 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				ReadOnly:  true,
 				MountPath: "/config/",
 			}},
+			Probe: []*kubedef.ContainerExtension_Probe{
+				{Kind: runtime.FnServiceReadyz, Path: "/ready", ContainerPort: int32(*adminPort)},
+			},
 		},
 	})
 

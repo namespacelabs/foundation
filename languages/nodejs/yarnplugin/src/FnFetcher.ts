@@ -2,10 +2,16 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import { Fetcher, FetchOptions, Locator, MinimalFetchOptions, structUtils } from "@yarnpkg/core";
-import { CwdFS, PortablePath } from "@yarnpkg/fslib";
+import {
+	Fetcher,
+	FetchOptions,
+	FetchResult,
+	Locator,
+	MinimalFetchOptions,
+	structUtils,
+} from "@yarnpkg/core";
+import { CwdFS, PortablePath, ppath } from "@yarnpkg/fslib";
 import { readFileSync } from "fs";
-import path from "path";
 import { LOCK_FILE_PATH_ENV, PROTOCOL } from "./constants";
 
 export class FnFetcher implements Fetcher {
@@ -38,10 +44,8 @@ export class FnFetcher implements Fetcher {
 		}
 
 		for (const [moduleName, module] of Object.entries(this.#modules)) {
-			if (packageName.startsWith(moduleName)) {
-				const relPath = packageName.substring(moduleName.length);
-				const resolvedPath = path.join(module.path, relPath);
-				return resolvedPath as PortablePath;
+			if (packageName == moduleName) {
+				return module.path as PortablePath;
 			}
 		}
 		throw new Error(

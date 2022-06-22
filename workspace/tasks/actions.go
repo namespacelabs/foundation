@@ -331,13 +331,9 @@ func (ev *ActionEvent) RunWithOpts(ctx context.Context, opts RunOpts) error {
 			}
 		}
 
-		if throttler == nil {
-			return nil
-		}
-
 		// Classify the wait for lease time as "wait time".
 		var err error
-		releaseLease, err = throttler.AcquireLease(ctx, ev.wellKnown)
+		releaseLease, err = throttlerFromContext(ctx).AcquireLease(ctx, ev.wellKnown)
 		return err
 	})
 	if err != nil {
@@ -370,14 +366,13 @@ func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) e
 }
 
 func Return[V any](ctx context.Context, ev *ActionEvent, f func(context.Context) (V, error)) (V, error) {
-	v := ev.Start(ctx)
 	var ret V
-	callErr := v.Call(ctx, func(ctx context.Context) error {
+	err := ev.RunWithOpts(ctx, RunOpts{Run: func(ctx context.Context) error {
 		var err error
 		ret, err = f(ctx)
 		return err
-	})
-	return ret, v.Done(callErr)
+	}})
+	return ret, err
 }
 
 func (ev *ActionEvent) Log(ctx context.Context) {

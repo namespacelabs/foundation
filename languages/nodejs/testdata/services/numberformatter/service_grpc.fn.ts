@@ -1,9 +1,9 @@
 // This file was automatically generated.
 
-import {grpc} from "@namespacelabs.dev-foundation/std-nodejs-grpcgen";
+import {grpc} from "@namespacelabs.dev/foundation/std/nodejs/grpcgen";
 import * as i0 from "./service_pb";
-import {adaptClient, CallOptions} from "@namespacelabs.dev-foundation/std-nodejs-grpcgen/client";
-import {CallContext} from "@namespacelabs.dev-foundation/std-nodejs-grpcgen/server";
+import {adaptClient, CallOptions} from "@namespacelabs.dev/foundation/std/nodejs/grpcgen/client";
+import {CallContext} from "@namespacelabs.dev/foundation/std/nodejs/grpcgen/server";
 
 // API
 
@@ -40,10 +40,10 @@ const FormatServiceDefinition: grpc.ServiceDefinition = {
 		originalName: "Format",
 		requestStream: false,
 		responseStream: false,
-		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
-		requestDeserialize: (arg) => i0.FormatRequest.deserializeBinary(new Uint8Array(arg)),
-		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
-		responseDeserialize: (arg) => i0.FormatResponse.deserializeBinary(new Uint8Array(arg)),
+		requestSerialize: (arg) => Buffer.from(i0.FormatRequest.toBinary(arg)),
+		requestDeserialize: (arg) => i0.FormatRequest.fromBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(i0.FormatResponse.toBinary(arg)),
+		responseDeserialize: (arg) => i0.FormatResponse.fromBinary(new Uint8Array(arg)),
 	},
 };
 

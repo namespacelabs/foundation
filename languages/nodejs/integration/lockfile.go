@@ -15,8 +15,7 @@ import (
 )
 
 const (
-	lockFn           = "fn.lock.json"
-	foundationModule = "namespacelabs.dev/foundation"
+	lockFn = "fn.lock.json"
 )
 
 type lockFile struct {

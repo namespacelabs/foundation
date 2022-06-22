@@ -101,10 +101,6 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 		go func() { checkReturn("http", httpServer.Serve(gwLis)) }()
 	}
 
-	if err := setupGrpcGateway(ctx, s.gatewayRegistrations); err != nil {
-		return err
-	}
-
 	return m.Serve()
 }
 

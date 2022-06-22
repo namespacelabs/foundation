@@ -27,6 +27,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+const TestRunAction = "test.run"
+
 var errTestFailed = errors.New("test failed")
 
 type testRun struct {
@@ -81,6 +83,13 @@ func (test *testRun) prepareDeployEnv(ctx context.Context, r compute.Resolved) (
 }
 
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
+	// The actual test run is wrapped in another action, so we can apply policies to it (e.g. constrain how many tests are deployed in parallel).
+	return tasks.Return(ctx, tasks.Action(TestRunAction), func(ctx context.Context) (*TestBundle, error) {
+		return test.compute(ctx, r)
+	})
+}
+
+func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
 	p := compute.MustGetDepValue(r, test.Plan, "plan")
 
 	env, cleanup, err := test.prepareDeployEnv(ctx, r)

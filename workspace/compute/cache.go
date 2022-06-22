@@ -100,6 +100,7 @@ func checkLoadCache(ctx context.Context, what string, g *Orch, c computeInstance
 
 	err := c.Action().Clone(func(name string) string { return fmt.Sprintf("%s (%s)", what, name) }).
 		Arg("inputs.digest", computedDigest.String()).
+		LogLevel(1).
 		Run(ctx, func(ctx context.Context) error {
 			output, cached, err := g.cache.LoadEntry(ctx, computedDigest)
 			if err == nil {

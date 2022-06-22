@@ -6,7 +6,6 @@ package tasks
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"io"
 	"io/fs"
@@ -18,10 +17,20 @@ import (
 )
 
 var (
-	//go:embed throttle.textpb
-	embeddedConfig embed.FS
+	BaseDefaultConfig = []*ThrottleConfiguration{
+		{Labels: map[string]string{"action": "lowlevel.invocation"}, Capacity: 3},
+		{Labels: map[string]string{"action": "go.build.binary"}, Capacity: 3},
+		{Labels: map[string]string{"action": "vcluster.create"}, Capacity: 2},
+		{Labels: map[string]string{"action": "vcluster.access"}, Capacity: 2},
+	}
 
-	throttler *throttleState
+	baseTestConfig = []*ThrottleConfiguration{
+		{Labels: map[string]string{"action": "test"}, Capacity: 5},
+	}
+)
+
+var (
+	_throttleKey = contextKey("fn.workspace.tasks.throttler")
 )
 
 type throttleState struct {
@@ -37,25 +46,29 @@ type throttleCapacity struct {
 	used map[string]int32 // Total amount of capacity used per value.
 }
 
-func SetupThrottler(debug io.Writer) error {
-	conf, err := parseThrottleConfig(debug)
-	if err != nil {
-		return err
-	}
-
-	throttler = newThrottleState(debug, conf.ThrottleConfiguration)
-	return nil
-}
-
-func parseThrottleConfig(debug io.Writer) (*ThrottleConfigurations, error) {
+func LoadThrottlerConfig(ctx context.Context, debugLog io.Writer) *ThrottleConfigurations {
 	if dir, err := dirs.Config(); err == nil {
 		if cfg, err := parseThrottleConfigFrom(os.DirFS(dir)); err == nil {
-			fmt.Fprintf(debug, "Using user-provided throttle configuration (loaded from %s).\n", dir)
-			return cfg, nil
+			fmt.Fprintf(debugLog, "Using user-provided throttle configuration (loaded from %s).\n", dir)
+			return cfg
 		}
 	}
 
-	return parseThrottleConfigFrom(embeddedConfig)
+	configs := &ThrottleConfigurations{}
+	configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, BaseDefaultConfig...)
+	configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, baseTestConfig...)
+	return configs
+}
+
+func ContextWithThrottler(ctx context.Context, debugLog io.Writer, confs *ThrottleConfigurations) context.Context {
+	return context.WithValue(ctx, _throttleKey, newThrottleState(debugLog, confs.ThrottleConfiguration))
+}
+
+func throttlerFromContext(ctx context.Context) *throttleState {
+	if s, ok := ctx.Value(_throttleKey).(*throttleState); ok {
+		return s
+	}
+	return nil
 }
 
 func parseThrottleConfigFrom(fsys fs.FS) (*ThrottleConfigurations, error) {
@@ -85,6 +98,10 @@ func newThrottleState(debug io.Writer, confs []*ThrottleConfiguration) *throttle
 }
 
 func (ts *throttleState) AcquireLease(ctx context.Context, wellKnown map[WellKnown]string) (func(), error) {
+	if ts == nil {
+		return nil, nil
+	}
+
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
