@@ -93,6 +93,8 @@ func (em ecrManager) AllocateTag(repository string, buildID *provision.BuildID) 
 				imgid.Tag = buildID.String()
 			}
 
+			tasks.Attachments(ctx).AddResult("image_id", imgid)
+
 			return oci.AllocatedName{
 				Keychain: keychain,
 				ImageID:  imgid,
@@ -119,11 +121,13 @@ type makeRepository struct {
 }
 
 func (m *makeRepository) Action() *tasks.ActionEvent {
-	return tasks.Action("ecr.ensure-repository").Category("aws")
+	return tasks.Action("ecr.ensure-repository").Category("aws").Arg("repository", m.repository)
 }
+
 func (m *makeRepository) Inputs() *compute.In {
 	return compute.Inputs().Computable("caller", m.callerIdentity).Str("packageName", m.repository)
 }
+
 func (m *makeRepository) Compute(ctx context.Context, deps compute.Resolved) (string, error) {
 	caller := compute.MustGetDepValue(deps, m.callerIdentity, "caller")
 

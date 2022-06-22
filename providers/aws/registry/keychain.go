@@ -62,7 +62,7 @@ func (em keychainSession) refreshPrivateAuth(ctx context.Context) (*dockertypes.
 		func(ctx context.Context) (*dockertypes.AuthConfig, error) {
 			return refreshAuth(ctx,
 				func(ctx context.Context) ([]types.AuthorizationData, error) {
-					resp, err := ecr.NewFromConfig(em.sesh).GetAuthorizationToken(ctx, &ecr.GetAuthorizationTokenInput{})
+					resp, err := compute.GetValue[*ecr.GetAuthorizationTokenOutput](ctx, &cachedAuthToken{sesh: em.sesh, profile: em.profile})
 					if err != nil {
 						return nil, err
 					}
@@ -81,4 +81,23 @@ func (em keychainSession) refreshPrivateAuth(ctx context.Context) (*dockertypes.
 
 func (em keychainSession) resolveAccount() compute.Computable[*sts.GetCallerIdentityOutput] {
 	return auth.ResolveWithConfig(em.sesh, em.profile)
+}
+
+type cachedAuthToken struct {
+	sesh    aws.Config
+	profile string // Used as cached key.
+
+	compute.DoScoped[*ecr.GetAuthorizationTokenOutput]
+}
+
+func (cat cachedAuthToken) Action() *tasks.ActionEvent {
+	return tasks.Action("ecr.get-auth-token").Category("aws")
+}
+
+func (cat cachedAuthToken) Inputs() *compute.In {
+	return compute.Inputs().Str("profile", cat.profile)
+}
+
+func (cat cachedAuthToken) Compute(ctx context.Context, _ compute.Resolved) (*ecr.GetAuthorizationTokenOutput, error) {
+	return ecr.NewFromConfig(cat.sesh).GetAuthorizationToken(ctx, &ecr.GetAuthorizationTokenInput{})
 }
