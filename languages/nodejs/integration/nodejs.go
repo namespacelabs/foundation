@@ -43,12 +43,10 @@ const (
 	grpcNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/grpc"
 	httpNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/http"
 	runtimeNode   schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/runtime"
-	// Yarn version of the packages in the same module. Doesn't really matter what the value here is.
-	defaultPackageVersion = "0.0.0"
-	implFileName          = "impl.ts"
-	packageJsonFn         = "package.json"
-	fileSyncPort          = 50000
-	ForceProd             = false
+	implFileName                     = "impl.ts"
+	packageJsonFn                    = "package.json"
+	fileSyncPort                     = 50000
+	ForceProd                        = false
 )
 
 var ()
