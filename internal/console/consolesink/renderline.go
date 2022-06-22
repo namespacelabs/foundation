@@ -5,6 +5,7 @@
 package consolesink
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"time"
@@ -16,14 +17,15 @@ import (
 )
 
 type Style struct {
-	Header   aec.ANSI // aec.LightBlackF
-	Category aec.ANSI // aec.LightBlueF
-	Cached   aec.ANSI // aec.LightBlackF
-	Progress aec.ANSI // aec.LightBlackF
-	Argument aec.ANSI // aec.CyanF
-	Result   aec.ANSI // aec.BlueF
-	Notice   aec.ANSI // aec.BlueF
-	Error    aec.ANSI // aec.RedF
+	Header   aec.ANSI
+	Category aec.ANSI
+	Cached   aec.ANSI
+	Progress aec.ANSI
+	Argument aec.ANSI
+	Result   aec.ANSI
+	Notice   aec.ANSI
+	Error    aec.ANSI
+	Scope    aec.ANSI
 }
 
 var WithColors = Style{
@@ -35,6 +37,7 @@ var WithColors = Style{
 	Result:   aec.BlueF,
 	Notice:   aec.BlueF,
 	Error:    aec.RedF,
+	Scope:    aec.Italic,
 }
 
 var NoColors = Style{
@@ -46,6 +49,7 @@ var NoColors = Style{
 	Result:   aec.EmptyBuilder.ANSI,
 	Notice:   aec.EmptyBuilder.ANSI,
 	Error:    aec.EmptyBuilder.ANSI,
+	Scope:    aec.EmptyBuilder.ANSI,
 }
 
 func (s Style) renderLine(w io.Writer, li lineItem) {
@@ -83,7 +87,8 @@ func (s Style) renderLine(w io.Writer, li lineItem) {
 	}
 
 	if data.HumanReadable == "" && len(li.scope) > 0 {
-		fmt.Fprint(w, " "+ColorPackage.String()+"[")
+		var ws bytes.Buffer
+
 		scope := li.scope
 		var origlen int
 		if len(scope) > 3 {
@@ -95,14 +100,14 @@ func (s Style) renderLine(w io.Writer, li lineItem) {
 			if k > 0 {
 				fmt.Fprint(w, " ")
 			}
-			fmt.Fprint(w, pkg)
+			fmt.Fprint(&ws, pkg)
 		}
 
 		if origlen > 0 {
-			fmt.Fprintf(w, " and %d more", origlen-len(scope))
+			fmt.Fprintf(&ws, " and %d more", origlen-len(scope))
 		}
 
-		fmt.Fprint(w, "]"+aec.Reset)
+		fmt.Fprintf(w, " %s", s.Scope.Apply(ws.String()))
 	}
 
 	for _, kv := range li.serialized {
