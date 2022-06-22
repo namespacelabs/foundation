@@ -1,7 +1,7 @@
 // This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
+import { DependencyGraph, Initializer, InstantiationContext } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
 import {GrpcRegistrar} from "@namespacelabs.dev/foundation/std/nodejs/grpc"
 import * as i0 from "@namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/deps.fn";
 import * as i1 from "@namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/types_pb";
@@ -15,11 +15,12 @@ export interface ExtensionDeps {
 export const Package = {
 	name: "namespacelabs.dev/foundation/std/nodejs/monitoring/tracing/jaeger",
 	// Package dependencies are instantiated at most once.
-	instantiateDeps: (graph: DependencyGraph) => ({
+	instantiateDeps: (graph: DependencyGraph, context: InstantiationContext) => ({
 		openTelemetry: i0.ExporterProvider(
 			graph,
 			// name: "jaeger"
-			i1.ExporterArgs.fromBinary(Buffer.from("CgZqYWVnZXI=", "base64"))),
+			i1.ExporterArgs.fromBinary(Buffer.from("CgZqYWVnZXI=", "base64")),
+			context),
 	}),
 };
 

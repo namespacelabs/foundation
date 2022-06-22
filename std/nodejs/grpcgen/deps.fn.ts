@@ -1,7 +1,7 @@
 // This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
+import { DependencyGraph, Initializer, InstantiationContext } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
 import {GrpcRegistrar} from "@namespacelabs.dev/foundation/std/nodejs/grpc"
 
 

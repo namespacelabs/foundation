@@ -1,7 +1,7 @@
 // This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
+import { DependencyGraph, Initializer, InstantiationContext } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
 import {GrpcRegistrar} from "@namespacelabs.dev/foundation/std/nodejs/grpc"
 import * as i0 from "@namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/numberformatter/deps.fn";
 import * as i1 from "@namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/numberformatter/input_pb";
@@ -17,11 +17,12 @@ export interface ExtensionDeps {
 export const Package = {
 	name: "namespacelabs.dev/foundation/languages/nodejs/testdata/extensions/batchformatter",
 	// Package dependencies are instantiated at most once.
-	instantiateDeps: (graph: DependencyGraph) => ({
+	instantiateDeps: (graph: DependencyGraph, context: InstantiationContext) => ({
 		fmt: i0.FmtProvider(
 			graph,
 			// precision: 2
-			i1.FormattingSettings.fromBinary(Buffer.from("CAI=", "base64"))),
+			i1.FormattingSettings.fromBinary(Buffer.from("CAI=", "base64")),
+			context),
 	}),
 };
 
@@ -42,19 +43,24 @@ export interface BatchFormatterDeps {
 	fmt: i2.NumberFormatter;
 }
 
-export const BatchFormatterProvider = (graph: DependencyGraph, input: i3.InputData) =>
+export const BatchFormatterProvider = (
+	  graph: DependencyGraph,
+	  input: i3.InputData,
+	  context: InstantiationContext) =>
 	provideBatchFormatter(
 		input,
 		graph.instantiatePackageDeps(Package),
 		// Scoped dependencies that are instantiated for each call to ProvideBatchFormatter.
-		graph.instantiateDeps(Package.name, "BatchFormatter", () => ({
+		graph.instantiateDeps(context, Package.name, "BatchFormatter", (context) => ({
 		fmt: i0.FmtProvider(
 			graph,
 			// precision: 5
-			i1.FormattingSettings.fromBinary(Buffer.from("CAU=", "base64"))),
-	}))
+			i1.FormattingSettings.fromBinary(Buffer.from("CAU=", "base64")),
+			context),
+	})),
+		context
 	);
 
-export type ProvideBatchFormatter = (input: i3.InputData, packageDeps: ExtensionDeps, deps: BatchFormatterDeps) =>
+export type ProvideBatchFormatter = (input: i3.InputData, packageDeps: ExtensionDeps, deps: BatchFormatterDeps, context: InstantiationContext) =>
 		Promise<i4.BatchFormatter>;
 export const provideBatchFormatter: ProvideBatchFormatter = impl.provideBatchFormatter;

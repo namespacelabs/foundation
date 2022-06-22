@@ -3,3 +3,4 @@
 // available at http://github.com/namespacelabs/foundation
 
 export { DependencyGraph, Initializer } from "./depgraph";
+export { InstantiationContext, InstantiationPath, rootContextForPackage } from "./context";
