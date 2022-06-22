@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -80,6 +81,8 @@ type Cluster struct {
 	Name  string `json:"name,omitempty"`
 	Nodes []Node `json:"nodes,omitempty"`
 }
+
+type Registry = Node
 
 type K3D string
 
@@ -172,10 +175,11 @@ func validateVersions(ver types.Version) (bool, bool, string) {
 
 func (k3d K3D) ListClusters(ctx context.Context) ([]Cluster, error) {
 	var output bytes.Buffer
-	cmd := exec.CommandContext(ctx, string(k3d), "cluster", "list", "-o", "json")
-	cmd.Stdout = &output
-	cmd.Stderr = console.Output(ctx, "k3d")
-	if err := localexec.RunAndPropagateCancelation(ctx, "k3d", cmd); err != nil {
+
+	if err := tasks.Action("k3d.list-clusters").Run(ctx, func(ctx context.Context) error {
+		args := []string{"cluster", "list", "-o", "json"}
+		return k3d.doWithStdoutStderr(ctx, &output, console.Output(ctx, "k3d"), args...)
+	}); err != nil {
 		return nil, err
 	}
 
@@ -185,6 +189,44 @@ func (k3d K3D) ListClusters(ctx context.Context) ([]Cluster, error) {
 	}
 
 	return clusters, nil
+}
+
+func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, updateDefault bool) error {
+	fmt.Fprintf(console.Stdout(ctx), "Creating a Kubernetes cluster, this may take up to a minute (image=%s).\n", image)
+
+	return tasks.Action("k3d.create-cluster").Arg("image", image).Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, "cluster", "create", "--registry-use", registry, "--image", image, fmt.Sprintf("--kubeconfig-update-default=%v", updateDefault), "--k3s-arg", "--disable=traefik@server:0", "--wait", name)
+	})
+}
+
+func (k3d K3D) DeleteCluster(ctx context.Context, name string) error {
+	return tasks.Action("k3d.delete-cluster").Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, "cluster", "delete", name)
+	})
+}
+
+func (k3d K3D) ListRegistries(ctx context.Context) ([]Registry, error) {
+	var output bytes.Buffer
+
+	if err := tasks.Action("k3d.list-registries").Run(ctx, func(ctx context.Context) error {
+		args := []string{"registry", "list", "-o", "json"}
+		return k3d.doWithStdoutStderr(ctx, &output, console.Output(ctx, "k3d"), args...)
+	}); err != nil {
+		return nil, err
+	}
+
+	var registries []Registry
+	if err := json.Unmarshal(output.Bytes(), &registries); err != nil {
+		return nil, err
+	}
+
+	return registries, nil
+}
+
+func (k3d K3D) DeleteRegistry(ctx context.Context, name string) error {
+	return tasks.Action("k3d.delete-registry").Run(ctx, func(ctx context.Context) error {
+		return k3d.do(ctx, "registry", "delete", name)
+	})
 }
 
 // If port is 0, an open port is allocated dynamically.
@@ -200,14 +242,6 @@ func (k3d K3D) CreateRegistry(ctx context.Context, name string, port int) error 
 		}
 
 		return k3d.do(ctx, args...)
-	})
-}
-
-func (k3d K3D) CreateCluster(ctx context.Context, name, registry, image string, updateDefault bool) error {
-	fmt.Fprintf(console.Stdout(ctx), "Creating a Kubernetes cluster, this may take up to a minute (image=%s).\n", image)
-
-	return tasks.Action("k3d.create-cluster").Arg("image", image).Run(ctx, func(ctx context.Context) error {
-		return k3d.do(ctx, "cluster", "create", "--registry-use", registry, "--image", image, fmt.Sprintf("--kubeconfig-update-default=%v", updateDefault), "--k3s-arg", "--disable=traefik@server:0", "--wait", name)
 	})
 }
 
@@ -230,9 +264,12 @@ func (k3d K3D) StopNode(ctx context.Context, nodeName string) error {
 }
 
 func (k3d K3D) do(ctx context.Context, args ...string) error {
+	return k3d.doWithStdoutStderr(ctx, console.Output(ctx, "k3d"), console.Output(ctx, "k3d"), args...)
+}
 
+func (k3d K3D) doWithStdoutStderr(ctx context.Context, stdout io.Writer, stderr io.Writer, args ...string) error {
 	cmd := exec.CommandContext(ctx, string(k3d), args...)
-	cmd.Stdout = console.Output(ctx, "k3d")
-	cmd.Stderr = console.Output(ctx, "k3d")
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 	return localexec.RunAndPropagateCancelation(ctx, "k3d", cmd)
 }
