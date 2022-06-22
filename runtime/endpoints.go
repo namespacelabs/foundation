@@ -186,6 +186,7 @@ func ServiceSpecToEndpoint(srv *schema.Server, spec *schema.Server_ServiceSpec, 
 		endpoint.ServiceMetadata = []*schema.ServiceMetadata{spec.Metadata}
 	}
 
+	// XXX Rethink this -- i.e. consolidate with InternalEndpoint.
 	if spec.Internal {
 		endpoint.ServiceMetadata = append(endpoint.ServiceMetadata, &schema.ServiceMetadata{
 			Kind: ManualInternalService,
