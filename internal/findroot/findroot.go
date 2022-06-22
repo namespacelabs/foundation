@@ -34,7 +34,7 @@ func Find(label, startAt string, match MatcherFunc) (string, error) {
 
 		d := filepath.Dir(dir)
 		if d == dir {
-			return "", fmt.Errorf("%s: could not determine root", label)
+			return "", fmt.Errorf("%s: could not determine root from %q", label, startAt)
 		}
 		dir = d
 	}
