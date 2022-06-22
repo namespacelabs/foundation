@@ -104,7 +104,7 @@ func MakeProtoSrcs(ctx context.Context, env ops.Environment, request map[schema.
 		out = out.File(llb.Copy(result, ".", "."), llb.WithCustomNamef("copying %s generated sources", fmwk))
 	}
 
-	img, err := buildkit.LLBToImage(ctx, env, build.NewBuildTarget(&platform).WithSourceLabel("Proto codegen"), out)
+	img, err := buildkit.LLBToImage(ctx, env, build.NewBuildTarget(&platform).WithSourceLabel("protobuf-codegen"), out)
 	if err != nil {
 		return nil, err
 	}

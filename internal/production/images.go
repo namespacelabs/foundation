@@ -63,7 +63,9 @@ func DevelopmentImage(ctx context.Context, name string, env ops.Environment, tar
 	state := prepareImage(llbutil.Image(serverBase, *target.TargetPlatform()), *base.NonRootUserID)
 	state = state.Run(llb.Shlex("apk add --no-cache bash")).Root()
 
-	return buildkit.LLBToImage(ctx, env, target, state)
+	t := build.NewBuildTarget(target.TargetPlatform()).WithTargetName(target.PublishName())
+
+	return buildkit.LLBToImage(ctx, env, t.WithSourceLabel("base:"+name), state)
 }
 
 func ServerImageLLB(name string, target specs.Platform) (llb.State, error) {

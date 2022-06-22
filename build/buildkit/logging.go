@@ -14,6 +14,7 @@ import (
 
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/util/progress/progressui"
+	"github.com/opencontainers/go-digest"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -31,7 +32,7 @@ type jsonEvent struct {
 	Event     *client.SolveStatus `json:"e,omitempty"`
 }
 
-func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh chan *client.SolveStatus) {
+func setupOutput(ctx context.Context, logid, sid string, eg executor.Executor, parentCh chan *client.SolveStatus) {
 	attachments := tasks.Attachments(ctx)
 	outText := attachments.Output(tasks.TaskOutputTextLog)
 	outJSON := attachments.Output(TaskOutputBuildkitJsonLog)
@@ -115,7 +116,7 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 		ch := chs[len(chs)-1]
 
 		running := map[string]*vertexState{}
-		streams := map[int]io.Writer{}
+		streams := map[string]io.Writer{}
 
 		for event := range ch {
 			for _, vertex := range event.Vertexes {
@@ -175,17 +176,17 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 			}
 
 			for _, log := range event.Logs {
-				if streams[log.Stream] == nil {
-					// TODO 2 buffers are enough - now we have 3 (as console creates 2).
-					outputName := tasks.Output(consoleName(log.Stream), "text/plain")
+				key := fmt.Sprintf("%s/%d", log.Vertex, log.Stream)
+
+				if streams[key] == nil {
+					name := consoleName(logid, log.Vertex, log.Stream)
+					outputName := tasks.Output(name, "text/plain")
 					output := tasks.Attachments(ctx).Output(outputName)
-					streams[log.Stream] = io.MultiWriter(
-						output,
-						console.Output(ctx, consoleName(log.Stream)))
+					streams[key] = io.MultiWriter(output, console.Output(ctx, name))
 					console.GetErrContext(ctx).AddLog(outputName)
 				}
 
-				_, _ = streams[log.Stream].Write(log.Data)
+				_, _ = streams[key].Write(log.Data)
 			}
 		}
 
@@ -197,8 +198,29 @@ func setupOutput(ctx context.Context, sid string, eg executor.Executor, parentCh
 	})
 }
 
-func consoleName(streamNum int) string {
-	return fmt.Sprintf("buildkit:%d", streamNum)
+func consoleName(logid string, d digest.Digest, streamNum int) string {
+	key := d.Hex()
+	if len(key) > 7 {
+		key = key[:7]
+	}
+	if logid == "" {
+		logid = "buildkit"
+	}
+	if len(logid) > 32 {
+		logid = "..." + logid[len(logid)-29:]
+	}
+
+	return fmt.Sprintf("%s %s%s", key, logid, streamName(streamNum))
+}
+
+func streamName(streamNum int) string {
+	// https://github.com/moby/buildkit/blob/08497dafaff7b99f4e1780f17475e327c940b3f6/util/progress/logs/logs.go#L25-L26
+	switch streamNum {
+	case 1, 2:
+		return ""
+	default:
+		return fmt.Sprintf(":%d", streamNum)
+	}
 }
 
 type vertexState struct {

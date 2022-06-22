@@ -790,7 +790,6 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	if waiting > 0 {
 		report += fmt.Sprintf(", %s waiting", num(aec.CyanF, waiting))
 	}
-	c.writeLineWithMaxW(out, width, report+".", "")
 
 	// The idea here is that we traverse the tree to figure out how many drawn lines would
 	// have been emitted. And if we see too many, we try to reduce the tree depth, until
@@ -814,6 +813,8 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 	// Recurse through the line item tree.
 	c.renderLineRec(out, width, c.root, t, " => ", 0, maxDepth)
+
+	c.writeLineWithMaxW(out, width, report+".", "")
 }
 
 func (c *ConsoleSink) recordLogSource(id tasks.ActionID) {

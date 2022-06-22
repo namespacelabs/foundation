@@ -78,6 +78,7 @@ func LLBToFS(ctx context.Context, env ops.Environment, conf build.BuildTarget, s
 	}
 
 	base := reqBase{
+		sourceLabel:    conf.SourceLabel(),
 		sourcePackage:  conf.SourcePackage(),
 		devHost:        env.DevHost(),
 		targetPlatform: platformOrDefault(conf.TargetPlatform()),
@@ -88,6 +89,7 @@ func LLBToFS(ctx context.Context, env ops.Environment, conf build.BuildTarget, s
 }
 
 type reqBase struct {
+	sourceLabel    string             // For description purposes only, does not affect output.
 	sourcePackage  schema.PackageName // For description purposes only, does not affect output.
 	devHost        *schema.DevHost    // Doesn't affect the output.
 	targetPlatform specs.Platform
@@ -97,6 +99,7 @@ type reqBase struct {
 
 func makeImage(env ops.Environment, conf build.BuildTarget, req *frontendReq, localDirs []LocalContents, targetName compute.Computable[oci.AllocatedName]) compute.Computable[oci.Image] {
 	base := reqBase{
+		sourceLabel:    conf.SourceLabel(),
 		sourcePackage:  conf.SourcePackage(),
 		devHost:        env.DevHost(),
 		targetPlatform: platformOrDefault(conf.TargetPlatform()),
@@ -376,7 +379,12 @@ If you don't think this is an actual issue, please re-run with --skip_buildkit_w
 		return err
 	})
 
-	setupOutput(ctx, sid, eg, ch)
+	logid := l.sourcePackage.String()
+	if logid == "" {
+		logid = l.sourceLabel
+	}
+
+	setupOutput(ctx, logid, sid, eg, ch)
 
 	if err := wait(); err != nil {
 		return res, err
