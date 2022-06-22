@@ -1,0 +1,31 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "schema/definition.proto";
+import "schema/serialized.proto";
+
+message TestResult {
+    bool success = 1;
+
+    foundation.schema.DeployPlan             plan                    = 2;
+    foundation.schema.ComputedConfigurations computed_configurations = 3;
+}
+
+message TestBundle {
+    TestResult      result     = 1;
+    LogRef          test_log   = 2;
+    repeated LogRef server_log = 3;
+}
+
+message LogRef {
+    string package_name   = 1;
+    string container_name = 2;
+    string log_file       = 3;
+}

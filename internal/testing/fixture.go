@@ -178,9 +178,9 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 			var fsys memfs.FS
 
-			stored := &TestBundle{
+			stored := &schema.TestBundle{
 				Result: bundle.Result,
-				TestLog: &LogRef{
+				TestLog: &schema.LogRef{
 					PackageName:   bundle.TestLog.PackageName,
 					ContainerName: bundle.TestLog.ContainerName,
 					LogFile:       "test.log",
@@ -197,7 +197,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 				logFile := fmt.Sprintf("server/%s.log", x.Hex)
 				fsys.Add(logFile, s.Output)
 
-				stored.ServerLog = append(stored.ServerLog, &LogRef{
+				stored.ServerLog = append(stored.ServerLog, &schema.LogRef{
 					PackageName:   s.PackageName,
 					ContainerName: s.ContainerName,
 					LogFile:       logFile,

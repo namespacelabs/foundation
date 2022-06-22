@@ -180,7 +180,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 		return nil
 	})
 
-	testResults := &TestResult{
+	testResults := &schema.TestResult{
 		Plan:                   deploy.Serialize(test.Workspace, test.EnvProto, test.Stack, p, test.Focus),
 		ComputedConfigurations: p.Computed,
 	}
