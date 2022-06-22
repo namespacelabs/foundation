@@ -40,10 +40,10 @@ const FormatServiceDefinition: grpc.ServiceDefinition = {
 		originalName: "Format",
 		requestStream: false,
 		responseStream: false,
-		requestSerialize: (arg) => Buffer.from(i0.FormatRequest.toBinary(arg)),
-		requestDeserialize: (arg) => i0.FormatRequest.fromBinary(new Uint8Array(arg)),
-		responseSerialize: (arg) => Buffer.from(i0.FormatResponse.toBinary(arg)),
-		responseDeserialize: (arg) => i0.FormatResponse.fromBinary(new Uint8Array(arg)),
+		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		requestDeserialize: (arg) => i0.FormatRequest.deserializeBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		responseDeserialize: (arg) => i0.FormatResponse.deserializeBinary(new Uint8Array(arg)),
 	},
 };
 

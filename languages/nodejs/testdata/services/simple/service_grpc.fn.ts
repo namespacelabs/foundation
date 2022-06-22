@@ -40,10 +40,10 @@ const PostServiceDefinition: grpc.ServiceDefinition = {
 		originalName: "Post",
 		requestStream: false,
 		responseStream: false,
-		requestSerialize: (arg) => Buffer.from(i0.PostRequest.toBinary(arg)),
-		requestDeserialize: (arg) => i0.PostRequest.fromBinary(new Uint8Array(arg)),
-		responseSerialize: (arg) => Buffer.from(i0.PostResponse.toBinary(arg)),
-		responseDeserialize: (arg) => i0.PostResponse.fromBinary(new Uint8Array(arg)),
+		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		requestDeserialize: (arg) => i0.PostRequest.deserializeBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		responseDeserialize: (arg) => i0.PostResponse.deserializeBinary(new Uint8Array(arg)),
 	},
 };
 

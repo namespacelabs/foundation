@@ -19,7 +19,7 @@ export const Package = {
 		openTelemetry: i0.ExporterProvider(
 			graph,
 			// name: "jaeger"
-			i1.ExporterArgs.fromBinary(Buffer.from("CgZqYWVnZXI=", "base64"))),
+			i1.ExporterArgs.deserializeBinary(Buffer.from("CgZqYWVnZXI=", "base64"))),
 	}),
 };
 

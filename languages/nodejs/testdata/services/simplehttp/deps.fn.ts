@@ -18,7 +18,7 @@ export const Package = {
 	instantiateDeps: (graph: DependencyGraph) => ({
 		httpServer: i0.HttpServerProvider(
 			graph,
-			i1.NoArgs.fromBinary(Buffer.from("", "base64"))),
+			i1.NoArgs.deserializeBinary(Buffer.from("", "base64"))),
 	}),
 };
 

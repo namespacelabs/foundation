@@ -40,10 +40,10 @@ const PostUserServiceDefinition: grpc.ServiceDefinition = {
 		originalName: "GetUserPosts",
 		requestStream: false,
 		responseStream: false,
-		requestSerialize: (arg) => Buffer.from(i0.PostUserRequest.toBinary(arg)),
-		requestDeserialize: (arg) => i0.PostUserRequest.fromBinary(new Uint8Array(arg)),
-		responseSerialize: (arg) => Buffer.from(i0.PostUserResponse.toBinary(arg)),
-		responseDeserialize: (arg) => i0.PostUserResponse.fromBinary(new Uint8Array(arg)),
+		requestSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		requestDeserialize: (arg) => i0.PostUserRequest.deserializeBinary(new Uint8Array(arg)),
+		responseSerialize: (arg) => Buffer.from(arg.serializeBinary()),
+		responseDeserialize: (arg) => i0.PostUserResponse.deserializeBinary(new Uint8Array(arg)),
 	},
 };
 

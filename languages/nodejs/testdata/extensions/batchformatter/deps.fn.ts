@@ -21,7 +21,7 @@ export const Package = {
 		fmt: i0.FmtProvider(
 			graph,
 			// precision: 2
-			i1.FormattingSettings.fromBinary(Buffer.from("CAI=", "base64"))),
+			i1.FormattingSettings.deserializeBinary(Buffer.from("CAI=", "base64"))),
 	}),
 };
 
@@ -51,7 +51,7 @@ export const BatchFormatterProvider = (graph: DependencyGraph, input: i3.InputDa
 		fmt: i0.FmtProvider(
 			graph,
 			// precision: 5
-			i1.FormattingSettings.fromBinary(Buffer.from("CAU=", "base64"))),
+			i1.FormattingSettings.deserializeBinary(Buffer.from("CAU=", "base64"))),
 	}))
 	);
 

@@ -19,10 +19,10 @@ export const Package = {
 	instantiateDeps: (graph: DependencyGraph) => ({
 		batch1: i0.BatchFormatterProvider(
 			graph,
-			i1.InputData.fromBinary(Buffer.from("", "base64"))),
+			i1.InputData.deserializeBinary(Buffer.from("", "base64"))),
 		batch2: i0.BatchFormatterProvider(
 			graph,
-			i1.InputData.fromBinary(Buffer.from("", "base64"))),
+			i1.InputData.deserializeBinary(Buffer.from("", "base64"))),
 	}),
 };
 
