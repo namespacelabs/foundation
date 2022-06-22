@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import { GrpcRegistrar } from "@namespacelabs.dev-foundation/std-nodejs-grpc";
+import { GrpcRegistrar } from "@namespacelabs.dev/foundation/std/nodejs/grpc";
 import { WireService } from "./deps.fn";
 import { bindPostServiceServer } from "./service_grpc.fn";
 import { PostRequest, PostResponse } from "./service_pb";

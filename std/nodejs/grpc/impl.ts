@@ -2,8 +2,8 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import { grpc } from "@namespacelabs.dev-foundation/std-nodejs-grpcgen";
-import { adaptServer, BoundService } from "@namespacelabs.dev-foundation/std-nodejs-grpcgen/server";
+import { grpc } from "@namespacelabs.dev/foundation/std/nodejs/grpcgen";
+import { adaptServer, BoundService } from "@namespacelabs.dev/foundation/std/nodejs/grpcgen/server";
 import yargs from "yargs/yargs";
 import { GrpcRegistrar } from "./registrar";
 

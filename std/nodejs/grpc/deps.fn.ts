@@ -1,10 +1,10 @@
 // This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import {GrpcRegistrar} from "@namespacelabs.dev-foundation/std-nodejs-grpc"
-import * as i0 from "@namespacelabs.dev-foundation/std-nodejs-grpc/provider_pb";
-import * as i1 from "@namespacelabs.dev-foundation/std-nodejs-grpc/registrar";
+import { DependencyGraph, Initializer } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
+import {GrpcRegistrar} from "@namespacelabs.dev/foundation/std/nodejs/grpc"
+import * as i0 from "@namespacelabs.dev/foundation/std/nodejs/grpc/provider_pb";
+import * as i1 from "@namespacelabs.dev/foundation/std/nodejs/grpc/registrar";
 
 
 

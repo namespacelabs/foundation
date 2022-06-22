@@ -1,11 +1,11 @@
 // This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer } from "@namespacelabs/foundation";
-import {GrpcRegistrar} from "@namespacelabs.dev-foundation/std-nodejs-grpc"
-import * as i0 from "@namespacelabs.dev-foundation/std-nodejs-http/deps.fn";
-import * as i1 from "@namespacelabs.dev-foundation/std-nodejs-http/provider_pb";
-import * as i2 from "@namespacelabs.dev-foundation/std-nodejs-http/httpserver";
+import { DependencyGraph, Initializer } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
+import {GrpcRegistrar} from "@namespacelabs.dev/foundation/std/nodejs/grpc"
+import * as i0 from "@namespacelabs.dev/foundation/std/nodejs/http/deps.fn";
+import * as i1 from "@namespacelabs.dev/foundation/std/nodejs/http/provider_pb";
+import * as i2 from "@namespacelabs.dev/foundation/std/nodejs/http/httpserver";
 
 
 export interface ExtensionDeps {
