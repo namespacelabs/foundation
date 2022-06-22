@@ -25,7 +25,7 @@ func (r K8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runt
 }
 
 func fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, namespace, podName, containerName string, opts runtime.FetchLogsOpts) error {
-	logOpts := &corev1.PodLogOptions{Follow: opts.Follow, Container: containerName, Previous: opts.FetchLastFailure}
+	logOpts := &corev1.PodLogOptions{Follow: opts.Follow, Container: containerName, Previous: opts.FetchLastFailure, Timestamps: opts.IncludeTimestamps}
 
 	if opts.TailLines > 0 {
 		var tailLines int64 = int64(opts.TailLines)

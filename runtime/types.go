@@ -136,9 +136,10 @@ type SidecarRunOpts struct {
 }
 
 type FetchLogsOpts struct {
-	TailLines        int // Only used if it's a positive value.
-	Follow           bool
-	FetchLastFailure bool
+	TailLines         int // Only used if it's a positive value.
+	Follow            bool
+	FetchLastFailure  bool
+	IncludeTimestamps bool
 }
 
 type ObserveOpts struct {

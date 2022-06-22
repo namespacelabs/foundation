@@ -261,7 +261,7 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 				mu.Unlock()
 
 				ex.Go(func(ctx context.Context) error {
-					err := runtime.For(ctx, env).FetchLogsTo(ctx, w, ctr, runtime.FetchLogsOpts{})
+					err := runtime.For(ctx, env).FetchLogsTo(ctx, w, ctr, runtime.FetchLogsOpts{IncludeTimestamps: true})
 					if errors.Is(err, context.Canceled) {
 						return nil
 					}
