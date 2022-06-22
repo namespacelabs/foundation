@@ -38,8 +38,9 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		Version: "2012-10-17",
 		Statement: []fniam.StatementEntry{
 			{
-				Effect: "Allow",
-				Action: []string{"ecr:*"},
+				Effect:   "Allow",
+				Action:   []string{"ecr:*"},
+				Resource: []string{"*"},
 			},
 		},
 	}
