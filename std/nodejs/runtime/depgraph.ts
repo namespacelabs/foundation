@@ -5,13 +5,14 @@
 import { performance } from "perf_hooks";
 import "source-map-support/register";
 import toposort from "toposort";
+import { addPathToContext, EMPTY_CONTEXT, InstantiationContext } from "./context";
 
 const maximumInitTimeMs = 10;
 
-interface Package<PackageDepsT> {
+export interface Package<PackageDepsT> {
 	name: string;
 
-	instantiateDeps?: (dg: DependencyGraph) => PackageDepsT;
+	instantiateDeps?: (dg: DependencyGraph, context: InstantiationContext) => PackageDepsT;
 }
 
 export interface Initializer {
@@ -28,8 +29,9 @@ export class DependencyGraph {
 	instantiatePackageDeps<PackageDepsT>(p: Package<PackageDepsT>): PackageDepsT {
 		let deps = this.#singletonDeps.get(p.name) as PackageDepsT | undefined;
 		if (!deps) {
+			const childContext = addPathToContext(EMPTY_CONTEXT, p.name);
 			deps = this.#profileCall(`Generating dependencies of package "${p.name}"`, () =>
-				p.instantiateDeps?.(this)
+				p.instantiateDeps?.(this, childContext)
 			);
 			this.#singletonDeps.set(p.name, deps);
 		}
@@ -38,10 +40,15 @@ export class DependencyGraph {
 		return deps as PackageDepsT;
 	}
 
-	instantiateDeps<T>(pkgName: string, providerName: string, factory: () => T): T {
+	instantiateDeps<T>(
+		context: InstantiationContext,
+		pkgName: string,
+		providerName: string,
+		factory: (context: InstantiationContext) => T
+	): T {
 		return this.#profileCall(
 			`Generating dependencies of provider "${pkgName}#${providerName}"`,
-			factory
+			() => factory(addPathToContext(context, pkgName))
 		);
 	}
 

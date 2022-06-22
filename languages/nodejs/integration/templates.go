@@ -36,7 +36,8 @@ export interface {{.Name}}Deps {
 			.fromBinary(Buffer.from("{{.ProviderInput.Base64Content}}", "base64"))
 			{{- end -}}
 			{{- if .ProviderOutputFactoryType}},
-			{{template "Type" .ProviderOutputFactoryType}}{{end}}),
+			{{template "Type" .ProviderOutputFactoryType}}{{end}},
+			context),
 	{{- end}}
 	})
 {{- end}}
@@ -52,7 +53,7 @@ export const Package = {
 
 	{{- if .Deps}}
 	// Package dependencies are instantiated at most once.
-	instantiateDeps: (graph: DependencyGraph) => {{template "ConstructDeps" .Deps}},
+	instantiateDeps: (graph: DependencyGraph, context: InstantiationContext) => {{template "ConstructDeps" .Deps}},
 	{{- end}}
 };
 {{- end}}
@@ -98,27 +99,32 @@ export const prepare: Prepare = impl.initialize;
 {{template "DefineDeps" .Deps}}
 {{- end}}
 
-export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}
-	(graph: DependencyGraph
-	{{- if .InputType }}, input: {{template "Type" .InputType -}}{{end}}
-	{{- if .IsParameterized}}, outputTypeFactory: (...args: any[]) => T{{end}}) =>
+export const {{.Name}}Provider = {{if .IsParameterized}}<T>{{end -}}(
+	  graph: DependencyGraph,
+	  {{- if .InputType }}
+	  input: {{template "Type" .InputType -}},{{end}}
+	  {{- if .IsParameterized}}
+		outputTypeFactory: (...args: any[]) => T,{{end}}
+	  context: InstantiationContext) =>
 	provide{{.Name}}(
-		{{if .InputType}}input{{end}}
-		{{- if .PackageDepsName}},
-		graph.instantiatePackageDeps(Package)
+		{{if .InputType}}input,{{end}}
+		{{- if .PackageDepsName}}
+		graph.instantiatePackageDeps(Package),
 		{{- end}}
-		{{- if .Deps}},
+		{{- if .Deps}}
 		// Scoped dependencies that are instantiated for each call to Provide{{.Name}}.
-		graph.instantiateDeps(Package.name, "{{.Deps.Name}}", () => {{template "ConstructDeps" .Deps}})
+		graph.instantiateDeps(context, Package.name, "{{.Deps.Name}}", (context) => {{template "ConstructDeps" .Deps}}),
 		{{- end}}
-		{{- if .IsParameterized}}outputTypeFactory{{end}}
+		{{- if .IsParameterized}}outputTypeFactory,{{end}}
+		context
 	);
 
 export type Provide{{.Name}} = {{if .IsParameterized}}<T>{{end -}}
-		({{- if .InputType}}input: {{template "Type" .InputType}}{{end}}
-		{{- if .PackageDepsName}}, packageDeps: {{.PackageDepsName}}Deps{{end -}}
-		{{- if .Deps}}, deps: {{.Name}}Deps{{end}}
-		{{- if .IsParameterized}}outputTypeFactory: (...args: any[]) => T{{end}}) =>
+		({{- if .InputType}}input: {{template "Type" .InputType}}, {{end -}}
+		{{- if .PackageDepsName}}packageDeps: {{.PackageDepsName}}Deps, {{end -}}
+		{{- if .Deps}}deps: {{.Name}}Deps, {{end -}}
+		{{- if .IsParameterized}}outputTypeFactory: (...args: any[]) => T, {{end -}}
+		context: InstantiationContext) =>
 		{{if .IsParameterized}}T{{else}}{{template "Type" .OutputType}}{{end}};
 export const provide{{.Name}}: Provide{{.Name}} = impl.provide{{.Name}};
 {{- end}}
@@ -144,7 +150,7 @@ import * as {{.Alias}} from "{{.Package}}";
 			`{{define "Node"}}{{with $opts := .}}// This file was automatically generated.
 
 import * as impl from "./impl";
-import { DependencyGraph, Initializer } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
+import { DependencyGraph, Initializer, InstantiationContext } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
 import {GrpcRegistrar} from "@namespacelabs.dev/foundation/std/nodejs/grpc"
 
 
@@ -176,7 +182,7 @@ export const wireService: WireService = impl.wireService;
 			// Server template
 			`{{define "Server"}}// This file was automatically generated.
 
-import { DependencyGraph, Initializer } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
+import { DependencyGraph, Initializer, rootContextForPackage } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
 import {provideHttpServer, HttpServerImpl} from "@namespacelabs.dev/foundation/std/nodejs/http/impl";
 import {provideGrpcRegistrar, GrpcServer} from "@namespacelabs.dev/foundation/std/nodejs/grpc";
 
@@ -188,7 +194,8 @@ const wireServices = async (server: GrpcServer, graph: DependencyGraph): Promise
 {{- range $.Services}}
 	try {
 		await {{.Type.ImportAlias}}.wireService(
-			{{- if .HasDeps}}{{.Type.ImportAlias}}.Package.instantiateDeps(graph), {{ end -}}
+			{{- if .HasDeps}}{{.Type.ImportAlias}}.Package.instantiateDeps(
+				graph, rootContextForPackage({{.Type.ImportAlias}}.Package)), {{ end -}}
 			server);
 	} catch (e) {
 		errors.push(e);

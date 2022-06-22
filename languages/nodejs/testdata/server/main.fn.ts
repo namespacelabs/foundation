@@ -1,6 +1,6 @@
 // This file was automatically generated.
 
-import { DependencyGraph, Initializer } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
+import { DependencyGraph, Initializer, rootContextForPackage } from "@namespacelabs.dev/foundation/std/nodejs/runtime";
 import {provideHttpServer, HttpServerImpl} from "@namespacelabs.dev/foundation/std/nodejs/http/impl";
 import {provideGrpcRegistrar, GrpcServer} from "@namespacelabs.dev/foundation/std/nodejs/grpc";
 import * as i0 from "@namespacelabs.dev/foundation/languages/nodejs/testdata/services/simple/deps.fn";
@@ -21,17 +21,20 @@ const wireServices = async (server: GrpcServer, graph: DependencyGraph): Promise
 		errors.push(e);
 	}
 	try {
-		await i1.wireService(i1.Package.instantiateDeps(graph), server);
+		await i1.wireService(i1.Package.instantiateDeps(
+				graph, rootContextForPackage(i1.Package)), server);
 	} catch (e) {
 		errors.push(e);
 	}
 	try {
-		await i2.wireService(i2.Package.instantiateDeps(graph), server);
+		await i2.wireService(i2.Package.instantiateDeps(
+				graph, rootContextForPackage(i2.Package)), server);
 	} catch (e) {
 		errors.push(e);
 	}
 	try {
-		await i3.wireService(i3.Package.instantiateDeps(graph), server);
+		await i3.wireService(i3.Package.instantiateDeps(
+				graph, rootContextForPackage(i3.Package)), server);
 	} catch (e) {
 		errors.push(e);
 	}
