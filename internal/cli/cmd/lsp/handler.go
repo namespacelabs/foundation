@@ -38,7 +38,7 @@ type server struct {
 }
 
 func newServer(ctx context.Context, conn jsonrpc2.Conn, client protocol.Client) *server {
-	return &server{conn, client, NewOpenFiles(), console.Output(ctx, "lsp")}
+	return &server{conn, client, NewOpenFiles(), console.Stderr(ctx)}
 }
 
 const generateCommandID = "fn_generate"
