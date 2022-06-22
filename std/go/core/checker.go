@@ -18,7 +18,7 @@ type Check struct {
 
 // By default, a Readiness checker never returns a failure after it becomes
 // valid once. This is by design, we don't want our server to stop receiving
-// traffic in the event of intermitent issues (e.g. we don't want to track
+// traffic in the event of intermittent issues (e.g. we don't want to track
 // whether our dependencies are reachable). To manually control the behavior
 // pass in a `ManualChecker` instead.
 func (c Check) Register(name string, check Checker) {
