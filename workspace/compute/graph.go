@@ -119,51 +119,35 @@ func startComputingWithOpts(ctx context.Context, g *Orch, opts computeInstance) 
 		return ErrPromise[any](err)
 	}
 
-	var p *Promise[any]
-	var isComputing bool
-
-	if !opts.IsGlobal {
-		opts.State.promise.mu.Lock()
-
-		if !opts.State.running {
-			initializePromise(&opts.State.promise, opts.Computable, tasks.NewActionID().String())
-			opts.State.running = true
-		} else {
-			isComputing = true
-		}
-
-		p = &opts.State.promise
-		opts.State.promise.mu.Unlock()
-	} else {
+	if opts.IsGlobal {
 		if !inputs.Digest.IsSet() {
 			panic("global node that doesn't have stable inputs: " + reflect.TypeOf(opts.Computable).String())
 		}
 
-		p, isComputing = maybeCreatePromise(g, opts.Computable, inputs)
-	}
-
-	// At this point we may be in one of multiple situations:
-	// (1) The inputs are all known and deterministic.
-	// (2) Some of the inputs are incomplete, i.e. the Computable depends
-	//     on another Computable, and that Computable's inputs are not
-	//     deterministic. We need thus to calculate the dependency's
-	//     output to have a stable digest.
-	// (3) The inputs will never resolved into a deterministic digest.
-	//
-	// We also want Compute() to return quickly -- that's our contract with
-	// our callers; most waiting should be deferred to Wait().
-
-	if !isComputing {
-		if opts.IsGlobal {
+		p, isComputing := maybeCreatePromise(g, opts.Computable, inputs)
+		if !isComputing {
 			deferCompute(g, p, opts, inputs)
-		} else {
-			// The return value is ignored here because the promise will be resolved
-			// by waitCompute, and thus it's value will be returned below.
-			_ = waitCompute(ctx, g, p, opts, inputs)
 		}
+		return p
 	}
 
-	return p
+	opts.State.promise.mu.Lock()
+	compute := false
+	if !opts.State.running {
+		initializePromise(&opts.State.promise, opts.Computable, tasks.NewActionID().String())
+		opts.State.running = true
+		compute = true
+	}
+	opts.State.promise.mu.Unlock()
+
+	// If another path is already computing the value, waiting on the returned promise will still block.
+	if compute {
+		// The return value is ignored here because the promise will be resolved
+		// by waitCompute, and thus it's value will be returned below.
+		_ = waitCompute(ctx, g, &opts.State.promise, opts, inputs)
+	}
+
+	return &opts.State.promise
 }
 
 func maybeCreatePromise(g *Orch, c hasAction, inputs *computedInputs) (*Promise[any], bool) {
