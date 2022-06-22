@@ -80,6 +80,7 @@ type cueCallback struct {
 func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *workspace.Package, opts workspace.LoadPackageOpts) error {
 	node := &schema.Node{
 		PackageName: loc.PackageName.String(),
+		ModuleName:  loc.Module.ModuleName(),
 		Kind:        kind,
 	}
 

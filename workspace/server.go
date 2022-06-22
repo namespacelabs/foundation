@@ -33,7 +33,7 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 	}
 
 	srv.PackageName = loc.PackageName.String()
-	srv.NamespaceModule = loc.Module.Workspace.ModuleName
+	srv.ModuleName = loc.Module.ModuleName()
 	srv.UserImports = srv.Import
 
 	if handler, ok := FrameworkHandlers[srv.Framework]; ok {

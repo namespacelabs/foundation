@@ -132,6 +132,7 @@ type Plan struct {
 	Deployer         *ops.Plan
 	ComputedStack    *stack.Stack
 	IngressFragments []*schema.IngressFragment
+	Computed         *schema.ComputedConfigurations
 	Hints            []string // Optional messages to pass to the user.
 }
 
@@ -177,6 +178,7 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 	}
 
 	plan.IngressFragments = compute.MustGetDepValue(deps, m.ingressFragments, "ingress").Fragments
+	plan.Computed = pbr.HandlerResult.Computed
 
 	return plan, nil
 }

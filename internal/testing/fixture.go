@@ -8,9 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"strings"
 
-	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/multiplatform"
@@ -19,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
 	"namespacelabs.dev/foundation/provision"
@@ -31,13 +30,14 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
+	"namespacelabs.dev/foundation/workspace/source/protos/resolver"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const startupTestBinary = "namespacelabs.dev/foundation/std/startup/testdriver"
 
 type StoredTestResults struct {
-	Bundle   *TestBundle
+	Bundle   *PreStoredTestBundle
 	ImageRef oci.ImageID
 	Package  schema.PackageName
 }
@@ -147,11 +147,15 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		return nil, err
 	}
 
+	packages := pl.Seal()
+
 	results := &testRun{
 		TestName:       testDef.Name,
-		Env:            env.BindWith(pl.Seal()),
+		Env:            env.BindWith(packages),
 		Plan:           deployPlan,
 		Focus:          focusServers,
+		EnvProto:       env.Proto(),
+		Workspace:      env.Workspace(),
 		Stack:          stack.Proto(),
 		TestBinPkg:     testBinary.PackageName(),
 		TestBinCommand: testBin.Command,
@@ -161,27 +165,52 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		VCluster:       maybeCreateVCluster(env),
 	}
 
-	toFS := compute.Map(tasks.Action("test.to-fs"), compute.Inputs().Computable("bundle", results), compute.Output{},
+	toFS := compute.Map(tasks.Action("test.to-fs"),
+		compute.Inputs().Computable("bundle", results).Indigestible("packages", packages),
+		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-			computed, ok := compute.GetDepWithType[*TestBundle](deps, "bundle")
+			computed, ok := compute.GetDepWithType[*PreStoredTestBundle](deps, "bundle")
 			if !ok {
 				return nil, fnerrors.InternalError("results are missing")
 			}
 
 			bundle := computed.Value
 
-			result, err := protojson.Marshal(bundle.Result)
+			var fsys memfs.FS
+
+			stored := &TestBundle{
+				Result: bundle.Result,
+				TestLog: &LogRef{
+					PackageName:   bundle.TestLog.PackageName,
+					ContainerName: bundle.TestLog.ContainerName,
+					LogFile:       "test.log",
+				},
+			}
+
+			fsys.Add("test.log", bundle.TestLog.Output)
+			for _, s := range bundle.ServerLog {
+				x, err := schema.DigestOf(s.PackageName, s.ContainerName)
+				if err != nil {
+					return nil, err
+				}
+
+				logFile := fmt.Sprintf("server/%s.log", x.Hex)
+				fsys.Add(logFile, s.Output)
+
+				stored.ServerLog = append(stored.ServerLog, &LogRef{
+					PackageName:   s.PackageName,
+					ContainerName: s.ContainerName,
+					LogFile:       logFile,
+				})
+			}
+
+			messages, err := protos.SerializeOpts{JSON: true, Resolver: resolver.NewResolver(ctx, packages)}.Serialize(stored)
 			if err != nil {
 				return nil, fnerrors.InternalError("failed to marshal results: %w", err)
 			}
 
-			var fsys memfs.FS
-			fsys.Add("test.log", bundle.TestLog.Output)
-			fsys.Add("result.json", result)
-
-			for _, s := range bundle.ServerLog {
-				fsys.Add(fmt.Sprintf("server/%s.log", strings.ReplaceAll(s.PackageName, "/", "-")), s.Output)
-			}
+			fsys.Add("bundle.json", messages[0].JSON)
+			fsys.Add("bundle.binarypb", messages[0].Binary)
 
 			return &fsys, nil
 		})
@@ -191,7 +220,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 	return compute.Map(tasks.Action("test.make-results"), compute.Inputs().Computable("stored", imageID).Computable("bundle", results), compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (StoredTestResults, error) {
 			return StoredTestResults{
-				Bundle:   compute.MustGetDepValue[*TestBundle](deps, results, "bundle"),
+				Bundle:   compute.MustGetDepValue[*PreStoredTestBundle](deps, results, "bundle"),
 				ImageRef: compute.MustGetDepValue(deps, imageID, "stored"),
 				Package:  pkgname,
 			}, nil

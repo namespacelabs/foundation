@@ -39,6 +39,8 @@ type testRun struct {
 	TestBinCommand []string
 	TestBinImageID compute.Computable[oci.ImageID]
 
+	Workspace      *schema.Workspace
+	EnvProto       *schema.Environment
 	Stack          *schema.Stack
 	Focus          []string // Package names.
 	Plan           compute.Computable[*deploy.Plan]
@@ -48,10 +50,10 @@ type testRun struct {
 	// If VClusters are enabled.
 	VCluster compute.Computable[*vcluster.VCluster]
 
-	compute.LocalScoped[*TestBundle]
+	compute.LocalScoped[*PreStoredTestBundle]
 }
 
-var _ compute.Computable[*TestBundle] = &testRun{}
+var _ compute.Computable[*PreStoredTestBundle] = &testRun{}
 
 func (test *testRun) Action() *tasks.ActionEvent {
 	return tasks.Action("test").Arg("name", test.TestName).Arg("package_name", test.TestBinPkg)
@@ -63,6 +65,8 @@ func (test *testRun) Inputs() *compute.In {
 		Stringer("testBinPkg", test.TestBinPkg).
 		Strs("testBinCommand", test.TestBinCommand).
 		Computable("testBin", test.TestBinImageID).
+		Proto("workspace", test.Workspace).
+		Proto("env", test.EnvProto).
 		Proto("stack", test.Stack).
 		Strs("focus", test.Focus).
 		Computable("plan", test.Plan).
@@ -82,14 +86,14 @@ func (test *testRun) prepareDeployEnv(ctx context.Context, r compute.Resolved) (
 	return test.Env, makeDeleteEnv(test.Env), nil
 }
 
-func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
+func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*PreStoredTestBundle, error) {
 	// The actual test run is wrapped in another action, so we can apply policies to it (e.g. constrain how many tests are deployed in parallel).
-	return tasks.Return(ctx, tasks.Action(TestRunAction), func(ctx context.Context) (*TestBundle, error) {
+	return tasks.Return(ctx, tasks.Action(TestRunAction), func(ctx context.Context) (*PreStoredTestBundle, error) {
 		return test.compute(ctx, r)
 	})
 }
 
-func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*TestBundle, error) {
+func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStoredTestBundle, error) {
 	p := compute.MustGetDepValue(r, test.Plan, "plan")
 
 	env, cleanup, err := test.prepareDeployEnv(ctx, r)
@@ -176,7 +180,13 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*TestBund
 		return nil
 	})
 
-	testResults := &TestResult{}
+	testResults := &TestResult{
+		Plan:                   deploy.Serialize(test.Workspace, test.EnvProto, test.Stack, p, test.Focus),
+		ComputedConfigurations: p.Computed,
+	}
+
+	// Clear the hints, no point storing those.
+	testResults.Plan.Hints = nil
 
 	waitErr := wait()
 	if waitErr == nil {
@@ -205,7 +215,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*TestBund
 	return bundle, nil
 }
 
-func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, focus []string, printLogs bool) (*TestBundle, error) {
+func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, focus []string, printLogs bool) (*PreStoredTestBundle, error) {
 	ex, wait := executor.New(ctx, "test.collect-logs")
 
 	type serverLog struct {
@@ -267,7 +277,7 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 		return nil, err
 	}
 
-	bundle := &TestBundle{}
+	bundle := &PreStoredTestBundle{}
 
 	for _, entry := range serverLogs {
 		bundle.ServerLog = append(bundle.ServerLog, &Log{

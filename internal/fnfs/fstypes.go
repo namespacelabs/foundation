@@ -7,6 +7,7 @@ package fnfs
 import (
 	"io/fs"
 	"path/filepath"
+	"strings"
 
 	"namespacelabs.dev/foundation/schema"
 )
@@ -31,4 +32,14 @@ func (loc Location) AsPackageName() schema.PackageName {
 // ErrorLocation implements the fnerrors.Location interface.
 func (loc Location) ErrorLocation() string {
 	return loc.RelPath
+}
+
+func ResolveLocation(moduleName, packageName string) (Location, bool) {
+	if moduleName == packageName {
+		return Location{ModuleName: moduleName, RelPath: "."}, true
+	} else if x := strings.TrimPrefix(packageName, moduleName+"/"); x != packageName {
+		return Location{ModuleName: moduleName, RelPath: x}, true
+	}
+
+	return Location{}, false
 }

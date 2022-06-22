@@ -36,10 +36,12 @@ message Stack {
 // This is temporary; without extensions protos are pretty monolithic.
 // And we don't want to be in a situation where all possible integrations
 // have to be known ahead of time.
-// Next ID: 19
+// Next ID: 21
 message Node {
     // The package name (computed).
     string package_name = 1;
+    // The module name (computed).
+    string module_name = 20;
 
     Kind kind = 2;
 
@@ -207,6 +209,8 @@ message Server {
 
     // The package name (computed).
     string package_name = 1;
+    // The module name (computed).
+    string module_name = 5;
 
     // In order to decouple code location and production resources, we refer
     // to the service through it's ID; which must remain constant during the
@@ -218,9 +222,6 @@ message Server {
 
     // The computed list of dependency URLs of this server (direct and indirect).
     repeated string import = 4;
-
-    // The parent repository that hosts this server's definition.
-    string namespace_module = 5;
 
     // Framework-specific extensions.
     repeated google.protobuf.Any ext = 6;

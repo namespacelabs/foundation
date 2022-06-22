@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision"
@@ -81,18 +82,7 @@ func NewDeployCmd() *cobra.Command {
 			return err
 		}
 
-		deployPlan := &schema.DeployPlan{
-			Environment:     env.Proto(),
-			Stack:           stack.Proto(),
-			IngressFragment: computed.IngressFragments,
-			Program:         computed.Deployer.Serialize(),
-			Hints:           computed.Hints,
-		}
-
-		for _, srv := range servers {
-			deployPlan.FocusServer = append(deployPlan.FocusServer, srv.Proto())
-			deployPlan.RelLocation = append(deployPlan.RelLocation, srv.Location.Rel())
-		}
+		deployPlan := deploy.Serialize(env.Workspace(), env.Proto(), stack.Proto(), computed, provision.ServerPackages(servers).PackageNamesAsString())
 
 		if serializePath != "" {
 			serialized, err := proto.MarshalOptions{Deterministic: true}.Marshal(deployPlan)
@@ -153,9 +143,16 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 
 	out := console.TypedOutput(ctx, "deploy", console.CatOutputUs)
 
-	deploy.SortPorts(ports, plan.FocusServer)
+	var focusServer []*schema.Server
+	for _, focus := range plan.FocusServer {
+		if srv := plan.Stack.GetServer(schema.PackageName(focus)); srv != nil {
+			focusServer = append(focusServer, srv.Server)
+		}
+	}
+
+	deploy.SortPorts(ports, focusServer)
 	deploy.SortIngresses(plan.IngressFragment)
-	deploy.RenderPortsAndIngresses(false, out, "", plan.Stack, plan.FocusServer, ports, domains, plan.IngressFragment)
+	deploy.RenderPortsAndIngresses(false, out, "", plan.Stack, focusServer, ports, domains, plan.IngressFragment)
 
 	if opts.outputPath != "" {
 		var out Output
@@ -185,19 +182,36 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 		}
 	}
 
-	envLabel := fmt.Sprintf("--env=%s ", env.Proto().Name)
+	envLabel := fmt.Sprintf("--env=%s", env.Proto().Name)
 
 	fmt.Fprintf(out, "\n Next steps:\n\n")
 
-	for _, loc := range plan.RelLocation {
+	for _, pkg := range plan.FocusServer {
+		srv := plan.Stack.GetServer(schema.PackageName(pkg))
+		if srv == nil {
+			fmt.Fprintf(console.Debug(ctx), "%s: missing from the stack\n", pkg)
+			continue
+		}
+
+		var loc string
+		if plan.GetWorkspace().GetModuleName() == srv.Server.ModuleName {
+			if x, ok := fnfs.ResolveLocation(srv.Server.ModuleName, srv.Server.PackageName); ok {
+				loc = x.RelPath
+			}
+		}
+
+		if loc == "" {
+			loc = fmt.Sprintf("--use_package_names %s", srv.GetPackageName())
+		}
+
 		var hints []string
-		hints = append(hints, fmt.Sprintf("Tail server logs: %s", colors.Bold(fmt.Sprintf("fn logs %s%s", envLabel, loc))))
-		hints = append(hints, fmt.Sprintf("Attach to the deployment (port forward to workstation): %s", colors.Bold(fmt.Sprintf("fn attach %s%s", envLabel, loc))))
+		hints = append(hints, fmt.Sprintf("Tail server logs: %s", colors.Bold(fmt.Sprintf("fn logs %s %s", envLabel, loc))))
+		hints = append(hints, fmt.Sprintf("Attach to the deployment (port forward to workstation): %s", colors.Bold(fmt.Sprintf("fn attach %s %s", envLabel, loc))))
 		hints = append(hints, plan.Hints...)
 
 		if env.Proto().Purpose == schema.Environment_DEVELOPMENT {
 			hints = append(hints, fmt.Sprintf("Try out a stateful development session with %s.",
-				colors.Bold(fmt.Sprintf("fn dev %s%s", envLabel, loc))))
+				colors.Bold(fmt.Sprintf("fn dev %s %s", envLabel, loc))))
 		}
 
 		for _, hint := range hints {
