@@ -7,14 +7,14 @@ package ecr
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go-v2/service/eks"
+	"github.com/aws/aws-sdk-go-v2/service/ecr"
 )
 
-func ProvideClient(ctx context.Context, _ *ClientArgs, deps ExtensionDeps) (*eks.Client, error) {
+func ProvideClient(ctx context.Context, _ *ClientArgs, deps ExtensionDeps) (*ecr.Client, error) {
 	cfg, err := deps.ClientFactory.New(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return eks.NewFromConfig(cfg), nil
+	return ecr.NewFromConfig(cfg), nil
 }

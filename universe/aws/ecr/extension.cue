@@ -20,7 +20,7 @@ extension: fn.#Extension & {
 			input: $providerProto.types.ClientArgs
 			availableIn: {
 				go: {
-					package: "github.com/aws/aws-sdk-go-v2/service/eks"
+					package: "github.com/aws/aws-sdk-go-v2/service/ecr"
 					type:    "*Client"
 				}
 			}

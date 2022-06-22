@@ -5,7 +5,7 @@ package ecr
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go-v2/service/eks"
+	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/universe/aws/client"
 )
@@ -15,7 +15,7 @@ type ExtensionDeps struct {
 	ClientFactory client.ClientFactory
 }
 
-type _checkProvideClient func(context.Context, *ClientArgs, ExtensionDeps) (*eks.Client, error)
+type _checkProvideClient func(context.Context, *ClientArgs, ExtensionDeps) (*ecr.Client, error)
 
 var _ _checkProvideClient = ProvideClient
 
