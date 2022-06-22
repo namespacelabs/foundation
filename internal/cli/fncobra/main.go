@@ -130,10 +130,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			tasks.ActionStorer = cmdBundle.CreateActionStorer(cmd.Context(), flushLogs)
 		}
 
-		if err := tasks.SetupThrottler(console.Debug(cmd.Context())); err != nil {
-			return err
-		}
-
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = runtime.HasRuntime
 
@@ -281,7 +277,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	registerCommands(rootCmd)
 
-	err := rootCmd.ExecuteContext(ctxWithSink)
+	err := rootCmd.ExecuteContext(tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx))))
 
 	if flushLogs != nil {
 		flushLogs()

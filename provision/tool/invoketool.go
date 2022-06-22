@@ -55,8 +55,7 @@ type cacheableInvocation struct {
 func (inv *cacheableInvocation) Action() *tasks.ActionEvent {
 	return tasks.Action(runtime.TaskProvisionInvoke).
 		Scope(inv.handler.Source.PackageName).
-		Arg("target", inv.handler.TargetServer).
-		WellKnown(tasks.WkRuntime, "docker") // Temporary until throttling applies to actions, rather than computables. #236
+		Arg("target", inv.handler.TargetServer)
 }
 
 func (inv *cacheableInvocation) Inputs() *compute.In {

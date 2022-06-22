@@ -331,13 +331,9 @@ func (ev *ActionEvent) RunWithOpts(ctx context.Context, opts RunOpts) error {
 			}
 		}
 
-		if throttler == nil {
-			return nil
-		}
-
 		// Classify the wait for lease time as "wait time".
 		var err error
-		releaseLease, err = throttler.AcquireLease(ctx, ev.wellKnown)
+		releaseLease, err = throttlerFromContext(ctx).AcquireLease(ctx, ev.wellKnown)
 		return err
 	})
 	if err != nil {
