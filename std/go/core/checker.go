@@ -7,6 +7,8 @@ package core
 import (
 	"context"
 	"fmt"
+
+	"namespacelabs.dev/foundation/std/core/types"
 )
 
 type Check struct {
@@ -31,11 +33,11 @@ func ManualChecker(check CheckerFunc) Checker {
 	return manualChecker{check}
 }
 
-func ProvideLivenessCheck(ctx context.Context, _ *LivenessCheckArgs) (Check, error) {
+func ProvideLivenessCheck(ctx context.Context, _ *types.LivenessCheckArgs) (Check, error) {
 	return Check{registerLiveness, InstantiationPathFromContext(ctx)}, nil
 }
 
-func ProvideReadinessCheck(ctx context.Context, _ *ReadinessCheckArgs) (Check, error) {
+func ProvideReadinessCheck(ctx context.Context, _ *types.ReadinessCheckArgs) (Check, error) {
 	return Check{registerReadiness, InstantiationPathFromContext(ctx)}, nil
 }
 

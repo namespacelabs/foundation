@@ -5,6 +5,7 @@ package panicparse
 
 import (
 	"context"
+	fncore "namespacelabs.dev/foundation/std/core"
 	"namespacelabs.dev/foundation/std/go/core"
 )
 
@@ -38,7 +39,7 @@ var (
 func makeDeps__99b5nh(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
-	if deps.DebugHandler, err = core.ProvideDebugHandler(ctx, nil); err != nil {
+	if deps.DebugHandler, err = fncore.ProvideDebugHandler(ctx, nil); err != nil {
 		return nil, err
 	}
 

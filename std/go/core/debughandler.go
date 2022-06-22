@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/core/types"
 )
 
 var debugHandlers struct {
@@ -32,6 +33,6 @@ func (h DebugHandler) Handle(handler http.Handler) {
 	debugHandlers.handlers[h.owner.String()] = handler
 }
 
-func ProvideDebugHandler(ctx context.Context, _ *DebugHandlerArgs) (DebugHandler, error) {
+func ProvideDebugHandler(ctx context.Context, _ *types.DebugHandlerArgs) (DebugHandler, error) {
 	return DebugHandler{InstantiationPathFromContext(ctx).Last()}, nil
 }

@@ -5,7 +5,7 @@ import (
 
 extension: fn.#Extension & {
 	import: [
-		"namespacelabs.dev/foundation/std/go/core",
+		"namespacelabs.dev/foundation/std/core",
 		"namespacelabs.dev/foundation/std/go/grpc/metrics",
 	]
 }

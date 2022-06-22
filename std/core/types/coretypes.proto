@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.std.go.core;
+package foundation.std.core.types;
 
-option go_package = "namespacelabs.dev/foundation/std/go/core";
+option go_package = "namespacelabs.dev/foundation/std/core/types";
 
 message LivenessCheckArgs {}
 message ReadinessCheckArgs {}

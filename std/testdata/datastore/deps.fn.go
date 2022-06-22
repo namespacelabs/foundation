@@ -5,6 +5,7 @@ package datastore
 
 import (
 	"context"
+	fncore "namespacelabs.dev/foundation/std/core"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/secrets"
 )
@@ -50,7 +51,7 @@ func makeDeps__38f4mh(ctx context.Context, di core.Dependencies) (_ interface{},
 		return nil, err
 	}
 
-	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
+	if deps.ReadinessCheck, err = fncore.ProvideReadinessCheck(ctx, nil); err != nil {
 		return nil, err
 	}
 
