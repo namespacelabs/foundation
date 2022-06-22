@@ -15,7 +15,7 @@ extension: fn.#Extension & {
 			availableIn: {
 				go: {
 					package: "namespacelabs.dev/foundation/std/go/core"
-					type: "Check"	
+					type:    "Check"
 				}
 			}
 		}
@@ -25,7 +25,7 @@ extension: fn.#Extension & {
 			availableIn: {
 				go: {
 					package: "namespacelabs.dev/foundation/std/go/core"
-					type: "Check"	
+					type:    "Check"
 				}
 			}
 		}
@@ -35,7 +35,7 @@ extension: fn.#Extension & {
 			availableIn: {
 				go: {
 					package: "namespacelabs.dev/foundation/std/go/core"
-					type: "DebugHandler"	
+					type:    "DebugHandler"
 				}
 			}
 		}
@@ -45,7 +45,7 @@ extension: fn.#Extension & {
 			availableIn: {
 				go: {
 					package: "namespacelabs.dev/foundation/std/core/types"
-					type: "*ServerInfo"	
+					type:    "*ServerInfo"
 				}
 			}
 		}
