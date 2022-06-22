@@ -10,10 +10,8 @@ import { PostRequest, PostResponse } from "./service_pb";
 export const wireService: WireService = async (registrar: GrpcRegistrar) =>
 	registrar.registerGrpcService(
 		bindPostServiceServer({
-			post: async (request: PostRequest): Promise<PostResponse> => {
-				const response: PostResponse = new PostResponse();
-				response.setOutput(`Input: ${request.getInput()}`);
-				return response;
-			},
+			post: async (request: PostRequest): Promise<PostResponse> => ({
+				output: `Input: ${request.input}`,
+			}),
 		})
 	);

@@ -17,7 +17,7 @@ const spanProcessors: {
 export const provideExporter = (args: ExporterArgs) => {
 	return {
 		addSpanProcessor(spanProcessor: SpanProcessor) {
-			spanProcessors.push({ spanProcessor, name: args.getName() });
+			spanProcessors.push({ spanProcessor, name: args.name });
 		},
 	};
 };

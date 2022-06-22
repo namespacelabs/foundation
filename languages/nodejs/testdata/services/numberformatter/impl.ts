@@ -13,10 +13,8 @@ export const wireService: WireService = async (deps: ServiceDeps, registrar: Grp
 
 	const service: FormatServiceServer = {
 		format: async (request: FormatRequest): Promise<FormatResponse> => {
-			const response: FormatResponse = new FormatResponse();
-
-			const formatResult1 = bf1.getFormatResult(request.getInput());
-			const formatResult2 = bf2.getFormatResult(request.getInput());
+			const formatResult1 = bf1.getFormatResult(request.input);
+			const formatResult2 = bf2.getFormatResult(request.input);
 
 			const output = `First instance of the "batchformatter" extension:
   Singleton formatter output: ${formatResult1.singleton}
@@ -24,9 +22,10 @@ export const wireService: WireService = async (deps: ServiceDeps, registrar: Grp
 Second instance of the "batchformatter" extension:
   Singleton formatter output: ${formatResult2.singleton}
   Scoped formatter output: ${formatResult2.scoped}`;
-			response.setOutputList(output.split("\n"));
 
-			return response;
+			return {
+				output: output.split("\n"),
+			};
 		},
 	};
 
