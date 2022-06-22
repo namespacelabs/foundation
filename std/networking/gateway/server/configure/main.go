@@ -9,6 +9,7 @@ import (
 	"context"
 	"embed"
 	"flag"
+	"fmt"
 	"path/filepath"
 	"text/template"
 
@@ -123,6 +124,11 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
 		With: &kubedef.SpecExtension{
+			Annotation: []*kubedef.SpecExtension_Annotation{
+				{Key: "prometheus.io/scrape", Value: "true"},
+				{Key: "prometheus.io/port", Value: fmt.Sprintf("%d", *adminPort)},
+				{Key: "prometheus.io/path", Value: "/stats/prometheus"},
+			},
 			Volume: []*kubedef.SpecExtension_Volume{{
 				Name: configVolume,
 				VolumeType: &kubedef.SpecExtension_Volume_ConfigMap_{
