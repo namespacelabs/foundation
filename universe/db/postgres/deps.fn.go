@@ -5,6 +5,7 @@ package postgres
 
 import (
 	"context"
+	fncore "namespacelabs.dev/foundation/std/core"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 )
@@ -42,7 +43,7 @@ func makeDeps__sfr1nt(ctx context.Context, di core.Dependencies) (_ interface{},
 		return nil, err
 	}
 
-	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
+	if deps.ReadinessCheck, err = fncore.ProvideReadinessCheck(ctx, nil); err != nil {
 		return nil, err
 	}
 

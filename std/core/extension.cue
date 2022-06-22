@@ -5,7 +5,7 @@ import (
 )
 
 $coreTypesProto: inputs.#Proto & {
-	source: "coretypes.proto"
+	source: "types/coretypes.proto"
 }
 
 extension: fn.#Extension & {
@@ -13,28 +13,40 @@ extension: fn.#Extension & {
 		LivenessCheck: {
 			input: $coreTypesProto.types.LivenessCheckArgs
 			availableIn: {
-				go: type: "Check"
+				go: {
+					package: "namespacelabs.dev/foundation/std/go/core"
+					type: "Check"	
+				}
 			}
 		}
 
 		ReadinessCheck: {
 			input: $coreTypesProto.types.ReadinessCheckArgs
 			availableIn: {
-				go: type: "Check"
+				go: {
+					package: "namespacelabs.dev/foundation/std/go/core"
+					type: "Check"	
+				}
 			}
 		}
 
 		DebugHandler: {
 			input: $coreTypesProto.types.DebugHandlerArgs
 			availableIn: {
-				go: type: "DebugHandler"
+				go: {
+					package: "namespacelabs.dev/foundation/std/go/core"
+					type: "DebugHandler"	
+				}
 			}
 		}
 
 		ServerInfo: {
 			input: $coreTypesProto.types.ServerInfoArgs
 			availableIn: {
-				go: type: "*ServerInfo"
+				go: {
+					package: "namespacelabs.dev/foundation/std/go/core"
+					type: "*ServerInfo"	
+				}
 			}
 		}
 	}

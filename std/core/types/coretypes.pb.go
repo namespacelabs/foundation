@@ -6,9 +6,9 @@
 // versions:
 // 	protoc-gen-go v1.27.1
 // 	protoc        (unknown)
-// source: std/go/core/coretypes.proto
+// source: std/core/types/coretypes.proto
 
-package core
+package types
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -33,7 +33,7 @@ type LivenessCheckArgs struct {
 func (x *LivenessCheckArgs) Reset() {
 	*x = LivenessCheckArgs{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_std_go_core_coretypes_proto_msgTypes[0]
+		mi := &file_std_core_types_coretypes_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -46,7 +46,7 @@ func (x *LivenessCheckArgs) String() string {
 func (*LivenessCheckArgs) ProtoMessage() {}
 
 func (x *LivenessCheckArgs) ProtoReflect() protoreflect.Message {
-	mi := &file_std_go_core_coretypes_proto_msgTypes[0]
+	mi := &file_std_core_types_coretypes_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,7 +59,7 @@ func (x *LivenessCheckArgs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LivenessCheckArgs.ProtoReflect.Descriptor instead.
 func (*LivenessCheckArgs) Descriptor() ([]byte, []int) {
-	return file_std_go_core_coretypes_proto_rawDescGZIP(), []int{0}
+	return file_std_core_types_coretypes_proto_rawDescGZIP(), []int{0}
 }
 
 type ReadinessCheckArgs struct {
@@ -71,7 +71,7 @@ type ReadinessCheckArgs struct {
 func (x *ReadinessCheckArgs) Reset() {
 	*x = ReadinessCheckArgs{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_std_go_core_coretypes_proto_msgTypes[1]
+		mi := &file_std_core_types_coretypes_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -84,7 +84,7 @@ func (x *ReadinessCheckArgs) String() string {
 func (*ReadinessCheckArgs) ProtoMessage() {}
 
 func (x *ReadinessCheckArgs) ProtoReflect() protoreflect.Message {
-	mi := &file_std_go_core_coretypes_proto_msgTypes[1]
+	mi := &file_std_core_types_coretypes_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -97,7 +97,7 @@ func (x *ReadinessCheckArgs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadinessCheckArgs.ProtoReflect.Descriptor instead.
 func (*ReadinessCheckArgs) Descriptor() ([]byte, []int) {
-	return file_std_go_core_coretypes_proto_rawDescGZIP(), []int{1}
+	return file_std_core_types_coretypes_proto_rawDescGZIP(), []int{1}
 }
 
 type DebugHandlerArgs struct {
@@ -109,7 +109,7 @@ type DebugHandlerArgs struct {
 func (x *DebugHandlerArgs) Reset() {
 	*x = DebugHandlerArgs{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_std_go_core_coretypes_proto_msgTypes[2]
+		mi := &file_std_core_types_coretypes_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -122,7 +122,7 @@ func (x *DebugHandlerArgs) String() string {
 func (*DebugHandlerArgs) ProtoMessage() {}
 
 func (x *DebugHandlerArgs) ProtoReflect() protoreflect.Message {
-	mi := &file_std_go_core_coretypes_proto_msgTypes[2]
+	mi := &file_std_core_types_coretypes_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -135,7 +135,7 @@ func (x *DebugHandlerArgs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DebugHandlerArgs.ProtoReflect.Descriptor instead.
 func (*DebugHandlerArgs) Descriptor() ([]byte, []int) {
-	return file_std_go_core_coretypes_proto_rawDescGZIP(), []int{2}
+	return file_std_core_types_coretypes_proto_rawDescGZIP(), []int{2}
 }
 
 type ServerInfoArgs struct {
@@ -147,7 +147,7 @@ type ServerInfoArgs struct {
 func (x *ServerInfoArgs) Reset() {
 	*x = ServerInfoArgs{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_std_go_core_coretypes_proto_msgTypes[3]
+		mi := &file_std_core_types_coretypes_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -160,7 +160,7 @@ func (x *ServerInfoArgs) String() string {
 func (*ServerInfoArgs) ProtoMessage() {}
 
 func (x *ServerInfoArgs) ProtoReflect() protoreflect.Message {
-	mi := &file_std_go_core_coretypes_proto_msgTypes[3]
+	mi := &file_std_core_types_coretypes_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -173,7 +173,7 @@ func (x *ServerInfoArgs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerInfoArgs.ProtoReflect.Descriptor instead.
 func (*ServerInfoArgs) Descriptor() ([]byte, []int) {
-	return file_std_go_core_coretypes_proto_rawDescGZIP(), []int{3}
+	return file_std_core_types_coretypes_proto_rawDescGZIP(), []int{3}
 }
 
 type ServerInfo struct {
@@ -189,7 +189,7 @@ type ServerInfo struct {
 func (x *ServerInfo) Reset() {
 	*x = ServerInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_std_go_core_coretypes_proto_msgTypes[4]
+		mi := &file_std_core_types_coretypes_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -202,7 +202,7 @@ func (x *ServerInfo) String() string {
 func (*ServerInfo) ProtoMessage() {}
 
 func (x *ServerInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_std_go_core_coretypes_proto_msgTypes[4]
+	mi := &file_std_core_types_coretypes_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -215,7 +215,7 @@ func (x *ServerInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerInfo.ProtoReflect.Descriptor instead.
 func (*ServerInfo) Descriptor() ([]byte, []int) {
-	return file_std_go_core_coretypes_proto_rawDescGZIP(), []int{4}
+	return file_std_core_types_coretypes_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ServerInfo) GetServerName() string {
@@ -252,7 +252,7 @@ type ServerInfo_VCS struct {
 func (x *ServerInfo_VCS) Reset() {
 	*x = ServerInfo_VCS{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_std_go_core_coretypes_proto_msgTypes[5]
+		mi := &file_std_core_types_coretypes_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -265,7 +265,7 @@ func (x *ServerInfo_VCS) String() string {
 func (*ServerInfo_VCS) ProtoMessage() {}
 
 func (x *ServerInfo_VCS) ProtoReflect() protoreflect.Message {
-	mi := &file_std_go_core_coretypes_proto_msgTypes[5]
+	mi := &file_std_core_types_coretypes_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -278,7 +278,7 @@ func (x *ServerInfo_VCS) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerInfo_VCS.ProtoReflect.Descriptor instead.
 func (*ServerInfo_VCS) Descriptor() ([]byte, []int) {
-	return file_std_go_core_coretypes_proto_rawDescGZIP(), []int{4, 0}
+	return file_std_core_types_coretypes_proto_rawDescGZIP(), []int{4, 0}
 }
 
 func (x *ServerInfo_VCS) GetRevision() string {
@@ -302,61 +302,62 @@ func (x *ServerInfo_VCS) GetUncommitted() bool {
 	return false
 }
 
-var File_std_go_core_coretypes_proto protoreflect.FileDescriptor
+var File_std_core_types_coretypes_proto protoreflect.FileDescriptor
 
-var file_std_go_core_coretypes_proto_rawDesc = []byte{
-	0x0a, 0x1b, 0x73, 0x74, 0x64, 0x2f, 0x67, 0x6f, 0x2f, 0x63, 0x6f, 0x72, 0x65, 0x2f, 0x63, 0x6f,
-	0x72, 0x65, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x16, 0x66,
-	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x74, 0x64, 0x2e, 0x67, 0x6f,
-	0x2e, 0x63, 0x6f, 0x72, 0x65, 0x22, 0x13, 0x0a, 0x11, 0x4c, 0x69, 0x76, 0x65, 0x6e, 0x65, 0x73,
-	0x73, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x41, 0x72, 0x67, 0x73, 0x22, 0x14, 0x0a, 0x12, 0x52, 0x65,
-	0x61, 0x64, 0x69, 0x6e, 0x65, 0x73, 0x73, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x41, 0x72, 0x67, 0x73,
-	0x22, 0x12, 0x0a, 0x10, 0x44, 0x65, 0x62, 0x75, 0x67, 0x48, 0x61, 0x6e, 0x64, 0x6c, 0x65, 0x72,
-	0x41, 0x72, 0x67, 0x73, 0x22, 0x10, 0x0a, 0x0e, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x49, 0x6e,
-	0x66, 0x6f, 0x41, 0x72, 0x67, 0x73, 0x22, 0xe8, 0x01, 0x0a, 0x0a, 0x53, 0x65, 0x72, 0x76, 0x65,
-	0x72, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x1f, 0x0a, 0x0b, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x5f,
-	0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x73, 0x65, 0x72, 0x76,
-	0x65, 0x72, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x19, 0x0a, 0x08, 0x65, 0x6e, 0x76, 0x5f, 0x6e, 0x61,
-	0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x65, 0x6e, 0x76, 0x4e, 0x61, 0x6d,
-	0x65, 0x12, 0x38, 0x0a, 0x03, 0x76, 0x63, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x26,
-	0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x74, 0x64, 0x2e,
-	0x67, 0x6f, 0x2e, 0x63, 0x6f, 0x72, 0x65, 0x2e, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x49, 0x6e,
-	0x66, 0x6f, 0x2e, 0x56, 0x43, 0x53, 0x52, 0x03, 0x76, 0x63, 0x73, 0x1a, 0x64, 0x0a, 0x03, 0x56,
-	0x43, 0x53, 0x12, 0x1a, 0x0a, 0x08, 0x72, 0x65, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x72, 0x65, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x1f,
-	0x0a, 0x0b, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x0a, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x12,
-	0x20, 0x0a, 0x0b, 0x75, 0x6e, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x74, 0x65, 0x64, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x08, 0x52, 0x0b, 0x75, 0x6e, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x74, 0x65,
-	0x64, 0x42, 0x2a, 0x5a, 0x28, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61,
-	0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x2f, 0x73, 0x74, 0x64, 0x2f, 0x67, 0x6f, 0x2f, 0x63, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+var file_std_core_types_coretypes_proto_rawDesc = []byte{
+	0x0a, 0x1e, 0x73, 0x74, 0x64, 0x2f, 0x63, 0x6f, 0x72, 0x65, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73,
+	0x2f, 0x63, 0x6f, 0x72, 0x65, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x12, 0x19, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x74, 0x64,
+	0x2e, 0x63, 0x6f, 0x72, 0x65, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x22, 0x13, 0x0a, 0x11, 0x4c,
+	0x69, 0x76, 0x65, 0x6e, 0x65, 0x73, 0x73, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x41, 0x72, 0x67, 0x73,
+	0x22, 0x14, 0x0a, 0x12, 0x52, 0x65, 0x61, 0x64, 0x69, 0x6e, 0x65, 0x73, 0x73, 0x43, 0x68, 0x65,
+	0x63, 0x6b, 0x41, 0x72, 0x67, 0x73, 0x22, 0x12, 0x0a, 0x10, 0x44, 0x65, 0x62, 0x75, 0x67, 0x48,
+	0x61, 0x6e, 0x64, 0x6c, 0x65, 0x72, 0x41, 0x72, 0x67, 0x73, 0x22, 0x10, 0x0a, 0x0e, 0x53, 0x65,
+	0x72, 0x76, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x41, 0x72, 0x67, 0x73, 0x22, 0xeb, 0x01, 0x0a,
+	0x0a, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x1f, 0x0a, 0x0b, 0x73,
+	0x65, 0x72, 0x76, 0x65, 0x72, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x0a, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x19, 0x0a, 0x08,
+	0x65, 0x6e, 0x76, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07,
+	0x65, 0x6e, 0x76, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x3b, 0x0a, 0x03, 0x76, 0x63, 0x73, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x29, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x2e, 0x73, 0x74, 0x64, 0x2e, 0x63, 0x6f, 0x72, 0x65, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73,
+	0x2e, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x49, 0x6e, 0x66, 0x6f, 0x2e, 0x56, 0x43, 0x53, 0x52,
+	0x03, 0x76, 0x63, 0x73, 0x1a, 0x64, 0x0a, 0x03, 0x56, 0x43, 0x53, 0x12, 0x1a, 0x0a, 0x08, 0x72,
+	0x65, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x72,
+	0x65, 0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x1f, 0x0a, 0x0b, 0x63, 0x6f, 0x6d, 0x6d, 0x69,
+	0x74, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x63, 0x6f,
+	0x6d, 0x6d, 0x69, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x20, 0x0a, 0x0b, 0x75, 0x6e, 0x63, 0x6f,
+	0x6d, 0x6d, 0x69, 0x74, 0x74, 0x65, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0b, 0x75,
+	0x6e, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x74, 0x65, 0x64, 0x42, 0x2d, 0x5a, 0x2b, 0x6e, 0x61,
+	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f,
+	0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x74, 0x64, 0x2f, 0x63,
+	0x6f, 0x72, 0x65, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (
-	file_std_go_core_coretypes_proto_rawDescOnce sync.Once
-	file_std_go_core_coretypes_proto_rawDescData = file_std_go_core_coretypes_proto_rawDesc
+	file_std_core_types_coretypes_proto_rawDescOnce sync.Once
+	file_std_core_types_coretypes_proto_rawDescData = file_std_core_types_coretypes_proto_rawDesc
 )
 
-func file_std_go_core_coretypes_proto_rawDescGZIP() []byte {
-	file_std_go_core_coretypes_proto_rawDescOnce.Do(func() {
-		file_std_go_core_coretypes_proto_rawDescData = protoimpl.X.CompressGZIP(file_std_go_core_coretypes_proto_rawDescData)
+func file_std_core_types_coretypes_proto_rawDescGZIP() []byte {
+	file_std_core_types_coretypes_proto_rawDescOnce.Do(func() {
+		file_std_core_types_coretypes_proto_rawDescData = protoimpl.X.CompressGZIP(file_std_core_types_coretypes_proto_rawDescData)
 	})
-	return file_std_go_core_coretypes_proto_rawDescData
+	return file_std_core_types_coretypes_proto_rawDescData
 }
 
-var file_std_go_core_coretypes_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_std_go_core_coretypes_proto_goTypes = []interface{}{
-	(*LivenessCheckArgs)(nil),  // 0: foundation.std.go.core.LivenessCheckArgs
-	(*ReadinessCheckArgs)(nil), // 1: foundation.std.go.core.ReadinessCheckArgs
-	(*DebugHandlerArgs)(nil),   // 2: foundation.std.go.core.DebugHandlerArgs
-	(*ServerInfoArgs)(nil),     // 3: foundation.std.go.core.ServerInfoArgs
-	(*ServerInfo)(nil),         // 4: foundation.std.go.core.ServerInfo
-	(*ServerInfo_VCS)(nil),     // 5: foundation.std.go.core.ServerInfo.VCS
+var file_std_core_types_coretypes_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_std_core_types_coretypes_proto_goTypes = []interface{}{
+	(*LivenessCheckArgs)(nil),  // 0: foundation.std.core.types.LivenessCheckArgs
+	(*ReadinessCheckArgs)(nil), // 1: foundation.std.core.types.ReadinessCheckArgs
+	(*DebugHandlerArgs)(nil),   // 2: foundation.std.core.types.DebugHandlerArgs
+	(*ServerInfoArgs)(nil),     // 3: foundation.std.core.types.ServerInfoArgs
+	(*ServerInfo)(nil),         // 4: foundation.std.core.types.ServerInfo
+	(*ServerInfo_VCS)(nil),     // 5: foundation.std.core.types.ServerInfo.VCS
 }
-var file_std_go_core_coretypes_proto_depIdxs = []int32{
-	5, // 0: foundation.std.go.core.ServerInfo.vcs:type_name -> foundation.std.go.core.ServerInfo.VCS
+var file_std_core_types_coretypes_proto_depIdxs = []int32{
+	5, // 0: foundation.std.core.types.ServerInfo.vcs:type_name -> foundation.std.core.types.ServerInfo.VCS
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -364,13 +365,13 @@ var file_std_go_core_coretypes_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_std_go_core_coretypes_proto_init() }
-func file_std_go_core_coretypes_proto_init() {
-	if File_std_go_core_coretypes_proto != nil {
+func init() { file_std_core_types_coretypes_proto_init() }
+func file_std_core_types_coretypes_proto_init() {
+	if File_std_core_types_coretypes_proto != nil {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_std_go_core_coretypes_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_std_core_types_coretypes_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*LivenessCheckArgs); i {
 			case 0:
 				return &v.state
@@ -382,7 +383,7 @@ func file_std_go_core_coretypes_proto_init() {
 				return nil
 			}
 		}
-		file_std_go_core_coretypes_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+		file_std_core_types_coretypes_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ReadinessCheckArgs); i {
 			case 0:
 				return &v.state
@@ -394,7 +395,7 @@ func file_std_go_core_coretypes_proto_init() {
 				return nil
 			}
 		}
-		file_std_go_core_coretypes_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+		file_std_core_types_coretypes_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DebugHandlerArgs); i {
 			case 0:
 				return &v.state
@@ -406,7 +407,7 @@ func file_std_go_core_coretypes_proto_init() {
 				return nil
 			}
 		}
-		file_std_go_core_coretypes_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+		file_std_core_types_coretypes_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ServerInfoArgs); i {
 			case 0:
 				return &v.state
@@ -418,7 +419,7 @@ func file_std_go_core_coretypes_proto_init() {
 				return nil
 			}
 		}
-		file_std_go_core_coretypes_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+		file_std_core_types_coretypes_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ServerInfo); i {
 			case 0:
 				return &v.state
@@ -430,7 +431,7 @@ func file_std_go_core_coretypes_proto_init() {
 				return nil
 			}
 		}
-		file_std_go_core_coretypes_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+		file_std_core_types_coretypes_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ServerInfo_VCS); i {
 			case 0:
 				return &v.state
@@ -447,18 +448,18 @@ func file_std_go_core_coretypes_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_std_go_core_coretypes_proto_rawDesc,
+			RawDescriptor: file_std_core_types_coretypes_proto_rawDesc,
 			NumEnums:      0,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_std_go_core_coretypes_proto_goTypes,
-		DependencyIndexes: file_std_go_core_coretypes_proto_depIdxs,
-		MessageInfos:      file_std_go_core_coretypes_proto_msgTypes,
+		GoTypes:           file_std_core_types_coretypes_proto_goTypes,
+		DependencyIndexes: file_std_core_types_coretypes_proto_depIdxs,
+		MessageInfos:      file_std_core_types_coretypes_proto_msgTypes,
 	}.Build()
-	File_std_go_core_coretypes_proto = out.File
-	file_std_go_core_coretypes_proto_rawDesc = nil
-	file_std_go_core_coretypes_proto_goTypes = nil
-	file_std_go_core_coretypes_proto_depIdxs = nil
+	File_std_core_types_coretypes_proto = out.File
+	file_std_core_types_coretypes_proto_rawDesc = nil
+	file_std_core_types_coretypes_proto_goTypes = nil
+	file_std_core_types_coretypes_proto_depIdxs = nil
 }

@@ -18,6 +18,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/core/types"
 )
 
 var (
@@ -61,11 +62,11 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 	return &ServerResources{startupTime: time.Now()}
 }
 
-func ProvideServerInfo(ctx context.Context, _ *ServerInfoArgs) (*ServerInfo, error) {
-	return &ServerInfo{
+func ProvideServerInfo(ctx context.Context, _ *types.ServerInfoArgs) (*types.ServerInfo, error) {
+	return &types.ServerInfo{
 		ServerName: serverName,
 		EnvName:    env.Name,
-		Vcs: &ServerInfo_VCS{
+		Vcs: &types.ServerInfo_VCS{
 			Revision:    vcs.Revision,
 			CommitTime:  vcs.CommitTime.String(),
 			Uncommitted: vcs.Uncommitted,

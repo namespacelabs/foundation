@@ -6,6 +6,7 @@ package redis
 import (
 	"context"
 	"github.com/go-redis/redis/v8"
+	fncore "namespacelabs.dev/foundation/std/core"
 	"namespacelabs.dev/foundation/std/go/core"
 )
 
@@ -32,7 +33,7 @@ var (
 func makeDeps__1i719d(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
-	if deps.ReadinessCheck, err = core.ProvideReadinessCheck(ctx, nil); err != nil {
+	if deps.ReadinessCheck, err = fncore.ProvideReadinessCheck(ctx, nil); err != nil {
 		return nil, err
 	}
 
