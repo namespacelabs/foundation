@@ -370,14 +370,13 @@ func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) e
 }
 
 func Return[V any](ctx context.Context, ev *ActionEvent, f func(context.Context) (V, error)) (V, error) {
-	v := ev.Start(ctx)
 	var ret V
-	callErr := v.Call(ctx, func(ctx context.Context) error {
+	err := ev.RunWithOpts(ctx, RunOpts{Run: func(ctx context.Context) error {
 		var err error
 		ret, err = f(ctx)
 		return err
-	})
-	return ret, v.Done(callErr)
+	}})
+	return ret, err
 }
 
 func (ev *ActionEvent) Log(ctx context.Context) {
