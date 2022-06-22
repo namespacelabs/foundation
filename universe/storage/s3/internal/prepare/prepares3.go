@@ -176,7 +176,7 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 			PolicyJson: string(policyBytes),
 		}
 
-		out.Invocations = append(out.Invocations, defs.Static("S3 IAM Bucket Access policy", associate))
+		out.Invocations = append(out.Invocations, defs.Static("S3 Bucket Access IAM Policy", associate))
 	}
 
 	serializedBuckets, err := protojson.Marshal(&s3.MultipleBucketArgs{Bucket: orderedBuckets})

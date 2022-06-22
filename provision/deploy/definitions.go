@@ -48,6 +48,7 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 		invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, props.ProvisionInput...)
 
 		for _, dep := range srv.Deps {
+			// XXX breaks isolation.
 			invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, dep.PrepareProps.ProvisionInput...)
 
 			definitions = append(definitions, dep.PrepareProps.Invocations...)
