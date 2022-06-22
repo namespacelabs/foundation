@@ -41,15 +41,15 @@ var WithColors = Style{
 }
 
 var NoColors = Style{
-	Header:   aec.EmptyBuilder.ANSI,
-	Category: aec.EmptyBuilder.ANSI,
-	Cached:   aec.EmptyBuilder.ANSI,
-	Progress: aec.EmptyBuilder.ANSI,
-	Argument: aec.EmptyBuilder.ANSI,
-	Result:   aec.EmptyBuilder.ANSI,
-	Notice:   aec.EmptyBuilder.ANSI,
-	Error:    aec.EmptyBuilder.ANSI,
-	Scope:    aec.EmptyBuilder.ANSI,
+	Header:   noOpANSI,
+	Category: noOpANSI,
+	Cached:   noOpANSI,
+	Progress: noOpANSI,
+	Argument: noOpANSI,
+	Result:   noOpANSI,
+	Notice:   noOpANSI,
+	Error:    noOpANSI,
+	Scope:    noOpANSI,
 }
 
 func (s Style) renderLine(w io.Writer, li lineItem) {
@@ -153,3 +153,22 @@ func (s Style) LogAction(w io.Writer, ev tasks.EventData) {
 
 	s.renderCompletedAction(w, item)
 }
+
+// An implementation of aec.ANSI that does completely nothing.
+// It is more appropriate to use it in for non-TTY output since
+// [aec.EmptyBuilder.ANSI] inserts reset codes "ESC[0m" regardless.
+type noOpANSIImpl struct{}
+
+func (noOpANSIImpl) String() string {
+	return ""
+}
+
+func (noOpANSIImpl) With(as ...aec.ANSI) aec.ANSI {
+	return aec.EmptyBuilder.ANSI.With(as...)
+}
+
+func (noOpANSIImpl) Apply(s string) string {
+	return s
+}
+
+var noOpANSI = noOpANSIImpl{}
