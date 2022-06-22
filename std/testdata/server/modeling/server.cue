@@ -9,7 +9,6 @@ server: fn.#Server & {
 	testonly:  true
 
 	import: [
-		"namespacelabs.dev/foundation/std/go/grpc/gateway",
 		"namespacelabs.dev/foundation/std/testdata/service/count",
 	]
 }
