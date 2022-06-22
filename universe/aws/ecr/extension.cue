@@ -27,11 +27,9 @@ extension: fn.#Extension & {
 		}
 	}
 
-	on: {
-		prepare: {
-			invokeInternal: "namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster"
-		}
-	}
+	import: [
+		"namespacelabs.dev/foundation/universe/aws/irsa",
+	]
 }
 
 $env: inputs.#Environment
