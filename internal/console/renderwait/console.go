@@ -24,7 +24,7 @@ type consRenderer struct {
 	ch        chan ops.Event
 	done      chan struct{}
 	flushLog  io.Writer
-	setSticky func([]byte)
+	setSticky func(string)
 }
 
 type blockState struct {
@@ -60,8 +60,8 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 
 		case ev, ok := <-rwb.ch:
 			if !ok {
-				_, _ = rwb.flushLog.Write(render(m, ids, true))
-				rwb.setSticky(nil)
+				fmt.Fprint(rwb.flushLog, render(m, ids, true))
+				rwb.setSticky("")
 				return
 			}
 
@@ -93,7 +93,7 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 	}
 }
 
-func render(m map[string]*blockState, ids []string, flush bool) []byte {
+func render(m map[string]*blockState, ids []string, flush bool) string {
 	var b bytes.Buffer
 	if flush {
 		fmt.Fprintln(&b)
@@ -151,7 +151,7 @@ func render(m map[string]*blockState, ids []string, flush bool) []byte {
 	if flush {
 		fmt.Fprintln(&b)
 	}
-	return b.Bytes()
+	return b.String()
 }
 
 func icon(ready bool) string {

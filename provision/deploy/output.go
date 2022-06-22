@@ -124,6 +124,11 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 		fmt.Fprintf(out, " %s%s  %s%s\n", checkLabel(checkmark, isFocus, p.LocalPort), padding.String(label, longest), padding.String(url, longestUrl+2), comment(p.Endpoint.EndpointOwner))
 	}
 
+	if len(portFwds) == 0 {
+		fmt.Fprintf(out, "   %s\n", aec.Italic.Apply("(none)"))
+
+	}
+
 	var nonLocalManaged, nonLocalNonManaged []*schema.IngressFragment
 	for _, n := range ingress {
 		// Local domains need `fn dev` for port forwarding.

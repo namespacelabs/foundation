@@ -34,7 +34,7 @@ type Session struct {
 	RequestCh chan *DevWorkflowRequest
 
 	Errors    io.Writer
-	setSticky func([]byte)
+	setSticky func(string)
 
 	localHostname string
 	obs           *Observers
@@ -56,13 +56,10 @@ type Session struct {
 	pfw             *endpointfwd.PortForward
 }
 
-func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname string, headerSticky string) (*Session, error) {
-	setSticky := func(b []byte) {
-		console.SetStickyContent(ctx, "header", []byte(headerSticky))
+func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname string) (*Session, error) {
+	setSticky := func(b string) {
 		console.SetStickyContent(ctx, "stack", b)
 	}
-
-	setSticky(nil)
 
 	return &Session{
 		Errors:        console.Errors(ctx),
@@ -140,7 +137,7 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 		s.cancelWorkspace = newCancel
 
 		// Reset the banner.
-		s.setSticky(nil)
+		s.setSticky("")
 
 		env, err := loadWorkspace(ctx, absRoot, envName)
 		if err != nil {

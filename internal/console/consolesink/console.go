@@ -63,9 +63,9 @@ var (
 	}
 
 	StickyPriorities = map[string]int{
-		"header":   0,
-		"commands": 1,
-		"stack":    2,
+		"stack":    1,
+		"webui":    10,
+		"commands": 20,
 	}
 )
 

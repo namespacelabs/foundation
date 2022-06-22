@@ -85,9 +85,9 @@ func NewDevCmd() *cobra.Command {
 
 				localHost := lis.Addr().(*net.TCPAddr).IP.String()
 
-				stackState, err := devworkflow.NewSession(ctx, sink, localHost,
-					fmt.Sprintf(" %s: web ui running at: http://%s",
-						aec.Bold.Apply("Foundation"), lis.Addr()))
+				console.SetStickyContent(ctx, "webui", fmt.Sprintf(" %s: web ui running at: http://%s", aec.Bold.Apply("Foundation"), lis.Addr()))
+
+				stackState, err := devworkflow.NewSession(ctx, sink, localHost)
 				if err != nil {
 					return err
 				}

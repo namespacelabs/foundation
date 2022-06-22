@@ -169,7 +169,7 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 	pi.OnUpdate()
 }
 
-func (pi *PortForward) Render() []byte {
+func (pi *PortForward) Render() string {
 	var out bytes.Buffer
 
 	var portFwds []*deploy.PortFwd
@@ -191,7 +191,7 @@ func (pi *PortForward) Render() []byte {
 
 	deploy.RenderPortsAndIngresses(true, &out, pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, nil)
 
-	return out.Bytes()
+	return out.String()
 }
 
 func (pi *PortForward) portFwd(ctx context.Context, endpoint *schema.Endpoint, revision int, callback func(int, uint)) (io.Closer, error) {

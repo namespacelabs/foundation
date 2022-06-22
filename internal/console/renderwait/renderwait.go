@@ -29,7 +29,7 @@ func NewBlock(ctx context.Context, name string) Consumer {
 	rwb := consRenderer{
 		ch:   make(chan ops.Event),
 		done: make(chan struct{}),
-		setSticky: func(b []byte) {
+		setSticky: func(b string) {
 			console.SetStickyContent(ctx, name, b)
 		},
 		flushLog: console.TypedOutput(ctx, "dev", console.CatOutputUs),

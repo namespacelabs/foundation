@@ -113,7 +113,7 @@ func (t *termState) updateSticky(ctx context.Context) {
 	}
 
 	keybindings := fmt.Sprintf(" %s (%s): %s (%s): quit", aec.LightBlackF.Apply("Key bindings"), aec.Bold.Apply("l"), logCmd, aec.Bold.Apply("q"))
-	console.SetStickyContent(ctx, "commands", []byte(keybindings))
+	console.SetStickyContent(ctx, "commands", keybindings)
 }
 
 func (t *termState) newLogTailMultiple(ctx context.Context, root *workspace.Root, envRef string, serverProtos []*schema.Server) {
