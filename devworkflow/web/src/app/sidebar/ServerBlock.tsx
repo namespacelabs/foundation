@@ -4,7 +4,7 @@
 
 import classNames from "classnames";
 import { ReactNode } from "react";
-import classes from "./sidebar.module.css";
+import { Link } from "wouter";
 import {
 	DataType,
 	ForwardedPort,
@@ -12,15 +12,14 @@ import {
 	StackEntryStateType,
 	StackType,
 } from "../../datamodel/Schema";
-import { ExternalLinkIcon, makeIcon, serverData } from "../../icons";
-import { useServerRoute } from "../server/routing";
-import { Spinner } from "../../ui/spinner/Spinner";
-import ComboBox from "../../ui/combobox/ComboBox";
-import Tabs from "../../ui/sidebar/Tabs";
-import Selectable from "../../ui/sidebar/Selectable";
-import { Link } from "wouter";
-import EnvList from "./EnvList";
 import { useTasksByServer } from "../../datamodel/TasksObserver";
+import { ExternalLinkIcon, makeIcon, serverData } from "../../icons";
+import ComboBox from "../../ui/combobox/ComboBox";
+import Selectable from "../../ui/sidebar/Selectable";
+import Tabs from "../../ui/sidebar/Tabs";
+import { Spinner } from "../../ui/spinner/Spinner";
+import { useServerRoute } from "../server/routing";
+import classes from "./sidebar.module.css";
 
 export default function ServerBlock(props: { data: DataType }) {
 	let [matches, params] = useServerRoute();
@@ -53,15 +52,7 @@ export default function ServerBlock(props: { data: DataType }) {
 		<div className={classes.serverContent}>
 			{/* <ServerSelector data={props.data} /> */}
 
-			<Tabs
-				tabs={tabs}
-				rightSide={
-					<>
-						<div>@</div>
-						<EnvList data={props.data} />
-					</>
-				}
-			/>
+			<Tabs tabs={tabs} />
 
 			<ForwardedPorts data={props.data} />
 		</div>
