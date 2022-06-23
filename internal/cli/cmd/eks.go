@@ -140,8 +140,7 @@ func NewEksCmd() *cobra.Command {
 
 		w := json.NewEncoder(console.Stdout(ctx))
 		w.SetIndent("", "  ")
-		w.Encode(cfg)
-		return nil
+		return w.Encode(cfg)
 	})
 
 	cmd.AddCommand(computeIrsa)
