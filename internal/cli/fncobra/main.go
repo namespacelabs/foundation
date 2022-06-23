@@ -250,6 +250,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		kubernetes.UseNodePlatformsForProduction, "If set to true, queries the target node platforms to determine what platforms to build for.")
 	rootCmd.PersistentFlags().StringSliceVar(&kubernetes.ProductionPlatforms, "production_platforms", kubernetes.ProductionPlatforms,
 		"The set of platforms that we build production images for.")
+	rootCmd.PersistentFlags().BoolVar(&fnapi.NamingForceStored, "fnapi_naming_force_stored",
+		fnapi.NamingForceStored, "If set to true, if there's a stored certificate, use it without checking the server.")
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
@@ -268,6 +270,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"invocation_debug",
 		"kubernetes_use_node_platforms_in_production_builds",
 		"production_platforms",
+		"fnapi_naming_force_stored",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

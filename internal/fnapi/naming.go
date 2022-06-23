@@ -12,6 +12,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+var NamingForceStored = false
+
 type IssueRequest struct {
 	UserAuth    UserAuth     `json:"userAuth"`
 	NameRequest NameRequest  `json:"nameRequest"`
@@ -57,6 +59,11 @@ type AllocateOpts struct {
 
 func AllocateName(ctx context.Context, srv *schema.Server, opts AllocateOpts) (*NameResource, error) {
 	return tasks.Return(ctx, tasks.Action("dns.allocate-name").Scope(schema.PackageName(srv.PackageName)).Arg("opts", opts), func(ctx context.Context) (*NameResource, error) {
+		if NamingForceStored && opts.Stored != nil {
+			tasks.Attachments(ctx).AddResult("force_stored", true)
+			return opts.Stored, nil
+		}
+
 		return RawAllocateName(ctx, opts)
 	})
 }

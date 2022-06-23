@@ -91,6 +91,11 @@ func allocateName(ctx context.Context, srv *schema.Server, opts fnapi.AllocateOp
 		return nil, err
 	}
 
+	// nr, err := fnapi.AllocateName(ctx, srv, opts)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
 	if err := storeCert(ctx, srv, opts.Org, cacheKey, nr); err != nil {
 		fmt.Fprintf(console.Warnings(ctx), "failed to persistent certificate for cacheKey=%s: %v\n", cacheKey, err)
 	}
