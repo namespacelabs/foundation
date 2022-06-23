@@ -9,7 +9,6 @@ import (
 
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
@@ -21,7 +20,7 @@ func (sr staticRegistry) IsInsecure() bool {
 	return sr.r.Insecure
 }
 
-func (sr staticRegistry) AllocateTag(repository string, version *provision.BuildID) compute.Computable[oci.AllocatedName] {
+func (sr staticRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedName] {
 	w := sr.r.Url
 
 	if strings.HasSuffix(w, "/") {
@@ -31,9 +30,6 @@ func (sr staticRegistry) AllocateTag(repository string, version *provision.Build
 	}
 
 	imgid := oci.ImageID{Repository: w}
-	if version != nil {
-		imgid.Tag = version.String()
-	}
 
 	return StaticName(sr.r, imgid)
 }

@@ -49,13 +49,6 @@ func (i ImageID) ComputeDigest(ctx context.Context) (schema.Digest, error) {
 	return schema.DigestOf("repository", i.Repository, "tag", i.Tag, "digest", i.Digest)
 }
 
-func MakeImageID(repository, tag string) ImageID {
-	if tag == "" {
-		return ImageID{Repository: repository}
-	}
-	return ImageID{Repository: repository, Tag: tag}
-}
-
 func ParseImageID(ref string) (ImageID, error) {
 	parts := strings.SplitN(ref, "@", 2)
 

@@ -67,7 +67,7 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 
 		default:
-			tag, err := registry.AllocateName(ctx, env, schema.PackageName(env.Workspace().ModuleName+"/debug"), provision.NewBuildID())
+			tag, err := registry.AllocateName(ctx, env, schema.PackageName(env.Workspace().ModuleName+"/debug"))
 			if err != nil {
 				return err
 			}

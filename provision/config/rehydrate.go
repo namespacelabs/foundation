@@ -94,7 +94,3 @@ func Rehydrate(ctx context.Context, srv provision.Server, imageID oci.ImageID) (
 
 	return &r, nil
 }
-
-func MakeConfigTag(buildID provision.BuildID) provision.BuildID {
-	return buildID.WithSuffix("config")
-}

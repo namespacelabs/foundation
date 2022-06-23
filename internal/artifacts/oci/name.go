@@ -29,9 +29,11 @@ func (t AllocatedName) ComputeDigest(context.Context) (schema.Digest, error) {
 }
 
 func defaultTag(digest v1.Hash) string {
-	// TODO revisit tag generation.
 	// Registry protocol requires a tag. go-containerregistry uses "latest" by default.
-	// ECR treats all tags as immutable. This does not combine well, so we infer a stable tag here.
+	// We configute tags in ECR as immutable to harden versioning in deployments.
+	// This does not combine well, so we infer a stable tag here.
+	// Inferring the tag from the digest also helps to avoid AWS tag limits.
+	// https://docs.aws.amazon.com/AmazonECR/latest/userguide/service-quotas.html
 	return strings.TrimPrefix(digest.String(), "sha256:")
 }
 

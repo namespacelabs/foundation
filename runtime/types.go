@@ -99,7 +99,6 @@ type Runtime interface {
 }
 
 type Deployment struct {
-	BuildID provision.BuildID
 	Focus   schema.PackageList
 	Stack   *schema.Stack
 	Servers []ServerConfig

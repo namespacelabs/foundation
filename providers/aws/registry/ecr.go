@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -52,7 +51,7 @@ func repoURL(sesh aws.Config, caller *sts.GetCallerIdentityOutput) string {
 
 func (em ecrManager) IsInsecure() bool { return false }
 
-func (em ecrManager) Tag(ctx context.Context, packageName schema.PackageName, version provision.BuildID) (oci.AllocatedName, error) {
+func (em ecrManager) Tag(ctx context.Context, packageName schema.PackageName) (oci.AllocatedName, error) {
 	res, err := compute.Get(ctx, keychainSession(em).resolveAccount())
 	if err != nil {
 		return oci.AllocatedName{}, err
@@ -65,12 +64,11 @@ func (em ecrManager) Tag(ctx context.Context, packageName schema.PackageName, ve
 		Keychain: keychainSession(em),
 		ImageID: oci.ImageID{
 			Repository: url,
-			Tag:        version.String(),
 		},
 	}, nil
 }
 
-func (em ecrManager) AllocateTag(repository string, buildID *provision.BuildID) compute.Computable[oci.AllocatedName] {
+func (em ecrManager) AllocateName(repository string) compute.Computable[oci.AllocatedName] {
 	keychain := keychainSession(em)
 
 	var repo compute.Computable[string] = &makeRepository{
@@ -81,16 +79,12 @@ func (em ecrManager) AllocateTag(repository string, buildID *provision.BuildID) 
 
 	return compute.Map(tasks.Action("ecr.allocate-tag").Category("aws"),
 		compute.Inputs().
-			Str("repository", repository).Stringer("buildID", buildID).
+			Str("repository", repository).
 			Computable("repo", repo),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (oci.AllocatedName, error) {
 			imgid := oci.ImageID{
 				Repository: compute.MustGetDepValue(deps, repo, "repo"),
-			}
-
-			if buildID != nil {
-				imgid.Tag = buildID.String()
 			}
 
 			tasks.Attachments(ctx).AddResult("image_id", imgid)
