@@ -33,7 +33,7 @@ var (
 	initialized uint32
 )
 
-var Log = log.New(os.Stderr, "[fn] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+var Log = log.New(os.Stderr, "[ns] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 
 type vcsInfo struct {
 	Revision    string    `json:"revision"`
