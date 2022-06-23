@@ -5,6 +5,7 @@
 package protos
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"path/filepath"
@@ -52,12 +53,32 @@ func (opts ParseOpts) Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDe
 						return nil, err
 					}
 
+					// We need to patch paths, so proto linking can succeed.
+					for _, file := range x.AsFileDescriptorSet().File {
+						// XXX this is a poor heuristic; likely too broad.
+						if strings.HasPrefix(file.GetName(), "google/") {
+							continue
+						}
+
+						patchedName := fmt.Sprintf("%s/%s", known.ModuleName, file.GetName())
+						file.Name = &patchedName
+
+						for k, dep := range file.Dependency {
+							// XXX see above.
+							if strings.HasPrefix(dep, "google/") {
+								continue
+							}
+							patchedName := fmt.Sprintf("%s/%s", known.ModuleName, dep)
+							file.Dependency[k] = patchedName
+						}
+					}
+
 					return toFileDescriptor(x.File[0], x.Dependency)
 				}
 			}
 
 			// It's important to return an error, so the nil value is not used.
-			return nil, fnerrors.New("no such file: %s", path)
+			return nil, fnerrors.New("no such file %s", path)
 		},
 	}
 
@@ -106,7 +127,12 @@ func toFileDescriptor(file *descriptorpb.FileDescriptorProto, deps []*descriptor
 		parsedDeps = append(parsedDeps, parsed)
 	}
 
-	return desc.CreateFileDescriptor(file, parsedDeps...)
+	res, err := desc.CreateFileDescriptor(file, parsedDeps...)
+	if err != nil {
+		return nil, fnerrors.New("failed to parse descriptor: %w", err)
+	}
+
+	return res, nil
 }
 
 type Location interface {
