@@ -22,7 +22,7 @@ type Session struct {
 }
 
 func NewSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
-	sesh, _, err := awsprovider.ConfiguredSession(ctx, devHost, selector)
+	sesh, _, err := awsprovider.MustConfiguredSession(ctx, devHost, selector)
 	if err != nil {
 		return nil, err
 	}
@@ -32,5 +32,23 @@ func NewSession(ctx context.Context, devHost *schema.DevHost, selector devhost.S
 		selector: selector,
 		sesh:     sesh,
 		eks:      eks.NewFromConfig(sesh),
+	}, nil
+}
+
+func NewOptionalSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
+	sesh, _, err := awsprovider.ConfiguredSession(ctx, devHost, selector)
+	if err != nil {
+		return nil, err
+	}
+
+	if sesh == nil {
+		return nil, err
+	}
+
+	return &Session{
+		devHost:  devHost,
+		selector: selector,
+		sesh:     *sesh,
+		eks:      eks.NewFromConfig(*sesh),
 	}, nil
 }

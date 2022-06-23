@@ -57,9 +57,13 @@ func Register() {
 }
 
 func prepareDescribeCluster(ctx context.Context, env ops.Environment, se *schema.Stack_Entry) (*frontend.PrepareProps, error) {
-	s, err := NewSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	s, err := NewOptionalSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 	if err != nil {
 		return nil, err
+	}
+
+	if s == nil {
+		return nil, nil
 	}
 
 	eksCluster, err := PrepareClusterInfo(ctx, s)

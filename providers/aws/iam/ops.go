@@ -23,7 +23,7 @@ func RegisterGraphHandlers() {
 			return nil, fnerrors.BadInputError("both role_name and assume_role_policy_json are required")
 		}
 
-		sesh, _, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		sesh, _, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +67,7 @@ func RegisterGraphHandlers() {
 			return nil, fnerrors.BadInputError("all of `role_name` and `policy_name` and `policy_json` are required")
 		}
 
-		sesh, _, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		sesh, _, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 		if err != nil {
 			return nil, err
 		}

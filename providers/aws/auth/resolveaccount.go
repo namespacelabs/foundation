@@ -14,21 +14,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/ssocreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	awsprovider "namespacelabs.dev/foundation/providers/aws"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
-
-func Resolve(ctx context.Context, devHost *schema.DevHost, env *schema.Environment) (compute.Computable[*sts.GetCallerIdentityOutput], error) {
-	config, profile, err := awsprovider.ConfiguredSession(ctx, devHost, devhost.ByEnvironment(env))
-	if err != nil {
-		return nil, err
-	}
-
-	return &resolveAccount{Config: config, Profile: profile}, nil
-}
 
 func ResolveWithProfile(ctx context.Context, profile string) (compute.Computable[*sts.GetCallerIdentityOutput], error) {
 	if profile == "" {
