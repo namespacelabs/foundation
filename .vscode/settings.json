@@ -1,6 +1,16 @@
 {
-  "typescript.tsdk": "devworkflow/web/node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true,
-  "clang-format.style": "{ BasedOnStyle: Google, AlignConsecutiveDeclarations: true, AlignConsecutiveAssignments: true, ColumnLimit: 0, IndentWidth: 4 }",
-  "nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix"
+	"typescript.tsdk": "devworkflow/web/node_modules/typescript/lib",
+	"typescript.enablePromptUseWorkspaceTsdk": true,
+	"clang-format.style": "{ BasedOnStyle: Google, AlignConsecutiveDeclarations: true, AlignConsecutiveAssignments: true, ColumnLimit: 0, IndentWidth: 4 }",
+	"nixEnvSelector.nixFile": "${workspaceRoot}/shell.nix",
+	"prettier.trailingComma": "es5",
+	"prettier.printWidth": 100,
+	"prettier.tabWidth": 2,
+	"prettier.useTabs": true,
+	"prettier.semi": true,
+	"prettier.singleQuote": false,
+	"prettier.quoteProps": "as-needed",
+	"prettier.jsxSingleQuote": false,
+	"prettier.arrowParens": "always",
+	"prettier.jsxBracketSameLine": true
 }
