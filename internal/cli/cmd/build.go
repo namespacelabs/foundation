@@ -100,6 +100,7 @@ func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[oc
 
 	fmt.Fprintf(out, "Got %d images:\n\n", len(results))
 
+	style := colors.Ctx(ctx)
 	for k, it := range results {
 		img := it.Value
 
@@ -109,12 +110,12 @@ func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[oc
 
 		fmt.Fprint(out, "  ")
 		if it.Timestamp.IsZero() {
-			fmt.Fprint(out, colors.Faded("prebuilt "))
+			fmt.Fprint(out, style.Header.Apply("prebuilt "))
 		}
 
 		fmt.Fprintln(out, img)
 		if !it.Timestamp.IsZero() {
-			fmt.Fprintln(out, colors.Faded(fmt.Sprintf("     built %v", it.Timestamp)))
+			fmt.Fprintln(out, style.Header.Apply(fmt.Sprintf("     built %v", it.Timestamp)))
 		}
 	}
 }

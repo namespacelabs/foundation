@@ -13,6 +13,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -163,7 +164,7 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 	pi.OnUpdate()
 }
 
-func (pi *PortForward) Render() string {
+func (pi *PortForward) Render(style colors.Style) string {
 	var out bytes.Buffer
 
 	var portFwds []*deploy.PortFwd
@@ -183,7 +184,7 @@ func (pi *PortForward) Render() string {
 
 	deploy.SortPorts(portFwds, pi.focus)
 
-	deploy.RenderPortsAndIngresses(true, &out, pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, nil)
+	deploy.RenderPortsAndIngresses(&out, style, true, pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, nil)
 
 	return out.String()
 }

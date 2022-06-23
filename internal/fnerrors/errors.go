@@ -13,7 +13,7 @@ import (
 
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/kr/text"
-	"github.com/morikuni/aec"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
 )
 
@@ -197,8 +197,8 @@ func (e *exitError) ExitCode() int {
 }
 
 type FormatOptions struct {
-	// true to use ANSI colors.
-	colors bool
+	// true to use ANSI style.
+	style colors.Style
 	// If true, we show the chain of foundation errors
 	// leading to the root cause.
 	tracing bool
@@ -206,9 +206,9 @@ type FormatOptions struct {
 
 type FormatOption func(*FormatOptions)
 
-func WithColors(colors bool) FormatOption {
+func WithStyle(style colors.Style) FormatOption {
 	return func(opts *FormatOptions) {
-		opts.colors = colors
+		opts.style = style
 	}
 }
 
@@ -227,15 +227,12 @@ func isFnError(err error) bool {
 }
 
 func Format(w io.Writer, err error, args ...FormatOption) {
-	opts := &FormatOptions{colors: false, tracing: false}
+	opts := &FormatOptions{style: colors.NoColors, tracing: false}
 	for _, opt := range args {
 		opt(opts)
 	}
-	if opts.colors {
-		fmt.Fprint(w, aec.RedF.With(aec.Bold).Apply("Failed: "))
-	} else {
-		fmt.Fprint(w, "Failed: ")
-	}
+	fmt.Fprint(w, opts.style.ErrorHeader.Apply("Failed: "))
+
 	if opts.tracing {
 		fmt.Fprintln(w)
 	}
@@ -245,7 +242,7 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 		if opts.tracing {
 			w = indent(w)
 			format(w, cause, opts)
-			writeSourceFileAndLine(w, cause, opts.colors)
+			writeSourceFileAndLine(w, cause, opts.style)
 		}
 		if x := errors.Unwrap(cause); x != nil {
 			cause = x
@@ -256,7 +253,7 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 	format(w, cause, opts)
 }
 
-func writeSourceFileAndLine(w io.Writer, err error, colors bool) {
+func writeSourceFileAndLine(w io.Writer, err error, colors colors.Style) {
 	type stackTracer interface {
 		StackTrace() stacktrace.StackTrace
 	}
@@ -267,11 +264,7 @@ func writeSourceFileAndLine(w io.Writer, err error, colors bool) {
 		}
 		frame := stack[0]
 		sourceInfo := fmt.Sprintf("%s:%d", frame.File(), frame.Line())
-		if colors {
-			fmt.Fprintf(w, "%s\n", aec.LightBlackF.Apply(sourceInfo))
-		} else {
-			fmt.Fprintf(w, "%s\n", sourceInfo)
-		}
+		fmt.Fprintf(w, "%s\n", colors.Header.Apply(sourceInfo))
 	}
 }
 
@@ -303,7 +296,7 @@ func format(w io.Writer, err error, opts *FormatOptions) {
 		formatDependencyFailedError(w, x, opts)
 
 	case *CodegenError:
-		formatCodegenError(w, x, opts)
+		formatCodegenError(w, opts, x.Error(), x.What, x.PackageName)
 
 	case *CodegenMultiError:
 		formatCodegenMultiError(w, x, opts)
@@ -314,12 +307,8 @@ func format(w io.Writer, err error, opts *FormatOptions) {
 }
 
 func formatErrWithLogs(w io.Writer, err *errWithLogs, opts *FormatOptions) {
-	colors := opts.colors
-	if opts.colors {
-		fmt.Fprintf(w, "%s\n", aec.CyanF.With(aec.Bold).Apply("Captured logs: "))
-	} else {
-		fmt.Fprint(w, "Captured logs: ")
-	}
+	colors := opts.style
+	fmt.Fprintf(w, "%s\n", colors.LogCategory.Apply("Captured logs: "))
 	const limitLines = 10
 	lines := make([]string, 0, limitLines)
 	scanner := bufio.NewScanner(err.readerF())
@@ -333,7 +322,7 @@ func formatErrWithLogs(w io.Writer, err *errWithLogs, opts *FormatOptions) {
 		}
 	}
 	if truncated {
-		fmt.Fprintf(w, "%s%d%s\n", italic("... (truncated to last ", colors), limitLines, italic(" lines) ...", colors))
+		fmt.Fprintf(w, "%s%d%s\n", colors.LessRelevant.Apply("... (truncated to last "), limitLines, colors.LessRelevant.Apply(" lines) ..."))
 	}
 	for _, line := range lines {
 		fmt.Fprintf(w, "%s\n", line)
@@ -344,18 +333,19 @@ func formatErrWithLogs(w io.Writer, err *errWithLogs, opts *FormatOptions) {
 func formatUsageError(w io.Writer, err *usageError, opts *FormatOptions) {
 	// XXX don't wordwrap if terminal is below 80 chars in width.
 	errTxt := text.Wrap(err.Why, 80)
-	fmt.Fprintf(w, "%s: %s %s\n", formatLabel("usage error", opts.colors), errTxt, bold(err.What, opts.colors))
+	fmt.Fprintf(w, "%s: %s %s\n", opts.style.LogResult.Apply("usage error"),
+		errTxt, opts.style.Highlight.Apply(err.What))
 }
 
 func formatInternalError(w io.Writer, err *internalError, opts *FormatOptions) {
-	fmt.Fprintf(w, "%s: %s\n", formatLabel("internal error", opts.colors), err.Err.Error())
+	fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("internal error"), err.Err.Error())
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "This was unexpected, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
 	errorReportRequest(w)
 }
 
 func formatInvocationError(w io.Writer, err *invocationError, opts *FormatOptions) {
-	fmt.Fprintf(w, "%s: %s\n", formatLabel("invocation error", opts.colors), err.Err.Error())
+	fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("invocation error"), err.Err.Error())
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
 	errorReportRequest(w)
@@ -371,19 +361,15 @@ func formatCueError(w io.Writer, err cueerrors.Error, opts *FormatOptions) {
 			for _, p := range positions {
 				pos := p.Position()
 
-				fmt.Fprintln(w, e.Error(), formatPos(pos.String(), opts.colors))
+				fmt.Fprintln(w, e.Error(), opts.style.Header.Apply(pos.String()))
 			}
 		}
 	}
 }
 
 func formatDependencyFailedError(w io.Writer, err *DependencyFailedError, opts *FormatOptions) {
-	depName := formatLabel(err.Name, opts.colors)
-
-	depType := fmt.Sprintf("(%s)", err.Type)
-	if opts.colors {
-		depType = aec.LightMagentaF.Apply(depType)
-	}
+	depName := opts.style.LogResult.Apply(err.Name)
+	depType := opts.style.LogError.Apply(fmt.Sprintf("(%s)", err.Type))
 
 	if opts.tracing {
 		fmt.Fprintf(w, "failed to compute %s %s\n", depName, depType)
@@ -394,23 +380,17 @@ func formatDependencyFailedError(w io.Writer, err *DependencyFailedError, opts *
 
 func formatUserError(w io.Writer, err *userError, opts *FormatOptions) {
 	if err.Location != nil {
-		loc := formatLabel(err.Location.ErrorLocation(), opts.colors)
+		loc := opts.style.LogResult.Apply(err.Location.ErrorLocation())
 		fmt.Fprintf(w, "%s at %s\n", err.Err.Error(), loc)
 	} else {
 		fmt.Fprintf(w, "%s\n", err.Err.Error())
 	}
 }
 
-func formatCodegenError(w io.Writer, err *CodegenError, opts *FormatOptions) {
-	phase := err.What
-	if opts.colors {
-		phase = aec.MagentaF.Apply(phase)
-	}
-	pkgName := err.PackageName
-	if opts.colors {
-		pkgName = aec.LightBlackF.Apply(pkgName)
-	}
-	fmt.Fprintf(w, "%s at phase [%s] for package %s\n", err.Error(), phase, pkgName)
+func formatCodegenError(w io.Writer, opts *FormatOptions, err, what string, pkgnames ...string) {
+	phase := opts.style.LessRelevant.Apply(what)
+	pkgnamesdisplay := opts.style.LogScope.Apply(strings.Join(pkgnames, ", "))
+	fmt.Fprintf(w, "%s during %s, for %s %s\n", err, phase, plural(len(pkgnames), "package", "packages"), pkgnamesdisplay)
 }
 
 func formatCodegenMultiError(w io.Writer, err *CodegenMultiError, opts *FormatOptions) {
@@ -421,20 +401,19 @@ func formatCodegenMultiError(w io.Writer, err *CodegenMultiError, opts *FormatOp
 			for p := range pkgs {
 				pkgnames = append(pkgnames, p)
 			}
-			phase := what
-			if opts.colors {
-				phase = aec.MagentaF.Apply(phase)
-			}
-			pkgnamesdisplay := strings.Join(pkgnames, ", ")
-			if opts.colors {
-				pkgnamesdisplay = aec.LightBlackF.Apply(pkgnamesdisplay)
-			}
-			fmt.Fprintf(w, "%s at phase [%s] for package(s) %s\n", commonErr, phase, pkgnamesdisplay)
+			formatCodegenError(w, opts, commonErr, what, pkgnames...)
 		}
 	}
 	for _, generr := range err.uniqgenerrs {
-		formatCodegenError(w, &generr, opts)
+		formatCodegenError(w, opts, generr.Error(), generr.What, generr.PackageName)
 	}
+}
+
+func plural(count int, singular, plural string) string {
+	if count == 1 {
+		return singular
+	}
+	return plural
 }
 
 func errorReportRequest(w io.Writer) {
@@ -443,35 +422,6 @@ func errorReportRequest(w io.Writer) {
 	fmt.Fprintf(w, "- the full command line you've used.\n")
 	fmt.Fprintf(w, "- the full output that ns produced\n")
 	fmt.Fprintf(w, "- the output of `ns version`\n")
-}
-
-func formatLabel(str string, colors bool) string {
-	if colors {
-		return aec.CyanF.Apply(str)
-	}
-
-	return str
-}
-
-func bold(str string, colors bool) string {
-	if colors {
-		return aec.Bold.Apply(str)
-	}
-	return str
-}
-
-func italic(str string, colors bool) string {
-	if colors {
-		return aec.Italic.Apply(str)
-	}
-	return str
-}
-
-func formatPos(pos string, colors bool) string {
-	if colors {
-		return aec.LightBlackF.Apply(pos)
-	}
-	return pos
 }
 
 func indent(w io.Writer) io.Writer { return text.NewIndentWriter(w, []byte("  ")) }

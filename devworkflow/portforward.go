@@ -6,6 +6,7 @@ package devworkflow
 
 import (
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -55,7 +56,7 @@ func newPortFwd(obs *Session, selector runtime.Selector, localaddr string) *endp
 	}
 
 	pfw.OnUpdate = func() {
-		obs.setSticky(pfw.Render())
+		obs.setSticky(pfw.Render(colors.WithColors))
 	}
 
 	return pfw

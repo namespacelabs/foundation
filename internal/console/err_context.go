@@ -63,10 +63,10 @@ func WithLogs(ctx context.Context, err error) error {
 	return err
 }
 
-func (aec *actionErrContext) AddLog(name tasks.OutputName) {
-	aec.mu.Lock()
-	defer aec.mu.Unlock()
-	aec.buffNames = append(aec.buffNames, name)
+func (err *actionErrContext) AddLog(name tasks.OutputName) {
+	err.mu.Lock()
+	defer err.mu.Unlock()
+	err.buffNames = append(err.buffNames, name)
 }
 
 func GetErrContext(ctx context.Context) *actionErrContext {
@@ -85,12 +85,12 @@ func GetErrContext(ctx context.Context) *actionErrContext {
 	return aec
 }
 
-func (aec *actionErrContext) getBufNames() []tasks.OutputName {
-	aec.mu.Lock()
-	defer aec.mu.Unlock()
+func (err *actionErrContext) getBufNames() []tasks.OutputName {
+	err.mu.Lock()
+	defer err.mu.Unlock()
 
-	ret := make([]tasks.OutputName, len(aec.buffNames))
+	ret := make([]tasks.OutputName, len(err.buffNames))
 	// TODO prefer buffers with errors over those without errors
-	copy(ret, aec.buffNames)
+	copy(ret, err.buffNames)
 	return ret
 }

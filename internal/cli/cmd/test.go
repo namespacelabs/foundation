@@ -11,10 +11,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/stack"
@@ -90,11 +90,12 @@ func NewTestCmd() *cobra.Command {
 
 			testOpts.OutputProgress = !parallel
 
+			style := colors.Ctx(ctx)
 			for _, loc := range locs {
 				// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
 				buildEnv := testing.PrepareBuildEnv(ctx, devEnv, ephemeral)
 
-				status := aec.LightBlackF.Apply("BUILDING")
+				status := style.Header.Apply("BUILDING")
 				fmt.Fprintf(stderr, "%s: Test %s\n", loc.AsPackageName(), status)
 
 				test, err := testing.PrepareTest(ctx, pl, buildEnv, loc.AsPackageName(), testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
@@ -127,7 +128,7 @@ func NewTestCmd() *cobra.Command {
 						return err
 					}
 
-					printResult(stderr, v, false)
+					printResult(stderr, style, v, false)
 
 					if !v.Value.Bundle.Result.Success {
 						return fnerrors.ExitWithCode(fmt.Errorf("test %s failed", v.Value.Package), exitCode)
@@ -155,7 +156,7 @@ func NewTestCmd() *cobra.Command {
 				}
 
 				for _, res := range results {
-					printResult(stderr, res, true)
+					printResult(stderr, style, res, true)
 					if !res.Value.Bundle.Result.Success {
 						failed = append(failed, string(res.Value.Package))
 					}
@@ -181,8 +182,8 @@ func NewTestCmd() *cobra.Command {
 	return cmd
 }
 
-func printResult(out io.Writer, res compute.ResultWithTimestamp[testing.StoredTestResults], printResults bool) {
-	status := aec.GreenF.Apply("PASSED")
+func printResult(out io.Writer, style colors.Style, res compute.ResultWithTimestamp[testing.StoredTestResults], printResults bool) {
+	status := style.TestSuccess.Apply("PASSED")
 	if !res.Value.Bundle.Result.Success {
 		if printResults {
 			for _, srv := range res.Value.Bundle.ServerLog {
@@ -191,15 +192,15 @@ func printResult(out io.Writer, res compute.ResultWithTimestamp[testing.StoredTe
 			printLog(out, res.Value.Bundle.TestLog)
 		}
 
-		status = aec.RedF.Apply("FAILED")
+		status = style.TestFailure.Apply("FAILED")
 	}
 
 	cached := ""
 	if res.Cached {
-		cached = aec.LightBlackF.Apply(" (CACHED)")
+		cached = style.LogCachedName.Apply(" (CACHED)")
 	}
 
-	fmt.Fprintf(out, "%s: Test %s%s %s\n", res.Value.Package, status, cached, aec.LightBlackF.Apply(res.Value.ImageRef.ImageRef()))
+	fmt.Fprintf(out, "%s: Test %s%s %s\n", res.Value.Package, status, cached, style.Comment.Apply(res.Value.ImageRef.ImageRef()))
 }
 
 func printLog(out io.Writer, log *testing.Log) {

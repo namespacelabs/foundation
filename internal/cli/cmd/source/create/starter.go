@@ -11,10 +11,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 )
 
 func newStarterCmd() *cobra.Command {
@@ -61,7 +61,7 @@ func newStarterCmd() *cobra.Command {
 }
 
 func runCommand(ctx context.Context, out io.Writer, cmd *cobra.Command, args []string) error {
-	fmt.Fprintf(out, "\n > %s\n\n", aec.Bold.Apply(fmt.Sprintf("ns %s", strings.Join(args, " "))))
+	fmt.Fprintf(out, "\n > %s\n\n", colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("ns %s", strings.Join(args, " "))))
 	cmdCopy := *cmd
 	cmdCopy.SetArgs(args)
 	return cmdCopy.ExecuteContext(ctx)

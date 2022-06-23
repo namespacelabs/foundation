@@ -10,49 +10,13 @@ import (
 	"io"
 	"time"
 
-	"github.com/morikuni/aec"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type Style struct {
-	Header   aec.ANSI
-	Category aec.ANSI
-	Cached   aec.ANSI
-	Progress aec.ANSI
-	Argument aec.ANSI
-	Result   aec.ANSI
-	Notice   aec.ANSI
-	Error    aec.ANSI
-	Scope    aec.ANSI
-}
-
-var WithColors = Style{
-	Header:   aec.LightBlackF,
-	Category: aec.LightBlueF,
-	Cached:   aec.LightBlackF,
-	Progress: aec.LightBlackF,
-	Argument: aec.CyanF,
-	Result:   aec.BlueF,
-	Notice:   aec.BlueF,
-	Error:    aec.RedF,
-	Scope:    aec.Italic,
-}
-
-var NoColors = Style{
-	Header:   noOpANSI,
-	Category: noOpANSI,
-	Cached:   noOpANSI,
-	Progress: noOpANSI,
-	Argument: noOpANSI,
-	Result:   noOpANSI,
-	Notice:   noOpANSI,
-	Error:    noOpANSI,
-	Scope:    noOpANSI,
-}
-
-func (s Style) renderLine(w io.Writer, li lineItem) {
+func renderLine(w io.Writer, s colors.Style, li lineItem) {
 	data := li.data
 
 	if data.State.IsDone() {
@@ -66,7 +30,7 @@ func (s Style) renderLine(w io.Writer, li lineItem) {
 	}
 
 	if data.Category != "" {
-		fmt.Fprint(w, s.Category.Apply("("+data.Category+") "))
+		fmt.Fprint(w, s.LogCategory.Apply("("+data.Category+") "))
 	}
 
 	name := data.HumanReadable
@@ -75,7 +39,7 @@ func (s Style) renderLine(w io.Writer, li lineItem) {
 	}
 
 	if li.cached {
-		fmt.Fprint(w, s.Cached.Apply(name))
+		fmt.Fprint(w, s.LogCachedName.Apply(name))
 	} else {
 		fmt.Fprint(w, name)
 	}
@@ -107,13 +71,13 @@ func (s Style) renderLine(w io.Writer, li lineItem) {
 			fmt.Fprintf(&ws, " and %d more", origlen-len(scope))
 		}
 
-		fmt.Fprintf(w, " %s", s.Scope.Apply(ws.String()))
+		fmt.Fprintf(w, " %s", s.LogScope.Apply(ws.String()))
 	}
 
 	for _, kv := range li.serialized {
-		color := s.Argument
+		color := s.LogArgument
 		if kv.result {
-			color = s.Result
+			color = s.LogResult
 		}
 		fmt.Fprint(w, " ", color.Apply(kv.key+"="), kv.value)
 	}
@@ -121,15 +85,15 @@ func (s Style) renderLine(w io.Writer, li lineItem) {
 	if data.Err != nil {
 		t := tasks.ErrorType(data.Err)
 		if t == tasks.ErrTypeIsCancelled || t == tasks.ErrTypeIsDependencyFailed {
-			fmt.Fprint(w, " ", s.Notice.Apply(string(t)))
+			fmt.Fprint(w, " ", s.LogErrorReason.Apply(string(t)))
 		} else {
-			fmt.Fprint(w, " ", s.Error.Apply("err="), s.Error.Apply(data.Err.Error()))
+			fmt.Fprint(w, " ", s.LogError.Apply("err="), s.LogError.Apply(data.Err.Error()))
 		}
 	}
 }
 
-func (s Style) renderCompletedAction(raw io.Writer, r lineItem) {
-	s.renderLine(raw, r)
+func renderCompletedAction(raw io.Writer, s colors.Style, r lineItem) {
+	renderLine(raw, s, r)
 	if !r.data.Started.IsZero() && !r.cached {
 		if !r.data.Started.Equal(r.data.Created) {
 			d := r.data.Started.Sub(r.data.Created)
@@ -144,31 +108,12 @@ func (s Style) renderCompletedAction(raw io.Writer, r lineItem) {
 	fmt.Fprintln(raw)
 }
 
-func (s Style) LogAction(w io.Writer, ev tasks.EventData) {
+func LogAction(w io.Writer, s colors.Style, ev tasks.EventData) {
 	item := lineItem{
 		data: ev,
 	}
 
 	item.precompute()
 
-	s.renderCompletedAction(w, item)
+	renderCompletedAction(w, s, item)
 }
-
-// An implementation of aec.ANSI that does completely nothing.
-// It is more appropriate to use it in for non-TTY output since
-// [aec.EmptyBuilder.ANSI] inserts reset codes "ESC[0m" regardless.
-type noOpANSIImpl struct{}
-
-func (noOpANSIImpl) String() string {
-	return ""
-}
-
-func (noOpANSIImpl) With(as ...aec.ANSI) aec.ANSI {
-	return aec.EmptyBuilder.ANSI.With(as...)
-}
-
-func (noOpANSIImpl) Apply(s string) string {
-	return s
-}
-
-var noOpANSI = noOpANSIImpl{}

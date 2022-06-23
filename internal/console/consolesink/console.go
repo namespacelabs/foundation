@@ -22,6 +22,7 @@ import (
 	"github.com/morikuni/aec"
 	"github.com/muesli/reflow/truncate"
 	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
@@ -671,7 +672,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 		for _, r := range printableCompleted {
 			fmt.Fprint(raw, aec.EraseLine(aec.EraseModes.Tail))
-			WithColors.renderCompletedAction(raw, r)
+			renderCompletedAction(raw, colors.WithColors, r)
 		}
 	}
 
@@ -910,7 +911,7 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 
 			fmt.Fprint(&lineb, prefix)
 
-			WithColors.renderLine(&lineb, *child.item)
+			renderLine(&lineb, colors.WithColors, *child.item)
 
 			suffix := ""
 			if data.State == tasks.ActionRunning {

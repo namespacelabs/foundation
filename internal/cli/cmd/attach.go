@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/internal/stack"
@@ -38,7 +39,7 @@ func NewAttachCmd() *cobra.Command {
 			}
 
 			pfwd.OnUpdate = func() {
-				console.SetStickyContent(ctx, "ingress", pfwd.Render())
+				console.SetStickyContent(ctx, "ingress", pfwd.Render(colors.Ctx(ctx)))
 			}
 
 			pfwd.Update(ctx, res.Stack, res.Focus, res.Ingress)

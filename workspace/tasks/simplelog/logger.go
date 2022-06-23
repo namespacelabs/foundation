@@ -7,6 +7,7 @@ package simplelog
 import (
 	"io"
 
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -38,7 +39,8 @@ func (sl *logger) Started(ra *tasks.RunningAction) {
 	if !sl.shouldLog(ra.Data) {
 		return
 	}
-	consolesink.NoColors.LogAction(sl.out, ra.Data)
+
+	consolesink.LogAction(sl.out, colors.NoColors, ra.Data)
 }
 
 func (sl *logger) Done(ra *tasks.RunningAction) {
@@ -49,7 +51,7 @@ func (sl *logger) Done(ra *tasks.RunningAction) {
 		return
 	}
 
-	consolesink.NoColors.LogAction(sl.out, ra.Data)
+	consolesink.LogAction(sl.out, colors.NoColors, ra.Data)
 }
 
 func (sl *logger) Instant(ev *tasks.EventData) {
@@ -60,7 +62,7 @@ func (sl *logger) Instant(ev *tasks.EventData) {
 		return
 	}
 
-	consolesink.NoColors.LogAction(sl.out, *ev)
+	consolesink.LogAction(sl.out, colors.NoColors, *ev)
 }
 
 func (sl *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* nothing to do */ }

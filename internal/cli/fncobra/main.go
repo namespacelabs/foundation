@@ -26,7 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
-	clrs "namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
@@ -90,8 +90,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		ctx, cleanupTracer = actiontracing.SetupTracing(ctx, tracerEndpoint)
 	}
 
-	sink, useColors, flushLogs := consoleToSink(consoleFromFile())
-	ctxWithSink := tasks.WithSink(ctx, sink)
+	sink, style, flushLogs := consoleToSink(consoleFromFile())
+	ctxWithSink := colors.WithStyle(tasks.WithSink(ctx, sink), style)
 
 	// Some of our builds can go fairly wide on parallelism, requiring opening
 	// hundreds of files, between cache reads, cache writes, etc. This is a best
@@ -293,11 +293,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		select {
 		case status, ok := <-remoteStatusChan:
 			if ok {
-				clr := clrs.Green
-				if !useColors {
-					clr = func(str string) string { return str }
-				}
-
 				var messages []string
 
 				if status.NewVersion {
@@ -312,7 +307,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 				}
 
 				if len(messages) > 0 {
-					fmt.Fprintln(os.Stdout, clr(strings.Join(messages, "\n")))
+					fmt.Fprintln(os.Stdout, strings.Join(messages, "\n"))
 				}
 			}
 		default:
@@ -329,7 +324,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	}
 
 	if err != nil && !errors.Is(err, context.Canceled) {
-		exitCode := handleExitError(useColors, err)
+		exitCode := handleExitError(style, err)
 		// Record errors only after the user sees them to hide potential latency implications.
 		// We pass the original ctx without sink since logs have already been flushed.
 		tel.RecordError(ctx, err)
@@ -355,13 +350,13 @@ func handleExit() {
 	}
 }
 
-func handleExitError(colors bool, err error) int {
+func handleExitError(style colors.Style, err error) int {
 	if exitError, ok := err.(fnerrors.ExitError); ok {
 		// If we are exiting, because a sub-process failed, don't bother outputting
 		// an error again, just forward the appropriate exit code.
 		return exitError.ExitCode()
 	} else if versionError, ok := err.(*fnerrors.VersionError); ok {
-		fnerrors.Format(os.Stderr, versionError, fnerrors.WithColors(colors))
+		fnerrors.Format(os.Stderr, versionError, fnerrors.WithStyle(style))
 
 		if version, err := version.Version(); err == nil {
 			ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -370,7 +365,8 @@ func handleExitError(colors bool, err error) int {
 			if status, err := FetchLatestRemoteStatus(ctxWithTimeout, versionCheckEndpoint, version.GitCommit); err == nil && status.Version != "" {
 				fmt.Fprintln(os.Stderr, indent.String(
 					wordwrap.String(
-						fmt.Sprintf("\nThe latest version of Namespace is %s, available at %s\n", clrs.Bold(status.Version), downloadUrl(status.Version)),
+						fmt.Sprintf("\nThe latest version of Namespace is %s, available at %s\n",
+							style.Highlight.Apply(status.Version), downloadUrl(status.Version)),
 						80),
 					2))
 			}
@@ -380,7 +376,7 @@ func handleExitError(colors bool, err error) int {
 	} else {
 		// Only print errors after calling flushLogs above, so the console driver
 		// is no longer erasing lines.
-		fnerrors.Format(os.Stderr, err, fnerrors.WithColors(colors), fnerrors.WithTracing(enableErrorTracing))
+		fnerrors.Format(os.Stderr, err, fnerrors.WithStyle(style), fnerrors.WithTracing(enableErrorTracing))
 		return 1
 	}
 }
@@ -475,7 +471,7 @@ func consoleFromFile() (*os.File, bool) {
 	return out, termios.IsTerm(out.Fd())
 }
 
-func consoleToSink(out *os.File, interactive bool) (tasks.ActionSink, bool, func()) {
+func consoleToSink(out *os.File, interactive bool) (tasks.ActionSink, colors.Style, func()) {
 	logout := logoutput.OutputTo{Writer: out, WithColors: interactive}
 
 	maxLogLevel := viper.GetInt("console_log_level")
@@ -484,10 +480,10 @@ func consoleToSink(out *os.File, interactive bool) (tasks.ActionSink, bool, func
 		cleanup := consoleSink.Start()
 		logout.Writer = console.ConsoleOutput(consoleSink, common.KnownStderr)
 
-		return consoleSink, true, cleanup
+		return consoleSink, colors.WithColors, cleanup
 	}
 
-	return simplelog.NewSink(out, maxLogLevel), false, nil
+	return simplelog.NewSink(out, maxLogLevel), colors.NoColors, nil
 }
 
 func cpuprofile(cpuprofile string) func() {

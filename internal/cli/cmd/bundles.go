@@ -172,7 +172,8 @@ func bundlesWithInvocationInfo(ctx context.Context, bundles []*tasks.Bundle) []*
 
 func renderBundleTable(ctx context.Context, bundles []*bundleWithInvocationInfo, w io.Writer) error {
 	for idx, bundleInfo := range bundles {
-		fmt.Fprintf(w, "(%d) %s %s\n", idx+1, bundleInfo.invocationInfo.Command, colors.Faded(humanize.Time(bundleInfo.bundle.Timestamp)))
+		fmt.Fprintf(w, "(%d) %s %s\n", idx+1, bundleInfo.invocationInfo.Command,
+			colors.Ctx(ctx).Comment.Apply(humanize.Time(bundleInfo.bundle.Timestamp)))
 	}
 	return nil
 }

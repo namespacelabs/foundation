@@ -23,7 +23,7 @@ type PortFwd struct {
 	LocalPort uint
 }
 
-func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string, stack *schema.Stack, focus []*schema.Server, portFwds []*PortFwd, ingressDomains []*runtime.FilteredDomain, ingress []*schema.IngressFragment) {
+func RenderPortsAndIngresses(out io.Writer, style colors.Style, checkmark bool, localHostname string, stack *schema.Stack, focus []*schema.Server, portFwds []*PortFwd, ingressDomains []*runtime.FilteredDomain, ingress []*schema.IngressFragment) {
 	var longest uint
 	for _, p := range portFwds {
 		if !isIngress(p.Endpoint) {
@@ -105,14 +105,14 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 
 		isFocus := isFocusEndpoint(focus, p.Endpoint)
 		if isFocus {
-			label = colors.Bold(label)
+			label = style.Highlight.Apply(label)
 		} else {
-			label = colors.Faded(label)
+			label = style.Header.Apply(label)
 		}
 
 		url := urls[k]
 		if !isFocus {
-			url = colors.Faded(url)
+			url = style.Header.Apply(url)
 		}
 
 		if isFocusEndpoint(focus, p.Endpoint) {
@@ -121,7 +121,9 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 			}
 		}
 
-		fmt.Fprintf(out, " %s%s  %s%s\n", checkLabel(checkmark, isFocus, p.LocalPort), padding.String(label, longest), padding.String(url, longestUrl+2), comment(p.Endpoint.EndpointOwner))
+		fmt.Fprintf(out, " %s%s  %s%s\n", checkLabel(style, checkmark, isFocus, p.LocalPort),
+			padding.String(label, longest), padding.String(url, longestUrl+2),
+			comment(style, p.Endpoint.EndpointOwner))
 	}
 
 	if len(portFwds) == 0 {
@@ -151,20 +153,20 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 
 	for _, p := range portFwds {
 		if isIngress(p.Endpoint) {
-			renderIngress(checkmark, out, localDomains, p.LocalPort, "Ingress endpoints forwarded to your workstation")
+			renderIngress(out, style, checkmark, localDomains, p.LocalPort, "Ingress endpoints forwarded to your workstation")
 		}
 	}
 
 	if ingressFwdCount == 0 && len(nonLocalManaged) > 0 {
-		renderIngressBlock(out, "Ingress configured", nonLocalManaged)
+		renderIngressBlock(out, style, "Ingress configured", nonLocalManaged)
 	}
 
 	if ingressFwdCount == 0 && len(nonLocalNonManaged) > 0 {
-		renderIngressBlock(out, "Ingress configured, but not managed", nonLocalNonManaged)
+		renderIngressBlock(out, style, "Ingress configured, but not managed", nonLocalNonManaged)
 	}
 }
 
-func renderIngressBlock(out io.Writer, label string, fragments []*runtime.FilteredDomain) {
+func renderIngressBlock(out io.Writer, style colors.Style, label string, fragments []*runtime.FilteredDomain) {
 	fmt.Fprintf(out, "\n %s:\n\n", label)
 
 	labels := make([]string, len(fragments))
@@ -172,7 +174,7 @@ func renderIngressBlock(out io.Writer, label string, fragments []*runtime.Filter
 
 	var longestLabel uint
 	for k, n := range fragments {
-		schema, portLabel, cmd, suffix := domainSchema(n.Domain, 443, n.Endpoints...)
+		schema, portLabel, cmd, suffix := domainSchema(style, n.Domain, 443, n.Endpoints...)
 		labels[k] = fmt.Sprintf("%s%s%s%s", schema, n.Domain.Fqdn, portLabel, cmd)
 		suffixes[k] = suffix
 
@@ -187,13 +189,13 @@ func renderIngressBlock(out io.Writer, label string, fragments []*runtime.Filter
 			owners.Add(endpoint.ServerOwner)
 		}
 
-		fmt.Fprintf(out, " %s%s %s%s\n", checkbox(true, false),
+		fmt.Fprintf(out, " %s%s %s%s\n", checkbox(style, true, false),
 			padding.String(labels[k], longestLabel),
-			comment(strings.Join(owners.Strings(), ", ")), suffixes[k])
+			comment(style, strings.Join(owners.Strings(), ", ")), suffixes[k])
 	}
 }
 
-func renderIngress(checkmark bool, out io.Writer, ingressDomains []*runtime.FilteredDomain, localPort uint, label string) {
+func renderIngress(out io.Writer, style colors.Style, checkmark bool, ingressDomains []*runtime.FilteredDomain, localPort uint, label string) {
 	if len(ingressDomains) == 0 {
 		return
 	}
@@ -210,13 +212,13 @@ func renderIngress(checkmark bool, out io.Writer, ingressDomains []*runtime.Filt
 			}
 		}
 
-		schema, portLabel, cmd, suffix := domainSchema(fd.Domain, localPort, fd.Endpoints...)
+		schema, portLabel, cmd, suffix := domainSchema(style, fd.Domain, localPort, fd.Endpoints...)
 
-		fmt.Fprintf(out, " %s%s%s%s%s%s\n", checkLabel(checkmark, true, localPort), schema, fd.Domain.Fqdn, portLabel, cmd, suffix)
+		fmt.Fprintf(out, " %s%s%s%s%s%s\n", checkLabel(style, checkmark, true, localPort), schema, fd.Domain.Fqdn, portLabel, cmd, suffix)
 	}
 }
 
-func domainSchema(domain *schema.Domain, localPort uint, endpoints ...*schema.Endpoint) (string, string, string, string) {
+func domainSchema(style colors.Style, domain *schema.Domain, localPort uint, endpoints ...*schema.Endpoint) (string, string, string, string) {
 	var protocols uniquestrings.List
 	for _, endpoint := range endpoints {
 		for _, md := range endpoint.GetServiceMetadata() {
@@ -234,7 +236,7 @@ func domainSchema(domain *schema.Domain, localPort uint, endpoints ...*schema.En
 		if protocols.Strings()[0] == "grpc" {
 			schema, portLabel, cmd = grpcSchema(domain.Certificate != nil, localPort)
 			if domain.Certificate == nil {
-				suffix = colors.Faded(" # not currently working, see #26")
+				suffix = style.Header.Apply(" # not currently working, see #26")
 			}
 		} else {
 			schema, portLabel = httpSchema(domain, localPort)
@@ -246,17 +248,17 @@ func domainSchema(domain *schema.Domain, localPort uint, endpoints ...*schema.En
 	return schema, portLabel, cmd, suffix
 }
 
-func checkLabel(b, isFocus bool, port uint) string {
-	return checkbox(!b || port > 0, !isFocus)
+func checkLabel(style colors.Style, b, isFocus bool, port uint) string {
+	return checkbox(style, !b || port > 0, !isFocus)
 }
 
-func checkbox(on, dimmed bool) string {
+func checkbox(style colors.Style, on, notFocus bool) string {
 	x := " [ ] "
 	if on {
 		x = " [✓] "
 	}
-	if dimmed {
-		return colors.Faded(x)
+	if notFocus {
+		return style.Header.Apply(x)
 	}
 	return x
 }
@@ -352,11 +354,11 @@ func isFocusEndpoint(focus []*schema.Server, endpoint *schema.Endpoint) bool {
 	return false
 }
 
-func comment(str string) string {
+func comment(style colors.Style, str string) string {
 	if str == "" {
 		return ""
 	}
-	return colors.Faded("# " + str)
+	return style.Comment.Apply("# " + str)
 }
 
 func isIngress(endpoint *schema.Endpoint) bool {

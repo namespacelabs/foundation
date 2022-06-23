@@ -60,7 +60,7 @@ func (tel *Telemetry) IsTelemetryEnabled() bool {
 
 func (tel *Telemetry) logError(ctx context.Context, err error) {
 	if tel.errorLogging {
-		fnerrors.Format(console.Stderr(ctx), err, fnerrors.WithColors(true))
+		fnerrors.Format(console.Stderr(ctx), err)
 	}
 }
 
@@ -214,6 +214,7 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 
 	c, created := tel.makeClientID(ctx)
 
+	colors := colors.Ctx(ctx)
 	if created {
 		// First ns invocation with Telemetry. Add hint about early access plain text logging.
 		// TODO remove before public release.
@@ -221,7 +222,7 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 		fmt.Fprint(out, "During early access, errors are uploaded to our servers for debugging purposes.\n")
 		fmt.Fprint(out, "This default behavior will change ahead of release, but helps us understand what\nissues you may be hitting.\n\n")
 		fmt.Fprintf(out, "If you'd like to disable this behavior, set %s or\n%s at %s.\n",
-			colors.Bold("DO_NOT_TRACK=1"), colors.Bold("\"enable_telemetry\": false"), viper.ConfigFileUsed())
+			colors.Highlight.Apply("DO_NOT_TRACK=1"), colors.Highlight.Apply("\"enable_telemetry\": false"), viper.ConfigFileUsed())
 	}
 
 	req := buildRecordInvocationRequest(ctx, cmd, c, reqID, args)

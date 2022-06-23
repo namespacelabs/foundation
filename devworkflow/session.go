@@ -13,6 +13,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/protos"
@@ -152,7 +153,7 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 			err := setWorkspace(ctx, env, servers[0], servers[1:], s, pfw)
 
 			if err != nil && !errors.Is(err, context.Canceled) {
-				fnerrors.Format(console.Stderr(parentCtx), err, fnerrors.WithColors(true))
+				fnerrors.Format(console.Stderr(parentCtx), err, fnerrors.WithStyle(colors.WithColors))
 			}
 		}()
 	}

@@ -148,7 +148,7 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 
 	deploy.SortPorts(ports, focusServer)
 	deploy.SortIngresses(plan.IngressFragment)
-	deploy.RenderPortsAndIngresses(false, out, "", plan.Stack, focusServer, ports, domains, plan.IngressFragment)
+	deploy.RenderPortsAndIngresses(out, colors.Ctx(ctx), false, "", plan.Stack, focusServer, ports, domains, plan.IngressFragment)
 
 	if opts.outputPath != "" {
 		var out Output
@@ -201,12 +201,13 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 			loc = fmt.Sprintf("--use_package_names %s", srv.GetPackageName())
 		}
 
-		hints = append(hints, fmt.Sprintf("Tail server logs: %s", colors.Bold(fmt.Sprintf("ns logs %s %s", envLabel, loc))))
-		hints = append(hints, fmt.Sprintf("Attach to the deployment (port forward to workstation): %s", colors.Bold(fmt.Sprintf("ns attach %s %s", envLabel, loc))))
+		highlight := colors.Ctx(ctx).Highlight
+		hints = append(hints, fmt.Sprintf("Tail server logs: %s", highlight.Apply(fmt.Sprintf("ns logs %s %s", envLabel, loc))))
+		hints = append(hints, fmt.Sprintf("Attach to the deployment (port forward to workstation): %s", highlight.Apply(fmt.Sprintf("ns attach %s %s", envLabel, loc))))
 
 		if env.Proto().Purpose == schema.Environment_DEVELOPMENT {
 			hints = append(hints, fmt.Sprintf("Try out a stateful development session with %s.",
-				colors.Bold(fmt.Sprintf("ns dev %s %s", envLabel, loc))))
+				highlight.Apply(fmt.Sprintf("ns dev %s %s", envLabel, loc))))
 		}
 	}
 
