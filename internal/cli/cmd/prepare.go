@@ -8,10 +8,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kr/text"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -23,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
+	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -31,11 +30,48 @@ var deprecatedConfigs = []string{
 }
 
 func NewPrepareCmd() *cobra.Command {
-	var dontUpdateDevhost, force bool
 	var contextName string
 	var awsProfile string
+	var envRef string
 
-	cmd := &cobra.Command{
+	// The subcommand `eks` does all of the work done by the parent command in addition to
+	// writing the host configuration for the EKS cluster.
+	eksCmd := &cobra.Command{
+		Use:   "eks [clustername]",
+		Short: "Prepares the Elastic Kubernetes Service host config for production.",
+		Args:  cobra.ExactArgs(1),
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			root, err := module.FindRoot(ctx, ".")
+			if err != nil {
+				return err
+			}
+
+			env, err := provision.RequireEnv(root, envRef)
+			if err != nil {
+				return err
+			}
+			if env.Purpose() == schema.Environment_DEVELOPMENT {
+				return fnerrors.UsageError("Use `--env=prod`.", "eks is not supported yet in development mode.")
+			}
+			if contextName != "" {
+				return fnerrors.UsageError("Remove `--context=<name>`.", "--context was provided but is not used in the eks integration.")
+			}
+			wp := workspacePrepare{
+				env:                 env,
+				awsProfile:          awsProfile,
+				contextName:         "",
+				contextNameRequired: false,
+			}
+			prepares, err := wp.makePrepareComputables(ctx)
+			if err != nil {
+				return err
+			}
+			prepares = append(prepares, prepare.PrepareEksCluster(args[0], env))
+			return wp.collectPreparesAndUpdateDevhost(ctx, prepares)
+		}),
+	}
+
+	rootCmd := &cobra.Command{
 		Use:   "prepare local",
 		Short: "Prepares the local workspace for development or production.",
 		Long: "Prepares the local workspace for development or production.\n\n" +
@@ -56,23 +92,70 @@ func NewPrepareCmd() *cobra.Command {
 			}
 			return nil
 		},
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			root, err := module.FindRoot(ctx, ".")
+			if err != nil {
+				return err
+			}
+
+			env, err := provision.RequireEnv(root, envRef)
+			if err != nil {
+				return err
+			}
+
+			wp := workspacePrepare{
+				env:                 env,
+				awsProfile:          awsProfile,
+				contextName:         contextName,
+				contextNameRequired: true,
+			}
+			prepares, err := wp.makePrepareComputables(ctx)
+			if err != nil {
+				return err
+			}
+			return wp.collectPreparesAndUpdateDevhost(ctx, prepares)
+		}),
 	}
-	cmd.Flags().BoolVar(&dontUpdateDevhost, "dont_update_devhost", dontUpdateDevhost, "If set to true, devhost.textpb will NOT be updated.")
-	cmd.Flags().BoolVarP(&force, "force", "f", force, "Skip checking if the configuration is changing.")
-	cmd.Flags().StringVar(&contextName, "context", "", "If set, configures Namespace to use the specific context.")
-	cmd.Flags().StringVar(&awsProfile, "aws_profile", awsProfile, "Configures the specified AWS configuration profile.")
+	rootCmd.AddCommand(eksCmd)
+	rootCmd.PersistentFlags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")
+	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "If set, configures Namespace to use the specific context.")
+	rootCmd.PersistentFlags().StringVar(&awsProfile, "aws_profile", awsProfile, "Configures the specified AWS configuration profile.")
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
-		var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
-		prepares = append(prepares, prepare.PrepareBuildkit(env))
+	return rootCmd
+}
 
-		var k8sconfig compute.Computable[*client.HostConfig]
-		if contextName != "" {
-			k8sconfig = prepare.PrepareExistingK8s(contextName, env)
-		} else if env.Purpose() == schema.Environment_DEVELOPMENT {
-			k8sconfig = prepare.PrepareK3d("fn", env)
+type workspacePrepare struct {
+	env                 provision.Env
+	awsProfile          string
+	contextName         string
+	contextNameRequired bool
+}
+
+func (p *workspacePrepare) PrepareWorkspace(ctx context.Context) error {
+	prepares, err := p.makePrepareComputables(ctx)
+	if err != nil {
+		return err
+	}
+	return p.collectPreparesAndUpdateDevhost(ctx, prepares)
+}
+
+func (p *workspacePrepare) prepareK8s(ctx context.Context) compute.Computable[*client.HostConfig] {
+	if p.env.Purpose() == schema.Environment_DEVELOPMENT {
+		return prepare.PrepareK3d("fn", p.env)
+	} else if p.env.Purpose() == schema.Environment_PRODUCTION {
+		if p.contextNameRequired && p.contextName != "" {
+			return prepare.PrepareExistingK8s(p.contextName, p.env)
 		}
+	}
+	return nil
+}
 
+func (p *workspacePrepare) makePrepareComputables(ctx context.Context) ([]compute.Computable[[]*schema.DevHost_ConfigureEnvironment], error) {
+	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
+	prepares = append(prepares, prepare.PrepareBuildkit(p.env))
+
+	k8sconfig := p.prepareK8s(ctx)
+	if k8sconfig != nil {
 		prepares = append(prepares, compute.Map(
 			tasks.Action("prepare.map-k8s"),
 			compute.Inputs().Computable("k8sconfig", k8sconfig),
@@ -97,84 +180,78 @@ func NewPrepareCmd() *cobra.Command {
 					if err != nil {
 						return nil, err
 					}
-					c.Purpose = env.Proto().GetPurpose()
+					c.Purpose = p.env.Proto().GetPurpose()
 					c.Runtime = "kubernetes"
 					confs = append(confs, c)
 				}
-
 				return confs, nil
 			}))
+	}
 
-		if awsProfile != "" {
-			prepares = append(prepares, prepare.PrepareAWSProfile(awsProfile, env)) // XXX make provider configurable.
+	if p.awsProfile != "" {
+		prepares = append(prepares, prepare.PrepareAWSProfile(p.awsProfile, p.env)) // XXX make provider configurable.
+	}
+
+	if p.env.Purpose() == schema.Environment_PRODUCTION {
+		if p.awsProfile == "" {
+			return nil, fnerrors.UsageError("Please also specify `--aws_profile`.",
+				"Preparing a production environment requires using AWS at the moment.")
+		}
+		if p.contextNameRequired && p.contextName == "" {
+			return nil, fnerrors.UsageError("Please also specify `--context`.",
+				"Kubernetes context is required for preparing a production environment.")
 		}
 
-		if env.Purpose() == schema.Environment_PRODUCTION {
-			if awsProfile == "" {
-				return fnerrors.UsageError("Please also specify `--aws_profile`.", "Preparing a production environment requires using AWS at the moment.")
-			}
-			if contextName == "" {
-				return fnerrors.UsageError("Please also specify `--context`.", "Kubernetes context is required for preparing a production environment.")
-			}
+		prepares = append(prepares, prepare.PrepareAWSRegistry(p.env)) // XXX make provider configurable.
+	}
 
-			prepares = append(prepares, prepare.PrepareAWSRegistry(env)) // XXX make provider configurable.
-		}
+	if k8sconfig != nil {
+		prepares = append(prepares, prepare.PrepareIngress(p.env, k8sconfig))
+	}
 
-		prepares = append(prepares, prepare.PrepareIngress(env, k8sconfig))
+	var prebuilts = []schema.PackageName{
+		"namespacelabs.dev/foundation/devworkflow/web",
+		"namespacelabs.dev/foundation/std/dev/controller",
+		"namespacelabs.dev/foundation/std/monitoring/grafana/tool",
+		"namespacelabs.dev/foundation/std/monitoring/prometheus/tool",
+		"namespacelabs.dev/foundation/std/secrets/kubernetes",
+	}
 
-		var prebuilts = []schema.PackageName{
-			"namespacelabs.dev/foundation/devworkflow/web",
-			"namespacelabs.dev/foundation/std/dev/controller",
-			"namespacelabs.dev/foundation/std/monitoring/grafana/tool",
-			"namespacelabs.dev/foundation/std/monitoring/prometheus/tool",
-			"namespacelabs.dev/foundation/std/secrets/kubernetes",
-		}
+	preparedPrebuilts := prepare.DownloadPrebuilts(p.env, workspace.NewPackageLoader(p.env.Root()), prebuilts)
+	prepares = append(prepares, compute.Map(
+		tasks.Action("prepare.map-prebuilts"),
+		compute.Inputs().Computable("preparedPrebuilts", preparedPrebuilts),
+		compute.Output{NotCacheable: true},
+		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+			return nil, nil
+		}))
+	return prepares, nil
+}
 
-		preparedPrebuilts := prepare.DownloadPrebuilts(env, workspace.NewPackageLoader(env.Root()), prebuilts)
-		prepares = append(prepares, compute.Map(
-			tasks.Action("prepare.map-prebuilts"),
-			compute.Inputs().Computable("preparedPrebuilts", preparedPrebuilts),
-			compute.Output{NotCacheable: true},
-			func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-				return nil, nil
-			}))
+func (p *workspacePrepare) collectPreparesAndUpdateDevhost(ctx context.Context, prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) error {
+	prepareAll := compute.Collect(tasks.Action("prepare.collect-all"), prepares...)
+	results, err := compute.GetValue(ctx, prepareAll)
+	if err != nil {
+		return err
+	}
 
-		prepareAll := compute.Collect(tasks.Action("prepare.collect-all"), prepares...)
-		results, err := compute.GetValue(ctx, prepareAll)
-		if err != nil {
-			return err
-		}
+	var confs [][]*schema.DevHost_ConfigureEnvironment
+	for _, r := range results {
+		confs = append(confs, r.Value)
+	}
 
-		var confs [][]*schema.DevHost_ConfigureEnvironment
-		for _, r := range results {
-			confs = append(confs, r.Value)
-		}
+	stdout := console.Stdout(ctx)
 
-		stdout := console.Stdout(ctx)
+	updateCount, err := devHostUpdates(ctx, p.env.Root(), confs)
+	if err != nil {
+		return err
+	}
 
-		updateCount, err := devHostUpdates(ctx, env.Root(), confs)
-		if err != nil {
-			return err
-		}
-
-		if !force && updateCount == 0 {
-			fmt.Fprintln(stdout, "Configuration is up to date, nothing to do.")
-			return nil
-		}
-
-		if !dontUpdateDevhost {
-			return devhost.RewriteWith(ctx, env.Root(), env.DevHost())
-		}
-
-		fmt.Fprintln(stdout, "Add the following to your devhost.textpb, in the root of your workspace:")
-		fmt.Fprintln(stdout)
-		fmt.Fprintln(
-			text.NewIndentWriter(stdout, []byte("    ")),
-			prototext.Format(env.DevHost()))
-		fmt.Fprintln(stdout, "Or re-run with `ns prepare -w` for the file to be updated automatically.")
-
+	if updateCount == 0 {
+		fmt.Fprintln(stdout, "Configuration is up to date, nothing to do.")
 		return nil
-	})
+	}
+	return devhost.RewriteWith(ctx, p.env.Root(), p.env.DevHost())
 }
 
 func devHostUpdates(ctx context.Context, root *workspace.Root, confs [][]*schema.DevHost_ConfigureEnvironment) (int, error) {
