@@ -255,9 +255,9 @@ func checkbox(on, dimmed bool) string {
 
 func grpcSchema(tls bool, port uint) (string, string) {
 	if tls {
-		return "grpcurl ", checkPort(port, 443)
+		return "grpcurl ", fmt.Sprintf(":%d", port)
 	}
-	return "grpcurl -plaintext ", checkPort(port, 80)
+	return "grpcurl -plaintext ", fmt.Sprintf(":%d", port)
 }
 
 func httpSchema(d *schema.Domain, port uint) (string, string) {
