@@ -65,13 +65,11 @@ jobs:
   run_deploy:
     name:
       Kubernetes e2e test os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
-      golang_use_buildkit=${{ matrix.golang_use_buildkit }}
     needs: build_fn
     strategy:
       matrix:
         os: [ubuntu-20.04]
         use_prebuilts: [false, true]
-        golang_use_buildkit: [false, true]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
@@ -114,27 +112,26 @@ jobs:
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
+      # namespace-ci already deploys all servers with buildkit, so only testing golang_use_buildkit=false here.
       - name: Deploy std/testdata/server/gogrpc
         run: |
           /tmp/ns deploy \
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=${{ matrix.use_prebuilts }} \
-            --golang_use_buildkit=${{ matrix.golang_use_buildkit }} \
+            --golang_use_buildkit=false \
             --naming_no_tls=true \
             --wait std/testdata/server/gogrpc
 
   run_e2e_tests:
-    name: e2e tests
+    name: cross-repo e2e tests
     needs: build_fn
     strategy:
       matrix:
         os: [ubuntu-20.04]
         regenerate_fn_generate: [false, true]
-        repo: [foundation, examples]
+        repo: [examples]
         include:
-          - repo: foundation
-            root_path: foundation
           - repo: examples
             root_path: examples
     runs-on: ${{ matrix.os }}
