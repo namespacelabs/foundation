@@ -9,13 +9,13 @@ import (
 	"log"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/cmd/fnpipelines/cmd/github"
-	"namespacelabs.dev/foundation/cmd/fnpipelines/cmd/workspace"
+	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/github"
+	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/workspace"
 )
 
 func main() {
 	root := &cobra.Command{
-		Use: "fnpipelines",
+		Use: "nspipelines",
 
 		TraverseChildren: true,
 	}

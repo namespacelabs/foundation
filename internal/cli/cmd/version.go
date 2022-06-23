@@ -47,7 +47,7 @@ func NewVersionCmd() *cobra.Command {
 			}
 
 			out := console.Stdout(ctx)
-			fmt.Fprintf(out, "fn version %s (commit %s)\n", v.Version, v.GitCommit)
+			fmt.Fprintf(out, "ns version %s (commit %s)\n", v.Version, v.GitCommit)
 
 			x := text.NewIndentWriter(out, []byte("  "))
 

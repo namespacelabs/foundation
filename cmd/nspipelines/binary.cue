@@ -1,4 +1,4 @@
 binary: {
-	name: "fn"
+	name: "nspipelines"
 	from: go_package: "."
 }

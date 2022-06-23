@@ -24,7 +24,7 @@
             nodejs-16_x
             yarn
 
-            docker-client # Required by `fn prepare`.
+            docker-client # Required by `ns prepare`.
             crane
 
             pre-commit

@@ -3,7 +3,7 @@
 // available at http://github.com/namespacelabs/foundation
 
 // Package grpcstdio implements a custom (but simple) multiplexing protocol over
-// a bidirectional guaranteed delivery stream. It is used for `fn` to
+// a bidirectional guaranteed delivery stream. It is used for `ns` to
 // communicate with containerized processes which are not given any other kind
 // of network access. A pair of {stdin, stdout} is used as the bidirectional
 // stream. A custom protocol is introduced that is carefully designed to remove

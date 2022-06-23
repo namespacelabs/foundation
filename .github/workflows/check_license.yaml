@@ -29,12 +29,12 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Build fndev
+      - name: Build nsdev
         env:
           CGO_ENABLED: 0
-        run: go build -v -o fndev ./cmd/fndev
+        run: go build -v -o nsdev ./cmd/nsdev
       - name: Check License headers
-        run: ./fndev debug update-license --check
+        run: ./nsdev debug update-license --check
       - uses: k0kubun/action-slack@v2.0.0
         with:
           payload: |

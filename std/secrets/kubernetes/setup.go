@@ -354,7 +354,7 @@ func fillData(ctx context.Context, server *schema.Server, env *schema.Environmen
 			case 0:
 				if !secret.Optional {
 					return nil, fnerrors.UsageError(
-						fmt.Sprintf("Try running `fn secrets set %s --secret %s:%s`", server.PackageName, key.PackageName, key.Key),
+						fmt.Sprintf("Try running `ns secrets set %s --secret %s:%s`", server.PackageName, key.PackageName, key.Key),
 						"secret %q required by %q not specified", key.Key, key.PackageName)
 				} else {
 					// XXX should not mutate DevMap here.

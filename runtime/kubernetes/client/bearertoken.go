@@ -45,7 +45,7 @@ func computeBearerToken(ctx context.Context, cfg *HostConfig, out *rest.Config) 
 	return nil
 }
 
-// Only compute bearer token once per `fn` invocation.
+// Only compute bearer token once per `ns` invocation.
 type cachedToken struct {
 	providerName string
 	configKey    *devhost.ConfigKey

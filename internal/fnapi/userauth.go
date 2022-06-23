@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
-var ErrRelogin = errors.New("not logged in, please run `fn login`")
+var ErrRelogin = errors.New("not logged in, please run `ns login`")
 
 type UserAuth struct {
 	Username string `json:"username"`

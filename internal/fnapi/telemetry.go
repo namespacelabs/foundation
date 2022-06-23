@@ -215,7 +215,7 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 	c, created := tel.makeClientID(ctx)
 
 	if created {
-		// First fn invocation with Telemetry. Add hint about early access plain text logging.
+		// First ns invocation with Telemetry. Add hint about early access plain text logging.
 		// TODO remove before public release.
 		out := console.TypedOutput(ctx, "telemetry", console.CatOutputUs)
 		fmt.Fprint(out, "During early access, errors are uploaded to our servers for debugging purposes.\n")

@@ -165,7 +165,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 
 func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
 	if wsremote.Ctx(ctx) != nil {
-		return nil, nil, fnerrors.UserError(srv.Location, "`fn dev` on multiple web/nodejs servers not supported")
+		return nil, nil, fnerrors.UserError(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
 	}
 
 	devObserver := hotreload.NewFileSyncDevObserver(ctx, srv, fileSyncPort)

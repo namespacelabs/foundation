@@ -131,7 +131,7 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 
 	var nonLocalManaged, nonLocalNonManaged []*schema.IngressFragment
 	for _, n := range ingress {
-		// Local domains need `fn dev` for port forwarding.
+		// Local domains need `ns dev` for port forwarding.
 		if n.GetDomain().GetManaged() == schema.Domain_USER_SPECIFIED {
 			nonLocalNonManaged = append(nonLocalNonManaged, n)
 		} else if n.GetDomain().GetManaged() == schema.Domain_CLOUD_MANAGED || n.GetDomain().GetManaged() == schema.Domain_USER_SPECIFIED_TLS_MANAGED {

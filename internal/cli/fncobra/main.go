@@ -213,7 +213,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 		"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
 	rootCmd.PersistentFlags().BoolVar(&disableCommandBundle, "disable_command_bundle", disableCommandBundle,
-		"If set to true, diagnostics and error information are disabled for the command and the command is filtered from `fn command-history`.")
+		"If set to true, diagnostics and error information are disabled for the command and the command is filtered from `ns command-history`.")
 	rootCmd.PersistentFlags().BoolVar(&consolesink.LogActions, "log_actions", consolesink.LogActions,
 		"If set to true, each completed action is also output as a log message.")
 	rootCmd.PersistentFlags().BoolVar(&console.DebugToConsole, "debug_to_console", console.DebugToConsole,
@@ -235,7 +235,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&deploy.AlsoDeployIngress, "also_compute_ingress", deploy.AlsoDeployIngress,
 		"[development] Set to false, to skip ingress computation.")
 	rootCmd.PersistentFlags().BoolVar(&tel.UseTelemetry, "send_usage_data", tel.UseTelemetry,
-		"If set to false, fn does not upload any usage data.")
+		"If set to false, ns does not upload any usage data.")
 	rootCmd.PersistentFlags().BoolVar(&buildkit.SkipExpectedMaxWorkspaceSizeCheck, "skip_buildkit_workspace_size_check", buildkit.SkipExpectedMaxWorkspaceSizeCheck,
 		"If set to true, skips our enforcement of the maximum workspace size we're willing to push to buildkit.")
 	rootCmd.PersistentFlags().BoolVar(&k3d.IgnoreZfsCheck, "ignore_zfs_check", k3d.IgnoreZfsCheck,

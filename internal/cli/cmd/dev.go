@@ -76,7 +76,7 @@ func NewDevCmd() *cobra.Command {
 					}
 
 					if parsed.Server == nil {
-						return fnerrors.UserError(parsed.Location, "`fn dev` works exclusively with servers (for now)")
+						return fnerrors.UserError(parsed.Location, "`ns dev` works exclusively with servers (for now)")
 					}
 
 					serverPackages = append(serverPackages, parsed.PackageName().String())
