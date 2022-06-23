@@ -40,7 +40,8 @@ func newUpdateStatusCmd() *cobra.Command {
 	url := flag.String("url", "", "Target URL from status entry.")
 
 	// Optional - adding a comment to a commit.
-	deployOutput := flag.String("deploy_output", "", "Structured data for de")
+	deployOutput := flag.String("deploy_output", "", "Structured data for deploy")
+	comment := flag.String("comment", "", "Comment to add to the commit. If deploy_output is set it will be preferred.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		itr, err := ghinstallation.NewKeyFromFile(http.DefaultTransport, *appID, *installationID, *privateKey)
@@ -67,6 +68,12 @@ func newUpdateStatusCmd() *cobra.Command {
 			}
 			if _, _, err := client.Repositories.CreateComment(ctx, *owner, *repo, *commit, &github.RepositoryComment{
 				Body: github.String(comment),
+			}); err != nil {
+				return err
+			}
+		} else if *comment != "" {
+			if _, _, err := client.Repositories.CreateComment(ctx, *owner, *repo, *commit, &github.RepositoryComment{
+				Body: github.String(*comment),
 			}); err != nil {
 				return err
 			}
