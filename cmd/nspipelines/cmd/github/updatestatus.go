@@ -33,6 +33,7 @@ func newUpdateStatusCmd() *cobra.Command {
 	owner := flag.String("owner", "", "Organization name.")
 	repo := flag.String("repo", "", "Repository name.")
 	commit := flag.String("commit", "", "Commit's SHA.")
+	url := flag.String("url", "", "Target URL from status entry.")
 
 	// Optional - setting commit's status.
 	status := flag.String("status", "", "Sets the status of the commit to either pending/success/error/failure")
@@ -53,6 +54,7 @@ func newUpdateStatusCmd() *cobra.Command {
 				State:       github.String(*status),
 				Description: github.String(*statusDescription),
 				Context:     github.String("namespace-ci"),
+				TargetURL:   github.String(*url),
 			}); err != nil {
 				return err
 			}
