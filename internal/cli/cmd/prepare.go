@@ -139,48 +139,54 @@ func (p *workspacePrepare) PrepareWorkspace(ctx context.Context) error {
 	return p.collectPreparesAndUpdateDevhost(ctx, prepares)
 }
 
+func (p *workspacePrepare) prepareK8s(ctx context.Context) compute.Computable[*client.HostConfig] {
+	if p.env.Purpose() == schema.Environment_DEVELOPMENT {
+		return prepare.PrepareK3d("fn", p.env)
+	} else if p.env.Purpose() == schema.Environment_PRODUCTION {
+		if p.contextNameRequired && p.contextName != "" {
+			return prepare.PrepareExistingK8s(p.contextName, p.env)
+		}
+	}
+	return nil
+}
+
 func (p *workspacePrepare) makePrepareComputables(ctx context.Context) ([]compute.Computable[[]*schema.DevHost_ConfigureEnvironment], error) {
 	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
 	prepares = append(prepares, prepare.PrepareBuildkit(p.env))
 
-	var k8sconfig compute.Computable[*client.HostConfig]
-	if p.contextName != "" {
-		k8sconfig = prepare.PrepareExistingK8s(p.contextName, p.env)
-	} else if p.env.Purpose() == schema.Environment_DEVELOPMENT {
-		k8sconfig = prepare.PrepareK3d("fn", p.env)
+	k8sconfig := p.prepareK8s(ctx)
+	if k8sconfig != nil {
+		prepares = append(prepares, compute.Map(
+			tasks.Action("prepare.map-k8s"),
+			compute.Inputs().Computable("k8sconfig", k8sconfig),
+			compute.Output{NotCacheable: true},
+			func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+				k8sconfigval := compute.MustGetDepValue(deps, k8sconfig, "k8sconfig")
+				var confs []*schema.DevHost_ConfigureEnvironment
+
+				registry := k8sconfigval.Registry()
+				if registry != nil {
+					c, err := devhost.MakeConfiguration(registry)
+					if err != nil {
+						return nil, err
+					}
+					c.Purpose = schema.Environment_DEVELOPMENT
+					confs = append(confs, c)
+				}
+
+				hostEnv := k8sconfigval.ClientHostEnv()
+				if hostEnv != nil {
+					c, err := devhost.MakeConfiguration(hostEnv)
+					if err != nil {
+						return nil, err
+					}
+					c.Purpose = p.env.Proto().GetPurpose()
+					c.Runtime = "kubernetes"
+					confs = append(confs, c)
+				}
+				return confs, nil
+			}))
 	}
-
-	prepares = append(prepares, compute.Map(
-		tasks.Action("prepare.map-k8s"),
-		compute.Inputs().Computable("k8sconfig", k8sconfig),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			k8sconfigval := compute.MustGetDepValue(deps, k8sconfig, "k8sconfig")
-			var confs []*schema.DevHost_ConfigureEnvironment
-
-			registry := k8sconfigval.Registry()
-			if registry != nil {
-				c, err := devhost.MakeConfiguration(registry)
-				if err != nil {
-					return nil, err
-				}
-				c.Purpose = schema.Environment_DEVELOPMENT
-				confs = append(confs, c)
-			}
-
-			hostEnv := k8sconfigval.ClientHostEnv()
-			if hostEnv != nil {
-				c, err := devhost.MakeConfiguration(hostEnv)
-				if err != nil {
-					return nil, err
-				}
-				c.Purpose = p.env.Proto().GetPurpose()
-				c.Runtime = "kubernetes"
-				confs = append(confs, c)
-			}
-
-			return confs, nil
-		}))
 
 	if p.awsProfile != "" {
 		prepares = append(prepares, prepare.PrepareAWSProfile(p.awsProfile, p.env)) // XXX make provider configurable.
@@ -199,7 +205,9 @@ func (p *workspacePrepare) makePrepareComputables(ctx context.Context) ([]comput
 		prepares = append(prepares, prepare.PrepareAWSRegistry(p.env)) // XXX make provider configurable.
 	}
 
-	prepares = append(prepares, prepare.PrepareIngress(p.env, k8sconfig))
+	if k8sconfig != nil {
+		prepares = append(prepares, prepare.PrepareIngress(p.env, k8sconfig))
+	}
 
 	var prebuilts = []schema.PackageName{
 		"namespacelabs.dev/foundation/devworkflow/web",
