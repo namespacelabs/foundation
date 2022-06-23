@@ -33,11 +33,11 @@ func newUpdateStatusCmd() *cobra.Command {
 	owner := flag.String("owner", "", "Organization name.")
 	repo := flag.String("repo", "", "Repository name.")
 	commit := flag.String("commit", "", "Commit's SHA.")
-	url := flag.String("url", "", "Target URL from status entry.")
 
 	// Optional - setting commit's status.
 	status := flag.String("status", "", "Sets the status of the commit to either pending/success/error/failure")
 	statusDescription := flag.String("status_description", "", "Sets the description of the status")
+	url := flag.String("url", "", "Target URL from status entry.")
 
 	// Optional - adding a comment to a commit.
 	deployOutput := flag.String("deploy_output", "", "Structured data for de")
