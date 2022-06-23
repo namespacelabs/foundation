@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/morikuni/aec"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
@@ -115,6 +116,8 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 	rt := runtime.For(ctx, env)
 
 	if test.OutputProgress {
+		fmt.Fprintf(console.Stderr(ctx), "%s: Test %s\n", test.TestBinPkg, aec.LightBlackF.Apply("RUNNING"))
+
 		if err := deploy.Wait(ctx, env, waiters); err != nil {
 			var e runtime.ErrContainerFailed
 			if errors.As(err, &e) {
