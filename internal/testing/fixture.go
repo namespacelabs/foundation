@@ -58,9 +58,6 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 	var testDef *schema.Test
 	var testBinary *workspace.Package
-	var testResultsPrefix string
-
-	bid := provision.NewBuildID()
 
 	if testPkg.Server != nil {
 		startupTest, err := pl.LoadByName(ctx, startupTestBinary)
@@ -81,7 +78,6 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		}
 
 		testBinary = startupTest
-		testResultsPrefix = "startup-test-"
 	} else if testPkg.Test != nil {
 		testDef = testPkg.Test
 		testBinary = &workspace.Package{
@@ -105,7 +101,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		return nil, err
 	}
 
-	testBinTag, err := registry.AllocateName(ctx, env, testBinary.PackageName(), bid)
+	testBinTag, err := registry.AllocateName(ctx, env, testBinary.PackageName())
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +138,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		focusServers = append(focusServers, srv.Proto().GetPackageName())
 	}
 
-	tag, err := registry.AllocateName(ctx, env, testPkg.PackageName(), bid.WithSuffix(testResultsPrefix+"results"))
+	tag, err := registry.AllocateName(ctx, env, testPkg.PackageName())
 	if err != nil {
 		return nil, err
 	}

@@ -93,8 +93,6 @@ type buildOpts struct {
 }
 
 func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Location, envRef, baseRepository string, opts buildOpts) error {
-	bid := provision.NewBuildID()
-
 	env, err := provision.RequireEnv(root, envRef)
 	if err != nil {
 		return err
@@ -140,10 +138,9 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 		if baseRepository != "" {
 			tag = registry.StaticName(nil, oci.ImageID{
 				Repository: filepath.Join(baseRepository, pkg.PackageName().String()),
-				Tag:        bid.String(),
 			})
 		} else {
-			tag, err = registry.AllocateName(ctx, env, pkg.PackageName(), bid)
+			tag, err = registry.AllocateName(ctx, env, pkg.PackageName())
 			if err != nil {
 				return err
 			}

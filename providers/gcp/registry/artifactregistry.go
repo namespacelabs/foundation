@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/gcp"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	c "namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -44,14 +43,14 @@ func Register() {
 
 func (em manager) IsInsecure() bool { return false }
 
-func (em manager) Tag(ctx context.Context, repo string, version *provision.BuildID) (oci.AllocatedName, error) {
+func (em manager) Tag(ctx context.Context, repo string) (oci.AllocatedName, error) {
 	return oci.AllocatedName{}, fnerrors.New("unimplemented")
 }
 
-func (em manager) AllocateTag(repo string, buildID *provision.BuildID) c.Computable[oci.AllocatedName] {
+func (em manager) AllocateName(repo string) c.Computable[oci.AllocatedName] {
 	return c.Map(tasks.Action("gcp.artifactregistry.alloc-repository"), c.Inputs(), c.Output{NotCacheable: true},
 		func(ctx context.Context, r c.Resolved) (oci.AllocatedName, error) {
-			return em.Tag(ctx, repo, buildID)
+			return em.Tag(ctx, repo)
 		})
 }
 

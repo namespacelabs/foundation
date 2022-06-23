@@ -16,7 +16,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/std/networking/gateway/controller":                              "sha256:474355dac579ad21563821fbf7eb3bbcf482ed65763519dfd697b29c4513b983"
 		"namespacelabs.dev/foundation/std/networking/gateway/server/configure":                        "sha256:f45e4b1d8d98df32a60dba66683661b1ee2344286b3485cc63e486ad759d8f48"
 		"namespacelabs.dev/foundation/std/runtime/kubernetes/controller/img":                          "sha256:6b5ebfb33f974958e2efc3b1b46c4d8ab98ae4b7a640239b53e4c934bcdb5c59"
-		"namespacelabs.dev/foundation/std/runtime/kubernetes/controller/tool":                         "sha256:1337cfaf0104da81ab46e8a58e215cb85c0db0e1aad779ad14bace9e1cb9c366"
+		"namespacelabs.dev/foundation/std/runtime/kubernetes/controller/tool":                         "sha256:4749369f7f5e034fa439e187e9410b7d002bf8649bd569a9e375d738089b6553"
 		"namespacelabs.dev/foundation/std/runtime/kubernetes/kube-state-metrics/configure":            "sha256:a1257a92ef9df53c7adbf18a04ae4817a1793172c8a435957568e1053e715793"
 		"namespacelabs.dev/foundation/std/secrets/kubernetes":                                         "sha256:34a4a4d3d521f0c16b9f92fa80026bf238c9f3a24a712e0e5b6f08c7b5d934ed"
 		"namespacelabs.dev/foundation/std/startup/testdriver":                                         "sha256:87ed023cec48cade0a5cdb4a433cc7859863cb0c7cddab6fd913249a1ead5ad5"

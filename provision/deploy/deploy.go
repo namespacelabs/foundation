@@ -21,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/provision/startup"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
@@ -67,8 +66,7 @@ func PrepareDeployStack(ctx context.Context, env ops.Environment, stack *stack.S
 
 	ingressFragments := computeIngressWithHandlerResult(env, stack, def)
 
-	buildID := provision.NewBuildID()
-	prepare, err := prepareBuildAndDeployment(ctx, env, focus, stack, def, makeBuildAssets(ingressFragments), buildID)
+	prepare, err := prepareBuildAndDeployment(ctx, env, focus, stack, def, makeBuildAssets(ingressFragments))
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +220,7 @@ func (bi builtImages) get(pkg schema.PackageName) (builtImage, bool) {
 	return builtImage{}, false
 }
 
-func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers []provision.Server, stack *stack.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets, buildID provision.BuildID) (compute.Computable[prepareAndBuildResult], error) {
+func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers []provision.Server, stack *stack.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
 	var focus schema.PackageList
 	for _, server := range servers {
 		focus.Add(server.PackageName())
@@ -234,12 +232,12 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 
 	// computedOnly is used exclusively by config images. They include the set of
 	// computed configurations that provision tools may have emitted.
-	imgs, err := prepareServerImages(ctx, focus, stack, buildAssets, computedOnly, buildID)
+	imgs, err := prepareServerImages(ctx, focus, stack, buildAssets, computedOnly)
 	if err != nil {
 		return nil, err
 	}
 
-	sidecarImages, err := prepareSidecarAndInitImages(ctx, stack, buildID)
+	sidecarImages, err := prepareSidecarAndInitImages(ctx, stack)
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +350,6 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 			}
 
 			deployment, err := runtime.For(ctx, env).PlanDeployment(ctx, runtime.Deployment{
-				BuildID: buildID,
 				Focus:   focus,
 				Stack:   stack.Proto(),
 				Servers: serverRuns,
@@ -372,8 +369,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 
 func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *stack.Stack,
 	buildAssets languages.AvailableBuildAssets,
-	computedConfigs compute.Computable[*schema.ComputedConfigurations],
-	buildID provision.BuildID) (map[schema.PackageName]images, error) {
+	computedConfigs compute.Computable[*schema.ComputedConfigurations]) (map[schema.PackageName]images, error) {
 	imageMap := map[schema.PackageName]images{}
 
 	for _, srv := range stack.Servers {
@@ -392,7 +388,7 @@ func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *s
 				return nil, err
 			}
 
-			name, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName(), buildID)
+			name, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName())
 			if err != nil {
 				return nil, err
 			}
@@ -417,7 +413,7 @@ func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *s
 		if focus.Includes(srv.PackageName()) && !srv.Env().Proto().Ephemeral && computedConfigs != nil {
 			configImage := prepareConfigImage(ctx, srv, stack, computedConfigs)
 
-			cfgtag, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName(), config.MakeConfigTag(buildID))
+			cfgtag, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName())
 			if err != nil {
 				return nil, err
 			}
@@ -436,7 +432,7 @@ type containerImage struct {
 	Command []string
 }
 
-func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildID provision.BuildID) (map[schema.PackageName]containerImage, error) {
+func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) (map[schema.PackageName]containerImage, error) {
 	res := map[schema.PackageName]containerImage{}
 	for k, srv := range stack.Servers {
 		platforms, err := runtime.For(ctx, srv.Env()).TargetPlatforms(ctx)
@@ -468,7 +464,7 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildI
 				return nil, err
 			}
 
-			tag, err := registry.AllocateName(ctx, srv.Env(), bin.PackageName(), buildID)
+			tag, err := registry.AllocateName(ctx, srv.Env(), bin.PackageName())
 			if err != nil {
 				return nil, err
 			}
@@ -483,8 +479,6 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack, buildI
 }
 
 func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []provision.Server, opts Opts) (*stack.Stack, []compute.Computable[oci.ImageID], error) {
-	bid := provision.NewBuildID()
-
 	stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortBase: opts.BaseServerPort})
 	if err != nil {
 		return nil, nil, err
@@ -501,7 +495,7 @@ func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []p
 		return h.Computed, nil
 	})
 
-	m, err := prepareServerImages(ctx, provision.ServerPackages(servers), stack, makeBuildAssets(ingressFragments), computedOnly, bid)
+	m, err := prepareServerImages(ctx, provision.ServerPackages(servers), stack, makeBuildAssets(ingressFragments), computedOnly)
 	if err != nil {
 		return nil, nil, err
 	}

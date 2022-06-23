@@ -14,7 +14,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -36,7 +35,7 @@ type Manager interface {
 	// Returns true if calls to the registry should be made over HTTP (instead of HTTPS).
 	IsInsecure() bool
 
-	AllocateTag(repository string, bid *provision.BuildID) compute.Computable[oci.AllocatedName]
+	AllocateName(repository string) compute.Computable[oci.AllocatedName]
 	AuthRepository(oci.ImageID) (oci.AllocatedName, error)
 }
 
@@ -86,11 +85,11 @@ func StaticName(registry *registry.Registry, imageID oci.ImageID) compute.Comput
 		})
 }
 
-func AllocateName(ctx context.Context, env ops.Environment, pkg schema.PackageName, buildID provision.BuildID) (compute.Computable[oci.AllocatedName], error) {
+func AllocateName(ctx context.Context, env ops.Environment, pkg schema.PackageName) (compute.Computable[oci.AllocatedName], error) {
 	allocated, err := RawAllocateName(ctx, &devhost.ConfigKey{
 		DevHost:  env.DevHost(),
 		Selector: devhost.ByEnvironment(env.Proto()),
-	}, pkg.String(), &buildID)
+	}, pkg.String())
 	if err != nil {
 		if errors.Is(err, ErrNoRegistry) {
 			return nil, fnerrors.UsageError(
@@ -102,7 +101,7 @@ func AllocateName(ctx context.Context, env ops.Environment, pkg schema.PackageNa
 	return allocated, nil
 }
 
-func RawAllocateName(ctx context.Context, ck *devhost.ConfigKey, repo string, buildID *provision.BuildID) (compute.Computable[oci.AllocatedName], error) {
+func RawAllocateName(ctx context.Context, ck *devhost.ConfigKey, repo string) (compute.Computable[oci.AllocatedName], error) {
 	registry, err := GetRegistryFromConfig(ctx, ck)
 	if err != nil {
 		return nil, err
@@ -112,7 +111,7 @@ func RawAllocateName(ctx context.Context, ck *devhost.ConfigKey, repo string, bu
 		return nil, ErrNoRegistry
 	}
 
-	return registry.AllocateTag(repo, buildID), nil
+	return registry.AllocateName(repo), nil
 }
 
 func Precomputed(tag oci.AllocatedName) compute.Computable[oci.AllocatedName] {
