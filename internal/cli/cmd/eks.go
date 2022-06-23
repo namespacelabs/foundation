@@ -98,12 +98,12 @@ func NewEksCmd() *cobra.Command {
 		Short: "Generates a EKS session token.",
 		Args:  cobra.ExactArgs(1),
 	}, func(ctx context.Context, env provision.Env, args []string) error {
-		token, gen, err := eks.ComputeToken(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()), args[0])
+		token, err := eks.ComputeToken(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()), args[0])
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintln(console.Stdout(ctx), gen.FormatJSON(token))
+		fmt.Fprintln(console.Stdout(ctx), token)
 		return nil
 	})
 

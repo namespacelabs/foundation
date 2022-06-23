@@ -30,7 +30,7 @@ func Register() {
 			return "", fnerrors.BadInputError("eks bearer token provider configured, but missing EKSCluster")
 		}
 
-		token, _, err := ComputeToken(ctx, ck.DevHost, ck.Selector, conf.Name)
+		token, err := ComputeToken(ctx, ck.DevHost, ck.Selector, conf.Name)
 		return token.Token, err
 	})
 }
