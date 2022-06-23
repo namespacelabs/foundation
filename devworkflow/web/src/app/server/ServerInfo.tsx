@@ -7,6 +7,7 @@ import {
 	EnvironmentType,
 	ExportedServiceType,
 	NodeKindEnum,
+	NodeType,
 	ServerType,
 	StackEntryType,
 	StackType,
@@ -31,6 +32,15 @@ export default function ServerInfo(props: {
 	let { server, node } = props.server;
 	let endpoints = endpointsOf(props.stack, server.package_name);
 	let services = node?.filter((n) => n.kind == NodeKindEnum.SERVICE) || [];
+
+	const grpcUrlCommand = (svc: NodeType) => {
+		const host = window.location.hostname;
+		const serviceName = svc.export_service![0].proto_typename;
+		const port = endpoints.filter((e) => svc.package_name.endsWith(e.service_name))[0]!.port
+			?.container_port;
+
+		return `fn tools grpcurl -plaintext ${host}:${port} list ${serviceName}`;
+	};
 
 	return (
 		<div className={classes.scrollOk}>
@@ -73,7 +83,12 @@ export default function ServerInfo(props: {
 													</FileLink>
 												)}
 											</ExpandableProto>
-											<Button compact={true}>Send request</Button>
+											<Button
+												compact={true}
+												title={grpcUrlCommand(svc)}
+												onClick={() => navigator.clipboard.writeText(grpcUrlCommand(svc))}>
+												Copy `grpcurl` command
+											</Button>
 										</div>
 									) : null}
 								</div>

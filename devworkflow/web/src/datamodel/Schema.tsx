@@ -7,7 +7,7 @@ export enum NodeKindEnum {
 	EXTENSION = 2,
 }
 
-type NodeType = {
+export type NodeType = {
 	package_name: string;
 	kind: NodeKindEnum;
 	export_service?: ExportedServiceType[];

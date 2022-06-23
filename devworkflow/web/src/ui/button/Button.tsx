@@ -10,10 +10,12 @@ export default function Button(props: {
 	children: React.ReactNode;
 	onClick?: MouseEventHandler;
 	compact?: boolean;
+	title?: string;
 }) {
 	return (
 		<button
 			onClick={props.onClick}
+			title={props.title}
 			className={classNames(style.btn, { [style.compact]: props.compact })}>
 			{props.children}
 		</button>
