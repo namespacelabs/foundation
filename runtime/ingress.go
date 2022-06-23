@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strings"
 
-	"google.golang.org/protobuf/proto"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -324,8 +323,8 @@ type FilteredDomain struct {
 	Endpoints []*schema.Endpoint
 }
 
-func FilterAndDedupDomains(fragments []*schema.IngressFragment, filter func(*schema.Domain) bool) ([]*FilteredDomain, error) {
-	seenFQDN := map[string]*FilteredDomain{} // Map fqdn to schema.
+func FilterAndDedupDomains(fragments []*schema.IngressFragment, filter func(*schema.Domain) bool) []*FilteredDomain {
+	seen := map[string]*FilteredDomain{} // Map fqdn:type to schema.
 	domains := []*FilteredDomain{}
 	for _, frag := range fragments {
 		d := frag.Domain
@@ -338,20 +337,18 @@ func FilterAndDedupDomains(fragments []*schema.IngressFragment, filter func(*sch
 			continue
 		}
 
-		if previous, ok := seenFQDN[d.Fqdn]; ok {
-			if !proto.Equal(previous.Domain, d) {
-				return nil, fnerrors.InternalError("inconsistency in domain definitions -- was: %#v now: %#v", previous.Domain, d)
-			}
-		} else {
+		key := fmt.Sprintf("%s:%s", d.GetFqdn(), d.GetManaged())
+
+		if _, ok := seen[key]; !ok {
 			fd := &FilteredDomain{Domain: d}
 			domains = append(domains, fd)
-			seenFQDN[d.Fqdn] = fd
+			seen[key] = fd
 		}
 
 		if frag.Endpoint != nil {
-			seenFQDN[d.Fqdn].Endpoints = append(seenFQDN[d.Fqdn].Endpoints, frag.Endpoint)
+			seen[key].Endpoints = append(seen[key].Endpoints, frag.Endpoint)
 		}
 	}
 
-	return domains, nil
+	return domains
 }

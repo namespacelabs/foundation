@@ -135,11 +135,7 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 		})
 	}
 
-	domains, err := runtime.FilterAndDedupDomains(plan.IngressFragment, nil)
-	if err != nil {
-		domains = nil
-		fmt.Fprintln(console.Stderr(ctx), "Failed to report on ingress:", err)
-	}
+	domains := runtime.FilterAndDedupDomains(plan.IngressFragment, nil)
 
 	out := console.TypedOutput(ctx, "deploy", console.CatOutputUs)
 

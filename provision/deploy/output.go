@@ -129,12 +129,13 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 
 	}
 
-	var nonLocalManaged, nonLocalNonManaged []*schema.IngressFragment
-	for _, n := range ingress {
+	var nonLocalManaged, nonLocalNonManaged []*runtime.FilteredDomain
+
+	for _, n := range runtime.FilterAndDedupDomains(ingress, nil) {
 		// Local domains need `ns dev` for port forwarding.
-		if n.GetDomain().GetManaged() == schema.Domain_USER_SPECIFIED {
+		if n.Domain.GetManaged() == schema.Domain_USER_SPECIFIED {
 			nonLocalNonManaged = append(nonLocalNonManaged, n)
-		} else if n.GetDomain().GetManaged() == schema.Domain_CLOUD_MANAGED || n.GetDomain().GetManaged() == schema.Domain_USER_SPECIFIED_TLS_MANAGED {
+		} else if n.Domain.GetManaged() == schema.Domain_CLOUD_MANAGED || n.Domain.GetManaged() == schema.Domain_USER_SPECIFIED_TLS_MANAGED {
 			nonLocalManaged = append(nonLocalManaged, n)
 		}
 	}
@@ -163,7 +164,7 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 	}
 }
 
-func renderIngressBlock(out io.Writer, label string, fragments []*schema.IngressFragment) {
+func renderIngressBlock(out io.Writer, label string, fragments []*runtime.FilteredDomain) {
 	fmt.Fprintf(out, "\n %s:\n\n", label)
 
 	labels := make([]string, len(fragments))
@@ -171,7 +172,7 @@ func renderIngressBlock(out io.Writer, label string, fragments []*schema.Ingress
 
 	var longestLabel uint
 	for k, n := range fragments {
-		schema, portLabel, cmd, suffix := domainSchema(n.Domain, 443, n.Endpoint)
+		schema, portLabel, cmd, suffix := domainSchema(n.Domain, 443, n.Endpoints...)
 		labels[k] = fmt.Sprintf("%s%s%s%s", schema, n.Domain.Fqdn, portLabel, cmd)
 		suffixes[k] = suffix
 
@@ -181,7 +182,14 @@ func renderIngressBlock(out io.Writer, label string, fragments []*schema.Ingress
 	}
 
 	for k, n := range fragments {
-		fmt.Fprintf(out, " %s%s %s%s\n", checkbox(true, false), padding.String(labels[k], longestLabel), comment(n.Owner), suffixes[k])
+		var owners uniquestrings.List
+		for _, endpoint := range n.Endpoints {
+			owners.Add(endpoint.ServerOwner)
+		}
+
+		fmt.Fprintf(out, " %s%s %s%s\n", checkbox(true, false),
+			padding.String(labels[k], longestLabel),
+			comment(strings.Join(owners.Strings(), ", ")), suffixes[k])
 	}
 }
 

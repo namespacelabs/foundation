@@ -53,15 +53,9 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 	pi.stack = stack
 	pi.focus = focusServers(stack, focus)
 
-	domains, err := runtime.FilterAndDedupDomains(fragments, func(d *schema.Domain) bool {
+	pi.domains = runtime.FilterAndDedupDomains(fragments, func(d *schema.Domain) bool {
 		return d.GetManaged() != schema.Domain_MANAGED_UNKNOWN
 	})
-
-	if err == nil {
-		pi.domains = domains
-	} else {
-		fmt.Fprintln(console.Errors(ctx), "Failed to forward resulting ingress:", err)
-	}
 
 	if pi.endpointPortFwds == nil {
 		pi.endpointPortFwds = map[string]*portFwd{}
@@ -141,7 +135,7 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 		}
 	}
 
-	if len(domains) > 0 && pi.Selector.Proto().Purpose == schema.Environment_DEVELOPMENT {
+	if len(pi.domains) > 0 && pi.Selector.Proto().Purpose == schema.Environment_DEVELOPMENT {
 		if pi.ingressPortfwd.closer == nil {
 			pi.ingressPortfwd.closer, pi.ingressPortfwd.err = runtime.For(ctx, pi.Selector).ForwardIngress(ctx, []string{pi.LocalAddr}, runtime.LocalIngressPort, func(fpe runtime.ForwardedPortEvent) {
 				pi.mu.Lock()
