@@ -5,6 +5,7 @@ import (
 server: fn.#OpaqueServer & {
 	id:   "vvmln00pguusl9idcv9g"
 	name: "fn-controller"
+	clusterAdmin: true
 
 	binary: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller/img"
 }

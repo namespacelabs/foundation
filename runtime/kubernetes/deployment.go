@@ -22,7 +22,6 @@ import (
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/kubernetes/controller"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"sigs.k8s.io/yaml"
@@ -116,7 +115,6 @@ type deployOpts struct {
 
 func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
 	srv := server.Server
-	isController := controller.IsController(srv.PackageName())
 	ns := serverNamespace(r, srv.Proto())
 
 	if server.Image.Repository == "" {
@@ -174,8 +172,8 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		WithEnableServiceLinks(false) // Disable service injection via environment variables.
 
 	var labels map[string]string
-	if isController {
-		// Controllers are environment agnostic (deployed in a single global namespace).
+	if srv.Proto().ClusterAdmin {
+		// Admin servers are environment agnostic (deployed in a single global namespace).
 		labels = kubedef.MakeLabels(nil, srv.Proto())
 	} else {
 		labels = kubedef.MakeLabels(r.env, srv.Proto())
@@ -491,8 +489,8 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	// servers which we want to control a bit more carefully. For example, we want to deploy
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
-	// Controllers are excluded here as they run as singletons in a global namespace.
-	if r.env.Purpose == schema.Environment_TESTING && !controller.IsController(srv.PackageName()) {
+	// Admin servers are excluded here as they run as singletons in a global namespace.
+	if r.env.Purpose == schema.Environment_TESTING && !srv.Proto().ClusterAdmin {
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server",
 			Resource: applycorev1.Pod(deploymentId, ns).

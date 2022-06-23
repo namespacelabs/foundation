@@ -233,6 +233,11 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 	for _, entry := range stack.Entry {
 		srv := entry.Server // Close on srv.
 
+		if srv.ClusterAdmin {
+			// Skip logs for admin servers.
+			continue
+		}
+
 		rt := runtime.For(ctx, env)
 
 		ex.Go(func(ctx context.Context) error {

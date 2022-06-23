@@ -235,6 +235,8 @@ message Server {
 
     // This server is meant to be used for tests, and should not be deployed by default.
     bool testonly = 21;
+    // This server acts as an admin to the cluster.
+    bool cluster_admin = 22;
 
     Binary binary = 9;
 

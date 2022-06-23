@@ -19,6 +19,7 @@ export type ServerType = {
 	package_name: string;
 	name: string;
 	id: string;
+	cluster_admin: boolean;
 	import?: string[];
 	user_imports?: string[];
 };

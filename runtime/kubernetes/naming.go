@@ -12,7 +12,6 @@ import (
 	"regexp"
 	"strings"
 
-	"namespacelabs.dev/foundation/runtime/kubernetes/controller"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -55,7 +54,7 @@ func packageId(pkg schema.PackageName) string {
 }
 
 func serverNamespace(r K8sRuntime, srv *schema.Server) string {
-	if controller.IsController(schema.PackageName(srv.PackageName)) {
+	if srv.ClusterAdmin {
 		return kubedef.AdminNamespace
 	}
 

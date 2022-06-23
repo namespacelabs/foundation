@@ -19,15 +19,16 @@ import (
 )
 
 type cueServer struct {
-	ID         string                    `json:"id"`
-	Name       string                    `json:"name"`
-	Framework  string                    `json:"framework"`
-	IsStateful bool                      `json:"isStateful"`
-	TestOnly   bool                      `json:"testonly"`
-	Import     []string                  `json:"import"`
-	Services   map[string]cueServiceSpec `json:"service"`
-	StaticEnv  map[string]string         `json:"env"`
-	Binary     interface{}               `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
+	ID           string                    `json:"id"`
+	Name         string                    `json:"name"`
+	Framework    string                    `json:"framework"`
+	IsStateful   bool                      `json:"isStateful"`
+	TestOnly     bool                      `json:"testonly"`
+	ClusterAdmin bool                      `json:"clusterAdmin"`
+	Import       []string                  `json:"import"`
+	Services     map[string]cueServiceSpec `json:"service"`
+	StaticEnv    map[string]string         `json:"env"`
+	Binary       interface{}               `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
 
 	// XXX this should be somewhere else.
 	URLMap []cueURLMapEntry `json:"urlmap"`
@@ -96,6 +97,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 
 	out.IsStateful = bits.IsStateful
 	out.Testonly = bits.TestOnly
+	out.ClusterAdmin = bits.ClusterAdmin
 	out.Import = bits.Import
 
 	for k, v := range bits.StaticEnv {

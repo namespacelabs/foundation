@@ -27,7 +27,9 @@ export default function ServerBlock(props: { data: DataType }) {
 			label: "Stack",
 			render: () => (
 				<>
-					{props.data.stack?.entry?.map((s) => {
+					{props.data.stack?.entry?.filter((s) => {
+						return !s.server.cluster_admin
+					}).map((s) => {
 						return (
 							<Selectable
 								key={s.server.package_name}
