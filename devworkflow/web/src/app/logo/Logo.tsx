@@ -21,9 +21,9 @@ export function Logo() {
 }
 
 export function LogoIcon(props: { filled?: boolean }) {
-	const logoURL = new URL(
-		props?.filled ? "/icons/logo_filled.svg" : "/icons/logo.svg",
-		import.meta.url
-	);
+	// First argument of `new URL` must be static.
+	const logoURL = props?.filled
+		? new URL("/icons/logo_filled.svg", import.meta.url)
+		: new URL("/icons/logo.svg", import.meta.url);
 	return <img className={classes.namespaceLabsImg} src={logoURL.toString()}></img>;
 }
