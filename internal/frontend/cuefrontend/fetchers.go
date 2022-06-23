@@ -91,14 +91,19 @@ type cueProtoload struct {
 	Services map[string]cueProto `json:"services"`
 }
 
-func FetchProto(fsys fs.FS, loc workspace.Location) FetcherFunc {
+func FetchProto(pl workspace.Packages, fsys fs.FS, loc workspace.Location) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		var load cueProtoload
 		if err := v.Decode(&load); err != nil {
 			return nil, err
 		}
 
-		fds, err := protos.ParseAtLocation(fsys, loc, load.Sources)
+		opts, err := workspace.MakeProtoParseOpts(ctx, pl)
+		if err != nil {
+			return nil, err
+		}
+
+		fds, err := opts.ParseAtLocation(fsys, loc, load.Sources)
 		if err != nil {
 			return nil, err
 		}

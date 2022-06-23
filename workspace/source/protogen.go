@@ -128,8 +128,13 @@ func generateProtoSrcs(ctx context.Context, env ops.Environment, request map[sch
 	return nil
 }
 
-func GenProtosAtPaths(ctx context.Context, env ops.Environment, src fs.FS, fmwk schema.Framework, paths []string, out fnfs.ReadWriteFS) error {
-	parsed, err := protos.Parse(src, paths)
+func GenProtosAtPaths(ctx context.Context, env ops.Environment, root *workspace.Root, fmwk schema.Framework, paths []string, out fnfs.ReadWriteFS) error {
+	opts, err := workspace.MakeProtoParseOpts(ctx, workspace.NewPackageLoader(root))
+	if err != nil {
+		return err
+	}
+
+	parsed, err := opts.Parse(root.FS(), paths)
 	if err != nil {
 		return err
 	}

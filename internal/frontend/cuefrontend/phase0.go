@@ -38,7 +38,7 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.Earl
 		}
 
 		inputs := newFuncs().
-			WithFetcher(fncue.ProtoloadIKw, FetchProto(fsys, loc)).
+			WithFetcher(fncue.ProtoloadIKw, FetchProto(pl, fsys, loc)).
 			WithFetcher(fncue.ResourceIKw, FetchResource(fsys, loc)).
 			WithFetcher(fncue.PackageIKW, FetchPackage(pl))
 

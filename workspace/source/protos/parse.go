@@ -15,6 +15,7 @@ import (
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/desc/protoparse"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -23,18 +24,41 @@ import (
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 )
 
-func Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDeps, error) {
+type ParseOpts struct {
+	KnownModules []struct {
+		ModuleName string
+		FS         fs.FS
+	}
+}
+
+func (opts ParseOpts) Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDeps, error) {
 	p := protoparse.Parser{
 		ImportPaths:           []string{"."},
 		IncludeSourceCodeInfo: true,
 		Accessor: func(filename string) (io.ReadCloser, error) {
 			return fsys.Open(filename)
 		},
-		// This allows imports to be resolved via loading linked-in descriptors.
-		// CAVEAT: We run the risk of exposing all linked-in descriptors and an allowlist would
-		// have been ideal but as https://github.com/namespacelabs/foundation/pull/362#discussion_r868497530
-		// calls out, the protoparse design is brittle and doesn't accomodate this well.
-		LookupImport: desc.LoadFileDescriptor,
+		LookupImport: func(path string) (*desc.FileDescriptor, error) {
+			// We're explicit about what protos are exposed here, as not all
+			// proto tooling will handling this well.
+			if filepath.Dir(path) == "google/api" {
+				return desc.LoadFileDescriptor(path)
+			}
+
+			for _, known := range opts.KnownModules {
+				if rel := strings.TrimPrefix(path, known.ModuleName+"/"); rel != path {
+					x, err := opts.Parse(known.FS, []string{rel})
+					if err != nil {
+						return nil, err
+					}
+
+					return toFileDescriptor(x.File[0], x.Dependency)
+				}
+			}
+
+			// It's important to return an error, so the nil value is not used.
+			return nil, fnerrors.New("no such file: %s", path)
+		},
 	}
 
 	files, err := expandProtoList(fsys, files)
@@ -61,18 +85,42 @@ func Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDeps, error) {
 	return &FileDescriptorSetAndDeps{File: protos.sorted(), Dependency: protoDeps.sorted()}, nil
 }
 
+// XXX this is O(n^2)
+func toFileDescriptor(file *descriptorpb.FileDescriptorProto, deps []*descriptorpb.FileDescriptorProto) (*desc.FileDescriptor, error) {
+	var parsedDeps []*desc.FileDescriptor
+	for _, dep := range file.GetDependency() {
+		var found *descriptorpb.FileDescriptorProto
+		for _, d := range deps {
+			if d.GetName() == dep {
+				found = d
+				break
+			}
+		}
+		if found == nil {
+			return nil, fnerrors.New("%s: missing dependency %q", file.GetName(), dep)
+		}
+		parsed, err := toFileDescriptor(found, deps)
+		if err != nil {
+			return nil, err
+		}
+		parsedDeps = append(parsedDeps, parsed)
+	}
+
+	return desc.CreateFileDescriptor(file, parsedDeps...)
+}
+
 type Location interface {
 	Rel(...string) string
 }
 
-func ParseAtLocation(fsys fs.FS, loc Location, files []string) (*FileDescriptorSetAndDeps, error) {
+func (opts ParseOpts) ParseAtLocation(fsys fs.FS, loc Location, files []string) (*FileDescriptorSetAndDeps, error) {
 	var protosrcs uniquestrings.List
 
 	for _, srcfile := range files {
 		protosrcs.Add(loc.Rel(srcfile))
 	}
 
-	return Parse(fsys, protosrcs.Strings())
+	return opts.Parse(fsys, protosrcs.Strings())
 }
 
 type protoList struct {

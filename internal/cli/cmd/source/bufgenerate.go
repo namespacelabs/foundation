@@ -55,7 +55,7 @@ func newBufGenerateCmd() *cobra.Command {
 				return fmt.Errorf("unsupported language: %s", lang)
 			}
 
-			return source.GenProtosAtPaths(ctx, env, root.FS(), fmwk, clean, root.FS())
+			return source.GenProtosAtPaths(ctx, env, root, fmwk, clean, root.FS())
 		}),
 	}
 

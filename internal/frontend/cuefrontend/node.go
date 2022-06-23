@@ -392,7 +392,12 @@ func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc wor
 		return err
 	}
 
-	parsed, err := protos.ParseAtLocation(fsys, loc, export.Service.Sources)
+	parseOpts, err := workspace.MakeProtoParseOpts(ctx, pl)
+	if err != nil {
+		return err
+	}
+
+	parsed, err := parseOpts.ParseAtLocation(fsys, loc, export.Service.Sources)
 	if err != nil {
 		return fnerrors.UserError(loc, "failed to parse proto sources %v: %v", export.Service.Sources, err)
 	}
@@ -449,6 +454,11 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 		return err
 	}
 
+	parseOpts, err := workspace.MakeProtoParseOpts(ctx, pl)
+	if err != nil {
+		return err
+	}
+
 	for it.Next() {
 		name := it.Label()
 
@@ -477,7 +487,7 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 			return err
 		}
 
-		parsed, err := protos.ParseAtLocation(fsys, loc, p.Type.Source)
+		parsed, err := parseOpts.ParseAtLocation(fsys, loc, p.Type.Source)
 		if err != nil {
 			return fnerrors.UserError(loc, "failed to parse proto sources %v: %v", p.Type.Source, err)
 		}
@@ -620,7 +630,12 @@ func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAP
 		return nil, err
 	}
 
-	msgdesc, err := protos.LoadMessageAtLocation(fsys, resolved, inst.TypeDef.Sources, inst.TypeDef.Typename)
+	opts, err := workspace.MakeProtoParseOpts(ctx, pl)
+	if err != nil {
+		return nil, err
+	}
+
+	msgdesc, err := opts.LoadMessageAtLocation(fsys, resolved, inst.TypeDef.Sources, inst.TypeDef.Typename)
 	if err != nil {
 		return nil, fnerrors.UserError(loc, "%s: %w", resolved.PackageName, err)
 	}

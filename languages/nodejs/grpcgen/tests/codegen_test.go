@@ -37,7 +37,7 @@ func TestCodegen(t *testing.T) {
 		fsys.Add(fn, file)
 	}
 
-	fds, err := protos.Parse(&fsys, testFiles)
+	fds, err := protos.ParseOpts{}.Parse(&fsys, testFiles)
 	assert.NilError(t, err)
 
 	for _, fd := range fds.File {

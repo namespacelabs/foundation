@@ -78,6 +78,10 @@ func (root *Module) SnapshotContents(ctx context.Context, rel string) (fs.FS, er
 	return v.Value.FS(), nil
 }
 
+func (root *Module) ReadOnlyFS() fs.FS {
+	return fnfs.Local(root.absPath)
+}
+
 func (root *Module) ReadWriteFS() fnfs.ReadWriteFS {
 	if root.IsExternal() {
 		return fnfs.Local(root.absPath).(fnfs.ReadWriteFS) // LocalFS has a Write, which fails Writes.
