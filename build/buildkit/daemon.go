@@ -9,8 +9,12 @@ import (
 	"fmt"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 	buildkit "github.com/moby/buildkit/client"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/docker/install"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -43,6 +47,27 @@ func EnsureBuildkitd(ctx context.Context, containerName string) (*Instance, erro
 	return &Instance{
 		Addr: makeAddr(spec.ContainerName),
 	}, nil
+}
+
+func RemoveBuildkitd(ctx context.Context) error {
+	dockerclient, err := docker.NewClient()
+	if err != nil {
+		return fnerrors.InternalError("failed to instantiate the docker client while removing buildkitd: %w", err)
+	}
+	// Ignore if the container is already removed.
+	ctr, err := dockerclient.ContainerInspect(ctx, DefaultContainerName)
+	if err != nil {
+		if client.IsErrNotFound(err) {
+			return nil
+		} else {
+			return err
+		}
+	}
+	opts := types.ContainerRemoveOptions{Force: true}
+	if err := dockerclient.ContainerRemove(ctx, ctr.Name, opts); err != nil {
+		return fnerrors.InternalError("failed to remove the buildkitd container: %w", err)
+	}
+	return nil
 }
 
 func makeAddr(containerName string) string {
