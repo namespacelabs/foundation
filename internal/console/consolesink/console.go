@@ -643,10 +643,6 @@ func (c *ConsoleSink) countStates() (running, waiting, anchored int) {
 	return
 }
 
-func (c *ConsoleSink) logActions() bool {
-	return !c.interactive || LogActions
-}
-
 // drawFrame renders a single frame and returns `false` if further rendering should be stopped.
 func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height uint, flush bool) {
 	running, waiting, anchored := c.countStates()
@@ -655,7 +651,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	for _, r := range c.running {
 		if r.data.State != tasks.ActionWaiting && r.data.State != tasks.ActionRunning {
 			hasError := (r.data.Err != nil && tasks.ErrorType(r.data.Err) == tasks.ErrTypeIsRegular)
-			shouldLog := c.logActions() && (DisplayWaitingActions || r.data.AnchorID == "")
+			shouldLog := LogActions && (DisplayWaitingActions || r.data.AnchorID == "")
 
 			if (shouldLog || hasError) && r.data.Level <= c.maxLevel {
 				printableCompleted = append(printableCompleted, *r)
@@ -668,7 +664,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		}
 	}
 
-	if c.logActions() && len(printableCompleted) > 0 {
+	if LogActions && len(printableCompleted) > 0 {
 		sort.Slice(printableCompleted, func(i, j int) bool {
 			return printableCompleted[i].data.Completed.Before(printableCompleted[j].data.Completed)
 		})
@@ -780,7 +776,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	}
 
 	report := ""
-	if c.logActions() {
+	if LogActions {
 		report += "\n"
 	}
 

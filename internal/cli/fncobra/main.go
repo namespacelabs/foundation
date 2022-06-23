@@ -30,7 +30,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
-	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
@@ -477,7 +476,7 @@ func consoleToSink(out *os.File, interactive bool) (tasks.ActionSink, bool, func
 	logout := logoutput.OutputTo{Writer: out, WithColors: interactive}
 
 	maxLogLevel := viper.GetInt("console_log_level")
-	if (interactive || environment.IsRunningInCI()) && !viper.GetBool("console_no_colors") {
+	if interactive && !viper.GetBool("console_no_colors") {
 		consoleSink := consolesink.NewSink(out, interactive, maxLogLevel)
 		cleanup := consoleSink.Start()
 		logout.Writer = console.ConsoleOutput(consoleSink, common.KnownStderr)

@@ -31,18 +31,20 @@ func (sl *logger) Waiting(ra *tasks.RunningAction) {
 }
 
 func (sl *logger) Started(ra *tasks.RunningAction) {
-	if !AlsoReportStartEvents {
+	if !consolesink.LogActions || !AlsoReportStartEvents {
 		return
 	}
 
 	if !sl.shouldLog(ra.Data) {
 		return
 	}
-
 	consolesink.NoColors.LogAction(sl.out, ra.Data)
 }
 
 func (sl *logger) Done(ra *tasks.RunningAction) {
+	if !consolesink.LogActions {
+		return
+	}
 	if !sl.shouldLog(ra.Data) {
 		return
 	}
@@ -51,6 +53,9 @@ func (sl *logger) Done(ra *tasks.RunningAction) {
 }
 
 func (sl *logger) Instant(ev *tasks.EventData) {
+	if !consolesink.LogActions {
+		return
+	}
 	if !sl.shouldLog(*ev) {
 		return
 	}
