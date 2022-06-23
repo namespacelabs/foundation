@@ -18,7 +18,7 @@ import (
 func PrepareEksCluster(clusterName string, env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.eks-config").HumanReadablef("Prepare the Elastic Kubernetes Service profile configuration"),
-		compute.Inputs().Str("profileName", clusterName).Proto("env", env.Proto()),
+		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Proto()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			hostEnv := &eks.EKSCluster{
