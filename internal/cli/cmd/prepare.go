@@ -43,7 +43,7 @@ func NewPrepareCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&dontUpdateDevhost, "dont_update_devhost", dontUpdateDevhost, "If set to true, devhost.textpb will NOT be updated.")
 	cmd.Flags().BoolVarP(&force, "force", "f", force, "Skip checking if the configuration is changing.")
-	cmd.Flags().StringVar(&contextName, "context", "", "If set, configures Foundation to use the specific context.")
+	cmd.Flags().StringVar(&contextName, "context", "", "If set, configures Namespace to use the specific context.")
 	cmd.Flags().StringVar(&awsProfile, "aws_profile", awsProfile, "Configures the specified AWS configuration profile.")
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {

@@ -159,7 +159,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 				return nil, err
 			}
 
-			// Check if the foundation version we depend on would have the transcode node.
+			// Check if the namespace version we depend on would have the transcode node.
 			ws := nodeloc.Module.Workspace
 			if ws.GetFoundation().MinimumApi >= versions.IntroducedGrpcTranscodeNode {
 				if n.ExportServicesAsHttp {
@@ -299,7 +299,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 				var messages []string
 
 				if status.NewVersion {
-					messages = append(messages, fmt.Sprintf("New Foundation release %s is available.\nDownload: %s", status.Version, downloadUrl(status.Version)))
+					messages = append(messages, fmt.Sprintf("New Namespace release %s is available.\nDownload: %s", status.Version, downloadUrl(status.Version)))
 				}
 
 				if status.Message != "" {
@@ -368,7 +368,7 @@ func handleExitError(colors bool, err error) int {
 			if status, err := FetchLatestRemoteStatus(ctxWithTimeout, versionCheckEndpoint, version.GitCommit); err == nil && status.Version != "" {
 				fmt.Fprintln(os.Stderr, indent.String(
 					wordwrap.String(
-						fmt.Sprintf("\nThe latest version of Foundation is %s, available at %s\n", clrs.Bold(status.Version), downloadUrl(status.Version)),
+						fmt.Sprintf("\nThe latest version of Namespace is %s, available at %s\n", clrs.Bold(status.Version), downloadUrl(status.Version)),
 						80),
 					2))
 			}

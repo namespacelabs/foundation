@@ -19,7 +19,7 @@ import (
 func NewFnServicesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "fnservices",
-		Short:  "Foundation services-related activities (internal only).",
+		Short:  "Namespace services-related activities (internal only).",
 		Hidden: true,
 	}
 
@@ -47,7 +47,7 @@ func NewFnServicesCmd() *cobra.Command {
 
 	mapAddr := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "naming-map",
-		Short: "Maps a FQDN within Foundation Cloud's scope to a particular target (e.g. CNAME, or IP address).",
+		Short: "Maps a FQDN within Namespace Cloud's scope to a particular target (e.g. CNAME, or IP address).",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env provision.Env, args []string) error {
 		return fnapi.Map(ctx, fqdn, target)
@@ -63,7 +63,7 @@ func NewFnServicesCmd() *cobra.Command {
 
 	allocateName := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "naming-allocate-name",
-		Short: "Allocates a TLS certificate within Foundation Cloud's scope.",
+		Short: "Allocates a TLS certificate within Namespace Cloud's scope.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env provision.Env, args []string) error {
 		nr, err := fnapi.RawAllocateName(ctx, fnapi.AllocateOpts{

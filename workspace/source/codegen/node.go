@@ -70,7 +70,7 @@ func ProtosForNode(pkg *workspace.Package) ([]*schema.SerializedInvocation, erro
 			return nil, err
 		}
 
-		dl.Add("Generate Foundation exports", &OpGenNode{
+		dl.Add("Generate Namespace exports", &OpGenNode{
 			Node:   pkg.Node(),
 			Protos: merged,
 		}, pkg.PackageName())

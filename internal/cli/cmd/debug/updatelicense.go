@@ -28,7 +28,7 @@ var ignoreSuffixes = []string{
 	"_pb.ts",
 	"stacktrace/stacktrace.go",
 	"stacktrace/serializer/serializer.go",
-	// Compiled Foundation plugin for Yarn.
+	// Compiled Namespace plugin for Yarn.
 	"plugin-fn.js"}
 
 func newUpdateLicenseCmd() *cobra.Command {

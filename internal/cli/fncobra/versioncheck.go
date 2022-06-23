@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/version"
 )
 
-// Checks for updates and messages from Foundation developers.
+// Checks for updates and messages from Namespace developers.
 // Does nothing if a check for remote status failed
 func checkRemoteStatus(debugLogger io.Writer, channel chan remoteStatus) {
 	defer close(channel)

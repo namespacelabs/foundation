@@ -154,7 +154,7 @@ func convertDependency(ic *imports.ImportCollector, dep shared.DependencyData) (
 	var outputFactoryType *tmplImportedType
 	if dep.ProviderType.IsParameterized {
 		outputFactoryType = &tmplImportedType{
-			// This only works for Foundation's gRPC codegen.
+			// This only works for Namespaces's gRPC codegen.
 			Name:        fmt.Sprintf("new%s", providerType.Name),
 			ImportAlias: providerType.ImportAlias,
 		}

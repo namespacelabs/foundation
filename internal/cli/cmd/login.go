@@ -20,11 +20,11 @@ const loginUrl = "https://signin.prod.namespacelabs.nscloud.dev/login"
 func NewLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Login to use Foundation services (DNS and SSL management, etc).",
+		Short: "Login to use Namespace services (DNS and SSL management, etc).",
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			code, err := tui.Ask(ctx, "Login to Foundation", fmt.Sprintf("In order to login, open the following URL in your browser, and then copy-paste the resulting code:\n\n  %s", loginUrl), "Code")
+			code, err := tui.Ask(ctx, "Login to Namespace", fmt.Sprintf("In order to login, open the following URL in your browser, and then copy-paste the resulting code:\n\n  %s", loginUrl), "Code")
 			if err != nil {
 				return err
 			}

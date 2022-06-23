@@ -28,7 +28,7 @@ const (
 var NamingNoTLS = false // Set to true in CI.
 
 var errLogin = fnerrors.UsageError("Please run `ns login` to login.",
-	"Foundation automatically manages nscloud.dev-based sub-domains and issues SSL certificates on your behalf. To use these features, you'll need to login to Foundation using your Github account.")
+	"Namespace automatically manages nscloud.dev-based sub-domains and issues SSL certificates on your behalf. To use these features, you'll need to login to Namespace using your Github account.")
 
 func ComputeNaming(env *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
 	if env.Purpose != schema.Environment_PRODUCTION {

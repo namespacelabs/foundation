@@ -189,7 +189,7 @@ func (b *Bundle) regen() {
 func (b *Bundle) SerializeTo(ctx context.Context, w io.Writer, encrypt bool) error {
 	ww := wordwrap.NewWriter(80)
 
-	fmt.Fprintf(ww, "This is a secrets bundle managed by Foundation. You can use `ns secrets` to modify this file.\n\nNOTE: Any changes made before %q are ignored.\n\n", guardBegin)
+	fmt.Fprintf(ww, "This is a secrets bundle managed by Namespace. You can use `ns secrets` to modify this file.\n\nNOTE: Any changes made before %q are ignored.\n\n", guardBegin)
 
 	if err := ww.Close(); err != nil {
 		return err

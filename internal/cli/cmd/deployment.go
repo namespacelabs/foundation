@@ -82,7 +82,7 @@ func checkDelete(ctx context.Context, env string, single bool) error {
 	if single {
 		title = fmt.Sprintf("Remove %s's deployment?", env)
 	} else {
-		title = "Remove all Foundation-managed deployments?"
+		title = "Remove all Namespace-managed deployments?"
 	}
 
 	written, err := tui.Ask(ctx, title,

@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
-// This package provides auxiliary files for invoking Yarn: the Foundation plugin and ".yarnrc.yml",
+// This package provides auxiliary files for invoking Yarn: the Namespace plugin and ".yarnrc.yml",
 // so they don't need to be submitted to the user codebase.
 
 const (

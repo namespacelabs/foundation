@@ -78,12 +78,12 @@ func ExpectedError(format string, args ...interface{}) error {
 	return &internalError{fnError: fnError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: true}
 }
 
-// This error means that Foundation does not meet the minimum version requirements.
+// This error means that Namespace does not meet the minimum version requirements.
 func DoesNotMeetVersionRequirements(pkg string, expected, got int32) error {
 	return &VersionError{pkg, expected, got}
 }
 
-// This error is purely for wiring and ensures that Foundation exits with an appropriate exit code.
+// This error is purely for wiring and ensures that Namespace exits with an appropriate exit code.
 // The error content has to be output independently.
 func ExitWithCode(err error, code int) error {
 	return &exitError{fnError: fnError{Err: err, stack: stacktrace.New()}, code: code}

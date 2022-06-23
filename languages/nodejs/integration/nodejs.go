@@ -431,7 +431,7 @@ func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*sch
 func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.ServerFrameworkExt) error {
 	// Adding extra nodes here:
 	// - grpcNode sets up correct flags for the server startup.
-	// - runtimeNode allows to treat the Foundation Node.js runtime as a regular node that has a Location,
+	// - runtimeNode allows to treat the Namespace Node.js runtime as a regular node that has a Location,
 	// and copy it to the build image in the same way as other nodes.
 	ext.Include = append(ext.Include, grpcNode, httpNode, runtimeNode)
 	return nil

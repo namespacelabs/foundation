@@ -81,7 +81,7 @@ func PrepareIrsa(eksCluster *EKSCluster, iamRole, namespace, serviceAccount stri
 	out.Invocations = append(out.Invocations, makeRole{
 		&fniam.OpEnsureRole{
 			RoleName: iamRole,
-			Description: fmt.Sprintf("Foundation-managed IAM role for service account %s/%s in EKS cluster %s",
+			Description: fmt.Sprintf("Namespace-managed IAM role for service account %s/%s in EKS cluster %s",
 				namespace, serviceAccount, eksCluster.Name),
 			AssumeRolePolicyJson: string(policyBytes),
 			ForServer:            srv,
