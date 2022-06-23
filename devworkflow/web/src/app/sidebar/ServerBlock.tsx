@@ -3,7 +3,6 @@
 // available at http://github.com/namespacelabs/foundation
 
 import classNames from "classnames";
-import { ReactNode } from "react";
 import { Link } from "wouter";
 import {
 	DataType,
@@ -13,11 +12,9 @@ import {
 	StackType,
 } from "../../datamodel/Schema";
 import { useTasksByServer } from "../../datamodel/TasksObserver";
-import { ExternalLinkIcon, makeIcon, serverData } from "../../icons";
-import ComboBox from "../../ui/combobox/ComboBox";
+import { ExternalLinkIcon } from "../../icons";
 import Selectable from "../../ui/sidebar/Selectable";
 import Tabs from "../../ui/sidebar/Tabs";
-import { Spinner } from "../../ui/spinner/Spinner";
 import { useServerRoute } from "../server/routing";
 import classes from "./sidebar.module.css";
 
@@ -35,11 +32,7 @@ export default function ServerBlock(props: { data: DataType }) {
 							<Selectable
 								key={s.server.package_name}
 								selected={matches && params?.id === s.server.id}>
-								<Server
-									server={s.server}
-									state={stateOf(props.data, s.server.package_name)}
-									inline={true}
-								/>
+								<Server server={s.server} state={stateOf(props.data, s.server.package_name)} />
 							</Selectable>
 						);
 					})}
@@ -57,28 +50,6 @@ export default function ServerBlock(props: { data: DataType }) {
 			<ForwardedPorts data={props.data} />
 		</div>
 	);
-}
-
-export function ServerSelector(props: { data: DataType }) {
-	let [matches, params] = useServerRoute();
-	let { current } = props.data;
-
-	if (!current) return null;
-
-	return (
-		<ComboBox pinned={matches && params?.id === current.server.id}>
-			<CurrentServer data={props.data} />
-		</ComboBox>
-	);
-}
-
-export function CurrentServer(props: { data: DataType }) {
-	let { stack, current } = props.data;
-	let matchingState = stateOf(props.data, current.server.package_name);
-
-	if (!current) return null;
-
-	return <Server server={current.server} state={matchingState} stack={stack} />;
 }
 
 function stateOf(data: DataType, packageName: string) {
@@ -100,12 +71,7 @@ function humanTaskName(name: string) {
 	return taskHumanNames[name] || name;
 }
 
-function Server(props: {
-	server: ServerType;
-	state: StackEntryStateType;
-	stack?: StackType;
-	inline?: boolean;
-}) {
+function Server(props: { server: ServerType; state: StackEntryStateType; stack?: StackType }) {
 	let runningTask = useTasksByServer(props.server.package_name);
 
 	const parts = props.server.package_name.split("/");
@@ -113,7 +79,7 @@ function Server(props: {
 
 	while (parts.length) {
 		let would = parts.pop() + "/" + p;
-		if (would.length > (props.inline ? 34 : 24)) {
+		if (would.length > 34) {
 			break;
 		}
 		p = would;
@@ -123,61 +89,42 @@ function Server(props: {
 		p = "... " + p;
 	}
 
-	let icon: ReactNode;
-
-	if (!props.inline) {
-		icon = makeIcon(serverData);
-	}
-
 	let badges: string[] = [];
 
 	let isWorking = false;
 	if (props.state.last_error) {
 		p = "failed: " + props.state.last_error;
 	} else if (runningTask.length) {
-		if (props.inline) {
-			// Show the last task, and collapse the rest into "...".
-			if (runningTask.length > 1) {
-				badges.push("...");
-			}
-
-			badges.push(humanTaskName(runningTask[runningTask.length - 1].name));
-		} else {
-			icon = <Spinner />;
-
-			// Only show badges at the top if the stack is empty.
-			if (!props.stack?.entry?.length) {
-				badges = runningTask.map((t) => humanTaskName(t.name));
-				isWorking = true;
-			}
+		// Show the last task, and collapse the rest into "...".
+		if (runningTask.length > 1) {
+			badges.push("...");
 		}
+
+		badges.push(humanTaskName(runningTask[runningTask.length - 1].name));
 	}
 
 	return (
 		<Link href={`/server/${props.server.id}`}>
-			<a className={classNames(classes.serverName)}>
-				{icon ? <div className={classes.icon}>{icon}</div> : null}
-				<div className={classes.body}>
-					<div>
-						<span>{props.server.name}</span>
-						{!isWorking &&
-							badges.map((b) => (
-								<span key={b} className={classes.badge}>
-									{b}
-								</span>
-							))}
-					</div>
-					<div>
-						{isWorking ? (
-							badges.map((b) => (
-								<span key={b} className={classes.badge}>
-									{b}
-								</span>
-							))
-						) : (
-							<span>{p}</span>
-						)}
-					</div>
+			<a className={classes.serverItem}>
+				<div className={classes.serverName}>
+					<span>{props.server.name}</span>
+					{!isWorking &&
+						badges.map((b) => (
+							<span key={b} className={classes.badge}>
+								{b}
+							</span>
+						))}
+				</div>
+				<div className={classes.serverPackageName}>
+					{isWorking ? (
+						badges.map((b) => (
+							<span key={b} className={classes.badge}>
+								{b}
+							</span>
+						))
+					) : (
+						<span>{p}</span>
+					)}
 				</div>
 			</a>
 		</Link>
