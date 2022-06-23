@@ -15,8 +15,8 @@ import (
 var NamingForceStored = false
 
 type IssueRequest struct {
-	UserAuth    UserAuth     `json:"userAuth"`
-	NameRequest NameRequest  `json:"nameRequest"`
+	UserAuth    UserAuth     `json:"user_auth"`
+	NameRequest NameRequest  `json:"name_request"`
 	Resource    NameResource `json:"previous"`
 }
 
@@ -42,9 +42,9 @@ type ResourceID struct {
 }
 
 type NameCertificate struct {
-	PrivateKey        []byte `json:"privateKey"`
-	CertificateBundle []byte `json:"certificateBundle"`
-	CertificateURL    string `json:"certificateUrl"`
+	PrivateKey        []byte `json:"private_key"`
+	CertificateBundle []byte `json:"certificate_bundle"`
+	CertificateURL    string `json:"certificate_url"`
 }
 
 // JSON annotations below are used for the Arg() serialization below.
