@@ -1,4 +1,4 @@
-project_name: fn
+project_name: ns
 
 builds:
   - id: linux
