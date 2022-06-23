@@ -52,7 +52,7 @@ func newUpdateStatusCmd() *cobra.Command {
 			if _, _, err := client.Repositories.CreateStatus(ctx, *owner, *repo, *commit, &github.RepoStatus{
 				State:       github.String(*status),
 				Description: github.String(*statusDescription),
-				Context:     github.String("namespace-ci/autopush"),
+				Context:     github.String("namespace-ci"),
 			}); err != nil {
 				return err
 			}
