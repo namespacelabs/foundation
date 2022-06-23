@@ -170,7 +170,7 @@ jobs:
       - name: Download Foundation
         uses: actions/download-artifact@v3
         with:
-          name: fn-${{ runner.os }}
+          name: ns-${{ runner.os }}
 
       # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
       - name: Make Foundation executable
