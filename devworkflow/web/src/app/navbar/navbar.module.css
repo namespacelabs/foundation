@@ -3,13 +3,16 @@
 	top: 0;
 	left: 0;
 	right: 0;
-	height: 72px;
+	height: 60px;
 	border-bottom: 1px solid rgb(210, 210, 210);
 
 	display: flex;
 	flex-direction: row;
 
-	background-color: white;
+	color: white;
+	background-color: #141627;
+
+	padding: 16px;
 }
 
 .navbarMain {
@@ -46,68 +49,6 @@
 
 .selector > div:first-child {
 	flex: 1;
-}
-
-.logo {
-	padding: 15px;
-	flex: 0 250px;
-
-	text-decoration: none;
-	color: black;
-
-	display: flex;
-	flex-direction: row;
-	gap: 5px;
-	align-items: center;
-	line-height: 28px;
-	vertical-align: middle;
-}
-
-.namespaceLabsImg {
-	width: 28px;
-	height: 28px;
-	border-radius: 4px;
-}
-
-.namespaceLabs {
-	font-size: 10px;
-	font-weight: 600;
-}
-
-.foundation {
-	font-size: 20px;
-	font-weight: 600;
-}
-
-.attribution {
-	white-space: nowrap;
-	display: flex;
-	gap: 5px;
-}
-
-.namespaceLabs {
-	color: #1c32ff;
-	display: flex;
-	gap: 5px;
-}
-
-.namespaceLabsText {
-	display: flex;
-	flex-direction: column;
-	line-height: 9px;
-	justify-content: center;
-}
-
-.searchBox {
-	background-color: rgb(240, 240, 240);
-	padding: 0 10px;
-	border-radius: 8px;
-
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-
-	flex: 0 1 550px;
 }
 
 .searchBox input {

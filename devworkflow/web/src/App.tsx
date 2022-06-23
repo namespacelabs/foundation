@@ -7,7 +7,7 @@ import Sidebar from "./app/sidebar/Sidebar";
 import { FooterItems } from "./app/sidebar/Footer";
 import TasksPanel from "./app/tasks/TasksPanel";
 import { ConnectToStack, StackObserver } from "./datamodel/StackObserver";
-import { Logo, Navbar } from "./app/navbar/Navbar";
+import classes from "./app.module.css";
 import BuildPanel from "./app/build/BuildPanel";
 import CommandPanel from "./app/command/CommandPanel";
 import { useLocation, useRoute } from "wouter";
@@ -18,6 +18,8 @@ import classNames from "classnames";
 import Panel from "./ui/panel/Panel";
 import ServerInfo from "./app/server/ServerInfo";
 import { ItemRow, ItemSpacer } from "./ui/sidebar/Sidebar";
+import { Logo } from "./app/logo/Logo";
+import { Navbar } from "./app/navbar/Navbar";
 
 export default function App() {
 	let [match, params] = useRoute("/terminal/:id");
@@ -53,7 +55,7 @@ function Contents() {
 
 	return (
 		<>
-			<Navbar />
+			<Navbar></Navbar>
 			<div
 				id="content"
 				className={classNames({
@@ -61,26 +63,23 @@ function Contents() {
 					hasFooter: true,
 				})}>
 				<Panel>
-					{currentServer ? (
-						<>
-							<div className="fiddle">
-								<Sidebar fixed={false} />
-								<Panel>
+					<div className="fiddle">
+						<Sidebar fixed={false} />
+						<Panel>
+							{currentServer ? (
+								<>
 									<ServerInfo {...currentServer} />
 									{isBigScreen ? <ServerTabs {...currentServer} /> : null}
-								</Panel>
-							</div>
-							{isBigScreen ? null : <ServerTabs {...currentServer} />}
-						</>
-					) : null}
+								</>
+							) : (
+								<div className={classes.emptyPanel}>Select a server to inspect.</div>
+							)}
+						</Panel>
+					</div>
+					{isBigScreen || !currentServer ? null : <ServerTabs {...currentServer} />}
 					<BuildPanel />
 					<CommandPanel />
 					<TasksPanel />
-					{!isBigScreen && location === "/" ? (
-						<div className="fiddle">
-							<Sidebar fixed={false} />
-						</div>
-					) : null}
 				</Panel>
 			</div>
 			<ItemRow>

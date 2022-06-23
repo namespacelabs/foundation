@@ -13,8 +13,8 @@ input {
 }
 
 #content {
-	height: calc(100vh - 72px);
-	margin-top: 72px;
+	height: calc(100vh - 60px);
+	margin-top: 60px;
 	margin-left: 250px;
 	display: flex;
 	flex-direction: column;
@@ -25,7 +25,7 @@ input {
 }
 
 #content.hasFooter {
-	height: calc(100vh - (72px + 40px));
+	height: calc(100vh - (60px + 40px));
 }
 
 .fiddle {
