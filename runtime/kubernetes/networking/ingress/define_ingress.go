@@ -176,8 +176,8 @@ func (m *MapAddressList) Merge(rhs *MapAddressList) error {
 	}
 
 	var errs []error
-	for _, ma := range m.index {
-		errs = append(errs, m.Add(ma, m.sources[ma.FQDN]...))
+	for _, ma := range rhs.index {
+		errs = append(errs, m.Add(ma, rhs.sources[ma.FQDN]...))
 	}
 	return multierr.New(errs...)
 }
