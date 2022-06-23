@@ -9,10 +9,11 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/eks"
+	"github.com/aws/aws-sdk-go-v2/service/eks/types"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
-	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
@@ -23,6 +24,21 @@ import (
 func Register() {
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster", prepareDescribeCluster)
 
+	client.RegisterProvider("aws/eks", func(ctx context.Context, ck *devhost.ConfigKey) (*clientcmdapi.Config, error) {
+		conf := &EKSCluster{}
+
+		if !ck.Selector.Select(ck.DevHost).Get(conf) {
+			return nil, fnerrors.BadInputError("eks provider configured, but missing EKSCluster")
+		}
+
+		s, err := NewSession(ctx, ck.DevHost, ck.Selector)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to create session: %w", err)
+		}
+
+		return KubeconfigWithBearerToken(ctx, s, conf.Name)
+	})
+
 	client.RegisterBearerTokenProvider("eks", func(ctx context.Context, ck *devhost.ConfigKey) (string, error) {
 		conf := &EKSCluster{}
 
@@ -30,13 +46,23 @@ func Register() {
 			return "", fnerrors.BadInputError("eks bearer token provider configured, but missing EKSCluster")
 		}
 
-		token, err := ComputeToken(ctx, ck.DevHost, ck.Selector, conf.Name)
+		s, err := NewSession(ctx, ck.DevHost, ck.Selector)
+		if err != nil {
+			return "", fnerrors.InternalError("failed to create session: %w", err)
+		}
+
+		token, err := ComputeToken(ctx, s, conf.Name)
 		return token.Token, err
 	})
 }
 
 func prepareDescribeCluster(ctx context.Context, env ops.Environment, se *schema.Stack_Entry) (*frontend.PrepareProps, error) {
-	eksCluster, err := PrepareClusterInfo(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	s, err := NewSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	if err != nil {
+		return nil, err
+	}
+
+	eksCluster, err := PrepareClusterInfo(ctx, s)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +90,8 @@ func prepareDescribeCluster(ctx context.Context, env ops.Environment, se *schema
 	return props, nil
 }
 
-func PrepareClusterInfo(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*EKSCluster, error) {
-	rt, err := kubernetes.New(ctx, devHost, selector)
+func PrepareClusterInfo(ctx context.Context, s *Session) (*EKSCluster, error) {
+	rt, err := kubernetes.New(ctx, s.devHost, s.selector)
 	if err != nil {
 		return nil, err
 	}
@@ -80,31 +106,26 @@ func PrepareClusterInfo(ctx context.Context, devHost *schema.DevHost, selector d
 	}
 
 	// XXX use a compute.Computable here to cache the cluster information if multiple servers depend on it.
-	description, err := DescribeCluster(ctx, devHost, selector, sysInfo.EksClusterName)
+	cluster, err := DescribeCluster(ctx, s, sysInfo.EksClusterName)
 	if err != nil {
 		return nil, err
 	}
 
 	eksCluster := &EKSCluster{
 		Name: sysInfo.EksClusterName,
-		Arn:  *description.Cluster.Arn,
+		Arn:  *cluster.Arn,
 	}
 
-	if description.Cluster.Identity != nil && description.Cluster.Identity.Oidc != nil {
-		eksCluster.OidcIssuer = *description.Cluster.Identity.Oidc.Issuer
+	if cluster.Identity != nil && cluster.Identity.Oidc != nil {
+		eksCluster.OidcIssuer = *cluster.Identity.Oidc.Issuer
 	}
 
 	return eksCluster, nil
 }
 
-func DescribeCluster(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector, name string) (out *eks.DescribeClusterOutput, _ error) {
-	return tasks.Return(ctx, tasks.Action("eks.describe-cluster").Category("aws"), func(ctx context.Context) (*eks.DescribeClusterOutput, error) {
-		sesh, _, err := awsprovider.ConfiguredSession(ctx, devHost, selector)
-		if err != nil {
-			return nil, err
-		}
-
-		out, err := eks.NewFromConfig(sesh).DescribeCluster(ctx, &eks.DescribeClusterInput{
+func DescribeCluster(ctx context.Context, s *Session, name string) (*types.Cluster, error) {
+	return tasks.Return(ctx, tasks.Action("eks.describe-cluster").Category("aws"), func(ctx context.Context) (*types.Cluster, error) {
+		out, err := s.eks.DescribeCluster(ctx, &eks.DescribeClusterInput{
 			Name: &name,
 		})
 		if err != nil {
@@ -115,6 +136,6 @@ func DescribeCluster(ctx context.Context, devHost *schema.DevHost, selector devh
 			return nil, fnerrors.InvocationError("api didn't return a cluster description as expected")
 		}
 
-		return out, nil
+		return out.Cluster, nil
 	})
 }

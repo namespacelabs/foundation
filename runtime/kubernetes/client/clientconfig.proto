@@ -14,4 +14,5 @@ message HostEnv {
     string context               = 2;  // If empty, uses default context.
     bool   incluster             = 3;
     string bearer_token_provider = 4;
+    string provider              = 5;  // If set, relies on the specified provider to produce a kube config.
 }

@@ -26,8 +26,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 var (
@@ -35,10 +37,15 @@ var (
 		mu    sync.Mutex
 		cache map[string]*k8s.Clientset
 	}
+	providers = map[string]func(context.Context, *devhost.ConfigKey) (*clientcmdapi.Config, error){}
 )
 
 func init() {
 	clientCache.cache = map[string]*k8s.Clientset{}
+}
+
+func RegisterProvider(name string, p func(context.Context, *devhost.ConfigKey) (*clientcmdapi.Config, error)) {
+	providers[name] = p
 }
 
 func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*rest.Config, error) {
@@ -66,6 +73,27 @@ func (cfg *configWithToken) computeConfig() (clientcmd.ClientConfig, error) {
 	}
 
 	c := cfg.host.HostEnv
+
+	if c.Provider != "" {
+		p := providers[c.Provider]
+		if p == nil {
+			return nil, fnerrors.BadInputError("%s: no such kubernetes configuration provider", c.Provider)
+		}
+
+		cached := &cachedProviderConfig{
+			providerName: c.Provider,
+			configKey:    &devhost.ConfigKey{DevHost: cfg.host.DevHost, Selector: cfg.host.Selector},
+			provider:     p,
+		}
+
+		x, err := compute.GetValue[*clientcmdapi.Config](cfg.ctx, cached)
+		if err != nil {
+			return nil, err
+		}
+
+		cfg.computed = clientcmd.NewDefaultClientConfig(*x, nil)
+		return cfg.computed, nil
+	}
 
 	if c.GetKubeconfig() == "" {
 		return nil, fnerrors.New("hostEnv.Kubeconfig is required")
@@ -262,4 +290,27 @@ func ComputeHostConfig(devHost *fnschema.DevHost, selector devhost.Selector) (*H
 	}
 
 	return &HostConfig{DevHost: devHost, Selector: selector, HostEnv: hostEnv}, nil
+}
+
+// Only compute configurations once per `fn` invocation.
+type cachedProviderConfig struct {
+	providerName string
+	configKey    *devhost.ConfigKey
+
+	provider func(context.Context, *devhost.ConfigKey) (*clientcmdapi.Config, error)
+
+	compute.DoScoped[*clientcmdapi.Config]
+}
+
+var _ compute.Computable[*clientcmdapi.Config] = &cachedProviderConfig{}
+
+func (t *cachedProviderConfig) Action() *tasks.ActionEvent {
+	return tasks.Action("kubernetes.compute-config").Arg("provider", t.providerName)
+}
+func (t *cachedProviderConfig) Inputs() *compute.In {
+	return compute.Inputs().Str("provider", t.providerName).Proto("devhost", t.configKey.DevHost)
+}
+func (t *cachedProviderConfig) Output() compute.Output { return compute.Output{NotCacheable: true} }
+func (t *cachedProviderConfig) Compute(ctx context.Context, _ compute.Resolved) (*clientcmdapi.Config, error) {
+	return t.provider(ctx, t.configKey)
 }

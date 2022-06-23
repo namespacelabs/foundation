@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -34,7 +35,12 @@ func NewEksCmd() *cobra.Command {
 		Short: "Sets up IRSA for the specified IAM role and Service Account.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env provision.Env, args []string) error {
-		eksCluster, err := eks.PrepareClusterInfo(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		s, err := eks.NewSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		if err != nil {
+			return err
+		}
+
+		eksCluster, err := eks.PrepareClusterInfo(ctx, s)
 		if err != nil {
 			return err
 		}
@@ -98,7 +104,12 @@ func NewEksCmd() *cobra.Command {
 		Short: "Generates a EKS session token.",
 		Args:  cobra.ExactArgs(1),
 	}, func(ctx context.Context, env provision.Env, args []string) error {
-		token, err := eks.ComputeToken(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()), args[0])
+		s, err := eks.NewSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		if err != nil {
+			return err
+		}
+
+		token, err := eks.ComputeToken(ctx, s, args[0])
 		if err != nil {
 			return err
 		}
@@ -107,8 +118,35 @@ func NewEksCmd() *cobra.Command {
 		return nil
 	})
 
+	generateConfig := fncobra.CmdWithEnv(&cobra.Command{
+		Use:   "kube-config",
+		Short: "Generates a EKS kubeconfig.",
+		Args:  cobra.ExactArgs(1),
+	}, func(ctx context.Context, env provision.Env, args []string) error {
+		s, err := eks.NewSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		if err != nil {
+			return err
+		}
+
+		cluster, err := eks.DescribeCluster(ctx, s, args[0])
+		if err != nil {
+			return err
+		}
+
+		cfg, err := eks.Kubeconfig(cluster, "")
+		if err != nil {
+			return err
+		}
+
+		w := json.NewEncoder(console.Stdout(ctx))
+		w.SetIndent("", "  ")
+		w.Encode(cfg)
+		return nil
+	})
+
 	cmd.AddCommand(computeIrsa)
 	cmd.AddCommand(generateToken)
+	cmd.AddCommand(generateConfig)
 
 	return cmd
 }

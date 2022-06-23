@@ -12,22 +12,14 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-	"namespacelabs.dev/foundation/providers/aws"
-	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
-func ComputeToken(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector, name string) (Token, error) {
-	sess, _, err := aws.ConfiguredSession(ctx, devHost, selector)
-	if err != nil {
-		return Token{}, err
-	}
-
+func ComputeToken(ctx context.Context, s *Session, clusterName string) (Token, error) {
 	g := generator{
-		client: sts.NewPresignClient(sts.NewFromConfig(sess)),
+		client: sts.NewPresignClient(sts.NewFromConfig(s.sesh)),
 	}
 
-	return g.GetWithSTS(ctx, name)
+	return g.GetWithSTS(ctx, clusterName)
 }
 
 // Adapted from https://github.com/weaveworks/eksctl/blob/e7de320db622068ce1c7fb5d9d19fe8b4ddb22cd/pkg/eks/generator.go#L53
