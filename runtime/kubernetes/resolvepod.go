@@ -48,9 +48,6 @@ func (r K8sRuntime) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w
 }
 
 func resolvePodByLabels(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, ns string, labels map[string]string) (corev1.Pod, error) {
-	ctx, done := context.WithTimeout(ctx, 10*time.Second) // Wait up to 10 seconds.
-	defer done()
-
 	var kvs []string
 	for k, v := range labels {
 		kvs = append(kvs, fmt.Sprintf("%s=%s", k, v))
