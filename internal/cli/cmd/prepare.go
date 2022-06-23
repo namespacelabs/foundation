@@ -36,11 +36,27 @@ func NewPrepareCmd() *cobra.Command {
 	var awsProfile string
 
 	cmd := &cobra.Command{
-		Use:   "prepare",
-		Short: "Prepare the workspace for development or production.",
-		Args:  cobra.NoArgs,
+		Use:   "prepare local",
+		Short: "Prepares the local workspace for development or production.",
+		Long: "Prepares the local workspace for development or production.\n\n" +
+			"This command will download, create, and run Buildkit and Kubernetes\n" +
+			"orchestration containers (conditional on development or production),\n" +
+			"in addition to downloading and caching required pre-built images.\n" +
+			"Developers will typically run this command only after initializing\n" +
+			"the workspace, and it's not a part of the normal refresh-edit\n" +
+			"workspace lifecycle.",
+		Args: func(cmd *cobra.Command, args []string) error {
+			expectedArg := "local"
+			expectedCmd := "ns prepare local"
+			if len(args) < 1 {
+				return fmt.Errorf("%q is a required argument, run %q to proceed", expectedArg, expectedCmd)
+			}
+			if args[0] != "local" {
+				return fmt.Errorf("%q is a required argument, run %q to proceed", expectedArg, expectedCmd)
+			}
+			return nil
+		},
 	}
-
 	cmd.Flags().BoolVar(&dontUpdateDevhost, "dont_update_devhost", dontUpdateDevhost, "If set to true, devhost.textpb will NOT be updated.")
 	cmd.Flags().BoolVarP(&force, "force", "f", force, "Skip checking if the configuration is changing.")
 	cmd.Flags().StringVar(&contextName, "context", "", "If set, configures Foundation to use the specific context.")
