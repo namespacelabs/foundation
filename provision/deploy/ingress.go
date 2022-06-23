@@ -59,7 +59,8 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 		return nil, err
 	}
 
-	allFragments = append(allFragments, compute.MustGetDepValue(deps, ci.fragments, "fragments")...)
+	computed := compute.MustGetDepValue(deps, ci.fragments, "fragments")
+	allFragments = append(allFragments, computed...)
 
 	// XXX parallelism
 	for _, fragment := range allFragments {

@@ -55,32 +55,32 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		return fnerrors.InternalError("ComputedNaming is required")
 	}
 
-	type endpoint struct {
+	type service struct {
 		ProtoService string
 		Server       *schema.Stack_Entry
 		Endpoint     *schema.Endpoint
 		Transcoding  *schema.GrpcHttpTranscoding
 	}
 
-	var endpoints []endpoint
-	for _, e := range req.Stack.Endpoint {
+	var endpoints []service
+	for _, endpoint := range req.Stack.Endpoint {
 		var protoService string
-		for _, md := range e.ServiceMetadata {
+		for _, md := range endpoint.ServiceMetadata {
 			if md.Protocol == schema.GrpcProtocol {
 				protoService = md.Kind
 				break
 			}
 		}
 
-		if e.GetServerOwnerPackage() != req.Focus.GetPackageName() {
+		if endpoint.GetServerOwnerPackage() != req.Focus.GetPackageName() {
 			continue
 		}
 
-		if protoService == "" || e.Port == nil {
+		if protoService == "" || endpoint.Port == nil {
 			continue
 		}
 
-		for _, md := range e.ServiceMetadata {
+		for _, md := range endpoint.ServiceMetadata {
 			t := &schema.GrpcHttpTranscoding{}
 			if !md.Details.MessageIs(t) {
 				continue
@@ -90,12 +90,14 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				return fnerrors.New("failed to unmarshal GrpcHttpTranscoding: %w", err)
 			}
 
-			endpoints = append(endpoints, endpoint{
+			endpoints = append(endpoints, service{
 				ProtoService: protoService,
 				Server:       req.Focus,
-				Endpoint:     e,
+				Endpoint:     endpoint,
 				Transcoding:  t,
 			})
+
+			break
 		}
 	}
 

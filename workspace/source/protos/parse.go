@@ -26,7 +26,7 @@ import (
 func Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDeps, error) {
 	p := protoparse.Parser{
 		ImportPaths:           []string{"."},
-		IncludeSourceCodeInfo: true,
+		IncludeSourceCodeInfo: false,
 		Accessor: func(filename string) (io.ReadCloser, error) {
 			return fsys.Open(filename)
 		},
