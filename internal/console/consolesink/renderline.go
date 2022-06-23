@@ -98,7 +98,7 @@ func (s Style) renderLine(w io.Writer, li lineItem) {
 
 		for k, pkg := range scope {
 			if k > 0 {
-				fmt.Fprint(w, " ")
+				fmt.Fprint(&ws, " ")
 			}
 			fmt.Fprint(&ws, pkg)
 		}
