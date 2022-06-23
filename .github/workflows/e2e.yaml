@@ -109,7 +109,7 @@ jobs:
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
-        run: /tmp/ns prepare
+        run: /tmp/ns prepare local
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
@@ -177,7 +177,7 @@ jobs:
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
-        run: cd ${{ matrix.root_path }} && /tmp/ns prepare
+        run: cd ${{ matrix.root_path }} && /tmp/ns prepare local
 
       - name: Run ns generate on a clean slate
         if: ${{ matrix.regenerate_fn_generate }}

@@ -93,7 +93,7 @@ func AllocateName(ctx context.Context, env ops.Environment, pkg schema.PackageNa
 	if err != nil {
 		if errors.Is(err, ErrNoRegistry) {
 			return nil, fnerrors.UsageError(
-				fmt.Sprintf("Run `ns prepare --env=%s` to set it up.", env.Proto().GetName()),
+				fmt.Sprintf("Run `ns prepare local --env=%s` to set it up.", env.Proto().GetName()),
 				"No registry configured in the environment %q.", env.Proto().GetName())
 		}
 		return nil, err
