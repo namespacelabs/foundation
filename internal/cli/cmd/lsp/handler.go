@@ -35,18 +35,26 @@ type server struct {
 	client    protocol.Client
 	openFiles *OpenFiles
 	log       io.Writer
+	verbose   bool
 }
 
 func newServer(ctx context.Context, conn jsonrpc2.Conn, client protocol.Client) *server {
-	return &server{conn, client, NewOpenFiles(), console.Stderr(ctx)}
+	return &server{conn, client, NewOpenFiles(), console.Stderr(ctx), true}
 }
 
-const generateCommandID = "fn_generate"
+const generateCommandID = "ns_generate"
+
+func (s *server) logf(format string, a ...any) {
+	if !s.verbose {
+		return
+	}
+	fmt.Fprintf(s.log, format, a...)
+}
 
 // Lifecycle
 
 func (s *server) Initialize(ctx context.Context, params *protocol.InitializeParams) (result *protocol.InitializeResult, err error) {
-	fmt.Fprintln(s.log, "Initialize", params)
+	fmt.Fprintln(s.log, "Initialize")
 	return &protocol.InitializeResult{
 		Capabilities: protocol.ServerCapabilities{
 			DocumentFormattingProvider: true,
@@ -67,15 +75,21 @@ func (s *server) Initialize(ctx context.Context, params *protocol.InitializePara
 	}, nil
 }
 func (s *server) Initialized(ctx context.Context, params *protocol.InitializedParams) (err error) {
-	fmt.Fprintln(s.log, "Initialized", params)
+	s.logf("Initialized\n")
+	config, err := s.loadConfig(ctx)
+	if err != nil {
+		s.logf("Failed to load config\n")
+		return err
+	}
+	s.verbose = config.traceServer != "" && config.traceServer != "off"
 	return nil
 }
 func (s *server) Shutdown(ctx context.Context) (err error) {
-	fmt.Fprintln(s.log, "Shutdown")
+	s.logf("Shutdown\n")
 	return nil
 }
 func (s *server) Exit(ctx context.Context) (err error) {
-	fmt.Fprintln(s.log, "Exit")
+	s.logf("Exit\n")
 	s.conn.Close()
 	return nil
 }
@@ -109,7 +123,7 @@ func (s *server) DidChange(ctx context.Context, params *protocol.DidChangeTextDo
 }
 
 func (s *server) DidSave(ctx context.Context, params *protocol.DidSaveTextDocumentParams) (err error) {
-	fmt.Fprintln(s.log, "DidSave")
+	s.logf("DidSave\n")
 
 	config, err := s.loadConfig(ctx)
 	if err != nil {
@@ -125,7 +139,7 @@ func (s *server) DidSave(ctx context.Context, params *protocol.DidSaveTextDocume
 		err = s.runGenerate(ctx, filepath.Dir(path))
 		if err != nil {
 			_ = s.client.ShowMessage(ctx, &protocol.ShowMessageParams{
-				Message: fmt.Sprintf("Failed to run `ns generate` (%v). See ns output for details.", err),
+				Message: fmt.Sprintf("Failed to run `ns generate` (%v). See Namespace output for details.", err),
 				Type:    protocol.MessageTypeError,
 			})
 		}
@@ -181,7 +195,7 @@ func (s *server) ExecuteCommand(ctx context.Context, params *protocol.ExecuteCom
 	if params.Command == generateCommandID {
 		path, ok := params.Arguments[0].(string)
 		if !ok {
-			return nil, jsonrpc2.NewError(jsonrpc2.InvalidRequest, "fn_generate argument must be string path")
+			return nil, jsonrpc2.NewError(jsonrpc2.InvalidRequest, "ns_generate argument must be string path")
 		}
 		return nil, s.runGenerate(ctx, path)
 	}
@@ -191,6 +205,12 @@ func (s *server) ExecuteCommand(ctx context.Context, params *protocol.ExecuteCom
 // Returns error only in case of an unexpected error.
 // ns generate returning non-zero status is considered a success (it shows a warning internally.)
 func (s *server) runGenerate(ctx context.Context, path string) error {
+	_ = s.client.LogMessage(ctx, &protocol.LogMessageParams{Message: ""})
+	_ = s.client.LogMessage(ctx, &protocol.LogMessageParams{
+		Type:    protocol.MessageTypeInfo,
+		Message: "Running `ns generate`...",
+	})
+
 	fnPath, err := os.Executable()
 	if err != nil {
 		return jsonrpc2.NewError(jsonrpc2.InternalError, fmt.Sprintf("failed to determine the path to the ns tool: %v", err))
@@ -210,20 +230,29 @@ func (s *server) runGenerate(ctx context.Context, path string) error {
 	}
 
 	_ = s.client.LogMessage(ctx, &protocol.LogMessageParams{Message: string(output)})
-	_ = s.client.LogMessage(ctx, &protocol.LogMessageParams{
-		Message: fmt.Sprintf("`ns generate` finished with error code %d", statusCode),
-	})
+
+	severity := protocol.MessageTypeInfo
 	if statusCode > 0 {
-		_ = s.client.ShowMessage(ctx, &protocol.ShowMessageParams{
-			Message: fmt.Sprintf("Failed to run `ns generate` (status code: %d). See ns output for details.", statusCode),
-			Type:    protocol.MessageTypeError,
-		})
+		// When we print an error the OutputChannel will be revealed.
+		severity = protocol.MessageTypeError
 	}
+	_ = s.client.LogMessage(ctx, &protocol.LogMessageParams{
+		Type:    severity,
+		Message: fmt.Sprintf("`ns generate` finished with error code %d.\n", statusCode),
+	})
+
+	// This message is shown automatically by the languageclient with the revealOutputChannelOn=error.
+	// if statusCode > 0 {
+	// 	_ = s.client.ShowMessage(ctx, &protocol.ShowMessageParams{
+	// 		Message: fmt.Sprintf("Failed to run `ns generate` (status code: %d). See ns output for details.", statusCode),
+	// 		Type:    protocol.MessageTypeError,
+	// 	})
+	// }
 	return err
 }
 
 func (s *server) CodeAction(ctx context.Context, params *protocol.CodeActionParams) (result []protocol.CodeAction, err error) {
-	fmt.Fprintln(s.log, "CodeAction", params.TextDocument.URI)
+	s.logf("CodeAction %v\n", params.TextDocument.URI)
 	// This surfaces the generate command in the context menus.
 	path, err := uriFilePath(params.TextDocument.URI)
 	if err != nil {
@@ -236,7 +265,7 @@ func (s *server) CodeAction(ctx context.Context, params *protocol.CodeActionPara
 			Kind:     "source.fixAll",
 			Disabled: nil, // Why
 			Command: &protocol.Command{
-				Command:   "fn_generate",
+				Command:   generateCommandID,
 				Arguments: []interface{}{path},
 			},
 		},
@@ -271,8 +300,7 @@ func (s *server) updateDiagnostics(ctx context.Context, document protocol.Versio
 		for _, pos := range err.InputPositions() {
 			fmt.Fprintf(&buf, "(%s %d %d) ", pos.Filename(), pos.Line(), pos.Column())
 		}
-		fmt.Fprintf(s.log, "updateDiagnostics root=%v err=%v ipos=%s\n",
-			path.Dir(absPath), err, buf.String())
+		s.logf("updateDiagnostics root=%v err=%v ipos=%s\n", path.Dir(absPath), err, buf.String())
 		var startPosition protocol.Position
 		if err.Position().Line() > 0 && err.Position().Column() > 0 {
 			// If line and column == 0 the error is about the file as a whole.
@@ -325,7 +353,7 @@ func (s *server) Definition(ctx context.Context, params *protocol.DefinitionPara
 	if err != nil {
 		return nil, err
 	}
-	fmt.Fprintf(s.log, "Definition %s:%d:%d\n", absPath, params.Position.Line, params.Position.Character)
+	s.logf("Definition %s:%d:%d\n", absPath, params.Position.Line, params.Position.Character)
 
 	ws, wsPath, err := s.WorkspaceForFile(ctx, absPath)
 	if err != nil {
@@ -344,7 +372,7 @@ func (s *server) Definition(ctx context.Context, params *protocol.DefinitionPara
 		return nil, err
 	}
 	matchingImport := cueImportAtPosition(parsed, parsePos)
-	fmt.Fprintf(s.log, "matching import %v\n", matchingImport)
+	s.logf("matching import %v\n", matchingImport)
 	if matchingImport != nil {
 		return s.packageLocations(ctx, ws, matchingImport)
 	}
@@ -356,8 +384,7 @@ func (s *server) Definition(ctx context.Context, params *protocol.DefinitionPara
 		return nil, err
 	}
 
-	fmt.Fprintf(s.log, "updateDiagnostics pkg=%v err=%v val=%s\n",
-		fqName, err, describeValue(val, ""))
+	s.logf("updateDiagnostics pkg=%v err=%v val=%s\n", fqName, err, describeValue(val, ""))
 
 	cuePos := lspPosToCue(fqName, params.Position)
 	bestMatch := cueValueAtPosition(val, cuePos)
@@ -406,7 +433,7 @@ func (s *server) Hover(ctx context.Context, params *protocol.HoverParams) (resul
 
 	cuePos := lspPosToCue(importPath, params.Position)
 	bestMatch := cueValueAtPosition(val, cuePos)
-	fmt.Fprintln(s.log, "Hover", bestMatch)
+	s.logf("Hover %v\n", bestMatch)
 
 	if bestMatch == nil {
 		return nil, nil
@@ -515,7 +542,7 @@ func (s *server) packageLocations(ctx context.Context, ws *FnWorkspace, importSp
 	if err != nil {
 		return nil, err
 	}
-	fmt.Fprintln(s.log, "parsed", importInfo)
+	s.logf("parsed %v\n", importInfo)
 	if fncue.IsStandardImportPath(importInfo.Dir) {
 		// Built-in package import
 		return nil, nil
@@ -610,22 +637,26 @@ func describeValue(v cue.Value, d string) string {
 
 type serverConfig struct {
 	generateOnSave bool
+	traceServer    string
 }
 
 func (s *server) loadConfig(ctx context.Context) (serverConfig, error) {
 	configResponse, err := s.client.Configuration(ctx, &protocol.ConfigurationParams{
-		Items: []protocol.ConfigurationItem{{Section: "fn"}},
+		Items: []protocol.ConfigurationItem{{Section: "ns"}},
 	})
 	if err != nil {
 		return serverConfig{}, fmt.Errorf(
-			"couldn't access configuration for the fn-vscode extension from the language server: %w", err)
+			"couldn't access configuration for the namespace-vscode extension from the language server: %w", err)
 	}
 	if len(configResponse) != 1 {
 		return serverConfig{}, fmt.Errorf("unexpected Configuration response: %v", configResponse)
 	}
 	config := configResponse[0].(map[string]interface{})
+	generateOnSave, _ := config["generateOnSave"].(bool)
+	traceServer, _ := config["trace.server"].(string)
 	return serverConfig{
-		generateOnSave: config["generateOnSave"].(bool),
+		generateOnSave: generateOnSave,
+		traceServer:    traceServer,
 	}, nil
 }
 

@@ -38,6 +38,8 @@ func NewLSPCmd() *cobra.Command {
 			return nil
 		}),
 	}
+	// Passed by languageclient-vscode.
+	cmd.Flags().Bool("stdio", true, "Use stdio for JSON-RPC communication (the only option as of now).")
 
 	return cmd
 }
