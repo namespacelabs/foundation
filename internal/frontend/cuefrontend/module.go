@@ -24,19 +24,19 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const workspaceFile = "fn-workspace.cue"
+const WorkspaceFile = "fn-workspace.cue"
 
 var ModuleLoader moduleLoader
 
 type moduleLoader struct{}
 
 func (moduleLoader) FindModuleRoot(dir string) (string, error) {
-	return workspace.RawFindModuleRoot(dir, workspaceFile)
+	return workspace.RawFindModuleRoot(dir, WorkspaceFile)
 }
 
 func (moduleLoader) ModuleAt(ctx context.Context, dir string) (workspace.WorkspaceData, error) {
 	return tasks.Return(ctx, tasks.Action("workspace.load-fn-workspace").Arg("dir", dir), func(ctx context.Context) (workspace.WorkspaceData, error) {
-		data, err := ioutil.ReadFile(filepath.Join(dir, workspaceFile))
+		data, err := ioutil.ReadFile(filepath.Join(dir, WorkspaceFile))
 		if err != nil {
 			if os.IsNotExist(err) {
 				wd, werr := workspace.RawModuleAt(ctx, dir)
@@ -52,9 +52,9 @@ func (moduleLoader) ModuleAt(ctx context.Context, dir string) (workspace.Workspa
 		}
 
 		var memfs memfs.FS
-		memfs.Add(workspaceFile, data)
+		memfs.Add(WorkspaceFile, data)
 
-		p, err := fncue.EvalWorkspace(ctx, &memfs, dir, []string{workspaceFile})
+		p, err := fncue.EvalWorkspace(ctx, &memfs, dir, []string{WorkspaceFile})
 		if err != nil {
 			return nil, err
 		}
@@ -66,7 +66,7 @@ func (moduleLoader) ModuleAt(ctx context.Context, dir string) (workspace.Workspa
 
 		return workspaceData{
 			absPath:        dir,
-			definitionFile: workspaceFile,
+			definitionFile: WorkspaceFile,
 			data:           data,
 			parsed:         w,
 			source:         p.Val,

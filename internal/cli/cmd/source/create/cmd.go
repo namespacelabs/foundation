@@ -11,13 +11,15 @@ import (
 func NewCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "create",
-		Short:   "Creates a new extension, service or server.",
+		Short:   "Creates a new extension, service, server or workspace (also from a starter template).",
 		Aliases: []string{"c"},
 	}
 
 	cmd.AddCommand(newExtensionCmd())
 	cmd.AddCommand(newServerCmd())
 	cmd.AddCommand(newServiceCmd())
+	cmd.AddCommand(newWorkspaceCmd())
+	cmd.AddCommand(newStarterCmd())
 
 	return cmd
 }
