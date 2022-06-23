@@ -8,10 +8,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kr/text"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -32,7 +30,6 @@ var deprecatedConfigs = []string{
 }
 
 func NewPrepareCmd() *cobra.Command {
-	var dontUpdateDevhost, force bool
 	var contextName string
 	var awsProfile string
 	var envRef string
@@ -54,9 +51,17 @@ func NewPrepareCmd() *cobra.Command {
 				return err
 			}
 			if env.Purpose() == schema.Environment_DEVELOPMENT {
-				return fnerrors.UsageError("Use `--env=prod`.", "eks is not supported in development mode.")
+				return fnerrors.UsageError("Use `--env=prod`.", "eks is not supported yet in development mode.")
 			}
-			wp := workspacePrepare{env, contextName, awsProfile, force, dontUpdateDevhost}
+			if contextName != "" {
+				return fnerrors.UsageError("Remove `--context=<name>`.", "--context was provided but is not used in the eks integration.")
+			}
+			wp := workspacePrepare{
+				env:                 env,
+				awsProfile:          awsProfile,
+				contextName:         "",
+				contextNameRequired: false,
+			}
 			prepares, err := wp.makePrepareComputables(ctx)
 			if err != nil {
 				return err
@@ -98,7 +103,12 @@ func NewPrepareCmd() *cobra.Command {
 				return err
 			}
 
-			wp := workspacePrepare{env, contextName, awsProfile, force, dontUpdateDevhost}
+			wp := workspacePrepare{
+				env:                 env,
+				awsProfile:          awsProfile,
+				contextName:         contextName,
+				contextNameRequired: true,
+			}
 			prepares, err := wp.makePrepareComputables(ctx)
 			if err != nil {
 				return err
@@ -108,8 +118,6 @@ func NewPrepareCmd() *cobra.Command {
 	}
 	rootCmd.AddCommand(eksCmd)
 	rootCmd.PersistentFlags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")
-	rootCmd.PersistentFlags().BoolVar(&dontUpdateDevhost, "dont_update_devhost", dontUpdateDevhost, "If set to true, devhost.textpb will NOT be updated.")
-	rootCmd.PersistentFlags().BoolVarP(&force, "force", "f", force, "Skip checking if the configuration is changing.")
 	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "If set, configures Namespace to use the specific context.")
 	rootCmd.PersistentFlags().StringVar(&awsProfile, "aws_profile", awsProfile, "Configures the specified AWS configuration profile.")
 
@@ -117,11 +125,10 @@ func NewPrepareCmd() *cobra.Command {
 }
 
 type workspacePrepare struct {
-	env               provision.Env
-	contextName       string
-	awsProfile        string
-	force             bool
-	dontUpdateDevhost bool
+	env                 provision.Env
+	awsProfile          string
+	contextName         string
+	contextNameRequired bool
 }
 
 func (p *workspacePrepare) PrepareWorkspace(ctx context.Context) error {
@@ -184,7 +191,7 @@ func (p *workspacePrepare) makePrepareComputables(ctx context.Context) ([]comput
 			return nil, fnerrors.UsageError("Please also specify `--aws_profile`.",
 				"Preparing a production environment requires using AWS at the moment.")
 		}
-		if p.contextName == "" {
+		if p.contextNameRequired && p.contextName == "" {
 			return nil, fnerrors.UsageError("Please also specify `--context`.",
 				"Kubernetes context is required for preparing a production environment.")
 		}
@@ -232,23 +239,11 @@ func (p *workspacePrepare) collectPreparesAndUpdateDevhost(ctx context.Context, 
 		return err
 	}
 
-	if !p.force && updateCount == 0 {
+	if updateCount == 0 {
 		fmt.Fprintln(stdout, "Configuration is up to date, nothing to do.")
 		return nil
 	}
-
-	if !p.dontUpdateDevhost {
-		return devhost.RewriteWith(ctx, p.env.Root(), p.env.DevHost())
-	}
-
-	fmt.Fprintln(stdout, "Add the following to your devhost.textpb, in the root of your workspace:")
-	fmt.Fprintln(stdout)
-	fmt.Fprintln(
-		text.NewIndentWriter(stdout, []byte("    ")),
-		prototext.Format(p.env.DevHost()))
-	fmt.Fprintln(stdout, "Or re-run with `ns prepare -w` for the file to be updated automatically.")
-
-	return nil
+	return devhost.RewriteWith(ctx, p.env.Root(), p.env.DevHost())
 }
 
 func devHostUpdates(ctx context.Context, root *workspace.Root, confs [][]*schema.DevHost_ConfigureEnvironment) (int, error) {
