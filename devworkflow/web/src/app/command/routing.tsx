@@ -5,5 +5,5 @@
 import { useRoute } from "wouter";
 
 export function useCommandRoute() {
-  return useRoute("/command");
+	return useRoute("/command");
 }

@@ -5,7 +5,5 @@
 import ServerTerminal from "../server/ServerTerminal";
 
 export default function FullscreenTerminal(props: { id: string }) {
-  return (
-    <ServerTerminal serverId={props.id} what="terminal" wireStdin={true} />
-  );
+	return <ServerTerminal serverId={props.id} what="terminal" wireStdin={true} />;
 }

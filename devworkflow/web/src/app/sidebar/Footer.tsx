@@ -2,48 +2,48 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import { makeIcon, historyData, cmdData, monitorData } from "../../icons";
+import { cmdData, historyData, makeIcon, monitorData } from "../../icons";
 import { Item } from "../../ui/sidebar/Sidebar";
-import { useTasksRoute } from "../tasks/routing";
-import { useCommandRoute } from "../command/routing";
 import { useBuildRoute } from "../build/routing";
+import { useCommandRoute } from "../command/routing";
+import { useTasksRoute } from "../tasks/routing";
 
 export function FooterItems() {
-  return (
-    <>
-      <Build />
-      <Command />
-      <Tasks />
-    </>
-  );
+	return (
+		<>
+			<Build />
+			<Command />
+			<Tasks />
+		</>
+	);
 }
 
 function Build() {
-  const [matches, _] = useBuildRoute();
+	const [matches, _] = useBuildRoute();
 
-  return (
-    <Item href="/build" icon={makeIcon(monitorData)} active={matches}>
-      Build
-    </Item>
-  );
+	return (
+		<Item href="/build" icon={makeIcon(monitorData)} active={matches}>
+			Build
+		</Item>
+	);
 }
 
 function Command() {
-  const [matches, _] = useCommandRoute();
+	const [matches, _] = useCommandRoute();
 
-  return (
-    <Item href="/command" icon={makeIcon(cmdData)} active={matches}>
-      Console
-    </Item>
-  );
+	return (
+		<Item href="/command" icon={makeIcon(cmdData)} active={matches}>
+			Console
+		</Item>
+	);
 }
 
 function Tasks() {
-  const [matches, _] = useTasksRoute();
+	const [matches, _] = useTasksRoute();
 
-  return (
-    <Item href="/tasks" icon={makeIcon(historyData)} active={matches}>
-      Tasks
-    </Item>
-  );
+	return (
+		<Item href="/tasks" icon={makeIcon(historyData)} active={matches}>
+			Tasks
+		</Item>
+	);
 }

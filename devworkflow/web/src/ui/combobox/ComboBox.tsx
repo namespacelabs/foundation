@@ -8,23 +8,22 @@ import { chevronDownData, makeIcon } from "../../icons";
 import classes from "./combobox.module.css";
 
 export default function ComboBox(props: {
-  pinned?: boolean;
-  compact?: boolean;
-  children: React.ReactNode;
+	pinned?: boolean;
+	compact?: boolean;
+	children: React.ReactNode;
 }) {
-  return (
-    <div
-      className={classNames(classes.combobox, {
-        [classes.pinned]: props.pinned,
-        [classes.compact]: props.compact,
-      })}
-    >
-      <div>{props.children}</div>
-      <Carret />
-    </div>
-  );
+	return (
+		<div
+			className={classNames(classes.combobox, {
+				[classes.pinned]: props.pinned,
+				[classes.compact]: props.compact,
+			})}>
+			<div>{props.children}</div>
+			<Carret />
+		</div>
+	);
 }
 
 export function Carret() {
-  return <div className={classes.carret}>{makeIcon(chevronDownData)}</div>;
+	return <div className={classes.carret}>{makeIcon(chevronDownData)}</div>;
 }

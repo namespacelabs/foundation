@@ -5,5 +5,5 @@
 import { useRoute } from "wouter";
 
 export function useBuildRoute() {
-  return useRoute("/build/:what?");
+	return useRoute("/build/:what?");
 }

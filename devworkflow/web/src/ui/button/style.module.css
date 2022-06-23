@@ -1,24 +1,24 @@
 .btn {
-  outline: none;
-  border: 1px solid transparent;
-  border-bottom: 1px solid rgb(210, 210, 210);
-  border-right: 1px solid rgb(210, 210, 210);
-  background-color: rgb(240, 240, 240);
-  border-radius: 8px;
-  padding: 5px 10px;
-  font-size: inherit;
-  font-weight: 500;
-  cursor: pointer;
+	outline: none;
+	border: 1px solid transparent;
+	border-bottom: 1px solid rgb(210, 210, 210);
+	border-right: 1px solid rgb(210, 210, 210);
+	background-color: rgb(240, 240, 240);
+	border-radius: 8px;
+	padding: 5px 10px;
+	font-size: inherit;
+	font-weight: 500;
+	cursor: pointer;
 }
 
 .btn:active {
-  border-bottom: 1px solid transparent;
-  border-right: 1px solid transparent;
-  border-left: 1px solid rgb(210, 210, 210);
-  border-top: 1px solid rgb(210, 210, 210);
+	border-bottom: 1px solid transparent;
+	border-right: 1px solid transparent;
+	border-left: 1px solid rgb(210, 210, 210);
+	border-top: 1px solid rgb(210, 210, 210);
 }
 
 .btn.compact {
-  padding: 2px 6px;
-  font-size: 80%;
+	padding: 2px 6px;
+	font-size: 80%;
 }

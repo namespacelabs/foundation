@@ -7,37 +7,31 @@ import StreamSocket from "../server/StreamSocket";
 import { useCommandRoute } from "./routing";
 
 export default function CommandPanel() {
-  const [match, _] = useCommandRoute();
+	const [match, _] = useCommandRoute();
 
-  if (!match) {
-    return null;
-  }
+	if (!match) {
+		return null;
+	}
 
-  let tabs = [{ what: "command", label: "Output" }];
+	let tabs = [{ what: "command", label: "Output" }];
 
-  type TabProps = { what: string };
+	type TabProps = { what: string };
 
-  let constructors: { [key: string]: (tabProps: TabProps) => JSX.Element } = {
-    command: (tabProps: TabProps) => (
-      <StreamSocket key="command/output" {...tabProps} />
-    ),
-  };
+	let constructors: { [key: string]: (tabProps: TabProps) => JSX.Element } = {
+		command: (tabProps: TabProps) => <StreamSocket key="command/output" {...tabProps} />,
+	};
 
-  let current = tabs[0].what;
+	let current = tabs[0].what;
 
-  return (
-    <>
-      <TerminalTabs
-        tabs={tabs}
-        makeHref={(what: string) => "/command"}
-        current={current}
-      />
+	return (
+		<>
+			<TerminalTabs tabs={tabs} makeHref={(what: string) => "/command"} current={current} />
 
-      {tabs.map((tab) => {
-        if (tab.what != current) return null;
+			{tabs.map((tab) => {
+				if (tab.what != current) return null;
 
-        return constructors[tab.what]({ what: tab.what });
-      })}
-    </>
-  );
+				return constructors[tab.what]({ what: tab.what });
+			})}
+		</>
+	);
 }

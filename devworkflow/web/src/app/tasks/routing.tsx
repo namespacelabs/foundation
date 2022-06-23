@@ -5,5 +5,5 @@
 import { useRoute } from "wouter";
 
 export function useTasksRoute() {
-  return useRoute("/tasks/:id?/:what?");
+	return useRoute("/tasks/:id?/:what?");
 }

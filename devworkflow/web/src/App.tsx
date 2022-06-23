@@ -20,75 +20,74 @@ import ServerInfo from "./app/server/ServerInfo";
 import { ItemRow, ItemSpacer } from "./ui/sidebar/Sidebar";
 
 export default function App() {
-  let [match, params] = useRoute("/terminal/:id");
+	let [match, params] = useRoute("/terminal/:id");
 
-  useEffect(() => {
-    document.body.classList.remove("terminal");
-    if (match) {
-      document.body.classList.add("terminal");
-    }
-  });
-  if (match) {
-    if (!params?.id) {
-      return <div>bad request</div>;
-    }
+	useEffect(() => {
+		document.body.classList.remove("terminal");
+		if (match) {
+			document.body.classList.add("terminal");
+		}
+	});
+	if (match) {
+		if (!params?.id) {
+			return <div>bad request</div>;
+		}
 
-    return <FullscreenTerminal id={params.id} />;
-  }
+		return <FullscreenTerminal id={params.id} />;
+	}
 
-  return (
-    <ConnectToStack>
-      <StackObserver>
-        <Contents />
-      </StackObserver>
-    </ConnectToStack>
-  );
+	return (
+		<ConnectToStack>
+			<StackObserver>
+				<Contents />
+			</StackObserver>
+		</ConnectToStack>
+	);
 }
 
 function Contents() {
-  let [location, _] = useLocation();
-  let currentServer = useCurrentServer();
+	let [location, _] = useLocation();
+	let currentServer = useCurrentServer();
 
-  let isBigScreen = useMediaQuery("screen and (min-width: 1100px)");
+	let isBigScreen = useMediaQuery("screen and (min-width: 1100px)");
 
-  return (
-    <>
-      <Navbar />
-      <div
-        id="content"
-        className={classNames({
-          inlineSidebar: true,
-          hasFooter: true,
-        })}
-      >
-        <Panel>
-          {currentServer ? (
-            <>
-              <div className="fiddle">
-                <Sidebar fixed={false} />
-                <Panel>
-                  <ServerInfo {...currentServer} />
-                  {isBigScreen ? <ServerTabs {...currentServer} /> : null}
-                </Panel>
-              </div>
-              {isBigScreen ? null : <ServerTabs {...currentServer} />}
-            </>
-          ) : null}
-          <BuildPanel />
-          <CommandPanel />
-          <TasksPanel />
-          {!isBigScreen && location === "/" ? (
-            <div className="fiddle">
-              <Sidebar fixed={false} />
-            </div>
-          ) : null}
-        </Panel>
-      </div>
-      <ItemRow>
-        <FooterItems />
-        <ItemSpacer />
-        <Logo />
-      </ItemRow>{" "}
-    </>
-  );
+	return (
+		<>
+			<Navbar />
+			<div
+				id="content"
+				className={classNames({
+					inlineSidebar: true,
+					hasFooter: true,
+				})}>
+				<Panel>
+					{currentServer ? (
+						<>
+							<div className="fiddle">
+								<Sidebar fixed={false} />
+								<Panel>
+									<ServerInfo {...currentServer} />
+									{isBigScreen ? <ServerTabs {...currentServer} /> : null}
+								</Panel>
+							</div>
+							{isBigScreen ? null : <ServerTabs {...currentServer} />}
+						</>
+					) : null}
+					<BuildPanel />
+					<CommandPanel />
+					<TasksPanel />
+					{!isBigScreen && location === "/" ? (
+						<div className="fiddle">
+							<Sidebar fixed={false} />
+						</div>
+					) : null}
+				</Panel>
+			</div>
+			<ItemRow>
+				<FooterItems />
+				<ItemSpacer />
+				<Logo />
+			</ItemRow>{" "}
+		</>
+	);
 }

@@ -1,71 +1,71 @@
 .buildkitLog {
-  background-color: black;
-  color: white;
-  font-size: 14px;
+	background-color: black;
+	color: white;
+	font-size: 14px;
 
-  padding: 0 10px;
+	padding: 0 10px;
 
-  flex: 1;
+	flex: 1;
 }
 
 .invocation + .invocation {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgb(40, 40, 40);
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px solid rgb(40, 40, 40);
 }
 
 .time,
 .duration {
-  white-space: nowrap;
-  color: rgb(200, 200, 200);
-  flex: 0 0;
+	white-space: nowrap;
+	color: rgb(200, 200, 200);
+	flex: 0 0;
 }
 
 .buildkitLog div > div:nth-child(3) {
-  flex: 1;
-  overflow-wrap: anywhere;
+	flex: 1;
+	overflow-wrap: anywhere;
 }
 
 .line {
-  display: flex;
-  flex-direction: row;
+	display: flex;
+	flex-direction: row;
 }
 
 .line > div {
-  line-height: 22px;
+	line-height: 22px;
 }
 
 .cached {
-  width: 8px;
-  height: 8px;
-  padding: 7px 0;
+	width: 8px;
+	height: 8px;
+	padding: 7px 0;
 }
 
 .cached > div {
-  background-color: rgb(200, 200, 200);
-  border-radius: 8px;
-  width: 8px;
-  height: 8px;
+	background-color: rgb(200, 200, 200);
+	border-radius: 8px;
+	width: 8px;
+	height: 8px;
 }
 
 .line.was {
-  color: rgb(160, 160, 160);
+	color: rgb(160, 160, 160);
 }
 
 .time {
-  font-variant-numeric: tabular-nums;
-  font-size: 80%;
+	font-variant-numeric: tabular-nums;
+	font-size: 80%;
 }
 
 .line.was .time,
 .line.was .duration {
-  color: rgb(140, 140, 140);
+	color: rgb(140, 140, 140);
 }
 
 .was .cached > div {
-  background-color: rgb(80, 80, 80);
+	background-color: rgb(80, 80, 80);
 }
 
 .line > div + div {
-  margin-left: 10px;
+	margin-left: 10px;
 }

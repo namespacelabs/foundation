@@ -6,15 +6,8 @@ import { useData } from "../../datamodel/StackObserver";
 import { Sidebar } from "../../ui/sidebar/Sidebar";
 import ServerBlock from "./ServerBlock";
 
-export default function AppSidebar(props: {
-  fixed?: boolean;
-  footer?: JSX.Element;
-}) {
-  const data = useData();
+export default function AppSidebar(props: { fixed?: boolean; footer?: JSX.Element }) {
+	const data = useData();
 
-  return (
-    <Sidebar {...props}>
-      {data?.current ? <ServerBlock data={data} /> : null}
-    </Sidebar>
-  );
+	return <Sidebar {...props}>{data?.current ? <ServerBlock data={data} /> : null}</Sidebar>;
 }

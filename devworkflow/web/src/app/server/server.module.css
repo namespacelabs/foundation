@@ -1,180 +1,180 @@
 .scrollOk {
-  padding: 12px 16px;
-  flex: 1;
-  overflow-y: auto;
+	padding: 12px 16px;
+	flex: 1;
+	overflow-y: auto;
 
-  display: flex;
-  flex-direction: column;
+	display: flex;
+	flex-direction: column;
 }
 
 .serverInfo {
-  font-size: 14px;
+	font-size: 14px;
 
-  border: 1px solid rgb(230, 230, 230);
-  border-radius: 6px;
+	border: 1px solid rgb(230, 230, 230);
+	border-radius: 6px;
 }
 
 .serverInfo > div:first-child {
-  padding: 12px 16px;
-  background-color: rgb(245, 245, 245);
-  display: flex;
-  flex-direction: column;
+	padding: 12px 16px;
+	background-color: rgb(245, 245, 245);
+	display: flex;
+	flex-direction: column;
 }
 
 .serverInfo > div:first-child > div + div {
-  margin-top: 8px;
+	margin-top: 8px;
 }
 
 @media screen and (min-width: 1100px) {
-  .serverInfo > div:first-child {
-    flex-direction: row;
-    align-items: center;
-  }
+	.serverInfo > div:first-child {
+		flex-direction: row;
+		align-items: center;
+	}
 
-  .serverInfo > div:first-child > div + div {
-    margin-top: 0;
-  }
+	.serverInfo > div:first-child > div + div {
+		margin-top: 0;
+	}
 }
 
 .serverInfo > div:first-child > div:first-child {
-  flex: 1;
+	flex: 1;
 }
 
 .serverInfo button + button {
-  margin-left: 10px;
+	margin-left: 10px;
 }
 
 .serverNameWrapper .prefix {
-  margin-left: -6px;
+	margin-left: -6px;
 }
 
 .serverNameWrapper > a {
-  margin: 5px 0 0 0;
+	margin: 5px 0 0 0;
 }
 
 .serverName {
-  font-weight: 600;
-  font-size: 16px;
+	font-weight: 600;
+	font-size: 16px;
 }
 
 .row {
-  display: flex;
-  flex-direction: row;
+	display: flex;
+	flex-direction: row;
 }
 
 .serverRow {
-  padding: 12px 0;
-  display: grid;
-  grid-template-columns: 1fr;
+	padding: 12px 0;
+	display: grid;
+	grid-template-columns: 1fr;
 }
 
 .serverRow .infoBlock + .infoBlock > .blockHeader {
-  border-top: 1px solid rgb(230, 230, 230);
-  margin-top: 12px;
-  padding-top: 12px;
+	border-top: 1px solid rgb(230, 230, 230);
+	margin-top: 12px;
+	padding-top: 12px;
 }
 
 @media screen and (min-width: 1000px) {
-  .serverRow {
-    grid-template-columns: 1fr 1fr;
-  }
+	.serverRow {
+		grid-template-columns: 1fr 1fr;
+	}
 
-  .serverRow .infoBlock + .infoBlock > .blockHeader {
-    border-top: 0;
-    margin-top: 0;
-    padding-top: 0;
-  }
+	.serverRow .infoBlock + .infoBlock > .blockHeader {
+		border-top: 0;
+		margin-top: 0;
+		padding-top: 0;
+	}
 
-  .serverRow .infoBlock + .infoBlock {
-    border-left: 1px solid rgb(230, 230, 230);
-  }
+	.serverRow .infoBlock + .infoBlock {
+		border-left: 1px solid rgb(230, 230, 230);
+	}
 }
 
 .serverRow > div {
-  flex: 1;
+	flex: 1;
 }
 
 .infoBlock {
-  padding: 4px 16px;
+	padding: 4px 16px;
 }
 
 .blockHeader {
-  font-weight: 600;
-  margin-bottom: 0.1rem;
+	font-weight: 600;
+	margin-bottom: 0.1rem;
 }
 
 .dep {
-  display: flex;
-  flex-wrap: wrap;
+	display: flex;
+	flex-wrap: wrap;
 }
 
 .dep svg {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
+	display: inline-block;
+	width: 12px;
+	height: 12px;
 }
 
 .highlight {
-  font-weight: 600;
+	font-weight: 600;
 }
 
 .prefix {
-  background-color: rgba(0, 0, 0, 0.03);
-  border-radius: 5px;
-  padding: 0 6px;
-  color: rgb(150, 150, 150);
-  font-weight: 500;
-  height: 22px;
-  margin: 0 2px 2px 0px;
+	background-color: rgba(0, 0, 0, 0.03);
+	border-radius: 5px;
+	padding: 0 6px;
+	color: rgb(150, 150, 150);
+	font-weight: 500;
+	height: 22px;
+	margin: 0 2px 2px 0px;
 }
 
 .secondary {
-  color: rgb(120, 120, 120);
+	color: rgb(120, 120, 120);
 }
 
 a.dep:hover .p {
-  text-decoration: underline;
+	text-decoration: underline;
 }
 
 .terminalWrapper {
-  height: 360px;
-  display: flex;
-  flex-direction: column;
-  background-color: black;
-  padding: 0 10px;
+	height: 360px;
+	display: flex;
+	flex-direction: column;
+	background-color: black;
+	padding: 0 10px;
 }
 
 div + .blockHeader {
-  margin-top: 12px;
+	margin-top: 12px;
 }
 
 .service + .service,
 .endpoint + .endpoint {
-  margin-top: 6px;
+	margin-top: 6px;
 }
 
 .service button {
-  margin-left: 6px;
+	margin-left: 6px;
 }
 
 .protocols {
-  color: rgb(120, 120, 120);
-  font-size: 0.75rem;
+	color: rgb(120, 120, 120);
+	font-size: 0.75rem;
 }
 
 .portRow {
-  font-size: 0.7rem;
+	font-size: 0.7rem;
 }
 
 .label {
-  font-weight: 500;
-  line-height: 1.8;
+	font-weight: 500;
+	line-height: 1.8;
 }
 
 .protoRow {
-  padding: 2px 0;
+	padding: 2px 0;
 }
 
 .protoRow > a:first-child {
-  margin-right: 5px;
+	margin-right: 5px;
 }

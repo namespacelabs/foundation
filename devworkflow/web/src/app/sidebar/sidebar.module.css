@@ -1,101 +1,101 @@
 .serverContent {
-  padding: 12px 16px;
+	padding: 12px 16px;
 }
 
 .serverName {
-  min-width: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+	min-width: 0;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
 }
 
 .serverName .icon {
-  width: 32px;
-  height: 34px;
-  margin-right: 6px;
-  padding-bottom: 2px;
+	width: 32px;
+	height: 34px;
+	margin-right: 6px;
+	padding-bottom: 2px;
 }
 
 .icon {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .icon img {
-  width: 100%;
+	width: 100%;
 }
 
 .serverName .body {
-  display: flex;
-  flex-direction: column;
+	display: flex;
+	flex-direction: column;
 }
 
 .body > div:nth-child(1) {
-  font-weight: bold;
-  line-height: 1.4;
+	font-weight: bold;
+	line-height: 1.4;
 }
 
 .body > div:nth-child(2) {
-  font-size: 10px;
-  line-height: 2;
+	font-size: 10px;
+	line-height: 2;
 }
 
 .body > div:nth-child(2) > span {
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
 }
 
 .workingState,
 .badge {
-  background-color: rgb(210, 210, 210);
-  border-radius: 5px;
-  padding: 2px 5px;
+	background-color: rgb(210, 210, 210);
+	border-radius: 5px;
+	padding: 2px 5px;
 }
 
 span + .badge {
-  margin-left: 5px;
+	margin-left: 5px;
 }
 
 .badge {
-  font-weight: 400;
-  font-size: 10px;
+	font-weight: 400;
+	font-size: 10px;
 }
 
 .port {
-  display: block;
+	display: block;
 }
 
 a.port:hover .serviceName {
-  text-decoration: underline;
+	text-decoration: underline;
 }
 
 .ports {
-  font-variant-numeric: tabular-nums;
+	font-variant-numeric: tabular-nums;
 }
 
 .serviceDesc {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
 }
 
 .serviceDesc > span {
-  margin-right: 0.2rem;
+	margin-right: 0.2rem;
 }
 
 .serviceName {
-  color: black;
+	color: black;
 }
 
 .serviceDetails {
-  color: gray;
-  font-size: 10px;
+	color: gray;
+	font-size: 10px;
 }
 
 a.port svg {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
+	display: inline-block;
+	width: 12px;
+	height: 12px;
 }

@@ -7,16 +7,15 @@ import React, { MouseEventHandler } from "react";
 import * as style from "./style.module.css";
 
 export default function Button(props: {
-  children: React.ReactNode;
-  onClick?: MouseEventHandler;
-  compact?: boolean;
+	children: React.ReactNode;
+	onClick?: MouseEventHandler;
+	compact?: boolean;
 }) {
-  return (
-    <button
-      onClick={props.onClick}
-      className={classNames(style.btn, { [style.compact]: props.compact })}
-    >
-      {props.children}
-    </button>
-  );
+	return (
+		<button
+			onClick={props.onClick}
+			className={classNames(style.btn, { [style.compact]: props.compact })}>
+			{props.children}
+		</button>
+	);
 }

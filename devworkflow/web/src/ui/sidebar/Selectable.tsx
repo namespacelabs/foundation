@@ -7,17 +7,13 @@ import React from "react";
 import { Link } from "wouter";
 import classes from "./sidebar.module.css";
 
-export default function Selectable(props: {
-  selected: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={classNames(classes.selectable, {
-        [classes.selected]: props.selected,
-      })}
-    >
-      {props.children}
-    </div>
-  );
+export default function Selectable(props: { selected: boolean; children: React.ReactNode }) {
+	return (
+		<div
+			className={classNames(classes.selectable, {
+				[classes.selected]: props.selected,
+			})}>
+			{props.children}
+		</div>
+	);
 }

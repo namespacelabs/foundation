@@ -1,23 +1,23 @@
 .t {
-  width: 100%;
-  height: 100%;
-  flex: 1;
+	width: 100%;
+	height: 100%;
+	flex: 1;
 }
 
 .fullscreenWrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background-color: black;
-  min-height: 0;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	background-color: black;
+	min-height: 0;
 }
 
 .t :global(.xterm) :global(.xterm-viewport)::-webkit-scrollbar {
-  background-color: transparent;
-  width: 0.75em;
+	background-color: transparent;
+	width: 0.75em;
 }
 
 .t :global(.xterm) :global(.xterm-viewport)::-webkit-scrollbar-thumb {
-  background-color: rgb(80, 80, 80);
-  border-radius: 5px;
+	background-color: rgb(80, 80, 80);
+	border-radius: 5px;
 }

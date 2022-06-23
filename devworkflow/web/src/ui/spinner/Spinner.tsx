@@ -5,5 +5,5 @@
 import * as classes from "./spinner.module.css";
 
 export function Spinner() {
-  return <div className={classes.loader}></div>;
+	return <div className={classes.loader}></div>;
 }

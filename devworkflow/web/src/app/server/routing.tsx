@@ -5,5 +5,5 @@
 import { useRoute } from "wouter";
 
 export function useServerRoute() {
-  return useRoute<{ id: string; tab: string }>("/server/:id/:tab?");
+	return useRoute<{ id: string; tab: string }>("/server/:id/:tab?");
 }

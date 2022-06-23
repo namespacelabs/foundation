@@ -7,22 +7,20 @@ import { Task } from "./stack";
 import { WSContext } from "./StackObserver";
 
 export function useTasks() {
-  let [data, setData] = useState<Task[]>([]);
-  let ws = useContext(WSContext);
+	let [data, setData] = useState<Task[]>([]);
+	let ws = useContext(WSContext);
 
-  useEffect(() => {
-    return ws?.observeTasks((tasks) => {
-      setData(tasks);
-    });
-  }, []);
+	useEffect(() => {
+		return ws?.observeTasks((tasks) => {
+			setData(tasks);
+		});
+	}, []);
 
-  return data;
+	return data;
 }
 
 export function useTasksByServer(server: string) {
-  let tasks = useTasks();
+	let tasks = useTasks();
 
-  return tasks.filter(
-    (t) => !t.completed_ts && (t.scope || []).indexOf(server) >= 0
-  );
+	return tasks.filter((t) => !t.completed_ts && (t.scope || []).indexOf(server) >= 0);
 }

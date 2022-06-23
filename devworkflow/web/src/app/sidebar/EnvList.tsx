@@ -9,32 +9,27 @@ import { useLocation } from "wouter";
 import Select from "../../ui/combobox/Select";
 
 export default function EnvList(props: { data: DataType }) {
-  let ws = useContext(WSContext);
-  let [_, setLocation] = useLocation();
-  let {
-    abs_root: absRoot,
-    current,
-    env,
-    available_env: availableEnvs,
-  } = props.data;
+	let ws = useContext(WSContext);
+	let [_, setLocation] = useLocation();
+	let { abs_root: absRoot, current, env, available_env: availableEnvs } = props.data;
 
-  return (
-    <Select
-      compact={true}
-      items={availableEnvs.map((env) => env.name)}
-      selected={env.name}
-      onChange={(env) => {
-        if (ws) {
-          ws.send({
-            setWorkspace: {
-              absRoot,
-              packageName: current.server.package_name,
-              envName: env,
-            },
-          });
-          setLocation("/command");
-        }
-      }}
-    />
-  );
+	return (
+		<Select
+			compact={true}
+			items={availableEnvs.map((env) => env.name)}
+			selected={env.name}
+			onChange={(env) => {
+				if (ws) {
+					ws.send({
+						setWorkspace: {
+							absRoot,
+							packageName: current.server.package_name,
+							envName: env,
+						},
+					});
+					setLocation("/command");
+				}
+			}}
+		/>
+	);
 }
