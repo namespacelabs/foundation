@@ -67,8 +67,8 @@ func RenderPortsAndIngresses(checkmark bool, out io.Writer, localHostname string
 			}
 		} else if protocols.Has("grpc") {
 			// grpc endpoints also do http, but we only expose one kind of service here.
-			schema, portLabel := grpcSchema(false, p.LocalPort)
-			url = fmt.Sprintf("%s%s%s", schema, localHostname, portLabel)
+			schema, portLabel, cmd := grpcSchema(false, p.LocalPort)
+			url = fmt.Sprintf("%s%s%s%s", schema, localHostname, portLabel, cmd)
 		} else if protocols.Has("http") {
 			url = fmt.Sprintf("http://%s:%d", localHostname, p.LocalPort)
 		} else {
@@ -171,8 +171,8 @@ func renderIngressBlock(out io.Writer, label string, fragments []*schema.Ingress
 
 	var longestLabel uint
 	for k, n := range fragments {
-		schema, portLabel, suffix := domainSchema(n.Domain, 443, n.Endpoint)
-		labels[k] = fmt.Sprintf("%s%s%s", schema, n.Domain.Fqdn, portLabel)
+		schema, portLabel, cmd, suffix := domainSchema(n.Domain, 443, n.Endpoint)
+		labels[k] = fmt.Sprintf("%s%s%s%s", schema, n.Domain.Fqdn, portLabel, cmd)
 		suffixes[k] = suffix
 
 		if x := uint(len(labels[k])); x > longestLabel {
@@ -202,13 +202,13 @@ func renderIngress(checkmark bool, out io.Writer, ingressDomains []*runtime.Filt
 			}
 		}
 
-		schema, portLabel, suffix := domainSchema(fd.Domain, localPort, fd.Endpoints...)
+		schema, portLabel, cmd, suffix := domainSchema(fd.Domain, localPort, fd.Endpoints...)
 
-		fmt.Fprintf(out, " %s%s%s%s%s\n", checkLabel(checkmark, true, localPort), schema, fd.Domain.Fqdn, portLabel, suffix)
+		fmt.Fprintf(out, " %s%s%s%s%s%s\n", checkLabel(checkmark, true, localPort), schema, fd.Domain.Fqdn, portLabel, cmd, suffix)
 	}
 }
 
-func domainSchema(domain *schema.Domain, localPort uint, endpoints ...*schema.Endpoint) (string, string, string) {
+func domainSchema(domain *schema.Domain, localPort uint, endpoints ...*schema.Endpoint) (string, string, string, string) {
 	var protocols uniquestrings.List
 	for _, endpoint := range endpoints {
 		for _, md := range endpoint.GetServiceMetadata() {
@@ -218,13 +218,13 @@ func domainSchema(domain *schema.Domain, localPort uint, endpoints ...*schema.En
 		}
 	}
 
-	var schema, portLabel, suffix string
+	var schema, portLabel, cmd, suffix string
 	switch len(protocols.Strings()) {
 	case 0:
 		schema, portLabel = httpSchema(domain, localPort)
 	case 1:
 		if protocols.Strings()[0] == "grpc" {
-			schema, portLabel = grpcSchema(domain.Certificate != nil, localPort)
+			schema, portLabel, cmd = grpcSchema(domain.Certificate != nil, localPort)
 			if domain.Certificate == nil {
 				suffix = colors.Faded(" # not currently working, see #26")
 			}
@@ -235,7 +235,7 @@ func domainSchema(domain *schema.Domain, localPort uint, endpoints ...*schema.En
 		schema = "(multiple: " + strings.Join(protocols.Strings(), ", ") + ") "
 	}
 
-	return schema, portLabel, suffix
+	return schema, portLabel, cmd, suffix
 }
 
 func checkLabel(b, isFocus bool, port uint) string {
@@ -253,11 +253,11 @@ func checkbox(on, dimmed bool) string {
 	return x
 }
 
-func grpcSchema(tls bool, port uint) (string, string) {
+func grpcSchema(tls bool, port uint) (string, string, string) {
 	if tls {
-		return "grpcurl ", fmt.Sprintf(":%d", port)
+		return "grpcurl ", fmt.Sprintf(":%d", port), " list"
 	}
-	return "grpcurl -plaintext ", fmt.Sprintf(":%d", port)
+	return "grpcurl -plaintext ", fmt.Sprintf(":%d", port), " list"
 }
 
 func httpSchema(d *schema.Domain, port uint) (string, string) {
