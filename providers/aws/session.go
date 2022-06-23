@@ -51,7 +51,7 @@ func MustConfiguredSession(ctx context.Context, devHost *schema.DevHost, selecto
 	}
 
 	if cfg == nil {
-		return aws.Config{}, "", fnerrors.UsageError("Run `fn prepare`.", "Foundation has not been configured to access AWS.")
+		return aws.Config{}, "", fnerrors.UsageError("Run `ns prepare`.", "Namespace has not been configured to access AWS.")
 	}
 
 	return *cfg, profile, nil

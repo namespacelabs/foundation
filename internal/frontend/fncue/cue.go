@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-// Implements loading of Foundation-specific dialect of Cue which includes:
+// Implements loading of Namespace-specific dialect of Cue which includes:
 // * a Golang-like module system where modules are loaded from source transparently when needed;
 // * support for @fn() attributes allowing to access runtime data from the environment.
 package fncue
@@ -145,7 +145,7 @@ func loadPackageContents(ctx context.Context, loader WorkspaceLoader, pkgName st
 	}, nil
 }
 
-// Entry point to load Cue packages from a Foundation workspace.
+// Entry point to load Cue packages from a Namespace workspace.
 type EvalCtx struct {
 	cache  *snapshotCache
 	loader WorkspaceLoader

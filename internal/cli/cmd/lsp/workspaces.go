@@ -35,7 +35,7 @@ type FnWorkspace struct {
 }
 
 func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWorkspace, wsPath string, err error) {
-	// NB: This reads FS directly, so we will detect a Foundation workspace only once workspace.ns.textpb is saved.
+	// NB: This reads FS directly, so we will detect a Namespace workspace only once workspace.ns.textpb is saved.
 	root, loc, err := module.PackageAt(ctx, absPath)
 	if err != nil {
 		return nil, "", err

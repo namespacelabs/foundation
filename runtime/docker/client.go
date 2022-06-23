@@ -27,8 +27,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-// Client implements the Docker client, but only with the bits that Foundation requires.
-// It also performs Foundation-specific error handling
+// Client implements the Docker client, but only with the bits that Namespace requires.
+// It also performs Namespace-specific error handling
 type Client interface {
 	ServerVersion(ctx context.Context) (types.Version, error)
 	Info(ctx context.Context) (types.Info, error)

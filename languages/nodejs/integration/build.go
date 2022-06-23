@@ -36,7 +36,7 @@ const appRootPath = "/app"
 // These paths are only used within a buildkit environment.
 var (
 	// All dependencies that are not from the same module copied here. This includes
-	// dependencies used as "Dep" in workspace (copied from the Foundation cache)
+	// dependencies used as "Dep" in workspace (copied from the Namespace cache)
 	// and the ones used as "Replace" (copied from the user's file system).
 	// We add "node_modules" so Yarn doesn't recognize external modules as workspaces.
 	depsRootPath      = filepath.Join(appRootPath, "external_deps", "node_modules")
@@ -168,7 +168,7 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		if module.ModuleName() != bnj.module.ModuleName() {
 			lfModule, ok := lockFileStruct.Modules[module.ModuleName()]
 			if !ok {
-				return llb.State{}, nil, fnerrors.InternalError("module %s not found in the Foundation lock file", module.ModuleName())
+				return llb.State{}, nil, fnerrors.InternalError("module %s not found in the Namespace lock file", module.ModuleName())
 			}
 
 			moduleLocal := buildkit.LocalContents{Module: module, Path: ".", ObserveChanges: false}

@@ -24,7 +24,7 @@ func NewVersionCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "Outputs the compiled version of Foundation.",
+		Short: "Outputs the compiled version of Namespace.",
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			info, ok := debug.ReadBuildInfo()

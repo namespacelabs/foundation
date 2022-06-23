@@ -50,7 +50,7 @@ func (l nixImage) BuildImage(ctx context.Context, env ops.Environment, conf buil
 		return nil, err
 	}
 
-	const nixconf = `# Foundation-managed nix configuration.
+	const nixconf = `# Namespace-managed nix configuration.
 build-users-group = nixbld
 sandbox = false
 trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
