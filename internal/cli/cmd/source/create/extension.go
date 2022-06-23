@@ -24,7 +24,7 @@ func targetPackage(ctx context.Context, args []string, typ string) (*workspace.R
 	}
 
 	if loc.RelPath == "." {
-		cmd := fmt.Sprintf("fn create %s", typ)
+		cmd := fmt.Sprintf("ns create %s", typ)
 		return nil, fnfs.Location{}, fmt.Errorf("cannot create %s at workspace root. Please specify %s location or run %s at the target directory",
 			typ, typ, colors.Bold(cmd))
 	}

@@ -23,20 +23,20 @@ type AvailableBuildAssets struct {
 type Integration interface {
 	workspace.FrameworkHandler
 
-	// Called on `fn build`, `fn deploy`.
+	// Called on `ns build`, `ns deploy`.
 	PrepareBuild(context.Context, AvailableBuildAssets, provision.Server, bool /*isFocus*/) (build.Spec, error)
 	PrepareRun(context.Context, provision.Server, *runtime.ServerRunOpts) error
 
-	// Called on `fn tidy`
+	// Called on `ns tidy`
 	TidyWorkspace(context.Context, []*workspace.Package) error
 	TidyNode(context.Context, workspace.Packages, *workspace.Package) error
 	TidyServer(context.Context, workspace.Packages, workspace.Location, *schema.Server) error
 
-	// Called on `fn generate`.
+	// Called on `ns generate`.
 	GenerateNode(*workspace.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
 	GenerateServer(*workspace.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
 
-	// Called on `fn dev`.
+	// Called on `ns dev`.
 	PrepareDev(context.Context, provision.Server) (context.Context, DevObserver, error)
 }
 

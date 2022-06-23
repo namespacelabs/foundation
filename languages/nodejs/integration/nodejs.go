@@ -177,7 +177,7 @@ func pkgSupportsNodejs(pkg *workspace.Package) bool {
 func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
 	if useDevBuild(srv.Env().Proto()) {
 		if wsremote.Ctx(ctx) != nil {
-			return nil, nil, fnerrors.UserError(srv.Location, "`fn dev` on multiple web/nodejs servers not supported")
+			return nil, nil, fnerrors.UserError(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
 		}
 
 		devObserver := hotreload.NewFileSyncDevObserver(ctx, srv, fileSyncPort)
@@ -253,7 +253,7 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 			return err
 		}
 
-		// `fn tidy` could update dependencies of some nodes/servers, running `yarn install` to update
+		// `ns tidy` could update dependencies of some nodes/servers, running `yarn install` to update
 		// `node_modules`.
 		if err := RunNodejsYarn(ctx, yarnRoot, []string{"install", "--mode=skip-build"}, yarnRootData.module.WorkspaceData); err != nil {
 			return err

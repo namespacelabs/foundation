@@ -102,7 +102,7 @@ func ValidateAPIRequirements(moduleName string, w *schema.Workspace_FoundationRe
 current repository. If you're testing out an existing repository that uses
 Foundation, try fetching a newer version of the repository. If this is your
 own codebase, then you'll need to either revert to a previous version of
-"fn", or update your dependency versions with "fn mod tidy".
+"ns", or update your dependency versions with "ns mod tidy".
 
 This version check will be removed in future non-alpha versions of
 Foundation, which establish a stable longer term supported API surface.`)

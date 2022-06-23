@@ -25,7 +25,7 @@ func SetupTracing(ctx context.Context, jaegerEndpoint string) (context.Context, 
 	// instrumentation in the future will default to using it.
 	otel.SetTracerProvider(tp)
 
-	spanCtx, span := tp.Tracer("fn").Start(ctx, "fn (cli invocation)")
+	spanCtx, span := tp.Tracer("ns").Start(ctx, "ns (cli invocation)")
 
 	return spanCtx, func() {
 		span.End()

@@ -3,8 +3,8 @@ project_name: fn
 builds:
   - env:
       - CGO_ENABLED=0
-    main: ./cmd/fn
-    binary: fn
+    main: ./cmd/ns
+    binary: ns
     goos:
       - linux
       - darwin

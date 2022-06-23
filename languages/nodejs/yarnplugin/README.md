@@ -14,7 +14,7 @@ with the following changes:
 
 ## Distribution
 
-The plugin content is embedded into the `fn` binary. `fn tidy` writes the plugin content to all Yarn
+The plugin content is embedded into the `ns` binary. `ns tidy` writes the plugin content to all Yarn
 roots under `.yarn/plugins`.
 
 ### Why not an NPM package?

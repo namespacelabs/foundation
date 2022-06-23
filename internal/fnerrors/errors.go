@@ -176,7 +176,7 @@ type VersionError struct {
 }
 
 func (e *VersionError) Error() string {
-	return fmt.Sprintf("`fn` needs to be updated to use %q, (need api version %d, got %d)", e.Pkg, e.Expected, e.Got)
+	return fmt.Sprintf("`ns` needs to be updated to use %q, (need api version %d, got %d)", e.Pkg, e.Expected, e.Got)
 }
 
 type ExitError interface {
@@ -441,8 +441,8 @@ func errorReportRequest(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "Please include,\n")
 	fmt.Fprintf(w, "- the full command line you've used.\n")
-	fmt.Fprintf(w, "- the full output that fn produced\n")
-	fmt.Fprintf(w, "- the output of `fn version`\n")
+	fmt.Fprintf(w, "- the full output that ns produced\n")
+	fmt.Fprintf(w, "- the output of `ns version`\n")
 }
 
 func formatLabel(str string, colors bool) string {

@@ -205,13 +205,13 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 		}
 
 		var hints []string
-		hints = append(hints, fmt.Sprintf("Tail server logs: %s", colors.Bold(fmt.Sprintf("fn logs %s %s", envLabel, loc))))
-		hints = append(hints, fmt.Sprintf("Attach to the deployment (port forward to workstation): %s", colors.Bold(fmt.Sprintf("fn attach %s %s", envLabel, loc))))
+		hints = append(hints, fmt.Sprintf("Tail server logs: %s", colors.Bold(fmt.Sprintf("ns logs %s %s", envLabel, loc))))
+		hints = append(hints, fmt.Sprintf("Attach to the deployment (port forward to workstation): %s", colors.Bold(fmt.Sprintf("ns attach %s %s", envLabel, loc))))
 		hints = append(hints, plan.Hints...)
 
 		if env.Proto().Purpose == schema.Environment_DEVELOPMENT {
 			hints = append(hints, fmt.Sprintf("Try out a stateful development session with %s.",
-				colors.Bold(fmt.Sprintf("fn dev %s %s", envLabel, loc))))
+				colors.Bold(fmt.Sprintf("ns dev %s %s", envLabel, loc))))
 		}
 
 		for _, hint := range hints {

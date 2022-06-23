@@ -1,11 +1,11 @@
-# Fn LSP
+# Ns LSP
 
-`fn lsp` command implements language server protocol. It uses stdin/stdout as JSON-RPC2 medium.
+`ns lsp` command implements language server protocol. It uses stdin/stdout as JSON-RPC2 medium.
 
 The LSP can be used by various editors and IDEs. Notably `fn-vscode` extension plumbs this LSP
 into VSCode.
 
-The LSP is implemented inside the `fn` binary to make sure that it editor integrations behave 100%
+The LSP is implemented inside the `ns` binary to make sure that it editor integrations behave 100%
 consistent with the command line tools.
 
 ## References

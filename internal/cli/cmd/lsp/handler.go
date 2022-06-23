@@ -125,7 +125,7 @@ func (s *server) DidSave(ctx context.Context, params *protocol.DidSaveTextDocume
 		err = s.runGenerate(ctx, filepath.Dir(path))
 		if err != nil {
 			_ = s.client.ShowMessage(ctx, &protocol.ShowMessageParams{
-				Message: fmt.Sprintf("Failed to run `fn generate` (%v). See Fn output for details.", err),
+				Message: fmt.Sprintf("Failed to run `ns generate` (%v). See ns output for details.", err),
 				Type:    protocol.MessageTypeError,
 			})
 		}
@@ -189,11 +189,11 @@ func (s *server) ExecuteCommand(ctx context.Context, params *protocol.ExecuteCom
 }
 
 // Returns error only in case of an unexpected error.
-// fn generate returning non-zero status is considered a success (it shows a warning internally.)
+// ns generate returning non-zero status is considered a success (it shows a warning internally.)
 func (s *server) runGenerate(ctx context.Context, path string) error {
 	fnPath, err := os.Executable()
 	if err != nil {
-		return jsonrpc2.NewError(jsonrpc2.InternalError, fmt.Sprintf("failed to determine the path to the fn tool: %v", err))
+		return jsonrpc2.NewError(jsonrpc2.InternalError, fmt.Sprintf("failed to determine the path to the ns tool: %v", err))
 	}
 
 	cmd := exec.CommandContext(ctx, fnPath, "generate")
@@ -206,16 +206,16 @@ func (s *server) runGenerate(ctx context.Context, path string) error {
 		err = nil
 	}
 	if err != nil {
-		return jsonrpc2.NewError(jsonrpc2.InternalError, fmt.Sprintf("fn generate failed: %v", err))
+		return jsonrpc2.NewError(jsonrpc2.InternalError, fmt.Sprintf("ns generate failed: %v", err))
 	}
 
 	_ = s.client.LogMessage(ctx, &protocol.LogMessageParams{Message: string(output)})
 	_ = s.client.LogMessage(ctx, &protocol.LogMessageParams{
-		Message: fmt.Sprintf("`fn generate` finished with error code %d", statusCode),
+		Message: fmt.Sprintf("`ns generate` finished with error code %d", statusCode),
 	})
 	if statusCode > 0 {
 		_ = s.client.ShowMessage(ctx, &protocol.ShowMessageParams{
-			Message: fmt.Sprintf("Failed to run `fn generate` (status code: %d). See Fn output for details.", statusCode),
+			Message: fmt.Sprintf("Failed to run `ns generate` (status code: %d). See ns output for details.", statusCode),
 			Type:    protocol.MessageTypeError,
 		})
 	}
@@ -232,7 +232,7 @@ func (s *server) CodeAction(ctx context.Context, params *protocol.CodeActionPara
 	// TODO: Filter only Cue files.
 	return []protocol.CodeAction{
 		{
-			Title:    "Run `fn generate` in the workspace",
+			Title:    "Run `ns generate` in the workspace",
 			Kind:     "source.fixAll",
 			Disabled: nil, // Why
 			Command: &protocol.Command{

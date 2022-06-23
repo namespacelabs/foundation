@@ -118,7 +118,7 @@ func Make(ctx context.Context, env provision.ServerEnv, serverLocRef *workspace.
 		})
 	}
 
-	// XXX security validate this; ideally the tool would RPC back to `fn` to have something decrypted.
+	// XXX security validate this; ideally the tool would RPC back to `ns` to have something decrypted.
 	// We're ok doing this for now because tools' runtime invocation is hermetic.
 	if with.RequiresKeys {
 		if serverLocRef == nil {

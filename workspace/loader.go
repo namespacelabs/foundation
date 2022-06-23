@@ -201,7 +201,7 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 		}
 	}
 
-	return Location{}, fnerrors.UsageError("Run `fn tidy`.", "%s: missing entry in %s: run:\n  fn tidy", packageName, pl.workspaceData.DefinitionFile())
+	return Location{}, fnerrors.UsageError("Run `ns tidy`.", "%s: missing entry in %s: run:\n  ns tidy", packageName, pl.workspaceData.DefinitionFile())
 }
 
 func (pl *PackageLoader) MatchModuleReplace(ctx context.Context, packageName schema.PackageName) (*Location, error) {

@@ -7,11 +7,14 @@ package main
 import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/cmd"
+	"namespacelabs.dev/foundation/internal/cli/cmd/debug"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 )
 
 func main() {
-	fncobra.DoMain("fn", func(root *cobra.Command) {
+	fncobra.DoMain("nsdev", func(root *cobra.Command) {
 		cmd.RegisterCommands(root)
+		root.AddCommand(debug.NewDebugCmd())
+		root.AddCommand(debug.NewFnServicesCmd())
 	})
 }

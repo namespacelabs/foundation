@@ -29,12 +29,12 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Build fn
+      - name: Build ns
         env:
           CGO_ENABLED: 0
-        run: go build -v -o fn ./cmd/fn
+        run: go build -v -o ns ./cmd/ns
       - name: Check Formatting
-        run: ./fn fmt --all --check
+        run: ./ns fmt --all --check
       - uses: k0kubun/action-slack@v2.0.0
         with:
           payload: |

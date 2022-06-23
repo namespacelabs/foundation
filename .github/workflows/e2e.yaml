@@ -34,15 +34,15 @@ jobs:
           key: ${{ runner.os }}-go-fnbuild-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-go-fnbuild-
-      - name: Build fn
+      - name: Build ns
         env:
           CGO_ENABLED: 0
-        run: go build -v -o fn ./cmd/fn
-      - name: Upload fn
+        run: go build -v -o ns ./cmd/ns
+      - name: Upload ns
         uses: actions/upload-artifact@v3
         with:
-          name: fn-${{ runner.os }}
-          path: fn
+          name: ns-${{ runner.os }}
+          path: ns
           # We don't need to persist it for long, only for the next job to download it.
           retention-days: 1
       - uses: k0kubun/action-slack@v2.0.0
@@ -102,21 +102,21 @@ jobs:
       - name: Download Foundation
         uses: actions/download-artifact@v3
         with:
-          name: fn-${{ runner.os }}
+          name: ns-${{ runner.os }}
 
-      # fn is moved out of the workspace so we don't spend time uploading it to buildkit.
+      # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
       - name: Make Foundation executable
-        run: chmod +x fn && mv fn /tmp/fn
+        run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
-        run: /tmp/fn prepare
+        run: /tmp/ns prepare
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
       - name: Deploy std/testdata/server/gogrpc
         run: |
-          /tmp/fn deploy \
+          /tmp/ns deploy \
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=${{ matrix.use_prebuilts }} \
@@ -170,16 +170,16 @@ jobs:
       - name: Download Foundation
         uses: actions/download-artifact@v3
         with:
-          name: fn-${{ runner.os }}
+          name: ns-${{ runner.os }}
 
-      # fn is moved out of the workspace so we don't spend time uploading it to buildkit.
+      # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
       - name: Make Foundation executable
-        run: chmod +x fn && mv fn /tmp/fn
+        run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
-        run: cd ${{ matrix.root_path }} && /tmp/fn prepare
+        run: cd ${{ matrix.root_path }} && /tmp/ns prepare
 
-      - name: Run fn generate on a clean slate
+      - name: Run ns generate on a clean slate
         if: ${{ matrix.regenerate_fn_generate }}
         run: |
           cd ${{ matrix.root_path }} ; \
@@ -187,7 +187,7 @@ jobs:
           find . -regex '.*\.fn\.go' -exec rm {} \; ; \
 
       - name: Generate code that is not submitted to the repository
-        run: cd ${{ matrix.root_path }} && /tmp/fn generate
+        run: cd ${{ matrix.root_path }} && /tmp/ns generate
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
@@ -195,7 +195,7 @@ jobs:
       - name: Run all tests
         run: |
           cd ${{ matrix.root_path }}; \
-          /tmp/fn test \
+          /tmp/ns test \
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=true \

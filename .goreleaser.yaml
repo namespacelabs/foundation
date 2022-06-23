@@ -4,8 +4,8 @@ builds:
   - id: linux
     env:
       - CGO_ENABLED=0
-    main: ./cmd/fn
-    binary: fn
+    main: ./cmd/ns
+    binary: ns
     flags:
       - -trimpath
     ldflags:
@@ -19,8 +19,8 @@ builds:
   - id: macos
     env:
       - CGO_ENABLED=1
-    main: ./cmd/fn
-    binary: fn
+    main: ./cmd/ns
+    binary: ns
     flags:
       - -trimpath
     ldflags:
@@ -37,7 +37,7 @@ builds:
 #       - macos
 #     cmd: gon
 #     args:
-#       - cmd/fn/gon.hcl
+#       - cmd/ns/gon.hcl
 #     artifacts: all
 
 release:

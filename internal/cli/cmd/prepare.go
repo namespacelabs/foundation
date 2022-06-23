@@ -155,7 +155,7 @@ func NewPrepareCmd() *cobra.Command {
 		fmt.Fprintln(
 			text.NewIndentWriter(stdout, []byte("    ")),
 			prototext.Format(env.DevHost()))
-		fmt.Fprintln(stdout, "Or re-run with `fn prepare -w` for the file to be updated automatically.")
+		fmt.Fprintln(stdout, "Or re-run with `ns prepare -w` for the file to be updated automatically.")
 
 		return nil
 	})

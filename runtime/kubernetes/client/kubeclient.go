@@ -292,7 +292,7 @@ func ComputeHostConfig(devHost *fnschema.DevHost, selector devhost.Selector) (*H
 	return &HostConfig{DevHost: devHost, Selector: selector, HostEnv: hostEnv}, nil
 }
 
-// Only compute configurations once per `fn` invocation.
+// Only compute configurations once per `ns` invocation.
 type cachedProviderConfig struct {
 	providerName string
 	configKey    *devhost.ConfigKey
