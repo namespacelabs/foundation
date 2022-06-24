@@ -62,6 +62,10 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 				description: fmt.Sprintf("Adding an example server '%s' at '%s'.", starterServerName, starterServerPkg),
 				args:        []string{"create", "server", starterServerPkg, "--framework=go", fmt.Sprintf("--name=%s", starterServerName)},
 			},
+			{
+				description: "Bringing language-specific configuration up to date, making it consistent with the Namespace configuration. Downloading language-specific dependencies.",
+				args:        []string{"tidy"},
+			},
 		}
 
 		for _, starterCmd := range starterCmds {
