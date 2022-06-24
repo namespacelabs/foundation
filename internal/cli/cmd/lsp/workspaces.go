@@ -89,13 +89,13 @@ func (ws *FnWorkspace) FS() fs.ReadDirFS {
 	}
 }
 
-func (ws *FnWorkspace) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, error) {
+func (ws *FnWorkspace) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, string, error) {
 	packageLoader := workspace.NewPackageLoader(ws.root)
 
 	loc, err := packageLoader.Resolve(ctx, pkgname) // This may download external modules.
 	if err != nil {
 		fmt.Fprintf(console.Warnings(ctx), "%s: resolve failed: %v\n", pkgname, err)
-		return fnfs.Location{}, err
+		return fnfs.Location{}, "", err
 	}
 
 	var fsys fs.FS
@@ -105,12 +105,12 @@ func (ws *FnWorkspace) SnapshotDir(ctx context.Context, pkgname schema.PackageNa
 	} else {
 		w, err := packageLoader.WorkspaceOf(ctx, loc.Module) // This may download external modules.
 		if err != nil {
-			return fnfs.Location{}, err
+			return fnfs.Location{}, "", err
 		}
 
 		fsys, err = w.SnapshotDir(loc.Rel(), opts)
 		if err != nil {
-			return fnfs.Location{}, err
+			return fnfs.Location{}, "", err
 		}
 	}
 
@@ -118,7 +118,7 @@ func (ws *FnWorkspace) SnapshotDir(ctx context.Context, pkgname schema.PackageNa
 		ModuleName: loc.Module.ModuleName(),
 		RelPath:    loc.Rel(),
 		FS:         fsys,
-	}, nil
+	}, loc.Abs(), nil
 }
 
 // A [fnfs.ReadDirFS] that wraps an underlying FS and overlays with the open editor file contents with in-memory contents.

@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -48,12 +49,13 @@ func (v *CueV) FillPath(path cue.Path, rightSide interface{}) *CueV {
 }
 
 type WorkspaceLoader interface {
-	SnapshotDir(context.Context, schema.PackageName, memfs.SnapshotOpts) (fnfs.Location, error)
+	SnapshotDir(context.Context, schema.PackageName, memfs.SnapshotOpts) (loc fnfs.Location, absPath string, err error)
 }
 
 // Represents an unparsed Cue package.
 type CuePackage struct {
 	ModuleName string
+	AbsPath    string
 	RelPath    string   // Relative to module root.
 	Files      []string // Relative to RelPath
 	Sources    fs.FS
@@ -117,7 +119,7 @@ func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname strin
 }
 
 func loadPackageContents(ctx context.Context, loader WorkspaceLoader, pkgName string) (*CuePackage, error) {
-	loc, err := loader.SnapshotDir(ctx, schema.PackageName(pkgName), memfs.SnapshotOpts{IncludeFilesGlobs: []string{"*.cue"}})
+	loc, absPath, err := loader.SnapshotDir(ctx, schema.PackageName(pkgName), memfs.SnapshotOpts{IncludeFilesGlobs: []string{"*.cue"}})
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +142,7 @@ func loadPackageContents(ctx context.Context, loader WorkspaceLoader, pkgName st
 	return &CuePackage{
 		ModuleName: loc.ModuleName,
 		RelPath:    loc.RelPath,
+		AbsPath:    absPath,
 		Files:      files,
 		Sources:    loc.FS,
 	}, nil
@@ -263,7 +266,16 @@ func finishInstance(sc *snapshotCache, cuectx *cue.Context, p *build.Instance, p
 	if vv.Err() != nil {
 		// Even if there are errors, return the partially valid Cue value.
 		// This is useful to provide language features in LSP for not fully valid files.
-		return partial, vv.Err()
+		return partial, WrapCueError(vv.Err(), func(p string) string {
+			// VSCode only supports linking of absolute paths in Output Channels.
+			// Also in the Terminal it surely does not support module paths (it will link
+			// example.com/module/package/path, but won't find example.com in the workspace).
+			// So currently we must print absolute paths here.
+			// Alternatives: print relative paths for workspace files and install a
+			// DocumentLinkProvider to resolve them.
+			// See https://github.com/microsoft/vscode/issues/586.
+			return absPathForModulePath(collectedImports, p)
+		})
 	}
 
 	return partial, nil
@@ -337,6 +349,16 @@ func join(dir, base string) string {
 		return dir
 	}
 	return fmt.Sprintf("%s/%s", dir, base)
+}
+
+func absPathForModulePath(collectedImports map[string]*CuePackage, p string) string {
+	for _, pkg := range collectedImports {
+		pkgRoot := path.Join(pkg.ModuleName, pkg.RelPath) + "/"
+		if relPath := strings.TrimPrefix(p, pkgRoot); relPath != p {
+			return path.Join(pkg.AbsPath, relPath)
+		}
+	}
+	return p
 }
 
 func IsStandardImportPath(path string) bool {

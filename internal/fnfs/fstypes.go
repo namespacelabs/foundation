@@ -12,10 +12,13 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
+// Identifies a package/file within a module.
 type Location struct {
 	ModuleName string
-	FS         fs.FS
-	RelPath    string
+	// FS rooted at the module [ModuleName] root.
+	FS fs.FS
+	// Path within the module (within [FS]).
+	RelPath string
 }
 
 func (loc Location) Rel(rel ...string) string {
@@ -29,7 +32,7 @@ func (loc Location) AsPackageName() schema.PackageName {
 	return schema.PackageName(filepath.Join(loc.ModuleName, loc.RelPath))
 }
 
-// ErrorLocation implements the fnerrors.Location interface.
+// Implements the fnerrors.Location interface.
 func (loc Location) ErrorLocation() string {
 	return loc.RelPath
 }

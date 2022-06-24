@@ -130,25 +130,25 @@ type WorkspaceLoader struct {
 	PackageLoader workspace.EarlyPackageLoader
 }
 
-func (wl WorkspaceLoader) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, error) {
+func (wl WorkspaceLoader) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, string, error) {
 	loc, err := wl.PackageLoader.Resolve(ctx, pkgname)
 	if err != nil {
-		return fnfs.Location{}, err
+		return fnfs.Location{}, "", err
 	}
 
 	w, err := wl.PackageLoader.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
-		return fnfs.Location{}, err
+		return fnfs.Location{}, "", err
 	}
 
 	fsys, err := w.SnapshotDir(loc.Rel(), opts)
 	if err != nil {
-		return fnfs.Location{}, err
+		return fnfs.Location{}, "", err
 	}
 
 	return fnfs.Location{
 		ModuleName: loc.Module.ModuleName(),
 		RelPath:    loc.Rel(),
 		FS:         fsys,
-	}, nil
+	}, loc.Abs(), nil
 }

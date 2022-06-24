@@ -294,20 +294,20 @@ type workspaceLoader struct {
 	alloc *allocator
 }
 
-func (wr *workspaceLoader) SnapshotDir(ctx context.Context, sch schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, error) {
+func (wr *workspaceLoader) SnapshotDir(ctx context.Context, sch schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, string, error) {
 	loc, err := wr.alloc.checkResolve(ctx, sch)
 	if err != nil {
-		return fnfs.Location{}, err
+		return fnfs.Location{}, "", err
 	}
 
 	fsys, err := memfs.SnapshotDir(fnfs.Local(loc.Module.Abs()), loc.Rel(), opts)
 	if err != nil {
-		return fnfs.Location{}, err
+		return fnfs.Location{}, "", err
 	}
 
 	return fnfs.Location{
 		ModuleName: loc.Module.ModuleName(),
 		RelPath:    loc.Rel(),
 		FS:         fsys,
-	}, nil
+	}, loc.Abs(), nil
 }
