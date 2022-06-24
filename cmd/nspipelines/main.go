@@ -7,11 +7,16 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/github"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/workspace"
+	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
 )
+
+const maxLogLevel = 0
 
 func main() {
 	root := &cobra.Command{
@@ -23,7 +28,9 @@ func main() {
 	root.AddCommand(github.NewGithubCmd())
 	root.AddCommand(workspace.NewWorkspaceCmd())
 
-	if err := root.ExecuteContext(context.Background()); err != nil {
+	ctx := tasks.WithSink(context.Background(), simplelog.NewSink(os.Stderr, maxLogLevel))
+
+	if err := root.ExecuteContext(ctx); err != nil {
 		log.Fatal(err)
 	}
 }
