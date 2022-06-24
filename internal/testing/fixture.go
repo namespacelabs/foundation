@@ -196,7 +196,9 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 				stored.ServerLog = append(stored.ServerLog, &schema.LogRef{
 					PackageName:   s.PackageName,
 					ContainerName: s.ContainerName,
+					ContainerKind: s.ContainerKind,
 					LogFile:       logFile,
+					LogSize:       uint64(len(s.Output)),
 				})
 			}
 

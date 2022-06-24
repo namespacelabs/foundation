@@ -221,18 +221,10 @@ type ContainerUnitWaitStatus struct {
 	Status Diagnostics
 }
 
-type ContainerKind int
-
-const (
-	ContainerKind_Unknown   ContainerKind = iota // We don't know what this container represents.
-	ContainerKind_Secondary                      // This container represents a support container.
-	ContainerKind_Primary                        // This container represents the main server container.
-)
-
 type ContainerReference interface {
 	UniqueID() string
 	HumanReference() string
-	Kind() ContainerKind
+	Kind() schema.ContainerKind
 }
 
 func (cw ContainerWaitStatus) WaitStatus() string {

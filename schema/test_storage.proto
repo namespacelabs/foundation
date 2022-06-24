@@ -10,6 +10,7 @@ option go_package = "namespacelabs.dev/foundation/schema";
 
 import "schema/definition.proto";
 import "schema/serialized.proto";
+import "schema/runtime.proto";
 
 message TestResult {
     bool success = 1;
@@ -25,7 +26,9 @@ message TestBundle {
 }
 
 message LogRef {
-    string package_name   = 1;
-    string container_name = 2;
-    string log_file       = 3;
+    string        package_name   = 1;
+    string        container_name = 2;
+    ContainerKind container_kind = 4;
+    string        log_file       = 3;
+    uint64        log_size       = 5;
 }

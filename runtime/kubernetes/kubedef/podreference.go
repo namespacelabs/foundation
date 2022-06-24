@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -17,7 +16,7 @@ type ContainerPodReference struct {
 	PodName   string
 	Container string
 
-	kind runtime.ContainerKind
+	kind schema.ContainerKind
 }
 
 func (cpr ContainerPodReference) UniqueID() string {
@@ -31,7 +30,7 @@ func (cpr ContainerPodReference) HumanReference() string {
 	return cpr.Container
 }
 
-func (cpr ContainerPodReference) Kind() runtime.ContainerKind {
+func (cpr ContainerPodReference) Kind() schema.ContainerKind {
 	return cpr.kind
 }
 
@@ -44,14 +43,14 @@ func MakePodRef(ns, name, containerName string, srv *schema.Server) ContainerPod
 	}
 }
 
-func decideKind(srv *schema.Server, containerName string) runtime.ContainerKind {
+func decideKind(srv *schema.Server, containerName string) schema.ContainerKind {
 	if srv == nil {
-		return runtime.ContainerKind_Unknown
+		return schema.ContainerKind_CONTAINER_KIND_UNSPECIFIED
 	}
 	if ServerCtrName(srv) == containerName {
-		return runtime.ContainerKind_Primary
+		return schema.ContainerKind_PRIMARY
 	}
-	return runtime.ContainerKind_Secondary
+	return schema.ContainerKind_SUPPORT
 }
 
 func ServerCtrName(server *schema.Server) string {

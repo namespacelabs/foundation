@@ -224,6 +224,7 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 	type serverLog struct {
 		PackageName   string
 		ContainerName string
+		ContainerKind schema.ContainerKind
 		Buffer        *syncbuffer.ByteBuffer
 	}
 
@@ -264,6 +265,7 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 				serverLogs = append(serverLogs, serverLog{
 					PackageName:   srv.PackageName,
 					ContainerName: ctr.HumanReference(),
+					ContainerKind: ctr.Kind(),
 					Buffer:        log,
 				})
 				mu.Unlock()
@@ -291,6 +293,7 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 		bundle.ServerLog = append(bundle.ServerLog, &Log{
 			PackageName:   entry.PackageName,
 			ContainerName: entry.ContainerName,
+			ContainerKind: entry.ContainerKind,
 			Output:        entry.Buffer.Seal().Bytes(),
 		})
 	}
@@ -305,5 +308,4 @@ func makeLog(otherWriters ...io.Writer) (io.Writer, *syncbuffer.ByteBuffer) {
 	}
 	w := io.MultiWriter(append(otherWriters, buf)...)
 	return w, buf
-
 }
