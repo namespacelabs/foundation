@@ -17,9 +17,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -98,36 +98,9 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 		}
 	}
 
-	messages, err := protos.SerializeMultiple(
-		c.env,
-		c.stack,
-		&schema.IngressFragmentList{IngressFragment: fragment},
-		compute.MustGetDepValue(deps, c.computedConfigs, "computedConfigs"),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	env := messages[0]
-	stack := messages[1]
-	ingress := messages[2]
-	computedConfigs := messages[3]
-
 	files := &memfs.FS{}
-
-	for _, f := range []fnfs.File{
-		{Path: "config/env.textpb", Contents: env.Text},
-		{Path: "config/env.binarypb", Contents: env.Binary},
-		{Path: "config/stack.textpb", Contents: stack.Text},
-		{Path: "config/stack.binarypb", Contents: stack.Binary},
-		{Path: "config/ingress.textpb", Contents: ingress.Text},
-		{Path: "config/ingress.binarypb", Contents: ingress.Binary},
-		{Path: "config/computed_configs.textpb", Contents: computedConfigs.Text},
-		{Path: "config/computed_configs.binarypb", Contents: computedConfigs.Binary},
-	} {
-		if err := fnfs.WriteFile(ctx, files, f.Path, f.Contents, 0644); err != nil {
-			return nil, err
-		}
+	if err := (config.DehydrateOpts{IncludeTextProto: true}).DehydrateTo(ctx, files, c.env, c.stack, fragment, compute.MustGetDepValue(deps, c.computedConfigs, "computedConfigs")); err != nil {
+		return nil, err
 	}
 
 	for _, m := range c.moduleSrcs {

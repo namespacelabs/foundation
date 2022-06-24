@@ -19,8 +19,9 @@ type TextAndBinary struct {
 }
 
 type SerializeOpts struct {
-	JSON     bool
-	Resolver interface {
+	TextProto bool
+	JSON      bool
+	Resolver  interface {
 		protoregistry.ExtensionTypeResolver
 		protoregistry.MessageTypeResolver
 	}
@@ -33,17 +34,21 @@ func SerializeMultiple(msgs ...proto.Message) ([]TextAndBinary, error) {
 func (opts SerializeOpts) Serialize(msgs ...proto.Message) ([]TextAndBinary, error) {
 	var res []TextAndBinary
 	for _, m := range msgs {
-		text, err := prototext.MarshalOptions{Multiline: true, Resolver: opts.Resolver}.Marshal(m)
-		if err != nil {
-			return nil, fnerrors.New("textproto serialized failed: %w", err)
-		}
-
 		binary, err := proto.MarshalOptions{Deterministic: true}.Marshal(m)
 		if err != nil {
 			return nil, fnerrors.New("proto serialized failed: %w", err)
 		}
 
-		tb := TextAndBinary{Text: text, Binary: binary}
+		tb := TextAndBinary{Binary: binary}
+
+		if opts.TextProto {
+			text, err := prototext.MarshalOptions{Multiline: true, Resolver: opts.Resolver}.Marshal(m)
+			if err != nil {
+				return nil, fnerrors.New("textproto serialized failed: %w", err)
+			}
+			tb.Text = text
+		}
+
 		if opts.JSON {
 			json, err := protojson.MarshalOptions{Multiline: true, Resolver: opts.Resolver}.Marshal(m)
 			if err != nil {

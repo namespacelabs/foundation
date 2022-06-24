@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
@@ -207,8 +208,19 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 				return nil, fnerrors.InternalError("failed to marshal results: %w", err)
 			}
 
+			// XXX legacy names
 			fsys.Add("bundle.json", messages[0].JSON)
 			fsys.Add("bundle.binarypb", messages[0].Binary)
+
+			// New names.
+			fsys.Add("testbundle.json", messages[0].JSON)
+			fsys.Add("testbundle.binarypb", messages[0].Binary)
+
+			// Produce an image that can be rehydrated.
+			if err := (config.DehydrateOpts{}).DehydrateTo(ctx, &fsys, bundle.Result.Plan.Environment, bundle.Result.Plan.Stack,
+				bundle.Result.Plan.IngressFragment, bundle.Result.ComputedConfigurations); err != nil {
+				return nil, err
+			}
 
 			return &fsys, nil
 		})
