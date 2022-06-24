@@ -8,9 +8,9 @@ import "github.com/spf13/cobra"
 
 func NewEksCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "eks",
-		Short:   "EKS-related activities (internal only).",
-		Aliases: []string{"c"},
+		Use:    "eks",
+		Short:  "EKS-related activities (internal only).",
+		Hidden: true,
 	}
 
 	cmd.AddCommand(newComputeIrsaCmd())
