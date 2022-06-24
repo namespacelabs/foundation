@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
@@ -21,6 +22,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
+
+const appURL = "https://github.com/apps/foundation-ci-alpha"
 
 func NewSetupAutopushCmd() *cobra.Command {
 	var iamRole string
@@ -50,6 +53,8 @@ func NewSetupAutopushCmd() *cobra.Command {
 			return err
 		}
 
+		stdout := console.Stdout(ctx)
+
 		p := ops.NewPlan()
 		for _, inv := range result {
 			def, err := inv.ToDefinition()
@@ -58,7 +63,7 @@ func NewSetupAutopushCmd() *cobra.Command {
 			}
 
 			if dryRun {
-				fmt.Fprintln(console.Stdout(ctx), prototext.Format(def))
+				fmt.Fprintln(stdout, prototext.Format(def))
 			} else {
 				if err := p.Add(def); err != nil {
 					return err
@@ -66,7 +71,7 @@ func NewSetupAutopushCmd() *cobra.Command {
 			}
 		}
 		if dryRun {
-			fmt.Fprintf(console.Stdout(ctx), "Not making changes to the cluster, as --dry_run=true.\n\n")
+			fmt.Fprintf(stdout, "Not making changes to the cluster, as --dry_run=true.\n\n")
 		} else {
 			if _, err := p.Execute(ctx, "eks.autopush.apply", env); err != nil {
 				return err
@@ -80,7 +85,9 @@ func NewSetupAutopushCmd() *cobra.Command {
 		}
 		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", acc, iamRole)
 
-		fmt.Fprintf(console.Stdout(ctx), "Success!\nPlease inform a Namespace Labs dev that %q has been set up for autopush so they can whitelist it for deployment.\nThis step will be automated in future!", roleArn)
+		fmt.Fprintf(stdout, "Success!\nNext steps:\n")
+		fmt.Fprintf(stdout, " 1. Please inform a Namespace Labs dev that %q has been set up for autopush so they can whitelist it for deployment. %s\n", roleArn, colors.Ctx(ctx).Comment.Apply("This step will be automated in future."))
+		fmt.Fprintf(stdout, " 2. Install %s into your Github repository.\n", appURL)
 
 		return nil
 	})
