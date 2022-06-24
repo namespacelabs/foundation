@@ -11,6 +11,7 @@ option go_package = "namespacelabs.dev/foundation/schema";
 import "schema/definition.proto";
 import "schema/serialized.proto";
 import "schema/runtime.proto";
+import "google/protobuf/timestamp.proto";
 
 message TestResult {
     bool success = 1;
@@ -20,6 +21,9 @@ message TestResult {
 }
 
 message TestBundle {
+    google.protobuf.Timestamp created   = 4;
+    google.protobuf.Timestamp completed = 5;  // Regardless of success or failure.
+
     TestResult      result     = 1;
     LogRef          test_log   = 2;
     repeated LogRef server_log = 3;

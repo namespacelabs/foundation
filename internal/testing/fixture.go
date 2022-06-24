@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/multiplatform"
@@ -162,9 +163,13 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		VCluster:       maybeCreateVCluster(env),
 	}
 
+	createdTs := timestamppb.Now()
+
 	toFS := compute.Map(tasks.Action("test.to-fs"),
-		compute.Inputs().Computable("bundle", results).Indigestible("packages", packages),
-		compute.Output{},
+		compute.Inputs().Computable("bundle", results).
+			Indigestible("packages", packages).
+			Proto("createdTs", createdTs),
+		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
 			computed, ok := compute.GetDepWithType[*PreStoredTestBundle](deps, "bundle")
 			if !ok {
@@ -173,10 +178,15 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 			bundle := computed.Value
 
+			// We only add timestamps in the transformation step, as it would
+			// otherwise break the ability to cache test results.
+
 			var fsys memfs.FS
 
 			stored := &schema.TestBundle{
-				Result: bundle.Result,
+				Created:   createdTs,
+				Completed: timestamppb.Now(),
+				Result:    bundle.Result,
 				TestLog: &schema.LogRef{
 					PackageName:   bundle.TestLog.PackageName,
 					ContainerName: bundle.TestLog.ContainerName,
