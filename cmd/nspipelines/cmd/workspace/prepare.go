@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/providers/aws"
+	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -20,7 +21,11 @@ import (
 )
 
 // TODO make this configurable per workspace
-const stagingArn = "arn:aws:iam::846205600055:role/namespace-ci"
+const (
+	roleArn     = "arn:aws:iam::846205600055:role/namespace-ci"
+	clusterName = "montblanc"
+	clusterArn  = "arn:aws:eks:us-east-2:846205600055:cluster/" + clusterName
+)
 
 func newPrepareCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -53,13 +58,20 @@ func newPrepareCmd() *cobra.Command {
 		}
 
 		staging, err := anypb.New(&aws.Conf{
-			AssumeRoleArn: stagingArn,
+			AssumeRoleArn: roleArn,
 		})
 		if err != nil {
 			return err
 		}
-		eks, err := anypb.New(&client.HostEnv{
+		eksProvider, err := anypb.New(&client.HostEnv{
 			Provider: "aws/eks",
+		})
+		if err != nil {
+			return err
+		}
+		eksCluster, err := anypb.New(&eks.EKSCluster{
+			Name: clusterName,
+			Arn:  clusterArn,
 		})
 		if err != nil {
 			return err
@@ -74,19 +86,14 @@ func newPrepareCmd() *cobra.Command {
 
 		cidevhost := &schema.DevHost{
 			Configure: []*schema.DevHost_ConfigureEnvironment{{
-				Configuration: []*anypb.Any{ecr},
+				Configuration: []*anypb.Any{ecr, staging},
 			}, {
-				// Used for building ns itself.
-				Purpose:       schema.Environment_DEVELOPMENT,
+				Name:          "build-fn",
 				Runtime:       "kubernetes",
 				Configuration: []*anypb.Any{incluster},
 			}, {
-				Purpose:       schema.Environment_PRODUCTION,
-				Configuration: []*anypb.Any{staging},
-			}, {
-				Purpose:       schema.Environment_PRODUCTION,
 				Runtime:       "kubernetes",
-				Configuration: []*anypb.Any{eks},
+				Configuration: []*anypb.Any{eksProvider, eksCluster},
 			}},
 			ConfigureTools: []*anypb.Any{ecr, incluster},
 			ConfigurePlatform: []*schema.DevHost_ConfigurePlatform{{
