@@ -17,6 +17,13 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 )
 
+const (
+	starterServicePkg  = "api/echoservice"
+	starterServiceName = "EchoService"
+	starterServerPkg   = "server"
+	starterServerName  = "Server"
+)
+
 func newStarterCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "starter",
@@ -29,18 +36,16 @@ func newStarterCmd() *cobra.Command {
 			return err
 		}
 
-		stdout := console.Stdout(ctx)
-
 		nameParts := strings.Split(workspaceName, "/")
 		dirName := nameParts[len(nameParts)-1]
-
 		if err := os.MkdirAll(dirName, 0755); err != nil {
 			return err
 		}
-
 		if err := os.Chdir(dirName); err != nil {
 			return err
 		}
+
+		stdout := console.Stdout(ctx)
 
 		printConsoleCmd(ctx, stdout, fmt.Sprintf("mkdir %s; cd %s", dirName, dirName))
 
@@ -48,6 +53,14 @@ func newStarterCmd() *cobra.Command {
 			{
 				description: "Bootstrapping the workspace configuration.",
 				args:        []string{"create", "workspace", workspaceName},
+			},
+			{
+				description: fmt.Sprintf("Adding an example service %s.", starterServiceName),
+				args:        []string{"create", "service", starterServicePkg, "--framework=go", fmt.Sprintf("--name=%s", starterServiceName)},
+			},
+			{
+				description: fmt.Sprintf("Adding an example server %s.", starterServerName),
+				args:        []string{"create", "server", starterServerPkg, "--framework=go", fmt.Sprintf("--name=%s", starterServerName)},
 			},
 		}
 

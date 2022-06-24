@@ -29,13 +29,16 @@ func newServiceCmd() *cobra.Command {
 		Short: "Creates a service.",
 	}
 
+	fmwkStr := frameworkFlag(cmd)
+	name := cmd.Flags().String("name", "", "Service name.")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		root, loc, err := targetPackage(ctx, args, use)
 		if err != nil {
 			return err
 		}
 
-		fmwk, err := selectFramework(ctx, "Which framework would you like to use?")
+		fmwk, err := selectFramework(ctx, "Which framework would you like to use?", fmwkStr)
 		if err != nil {
 			return err
 		}
@@ -50,26 +53,32 @@ func newServiceCmd() *cobra.Command {
 			}
 		}
 
-		name, err := tui.Ask(ctx, "How would you like to name your service?",
-			"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
-			serviceName(loc))
-		if err != nil {
-			return err
+		if *name == "" {
+			*name, err = tui.Ask(ctx, "How would you like to name your service?",
+				"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
+				serviceName(loc))
+			if err != nil {
+				return err
+			}
 		}
 
-		protoOpts := proto.GenServiceOpts{Name: name, Framework: *fmwk}
+		if *name == "" {
+			return context.Canceled
+		}
+
+		protoOpts := proto.GenServiceOpts{Name: *name, Framework: *fmwk}
 		if err := proto.CreateProtoScaffold(ctx, root.FS(), loc, protoOpts); err != nil {
 			return err
 		}
 
-		cueOpts := cue.GenServiceOpts{Name: name, Framework: *fmwk}
+		cueOpts := cue.GenServiceOpts{Name: *name, Framework: *fmwk}
 		if err := cue.CreateServiceScaffold(ctx, root.FS(), loc, cueOpts); err != nil {
 			return err
 		}
 
 		switch *fmwk {
 		case schema.Framework_GO:
-			goOpts := golang.GenServiceOpts{Name: name}
+			goOpts := golang.GenServiceOpts{Name: *name}
 			if err := golang.CreateGolangScaffold(ctx, root.FS(), loc, goOpts); err != nil {
 				return err
 			}

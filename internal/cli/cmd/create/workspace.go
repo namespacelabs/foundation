@@ -48,8 +48,11 @@ func newWorkspaceCmd() *cobra.Command {
 		}
 
 		workspaceName, err := workspaceNameFromArgs(ctx, args)
-		if err != nil || workspaceName == "" {
+		if err != nil {
 			return err
+		}
+		if workspaceName == "" {
+			return context.Canceled
 		}
 
 		// Not announcing "write" since `tidy` will do it.

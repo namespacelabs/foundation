@@ -13,5 +13,6 @@ import (
 func runCommand(ctx context.Context, cmd *cobra.Command, args []string) error {
 	cmdCopy := *cmd
 	cmdCopy.SetArgs(args)
+	cmdCopy.Flags().Parse(args)
 	return cmdCopy.ExecuteContext(ctx)
 }

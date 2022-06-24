@@ -29,13 +29,16 @@ func newServerCmd() *cobra.Command {
 		Args:  cobra.RangeArgs(0, 1),
 	}
 
+	fmwkStr := frameworkFlag(cmd)
+	name := cmd.Flags().String("name", "", "Server name.")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		root, loc, err := targetPackage(ctx, args, use)
 		if err != nil {
 			return err
 		}
 
-		fmwk, err := selectFramework(ctx, "Which framework are your services in?")
+		fmwk, err := selectFramework(ctx, "Which framework are your services in?", fmwkStr)
 		if err != nil {
 			return err
 		}
@@ -50,18 +53,20 @@ func newServerCmd() *cobra.Command {
 			}
 		}
 
-		name, err := tui.Ask(ctx, "How would you like to name your server?",
-			"A server's name is used to generate various production resource names and thus should not contain private information.",
-			serverName(loc))
-		if err != nil {
-			return err
+		if *name == "" {
+			*name, err = tui.Ask(ctx, "How would you like to name your server?",
+				"A server's name is used to generate various production resource names and thus should not contain private information.",
+				serverName(loc))
+			if err != nil {
+				return err
+			}
 		}
 
-		if name == "" {
+		if *name == "" {
 			return context.Canceled
 		}
 
-		opts := cue.GenServerOpts{Name: name, Framework: *fmwk}
+		opts := cue.GenServerOpts{Name: *name, Framework: *fmwk}
 		if err := cue.CreateServerScaffold(ctx, root.FS(), loc, opts); err != nil {
 			return err
 		}
