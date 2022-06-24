@@ -29,7 +29,7 @@ import (
 
 // Returns a Computable[v1.Image] with the results of the compilation.
 func ViteBuild(ctx context.Context, loc workspace.Location, env ops.Environment, conf build.BuildTarget, baseOutput, basePath string, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
-	local, base, err := viteBase(ctx, "/app", loc.Module, loc.Rel(), false, extraFiles...)
+	local, base, err := viteBase(ctx, conf, "/app", loc.Module, loc.Rel(), false, extraFiles...)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func viteSource(ctx context.Context, target string, loc workspace.Location, isFo
 		module = loc.Module
 	}
 
-	local, state, err := viteBase(ctx, target, module, loc.Rel(), isFocus, extraFiles...)
+	local, state, err := viteBase(ctx, conf, target, module, loc.Rel(), isFocus, extraFiles...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func viteSource(ctx context.Context, target string, loc workspace.Location, isFo
 	return compute.Named(tasks.Action("web.vite.build.dev").Arg("builder", "buildkit").Scope(loc.PackageName), image), nil
 }
 
-func viteBase(ctx context.Context, target string, module build.Workspace, rel string, rebuildOnChanges bool, extraFiles ...*memfs.FS) (buildkit.LocalContents, llb.State, error) {
+func viteBase(ctx context.Context, conf build.BuildTarget, target string, module build.Workspace, rel string, rebuildOnChanges bool, extraFiles ...*memfs.FS) (buildkit.LocalContents, llb.State, error) {
 	local := buildkit.LocalContents{Module: module, Path: rel, ObserveChanges: rebuildOnChanges}
 
 	src := buildkit.MakeLocalState(local)
@@ -86,13 +86,13 @@ func viteBase(ctx context.Context, target string, module build.Workspace, rel st
 		return buildkit.LocalContents{}, llb.State{}, err
 	}
 
-	buildBase, err := PrepareYarn(ctx, target, nodeImage, src, buildkit.HostPlatform())
+	buildBase, err := PrepareYarn(ctx, target, nodeImage, src, *conf.TargetPlatform())
 	if err != nil {
 		return buildkit.LocalContents{}, llb.State{}, err
 	}
 
 	// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
-	base := llbutil.Image(nodeImage, buildkit.HostPlatform()).
+	base := llbutil.Image(nodeImage, *conf.TargetPlatform()).
 		With(
 			llbutil.CopyFrom(src, ".", target),
 			llbutil.CopyFrom(buildBase, filepath.Join(target, "node_modules"), filepath.Join(target, "node_modules")))

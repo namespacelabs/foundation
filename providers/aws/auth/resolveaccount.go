@@ -48,8 +48,8 @@ func (r *resolveAccount) Compute(ctx context.Context, _ compute.Resolved) (*sts.
 }
 
 func CheckNeedsLogin(s *awsprovider.Session, err error) error {
-	var e *ssocreds.InvalidTokenError
-	if errors.As(err, &e) {
+	var e1 *ssocreds.InvalidTokenError
+	if errors.As(err, &e1) {
 		if usage := s.RefreshUsage(); usage != "" {
 			return fnerrors.UsageError(usage, "AWS session credentials have expired.")
 		}

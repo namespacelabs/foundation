@@ -122,7 +122,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 			return nil, err
 		}
 
-		targetConf := build.NewBuildTarget(nil).WithTargetName(conf.PublishName()).WithSourcePackage(srv.PackageName())
+		targetConf := build.NewBuildTarget(conf.TargetPlatform()).WithTargetName(conf.PublishName()).WithSourcePackage(srv.PackageName())
 
 		var b compute.Computable[oci.Image]
 		if useDevBuild(srv.Env().Proto()) {
