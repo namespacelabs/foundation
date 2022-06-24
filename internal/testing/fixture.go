@@ -191,6 +191,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 					PackageName:   bundle.TestLog.PackageName,
 					ContainerName: bundle.TestLog.ContainerName,
 					LogFile:       "test.log",
+					LogSize:       uint64(len(bundle.TestLog.Output)),
 				},
 			}
 
