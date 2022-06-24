@@ -39,7 +39,12 @@ func NewPrepareCmd() *cobra.Command {
 	eksCmd := &cobra.Command{
 		Use:   "eks [clustername]",
 		Short: "Prepares the Elastic Kubernetes Service host config for production.",
-		Args:  cobra.ExactArgs(1),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 1 {
+				return fmt.Errorf("%q is a required argument, run %q to proceed", "[clustername]", "eks [clustername]")
+			}
+			return nil
+		},
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
@@ -56,17 +61,18 @@ func NewPrepareCmd() *cobra.Command {
 			if contextName != "" {
 				return fnerrors.UsageError("Remove `--context=<name>`.", "--context was provided but is not used in the eks integration.")
 			}
+			eksClusterName := args[0]
+
 			wp := workspacePrepare{
-				env:                 env,
-				awsProfile:          awsProfile,
-				contextName:         "",
-				contextNameRequired: false,
+				env:            env,
+				awsProfile:     awsProfile,
+				eksClusterName: eksClusterName,
 			}
 			prepares, err := wp.makePrepareComputables(ctx)
 			if err != nil {
 				return err
 			}
-			prepares = append(prepares, prepare.PrepareEksCluster(args[0], env))
+			prepares = append(prepares, prepare.PrepareEksCluster(eksClusterName, env))
 			return wp.collectPreparesAndUpdateDevhost(ctx, prepares)
 		}),
 	}
@@ -103,11 +109,15 @@ func NewPrepareCmd() *cobra.Command {
 				return err
 			}
 
+			if env.Purpose() == schema.Environment_PRODUCTION && contextName == "" {
+				return fnerrors.UsageError("Please also specify `--context`.",
+					"Kubernetes context is required for preparing a production environment.")
+			}
+
 			wp := workspacePrepare{
-				env:                 env,
-				awsProfile:          awsProfile,
-				contextName:         contextName,
-				contextNameRequired: true,
+				env:         env,
+				awsProfile:  awsProfile,
+				contextName: contextName,
 			}
 			prepares, err := wp.makePrepareComputables(ctx)
 			if err != nil {
@@ -125,10 +135,10 @@ func NewPrepareCmd() *cobra.Command {
 }
 
 type workspacePrepare struct {
-	env                 provision.Env
-	awsProfile          string
-	contextName         string
-	contextNameRequired bool
+	env            provision.Env
+	awsProfile     string
+	contextName    string
+	eksClusterName string
 }
 
 func (p *workspacePrepare) PrepareWorkspace(ctx context.Context) error {
@@ -143,8 +153,11 @@ func (p *workspacePrepare) prepareK8s(ctx context.Context) compute.Computable[*c
 	if p.env.Purpose() == schema.Environment_DEVELOPMENT {
 		return prepare.PrepareK3d("fn", p.env)
 	} else if p.env.Purpose() == schema.Environment_PRODUCTION {
-		if p.contextNameRequired && p.contextName != "" {
-			return prepare.PrepareExistingK8s(p.contextName, p.env)
+		if p.contextName != "" {
+			return prepare.PrepareExistingK8s(p.env,
+				prepare.WithK8sContextName(p.contextName))
+		} else if p.eksClusterName != "" {
+			return prepare.PrepareExistingK8s(p.env)
 		}
 	}
 	return nil
@@ -197,7 +210,8 @@ func (p *workspacePrepare) makePrepareComputables(ctx context.Context) ([]comput
 			return nil, fnerrors.UsageError("Please also specify `--aws_profile`.",
 				"Preparing a production environment requires using AWS at the moment.")
 		}
-		if p.contextNameRequired && p.contextName == "" {
+		// The context name is required if we are not on an EKS cluster.
+		if p.contextName == "" && p.eksClusterName == "" {
 			return nil, fnerrors.UsageError("Please also specify `--context`.",
 				"Kubernetes context is required for preparing a production environment.")
 		}
