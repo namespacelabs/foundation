@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/cmd/create"
 	"namespacelabs.dev/foundation/internal/cli/cmd/lsp"
 	"namespacelabs.dev/foundation/internal/cli/cmd/secrets"
 	"namespacelabs.dev/foundation/internal/cli/cmd/source"
@@ -44,4 +45,5 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(secrets.NewSecretsCmd())
 	root.AddCommand(source.NewSourceCmd())
 	root.AddCommand(tools.NewToolsCmd())
+	root.AddCommand(create.NewCreateCmd())
 }

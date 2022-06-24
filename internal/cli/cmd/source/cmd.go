@@ -6,7 +6,6 @@ package source
 
 import (
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/cli/cmd/source/create"
 )
 
 func NewSourceCmd() *cobra.Command {
@@ -17,7 +16,6 @@ func NewSourceCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newBufGenerateCmd())
-	cmd.AddCommand(create.NewCreateCmd())
 	cmd.AddCommand(newNodejsCmd())
 	cmd.AddCommand(newYarnCmd())
 	cmd.AddCommand(newNewIdCmd())

@@ -41,7 +41,7 @@ func newStarterCmd() *cobra.Command {
 		}
 
 		commands := [][]string{
-			{"source", "create", "workspace", workspaceName},
+			{"create", "workspace", workspaceName},
 			{"tidy"},
 			{"prepare", "local"},
 		}
