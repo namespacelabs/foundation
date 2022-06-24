@@ -25,6 +25,15 @@ requirements: {
 	api: %d
 }
 `
+	vscodeExtensionsFilePath = ".vscode/extensions.json"
+	vscodeExtensionsTemplate = `{
+    "recommendations": [
+        "golang.go",
+        "esbenp.prettier-vscode",
+        "zxh404.vscode-proto3",
+        "namespacelabs.namespace-vscode"
+    ]
+}`
 )
 
 func newWorkspaceCmd() *cobra.Command {
@@ -40,27 +49,11 @@ func newWorkspaceCmd() *cobra.Command {
 		}
 
 		fsfs := fnfs.ReadWriteLocalFS(cwd)
-		f, err := fsfs.Open(cuefrontend.WorkspaceFile)
-		if err == nil {
-			f.Close()
-			fmt.Fprintf(console.Stdout(ctx), "'%s' already exists, skipping.\n", cuefrontend.WorkspaceFile)
-			return nil
-		}
 
-		workspaceName, err := workspaceNameFromArgs(ctx, args)
-		if err != nil {
+		if err := writeWorkspaceConfig(ctx, fsfs, args); err != nil {
 			return err
 		}
-		if workspaceName == "" {
-			return context.Canceled
-		}
-
-		// Not announcing "write" since `tidy` will do it.
-		err = fnfs.WriteWorkspaceFile(ctx, nil, fsfs, cuefrontend.WorkspaceFile, func(w io.Writer) error {
-			_, err := fmt.Fprintf(w, workspaceFileTemplate, workspaceName, versions.APIVersion)
-			return err
-		})
-		if err != nil {
+		if err := writeVscodeSettings(ctx, fsfs); err != nil {
 			return err
 		}
 
@@ -87,4 +80,42 @@ func workspaceNameFromArgs(ctx context.Context, args []string) (string, error) {
 	} else {
 		return args[0], nil
 	}
+}
+
+func writeWorkspaceConfig(ctx context.Context, fsfs fnfs.ReadWriteFS, args []string) error {
+	f, err := fsfs.Open(cuefrontend.WorkspaceFile)
+	if err == nil {
+		f.Close()
+		fmt.Fprintf(console.Stdout(ctx), "'%s' already exists, skipping.\n", cuefrontend.WorkspaceFile)
+		return nil
+	}
+
+	workspaceName, err := workspaceNameFromArgs(ctx, args)
+	if err != nil {
+		return err
+	}
+	if workspaceName == "" {
+		return context.Canceled
+	}
+
+	// Not announcing "write" since `tidy` will do it.
+	return fnfs.WriteWorkspaceFile(ctx, nil, fsfs, cuefrontend.WorkspaceFile, func(w io.Writer) error {
+		_, err := fmt.Fprintf(w, workspaceFileTemplate, workspaceName, versions.APIVersion)
+		return err
+	})
+}
+
+func writeVscodeSettings(ctx context.Context, fsfs fnfs.ReadWriteFS) error {
+	stdout := console.Stdout(ctx)
+
+	f, err := fsfs.Open(vscodeExtensionsFilePath)
+	if err == nil {
+		f.Close()
+		return nil
+	}
+
+	return fnfs.WriteWorkspaceFile(ctx, stdout, fsfs, vscodeExtensionsFilePath, func(w io.Writer) error {
+		_, err := fmt.Fprint(w, vscodeExtensionsTemplate)
+		return err
+	})
 }
