@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
+	"namespacelabs.dev/foundation/providers/aws/auth"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
@@ -133,7 +134,7 @@ func DescribeCluster(ctx context.Context, s *Session, name string) (*types.Clust
 			Name: &name,
 		})
 		if err != nil {
-			return nil, err
+			return nil, auth.CheckNeedsLogin(s.sesh, err)
 		}
 
 		if out.Cluster == nil {
