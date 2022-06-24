@@ -16,6 +16,7 @@ func NewEksCmd() *cobra.Command {
 	cmd.AddCommand(newComputeIrsaCmd())
 	cmd.AddCommand(newGenerateTokenCmd())
 	cmd.AddCommand(newGenerateConfigCmd())
+	cmd.AddCommand(NewSetupAutopushCmd())
 
 	return cmd
 }

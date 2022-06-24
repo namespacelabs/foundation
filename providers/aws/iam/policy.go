@@ -24,6 +24,7 @@ type StatementEntry struct {
 
 type Principal struct {
 	Federated string
+	AWS       string
 }
 
 type Condition struct {
