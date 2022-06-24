@@ -29,6 +29,8 @@ func newStarterCmd() *cobra.Command {
 			return err
 		}
 
+		stdout := console.Stdout(ctx)
+
 		nameParts := strings.Split(workspaceName, "/")
 		dirName := nameParts[len(nameParts)-1]
 
@@ -40,15 +42,18 @@ func newStarterCmd() *cobra.Command {
 			return err
 		}
 
-		commands := [][]string{
-			{"create", "workspace", workspaceName},
-			{"prepare", "local"},
+		printConsoleCmd(ctx, stdout, fmt.Sprintf("mkdir %s; cd %s", dirName, dirName))
+
+		starterCmds := []starterCmd{
+			{
+				description: "Bootstrapping the workspace configuration.",
+				args:        []string{"create", "workspace", workspaceName},
+			},
 		}
 
-		stdout := console.Stdout(ctx)
 		rootCmd := cmd.Root()
-		for _, args := range commands {
-			if err := runAndPrintCommand(ctx, stdout, rootCmd, args); err != nil {
+		for _, starterCmd := range starterCmds {
+			if err := runAndPrintCommand(ctx, stdout, rootCmd, &starterCmd); err != nil {
 				return err
 			}
 		}
@@ -59,13 +64,23 @@ func newStarterCmd() *cobra.Command {
 	return cmd
 }
 
-func runAndPrintCommand(ctx context.Context, out io.Writer, cmd *cobra.Command, args []string) error {
-	fmt.Fprintf(out, "\n > %s\n\n", colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("ns %s", strings.Join(args, " "))))
-	return runCommand(ctx, cmd, args)
+type starterCmd struct {
+	description string
+	args        []string
+}
+
+func runAndPrintCommand(ctx context.Context, out io.Writer, rootCmd *cobra.Command, starterCmd *starterCmd) error {
+	printConsoleCmd(ctx, out, fmt.Sprintf("ns %s", strings.Join(starterCmd.args, " ")))
+	fmt.Fprintf(out, "%s\n\n", colors.Ctx(ctx).Comment.Apply(starterCmd.description))
+	return runCommand(ctx, rootCmd, starterCmd.args)
 }
 
 func runCommand(ctx context.Context, cmd *cobra.Command, args []string) error {
 	cmdCopy := *cmd
 	cmdCopy.SetArgs(args)
 	return cmdCopy.ExecuteContext(ctx)
+}
+
+func printConsoleCmd(ctx context.Context, out io.Writer, text string) {
+	fmt.Fprintf(out, "\n> %s\n", colors.Ctx(ctx).Highlight.Apply(text))
 }
