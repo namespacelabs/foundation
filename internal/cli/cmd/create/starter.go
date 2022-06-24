@@ -75,12 +75,6 @@ func runAndPrintCommand(ctx context.Context, out io.Writer, rootCmd *cobra.Comma
 	return runCommand(ctx, rootCmd, starterCmd.args)
 }
 
-func runCommand(ctx context.Context, cmd *cobra.Command, args []string) error {
-	cmdCopy := *cmd
-	cmdCopy.SetArgs(args)
-	return cmdCopy.ExecuteContext(ctx)
-}
-
 func printConsoleCmd(ctx context.Context, out io.Writer, text string) {
 	fmt.Fprintf(out, "\n> %s\n", colors.Ctx(ctx).Highlight.Apply(text))
 }

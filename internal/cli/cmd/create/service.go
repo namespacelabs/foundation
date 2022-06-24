@@ -27,50 +27,56 @@ func newServiceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   use,
 		Short: "Creates a service.",
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, loc, err := targetPackage(ctx, args, use)
-			if err != nil {
-				return err
-			}
-
-			fmwk, err := selectFramework(ctx, "Which framework would you like to use?")
-			if err != nil {
-				return err
-			}
-
-			if fmwk == nil {
-				return context.Canceled
-			}
-
-			name, err := tui.Ask(ctx, "How would you like to name your service?",
-				"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
-				serviceName(loc))
-			if err != nil {
-				return err
-			}
-
-			protoOpts := proto.GenServiceOpts{Name: name, Framework: *fmwk}
-			if err := proto.CreateProtoScaffold(ctx, root.FS(), loc, protoOpts); err != nil {
-				return err
-			}
-
-			cueOpts := cue.GenServiceOpts{Name: name, Framework: *fmwk}
-			if err := cue.CreateServiceScaffold(ctx, root.FS(), loc, cueOpts); err != nil {
-				return err
-			}
-
-			switch *fmwk {
-			case schema.Framework_GO:
-				goOpts := golang.GenServiceOpts{Name: name}
-				if err := golang.CreateGolangScaffold(ctx, root.FS(), loc, goOpts); err != nil {
-					return err
-				}
-			}
-
-			return codegenNode(ctx, root, loc)
-		}),
 	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		root, loc, err := targetPackage(ctx, args, use)
+		if err != nil {
+			return err
+		}
+
+		fmwk, err := selectFramework(ctx, "Which framework would you like to use?")
+		if err != nil {
+			return err
+		}
+
+		if fmwk == nil {
+			return context.Canceled
+		}
+
+		if *fmwk == schema.Framework_GO {
+			if err := runGoInitCmdIfNeeded(ctx, root, cmd.Root()); err != nil {
+				return err
+			}
+		}
+
+		name, err := tui.Ask(ctx, "How would you like to name your service?",
+			"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
+			serviceName(loc))
+		if err != nil {
+			return err
+		}
+
+		protoOpts := proto.GenServiceOpts{Name: name, Framework: *fmwk}
+		if err := proto.CreateProtoScaffold(ctx, root.FS(), loc, protoOpts); err != nil {
+			return err
+		}
+
+		cueOpts := cue.GenServiceOpts{Name: name, Framework: *fmwk}
+		if err := cue.CreateServiceScaffold(ctx, root.FS(), loc, cueOpts); err != nil {
+			return err
+		}
+
+		switch *fmwk {
+		case schema.Framework_GO:
+			goOpts := golang.GenServiceOpts{Name: name}
+			if err := golang.CreateGolangScaffold(ctx, root.FS(), loc, goOpts); err != nil {
+				return err
+			}
+		}
+
+		return codegenNode(ctx, root, loc)
+	})
 
 	return cmd
 }

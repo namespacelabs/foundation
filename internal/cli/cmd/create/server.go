@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cue"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
@@ -26,48 +27,54 @@ func newServerCmd() *cobra.Command {
 		Use:   use,
 		Short: "Creates a server.",
 		Args:  cobra.RangeArgs(0, 1),
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, loc, err := targetPackage(ctx, args, use)
-			if err != nil {
-				return err
-			}
-
-			fmwk, err := selectFramework(ctx, "Which framework are your services in?")
-			if err != nil {
-				return err
-			}
-
-			if fmwk == nil {
-				return context.Canceled
-			}
-
-			name, err := tui.Ask(ctx, "How would you like to name your server?",
-				"A server's name is used to generate various production resource names and thus should not contain private information.",
-				serverName(loc))
-			if err != nil {
-				return err
-			}
-
-			if name == "" {
-				return context.Canceled
-			}
-
-			opts := cue.GenServerOpts{Name: name, Framework: *fmwk}
-			if err := cue.CreateServerScaffold(ctx, root.FS(), loc, opts); err != nil {
-				return err
-			}
-
-			// Aggregates and prints all accumulated codegen errors on return.
-			var errorCollector fnerrors.ErrorCollector
-
-			if err := codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, errorCollector.Append); err != nil {
-				return err
-			}
-
-			return errorCollector.Error()
-		}),
 	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		root, loc, err := targetPackage(ctx, args, use)
+		if err != nil {
+			return err
+		}
+
+		fmwk, err := selectFramework(ctx, "Which framework are your services in?")
+		if err != nil {
+			return err
+		}
+
+		if fmwk == nil {
+			return context.Canceled
+		}
+
+		if *fmwk == schema.Framework_GO {
+			if err := runGoInitCmdIfNeeded(ctx, root, cmd.Root()); err != nil {
+				return err
+			}
+		}
+
+		name, err := tui.Ask(ctx, "How would you like to name your server?",
+			"A server's name is used to generate various production resource names and thus should not contain private information.",
+			serverName(loc))
+		if err != nil {
+			return err
+		}
+
+		if name == "" {
+			return context.Canceled
+		}
+
+		opts := cue.GenServerOpts{Name: name, Framework: *fmwk}
+		if err := cue.CreateServerScaffold(ctx, root.FS(), loc, opts); err != nil {
+			return err
+		}
+
+		// Aggregates and prints all accumulated codegen errors on return.
+		var errorCollector fnerrors.ErrorCollector
+
+		if err := codegen.ForLocationsGenCode(ctx, root, []fnfs.Location{loc}, errorCollector.Append); err != nil {
+			return err
+		}
+
+		return errorCollector.Error()
+	})
 
 	return cmd
 }
