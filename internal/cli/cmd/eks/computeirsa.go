@@ -2,11 +2,10 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package cmd
+package eks
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -20,17 +19,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
-func NewEksCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:    "eks",
-		Short:  "EKS-related activities (internal only).",
-		Hidden: true,
-	}
-
+func newComputeIrsaCmd() *cobra.Command {
 	var iamRole, namespace, serviceAccount string
 	var dryRun bool
 
-	computeIrsa := fncobra.CmdWithEnv(&cobra.Command{
+	cmd := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "compute-irsa",
 		Short: "Sets up IRSA for the specified IAM role and Service Account.",
 		Args:  cobra.NoArgs,
@@ -90,62 +83,14 @@ func NewEksCmd() *cobra.Command {
 		return err
 	})
 
-	computeIrsa.Flags().StringVar(&iamRole, "iam_role", "", "IAM Role to manage.")
-	computeIrsa.Flags().StringVar(&namespace, "namespace", "", "Namespace where the service account lives.")
-	computeIrsa.Flags().StringVar(&serviceAccount, "service_account", "", "Which service account to bind to IAM role.")
-	computeIrsa.Flags().BoolVar(&dryRun, "dry_run", true, "If true, print invocations, rather than executing them.")
+	cmd.Flags().StringVar(&iamRole, "iam_role", "", "IAM Role to manage.")
+	cmd.Flags().StringVar(&namespace, "namespace", "", "Namespace where the service account lives.")
+	cmd.Flags().StringVar(&serviceAccount, "service_account", "", "Which service account to bind to IAM role.")
+	cmd.Flags().BoolVar(&dryRun, "dry_run", true, "If true, print invocations, rather than executing them.")
 
-	_ = computeIrsa.MarkFlagRequired("iam_role")
-	_ = computeIrsa.MarkFlagRequired("namespace")
-	_ = computeIrsa.MarkFlagRequired("service_account")
-
-	generateToken := fncobra.CmdWithEnv(&cobra.Command{
-		Use:   "generate-token",
-		Short: "Generates a EKS session token.",
-		Args:  cobra.ExactArgs(1),
-	}, func(ctx context.Context, env provision.Env, args []string) error {
-		s, err := eks.NewSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
-		if err != nil {
-			return err
-		}
-
-		token, err := eks.ComputeToken(ctx, s, args[0])
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintln(console.Stdout(ctx), token)
-		return nil
-	})
-
-	generateConfig := fncobra.CmdWithEnv(&cobra.Command{
-		Use:   "kube-config",
-		Short: "Generates a EKS kubeconfig.",
-		Args:  cobra.ExactArgs(1),
-	}, func(ctx context.Context, env provision.Env, args []string) error {
-		s, err := eks.NewSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
-		if err != nil {
-			return err
-		}
-
-		cluster, err := eks.DescribeCluster(ctx, s, args[0])
-		if err != nil {
-			return err
-		}
-
-		cfg, err := eks.Kubeconfig(cluster, "")
-		if err != nil {
-			return err
-		}
-
-		w := json.NewEncoder(console.Stdout(ctx))
-		w.SetIndent("", "  ")
-		return w.Encode(cfg)
-	})
-
-	cmd.AddCommand(computeIrsa)
-	cmd.AddCommand(generateToken)
-	cmd.AddCommand(generateConfig)
+	_ = cmd.MarkFlagRequired("iam_role")
+	_ = cmd.MarkFlagRequired("namespace")
+	_ = cmd.MarkFlagRequired("service_account")
 
 	return cmd
 }

@@ -7,6 +7,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/cmd/create"
+	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
 	"namespacelabs.dev/foundation/internal/cli/cmd/lsp"
 	"namespacelabs.dev/foundation/internal/cli/cmd/secrets"
 	"namespacelabs.dev/foundation/internal/cli/cmd/source"
@@ -39,8 +40,8 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewDeploymentCmd())
 	root.AddCommand(NewUseCmd())
 	root.AddCommand(NewDeployPlanCmd())
-	root.AddCommand(NewEksCmd())
 	root.AddCommand(NewImagesCmd())
+	root.AddCommand(eks.NewEksCmd())
 	root.AddCommand(lsp.NewLSPCmd())
 	root.AddCommand(secrets.NewSecretsCmd())
 	root.AddCommand(source.NewSourceCmd())
