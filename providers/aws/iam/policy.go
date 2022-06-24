@@ -23,8 +23,8 @@ type StatementEntry struct {
 }
 
 type Principal struct {
-	Federated string
-	AWS       string
+	Federated string `json:"Federated,omitempty"`
+	AWS       string `json:"AWS,omitempty"`
 }
 
 type Condition struct {

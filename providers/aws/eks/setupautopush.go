@@ -58,7 +58,7 @@ func SetupAutopush(eksCluster *EKSCluster, iamRole string) ([]defs.MakeDefinitio
 			{
 				Effect:   "Allow",
 				Action:   []string{"eks:*"},
-				Resource: []string{"*"},
+				Resource: []string{eksCluster.Arn},
 			},
 			{
 				Effect:   "Allow",

@@ -14,8 +14,11 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	awsprovider "namespacelabs.dev/foundation/providers/aws"
+	"namespacelabs.dev/foundation/providers/aws/auth"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
@@ -69,6 +72,16 @@ func NewSetupAutopushCmd() *cobra.Command {
 				return err
 			}
 		}
+
+		// TODO remove ARN reconstruction when invocations produce computed configurations
+		acc, err := getAwsAccount(ctx, env)
+		if err != nil {
+			return err
+		}
+		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", acc, iamRole)
+
+		fmt.Fprintf(console.Stdout(ctx), "Success!\nPlease inform a Namespace Labs dev that %q has been set up for autopush so they can whitelist it for deployment.\nThis step will be automated in future!", roleArn)
+
 		return nil
 	})
 
@@ -76,4 +89,22 @@ func NewSetupAutopushCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&dryRun, "dry_run", true, "If true, print invocations, rather than executing them.")
 
 	return cmd
+}
+
+func getAwsAccount(ctx context.Context, env provision.Env) (string, error) {
+	cfg, profile, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	if err != nil {
+		return "", err
+	}
+	caller := auth.ResolveWithConfig(cfg, profile)
+	res, err := compute.Get(ctx, caller)
+	if err != nil {
+		return "", err
+	}
+
+	if res.Value.Account == nil {
+		return "", fmt.Errorf("Unable to fetch AWS account")
+	}
+
+	return *res.Value.Account, nil
 }
