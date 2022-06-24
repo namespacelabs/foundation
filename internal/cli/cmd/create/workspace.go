@@ -36,7 +36,7 @@ requirements: {
 }`
 )
 
-func newWorkspaceCmd() *cobra.Command {
+func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "workspace",
 		Short: "Initializes a workspace.",
@@ -57,7 +57,7 @@ func newWorkspaceCmd() *cobra.Command {
 			return err
 		}
 
-		return runCommand(ctx, cmd.Root(), []string{"tidy"})
+		return runCommand(ctx, []string{"tidy"})
 	})
 
 	return cmd

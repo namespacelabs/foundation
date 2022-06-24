@@ -5,10 +5,12 @@
 package create
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 )
 
-func NewCreateCmd() *cobra.Command {
+func NewCreateCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "create",
 		Short:   "Creates a new extension, service, server or workspace (also from a starter template).",
@@ -16,10 +18,10 @@ func NewCreateCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newExtensionCmd())
-	cmd.AddCommand(newServerCmd())
-	cmd.AddCommand(newServiceCmd())
-	cmd.AddCommand(newWorkspaceCmd())
-	cmd.AddCommand(newStarterCmd())
+	cmd.AddCommand(newServerCmd(runCommand))
+	cmd.AddCommand(newServiceCmd(runCommand))
+	cmd.AddCommand(newWorkspaceCmd(runCommand))
+	cmd.AddCommand(newStarterCmd(runCommand))
 
 	return cmd
 }

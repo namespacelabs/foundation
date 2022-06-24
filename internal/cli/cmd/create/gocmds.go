@@ -7,20 +7,15 @@ package create
 import (
 	"context"
 
-	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/workspace"
 )
 
-func runGoInitCmdIfNeeded(ctx context.Context, root *workspace.Root, rootCmd *cobra.Command) error {
+func runGoInitCmdIfNeeded(ctx context.Context, root *workspace.Root, runCommand func(ctx context.Context, args []string) error) error {
 	f, err := root.FS().Open("go.mod")
 	if err == nil {
 		f.Close()
 		return nil
 	}
 
-	return runGoInitCmd(ctx, root, rootCmd)
-}
-
-func runGoInitCmd(ctx context.Context, root *workspace.Root, rootCmd *cobra.Command) error {
-	return runCommand(ctx, rootCmd, []string{"sdk", "go", "mod", "init", root.Workspace.ModuleName})
+	return runCommand(ctx, []string{"sdk", "go", "mod", "init", root.Workspace.ModuleName})
 }

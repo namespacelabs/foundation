@@ -24,7 +24,7 @@ const (
 	starterServerName  = "Server"
 )
 
-func newStarterCmd() *cobra.Command {
+func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "starter",
 		Short: "Creates a new workspace in a new directory from a template.",
@@ -55,18 +55,19 @@ func newStarterCmd() *cobra.Command {
 				args:        []string{"create", "workspace", workspaceName},
 			},
 			{
-				description: fmt.Sprintf("Adding an example service %s.", starterServiceName),
+				description: fmt.Sprintf("Adding an example service '%s' at '%s'.", starterServiceName, starterServicePkg),
 				args:        []string{"create", "service", starterServicePkg, "--framework=go", fmt.Sprintf("--name=%s", starterServiceName)},
 			},
 			{
-				description: fmt.Sprintf("Adding an example server %s.", starterServerName),
+				description: fmt.Sprintf("Adding an example server '%s' at '%s'.", starterServerName, starterServerPkg),
 				args:        []string{"create", "server", starterServerPkg, "--framework=go", fmt.Sprintf("--name=%s", starterServerName)},
 			},
 		}
 
-		rootCmd := cmd.Root()
 		for _, starterCmd := range starterCmds {
-			if err := runAndPrintCommand(ctx, stdout, rootCmd, &starterCmd); err != nil {
+			printConsoleCmd(ctx, stdout, fmt.Sprintf("ns %s", strings.Join(starterCmd.args, " ")))
+			fmt.Fprintf(stdout, "%s\n\n", colors.Ctx(ctx).Comment.Apply(starterCmd.description))
+			if err := runCommand(ctx, starterCmd.args); err != nil {
 				return err
 			}
 		}
@@ -80,12 +81,6 @@ func newStarterCmd() *cobra.Command {
 type starterCmd struct {
 	description string
 	args        []string
-}
-
-func runAndPrintCommand(ctx context.Context, out io.Writer, rootCmd *cobra.Command, starterCmd *starterCmd) error {
-	printConsoleCmd(ctx, out, fmt.Sprintf("ns %s", strings.Join(starterCmd.args, " ")))
-	fmt.Fprintf(out, "%s\n\n", colors.Ctx(ctx).Comment.Apply(starterCmd.description))
-	return runCommand(ctx, rootCmd, starterCmd.args)
 }
 
 func printConsoleCmd(ctx context.Context, out io.Writer, text string) {

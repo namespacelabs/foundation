@@ -21,7 +21,7 @@ import (
 
 const serverSuffix = "server"
 
-func newServerCmd() *cobra.Command {
+func newServerCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	use := "server"
 	cmd := &cobra.Command{
 		Use:   use,
@@ -48,7 +48,7 @@ func newServerCmd() *cobra.Command {
 		}
 
 		if *fmwk == schema.Framework_GO {
-			if err := runGoInitCmdIfNeeded(ctx, root, cmd.Root()); err != nil {
+			if err := runGoInitCmdIfNeeded(ctx, root, runCommand); err != nil {
 				return err
 			}
 		}
