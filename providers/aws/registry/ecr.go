@@ -24,20 +24,19 @@ import (
 )
 
 type ecrManager struct {
-	sesh    aws.Config
-	profile string
+	sesh *awsprovider.Session
 }
 
 var _ registry.Manager = ecrManager{}
 
 func Register() {
 	registry.Register("aws/ecr", func(ctx context.Context, ck *devhost.ConfigKey) (m registry.Manager, finalErr error) {
-		sesh, profile, err := awsprovider.MustConfiguredSession(ctx, ck.DevHost, ck.Selector)
+		sesh, err := awsprovider.MustConfiguredSession(ctx, ck.DevHost, ck.Selector)
 		if err != nil {
 			return nil, err
 		}
 
-		return ecrManager{sesh: sesh, profile: profile}, nil
+		return ecrManager{sesh: sesh}, nil
 	})
 }
 
@@ -58,7 +57,7 @@ func (em ecrManager) Tag(ctx context.Context, packageName schema.PackageName) (o
 	}
 
 	caller := res.Value
-	url := packageURL(repoURL(em.sesh, caller), packageName.String())
+	url := packageURL(repoURL(em.sesh.Config(), caller), packageName.String())
 
 	return oci.AllocatedName{
 		Keychain: keychainSession(em),
@@ -107,7 +106,7 @@ func (em ecrManager) AuthRepository(img oci.ImageID) (oci.AllocatedName, error) 
 }
 
 type makeRepository struct {
-	sesh           aws.Config
+	sesh           *awsprovider.Session
 	callerIdentity compute.Computable[*sts.GetCallerIdentityOutput]
 	repository     string
 
@@ -119,7 +118,7 @@ func (m *makeRepository) Action() *tasks.ActionEvent {
 }
 
 func (m *makeRepository) Inputs() *compute.In {
-	return compute.Inputs().Computable("caller", m.callerIdentity).Str("packageName", m.repository)
+	return compute.Inputs().Computable("caller", m.callerIdentity).Str("packageName", m.repository).Str("cacheKey", m.sesh.CacheKey())
 }
 
 func (m *makeRepository) Compute(ctx context.Context, deps compute.Resolved) (string, error) {
@@ -130,7 +129,7 @@ func (m *makeRepository) Compute(ctx context.Context, deps compute.Resolved) (st
 		ImageTagMutability: types.ImageTagMutabilityImmutable,
 	}
 
-	if _, err := ecr.NewFromConfig(m.sesh).CreateRepository(ctx, req); err != nil {
+	if _, err := ecr.NewFromConfig(m.sesh.Config()).CreateRepository(ctx, req); err != nil {
 		var e *types.RepositoryAlreadyExistsException
 		if errors.As(err, &e) {
 			// If the repository already exists, that's all good.
@@ -139,5 +138,5 @@ func (m *makeRepository) Compute(ctx context.Context, deps compute.Resolved) (st
 		}
 	}
 
-	return packageURL(repoURL(m.sesh, caller), m.repository), nil
+	return packageURL(repoURL(m.sesh.Config(), caller), m.repository), nil
 }

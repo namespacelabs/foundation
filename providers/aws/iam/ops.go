@@ -23,7 +23,7 @@ func RegisterGraphHandlers() {
 			return nil, fnerrors.BadInputError("both role_name and assume_role_policy_json are required")
 		}
 
-		sesh, _, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		sesh, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 		if err != nil {
 			return nil, err
 		}
@@ -39,7 +39,7 @@ func RegisterGraphHandlers() {
 
 		addTags(&input.Tags, m.Tag, m.ForServer)
 
-		iamcli := iam.NewFromConfig(sesh)
+		iamcli := iam.NewFromConfig(sesh.Config())
 
 		if _, err := iamcli.CreateRole(ctx, input); err != nil {
 			var e *types.EntityAlreadyExistsException
@@ -67,7 +67,7 @@ func RegisterGraphHandlers() {
 			return nil, fnerrors.BadInputError("all of `role_name` and `policy_name` and `policy_json` are required")
 		}
 
-		sesh, _, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		sesh, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +78,7 @@ func RegisterGraphHandlers() {
 			RoleName:       &m.RoleName,
 		}
 
-		iamcli := iam.NewFromConfig(sesh)
+		iamcli := iam.NewFromConfig(sesh.Config())
 
 		if _, err := iamcli.PutRolePolicy(ctx, input); err != nil {
 			var e *types.EntityAlreadyExistsException

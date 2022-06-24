@@ -7,14 +7,14 @@ package registry
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/ecr/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	dockertypes "github.com/docker/cli/cli/config/types"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/providers/aws/auth"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -25,18 +25,16 @@ var DefaultKeychain oci.Keychain = defaultKeychain{}
 type defaultKeychain struct{}
 
 func (dk defaultKeychain) Resolve(ctx context.Context, authn authn.Resource) (authn.Authenticator, error) {
-	cfg, err := config.LoadDefaultConfig(ctx)
+	// XXX rethink this; we need more context in order to pick the right credentials.
+	session, err := awsprovider.ConfiguredSession(ctx, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	// XXX need devhost to get a profile.
-	return keychainSession{cfg, "default"}.Resolve(ctx, authn)
+	return keychainSession{sesh: session}.Resolve(ctx, authn)
 }
 
 type keychainSession struct {
-	sesh    aws.Config
-	profile string
+	sesh *awsprovider.Session
 }
 
 var _ oci.Keychain = keychainSession{}
@@ -58,11 +56,15 @@ func (em keychainSession) Resolve(ctx context.Context, r authn.Resource) (authn.
 }
 
 func (em keychainSession) refreshPrivateAuth(ctx context.Context) (*dockertypes.AuthConfig, error) {
-	return tasks.Return(ctx, tasks.Action("aws.ecr.auth").Arg("profile", em.profile),
+	if em.sesh == nil {
+		return nil, fnerrors.New("aws/ecr: no credentials available")
+	}
+
+	return tasks.Return(ctx, tasks.Action("aws.ecr.auth"),
 		func(ctx context.Context) (*dockertypes.AuthConfig, error) {
 			return refreshAuth(ctx,
 				func(ctx context.Context) ([]types.AuthorizationData, error) {
-					resp, err := compute.GetValue[*ecr.GetAuthorizationTokenOutput](ctx, &cachedAuthToken{sesh: em.sesh, profile: em.profile})
+					resp, err := compute.GetValue[*ecr.GetAuthorizationTokenOutput](ctx, &cachedAuthToken{sesh: em.sesh})
 					if err != nil {
 						return nil, err
 					}
@@ -74,18 +76,17 @@ func (em keychainSession) refreshPrivateAuth(ctx context.Context) (*dockertypes.
 						return "", err
 					}
 
-					return repoURL(em.sesh, res.Value), nil
+					return repoURL(em.sesh.Config(), res.Value), nil
 				})
 		})
 }
 
 func (em keychainSession) resolveAccount() compute.Computable[*sts.GetCallerIdentityOutput] {
-	return auth.ResolveWithConfig(em.sesh, em.profile)
+	return auth.ResolveWithConfig(em.sesh)
 }
 
 type cachedAuthToken struct {
-	sesh    aws.Config
-	profile string // Used as cached key.
+	sesh *awsprovider.Session
 
 	compute.DoScoped[*ecr.GetAuthorizationTokenOutput]
 }
@@ -95,9 +96,9 @@ func (cat cachedAuthToken) Action() *tasks.ActionEvent {
 }
 
 func (cat cachedAuthToken) Inputs() *compute.In {
-	return compute.Inputs().Str("profile", cat.profile)
+	return compute.Inputs().Str("cacheKey", cat.sesh.CacheKey())
 }
 
 func (cat cachedAuthToken) Compute(ctx context.Context, _ compute.Resolved) (*ecr.GetAuthorizationTokenOutput, error) {
-	return ecr.NewFromConfig(cat.sesh).GetAuthorizationToken(ctx, &ecr.GetAuthorizationTokenInput{})
+	return ecr.NewFromConfig(cat.sesh.Config()).GetAuthorizationToken(ctx, &ecr.GetAuthorizationTokenInput{})
 }

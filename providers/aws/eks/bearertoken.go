@@ -16,7 +16,7 @@ import (
 
 func ComputeToken(ctx context.Context, s *Session, clusterName string) (Token, error) {
 	g := generator{
-		client: sts.NewPresignClient(sts.NewFromConfig(s.sesh)),
+		client: sts.NewPresignClient(sts.NewFromConfig(s.sesh.Config())),
 	}
 
 	return g.GetWithSTS(ctx, clusterName)

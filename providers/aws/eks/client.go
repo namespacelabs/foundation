@@ -7,7 +7,6 @@ package eks
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/schema"
@@ -17,12 +16,12 @@ import (
 type Session struct {
 	devHost  *schema.DevHost
 	selector devhost.Selector
-	sesh     aws.Config
+	sesh     *awsprovider.Session
 	eks      *eks.Client
 }
 
 func NewSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
-	sesh, _, err := awsprovider.MustConfiguredSession(ctx, devHost, selector)
+	sesh, err := awsprovider.MustConfiguredSession(ctx, devHost, selector)
 	if err != nil {
 		return nil, err
 	}
@@ -31,12 +30,12 @@ func NewSession(ctx context.Context, devHost *schema.DevHost, selector devhost.S
 		devHost:  devHost,
 		selector: selector,
 		sesh:     sesh,
-		eks:      eks.NewFromConfig(sesh),
+		eks:      eks.NewFromConfig(sesh.Config()),
 	}, nil
 }
 
 func NewOptionalSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
-	sesh, _, err := awsprovider.ConfiguredSession(ctx, devHost, selector)
+	sesh, err := awsprovider.ConfiguredSession(ctx, devHost, selector)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +47,7 @@ func NewOptionalSession(ctx context.Context, devHost *schema.DevHost, selector d
 	return &Session{
 		devHost:  devHost,
 		selector: selector,
-		sesh:     *sesh,
-		eks:      eks.NewFromConfig(*sesh),
+		sesh:     sesh,
+		eks:      eks.NewFromConfig(sesh.Config()),
 	}, nil
 }

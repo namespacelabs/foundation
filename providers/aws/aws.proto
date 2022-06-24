@@ -9,5 +9,7 @@ package foundation.providers.aws;
 option go_package = "namespacelabs.dev/foundation/providers/aws";
 
 message Conf {
-    string profile = 1;
+    string profile                   = 1;
+    bool   use_injected_web_identity = 2;
+    string assume_role_arn           = 3;
 }
