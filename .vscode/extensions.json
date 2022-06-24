@@ -4,6 +4,7 @@
         "golang.go",
         "esbenp.prettier-vscode",
         "zxh404.vscode-proto3",
-        "arrterian.nix-env-selector"
+        "arrterian.nix-env-selector",
+        "namespacelabs.namespace-vscode"
     ]
 }
