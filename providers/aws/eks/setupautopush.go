@@ -15,7 +15,7 @@ import (
 
 const ciAcc = 960279036429
 
-var ciRoles = [...]string{"fntest", "fndeploy"}
+var ciRoles = [...]string{"fntest", "fnplandeploy", "fndeploy"}
 
 func SetupAutopush(eksCluster *EKSCluster, iamRole string) ([]defs.MakeDefinition, error) {
 	var out []defs.MakeDefinition
