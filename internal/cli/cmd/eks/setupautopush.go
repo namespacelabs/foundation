@@ -99,11 +99,11 @@ func NewSetupAutopushCmd() *cobra.Command {
 }
 
 func getAwsAccount(ctx context.Context, env provision.Env) (string, error) {
-	cfg, profile, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	cfg, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 	if err != nil {
 		return "", err
 	}
-	caller := auth.ResolveWithConfig(cfg, profile)
+	caller := auth.ResolveWithConfig(cfg)
 	res, err := compute.Get(ctx, caller)
 	if err != nil {
 		return "", err
