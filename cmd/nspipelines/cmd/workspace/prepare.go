@@ -105,10 +105,7 @@ func newPrepareCmd() *cobra.Command {
 			}},
 		}
 
-		if err := devhost.RewriteWith(ctx, r, cidevhost); err != nil {
-			return err
-		}
-
+		return devhost.RewriteWith(ctx, r, cidevhost)
 	})
 
 	return cmd
