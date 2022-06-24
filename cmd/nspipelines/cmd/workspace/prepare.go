@@ -6,12 +6,15 @@ package workspace
 
 import (
 	"context"
+	"io"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -89,6 +92,7 @@ func newPrepareCmd() *cobra.Command {
 				Configuration: []*anypb.Any{ecr, staging},
 			}, {
 				Name:          "build-fn",
+				Purpose:       schema.Environment_DEVELOPMENT,
 				Runtime:       "kubernetes",
 				Configuration: []*anypb.Any{incluster},
 			}, {
@@ -101,8 +105,23 @@ func newPrepareCmd() *cobra.Command {
 			}},
 		}
 
-		return devhost.RewriteWith(ctx, r, cidevhost)
+		if err := devhost.RewriteWith(ctx, r, cidevhost); err != nil {
+			return err
+		}
+
+		r.Workspace.Env = append(r.Workspace.Env, &schema.Environment{
+			Name:    "build-fn",
+			Runtime: "kubernetes",
+			Purpose: schema.Environment_DEVELOPMENT,
+		})
+		return rewriteWorkspace(ctx, r)
 	})
 
 	return cmd
+}
+
+func rewriteWorkspace(ctx context.Context, root *workspace.Root) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), root.WorkspaceData.DefinitionFile(), func(w io.Writer) error {
+		return root.WorkspaceData.FormatTo(w)
+	})
 }
