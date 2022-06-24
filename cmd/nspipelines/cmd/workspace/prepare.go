@@ -12,11 +12,15 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
+
+// TODO make this configurable per workspace
+const stagingArn = "arn:aws:iam::846205600055:role/namespace-ci"
 
 func newPrepareCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -34,15 +38,28 @@ func newPrepareCmd() *cobra.Command {
 			return err
 		}
 
-		ciregistry, err := anypb.New(&registry.Provider{
+		ecr, err := anypb.New(&registry.Provider{
 			Provider: "aws/ecr",
 		})
 		if err != nil {
 			return err
 		}
 
-		ciruntime, err := anypb.New(&client.HostEnv{
+		incluster, err := anypb.New(&client.HostEnv{
 			Incluster: true,
+		})
+		if err != nil {
+			return err
+		}
+
+		staging, err := anypb.New(&aws.Conf{
+			AssumeRoleArn: stagingArn,
+		})
+		if err != nil {
+			return err
+		}
+		eks, err := anypb.New(&client.HostEnv{
+			Provider: "aws/eks",
 		})
 		if err != nil {
 			return err
@@ -56,16 +73,22 @@ func newPrepareCmd() *cobra.Command {
 		}
 
 		cidevhost := &schema.DevHost{
-			Configure: []*schema.DevHost_ConfigureEnvironment{
-				{
-					Configuration: []*anypb.Any{ciregistry},
-				},
-				{
-					Runtime:       "kubernetes",
-					Configuration: []*anypb.Any{ciruntime},
-				},
-			},
-			ConfigureTools: []*anypb.Any{ciregistry, ciruntime},
+			Configure: []*schema.DevHost_ConfigureEnvironment{{
+				Configuration: []*anypb.Any{ecr},
+			}, {
+				// Used for building ns itself.
+				Purpose:       schema.Environment_DEVELOPMENT,
+				Runtime:       "kubernetes",
+				Configuration: []*anypb.Any{incluster},
+			}, {
+				Purpose:       schema.Environment_PRODUCTION,
+				Configuration: []*anypb.Any{staging},
+			}, {
+				Purpose:       schema.Environment_PRODUCTION,
+				Runtime:       "kubernetes",
+				Configuration: []*anypb.Any{eks},
+			}},
+			ConfigureTools: []*anypb.Any{ecr, incluster},
 			ConfigurePlatform: []*schema.DevHost_ConfigurePlatform{{
 				Configuration: []*anypb.Any{cibuildkit},
 			}},
