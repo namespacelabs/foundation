@@ -9,6 +9,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/create"
 	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
 	"namespacelabs.dev/foundation/internal/cli/cmd/lsp"
+	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/secrets"
 	"namespacelabs.dev/foundation/internal/cli/cmd/source"
 	"namespacelabs.dev/foundation/internal/cli/cmd/tools"
@@ -33,7 +34,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewTestCmd())
 	root.AddCommand(NewDebugShellCmd())
 	root.AddCommand(NewModCmd())
-	root.AddCommand(NewSdkCmd())
+	root.AddCommand(sdk.NewSdkCmd())
 	root.AddCommand(NewVersionCmd())
 	root.AddCommand(NewBundlesCmd())
 	root.AddCommand(NewAttachCmd())

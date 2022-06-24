@@ -119,20 +119,20 @@ func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspa
 
 	for _, dep := range loc.Module.Workspace.Dep {
 		if dep.ModuleName == "namespacelabs.dev/foundation" {
-			if err := execGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", dep.ModuleName, dep.Version)); err != nil {
+			if err := ExecGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", dep.ModuleName, dep.Version)); err != nil {
 				return fnerrors.Wrap(loc, err)
 			}
 		}
 	}
 
-	if err := execGo(ctx, loc, localSDK, "mod", "tidy"); err != nil {
+	if err := ExecGo(ctx, loc, localSDK, "mod", "tidy"); err != nil {
 		return fnerrors.Wrap(loc, err)
 	}
 
 	return nil
 }
 
-func execGo(ctx context.Context, loc workspace.Location, sdk golang.LocalSDK, args ...string) error {
+func ExecGo(ctx context.Context, loc workspace.Location, sdk golang.LocalSDK, args ...string) error {
 	return tasks.Action("go.run").HumanReadablef("go "+strings.Join(args, " ")).Run(ctx, func(ctx context.Context) error {
 		var cmd localexec.Command
 		cmd.Command = sdk.GoBin()

@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package cmd
+package sdk
 
 import (
 	"context"
@@ -48,6 +48,7 @@ func NewSdkCmd() *cobra.Command {
 	cmd.AddCommand(newSdkShellCmd(selectedSdkList))
 	cmd.AddCommand(newSdkDownloadCmd(selectedSdkList))
 	cmd.AddCommand(newSdkVerifyCmd(selectedSdkList))
+	cmd.AddCommand(newGoCmd(goSdkVersion))
 
 	return cmd
 }
