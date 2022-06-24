@@ -42,14 +42,13 @@ func newStarterCmd() *cobra.Command {
 
 		commands := [][]string{
 			{"create", "workspace", workspaceName},
-			{"tidy"},
 			{"prepare", "local"},
 		}
 
 		stdout := console.Stdout(ctx)
 		rootCmd := cmd.Root()
-		for _, command := range commands {
-			if err := runCommand(ctx, stdout, rootCmd, command); err != nil {
+		for _, args := range commands {
+			if err := runAndPrintCommand(ctx, stdout, rootCmd, args); err != nil {
 				return err
 			}
 		}
@@ -60,8 +59,12 @@ func newStarterCmd() *cobra.Command {
 	return cmd
 }
 
-func runCommand(ctx context.Context, out io.Writer, cmd *cobra.Command, args []string) error {
+func runAndPrintCommand(ctx context.Context, out io.Writer, cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(out, "\n > %s\n\n", colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("ns %s", strings.Join(args, " "))))
+	return runCommand(ctx, cmd, args)
+}
+
+func runCommand(ctx context.Context, cmd *cobra.Command, args []string) error {
 	cmdCopy := *cmd
 	cmdCopy.SetArgs(args)
 	return cmdCopy.ExecuteContext(ctx)

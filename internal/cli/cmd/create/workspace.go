@@ -28,36 +28,41 @@ requirements: {
 )
 
 func newWorkspaceCmd() *cobra.Command {
-	use := "workspace"
 	cmd := &cobra.Command{
-		Use:   use,
+		Use:   "workspace",
 		Short: "Initializes a workspace.",
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-
-			fsfs := fnfs.ReadWriteLocalFS(cwd)
-			f, err := fsfs.Open(cuefrontend.WorkspaceFile)
-			if err == nil {
-				f.Close()
-				fmt.Fprintf(console.Stdout(ctx), "'%s' already exists, skipping.\n", cuefrontend.WorkspaceFile)
-				return nil
-			}
-
-			workspaceName, err := workspaceNameFromArgs(ctx, args)
-			if err != nil || workspaceName == "" {
-				return err
-			}
-
-			return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsfs, cuefrontend.WorkspaceFile, func(w io.Writer) error {
-				_, err := fmt.Fprintf(w, workspaceFileTemplate, workspaceName, versions.APIVersion)
-				return err
-			})
-		}),
 	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+
+		fsfs := fnfs.ReadWriteLocalFS(cwd)
+		f, err := fsfs.Open(cuefrontend.WorkspaceFile)
+		if err == nil {
+			f.Close()
+			fmt.Fprintf(console.Stdout(ctx), "'%s' already exists, skipping.\n", cuefrontend.WorkspaceFile)
+			return nil
+		}
+
+		workspaceName, err := workspaceNameFromArgs(ctx, args)
+		if err != nil || workspaceName == "" {
+			return err
+		}
+
+		// Not announcing "write" since `tidy` will do it.
+		err = fnfs.WriteWorkspaceFile(ctx, nil, fsfs, cuefrontend.WorkspaceFile, func(w io.Writer) error {
+			_, err := fmt.Fprintf(w, workspaceFileTemplate, workspaceName, versions.APIVersion)
+			return err
+		})
+		if err != nil {
+			return err
+		}
+
+		return runCommand(ctx, cmd.Root(), []string{"tidy"})
+	})
 
 	return cmd
 }
@@ -65,8 +70,8 @@ func newWorkspaceCmd() *cobra.Command {
 func askWorkspaceName(ctx context.Context) (string, error) {
 	return tui.Ask(ctx,
 		"Workspace name?",
-		"If you plan to use this workspace from another workspace, the workspace name needs to match the Github repository name. For example, 'github.com/username/reponame'.",
-		"foobar")
+		"The workspace name should to match the Github repository name.",
+		"github.com/username/reponame")
 }
 
 func workspaceNameFromArgs(ctx context.Context, args []string) (string, error) {
