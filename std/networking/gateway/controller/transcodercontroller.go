@@ -11,7 +11,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 const (
@@ -80,8 +82,12 @@ func (r *HttpGrpcTranscoderReconciler) Reconcile(ctx context.Context, req ctrl.R
 	return ctrl.Result{}, snapshotErr
 }
 
-func (r *HttpGrpcTranscoderReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *HttpGrpcTranscoderReconciler) SetupWithManager(mgr ctrl.Manager, matchNamespace string) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&HttpGrpcTranscoder{}).
+		For(&HttpGrpcTranscoder{}, builder.WithPredicates(predicate.NewPredicateFuncs(
+			func(object client.Object) bool {
+				return object.GetNamespace() == matchNamespace
+			},
+		))).
 		Complete(r)
 }

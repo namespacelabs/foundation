@@ -8,7 +8,7 @@ package versions
 // are built into Namespace itself (i.e. is not versioned as part of the
 // foundation repository). Whenever new non-backwards compatible semantics are
 // added to Namespace, this number must be bumped.
-const APIVersion = 36
+const APIVersion = 37
 
 const IntroducedGrpcTranscodeNode = 35
 

@@ -397,6 +397,12 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			WithArgs(sidecar.Args...).
 			WithCommand(sidecar.Command...)
 
+		// XXX remove this
+		scntr = scntr.WithEnv(applycorev1.EnvVar().WithName("FN_KUBERNETES_NAMESPACE").
+			WithValueFrom(applycorev1.EnvVarSource().
+				WithFieldRef(applycorev1.ObjectFieldSelector().
+					WithFieldPath("metadata.namespace"))))
+
 		// Share all mounts with sidecards for now.
 		// XXX security review this.
 		scntr.VolumeMounts = container.VolumeMounts

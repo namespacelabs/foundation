@@ -7,6 +7,7 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -51,6 +52,13 @@ var (
 
 func main() {
 	flag.Parse()
+
+	controllerNamespace := os.Getenv("FN_KUBERNETES_NAMESPACE")
+	if controllerNamespace == "" {
+		log.Fatal("FN_KUBERNETES_NAMESPACE is required")
+	}
+
+	log.Printf("Observing namespace %q...", controllerNamespace)
 
 	xdsAddrPort, err := ParseAddressPort(*xdsServerAddress)
 	if err != nil {
@@ -131,7 +139,7 @@ func main() {
 		Scheme:   mgr.GetScheme(),
 		snapshot: transcoderSnapshot,
 	}
-	if err := httpGrpcTranscoderReconciler.SetupWithManager(mgr); err != nil {
+	if err := httpGrpcTranscoderReconciler.SetupWithManager(mgr, controllerNamespace); err != nil {
 		log.Fatalf("failed to set up the HTTP gRPC Transcoder reconciler: %+v", err)
 	}
 	log.Println("set up the HTTP gRPC Transcoder reconciler")
