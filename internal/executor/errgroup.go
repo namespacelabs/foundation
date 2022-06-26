@@ -8,24 +8,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
-	"golang.org/x/sync/errgroup"
+	"namespacelabs.dev/go-ids"
 )
 
 type Executor interface {
 	Go(func(context.Context) error)
 	GoCancelable(func(context.Context) error) func()
+	Wait() error
 }
 
 func New(ctx context.Context, name string) (Executor, func() error) {
-	eg, ctx := errgroup.WithContext(ctx)
-	wait := func() error {
-		if err := eg.Wait(); err != nil {
-			return fmt.Errorf("%s: failed: %w", name, err)
-		}
-		return nil
-	}
-	return fromErrGroup(eg, ctx), wait
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	exec := &errGroupExecutor{ctx: ctxWithCancel, cancel: cancel, name: name, id: ids.NewRandomBase32ID(8)}
+	return exec, exec.Wait
 }
 
 func Newf(ctx context.Context, format string, args ...interface{}) (Executor, func() error) {
@@ -34,27 +31,51 @@ func Newf(ctx context.Context, format string, args ...interface{}) (Executor, fu
 
 func Serial(ctx context.Context) (Executor, func() error) {
 	s := &serial{ctx: ctx}
-	return s, func() error { return s.err }
-}
-
-func fromErrGroup(eg *errgroup.Group, ctx context.Context) Executor {
-	return &errGroupExecutor{eg, ctx}
+	return s, s.Wait
 }
 
 type errGroupExecutor struct {
-	eg  *errgroup.Group
-	ctx context.Context
+	ctx    context.Context
+	cancel func()
+	name   string
+	id     string
+
+	wg sync.WaitGroup
+
+	errOnce sync.Once
+	err     error
+}
+
+func (exec *errGroupExecutor) Wait() error {
+	exec.wg.Wait()
+	exec.cancel()
+	return exec.err
+}
+
+func (exec *errGroupExecutor) lowlevelGo(f func() error) {
+	exec.wg.Add(1)
+
+	go func() {
+		defer exec.wg.Done()
+
+		if err := f(); err != nil {
+			exec.errOnce.Do(func() {
+				exec.err = err
+				exec.cancel()
+			})
+		}
+	}()
 }
 
 func (exec *errGroupExecutor) Go(f func(context.Context) error) {
-	exec.eg.Go(func() error {
+	exec.lowlevelGo(func() error {
 		return f(exec.ctx)
 	})
 }
 
 func (exec *errGroupExecutor) GoCancelable(f func(context.Context) error) func() {
 	ctxWithCancel, cancel := context.WithCancel(exec.ctx)
-	exec.eg.Go(func() error {
+	exec.lowlevelGo(func() error {
 		if err := f(ctxWithCancel); err != nil {
 			// Don't let individual cancelation lead to the cancelation of the whole group.
 			if !errors.Is(err, context.Canceled) {
@@ -83,3 +104,5 @@ func (s *serial) GoCancelable(f func(context.Context) error) func() {
 	}
 	return func() {}
 }
+
+func (s *serial) Wait() error { return s.err }

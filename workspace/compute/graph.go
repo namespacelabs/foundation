@@ -330,15 +330,18 @@ func checkCache(ctx context.Context, g *Orch, opts computeInstance, cacheable *c
 }
 
 func waitDeps(ctx context.Context, g *Orch, desc string, computable map[string]rawComputable) (map[string]ResultWithTimestamp[any], error) {
+	if len(computable) == 0 {
+		return nil, nil
+	}
+
 	var rmu sync.Mutex // Protects resolved and digests.
 
 	// We wait in parallel to create N actions so that the full dependency
 	// graph is also visible in the action log. This is a bit wasteful though
 	// and should be rethinked.
-	eg, wait := executor.Newf(ctx, "compute.wait-deps(%s)", desc)
+	eg, _ := executor.Newf(ctx, "compute.wait-deps(%s, %d deps)", desc, len(computable))
 
 	results := map[string]ResultWithTimestamp[any]{}
-
 	for k, d := range computable {
 		k := k // Close k.
 		d := d // Close d.
@@ -360,7 +363,7 @@ func waitDeps(ctx context.Context, g *Orch, desc string, computable map[string]r
 	// XXX think through this, we're throwing the same errors all over the place.
 	// Probably just want a "dependency didn't compute" error here which feels like
 	// a cancellation.
-	err := wait()
+	err := eg.Wait()
 
 	return results, err
 }
@@ -469,13 +472,14 @@ func Do(parent context.Context, do func(context.Context) error) error {
 	g.origctx = ctx
 	g.exec = exec
 
-	errResult := do(ctx)
+	// We execute do in the executor instead of directly, to ensure that error
+	// propagation is correct; i.e. if a separate branch ends up failing, we
+	// should see that error rather than the context cancelation that do() would
+	// otherwise.
+	exec.Go(do)
 
 	// Importantly, call `wait` before returning to make sure that any deferred work gets concluded.
-	err2 := wait()
-	if errResult == nil {
-		errResult = err2
-	}
+	errResult := wait()
 
 	g.mu.Lock()
 	cleaners := g.cleaners

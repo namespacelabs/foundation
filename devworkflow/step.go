@@ -41,13 +41,14 @@ func setWorkspace(ctx context.Context, env provision.Env, packageName string, ad
 		// incremental by having narrower dependencies. E.g. single server would have
 		// a single build, single deployment, etc. And changes to siblings servers
 		// would only impact themselves, not all servers. #362
-		return compute.Continuously(ctx, &buildAndDeploy{
+		err := compute.Continuously(ctx, &buildAndDeploy{
 			obs:            obs,
 			pfw:            pfw,
 			env:            env,
 			serverPackages: serverPackages,
 			focusServers:   focusServers,
 		}, nil)
+		return err
 	})
 }
 
