@@ -40,13 +40,13 @@ type testRun struct {
 	TestBinCommand []string
 	TestBinImageID compute.Computable[oci.ImageID]
 
-	Workspace      *schema.Workspace
-	EnvProto       *schema.Environment
-	Stack          *schema.Stack
-	Focus          []string // Package names.
-	Plan           compute.Computable[*deploy.Plan]
-	Debug          bool
-	OutputProgress bool
+	Workspace        *schema.Workspace
+	EnvProto         *schema.Environment
+	Stack            *schema.Stack
+	ServersUnderTest []string // Package names.
+	Plan             compute.Computable[*deploy.Plan]
+	Debug            bool
+	OutputProgress   bool
 
 	// If VClusters are enabled.
 	VCluster compute.Computable[*vcluster.VCluster]
@@ -69,7 +69,7 @@ func (test *testRun) Inputs() *compute.In {
 		Proto("workspace", test.Workspace).
 		Proto("env", test.EnvProto).
 		Proto("stack", test.Stack).
-		Strs("focus", test.Focus).
+		Strs("focus", test.ServersUnderTest).
 		Computable("plan", test.Plan).
 		Bool("debug", test.Debug)
 	if test.VCluster != nil {
@@ -184,7 +184,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 	})
 
 	testResults := &schema.TestResult{
-		Plan:                   deploy.Serialize(test.Workspace, test.EnvProto, test.Stack, p, test.Focus),
+		Plan:                   deploy.Serialize(test.Workspace, test.EnvProto, test.Stack, p, test.ServersUnderTest),
 		ComputedConfigurations: p.Computed,
 	}
 
@@ -204,7 +204,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 		fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
 	}
 
-	bundle, err := collectLogs(ctx, env, test.Stack, test.Focus, test.OutputProgress)
+	bundle, err := collectLogs(ctx, env, test.Stack, test.ServersUnderTest, test.OutputProgress)
 	if err != nil {
 		return nil, err
 	}

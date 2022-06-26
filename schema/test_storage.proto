@@ -20,11 +20,16 @@ message TestResult {
     foundation.schema.ComputedConfigurations computed_configurations = 3;
 }
 
+// Next ID: 9
 message TestBundle {
+    string          test_package       = 6;
+    string          test_name          = 7;
+    TestResult      result             = 1;
+    repeated string servers_under_test = 8;
+
     google.protobuf.Timestamp created   = 4;
     google.protobuf.Timestamp completed = 5;  // Regardless of success or failure.
 
-    TestResult      result     = 1;
     LogRef          test_log   = 2;
     repeated LogRef server_log = 3;
 }

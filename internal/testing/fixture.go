@@ -108,12 +108,12 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		return nil, err
 	}
 
-	focus, stack, err := loadSUT(ctx, pl, testDef)
+	sut, stack, err := loadSUT(ctx, pl, testDef)
 	if err != nil {
 		return nil, fnerrors.UserError(testPkg.Location, "failed to load fixture: %w", err)
 	}
 
-	deployPlan, err := deploy.PrepareDeployStack(ctx, env, stack, focus)
+	deployPlan, err := deploy.PrepareDeployStack(ctx, env, stack, sut)
 	if err != nil {
 		return nil, fnerrors.UserError(testPkg.Location, "failed to load stack: %w", err)
 	}
@@ -135,9 +135,9 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 	fixtureImage := oci.PublishResolvable(testBinTag, bin)
 
-	var focusServers []string
-	for _, srv := range focus {
-		focusServers = append(focusServers, srv.Proto().GetPackageName())
+	var sutServers []string
+	for _, srv := range sut {
+		sutServers = append(sutServers, srv.Proto().GetPackageName())
 	}
 
 	tag, err := registry.AllocateName(ctx, env, testPkg.PackageName())
@@ -148,19 +148,19 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 	packages := pl.Seal()
 
 	results := &testRun{
-		TestName:       testDef.Name,
-		Env:            env.BindWith(packages),
-		Plan:           deployPlan,
-		Focus:          focusServers,
-		EnvProto:       env.Proto(),
-		Workspace:      env.Workspace(),
-		Stack:          stack.Proto(),
-		TestBinPkg:     testBinary.PackageName(),
-		TestBinCommand: testBin.Command,
-		TestBinImageID: fixtureImage,
-		Debug:          opts.Debug,
-		OutputProgress: opts.OutputProgress,
-		VCluster:       maybeCreateVCluster(env),
+		TestName:         testDef.Name,
+		Env:              env.BindWith(packages),
+		Plan:             deployPlan,
+		ServersUnderTest: sutServers,
+		EnvProto:         env.Proto(),
+		Workspace:        env.Workspace(),
+		Stack:            stack.Proto(),
+		TestBinPkg:       testBinary.PackageName(),
+		TestBinCommand:   testBin.Command,
+		TestBinImageID:   fixtureImage,
+		Debug:            opts.Debug,
+		OutputProgress:   opts.OutputProgress,
+		VCluster:         maybeCreateVCluster(env),
 	}
 
 	createdTs := timestamppb.Now()
@@ -168,7 +168,9 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 	toFS := compute.Map(tasks.Action("test.to-fs"),
 		compute.Inputs().Computable("bundle", results).
 			Indigestible("packages", packages).
-			Proto("createdTs", createdTs),
+			Proto("test", testDef).
+			Proto("createdTs", createdTs).
+			Strs("sut", sutServers),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
 			computed, ok := compute.GetDepWithType[*PreStoredTestBundle](deps, "bundle")
@@ -184,9 +186,12 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 			var fsys memfs.FS
 
 			stored := &schema.TestBundle{
-				Created:   createdTs,
-				Completed: timestamppb.Now(),
-				Result:    bundle.Result,
+				TestPackage:      testDef.PackageName,
+				TestName:         testDef.Name,
+				Result:           bundle.Result,
+				ServersUnderTest: sutServers,
+				Created:          createdTs,
+				Completed:        timestamppb.Now(),
 				TestLog: &schema.LogRef{
 					PackageName:   bundle.TestLog.PackageName,
 					ContainerName: bundle.TestLog.ContainerName,
