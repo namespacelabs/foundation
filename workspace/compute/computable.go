@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/go-ids"
 )
 
 // A computable represents a node in a computation graph. Each computation node produces a value,
@@ -83,8 +84,18 @@ func (c DoScoped[V]) Output() Output         { return Output{} }
 func (c PrecomputeScoped[V]) Output() Output { return Output{} }
 
 type embeddedState struct {
-	promise Promise[any] // Polymorphic.
-	running bool
+	promise  Promise[any] // Polymorphic.
+	running  bool
+	uniqueID string // Used in continuous.
+}
+
+func (es *embeddedState) ensureUniqueID() string {
+	es.promise.mu.Lock()
+	defer es.promise.mu.Unlock()
+	if es.uniqueID == "" {
+		es.uniqueID = ids.NewRandomBase62ID(8)
+	}
+	return es.uniqueID
 }
 
 func prepareInstance[V any](rc rawComputable, global, precomputed bool) computeInstance {

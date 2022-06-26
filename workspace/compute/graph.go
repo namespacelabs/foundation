@@ -119,16 +119,17 @@ func startComputingWithOpts(ctx context.Context, g *Orch, opts computeInstance) 
 		return ErrPromise[any](err)
 	}
 
-	if opts.IsGlobal {
-		if !inputs.Digest.IsSet() {
-			panic("global node that doesn't have stable inputs: " + reflect.TypeOf(opts.Computable).String())
-		}
-
-		p, isComputing := maybeCreatePromise(g, opts.Computable, inputs)
-		if !isComputing {
+	// Any computation which yields is keyed on the same inputs shares its output.
+	if inputs.Digest.IsSet() {
+		p, isRunning := ensurePromise(g, opts.Computable, inputs)
+		if !isRunning {
 			deferCompute(g, p, opts, inputs)
 		}
 		return p
+	} else {
+		if opts.IsGlobal {
+			panic("global node that doesn't have stable inputs: " + reflect.TypeOf(opts.Computable).String())
+		}
 	}
 
 	opts.State.promise.mu.Lock()
@@ -150,12 +151,13 @@ func startComputingWithOpts(ctx context.Context, g *Orch, opts computeInstance) 
 	return &opts.State.promise
 }
 
-func maybeCreatePromise(g *Orch, c hasAction, inputs *computedInputs) (*Promise[any], bool) {
+func ensurePromise(g *Orch, c hasAction, inputs *computedInputs) (*Promise[any], bool) {
 	g.mu.Lock()
-	p, isComputing := g.promises[inputs.Digest.String()]
+	key := inputs.Digest.String()
+	p, isComputing := g.promises[key]
 	if !isComputing {
-		p = makePromise[any](c, inputs.Digest.String())
-		g.promises[inputs.Digest.String()] = p
+		p = makePromise[any](c, key)
+		g.promises[key] = p
 	}
 	g.mu.Unlock()
 

@@ -132,15 +132,18 @@ func (g *sinkInvocation) sink(ctx context.Context, in *In, updated func(context.
 			continue
 		}
 
-		opts := c.prepareCompute(c)
-		if opts.IsGlobal {
-			g.ensureGlobalObserver(c, kv.Name, rebuilt)
-		} else {
-			// XXX this is not quite right; it does not account for the
-			// shared scope expectations of the Computable. The side-effect
-			// is that it will lead to more work than required.
+		instance := c.prepareCompute(c)
+		if instance.IsGlobal {
+			g.ensureObserver(c, instance, "", kv.Name, rebuilt)
+		} else if instance.IsPrecomputed {
 			o := g.newObserver(c, kv.Name, rebuilt)
 			g.eg.Go(o.Loop)
+		} else {
+			// Non-global observers follow a similar model: if the inputs are
+			// fully described, then we treat it as a global computation. If
+			// not, we maintain a computation keyed by a stable unique ID bound
+			// to the computable instance.
+			g.ensureObserver(c, instance, instance.State.ensureUniqueID(), kv.Name, rebuilt)
 		}
 	}
 
@@ -237,22 +240,25 @@ func hasAllKeys(m map[string]ResultWithTimestamp[any], keys []string) bool {
 
 type rebuiltFunc func(string, ResultWithTimestamp[any]) bool
 
-func (g *sinkInvocation) ensureGlobalObserver(c rawComputable, key string, rebuilt rebuiltFunc) {
+func (g *sinkInvocation) ensureObserver(c rawComputable, instance computeInstance, instanceKey string, obskey string, rebuilt rebuiltFunc) {
 	g.eg.Go(func(ctx context.Context) error {
 		inputs, err := c.Inputs().computeDigest(ctx, c, true)
 		if err != nil {
 			return err
 		}
 
+		globalKey := inputs.Digest.String()
 		if !inputs.Digest.IsSet() {
-			panic("global node that doesn't have stable inputs")
+			if instanceKey == "" {
+				panic("global node that doesn't have stable inputs")
+			}
+			globalKey = instanceKey
 		}
 
 		g.mu.Lock()
-		globalKey := inputs.Digest.String()
 		obs := g.globals[globalKey]
 		if obs == nil {
-			obs = &observable{inv: g, computable: c.prepareCompute(c)}
+			obs = &observable{inv: g, computable: instance}
 			if g.globals == nil {
 				g.globals = map[string]*observable{}
 			}
@@ -269,7 +275,7 @@ func (g *sinkInvocation) ensureGlobalObserver(c rawComputable, key string, rebui
 		obs.observers = append(obs.observers, onResult{
 			ID: ids.NewRandomBase62ID(8),
 			Handle: func(rwt ResultWithTimestamp[any]) bool {
-				return rebuilt(key, rwt)
+				return rebuilt(obskey, rwt)
 			}},
 		)
 		obs.mu.Unlock()
@@ -278,7 +284,7 @@ func (g *sinkInvocation) ensureGlobalObserver(c rawComputable, key string, rebui
 		// track of the latest revision it has observed, and drop updates with old
 		// versions.
 		if latest.revision > 0 {
-			rebuilt(key, latest)
+			rebuilt(obskey, latest)
 		}
 
 		return nil
