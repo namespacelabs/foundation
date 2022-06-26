@@ -12,6 +12,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -100,6 +101,13 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 			case "Deployment":
 				res, err := cli.AppsV1().Deployments(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
 				if err != nil {
+					// If the resource is not visible yet, wait anyway, as the
+					// only way to get here is by requesting that the resource
+					// be created.
+					if errors.IsNotFound(err) {
+						return false, nil
+					}
+
 					return false, err
 				}
 
@@ -111,6 +119,13 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 			case "StatefulSet":
 				res, err := cli.AppsV1().StatefulSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
 				if err != nil {
+					// If the resource is not visible yet, wait anyway, as the
+					// only way to get here is by requesting that the resource
+					// be created.
+					if errors.IsNotFound(err) {
+						return false, nil
+					}
+
 					return false, err
 				}
 
