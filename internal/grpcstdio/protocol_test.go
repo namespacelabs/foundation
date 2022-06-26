@@ -27,7 +27,7 @@ func TestProtocol(t *testing.T) {
 
 	ctx := context.Background()
 
-	eg, wait := executor.New(ctx, "testprotocol")
+	eg := executor.New(ctx, "testprotocol")
 
 	s := grpc.NewServer()
 
@@ -75,7 +75,7 @@ func TestProtocol(t *testing.T) {
 		return err
 	})
 
-	if err := wait(); err != nil {
+	if err := eg.Wait(); err != nil {
 		t.Fatal(err)
 	}
 }

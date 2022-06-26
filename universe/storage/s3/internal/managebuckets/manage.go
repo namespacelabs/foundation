@@ -44,7 +44,7 @@ func apply(ctx context.Context) error {
 		return fmt.Errorf("failed to read Minio credentials: %w", err)
 	}
 
-	eg, wait := executor.New(ctx, "s3.ensure-buckets")
+	eg := executor.New(ctx, "s3.ensure-buckets")
 	for _, bucket := range conf.Bucket {
 		bucket := bucket // Close bucket.
 
@@ -64,7 +64,7 @@ func apply(ctx context.Context) error {
 		})
 	}
 
-	return wait()
+	return eg.Wait()
 }
 
 func getMinioCreds() (*minio.Creds, error) {

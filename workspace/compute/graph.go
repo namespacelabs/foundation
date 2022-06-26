@@ -45,7 +45,7 @@ var (
 type Orch struct {
 	cache   cache.Cache
 	origctx context.Context
-	exec    executor.Executor
+	exec    executor.ExecutorLike
 
 	mu       sync.Mutex
 	promises map[string]*Promise[any]
@@ -341,7 +341,7 @@ func waitDeps(ctx context.Context, g *Orch, desc string, computable map[string]r
 	// We wait in parallel to create N actions so that the full dependency
 	// graph is also visible in the action log. This is a bit wasteful though
 	// and should be rethinked.
-	eg, _ := executor.Newf(ctx, "compute.wait-deps(%s, %d deps)", desc, len(computable))
+	eg := executor.Newf(ctx, "compute.wait-deps(%s, %d deps)", desc, len(computable))
 
 	results := map[string]ResultWithTimestamp[any]{}
 	for k, d := range computable {
@@ -470,7 +470,7 @@ func Do(parent context.Context, do func(context.Context) error) error {
 		promises: map[string]*Promise[any]{},
 	}
 	ctx := context.WithValue(parent, _graphKey, g)
-	exec, wait := executor.New(ctx, "compute.Do")
+	exec := executor.New(ctx, "compute.Do")
 	g.origctx = ctx
 	g.exec = exec
 
@@ -481,7 +481,7 @@ func Do(parent context.Context, do func(context.Context) error) error {
 	exec.Go(do)
 
 	// Importantly, call `wait` before returning to make sure that any deferred work gets concluded.
-	errResult := wait()
+	errResult := exec.Wait()
 
 	g.mu.Lock()
 	cleaners := g.cleaners

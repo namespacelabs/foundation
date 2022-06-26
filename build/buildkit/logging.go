@@ -32,7 +32,7 @@ type jsonEvent struct {
 	Event     *client.SolveStatus `json:"e,omitempty"`
 }
 
-func setupOutput(ctx context.Context, logid, sid string, eg executor.Executor, parentCh chan *client.SolveStatus) {
+func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLike, parentCh chan *client.SolveStatus) {
 	attachments := tasks.Attachments(ctx)
 	outText := attachments.Output(tasks.TaskOutputTextLog)
 	outJSON := attachments.Output(TaskOutputBuildkitJsonLog)

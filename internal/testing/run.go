@@ -156,7 +156,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 	localCtx, cancelAll := context.WithCancel(ctx)
 	defer cancelAll()
 
-	ex, wait := executor.Newf(localCtx, "testing.run(%s)", test.TestName)
+	ex := executor.Newf(localCtx, "testing.run(%s)", test.TestName)
 
 	var extraOutput []io.Writer
 	if test.OutputProgress {
@@ -191,7 +191,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 	// Clear the hints, no point storing those.
 	testResults.Plan.Hints = nil
 
-	waitErr := wait()
+	waitErr := ex.Wait()
 	if waitErr == nil {
 		testResults.Success = true
 	} else if errors.Is(waitErr, errTestFailed) {
@@ -219,7 +219,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 }
 
 func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, focus []string, printLogs bool) (*PreStoredTestBundle, error) {
-	ex, wait := executor.New(ctx, "test.collect-logs")
+	ex := executor.New(ctx, "test.collect-logs")
 
 	type serverLog struct {
 		PackageName   string
@@ -283,7 +283,7 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 		})
 	}
 
-	if err := wait(); err != nil {
+	if err := ex.Wait(); err != nil {
 		return nil, err
 	}
 

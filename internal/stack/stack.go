@@ -142,7 +142,7 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 		deps := server.Deps()
 
 		parsedDeps := make([]*ParsedNode, len(deps))
-		exec, wait := executor.New(ctx, "stack.compute")
+		exec := executor.New(ctx, "stack.compute")
 
 		for k, n := range deps {
 			k := k // Close k.
@@ -178,7 +178,7 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 			})
 		}
 
-		if err := wait(); err != nil {
+		if err := exec.Wait(); err != nil {
 			return err
 		}
 

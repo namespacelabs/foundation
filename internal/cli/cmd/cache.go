@@ -41,7 +41,7 @@ func newPruneCmd() *cobra.Command {
 				return err
 			}
 
-			eg, wait := executor.New(ctx, "fn.prune")
+			eg := executor.New(ctx, "fn.prune")
 
 			if slices.Contains(what, "foundation") {
 				eg.Go(func(ctx context.Context) error {
@@ -57,7 +57,7 @@ func newPruneCmd() *cobra.Command {
 			}
 
 			// XXX remove go caches?
-			return wait()
+			return eg.Wait()
 		}),
 	}
 

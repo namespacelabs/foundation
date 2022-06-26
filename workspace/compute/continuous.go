@@ -68,10 +68,10 @@ func Continuously(baseCtx context.Context, sinkable Sinkable, transformErr Trans
 	}
 	ctx := context.WithValue(baseCtx, _continuousKey, g)
 	// We want all executions under the executor to be able to obtain the current invocation.
-	eg, wait := executor.New(ctx, "compute.continuously")
+	eg := executor.New(ctx, "compute.continuously")
 	g.eg = eg
 	g.sink(ctx, sinkable.Inputs(), sinkable.Updated)
-	err := wait()
+	err := eg.Wait()
 
 	if err := sinkable.Cleanup(ctx); err != nil {
 		fmt.Fprintf(console.Warnings(ctx), "clean failed: %v\n", err)
@@ -89,7 +89,7 @@ func SpawnCancelableOnContinuously(ctx context.Context, f func(context.Context) 
 }
 
 type sinkInvocation struct {
-	eg executor.Executor
+	eg executor.ExecutorLike
 
 	mu           sync.Mutex
 	globals      map[string]*observable

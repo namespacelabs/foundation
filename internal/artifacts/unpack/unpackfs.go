@@ -89,10 +89,10 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked
 		var checksums []checksumEntry
 		if err := json.Unmarshal(checksumsBytes, &checksums); err == nil {
 			// If unmarshal fails, we'll just remove and replace below.
-			ex, wait := executor.New(ctx, "unpack.check-digests")
+			eg := executor.New(ctx, "unpack.check-digests")
 			for _, cksum := range checksums {
 				cksum := cksum // Close cksum.
-				ex.Go(func(ctx context.Context) error {
+				eg.Go(func(ctx context.Context) error {
 					if !CheckChecksums {
 						_, err := os.Stat(filepath.Join(targetDir, cksum.Path))
 						return err
@@ -116,7 +116,7 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked
 				})
 			}
 
-			if err := wait(); err == nil {
+			if err := eg.Wait(); err == nil {
 				return Unpacked{targetDir}, nil
 			}
 		}

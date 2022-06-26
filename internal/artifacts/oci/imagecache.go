@@ -511,14 +511,14 @@ func writeImage(ctx context.Context, cache cache.Cache, img Image) error {
 		tasks.Attachments(ctx).SetProgress(progress)
 
 		// Write the layers concurrently.
-		eg, wait := executor.New(ctx, "oci.image-cache.write-layers")
+		eg := executor.New(ctx, "oci.image-cache.write-layers")
 		for _, layer := range layers {
 			layer := layer // Capture layer.
 			eg.Go(func(ctx context.Context) error {
 				return writeLayer(ctx, cache, layer, progress)
 			})
 		}
-		if err := wait(); err != nil {
+		if err := eg.Wait(); err != nil {
 			return err
 		}
 

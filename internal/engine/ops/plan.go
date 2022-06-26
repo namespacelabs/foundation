@@ -182,13 +182,12 @@ func (g *Plan) apply(ctx context.Context, env Environment, parallel bool) ([]Wai
 		}
 	}
 
-	var ex executor.Executor
-	var wait func() error
+	var ex executor.ExecutorLike
 
 	if parallel {
-		ex, wait = executor.New(ctx, "plan.apply")
+		ex = executor.New(ctx, "plan.apply")
 	} else {
-		ex, wait = executor.Serial(ctx)
+		ex = executor.NewSerial(ctx)
 	}
 
 	for k, commit := range ordered {
@@ -203,7 +202,7 @@ func (g *Plan) apply(ctx context.Context, env Environment, parallel bool) ([]Wai
 		})
 	}
 
-	if err := wait(); err != nil {
+	if err := ex.Wait(); err != nil {
 		errs = append(errs, err)
 	}
 

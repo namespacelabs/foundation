@@ -92,7 +92,7 @@ func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPor
 	debug := console.Debug(ctx)
 
 	ids := atomic.NewInt32(0)
-	eg, wait := executor.New(ctx, "kubernetes.portforward")
+	eg := executor.New(ctx, "kubernetes.portforward")
 
 	var mu sync.Mutex
 	var currentConn httpstream.Connection
@@ -197,7 +197,7 @@ func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPor
 		})
 	}
 
-	return wait()
+	return eg.Wait()
 }
 
 func handleConnection(ctx context.Context, streamConn httpstream.Connection, conn net.Conn, requestID int, debugid string, containerPort int, errch chan error) error {
