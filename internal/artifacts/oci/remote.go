@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dustin/go-humanize"
 	"github.com/google/go-containerregistry/pkg/authn"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -17,6 +18,8 @@ import (
 
 var (
 	staticMapping = []keychainMap{}
+
+	UsePercentageInTracking = false
 )
 
 type KeychainWhen int
@@ -101,14 +104,22 @@ func (rp *RemoteProgress) FormatProgress() string {
 		return ""
 	}
 
-	var percent float64
-	if total == 0 {
-		percent = 0
-	} else {
-		percent = float64(complete) / float64(total) * 100
+	if UsePercentageInTracking {
+		var percent float64
+		if total == 0 {
+			percent = 0
+		} else {
+			percent = float64(complete) / float64(total) * 100
+		}
+
+		return fmt.Sprintf("%.2f%%", percent)
 	}
 
-	return fmt.Sprintf("%.2f%%", percent)
+	if total == 0 {
+		return humanize.Bytes(uint64(complete))
+	}
+
+	return fmt.Sprintf("%s / %s", humanize.Bytes(uint64(complete)), humanize.Bytes(uint64(total)))
 }
 
 func (rp *RemoteProgress) Track() remote.Option {
