@@ -6,6 +6,7 @@ package memfs
 
 import (
 	"io/fs"
+	"log"
 	"os"
 	"testing"
 
@@ -146,4 +147,19 @@ func visitAll(fsys fs.ReadDirFS) ([]simpleEntry, error) {
 		return nil, err
 	}
 	return visited, nil
+}
+
+func TestStatDir(t *testing.T) {
+	var inmem FS
+
+	inmem.Add("foo/bar", []byte("1"))
+
+	st, err := fs.Stat(&inmem, "foo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if !st.IsDir() {
+		log.Fatal("expected directory to be a directory")
+	}
 }

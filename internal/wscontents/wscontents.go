@@ -398,7 +398,7 @@ func AggregateFSEvents(watcher filewatcher.EventsAndErrors, debugLogger, errLogg
 	}
 }
 
-func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPath string, fsys fnfs.ReadWriteFS, onNewSnapshot OnNewSnapshopFunc, buffer []fsnotify.Event) (fnfs.ReadWriteFS, bool, error) {
+func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPath string, snapshot fnfs.ReadWriteFS, onNewSnapshot OnNewSnapshopFunc, buffer []fsnotify.Event) (fnfs.ReadWriteFS, bool, error) {
 	// Coalesce multiple changes.
 	var dirtyPaths uniquestrings.List
 	for _, ev := range buffer {
@@ -419,7 +419,7 @@ func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPa
 			return nil, false, fnerrors.InternalError("rel failed: %v", err)
 		}
 
-		action, err := checkChanges(ctx, fsys, os.DirFS(absPath), rel)
+		action, err := checkChanges(ctx, snapshot, os.DirFS(absPath), rel)
 		if err != nil {
 			return nil, false, fnerrors.InternalError("failed to check changes: %v", err)
 		}
@@ -429,7 +429,7 @@ func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPa
 	}
 
 	if len(actions) == 0 {
-		return fsys, false, nil
+		return snapshot, false, nil
 	}
 
 	var labels []string
@@ -439,11 +439,11 @@ func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPa
 		var err error
 		switch p.Event {
 		case FileEvent_WRITE:
-			err = fnfs.WriteFile(ctx, fsys, p.Path, p.NewContents, fs.FileMode(p.Mode))
+			err = fnfs.WriteFile(ctx, snapshot, p.Path, p.NewContents, fs.FileMode(p.Mode))
 		case FileEvent_REMOVE:
-			err = fsys.Remove(p.Path)
+			err = snapshot.Remove(p.Path)
 		case FileEvent_MKDIR:
-			if mkdirfs, ok := fsys.(fnfs.MkdirFS); ok {
+			if mkdirfs, ok := snapshot.(fnfs.MkdirFS); ok {
 				err = mkdirfs.MkdirAll(p.Path, fs.FileMode(p.Mode))
 			}
 		default:
@@ -457,10 +457,10 @@ func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPa
 	fmt.Fprintf(userVisible, "Detected changes: %v\n", labels)
 
 	if onNewSnapshot == nil {
-		return fsys, true, nil
+		return snapshot, true, nil
 	}
 
-	return onNewSnapshot(ctx, fsys, actions)
+	return onNewSnapshot(ctx, snapshot, actions)
 }
 
 func checkChanges(ctx context.Context, snapshot fs.FS, ws fs.FS, path string) (*FileEvent, error) {
@@ -483,7 +483,20 @@ func checkChanges(ctx context.Context, snapshot fs.FS, ws fs.FS, path string) (*
 	}
 
 	if st.IsDir() {
-		return &FileEvent{Event: FileEvent_MKDIR, Path: path, Mode: uint32(st.Mode().Perm())}, nil
+		fi, err := fs.Stat(snapshot, path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return &FileEvent{Event: FileEvent_MKDIR, Path: path, Mode: uint32(st.Mode().Perm())}, nil
+			}
+
+			return nil, err
+		}
+
+		if fi.IsDir() {
+			return nil, nil
+		}
+
+		return nil, fnerrors.New("%s: inconsistent event, is a directory in the local workspace but not in the snapshot", path)
 	}
 
 	contents, err := ioutil.ReadAll(f)
