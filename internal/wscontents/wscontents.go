@@ -419,7 +419,7 @@ func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPa
 			return nil, false, fnerrors.InternalError("rel failed: %v", err)
 		}
 
-		action, err := checkChanges(fsys, os.DirFS(absPath), rel)
+		action, err := checkChanges(ctx, fsys, os.DirFS(absPath), rel)
 		if err != nil {
 			return nil, false, fnerrors.InternalError("failed to check changes: %v", err)
 		}
@@ -463,7 +463,7 @@ func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPa
 	return onNewSnapshot(ctx, fsys, actions)
 }
 
-func checkChanges(snapshot fs.FS, ws fs.FS, path string) (*FileEvent, error) {
+func checkChanges(ctx context.Context, snapshot fs.FS, ws fs.FS, path string) (*FileEvent, error) {
 	f, err := ws.Open(path)
 	if os.IsNotExist(err) {
 		if _, err := fs.Stat(snapshot, path); os.IsNotExist(err) {

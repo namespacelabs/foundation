@@ -30,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
+	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
@@ -124,11 +125,14 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			if err := cmdBundle.RegisterCommand(cmd, args); err != nil {
 				return err
 			}
+
 			tasks.ActionStorer = cmdBundle.CreateActionStorer(cmd.Context(), flushLogs)
 		}
 
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = runtime.HasRuntime
+
+		filewatcher.SetupFileWatcher()
 
 		workspace.ModuleLoader = cuefrontend.ModuleLoader
 		workspace.MakeFrontend = cuefrontend.NewFrontend
@@ -252,6 +256,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"The set of platforms that we build production images for.")
 	rootCmd.PersistentFlags().BoolVar(&fnapi.NamingForceStored, "fnapi_naming_force_stored",
 		fnapi.NamingForceStored, "If set to true, if there's a stored certificate, use it without checking the server.")
+	rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
+		filewatcher.FileWatcherUsePolling, "If set to true, uses polling to observe file system events.")
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{

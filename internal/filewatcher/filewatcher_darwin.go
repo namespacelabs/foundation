@@ -22,7 +22,11 @@ import (
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 )
 
-func NewFactory(ctx context.Context) (FileWatcherFactory, error) {
+func init() {
+	NewFactory = NewFSEventsFactory
+}
+
+func NewFSEventsFactory(ctx context.Context) (FileWatcherFactory, error) {
 	return &fsEvents{}, nil
 }
 

@@ -2,9 +2,6 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-//go:build !darwin
-// +build !darwin
-
 package filewatcher
 
 import (
@@ -14,7 +11,15 @@ import (
 	"namespacelabs.dev/go-filenotify"
 )
 
-func NewFactory(ctx context.Context) (FileWatcherFactory, error) {
+var FileWatcherUsePolling bool
+
+func SetupFileWatcher() {
+	if FileWatcherUsePolling || NewFactory == nil {
+		NewFactory = NewPollingFactory
+	}
+}
+
+func NewPollingFactory(ctx context.Context) (FileWatcherFactory, error) {
 	return fsNotifyWrapper{filenotify.NewPollingWatcher(console.Debug(ctx))}, nil
 }
 

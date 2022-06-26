@@ -10,6 +10,8 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
+var NewFactory func(ctx context.Context) (FileWatcherFactory, error)
+
 type FileWatcherFactory interface {
 	AddFile(name string) error
 	AddDirectory(name string) error
