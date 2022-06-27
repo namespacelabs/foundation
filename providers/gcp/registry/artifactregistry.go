@@ -7,85 +7,17 @@ package registry
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os/exec"
 
-	dockertypes "github.com/docker/cli/cli/config/types"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"google.golang.org/api/compute/v1"
-	"google.golang.org/api/option"
-	"google.golang.org/api/transport"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/providers/gcp"
-	"namespacelabs.dev/foundation/schema"
 	c "namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type manager struct {
-	devHost  *schema.DevHost
-	selector devhost.Selector
-}
-
-var _ registry.Manager = manager{}
-
 var DefaultKeychain oci.Keychain = defaultKeychain{}
-
-func Register() {
-	registry.Register("gcp/artifactregistry", func(ctx context.Context, ck *devhost.ConfigKey) (m registry.Manager, finalErr error) {
-		return manager{devHost: ck.DevHost, selector: ck.Selector}, nil
-	})
-}
-
-func (em manager) IsInsecure() bool { return false }
-
-func (em manager) Tag(ctx context.Context, repo string) (oci.AllocatedName, error) {
-	return oci.AllocatedName{}, fnerrors.New("unimplemented")
-}
-
-func (em manager) AllocateName(repo string) c.Computable[oci.AllocatedName] {
-	return c.Map(tasks.Action("gcp.artifactregistry.alloc-repository"), c.Inputs(), c.Output{NotCacheable: true},
-		func(ctx context.Context, r c.Resolved) (oci.AllocatedName, error) {
-			return em.Tag(ctx, repo)
-		})
-}
-
-func (em manager) AuthRepository(img oci.ImageID) (oci.AllocatedName, error) {
-	return oci.AllocatedName{}, fnerrors.New("unimplemented")
-}
-
-func (em manager) RefreshAuth(ctx context.Context) ([]*dockertypes.AuthConfig, error) {
-	creds, err := transport.Creds(ctx, option.WithScopes(compute.CloudPlatformScope))
-	if err != nil {
-		return nil, err
-	}
-
-	token, err := creds.TokenSource.Token()
-	if err != nil {
-		return nil, err
-	}
-
-	conf := &gcp.ArtifactRegistryConf{}
-	if !em.selector.Select(em.devHost).Get(conf) {
-		return nil, nil
-	}
-
-	var authcreds []*dockertypes.AuthConfig
-	for _, loc := range conf.EnableLocation {
-		pkgdev := fmt.Sprintf("%s-docker.pkg.dev", loc)
-		authcreds = append(authcreds, &dockertypes.AuthConfig{
-			Username:      "oauth2accesstoken",
-			Password:      token.AccessToken,
-			ServerAddress: pkgdev,
-		})
-	}
-
-	return authcreds, nil
-}
 
 type defaultKeychain struct{}
 
