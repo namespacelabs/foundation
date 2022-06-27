@@ -7,7 +7,6 @@ package web
 import "text/template"
 
 type serviceTmplOptions struct {
-	BackendPkgs []string
 }
 
 type templateFile struct {
@@ -19,8 +18,9 @@ var templates = []templateFile{
 	{
 		filename: "src/index.tsx",
 		tmpl: template.Must(template.New("index.tsx").Parse(`
-import React from "react";
+import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
+import { Backends } from "../config/backends.fn.js";
 
 ReactDOM.render(
 	<React.StrictMode>
@@ -30,11 +30,31 @@ ReactDOM.render(
 );
 
 function App() {
-	return (
-		<>
-			Hello, world!
-		</>
-	);
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const result = await postAPI({ text: "Hello World" });
+      const json = await result.json();
+
+      setText(json["text"]);
+    };
+
+    fetchData();
+  }, []);
+
+  return <>Response from the backend: {text}</>;
+}
+
+function postAPI(request: any) {
+  return fetch(` + "`" + `${Backends.apiBackend.managed}/api.echoservice.EchoService/Echo` + "`" + `, {
+    method: "POST",
+    mode: "cors",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
 }
 `)),
 	},
@@ -97,6 +117,7 @@ function App() {
 		"isolatedModules": true,
 		"noEmit": true,
 		"jsx": "react-jsx",
+		"noImplicitAny": false,
 	},
 	"include": [
 		"./src"
