@@ -39,7 +39,6 @@ static_resources:
               socket_address:
                 address: 127.0.0.1
                 port_value: {{.XDSServerPort}}
-    http2_protocol_options: {}
     name: xds_cluster
   - connect_timeout: 1s
     load_assignment:
@@ -51,5 +50,4 @@ static_resources:
               socket_address:
                 address: 127.0.0.1
                 port_value: {{.ALSListenerPort}}
-    http2_protocol_options: {}
     name: als_cluster

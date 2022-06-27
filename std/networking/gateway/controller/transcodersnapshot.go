@@ -214,7 +214,6 @@ func makeCluster(clusterName string, socketAddress string, port uint32) *cluster
 		LbPolicy:             cluster.Cluster_ROUND_ROBIN,
 		LoadAssignment:       makeEndpoint(clusterName, socketAddress, port),
 		DnsLookupFamily:      cluster.Cluster_V4_ONLY,
-		Http2ProtocolOptions: &core.Http2ProtocolOptions{},
 	}
 }
 
