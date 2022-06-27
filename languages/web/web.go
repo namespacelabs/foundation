@@ -90,10 +90,10 @@ func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBui
 func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments compute.Computable[[]*schema.IngressFragment], srv provision.Server, isFocus bool) ([]compute.Computable[oci.Image], error) {
 	var builds []compute.Computable[oci.Image]
 
-	for _, m := range srv.Proto().UrlMap {
-		dep := srv.GetDep(schema.PackageName(m.PackageName))
+	for _, entry := range srv.Proto().UrlMap {
+		dep := srv.GetDep(schema.PackageName(entry.PackageName))
 		if dep == nil {
-			return nil, fnerrors.UserError(srv.Location, "%s: included in url map but not loaded", m.PackageName)
+			return nil, fnerrors.UserError(srv.Location, "%s: included in url map but not loaded", entry.PackageName)
 		}
 
 		backends, err := parseBackends(dep.Node())
@@ -124,43 +124,47 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 
 		targetConf := build.NewBuildTarget(conf.TargetPlatform()).WithTargetName(conf.PublishName()).WithSourcePackage(srv.PackageName())
 
-		var b compute.Computable[oci.Image]
-		if useDevBuild(srv.Env().Proto()) {
-			var devwebConfig memfs.FS
-			devwebConfig.Add("devweb.config.js", []byte(`import { defineConfig, loadEnv } from "vite";
-
-			export default ({ mode }) => {
-			  process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
-
-			  return defineConfig({
-				base: process.env.CMD_DEV_BASE || "/",
-
-				server: {
-                  watch: {
-                    usePolling: true,
-					interval: 500,
-					binaryInterval: 1000,
-				  },
-				  hmr: {
-					clientPort: process.env.CMD_DEV_PORT,
-				  },
-				},
-			  });
-			};`))
-
-			extra = append(extra, &devwebConfig)
-
-			b, err = viteSource(ctx, filepath.Join("/packages", m.PackageName), loc, isFocus, srv.Env(), targetConf, extra...)
-		} else {
-			b, err = ViteProductionBuild(ctx, loc, srv.Env(), targetConf.SourceLabel(), filepath.Join(compiledPath, m.PathPrefix), m.PathPrefix, extra...)
-		}
-
+		b, err := prepareBuild(ctx, loc, srv.Env(), targetConf, entry, isFocus, extra)
 		if err != nil {
 			return nil, err
 		}
+
 		builds = append(builds, b)
 	}
+
 	return builds, nil
+}
+
+func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environment, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, extra []*memfs.FS) (compute.Computable[oci.Image], error) {
+	if !useDevBuild(env.Proto()) {
+		return ViteProductionBuild(ctx, loc, env, targetConf.SourceLabel(), filepath.Join(compiledPath, entry.PathPrefix), entry.PathPrefix, extra...)
+	}
+
+	var devwebConfig memfs.FS
+	devwebConfig.Add("devweb.config.js", []byte(`import { defineConfig, loadEnv } from "vite";
+
+		export default ({ mode }) => {
+		  process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
+
+		  return defineConfig({
+			base: process.env.CMD_DEV_BASE || "/",
+
+			server: {
+			  watch: {
+				usePolling: true,
+				interval: 500,
+				binaryInterval: 1000,
+			  },
+			  hmr: {
+				clientPort: process.env.CMD_DEV_PORT,
+			  },
+			},
+		  });
+		};`))
+
+	extra = append(extra, &devwebConfig)
+
+	return viteDevBuild(ctx, env, filepath.Join("/packages", entry.PackageName), loc, isFocus, targetConf, extra...)
 }
 
 func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {

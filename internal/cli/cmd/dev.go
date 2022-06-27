@@ -91,15 +91,11 @@ func NewDevCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				console.SetIdleLabel(ctx, "waiting for workspace changes")
-				defer stackState.Close()
 
-				go func() {
-					_ = stackState.Run(ctx)
-				}()
+				console.SetIdleLabel(ctx, "waiting for workspace changes")
 
 				// Kick off the dev workflow.
-				stackState.RequestCh <- &devworkflow.DevWorkflowRequest{
+				stackState.DeferRequest(&devworkflow.DevWorkflowRequest{
 					Type: &devworkflow.DevWorkflowRequest_SetWorkspace_{
 						SetWorkspace: &devworkflow.DevWorkflowRequest_SetWorkspace{
 							AbsRoot:           root.Abs(),
@@ -108,19 +104,9 @@ func NewDevCmd() *cobra.Command {
 							EnvName:           envRef,
 						},
 					},
-				}
+				})
 
 				r := mux.NewRouter()
-				srv := &http.Server{
-					Handler:      r,
-					Addr:         servingAddr,
-					WriteTimeout: 15 * time.Second,
-					ReadTimeout:  15 * time.Second,
-					BaseContext:  func(l net.Listener) context.Context { return ctx },
-				}
-
-				shutdownErr := make(chan error)
-
 				fncobra.RegisterPprof(r)
 				devworkflow.RegisterEndpoints(stackState, r)
 
@@ -161,24 +147,29 @@ func NewDevCmd() *cobra.Command {
 					r.PathPrefix("/").Handler(mux)
 				}
 
-				go func() {
-					// On cancelation, i.e. Ctrl-C, ask the server to shutdown.
+				srv := &http.Server{
+					Handler:      r,
+					Addr:         servingAddr,
+					WriteTimeout: 15 * time.Second,
+					ReadTimeout:  15 * time.Second,
+					BaseContext:  func(l net.Listener) context.Context { return ctx },
+				}
+
+				stackState.Attach(func(ctx context.Context) error {
+					// On cancelation, i.e. Ctrl-C, ask the server to shutdown. This will lead to the next go-routine below, actually returns.
 					<-ctx.Done()
+
 					ctxT, cancelT := context.WithTimeout(ctx, 1*time.Second)
 					defer cancelT()
 
-					shutdownErr <- srv.Shutdown(ctxT)
-				}()
+					return srv.Shutdown(ctxT)
+				})
 
-				if err := srv.Serve(lis); err != nil {
-					if err != http.ErrServerClosed {
-						// Fetch logs here
-						return err
-					}
-				}
+				stackState.Attach(func(ctx context.Context) error {
+					return srv.Serve(lis)
+				})
 
-				// Wait for shutdown.
-				return <-shutdownErr
+				return stackState.Run(ctx)
 			})
 		},
 	}

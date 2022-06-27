@@ -32,7 +32,7 @@ func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.En
 	hostPlatform := buildkit.HostPlatform()
 	conf := build.NewBuildTarget(&hostPlatform).WithSourceLabel(description)
 
-	local, base, err := viteBase(ctx, conf, "/app", loc.Module, loc.Rel(), false, extraFiles...)
+	local, base, err := viteBuildBase(ctx, conf, "/app", loc.Module, loc.Rel(), false, extraFiles...)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.En
 	return compute.Named(tasks.Action("web.vite.build").Arg("builder", "buildkit"), image), nil
 }
 
-func viteSource(ctx context.Context, target string, loc workspace.Location, isFocus bool, env ops.Environment, conf build.BuildTarget, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
+func viteDevBuild(ctx context.Context, env ops.Environment, target string, loc workspace.Location, isFocus bool, conf build.BuildTarget, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
 	var module build.Workspace
 
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {
@@ -66,7 +66,7 @@ func viteSource(ctx context.Context, target string, loc workspace.Location, isFo
 		module = loc.Module
 	}
 
-	local, state, err := viteBase(ctx, conf, target, module, loc.Rel(), isFocus, extraFiles...)
+	local, state, err := viteBuildBase(ctx, conf, target, module, loc.Rel(), isFocus, extraFiles...)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func viteSource(ctx context.Context, target string, loc workspace.Location, isFo
 	return compute.Named(tasks.Action("web.vite.build.dev").Arg("builder", "buildkit").Scope(loc.PackageName), image), nil
 }
 
-func viteBase(ctx context.Context, conf build.BuildTarget, target string, module build.Workspace, rel string, rebuildOnChanges bool, extraFiles ...*memfs.FS) (buildkit.LocalContents, llb.State, error) {
+func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, module build.Workspace, rel string, rebuildOnChanges bool, extraFiles ...*memfs.FS) (buildkit.LocalContents, llb.State, error) {
 	local := buildkit.LocalContents{Module: module, Path: rel, ObserveChanges: rebuildOnChanges}
 
 	src := buildkit.MakeLocalState(local)
@@ -89,16 +89,17 @@ func viteBase(ctx context.Context, conf build.BuildTarget, target string, module
 		return buildkit.LocalContents{}, llb.State{}, err
 	}
 
-	buildBase, err := PrepareYarn(ctx, target, nodeImage, src, *conf.TargetPlatform())
+	buildBase, err := prepareYarn(ctx, target, nodeImage, src, *conf.TargetPlatform())
 	if err != nil {
 		return buildkit.LocalContents{}, llb.State{}, err
 	}
 
 	// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
 	base := llbutil.Image(nodeImage, *conf.TargetPlatform()).
-		With(
-			llbutil.CopyFrom(src, ".", target),
-			llbutil.CopyFrom(buildBase, filepath.Join(target, "node_modules"), filepath.Join(target, "node_modules")))
+		With(llbutil.CopyFrom(buildBase, filepath.Join(target, "node_modules"), filepath.Join(target, "node_modules")))
+
+	// Use separate layers for node_modules, and sources, as the latter change more often.
+	base = base.With(llbutil.CopyFrom(src, ".", target))
 
 	for _, extra := range extraFiles {
 		base, err = llbutil.WriteFS(ctx, extra, base, target)
@@ -110,7 +111,7 @@ func viteBase(ctx context.Context, conf build.BuildTarget, target string, module
 	return local, base, nil
 }
 
-func PrepareYarn(ctx context.Context, target, nodejsBase string, src llb.State, platform specs.Platform) (llb.State, error) {
+func prepareYarn(ctx context.Context, target, nodejsBase string, src llb.State, platform specs.Platform) (llb.State, error) {
 	base, err := nodejs.PrepareYarnBase(ctx, nodejsBase, platform)
 	if err != nil {
 		return llb.State{}, err

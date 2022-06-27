@@ -53,7 +53,7 @@ func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Push it to be processed.
-		s.RequestCh <- m
+		s.DeferRequest(m)
 		return nil
 	})
 }

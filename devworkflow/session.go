@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/protos"
@@ -32,11 +33,12 @@ var AlsoOutputBuildToStderr = false
 var TaskOutputBuildkitJsonLog = tasks.Output("buildkit.json", "application/json+fn.buildkit")
 
 type Session struct {
-	RequestCh chan *DevWorkflowRequest
+	requestCh chan *DevWorkflowRequest
 
 	Errors    io.Writer
 	setSticky func(string)
 
+	executor      *executor.Executor
 	localHostname string
 	obs           *Observers
 	sink          *tasks.StatefulSink
@@ -63,11 +65,12 @@ func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname str
 	}
 
 	return &Session{
+		requestCh:     make(chan *DevWorkflowRequest, 1),
 		Errors:        console.Errors(ctx),
 		setSticky:     setSticky,
+		executor:      executor.New(ctx, "devworkflow.session"),
 		localHostname: localHostname,
 		obs:           NewObservers(ctx),
-		RequestCh:     make(chan *DevWorkflowRequest, 1),
 		commandOutput: syncbuffer.NewByteBuffer(),
 		buildOutput:   syncbuffer.NewByteBuffer(),
 		buildkitJSON:  syncbuffer.NewByteBuffer(),
@@ -75,9 +78,9 @@ func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname str
 	}, nil
 }
 
-func (s *Session) Close() {
-	close(s.RequestCh)
-	s.obs.Close()
+func (s *Session) DeferRequest(req *DevWorkflowRequest) {
+	// XXX check that the session is not done.
+	s.requestCh <- req
 }
 
 func (s *Session) NewClient(needsHistory bool) (*Observer, error) {
@@ -149,13 +152,15 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 		resetStack(s.currentStack, env, provision.Server{})
 		pfw := s.setEnvironment(env)
 
-		go func() {
+		s.executor.Go(func(ctx context.Context) error {
 			err := setWorkspace(ctx, env, servers[0], servers[1:], s, pfw)
 
 			if err != nil && !errors.Is(err, context.Canceled) {
 				fnerrors.Format(console.Stderr(parentCtx), err, fnerrors.WithStyle(colors.WithColors))
 			}
-		}()
+
+			return nil
+		})
 	}
 
 	return nil
@@ -184,6 +189,8 @@ func (so *sinkObserver) OnUpdate(ra *tasks.RunningAction) { so.pushUpdate(ra) }
 func (so *sinkObserver) OnDone(ra *tasks.RunningAction)   { so.pushUpdate(ra) }
 
 func (s *Session) Run(ctx context.Context) error {
+	defer s.obs.Close()
+
 	cancel := s.sink.Observe(&sinkObserver{s})
 	defer cancel()
 
@@ -200,51 +207,57 @@ func (s *Session) Run(ctx context.Context) error {
 		w = writers[0]
 	}
 
-	ctx = logoutput.WithOutput(ctx, logoutput.OutputTo{
-		Writer:     w,
-		WithColors: true, // Assume xterm.js can handle color.
-	})
-
 	defer func() {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.cancelPortForward()
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
+	defer close(s.requestCh)
 
-		case req, ok := <-s.RequestCh:
-			if !ok {
-				return nil
-			}
+	s.executor.Go(func(ctx context.Context) error {
+		ctx = logoutput.WithOutput(ctx, logoutput.OutputTo{
+			Writer:     w,
+			WithColors: true, // Assume xterm.js can handle color.
+		})
 
-			switch x := req.Type.(type) {
-			case *DevWorkflowRequest_SetWorkspace_:
-				set := x.SetWorkspace
-				servers := append([]string{set.GetPackageName()}, set.GetAdditionalServers()...)
-				if err := s.handleSetWorkspace(ctx, set.GetAbsRoot(), set.GetEnvName(), servers); err != nil {
-					fmt.Fprintln(console.Errors(ctx), "failed to load workspace", err)
-					return err
-				}
+		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
 
-			case *DevWorkflowRequest_ReloadWorkspace:
-				if x.ReloadWorkspace {
-					s.mu.Lock()
-					absRoot := s.requested.absRoot
-					envName := s.requested.envName
-					servers := s.requested.servers
-					s.mu.Unlock()
-					if err := s.handleSetWorkspace(ctx, absRoot, envName, servers); err != nil {
-						fmt.Fprintln(console.Errors(ctx), "failed to load workspace", err)
-						return err
+			case req := <-s.requestCh:
+				switch x := req.Type.(type) {
+				case *DevWorkflowRequest_SetWorkspace_:
+					set := x.SetWorkspace
+					servers := append([]string{set.GetPackageName()}, set.GetAdditionalServers()...)
+
+					s.executor.Go(func(ctx context.Context) error {
+						return s.handleSetWorkspace(ctx, set.GetAbsRoot(), set.GetEnvName(), servers)
+					})
+
+				case *DevWorkflowRequest_ReloadWorkspace:
+					if x.ReloadWorkspace {
+						s.mu.Lock()
+						absRoot := s.requested.absRoot
+						envName := s.requested.envName
+						servers := s.requested.servers
+						s.mu.Unlock()
+
+						s.executor.Go(func(ctx context.Context) error {
+							return s.handleSetWorkspace(ctx, absRoot, envName, servers)
+						})
 					}
 				}
 			}
 		}
-	}
+	})
+
+	return s.executor.Wait()
+}
+
+func (s *Session) Attach(f func(context.Context) error) {
+	s.executor.Go(f)
 }
 
 func (s *Session) TaskLogByName(taskID, name string) io.ReadCloser {
