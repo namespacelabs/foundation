@@ -318,22 +318,31 @@ func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema
 	}
 
 	switch x := m.(type) {
-	case *types.DeferredResourceSource:
-		n := &types.DeferredResource{Inline: x.Inline}
-
-		if x.FromInvocation != nil {
-			compiled, err := makeInvocation(ctx, env, x.FromInvocation)
-			if err != nil {
-				return nil, err
-			}
-
-			n.FromInvocation = compiled
+	case *types.DeferredResource:
+		if x.FromInvocation == nil {
+			return nil, fnerrors.BadInputError("don't know how to compute resource")
 		}
 
-		return n, nil
+		compiledInvocation, err := makeInvocation(ctx, env, x.FromInvocation)
+		if err != nil {
+			return nil, err
+		}
 
-	case *types.DeferredInvocationSource:
-		return makeInvocation(ctx, env, x)
+		invocation, err := tools.Invoke(ctx, env, compiledInvocation)
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := compute.GetValue(ctx, invocation)
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Resource == nil {
+			return nil, fnerrors.BadInputError("invocation didn't produce a resource")
+		}
+
+		return result.Resource, nil
 
 	default:
 		return nil, fnerrors.New("%s: don't know how to compile this type", src.Value.TypeUrl)

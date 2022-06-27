@@ -16,11 +16,6 @@ message Resource {
 }
 
 message DeferredResource {
-    Resource inline                    = 1;
-    DeferredInvocation from_invocation = 2;
-}
-
-message DeferredResourceSource {
-    Resource inline                          = 1;
+    reserved 1;
     DeferredInvocationSource from_invocation = 2;
 }

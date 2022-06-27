@@ -215,7 +215,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				return err
 			}
 
-			resource, err := anypb.New(&types.DeferredResourceSource{FromInvocation: gen.Secret.InitializeWith})
+			resource, err := anypb.New(&types.DeferredResource{FromInvocation: gen.Secret.InitializeWith})
 			if err != nil {
 				return err
 			}

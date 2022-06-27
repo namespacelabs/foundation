@@ -28,9 +28,13 @@ func RegisterCreateSecret() {
 			return nil, fnerrors.InternalError("%s: create.Namespace is required", d.Description)
 		}
 
-		v, err := ops.Value[*types.DeferredResource](d, "value")
+		resource, err := ops.Value[*types.Resource](d, "value")
 		if err != nil {
 			return nil, fnerrors.New("%s: failed to retrieve value: %w", d.Description, err)
+		}
+
+		if resource.GetContents() == nil {
+			return nil, fnerrors.BadInputError("%s: resource is missing a value", d.Description)
 		}
 
 		restcfg, err := client.ResolveConfig(ctx, env)
@@ -45,15 +49,6 @@ func RegisterCreateSecret() {
 
 		if existing != nil {
 			return nil, nil // Nothing to do.
-		}
-
-		resource, err := ResolveResource(ctx, env, v)
-		if err != nil {
-			return nil, fnerrors.New("%s: failed to retrieve value: %w", d.Description, err)
-		}
-
-		if resource.GetContents() == nil {
-			return nil, fnerrors.BadInputError("%s: resource is missing a value", d.Description)
 		}
 
 		cli, err := k8s.NewForConfig(restcfg)
