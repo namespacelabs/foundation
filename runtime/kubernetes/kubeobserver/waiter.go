@@ -280,7 +280,7 @@ func SelectPods(ns string, name *string, selector map[string]string) func(contex
 	return func(ctx context.Context, c *k8s.Clientset) ([]corev1.Pod, error) {
 		pods, err := c.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: sel})
 		if err != nil {
-			return nil, err
+			return nil, fnerrors.Wrapf(nil, err, "unable to list pods")
 		}
 
 		if name != nil {

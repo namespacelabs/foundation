@@ -12,6 +12,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
@@ -35,7 +36,7 @@ func (r K8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 			LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
 		})
 		if err != nil {
-			return err
+			return fnerrors.Wrapf(nil, err, "unable to list pods")
 		}
 
 		type Key struct {

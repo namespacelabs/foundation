@@ -14,6 +14,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
@@ -57,7 +58,7 @@ func RegisterGraphHandlers() {
 				LabelSelector: kubedef.SerializeSelector(kubedef.ManagedBy()),
 			})
 			if err != nil {
-				return err
+				return fnerrors.Wrapf(nil, err, "unable to list ingresses")
 			}
 
 			// We no longer emit "-managed" ingresses.

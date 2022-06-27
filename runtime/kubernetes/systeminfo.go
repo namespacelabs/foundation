@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -44,7 +45,7 @@ func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*kub
 
 	nodes, err := f.cli.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fnerrors.Wrapf(nil, err, "unable to list nodes")
 	}
 
 	sysInfo := &kubedef.SystemInfo{}

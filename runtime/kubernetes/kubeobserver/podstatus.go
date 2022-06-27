@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 )
@@ -80,7 +81,7 @@ func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, ns string, replic
 	// TODO explore how to limit the list here (e.g. through labels or by using a different API)
 	pods, err := cli.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fnerrors.Wrapf(nil, err, "unable to list pods")
 	}
 
 	var statuses []ops.WaitStatus

@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -29,7 +30,7 @@ func (r Unbound) DeleteAllRecursively(ctx context.Context, wait bool, progress i
 		LabelSelector: kubedef.SerializeSelector(kubedef.ManagedBy()),
 	})
 	if err != nil {
-		return false, err
+		return false, fnerrors.Wrapf(nil, err, "unable to list namespaces")
 	}
 
 	var filtered []string

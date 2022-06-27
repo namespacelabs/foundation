@@ -14,6 +14,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -89,7 +90,7 @@ func newKubernetesCmd() *cobra.Command {
 
 		pods, err := r.Client().CoreV1().Pods("kube-admin").List(ctx, v1.ListOptions{})
 		if err != nil {
-			return err
+			return fnerrors.Wrapf(nil, err, "unable to list pods")
 		}
 
 		w := json.NewEncoder(console.Stderr(ctx))
