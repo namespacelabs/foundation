@@ -134,6 +134,12 @@ func NewTranscoderSnapshot(args ...SnapshotOption) *TranscoderSnapshot {
 	}
 }
 
+func (t *TranscoderSnapshot) CurrentSnapshotId() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.snapshotId
+}
+
 func (t *TranscoderSnapshot) RegisterHttpListener(listenerAddr string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
