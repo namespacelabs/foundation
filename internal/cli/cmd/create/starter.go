@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
 const (
@@ -26,6 +27,15 @@ const (
 	webServiceName = "WebService"
 	webServerPkg   = "server/web"
 	webServerName  = "WebServer"
+	readmeFilePath = "README.md"
+	readmeTemplate = `Your starter Namespace project has been generated!
+
+Next steps:
+
+- Switch to the project directory: ` + "`" + `cd %s` + "`" + `
+- Run ` + "`" + `ns prepare local` + "`" + ` to prepare the local dev environment.
+- Run ` + "`" + `ns dev %s` + "`" + ` to start the server stack in the development mode with hot reload.
+`
 )
 
 func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
@@ -98,6 +108,17 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 				return err
 			}
 		}
+
+		readmeContent := fmt.Sprintf(readmeTemplate, dirName, webServerPkg)
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		if err := writeFileIfDoesntExist(ctx, fnfs.ReadWriteLocalFS(cwd), readmeFilePath, readmeContent); err != nil {
+			return err
+		}
+
+		fmt.Fprintf(stdout, "\n\n%s\n", colors.Ctx(ctx).Highlight.Apply(readmeContent))
 
 		return nil
 	})

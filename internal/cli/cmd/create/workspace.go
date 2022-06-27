@@ -83,13 +83,6 @@ func workspaceNameFromArgs(ctx context.Context, args []string) (string, error) {
 }
 
 func writeWorkspaceConfig(ctx context.Context, fsfs fnfs.ReadWriteFS, args []string) error {
-	f, err := fsfs.Open(cuefrontend.WorkspaceFile)
-	if err == nil {
-		f.Close()
-		fmt.Fprintf(console.Stdout(ctx), "'%s' already exists, skipping.\n", cuefrontend.WorkspaceFile)
-		return nil
-	}
-
 	workspaceName, err := workspaceNameFromArgs(ctx, args)
 	if err != nil {
 		return err
@@ -98,24 +91,24 @@ func writeWorkspaceConfig(ctx context.Context, fsfs fnfs.ReadWriteFS, args []str
 		return context.Canceled
 	}
 
-	// Not announcing "write" since `tidy` will do it.
-	return fnfs.WriteWorkspaceFile(ctx, nil, fsfs, cuefrontend.WorkspaceFile, func(w io.Writer) error {
-		_, err := fmt.Fprintf(w, workspaceFileTemplate, workspaceName, versions.APIVersion)
-		return err
-	})
+	return writeFileIfDoesntExist(ctx, fsfs, cuefrontend.WorkspaceFile, fmt.Sprintf(workspaceFileTemplate, workspaceName, versions.APIVersion))
 }
 
 func writeVscodeSettings(ctx context.Context, fsfs fnfs.ReadWriteFS) error {
+	return writeFileIfDoesntExist(ctx, fsfs, vscodeExtensionsFilePath, vscodeExtensionsTemplate)
+}
+
+func writeFileIfDoesntExist(ctx context.Context, fsfs fnfs.ReadWriteFS, fn string, content string) error {
 	stdout := console.Stdout(ctx)
 
-	f, err := fsfs.Open(vscodeExtensionsFilePath)
+	f, err := fsfs.Open(fn)
 	if err == nil {
 		f.Close()
 		return nil
 	}
 
-	return fnfs.WriteWorkspaceFile(ctx, stdout, fsfs, vscodeExtensionsFilePath, func(w io.Writer) error {
-		_, err := fmt.Fprint(w, vscodeExtensionsTemplate)
+	return fnfs.WriteWorkspaceFile(ctx, stdout, fsfs, fn, func(w io.Writer) error {
+		_, err := fmt.Fprint(w, content)
 		return err
 	})
 }
