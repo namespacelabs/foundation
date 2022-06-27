@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
@@ -24,9 +25,13 @@ type Status struct {
 }
 
 func FetchStatus(ctx context.Context, rootDir string) (Status, error) {
-	out, err := RunGit(ctx, rootDir, "status", "--porcelain")
+	out, errOut, err := RunGit(ctx, rootDir, "status", "--porcelain")
 	if err != nil {
-		return Status{}, err
+		if errOut != nil && bytes.Contains(errOut, []byte("not a git repository")) {
+			return Status{}, nil
+		} else {
+			return Status{}, err
+		}
 	}
 	uncommitted := len(out) > 0
 
@@ -35,12 +40,14 @@ func FetchStatus(ctx context.Context, rootDir string) (Status, error) {
 	// uncommitted files and skip tagging revision / committime.
 	var rev string
 	var commitTime time.Time
-	out, err = RunGit(ctx, rootDir, "show", "-s", "--no-show-signature", "--format=%H:%ct")
+	out, errOut, err = RunGit(ctx, rootDir, "show", "-s", "--no-show-signature", "--format=%H:%ct")
 	if err != nil && !uncommitted {
+		_, _ = console.Stderr(ctx).Write(errOut)
 		return Status{}, err
 	} else if err == nil {
 		rev, commitTime, err = parseRevTime(out)
 		if err != nil {
+			_, _ = console.Stderr(ctx).Write(errOut)
 			return Status{}, err
 		}
 	}

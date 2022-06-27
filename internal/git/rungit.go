@@ -9,21 +9,20 @@ import (
 	"context"
 	"os"
 	"os/exec"
-
-	"namespacelabs.dev/foundation/internal/console"
 )
 
-func RunGit(ctx context.Context, dir string, args ...string) ([]byte, error) {
+func RunGit(ctx context.Context, dir string, args ...string) ([]byte, []byte, error) {
 	var out bytes.Buffer
+	var errOut bytes.Buffer
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Env = append(os.Environ(), NoPromptEnv()...)
 	cmd.Stdout = &out
-	cmd.Stderr = console.Stderr(ctx)
+	cmd.Stderr = &errOut
 	cmd.Dir = dir
 
 	if err := cmd.Run(); err != nil {
-		return nil, err
+		return nil, errOut.Bytes(), err
 	}
 
-	return out.Bytes(), nil
+	return out.Bytes(), errOut.Bytes(), nil
 }
