@@ -18,10 +18,14 @@ import (
 )
 
 const (
-	starterServicePkg  = "api/echoservice"
-	starterServiceName = "EchoService"
-	starterServerPkg   = "server"
-	starterServerName  = "Server"
+	goServicePkg   = "api/echoservice"
+	goServiceName  = "EchoService"
+	goServerPkg    = "server/api"
+	goServerName   = "ApiServer"
+	webServicePkg  = "web/ui"
+	webServiceName = "WebService"
+	webServerPkg   = "server/web"
+	webServerName  = "WebServer"
 )
 
 func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
@@ -55,12 +59,31 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 				args:        []string{"create", "workspace", workspaceName},
 			},
 			{
-				description: fmt.Sprintf("Adding an example service '%s' at '%s'.", starterServiceName, starterServicePkg),
-				args:        []string{"create", "service", starterServicePkg, "--framework=go", fmt.Sprintf("--name=%s", starterServiceName)},
+				description: fmt.Sprintf("Adding an example Go API service '%s' at '%s'.", goServiceName, goServicePkg),
+				args: []string{"create", "service", goServicePkg,
+					"--framework=go",
+					fmt.Sprintf("--name=%s", goServiceName)},
 			},
 			{
-				description: fmt.Sprintf("Adding an example server '%s' at '%s'.", starterServerName, starterServerPkg),
-				args:        []string{"create", "server", starterServerPkg, "--framework=go", fmt.Sprintf("--name=%s", starterServerName)},
+				description: fmt.Sprintf("Adding an example Go API server '%s' at '%s'.", goServerName, goServerPkg),
+				args: []string{"create", "server", goServerPkg,
+					"--framework=go",
+					fmt.Sprintf("--name=%s", goServerName),
+					fmt.Sprintf("--service=%s/%s", workspaceName, goServicePkg),
+				},
+			},
+			{
+				description: fmt.Sprintf("Adding an example Web service '%s' at '%s'.", webServiceName, webServicePkg),
+				args: []string{"create", "service", webServicePkg,
+					"--framework=web",
+					fmt.Sprintf("--http_backend=%s/%s", workspaceName, goServerPkg),
+				},
+			},
+			{
+				description: fmt.Sprintf("Adding an example Web server '%s' at '%s'.", webServerName, webServerPkg),
+				args: []string{"create", "server", webServerPkg, "--framework=web",
+					fmt.Sprintf("--name=%s", webServerName),
+					fmt.Sprintf("--http_service=/:%s/%s", workspaceName, webServicePkg)},
 			},
 			{
 				description: "Bringing language-specific configuration up to date, making it consistent with the Namespace configuration. Downloading language-specific dependencies.",

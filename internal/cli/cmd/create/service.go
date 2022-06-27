@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cue"
 	"namespacelabs.dev/foundation/internal/frontend/golang"
 	"namespacelabs.dev/foundation/internal/frontend/proto"
+	"namespacelabs.dev/foundation/internal/frontend/web"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -31,6 +32,7 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 
 	fmwkStr := frameworkFlag(cmd)
 	name := cmd.Flags().String("name", "", "Service name.")
+	httpBackendPkg := cmd.Flags().String("http_backend", "", "Package name of the API backend server.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		root, loc, err := targetPackage(ctx, args, use)
@@ -53,25 +55,37 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 			}
 		}
 
-		if *name == "" {
-			*name, err = tui.Ask(ctx, "How would you like to name your service?",
-				"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
-				serviceName(loc))
-			if err != nil {
+		isNameUsed := *fmwk == schema.Framework_WEB
+
+		if !isNameUsed {
+			if *name == "" {
+				*name, err = tui.Ask(ctx, "How would you like to name your service?",
+					"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
+					serviceName(loc))
+				if err != nil {
+					return err
+				}
+			}
+
+			if *name == "" {
+				return context.Canceled
+			}
+		} else {
+			*name = ""
+		}
+
+		if *fmwk == schema.Framework_GO || *fmwk == schema.Framework_NODEJS {
+			protoOpts := proto.GenServiceOpts{Name: *name, Framework: *fmwk}
+			if err := proto.CreateProtoScaffold(ctx, root.FS(), loc, protoOpts); err != nil {
 				return err
 			}
 		}
 
-		if *name == "" {
-			return context.Canceled
+		cueOpts := cue.GenServiceOpts{
+			ExportedServiceName: *name,
+			Framework:           *fmwk,
+			HttpBackendPkg:      *httpBackendPkg,
 		}
-
-		protoOpts := proto.GenServiceOpts{Name: *name, Framework: *fmwk}
-		if err := proto.CreateProtoScaffold(ctx, root.FS(), loc, protoOpts); err != nil {
-			return err
-		}
-
-		cueOpts := cue.GenServiceOpts{Name: *name, Framework: *fmwk}
 		if err := cue.CreateServiceScaffold(ctx, root.FS(), loc, cueOpts); err != nil {
 			return err
 		}
@@ -80,6 +94,11 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 		case schema.Framework_GO:
 			goOpts := golang.GenServiceOpts{Name: *name}
 			if err := golang.CreateGolangScaffold(ctx, root.FS(), loc, goOpts); err != nil {
+				return err
+			}
+		case schema.Framework_WEB:
+			webOpts := web.GenServiceOpts{}
+			if err := web.CreateWebScaffold(ctx, root.FS(), loc, webOpts); err != nil {
 				return err
 			}
 		}

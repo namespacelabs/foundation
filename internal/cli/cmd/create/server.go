@@ -31,8 +31,22 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 
 	fmwkStr := frameworkFlag(cmd)
 	name := cmd.Flags().String("name", "", "Server name.")
+	grpcServices := cmd.Flags().StringArray("service", nil, "A service to wire to the server.")
+	httpServices := cmd.Flags().StringArray("http_service", nil, "An HTTP service to wire to the server. Format: 'path:package'.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		parsedHttpServices := []cue.HttpService{}
+		for _, httpService := range *httpServices {
+			parts := strings.Split(httpService, ":")
+			if len(parts) != 2 {
+				return fnerrors.UserError(nil, "invalid http_services format: %s", httpService)
+			}
+			parsedHttpServices = append(parsedHttpServices, cue.HttpService{
+				Path: parts[0],
+				Pkg:  parts[1],
+			})
+		}
+
 		root, loc, err := targetPackage(ctx, args, use)
 		if err != nil {
 			return err
@@ -66,7 +80,7 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			return context.Canceled
 		}
 
-		opts := cue.GenServerOpts{Name: *name, Framework: *fmwk}
+		opts := cue.GenServerOpts{Name: *name, Framework: *fmwk, GrpcServices: *grpcServices, HttpServices: parsedHttpServices}
 		if err := cue.CreateServerScaffold(ctx, root.FS(), loc, opts); err != nil {
 			return err
 		}
