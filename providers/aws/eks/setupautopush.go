@@ -8,9 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	applyrbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	fniam "namespacelabs.dev/foundation/providers/aws/iam"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 )
 
 const ciAcc = 960279036429
@@ -23,6 +25,15 @@ func SetupAutopush(eksCluster *EKSCluster, iamRole string) ([]defs.MakeDefinitio
 	policy := fniam.PolicyDocument{
 		Version: "2012-10-17",
 	}
+
+	// TODO remove in favor of fine grained roles below.
+	policy.Statement = append(policy.Statement, fniam.StatementEntry{
+		Effect: "Allow",
+		Principal: &fniam.Principal{
+			AWS: fmt.Sprintf("arn:aws:iam::%d:root", ciAcc),
+		},
+		Action: []string{"sts:AssumeRole"},
+	})
 
 	for _, role := range ciRoles {
 		policy.Statement = append(policy.Statement, fniam.StatementEntry{
@@ -79,6 +90,27 @@ func SetupAutopush(eksCluster *EKSCluster, iamRole string) ([]defs.MakeDefinitio
 		PolicyJson: string(policyBytes),
 	}
 	out = append(out, defs.Static("Namespace CI AWS Access IAM Policy", associate))
+
+	clusterRole := fmt.Sprintf("ns:%s-clusterrole", iamRole)
+	out = append(out, kubedef.Apply{
+		Description: "Admin Cluster Role",
+		Resource: applyrbacv1.ClusterRole(clusterRole).WithRules(
+			applyrbacv1.PolicyRule().WithAPIGroups("*").WithResources("*").WithVerbs("*"),
+		),
+	})
+
+	out = append(out, kubedef.Apply{
+		Description: "Admin Cluster Role Binding",
+		Resource: applyrbacv1.ClusterRoleBinding(fmt.Sprintf("ns:%s-binding", iamRole)).
+			WithRoleRef(applyrbacv1.RoleRef().
+				WithAPIGroup("rbac.authorization.k8s.io").
+				WithKind("ClusterRole").
+				WithName(clusterRole)).
+			WithSubjects(applyrbacv1.Subject().
+				WithAPIGroup("rbac.authorization.k8s.io").
+				WithKind("Group").
+				WithName(fmt.Sprintf("ns:%s-group", iamRole))),
+	})
 
 	return out, nil
 }
