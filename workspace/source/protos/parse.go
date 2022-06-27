@@ -23,6 +23,7 @@ import (
 
 	// Include descriptors for generated googleapis.
 	_ "google.golang.org/genproto/googleapis/api/annotations"
+	_ "google.golang.org/genproto/googleapis/rpc/status"
 )
 
 type ParseOpts struct {
@@ -42,7 +43,7 @@ func (opts ParseOpts) Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDe
 		LookupImport: func(path string) (*desc.FileDescriptor, error) {
 			// We're explicit about what protos are exposed here, as not all
 			// proto tooling will handling this well.
-			if filepath.Dir(path) == "google/api" {
+			if filepath.Dir(path) == "google/api" || filepath.Dir(path) == "google/rpc" {
 				return desc.LoadFileDescriptor(path)
 			}
 
