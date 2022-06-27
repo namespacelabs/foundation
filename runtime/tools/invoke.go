@@ -10,7 +10,6 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -20,23 +19,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Invoke(ctx context.Context, env ops.Environment, inv *types.DeferredInvocation) (compute.Computable[*protocol.InvokeResponse], error) {
-	target, err := HostPlatform(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	m, err := registry.GetRegistry(ctx, env)
-	if err != nil {
-		return nil, err
-	}
-
-	// XXX there is an assumption here that the image passed shares the same
-	// registry, i.e. the configuration was shared with the producer of the
-	// image.
+func InvokeWithImage(ctx context.Context, env ops.Environment, inv *types.DeferredInvocation, image compute.Computable[oci.Image]) (compute.Computable[*protocol.InvokeResponse], error) {
 	return &invokeTool{
 		invocation: inv,
-		image:      oci.ImageP(inv.Image, &target, m.IsInsecure()),
+		image:      image,
 	}, nil
 }
 

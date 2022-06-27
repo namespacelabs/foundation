@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/binary"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -323,12 +324,14 @@ func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema
 			return nil, fnerrors.BadInputError("don't know how to compute resource")
 		}
 
-		compiledInvocation, err := makeInvocation(ctx, env, x.FromInvocation)
+		compiledInvocation, image, err := makeInvocation(ctx, env, x.FromInvocation)
 		if err != nil {
 			return nil, err
 		}
 
-		invocation, err := tools.Invoke(ctx, env, compiledInvocation)
+		invocation, err := tools.InvokeWithImage(ctx, env, compiledInvocation, compute.Transform(image, func(ctx context.Context, r oci.ResolvableImage) (oci.Image, error) {
+			return r.Image()
+		}))
 		if err != nil {
 			return nil, err
 		}
@@ -349,34 +352,33 @@ func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema
 	}
 }
 
-func makeInvocation(ctx context.Context, env provision.ServerEnv, inv *types.DeferredInvocationSource) (*types.DeferredInvocation, error) {
+func makeInvocation(ctx context.Context, env provision.ServerEnv, inv *types.DeferredInvocationSource) (*types.DeferredInvocation, compute.Computable[oci.ResolvableImage], error) {
 	pkg, err := env.LoadByName(ctx, schema.PackageName(inv.Binary))
 	if err != nil {
-		return nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)
+		return nil, nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)
 	}
 
 	platform, err := tools.HostPlatform(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	prepared, err := binary.Plan(ctx, pkg, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	imageID, err := binary.EnsureImage(ctx, env, prepared)
+	img, err := prepared.Image(ctx, env)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &types.DeferredInvocation{
 		BinaryPackage: inv.Binary,
-		Image:         imageID.RepoAndDigest(),
 		BinaryConfig: &schema.BinaryConfig{
 			Command: prepared.Command,
 		},
 		Cacheable: inv.Cacheable,
 		WithInput: inv.WithInput,
-	}, nil
+	}, img, nil
 }
