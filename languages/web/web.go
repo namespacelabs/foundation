@@ -152,7 +152,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 
 			b, err = viteSource(ctx, filepath.Join("/packages", m.PackageName), loc, isFocus, srv.Env(), targetConf, extra...)
 		} else {
-			b, err = ViteBuild(ctx, loc, srv.Env(), targetConf, filepath.Join(compiledPath, m.PathPrefix), m.PathPrefix, extra...)
+			b, err = ViteProductionBuild(ctx, loc, srv.Env(), targetConf.SourceLabel(), filepath.Join(compiledPath, m.PathPrefix), m.PathPrefix, extra...)
 		}
 
 		if err != nil {

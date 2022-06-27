@@ -12,6 +12,7 @@ import { formatDur, formatTime } from "./time";
 
 export default function TaskList() {
 	let tasks = useTasks();
+	console.log(tasks);
 	return (
 		<div className={classes.taskGrid}>
 			{tasks.map((t) => (
@@ -21,12 +22,12 @@ export default function TaskList() {
 						<TaskLink task={t}>{t.name}</TaskLink>
 					</div>
 					<div className={classes.taskArgs}>
-						{t.provision_metadata?.package_name?.map((p) => (
+						{t.scope?.map((p) => (
 							<ServerLink key={p} packageName={p} />
 						))}
 					</div>
 					<div className={classes.taskEnd}>
-						{t.completed_ts ? formatDur(t.created_ts, t.completed_ts) : null}
+						{t.cached ? "cached" : t.completed_ts ? formatDur(t.created_ts, t.completed_ts) : null}
 					</div>
 				</React.Fragment>
 			))}

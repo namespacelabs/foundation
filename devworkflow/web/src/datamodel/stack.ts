@@ -18,6 +18,7 @@ export type Task = {
 	}[];
 	scope?: string[];
 	env_name?: string;
+	cached?: boolean;
 };
 
 type Update = {

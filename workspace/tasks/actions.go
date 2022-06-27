@@ -394,7 +394,7 @@ func makeProto(data *EventData, at *EventAttachments) *protocol.Task {
 		Id:                 data.ActionID.String(),
 		Name:               data.Name,
 		HumanReadableLabel: data.HumanReadable,
-		CreatedTs:          data.Started.UnixNano(),
+		CreatedTs:          data.Created.UnixNano(),
 		Scope:              data.Scope.PackageNamesAsString(),
 	}
 
@@ -424,7 +424,7 @@ func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask 
 		Id:                 data.ActionID.String(),
 		Name:               data.Name,
 		HumanReadableLabel: data.HumanReadable,
-		CreatedTs:          data.Started.UnixNano(),
+		CreatedTs:          data.Created.UnixNano(),
 		Scope:              data.Scope.PackageNamesAsString(),
 	}
 

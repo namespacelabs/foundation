@@ -28,7 +28,10 @@ import (
 )
 
 // Returns a Computable[v1.Image] with the results of the compilation.
-func ViteBuild(ctx context.Context, loc workspace.Location, env ops.Environment, conf build.BuildTarget, baseOutput, basePath string, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
+func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.Environment, description, baseOutput, basePath string, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
+	hostPlatform := buildkit.HostPlatform()
+	conf := build.NewBuildTarget(&hostPlatform).WithSourceLabel(description)
+
 	local, base, err := viteBase(ctx, conf, "/app", loc.Module, loc.Rel(), false, extraFiles...)
 	if err != nil {
 		return nil, err
