@@ -7,8 +7,10 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"io"
 	"reflect"
 	"sync"
+	"time"
 
 	"golang.org/x/exp/slices"
 	v1 "k8s.io/api/core/v1"
@@ -56,69 +58,88 @@ func (p *podObserver) Start(ctx context.Context) {
 	compute.On(ctx).Detach(tasks.Action("kubernetes.pod-resolver").Indefinite(), func(rootCtx context.Context) error {
 		// Note: the passed in ctx is used instead, as we want to react to cancelations.
 
-		sel := kubedef.SerializeSelector(p.labels)
-		w, err := p.client.CoreV1().Pods(p.namespace).Watch(ctx, metav1.ListOptions{LabelSelector: sel})
-		if err != nil {
-			return err
-		}
-
-		defer w.Stop()
 		defer p.cond.Broadcast() // On exit, wake up all waiters.
 
 		debug := console.Debug(ctx)
-
 		for {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case ev, ok := <-w.ResultChan():
-				if !ok {
-					fmt.Fprintf(debug, "kube/podresolver: %s: closed\n", sel)
-					return fnerrors.New("unexpected watch closure")
-				}
+			retry, err := p.runWatcher(ctx, debug)
+			if err == nil {
+				return nil
+			}
 
-				if ev.Object == nil {
-					continue
-				}
-
-				pod, ok := ev.Object.(*v1.Pod)
-				if !ok {
-					fmt.Fprintf(debug, "kube/podresolver: %s: received non-pod event: %v\n", sel, reflect.TypeOf(ev.Object))
-					continue
-				}
-
-				fmt.Fprintf(debug, "kube/podresolver: %s: event type %s: name %s phase %s\n",
-					sel, ev.Type, pod.Name, pod.Status.Phase)
-
-				p.mu.Lock()
-				existingIndex := slices.IndexFunc(p.runningPods, func(existing v1.Pod) bool {
-					return existing.UID == pod.UID
-				})
-
-				var modified bool
-				if ev.Type == watch.Deleted || pod.Status.Phase != v1.PodRunning {
-					if existingIndex >= 0 {
-						p.runningPods = slices.Delete(p.runningPods, existingIndex, existingIndex+1)
-						modified = true
-						fmt.Fprintf(debug, "kube/podresolver: %s: remove pod-uid %s\n", sel, pod.UID)
-					}
-				} else if (ev.Type == watch.Added || ev.Type == watch.Modified) && pod.Status.Phase == v1.PodRunning {
-					if existingIndex < 0 {
-						p.runningPods = append(p.runningPods, *pod)
-						modified = true
-						fmt.Fprintf(debug, "kube/podresolver: %s: add pod-uid %s\n", sel, pod.UID)
-					}
-				}
-
-				if modified {
-					p.revision++
-					p.cond.Broadcast()
-					p.broadcast()
-				}
-				p.mu.Unlock()
+			if retry {
+				fmt.Fprintf(console.Debug(ctx), "kube/podresolver: retrying: %v.\n", err)
+				// XXX exponential back-off?
+				time.Sleep(2 * time.Second)
+			} else {
+				return err
 			}
 		}
 	})
+}
+
+// Return true for a retry.
+func (p *podObserver) runWatcher(ctx context.Context, debug io.Writer) (bool, error) {
+	sel := kubedef.SerializeSelector(p.labels)
+	w, err := p.client.CoreV1().Pods(p.namespace).Watch(ctx, metav1.ListOptions{LabelSelector: sel})
+	if err != nil {
+		return false, err
+	}
+
+	defer w.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+
+		case ev, ok := <-w.ResultChan():
+			if !ok {
+				fmt.Fprintf(debug, "kube/podresolver: %s: closed.\n", sel)
+				return true, fnerrors.New("unexpected watch closure")
+			}
+
+			if ev.Object == nil {
+				continue
+			}
+
+			pod, ok := ev.Object.(*v1.Pod)
+			if !ok {
+				fmt.Fprintf(debug, "kube/podresolver: %s: received non-pod event: %v\n", sel, reflect.TypeOf(ev.Object))
+				continue
+			}
+
+			fmt.Fprintf(debug, "kube/podresolver: %s: event type %s: name %s phase %s\n",
+				sel, ev.Type, pod.Name, pod.Status.Phase)
+
+			p.mu.Lock()
+			existingIndex := slices.IndexFunc(p.runningPods, func(existing v1.Pod) bool {
+				return existing.UID == pod.UID
+			})
+
+			var modified bool
+			if ev.Type == watch.Deleted || pod.Status.Phase != v1.PodRunning {
+				if existingIndex >= 0 {
+					p.runningPods = slices.Delete(p.runningPods, existingIndex, existingIndex+1)
+					modified = true
+					fmt.Fprintf(debug, "kube/podresolver: %s: remove pod-uid %s\n", sel, pod.UID)
+				}
+			} else if (ev.Type == watch.Added || ev.Type == watch.Modified) && pod.Status.Phase == v1.PodRunning {
+				if existingIndex < 0 {
+					p.runningPods = append(p.runningPods, *pod)
+					modified = true
+					fmt.Fprintf(debug, "kube/podresolver: %s: add pod-uid %s\n", sel, pod.UID)
+				}
+			}
+
+			if modified {
+				p.revision++
+				p.cond.Broadcast()
+				p.broadcast()
+			}
+			p.mu.Unlock()
+		}
+	}
 }
 
 func (p *podObserver) Watch(f func(*v1.Pod, int64, error)) func() {
