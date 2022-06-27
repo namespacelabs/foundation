@@ -9,9 +9,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -22,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -38,6 +43,7 @@ func NewTestCmd() *cobra.Command {
 		parallel       bool
 		parallelWork   bool
 		ephemeral      bool = true
+		outputTestRuns string
 	)
 
 	cmd := &cobra.Command{
@@ -90,6 +96,8 @@ func NewTestCmd() *cobra.Command {
 
 			testOpts.OutputProgress = !parallel
 
+			runs := &storage.TestRuns{}
+
 			style := colors.Ctx(ctx)
 			for _, loc := range locs {
 				// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
@@ -123,16 +131,17 @@ func NewTestCmd() *cobra.Command {
 				if parallel || parallelWork {
 					parallelTests = append(parallelTests, test)
 				} else {
-					v, err := compute.Get(ctx, test)
+					testResults, err := compute.Get(ctx, test)
 					if err != nil {
 						return err
 					}
 
-					printResult(stderr, style, v, false)
+					printResult(stderr, style, testResults, false)
 
-					if !v.Value.Bundle.Result.Success {
-						return fnerrors.ExitWithCode(fmt.Errorf("test %s failed", v.Value.Package), exitCode)
-					}
+					runs.Run = append(runs.Run, &storage.TestRuns_Run{
+						TestBundleId: testResults.Value.ImageRef.ImageRef(),
+						TestSummary:  testResults.Value.TestBundleSummary,
+					})
 				}
 			}
 
@@ -146,7 +155,6 @@ func NewTestCmd() *cobra.Command {
 				testCtx = tasks.ContextWithThrottler(testCtx, console.Debug(testCtx), configs)
 			}
 
-			var failed []string
 			if len(parallelTests) > 0 {
 				runTests := compute.Collect(tasks.Action("test.all-tests"), parallelTests...)
 
@@ -157,14 +165,40 @@ func NewTestCmd() *cobra.Command {
 
 				for _, res := range results {
 					printResult(stderr, style, res, true)
-					if !res.Value.Bundle.Result.Success {
-						failed = append(failed, string(res.Value.Package))
-					}
+
+					runs.Run = append(runs.Run, &storage.TestRuns_Run{
+						TestBundleId: res.Value.ImageRef.ImageRef(),
+						TestSummary:  res.Value.TestBundleSummary,
+					})
+				}
+			}
+
+			var failed []string
+			for _, run := range runs.Run {
+				if !run.GetTestSummary().GetResult().Success {
+					failed = append(failed, run.GetTestSummary().GetTestPackage())
+				}
+			}
+
+			if outputTestRuns != "" {
+				runBytes, err := proto.Marshal(runs)
+				if err != nil {
+					return fnerrors.New("failed to serialize: %w", err)
+				}
+
+				dir := filepath.Dir(outputTestRuns)
+
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					return fnerrors.New("mkdir: failed: %w", err)
+				}
+
+				if err := ioutil.WriteFile(outputTestRuns, runBytes, 0644); err != nil {
+					return fnerrors.New("write: failed: %w", err)
 				}
 			}
 
 			if len(failed) > 0 {
-				return fnerrors.ExitWithCode(fmt.Errorf("failed tests: [%s]", strings.Join(failed, ",")), exitCode)
+				return fnerrors.ExitWithCode(fmt.Errorf("failed tests: %s", strings.Join(failed, ", ")), exitCode)
 			}
 
 			return nil
@@ -178,6 +212,11 @@ func NewTestCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
 	cmd.Flags().BoolVar(&parallelWork, "parallel_work", true, "If true, performs all work in parallel except running the actual test (e.g. builds).")
 	cmd.Flags().BoolVar(&testing.UseVClusters, "vcluster", testing.UseVClusters, "If true, creates a separate vcluster per test invocation.")
+
+	cmd.Flags().StringVar(&outputTestRuns, "output_test_runs", "", "If set, outputs a serialized set of test runs to the specified path.")
+	cmd.Flags().MarkHidden("output_test_runs")
+	cmd.Flags().StringVar(&testOpts.ParentRunID, "parent_run_id", "", "If set, tags this test with the specified push.")
+	cmd.Flags().MarkHidden("parent_run_id")
 
 	return cmd
 }
@@ -203,7 +242,7 @@ func printResult(out io.Writer, style colors.Style, res compute.ResultWithTimest
 	fmt.Fprintf(out, "%s: Test %s%s %s\n", res.Value.Package, status, cached, style.Comment.Apply(res.Value.ImageRef.ImageRef()))
 }
 
-func printLog(out io.Writer, log *testing.Log) {
+func printLog(out io.Writer, log *testing.InlineLog) {
 	for _, line := range bytes.Split(log.Output, []byte("\n")) {
 		fmt.Fprintf(out, "%s:%s: %s\n", log.PackageName, log.ContainerName, line)
 	}

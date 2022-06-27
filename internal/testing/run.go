@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -183,13 +184,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 		return nil
 	})
 
-	testResults := &schema.TestResult{
-		Plan:                   deploy.Serialize(test.Workspace, test.EnvProto, test.Stack, p, test.ServersUnderTest),
-		ComputedConfigurations: p.Computed,
-	}
-
-	// Clear the hints, no point storing those.
-	testResults.Plan.Hints = nil
+	testResults := &storage.TestResult{}
 
 	waitErr := ex.Wait()
 	if waitErr == nil {
@@ -209,8 +204,13 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 		return nil, err
 	}
 
+	bundle.DeployPlan = deploy.Serialize(test.Workspace, test.EnvProto, test.Stack, p, test.ServersUnderTest)
+	bundle.ComputedConfigurations = p.Computed
+	// Clear the hints, no point storing those.
+	bundle.DeployPlan.Hints = nil
+
 	bundle.Result = testResults
-	bundle.TestLog = &Log{
+	bundle.TestLog = &InlineLog{
 		PackageName: test.TestBinPkg.String(),
 		Output:      testLogBuf.Seal().Bytes(),
 	}
@@ -290,7 +290,7 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 	bundle := &PreStoredTestBundle{}
 
 	for _, entry := range serverLogs {
-		bundle.ServerLog = append(bundle.ServerLog, &Log{
+		bundle.ServerLog = append(bundle.ServerLog, &InlineLog{
 			PackageName:   entry.PackageName,
 			ContainerName: entry.ContainerName,
 			ContainerKind: entry.ContainerKind,

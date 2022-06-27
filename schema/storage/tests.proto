@@ -4,24 +4,16 @@
 
 syntax = "proto3";
 
-package foundation.schema;
+package foundation.schema.storage;
 
-option go_package = "namespacelabs.dev/foundation/schema";
+option go_package = "namespacelabs.dev/foundation/schema/storage";
 
-import "schema/definition.proto";
-import "schema/serialized.proto";
-import "schema/runtime.proto";
 import "google/protobuf/timestamp.proto";
+import "schema/storage/logs.proto";
 
-message TestResult {
-    bool success = 1;
-
-    foundation.schema.DeployPlan             plan                    = 2;
-    foundation.schema.ComputedConfigurations computed_configurations = 3;
-}
-
-// Next ID: 9
+// Next ID: 10
 message TestBundle {
+    string          parent_run_id      = 9;
     string          test_package       = 6;
     string          test_name          = 7;
     TestResult      result             = 1;
@@ -34,10 +26,15 @@ message TestBundle {
     repeated LogRef server_log = 3;
 }
 
-message LogRef {
-    string        package_name   = 1;
-    string        container_name = 2;
-    ContainerKind container_kind = 4;
-    string        log_file       = 3;
-    uint64        log_size       = 5;
+message TestRuns {
+    repeated Run run = 1;
+
+    message Run {
+        string     test_bundle_id = 1;
+        TestBundle test_summary   = 2;
+    }
+}
+
+message TestResult {
+    bool success = 1;
 }

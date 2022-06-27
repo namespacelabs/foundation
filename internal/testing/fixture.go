@@ -29,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -39,12 +40,14 @@ import (
 const startupTestBinary = "namespacelabs.dev/foundation/std/startup/testdriver"
 
 type StoredTestResults struct {
-	Bundle   *PreStoredTestBundle
-	ImageRef oci.ImageID
-	Package  schema.PackageName
+	Bundle            *PreStoredTestBundle
+	TestBundleSummary *storage.TestBundle
+	ImageRef          oci.ImageID
+	Package           schema.PackageName
 }
 
 type TestOpts struct {
+	ParentRunID    string
 	Debug          bool
 	OutputProgress bool
 	KeepRuntime    bool // If true, don't release test-specific runtime resources (e.g. Kubernetes namespace).
@@ -147,7 +150,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 	packages := pl.Seal()
 
-	results := &testRun{
+	var results compute.Computable[*PreStoredTestBundle] = &testRun{
 		TestName:         testDef.Name,
 		Env:              env.BindWith(packages),
 		Plan:             deployPlan,
@@ -165,39 +168,50 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 	createdTs := timestamppb.Now()
 
-	toFS := compute.Map(tasks.Action("test.to-fs"),
-		compute.Inputs().Computable("bundle", results).
-			Indigestible("packages", packages).
-			Proto("test", testDef).
-			Proto("createdTs", createdTs).
-			Strs("sut", sutServers),
+	testBundle := compute.Map(tasks.Action("test.to-bundle"),
+		compute.Inputs().
+			Computable("results", results).
+			JSON("opts", opts).
+			Proto("testDef", testDef).
+			Strs("sut", sutServers).
+			Proto("createdTs", createdTs),
 		compute.Output{NotCacheable: true},
-		func(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-			computed, ok := compute.GetDepWithType[*PreStoredTestBundle](deps, "bundle")
-			if !ok {
-				return nil, fnerrors.InternalError("results are missing")
-			}
-
-			bundle := computed.Value
-
-			// We only add timestamps in the transformation step, as it would
-			// otherwise break the ability to cache test results.
-
-			var fsys memfs.FS
-
-			stored := &schema.TestBundle{
+		func(ctx context.Context, deps compute.Resolved) (*storage.TestBundle, error) {
+			bundle := compute.MustGetDepValue(deps, results, "results")
+			return &storage.TestBundle{
+				ParentRunId:      opts.ParentRunID,
 				TestPackage:      testDef.PackageName,
 				TestName:         testDef.Name,
 				Result:           bundle.Result,
 				ServersUnderTest: sutServers,
 				Created:          createdTs,
 				Completed:        timestamppb.Now(),
-				TestLog: &schema.LogRef{
-					PackageName:   bundle.TestLog.PackageName,
-					ContainerName: bundle.TestLog.ContainerName,
-					LogFile:       "test.log",
-					LogSize:       uint64(len(bundle.TestLog.Output)),
-				},
+			}, nil
+		})
+
+	toFS := compute.Map(tasks.Action("test.to-fs"),
+		compute.Inputs().Computable("bundle", results).
+			Computable("testBundle", testBundle).
+			Indigestible("packages", packages).
+			JSON("opts", opts).
+			Proto("test", testDef).
+			Proto("createdTs", createdTs).
+			Strs("sut", sutServers),
+		compute.Output{NotCacheable: true},
+		func(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
+			bundle := compute.MustGetDepValue(deps, results, "bundle")
+			tostore := protos.Clone(compute.MustGetDepValue(deps, testBundle, "testBundle"))
+
+			// We only add timestamps in the transformation step, as it would
+			// otherwise break the ability to cache test results.
+
+			var fsys memfs.FS
+
+			tostore.TestLog = &storage.LogRef{
+				PackageName:   bundle.TestLog.PackageName,
+				ContainerName: bundle.TestLog.ContainerName,
+				LogFile:       "test.log",
+				LogSize:       uint64(len(bundle.TestLog.Output)),
 			}
 
 			fsys.Add("test.log", bundle.TestLog.Output)
@@ -210,7 +224,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 				logFile := fmt.Sprintf("server/%s.log", x.Hex)
 				fsys.Add(logFile, s.Output)
 
-				stored.ServerLog = append(stored.ServerLog, &schema.LogRef{
+				tostore.ServerLog = append(tostore.ServerLog, &storage.LogRef{
 					PackageName:   s.PackageName,
 					ContainerName: s.ContainerName,
 					ContainerKind: s.ContainerKind,
@@ -219,22 +233,17 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 				})
 			}
 
-			messages, err := protos.SerializeOpts{JSON: true, Resolver: resolver.NewResolver(ctx, packages)}.Serialize(stored)
+			messages, err := protos.SerializeOpts{JSON: true, Resolver: resolver.NewResolver(ctx, packages)}.Serialize(tostore)
 			if err != nil {
 				return nil, fnerrors.InternalError("failed to marshal results: %w", err)
 			}
 
-			// XXX legacy names
-			fsys.Add("bundle.json", messages[0].JSON)
-			fsys.Add("bundle.binarypb", messages[0].Binary)
-
-			// New names.
 			fsys.Add("testbundle.json", messages[0].JSON)
 			fsys.Add("testbundle.binarypb", messages[0].Binary)
 
 			// Produce an image that can be rehydrated.
-			if err := (config.DehydrateOpts{}).DehydrateTo(ctx, &fsys, bundle.Result.Plan.Environment, bundle.Result.Plan.Stack,
-				bundle.Result.Plan.IngressFragment, bundle.Result.ComputedConfigurations); err != nil {
+			if err := (config.DehydrateOpts{}).DehydrateTo(ctx, &fsys, bundle.DeployPlan.Environment, bundle.DeployPlan.Stack,
+				bundle.DeployPlan.IngressFragment, bundle.ComputedConfigurations); err != nil {
 				return nil, err
 			}
 
@@ -243,12 +252,18 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 	imageID := oci.PublishImage(tag, oci.MakeImage(oci.Scratch(), oci.MakeLayer("results", toFS)))
 
-	return compute.Map(tasks.Action("test.make-results"), compute.Inputs().Computable("stored", imageID).Computable("bundle", results), compute.Output{},
+	return compute.Map(tasks.Action("test.make-results"),
+		compute.Inputs().
+			Computable("stored", imageID).
+			Computable("bundle", results).
+			Computable("testBundle", testBundle),
+		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) (StoredTestResults, error) {
 			return StoredTestResults{
-				Bundle:   compute.MustGetDepValue[*PreStoredTestBundle](deps, results, "bundle"),
-				ImageRef: compute.MustGetDepValue(deps, imageID, "stored"),
-				Package:  pkgname,
+				Bundle:            compute.MustGetDepValue(deps, results, "bundle"),
+				TestBundleSummary: compute.MustGetDepValue(deps, testBundle, "testBundle"),
+				ImageRef:          compute.MustGetDepValue(deps, imageID, "stored"),
+				Package:           pkgname,
 			}, nil
 		}), nil
 }

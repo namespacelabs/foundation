@@ -9,15 +9,19 @@ package foundation.internal.testing;
 option go_package = "namespacelabs.dev/foundation/internal/testing";
 
 import "schema/runtime.proto";
-import "schema/test_storage.proto";
+import "schema/storage/tests.proto";
+import "schema/definition.proto";
+import "schema/serialized.proto";
 
 message PreStoredTestBundle {
-    foundation.schema.TestResult result     = 1;
-    Log                          test_log   = 2;
-    repeated Log                 server_log = 3;
+    foundation.schema.storage.TestResult     result                  = 1;
+    foundation.schema.DeployPlan             deploy_plan             = 4;
+    foundation.schema.ComputedConfigurations computed_configurations = 5;
+    InlineLog                                test_log                = 2;
+    repeated InlineLog                       server_log              = 3;
 }
 
-message Log {
+message InlineLog {
     string                          package_name   = 1;
     string                          container_name = 3;
     foundation.schema.ContainerKind container_kind = 4;
