@@ -25,11 +25,11 @@ const (
 	goServicePkg   = "api/echoservice"
 	goServiceName  = "EchoService"
 	goServerPkg    = "server/api"
-	goServerName   = "ApiServer"
+	goServerName   = "apiserver"
 	webServicePkg  = "web/ui"
 	webServiceName = "WebService"
 	webServerPkg   = "server/web"
-	webServerName  = "WebServer"
+	webServerName  = "webserver"
 	readmeFilePath = "README.md"
 )
 
