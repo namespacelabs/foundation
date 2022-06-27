@@ -6,8 +6,10 @@ package workspace
 
 import (
 	"context"
+	"log"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/build/registry"
@@ -43,65 +45,47 @@ func newPrepareCmd() *cobra.Command {
 			return err
 		}
 
-		ecr, err := anypb.New(&registry.Provider{
-			Provider: "aws/ecr",
-		})
-		if err != nil {
-			return err
-		}
-
-		incluster, err := anypb.New(&client.HostEnv{
-			Incluster: true,
-		})
-		if err != nil {
-			return err
-		}
-
-		staging, err := anypb.New(&aws.Conf{
-			AssumeRoleArn: roleArn,
-		})
-		if err != nil {
-			return err
-		}
-		eksProvider, err := anypb.New(&client.HostEnv{
-			Provider: "aws/eks",
-		})
-		if err != nil {
-			return err
-		}
-		eksCluster, err := anypb.New(&eks.EKSCluster{
-			Name: clusterName,
-			Arn:  clusterArn,
-		})
-		if err != nil {
-			return err
-		}
-
-		cibuildkit, err := anypb.New(&buildkit.Overrides{
-			BuildkitAddr: *buildkitAddr,
-		})
-		if err != nil {
-			return err
-		}
-
 		cidevhost := &schema.DevHost{
-			Configure: []*schema.DevHost_ConfigureEnvironment{{
-				Configuration: []*anypb.Any{ecr},
-			}, {
-				Purpose:       schema.Environment_DEVELOPMENT,
-				Runtime:       "kubernetes",
-				Configuration: []*anypb.Any{incluster},
-			}, {
-				Purpose:       schema.Environment_PRODUCTION,
-				Configuration: []*anypb.Any{staging},
-			}, {
-				Purpose:       schema.Environment_PRODUCTION,
-				Runtime:       "kubernetes",
-				Configuration: []*anypb.Any{eksProvider, eksCluster},
-			}},
-			ConfigureTools: []*anypb.Any{ecr, incluster},
+			Configure: []*schema.DevHost_ConfigureEnvironment{
+				{
+					Purpose: schema.Environment_DEVELOPMENT,
+					Configuration: wrapAnysOrDie(
+						&registry.Provider{Provider: "aws/ecr"},
+						&aws.Conf{UseInjectedWebIdentity: true}),
+				}, {
+					Purpose: schema.Environment_DEVELOPMENT,
+					Runtime: "kubernetes",
+					Configuration: wrapAnysOrDie(
+						&client.HostEnv{Incluster: true}),
+				}, {
+					Purpose: schema.Environment_PRODUCTION,
+					Configuration: wrapAnysOrDie(
+						&registry.Provider{Provider: "aws/ecr"},
+						&aws.Conf{
+							UseInjectedWebIdentity: true,
+							AssumeRoleArn:          roleArn,
+						}),
+				}, {
+					Purpose: schema.Environment_PRODUCTION,
+					Runtime: "kubernetes",
+					Configuration: wrapAnysOrDie(
+						&client.HostEnv{Provider: "aws/eks"},
+						&eks.EKSCluster{
+							Name: clusterName,
+							Arn:  clusterArn,
+						}),
+				}},
+
+			ConfigureTools: wrapAnysOrDie(
+				&aws.Conf{UseInjectedWebIdentity: true},
+				&registry.Provider{Provider: "aws/ecr"},
+				&client.HostEnv{Incluster: true}),
+
 			ConfigurePlatform: []*schema.DevHost_ConfigurePlatform{{
-				Configuration: []*anypb.Any{cibuildkit},
+				Configuration: wrapAnysOrDie(
+					&buildkit.Overrides{
+						BuildkitAddr: *buildkitAddr,
+					}),
 			}},
 		}
 
@@ -109,4 +93,18 @@ func newPrepareCmd() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func wrapAnysOrDie(srcs ...protoreflect.ProtoMessage) []*anypb.Any {
+	var out []*anypb.Any
+
+	for _, src := range srcs {
+		any, err := anypb.New(src)
+		if err != nil {
+			log.Fatalf("Failed to wrap %s proto in an Any proto: %s", src.ProtoReflect().Descriptor().FullName(), err)
+		}
+		out = append(out, any)
+	}
+
+	return out
 }
