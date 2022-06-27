@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/sectionrun"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/testing"
 	"namespacelabs.dev/foundation/provision"
@@ -26,7 +27,6 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -40,7 +40,6 @@ func NewTestCmd() *cobra.Command {
 		parallel       bool
 		parallelWork   bool
 		ephemeral      bool = true
-		outputTestRuns string
 	)
 
 	cmd := &cobra.Command{
@@ -91,6 +90,7 @@ func NewTestCmd() *cobra.Command {
 
 			var parallelTests []compute.Computable[testing.StoredTestResults]
 
+			testOpts.ParentRunID = sectionrun.ParentID
 			testOpts.OutputProgress = !parallel
 
 			runs := &storage.TestRuns{}
@@ -177,11 +177,7 @@ func NewTestCmd() *cobra.Command {
 				}
 			}
 
-			if outputTestRuns != "" {
-				if err := protos.WriteFile(outputTestRuns, runs); err != nil {
-					return err
-				}
-			}
+			sectionrun.Attach(runs)
 
 			if len(failed) > 0 {
 				return fnerrors.ExitWithCode(fmt.Errorf("failed tests: %s", strings.Join(failed, ", ")), exitCode)
@@ -198,11 +194,6 @@ func NewTestCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
 	cmd.Flags().BoolVar(&parallelWork, "parallel_work", true, "If true, performs all work in parallel except running the actual test (e.g. builds).")
 	cmd.Flags().BoolVar(&testing.UseVClusters, "vcluster", testing.UseVClusters, "If true, creates a separate vcluster per test invocation.")
-
-	cmd.Flags().StringVar(&outputTestRuns, "output_test_runs", "", "If set, outputs a serialized set of test runs to the specified path.")
-	cmd.Flags().MarkHidden("output_test_runs")
-	cmd.Flags().StringVar(&testOpts.ParentRunID, "parent_run_id", "", "If set, tags this test with the specified push.")
-	cmd.Flags().MarkHidden("parent_run_id")
 
 	return cmd
 }

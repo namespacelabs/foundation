@@ -39,6 +39,7 @@ import (
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
+	"namespacelabs.dev/foundation/internal/sectionrun"
 	"namespacelabs.dev/foundation/internal/ulimit"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/languages/golang"
@@ -73,6 +74,8 @@ var (
 )
 
 func DoMain(name string, registerCommands func(*cobra.Command)) {
+	started := time.Now()
+
 	if v := os.Getenv("FN_CPU_PROFILE"); v != "" {
 		done := cpuprofile(v)
 		defer done()
@@ -258,6 +261,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
 		filewatcher.FileWatcherUsePolling, "If set to true, uses polling to observe file system events.")
 
+	var sectionRunOutputPath string
+
+	rootCmd.PersistentFlags().StringVar(&sectionRunOutputPath, "section_run_output_path", "", "If set, outputs a serialized set of test runs to the specified path.")
+	rootCmd.PersistentFlags().StringVar(&sectionrun.ParentID, "section_run_parent_id", "", "If set, tags this section with the specified push.")
+
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
 		"buildkit_import_cache",
@@ -290,6 +298,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	if cleanupTracer != nil {
 		cleanupTracer()
+	}
+
+	if sectionRunOutputPath != "" {
+		err = sectionrun.Output(sectionRunOutputPath, started, err)
 	}
 
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
