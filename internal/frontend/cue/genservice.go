@@ -46,6 +46,8 @@ service: fn.#Service & {
 
 	{{if .ExportedServiceName}}
 	exportService: $proto.services.{{.ExportedServiceName}}
+	exportServicesAsHttp: true
+	ingress:              "INTERNET_FACING"
 	{{end}}
 
 	{{if .HttpBackendPkg}}

@@ -65,6 +65,10 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			if err := runGoInitCmdIfNeeded(ctx, root, runCommand); err != nil {
 				return err
 			}
+
+			*grpcServices = append(*grpcServices,
+				"namespacelabs.dev/foundation/std/grpc/logging",
+				"namespacelabs.dev/foundation/std/monitoring/tracing/jaeger")
 		}
 
 		if *name == "" {

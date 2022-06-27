@@ -57,22 +57,23 @@ server: fn.#Server & {
 	name:      "{{.Name}}"
 	framework: "{{.Framework}}"
 
+	{{- if .GrpcServices}}
+
 	import: [
-		{{- if .GrpcServices}}
 		{{- range .GrpcServices}}
 		"{{.}}",
 		{{- end}}
-		{{- else}}
-		// TODO add gRPC services here
-		{{- end}}
+		// Add more gRPC services here
 	]
+	{{- end}}
 
-	{{if .HttpServices}}
+	{{- if .HttpServices}}
+
 	urlmap: [
 		{{- range .HttpServices}}
 		{path: "{{.Path}}", import: "{{.Pkg}}"},
 		{{- end}}
 	]
-	{{end}}
+	{{- end}}
 }
 `))
