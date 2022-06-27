@@ -256,7 +256,7 @@ func (s *Session) Run(ctx context.Context) error {
 	return s.executor.Wait()
 }
 
-func (s *Session) Attach(f func(context.Context) error) {
+func (s *Session) RunInContext(f func(context.Context) error) {
 	s.executor.Go(f)
 }
 

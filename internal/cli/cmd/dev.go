@@ -85,9 +85,9 @@ func NewDevCmd() *cobra.Command {
 
 				localHost := lis.Addr().(*net.TCPAddr).IP.String()
 
-				console.SetStickyContent(ctx, "webui", fmt.Sprintf(" %s: web ui running at: http://%s", aec.Bold.Apply("Namespace"), lis.Addr()))
+				updateWebUISticky(ctx, "preparing")
 
-				stackState, err := devworkflow.NewSession(ctx, sink, localHost)
+				sesh, err := devworkflow.NewSession(ctx, sink, localHost)
 				if err != nil {
 					return err
 				}
@@ -95,7 +95,7 @@ func NewDevCmd() *cobra.Command {
 				console.SetIdleLabel(ctx, "waiting for workspace changes")
 
 				// Kick off the dev workflow.
-				stackState.DeferRequest(&devworkflow.DevWorkflowRequest{
+				sesh.DeferRequest(&devworkflow.DevWorkflowRequest{
 					Type: &devworkflow.DevWorkflowRequest_SetWorkspace_{
 						SetWorkspace: &devworkflow.DevWorkflowRequest_SetWorkspace{
 							AbsRoot:           root.Abs(),
@@ -108,9 +108,9 @@ func NewDevCmd() *cobra.Command {
 
 				r := mux.NewRouter()
 				fncobra.RegisterPprof(r)
-				devworkflow.RegisterEndpoints(stackState, r)
+				devworkflow.RegisterEndpoints(sesh, r)
 
-				if err := keyboard.StartHandler(ctx, stackState, root, serverProtos, cancel); err != nil {
+				if err := keyboard.StartHandler(ctx, sesh, root, serverProtos, cancel); err != nil {
 					return err
 				}
 
@@ -155,7 +155,7 @@ func NewDevCmd() *cobra.Command {
 					BaseContext:  func(l net.Listener) context.Context { return ctx },
 				}
 
-				stackState.Attach(func(ctx context.Context) error {
+				sesh.RunInContext(func(ctx context.Context) error {
 					// On cancelation, i.e. Ctrl-C, ask the server to shutdown. This will lead to the next go-routine below, actually returns.
 					<-ctx.Done()
 
@@ -165,11 +165,12 @@ func NewDevCmd() *cobra.Command {
 					return srv.Shutdown(ctxT)
 				})
 
-				stackState.Attach(func(ctx context.Context) error {
+				sesh.RunInContext(func(ctx context.Context) error {
+					updateWebUISticky(ctx, "running at: http://%s", lis.Addr())
 					return srv.Serve(lis)
 				})
 
-				return stackState.Run(ctx)
+				return sesh.Run(ctx)
 			})
 		},
 	}
@@ -180,6 +181,10 @@ func NewDevCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&devworkflow.AlsoOutputBuildToStderr, "alsooutputtostderr", devworkflow.AlsoOutputBuildToStderr, "Also send build output to stderr.")
 
 	return cmd
+}
+
+func updateWebUISticky(ctx context.Context, format string, args ...any) {
+	console.SetStickyContent(ctx, "webui", fmt.Sprintf(" %s: web ui %s", aec.Bold.Apply("Namespace"), fmt.Sprintf(format, args...)))
 }
 
 func startListener(specified string) (net.Listener, error) {
