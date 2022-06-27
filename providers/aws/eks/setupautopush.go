@@ -8,18 +8,20 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	applyrbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	fniam "namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/schema"
 )
 
 const ciAcc = 960279036429
 
 var ciRoles = [...]string{"fntest", "fnplandeploy", "fndeploy"}
 
-func SetupAutopush(eksCluster *EKSCluster, iamRole string) ([]defs.MakeDefinition, error) {
+func SetupAutopush(eksCluster *EKSCluster, iamRole string, roleArn string) ([]defs.MakeDefinition, error) {
 	var out []defs.MakeDefinition
 
 	policy := fniam.PolicyDocument{
@@ -99,6 +101,7 @@ func SetupAutopush(eksCluster *EKSCluster, iamRole string) ([]defs.MakeDefinitio
 		),
 	})
 
+	group := fmt.Sprintf("ns:%s-group", iamRole)
 	out = append(out, kubedef.Apply{
 		Description: "Admin Cluster Role Binding",
 		Resource: applyrbacv1.ClusterRoleBinding(fmt.Sprintf("ns:%s-binding", iamRole)).
@@ -109,8 +112,33 @@ func SetupAutopush(eksCluster *EKSCluster, iamRole string) ([]defs.MakeDefinitio
 			WithSubjects(applyrbacv1.Subject().
 				WithAPIGroup("rbac.authorization.k8s.io").
 				WithKind("Group").
-				WithName(fmt.Sprintf("ns:%s-group", iamRole))),
+				WithName(group)),
+	})
+
+	out = append(out, ensureAuth{
+		&OpEnsureAwsAuth{
+			Username: iamRole,
+			Rolearn:  roleArn,
+			Group:    []string{group},
+		},
 	})
 
 	return out, nil
+}
+
+type ensureAuth struct {
+	*OpEnsureAwsAuth
+}
+
+func (e ensureAuth) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
+	packed, err := anypb.New(e.OpEnsureAwsAuth)
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.SerializedInvocation{
+		Description: fmt.Sprintf("AWS auth for %s", e.Username),
+		Impl:        packed,
+		Scope:       schema.Strs(scope...),
+	}, nil
 }

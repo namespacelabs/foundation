@@ -34,6 +34,12 @@ func NewSetupAutopushCmd() *cobra.Command {
 		Short: "Sets up production cluster for automatic deployments to a staging environment.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env provision.Env, args []string) error {
+		acc, err := getAwsAccount(ctx, env)
+		if err != nil {
+			return err
+		}
+		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", acc, iamRole)
+
 		s, err := eks.NewSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 		if err != nil {
 			return err
@@ -48,7 +54,7 @@ func NewSetupAutopushCmd() *cobra.Command {
 			return fnerrors.New("not an eks cluster")
 		}
 
-		result, err := eks.SetupAutopush(eksCluster, iamRole)
+		result, err := eks.SetupAutopush(eksCluster, iamRole, roleArn)
 		if err != nil {
 			return err
 		}
@@ -77,13 +83,6 @@ func NewSetupAutopushCmd() *cobra.Command {
 				return err
 			}
 		}
-
-		// TODO remove ARN reconstruction when invocations produce computed configurations
-		acc, err := getAwsAccount(ctx, env)
-		if err != nil {
-			return err
-		}
-		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", acc, iamRole)
 
 		fmt.Fprintf(stdout, "Success!\nNext steps:\n")
 		fmt.Fprintf(stdout, " 1. Please inform a Namespace Labs dev that %q has been set up for autopush so they can whitelist it for deployment. %s\n", roleArn, colors.Ctx(ctx).Comment.Apply("This step will be automated in future."))
