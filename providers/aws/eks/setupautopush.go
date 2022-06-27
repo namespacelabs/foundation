@@ -28,15 +28,6 @@ func SetupAutopush(eksCluster *EKSCluster, iamRole string, roleArn string) ([]de
 		Version: "2012-10-17",
 	}
 
-	// TODO remove in favor of fine grained roles below.
-	policy.Statement = append(policy.Statement, fniam.StatementEntry{
-		Effect: "Allow",
-		Principal: &fniam.Principal{
-			AWS: fmt.Sprintf("arn:aws:iam::%d:root", ciAcc),
-		},
-		Action: []string{"sts:AssumeRole"},
-	})
-
 	for _, role := range ciRoles {
 		policy.Statement = append(policy.Statement, fniam.StatementEntry{
 			Effect: "Allow",
