@@ -9,13 +9,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -30,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
+	"namespacelabs.dev/foundation/workspace/source/protos"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -181,19 +178,8 @@ func NewTestCmd() *cobra.Command {
 			}
 
 			if outputTestRuns != "" {
-				runBytes, err := proto.Marshal(runs)
-				if err != nil {
-					return fnerrors.New("failed to serialize: %w", err)
-				}
-
-				dir := filepath.Dir(outputTestRuns)
-
-				if err := os.MkdirAll(dir, 0755); err != nil {
-					return fnerrors.New("mkdir: failed: %w", err)
-				}
-
-				if err := ioutil.WriteFile(outputTestRuns, runBytes, 0644); err != nil {
-					return fnerrors.New("write: failed: %w", err)
+				if err := protos.WriteFile(outputTestRuns, runs); err != nil {
+					return err
 				}
 			}
 

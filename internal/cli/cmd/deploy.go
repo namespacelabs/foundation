@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -26,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func NewDeployCmd() *cobra.Command {
@@ -85,16 +85,7 @@ func NewDeployCmd() *cobra.Command {
 		deployPlan := deploy.Serialize(env.Workspace(), env.Proto(), stack.Proto(), computed, provision.ServerPackages(servers).PackageNamesAsString())
 
 		if serializePath != "" {
-			serialized, err := proto.MarshalOptions{Deterministic: true}.Marshal(deployPlan)
-			if err != nil {
-				return fnerrors.New("failed to marshal: %w", err)
-			}
-
-			if err := ioutil.WriteFile(serializePath, serialized, 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", serializePath, err)
-			}
-
-			return nil
+			return protos.WriteFile(serializePath, deployPlan)
 		}
 
 		return completeDeployment(ctx, env.BindWith(packages), computed.Deployer, deployPlan, deployOpts)
