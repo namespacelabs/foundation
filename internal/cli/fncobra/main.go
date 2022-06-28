@@ -205,7 +205,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		ecr.Register()
 		eks.Register()
 		oci.RegisterDomainKeychain("pkg.dev", artifactregistry.DefaultKeychain, oci.Keychain_UseOnWrites)
-		oci.RegisterDomainKeychain("amazonaws.com", ecr.DefaultKeychain, oci.Keychain_UseAlways)
 		iam.RegisterGraphHandlers()
 
 		// Runtimes.

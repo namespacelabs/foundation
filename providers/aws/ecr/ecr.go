@@ -38,6 +38,8 @@ func Register() {
 
 		return ecrManager{sesh: sesh}, nil
 	})
+
+	oci.RegisterDomainKeychain("amazonaws.com", DefaultKeychain, oci.Keychain_UseAlways)
 }
 
 func packageURL(repo, packageName string) string {
