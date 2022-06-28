@@ -92,6 +92,9 @@ func workspaceNameFromArgs(ctx context.Context, args []string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if workspaceName == "" {
+			return "", context.Canceled
+		}
 		return workspaceName, nil
 	} else {
 		return args[0], nil

@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 )
@@ -39,7 +40,8 @@ var (
 Next steps:
 
 {{if .Dir -}}
-- Switch to the project directory: ` + "`" + `cd {{.Dir}}` + "`" + `{{end}}
+- Switch to the project directory: ` + "`" + `cd {{.Dir}}` + "`" + `
+{{end -}}
 - Run ` + "`" + `ns prepare local` + "`" + ` to prepare the local dev environment.
 - Run ` + "`" + `ns dev {{.ServerPkg}}` + "`" + ` to start the server stack in the development mode with hot reload.
 `))
@@ -55,42 +57,61 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 		Use:   "starter",
 		Short: "Creates a new workspace from a template.",
 		Long:  "Creates a new workspace from a template (Go server + Web server). Creates a directory from the last part of the workspace name by default. Use the second argument to customize the directory or specify '.' to generate project the current directory.",
+		Args:  cobra.MaximumNArgs(1),
 	}
 
-	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		workspaceName, err := workspaceNameFromArgs(ctx, args)
-		if err != nil || workspaceName == "" {
-			return err
-		}
+	workspaceName := cmd.Flags().String("workspace_name", "", "Name of the workspace.")
 
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		stdout := console.Stdout(ctx)
 
 		fmt.Fprintf(stdout, "\nSeting up a starter project with an api server in Go and a web frontend. It will take a few minutes.\n")
 
-		createDir := len(args) < 2 || args[1] != "."
+		var err error
+		var dirName string
 
-		dirName := ""
-		if createDir {
-			if len(args) >= 2 {
-				dirName = args[1]
-			} else {
-				nameParts := strings.Split(workspaceName, "/")
-				dirName = nameParts[len(nameParts)-1]
+		if *workspaceName == "" {
+			*workspaceName, err = askWorkspaceName(ctx)
+			if err != nil {
+				return err
 			}
+			if *workspaceName == "" {
+				return context.Canceled
+			}
+		}
+
+		if len(args) > 0 {
+			dirName = args[0]
+		} else {
+			nameParts := strings.Split(*workspaceName, "/")
+			dirNamePlaceholder := nameParts[len(nameParts)-1]
+			dirName, err = tui.Ask(ctx,
+				"Directory for the new project?",
+				"It can be a relative or an absolute path. Use '.' to generate the project in the current directory.",
+				dirNamePlaceholder)
+			if err != nil {
+				return err
+			}
+		}
+
+		if dirName != "." {
 			if err := os.MkdirAll(dirName, 0755); err != nil {
 				return err
 			}
+
+			fmt.Fprintf(stdout, "\nCreated directory '%s'.\n", dirName)
+
 			if err := os.Chdir(dirName); err != nil {
 				return err
 			}
 
-			printConsoleCmd(ctx, stdout, fmt.Sprintf("mkdir %s; cd %s", dirName, dirName))
+			printConsoleCmd(ctx, stdout, fmt.Sprintf("cd %s", dirName))
 		}
 
 		starterCmds := []starterCmd{
 			{
 				description: "Bootstrapping the workspace configuration.",
-				args:        []string{"create", "workspace", workspaceName},
+				args:        []string{"create", "workspace", *workspaceName},
 			},
 			{
 				description: fmt.Sprintf("Adding an example Go API service '%s' at '%s'.", goServiceName, goServicePkg),
@@ -103,21 +124,21 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 				args: []string{"create", "server", goServerPkg,
 					"--framework=go",
 					fmt.Sprintf("--name=%s", goServerName),
-					fmt.Sprintf("--with_service=%s/%s", workspaceName, goServicePkg),
+					fmt.Sprintf("--with_service=%s/%s", *workspaceName, goServicePkg),
 				},
 			},
 			{
 				description: fmt.Sprintf("Adding an example Web service '%s' at '%s'.", webServiceName, webServicePkg),
 				args: []string{"create", "service", webServicePkg,
 					"--framework=web",
-					fmt.Sprintf("--with_http_backend=%s/%s", workspaceName, goServerPkg),
+					fmt.Sprintf("--with_http_backend=%s/%s", *workspaceName, goServerPkg),
 				},
 			},
 			{
 				description: fmt.Sprintf("Adding an example Web server '%s' at '%s'.", webServerName, webServerPkg),
 				args: []string{"create", "server", webServerPkg, "--framework=web",
 					fmt.Sprintf("--name=%s", webServerName),
-					fmt.Sprintf("--with_http_service=/:%s/%s", workspaceName, webServicePkg)},
+					fmt.Sprintf("--with_http_service=/:%s/%s", *workspaceName, webServicePkg)},
 			},
 			{
 				description: "Bringing language-specific configuration up to date, making it consistent with the Namespace configuration. Downloading language-specific dependencies.\nIt may take a few minutes.",
@@ -149,6 +170,10 @@ func printConsoleCmd(ctx context.Context, out io.Writer, text string) {
 }
 
 func generateAndPrintReadme(ctx context.Context, out io.Writer, dir string) error {
+	// No need to change the directorty if it's the current one.
+	if dir == "." {
+		dir = ""
+	}
 	data := readmeTmplOpts{
 		Dir:       dir,
 		ServerPkg: webServerPkg,
