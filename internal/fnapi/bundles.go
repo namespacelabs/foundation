@@ -22,7 +22,7 @@ const (
 )
 
 func init() {
-	viper.SetDefault("bundle_api_endpoint", "http://bundles.dev.nslocal.host:40080")
+	viper.SetDefault("bundle_api_endpoint", "https://bundles.prod.namespacelabs.nscloud.dev")
 }
 
 type UploadBundleResponse struct {
@@ -65,7 +65,7 @@ type downloadRequest struct {
 }
 
 func DownloadBundle(ctx context.Context, bundleId string, handle func(body io.ReadCloser) error) error {
-	endpoint := viper.GetString("bundle_api_endpoint") + downloadPath
+	endpoint := viper.GetString("api_endpoint") + downloadPath
 	return tasks.Action("fnapi.call").LogLevel(2).Arg("endpoint", endpoint).Run(ctx, func(ctx context.Context) error {
 		req := &downloadRequest{bundleId}
 		reqBytes, err := json.Marshal(req)
