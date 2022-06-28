@@ -30,7 +30,6 @@ import (
 )
 
 var (
-	LogActions            = false
 	OutputActionID        = false
 	DisplayWaitingActions = false
 	DebugConsoleOutput    = false
@@ -652,7 +651,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	for _, r := range c.running {
 		if r.data.State != tasks.ActionWaiting && r.data.State != tasks.ActionRunning {
 			hasError := (r.data.Err != nil && tasks.ErrorType(r.data.Err) == tasks.ErrTypeIsRegular)
-			shouldLog := LogActions && (DisplayWaitingActions || r.data.AnchorID == "")
+			shouldLog := tasks.LogActions && (DisplayWaitingActions || r.data.AnchorID == "")
 
 			if (shouldLog || hasError) && r.data.Level <= c.maxLevel {
 				printableCompleted = append(printableCompleted, *r)
@@ -665,7 +664,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		}
 	}
 
-	if LogActions && len(printableCompleted) > 0 {
+	if tasks.LogActions && len(printableCompleted) > 0 {
 		sort.Slice(printableCompleted, func(i, j int) bool {
 			return printableCompleted[i].data.Completed.Before(printableCompleted[j].data.Completed)
 		})
@@ -777,7 +776,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	}
 
 	report := ""
-	if LogActions {
+	if tasks.LogActions {
 		report += "\n"
 	}
 

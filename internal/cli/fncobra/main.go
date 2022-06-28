@@ -217,12 +217,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		return nil
 	})
 
+	tasks.SetupFlags(rootCmd.PersistentFlags())
+
 	rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 		"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
 	rootCmd.PersistentFlags().BoolVar(&disableCommandBundle, "disable_command_bundle", disableCommandBundle,
 		"If set to true, diagnostics and error information are disabled for the command and the command is filtered from `ns command-history`.")
-	rootCmd.PersistentFlags().BoolVar(&consolesink.LogActions, "log_actions", consolesink.LogActions,
-		"If set to true, each completed action is also output as a log message.")
 	rootCmd.PersistentFlags().BoolVar(&console.DebugToConsole, "debug_to_console", console.DebugToConsole,
 		"If set to true, we also output debug log messages to the console.")
 	rootCmd.PersistentFlags().BoolVar(&compute.CachingEnabled, "caching", compute.CachingEnabled,

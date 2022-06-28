@@ -35,6 +35,8 @@ func main() {
 
 	ecr.Register()
 
+	tasks.SetupFlags(root.PersistentFlags())
+
 	if err := root.ExecuteContext(ctx); err != nil {
 		log.Fatal(err)
 	}
