@@ -13,6 +13,7 @@ func NewGithubCmd() *cobra.Command {
 
 	cmd.AddCommand(newAccessTokenCmd())
 	cmd.AddCommand(newUpdateStatusCmd())
+	cmd.AddCommand(newPullRequestCmd())
 
 	return cmd
 }
