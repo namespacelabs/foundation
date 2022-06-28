@@ -4,8 +4,8 @@ requirements: {
 }
 prebuilts: {
 	digest: {
-		"namespacelabs.dev/foundation/cmd/ns":                                                         "sha256:c18378b6ea6c0bdec0525638c38fcde7c2f0f5db94b95a5c4448125f27130ed5"
-		"namespacelabs.dev/foundation/cmd/nspipelines":                                                "sha256:4218f7650388ecbdfd77ee6e0e3d90e6389197978e79e12094053303e3cd0dae"
+		"namespacelabs.dev/foundation/cmd/ns":                                                         "sha256:8097c2898be78cf8f0e9e77780882704d3ef1453728a88ee257a42a2d7882a17"
+		"namespacelabs.dev/foundation/cmd/nspipelines":                                                "sha256:60fb75066d3e64357ce76d6dace372832fb641e6692db61c057e199b38355c15"
 		"namespacelabs.dev/foundation/devworkflow/web":                                                "sha256:91302bfaacaca8b3c1e4ecc09ce652480646467f389932ad0781e6a95f5b5069"
 		"namespacelabs.dev/foundation/internal/sdk/buf/image/prebuilt":                                "sha256:271b1c4185353dfcaf93cfae52f5446bc8eef74effde38de94de84021da209ec"
 		"namespacelabs.dev/foundation/std/dev/controller":                                             "sha256:795643a10f044e9987a89fdf577b02864e65a45fd1785b215687bd36610a17e5"
@@ -13,8 +13,8 @@ prebuilts: {
 		"namespacelabs.dev/foundation/std/grpc/httptranscoding/configure":                             "sha256:fbfb7ea15ec348ec2fff10c66acf2626dbbf7ff2ba6143cd24452f5be5949169"
 		"namespacelabs.dev/foundation/std/monitoring/grafana/tool":                                    "sha256:f10c7525e286c936ed4b0ee4e18c9f0095555a268fab9b9f987658cff938b8ab"
 		"namespacelabs.dev/foundation/std/monitoring/prometheus/tool":                                 "sha256:eca44f5294efd69e719e9c0baa049f8c1d11475a6297924629f01b7be853597c"
-		"namespacelabs.dev/foundation/std/networking/gateway/controller":                              "sha256:9012332c31fa50ca69587452eca8572121b8cb643035f990c851d948740588c7"
-		"namespacelabs.dev/foundation/std/networking/gateway/server/configure":                        "sha256:a20beb03bb10e0be198dd82954965b8abe9036ff053987d3ad1b80716c9dfaf7"
+		"namespacelabs.dev/foundation/std/networking/gateway/controller":                              "sha256:a72ddde0ac8796f1b4184b7b9822fc20da9a0e68fe9c31c7055fc3ad1a2870e0"
+		"namespacelabs.dev/foundation/std/networking/gateway/server/configure":                        "sha256:c8c76418da490b09025e68836d92a826a4098bb9c506d84168da18f63b774a33"
 		"namespacelabs.dev/foundation/std/runtime/kubernetes/controller/img":                          "sha256:5ab27cab12d01b1e2b7a03e022658ccbf1d0d07ef8756c69a1d0cf9169412fbf"
 		"namespacelabs.dev/foundation/std/runtime/kubernetes/controller/tool":                         "sha256:bf7f919692141ab63a9002fe6ba1ae9641a60f770ff97f41edb8fbfa09178537"
 		"namespacelabs.dev/foundation/std/runtime/kubernetes/kube-state-metrics/configure":            "sha256:4bfcba46c96c4d046f70f8b7ad2a7b2263606c9fa0cc17fdc939b95dfb6c3850"
