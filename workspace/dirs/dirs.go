@@ -15,7 +15,7 @@ func Cache() (string, error) {
 	if err != nil {
 		return dir, err
 	}
-	return filepath.Join(dir, "fn"), nil
+	return filepath.Join(dir, "ns"), nil
 }
 
 func Config() (string, error) {
