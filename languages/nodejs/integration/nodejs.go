@@ -26,8 +26,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
+	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/production"
-	"namespacelabs.dev/foundation/internal/yarn"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/provision"
@@ -148,7 +148,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 
 	var module build.Workspace
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !server.Location.Module.IsExternal() && isDevBuild {
-		module = yarn.YarnHotReloadModule{
+		module = nodejs.YarnHotReloadModule{
 			Mod: server.Location.Module,
 			// "ModuleName" is empty because we have only one module in the image and
 			// we can put everything under the root "/app" directory.
@@ -216,7 +216,7 @@ type yarnRootData struct {
 	workspace      *schema.Workspace
 }
 
-func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) error {
+func (impl) TidyWorkspace(ctx context.Context, env provision.Env, packages []*workspace.Package) error {
 	yarnRootsMap := map[string]*yarnRootData{}
 	yarnRoots := []string{}
 	for _, pkg := range packages {
@@ -255,7 +255,7 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 
 		// `ns tidy` could update dependencies of some nodes/servers, running `yarn install` to update
 		// `node_modules`.
-		if err := RunNodejsYarn(ctx, yarnRoot, []string{"install", "--mode=skip-build"}, yarnRootData.module.WorkspaceData); err != nil {
+		if err := nodejs.RunYarn(ctx, env, yarnRoot, []string{"install", "--mode=skip-build"}, yarnRootData.module.WorkspaceData); err != nil {
 			return err
 		}
 	}
@@ -264,7 +264,7 @@ func (impl) TidyWorkspace(ctx context.Context, packages []*workspace.Package) er
 }
 
 func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, path string) error {
-	lockFileStruct, err := generateLockFileStruct(yarnRootData.workspace, "")
+	lockFileStruct, err := nodejs.GenerateLockFileStruct(yarnRootData.workspace, "")
 	if err != nil {
 		return err
 	}
@@ -286,10 +286,6 @@ func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, 
 	})
 
 	return err
-}
-
-func (impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
-	return nil
 }
 
 func maybeGenerateNodeImplStub(pkg *workspace.Package, dl *defs.DefList) {
@@ -342,10 +338,6 @@ func fileNameForService(srvName string, descriptors []*descriptorpb.FileDescript
 		}
 	}
 	return "", fnerrors.InternalError("Couldn't find service %s in the generated proto descriptors.", srvName)
-}
-
-func (impl) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, server *schema.Server) error {
-	return nil
 }
 
 func mergeJsonMap(existingValues interface{}, newValues map[string]string) map[string]string {

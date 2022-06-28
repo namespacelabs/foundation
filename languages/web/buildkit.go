@@ -18,8 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/llbutil"
-	"namespacelabs.dev/foundation/internal/yarn"
-	nodejs "namespacelabs.dev/foundation/languages/nodejs/integration"
+	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -58,7 +57,7 @@ func viteDevBuild(ctx context.Context, env ops.Environment, target string, loc w
 	var module build.Workspace
 
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {
-		module = yarn.YarnHotReloadModule{
+		module = nodejs.YarnHotReloadModule{
 			Mod:  loc.Module,
 			Sink: r.For(&wsremote.Signature{ModuleName: loc.Module.ModuleName(), Rel: loc.Rel()}),
 		}
@@ -112,7 +111,7 @@ func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, m
 }
 
 func prepareYarn(ctx context.Context, target, nodejsBase string, src llb.State, platform specs.Platform) (llb.State, error) {
-	base, err := nodejs.PrepareYarnBase(ctx, nodejsBase, platform)
+	base, err := nodejs.PrepareNodejsBaseWithYarnForBuild(ctx, nodejsBase, platform)
 	if err != nil {
 		return llb.State{}, err
 	}
@@ -122,7 +121,7 @@ func prepareYarn(ctx context.Context, target, nodejsBase string, src llb.State, 
 		llbutil.CopyFrom(src, "yarn.lock", filepath.Join(target, "yarn.lock")))
 
 	yarnInstall := buildBase.Run(nodejs.RunYarnShlex("install", "--immutable"), llb.Dir(target))
-	yarnInstall.AddMount("/cache/yarn", llb.Scratch(), llb.AsPersistentCacheDir("yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
+	yarnInstall.AddMount(nodejs.YarnContainerCacheDir, llb.Scratch(), llb.AsPersistentCacheDir("yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
 
 	return yarnInstall.Root(), nil
 }

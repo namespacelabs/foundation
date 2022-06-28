@@ -28,9 +28,9 @@ type Integration interface {
 	PrepareRun(context.Context, provision.Server, *runtime.ServerRunOpts) error
 
 	// Called on `ns tidy`
-	TidyWorkspace(context.Context, []*workspace.Package) error
-	TidyNode(context.Context, workspace.Packages, *workspace.Package) error
-	TidyServer(context.Context, workspace.Packages, workspace.Location, *schema.Server) error
+	TidyWorkspace(context.Context, provision.Env, []*workspace.Package) error
+	TidyNode(context.Context, provision.Env, workspace.Packages, *workspace.Package) error
+	TidyServer(context.Context, provision.Env, workspace.Packages, workspace.Location, *schema.Server) error
 
 	// Called on `ns generate`.
 	GenerateNode(*workspace.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
@@ -78,15 +78,15 @@ func (MaybeGenerate) GenerateServer(*workspace.Package, []*schema.Node) ([]*sche
 
 type MaybeTidy struct{}
 
-func (MaybeTidy) TidyWorkspace(context.Context, []*workspace.Package) error {
+func (MaybeTidy) TidyWorkspace(context.Context, provision.Env, []*workspace.Package) error {
 	return nil
 }
 
-func (MaybeTidy) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
+func (MaybeTidy) TidyNode(context.Context, provision.Env, workspace.Packages, *workspace.Package) error {
 	return nil
 }
 
-func (MaybeTidy) TidyServer(ctx context.Context, pkgs workspace.Packages, loc workspace.Location, server *schema.Server) error {
+func (MaybeTidy) TidyServer(context.Context, provision.Env, workspace.Packages, workspace.Location, *schema.Server) error {
 	return nil
 }
 
