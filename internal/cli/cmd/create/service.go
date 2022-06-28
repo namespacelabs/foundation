@@ -32,7 +32,7 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 
 	fmwkStr := frameworkFlag(cmd)
 	name := cmd.Flags().String("name", "", "Service name.")
-	httpBackendPkg := cmd.Flags().String("http_backend", "", "Package name of the API backend server.")
+	httpBackendPkg := cmd.Flags().String("with_http_backend", "", "Package name of the API backend server.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		root, loc, err := targetPackage(ctx, args, use)

@@ -31,8 +31,8 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 
 	fmwkStr := frameworkFlag(cmd)
 	name := cmd.Flags().String("name", "", "Server name.")
-	grpcServices := cmd.Flags().StringArray("service", nil, "A service to wire to the server.")
-	httpServices := cmd.Flags().StringArray("http_service", nil, "An HTTP service to wire to the server. Format: 'path:package'.")
+	grpcServices := cmd.Flags().StringArray("with_service", nil, "A service to wire to the server.")
+	httpServices := cmd.Flags().StringArray("with_http_service", nil, "An HTTP service to wire to the server. Format: 'path:package'.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		parsedHttpServices := []cue.HttpService{}

@@ -34,6 +34,19 @@ requirements: {
         "namespacelabs.namespace-vscode"
     ]
 }`
+	gitignoreFilePath = ".gitignore"
+	gitignoreTemplate = `# Namespace configuration of this specific host.
+devhost.textpb
+
+# Typescript/Node.js/Yarn
+node_modules
+**/.yarn/*
+!**/.yarn/patches
+!**/.yarn/plugins
+!**/.yarn/releases
+!**/.yarn/sdks
+!**/.yarn/versions
+`
 )
 
 func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
@@ -53,7 +66,10 @@ func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) 
 		if err := writeWorkspaceConfig(ctx, fsfs, args); err != nil {
 			return err
 		}
-		if err := writeVscodeSettings(ctx, fsfs); err != nil {
+		if err := writeFileIfDoesntExist(ctx, console.Stdout(ctx), fsfs, vscodeExtensionsFilePath, vscodeExtensionsTemplate); err != nil {
+			return err
+		}
+		if err := writeFileIfDoesntExist(ctx, console.Stdout(ctx), fsfs, gitignoreFilePath, gitignoreTemplate); err != nil {
 			return err
 		}
 
@@ -91,23 +107,17 @@ func writeWorkspaceConfig(ctx context.Context, fsfs fnfs.ReadWriteFS, args []str
 		return context.Canceled
 	}
 
-	return writeFileIfDoesntExist(ctx, fsfs, cuefrontend.WorkspaceFile, fmt.Sprintf(workspaceFileTemplate, workspaceName, versions.APIVersion))
+	return writeFileIfDoesntExist(ctx, nil, fsfs, cuefrontend.WorkspaceFile, fmt.Sprintf(workspaceFileTemplate, workspaceName, versions.APIVersion))
 }
 
-func writeVscodeSettings(ctx context.Context, fsfs fnfs.ReadWriteFS) error {
-	return writeFileIfDoesntExist(ctx, fsfs, vscodeExtensionsFilePath, vscodeExtensionsTemplate)
-}
-
-func writeFileIfDoesntExist(ctx context.Context, fsfs fnfs.ReadWriteFS, fn string, content string) error {
-	stdout := console.Stdout(ctx)
-
+func writeFileIfDoesntExist(ctx context.Context, out io.Writer, fsfs fnfs.ReadWriteFS, fn string, content string) error {
 	f, err := fsfs.Open(fn)
 	if err == nil {
 		f.Close()
 		return nil
 	}
 
-	return fnfs.WriteWorkspaceFile(ctx, stdout, fsfs, fn, func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, out, fsfs, fn, func(w io.Writer) error {
 		_, err := fmt.Fprint(w, content)
 		return err
 	})

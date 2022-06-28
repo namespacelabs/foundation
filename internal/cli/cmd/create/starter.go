@@ -55,7 +55,6 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 		Use:   "starter",
 		Short: "Creates a new workspace from a template.",
 		Long:  "Creates a new workspace from a template (Go server + Web server). Creates a directory from the last part of the workspace name by default. Use the second argument to customize the directory or specify '.' to generate project the current directory.",
-		Args:  cobra.RangeArgs(1, 2),
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -65,6 +64,8 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 		}
 
 		stdout := console.Stdout(ctx)
+
+		fmt.Fprintf(stdout, "\nSeting up a starter project with an api server in Go and a web frontend. It will take a few minutes.\n")
 
 		createDir := len(args) < 2 || args[1] != "."
 
@@ -102,24 +103,24 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 				args: []string{"create", "server", goServerPkg,
 					"--framework=go",
 					fmt.Sprintf("--name=%s", goServerName),
-					fmt.Sprintf("--service=%s/%s", workspaceName, goServicePkg),
+					fmt.Sprintf("--with_service=%s/%s", workspaceName, goServicePkg),
 				},
 			},
 			{
 				description: fmt.Sprintf("Adding an example Web service '%s' at '%s'.", webServiceName, webServicePkg),
 				args: []string{"create", "service", webServicePkg,
 					"--framework=web",
-					fmt.Sprintf("--http_backend=%s/%s", workspaceName, goServerPkg),
+					fmt.Sprintf("--with_http_backend=%s/%s", workspaceName, goServerPkg),
 				},
 			},
 			{
 				description: fmt.Sprintf("Adding an example Web server '%s' at '%s'.", webServerName, webServerPkg),
 				args: []string{"create", "server", webServerPkg, "--framework=web",
 					fmt.Sprintf("--name=%s", webServerName),
-					fmt.Sprintf("--http_service=/:%s/%s", workspaceName, webServicePkg)},
+					fmt.Sprintf("--with_http_service=/:%s/%s", workspaceName, webServicePkg)},
 			},
 			{
-				description: "Bringing language-specific configuration up to date, making it consistent with the Namespace configuration. Downloading language-specific dependencies.",
+				description: "Bringing language-specific configuration up to date, making it consistent with the Namespace configuration. Downloading language-specific dependencies.\nIt may take a few minutes.",
 				args:        []string{"tidy"},
 			},
 		}
@@ -164,7 +165,7 @@ func generateAndPrintReadme(ctx context.Context, out io.Writer, dir string) erro
 	if err != nil {
 		return err
 	}
-	if err := writeFileIfDoesntExist(ctx, fnfs.ReadWriteLocalFS(cwd), readmeFilePath, readmeContent); err != nil {
+	if err := writeFileIfDoesntExist(ctx, console.Stdout(ctx), fnfs.ReadWriteLocalFS(cwd), readmeFilePath, readmeContent); err != nil {
 		return err
 	}
 
