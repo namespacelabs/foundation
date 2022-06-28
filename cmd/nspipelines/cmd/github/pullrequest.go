@@ -39,15 +39,16 @@ func newPullRequestCmd() *cobra.Command {
 
 		client := github.NewClient(&http.Client{Transport: itr})
 
-		prs, _, err := client.PullRequests.List(ctx, *owner, *repo, &github.PullRequestListOptions{
-			Base: *branch,
-		})
+		prs, _, err := client.PullRequests.List(ctx, *owner, *repo, &github.PullRequestListOptions{})
 		if err != nil {
 			return err
 		}
 
 		for _, pr := range prs {
-			fmt.Fprintln(os.Stdout, pr.Number)
+			if *pr.Head.Ref == *branch {
+				fmt.Fprintf(os.Stdout, "%s\n", *pr.HTMLURL)
+
+			}
 		}
 
 		return nil
