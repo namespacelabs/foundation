@@ -22,11 +22,11 @@ type GenServiceOpts struct {
 	Name string
 }
 
-func CreateGolangScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
+func CreateServiceScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
 	parts := strings.Split(loc.RelPath, string(os.PathSeparator))
 
 	if len(parts) < 1 {
-		return fmt.Errorf("Unable to determine package name.")
+		return fmt.Errorf("unable to determine package name")
 	}
 
 	return generateGoSource(ctx, fsfs, loc.Rel(implFileName), serviceTmpl, serviceTmplOptions{

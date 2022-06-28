@@ -93,12 +93,12 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 		switch *fmwk {
 		case schema.Framework_GO:
 			goOpts := golang.GenServiceOpts{Name: *name}
-			if err := golang.CreateGolangScaffold(ctx, root.FS(), loc, goOpts); err != nil {
+			if err := golang.CreateServiceScaffold(ctx, root.FS(), loc, goOpts); err != nil {
 				return err
 			}
 		case schema.Framework_WEB:
 			webOpts := web.GenServiceOpts{}
-			if err := web.CreateWebScaffold(ctx, root.FS(), loc, webOpts); err != nil {
+			if err := web.CreateServiceScaffold(ctx, root.FS(), loc, webOpts); err != nil {
 				return err
 			}
 		}

@@ -22,6 +22,7 @@ func NewCreateCmd(runCommand func(ctx context.Context, args []string) error) *co
 	cmd.AddCommand(newServiceCmd(runCommand))
 	cmd.AddCommand(newWorkspaceCmd(runCommand))
 	cmd.AddCommand(newStarterCmd(runCommand))
+	cmd.AddCommand(newTestCmd())
 
 	return cmd
 }

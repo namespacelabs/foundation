@@ -31,6 +31,7 @@ const (
 	webServiceName = "WebService"
 	webServerPkg   = "server/web"
 	webServerName  = "webserver"
+	testPkg        = "tests/echo"
 	readmeFilePath = "README.md"
 )
 
@@ -43,6 +44,7 @@ Next steps:
 - Switch to the project directory: ` + "`" + `cd {{.Dir}}` + "`" + `
 {{end -}}
 - Run ` + "`" + `ns prepare local` + "`" + ` to prepare the local dev environment.
+- Run ` + "`" + `ns test {{.TestPkg}}` + "`" + ` to run the e2e test.
 - Run ` + "`" + `ns dev {{.ServerPkg}}` + "`" + ` to start the server stack in the development mode with hot reload.
 `))
 )
@@ -50,6 +52,7 @@ Next steps:
 type readmeTmplOpts struct {
 	Dir       string
 	ServerPkg string
+	TestPkg   string
 }
 
 func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
@@ -141,6 +144,12 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 					fmt.Sprintf("--with_http_service=/:%s/%s", *workspaceName, webServicePkg)},
 			},
 			{
+				description: "Adding an example e2e test.",
+				args: []string{"create", "test", testPkg,
+					fmt.Sprintf("--server=%s/%s", *workspaceName, goServerPkg),
+					fmt.Sprintf("--service=%s/%s", *workspaceName, goServicePkg)},
+			},
+			{
 				description: "Bringing the language-specific configuration up to date, making it consistent with the Namespace configuration. Downloading language-specific dependencies.\nIt may take a few minutes.",
 				args:        []string{"tidy"},
 			},
@@ -177,6 +186,7 @@ func generateAndPrintReadme(ctx context.Context, out io.Writer, dir string) erro
 	data := readmeTmplOpts{
 		Dir:       dir,
 		ServerPkg: webServerPkg,
+		TestPkg:   testPkg,
 	}
 
 	var body bytes.Buffer

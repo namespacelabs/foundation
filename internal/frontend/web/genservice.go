@@ -16,7 +16,7 @@ import (
 type GenServiceOpts struct {
 }
 
-func CreateWebScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
+func CreateServiceScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
 	parts := strings.Split(loc.RelPath, string(os.PathSeparator))
 
 	if len(parts) < 1 {
