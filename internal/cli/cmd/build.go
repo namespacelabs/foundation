@@ -7,12 +7,11 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/build"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -84,44 +83,38 @@ func NewBuildCmd() *cobra.Command {
 	})
 }
 
-func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[oci.ImageID]) {
+func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[deploy.ResolvedServerImages]) {
 	out := console.TypedOutput(ctx, "build", console.CatOutputUs)
 
-	sort.Slice(results, func(i, j int) bool {
-		if results[i].Timestamp.Equal(results[j].Timestamp) {
-			imgI := results[i].Value
-			imgJ := results[j].Value
-
-			return strings.Compare(imgI.String(), imgJ.String()) < 0
-		} else {
-			return results[i].Timestamp.Before(results[j].Timestamp)
-		}
+	slices.SortFunc(results, func(a, b compute.ResultWithTimestamp[deploy.ResolvedServerImages]) bool {
+		return strings.Compare(a.Value.Package.String(), b.Value.Package.String()) < 0
 	})
-
-	fmt.Fprintf(out, "Got %d images:\n\n", len(results))
 
 	style := colors.Ctx(ctx)
 	for k, it := range results {
-		img := it.Value
-
-		if k > 0 && !it.Timestamp.IsZero() && results[k-1].Timestamp.IsZero() {
+		if k > 0 {
 			fmt.Fprintln(out)
 		}
 
-		fmt.Fprint(out, "  ")
-		if it.Timestamp.IsZero() {
-			fmt.Fprint(out, style.Header.Apply("prebuilt "))
+		resolved := it.Value
+
+		fmt.Fprintf(out, "  %s\n", resolved.Package)
+
+		fmt.Fprintf(out, "    %s ", style.Header.Apply("Binary:"))
+		if resolved.PrebuiltBinary {
+			fmt.Fprint(out, style.LessRelevant.Apply("prebuilt "))
 		}
 
-		fmt.Fprintln(out, img)
-		if !it.Timestamp.IsZero() {
-			fmt.Fprintln(out, style.Header.Apply(fmt.Sprintf("     built %v", it.Timestamp)))
+		fmt.Fprintf(out, "%s\n", resolved.Binary)
+
+		if resolved.Config.String() != "" {
+			fmt.Fprintf(out, "    %s %s\n", style.Header.Apply("Config:"), resolved.Config)
 		}
 	}
 }
 
 type continuousBuild struct {
-	allImages compute.Computable[[]compute.ResultWithTimestamp[oci.ImageID]]
+	allImages compute.Computable[[]compute.ResultWithTimestamp[deploy.ResolvedServerImages]]
 }
 
 func (c continuousBuild) Inputs() *compute.In {

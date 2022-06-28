@@ -39,10 +39,17 @@ type Opts struct {
 	StackOpts
 }
 
-type images struct {
+type ServerImages struct {
 	Package schema.PackageName
 	Binary  compute.Computable[oci.ImageID]
 	Config  compute.Computable[oci.ImageID]
+}
+
+type ResolvedServerImages struct {
+	Package        schema.PackageName
+	Binary         oci.ImageID
+	PrebuiltBinary bool
+	Config         oci.ImageID
 }
 
 func PrepareDeployServers(ctx context.Context, env ops.Environment, focus []provision.Server, opts Opts, onStack func(*stack.Stack)) (compute.Computable[*Plan], error) {
@@ -247,7 +254,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 	var sidecarCommands []sidecarPackage
 	for pkg, v := range sidecarImages {
 		// There's an assumption here that sidecar/init packages are non-overlapping with servers.
-		imgs[pkg] = images{
+		imgs[pkg] = ServerImages{
 			Package: pkg,
 			Binary:  v.Image,
 		}
@@ -369,11 +376,11 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 
 func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *stack.Stack,
 	buildAssets languages.AvailableBuildAssets,
-	computedConfigs compute.Computable[*schema.ComputedConfigurations]) (map[schema.PackageName]images, error) {
-	imageMap := map[schema.PackageName]images{}
+	computedConfigs compute.Computable[*schema.ComputedConfigurations]) (map[schema.PackageName]ServerImages, error) {
+	imageMap := map[schema.PackageName]ServerImages{}
 
 	for _, srv := range stack.Servers {
-		var images images
+		images := ServerImages{Package: srv.PackageName()}
 
 		spec, err := languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, buildAssets, srv, focus.Includes(srv.PackageName()))
 		if err != nil {
@@ -478,7 +485,7 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) (map[s
 	return res, nil
 }
 
-func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []provision.Server, opts Opts) (*stack.Stack, []compute.Computable[oci.ImageID], error) {
+func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []provision.Server, opts Opts) (*stack.Stack, []compute.Computable[ResolvedServerImages], error) {
 	stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortBase: opts.BaseServerPort})
 	if err != nil {
 		return nil, nil, err
@@ -495,19 +502,35 @@ func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []p
 		return h.Computed, nil
 	})
 
-	m, err := prepareServerImages(ctx, provision.ServerPackages(servers), stack, makeBuildAssets(ingressFragments), computedOnly)
+	imageMap, err := prepareServerImages(ctx, provision.ServerPackages(servers), stack, makeBuildAssets(ingressFragments), computedOnly)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var images []compute.Computable[oci.ImageID]
-	for _, r := range m {
-		if r.Binary != nil {
-			images = append(images, r.Binary)
-		}
+	var images []compute.Computable[ResolvedServerImages]
+	for _, r := range imageMap {
+		r := r // Close r.
+		in := compute.Inputs().Stringer("package", r.Package).Computable("binary", r.Binary)
 		if r.Config != nil {
-			images = append(images, r.Config)
+			in = in.Computable("config", r.Config)
 		}
+
+		images = append(images, compute.Map(tasks.Action("server.compute-images").Scope(r.Package), in, compute.Output{},
+			func(ctx context.Context, deps compute.Resolved) (ResolvedServerImages, error) {
+				binary, _ := compute.GetDep(deps, r.Binary, "binary")
+
+				result := ResolvedServerImages{
+					Package:        r.Package,
+					Binary:         binary.Value,
+					PrebuiltBinary: binary.Timestamp.IsZero(),
+				}
+
+				if v, ok := compute.GetDep(deps, r.Config, "config"); ok {
+					result.Config = v.Value
+				}
+
+				return result, nil
+			}))
 	}
 
 	return stack, images, nil
