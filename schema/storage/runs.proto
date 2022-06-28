@@ -12,6 +12,7 @@ import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
 import "google/protobuf/any.proto";
 
+// Emitted by each individual run, regardless of kind and storage type.
 message UndifferentiatedRun {
     string                    parent_run_id = 1;
     google.rpc.Status         status        = 2;
@@ -20,6 +21,7 @@ message UndifferentiatedRun {
     repeated google.protobuf.Any attachment = 5;
 }
 
+// Used for permanent storage.
 message SectionRun {
     Kind   kind  = 1;
     string label = 2;  // For human consumption.
