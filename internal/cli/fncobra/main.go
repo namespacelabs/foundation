@@ -121,7 +121,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		}()
 	}
 
-	run := storedrun.New()
+	var run *storedrun.Run
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
 		if cmdBundle != nil {
@@ -132,13 +132,15 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			tasks.ActionStorer = cmdBundle.CreateActionStorer(cmd.Context(), flushLogs)
 		}
 
+		run = storedrun.New()
+
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = runtime.HasRuntime
 
-		filewatcher.SetupFileWatcher()
-
 		workspace.ModuleLoader = cuefrontend.ModuleLoader
 		workspace.MakeFrontend = cuefrontend.NewFrontend
+
+		filewatcher.SetupFileWatcher()
 
 		binary.BuildGo = func(loc workspace.Location, goPackage, binName string, unsafeCacheable bool) (build.Spec, error) {
 			gobin, err := golang.FromLocation(loc, goPackage)
@@ -289,7 +291,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	cmdCtx := tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx)))
 	err := rootCmd.ExecuteContext(cmdCtx)
-	err = run.Output(cmdCtx, err) // If requested, store the run results.
+
+	if run != nil {
+		err = run.Output(cmdCtx, err) // If requested, store the run results.
+	}
 
 	if flushLogs != nil {
 		flushLogs()

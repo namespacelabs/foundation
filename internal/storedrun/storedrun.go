@@ -48,13 +48,9 @@ func New() *Run {
 }
 
 func (s *Run) Output(ctx context.Context, execErr error) error {
-	if s == nil {
-		return execErr
-	}
-
 	st, _ := status.FromError(execErr)
 
-	run := &storage.IndividualRun{
+	run := &storage.UndifferentiatedRun{
 		ParentRunId: ParentID,
 		Status:      st.Proto(),
 		Created:     timestamppb.New(s.Started),

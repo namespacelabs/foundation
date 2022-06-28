@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/github"
+	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/runs"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
@@ -27,6 +28,7 @@ func main() {
 
 	root.AddCommand(github.NewGithubCmd())
 	root.AddCommand(workspace.NewWorkspaceCmd())
+	root.AddCommand(runs.NewRunsCmd())
 
 	ctx := tasks.WithSink(context.Background(), simplelog.NewSink(os.Stderr, maxLogLevel))
 

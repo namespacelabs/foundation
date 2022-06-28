@@ -89,6 +89,8 @@ func serializeBytes(w io.Writer, v interface{}) error {
 	switch x := v.(type) {
 	case proto.Message:
 		b, err = (proto.MarshalOptions{Deterministic: true}).Marshal(x)
+	case []byte:
+		b = x
 	default:
 		b, err = json.Marshal(v)
 	}
