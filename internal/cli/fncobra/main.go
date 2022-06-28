@@ -39,7 +39,7 @@ import (
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
-	"namespacelabs.dev/foundation/internal/sectionrun"
+	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/ulimit"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/languages/golang"
@@ -261,10 +261,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
 		filewatcher.FileWatcherUsePolling, "If set to true, uses polling to observe file system events.")
 
-	var sectionRunOutputPath string
+	var storedRunOutputPath string
 
-	rootCmd.PersistentFlags().StringVar(&sectionRunOutputPath, "section_run_output_path", "", "If set, outputs a serialized set of test runs to the specified path.")
-	rootCmd.PersistentFlags().StringVar(&sectionrun.ParentID, "section_run_parent_id", "", "If set, tags this section with the specified push.")
+	rootCmd.PersistentFlags().StringVar(&storedRunOutputPath, "stored_run_output_path", "", "If set, outputs a serialized set of test runs to the specified path.")
+	rootCmd.PersistentFlags().StringVar(&storedrun.ParentID, "stored_run_parent_id", "", "If set, tags this section with the specified push.")
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
@@ -300,8 +300,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		cleanupTracer()
 	}
 
-	if sectionRunOutputPath != "" {
-		err = sectionrun.Output(sectionRunOutputPath, started, err)
+	if storedRunOutputPath != "" {
+		err = storedrun.Output(storedRunOutputPath, started, err)
 	}
 
 	// Check if this is a version requirement error, if yes, skip the regular version checker.

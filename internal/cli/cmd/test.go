@@ -17,8 +17,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/sectionrun"
 	"namespacelabs.dev/foundation/internal/stack"
+	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -90,7 +90,7 @@ func NewTestCmd() *cobra.Command {
 
 			var parallelTests []compute.Computable[testing.StoredTestResults]
 
-			testOpts.ParentRunID = sectionrun.ParentID
+			testOpts.ParentRunID = storedrun.ParentID
 			testOpts.OutputProgress = !parallel
 
 			runs := &storage.TestRuns{}
@@ -177,7 +177,7 @@ func NewTestCmd() *cobra.Command {
 				}
 			}
 
-			sectionrun.Attach(runs)
+			storedrun.Attach(runs)
 
 			if len(failed) > 0 {
 				return fnerrors.ExitWithCode(fmt.Errorf("failed tests: %s", strings.Join(failed, ", ")), exitCode)
