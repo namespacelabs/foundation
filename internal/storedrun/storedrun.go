@@ -48,9 +48,9 @@ func SetupFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&ParentID, "stored_run_parent_id", "", "If set, tags this section with the specified push.")
 	flags.StringVar(&UploadToRegistryRepository, "stored_run_upload_to_repository", "", "If set, uploads the serialize run into the a repository in the environment bound's registry.")
 
-	flags.MarkHidden("stored_run_output_path")
-	flags.MarkHidden("stored_run_parent_id")
-	flags.MarkHidden("stored_run_upload_to_repository")
+	_ = flags.MarkHidden("stored_run_output_path")
+	_ = flags.MarkHidden("stored_run_parent_id")
+	_ = flags.MarkHidden("stored_run_upload_to_repository")
 }
 
 func Check() (*Run, error) {
