@@ -23,31 +23,24 @@ type GenTestOpts struct {
 }
 
 func CreateTestScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenTestOpts) error {
-	testPathParts := strings.Split(loc.RelPath, string(os.PathSeparator))
-	if len(testPathParts) < 1 {
-		return fmt.Errorf("unable to determine package name")
-	}
-
 	serverPackageParts := strings.Split(opts.ServicePkg, string(os.PathSeparator))
 	if len(serverPackageParts) < 1 {
 		return fmt.Errorf("unable to determine server package name")
 	}
 
 	return generateGoSource(ctx, fsfs, loc.Rel(testFileName), testTmpl, testTmplOptions{
-		Package:            testPathParts[len(testPathParts)-1],
 		ServicePkg:         opts.ServicePkg,
 		ServiceImportAlias: serverPackageParts[len(serverPackageParts)-1],
 	})
 }
 
 type testTmplOptions struct {
-	Package            string
 	ServicePkg         string
 	ServiceImportAlias string
 }
 
 var testTmpl = template.Must(template.New(implFileName).Parse(`
-package {{.Package}}
+package main
 
 import (
 	"context"
