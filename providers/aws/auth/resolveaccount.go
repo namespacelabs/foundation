@@ -37,7 +37,9 @@ func (r *resolveAccount) Inputs() *compute.In {
 func (r *resolveAccount) Compute(ctx context.Context, _ compute.Resolved) (*sts.GetCallerIdentityOutput, error) {
 	out, err := sts.NewFromConfig(r.Session.Config()).GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
-		return nil, CheckNeedsLogin(r.Session, err)
+		return nil, CheckNeedsLoginOr(r.Session, err, func(err error) error {
+			return fnerrors.New("sts: obtaining caller identity failed: %w", err)
+		})
 	}
 
 	if out.Account == nil {
@@ -47,7 +49,7 @@ func (r *resolveAccount) Compute(ctx context.Context, _ compute.Resolved) (*sts.
 	return out, nil
 }
 
-func CheckNeedsLogin(s *awsprovider.Session, err error) error {
+func CheckNeedsLoginOr(s *awsprovider.Session, err error, transformErr func(error) error) error {
 	var e1 *ssocreds.InvalidTokenError
 	if errors.As(err, &e1) {
 		if usage := s.RefreshUsage(); usage != "" {
@@ -57,5 +59,5 @@ func CheckNeedsLogin(s *awsprovider.Session, err error) error {
 		return fnerrors.New("AWS session credentials have expired")
 	}
 
-	return err
+	return transformErr(err)
 }

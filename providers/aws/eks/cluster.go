@@ -136,7 +136,9 @@ func DescribeCluster(ctx context.Context, s *Session, name string) (*types.Clust
 			Name: &name,
 		})
 		if err != nil {
-			return nil, auth.CheckNeedsLogin(s.sesh, err)
+			return nil, auth.CheckNeedsLoginOr(s.sesh, err, func(err error) error {
+				return fnerrors.New("eks: describe cluster failed: %w", err)
+			})
 		}
 
 		if out.Cluster == nil {

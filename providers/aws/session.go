@@ -63,7 +63,6 @@ func configuration(devHost *schema.DevHost, selector devhost.Selector) *Conf {
 	conf := &Conf{}
 	if selector == nil || !selector.Select(devHost).Get(conf) {
 		if hasWebIdentityEnvVar() {
-			// TODO: remove profile?
 			return &Conf{UseInjectedWebIdentity: true}
 		}
 		return nil

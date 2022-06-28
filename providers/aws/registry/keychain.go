@@ -24,13 +24,26 @@ var DefaultKeychain oci.Keychain = defaultKeychain{}
 
 type defaultKeychain struct{}
 
-func (dk defaultKeychain) Resolve(ctx context.Context, authn authn.Resource) (authn.Authenticator, error) {
+func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
 	// XXX rethink this; we need more context in order to pick the right credentials.
 	session, err := awsprovider.ConfiguredSession(ctx, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	return keychainSession{sesh: session}.Resolve(ctx, authn)
+
+	config, err := keychainSession{sesh: session}.refreshPrivateAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if config.ServerAddress == r.RegistryStr() {
+		return authn.FromConfig(authn.AuthConfig{
+			Username: config.Username,
+			Password: config.Password,
+		}), nil
+	}
+
+	return nil, fnerrors.New("ecr: no credentials available for %q, know %q", r.RegistryStr(), config.ServerAddress)
 }
 
 type keychainSession struct {
@@ -100,5 +113,12 @@ func (cat cachedAuthToken) Inputs() *compute.In {
 }
 
 func (cat cachedAuthToken) Compute(ctx context.Context, _ compute.Resolved) (*ecr.GetAuthorizationTokenOutput, error) {
-	return ecr.NewFromConfig(cat.sesh.Config()).GetAuthorizationToken(ctx, &ecr.GetAuthorizationTokenInput{})
+	token, err := ecr.NewFromConfig(cat.sesh.Config()).GetAuthorizationToken(ctx, &ecr.GetAuthorizationTokenInput{})
+	if err != nil {
+		return nil, auth.CheckNeedsLoginOr(cat.sesh, err, func(err error) error {
+			return fnerrors.New("ecr: get auth token failed: %w", err)
+		})
+	}
+
+	return token, nil
 }
