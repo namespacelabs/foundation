@@ -113,7 +113,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	var cmdBundle *CommandBundle
 	if !disableCommandBundle {
-		cmdBundle := NewCommandBundle()
+		cmdBundle = NewCommandBundle()
 
 		// Delete stale commands asynchronously on startup.
 		defer func() {
