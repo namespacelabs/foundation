@@ -2,14 +2,12 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import classNames from "classnames";
 import { Link } from "wouter";
 import {
 	DataType,
 	ForwardedPort,
-	ServerType,
 	StackEntryStateType,
-	StackType,
+	StackEntryType,
 } from "../../datamodel/Schema";
 import { useTasksByServer } from "../../datamodel/TasksObserver";
 import { ExternalLinkIcon } from "../../icons";
@@ -19,34 +17,29 @@ import { useServerRoute } from "../server/routing";
 import classes from "./sidebar.module.css";
 
 export default function ServerBlock(props: { data: DataType }) {
-	let [matches, params] = useServerRoute();
+	const focusedServers = entriesToServers([props.data.current], props.data.state);
+	const supportServers = entriesToServers(
+		props.data.stack?.entry?.filter(
+			(s) => !s.server.cluster_admin && s.server.id != props.data.current.server.id
+		),
+		props.data.state
+	);
 
 	let tabs = [
 		{
-			id: "stack",
-			label: "Stack",
-			render: () => (
-				<>
-					{props.data.stack?.entry?.filter((s) => {
-						return !s.server.cluster_admin
-					}).map((s) => {
-						return (
-							<Selectable
-								key={s.server.package_name}
-								selected={matches && params?.id === s.server.id}>
-								<Server server={s.server} state={stateOf(props.data, s.server.package_name)} />
-							</Selectable>
-						);
-					})}
-				</>
-			),
+			id: "focusedServers",
+			label: "Main servers",
+			render: () => <ServerList servers={focusedServers} />,
+		},
+		{
+			id: "supportServers",
+			label: "Support servers",
+			render: () => <ServerList servers={supportServers} />,
 		},
 	];
 
 	return (
 		<div className={classes.serverContent}>
-			{/* <ServerSelector data={props.data} /> */}
-
 			<Tabs tabs={tabs} />
 
 			<ForwardedPorts data={props.data} />
@@ -54,11 +47,44 @@ export default function ServerBlock(props: { data: DataType }) {
 	);
 }
 
-function stateOf(data: DataType, packageName: string) {
-	let matchingState = data.state?.filter((st) => st.package_name === packageName);
-	return matchingState?.length
-		? matchingState[0]
-		: ({ package_name: packageName } as StackEntryStateType);
+interface Server {
+	name: string;
+	packageName: string;
+	id: string;
+	lastError?: string;
+}
+
+function entriesToServers(
+	entries: StackEntryType[] | undefined,
+	state: StackEntryStateType[] | undefined
+): Server[] {
+	return (
+		entries?.map((e) => {
+			let matchingState = state?.filter((st) => st.package_name === e.server.package_name);
+			return {
+				id: e.server.id,
+				name: e.server.name,
+				packageName: e.server.package_name,
+				lastError: matchingState?.shift()?.last_error,
+			};
+		}) || []
+	);
+}
+
+function ServerList(props: { servers: Server[] }) {
+	let [matches, params] = useServerRoute();
+
+	return (
+		<>
+			{props.servers.map((s) => {
+				return (
+					<Selectable key={s.packageName} selected={matches && params?.id === s.id}>
+						<Server server={s} />
+					</Selectable>
+				);
+			})}
+		</>
+	);
 }
 
 const taskHumanNames: { [key: string]: string } = {
@@ -73,10 +99,10 @@ function humanTaskName(name: string) {
 	return taskHumanNames[name] || name;
 }
 
-function Server(props: { server: ServerType; state: StackEntryStateType; stack?: StackType }) {
-	let runningTask = useTasksByServer(props.server.package_name);
+function Server(props: { server: Server }) {
+	let runningTask = useTasksByServer(props.server.packageName);
 
-	const parts = props.server.package_name.split("/");
+	const parts = props.server.packageName.split("/");
 	let p = parts.pop();
 
 	while (parts.length) {
@@ -94,8 +120,8 @@ function Server(props: { server: ServerType; state: StackEntryStateType; stack?:
 	let badges: string[] = [];
 
 	let isWorking = false;
-	if (props.state.last_error) {
-		p = "failed: " + props.state.last_error;
+	if (props.server.lastError) {
+		p = "failed: " + props.server.lastError;
 	} else if (runningTask.length) {
 		// Show the last task, and collapse the rest into "...".
 		if (runningTask.length > 1) {

@@ -13,7 +13,7 @@ type Tab = {
 };
 
 export default function Tabs(props: { tabs: Tab[]; rightSide?: JSX.Element }) {
-	let [current, setCurrent] = useState(null);
+	let [current, setCurrent] = useState<string | undefined>(undefined);
 
 	let currentTab = props.tabs.filter((t) => !current || t.id === current);
 	if (!currentTab.length) {
@@ -31,7 +31,8 @@ export default function Tabs(props: { tabs: Tab[]; rightSide?: JSX.Element }) {
 							key={t.id}
 							className={classNames(classes.tabItem, {
 								[classes.activeTab]: t.id === tab.id,
-							})}>
+							})}
+							onClick={() => setCurrent(t.id)}>
 							{t.label}
 						</div>
 					))}

@@ -146,6 +146,7 @@
 
 .tabItem {
 	border-bottom: 2px solid transparent;
+	cursor: pointer;
 }
 
 .tabItem.activeTab {
@@ -160,6 +161,7 @@
 .tabLeft {
 	flex: 1;
 	display: flex;
+	gap: 15px;
 	flex-direction: row;
 	align-items: center;
 }
