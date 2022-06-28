@@ -44,12 +44,14 @@ func newPullRequestCmd() *cobra.Command {
 			return err
 		}
 
+		hasPullRequest := false
 		for _, pr := range prs {
 			if *pr.Head.Ref == *branch {
-				fmt.Fprintf(os.Stdout, "%s\n", *pr.HTMLURL)
-
+				hasPullRequest = true
 			}
 		}
+
+		fmt.Fprintf(os.Stdout, "%v", hasPullRequest)
 
 		return nil
 	})
