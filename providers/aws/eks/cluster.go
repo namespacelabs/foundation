@@ -55,6 +55,8 @@ func Register() {
 		token, err := ComputeToken(ctx, s, conf.Name)
 		return token.Token, err
 	})
+
+	RegisterGraphHandlers()
 }
 
 func prepareDescribeCluster(ctx context.Context, env ops.Environment, se *schema.Stack_Entry) (*frontend.PrepareProps, error) {

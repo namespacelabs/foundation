@@ -50,6 +50,7 @@ require (
 	github.com/jackc/pgx/v4 v4.16.1
 	github.com/jet/kube-webhook-certgen v1.5.2
 	github.com/jhump/protoreflect v1.12.0
+	github.com/keikoproj/aws-auth v0.3.5
 	github.com/kr/text v0.2.0
 	github.com/loft-sh/vcluster v0.10.2
 	github.com/maruel/panicparse/v2 v2.3.0
@@ -106,6 +107,8 @@ require (
 	sigs.k8s.io/controller-runtime v0.12.2
 	sigs.k8s.io/yaml v1.3.0
 )
+
+require github.com/jpillora/backoff v1.0.0 // indirect
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
