@@ -24,7 +24,7 @@ type scratch struct {
 var _ compute.Digestible = scratch{}
 
 func (scratch) Action() *tasks.ActionEvent { return tasks.Action("oci.make-scratch").LogLevel(2) }
-func (scratch) Inputs() *compute.In        { return compute.Inputs() }
+func (scratch) Inputs() *compute.In        { return compute.Inputs().Indigestible("scratch", "scratch") }
 func (scratch) Compute(_ context.Context, _ compute.Resolved) (Image, error) {
 	return empty.Image, nil
 }

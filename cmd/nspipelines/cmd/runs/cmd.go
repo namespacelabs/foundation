@@ -13,6 +13,7 @@ func NewRunsCmd() *cobra.Command {
 
 	cmd.AddCommand(newUploadCmd())
 	cmd.AddCommand(newWriteCmd())
+	cmd.AddCommand(newPublishCmd())
 
 	return cmd
 }

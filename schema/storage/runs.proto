@@ -48,3 +48,7 @@ message SectionRun {
         string image_path      = 3;  // The file path within the image that holds the contents.
     }
 }
+
+message Run {
+    repeated SectionRun section_run = 1;
+}

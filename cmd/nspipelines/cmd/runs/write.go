@@ -133,5 +133,4 @@ func (v *resultImage) SetupFlags(cmd *cobra.Command, flags *pflag.FlagSet) {
 
 	_ = cmd.MarkFlagRequired("kind")
 	_ = cmd.MarkFlagRequired("label")
-
 }
