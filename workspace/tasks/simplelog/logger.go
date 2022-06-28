@@ -24,6 +24,10 @@ type logger struct {
 }
 
 func (sl logger) shouldLog(ev tasks.EventData) bool {
+	// Don't emit logs for "compute.wait".
+	if ev.AnchorID != "" {
+		return false
+	}
 	return ev.Level <= sl.maxLevel
 }
 
