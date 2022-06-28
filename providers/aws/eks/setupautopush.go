@@ -17,9 +17,11 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
+// AWS account ID for our hosted CI pipeline.
+// TODO consider making this configurable for self-hosted pipelines.
 const ciAcc = 960279036429
 
-var ciRoles = [...]string{"fntest", "fnplandeploy", "fndeploy"}
+var ciRoles = []string{"fntest", "fnplandeploy", "fndeploy"}
 
 func SetupAutopush(eksCluster *EKSCluster, iamRole string, roleArn string) ([]defs.MakeDefinition, error) {
 	var out []defs.MakeDefinition
