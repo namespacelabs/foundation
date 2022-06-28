@@ -270,6 +270,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"buildkit_import_cache",
 		"buildkit_export_cache",
 		"buildkit_secrets",
+		"debug_to_console",
+		"disable_command_bundle",
+		"filewatcher_use_polling",
 		"verify_compute_caching",
 		"also_compute_ingress",
 		"golang_use_buildkit",
@@ -332,9 +335,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	}
 
 	// Ensures deferred routines after invoked gracefully before os.Exit.
-	defer handleExit()
+	defer handleExit(ctx)
 	if cmdBundle != nil {
 		defer func() {
+			fmt.Fprintf(console.Stderr(ctx), "Time: %s\n", time.Now().Format("01-02-2006 15:04:05.000000"))
+			fmt.Fprintf(console.Stderr(ctx), "Flushing the command execution history")
 			// Capture useful information about the environment helpful for diagnostics in the bundle.
 			_ = cmdBundle.FlushWithExitInfo(ctxWithSink)
 		}()
@@ -358,11 +363,13 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 type exitWithCode struct{ Code int }
 
 // exit code handler
-func handleExit() {
+func handleExit(ctx context.Context) {
 	if e := recover(); e != nil {
 		if exit, ok := e.(exitWithCode); ok {
+			fmt.Fprintf(console.Stderr(ctx), "Exiting with exit code %d\n", exit.Code)
 			os.Exit(exit.Code)
 		}
+		fmt.Fprintln(console.Stderr(ctx), "throwing a panic to run all exit handlers")
 		panic(e) // not an Exit, bubble up
 	}
 }
