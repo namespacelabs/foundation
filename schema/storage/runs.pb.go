@@ -106,61 +106,6 @@ func (x *IndividualRun) GetAttachment() []*anypb.Any {
 	return nil
 }
 
-type StoredIndividualRun struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Run         *IndividualRun `protobuf:"bytes,1,opt,name=run,proto3" json:"run,omitempty"`
-	StoredRunId string         `protobuf:"bytes,2,opt,name=stored_run_id,json=storedRunId,proto3" json:"stored_run_id,omitempty"`
-}
-
-func (x *StoredIndividualRun) Reset() {
-	*x = StoredIndividualRun{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_storage_runs_proto_msgTypes[1]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *StoredIndividualRun) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StoredIndividualRun) ProtoMessage() {}
-
-func (x *StoredIndividualRun) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_storage_runs_proto_msgTypes[1]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StoredIndividualRun.ProtoReflect.Descriptor instead.
-func (*StoredIndividualRun) Descriptor() ([]byte, []int) {
-	return file_schema_storage_runs_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *StoredIndividualRun) GetRun() *IndividualRun {
-	if x != nil {
-		return x.Run
-	}
-	return nil
-}
-
-func (x *StoredIndividualRun) GetStoredRunId() string {
-	if x != nil {
-		return x.StoredRunId
-	}
-	return ""
-}
-
 var File_schema_storage_runs_proto protoreflect.FileDescriptor
 
 var file_schema_storage_runs_proto_rawDesc = []byte{
@@ -189,18 +134,10 @@ var file_schema_storage_runs_proto_rawDesc = []byte{
 	0x0a, 0x61, 0x74, 0x74, 0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74, 0x18, 0x05, 0x20, 0x03, 0x28,
 	0x0b, 0x32, 0x14, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
 	0x62, 0x75, 0x66, 0x2e, 0x41, 0x6e, 0x79, 0x52, 0x0a, 0x61, 0x74, 0x74, 0x61, 0x63, 0x68, 0x6d,
-	0x65, 0x6e, 0x74, 0x22, 0x75, 0x0a, 0x13, 0x53, 0x74, 0x6f, 0x72, 0x65, 0x64, 0x49, 0x6e, 0x64,
-	0x69, 0x76, 0x69, 0x64, 0x75, 0x61, 0x6c, 0x52, 0x75, 0x6e, 0x12, 0x3a, 0x0a, 0x03, 0x72, 0x75,
-	0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x28, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61,
-	0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x73, 0x74, 0x6f, 0x72,
-	0x61, 0x67, 0x65, 0x2e, 0x49, 0x6e, 0x64, 0x69, 0x76, 0x69, 0x64, 0x75, 0x61, 0x6c, 0x52, 0x75,
-	0x6e, 0x52, 0x03, 0x72, 0x75, 0x6e, 0x12, 0x22, 0x0a, 0x0d, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x64,
-	0x5f, 0x72, 0x75, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x73,
-	0x74, 0x6f, 0x72, 0x65, 0x64, 0x52, 0x75, 0x6e, 0x49, 0x64, 0x42, 0x2d, 0x5a, 0x2b, 0x6e, 0x61,
-	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f,
-	0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d,
-	0x61, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x65, 0x6e, 0x74, 0x42, 0x2d, 0x5a, 0x2b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65,
+	0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x61,
+	0x67, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -215,25 +152,23 @@ func file_schema_storage_runs_proto_rawDescGZIP() []byte {
 	return file_schema_storage_runs_proto_rawDescData
 }
 
-var file_schema_storage_runs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_schema_storage_runs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_schema_storage_runs_proto_goTypes = []interface{}{
 	(*IndividualRun)(nil),         // 0: foundation.schema.storage.IndividualRun
-	(*StoredIndividualRun)(nil),   // 1: foundation.schema.storage.StoredIndividualRun
-	(*status.Status)(nil),         // 2: google.rpc.Status
-	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
-	(*anypb.Any)(nil),             // 4: google.protobuf.Any
+	(*status.Status)(nil),         // 1: google.rpc.Status
+	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
+	(*anypb.Any)(nil),             // 3: google.protobuf.Any
 }
 var file_schema_storage_runs_proto_depIdxs = []int32{
-	2, // 0: foundation.schema.storage.IndividualRun.status:type_name -> google.rpc.Status
-	3, // 1: foundation.schema.storage.IndividualRun.created:type_name -> google.protobuf.Timestamp
-	3, // 2: foundation.schema.storage.IndividualRun.completed:type_name -> google.protobuf.Timestamp
-	4, // 3: foundation.schema.storage.IndividualRun.attachment:type_name -> google.protobuf.Any
-	0, // 4: foundation.schema.storage.StoredIndividualRun.run:type_name -> foundation.schema.storage.IndividualRun
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	1, // 0: foundation.schema.storage.IndividualRun.status:type_name -> google.rpc.Status
+	2, // 1: foundation.schema.storage.IndividualRun.created:type_name -> google.protobuf.Timestamp
+	2, // 2: foundation.schema.storage.IndividualRun.completed:type_name -> google.protobuf.Timestamp
+	3, // 3: foundation.schema.storage.IndividualRun.attachment:type_name -> google.protobuf.Any
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_schema_storage_runs_proto_init() }
@@ -254,18 +189,6 @@ func file_schema_storage_runs_proto_init() {
 				return nil
 			}
 		}
-		file_schema_storage_runs_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StoredIndividualRun); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -273,7 +196,7 @@ func file_schema_storage_runs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_storage_runs_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -121,6 +121,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		}()
 	}
 
+	run := storedrun.New()
+
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
 		if cmdBundle != nil {
 			if err := cmdBundle.RegisterCommand(cmd, args); err != nil {
@@ -287,6 +289,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	cmdCtx := tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx)))
 	err := rootCmd.ExecuteContext(cmdCtx)
+	err = run.Output(cmdCtx, err) // If requested, store the run results.
 
 	if flushLogs != nil {
 		flushLogs()

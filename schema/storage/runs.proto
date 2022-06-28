@@ -19,8 +19,3 @@ message IndividualRun {
     google.protobuf.Timestamp completed     = 4;  // Regardless of success or failure.
     repeated google.protobuf.Any attachment = 5;
 }
-
-message StoredIndividualRun {
-    IndividualRun run           = 1;
-    string        stored_run_id = 2;
-}
