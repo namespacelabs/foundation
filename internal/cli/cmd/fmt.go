@@ -56,17 +56,19 @@ func NewFmtCmd() *cobra.Command {
 						return err
 					}
 
-					if de.IsDir() || filepath.Ext(path) != ".cue" {
+					switch {
+					case de.IsDir():
 						return nil
-					}
 
-					rel, err := filepath.Rel(root.Abs(), filepath.Dir(path))
-					if err != nil {
-						return err
-					}
+					case filepath.Ext(path) == ".cue":
+						rel, err := filepath.Rel(root.Abs(), filepath.Dir(path))
+						if err != nil {
+							return err
+						}
 
-					if err := fncue.Format(ctx, root.FS(), root.RelPackage(rel), filepath.Base(path), opts); err != nil {
-						errs = append(errs, err)
+						if err := fncue.Format(ctx, root.FS(), root.RelPackage(rel), filepath.Base(path), opts); err != nil {
+							errs = append(errs, err)
+						}
 					}
 
 					return nil

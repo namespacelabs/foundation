@@ -27,9 +27,11 @@ import (
 	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -352,11 +354,7 @@ func solve[V any](ctx context.Context, deps compute.Resolved, l reqBase, e expor
 			if err != nil {
 				fmt.Fprintln(console.Warnings(ctx), "Failed to estimate workspace size:", err)
 			} else if totalSize > maxExpectedWorkspaceSize && !SkipExpectedMaxWorkspaceSizeCheck {
-				return res, fnerrors.InternalError(`the workspace snapshot is unexpectedly large (%s vs max expected %s);
-this is likely a problem with the way that foundation is filtering workspace contents.
-
-If you don't think this is an actual issue, please re-run with --skip_buildkit_workspace_size_check=true.`,
-					humanize.Bytes(totalSize), humanize.Bytes(maxExpectedWorkspaceSize))
+				return res, reportWorkspaceSizeErr(ctx, ws.Value.FS(), totalSize)
 			}
 
 			solveOpt.LocalDirs[p.Name()] = filepath.Join(p.Module.Abs(), p.Path)
@@ -391,6 +389,51 @@ If you don't think this is an actual issue, please re-run with --skip_buildkit_w
 	}
 
 	return e.Provide(ctx, solveRes)
+}
+
+func reportWorkspaceSizeErr(ctx context.Context, fsys fs.FS, totalSize uint64) error {
+	type fileAndSize struct {
+		Name string
+		Size uint64
+	}
+
+	var fileList []fileAndSize
+
+	var description string
+	if err := fnfs.VisitFiles(ctx, fsys, func(path string, _ bytestream.ByteStream, de fs.DirEntry) error {
+		if !de.IsDir() {
+			fi, err := de.Info()
+			if err == nil {
+				fileList = append(fileList, fileAndSize{path, uint64(fi.Size())})
+			}
+		}
+		return nil
+	}); err == nil {
+		slices.SortFunc(fileList, func(a, b fileAndSize) bool {
+			return a.Size > b.Size
+		})
+
+		if len(fileList) > 10 {
+			fileList = fileList[:10]
+		}
+
+		fileLabel := make([]string, len(fileList))
+		for k, l := range fileList {
+			fileLabel[k] = fmt.Sprintf("    %s (%s)", l.Name, humanize.Bytes(l.Size))
+		}
+
+		description = fmt.Sprintf("  The top %d largest files in the workspace are:\n\n%s", len(fileLabel), strings.Join(fileLabel, "\n"))
+	} else {
+		description = "Wasn't able to compute the largest files in the workspace."
+	}
+
+	return fnerrors.New(`the workspace snapshot is unexpectedly large (%s vs max expected %s);
+this is likely a problem with the way that foundation is filtering workspace contents.
+
+%s
+
+If you don't think this is an actual issue, please re-run with --skip_buildkit_workspace_size_check=true.`,
+		humanize.Bytes(totalSize), humanize.Bytes(maxExpectedWorkspaceSize), description)
 }
 
 type exporter[V any] interface {
