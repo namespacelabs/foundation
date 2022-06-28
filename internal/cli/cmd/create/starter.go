@@ -68,7 +68,7 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		stdout := console.Stdout(ctx)
 
-		fmt.Fprintf(stdout, "\nSeting up a starter project with an api server in Go and a web frontend. It will take a few minutes.\n")
+		fmt.Fprintf(stdout, "\nSetting up a starter project with an api server in Go and a web frontend. It will take a few minutes.\n")
 
 		var err error
 		var dirName string
