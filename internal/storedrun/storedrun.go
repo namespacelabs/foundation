@@ -31,9 +31,9 @@ import (
 )
 
 var (
-	OutputPath    string
-	ParentID      string
-	StoredPackage string
+	OutputPath                 string
+	ParentID                   string
+	UploadToRegistryRepository string
 
 	mu          sync.Mutex
 	attachments []proto.Message
@@ -44,22 +44,18 @@ type Run struct {
 }
 
 func SetupFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&OutputPath, "stored_run_output_path", "", "If set, outputs a serialized set of test runs to the specified path.")
+	flags.StringVar(&OutputPath, "stored_run_output_path", "", "If set, outputs a serialized run to the specified path.")
 	flags.StringVar(&ParentID, "stored_run_parent_id", "", "If set, tags this section with the specified push.")
-	flags.StringVar(&StoredPackage, "stored_run_package", "", "Package that the run is stored as.")
+	flags.StringVar(&UploadToRegistryRepository, "stored_run_upload_to_repository", "", "If set, uploads the serialize run into the a repository in the environment bound's registry.")
 
 	flags.MarkHidden("stored_run_output_path")
 	flags.MarkHidden("stored_run_parent_id")
-	flags.MarkHidden("stored_run_package")
+	flags.MarkHidden("stored_run_upload_to_repository")
 }
 
 func Check() (*Run, error) {
 	if OutputPath == "" {
 		return nil, nil
-	}
-
-	if StoredPackage == "" {
-		return nil, fnerrors.BadInputError("--stored_run_package is required")
 	}
 
 	return &Run{Started: time.Now()}, nil
@@ -87,31 +83,36 @@ func (s *Run) Output(ctx context.Context, env ops.Environment, execErr error) er
 		run.Attachment = append(run.Attachment, serialized)
 	}
 
-	tag, err := registry.RawAllocateName(ctx, devhost.ConfigKeyFromEnvironment(env), StoredPackage)
-	if err != nil {
-		return fnerrors.InternalError("failed to allocate image for stored results: %w", err)
+	stored := &storage.StoredIndividualRun{
+		Run: run,
 	}
 
-	tag2, _ := compute.GetValue(ctx, tag)
-	fmt.Fprintf(console.Debug(ctx), "tag: %+v (from %s)\n", tag2, StoredPackage)
+	if UploadToRegistryRepository != "" {
+		tag, err := registry.RawAllocateName(ctx, devhost.ConfigKeyFromEnvironment(env), UploadToRegistryRepository)
+		if err != nil {
+			return fnerrors.InternalError("failed to allocate image for stored results: %w", err)
+		}
 
-	var toFS memfs.FS
+		tag2, _ := compute.GetValue(ctx, tag)
+		fmt.Fprintf(console.Debug(ctx), "tag: %+v (from %s)\n", tag2, UploadToRegistryRepository)
 
-	if err := (p.SerializeOpts{}).SerializeToFS(ctx, &toFS, map[string]proto.Message{
-		"run": run,
-	}); err != nil {
-		return fnerrors.InternalError("serializing stored results failed: %w", err)
+		var toFS memfs.FS
+
+		if err := (p.SerializeOpts{}).SerializeToFS(ctx, &toFS, map[string]proto.Message{
+			"run": run,
+		}); err != nil {
+			return fnerrors.InternalError("serializing stored results failed: %w", err)
+		}
+
+		imageID, err := compute.GetValue(ctx, oci.PublishImage(tag, oci.MakeImage(oci.Scratch(), oci.MakeLayer("results", compute.Precomputed[fs.FS](&toFS, digestfs.Digest)))))
+		if err != nil {
+			return fnerrors.InternalError("failed to store results: %w", err)
+		}
+
+		stored.StoredRunId = imageID.ImageRef()
 	}
 
-	imageID, err := compute.GetValue(ctx, oci.PublishImage(tag, oci.MakeImage(oci.Scratch(), oci.MakeLayer("results", compute.Precomputed[fs.FS](&toFS, digestfs.Digest)))))
-	if err != nil {
-		return fnerrors.InternalError("failed to store results: %w", err)
-	}
-
-	if err := protos.WriteFile(OutputPath, &storage.StoredIndividualRun{
-		Run:         run,
-		StoredRunId: imageID.ImageRef(),
-	}); err != nil {
+	if err := protos.WriteFile(OutputPath, stored); err != nil {
 		return err
 	}
 
