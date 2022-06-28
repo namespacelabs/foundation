@@ -426,7 +426,7 @@ func newRoot(name string, preRunE func(cmd *cobra.Command, args []string) error)
 func setupViper() {
 	ensureFnConfig()
 
-	viper.SetEnvPrefix("fn")
+	viper.SetEnvPrefix("ns")
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
 
