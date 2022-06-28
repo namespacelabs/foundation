@@ -12,6 +12,7 @@ import "google/protobuf/any.proto";
 import "schema/schema.proto";
 
 // Workspace definition.
+// Next ID: 10
 message Workspace {
     string               module_name = 1;
     repeated Environment env         = 2;
@@ -28,6 +29,8 @@ message Workspace {
     string                prebuilt_base_repository = 7;
 
     FoundationRequirements foundation = 8;
+
+    repeated ProtoModuleImports experimental_proto_module_imports = 9;
 
     message Dependency {
         string module_name = 1;
@@ -48,13 +51,17 @@ message Workspace {
     message FoundationRequirements {
         int32 minimum_api = 1;
     }
+
+    message ProtoModuleImports {
+        string module_name = 1;
+    }
 }
 
 // Configure a developer workstation.
 message DevHost {
     repeated ConfigureEnvironment configure          = 1;
     repeated ConfigurePlatform    configure_platform = 2;
-    repeated google.protobuf.Any  configure_tools    = 3;
+    repeated google.protobuf.Any configure_tools     = 3;
 
     message ConfigureEnvironment {
         string              name                   = 1;

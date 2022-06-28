@@ -392,7 +392,7 @@ func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc wor
 		return err
 	}
 
-	parseOpts, err := workspace.MakeProtoParseOpts(ctx, pl)
+	parseOpts, err := workspace.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
 	if err != nil {
 		return err
 	}
@@ -454,7 +454,7 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 		return err
 	}
 
-	parseOpts, err := workspace.MakeProtoParseOpts(ctx, pl)
+	parseOpts, err := workspace.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
 	if err != nil {
 		return err
 	}
@@ -630,7 +630,7 @@ func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAP
 		return nil, err
 	}
 
-	opts, err := workspace.MakeProtoParseOpts(ctx, pl)
+	opts, err := workspace.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
 	if err != nil {
 		return nil, err
 	}

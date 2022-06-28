@@ -157,6 +157,8 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 		return strings.Compare(a.Name, b.Name) < 0
 	})
 
+	w.ExperimentalProtoModuleImports = m.ProtoModuleImports
+
 	return w, nil
 }
 
@@ -311,12 +313,13 @@ func makeVersion(v string) *ast.StructLit {
 }
 
 type cueModule struct {
-	ModuleName   string                      `json:"module"`
-	Foundation   *cueModuleFoundation        `json:"requirements"`
-	Replaces     map[string]string           `json:"replace"` // Map: module name -> relative path.
-	Dependencies map[string]cueModuleVersion `json:"dependency"`
-	Prebuilts    *cueWorkspacePrebuilts      `json:"prebuilts"`
-	Environments map[string]cueEnvironment   `json:"environment"`
+	ModuleName         string                                 `json:"module"`
+	Foundation         *cueModuleFoundation                   `json:"requirements"`
+	Replaces           map[string]string                      `json:"replace"` // Map: module name -> relative path.
+	Dependencies       map[string]cueModuleVersion            `json:"dependency"`
+	Prebuilts          *cueWorkspacePrebuilts                 `json:"prebuilts"`
+	Environments       map[string]cueEnvironment              `json:"environment"`
+	ProtoModuleImports []*schema.Workspace_ProtoModuleImports `json:"experimentalProtoModuleImports"`
 }
 
 type cueModuleFoundation struct {

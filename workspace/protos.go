@@ -8,24 +8,27 @@ import (
 	"context"
 	"io/fs"
 
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-func MakeProtoParseOpts(ctx context.Context, p Packages) (protos.ParseOpts, error) {
-	const hardcoded = "namespacelabs.dev/foundation"
+func MakeProtoParseOpts(ctx context.Context, p Packages, workspace *schema.Workspace) (protos.ParseOpts, error) {
+	opts := protos.ParseOpts{}
 
-	loc, err := p.Resolve(ctx, hardcoded)
-	if err != nil {
-		return protos.ParseOpts{}, err
+	for _, w := range workspace.ExperimentalProtoModuleImports {
+		loc, err := p.Resolve(ctx, schema.PackageName(w.ModuleName))
+		if err != nil {
+			return protos.ParseOpts{}, err
+		}
+
+		opts.KnownModules = append(opts.KnownModules, struct {
+			ModuleName string
+			FS         fs.FS
+		}{
+			ModuleName: loc.Module.ModuleName(),
+			FS:         loc.Module.ReadOnlyFS(),
+		})
 	}
 
-	opts := protos.ParseOpts{}
-	opts.KnownModules = append(opts.KnownModules, struct {
-		ModuleName string
-		FS         fs.FS
-	}{
-		ModuleName: loc.Module.ModuleName(),
-		FS:         loc.Module.ReadOnlyFS(),
-	})
 	return opts, nil
 }

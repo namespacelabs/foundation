@@ -98,7 +98,7 @@ func FetchProto(pl workspace.Packages, fsys fs.FS, loc workspace.Location) Fetch
 			return nil, err
 		}
 
-		opts, err := workspace.MakeProtoParseOpts(ctx, pl)
+		opts, err := workspace.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
 		if err != nil {
 			return nil, err
 		}
