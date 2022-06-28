@@ -38,10 +38,4 @@ service: fn.#Service & {
 	}
 	exportServicesAsHttp: true
 	ingress:              "INTERNET_FACING"
-
-	requirePersistentStorage: {
-		persistentId: "test-data"
-		byteCount:    "1GiB"
-		mountPath:    "/testdata"
-	}
 }
