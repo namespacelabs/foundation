@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -17,7 +18,14 @@ func CmdWithEnv(cmd *cobra.Command, f func(context.Context, provision.Env, []str
 
 	cmd.Flags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")
 
+	storedrun.SetupFlags(cmd.Flags())
+
 	cmd.RunE = RunE(func(ctx context.Context, args []string) error {
+		s, err := storedrun.Check()
+		if err != nil {
+			return err
+		}
+
 		root, err := module.FindRoot(ctx, ".")
 		if err != nil {
 			return err
@@ -28,7 +36,7 @@ func CmdWithEnv(cmd *cobra.Command, f func(context.Context, provision.Env, []str
 			return err
 		}
 
-		return f(ctx, env, args)
+		return s.Output(ctx, env, f(ctx, env, args))
 	})
 
 	return cmd

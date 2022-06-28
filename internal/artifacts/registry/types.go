@@ -75,7 +75,9 @@ func GetRegistryByName(ctx context.Context, conf *devhost.ConfigKey, name string
 }
 
 func StaticName(registry *registry.Registry, imageID oci.ImageID) compute.Computable[oci.AllocatedName] {
-	return compute.Map(tasks.Action("registry.allocate-tag"), compute.Inputs(),
+	return compute.Map(tasks.Action("registry.allocate-tag"), compute.Inputs().
+		JSON("imageID", imageID).
+		Indigestible("registry", registry),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, r compute.Resolved) (oci.AllocatedName, error) {
 			return oci.AllocatedName{
@@ -86,10 +88,7 @@ func StaticName(registry *registry.Registry, imageID oci.ImageID) compute.Comput
 }
 
 func AllocateName(ctx context.Context, env ops.Environment, pkg schema.PackageName) (compute.Computable[oci.AllocatedName], error) {
-	allocated, err := RawAllocateName(ctx, &devhost.ConfigKey{
-		DevHost:  env.DevHost(),
-		Selector: devhost.ByEnvironment(env.Proto()),
-	}, pkg.String())
+	allocated, err := RawAllocateName(ctx, devhost.ConfigKeyFromEnvironment(env), pkg.String())
 	if err != nil {
 		if errors.Is(err, ErrNoRegistry) {
 			return nil, fnerrors.UsageError(

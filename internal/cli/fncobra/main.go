@@ -74,8 +74,6 @@ var (
 )
 
 func DoMain(name string, registerCommands func(*cobra.Command)) {
-	started := time.Now()
-
 	if v := os.Getenv("FN_CPU_PROFILE"); v != "" {
 		done := cpuprofile(v)
 		defer done()
@@ -261,10 +259,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
 		filewatcher.FileWatcherUsePolling, "If set to true, uses polling to observe file system events.")
 
-	var storedRunOutputPath string
-
-	rootCmd.PersistentFlags().StringVar(&storedRunOutputPath, "stored_run_output_path", "", "If set, outputs a serialized set of test runs to the specified path.")
-	rootCmd.PersistentFlags().StringVar(&storedrun.ParentID, "stored_run_parent_id", "", "If set, tags this section with the specified push.")
+	storedrun.SetupFlags(rootCmd.PersistentFlags())
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
@@ -290,7 +285,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	registerCommands(rootCmd)
 
-	err := rootCmd.ExecuteContext(tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx))))
+	cmdCtx := tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx)))
+	err := rootCmd.ExecuteContext(cmdCtx)
 
 	if flushLogs != nil {
 		flushLogs()
@@ -298,10 +294,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	if cleanupTracer != nil {
 		cleanupTracer()
-	}
-
-	if storedRunOutputPath != "" {
-		err = storedrun.Output(storedRunOutputPath, started, err)
 	}
 
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
