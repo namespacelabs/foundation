@@ -7,6 +7,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -30,6 +31,7 @@ func newPullRequestCmd() *cobra.Command {
 	owner := flag.String("owner", "", "Organization name.")
 	repo := flag.String("repo", "", "Repository name.")
 	branch := flag.String("branch", "", "For which Github branch shall we list open pull requests.")
+	output := flag.String("output", "", "Where to write whether a pull request has been found.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		itr, err := ghinstallation.NewKeyFromFile(http.DefaultTransport, *appID, *installationID, *privateKey)
@@ -44,16 +46,20 @@ func newPullRequestCmd() *cobra.Command {
 			return err
 		}
 
-		hasPullRequest := false
+		var relatedPrs []string
 		for _, pr := range prs {
 			if *pr.Head.Ref == *branch {
-				hasPullRequest = true
+				relatedPrs = append(relatedPrs, *pr.HTMLURL)
 			}
 		}
 
-		fmt.Fprintf(os.Stdout, "%v", hasPullRequest)
+		fmt.Fprintf(os.Stdout, "Found %d pull requests related to branch %s\n", len(relatedPrs), *branch)
+		for _, pr := range relatedPrs {
+			fmt.Fprintf(os.Stdout, " - %s\n", pr)
+		}
 
-		return nil
+		hasPr := len(relatedPrs) > 0
+		return ioutil.WriteFile(*output, []byte(fmt.Sprintf("%v", hasPr)), 0644)
 	})
 	return cmd
 }
