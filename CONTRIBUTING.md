@@ -96,7 +96,11 @@ different arguments. To bootstrap, create `.vscode/launch.json` and add the foll
 ### Protos
 
 We use protos in various parts of our codebase. Code gen for protos is managed manually. You can run
-`ns source protogen` to update the generated files.
+`ns source protogen` to update the generated files. E.g.
+
+```bash
+ns source protogen schema/
+```
 
 At times you'll also see JSON being used directly, this is often of two forms:
 
