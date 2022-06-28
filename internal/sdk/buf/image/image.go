@@ -39,12 +39,18 @@ type bufDef struct {
 	Prebuilt string `json:"prebuilt"`
 }
 
+type Opts struct {
+	// protobuf-ts is expensive, so we reserve it being built to when it's
+	// actually needed (e.g. to do codegen for ts).
+	IncludeProtobufTs bool
+}
+
 func Prebuilt(target specs.Platform) llb.State {
 	versions := loadVersions()
 	return llbutil.Image(versions.Buf.Prebuilt, target)
 }
 
-func ImageSource(platform specs.Platform) llb.State {
+func ImageSource(platform specs.Platform, opts Opts) llb.State {
 	versions := loadVersions()
 
 	golangImage := pins.Image(versions.Buf.Go)
@@ -83,25 +89,27 @@ func ImageSource(platform specs.Platform) llb.State {
 	target := llbutil.Image(alpineImage, platform)
 	target = target.Run(llb.Shlex(fmt.Sprintf("apk add --no-cache protoc=%s", versions.Protoc))).Root()
 
-	// Compiling forked protobuf-ts from sources. Takes ~1 minute.
-	// This is temporary, eventually we need to migrate to a published version.
-	target = target.Run(llb.Shlex("apk add --no-cache git make npm")).Root().
-		Run(llb.Shlex("git clone https://github.com/namespacelabs/protobuf-ts.git")).Root().
-		// Creating a temporary local branch for the pinned commit
-		Run(llb.Shlex(fmt.Sprintf("git checkout -b TmpBranchForPinnedCommit %s", versions.ProtobufTs)),
-			llb.Dir("protobuf-ts")).Root().
-		Run(llb.Shlex("make npm-install lerna-bootstrap"),
-			llb.Dir("protobuf-ts")).Root().
-		Run(llb.Shlex("make build"),
-			llb.Dir("protobuf-ts/packages/runtime")).Root().
-		Run(llb.Shlex("make build"),
-			llb.Dir("protobuf-ts/packages/runtime-rpc")).Root().
-		Run(llb.Shlex("make build"),
-			llb.Dir("protobuf-ts/packages/plugin-framework")).Root().
-		Run(llb.Shlex("make build"),
-			llb.Dir("protobuf-ts/packages/plugin")).Root().
-		Run(llb.Shlex("ls"),
-			llb.Dir("protobuf-ts/packages/plugin/bin")).Root()
+	if opts.IncludeProtobufTs {
+		// Compiling forked protobuf-ts from sources. Takes ~1 minute.
+		// This is temporary, eventually we need to migrate to a published version.
+		target = target.Run(llb.Shlex("apk add --no-cache git make npm")).Root().
+			Run(llb.Shlex("git clone https://github.com/namespacelabs/protobuf-ts.git")).Root().
+			// Creating a temporary local branch for the pinned commit
+			Run(llb.Shlex(fmt.Sprintf("git checkout -b TmpBranchForPinnedCommit %s", versions.ProtobufTs)),
+				llb.Dir("protobuf-ts")).Root().
+			Run(llb.Shlex("make npm-install lerna-bootstrap"),
+				llb.Dir("protobuf-ts")).Root().
+			Run(llb.Shlex("make build"),
+				llb.Dir("protobuf-ts/packages/runtime")).Root().
+			Run(llb.Shlex("make build"),
+				llb.Dir("protobuf-ts/packages/runtime-rpc")).Root().
+			Run(llb.Shlex("make build"),
+				llb.Dir("protobuf-ts/packages/plugin-framework")).Root().
+			Run(llb.Shlex("make build"),
+				llb.Dir("protobuf-ts/packages/plugin")).Root().
+			Run(llb.Shlex("ls"),
+				llb.Dir("protobuf-ts/packages/plugin/bin")).Root()
+	}
 
 	return target.With(copies...)
 }

@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
+	"namespacelabs.dev/foundation/internal/sdk/buf/image"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -37,7 +38,13 @@ func MakeProtoSrcs(ctx context.Context, env ops.Environment, request map[schema.
 	keys := maps.Keys(request)
 	slices.Sort(keys)
 
-	base := State(platform)
+	opts := image.Opts{}
+
+	if _, ok := request[schema.Framework_NODEJS]; ok {
+		opts.IncludeProtobufTs = true
+	}
+
+	base := State(platform, opts)
 
 	out := llb.Scratch()
 	for _, fmwk := range keys {

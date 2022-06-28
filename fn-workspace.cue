@@ -7,7 +7,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/cmd/ns":                                                         "sha256:8097c2898be78cf8f0e9e77780882704d3ef1453728a88ee257a42a2d7882a17"
 		"namespacelabs.dev/foundation/cmd/nspipelines":                                                "sha256:60fb75066d3e64357ce76d6dace372832fb641e6692db61c057e199b38355c15"
 		"namespacelabs.dev/foundation/devworkflow/web":                                                "sha256:91302bfaacaca8b3c1e4ecc09ce652480646467f389932ad0781e6a95f5b5069"
-		"namespacelabs.dev/foundation/internal/sdk/buf/image/prebuilt":                                "sha256:271b1c4185353dfcaf93cfae52f5446bc8eef74effde38de94de84021da209ec"
+		"namespacelabs.dev/foundation/internal/sdk/buf/image/prebuilt":                                "sha256:1845dd35b67ed46df0393cca4e60e8a58aa41ed0628133fddd89db7a063ba77a"
 		"namespacelabs.dev/foundation/std/dev/controller":                                             "sha256:795643a10f044e9987a89fdf577b02864e65a45fd1785b215687bd36610a17e5"
 		"namespacelabs.dev/foundation/std/development/filesync/controller":                            "sha256:84f793519683bc3fbab216362442727e1d2078918b7db320a40229b8ab19728f"
 		"namespacelabs.dev/foundation/std/grpc/httptranscoding/configure":                             "sha256:fbfb7ea15ec348ec2fff10c66acf2626dbbf7ff2ba6143cd24452f5be5949169"

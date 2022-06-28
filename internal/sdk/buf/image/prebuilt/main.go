@@ -25,7 +25,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	def, err := image.ImageSource(platform).Marshal(context.Background())
+	def, err := image.ImageSource(platform, image.Opts{}).Marshal(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
