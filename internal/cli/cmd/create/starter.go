@@ -54,9 +54,9 @@ type readmeTmplOpts struct {
 
 func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "starter",
+		Use:   "starter [directory]",
 		Short: "Creates a new workspace from a template.",
-		Long:  "Creates a new workspace from a template (Go server + Web server). Creates a directory from the last part of the workspace name by default. Use the second argument to customize the directory or specify '.' to generate project the current directory.",
+		Long:  "Creates a new workspace from a template (Go server + Web server) in the given directory.",
 		Args:  cobra.MaximumNArgs(1),
 	}
 
@@ -141,7 +141,7 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 					fmt.Sprintf("--with_http_service=/:%s/%s", *workspaceName, webServicePkg)},
 			},
 			{
-				description: "Bringing language-specific configuration up to date, making it consistent with the Namespace configuration. Downloading language-specific dependencies.\nIt may take a few minutes.",
+				description: "Bringing the language-specific configuration up to date, making it consistent with the Namespace configuration. Downloading language-specific dependencies.\nIt may take a few minutes.",
 				args:        []string{"tidy"},
 			},
 		}
@@ -190,7 +190,7 @@ func generateAndPrintReadme(ctx context.Context, out io.Writer, dir string) erro
 	if err != nil {
 		return err
 	}
-	if err := writeFileIfDoesntExist(ctx, console.Stdout(ctx), fnfs.ReadWriteLocalFS(cwd), readmeFilePath, readmeContent); err != nil {
+	if err := writeFileIfDoesntExist(ctx, nil, fnfs.ReadWriteLocalFS(cwd), readmeFilePath, readmeContent); err != nil {
 		return err
 	}
 

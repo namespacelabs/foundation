@@ -22,6 +22,10 @@ const (
 	PluginFn      = "plugin-foundation.cjs"
 	YarnRcFn      = ".yarnrc.yml"
 	yarnRcContent = `nodeLinker: node-modules
+
+logFilters:
+  - code: YN0013
+    level: discard
 `
 )
 
