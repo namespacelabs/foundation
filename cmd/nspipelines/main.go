@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/github"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/runs"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/workspace"
-	awsecr "namespacelabs.dev/foundation/providers/aws/registry"
+	"namespacelabs.dev/foundation/providers/aws/ecr"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
 )
@@ -33,7 +33,7 @@ func main() {
 
 	ctx := tasks.WithSink(context.Background(), simplelog.NewSink(os.Stderr, maxLogLevel))
 
-	awsecr.Register()
+	ecr.Register()
 
 	if err := root.ExecuteContext(ctx); err != nil {
 		log.Fatal(err)
