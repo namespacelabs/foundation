@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/languages"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -26,75 +27,73 @@ func NewTidyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tidy",
 		Short: "Ensures that each server has the appropriate dependencies configured.",
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			// First of all, we work through all packages to make sure we have captured
-			// their dependencies locally. If we don't do this here, package parsing below
-			// will fail.
-
-			if err := maybeUpdateWorkspace(ctx); err != nil {
-				return err
-			}
-
-			root, err := module.FindRoot(ctx, ".")
-			if err != nil {
-				return err
-			}
-
-			pl := workspace.NewPackageLoader(root)
-
-			list, err := workspace.ListSchemas(ctx, root)
-			if err != nil {
-				return err
-			}
-
-			packages := []*workspace.Package{}
-			for _, loc := range list.Locations {
-				pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
-				if err != nil {
-					return err
-				}
-
-				if pkg.Binary != nil {
-					continue
-				}
-
-				packages = append(packages, pkg)
-			}
-
-			var errs []error
-			for _, pkg := range packages {
-				switch {
-				case pkg.Server != nil:
-					lang := languages.IntegrationFor(pkg.Server.Framework)
-					if err := lang.TidyServer(ctx, pl, pkg.Location, pkg.Server); err != nil {
-						errs = append(errs, err)
-					}
-
-				case pkg.Node() != nil:
-					for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
-						lang := languages.IntegrationFor(fmwk)
-						if err := lang.TidyNode(ctx, pl, pkg); err != nil {
-							errs = append(errs, err)
-						}
-					}
-				}
-			}
-			for _, fmwk := range schema.Framework_value {
-				lang := languages.IntegrationFor(schema.Framework(fmwk))
-				if lang == nil {
-					continue
-				}
-				if err := lang.TidyWorkspace(ctx, packages); err != nil {
-					errs = append(errs, err)
-				}
-			}
-
-			return multierr.New(errs...)
-		}),
 	}
 
-	return cmd
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
+		// First of all, we work through all packages to make sure we have captured
+		// their dependencies locally. If we don't do this here, package parsing below
+		// will fail.
+
+		if err := maybeUpdateWorkspace(ctx); err != nil {
+			return err
+		}
+
+		root, err := module.FindRoot(ctx, ".")
+		if err != nil {
+			return err
+		}
+
+		pl := workspace.NewPackageLoader(root)
+
+		list, err := workspace.ListSchemas(ctx, root)
+		if err != nil {
+			return err
+		}
+
+		packages := []*workspace.Package{}
+		for _, loc := range list.Locations {
+			pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
+			if err != nil {
+				return err
+			}
+
+			if pkg.Binary != nil {
+				continue
+			}
+
+			packages = append(packages, pkg)
+		}
+
+		var errs []error
+		for _, pkg := range packages {
+			switch {
+			case pkg.Server != nil:
+				lang := languages.IntegrationFor(pkg.Server.Framework)
+				if err := lang.TidyServer(ctx, env, pl, pkg.Location, pkg.Server); err != nil {
+					errs = append(errs, err)
+				}
+
+			case pkg.Node() != nil:
+				for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
+					lang := languages.IntegrationFor(fmwk)
+					if err := lang.TidyNode(ctx, env, pl, pkg); err != nil {
+						errs = append(errs, err)
+					}
+				}
+			}
+		}
+		for _, fmwk := range schema.Framework_value {
+			lang := languages.IntegrationFor(schema.Framework(fmwk))
+			if lang == nil {
+				continue
+			}
+			if err := lang.TidyWorkspace(ctx, env, packages); err != nil {
+				errs = append(errs, err)
+			}
+		}
+
+		return multierr.New(errs...)
+	})
 }
 
 func maybeUpdateWorkspace(ctx context.Context) error {

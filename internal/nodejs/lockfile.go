@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package integration
+package nodejs
 
 import (
 	"encoding/json"
@@ -19,37 +19,37 @@ const (
 )
 
 type lockFile struct {
-	Modules map[string]lockFileModule `json:"modules"`
+	Modules map[string]LockFileModule `json:"modules"`
 }
 
-type lockFileModule struct {
+type LockFileModule struct {
 	Path string `json:"path"`
 }
 
-func generateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string) (lockFile, error) {
+func GenerateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string) (lockFile, error) {
 	moduleCacheRoot, err := dirs.ModuleCacheRoot()
 	if err != nil {
 		return lockFile{}, err
 	}
 
 	lock := lockFile{
-		Modules: map[string]lockFileModule{},
+		Modules: map[string]LockFileModule{},
 	}
 
 	for _, dep := range workspace.Dep {
-		lock.Modules[dep.ModuleName] = lockFileModule{
+		lock.Modules[dep.ModuleName] = LockFileModule{
 			Path: filepath.Join(moduleCacheRoot, dep.ModuleName, dep.Version),
 		}
 	}
 
 	for _, replace := range workspace.Replace {
-		lock.Modules[replace.ModuleName] = lockFileModule{
+		lock.Modules[replace.ModuleName] = LockFileModule{
 			Path: filepath.Join(moduleAbsPath, replace.Path),
 		}
 	}
 
 	// The module itself is needed to resolve dependencies between nodes within the module.
-	lock.Modules[workspace.ModuleName] = lockFileModule{
+	lock.Modules[workspace.ModuleName] = LockFileModule{
 		Path: moduleAbsPath,
 	}
 
@@ -57,8 +57,8 @@ func generateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string) (
 }
 
 // Returns the filename
-func writeLockFileToTemp(workspaceData workspace.WorkspaceData) (string, error) {
-	lockStruct, err := generateLockFileStruct(workspaceData.Parsed(), workspaceData.AbsPath())
+func writeLockFileToTemp(workspaceData workspace.WorkspaceData, rootDir string) (string, error) {
+	lockStruct, err := GenerateLockFileStruct(workspaceData.Parsed(), rootDir)
 	if err != nil {
 		return "", err
 	}

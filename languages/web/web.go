@@ -21,8 +21,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
+	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/languages"
-	nodejs "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -239,7 +239,7 @@ func useDevBuild(env *schema.Environment) bool {
 	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
-func (i impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspace.Package) error {
+func (i impl) TidyNode(ctx context.Context, env provision.Env, pkgs workspace.Packages, p *workspace.Package) error {
 	if p.Node().Kind != schema.Node_SERVICE {
 		return nil
 	}
@@ -249,7 +249,7 @@ func (i impl) TidyNode(ctx context.Context, pkgs workspace.Packages, p *workspac
 		"vite@2.7.13",
 	}
 
-	if err := nodejs.RunNodejsYarn(ctx, p.Location.Rel(), append([]string{"add", "-D"}, devPackages...), p.Location.Module.WorkspaceData); err != nil {
+	if err := nodejs.RunYarn(ctx, env, p.Location.Rel(), append([]string{"add", "-D", "--mode=skip-build"}, devPackages...), p.Location.Module.WorkspaceData); err != nil {
 		return err
 	}
 

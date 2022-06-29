@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -22,8 +21,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/production"
-	"namespacelabs.dev/foundation/internal/sdk/yarn"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -40,10 +39,8 @@ var (
 	// and the ones used as "Replace" (copied from the user's file system).
 	// We add "node_modules" so Yarn doesn't recognize external modules as workspaces.
 	depsRootPath      = filepath.Join(appRootPath, "external_deps", "node_modules")
-	yarnBinaryPath    = "/yarn.cjs"
 	tsConfigPath      = filepath.Join(appRootPath, "tsconfig.production.fn.json")
 	nodemonConfigPath = filepath.Join(appRootPath, "nodemon.fn.json")
-	lockFilePath      = "/fn.lock.json"
 )
 
 type buildNodeJS struct {
@@ -133,7 +130,7 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	lockFileStruct, err := generateLockFileStruct(bnj.workspace, appRootPath)
+	lockFileStruct, err := nodejs.GenerateLockFileStruct(bnj.workspace, appRootPath)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
@@ -141,12 +138,12 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	// When building an image we simply put all the dependencies under "depsRootPath" by their module name.
 	for moduleName, module := range lockFileStruct.Modules {
 		if module.Path != appRootPath {
-			lockFileStruct.Modules[moduleName] = lockFileModule{
+			lockFileStruct.Modules[moduleName] = nodejs.LockFileModule{
 				Path: filepath.Join(depsRootPath, moduleName),
 			}
 		}
 	}
-	buildBase, err = writeJsonAsFile(ctx, buildBase, lockFileStruct, lockFilePath)
+	buildBase, err = writeJsonAsFile(ctx, buildBase, lockFileStruct, nodejs.YarnLockFilePath)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
@@ -197,31 +194,8 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	return out, locals, nil
 }
 
-func PrepareYarnBase(ctx context.Context, nodejsBase string, platform specs.Platform) (llb.State, error) {
-	base := llbutil.Image(nodejsBase, platform)
-	buildBase := base.Run(llb.Shlex("apk add --no-cache python2 make g++")).
-		Root().
-		AddEnv("YARN_CACHE_FOLDER", "/cache/yarn")
-	for k, v := range YarnEnvArgs("/") {
-		buildBase = buildBase.AddEnv(k, v)
-	}
-	buildBase = buildBase.AddEnv(FnYarnLockEnvVar, lockFilePath)
-
-	buildBase, err := copyYarnBinaryFromCache(ctx, buildBase)
-	if err != nil {
-		return llb.State{}, err
-	}
-
-	buildBase, err = copyYarnAuxFilesFromCache(ctx, buildBase)
-	if err != nil {
-		return llb.State{}, err
-	}
-
-	return buildBase, nil
-}
-
 func prepareYarnNodejsBase(ctx context.Context, nodejsBase string, platform specs.Platform, isDevBuild bool) (llb.State, error) {
-	buildBase, err := PrepareYarnBase(ctx, nodejsBase, platform)
+	buildBase, err := nodejs.PrepareNodejsBaseWithYarnForBuild(ctx, nodejsBase, platform)
 	if err != nil {
 		return llb.State{}, err
 	}
@@ -241,35 +215,6 @@ func prepareYarnNodejsBase(ctx context.Context, nodejsBase string, platform spec
 	}
 
 	return buildBase, nil
-}
-
-func copyYarnBinaryFromCache(ctx context.Context, base llb.State) (llb.State, error) {
-	// TODO: feed Yarn SDK as a dependency to the graph to speed up the initial build.
-	yarnBin, err := yarn.EnsureSDK(ctx)
-	if err != nil {
-		return llb.State{}, err
-	}
-	yarnBinContent, err := os.ReadFile(string(yarnBin))
-	if err != nil {
-		return llb.State{}, err
-	}
-	var fsys memfs.FS
-	fsys.Add(yarnBinaryPath, yarnBinContent)
-	state, err := llbutil.WriteFS(ctx, &fsys, base, ".")
-	if err != nil {
-		return llb.State{}, err
-	}
-
-	return state, nil
-}
-
-func copyYarnAuxFilesFromCache(ctx context.Context, base llb.State) (llb.State, error) {
-	state, err := llbutil.WriteFS(ctx, yarn.YarnAuxFiles(), base, ".")
-	if err != nil {
-		return llb.State{}, err
-	}
-
-	return state, nil
 }
 
 func writeJsonAsFile(ctx context.Context, base llb.State, content any, path string) (llb.State, error) {
@@ -348,20 +293,16 @@ func generateNodemonConfig(ctx context.Context, base llb.State) (llb.State, erro
 
 func runYarnInstall(platform specs.Platform, buildBase llb.State, yarnRoot string, isDevBuild bool) llb.State {
 	yarnInstall := buildBase.
-		Run(RunYarnShlex("install", "--immutable"), llb.Dir(yarnRoot))
-	yarnInstall.AddMount("/cache/yarn", llb.Scratch(), llb.AsPersistentCacheDir(
+		Run(nodejs.RunYarnShlex("install", "--immutable"), llb.Dir(yarnRoot))
+	yarnInstall.AddMount(nodejs.YarnContainerCacheDir, llb.Scratch(), llb.AsPersistentCacheDir(
 		"yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
 
 	out := yarnInstall.Root()
 
 	// No need to compile Typescript for dev builds, "nodemon" does it itself.
 	if !isDevBuild {
-		out = out.Run(RunYarnShlex("tsc", "--project", tsConfigPath), llb.Dir(yarnRoot)).Root()
+		out = out.Run(nodejs.RunYarnShlex("tsc", "--project", tsConfigPath), llb.Dir(yarnRoot)).Root()
 	}
 
 	return out
-}
-
-func RunYarnShlex(args ...string) llb.RunOption {
-	return llb.Shlex(fmt.Sprintf("node %s %s", yarnBinaryPath, strings.Join(args, " ")))
 }

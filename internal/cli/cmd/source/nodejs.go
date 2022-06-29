@@ -10,13 +10,9 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/languages/nodejs/integration"
-	"namespacelabs.dev/foundation/runtime/rtypes"
-	"namespacelabs.dev/foundation/runtime/tools"
-	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
@@ -24,68 +20,47 @@ func newNodejsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "node",
 		Short: "Run nodejs.",
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			return runNodejs(ctx, "node", args...)
-		}),
 	}
 
-	yarn := &cobra.Command{
+	yarn := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "yarn",
 		Short: "Run Yarn.",
+	}, func(ctx context.Context, env provision.Env, args []string) error {
+		root, err := module.FindRoot(ctx, ".")
+		if err != nil {
+			return err
+		}
 
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, err := module.FindRoot(ctx, ".")
-			if err != nil {
-				return err
-			}
+		relPath, err := getRelCwd(ctx)
+		if err != nil {
+			return err
+		}
 
-			return integration.RunNodejsYarn(ctx, ".", args, root.WorkspaceData)
-		}),
-	}
+		return nodejs.RunYarn(ctx, env, relPath, args, root.WorkspaceData)
+	})
 
 	cmd.AddCommand(yarn)
 
-	return cmd
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
+		relPath, err := getRelCwd(ctx)
+		if err != nil {
+			return err
+		}
+
+		return nodejs.RunNodejs(ctx, env, relPath, "node", &nodejs.RunNodejsOpts{Args: args, IsInteractive: true})
+	})
 }
 
-func runNodejs(ctx context.Context, command string, args ...string) error {
+func getRelCwd(ctx context.Context) (string, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	rel, err := filepath.Rel(root.Abs(), cwd)
-	if err != nil {
-		return err
-	}
-
-	p, err := tools.HostPlatform(ctx)
-	if err != nil {
-		return err
-	}
-
-	image, err := compute.GetValue(ctx, oci.ResolveImage("node:16.13", p))
-	if err != nil {
-		return err
-	}
-
-	done := console.EnterInputMode(ctx)
-	defer done()
-
-	return tools.Run(ctx, rtypes.RunToolOpts{
-		IO:          rtypes.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr},
-		AllocateTTY: true,
-		Mounts:      []*rtypes.LocalMapping{{HostPath: root.Abs(), ContainerPath: "/workspace"}},
-		RunBinaryOpts: rtypes.RunBinaryOpts{
-			Image:      image,
-			WorkingDir: filepath.Join("/workspace", rel),
-			Command:    []string{command},
-			Args:       args,
-		}})
+	return filepath.Rel(root.Abs(), cwd)
 }
