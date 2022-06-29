@@ -232,7 +232,9 @@ func isFnError(err error, opts *FormatOptions) bool {
 				return true
 			}
 		}
-		return false
+		// The wrapper err is either nil or not a `userError`. In either case, we return true to
+		// continue the chain.
+		return true
 	}
 	return false
 }
