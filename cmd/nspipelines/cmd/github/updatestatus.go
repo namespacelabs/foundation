@@ -15,8 +15,10 @@ import (
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/go-github/v45/github"
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/runs"
 	"namespacelabs.dev/foundation/internal/cli/cmd"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func newUpdateStatusCmd() *cobra.Command {
@@ -37,7 +39,8 @@ func newUpdateStatusCmd() *cobra.Command {
 	// Optional - setting commit's status.
 	status := flag.String("status", "", "Sets the status of the commit to either pending/success/error/failure")
 	statusDescription := flag.String("status_description", "", "Sets the description of the status")
-	url := flag.String("url", "", "Target URL from status entry.")
+	specifiedUrl := flag.String("url", "", "Target URL from status entry.")
+	runResult := flag.String("run_result", "", "A file with the output of runs publish.")
 
 	// Optional - adding a comment to a commit.
 	deployOutput := flag.String("deploy_output", "", "Structured data for deploy")
@@ -49,13 +52,26 @@ func newUpdateStatusCmd() *cobra.Command {
 			return err
 		}
 
+		url := *specifiedUrl
+		if *runResult != "" {
+			if url != "" {
+				return fnerrors.New("can't specify --url and --run_result")
+			}
+
+			var err error
+			url, err = runs.MakeUrl(*runResult)
+			if err != nil {
+				return err
+			}
+		}
+
 		client := github.NewClient(&http.Client{Transport: itr})
 		if *status != "" {
 			if _, _, err := client.Repositories.CreateStatus(ctx, *owner, *repo, *commit, &github.RepoStatus{
 				State:       github.String(*status),
 				Description: github.String(*statusDescription),
 				Context:     github.String("namespace-ci"),
-				TargetURL:   github.String(*url),
+				TargetURL:   github.String(url),
 			}); err != nil {
 				return err
 			}
@@ -72,6 +88,18 @@ func newUpdateStatusCmd() *cobra.Command {
 				return err
 			}
 		} else if *comment != "" {
+			t, err := template.New("comment").Parse(*comment)
+			if err != nil {
+				return fnerrors.New("failed to parse template: %w", err)
+			}
+
+			var out bytes.Buffer
+			if err := t.Execute(&out, CommentsTmplData{
+				URL: url,
+			}); err != nil {
+				return fnerrors.New("failed to render comment template: %w", err)
+			}
+
 			if _, _, err := client.Repositories.CreateComment(ctx, *owner, *repo, *commit, &github.RepositoryComment{
 				Body: github.String(*comment),
 			}); err != nil {
@@ -83,6 +111,10 @@ func newUpdateStatusCmd() *cobra.Command {
 	})
 
 	return cmd
+}
+
+type CommentsTmplData struct {
+	URL string
 }
 
 var (
