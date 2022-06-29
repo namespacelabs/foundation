@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"runtime/pprof"
@@ -57,6 +58,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -292,10 +294,16 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	registerCommands(rootCmd)
 
 	cmdCtx := tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx)))
-	err := rootCmd.ExecuteContext(cmdCtx)
+	cmdErr := rootCmd.ExecuteContext(cmdCtx)
 
-	if run != nil {
-		err = run.Output(cmdCtx, err) // If requested, store the run results.
+	reader := tasks.Attachments(ctx).ReaderByOutputName(buildkit.TaskOutputBuildkitJsonLog)
+	buildkitLogContent, readErr := ioutil.ReadAll(reader)
+	if readErr != nil {
+		storedrun.Attach(&storage.ContentRef{
+			Name:        "buildkit.json",
+			ContentType: "application/json",
+			Content:     buildkitLogContent,
+		})
 	}
 
 	if flushLogs != nil {
@@ -307,7 +315,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	}
 
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
-	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
+	if _, ok := cmdErr.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
 		// Printing the new version message if any.
 		select {
 		case status, ok := <-remoteStatusChan:
@@ -338,19 +346,27 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if cmdBundle != nil {
 		defer func() {
 			// Capture useful information about the environment helpful for diagnostics in the bundle.
-			_ = cmdBundle.FlushWithExitInfo(ctxWithSink)
+			_ = cmdBundle.FlushWithExitInfo(cmdCtx)
+
+			// Attach the bundle to the storedrun.
+			_ = cmdBundle.AttachToStoredRun(cmdCtx)
+		}()
+	}
+	if run != nil {
+		defer func() {
+			_ = run.Output(cmdCtx, cmdErr)
 		}()
 	}
 
-	if err != nil && !errors.Is(err, context.Canceled) {
-		exitCode := handleExitError(style, err)
+	if cmdErr != nil && !errors.Is(cmdErr, context.Canceled) {
+		exitCode := handleExitError(style, cmdErr)
 		// Record errors only after the user sees them to hide potential latency implications.
 		// We pass the original ctx without sink since logs have already been flushed.
-		tel.RecordError(ctx, err)
+		tel.RecordError(ctx, cmdErr)
 
 		// Ensure that the error with stack trace is a part of the command bundle.
 		if cmdBundle != nil {
-			_ = cmdBundle.WriteError(ctx, err)
+			_ = cmdBundle.WriteError(ctx, cmdErr)
 		}
 		// Ensures graceful invocation of deferred routines in the block above before we exit.
 		panic(exitWithCode{exitCode})

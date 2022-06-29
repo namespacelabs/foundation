@@ -17,3 +17,14 @@ message LogRef {
     string        log_file       = 3;
     uint64        log_size       = 5;
 }
+
+message ContentRef {
+    // Name references a content object in storage.
+    string name = 1;
+
+    // Content-Type header value specifying the content type.
+    // For. E.g. "application/json" or "application/tar+gzip".
+    string content_type = 2;
+  
+    bytes content = 3;
+  }

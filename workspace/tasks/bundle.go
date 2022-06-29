@@ -155,6 +155,17 @@ func (b *Bundle) ReadInvocationInfo(ctx context.Context) (*InvocationInfo, error
 	return &info, nil
 }
 
+func (b *Bundle) TarTo(ctx context.Context, dst io.Writer) error {
+	gzWriter := gzip.NewWriter(dst)
+	defer gzWriter.Close()
+
+	if err := maketarfs.TarFS(ctx, gzWriter, b.fsys, nil, nil); err != nil {
+		return fnerrors.InternalError("failed to archive bundle: %w", err)
+	}
+
+	return nil
+}
+
 func (b *Bundle) EncryptTo(ctx context.Context, dst io.Writer) error {
 	recipient, err := age.ParseX25519Recipient(publicKey)
 	if err != nil {

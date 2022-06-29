@@ -5,10 +5,14 @@
 package fncobra
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/runtime/docker"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -68,4 +72,17 @@ func (c *CommandBundle) FlushWithExitInfo(ctx context.Context) error {
 	}
 
 	return c.bundler.Flush(ctx, c.bundle)
+}
+
+func (c *CommandBundle) AttachToStoredRun(ctx context.Context) error {
+	var buf bytes.Buffer
+	if err := c.bundle.TarTo(ctx, bufio.NewWriter(&buf)); err != nil {
+		return err
+	}
+	storedrun.Attach(&storage.ContentRef{
+		Name:        "command-action-bundle.tar.gz",
+		ContentType: "application/tar+gzip",
+		Content:     buf.Bytes(),
+	})
+	return nil
 }
