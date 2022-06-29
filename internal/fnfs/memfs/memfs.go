@@ -90,6 +90,12 @@ func readDir(node *fsNode) []fs.DirEntry {
 }
 
 func (m *FS) VisitFiles(ctx context.Context, visitor func(string, bytestream.ByteStream, fs.DirEntry) error) error {
+	return m.VisitFilesWithoutContext(func(path string, bs bytestream.Static, de FileDirent) error {
+		return visitor(path, bs, de)
+	})
+}
+
+func (m *FS) VisitFilesWithoutContext(visitor func(string, bytestream.Static, FileDirent) error) error {
 	// Need to guarantee that VisitFiles calls visitor in a deterministic way.
 	sorted := make([]*fnfs.File, len(m.files))
 	copy(sorted, m.files)

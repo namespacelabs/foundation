@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
+	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -122,7 +124,12 @@ func (do *FileSyncDevObserver) Deposit(ctx context.Context, s *wsremote.Signatur
 		return wsremote.ErrNotReady
 	}
 
-	fmt.Fprintln(do.log, "FileSync event:", s)
+	var paths uniquestrings.List
+	for _, r := range fe {
+		paths.Add(r.Path)
+	}
+
+	fmt.Fprintf(do.log, "FileSync event: %s, paths: %s\n", s, strings.Join(paths.Strings(), ", "))
 
 	newCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

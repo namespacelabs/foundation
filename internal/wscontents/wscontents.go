@@ -67,16 +67,22 @@ func (cc *computeContents) Compute(ctx context.Context, _ compute.Resolved) (fs.
 
 func SnapshotContents(ctx context.Context, modulePath, rel string) (fsys *memfs.FS, err error) {
 	err = tasks.Action("module.contents.snapshot").Arg("absPath", modulePath).Arg("rel", rel).Run(ctx, func(ctx context.Context) error {
+		if err := verifyDir(modulePath); err != nil {
+			return err
+		}
+
 		var err error
-		fsys, err = snapshotContents(modulePath, rel)
+		fsys, err = SnapshotDirectory(filepath.Join(modulePath, rel))
 		if err != nil {
 			return err
 		}
+
 		att := tasks.Attachments(ctx)
 		att.AddResult("fs.stats", fsys.Stats())
 		if ts, err := fsys.TotalSize(ctx); err == nil {
 			att.AddResult("fs.totalSize", humanize.Bytes(ts))
 		}
+
 		return nil
 	})
 	return
@@ -95,17 +101,9 @@ func verifyDir(path string) error {
 	return nil
 }
 
-func snapshotContents(modulePath, rel string) (*memfs.FS, error) {
-	if err := verifyDir(modulePath); err != nil {
+func SnapshotDirectory(absPath string) (*memfs.FS, error) {
+	if err := verifyDir(absPath); err != nil {
 		return nil, err
-	}
-
-	absPath := filepath.Join(modulePath, rel)
-
-	if rel != "." {
-		if err := verifyDir(absPath); err != nil {
-			return nil, err
-		}
 	}
 
 	var inmem memfs.FS
@@ -139,6 +137,11 @@ func snapshotContents(modulePath, rel string) (*memfs.FS, error) {
 		st, err := f.Stat()
 		if err != nil {
 			return err
+		}
+
+		// XXX symlinks.
+		if !st.Mode().IsRegular() {
+			return nil
 		}
 
 		d, err := inmem.OpenWrite(rel, st.Mode().Perm())
