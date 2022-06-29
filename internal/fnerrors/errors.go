@@ -222,7 +222,8 @@ func isFnError(err error, opts *FormatOptions) bool {
 	switch err.(type) {
 	case *fnError, *usageError, *internalError, *invocationError, *DependencyFailedError, *VersionError:
 		return true
-	// For a chain of `userError`s, we need to stop at the last error with location information.
+	// For a chain of `userError`s, we need to stop at the last error with location information,
+	// except while tracing.
 	case *userError:
 		if opts.tracing {
 			return true
