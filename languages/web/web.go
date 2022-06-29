@@ -339,6 +339,9 @@ func (bws buildProdWebServer) BuildImage(ctx context.Context, env ops.Environmen
 		return nil, err
 	}
 
+	// XXX this is not quite right. We always setup a index.html fallback
+	// regardless of content. And that's probably over-reaching. The user should
+	// let us know which paths require this fallback.
 	var defaultConf memfs.FS
 	defaultConf.Add("etc/nginx/conf.d/default.conf", []byte(fmt.Sprintf(`server {
 		listen %d;
@@ -347,6 +350,7 @@ func (bws buildProdWebServer) BuildImage(ctx context.Context, env ops.Environmen
 		location / {
 			root /%s;
 			index index.html;
+			try_files $uri /index.html;
 		}
 
 		error_page 500 502 503 504 /50x.html;
