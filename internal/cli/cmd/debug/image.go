@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/dustin/go-humanize"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -111,10 +112,29 @@ func printImage(ctx context.Context, img v1.Image) error {
 
 	m := im.Config
 	fmt.Fprintf(out, "Image: %s\n", m.Digest.String())
+	fmt.Fprintf(out, " size: %v\n", humanize.Bytes(uint64(m.Size)))
 	fmt.Fprintf(out, " urls: %v\n", m.URLs)
 	fmt.Fprintf(out, " mediaType: %v\n", m.MediaType)
 	fmt.Fprintf(out, " annotations: %v\n", m.Annotations)
 	fmt.Fprintf(out, " platform: %v\n", m.Platform)
+
+	layers, err := img.Layers()
+	if err != nil {
+		return err
+	}
+
+	var totalSize uint64
+	for _, layer := range layers {
+		d, _ := layer.Digest()
+		size, _ := layer.Size()
+		mediaType, _ := layer.MediaType()
+		fmt.Fprintf(out, "\n  Layer: %s\n", d)
+		fmt.Fprintf(out, "   size: %v\n", humanize.Bytes(uint64(size)))
+		fmt.Fprintf(out, "   mediaType: %v\n", mediaType)
+		totalSize += uint64(size)
+	}
+
+	fmt.Fprintf(out, "\n totalSize: %v\n\n", humanize.Bytes(totalSize))
 
 	return nil
 }
