@@ -105,7 +105,8 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 	}
 
 	if len(sealed.Proto.Server.RequiredStorage) > 0 && !sealed.Proto.Server.IsStateful {
-		return nil, fmt.Errorf("Server %s is not marked as stateful but includes %s which requires persistent storage.", sealed.Proto.Server.Name, sealed.Proto.Server.RequiredStorage[0].Owner)
+		return nil, fmt.Errorf("%s: persistent storage %q requires IsStateful=true",
+			sealed.Proto.Server.Name, sealed.Proto.Server.RequiredStorage[0].Owner)
 	}
 
 	if handler, ok := FrameworkHandlers[srv.Framework]; ok {

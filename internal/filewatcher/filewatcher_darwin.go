@@ -102,7 +102,7 @@ func (fsn *fsEvents) StartWatching(ctx context.Context) (EventsAndErrors, error)
 
 				// Events are emitted without a leading root.
 				realPath := "/" + ev.Path
-				if !files.Has(realPath) && !dirs.Has(realPath) {
+				if !files.Has(realPath) && !dirs.Has(realPath) && !dirs.Has(filepath.Dir(realPath)) {
 					continue
 				}
 
@@ -111,6 +111,8 @@ func (fsn *fsEvents) StartWatching(ctx context.Context) (EventsAndErrors, error)
 				if (ev.Flags & fsevents.ItemModified) != 0 {
 					newEv.Op = fsnotify.Write
 				} else if (ev.Flags & fsevents.ItemRemoved) != 0 {
+					newEv.Op = fsnotify.Remove
+				} else if (ev.Flags & fsevents.ItemRenamed) != 0 {
 					newEv.Op = fsnotify.Remove
 				} else if (ev.Flags & fsevents.ItemCreated) != 0 {
 					newEv.Op = fsnotify.Create

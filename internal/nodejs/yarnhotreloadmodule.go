@@ -18,18 +18,18 @@ import (
 const yarnLockFn = "yarn.lock"
 
 type YarnHotReloadModule struct {
-	Mod  *workspace.Module
-	Sink wsremote.Sink
+	Module *workspace.Module
+	Sink   wsremote.Sink
 }
 
-func (w YarnHotReloadModule) ModuleName() string { return w.Mod.ModuleName() }
-func (w YarnHotReloadModule) Abs() string        { return w.Mod.Abs() }
+func (w YarnHotReloadModule) ModuleName() string { return w.Module.ModuleName() }
+func (w YarnHotReloadModule) Abs() string        { return w.Module.Abs() }
 func (w YarnHotReloadModule) VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
 	if observeChanges {
-		return wsremote.ObserveAndPush(w.Mod.Abs(), rel, observerSink{w.Sink})
+		return wsremote.ObserveAndPush(w.Module.Abs(), rel, observerSink{w.Sink})
 	}
 
-	return w.Mod.VersionedFS(rel, observeChanges)
+	return w.Module.VersionedFS(rel, observeChanges)
 }
 
 type observerSink struct {

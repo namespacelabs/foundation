@@ -70,13 +70,6 @@ func (root *Module) Version() string { return root.version }
 func (root *Module) VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
 	return wscontents.Observe(root.absPath, rel, observeChanges && !root.IsExternal())
 }
-func (root *Module) SnapshotContents(ctx context.Context, rel string) (fs.FS, error) {
-	v, err := compute.Get(ctx, root.VersionedFS(rel, false))
-	if err != nil {
-		return nil, err
-	}
-	return v.Value.FS(), nil
-}
 
 func (root *Module) ReadOnlyFS() fs.FS {
 	return fnfs.Local(root.absPath)

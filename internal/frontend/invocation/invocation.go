@@ -97,10 +97,12 @@ func Make(ctx context.Context, env provision.ServerEnv, serverLocRef *workspace.
 				return nil, fnerrors.UserError(serverLoc, "%s: must be a file, not a directory", v.FromWorkspace)
 			}
 
-			fsys, err = serverLoc.Module.SnapshotContents(ctx, v.FromWorkspace)
+			v, err := compute.GetValue(ctx, serverLoc.Module.VersionedFS(v.FromWorkspace, false))
 			if err != nil {
 				return nil, fnerrors.UserError(serverLoc, "failed to read contents: %v", err)
 			}
+
+			fsys = v.FS()
 		} else {
 			contents, err := fs.ReadFile(serverLoc.Module.ReadWriteFS(), v.FromWorkspace)
 			if err != nil {

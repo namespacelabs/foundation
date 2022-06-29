@@ -149,7 +149,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 	var module build.Workspace
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !server.Location.Module.IsExternal() && isDevBuild {
 		module = nodejs.YarnHotReloadModule{
-			Mod: server.Location.Module,
+			Module: server.Location.Module,
 			// "ModuleName" is empty because we have only one module in the image and
 			// we can put everything under the root "/app" directory.
 			Sink: r.For(&wsremote.Signature{ModuleName: "", Rel: yarnRoot}),

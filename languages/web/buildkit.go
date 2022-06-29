@@ -58,8 +58,8 @@ func viteDevBuild(ctx context.Context, env ops.Environment, target string, loc w
 
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {
 		module = nodejs.YarnHotReloadModule{
-			Mod:  loc.Module,
-			Sink: r.For(&wsremote.Signature{ModuleName: loc.Module.ModuleName(), Rel: loc.Rel()}),
+			Module: loc.Module,
+			Sink:   r.For(&wsremote.Signature{ModuleName: loc.Module.ModuleName(), Rel: loc.Rel()}),
 		}
 	} else {
 		module = loc.Module

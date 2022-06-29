@@ -213,20 +213,20 @@ func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 	}
 
 	if nix := src.NixFlake; nix != "" {
-		fsys, err := loc.Module.SnapshotContents(ctx, loc.Rel(nix))
+		fsys, err := compute.GetValue(ctx, loc.Module.VersionedFS(loc.Rel(nix), false))
 		if err != nil {
 			return nil, fnerrors.Wrap(loc, err)
 		}
-		return BuildNix(loc.PackageName, loc.Module, fsys), nil
+		return BuildNix(loc.PackageName, loc.Module, fsys.FS()), nil
 	}
 
 	if dockerFile := src.Dockerfile; dockerFile != "" {
-		fsys, err := loc.Module.SnapshotContents(ctx, loc.Rel())
+		fsys, err := compute.GetValue(ctx, loc.Module.VersionedFS(loc.Rel(), false))
 		if err != nil {
 			return nil, fnerrors.Wrap(loc, err)
 		}
 
-		contents, err := fs.ReadFile(fsys, dockerFile)
+		contents, err := fs.ReadFile(fsys.FS(), dockerFile)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "failed to load Dockerfile")
 		}
