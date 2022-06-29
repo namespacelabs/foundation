@@ -11,7 +11,10 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	grpc_health "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 
 	clusterservice "github.com/envoyproxy/go-control-plane/envoy/service/cluster/v3"
@@ -64,6 +67,9 @@ func NewXdsServer(ctx context.Context, snapshotCache cache.SnapshotCache, logger
 }
 
 func (x *XdsServer) RegisterServices() {
+	grpc_health.RegisterHealthServer(x.grpcServer, x)
+
+	// Add xDS services to the gRPC service registrar.
 	discoverygrpc.RegisterAggregatedDiscoveryServiceServer(x.grpcServer, x.xdsServer)
 	endpointservice.RegisterEndpointDiscoveryServiceServer(x.grpcServer, x.xdsServer)
 	clusterservice.RegisterClusterDiscoveryServiceServer(x.grpcServer, x.xdsServer)
@@ -110,4 +116,14 @@ func (x *XdsServer) Start(ctx context.Context, port uint32) error {
 	case err := <-errChan:
 		return err
 	}
+}
+
+// https://pkg.go.dev/google.golang.org/grpc@v1.47.0/health/grpc_health_v1#UnimplementedHealthServer.Check
+func (x *XdsServer) Check(ctx context.Context, in *grpc_health.HealthCheckRequest) (*grpc_health.HealthCheckResponse, error) {
+	return &grpc_health.HealthCheckResponse{Status: grpc_health.HealthCheckResponse_SERVING}, nil
+}
+
+// https://pkg.go.dev/google.golang.org/grpc@v1.47.0/health/grpc_health_v1#UnimplementedHealthServer.Watch
+func (x *XdsServer) Watch(in *grpc_health.HealthCheckRequest, _ grpc_health.Health_WatchServer) error {
+	return status.Error(codes.Unimplemented, "unimplemented")
 }

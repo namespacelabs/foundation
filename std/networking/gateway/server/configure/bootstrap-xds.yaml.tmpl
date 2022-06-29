@@ -35,6 +35,21 @@ static_resources:
       endpoints:
       - lb_endpoints:
         - endpoint:
+            health_check_config:
+              # The time to wait for a health check response. If the timeout is reached,
+              # the health check is considered failed.
+              timeout: "1s"
+              # Interval between health checks.
+              interval: "5s"
+              # For the first health check, Envoy will start health checking after a random 
+              # time in ms between 0 and initial_jitter. 
+              initial_jitter: 500
+              # The number of consecutive health check failures before the health check is considered failed.
+              unhealthy_threshold: 3 
+              # Log all health check failures and not just the first.
+              always_log_health_check_failures: true
+              grpc_health_check:
+                service_name: "envoy"
             address:
               socket_address:
                 address: 127.0.0.1
