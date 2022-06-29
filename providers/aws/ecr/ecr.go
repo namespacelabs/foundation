@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
@@ -23,8 +22,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
-
-var repoRegex = regexp.MustCompile("^(?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+$")
 
 type ecrManager struct {
 	sesh *awsprovider.Session
@@ -127,10 +124,6 @@ func (m *makeRepository) Inputs() *compute.In {
 }
 
 func (m *makeRepository) Compute(ctx context.Context, deps compute.Resolved) (string, error) {
-	if !repoRegex.MatchString(m.repository) {
-		return "", fnerrors.BadInputError("%s: invalid repository name", m.repository)
-	}
-
 	caller := compute.MustGetDepValue(deps, m.callerIdentity, "caller")
 
 	req := &ecr.CreateRepositoryInput{
