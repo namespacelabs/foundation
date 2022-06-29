@@ -343,6 +343,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	// Ensures deferred routines after invoked gracefully before os.Exit.
 	defer handleExit(ctx)
+	if run != nil {
+		defer func() {
+			_ = run.Output(cmdCtx, cmdErr)
+		}()
+	}
 	if cmdBundle != nil {
 		defer func() {
 			// Capture useful information about the environment helpful for diagnostics in the bundle.
@@ -350,11 +355,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 			// Attach the bundle to the storedrun.
 			_ = cmdBundle.AttachToStoredRun(cmdCtx)
-		}()
-	}
-	if run != nil {
-		defer func() {
-			_ = run.Output(cmdCtx, cmdErr)
 		}()
 	}
 
