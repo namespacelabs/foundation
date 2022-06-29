@@ -50,7 +50,7 @@ require (
 	github.com/jackc/pgx/v4 v4.16.1
 	github.com/jet/kube-webhook-certgen v1.5.2
 	github.com/jhump/protoreflect v1.12.1-0.20220417024638-438db461d753
-	github.com/keikoproj/aws-auth v0.3.5
+	github.com/keikoproj/aws-auth v0.4.0
 	github.com/kr/text v0.2.0
 	github.com/loft-sh/vcluster v0.10.2
 	github.com/maruel/panicparse/v2 v2.3.0
