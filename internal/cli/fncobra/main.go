@@ -456,6 +456,9 @@ func setupViper() {
 	viper.SetDefault("enable_pprof", false)
 	_ = viper.BindEnv("enable_pprof")
 
+	viper.SetDefault("api_endpoint", "https://api.namespacelabs.net")
+	_ = viper.BindEnv("api_endpoint")
+
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			log.Fatal(err)
