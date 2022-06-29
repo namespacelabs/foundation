@@ -50,5 +50,12 @@ message SectionRun {
 }
 
 message Run {
+    string run_id       = 2;
+    string repository   = 3;
+    string commit_id    = 4;
+    string branch       = 5;
+    string pull_request = 7;
+    string pusher_login = 8;
+
     repeated SectionRun section_run = 1;
 }

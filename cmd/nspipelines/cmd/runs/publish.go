@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
@@ -36,6 +37,12 @@ func newPublishCmd() *cobra.Command {
 	u.SetupFlags(cmd, flags)
 
 	insecure := flags.Bool("insecure", false, "Whether access to any specified registry is insecure.")
+
+	runID := flags.String("run_id", "", "The parent run id.")
+	sourceRepo := flags.String("source_repo", "", "The repository we pushed from.")
+	commitID := flags.String("source_commit", "", "The commit we pushed from.")
+	sourceBranch := flags.String("source_branch", "", "The branch we pushed from.")
+	pullRequest := flags.String("source_pull_request", "", "The pull request we pushed from.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if len(args) == 0 {
@@ -59,7 +66,18 @@ func newPublishCmd() *cobra.Command {
 
 		var runFS memfs.FS
 
-		run := &storage.Run{}
+		run := &storage.Run{
+			RunId:       *runID,
+			Repository:  *sourceRepo,
+			CommitId:    *commitID,
+			Branch:      *sourceBranch,
+			PullRequest: *pullRequest,
+		}
+
+		userAuth, err := fnapi.LoadUser()
+		if err == nil {
+			run.PusherLogin = userAuth.Username
+		}
 
 		for _, l := range loaded {
 			if err := oci.VisitFilesFromImage(l.Value, func(layer, path string, typ byte, contents []byte) error {
