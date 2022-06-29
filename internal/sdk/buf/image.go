@@ -11,10 +11,10 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/buf/image"
 )
 
-func State(target specs.Platform, opts image.Opts) llb.State {
-	if binary.UsePrebuilts && !opts.IncludeProtobufTs {
+func State(target specs.Platform) llb.State {
+	if binary.UsePrebuilts {
 		return image.Prebuilt(target)
 	}
 
-	return image.ImageSource(target, opts)
+	return image.ImageSource(target)
 }
