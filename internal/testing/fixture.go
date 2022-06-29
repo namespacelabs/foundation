@@ -8,10 +8,12 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"io/ioutil"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
+	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
@@ -232,6 +234,13 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 					LogSize:       uint64(len(s.Output)),
 				})
 			}
+
+			reader := tasks.Attachments(ctx).ReaderByOutputName(buildkit.TaskOutputBuildkitJsonLog)
+			buildkitLogContent, err := ioutil.ReadAll(reader)
+			if err != nil {
+				return nil, fnerrors.InternalError("failed to read buildkit log: %w", err)
+			}
+			fsys.Add("buildkit.json", buildkitLogContent)
 
 			messages, err := protos.SerializeOpts{JSON: true, Resolver: resolver.NewResolver(ctx, packages)}.Serialize(tostore)
 			if err != nil {
