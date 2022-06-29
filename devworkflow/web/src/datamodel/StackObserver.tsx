@@ -30,14 +30,8 @@ export function StackObserver(props: { children: React.ReactNode }) {
 			// Don't mutate what we got on the wire, for debugging purposes.
 			if (stackUpdate) {
 				setData({
-					abs_root: stackUpdate.abs_root,
-					workspace: stackUpdate.workspace,
-					env: stackUpdate.env,
-					available_env: stackUpdate.available_env,
+					...stackUpdate,
 					stack: sortStack(stackUpdate.current.server.package_name, stackUpdate.stack),
-					current: stackUpdate.current,
-					state: stackUpdate.state,
-					forwarded_port: stackUpdate.forwarded_port,
 				});
 			}
 		});

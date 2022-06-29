@@ -23,6 +23,8 @@ message Stack {
     schema.Stack.Entry          current        = 5;
     repeated StackEntryState    state          = 6;
     repeated ForwardedPort      forwarded_port = 7;
+    // Pre-rendered "port forwarding" block. Contains ANSI color codes.
+    string rendered_port_forwarding = 10;
 }
 
 message ForwardedPort {

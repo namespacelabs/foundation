@@ -289,6 +289,7 @@ func (s *Session) cancelPortForward() {
 func (s *Session) updateStackInPlace(f func(stack *Stack)) {
 	s.mu.Lock()
 	f(s.currentStack)
+	s.currentStack.RenderedPortForwarding = s.pfw.Render(colors.WithColors)
 	s.currentStack.Revision++
 	copy := protos.Clone(s.currentStack)
 	s.mu.Unlock()
