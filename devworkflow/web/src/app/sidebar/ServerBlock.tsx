@@ -25,12 +25,14 @@ export default function ServerBlock(props: { data: DataType }) {
 		props.data.state
 	);
 
-	let tabs = [
+	let focusedServersTabs = [
 		{
 			id: "focusedServers",
 			label: "Main servers",
 			render: () => <ServerList servers={focusedServers} />,
 		},
+	];
+	let supportServersTabs = [
 		{
 			id: "supportServers",
 			label: "Support servers",
@@ -40,7 +42,8 @@ export default function ServerBlock(props: { data: DataType }) {
 
 	return (
 		<div className={classes.serverContent}>
-			<Tabs tabs={tabs} />
+			<Tabs tabs={focusedServersTabs} />
+			<Tabs tabs={supportServersTabs} />
 
 			<ForwardedPorts data={props.data} />
 		</div>
