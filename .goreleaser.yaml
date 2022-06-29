@@ -63,14 +63,20 @@ changelog:
       - "^Merge pull request"
       - "^Merge branch"
 
+blobs:
+  -
+    # Publicly-accessible blobs (mainly to make installing easier while our repos are private).
+    provider: s3
+    region: us-east-2
+    bucket: ns-releases
+    folder: "{{ .ProjectName }}/v{{.Version}}"
+
 brews:
   -
     tap:
       owner: namespacelabs
       name: homebrew-repo
-    folder: Formula
     description: "Developer platform with a unified experience from development to production."
     homepage: "https://namespacelabs.com/"
-    # The following is needed to download artifacts from a private repo:
-    custom_require: "../lib/custom_download_strategy"
-    download_strategy: GitHubPrivateRepositoryReleaseDownloadStrategy
+    # Point to the publicly-accessible S3 builds instead of GitHub releases (which are in a private repo).
+    url_template: "https://ns-releases.s3.us-east-2.amazonaws.com/{{.ProjectName}}/v{{.Version}}/{{.ArtifactName}}"

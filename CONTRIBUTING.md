@@ -40,8 +40,13 @@ You can test a release by running:
 goreleaser release --rm-dist --snapshot
 ```
 
-To issue an actual release, create a Github PAT with `write_packages` permissions and place it in
-`~/.github/github_token`.
+To issue an actual release:
+
+1. Create a Github PAT with `write_packages` permissions and place it in
+   `~/.github/github_token`. This allows GoReleaser to upload to Github releases.
+2. Get AWS temporary credentials with [aws-sso-creds](https://github.com/jaxxstorm/aws-sso-creds)
+   to upload releases to `ns-releases` S3 bucket. Unfortunately GoReleaser doesn't support
+   SSO credentials out of box, so we must resort to using temporary creds in environment variables.
 
 Our versioning scheme uses a ever-increasing minor version. After `0.0.23` comes `0.0.24`, and so
 on.
@@ -52,6 +57,9 @@ Pick a new version, and run:
 git tag -a v0.0.24
 goreleaser release
 ```
+
+The releases are published to GitHub releases, S3 bucket `ns-releases` and
+to [our Homebrew TAP](https://github.com/namespacelabs/homebrew-namespace).
 
 NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
 `test:` or `nochangelog` are excluded from the changelog.
