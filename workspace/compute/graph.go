@@ -102,12 +102,12 @@ func startComputingWithOpts(ctx context.Context, g *Orch, opts computeInstance) 
 
 	computeInputs := opts.Inputs()
 	if computeInputs.named != nil {
-		var promise *Promise[any]
-		// Skip error checking as we never return an error.
-		_ = opts.Action().Run(ctx, func(ctx context.Context) error {
-			promise = startComputing(ctx, On(ctx), computeInputs.named)
-			return nil
+		promise, err := tasks.Return(ctx, opts.Action(), func(ctx context.Context) (*Promise[any], error) {
+			return startComputing(ctx, On(ctx), computeInputs.named), nil
 		})
+		if err != nil {
+			panic("compute: expected failure: " + err.Error())
+		}
 		return promise
 	}
 
