@@ -24,54 +24,68 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const WorkspaceFile = "fn-workspace.cue"
+const (
+	WorkspaceFile       = "ns-workspace.cue"
+	LegacyWorkspaceFile = "fn-workspace.cue"
+)
 
 var ModuleLoader moduleLoader
 
 type moduleLoader struct{}
 
 func (moduleLoader) FindModuleRoot(dir string) (string, error) {
-	return workspace.RawFindModuleRoot(dir, WorkspaceFile)
+	return workspace.RawFindModuleRoot(dir, WorkspaceFile, LegacyWorkspaceFile)
 }
 
 func (moduleLoader) ModuleAt(ctx context.Context, dir string) (workspace.WorkspaceData, error) {
-	return tasks.Return(ctx, tasks.Action("workspace.load-fn-workspace").Arg("dir", dir), func(ctx context.Context) (workspace.WorkspaceData, error) {
-		data, err := ioutil.ReadFile(filepath.Join(dir, WorkspaceFile))
-		if err != nil {
-			if os.IsNotExist(err) {
-				wd, werr := workspace.RawModuleAt(ctx, dir)
-				if werr != nil {
-					if os.IsNotExist(werr) {
-						return nil, fnerrors.New("%s: failed to load workspace", dir)
-					}
-				}
-				return wd, werr
-			}
-
-			return nil, err
+	return tasks.Return(ctx, tasks.Action("workspace.load-workspace").Arg("dir", dir), func(ctx context.Context) (workspace.WorkspaceData, error) {
+		w, originalErr := moduleAt(ctx, dir, WorkspaceFile)
+		if originalErr == nil {
+			return w, nil
 		}
-
-		var memfs memfs.FS
-		memfs.Add(WorkspaceFile, data)
-
-		p, err := fncue.EvalWorkspace(ctx, &memfs, dir, []string{WorkspaceFile})
-		if err != nil {
-			return nil, err
+		if legacy, err2 := moduleAt(ctx, dir, LegacyWorkspaceFile); err2 == nil {
+			return legacy, nil
 		}
-
-		w, err := parseWorkspaceValue(p.Val)
-		if err != nil {
-			return nil, err
-		}
-
-		return workspaceData{
-			absPath:        dir,
-			definitionFile: WorkspaceFile,
-			data:           data,
-			parsed:         w,
-			source:         p.Val,
-		}, nil
+		return nil, originalErr
 	})
+}
+
+func moduleAt(ctx context.Context, dir, workspaceFile string) (workspace.WorkspaceData, error) {
+	data, err := ioutil.ReadFile(filepath.Join(dir, workspaceFile))
+	if err != nil {
+		if os.IsNotExist(err) {
+			wd, werr := workspace.RawModuleAt(ctx, dir)
+			if werr != nil {
+				if os.IsNotExist(werr) {
+					return nil, fnerrors.New("%s: failed to load workspace", dir)
+				}
+			}
+			return wd, werr
+		}
+
+		return nil, err
+	}
+
+	var memfs memfs.FS
+	memfs.Add(workspaceFile, data)
+
+	p, err := fncue.EvalWorkspace(ctx, &memfs, dir, []string{workspaceFile})
+	if err != nil {
+		return nil, err
+	}
+
+	w, err := parseWorkspaceValue(p.Val)
+	if err != nil {
+		return nil, err
+	}
+
+	return workspaceData{
+		absPath:        dir,
+		definitionFile: workspaceFile,
+		data:           data,
+		parsed:         w,
+		source:         p.Val,
+	}, nil
 }
 
 func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
