@@ -39,33 +39,34 @@ func (moduleLoader) FindModuleRoot(dir string) (string, error) {
 
 func (moduleLoader) ModuleAt(ctx context.Context, dir string) (workspace.WorkspaceData, error) {
 	return tasks.Return(ctx, tasks.Action("workspace.load-workspace").Arg("dir", dir), func(ctx context.Context) (workspace.WorkspaceData, error) {
-		w, originalErr := moduleAt(ctx, dir, WorkspaceFile)
-		if originalErr == nil {
-			return w, nil
+		wfile := WorkspaceFile
+		data, err := ioutil.ReadFile(filepath.Join(dir, WorkspaceFile))
+		if err != nil {
+			if os.IsNotExist(err) {
+				wfile = LegacyWorkspaceFile
+				data, err = ioutil.ReadFile(filepath.Join(dir, LegacyWorkspaceFile))
+			}
 		}
-		if legacy, err2 := moduleAt(ctx, dir, LegacyWorkspaceFile); err2 == nil {
-			return legacy, nil
+
+		if err != nil {
+			if os.IsNotExist(err) {
+				wd, werr := workspace.RawModuleAt(ctx, dir)
+				if werr != nil {
+					if os.IsNotExist(werr) {
+						return nil, fnerrors.New("%s: failed to load workspace", dir)
+					}
+				}
+				return wd, werr
+			}
+
+			return nil, err
 		}
-		return nil, originalErr
+
+		return moduleFrom(ctx, dir, wfile, data)
 	})
 }
 
-func moduleAt(ctx context.Context, dir, workspaceFile string) (workspace.WorkspaceData, error) {
-	data, err := ioutil.ReadFile(filepath.Join(dir, workspaceFile))
-	if err != nil {
-		if os.IsNotExist(err) {
-			wd, werr := workspace.RawModuleAt(ctx, dir)
-			if werr != nil {
-				if os.IsNotExist(werr) {
-					return nil, fnerrors.New("%s: failed to load workspace", dir)
-				}
-			}
-			return wd, werr
-		}
-
-		return nil, err
-	}
-
+func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (workspace.WorkspaceData, error) {
 	var memfs memfs.FS
 	memfs.Add(workspaceFile, data)
 
