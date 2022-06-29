@@ -775,39 +775,38 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		return
 	}
 
-	report := ""
-	if tasks.LogActions {
-		report += "\n"
-	}
-
-	report += fmt.Sprintf("[+] %s", timefmt.Seconds(t.Sub(c.startedCounting)))
-	report += fmt.Sprintf(" %s %s running", num(aec.GreenF, running), plural(running, "action", "actions"))
-	if waiting > 0 {
-		report += fmt.Sprintf(", %s waiting", num(aec.CyanF, waiting))
-	}
-
 	// The idea here is that we traverse the tree to figure out how many drawn lines would
 	// have been emitted. And if we see too many, we try to reduce the tree depth, until
 	// the number of lines is acceptable.
 	maxDepth, lineCount := c.maxRenderDepth(c.root, 0, 16)
 
-	maxHeight := uint(20) // If no height is known.
+	const reportLines = 2
+	shortenLabel := ""
+	if height > reportLines {
+		maxHeight := (height - reportLines) / 2 // Only use up to half-height of actions.
 
-	reportLineCount := uint(len(strings.Split(report, "\n")))
-	if height > reportLineCount {
-		maxHeight = height - reportLineCount
-	}
-
-	for lineCount > maxHeight {
-		maxDepth--
-		if maxDepth < 2 { // Never go below depth 2, as we'd lose too much information.
-			break
+		for lineCount > maxHeight {
+			maxDepth--
+			shortenLabel = "[...] "
+			if maxDepth < 2 { // If we would go below 2, then we lose so much information may as well only render the report.
+				goto report
+			}
+			_, lineCount = c.maxRenderDepth(c.root, 0, maxDepth)
 		}
-		_, lineCount = c.maxRenderDepth(c.root, 0, maxDepth)
+
+		// Recurse through the line item tree.
+		c.renderLineRec(out, width, c.root, t, " => ", 0, maxDepth)
+	} else {
+		shortenLabel = "[...] "
 	}
 
-	// Recurse through the line item tree.
-	c.renderLineRec(out, width, c.root, t, " => ", 0, maxDepth)
+report:
+	report := ""
+	report += fmt.Sprintf("[+] %s%s", shortenLabel, timefmt.Seconds(t.Sub(c.startedCounting)))
+	report += fmt.Sprintf(" %s %s running", num(aec.GreenF, running), plural(running, "action", "actions"))
+	if waiting > 0 {
+		report += fmt.Sprintf(", %s waiting", num(aec.CyanF, waiting))
+	}
 
 	c.writeLineWithMaxW(out, width, report+".", "")
 }
