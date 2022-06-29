@@ -16,7 +16,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/devworkflow"
 	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -24,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -38,8 +36,6 @@ func NewDevCmd() *cobra.Command {
 		servingAddr  string
 		devWebServer = false
 	)
-
-	const webPackage schema.PackageName = "namespacelabs.dev/foundation/devworkflow/web"
 
 	cmd := &cobra.Command{
 		Use:   "dev",
@@ -117,29 +113,13 @@ func NewDevCmd() *cobra.Command {
 				if devWebServer {
 					localPort := lis.Addr().(*net.TCPAddr).Port
 					webPort := localPort + 1
-					proxyTarget, err := web.StartDevServer(ctx, root, webPackage, localPort, webPort)
+					proxyTarget, err := web.StartDevServer(ctx, root, devworkflow.WebPackage, localPort, webPort)
 					if err != nil {
 						return err
 					}
 					r.PathPrefix("/").Handler(reverseproxy.Make(proxyTarget, reverseproxy.DefaultLocalProxy()))
 				} else {
-					dev, err := provision.RequireEnv(root, "dev")
-					if err != nil {
-						return err
-					}
-
-					pkg, err := workspace.NewPackageLoader(root).LoadByName(ctx, webPackage)
-					if err != nil {
-						return err
-					}
-
-					imagePlan, err := binary.PlanImage(ctx, pkg, dev, true, nil)
-					if err != nil {
-						return err
-					}
-
-					// A build is triggered here, but in fact this will most times just do a cache hit.
-					mux, err := compute.GetValue(ctx, web.ServeFS(imagePlan.Image, true))
+					mux, err := devworkflow.PrebuiltWebUI(ctx)
 					if err != nil {
 						return err
 					}
