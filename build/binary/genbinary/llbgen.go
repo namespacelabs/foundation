@@ -7,6 +7,7 @@ package genbinary
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/moby/buildkit/client/llb"
 	"namespacelabs.dev/foundation/build"
@@ -64,7 +65,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env ops.Environment, conf bui
 			var serializedLLB bytes.Buffer
 
 			var run rtypes.RunToolOpts
-			run.ImageName = l.packageName.String() + ":llbgen"
+			run.ImageName = fmt.Sprintf("%s/llbgen", l.packageName)
 			run.AllocateTTY = false
 			run.NoNetworking = true
 			run.IO.Stdout = &serializedLLB
