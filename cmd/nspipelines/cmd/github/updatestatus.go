@@ -134,15 +134,19 @@ func newUpdateStatusCmd() *cobra.Command {
 				return err
 			}
 			for _, s := range statuses {
-				if s.Context != nil && strings.HasPrefix(*s.Context, fmt.Sprintf("%s/", pipelineLabel)) {
-					if *success {
-						if err := createStatus(State_Success, "", *s.Context); err != nil {
-							return err
-						}
-					} else {
-						if err := createStatus(State_Failure, "", *s.Context); err != nil {
-							return err
-						}
+				if s.Context == nil || !strings.HasPrefix(*s.Context, fmt.Sprintf("%s/", pipelineLabel)) {
+					continue
+				}
+				if *s.State != "pending" {
+					continue
+				}
+				if *success {
+					if err := createStatus(State_Success, "", *s.Context); err != nil {
+						return err
+					}
+				} else {
+					if err := createStatus(State_Failure, "", *s.Context); err != nil {
+						return err
 					}
 				}
 			}
