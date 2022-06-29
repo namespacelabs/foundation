@@ -218,10 +218,21 @@ func WithTracing(tracing bool) FormatOption {
 	}
 }
 
-func isFnError(err error) bool {
+func isFnError(err error, opts *FormatOptions) bool {
 	switch err.(type) {
-	case *fnError, *usageError, *userError, *internalError, *invocationError, *DependencyFailedError, *VersionError:
+	case *fnError, *usageError, *internalError, *invocationError, *DependencyFailedError, *VersionError:
 		return true
+	// For a chain of `userError`s, we need to stop at the last error with location information.
+	case *userError:
+		if opts.tracing {
+			return true
+		}
+		if wrappedErr := errors.Unwrap(err); wrappedErr != nil {
+			if wrapperUserErr, ok := wrappedErr.(*userError); ok && wrapperUserErr.Location == nil {
+				return true
+			}
+		}
+		return false
 	}
 	return false
 }
@@ -238,7 +249,7 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 	}
 	cause := err
 	// Keep unwrapping to get to the root cause which isn't a fnError.
-	for isFnError(cause) {
+	for isFnError(cause, opts) {
 		if opts.tracing {
 			w = indent(w)
 			format(w, cause, opts)
