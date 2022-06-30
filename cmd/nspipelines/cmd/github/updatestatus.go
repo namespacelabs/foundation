@@ -166,7 +166,7 @@ func newUpdateStatusCmd() *cobra.Command {
 			}
 
 			if _, _, err := client.Repositories.CreateComment(ctx, *owner, *repo, *commit, &github.RepositoryComment{
-				Body: github.String(*comment),
+				Body: github.String(out.String()),
 			}); err != nil {
 				return err
 			}
