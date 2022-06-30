@@ -95,7 +95,7 @@ func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1
 				log.Printf("deleting obsolete deployment %q in namespace %q", d.Name, ns.Name)
 
 				if err := clientset.AppsV1().Deployments(ns.Name).Delete(ctx, d.Name, metav1.DeleteOptions{}); err != nil {
-					if !k8serrors.IsNotFound(err) {
+					if k8serrors.IsNotFound(err) {
 						// deployment already deleted
 						continue
 					}

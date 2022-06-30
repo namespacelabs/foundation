@@ -87,7 +87,7 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 func deleteNs(ctx context.Context, clientset *kubernetes.Clientset, name string) error {
 	log.Printf("deleting namespace %q", name)
 	err := clientset.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
-	if !k8serrors.IsNotFound(err) {
+	if k8serrors.IsNotFound(err) {
 		// Namespace already deleted
 		return nil
 	}
