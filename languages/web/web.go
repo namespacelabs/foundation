@@ -249,7 +249,7 @@ func (i impl) TidyNode(ctx context.Context, env provision.Env, pkgs workspace.Pa
 		"vite@2.7.13",
 	}
 
-	if err := nodejs.RunYarn(ctx, env, p.Location.Rel(), append([]string{"add", "-D", "--mode=skip-build"}, devPackages...), p.Location.Module.WorkspaceData); err != nil {
+	if err := nodejs.RunYarnForLocation(ctx, env, p.Location, append([]string{"add", "-D", "--mode=skip-build"}, devPackages...), p.Location.Module.WorkspaceData); err != nil {
 		return err
 	}
 

@@ -43,6 +43,14 @@ logFilters:
 
 // Runs a configured Yarn.
 func RunYarn(ctx context.Context, env provision.Env, relPath string, args []string, workspaceData workspace.WorkspaceData) error {
+	return RunYarnForScope(ctx, env, "", relPath, args, workspaceData)
+}
+
+func RunYarnForLocation(ctx context.Context, env provision.Env, loc workspace.Location, args []string, workspaceData workspace.WorkspaceData) error {
+	return RunYarnForScope(ctx, env, loc.PackageName, loc.Rel(), args, workspaceData)
+}
+
+func RunYarnForScope(ctx context.Context, env provision.Env, scope schema.PackageName, relPath string, args []string, workspaceData workspace.WorkspaceData) error {
 	lockFn, err := writeLockFileToTemp(workspaceData, workspaceContainerDir)
 	if err != nil {
 		return err
@@ -58,6 +66,7 @@ func RunYarn(ctx context.Context, env provision.Env, relPath string, args []stri
 	envArgs = append(envArgs, &schema.BinaryConfig_EnvEntry{Name: fnYarnLockEnvVar, Value: lockContainerFn})
 
 	return RunNodejs(ctx, env, relPath, "node", &RunNodejsOpts{
+		Scope:   scope,
 		Args:    append([]string{string(yarnBinaryPath)}, args...),
 		EnvVars: envArgs,
 		Mounts:  []*rtypes.LocalMapping{{HostPath: lockDir, ContainerPath: lockContainerDir}},

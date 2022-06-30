@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/mod/semver"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/engine/ops"
@@ -117,9 +118,38 @@ func (impl) TidyServer(ctx context.Context, env provision.Env, pkgs workspace.Pa
 		return fnerrors.Wrap(loc, err)
 	}
 
+	const foundationModule = "namespacelabs.dev/foundation"
+
+	var foundationVersion string
 	for _, dep := range loc.Module.Workspace.Dep {
-		if dep.ModuleName == "namespacelabs.dev/foundation" {
-			if err := ExecGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", dep.ModuleName, dep.Version)); err != nil {
+		if dep.ModuleName == foundationModule {
+			foundationVersion = dep.Version
+		}
+	}
+
+	if foundationVersion != "" {
+		mod, _, err := gosupport.LookupGoModule(loc.Abs())
+		if err != nil {
+			return err
+		}
+
+		// XXX resolve version back to a tag, to support tag based comparison.
+		for _, require := range mod.Require {
+			if v := require.Mod; v.Path == foundationModule {
+				if pr := semver.Prerelease(v.Version); strings.HasPrefix(pr, "-0.") {
+					// v0.0.44-0.20220629111102-a3b57dceff40
+					// Prelease(): -0.20220629111102-a3b57dceff40
+					parts := strings.Split(pr[3:], "-")
+					if len(parts) == 2 && len(parts[1]) >= 12 && strings.HasPrefix(foundationVersion, parts[1]) {
+						foundationVersion = "" // Nothing to do.
+						break
+					}
+				}
+			}
+		}
+
+		if foundationVersion != "" {
+			if err := ExecGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", foundationModule, foundationVersion)); err != nil {
 				return fnerrors.Wrap(loc, err)
 			}
 		}

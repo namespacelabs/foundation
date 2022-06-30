@@ -31,7 +31,7 @@ func newNodejsCmd() *cobra.Command {
 			return err
 		}
 
-		relPath, err := getRelCwd(ctx)
+		relPath, err := relCwd(ctx)
 		if err != nil {
 			return err
 		}
@@ -42,7 +42,7 @@ func newNodejsCmd() *cobra.Command {
 	cmd.AddCommand(yarn)
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
-		relPath, err := getRelCwd(ctx)
+		relPath, err := relCwd(ctx)
 		if err != nil {
 			return err
 		}
@@ -51,7 +51,7 @@ func newNodejsCmd() *cobra.Command {
 	})
 }
 
-func getRelCwd(ctx context.Context) (string, error) {
+func relCwd(ctx context.Context) (string, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return "", err

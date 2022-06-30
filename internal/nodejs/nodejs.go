@@ -26,6 +26,7 @@ const (
 )
 
 type RunNodejsOpts struct {
+	Scope         schema.PackageName
 	Args          []string
 	EnvVars       []*schema.BinaryConfig_EnvEntry
 	Mounts        []*rtypes.LocalMapping
@@ -47,11 +48,13 @@ func RunNodejs(ctx context.Context, env provision.Env, relPath string, command s
 	if err != nil {
 		return err
 	}
+
 	// TODO: generate a prebuilt
 	nodeImageState, err := prepareNodejsBaseWithYarn(ctx, nodeImageName, p)
 	if err != nil {
 		return err
 	}
+
 	nodejsImage, err := buildkit.LLBToImage(ctx, env, build.NewBuildTarget(&p).WithSourceLabel("nodejs-with-yarn"), nodeImageState)
 	if err != nil {
 		return err
@@ -67,8 +70,12 @@ func RunNodejs(ctx context.Context, env provision.Env, relPath string, command s
 		done := console.EnterInputMode(ctx)
 		defer done()
 		io = rtypes.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr}
+	} else if opts.Scope != "" {
+		stdout := console.Output(ctx, console.MakeConsoleName(opts.Scope.String(), "yarn", ""))
+		io = rtypes.IO{Stdout: stdout, Stderr: stdout}
 	} else {
-		io = rtypes.IO{Stdout: console.Stdout(ctx), Stderr: console.Stderr(ctx)}
+		stdout := console.Output(ctx, "yarn")
+		io = rtypes.IO{Stdout: stdout, Stderr: stdout}
 	}
 
 	return tools.Run(ctx, rtypes.RunToolOpts{

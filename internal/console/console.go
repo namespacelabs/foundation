@@ -103,3 +103,18 @@ func JSON(w io.Writer, message string, data interface{}) {
 		fmt.Fprintf(w, "<failed to serialize: %v>", err)
 	}
 }
+
+func MakeConsoleName(logid string, key string, suffix string) string {
+	if key != "" {
+		if len(key) > 7 {
+			key = key[:7]
+		}
+		key = key + " "
+	}
+
+	if len(logid) > 32 {
+		logid = "..." + logid[len(logid)-29:]
+	}
+
+	return fmt.Sprintf("%s%s%s", key, logid, suffix)
+}

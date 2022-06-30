@@ -199,18 +199,11 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 }
 
 func consoleName(logid string, d digest.Digest, streamNum int) string {
-	key := d.Hex()
-	if len(key) > 7 {
-		key = key[:7]
-	}
 	if logid == "" {
 		logid = "buildkit"
 	}
-	if len(logid) > 32 {
-		logid = "..." + logid[len(logid)-29:]
-	}
 
-	return fmt.Sprintf("%s %s%s", key, logid, streamName(streamNum))
+	return console.MakeConsoleName(logid, d.Hex(), streamName(streamNum))
 }
 
 func streamName(streamNum int) string {
