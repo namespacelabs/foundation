@@ -15,7 +15,6 @@ import (
 	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/desc/protoparse"
-	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
@@ -185,27 +184,24 @@ func (pl *protoList) sorted() []*dpb.FileDescriptorProto {
 	return pl.protos
 }
 
-func expandProtoList(fsys fs.FS, files []string) ([]string, error) {
+func expandProtoList(fsys fs.FS, paths []string) ([]string, error) {
 	var ret []string
-	for _, f := range files {
-		st, err := fs.Stat(fsys, f)
+	for _, path := range paths {
+		st, err := fs.Stat(fsys, path)
 		if err != nil {
 			return nil, err
 		}
 
 		if st.IsDir() {
-			if slices.Contains(dirs.DirsToExclude, st.Name()) {
-				continue
-			}
-			dirents, err := fs.ReadDir(fsys, f)
+			dirents, err := fs.ReadDir(fsys, path)
 			if err != nil {
 				return nil, err
 			}
 
 			var children []string
 			for _, dirent := range dirents {
-				if dirent.IsDir() || filepath.Ext(dirent.Name()) == ".proto" {
-					children = append(children, filepath.Join(f, dirent.Name()))
+				if !dirs.IsExcluded(filepath.Join(path, dirent.Name()), dirent.Name()) && (dirent.IsDir() || filepath.Ext(dirent.Name()) == ".proto") {
+					children = append(children, filepath.Join(path, dirent.Name()))
 				}
 			}
 
@@ -216,8 +212,9 @@ func expandProtoList(fsys fs.FS, files []string) ([]string, error) {
 
 			ret = append(ret, further...)
 		} else {
-			ret = append(ret, f)
+			ret = append(ret, path)
 		}
 	}
+
 	return ret, nil
 }

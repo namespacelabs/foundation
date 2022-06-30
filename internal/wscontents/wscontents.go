@@ -17,7 +17,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/fsnotify/fsnotify"
-	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/filewatcher"
@@ -113,9 +112,7 @@ func SnapshotDirectory(absPath string) (*memfs.FS, error) {
 		}
 
 		if de.IsDir() {
-			name := de.Name()
-			// Skip hidden directories, and directories marked for skipping.
-			if (len(name) > 1 && name[0] == '.') || slices.Contains(dirs.DirsToExclude, name) {
+			if dirs.IsExcluded(osPathname, de.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -291,7 +288,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 			return err
 		}
 
-		if (path != "." && path[0] == '.') || slices.Contains(dirs.DirsToExclude, d.Name()) {
+		if dirs.IsExcluded(path, d.Name()) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}
