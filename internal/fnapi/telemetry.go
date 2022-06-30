@@ -250,12 +250,12 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 
 	req := buildRecordInvocationRequest(ctx, cmd, c, reqID, args)
 
+	tel.recID.Store(req.ID)
+
 	if err := tel.postRecordInvocationRequest(ctx, req); err != nil {
 		tel.logError(ctx, err)
 		return
 	}
-
-	tel.recID.Store(req.ID)
 }
 
 func (tel *Telemetry) RecordInvocation(ctx context.Context, cmd *cobra.Command, args []string) string {
@@ -310,7 +310,7 @@ func (tel *Telemetry) RecordError(ctx context.Context, err error) {
 		return
 	}
 
-	tel.recordError(ctx, tel.recID.Load(), err)
+	go tel.recordError(ctx, tel.recID.Load(), err)
 }
 
 func (tel *Telemetry) recordError(ctx context.Context, recID string, err error) {
