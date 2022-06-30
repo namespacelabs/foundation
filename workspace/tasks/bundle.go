@@ -221,14 +221,13 @@ func (b *Bundle) ActionLogs(ctx context.Context, debug io.Writer) (*storage.Comm
 				cmd.ActionLog = append(cmd.ActionLog, storedTask)
 			}
 			return nil
-		}
-
-		// Unmarshal the attachment file if present. Unlike the action log, we only log if we
-		// fail retrieving attachments.
-		if attachment, err := b.unmarshalAttachment(path); err == nil {
-			fmt.Fprintf(debug, "Failed to unmarshal attachment from path %s: %v\n", path, err)
+		} else if attachment, err := b.unmarshalAttachment(path); err == nil {
+			// Unmarshal the attachment file if present. Unlike the action log, we only log if we
+			// fail retrieving attachments.
+			fmt.Fprintf(debug, "Writing stored attachment with ID %q from path %s\n", attachment.Id, path)
 			cmd.AttachedLog = append(cmd.AttachedLog, attachment)
-
+		} else {
+			fmt.Fprintf(debug, "Failed to unmarshal artifact from path %s: %v\n", path, err)
 		}
 
 		return nil
