@@ -214,18 +214,19 @@ func (b *Bundle) ActionLogs(ctx context.Context, debug io.Writer) (*storage.Comm
 		// Unmarshal the action log file if present.
 		if strings.HasSuffix(path, "action.textpb") {
 			if storedTask, err := b.unmarshalStoredTaskFromActionLogs(path); err != nil {
-				fmt.Fprintf(debug, "Failed to marshal stored task from action logs for path %s: %v\n", path, err)
+				fmt.Fprintf(debug, "Failed to unmarshal stored task from action logs for path %s: %v\n", path, err)
 				errs = append(errs, err)
 			} else {
 				fmt.Fprintf(debug, "Writing stored task %s from path %s\n", storedTask.Name, path)
 				cmd.ActionLog = append(cmd.ActionLog, storedTask)
 			}
+			return nil
 		}
 
 		// Unmarshal the attachment file if present. Unlike the action log, we only log if we
 		// fail retrieving attachments.
 		if attachment, err := b.unmarshalAttachment(path); err == nil {
-			fmt.Fprintf(debug, "Failed to marshal attachment from path %s: %v\n", path, err)
+			fmt.Fprintf(debug, "Failed to unmarshal attachment from path %s: %v\n", path, err)
 			cmd.AttachedLog = append(cmd.AttachedLog, attachment)
 
 		}
