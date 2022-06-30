@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -131,20 +132,39 @@ func PrepareClusterInfo(ctx context.Context, s *Session) (*EKSCluster, error) {
 }
 
 func DescribeCluster(ctx context.Context, s *Session, name string) (*types.Cluster, error) {
-	return tasks.Return(ctx, tasks.Action("eks.describe-cluster").Category("aws"), func(ctx context.Context) (*types.Cluster, error) {
-		out, err := s.eks.DescribeCluster(ctx, &eks.DescribeClusterInput{
-			Name: &name,
-		})
-		if err != nil {
-			return nil, auth.CheckNeedsLoginOr(s.sesh, err, func(err error) error {
-				return fnerrors.New("eks: describe cluster failed: %w", err)
-			})
-		}
+	return compute.GetValue[*types.Cluster](ctx, &cachedDescribeCluster{session: s, name: name})
+}
 
-		if out.Cluster == nil {
-			return nil, fnerrors.InvocationError("api didn't return a cluster description as expected")
-		}
+type cachedDescribeCluster struct {
+	session *Session
+	name    string
 
-		return out.Cluster, nil
+	compute.DoScoped[*types.Cluster]
+}
+
+func (cd *cachedDescribeCluster) Action() *tasks.ActionEvent {
+	return tasks.Action("eks.describe-cluster").Category("aws").Arg("name", cd.name)
+}
+
+func (cd *cachedDescribeCluster) Inputs() *compute.In {
+	return compute.Inputs().Str("session", cd.session.sesh.CacheKey()).Str("name", cd.name)
+}
+
+func (cd *cachedDescribeCluster) Output() compute.Output { return compute.Output{NotCacheable: true} }
+
+func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved) (*types.Cluster, error) {
+	out, err := cd.session.eks.DescribeCluster(ctx, &eks.DescribeClusterInput{
+		Name: &cd.name,
 	})
+	if err != nil {
+		return nil, auth.CheckNeedsLoginOr(cd.session.sesh, err, func(err error) error {
+			return fnerrors.New("eks: describe cluster failed: %w", err)
+		})
+	}
+
+	if out.Cluster == nil {
+		return nil, fnerrors.InvocationError("api didn't return a cluster description as expected")
+	}
+
+	return out.Cluster, nil
 }
