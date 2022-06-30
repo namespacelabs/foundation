@@ -165,18 +165,35 @@ func (b *Bundle) unmarshalStoredTaskFromActionLogs(path string) (*protocol.Store
 		return nil, err
 	}
 
-	contents, err := ioutil.ReadAll(f)
+	content, err := ioutil.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
 
 	storedTask := &protocol.StoredTask{}
 
-	if err := (prototext.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(contents, storedTask); err != nil {
+	if err := (prototext.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(content, storedTask); err != nil {
 		return nil, err
 	} else {
 		return storedTask, nil
 	}
+}
+
+func (b *Bundle) unmarshalAttachment(path string) (*storage.Command_Log, error) {
+	f, err := b.fsys.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	content, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return &storage.Command_Log{
+		Id:      path,
+		Content: content,
+	}, nil
 }
 
 func (b *Bundle) ActionLogs(ctx context.Context, debug io.Writer) (*storage.Command, error) {
@@ -189,9 +206,12 @@ func (b *Bundle) ActionLogs(ctx context.Context, debug io.Writer) (*storage.Comm
 			fmt.Fprintf(debug, "Failed to walk %s: %v\n", path, err)
 			return nil
 		}
+
 		if path == "." {
 			return nil
 		}
+
+		// Unmarshal the action log file if present.
 		if strings.HasSuffix(path, "action.textpb") {
 			if storedTask, err := b.unmarshalStoredTaskFromActionLogs(path); err != nil {
 				fmt.Fprintf(debug, "Failed to marshal stored task from action logs for path %s: %v\n", path, err)
@@ -201,6 +221,15 @@ func (b *Bundle) ActionLogs(ctx context.Context, debug io.Writer) (*storage.Comm
 				cmd.ActionLog = append(cmd.ActionLog, storedTask)
 			}
 		}
+
+		// Unmarshal the attachment file if present. Unlike the action log, we only log if we
+		// fail retrieving attachments.
+		if attachment, err := b.unmarshalAttachment(path); err == nil {
+			fmt.Fprintf(debug, "Failed to marshal attachment from path %s: %v\n", path, err)
+			cmd.AttachedLog = append(cmd.AttachedLog, attachment)
+
+		}
+
 		return nil
 	})
 
