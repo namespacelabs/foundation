@@ -2294,6 +2294,7 @@ __metadata:
     vite: ^2.6.14
     wouter: ^2.8.0-alpha.2
     xterm-addon-fit: ^0.5.0
+    xterm-addon-web-links: ^0.6.0
     xterm-for-react: ^1.0.4
   languageName: unknown
   linkType: soft
@@ -2740,6 +2741,15 @@ __metadata:
   peerDependencies:
     xterm: ^4.0.0
   checksum: 884d9f360893335c87e4514beeda2af6dbebf38a89b8518f1126d9c4611aefc1598b750bb43a953b79fdf1179c40d70c77a9169ae10f07e0abbbdb39b919b33f
+  languageName: node
+  linkType: hard
+
+"xterm-addon-web-links@npm:^0.6.0":
+  version: 0.6.0
+  resolution: "xterm-addon-web-links@npm:0.6.0"
+  peerDependencies:
+    xterm: ^4.0.0
+  checksum: 1f6f93a5ab4ccd4fe313e0693f6e19bb030497adee97a4f73dfa63700bffbf88125918a7dc0da3332a340c51b0a828b908240f0d6c1e651d3fe41e8220a8d43d
   languageName: node
   linkType: hard
 

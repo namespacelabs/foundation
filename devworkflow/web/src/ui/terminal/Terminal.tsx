@@ -5,6 +5,7 @@
 import React, { useEffect, useRef } from "react";
 import { XTerm } from "xterm-for-react";
 import { FitAddon } from "xterm-addon-fit";
+import { WebLinksAddon } from "xterm-addon-web-links";
 import classes from "./terminal.module.css";
 
 export default function Terminal(props: {
@@ -45,7 +46,7 @@ export default function Terminal(props: {
 				disableStdin: !props.onData,
 				rows: 4,
 			}}
-			addons={[fitAddonRef.current]}
+			addons={[fitAddonRef.current, new WebLinksAddon()]}
 		/>
 	);
 }

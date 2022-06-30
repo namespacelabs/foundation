@@ -92,6 +92,7 @@ export type DataType = {
 	current: StackEntryType;
 	state?: StackEntryStateType[];
 	forwarded_port?: ForwardedPort[];
+	rendered_port_forwarding?: string;
 };
 
 export type StackType = {

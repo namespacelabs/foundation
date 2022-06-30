@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/morikuni/aec"
 	"github.com/muesli/reflow/padding"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
@@ -84,7 +83,7 @@ func RenderPortsAndIngresses(out io.Writer, style colors.Style, checkmark bool, 
 	if localHostname == "" {
 		fmt.Fprintf(out, " Services deployed:\n\n")
 	} else {
-		fmt.Fprintf(out, " Services forwarded to %s", aec.Italic.Apply("localhost"))
+		fmt.Fprintf(out, " Services forwarded to %s", style.LessRelevant.Apply("localhost"))
 		if internalCount > 0 {
 			fmt.Fprintf(out, " (+%d internal)", internalCount)
 		}
@@ -127,7 +126,7 @@ func RenderPortsAndIngresses(out io.Writer, style colors.Style, checkmark bool, 
 	}
 
 	if len(portFwds) == 0 {
-		fmt.Fprintf(out, "   %s\n", aec.Italic.Apply("(none)"))
+		fmt.Fprintf(out, "   %s\n", style.LessRelevant.Apply("(none)"))
 
 	}
 

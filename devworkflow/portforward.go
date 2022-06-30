@@ -56,6 +56,7 @@ func newPortFwd(obs *Session, selector runtime.Selector, localaddr string) *endp
 	}
 
 	pfw.OnUpdate = func() {
+		obs.updateStackInPlace(func(stack *Stack) {})
 		obs.setSticky(pfw.Render(colors.WithColors))
 	}
 

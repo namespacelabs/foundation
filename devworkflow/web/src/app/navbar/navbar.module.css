@@ -4,7 +4,6 @@
 	left: 0;
 	right: 0;
 	height: 60px;
-	border-bottom: 1px solid rgb(210, 210, 210);
 
 	display: flex;
 	flex-direction: row;
