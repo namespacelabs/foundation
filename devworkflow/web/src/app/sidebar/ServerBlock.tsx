@@ -174,7 +174,7 @@ function ForwardedPorts(props: { data: DataType }) {
 			render: () => (
 				<>
 					{sortPorts(props.data.current.server.package_name, props.data.forwarded_port).map((p) => (
-						<Port key={p.container_port} data={props.data} p={p} />
+						<Port key={`${p.container_port}_${p.endpoint.service_name}`} data={props.data} p={p} />
 					))}
 				</>
 			),
