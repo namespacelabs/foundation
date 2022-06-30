@@ -92,16 +92,16 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		ctx, cleanupTracer = actiontracing.SetupTracing(ctx, tracerEndpoint)
 	}
 
+	tel := fnapi.NewTelemetry()
+
 	sink, style, flushLogs := consoleToSink(consoleFromFile())
-	ctxWithSink := colors.WithStyle(tasks.WithSink(ctx, sink), style)
+	ctxWithSink := fnapi.WithTelemetry(colors.WithStyle(tasks.WithSink(ctx, sink), style), tel)
 
 	// Some of our builds can go fairly wide on parallelism, requiring opening
 	// hundreds of files, between cache reads, cache writes, etc. This is a best
 	// effort attempt at increasing the file limit to a number we can be more
 	// comfortable with. 4096 is the result of experimentation.
 	ulimit.SetFileLimit(ctxWithSink, 4096)
-
-	tel := fnapi.NewTelemetry()
 
 	var remoteStatusChan chan remoteStatus
 	// Checking a version could be used for fingerprinting purposes,

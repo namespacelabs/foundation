@@ -7,6 +7,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -37,6 +38,11 @@ func NewLoginCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			// Telemetry
+			fnapi.TelemetryOn(ctx).RecordLogin(ctx, username)
+			// Giving the telemetry a chance to send the event.
+			time.Sleep(time.Millisecond * 500)
 
 			fmt.Fprintf(console.Stdout(ctx), "\nHi %s, you are now logged in, have a nice day.\n", username)
 			return nil
