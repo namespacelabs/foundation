@@ -39,7 +39,7 @@ export default function ServerInfo(props: {
 		const port = endpoints.filter((e) => svc.package_name.endsWith(e.service_name))[0]!.port
 			?.container_port;
 
-		return `fn tools grpcurl -plaintext ${host}:${port} list ${serviceName}`;
+		return `ns tools grpcurl -plaintext ${host}:${port} list ${serviceName}`;
 	};
 
 	return (
