@@ -398,10 +398,11 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			WithCommand(sidecar.Command...)
 
 		// XXX remove this
-		scntr = scntr.WithEnv(applycorev1.EnvVar().WithName("FN_KUBERNETES_NAMESPACE").
-			WithValueFrom(applycorev1.EnvVarSource().
-				WithFieldRef(applycorev1.ObjectFieldSelector().
-					WithFieldPath("metadata.namespace"))))
+		scntr = scntr.WithEnv(
+			applycorev1.EnvVar().WithName("FN_KUBERNETES_NAMESPACE").WithValue(ns),
+			applycorev1.EnvVar().WithName("FN_SERVER_ID").WithValue(srv.Proto().Id),
+			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(srv.Proto().Name),
+		)
 
 		// Share all mounts with sidecards for now.
 		// XXX security review this.

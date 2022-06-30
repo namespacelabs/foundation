@@ -36,7 +36,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/universe/db/postgres/server/img":                                "sha256:a5c9b212a48533ded9fe0f9c7788b5f6b92123d95abd61953d133cd230f3ebbe"
 		"namespacelabs.dev/foundation/universe/development/localstack/s3/internal/configure":          "sha256:3e22a7e178e1edc35a757a44b5f9b12e167cf7e5cc9f7609a1ae86d92b230cab"
 		"namespacelabs.dev/foundation/universe/development/localstack/s3/internal/managebuckets/init": "sha256:a8f68f46d31cf5b791f13b145bb62ff359753ca7754f093d922dc12e1c1e991f"
-		"namespacelabs.dev/foundation/universe/networking/tailscale/image":                            "sha256:477734cff1e00c266b8a5a516983e157f612470a09f5110e008f9580f27ab9eb"
+		"namespacelabs.dev/foundation/universe/networking/tailscale/image":                            "sha256:046f157c620a3532510fb5d6000632a536462a078c42805e3aad461c1c59e951"
 		"namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets":                     "sha256:5a4adc6caec3a281528a7a7b26cbbd49d4ab6c88fe85290670acb0a119e86b26"
 		"namespacelabs.dev/foundation/universe/storage/s3/internal/prepare":                           "sha256:8449f07819d6fa75e9a218f443055778d9ce26a556c996b884961afd539156ff"
 	}
