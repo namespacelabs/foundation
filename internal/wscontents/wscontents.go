@@ -328,7 +328,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 			}
 
 			r := compute.ResultWithTimestamp[any]{
-				Timestamp: time.Now(),
+				Completed: time.Now(),
 			}
 			vp.revision++
 			r.Value = &versioned{

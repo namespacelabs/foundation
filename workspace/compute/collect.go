@@ -43,7 +43,9 @@ func (c *collect[V]) Compute(ctx context.Context, deps Resolved) ([]ResultWithTi
 	for k, computable := range c.computables {
 		v, _ := GetDep(deps, computable, c.computableName(k))
 		var typed ResultWithTimestamp[V]
-		typed.Timestamp = v.Timestamp
+		typed.ActionID = v.ActionID
+		typed.Started = v.Started
+		typed.Completed = v.Completed
 		typed.Value = v.Value
 		typed.Cached = v.Cached
 		typed.Digest = v.Digest

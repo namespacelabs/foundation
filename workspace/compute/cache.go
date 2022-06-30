@@ -123,7 +123,7 @@ func checkLoadCache(ctx context.Context, what string, g *Orch, c computeInstance
 
 					hit.VerifiedHit = true
 
-					return p.resolve(ResultWithTimestamp[any]{Result: v, Cached: true, Timestamp: output.Timestamp}, nil)
+					return p.resolve(ResultWithTimestamp[any]{Result: v, Cached: true, Completed: output.Timestamp}, nil)
 				} else {
 					trace.SpanFromContext(ctx).RecordError(err)
 				}

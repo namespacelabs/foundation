@@ -522,7 +522,7 @@ func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []p
 				result := ResolvedServerImages{
 					Package:        r.Package,
 					Binary:         binary.Value,
-					PrebuiltBinary: binary.Timestamp.IsZero(),
+					PrebuiltBinary: binary.Completed.IsZero(),
 				}
 
 				if v, ok := compute.GetDep(deps, r.Config, "config"); ok {

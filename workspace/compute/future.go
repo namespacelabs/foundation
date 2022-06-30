@@ -43,7 +43,9 @@ type Result[V any] struct {
 type ResultWithTimestamp[V any] struct {
 	Result[V]
 	Cached    bool
-	Timestamp time.Time // When this value was computed (if known).
+	ActionID  tasks.ActionID
+	Started   time.Time
+	Completed time.Time // When this value was computed (if known).
 
 	revision uint64 // Used in a Continuous() flow.
 }

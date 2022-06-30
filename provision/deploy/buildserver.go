@@ -22,22 +22,23 @@ import (
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 var RunCodegen = true
 
-func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (plan build.Plan, err error) {
-	platforms, err := runtime.For(ctx, server.Env()).TargetPlatforms(ctx)
-	if err != nil {
-		return plan, err
-	}
+func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (build.Plan, error) {
+	return tasks.Return(ctx, tasks.Action("fn.deploy.prepare-server-image").Scope(server.PackageName()),
+		func(ctx context.Context) (build.Plan, error) {
+			platforms, err := runtime.For(ctx, server.Env()).TargetPlatforms(ctx)
+			if err != nil {
+				return build.Plan{}, err
+			}
 
-	err = tasks.Action("fn.deploy.prepare-server-image").
-		Scope(server.PackageName()).
-		Arg("platforms", platforms).
-		Run(ctx, func(ctx context.Context) error {
+			tasks.Attachments(ctx).AddResult("platforms", platforms)
+
 			var ws build.Workspace
 			if RunCodegen {
 				ws = codegenWorkspace{server}
@@ -45,17 +46,15 @@ func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (pl
 				ws = server.Module()
 			}
 
-			plan = build.Plan{
+			return build.Plan{
 				SourceLabel:   fmt.Sprintf("Server %s", server.PackageName()),
 				SourcePackage: server.PackageName(),
+				BuildKind:     storage.Build_SERVER,
 				Spec:          spec,
 				Workspace:     ws,
 				Platforms:     platforms,
-			}
-
-			return err
+			}, nil
 		})
-	return
 }
 
 type prepareServerConfig struct {

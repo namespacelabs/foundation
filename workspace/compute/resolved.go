@@ -28,7 +28,9 @@ func GetDepWithType[V any](deps Resolved, key string) (ResultWithTimestamp[V], b
 	r.Digest = v.Digest
 	r.Cached = v.Cached
 	r.NonDeterministic = v.NonDeterministic
-	r.Timestamp = v.Timestamp
+	r.ActionID = v.ActionID
+	r.Started = v.Started
+	r.Completed = v.Completed
 	return r, true
 }
 

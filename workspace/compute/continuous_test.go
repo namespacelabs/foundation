@@ -185,7 +185,7 @@ func (av testValue) Observe(ctx context.Context, f func(ResultWithTimestamp[any]
 			case v := <-av.ch:
 				var rwt ResultWithTimestamp[any]
 				rwt.Value = testValue{v: v}
-				rwt.Timestamp = time.Now()
+				rwt.Completed = time.Now()
 				f(rwt, false)
 			}
 		}

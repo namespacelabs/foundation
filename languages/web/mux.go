@@ -50,7 +50,7 @@ func (m *serveFS) Compute(ctx context.Context, deps compute.Resolved) (*mux.Rout
 		},
 	}
 
-	return MuxFromFS(ctx, fsys, image.Digest, image.Timestamp, m.spa)
+	return MuxFromFS(ctx, fsys, image.Digest, image.Completed, m.spa)
 }
 
 func MuxFromFS(ctx context.Context, fsys fs.FS, d schema.Digest, ts time.Time, spa bool) (*mux.Router, error) {

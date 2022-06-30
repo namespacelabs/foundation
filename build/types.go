@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
@@ -31,6 +32,7 @@ type Spec interface {
 type Plan struct {
 	SourcePackage schema.PackageName
 	SourceLabel   string
+	BuildKind     storage.Build_Kind
 	Spec          Spec
 	Workspace     Workspace
 	Platforms     []specs.Platform

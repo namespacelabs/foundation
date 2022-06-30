@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -79,6 +80,7 @@ func Plan(ctx context.Context, pkg *workspace.Package, opts BuildImageOpts) (*Pr
 	plan := build.Plan{
 		SourcePackage: loc.PackageName,
 		SourceLabel:   fmt.Sprintf("Binary %s", loc.PackageName),
+		BuildKind:     storage.Build_BINARY,
 		Spec:          spec,
 		Workspace:     loc.Module,
 		Platforms:     platforms,

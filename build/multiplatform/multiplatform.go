@@ -11,10 +11,13 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/storedrun"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -24,6 +27,27 @@ func PrepareMultiPlatformImage(ctx context.Context, env ops.Environment, p build
 	img, err := prepareImage(ctx, env, p)
 	if err != nil {
 		return nil, err
+	}
+
+	if p.BuildKind != storage.Build_KIND_UNKNOWN && p.SourcePackage != "" {
+		img = compute.TransformResult(img, func(ctx context.Context, v compute.ResultWithTimestamp[oci.ResolvableImage]) (oci.ResolvableImage, error) {
+			var platforms []string
+			for _, plat := range p.Platforms {
+				platforms = append(platforms, devhost.FormatPlatform(plat))
+			}
+
+			storedrun.Attach(&storage.Build{
+				ActionId:  v.ActionID.String(),
+				Package:   p.SourcePackage.String(),
+				Kind:      p.BuildKind,
+				Cached:    v.Cached,
+				Started:   timestamppb.New(v.Started),
+				Completed: timestamppb.New(v.Completed),
+				Platform:  platforms,
+			})
+
+			return v.Value, nil
+		})
 	}
 
 	return compute.Sticky(tasks.Action("build").HumanReadablef(prefix("Build", p.SourceLabel)).Scope(p.SourcePackage), img), nil

@@ -1,0 +1,28 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema.storage;
+
+option go_package = "namespacelabs.dev/foundation/schema/storage";
+
+import "google/protobuf/timestamp.proto";
+
+// Next ID: 8
+message Build {
+    string                    action_id = 1;
+    string                    package   = 2;
+    Kind                      kind      = 3;
+    bool                      cached    = 4;
+    google.protobuf.Timestamp started   = 5;
+    google.protobuf.Timestamp completed = 6;
+    repeated string           platform  = 7;
+
+    enum Kind {
+        KIND_UNKNOWN = 0;
+        SERVER       = 1;
+        BINARY       = 2;
+    }
+}

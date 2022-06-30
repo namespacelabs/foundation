@@ -378,7 +378,7 @@ func (o *observable) Loop(ctx context.Context) error {
 				return false, nil
 			},
 			Run: func(ctx context.Context) error {
-				if res, err := compute(ctx, orch, o.computable, cacheable, shouldCache, inputs, resolved); err != nil {
+				if res, err := compute(ctx, orch, p.actionID, o.computable, cacheable, shouldCache, inputs, resolved); err != nil {
 					if err = o.inv.transformErr(err); err != nil {
 						return err
 					}

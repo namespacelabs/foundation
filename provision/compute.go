@@ -125,7 +125,7 @@ func (p *obsState) prepare(ctx context.Context, snapshot *ServerSnapshot) error 
 		}
 
 		r := compute.ResultWithTimestamp[any]{
-			Timestamp: time.Now(),
+			Completed: time.Now(),
 		}
 		r.Value = newSnapshot
 

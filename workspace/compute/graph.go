@@ -254,7 +254,7 @@ func waitCompute(ctx context.Context, g *Orch, p *Promise[any], opts computeInst
 			return false, nil
 		},
 		Run: func(ctx context.Context) error {
-			res, err := compute(ctx, g, opts, cacheable, shouldCache, inputs, *resolved)
+			res, err := compute(ctx, g, p.actionID, opts, cacheable, shouldCache, inputs, *resolved)
 			if err != nil {
 				return err
 			}
@@ -272,13 +272,15 @@ func waitCompute(ctx context.Context, g *Orch, p *Promise[any], opts computeInst
 	return nil
 }
 
-func compute(ctx context.Context, g *Orch, opts computeInstance, cacheable *cacheable, shouldCache bool, inputs *computedInputs, resolved Resolved) (ResultWithTimestamp[any], error) {
+func compute(ctx context.Context, g *Orch, actionID tasks.ActionID, opts computeInstance, cacheable *cacheable, shouldCache bool, inputs *computedInputs, resolved Resolved) (ResultWithTimestamp[any], error) {
+	started := time.Now()
+
 	v, err := opts.Compute(ctx, resolved)
 	if err != nil {
 		return ResultWithTimestamp[any]{}, err
 	}
 
-	ts := time.Now()
+	completed := time.Now()
 
 	var digester ComputeDigestFunc
 	if digester == nil && cacheable != nil {
@@ -294,7 +296,7 @@ func compute(ctx context.Context, g *Orch, opts computeInstance, cacheable *cach
 	}
 
 	if shouldCache && d.IsSet() {
-		deferStore(ctx, g, opts.Computable, cacheable, d, ts, v, inputs)
+		deferStore(ctx, g, opts.Computable, cacheable, d, completed, v, inputs)
 	}
 
 	if outputCachingInformation {
@@ -307,7 +309,9 @@ func compute(ctx context.Context, g *Orch, opts computeInstance, cacheable *cach
 			NonDeterministic: opts.NonDeterministic,
 			Value:            v,
 		},
-		Timestamp: ts,
+		ActionID:  actionID,
+		Started:   started,
+		Completed: completed,
 	}, nil
 }
 
@@ -523,7 +527,8 @@ func Get[V any](ctx context.Context, c Computable[V]) (ResultWithTimestamp[V], e
 	rwt.Digest = r.Digest
 	rwt.Cached = r.Cached
 	rwt.NonDeterministic = r.NonDeterministic
-	rwt.Timestamp = r.Timestamp
+	rwt.Started = r.Started
+	rwt.Completed = r.Completed
 	return rwt, nil
 }
 
