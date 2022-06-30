@@ -165,8 +165,6 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 }
 
 func (pi *PortForward) Render(style colors.Style) string {
-	var out bytes.Buffer
-
 	var portFwds []*deploy.PortFwd
 	for _, fwd := range pi.endpointPortFwds {
 		portFwds = append(portFwds, &deploy.PortFwd{
@@ -184,8 +182,8 @@ func (pi *PortForward) Render(style colors.Style) string {
 
 	deploy.SortPorts(portFwds, pi.focus)
 
+	var out bytes.Buffer
 	deploy.RenderPortsAndIngresses(&out, style, true, pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, nil)
-
 	return out.String()
 }
 

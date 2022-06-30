@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"strings"
 
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
@@ -106,8 +107,20 @@ func resolveBackend(wenv workspace.WorkspaceEnvironment, fragments []*schema.Ing
 		}
 
 		if len(matching) == 0 {
-			return nil, fnerrors.UserError(loc, "no such ingress, endpoint_owner=%q service_name=%q instance_name=%q",
-				backend.EndpointOwner, backend.ServiceName, backend.InstanceName)
+			var matches []string
+			for _, r := range [][2]string{
+				{"endpoint_owner", backend.EndpointOwner},
+				{"service_name", backend.ServiceName},
+				{"ingress_name", backend.IngressName},
+				{"manager", backend.Manager},
+			} {
+				if r[1] != "" {
+					matches = append(matches, fmt.Sprintf("%s=%q", r[0], r[1]))
+				}
+			}
+
+			return nil, fnerrors.UserError(loc, "no ingress matches %s, perhaps you're missing `ingress: INTERNET_FACING`",
+				strings.Join(matches, " "))
 		}
 
 		bd := &backendDefinition{}
