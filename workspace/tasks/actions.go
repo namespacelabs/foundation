@@ -7,6 +7,8 @@ package tasks
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -91,6 +93,7 @@ type ActionEvent struct {
 
 type attachedBuffer struct {
 	buffer      readerWriter
+	id          string
 	name        string
 	contentType string
 }
@@ -409,6 +412,7 @@ func makeProto(data *EventData, at *EventAttachments) *protocol.Task {
 		at.mu.Lock()
 		for _, name := range at.insertionOrder {
 			p.Output = append(p.Output, &protocol.Task_Output{
+				Id:          at.buffers[name.computed].name,
 				Name:        at.buffers[name.computed].name,
 				ContentType: at.buffers[name.computed].contentType,
 			})
@@ -622,9 +626,14 @@ func (ev *EventAttachments) attach(name OutputName, body []byte) {
 
 	ev.init()
 
+	h := sha256.New()
+	h.Write(body)
+	bufferId := base64.URLEncoding.EncodeToString(h.Sum(nil))
+
 	ev.insertionOrder = append(ev.insertionOrder, name)
 	ev.buffers[name.computed] = attachedBuffer{
 		buffer:      syncbuffer.Seal(body),
+		id:          bufferId,
 		name:        name.name,
 		contentType: name.contentType,
 	}

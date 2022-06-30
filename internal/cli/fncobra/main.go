@@ -296,6 +296,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	err := rootCmd.ExecuteContext(cmdCtx)
 
 	if run != nil {
+		actionLogs, err := cmdBundle.bundle.ActionLogs(cmdCtx)
+		if err == nil {
+			storedrun.Attach(actionLogs)
+		}
 		err = run.Output(cmdCtx, err) // If requested, store the run results.
 	}
 

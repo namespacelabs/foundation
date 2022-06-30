@@ -6,7 +6,6 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 
@@ -54,15 +53,14 @@ func (st *Storer) store(af *RunningAction) error {
 
 	if af.attachments != nil {
 		af.attachments.mu.Lock()
-		for k, name := range af.attachments.insertionOrder {
-			id := fmt.Sprintf("%d", k)
+		for _, name := range af.attachments.insertionOrder {
 			buf := af.attachments.buffers[name.computed]
 
 			out, err := ioutil.ReadAll(buf.buffer.Reader())
 			if err != nil {
 				return err
 			}
-			if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId.String(), id+filepath.Ext(buf.name)), out, 0600); err != nil {
+			if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId.String(), buf.id+filepath.Ext(buf.name)), out, 0600); err != nil {
 				return err
 			}
 		}

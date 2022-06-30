@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -22,11 +23,15 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	stacktraceserializer "namespacelabs.dev/foundation/internal/fnerrors/stacktrace/serializer"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/maketarfs"
+	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/workspace/tasks/protocol"
 )
 
 const (
@@ -153,6 +158,56 @@ func (b *Bundle) ReadInvocationInfo(ctx context.Context) (*InvocationInfo, error
 		return nil, fnerrors.InternalError("failed to unmarshal `invocation_info.json`: %w", err)
 	}
 	return &info, nil
+}
+
+func (b *Bundle) unmarshalStoredTaskFromActionLogs(path string) (*protocol.StoredTask, error) {
+	if _, err := os.Stat(path); err != nil {
+		return nil, err
+	}
+
+	f, err := b.fsys.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	contents, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	storedTask := &protocol.StoredTask{}
+
+	if err := (prototext.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(contents, storedTask); err != nil {
+		return nil, err
+	} else {
+		return storedTask, nil
+	}
+}
+
+func (b *Bundle) ActionLogs(ctx context.Context) (*storage.Command, error) {
+	cmd := &storage.Command{}
+
+	var errs []error
+
+	err := fs.WalkDir(b.fsys, ".", func(path string, dirent fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !dirent.IsDir() {
+			return nil
+		}
+		actionLogs := filepath.Join(dirent.Name(), "action.textpb")
+		if storedTask, err := b.unmarshalStoredTaskFromActionLogs(actionLogs); err != nil {
+			errs = append(errs, err)
+		} else {
+			cmd.ActionLog = append(cmd.ActionLog, storedTask)
+		}
+		return nil
+	})
+
+	errs = append(errs, err)
+
+	return cmd, multierr.New(errs...)
 }
 
 func (b *Bundle) EncryptTo(ctx context.Context, dst io.Writer) error {

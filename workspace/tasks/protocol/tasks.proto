@@ -24,6 +24,7 @@ message Task {
     reserved 10;
 
     message Output {
+        string id = 3;
         string name = 1;
         string content_type = 2;
     }
