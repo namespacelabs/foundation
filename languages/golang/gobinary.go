@@ -28,6 +28,7 @@ type GoBinary struct {
 	BinaryName   string   `json:"binaryName"`
 	Capabilities []string `json:"capabilities"`
 
+	BinaryOnly      bool
 	UnsafeCacheable bool // Unsafe because we can't guarantee that the sources used for compilation are consistent with the workspace contents.
 
 	isFocus bool

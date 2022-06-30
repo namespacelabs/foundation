@@ -24,8 +24,10 @@ message Binary {
     LayeredImageBuildPlan build_plan = 8;
 }
 
+// Next ID: 8
 message ImageBuildPlan {
     string          go_package     = 1;  // Use go binary builder.
+    GoBuild         go_build       = 7;  // Use go binary builder.
     string          dockerfile     = 2;  // Use Dockerfile builder.
     string          web_build      = 3;  // Use Web build (temporary).
     LLBPlan         llb_plan       = 4;  // Build  binary which itself produces LLB.
@@ -34,6 +36,12 @@ message ImageBuildPlan {
 
     message LLBPlan {
         Binary output_of = 1;
+    }
+
+    message GoBuild {
+        string rel_path    = 1;
+        string binary_name = 2;
+        bool   binary_only = 3;
     }
 }
 

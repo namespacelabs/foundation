@@ -33,6 +33,7 @@ func Build(ctx context.Context, env ops.Environment, bin GoBinary, conf buildCon
 	if conf.Workspace() == nil {
 		panic(conf)
 	}
+
 	return buildLocalImage(ctx, env, conf.Workspace(), bin, conf)
 }
 
@@ -42,9 +43,16 @@ func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.W
 		return nil, err
 	}
 
-	baseImage, err := baseImage(ctx, env, target)
-	if err != nil {
-		return nil, err
+	var base compute.Computable[oci.Image]
+
+	if !bin.BinaryOnly {
+		var err error
+		base, err = baseImage(ctx, env, target)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		base = oci.Scratch()
 	}
 
 	layers := []compute.Computable[oci.Layer]{
@@ -58,7 +66,7 @@ func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.W
 		}),
 	}
 
-	return compute.Named(tasks.Action("go.make-binary-image").Arg("binary", bin), oci.MakeImage(baseImage, layers...)), nil
+	return compute.Named(tasks.Action("go.make-binary-image").Arg("binary", bin), oci.MakeImage(base, layers...)), nil
 }
 
 func baseImage(ctx context.Context, env ops.Environment, target build.BuildTarget) (compute.Computable[oci.Image], error) {

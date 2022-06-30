@@ -229,10 +229,19 @@ _#ConfigureBase: {
 	name?:       string
 	repository?: string
 	digest?:     string
-	{from: #BuildPlan} | {build_plan: #BuildPlan}
+	{from: #BuildPlan} | {
+		build_plan: {
+			layer_build_plan: [...#BuildPlan]
+		}
+	}
 
 	#BuildPlan: {
 		go_package?: string
+		go_build?: {
+			rel_path:     string
+			binary_name:  string
+			binary_only?: bool
+		}
 		dockerfile?: string
 		web_build?:  string
 		llb_plan?: {output_of: #Binary}

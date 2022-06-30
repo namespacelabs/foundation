@@ -26,7 +26,7 @@ import (
 
 var UsePrebuilts = true // XXX make these a scoped configuration instead.
 
-var BuildGo func(loc workspace.Location, goPackage, binName string, unsafeCacheable bool) (build.Spec, error)
+var BuildGo func(loc workspace.Location, _ *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error)
 var BuildWeb func(workspace.Location) build.Spec
 var BuildLLBGen func(schema.PackageName, *workspace.Module, build.Spec) build.Spec
 var BuildNix func(schema.PackageName, *workspace.Module, fs.FS) build.Spec
@@ -193,7 +193,14 @@ func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 	if goPackage := src.GoPackage; goPackage != "" {
 		// Note, regardless of what config.command has been set to, we always build a
 		// binary named bin.Name.
-		return BuildGo(loc, goPackage, bin.Name, false)
+		return BuildGo(loc, &schema.ImageBuildPlan_GoBuild{
+			RelPath:    goPackage,
+			BinaryName: bin.Name,
+		}, false)
+	}
+
+	if src.GoBuild != nil {
+		return BuildGo(loc, src.GoBuild, false)
 	}
 
 	if wb := src.WebBuild; wb != "" {

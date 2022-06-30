@@ -44,9 +44,16 @@ func buildUsingBuildkit(ctx context.Context, env ops.Environment, bin GoBinary, 
 
 	base := makeGoBuildBase(ctx, bin.GoVersion, buildkit.HostPlatform())
 
-	prodBase, err := production.ServerImageLLB(production.Distroless, *conf.TargetPlatform())
-	if err != nil {
-		return nil, err
+	var prodBase llb.State
+
+	if !bin.BinaryOnly {
+		var err error
+		prodBase, err = production.ServerImageLLB(production.Distroless, *conf.TargetPlatform())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		prodBase = llb.Scratch()
 	}
 
 	label := "building"

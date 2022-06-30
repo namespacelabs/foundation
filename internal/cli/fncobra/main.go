@@ -142,12 +142,13 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		filewatcher.SetupFileWatcher()
 
-		binary.BuildGo = func(loc workspace.Location, goPackage, binName string, unsafeCacheable bool) (build.Spec, error) {
-			gobin, err := golang.FromLocation(loc, goPackage)
+		binary.BuildGo = func(loc workspace.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
+			gobin, err := golang.FromLocation(loc, plan.RelPath)
 			if err != nil {
 				return nil, fnerrors.Wrap(loc, err)
 			}
-			gobin.BinaryName = binName
+			gobin.BinaryOnly = plan.BinaryOnly
+			gobin.BinaryName = plan.BinaryName
 			gobin.UnsafeCacheable = unsafeCacheable
 			return gobin, nil
 		}
