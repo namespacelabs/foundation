@@ -503,7 +503,7 @@ func consoleToSink(out *os.File, interactive bool) (tasks.ActionSink, colors.Sty
 		cleanup := consoleSink.Start()
 		logout.Writer = console.ConsoleOutput(consoleSink, common.KnownStderr)
 
-		return consoleSink, colors.WithColors, cleanup
+		return simplelog.NewSink(logout.Writer, maxLogLevel), colors.WithColors, cleanup
 	}
 
 	return simplelog.NewSink(out, maxLogLevel), colors.NoColors, nil
