@@ -8,8 +8,14 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/workspace/tasks"
+)
+
+var (
+	EnableMemoryDiagnostics = false
+	EnableDockerDiagnostics = false
 )
 
 // CommandBundle tracks all actions stored while invoking the command in addition to
@@ -25,6 +31,14 @@ func NewCommandBundle() *CommandBundle {
 		bundler: bundler,
 		bundle:  bundler.NewInMemoryBundle(),
 	}
+}
+
+func (c *CommandBundle) SetupFlags(flags *pflag.FlagSet) {
+	flags.BoolVar(&EnableMemoryDiagnostics, "enable_memory_diagnostics", false, "If set, collects and write memstats at the end of command execution.")
+	flags.BoolVar(&EnableDockerDiagnostics, "enable_docker_diagnostics", false, "If set, collect and write docker info at the end of command execution.")
+
+	_ = flags.MarkHidden("enable_memory_diagnostics")
+	_ = flags.MarkHidden("enable_docker_diagnostics")
 }
 
 // RemoveStaleCommands removes all command bundles that are older than the configured bundle duration
@@ -50,21 +64,25 @@ func (c *CommandBundle) WriteError(ctx context.Context, err error) error {
 // FlushWithExitInfo writes memory stats of the command, serialized docker info output, and
 // other diagnostic information before flushing the bundle.
 func (c *CommandBundle) FlushWithExitInfo(ctx context.Context) error {
-	if err := c.bundle.WriteMemStats(ctx); err != nil {
-		return err
+	if EnableMemoryDiagnostics {
+		if err := c.bundle.WriteMemStats(ctx); err != nil {
+			return err
+		}
 	}
 
-	client, err := docker.NewClient()
-	if err != nil {
-		return err
-	}
+	if EnableDockerDiagnostics {
+		client, err := docker.NewClient()
+		if err != nil {
+			return err
+		}
 
-	dockerInfo, err := client.Info(ctx)
-	if err != nil {
-		return err
-	}
-	if err := c.bundle.WriteDockerInfo(ctx, &dockerInfo); err != nil {
-		return err
+		dockerInfo, err := client.Info(ctx)
+		if err != nil {
+			return err
+		}
+		if err := c.bundle.WriteDockerInfo(ctx, &dockerInfo); err != nil {
+			return err
+		}
 	}
 
 	return c.bundler.Flush(ctx, c.bundle)

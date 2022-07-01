@@ -263,6 +263,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
 		filewatcher.FileWatcherUsePolling, "If set to true, uses polling to observe file system events.")
 
+	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
@@ -295,7 +296,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	cmdCtx := tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx)))
 	err := rootCmd.ExecuteContext(cmdCtx)
 
-	debugSink := console.Debug(ctx)
+	debugSink := console.Stderr(ctx)
 
 	if run != nil {
 		actionLogs, logErr := cmdBundle.bundle.ActionLogs(ctxWithSink, debugSink)
