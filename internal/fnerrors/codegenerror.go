@@ -18,11 +18,13 @@ type CodegenError struct {
 	Err         error
 }
 
-func (c CodegenError) Error() string {
+func (c *CodegenError) Error() string {
 	return c.Err.Error()
 }
 
-func (c CodegenError) fingerprint() string {
+func (c *CodegenError) Unwrap() error { return c.Err }
+
+func (c *CodegenError) fingerprint() string {
 	return fmt.Sprintf("%s:%v:%v", c.What, c.PackageName, c.Err)
 }
 
@@ -59,7 +61,7 @@ type packages map[string]struct{}
 // CodegenMultiError accumulates multiple CodegenError(s).
 type CodegenMultiError struct {
 	// accumulated CodenErrors.
-	errs []CodegenError
+	Errs []CodegenError
 
 	// aggregates CodegenErrors by root error message.
 	commonerrs map[string]map[string]packages
@@ -106,13 +108,13 @@ func newCodegenMultiError(errs []CodegenError) *CodegenMultiError {
 		}
 	}
 
-	err := &CodegenMultiError{errs: errs, commonerrs: commonerrs, uniqgenerrs: uniqgenerrs}
+	err := &CodegenMultiError{Errs: errs, commonerrs: commonerrs, uniqgenerrs: uniqgenerrs}
 	return err
 }
 
 func (c *CodegenMultiError) Error() string {
 	buf := &bytes.Buffer{}
-	for _, err := range c.errs {
+	for _, err := range c.Errs {
 		fmt.Fprintf(buf, "%s\n", err.Error())
 	}
 	return buf.String()

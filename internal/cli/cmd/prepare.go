@@ -41,7 +41,7 @@ func NewPrepareCmd() *cobra.Command {
 		Short: "Prepares the Elastic Kubernetes Service host config for production.",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return fmt.Errorf("%q is a required argument, run %q to proceed", "[clustername]", "eks [clustername]")
+				return fnerrors.UserError(nil, "%q is a required argument, run %q to proceed", "[clustername]", "eks [clustername]")
 			}
 			return nil
 		},
@@ -91,10 +91,10 @@ func NewPrepareCmd() *cobra.Command {
 			expectedArg := "local"
 			expectedCmd := "ns prepare local"
 			if len(args) < 1 {
-				return fmt.Errorf("%q is a required argument, run %q to proceed", expectedArg, expectedCmd)
+				return fnerrors.UserError(nil, "%q is a required argument, run %q to proceed", expectedArg, expectedCmd)
 			}
 			if args[0] != "local" {
-				return fmt.Errorf("%q is a required argument, run %q to proceed", expectedArg, expectedCmd)
+				return fnerrors.UserError(nil, "%q is a required argument, run %q to proceed", expectedArg, expectedCmd)
 			}
 			return nil
 		},

@@ -259,10 +259,16 @@ func (tel *Telemetry) RecordError(ctx context.Context, err error) {
 		return
 	}
 
-	go tel.recordError(ctx, tel.recID.Load(), err)
+	tel.recordError(ctx, tel.recID.Load(), err)
 }
 
 func (tel *Telemetry) recordError(ctx context.Context, recID string, err error) {
+	errStr, isExpected := fnerrors.IsExpected(err)
+	if isExpected {
+		// We are only interested in unexpected errors.
+		return
+	}
+
 	// If we never saw a recorded ID, bail out.
 	if recID == "" {
 		tel.logError(ctx, fmt.Errorf("didn't receive telemetry record id"))
@@ -272,7 +278,7 @@ func (tel *Telemetry) recordError(ctx context.Context, recID string, err error) 
 	req := recordErrorRequest{ID: recID}
 
 	// TODO remove plain text logging after early access.
-	req.Message = err.Error()
+	req.Message = errStr
 
 	if err := tel.postRecordErrorRequest(ctx, req); err != nil {
 		tel.logError(ctx, err)

@@ -99,6 +99,8 @@ func (f *fnError) Error() string {
 	return f.Err.Error()
 }
 
+func (f *fnError) Unwrap() error { return f.Err }
+
 // Signature is compatible with pkg/errors and allows frameworks like Sentry to
 // automatically extract the frame.
 func (f *fnError) StackTrace() stacktrace.StackTrace {
@@ -142,13 +144,26 @@ type errWithLogs struct {
 }
 
 func IsExpected(err error) (string, bool) {
-	if x, ok := unwrap(err).(*internalError); ok && x.expected {
-		return x.Err.Error(), true
+	if x, ok := err.(*internalError); ok && x.expected {
+		return err.Error(), true
 	}
-	if x, ok := unwrap(err).(*userError); ok {
-		return x.Err.Error(), true
+	if _, ok := err.(*userError); ok {
+		return err.Error(), true
 	}
-	return "", false
+	if x, ok := err.(*CodegenMultiError); ok {
+		for _, err := range x.Errs {
+			if msg, ok := IsExpected(&err); !ok {
+				return msg, false
+			}
+		}
+		return err.Error(), true
+	}
+
+	if unwrappedError := errors.Unwrap(err); unwrappedError != nil {
+		return IsExpected(unwrappedError)
+	} else {
+		return err.Error(), false
+	}
 }
 
 func (e *userError) Error() string {
@@ -159,8 +174,6 @@ func (e *userError) Error() string {
 
 	return fmt.Sprintf("%s%v", locStr, e.Err)
 }
-
-func (e *userError) Unwrap() error { return e.Err }
 
 func (e *usageError) Error() string {
 	return fmt.Sprintf("%s\n\n  %s", e.Why, e.What)
@@ -177,8 +190,6 @@ func (e *invocationError) Error() string {
 func (e *errWithLogs) Error() string {
 	return e.Err.Error()
 }
-
-func (e *errWithLogs) Unwrap() error { return e.Err }
 
 type VersionError struct {
 	Pkg           string
@@ -435,10 +446,3 @@ func errorReportRequest(w io.Writer) {
 }
 
 func indent(w io.Writer) io.Writer { return text.NewIndentWriter(w, []byte("  ")) }
-
-func unwrap(err error) error {
-	if x := errors.Unwrap(err); x != nil {
-		return x
-	}
-	return err
-}
