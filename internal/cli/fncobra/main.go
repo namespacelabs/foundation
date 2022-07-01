@@ -264,7 +264,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
 		filewatcher.FileWatcherUsePolling, "If set to true, uses polling to observe file system events.")
 
-	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
+	if cmdBundle != nil {
+		cmdBundle.SetupFlags(rootCmd.PersistentFlags())
+	}
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
@@ -297,13 +299,28 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	cmdCtx := tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx)))
 	err := rootCmd.ExecuteContext(cmdCtx)
 
-	if run != nil {
-		actionLogs, logErr := cmdBundle.bundle.ActionLogs(ctxWithSink, debugSink)
-		if logErr == nil {
-			storedrun.Attach(actionLogs)
-		} else {
-			fmt.Fprintf(debugSink, "Failed to write action logs: %v\n", logErr)
+	serializedErrToBundle := false
+
+	if cmdBundle != nil {
+		if err != nil {
+			// This is a write into an in-memory FS and does not incur any I/O overhead.
+			if writeErr := cmdBundle.WriteError(ctx, err); writeErr != nil {
+				fmt.Fprintf(debugSink, "Failed to serialize the command execution error in the bundle: %v\n", writeErr)
+			}
+			// We set the bit to ensure we don't try re-serializing the error.
+			serializedErrToBundle = true
 		}
+		if run != nil {
+			actionLogs, logErr := cmdBundle.bundle.ActionLogs(ctxWithSink, debugSink)
+			if logErr == nil {
+				storedrun.Attach(actionLogs)
+			} else {
+				fmt.Fprintf(debugSink, "Failed to write action logs: %v\n", logErr)
+			}
+		}
+	}
+
+	if run != nil {
 		runErr := run.Output(cmdCtx, err) // If requested, store the run results.
 		if runErr != nil {
 			fmt.Fprintf(debugSink, "Failed to write run results: %v\n", runErr)
@@ -350,7 +367,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	if cmdBundle != nil {
 		defer func() {
 			// Capture useful information about the environment helpful for diagnostics in the bundle.
-			_ = cmdBundle.FlushWithExitInfo(ctxWithSink)
+			if flushErr := cmdBundle.FlushWithExitInfo(ctxWithSink); flushErr != nil {
+				fmt.Fprintf(debugSink, "Failed to flush the bundle with exit info: %v\n", flushErr)
+			}
 		}()
 	}
 
@@ -360,9 +379,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// We pass the original ctx without sink since logs have already been flushed.
 		tel.RecordError(ctx, err)
 
-		// Ensure that the error with stack trace is a part of the command bundle.
-		if cmdBundle != nil {
-			_ = cmdBundle.WriteError(ctx, err)
+		// Ensure that the error with stack trace is a part of the command bundle if not written already.
+		if cmdBundle != nil && !serializedErrToBundle {
+			if writeErr := cmdBundle.WriteError(ctx, err); writeErr != nil {
+				fmt.Fprintf(debugSink, "Failed to serialize the command execution error in the bundle: %v\n", writeErr)
+			}
 		}
 		// Ensures graceful invocation of deferred routines in the block above before we exit.
 		panic(exitWithCode{exitCode})
