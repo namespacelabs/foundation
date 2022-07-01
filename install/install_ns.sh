@@ -85,7 +85,7 @@ do_install() {
     $sh_c "mkdir -p ${bin_dir}"
   fi
  
-  download_uri="https://github.com/namespacelabs/foundation/releases/download/v${version}/ns_${version}_${os}_${architecture}.tar.gz"
+  download_uri="https://ns-releases.s3.us-east-2.amazonaws.com/ns/v${version}/ns_${version}_${os}_${architecture}.tar.gz"
 
   echo "Downloading and installing the Namespace CLI from ${download_uri}"
     
