@@ -4,13 +4,15 @@
 
 syntax = "proto3";
 
-package foundation.workspace.tasks.protocol;
+package foundation.schema.storage;
 
-option go_package = "namespacelabs.dev/foundation/workspace/tasks/protocol";
+option go_package = "namespacelabs.dev/foundation/schema/storage";
 
-// Next ID: 12
+// Next ID: 14
 message StoredTask {
     string          id                   = 1;
+    string          parent_id            = 12;
+    string          anchor_id            = 13;
     string          name                 = 2;
     string          human_readable_label = 3;
     int64           created_ts           = 4;  // Unix time.

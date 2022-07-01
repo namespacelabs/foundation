@@ -9,7 +9,7 @@ package foundation.schema.storage;
 option go_package = "namespacelabs.dev/foundation/schema/storage";
 
 import "schema/runtime.proto";
-import "workspace/tasks/protocol/debug.proto";
+import "schema/storage/task.proto";
 
 message LogRef {
     string        package_name   = 1;
@@ -20,11 +20,11 @@ message LogRef {
 }
 
 message Command {
-    repeated foundation.workspace.tasks.protocol.StoredTask action_log = 1;
-    repeated Log attached_log = 2;
-  
+    repeated StoredTask action_log   = 1;
+    repeated Log        attached_log = 2;
+
     message Log {
-      string id = 1;
-      bytes content = 2;
+        string id      = 1;
+        bytes  content = 2;
     }
-  }
+}

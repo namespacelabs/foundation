@@ -30,7 +30,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/maketarfs"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/workspace/tasks/protocol"
 )
 
 const (
@@ -159,7 +158,7 @@ func (b *Bundle) ReadInvocationInfo(ctx context.Context) (*InvocationInfo, error
 	return &info, nil
 }
 
-func (b *Bundle) unmarshalStoredTaskFromActionLogs(path string) (*protocol.StoredTask, error) {
+func (b *Bundle) unmarshalStoredTaskFromActionLogs(path string) (*storage.StoredTask, error) {
 	f, err := b.fsys.Open(path)
 	if err != nil {
 		return nil, err
@@ -170,7 +169,7 @@ func (b *Bundle) unmarshalStoredTaskFromActionLogs(path string) (*protocol.Store
 		return nil, err
 	}
 
-	storedTask := &protocol.StoredTask{}
+	storedTask := &storage.StoredTask{}
 
 	if err := (prototext.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(content, storedTask); err != nil {
 		return nil, err

@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/tasks/protocol"
 	"namespacelabs.dev/go-ids"
 )
@@ -421,9 +422,11 @@ func makeProto(data *EventData, at *EventAttachments) *protocol.Task {
 	return p
 }
 
-func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask {
-	p := &protocol.StoredTask{
+func makeDebugProto(data *EventData, at *EventAttachments) *storage.StoredTask {
+	p := &storage.StoredTask{
 		Id:                 data.ActionID.String(),
+		ParentId:           data.ParentID.String(),
+		AnchorId:           data.AnchorID.String(),
 		Name:               data.Name,
 		HumanReadableLabel: data.HumanReadable,
 		CreatedTs:          data.Created.UnixNano(),
@@ -443,7 +446,7 @@ func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask 
 			serialized = []byte("{\"error\": \"failed to serialize\"}")
 		}
 
-		p.Argument = append(p.Argument, &protocol.StoredTask_Value{
+		p.Argument = append(p.Argument, &storage.StoredTask_Value{
 			Key:       x.Name,
 			JsonValue: string(serialized),
 		})
@@ -458,7 +461,7 @@ func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask 
 					serialized = []byte("{\"error\": \"failed to serialize\"}")
 				}
 
-				p.Result = append(p.Result, &protocol.StoredTask_Value{
+				p.Result = append(p.Result, &storage.StoredTask_Value{
 					Key:       x.Name,
 					JsonValue: string(serialized),
 				})
@@ -466,7 +469,7 @@ func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask 
 		}
 
 		for _, name := range at.insertionOrder {
-			p.Output = append(p.Output, &protocol.StoredTask_Output{
+			p.Output = append(p.Output, &storage.StoredTask_Output{
 				Id:          at.buffers[name.computed].id,
 				Name:        at.buffers[name.computed].name,
 				ContentType: at.buffers[name.computed].contentType,
