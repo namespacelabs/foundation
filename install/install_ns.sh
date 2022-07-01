@@ -5,7 +5,7 @@
 
 set -e
 
-VERSION="0.0.43"
+VERSION="0.0.44"
 
 is_wsl() {
 	case "$(uname -r)" in
@@ -41,10 +41,10 @@ do_install() {
         ;;    
 		  
       --*)
-	    echo "Illegal option $1"
-		;;
-  	esac
-	  shift $(( $# > 0 ? 1 : 0 ))
+        echo "Illegal option $1"
+        ;;
+    esac
+    shift $(( $# > 0 ? 1 : 0 ))
   done
 
   if [ -z "$version" ]; then
