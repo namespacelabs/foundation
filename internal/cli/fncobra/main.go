@@ -81,10 +81,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	setupViper()
 
-	if viper.GetBool("enable_pprof") {
-		go ListenPProf()
-	}
-
 	ctx := context.Background()
 
 	var cleanupTracer func()
@@ -97,6 +93,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	sink, style, flushLogs := consoleToSink(consoleFromFile())
 	ctxWithSink := colors.WithStyle(tasks.WithSink(ctx, sink), style)
 
+	debugSink := console.Debug(ctx)
+
+	if viper.GetBool("enable_pprof") {
+		go ListenPProf(debugSink)
+	}
 	// Some of our builds can go fairly wide on parallelism, requiring opening
 	// hundreds of files, between cache reads, cache writes, etc. This is a best
 	// effort attempt at increasing the file limit to a number we can be more
@@ -295,8 +296,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	cmdCtx := tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx)))
 	err := rootCmd.ExecuteContext(cmdCtx)
-
-	debugSink := console.Debug(ctx)
 
 	if run != nil {
 		actionLogs, logErr := cmdBundle.bundle.ActionLogs(ctxWithSink, debugSink)
