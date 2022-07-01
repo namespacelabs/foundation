@@ -6,12 +6,17 @@ package tool
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
+	"github.com/dustin/go-humanize"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/bytestream"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -26,6 +31,8 @@ import (
 )
 
 var InvocationDebug = false
+
+const toolBackoff = 500 * time.Millisecond
 
 type InvokeProps struct {
 	Event          protocol.Lifecycle
@@ -74,7 +81,7 @@ func (inv *cacheableInvocation) Output() compute.Output {
 	}
 }
 
-func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolved) (*protocol.ToolResponse, error) {
+func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolved) (res *protocol.ToolResponse, err error) {
 	resolvedImage := compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
 	r := inv.handler
 
@@ -166,15 +173,31 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		req.Input = append(req.Input, input)
 	}
 
-	return tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{
-		RedactRequest: func(req proto.Message) proto.Message {
-			// XXX security: think through whether it is OK or not to expose Snapshots here.
-			// For now, assume not.
-			reqcopy := protos.Clone(req).(*protocol.ToolRequest)
-			reqcopy.Snapshot = nil
-			return reqcopy
-		},
-	}.Invoke(ctx, r.Source.PackageName, opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
-		return protocol.NewInvocationServiceClient(conn).Invoke
-	})
+	count := 0
+	err = backoff.Retry(func() error {
+		count++
+
+		res, err = tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{
+			RedactRequest: func(req proto.Message) proto.Message {
+				// XXX security: think through whether it is OK or not to expose Snapshots here.
+				// For now, assume not.
+				reqcopy := protos.Clone(req).(*protocol.ToolRequest)
+				reqcopy.Snapshot = nil
+				return reqcopy
+			},
+		}.Invoke(ctx, r.Source.PackageName, opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
+			return protocol.NewInvocationServiceClient(conn).Invoke
+		})
+
+		if fnerrors.IsInvocationError(err) {
+			fmt.Fprintf(console.Stderr(ctx), "%s: Invoking provisioning tool (%s try) encountered transient failure: %v. Will retry in %v.\n", r.Source.PackageName, humanize.Ordinal(count), err, toolBackoff)
+
+			return err
+		}
+
+		// Only retry invocation errors
+		return backoff.Permanent(err)
+	}, backoff.WithContext(backoff.NewConstantBackOff(toolBackoff), ctx))
+
+	return res, err
 }

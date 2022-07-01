@@ -126,6 +126,16 @@ type invocationError struct {
 	expected bool
 }
 
+func IsInvocationError(err error) bool {
+	if _, ok := err.(*invocationError); ok {
+		return true
+	}
+	if unwrapped := errors.Unwrap(err); unwrapped != nil {
+		return IsInvocationError(unwrapped)
+	}
+	return false
+}
+
 type errWithLogs struct {
 	Err     error
 	readerF func() io.Reader // Returns reader with command's stderr output.
