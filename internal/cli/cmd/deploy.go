@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/stack"
+	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -141,6 +142,8 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 	deploy.SortIngresses(plan.IngressFragment)
 	r := deploy.RenderPortsAndIngresses("", plan.Stack, focusServer, ports, domains, plan.IngressFragment)
 	deploy.RenderText(out, colors.Ctx(ctx), r, false, "")
+
+	storedrun.Attach(r)
 
 	if opts.outputPath != "" {
 		var out Output
