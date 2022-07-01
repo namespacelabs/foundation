@@ -1,0 +1,40 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema.storage;
+
+option go_package = "namespacelabs.dev/foundation/schema/storage";
+
+message NetworkPlan {
+    repeated Endpoint endpoint              = 1;
+    repeated Ingress  ingress               = 2;
+    repeated Ingress  non_local_managed     = 3;
+    repeated Ingress  non_local_non_managed = 4;
+    int32             internal_count        = 5;
+
+    message Endpoint {
+        Label  label          = 1;
+        bool   focus          = 2;
+        string url            = 3;
+        uint32 local_port     = 4;
+        string endpoint_owner = 5;
+    }
+
+    message Ingress {
+        string          fqdn          = 1;
+        string          schema        = 2;
+        string          port_label    = 3;
+        string          command       = 4;
+        string          comment       = 5;
+        uint32          local_port    = 6;
+        repeated string package_owner = 7;
+    }
+
+    message Label {
+        string label         = 1;
+        string service_proto = 2;
+    }
+}

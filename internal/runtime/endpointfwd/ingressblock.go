@@ -183,7 +183,8 @@ func (pi *PortForward) Render(style colors.Style) string {
 	deploy.SortPorts(portFwds, pi.focus)
 
 	var out bytes.Buffer
-	deploy.RenderPortsAndIngresses(&out, style, true, pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, nil)
+	r := deploy.RenderPortsAndIngresses(pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, nil)
+	deploy.RenderText(&out, style, r, true, pi.LocalAddr)
 	return out.String()
 }
 

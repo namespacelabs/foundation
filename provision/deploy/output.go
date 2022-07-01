@@ -6,15 +6,13 @@ package deploy
 
 import (
 	"fmt"
-	"io"
 	"sort"
 	"strings"
 
-	"github.com/muesli/reflow/padding"
-	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 )
 
 type PortFwd struct {
@@ -22,31 +20,16 @@ type PortFwd struct {
 	LocalPort uint
 }
 
-func RenderPortsAndIngresses(out io.Writer, style colors.Style, checkmark bool, localHostname string, stack *schema.Stack, focus []*schema.Server, portFwds []*PortFwd, ingressDomains []*runtime.FilteredDomain, ingress []*schema.IngressFragment) {
-	var longest uint
+func RenderPortsAndIngresses(localHostname string, stack *schema.Stack, focus []*schema.Server, portFwds []*PortFwd, ingressDomains []*runtime.FilteredDomain, ingress []*schema.IngressFragment) *storage.NetworkPlan {
+	r := &storage.NetworkPlan{}
+
 	for _, p := range portFwds {
-		if !isIngress(p.Endpoint) {
-			label := makeServiceLabel(stack, p.Endpoint)
-			if l := uint(len(label)); l > longest {
-				longest = l
-			}
-		}
-	}
-
-	var longestUrl, ingressFwdCount, internalCount uint
-	urls := map[int]string{}
-	for k, p := range portFwds {
 		if isInternal(p.Endpoint) {
-			internalCount++
+			r.InternalCount++
 			continue
 		}
 
-		if isIngress(p.Endpoint) {
-			ingressFwdCount++
-			continue
-		}
-
-		if p.Endpoint.Port == nil {
+		if isIngress(p.Endpoint) || p.Endpoint.Port == nil {
 			continue
 		}
 
@@ -74,60 +57,13 @@ func RenderPortsAndIngresses(out io.Writer, style colors.Style, checkmark bool, 
 			url = fmt.Sprintf("%s:%d --> %d", localHostname, p.LocalPort, p.Endpoint.Port.ContainerPort)
 		}
 
-		urls[k] = url
-		if l := uint(len(url)); l > longestUrl {
-			longestUrl = l
-		}
-	}
-
-	if localHostname == "" {
-		fmt.Fprintf(out, " Services deployed:\n\n")
-	} else {
-		fmt.Fprintf(out, " Services forwarded to %s", style.LessRelevant.Apply("localhost"))
-		if internalCount > 0 {
-			fmt.Fprintf(out, " (+%d internal)", internalCount)
-		}
-		fmt.Fprintf(out, ":\n\n")
-	}
-
-	for k, p := range portFwds {
-		if isIngress(p.Endpoint) || isInternal(p.Endpoint) {
-			continue
-		}
-
-		var protocols uniquestrings.List
-		label := makeServiceLabel(stack, p.Endpoint)
-
-		for _, md := range p.Endpoint.ServiceMetadata {
-			protocols.Add(md.Protocol)
-		}
-
-		isFocus := isFocusEndpoint(focus, p.Endpoint)
-		if isFocus {
-			label = style.Highlight.Apply(label)
-		} else {
-			label = style.Header.Apply(label)
-		}
-
-		url := urls[k]
-		if !isFocus {
-			url = style.Header.Apply(url)
-		}
-
-		if isFocusEndpoint(focus, p.Endpoint) {
-			if k > 0 && !isFocusEndpoint(focus, portFwds[k-1].Endpoint) {
-				fmt.Fprintln(out)
-			}
-		}
-
-		fmt.Fprintf(out, " %s%s  %s%s\n", checkLabel(style, checkmark, isFocus, p.LocalPort),
-			padding.String(label, longest), padding.String(url, longestUrl+2),
-			comment(style, p.Endpoint.EndpointOwner))
-	}
-
-	if len(portFwds) == 0 {
-		fmt.Fprintf(out, "   %s\n", style.LessRelevant.Apply("(none)"))
-
+		r.Endpoint = append(r.Endpoint, &storage.NetworkPlan_Endpoint{
+			Focus:         isFocusEndpoint(focus, p.Endpoint),
+			Label:         makeServiceLabel(stack, p.Endpoint),
+			Url:           url,
+			LocalPort:     uint32(p.LocalPort),
+			EndpointOwner: p.Endpoint.EndpointOwner, // Comment
+		})
 	}
 
 	var nonLocalManaged, nonLocalNonManaged []*runtime.FilteredDomain
@@ -152,72 +88,60 @@ func RenderPortsAndIngresses(out io.Writer, style colors.Style, checkmark bool, 
 
 	for _, p := range portFwds {
 		if isIngress(p.Endpoint) {
-			renderIngress(out, style, checkmark, localDomains, p.LocalPort, "Ingress endpoints forwarded to your workstation")
+			r.Ingress = append(r.Ingress, renderIngress(localDomains, p.LocalPort)...)
 		}
 	}
 
-	if ingressFwdCount == 0 && len(nonLocalManaged) > 0 {
-		renderIngressBlock(out, style, "Ingress configured", nonLocalManaged)
-	}
+	r.NonLocalManaged = renderIngressBlock(nonLocalManaged)
+	r.NonLocalNonManaged = renderIngressBlock(nonLocalNonManaged)
 
-	if ingressFwdCount == 0 && len(nonLocalNonManaged) > 0 {
-		renderIngressBlock(out, style, "Ingress configured, but not managed", nonLocalNonManaged)
-	}
+	return r
 }
 
-func renderIngressBlock(out io.Writer, style colors.Style, label string, fragments []*runtime.FilteredDomain) {
-	fmt.Fprintf(out, "\n %s:\n\n", label)
+func renderIngressBlock(fragments []*runtime.FilteredDomain) []*storage.NetworkPlan_Ingress {
+	var ingresses []*storage.NetworkPlan_Ingress
+	for _, n := range fragments {
+		schema, portLabel, cmd, suffix := domainSchema(n.Domain, 443, n.Endpoints...)
 
-	labels := make([]string, len(fragments))
-	suffixes := make([]string, len(fragments))
-
-	var longestLabel uint
-	for k, n := range fragments {
-		schema, portLabel, cmd, suffix := domainSchema(style, n.Domain, 443, n.Endpoints...)
-		labels[k] = fmt.Sprintf("%s%s%s%s", schema, n.Domain.Fqdn, portLabel, cmd)
-		suffixes[k] = suffix
-
-		if x := uint(len(labels[k])); x > longestLabel {
-			longestLabel = x
-		}
-	}
-
-	for k, n := range fragments {
 		var owners uniquestrings.List
 		for _, endpoint := range n.Endpoints {
 			owners.Add(endpoint.ServerOwner)
 		}
 
-		fmt.Fprintf(out, " %s%s %s%s\n", checkbox(style, true, false),
-			padding.String(labels[k], longestLabel),
-			comment(style, strings.Join(owners.Strings(), ", ")), suffixes[k])
+		ingresses = append(ingresses, &storage.NetworkPlan_Ingress{
+			Fqdn:         n.Domain.Fqdn,
+			Schema:       schema,
+			PortLabel:    portLabel,
+			Command:      cmd,
+			Comment:      suffix,
+			PackageOwner: owners.Strings(),
+		})
 	}
+	return ingresses
 }
 
-func renderIngress(out io.Writer, style colors.Style, checkmark bool, ingressDomains []*runtime.FilteredDomain, localPort uint, label string) {
+func renderIngress(ingressDomains []*runtime.FilteredDomain, localPort uint) []*storage.NetworkPlan_Ingress {
 	if len(ingressDomains) == 0 {
-		return
+		return nil
 	}
 
-	fmt.Fprintf(out, "\n %s:\n\n", label)
-
+	var ingresses []*storage.NetworkPlan_Ingress
 	for _, fd := range ingressDomains {
-		var protocols uniquestrings.List
-		for _, endpoint := range fd.Endpoints {
-			for _, md := range endpoint.ServiceMetadata {
-				if md.Protocol != "" {
-					protocols.Add(md.Protocol)
-				}
-			}
-		}
+		schema, portLabel, cmd, suffix := domainSchema(fd.Domain, localPort, fd.Endpoints...)
 
-		schema, portLabel, cmd, suffix := domainSchema(style, fd.Domain, localPort, fd.Endpoints...)
-
-		fmt.Fprintf(out, " %s%s%s%s%s%s\n", checkLabel(style, checkmark, true, localPort), schema, fd.Domain.Fqdn, portLabel, cmd, suffix)
+		ingresses = append(ingresses, &storage.NetworkPlan_Ingress{
+			LocalPort: uint32(localPort),
+			Schema:    schema,
+			Fqdn:      fd.Domain.Fqdn,
+			PortLabel: portLabel,
+			Command:   cmd,
+			Comment:   suffix,
+		})
 	}
+	return ingresses
 }
 
-func domainSchema(style colors.Style, domain *schema.Domain, localPort uint, endpoints ...*schema.Endpoint) (string, string, string, string) {
+func domainSchema(domain *schema.Domain, localPort uint, endpoints ...*schema.Endpoint) (string, string, string, string) {
 	var protocols uniquestrings.List
 	for _, endpoint := range endpoints {
 		for _, md := range endpoint.GetServiceMetadata() {
@@ -235,7 +159,7 @@ func domainSchema(style colors.Style, domain *schema.Domain, localPort uint, end
 		if protocols.Strings()[0] == "grpc" {
 			schema, portLabel, cmd = grpcSchema(domain.Certificate != nil, localPort)
 			if domain.Certificate == nil {
-				suffix = style.Header.Apply(" # not currently working, see #26")
+				suffix = "not currently working, see #26"
 			}
 		} else {
 			schema, portLabel = httpSchema(domain, localPort)
@@ -245,21 +169,6 @@ func domainSchema(style colors.Style, domain *schema.Domain, localPort uint, end
 	}
 
 	return schema, portLabel, cmd, suffix
-}
-
-func checkLabel(style colors.Style, b, isFocus bool, port uint) string {
-	return checkbox(style, !b || port > 0, !isFocus)
-}
-
-func checkbox(style colors.Style, on, notFocus bool) string {
-	x := " [ ] "
-	if on {
-		x = " [✓] "
-	}
-	if notFocus {
-		return style.Header.Apply(x)
-	}
-	return x
 }
 
 func grpcSchema(tls bool, port uint) (string, string, string) {
@@ -353,13 +262,6 @@ func isFocusEndpoint(focus []*schema.Server, endpoint *schema.Endpoint) bool {
 	return false
 }
 
-func comment(style colors.Style, str string) string {
-	if str == "" {
-		return ""
-	}
-	return style.Comment.Apply("# " + str)
-}
-
 func isIngress(endpoint *schema.Endpoint) bool {
 	return endpoint.EndpointOwner == "" && endpoint.ServiceName == runtime.IngressServiceName
 }
@@ -374,32 +276,21 @@ func isInternal(endpoint *schema.Endpoint) bool {
 	return false
 }
 
-func makeServiceLabel(stack *schema.Stack, endpoint *schema.Endpoint) string {
+func makeServiceLabel(stack *schema.Stack, endpoint *schema.Endpoint) *storage.NetworkPlan_Label {
 	entry := stack.GetServer(schema.PackageName(endpoint.EndpointOwner))
 	if entry != nil {
 		if endpoint.ServiceName == runtime.GrpcGatewayServiceName {
-			return "gRPC gateway"
+			return &storage.NetworkPlan_Label{Label: "gRPC gateway"}
 		}
 
-		return fmt.Sprintf("%s/%s", entry.Server.Name, endpoint.ServiceName)
+		return &storage.NetworkPlan_Label{Label: fmt.Sprintf("%s/%s", entry.Server.Name, endpoint.ServiceName)}
 	}
 
 	for _, md := range endpoint.ServiceMetadata {
 		if md.Protocol == schema.GrpcProtocol {
-			return compressProtoTypename(md.Kind)
+			return &storage.NetworkPlan_Label{ServiceProto: md.Kind}
 		}
 	}
 
-	return endpoint.ServiceName
-}
-
-func compressProtoTypename(t string) string {
-	if len(t) < 40 {
-		return t
-	}
-	parts := strings.Split(t, ".")
-	for k := 0; k < len(parts)-1; k++ {
-		parts[k] = string(parts[k][0])
-	}
-	return strings.Join(parts, ".")
+	return &storage.NetworkPlan_Label{Label: endpoint.ServiceName}
 }

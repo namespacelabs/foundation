@@ -139,7 +139,8 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 
 	deploy.SortPorts(ports, focusServer)
 	deploy.SortIngresses(plan.IngressFragment)
-	deploy.RenderPortsAndIngresses(out, colors.Ctx(ctx), false, "", plan.Stack, focusServer, ports, domains, plan.IngressFragment)
+	r := deploy.RenderPortsAndIngresses("", plan.Stack, focusServer, ports, domains, plan.IngressFragment)
+	deploy.RenderText(out, colors.Ctx(ctx), r, false, "")
 
 	if opts.outputPath != "" {
 		var out Output
