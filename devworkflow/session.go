@@ -159,7 +159,7 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 				fnerrors.Format(console.Stderr(parentCtx), err, fnerrors.WithStyle(colors.WithColors))
 			}
 
-			return nil
+			return err
 		})
 	}
 
