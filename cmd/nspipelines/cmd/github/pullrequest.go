@@ -46,16 +46,21 @@ func newPullRequestCmd() *cobra.Command {
 			return err
 		}
 
-		var relatedPrs []string
+		var relatedPrs []*github.PullRequest
 		for _, pr := range prs {
-			if *pr.Head.Ref == *branch {
-				relatedPrs = append(relatedPrs, *pr.HTMLURL)
+			if *pr.State == "closed" {
+				continue
 			}
+			if *pr.Head.Ref != *branch {
+				continue
+			}
+
+			relatedPrs = append(relatedPrs, pr)
 		}
 
-		fmt.Fprintf(os.Stdout, "Found %d pull requests related to branch %s\n", len(relatedPrs), *branch)
+		fmt.Fprintf(os.Stdout, "Found %d open pull requests related to branch %s\n", len(relatedPrs), *branch)
 		for _, pr := range relatedPrs {
-			fmt.Fprintf(os.Stdout, " - %s\n", pr)
+			fmt.Fprintf(os.Stdout, " - %s (%s)\n", *pr.HTMLURL, *pr.State)
 		}
 
 		hasPr := len(relatedPrs) > 0
