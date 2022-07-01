@@ -24,20 +24,25 @@ is_darwin() {
 }
 
 do_install() {
+  dry_run=false
+
   while [ $# -gt 0 ]; do
-	  case "$1" in
-		  --dry_run)
-			  dry_run=true
-			  ;;
+    case "$1" in
+	  --dry_run)
+	    dry_run=true
+	    ;;
+      
       -v)
         version="$2"
         ;;
+      
       --version)
         version="$2"
         ;;    
-		  --*)
-			  echo "Illegal option $1"
-			  ;;
+		  
+      --*)
+	    echo "Illegal option $1"
+		;;
   	esac
 	  shift $(( $# > 0 ? 1 : 0 ))
   done
@@ -46,12 +51,13 @@ do_install() {
     version="$VERSION"
   fi
 
+  sh_c="sh -c"
   if $dry_run; then
     sh_c="echo"
   fi
 
   echo "Executing the installation script for the Namespace CLI"
-    
+
   if is_darwin; then
     os="darwin"
   elif [ "$(expr substr $(uname -s) 1 5)" = "Linux" ]; then
@@ -64,7 +70,7 @@ do_install() {
   fi
 
   echo "Detected ${os} as the host operating system"
-    
+
   case $(uname -m) in
     x86_64) architecture="amd64" ;;
     arm)    dpkg --print-architecture | grep -q "arm64" && architecture="arm64" || architecture="arm" ;;
@@ -76,25 +82,25 @@ do_install() {
   fi
 
   echo "Detected ${architecture} as the platform architecture"
-  
+
   ns_install="${NS_INSTALL:-$HOME/.ns}"
   bin_dir="$ns_install/bin"
   exe="$bin_dir/ns"
 
   if [ ! -d "$bin_dir" ]; then
-    $sh_c "mkdir -p ${bin_dir}"
+    $sh_c"mkdir -p ${bin_dir}"
   fi
- 
+
   download_uri="https://ns-releases.s3.us-east-2.amazonaws.com/ns/v${version}/ns_${version}_${os}_${architecture}.tar.gz"
 
   echo "Downloading and installing the Namespace CLI from ${download_uri}"
-    
+
   $sh_c "curl --fail --location --progress-bar --output ${exe}.tar.gz ${download_uri}"
-    
-  $sh_c "tar -xvzf ${exe}.tar.gz -C ${bin_dir}"
-    
+
+  $sh_c "tar -xzf ${exe}.tar.gz -C ${bin_dir}"
+
   $sh_c "chmod +x ${exe}"
-    
+
   $sh_c "rm ${exe}.tar.gz"
 
   echo "Namespace CLI was installed successfully to $exe"
