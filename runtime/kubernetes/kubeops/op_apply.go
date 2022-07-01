@@ -35,7 +35,7 @@ func registerApply() {
 
 		header, err := kubeparser.Header([]byte(apply.BodyJson))
 		if err != nil {
-			return nil, fnerrors.BadInputError("kubernetes.apply: failed to parse resource: %w", err)
+			return nil, fnerrors.BadInputError("%s: kubernetes.apply: failed to parse resource: %w", d.Description, err)
 		}
 
 		gv := header.GetObjectKind().GroupVersionKind().GroupVersion()

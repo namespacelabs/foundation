@@ -33,7 +33,7 @@ func registerCreate() {
 		}
 
 		if err := json.Unmarshal([]byte(create.BodyJson), &obj); err != nil {
-			return nil, fnerrors.BadInputError("kubernetes.create: failed to parse resource: %w", err)
+			return nil, fnerrors.BadInputError("%s: kubernetes.create: failed to parse resource: %w", d.Description, err)
 		}
 
 		if create.Resource == "" {
