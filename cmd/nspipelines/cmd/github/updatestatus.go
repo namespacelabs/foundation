@@ -188,8 +188,8 @@ type PipelinePhase struct {
 }
 
 type PipelineState struct {
-	Desc   string          `json:"desc"`
-	Phases []PipelinePhase `json:"phases"`
+	Desc   string           `json:"desc"`
+	Phases []*PipelinePhase `json:"phases"`
 }
 
 func readState(file string, out *PipelineState) error {
@@ -240,7 +240,7 @@ func updateState(current Phase, success bool, file string, state *PipelineState)
 	}
 
 	if current != Phase_Final {
-		state.Phases = append(state.Phases, PipelinePhase{
+		state.Phases = append(state.Phases, &PipelinePhase{
 			Phase: current,
 			State: State_Pending,
 		})
