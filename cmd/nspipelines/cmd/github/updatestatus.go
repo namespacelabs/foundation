@@ -265,13 +265,14 @@ func publishState(ctx context.Context, client *github.Client, owner, repo, commi
 			desc = state.Desc
 		}
 
-		_, _, err := client.Repositories.CreateStatus(ctx, owner, repo, commit, &github.RepoStatus{
+		if _, _, err := client.Repositories.CreateStatus(ctx, owner, repo, commit, &github.RepoStatus{
 			State:       github.String(p.State.String()),
 			Description: github.String(desc),
 			Context:     github.String(p.Phase.Context()),
 			TargetURL:   github.String(url),
-		})
-		return err
+		}); err != nil {
+			return err
+		}
 
 	}
 	return nil
