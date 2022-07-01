@@ -7,9 +7,10 @@ package github
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
-	"strings"
 	"text/template"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
@@ -37,20 +38,37 @@ func newUpdateStatusCmd() *cobra.Command {
 	repo := flag.String("repo", "", "Repository name.")
 	commit := flag.String("commit", "", "Commit's SHA.")
 
-	// Optional - setting commit's status.
 	phase := flag.String("phase", "", "Indicate which pipeline phase has been started. Valid values are INIT, TEST, BUILD, DEPLOY, FINAL.")
 	success := flag.Bool("success", false, "Indicate the final status of the pipeline. Ignored unless --phase=FINAL.")
 	specifiedUrl := flag.String("url", "", "Target URL from status entry.")
 	runResult := flag.String("run_result", "", "A file with the output of runs publish.")
+	pipelineState := flag.String("pipeline_state", "", "A file the pipeline state.")
 
 	// Optional - adding a comment to a commit.
 	comment := flag.String("comment", "", "Comment to add to the commit.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		current, err := parsePhase(*phase)
+		if err != nil {
+			return err
+		}
+
+		var state PipelineState
+		if current != Phase_Init {
+			if err := readState(*pipelineState, &state); err != nil {
+				return fnerrors.New("unable to read pipeline state: %w", err)
+			}
+		}
+
+		if err := updateState(current, *success, *pipelineState, &state); err != nil {
+			return nil
+		}
+
 		itr, err := ghinstallation.NewKeyFromFile(http.DefaultTransport, *appID, *installationID, *privateKey)
 		if err != nil {
 			return err
 		}
+		client := github.NewClient(&http.Client{Transport: itr})
 
 		url := *specifiedUrl
 		if *runResult != "" {
@@ -65,91 +83,8 @@ func newUpdateStatusCmd() *cobra.Command {
 			}
 		}
 
-		client := github.NewClient(&http.Client{Transport: itr})
-
-		current, err := parsePhase(*phase)
-		if err != nil {
-			return err
-		}
-
-		createStatus := func(state State, desc, label string) error {
-			_, _, err := client.Repositories.CreateStatus(ctx, *owner, *repo, *commit, &github.RepoStatus{
-				State:       github.String(state.String()),
-				Description: github.String(desc),
-				Context:     github.String(label),
-				TargetURL:   github.String(url),
-			})
-			return err
-		}
-
-		switch current {
-		case Phase_Init:
-			if err := createStatus(State_Pending, "Initializing...", pipelineLabel); err != nil {
-				return err
-			}
-		case Phase_Test:
-			if err := createStatus(State_Pending, "Testing...", pipelineLabel); err != nil {
-				return err
-			}
-			if err := createStatus(State_Pending, "", fmt.Sprintf("%s/test", pipelineLabel)); err != nil {
-				return err
-			}
-		case Phase_Build:
-			if err := createStatus(State_Pending, "Building...", pipelineLabel); err != nil {
-				return err
-			}
-			if err := createStatus(State_Success, "", fmt.Sprintf("%s/test", pipelineLabel)); err != nil {
-				return err
-			}
-			if err := createStatus(State_Pending, "", fmt.Sprintf("%s/build", pipelineLabel)); err != nil {
-				return err
-			}
-		case Phase_Deploy:
-			if err := createStatus(State_Pending, "Deploying...", pipelineLabel); err != nil {
-				return err
-			}
-			if err := createStatus(State_Success, "", fmt.Sprintf("%s/test", pipelineLabel)); err != nil {
-				return err
-			}
-			if err := createStatus(State_Success, "", fmt.Sprintf("%s/build", pipelineLabel)); err != nil {
-				return err
-			}
-			if err := createStatus(State_Pending, "", fmt.Sprintf("%s/deploy", pipelineLabel)); err != nil {
-				return err
-			}
-		case Phase_Final:
-			if *success {
-				if err := createStatus(State_Success, "Succeeded", pipelineLabel); err != nil {
-					return err
-				}
-			} else {
-				if err := createStatus(State_Failure, "Failed", pipelineLabel); err != nil {
-					return err
-				}
-			}
-
-			// Update pending task statuses.
-			statuses, _, err := client.Repositories.ListStatuses(ctx, *owner, *repo, *commit, &github.ListOptions{})
-			if err != nil {
-				return err
-			}
-			for _, s := range statuses {
-				if s.Context == nil || !strings.HasPrefix(*s.Context, fmt.Sprintf("%s/", pipelineLabel)) {
-					continue
-				}
-				if *s.State != "pending" {
-					continue
-				}
-				if *success {
-					if err := createStatus(State_Success, "", *s.Context); err != nil {
-						return err
-					}
-				} else {
-					if err := createStatus(State_Failure, "", *s.Context); err != nil {
-						return err
-					}
-				}
-			}
+		if err := publishState(ctx, client, *owner, *repo, *commit, url, state); err != nil {
+			return nil
 		}
 
 		if *comment != "" {
@@ -210,6 +145,20 @@ func parsePhase(phase string) (Phase, error) {
 	}
 }
 
+func (p Phase) Context() string {
+	switch p {
+	case Phase_Init:
+		return pipelineLabel
+	case Phase_Test:
+		return fmt.Sprintf("%s/test", pipelineLabel)
+	case Phase_Build:
+		return fmt.Sprintf("%s/build", pipelineLabel)
+	case Phase_Deploy:
+		return fmt.Sprintf("%s/deploy", pipelineLabel)
+	}
+	return ""
+}
+
 type State int
 
 const (
@@ -231,4 +180,99 @@ func (s State) String() string {
 		return "failure"
 	}
 	return ""
+}
+
+type PipelinePhase struct {
+	Phase Phase `json:"phase"`
+	State State `json:"state"`
+}
+
+type PipelineState struct {
+	Desc   string          `json:"desc"`
+	Phases []PipelinePhase `json:"phases"`
+}
+
+func readState(file string, out *PipelineState) error {
+	content, err := ioutil.ReadFile(file)
+	if err != nil {
+		return fnerrors.New("unable to read pipeline state: %w", err)
+	}
+
+	if err := json.Unmarshal(content, out); err != nil {
+		return fnerrors.New("unable to parse pipeline state: %w", err)
+	}
+
+	return nil
+}
+
+func updateState(current Phase, success bool, file string, state *PipelineState) error {
+	switch current {
+	case Phase_Init:
+		state.Desc = "Initializing..."
+	case Phase_Test:
+		state.Desc = "Testing..."
+	case Phase_Build:
+		state.Desc = "Building..."
+		for _, p := range state.Phases {
+			if p.Phase == Phase_Test {
+				p.State = State_Success
+			}
+		}
+	case Phase_Deploy:
+		state.Desc = "Deploying..."
+		for _, p := range state.Phases {
+			if p.Phase == Phase_Build {
+				p.State = State_Success
+			}
+		}
+	case Phase_Final:
+		state.Desc = ""
+		final := State_Success
+		if !success {
+			final = State_Failure
+		}
+
+		for _, p := range state.Phases {
+			if p.State == State_Pending {
+				p.State = final
+			}
+		}
+	}
+
+	if current != Phase_Final {
+		state.Phases = append(state.Phases, PipelinePhase{
+			Phase: current,
+			State: State_Pending,
+		})
+	}
+
+	serialized, err := json.MarshalIndent(*state, "", " ")
+	if err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(file, serialized, 0644); err != nil {
+		return fnerrors.New("failed to write %q: %w", file, err)
+	}
+
+	return nil
+}
+
+func publishState(ctx context.Context, client *github.Client, owner, repo, commit, url string, state PipelineState) error {
+	for _, p := range state.Phases {
+		desc := ""
+		if p.Phase == Phase_Init {
+			desc = state.Desc
+		}
+
+		_, _, err := client.Repositories.CreateStatus(ctx, owner, repo, commit, &github.RepoStatus{
+			State:       github.String(p.State.String()),
+			Description: github.String(desc),
+			Context:     github.String(p.Phase.Context()),
+			TargetURL:   github.String(url),
+		})
+		return err
+
+	}
+	return nil
 }
