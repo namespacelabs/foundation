@@ -296,7 +296,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	cmdCtx := tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx)))
 	err := rootCmd.ExecuteContext(cmdCtx)
 
-	debugSink := console.Stderr(ctx)
+	debugSink := console.Debug(ctx)
 
 	if run != nil {
 		actionLogs, logErr := cmdBundle.bundle.ActionLogs(ctxWithSink, debugSink)
