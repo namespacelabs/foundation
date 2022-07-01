@@ -6,7 +6,8 @@ package fncobra
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -15,13 +16,13 @@ import (
 	"namespacelabs.dev/foundation/internal/fnnet"
 )
 
-func ListenPProf() {
-	if err := listenPProf(); err != nil {
-		log.Printf("pprof: failed to listen: %v", err)
+func ListenPProf(debugSink io.Writer) {
+	if err := listenPProf(debugSink); err != nil {
+		fmt.Fprintf(debugSink, "pprof: failed to listen: %v", err)
 	}
 }
 
-func listenPProf() error {
+func listenPProf(debugSink io.Writer) error {
 	const target = 6060
 
 	h := mux.NewRouter()
@@ -32,7 +33,7 @@ func listenPProf() error {
 	}
 
 	localPort := lst.Addr().(*net.TCPAddr).Port
-	log.Printf("pprof: listening on http://127.0.0.1:%d/debug/pprof/", localPort)
+	fmt.Fprintf(debugSink, "pprof: listening on http://127.0.0.1:%d/debug/pprof/", localPort)
 
 	return http.Serve(lst, h)
 }
