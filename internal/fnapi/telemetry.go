@@ -40,7 +40,8 @@ type Telemetry struct {
 
 	backendAddress string
 	recID          atomic.String // Set after an invocation is recorded.
-	makeClientID   func(context.Context) (clientID, bool)
+	// The client ID should be anonymous and never be associated with any user credentials.
+	makeClientID func(context.Context) (clientID, bool)
 }
 
 func NewTelemetry() *Telemetry {
@@ -50,18 +51,6 @@ func NewTelemetry() *Telemetry {
 		backendAddress: viper.GetString("api_endpoint"),
 		makeClientID:   generateClientIDAndSalt,
 	}
-}
-
-func TelemetryOn(ctx context.Context) *Telemetry {
-	v := ctx.Value(_telemetryKey)
-	if v == nil {
-		return nil
-	}
-	return v.(*Telemetry)
-}
-
-func WithTelemetry(ctx context.Context, t *Telemetry) context.Context {
-	return context.WithValue(ctx, _telemetryKey, t)
 }
 
 func (tel *Telemetry) IsTelemetryEnabled() bool {
@@ -119,21 +108,10 @@ type recordErrorRequest struct {
 	Message string `json:"message,omitempty"`
 }
 
-type recordLoginRequest struct {
-	UserId         string `json:"user_id,omitempty"`
-	GithubUserName string `json:"github_user_name,omitempty"`
-}
-
 type clientID struct {
 	ID   string `json:"id"`
 	Salt string `json:"salt"`
 }
-
-type contextKey string
-
-var (
-	_telemetryKey = contextKey("fn.telemetry")
-)
 
 func newRandID() string {
 	return ids.NewRandomBase62ID(16)
@@ -265,35 +243,6 @@ func (tel *Telemetry) RecordInvocation(ctx context.Context, cmd *cobra.Command, 
 	go tel.recordInvocation(ctx, cmd, reqID, args)
 
 	return reqID
-}
-
-func (tel *Telemetry) RecordLogin(ctx context.Context, githubUserName string) {
-	// Telemetry should be best effort and not block the user.
-	go tel.recordLogin(ctx, githubUserName)
-}
-
-func (tel *Telemetry) recordLogin(ctx context.Context, githubUserName string) {
-	if !tel.IsTelemetryEnabled() {
-		return
-	}
-
-	clientId, _ := tel.makeClientID(ctx)
-
-	req := recordLoginRequest{UserId: clientId.ID, GithubUserName: githubUserName}
-
-	if err := tel.postRecordLoginRequest(ctx, &req); err != nil {
-		tel.logError(ctx, err)
-		return
-	}
-}
-
-func (tel *Telemetry) postRecordLoginRequest(ctx context.Context, req *recordLoginRequest) error {
-	ctx, cancel := context.WithTimeout(ctx, postTimeout)
-	defer cancel()
-
-	return callAPI(ctx, tel.backendAddress, fmt.Sprintf("%s/RecordLogin", telemetryServiceName), req, func(dec *json.Decoder) error {
-		return nil // ignore the response
-	})
 }
 
 func (tel *Telemetry) postRecordErrorRequest(ctx context.Context, req recordErrorRequest) error {

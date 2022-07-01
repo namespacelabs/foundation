@@ -95,7 +95,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	tel := fnapi.NewTelemetry()
 
 	sink, style, flushLogs := consoleToSink(consoleFromFile())
-	ctxWithSink := fnapi.WithTelemetry(colors.WithStyle(tasks.WithSink(ctx, sink), style), tel)
+	ctxWithSink := colors.WithStyle(tasks.WithSink(ctx, sink), style)
 
 	// Some of our builds can go fairly wide on parallelism, requiring opening
 	// hundreds of files, between cache reads, cache writes, etc. This is a best
