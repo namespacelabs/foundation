@@ -91,6 +91,7 @@ type ActionEvent struct {
 
 type attachedBuffer struct {
 	buffer      readerWriter
+	id          string
 	name        string
 	contentType string
 }
@@ -409,6 +410,7 @@ func makeProto(data *EventData, at *EventAttachments) *protocol.Task {
 		at.mu.Lock()
 		for _, name := range at.insertionOrder {
 			p.Output = append(p.Output, &protocol.Task_Output{
+				Id:          at.buffers[name.computed].id,
 				Name:        at.buffers[name.computed].name,
 				ContentType: at.buffers[name.computed].contentType,
 			})
@@ -463,9 +465,9 @@ func makeDebugProto(data *EventData, at *EventAttachments) *protocol.StoredTask 
 			}
 		}
 
-		for k, name := range at.insertionOrder {
+		for _, name := range at.insertionOrder {
 			p.Output = append(p.Output, &protocol.StoredTask_Output{
-				Id:          fmt.Sprintf("%d", k),
+				Id:          at.buffers[name.computed].id,
 				Name:        at.buffers[name.computed].name,
 				ContentType: at.buffers[name.computed].contentType,
 			})
@@ -608,6 +610,7 @@ func (ev *EventAttachments) seal() {
 	for name, b := range ev.buffers {
 		if cb, ok := b.buffer.(*syncbuffer.ByteBuffer); ok {
 			ev.buffers[name] = attachedBuffer{
+				id:          ids.NewRandomBase62ID(8),
 				buffer:      cb.Seal(),
 				name:        b.name,
 				contentType: b.contentType,
@@ -624,6 +627,7 @@ func (ev *EventAttachments) attach(name OutputName, body []byte) {
 
 	ev.insertionOrder = append(ev.insertionOrder, name)
 	ev.buffers[name.computed] = attachedBuffer{
+		id:          ids.NewRandomBase62ID(8),
 		buffer:      syncbuffer.Seal(body),
 		name:        name.name,
 		contentType: name.contentType,
@@ -745,6 +749,7 @@ func (ev *EventAttachments) ensureOutput(name OutputName, addIfMissing bool) (io
 		}
 
 		ev.buffers[name.computed] = attachedBuffer{
+			id:          ids.NewRandomBase62ID(8),
 			buffer:      syncbuffer.NewByteBuffer(),
 			name:        name.name,
 			contentType: name.contentType,

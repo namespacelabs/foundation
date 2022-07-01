@@ -295,8 +295,19 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	cmdCtx := tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx)))
 	err := rootCmd.ExecuteContext(cmdCtx)
 
+	debugSink := console.Debug(ctx)
+
 	if run != nil {
-		err = run.Output(cmdCtx, err) // If requested, store the run results.
+		actionLogs, logErr := cmdBundle.bundle.ActionLogs(ctxWithSink, debugSink)
+		if logErr == nil {
+			storedrun.Attach(actionLogs)
+		} else {
+			fmt.Fprintf(debugSink, "Failed to write action logs: %v\n", logErr)
+		}
+		runErr := run.Output(cmdCtx, err) // If requested, store the run results.
+		if runErr != nil {
+			fmt.Fprintf(debugSink, "Failed to write run results: %v\n", runErr)
+		}
 	}
 
 	if flushLogs != nil {

@@ -22,11 +22,15 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	stacktraceserializer "namespacelabs.dev/foundation/internal/fnerrors/stacktrace/serializer"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/maketarfs"
+	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/workspace/tasks/protocol"
 )
 
 const (
@@ -153,6 +157,87 @@ func (b *Bundle) ReadInvocationInfo(ctx context.Context) (*InvocationInfo, error
 		return nil, fnerrors.InternalError("failed to unmarshal `invocation_info.json`: %w", err)
 	}
 	return &info, nil
+}
+
+func (b *Bundle) unmarshalStoredTaskFromActionLogs(path string) (*protocol.StoredTask, error) {
+	f, err := b.fsys.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	content, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	storedTask := &protocol.StoredTask{}
+
+	if err := (prototext.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(content, storedTask); err != nil {
+		return nil, err
+	} else {
+		return storedTask, nil
+	}
+}
+
+func (b *Bundle) unmarshalAttachment(path string) (*storage.Command_Log, error) {
+	f, err := b.fsys.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	content, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return &storage.Command_Log{
+		Id:      path,
+		Content: content,
+	}, nil
+}
+
+func (b *Bundle) ActionLogs(ctx context.Context, debug io.Writer) (*storage.Command, error) {
+	cmd := &storage.Command{}
+
+	var errs []error
+
+	err := fs.WalkDir(b.fsys, ".", func(path string, dirent fs.DirEntry, err error) error {
+		if err != nil {
+			fmt.Fprintf(debug, "Failed to walk %s: %v\n", path, err)
+			return nil
+		}
+
+		if path == "." {
+			return nil
+		}
+
+		// Unmarshal the action log file if present.
+		if strings.HasSuffix(path, "action.textpb") {
+			if storedTask, err := b.unmarshalStoredTaskFromActionLogs(path); err != nil {
+				fmt.Fprintf(debug, "Failed to unmarshal stored task from action logs for path %s: %v\n", path, err)
+				errs = append(errs, err)
+			} else {
+				fmt.Fprintf(debug, "Writing stored task %s from path %s\n", storedTask.Name, path)
+				cmd.ActionLog = append(cmd.ActionLog, storedTask)
+			}
+			return nil
+		} else {
+			fileExtension := filepath.Ext(path)
+			if fileExtension != "" {
+				if attachment, err := b.unmarshalAttachment(path); err == nil {
+					fmt.Fprintf(debug, "Writing stored attachment with ID %q\n", attachment.Id)
+					cmd.AttachedLog = append(cmd.AttachedLog, attachment)
+				} else {
+					fmt.Fprintf(debug, "Failed to unmarshal artifact from path %s: %v\n", path, err)
+				}
+			}
+		}
+		return nil
+	})
+
+	errs = append(errs, err)
+
+	return cmd, multierr.New(errs...)
 }
 
 func (b *Bundle) EncryptTo(ctx context.Context, dst io.Writer) error {
