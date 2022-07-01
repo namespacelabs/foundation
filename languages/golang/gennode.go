@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/template"
 
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/internal/support/naming"
@@ -129,6 +130,11 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 			scoped = append(scoped, s)
 			break
 		}
+	}
+
+	if len(initializers) > 0 && len(single.DepVars) == 0 {
+		// TODO remove with #717
+		return fnerrors.New("%s: Nodes with initializers but no dependencies are not yet supported.", loc.PackageName)
 	}
 
 	return generateGoSource(ctx, fs, loc.Rel(depsFilename), imports, serviceTmpl, nodeTmplOptions{
@@ -291,7 +297,7 @@ func {{longMakeDeps $v.PackageName $v.Scope}}(ctx context.Context, di {{$opts.Im
 				{{- if $refs.Scoped}}
 					{{- if $refs.Single}}return {{else}}
 						if err := {{end -}}
-				di.Instantiate(ctx, {{$opts.Imports.Ensure $p.PackageName.String}}{{longProviderType $p.PackageName $refs.Scoped.Scope}}, func(ctx context.Context, scoped interface{}) (err error) { 
+				di.Instantiate(ctx, {{$opts.Imports.Ensure $p.PackageName.String}}{{longProviderType $p.PackageName $refs.Scoped.Scope}}, func(ctx context.Context, scoped interface{}) (err error) {
 				{{end}}
 				{{$p.ProtoComments -}}
 				{{range $p.DepVars -}}
