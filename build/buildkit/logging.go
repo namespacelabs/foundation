@@ -5,13 +5,14 @@
 package buildkit
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
+	"github.com/kr/text"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/util/progress/progressui"
 	"github.com/opencontainers/go-digest"
@@ -43,7 +44,7 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 	jsonWriters := []io.Writer{outJSON}
 
 	if OutputToStdout {
-		writers = append(writers, console.Stdout(ctx))
+		writers = append(writers, text.NewIndentWriter(console.Stdout(ctx), []byte("[buildkit] ")))
 	}
 
 	count := len(writers) + len(jsonWriters) + 1
@@ -78,7 +79,7 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 			// then buildkit's Solve can't return, as it's waiting to push a status update. And
 			// that will lead to it never returning from a cancelation (8h+ were spent on this issue).
 			_, err := progressui.DisplaySolveStatus(context.Background(), "", nil,
-				logAsWriter{log.New(writers[k], "[buildkit] ", log.Ldate|log.Ltime|log.Lmicroseconds)}, chs[k])
+				&timestampPrefixWriter{writers[k], time.Now, true}, chs[k])
 			if err != nil {
 				return fnerrors.InternalError("buildkit progress ui failed: %w", err)
 			}
@@ -246,11 +247,29 @@ func pushJsonEvent(w io.Writer, ev jsonEvent) error {
 	return nil
 }
 
-type logAsWriter struct {
-	l *log.Logger
+type timestampPrefixWriter struct {
+	w                io.Writer
+	clock            func() time.Time
+	pendingTimestamp bool
 }
 
-func (l logAsWriter) Write(b []byte) (int, error) {
-	l.l.Print(string(b))
-	return len(b), nil
+func (tsw *timestampPrefixWriter) Write(p []byte) (int, error) {
+	for len(p) > 0 {
+		if tsw.pendingTimestamp {
+			fmt.Fprintf(tsw.w, "%s ", tsw.clock().Format(time.RFC3339Nano))
+			tsw.pendingTimestamp = false
+		}
+
+		k := bytes.Index(p, []byte("\n"))
+		if k < 0 {
+			_, _ = tsw.w.Write(p)
+			break
+		} else {
+			_, _ = tsw.w.Write(p[:(k + 1)])
+			p = p[k+1:]
+			tsw.pendingTimestamp = true
+		}
+	}
+
+	return len(p), nil
 }
