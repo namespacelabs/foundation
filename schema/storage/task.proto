@@ -8,7 +8,9 @@ package foundation.schema.storage;
 
 option go_package = "namespacelabs.dev/foundation/schema/storage";
 
-// Next ID: 14
+import "google/protobuf/any.proto";
+
+// Next ID: 17
 message StoredTask {
     string          id                   = 1;
     string          parent_id            = 12;
@@ -17,12 +19,17 @@ message StoredTask {
     string          human_readable_label = 3;
     int64           created_ts           = 4;  // Unix time.
     int64           completed_ts         = 5;  // Unix time.
-    string          error_message        = 6;  // When completed_ts is set.
     repeated string scope                = 7;
     repeated Value  argument             = 8;
     repeated Value  result               = 9;
     repeated Output output               = 10;
     bool            cached               = 11;
+
+    int32    error_code                        = 15;
+    string   error_message                     = 6;  // When completed_ts is set.
+    repeated google.protobuf.Any error_details = 16;
+
+    int32 log_level = 14;
 
     message Value {
         string key        = 1;

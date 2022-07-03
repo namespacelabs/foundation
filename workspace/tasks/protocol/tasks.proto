@@ -9,23 +9,21 @@ package foundation.workspace.tasks.protocol;
 option go_package = "namespacelabs.dev/foundation/workspace/tasks/protocol";
 
 message Task {
-    string id = 1;
-    string name = 2;
-    string human_readable_label = 3;
-    int64 created_ts = 4; // Unix time.
-    int64 completed_ts = 5; // Unix time.
-    string error_message = 6; // When completed_ts is set.
-    repeated Output output = 7;
-    map<string, string> labels = 8;
-    map<string, string> annotations = 9;
-    repeated string scope = 11;
-    string env_name = 12;
+    string          id                   = 1;
+    string          name                 = 2;
+    string          human_readable_label = 3;
+    int64           created_ts           = 4;  // Unix time.
+    int64           completed_ts         = 5;  // Unix time.
+    string          error_message        = 6;  // When completed_ts is set.
+    repeated Output output               = 7;
+    repeated string scope                = 11;
+    string          env_name             = 12;
 
-    reserved 10;
+    reserved 8, 9, 10;
 
     message Output {
-        string id = 3;
-        string name = 1;
+        string id           = 3;
+        string name         = 1;
         string content_type = 2;
     }
 }

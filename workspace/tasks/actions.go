@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
@@ -422,7 +423,7 @@ func makeProto(data *EventData, at *EventAttachments) *protocol.Task {
 	return p
 }
 
-func makeDebugProto(data *EventData, at *EventAttachments) *storage.StoredTask {
+func makeStoreProto(data *EventData, at *EventAttachments) *storage.StoredTask {
 	p := &storage.StoredTask{
 		Id:                 data.ActionID.String(),
 		ParentId:           data.ParentID.String(),
@@ -431,12 +432,16 @@ func makeDebugProto(data *EventData, at *EventAttachments) *storage.StoredTask {
 		HumanReadableLabel: data.HumanReadable,
 		CreatedTs:          data.Created.UnixNano(),
 		Scope:              data.Scope.PackageNamesAsString(),
+		LogLevel:           int32(data.Level),
 	}
 
 	if data.State == ActionDone {
 		p.CompletedTs = data.Completed.UnixNano()
 		if data.Err != nil {
-			p.ErrorMessage = data.Err.Error()
+			st, _ := status.FromError(data.Err)
+			p.ErrorCode = int32(st.Code())
+			p.ErrorMessage = st.Message()
+			p.ErrorDetails = st.Proto().Details
 		}
 	}
 

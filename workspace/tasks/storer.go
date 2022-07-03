@@ -42,7 +42,7 @@ func (st *Storer) Store(af *RunningAction) {
 func (st *Storer) store(af *RunningAction) error {
 	actionId := af.Data.ActionID
 
-	pbytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(makeDebugProto(&af.Data, af.attachments))
+	pbytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(makeStoreProto(&af.Data, af.attachments))
 	if err != nil {
 		return err
 	}
