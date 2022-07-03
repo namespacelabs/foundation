@@ -7,10 +7,11 @@ package eks
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/eks/types"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
@@ -23,41 +24,60 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+const minimumTokenExpiry = 5 * time.Minute
+
 func Register() {
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster", prepareDescribeCluster)
 
-	client.RegisterProvider("aws/eks", func(ctx context.Context, ck *devhost.ConfigKey) (*clientcmdapi.Config, error) {
-		conf := &EKSCluster{}
-
-		if !ck.Selector.Select(ck.DevHost).Get(conf) {
-			return nil, fnerrors.BadInputError("eks provider configured, but missing EKSCluster")
-		}
-
-		s, err := NewSession(ctx, ck.DevHost, ck.Selector)
-		if err != nil {
-			return nil, fnerrors.InternalError("failed to create session: %w", err)
-		}
-
-		return KubeconfigWithBearerToken(ctx, s, conf.Name)
-	})
-
-	client.RegisterBearerTokenProvider("eks", func(ctx context.Context, ck *devhost.ConfigKey) (string, error) {
-		conf := &EKSCluster{}
-
-		if !ck.Selector.Select(ck.DevHost).Get(conf) {
-			return "", fnerrors.BadInputError("eks bearer token provider configured, but missing EKSCluster")
-		}
-
-		s, err := NewSession(ctx, ck.DevHost, ck.Selector)
-		if err != nil {
-			return "", fnerrors.InternalError("failed to create session: %w", err)
-		}
-
-		token, err := ComputeToken(ctx, s, conf.Name)
-		return token.Token, err
-	})
+	client.RegisterProvider("eks", provideEKS)
+	client.RegisterProvider("aws/eks", provideEKS)
 
 	RegisterGraphHandlers()
+}
+
+func provideEKS(ctx context.Context, ck *devhost.ConfigKey) (client.Provider, error) {
+	conf := &EKSCluster{}
+
+	if !ck.Selector.Select(ck.DevHost).Get(conf) {
+		return client.Provider{}, fnerrors.BadInputError("eks provider configured, but missing EKSCluster")
+	}
+
+	s, err := NewSession(ctx, ck.DevHost, ck.Selector)
+	if err != nil {
+		return client.Provider{}, fnerrors.InternalError("failed to create session: %w", err)
+	}
+
+	cfg, err := KubeconfigFromCluster(ctx, s, conf.Name)
+	if err != nil {
+		return client.Provider{}, err
+	}
+
+	var mu sync.Mutex
+	var lastToken *Token
+
+	return client.Provider{
+		Config: *cfg,
+		TokenProvider: func(ctx context.Context) (string, error) {
+			mu.Lock()
+			l := lastToken
+			mu.Unlock()
+
+			if l != nil && time.Now().Add(minimumTokenExpiry).Before(l.Expiration) {
+				return l.Token, nil
+			}
+
+			token, err := ComputeBearerToken(ctx, s, conf.Name)
+			if err != nil {
+				return "", err
+			}
+
+			mu.Lock()
+			lastToken = &token
+			mu.Unlock()
+
+			return token.Token, nil
+		},
+	}, nil
 }
 
 func prepareDescribeCluster(ctx context.Context, env ops.Environment, se *schema.Stack_Entry) (*frontend.PrepareProps, error) {

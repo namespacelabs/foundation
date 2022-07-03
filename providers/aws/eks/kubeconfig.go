@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-func Kubeconfig(cluster *types.Cluster, bearerToken string) (*clientcmdapi.Config, error) {
+func Kubeconfig(cluster *types.Cluster) (*clientcmdapi.Config, error) {
 	if cluster.Name == nil {
 		return nil, fnerrors.BadInputError("cluster name is missing")
 	}
@@ -46,25 +46,15 @@ func Kubeconfig(cluster *types.Cluster, bearerToken string) (*clientcmdapi.Confi
 				AuthInfo: contextName,
 			},
 		},
-		AuthInfos: map[string]*clientcmdapi.AuthInfo{
-			contextName: {
-				Token: bearerToken,
-			},
-		},
 		CurrentContext: contextName,
 	}, nil
 }
 
-func KubeconfigWithBearerToken(ctx context.Context, s *Session, clusterName string) (*clientcmdapi.Config, error) {
+func KubeconfigFromCluster(ctx context.Context, s *Session, clusterName string) (*clientcmdapi.Config, error) {
 	cluster, err := DescribeCluster(ctx, s, clusterName)
 	if err != nil {
 		return nil, err
 	}
 
-	token, err := ComputeToken(ctx, s, clusterName)
-	if err != nil {
-		return nil, err
-	}
-
-	return Kubeconfig(cluster, token.Token)
+	return Kubeconfig(cluster)
 }

@@ -27,7 +27,7 @@ func newGenerateTokenCmd() *cobra.Command {
 			return err
 		}
 
-		token, err := eks.ComputeToken(ctx, s, args[0])
+		token, err := eks.ComputeBearerToken(ctx, s, args[0])
 		if err != nil {
 			return err
 		}

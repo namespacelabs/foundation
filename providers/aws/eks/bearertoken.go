@@ -14,7 +14,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-func ComputeToken(ctx context.Context, s *Session, clusterName string) (Token, error) {
+func ComputeBearerToken(ctx context.Context, s *Session, clusterName string) (Token, error) {
 	g := generator{
 		client: sts.NewPresignClient(sts.NewFromConfig(s.sesh.Config())),
 	}
