@@ -61,6 +61,12 @@ func Register() {
 }
 
 func prepareDescribeCluster(ctx context.Context, env ops.Environment, se *schema.Stack_Entry) (*frontend.PrepareProps, error) {
+	// XXX this breaks test/production similarity, but for the moment hide EKS
+	// from tests. This removes the ability for tests to allocate IAM resources.
+	if env.Proto().Ephemeral {
+		return nil, nil
+	}
+
 	s, err := NewOptionalSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
 	if err != nil {
 		return nil, err

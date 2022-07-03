@@ -35,11 +35,6 @@ func (provisionHook) Apply(ctx context.Context, r configure.StackRequest, out *c
 		return fnerrors.BadInputError("universe/aws/irsa only supports kubernetes")
 	}
 
-	// Don't attempt to allocate IAM resources when the environment is ephemeral (e.g. a test).
-	if r.Env.Ephemeral {
-		return nil
-	}
-
 	serviceAccount := &kubedef.ServiceAccountDetails{}
 	if err := r.UnpackInput(serviceAccount); err != nil {
 		return err
