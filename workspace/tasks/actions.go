@@ -67,21 +67,22 @@ const (
 )
 
 type EventData struct {
-	ActionID      ActionID
-	ParentID      ActionID
-	AnchorID      ActionID // This action represents "waiting" on the action represented by `anchorID`.
-	State         ActionState
-	Name          string
-	HumanReadable string // If not set, name is used.
-	Category      string
-	Created       time.Time
-	Started       time.Time
-	Completed     time.Time
-	Arguments     []ActionArgument
-	Scope         schema.PackageList
-	Level         int
-	Indefinite    bool
-	Err           error
+	ActionID       ActionID
+	ParentID       ActionID
+	AnchorID       ActionID // This action represents "waiting" on the action represented by `anchorID`.
+	State          ActionState
+	Name           string
+	HumanReadable  string // If not set, name is used.
+	Category       string
+	Created        time.Time
+	Started        time.Time
+	Completed      time.Time
+	Arguments      []ActionArgument
+	Scope          schema.PackageList
+	Level          int
+	HasPrivateData bool
+	Indefinite     bool
+	Err            error
 }
 
 type ActionEvent struct {
@@ -191,6 +192,11 @@ func (ev *ActionEvent) Parent(tid ActionID) *ActionEvent {
 
 func (ev *ActionEvent) Scope(pkgs ...schema.PackageName) *ActionEvent {
 	ev.data.Scope.AddMultiple(pkgs...)
+	return ev
+}
+
+func (ev *ActionEvent) IncludesPrivateData() *ActionEvent {
+	ev.data.HasPrivateData = true
 	return ev
 }
 
@@ -446,14 +452,9 @@ func makeStoreProto(data *EventData, at *EventAttachments) *storage.StoredTask {
 	}
 
 	for _, x := range data.Arguments {
-		serialized, err := json.MarshalIndent(x.Msg, "", "  ")
-		if err != nil {
-			serialized = []byte("{\"error\": \"failed to serialize\"}")
-		}
-
 		p.Argument = append(p.Argument, &storage.StoredTask_Value{
 			Key:       x.Name,
-			JsonValue: string(serialized),
+			JsonValue: serialize(x.Msg, data.HasPrivateData),
 		})
 	}
 
@@ -461,29 +462,39 @@ func makeStoreProto(data *EventData, at *EventAttachments) *storage.StoredTask {
 		at.mu.Lock()
 		if at.ResultData.Items != nil {
 			for _, x := range at.Items {
-				serialized, err := json.MarshalIndent(x.Msg, "", "  ")
-				if err != nil {
-					serialized = []byte("{\"error\": \"failed to serialize\"}")
-				}
-
 				p.Result = append(p.Result, &storage.StoredTask_Value{
 					Key:       x.Name,
-					JsonValue: string(serialized),
+					JsonValue: serialize(x.Msg, data.HasPrivateData),
 				})
 			}
 		}
 
-		for _, name := range at.insertionOrder {
-			p.Output = append(p.Output, &storage.StoredTask_Output{
-				Id:          at.buffers[name.computed].id,
-				Name:        at.buffers[name.computed].name,
-				ContentType: at.buffers[name.computed].contentType,
-			})
+		if !data.HasPrivateData {
+			for _, name := range at.insertionOrder {
+				p.Output = append(p.Output, &storage.StoredTask_Output{
+					Id:          at.buffers[name.computed].id,
+					Name:        at.buffers[name.computed].name,
+					ContentType: at.buffers[name.computed].contentType,
+				})
+			}
 		}
 		at.mu.Unlock()
 	}
 
 	return p
+}
+
+func serialize(msg interface{}, hasPrivateData bool) string {
+	if hasPrivateData {
+		return "$redacted"
+	}
+
+	serialized, err := json.MarshalIndent(msg, "", "  ")
+	if err != nil {
+		return "{\"error\": \"failed to serialize\"}"
+	}
+
+	return string(serialized)
 }
 
 func (af *RunningAction) ID() ActionID                   { return af.Data.ActionID }

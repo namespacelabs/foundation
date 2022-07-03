@@ -20,7 +20,7 @@ import (
 
 func callProdAPI(ctx context.Context, method string, req interface{}, handle func(dec *json.Decoder) error) error {
 	endpoint := viper.GetString("api_endpoint")
-	return tasks.Action("fnapi.call").LogLevel(2).Arg("endpoint", endpoint).Arg("method", method).Arg("request", req).Run(ctx, func(ctx context.Context) error {
+	return tasks.Action("fnapi.call").LogLevel(2).IncludesPrivateData().Arg("endpoint", endpoint).Arg("method", method).Arg("request", req).Run(ctx, func(ctx context.Context) error {
 		return callAPI(ctx, endpoint, method, req, handle)
 	})
 }
