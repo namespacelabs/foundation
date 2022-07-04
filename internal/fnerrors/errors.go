@@ -241,7 +241,7 @@ func WithTracing(tracing bool) FormatOption {
 
 func isFnError(err error) bool {
 	switch err.(type) {
-	case *fnError, *usageError, *userError, *internalError, *invocationError, *DependencyFailedError, *VersionError:
+	case *fnError, *userError, *internalError, *invocationError, *DependencyFailedError, *VersionError:
 		return true
 	}
 	return false
@@ -271,6 +271,7 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 			break
 		}
 	}
+
 	format(w, cause, opts)
 }
 
@@ -354,8 +355,7 @@ func formatErrWithLogs(w io.Writer, err *errWithLogs, opts *FormatOptions) {
 func formatUsageError(w io.Writer, err *usageError, opts *FormatOptions) {
 	// XXX don't wordwrap if terminal is below 80 chars in width.
 	errTxt := text.Wrap(err.Why, 80)
-	fmt.Fprintf(w, "%s: %s %s\n", opts.style.LogResult.Apply("usage error"),
-		errTxt, opts.style.Highlight.Apply(err.What))
+	fmt.Fprintf(w, "%s\n\n  %s\n", errTxt, opts.style.Highlight.Apply(err.What))
 }
 
 func formatInternalError(w io.Writer, err *internalError, opts *FormatOptions) {
