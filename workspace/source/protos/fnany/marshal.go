@@ -17,7 +17,7 @@ import (
 func Marshal(pkg schema.PackageName, msg proto.Message) (*anypb.Any, error) {
 	typename := string(msg.ProtoReflect().Descriptor().FullName())
 
-	msgBytes, err := proto.Marshal(msg)
+	msgBytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(msg)
 	if err != nil {
 		return nil, fnerrors.InternalError("%s: %s: failed to marshal message: %w", pkg, typename, err)
 	}
