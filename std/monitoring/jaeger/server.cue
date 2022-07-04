@@ -17,7 +17,7 @@ server: fn.#OpaqueServer & {
 	}
 
 	service: "web": {
-		label: "Jaeger"
+		label:         "Jaeger"
 		containerPort: 16686
 		metadata: {
 			protocol: "http"

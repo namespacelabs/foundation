@@ -11,7 +11,7 @@ server: fn.#OpaqueServer & {
 	}
 
 	service: "web": {
-		label: "Grafana"
+		label:         "Grafana"
 		containerPort: 3000
 		metadata: protocol: "http"
 	}

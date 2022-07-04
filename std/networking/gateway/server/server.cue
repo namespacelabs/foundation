@@ -10,7 +10,7 @@ server: fn.#OpaqueServer & {
 
 	service: {
 		"admin": {
-			label: "Envoy (admin)"
+			label:         "Envoy (admin)"
 			containerPort: 19000
 			metadata: protocol: "http"
 		}
