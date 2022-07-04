@@ -263,6 +263,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		fnapi.NamingForceStored, "If set to true, if there's a stored certificate, use it without checking the server.")
 	rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
 		filewatcher.FileWatcherUsePolling, "If set to true, uses polling to observe file system events.")
+	rootCmd.PersistentFlags().BoolVar(&kubernetes.DeployAsPodsInTests, "kubernetes_deploy_as_pods_in_tests", kubernetes.DeployAsPodsInTests, "If true, servers in tests are deployed as pods instead of deployments.")
 
 	if cmdBundle != nil {
 		cmdBundle.SetupFlags(rootCmd.PersistentFlags())
@@ -290,6 +291,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"kubernetes_use_node_platforms_in_production_builds",
 		"production_platforms",
 		"fnapi_naming_force_stored",
+		"kubernetes_deploy_as_pods_in_tests",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

@@ -27,6 +27,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+var DeployAsPodsInTests = true
+
 const kubeNode schema.PackageName = "namespacelabs.dev/foundation/std/runtime/kubernetes"
 
 type perEnvConf struct {
@@ -497,7 +499,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
 	// Admin servers are excluded here as they run as singletons in a global namespace.
-	if r.env.Purpose == schema.Environment_TESTING && !srv.Proto().ClusterAdmin {
+	if r.env.Purpose == schema.Environment_TESTING && DeployAsPodsInTests && !srv.Proto().ClusterAdmin {
 		s.declarations = append(s.declarations, kubedef.Apply{
 			Description: "Server",
 			Resource: applycorev1.Pod(deploymentId, ns).
