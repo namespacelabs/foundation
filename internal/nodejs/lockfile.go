@@ -18,7 +18,8 @@ const (
 )
 
 type lockFile struct {
-	Modules map[string]LockFileModule `json:"modules"`
+	RootPath string                    `json:"rootPath"`
+	Modules  map[string]LockFileModule `json:"modules"`
 }
 
 type LockFileModule struct {
@@ -32,7 +33,8 @@ func GenerateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string) (
 	}
 
 	lock := lockFile{
-		Modules: map[string]LockFileModule{},
+		RootPath: moduleAbsPath,
+		Modules:  map[string]LockFileModule{},
 	}
 
 	for _, dep := range workspace.Dep {

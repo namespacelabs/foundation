@@ -129,7 +129,7 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	lockFileStruct, err := nodejs.GenerateLockFileStruct(bnj.workspace, "/")
+	lockFileStruct, err := nodejs.GenerateLockFileStruct(bnj.workspace, appRootPath)
 	if err != nil {
 		return llb.State{}, nil, err
 	}

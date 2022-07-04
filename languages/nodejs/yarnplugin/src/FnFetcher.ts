@@ -15,6 +15,7 @@ import { readFileSync } from "fs";
 import { LOCK_FILE_PATH_ENV, PROTOCOL } from "./constants";
 
 export class FnFetcher implements Fetcher {
+	readonly #rootPath: PortablePath;
 	readonly #modules: { [key: string]: { path: string } };
 
 	constructor() {
@@ -22,15 +23,11 @@ export class FnFetcher implements Fetcher {
 		if (!lockFn) {
 			throw new Error(`Lock file can't be found: ${LOCK_FILE_PATH_ENV} is not set.`);
 		}
-		let lockFileBytes = "{}";
-		try {
-			lockFileBytes = readFileSync(lockFn, "utf8");
-		} catch (e) {
-			// File can be not there for WEB at the moment.
-			// TODO: remove catching the exception once WEB is unified with NODEJS.
-		}
+		const lockFileBytes = readFileSync(lockFn, "utf8");
 		const lockFile = JSON.parse(lockFileBytes);
+		console.log(`lockFile: ${JSON.stringify(lockFile, undefined, 2)}`);
 		this.#modules = lockFile.modules || {};
+		this.#rootPath = lockFile.rootPath;
 	}
 
 	supports(locator: Locator, opts: MinimalFetchOptions) {
@@ -45,7 +42,9 @@ export class FnFetcher implements Fetcher {
 
 		for (const [moduleName, module] of Object.entries(this.#modules)) {
 			if (packageName == moduleName) {
-				return ppath.resolve(process.cwd() as PortablePath, module.path as PortablePath);
+				const resolvedPath = ppath.resolve(this.#rootPath, module.path as PortablePath);
+				console.log(`resolvedPath: ${resolvedPath}`);
+				return resolvedPath;
 			}
 		}
 		throw new Error(

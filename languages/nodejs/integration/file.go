@@ -18,8 +18,6 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const yarnLockFn = "yarn.lock"
-
 func generateSource(ctx context.Context, fsfs fnfs.ReadWriteFS, filePath string, t *template.Template, templateName string, data interface{}) error {
 	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsfs, filePath, func(w io.Writer) error {
 		// TODO(@nicolasalt): format the file.
@@ -41,7 +39,7 @@ func writeSource(w io.Writer, t *template.Template, templateName string, data in
 }
 
 func findYarnRoot(loc workspace.Location) (string, error) {
-	path, err := findroot.Find(yarnLockFn, loc.Abs(), findroot.LookForFile(yarnLockFn))
+	path, err := findroot.Find(packageJsonFn, loc.Abs(), findroot.LookForFile(packageJsonFn))
 	if err != nil {
 		return "", nil
 	}
