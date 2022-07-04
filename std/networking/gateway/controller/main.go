@@ -119,6 +119,7 @@ func main() {
 		// We follow the schematic from https://github.com/kubernetes-sigs/kubebuilder/blob/master/docs/book/src/cronjob-tutorial/testdata/emptymain.go#L151
 		// and other canonical examples.
 		LeaderElectionID: "63245986.k8s.namespacelabs.dev",
+		Namespace:        controllerNamespace,
 	})
 	if err != nil {
 		log.Fatalf("failed to start the controller manager: %+v", err)
