@@ -7,6 +7,8 @@ package cmd
 import (
 	"context"
 	"io"
+	"io/fs"
+	"path/filepath"
 	"sync"
 
 	"github.com/spf13/cobra"
@@ -20,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
@@ -112,7 +115,7 @@ func maybeUpdateWorkspace(ctx context.Context) error {
 }
 
 func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.PackageLoader) error {
-	list, err := workspace.ListSchemas(ctx, root)
+	locs, err := listLocations(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -122,7 +125,7 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 		root:     root,
 		resolved: map[string]*schema.Workspace_Dependency{},
 		modules:  map[string]*schema.Workspace_Dependency{},
-		left:     append([]fnfs.Location{}, list.Locations...),
+		left:     locs,
 	}
 
 	for _, dep := range root.Workspace.Dep {
@@ -309,4 +312,42 @@ func (wr *workspaceLoader) SnapshotDir(ctx context.Context, sch schema.PackageNa
 		RelPath:    loc.Rel(),
 		FS:         fsys,
 	}, loc.Abs(), nil
+}
+
+func listLocations(ctx context.Context, root *workspace.Root) ([]fnfs.Location, error) {
+	var locs []fnfs.Location
+
+	visited := map[string]struct{}{} // Map of directory name to presence.
+
+	if err := fs.WalkDir(root.FS(), ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			if dirs.IsExcluded(path, d.Name()) {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
+		// Is there a least a .cue file in the directory?
+		if filepath.Ext(d.Name()) == ".cue" {
+			dir := filepath.Dir(path)
+			if _, ok := visited[dir]; ok {
+				return nil
+			}
+
+			pkg := root.RelPackage(dir)
+			locs = append(locs, pkg)
+
+			visited[dir] = struct{}{}
+		}
+
+		return nil
+	}); err != nil {
+		return []fnfs.Location{}, err
+	}
+
+	return locs, nil
 }
