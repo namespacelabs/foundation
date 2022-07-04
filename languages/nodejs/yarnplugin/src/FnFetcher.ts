@@ -45,7 +45,7 @@ export class FnFetcher implements Fetcher {
 
 		for (const [moduleName, module] of Object.entries(this.#modules)) {
 			if (packageName == moduleName) {
-				return module.path as PortablePath;
+				return ppath.resolve(process.cwd() as PortablePath, module.path as PortablePath);
 			}
 		}
 		throw new Error(

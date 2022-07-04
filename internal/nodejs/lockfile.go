@@ -10,7 +10,6 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
@@ -37,33 +36,33 @@ func GenerateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string) (
 	}
 
 	for _, dep := range workspace.Dep {
+		moduleRelPath, err := filepath.Rel(moduleAbsPath, filepath.Join(moduleCacheRoot, dep.ModuleName, dep.Version))
+		if err != nil {
+			return lockFile{}, err
+		}
+
 		lock.Modules[dep.ModuleName] = LockFileModule{
-			Path: filepath.Join(moduleCacheRoot, dep.ModuleName, dep.Version),
+			Path: moduleRelPath,
 		}
 	}
 
 	for _, replace := range workspace.Replace {
 		lock.Modules[replace.ModuleName] = LockFileModule{
-			Path: filepath.Join(moduleAbsPath, replace.Path),
+			Path: replace.Path,
 		}
 	}
 
 	// The module itself is needed to resolve dependencies between nodes within the module.
 	lock.Modules[workspace.ModuleName] = LockFileModule{
-		Path: moduleAbsPath,
+		Path: ".",
 	}
 
 	return lock, nil
 }
 
 // Returns the filename
-func writeLockFileToTemp(workspaceData workspace.WorkspaceData, rootDir string) (string, error) {
-	lockStruct, err := GenerateLockFileStruct(workspaceData.Parsed(), rootDir)
-	if err != nil {
-		return "", err
-	}
-
-	lock, err := json.MarshalIndent(lockStruct, "", "\t")
+func writeLockFileToTemp(lockFileStruct lockFile) (string, error) {
+	lock, err := json.MarshalIndent(lockFileStruct, "", "\t")
 	if err != nil {
 		return "", err
 	}

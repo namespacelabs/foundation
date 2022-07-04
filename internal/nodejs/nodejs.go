@@ -81,10 +81,10 @@ func RunNodejs(ctx context.Context, env provision.Env, relPath string, command s
 	return tools.Run(ctx, rtypes.RunToolOpts{
 		IO:          io,
 		AllocateTTY: opts.IsInteractive,
-		Mounts:      append(opts.Mounts, &rtypes.LocalMapping{HostPath: root.Abs(), ContainerPath: workspaceContainerDir}),
+		Mounts:      append(opts.Mounts, &rtypes.LocalMapping{HostPath: root.Abs(), ContainerPath: filepath.Join(workspaceContainerDir, root.Abs())}),
 		RunBinaryOpts: rtypes.RunBinaryOpts{
 			Image:      image,
-			WorkingDir: filepath.Join(workspaceContainerDir, relPath),
+			WorkingDir: filepath.Join(workspaceContainerDir, root.Abs(), relPath),
 			Command:    []string{command},
 			Args:       opts.Args,
 			Env:        opts.EnvVars,
