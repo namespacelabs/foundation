@@ -264,7 +264,7 @@ func (impl) TidyWorkspace(ctx context.Context, env provision.Env, packages []*wo
 }
 
 func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, path string) error {
-	lockFileStruct, err := nodejs.GenerateLockFileStruct(yarnRootData.workspace, "")
+	lockFileStruct, err := nodejs.GenerateLockFileStruct(yarnRootData.workspace, "/")
 	if err != nil {
 		return err
 	}

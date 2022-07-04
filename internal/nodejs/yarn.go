@@ -41,6 +41,10 @@ logFilters:
 `
 )
 
+var (
+// depsRootPath = "/external_deps"
+)
+
 // Runs a configured Yarn.
 func RunYarn(ctx context.Context, env provision.Env, relPath string, args []string, workspaceData workspace.WorkspaceData) error {
 	return RunYarnForScope(ctx, env, "", relPath, args, workspaceData)
@@ -51,7 +55,12 @@ func RunYarnForLocation(ctx context.Context, env provision.Env, loc workspace.Lo
 }
 
 func RunYarnForScope(ctx context.Context, env provision.Env, scope schema.PackageName, relPath string, args []string, workspaceData workspace.WorkspaceData) error {
-	lockFn, err := writeLockFileToTemp(workspaceData, workspaceContainerDir)
+	lockFileStruct, err := GenerateLockFileStruct(workspaceData.Parsed(), workspaceData.AbsPath())
+	if err != nil {
+		return err
+	}
+
+	lockFn, err := writeLockFileToTemp(lockFileStruct)
 	if err != nil {
 		return err
 	}
@@ -65,11 +74,22 @@ func RunYarnForScope(ctx context.Context, env provision.Env, scope schema.Packag
 	}
 	envArgs = append(envArgs, &schema.BinaryConfig_EnvEntry{Name: fnYarnLockEnvVar, Value: lockContainerFn})
 
+	mounts := []*rtypes.LocalMapping{{HostPath: lockDir, ContainerPath: lockContainerDir}}
+	for _, module := range lockFileStruct.Modules {
+		if module.Path != "." {
+			path := filepath.Join(workspaceData.AbsPath(), module.Path)
+			mounts = append(mounts, &rtypes.LocalMapping{
+				HostPath:      path,
+				ContainerPath: filepath.Join(workspaceContainerDir, path),
+			})
+		}
+	}
+
 	return RunNodejs(ctx, env, relPath, "node", &RunNodejsOpts{
 		Scope:   scope,
 		Args:    append([]string{string(yarnBinaryPath)}, args...),
 		EnvVars: envArgs,
-		Mounts:  []*rtypes.LocalMapping{{HostPath: lockDir, ContainerPath: lockContainerDir}},
+		Mounts:  mounts,
 	})
 }
 

@@ -37,8 +37,7 @@ var (
 	// All dependencies that are not from the same module copied here. This includes
 	// dependencies used as "Dep" in workspace (copied from the Namespace cache)
 	// and the ones used as "Replace" (copied from the user's file system).
-	// We add "node_modules" so Yarn doesn't recognize external modules as workspaces.
-	depsRootPath      = filepath.Join(appRootPath, "external_deps", "node_modules")
+	depsRootPath      = filepath.Join(appRootPath, "external_deps")
 	tsConfigPath      = filepath.Join(appRootPath, "tsconfig.production.fn.json")
 	nodemonConfigPath = filepath.Join(appRootPath, "nodemon.fn.json")
 )
@@ -130,14 +129,14 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	lockFileStruct, err := nodejs.GenerateLockFileStruct(bnj.workspace, appRootPath)
+	lockFileStruct, err := nodejs.GenerateLockFileStruct(bnj.workspace, "/")
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
 	// When building an image we simply put all the dependencies under "depsRootPath" by their module name.
-	for moduleName, module := range lockFileStruct.Modules {
-		if module.Path != appRootPath {
+	for moduleName := range lockFileStruct.Modules {
+		if moduleName != bnj.module.ModuleName() {
 			lockFileStruct.Modules[moduleName] = nodejs.LockFileModule{
 				Path: filepath.Join(depsRootPath, moduleName),
 			}
