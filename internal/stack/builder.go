@@ -37,7 +37,7 @@ func (stack *stackBuilder) Add(srv provision.Server) *ParsedServer {
 	return ps
 }
 
-func (stack *stackBuilder) CheckAdd(ctx context.Context, env provision.ServerEnv, pkgname schema.PackageName) (*provision.Server, *ParsedServer, error) {
+func (stack *stackBuilder) checkAdd(ctx context.Context, env provision.ServerEnv, pkgname schema.PackageName) (*provision.Server, *ParsedServer, error) {
 	stack.mu.Lock()
 
 	for _, s := range stack.servers {

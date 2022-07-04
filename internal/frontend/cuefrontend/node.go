@@ -13,6 +13,8 @@ import (
 
 	"cuelang.org/go/cue"
 	"github.com/docker/go-units"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -501,7 +503,12 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 		}
 		pkg.Provides[name] = parsed
 
-		for k, m := range provides.AvailableIn {
+		keys := maps.Keys(provides.AvailableIn)
+		slices.Sort(keys)
+
+		for _, k := range keys {
+			m := provides.AvailableIn[k]
+
 			// XXX This should use reflection.
 			switch k {
 			case "go":

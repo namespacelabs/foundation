@@ -125,24 +125,52 @@ func computeStack(ctx context.Context, opts ProvisionOpts, servers ...provision.
 		pkgs[k] = server.PackageName()
 	}
 
-	state := eval.NewAllocState()
-	for k, server := range servers {
-		if err := tasks.Action("provision.evaluate").Scope(server.PackageName()).Run(ctx, func(ctx context.Context) error {
-			return computeStackContents(ctx, server, ps[k], state, opts, builder)
-		}); err != nil {
-			return nil, err
-		}
+	cs := computeState{exec: executor.New(ctx, "stack.compute"), out: builder, opts: opts}
+
+	for k := range servers {
+		k := k // Close k.
+
+		cs.exec.Go(func(ctx context.Context) error {
+			return cs.computeStackContents(ctx, servers[k], ps[k])
+		})
+	}
+
+	if err := cs.exec.Wait(); err != nil {
+		return nil, err
 	}
 
 	return builder.Seal(pkgs...), nil
 }
 
-func computeStackContents(ctx context.Context, server provision.Server, ps *ParsedServer, state *eval.AllocState, opts ProvisionOpts, out *stackBuilder) error {
-	return tasks.Action("stack.compute").Scope(server.PackageName()).Run(ctx, func(ctx context.Context) error {
+type computeState struct {
+	exec *executor.Executor
+	out  *stackBuilder
+	opts ProvisionOpts
+}
+
+func (cs *computeState) checkAdd(env provision.ServerEnv, pkg schema.PackageName) {
+	cs.exec.Go(func(ctx context.Context) error {
+		server, ps, err := cs.out.checkAdd(ctx, env, pkg)
+		if err != nil {
+			return err
+		}
+
+		if ps == nil {
+			// Already exists.
+			return nil
+		}
+
+		return cs.computeStackContents(ctx, *server, ps)
+	})
+}
+
+func (cs *computeState) computeStackContents(ctx context.Context, server provision.Server, ps *ParsedServer) error {
+	return tasks.Action("provision.evaluate").Scope(server.PackageName()).Run(ctx, func(ctx context.Context) error {
 		deps := server.Deps()
 
 		parsedDeps := make([]*ParsedNode, len(deps))
-		exec := executor.New(ctx, "stack.compute")
+		exec := executor.New(ctx, "stack.provision.eval")
+		state := eval.NewAllocState()
 
 		for k, n := range deps {
 			k := k // Close k.
@@ -155,25 +183,6 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 				}
 
 				parsedDeps[k] = ev
-
-				for _, pkg := range ev.ProvisionPlan.DeclaredStack {
-					pkg := pkg // Close pkg.
-
-					exec.Go(func(ctx context.Context) error {
-						server, ps, err := out.CheckAdd(ctx, server.Env(), pkg)
-						if err != nil {
-							return err
-						}
-
-						if ps == nil {
-							// Already exists.
-							return nil
-						}
-
-						return computeStackContents(ctx, *server, ps, state, opts, out)
-					})
-				}
-
 				return nil
 			})
 		}
@@ -182,10 +191,19 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 			return err
 		}
 
+		var declaredStack schema.PackageList
+		for _, p := range parsedDeps {
+			declaredStack.AddMultiple(p.ProvisionPlan.DeclaredStack...)
+		}
+
+		for _, p := range declaredStack.PackageNames() {
+			cs.checkAdd(server.Env(), p)
+		}
+
 		var allocatedPorts eval.PortAllocations
 		var allocators []eval.AllocatorFunc
-		if opts.PortBase != 0 {
-			allocators = append(allocators, eval.MakePortAllocator(opts.PortBase, &allocatedPorts))
+		if cs.opts.PortBase != 0 {
+			allocators = append(allocators, eval.MakePortAllocator(cs.opts.PortBase, &allocatedPorts))
 
 			var depsWithNeeds []*ParsedNode
 			for _, p := range parsedDeps {
@@ -220,7 +238,7 @@ func computeStackContents(ctx context.Context, server provision.Server, ps *Pars
 			return err
 		}
 
-		out.AddEndpoints(endpoints, internal)
+		cs.out.AddEndpoints(endpoints, internal)
 		return err
 	})
 }

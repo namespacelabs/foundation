@@ -83,7 +83,7 @@ func explain(ctx context.Context, w io.Writer, c rawComputable, indent string) e
 
 				switch x := in.Value.(type) {
 				case proto.Message:
-					fmt.Fprintf(w, "{ %s }", prototext.MarshalOptions{}.Format(x))
+					fmt.Fprintf(w, "{ %s }", prototext.MarshalOptions{Multiline: false}.Format(x))
 				case fmt.Stringer:
 					fmt.Fprintf(w, "%s", x)
 				default:

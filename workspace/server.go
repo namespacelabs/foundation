@@ -144,7 +144,7 @@ func (depv *depVisitor) visit(ctx context.Context, pl Packages, allocs *[]*schem
 	// the same constructor would yield the same value).
 	for _, n := range n.Instantiate {
 		if ref := protos.Ref(n.Constructor); ref != nil && !ref.Builtin {
-			deps.Add(ref.Package) // Using uniquestrings.List to produce a stable ordered list.
+			deps.Add(ref.Package)
 			perPkg[ref.Package] = append(perPkg[ref.Package], n)
 		}
 	}

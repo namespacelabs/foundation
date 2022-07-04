@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -191,8 +192,11 @@ func (s *sealer) finishSealing(ctx context.Context) (Sealed, error) {
 		return Sealed{}, err
 	}
 
-	var nodes []*Package
+	slices.SortFunc(s.result.Node, func(a, b *schema.Node) bool {
+		return strings.Compare(a.PackageName, b.PackageName) < 0
+	})
 
+	var nodes []*Package
 	for _, n := range s.result.ExtsAndServices() {
 		var parsed *Package
 		for _, pp := range s.parsed {

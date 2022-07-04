@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/multiplatform"
@@ -275,7 +277,11 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 	// allows all builds and invocations to occur in parallel.
 
 	binaryInputs := compute.Inputs()
-	for pkg, img := range imgs {
+
+	keys := maps.Keys(imgs)
+	slices.Sort(keys)
+	for _, pkg := range keys {
+		img := imgs[pkg]
 		if img.Binary != nil {
 			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:binary", pkg), img.Binary)
 		}
@@ -307,9 +313,8 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 				built = append(built, b)
 			}
 
-			// Stable ordering.
-			sort.Slice(built, func(i, j int) bool {
-				return strings.Compare(built[i].Package.String(), built[j].Package.String()) < 0
+			slices.SortFunc(built, func(a, b builtImage) bool {
+				return strings.Compare(a.Package.String(), b.Package.String()) < 0
 			})
 
 			return built, nil
