@@ -133,11 +133,11 @@ func main() {
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		log.Fatalf("failed to set up readyz: %+v", err)
 	}
-
 	httpGrpcTranscoderReconciler := HttpGrpcTranscoderReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		snapshot: transcoderSnapshot,
+		recorder: mgr.GetEventRecorderFor("http-grpc-transcoder-controller"),
 	}
 	if err := httpGrpcTranscoderReconciler.SetupWithManager(mgr, controllerNamespace); err != nil {
 		log.Fatalf("failed to set up the HTTP gRPC Transcoder reconciler: %+v", err)

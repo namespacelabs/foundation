@@ -6,10 +6,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,13 +20,19 @@ import (
 )
 
 const (
-	AppliedCondition = "Applied"
+	AppliedCondition       = "Applied"
+	NormalEvent            = "Normal"
+	WarningEvent           = "Warning"
+	CreateTranscoder       = "CreateHttpGrpcTranscoder"
+	DeleteTranscoder       = "DeleteHttpGrpcTranscoder"
+	UpdateTranscoderStatus = "UpdateHttpGrpcTranscoderStatus"
 )
 
 type HttpGrpcTranscoderReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	snapshot *TranscoderSnapshot
+	recorder record.EventRecorder
 }
 
 func (r *HttpGrpcTranscoderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -34,14 +42,21 @@ func (r *HttpGrpcTranscoderReconciler) Reconcile(ctx context.Context, req ctrl.R
 	transcoder := &HttpGrpcTranscoder{}
 	if err := r.Get(ctx, req.NamespacedName, transcoder); err != nil {
 		log.Error(err, "unable to fetch HttpGrpcTranscoder", "namespace", req.Namespace, "name", req.Name)
+
 		if apierrors.IsNotFound(err) {
 			r.snapshot.DeleteTranscoder(transcoder)
 			// Generate a new envoy snapshot since we have deleted a transcoder.
 			if err := r.snapshot.GenerateSnapshot(ctx); err != nil {
-				log.Error(err, "failed to delete transcoder and generate new envoy snapshot", "namespace", req.Namespace, "name", req.Name)
+				errmsg := "failed to delete transcoder and generate new envoy snapshot"
+				r.recorder.Event(transcoder, WarningEvent, DeleteTranscoder,
+					fmt.Sprintf("%s for namespace %q and name %q: %v", errmsg, req.Namespace, req.Name, err))
+				log.Error(err, errmsg, "namespace", req.Namespace, "name", req.Name)
 				return ctrl.Result{}, err
 			}
-			log.Info("ignoring transcoder not found", "namespace", req.Namespace, "name", req.Name)
+			msg := "deleted transcoder and successfully generated a new envoy snapshot"
+			r.recorder.Event(transcoder, NormalEvent, DeleteTranscoder,
+				fmt.Sprintf("%s for namespace %q and name %q", msg, req.Namespace, req.Name))
+			log.Info(msg, "namespace", req.Namespace, "name", req.Name)
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 	}
@@ -67,12 +82,20 @@ func (r *HttpGrpcTranscoderReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// Update the applied condition if we have an error generating the snapshot.
 	if snapshotErr != nil {
-		log.Error(snapshotErr, "failed to generate new envoy snapshot", "namespace", req.Namespace, "name", req.Name)
+		errmsg := "failed to generate a new envoy snapshot"
+		r.recorder.Event(transcoder, WarningEvent, CreateTranscoder,
+			fmt.Sprintf("%s for namespace %q and name %q: %v", errmsg, req.Namespace, req.Name, snapshotErr))
+		log.Error(snapshotErr, errmsg, "namespace", req.Namespace, "name", req.Name)
+
 		appliedCondition.Status = metav1.ConditionFalse
 		appliedCondition.Reason = "FailedToGenerateSnapshot"
 		appliedCondition.Message = snapshotErr.Error()
 	} else {
-		log.Info("successfully generated new envoy snapshot", "namespace", req.Namespace, "name", req.Name, "version", r.snapshot.CurrentSnapshotId())
+		msg := "successfully generated a new envoy snapshot"
+		r.recorder.Event(transcoder, NormalEvent, CreateTranscoder,
+			fmt.Sprintf("%s with version %d for namespace %q and name %q",
+				msg, r.snapshot.CurrentSnapshotId(), req.Namespace, req.Name))
+		log.Info(msg, "namespace", req.Namespace, "name", req.Name, "version", r.snapshot.CurrentSnapshotId())
 	}
 
 	conditions = append(conditions, appliedCondition)
@@ -80,14 +103,19 @@ func (r *HttpGrpcTranscoderReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// Update the status condition on the transcoder.
 	if updateErr := r.Client.Status().Update(ctx, transcoder); updateErr != nil {
-		log.Error(updateErr, "failed to update transcoder status", "namespace", req.Namespace, "name", req.Name)
-
 		// Requeue (rate-limited) if we lost an update race.
 		if apierrors.IsConflict(updateErr) {
-			log.Info("requeueing since we lost an update race", "namespace", req.Namespace, "name", req.Name)
+			msg := "requeueing since we lost an update race"
+			r.recorder.Event(transcoder, NormalEvent, UpdateTranscoderStatus,
+				fmt.Sprintf("%s for namespace %q and name %q", msg, req.Namespace, req.Name))
+			log.Info(msg, "namespace", req.Namespace, "name", req.Name)
 			return ctrl.Result{Requeue: true}, nil
 		}
 
+		errmsg := "failed to update transcoder status"
+		r.recorder.Event(transcoder, WarningEvent, UpdateTranscoderStatus,
+			fmt.Sprintf("%s for namespace %q and name %q: %v", errmsg, req.Namespace, req.Name, updateErr))
+		log.Error(updateErr, errmsg, "namespace", req.Namespace, "name", req.Name)
 		return ctrl.Result{}, updateErr
 	}
 
