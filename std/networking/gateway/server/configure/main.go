@@ -120,6 +120,14 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		WithResources("httpgrpctranscoders", "httpgrpctranscoders/status").
 		WithVerbs("get", "list", "watch", "create", "update", "delete", "patch"))
 
+	// We leverage `record.EventRecorder` from "k8s.io/client-go/tools/record" which
+	// creates `Event` objects with the API group "". This rule ensures that
+	// the event objects created by the controller are accepted by the k8s API server.
+	grant.Rules = append(grant.Rules, rbacv1.PolicyRule().
+		WithAPIGroups("").
+		WithResources("events").
+		WithVerbs("create"))
+
 	if err := grant.Compile(req, out); err != nil {
 		return err
 	}

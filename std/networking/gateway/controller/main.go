@@ -13,7 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -137,9 +139,15 @@ func main() {
 		log.Fatalf("failed to set up readyz: %+v", err)
 	}
 
+	// Set up the recorder for transcoder events.
+	kubeClient, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
+	if err != nil {
+		log.Fatalf("Error building kubernetes clientset: %+v", err)
+	}
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
-	recorder := eventBroadcaster.NewRecorder(scheme, corev1.EventSource{Component: "http-grpc-transcoder-controller"})
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events(controllerNamespace)})
+	recorder := eventBroadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: "http-grpc-transcoder-controller"})
 
 	httpGrpcTranscoderReconciler := HttpGrpcTranscoderReconciler{
 		Client:   mgr.GetClient(),
