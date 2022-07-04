@@ -9,10 +9,12 @@ import (
 	"log"
 	"os"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -134,10 +136,15 @@ func main() {
 		log.Fatalf("failed to set up readyz: %+v", err)
 	}
 
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartStructuredLogging(0)
+	recorder := eventBroadcaster.NewRecorder(scheme, corev1.EventSource{Component: "http-grpc-transcoder-controller"})
+
 	httpGrpcTranscoderReconciler := HttpGrpcTranscoderReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		snapshot: transcoderSnapshot,
+		recorder: recorder,
 	}
 	if err := httpGrpcTranscoderReconciler.SetupWithManager(mgr, controllerNamespace); err != nil {
 		log.Fatalf("failed to set up the HTTP gRPC Transcoder reconciler: %+v", err)
