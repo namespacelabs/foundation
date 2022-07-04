@@ -180,6 +180,7 @@ func ServiceSpecToEndpoint(srv *schema.Server, spec *schema.Server_ServiceSpec, 
 		Type:          t,
 		Port:          spec.GetPort(),
 		AllocatedName: fmt.Sprintf("%s-%s", spec.GetName(), srv.Id),
+		ServiceLabel:  spec.GetLabel(),
 	}
 
 	if spec.Metadata != nil {

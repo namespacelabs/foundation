@@ -10,6 +10,7 @@ server: fn.#OpaqueServer & {
 
 	service: {
 		"admin": {
+			label: "Envoy (admin)"
 			containerPort: 19000
 			metadata: protocol: "http"
 		}
@@ -18,6 +19,7 @@ server: fn.#OpaqueServer & {
 		"grpc-http-transcoder": {
 			containerPort: 10000
 			metadata: protocol: "http"
+			internal: true // Not used for development.
 		}
 	}
 }

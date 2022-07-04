@@ -13,10 +13,11 @@ server: fn.#OpaqueServer & {
 		metadata: {
 			protocol: "thrift"
 		}
-		internal: true // No used for development.
+		internal: true // Not used for development.
 	}
 
 	service: "web": {
+		label: "Jaeger"
 		containerPort: 16686
 		metadata: {
 			protocol: "http"

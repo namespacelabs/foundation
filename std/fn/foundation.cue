@@ -103,6 +103,7 @@ _#Node: {
 
 	#ServiceSpec: {
 		name?:         string
+		label?:        string
 		containerPort: int
 		metadata: {
 			kind?:    string

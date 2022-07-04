@@ -203,7 +203,7 @@ message Reference {
     }
 }
 
-// Next ID: 22
+// Next ID: 24
 message Server {
     reserved 17, 19;
 
@@ -219,6 +219,8 @@ message Server {
 
     // A name for a person-user to read and refer to.
     string name = 3;
+
+    Description description = 23;
 
     // The computed list of dependency URLs of this server (direct and indirect).
     repeated string import = 4;
@@ -267,6 +269,7 @@ message Server {
 
     message ServiceSpec {
         string          name     = 1;
+        string          label    = 5;
         ServiceMetadata metadata = 2;
         Endpoint.Port   port     = 3;
         bool            internal = 4;  // This service is of no relevance for development.
@@ -277,6 +280,12 @@ message Server {
         string package_name = 2;
         string ingress_name = 3;
         string kind         = 4;
+    }
+
+    message Description {
+        string label    = 1;
+        string url      = 2;
+        string icon_url = 3;
     }
 }
 

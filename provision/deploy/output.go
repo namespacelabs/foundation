@@ -283,6 +283,10 @@ func makeServiceLabel(stack *schema.Stack, endpoint *schema.Endpoint) *storage.N
 			return &storage.NetworkPlan_Label{Label: "gRPC gateway"}
 		}
 
+		if endpoint.ServiceLabel != "" {
+			return &storage.NetworkPlan_Label{Label: endpoint.ServiceLabel}
+		}
+
 		return &storage.NetworkPlan_Label{Label: fmt.Sprintf("%s/%s", entry.Server.Name, endpoint.ServiceName)}
 	}
 
@@ -290,6 +294,10 @@ func makeServiceLabel(stack *schema.Stack, endpoint *schema.Endpoint) *storage.N
 		if md.Protocol == schema.GrpcProtocol {
 			return &storage.NetworkPlan_Label{ServiceProto: md.Kind}
 		}
+	}
+
+	if endpoint.ServiceLabel != "" {
+		return &storage.NetworkPlan_Label{Label: endpoint.ServiceLabel}
 	}
 
 	return &storage.NetworkPlan_Label{Label: endpoint.ServiceName}

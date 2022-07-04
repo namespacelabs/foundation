@@ -19,16 +19,17 @@ import (
 )
 
 type cueServer struct {
-	ID           string                    `json:"id"`
-	Name         string                    `json:"name"`
-	Framework    string                    `json:"framework"`
-	IsStateful   bool                      `json:"isStateful"`
-	TestOnly     bool                      `json:"testonly"`
-	ClusterAdmin bool                      `json:"clusterAdmin"`
-	Import       []string                  `json:"import"`
-	Services     map[string]cueServiceSpec `json:"service"`
-	StaticEnv    map[string]string         `json:"env"`
-	Binary       interface{}               `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
+	ID           string                     `json:"id"`
+	Name         string                     `json:"name"`
+	Description  *schema.Server_Description `json:"description"`
+	Framework    string                     `json:"framework"`
+	IsStateful   bool                       `json:"isStateful"`
+	TestOnly     bool                       `json:"testonly"`
+	ClusterAdmin bool                       `json:"clusterAdmin"`
+	Import       []string                   `json:"import"`
+	Services     map[string]cueServiceSpec  `json:"service"`
+	StaticEnv    map[string]string          `json:"env"`
+	Binary       interface{}                `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
 
 	// XXX this should be somewhere else.
 	URLMap []cueURLMapEntry `json:"urlmap"`
@@ -41,6 +42,7 @@ type cueURLMapEntry struct {
 
 type cueServiceSpec struct {
 	Name          string                 `json:"name"`
+	Label         string                 `json:"label"`
 	ContainerPort int32                  `json:"containerPort"`
 	Metadata      cueServiceSpecMetadata `json:"metadata"`
 	Internal      bool                   `json:"internal"`
@@ -65,6 +67,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	out := &schema.Server{}
 	out.Id = bits.ID
 	out.Name = bits.Name
+	out.Description = bits.Description
 
 	if fmwk, err := parseFramework(loc, bits.Framework); err == nil {
 		out.Framework = schema.Framework(fmwk)
@@ -132,8 +135,9 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 		}
 
 		out.Service = append(out.Service, &schema.Server_ServiceSpec{
-			Name: name,
-			Port: &schema.Endpoint_Port{Name: svc.Name, ContainerPort: svc.ContainerPort},
+			Name:  name,
+			Label: svc.Label,
+			Port:  &schema.Endpoint_Port{Name: svc.Name, ContainerPort: svc.ContainerPort},
 			Metadata: &schema.ServiceMetadata{
 				Kind:     svc.Metadata.Kind,
 				Protocol: svc.Metadata.Protocol,
