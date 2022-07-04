@@ -89,6 +89,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	if err := (kubeblueprint.GrantKubeACLs{
 		DescriptionBase: "kube-state-metrics",
+		Scope:           kubeblueprint.ClusterScope,
 		Rules:           rules,
 	}).Compile(req, out); err != nil {
 		return err

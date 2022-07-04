@@ -15,32 +15,35 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 )
 
+type Scope string
+
+const (
+	NamespaceScope Scope = "k8s.scope.namespace"
+	ClusterScope   Scope = "k8s.scope.cluster"
+)
+
 type GrantKubeACLs struct {
 	DescriptionBase string
 	ServiceAccount  string
-	ClusterRole     string
+	Scope           Scope
 	Rules           []*rbacv1.PolicyRuleApplyConfiguration
 }
 
 func (g GrantKubeACLs) Compile(req configure.StackRequest, out *configure.ApplyOutput) error {
-	clusterRoleBinding := fmt.Sprintf("fn-%s-%s", g.ServiceAccount, g.ClusterRole)
-
 	serviceAccount := g.ServiceAccount
 	if serviceAccount == "" {
 		serviceAccount = kubedef.MakeDeploymentId(req.Focus.Server)
 	}
 
-	clusterRole := g.ClusterRole
-	if clusterRole == "" {
-		clusterRole = fmt.Sprintf("foundation:managed:%s", kubedef.MakeDeploymentId(req.Focus.Server))
-	}
-
-	if g.ServiceAccount == "" || g.ClusterRole == "" {
-		clusterRoleBinding = fmt.Sprintf("foundation:managed:%s", kubedef.MakeDeploymentId(req.Focus.Server))
-	}
+	roleName := fmt.Sprintf("foundation:managed:%s", kubedef.MakeDeploymentId(req.Focus.Server))
+	roleBinding := fmt.Sprintf("foundation:managed:%s", kubedef.MakeDeploymentId(req.Focus.Server))
 
 	if g.Rules == nil {
 		return fnerrors.BadInputError("Rules is required")
+	}
+
+	if g.Scope != NamespaceScope && g.Scope != ClusterScope {
+		return fnerrors.BadInputError("Scope must be Namespace or Cluster")
 	}
 
 	namespace := kubetool.FromRequest(req).Namespace
@@ -51,24 +54,47 @@ func (g GrantKubeACLs) Compile(req configure.StackRequest, out *configure.ApplyO
 		Resource:    corev1.ServiceAccount(serviceAccount, namespace).WithLabels(labels),
 	})
 
-	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: fmt.Sprintf("%s: Cluster Role", g.DescriptionBase),
-		Resource:    rbacv1.ClusterRole(clusterRole).WithRules(g.Rules...).WithLabels(labels),
-	})
+	switch g.Scope {
+	case NamespaceScope:
+		out.Invocations = append(out.Invocations, kubedef.Apply{
+			Description: fmt.Sprintf("%s: Role", g.DescriptionBase),
+			Resource:    rbacv1.Role(roleName, namespace).WithRules(g.Rules...).WithLabels(labels),
+		})
 
-	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: fmt.Sprintf("%s: Cluster Role Binding", g.DescriptionBase),
-		Resource: rbacv1.ClusterRoleBinding(clusterRoleBinding).
-			WithLabels(labels).
-			WithRoleRef(rbacv1.RoleRef().
-				WithAPIGroup("rbac.authorization.k8s.io").
-				WithKind("ClusterRole").
-				WithName(clusterRole)).
-			WithSubjects(rbacv1.Subject().
-				WithKind("ServiceAccount").
-				WithNamespace(namespace).
-				WithName(serviceAccount)),
-	})
+		out.Invocations = append(out.Invocations, kubedef.Apply{
+			Description: fmt.Sprintf("%s:  Role Binding", g.DescriptionBase),
+			Resource: rbacv1.RoleBinding(roleBinding, namespace).
+				WithLabels(labels).
+				WithRoleRef(rbacv1.RoleRef().
+					WithAPIGroup("rbac.authorization.k8s.io").
+					WithKind("Role").
+					WithName(roleName)).
+				WithSubjects(rbacv1.Subject().
+					WithKind("ServiceAccount").
+					WithNamespace(namespace).
+					WithName(serviceAccount)),
+		})
+
+	case ClusterScope:
+		out.Invocations = append(out.Invocations, kubedef.Apply{
+			Description: fmt.Sprintf("%s: Cluster Role", g.DescriptionBase),
+			Resource:    rbacv1.ClusterRole(roleName).WithRules(g.Rules...).WithLabels(labels),
+		})
+
+		out.Invocations = append(out.Invocations, kubedef.Apply{
+			Description: fmt.Sprintf("%s: Cluster Role Binding", g.DescriptionBase),
+			Resource: rbacv1.ClusterRoleBinding(roleBinding).
+				WithLabels(labels).
+				WithRoleRef(rbacv1.RoleRef().
+					WithAPIGroup("rbac.authorization.k8s.io").
+					WithKind("ClusterRole").
+					WithName(roleName)).
+				WithSubjects(rbacv1.Subject().
+					WithKind("ServiceAccount").
+					WithNamespace(namespace).
+					WithName(serviceAccount)),
+		})
+	}
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
 		With: &kubedef.SpecExtension{

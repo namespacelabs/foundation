@@ -112,6 +112,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	grant := kubeblueprint.GrantKubeACLs{
 		DescriptionBase: "Network Gateway",
+		Scope:           kubeblueprint.NamespaceScope,
 	}
 
 	grant.Rules = append(grant.Rules, rbacv1.PolicyRule().
