@@ -15,6 +15,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	controllerscheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
@@ -22,7 +23,8 @@ var (
 	// HTTP listening address:port pair.
 	httpEnvoyListenAddress = flag.String("http_envoy_listen_address", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
 
-	debug = flag.Bool("debug", false, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update.")
+	debug = flag.Bool("debug", false, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update. "+
+		"We additionally enable development logging for the Kubernetes controller.")
 
 	// The address:port pair that the xDS server listens on.
 	xdsServerAddress = flag.String("xds_server_port", "127.0.0.1:18000", "xDS gRPC management address:port pair.")
@@ -70,8 +72,7 @@ func main() {
 		log.Fatalf("failed to parse ALS server address: %v", err)
 	}
 
-	logger := Logger{}
-	logger.Debug = *debug
+	logger := NewLogger(*debug)
 
 	transcoderSnapshot := NewTranscoderSnapshot(
 		WithEnvoyNodeId(*nodeID),
@@ -83,7 +84,7 @@ func main() {
 	if err := transcoderSnapshot.RegisterHttpListener(*httpEnvoyListenAddress); err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("registered HTTP listener on %s\n", *httpEnvoyListenAddress)
+	logger.Infof("registered HTTP listener on %s\n", *httpEnvoyListenAddress)
 
 	// SetupSignalHandler registers for SIGTERM and SIGINT. A context is returned
 	// which is canceled on one of these signals. If a second signal is caught, the program
@@ -92,7 +93,6 @@ func main() {
 
 	xdsServer := NewXdsServer(ctx, transcoderSnapshot.cache, logger)
 	xdsServer.RegisterServices()
-	log.Println("registered xDS services")
 
 	// Run the Kubernetes controller responsible for handling the `HttpGrpcTranscoder` custom resource.
 
@@ -107,6 +107,8 @@ func main() {
 	if err := schemeBuilder.AddToScheme(scheme); err != nil {
 		log.Fatalf("failed to add the HttpGrpcTranscoder scheme: %+v", err)
 	}
+
+	ctrl.SetLogger(zap.New(zap.UseDevMode(*debug)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -126,13 +128,11 @@ func main() {
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		log.Fatalf("failed to set up healthz: %+v", err)
 	}
-	log.Println("set up healthz for the controller manager")
 
 	// Add readyz.
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		log.Fatalf("failed to set up readyz: %+v", err)
 	}
-	log.Println("set up readyz for the controller manager")
 
 	httpGrpcTranscoderReconciler := HttpGrpcTranscoderReconciler{
 		Client:   mgr.GetClient(),
@@ -142,16 +142,15 @@ func main() {
 	if err := httpGrpcTranscoderReconciler.SetupWithManager(mgr, controllerNamespace); err != nil {
 		log.Fatalf("failed to set up the HTTP gRPC Transcoder reconciler: %+v", err)
 	}
-	log.Println("set up the HTTP gRPC Transcoder reconciler")
 
 	errChan := make(chan error)
 	go func() {
-		log.Printf("starting xDS server on port %d\n", xdsAddrPort.port)
+		logger.Infof("starting xDS server on port %d\n", xdsAddrPort.port)
 		errChan <- xdsServer.Start(ctx, xdsAddrPort.port)
 	}()
 
 	go func() {
-		log.Printf("starting the controller manager on port %d\n", *controllerPort)
+		logger.Infof("starting the controller manager on port %d\n", *controllerPort)
 		errChan <- mgr.Start(ctx)
 	}()
 
