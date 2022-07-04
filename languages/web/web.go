@@ -36,7 +36,7 @@ import (
 const (
 	controllerPkg schema.PackageName = "namespacelabs.dev/foundation/std/dev/controller"
 	webPkg        schema.PackageName = "namespacelabs.dev/foundation/std/web/http"
-	httpPort                         = 10080
+	httpPort                         = 40000
 	fileSyncPort                     = 50000
 	httpPortName                     = "http-port"
 	compiledPath                     = "static"
