@@ -20,6 +20,7 @@ type stackBuilder struct {
 	servers   []serverBuilder
 	endpoints []*schema.Endpoint
 	internal  []*schema.InternalEndpoint
+	known     map[schema.PackageName]struct{} // TODO consider removing this and fully relying on `servers`
 }
 
 type serverBuilder struct {
@@ -28,11 +29,17 @@ type serverBuilder struct {
 }
 
 func newStackBuilder() *stackBuilder {
-	return &stackBuilder{}
+	return &stackBuilder{
+		known: make(map[schema.PackageName]struct{}),
+	}
 }
 
 func (stack *stackBuilder) Add(srv provision.Server) *ParsedServer {
 	ps := &ParsedServer{}
+
+	stack.mu.Lock()
+	defer stack.mu.Unlock()
+
 	stack.servers = append(stack.servers, serverBuilder{srv, ps})
 	return ps
 }
@@ -40,13 +47,12 @@ func (stack *stackBuilder) Add(srv provision.Server) *ParsedServer {
 func (stack *stackBuilder) checkAdd(ctx context.Context, env provision.ServerEnv, pkgname schema.PackageName) (*provision.Server, *ParsedServer, error) {
 	stack.mu.Lock()
 
-	for _, s := range stack.servers {
-		if s.srv.PackageName() == pkgname {
-			stack.mu.Unlock()
-			return nil, nil, nil
-		}
+	if _, ok := stack.known[pkgname]; ok {
+		stack.mu.Unlock()
+		return nil, nil, nil
 	}
 
+	stack.known[pkgname] = struct{}{}
 	stack.mu.Unlock()
 
 	childT, err := provision.RequireServer(ctx, env, pkgname)
@@ -54,8 +60,6 @@ func (stack *stackBuilder) checkAdd(ctx context.Context, env provision.ServerEnv
 		return nil, nil, err
 	}
 
-	stack.mu.Lock()
-	defer stack.mu.Unlock()
 	ps := stack.Add(childT)
 
 	return &childT, ps, nil
