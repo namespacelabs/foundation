@@ -18,6 +18,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+var ExplainIndentValues = false
+
 type likeNamed interface {
 	hasAction
 	hasUnwrap
@@ -83,7 +85,7 @@ func explain(ctx context.Context, w io.Writer, c rawComputable, indent string) e
 
 				switch x := in.Value.(type) {
 				case proto.Message:
-					fmt.Fprintf(w, "{ %s }", prototext.MarshalOptions{Multiline: false}.Format(x))
+					fmt.Fprintf(w, "{ %s }", prototext.MarshalOptions{Multiline: ExplainIndentValues}.Format(x))
 				case fmt.Stringer:
 					fmt.Fprintf(w, "%s", x)
 				default:
