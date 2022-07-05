@@ -50,7 +50,7 @@ package {{.Package}};{{if eq .Framework "GO"}}
 option go_package = "{{.GoPackage}}";{{end}}
 
 service {{.Name}} {
-    // TODO change to desired RPC methods
+	// TODO change to desired RPC methods
 	rpc Echo(EchoRequest) returns (EchoResponse);
 }
 

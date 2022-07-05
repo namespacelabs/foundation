@@ -26,14 +26,18 @@ func CreateTestScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Loc
 var testTmpl = template.Must(template.New(testFileName).Parse(`
 import "namespacelabs.dev/foundation/std/fn"
 
+// Declare a new test, see also https://docs.namespacelabs.com/concepts/test
 test: fn.#Test & {
 	name: "e2etest"
 
+	// Define how the test driver gets built.
 	binary: {
+		// In this case, the test driver is built from a go binary which is co-located with the test.
 		from: go_package: "."
 	}
 
 	fixture: {
+		// The server under test. Its dependencies will be automatically part of the test fixture.
 		sut: "{{.ServerPkg}}"
 	}
 }

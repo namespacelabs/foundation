@@ -61,12 +61,13 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			return context.Canceled
 		}
 
+		var dependencies []string
 		if *fmwk == schema.Framework_GO {
 			if err := runGoInitCmdIfNeeded(ctx, root, runCommand); err != nil {
 				return err
 			}
 
-			*grpcServices = append(*grpcServices,
+			dependencies = append(dependencies,
 				"namespacelabs.dev/foundation/std/grpc/logging",
 				"namespacelabs.dev/foundation/std/monitoring/tracing/jaeger")
 		}
@@ -84,7 +85,7 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			return context.Canceled
 		}
 
-		opts := cue.GenServerOpts{Name: *name, Framework: *fmwk, GrpcServices: *grpcServices, HttpServices: parsedHttpServices}
+		opts := cue.GenServerOpts{Name: *name, Framework: *fmwk, GrpcServices: *grpcServices, Dependencies: dependencies, HttpServices: parsedHttpServices}
 		if err := cue.CreateServerScaffold(ctx, root.FS(), loc, opts); err != nil {
 			return err
 		}

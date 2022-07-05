@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/muesli/reflow/wordwrap"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -157,7 +158,7 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 
 		for _, starterCmd := range starterCmds {
 			printConsoleCmd(ctx, stdout, fmt.Sprintf("ns %s", strings.Join(starterCmd.args, " ")))
-			fmt.Fprintf(stdout, "%s\n\n", colors.Ctx(ctx).Comment.Apply(starterCmd.description))
+			fmt.Fprintf(stdout, "%s\n\n", wordwrap.String(colors.Ctx(ctx).Comment.Apply(starterCmd.description), 80))
 			if err := runCommand(ctx, starterCmd.args); err != nil {
 				return err
 			}

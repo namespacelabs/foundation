@@ -28,7 +28,7 @@ import (
 	"namespacelabs.dev/foundation/std/fn"
 )
 
-// For examples, check out namespacelabs.dev/std and namespacelabs.dev/universe
+// Declare a new extension, see also https://docs.namespacelabs.com/concepts/extension
 extension: fn.#Extension & {
 
 }

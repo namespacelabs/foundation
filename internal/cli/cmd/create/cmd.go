@@ -24,5 +24,8 @@ func NewCreateCmd(runCommand func(ctx context.Context, args []string) error) *co
 	cmd.AddCommand(newStarterCmd(runCommand))
 	cmd.AddCommand(newTestCmd())
 
+	cmd.PersistentFlags().BoolVar(&ExperimentalEnableTypescript, "experimental_enable_typescript", ExperimentalEnableTypescript,
+		"If true, adds NodeJS/Typescript to the list of supported frameworks.")
+
 	return cmd
 }
