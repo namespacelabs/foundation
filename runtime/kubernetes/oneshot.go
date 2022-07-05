@@ -73,7 +73,7 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 		fmt.Fprintln(logOutput, "<No longer streaming pod logs, but pod is still running, waiting for completion.>")
 
 		if err := kubeobserver.WaitForCondition(ctx, r.cli,
-			tasks.Action("kubernetes.pod.wait"),
+			tasks.Action("kubernetes.pod.wait").Arg("namespace", r.moduleNamespace).Arg("name", name).Arg("condition", "terminated"),
 			kubeobserver.WaitForPodConditition(
 				kubeobserver.ResolvePod(r.moduleNamespace, name),
 				func(status corev1.PodStatus) (bool, error) {
@@ -114,7 +114,7 @@ func (r Unbound) RunAttachedOpts(ctx context.Context, ns, name string, runOpts r
 		return err
 	}
 
-	compute.On(ctx).Cleanup(tasks.Action("kubernetes.pod.delete"), func(ctx context.Context) error {
+	compute.On(ctx).Cleanup(tasks.Action("kubernetes.pod.delete").Arg("namespace", ns).Arg("name", name), func(ctx context.Context) error {
 		return r.cli.CoreV1().Pods(ns).Delete(context.Background(), name, metav1.DeleteOptions{})
 	})
 
@@ -157,7 +157,7 @@ func spawnAndWaitPod(ctx context.Context, cli *k8s.Clientset, ns, name string, c
 		return err
 	}
 
-	if err := kubeobserver.WaitForCondition(ctx, cli, tasks.Action("kubernetes.pod.deploy").Arg("name", name),
+	if err := kubeobserver.WaitForCondition(ctx, cli, tasks.Action("kubernetes.pod.deploy").Arg("namespace", ns).Arg("name", name),
 		kubeobserver.WaitForPodConditition(kubeobserver.ResolvePod(ns, name), func(status corev1.PodStatus) (bool, error) {
 			return (status.Phase == corev1.PodRunning || status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 		})); err != nil {
