@@ -1,13 +1,12 @@
-![Logo](/devworkflow/web/public/icons/logo.svg) 
+![Logo](/devworkflow/web/public/icons/logo.svg)
 
-# Foundation
+# Namespace
 
-*Foundation is an Application development platform that uses composition to drive build, test and prod. Enabling you to focus on developing your own services, rather than managing infrastructure.*
+Namespace is an Application development platform that uses composition to drive build, test and prod. Enabling you to focus on developing your own services, rather than managing infrastructure.
 
 ## Getting Started
-Read an overview of our platform and instructions to get started at 
-**https://alpha.foundation.namespacelabs.com**
+Read an overview of our platform and instructions to get started at  **https://docs.namespacelabs.com**
 
 ## Useful links
 
-* [Developing Foundation](/CONTRIBUTING.md)
+* [Contributing to Namespace](/CONTRIBUTING.md)
