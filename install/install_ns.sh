@@ -107,7 +107,7 @@ do_install() {
 
   if ! $dry_run; then 
     if command -v ns >/dev/null; then
-      echo "Run 'ns --help' to get started"
+      echo "Run 'ns create starter' to get started"
     else
       case $SHELL in
 	      /bin/zsh) shell_profile=".zshrc" ;;
