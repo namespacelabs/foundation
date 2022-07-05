@@ -5,7 +5,7 @@
 
 set -e
 
-VERSION="0.0.45"
+VERSION="0.0.46"
 
 is_wsl() {
 	case "$(uname -r)" in
