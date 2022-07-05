@@ -40,6 +40,7 @@ func (stack *stackBuilder) Add(srv provision.Server) *ParsedServer {
 	stack.mu.Lock()
 	defer stack.mu.Unlock()
 
+	stack.known[srv.PackageName()] = struct{}{}
 	stack.servers = append(stack.servers, serverBuilder{srv, ps})
 	return ps
 }
