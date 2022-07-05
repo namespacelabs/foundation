@@ -116,7 +116,7 @@ do_install() {
       echo "Manually add the directory to your \$HOME/$shell_profile (or similar)"
 	    echo "  export NS_INSTALL=\"$ns_install\""
 	    echo "  export PATH=\"\$NS_INSTALL/bin:\$PATH\""
-	    echo "Run '$exe --help' to get started"
+	    echo "Run '$exe create starter' to get started"
 	  fi
   fi 
 }
