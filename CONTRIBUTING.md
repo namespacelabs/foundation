@@ -129,9 +129,19 @@ no authentication. However, you'll have to sign-in in order to update these preb
 Run `gcloud auth login` to authenticate to GCP with your `namespacelabs.com` account, and then
 whenever you need to write new prebuilt images, you'll have to run:
 
+#### All prebuilts
+
 ```bash
 ns build-binary --all --build_platforms=linux/arm64,linux/amd64 \
      --output_prebuilts --base_repository=us-docker.pkg.dev/foundation-344819/prebuilts/ --log_actions
+```
+
+#### Specific images
+
+```
+nsdev build-binary std/networking/gateway/controller std/networking/gateway/server/configure \
+     --build_platforms=linux/arm64,linux/amd64 --output_prebuilts \
+     --base_repository=us-docker.pkg.dev/foundation-344819/prebuilts/ --log_actions
 ```
 
 You can then update the `prebuilt_binary` definitions in `workspace.textpb` with the values above.
