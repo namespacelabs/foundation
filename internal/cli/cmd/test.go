@@ -40,6 +40,7 @@ func NewTestCmd() *cobra.Command {
 		parallel       bool
 		parallelWork   bool
 		ephemeral      bool = true
+		explain        bool
 	)
 
 	cmd := &cobra.Command{
@@ -128,6 +129,10 @@ func NewTestCmd() *cobra.Command {
 				if parallel || parallelWork {
 					parallelTests = append(parallelTests, test)
 				} else {
+					if explain {
+						return compute.Explain(ctx, console.Stdout(ctx), test)
+					}
+
 					testResults, err := compute.Get(ctx, test)
 					if err != nil {
 						return err
@@ -154,6 +159,10 @@ func NewTestCmd() *cobra.Command {
 
 			if len(parallelTests) > 0 {
 				runTests := compute.Collect(tasks.Action("test.all-tests"), parallelTests...)
+
+				if explain {
+					return compute.Explain(ctx, console.Stdout(ctx), runTests)
+				}
 
 				results, err := compute.GetValue(testCtx, runTests)
 				if err != nil {
@@ -194,6 +203,7 @@ func NewTestCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
 	cmd.Flags().BoolVar(&parallelWork, "parallel_work", true, "If true, performs all work in parallel except running the actual test (e.g. builds).")
 	cmd.Flags().BoolVar(&testing.UseVClusters, "vcluster", testing.UseVClusters, "If true, creates a separate vcluster per test invocation.")
+	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 
 	return cmd
 }

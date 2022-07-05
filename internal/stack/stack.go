@@ -170,14 +170,13 @@ func (cs *computeState) computeStackContents(ctx context.Context, server provisi
 
 		parsedDeps := make([]*ParsedNode, len(deps))
 		exec := executor.New(ctx, "stack.provision.eval")
-		state := eval.NewAllocState()
 
 		for k, n := range deps {
 			k := k // Close k.
 			n := n // Close n.
 
 			exec.Go(func(ctx context.Context) error {
-				ev, err := EvalProvision(ctx, server, n, state)
+				ev, err := EvalProvision(ctx, server, n)
 				if err != nil {
 					return err
 				}
@@ -218,6 +217,7 @@ func (cs *computeState) computeStackContents(ctx context.Context, server provisi
 					depsWithNeeds[j].Package.PackageName().String()) < 0
 			})
 
+			state := eval.NewAllocState()
 			for _, dwn := range depsWithNeeds {
 				allocs, err := fillNeeds(ctx, server.Proto(), state, allocators, dwn.Package.Node())
 				if err != nil {
@@ -243,9 +243,9 @@ func (cs *computeState) computeStackContents(ctx context.Context, server provisi
 	})
 }
 
-func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Package, state *eval.AllocState) (*ParsedNode, error) {
+func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Package) (*ParsedNode, error) {
 	return tasks.Return(ctx, tasks.Action("package.eval.provisioning").Scope(n.PackageName()).Arg("server", server.PackageName()), func(ctx context.Context) (*ParsedNode, error) {
-		pn, err := evalProvision(ctx, server, n, state)
+		pn, err := evalProvision(ctx, server, n)
 		if err != nil {
 			return nil, fnerrors.Wrap(n.Location, err)
 		}
@@ -254,7 +254,7 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 	})
 }
 
-func evalProvision(ctx context.Context, server provision.Server, n *workspace.Package, state *eval.AllocState) (*ParsedNode, error) {
+func evalProvision(ctx context.Context, server provision.Server, n *workspace.Package) (*ParsedNode, error) {
 	var combinedProps frontend.PrepareProps
 	for _, hook := range n.PrepareHooks {
 		if hook.InvokeInternal != "" {
