@@ -93,6 +93,9 @@ func NewPrepareCmd() *cobra.Command {
 			if len(args) < 1 {
 				return fnerrors.UserError(nil, "%q is a required argument, run %q to proceed", expectedArg, expectedCmd)
 			}
+			if args[0] == "aws" {
+				return fnerrors.UserError(nil, "aws is not a supported target. Use local to setup a local development environment, or eks to setup a EKS-based environment.")
+			}
 			if args[0] != "local" {
 				return fnerrors.UserError(nil, "%q is a required argument, run %q to proceed", expectedArg, expectedCmd)
 			}
