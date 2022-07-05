@@ -28,4 +28,9 @@ extension: fn.#Extension & {
 			}
 		}
 	}
+
+	// Enable IAM Role / Service Account translation by default.
+	import: [
+		"namespacelabs.dev/foundation/universe/aws/irsa",
+	]
 }
