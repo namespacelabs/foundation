@@ -116,6 +116,13 @@ func (r *HttpGrpcTranscoderReconciler) Reconcile(ctx context.Context, req ctrl.R
 			"%s for namespace %q and name %q: %v", errmsg, req.Namespace, req.Name, updateErr)
 		log.Error(updateErr, errmsg, "namespace", req.Namespace, "name", req.Name)
 		return ctrl.Result{}, updateErr
+	} else {
+		msg := "successfully updated transcoder status"
+		r.recorder.Eventf(transcoder, NormalEvent, UpdateTranscoderStatus,
+			"%s with version %d for namespace %q and name %q",
+			msg, r.snapshot.CurrentSnapshotId(), req.Namespace, req.Name)
+		log.Info(msg, "namespace", req.Namespace, "name", req.Name, "version", r.snapshot.CurrentSnapshotId())
+
 	}
 
 	return ctrl.Result{}, snapshotErr
