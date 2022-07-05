@@ -244,7 +244,7 @@ func (cs *computeState) computeStackContents(ctx context.Context, server provisi
 }
 
 func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Package, state *eval.AllocState) (*ParsedNode, error) {
-	return tasks.Return(ctx, tasks.Action("package.eval.provisioning").Scope(n.PackageName()), func(ctx context.Context) (*ParsedNode, error) {
+	return tasks.Return(ctx, tasks.Action("package.eval.provisioning").Scope(n.PackageName()).Arg("server", server.PackageName()), func(ctx context.Context) (*ParsedNode, error) {
 		pn, err := evalProvision(ctx, server, n, state)
 		if err != nil {
 			return nil, fnerrors.Wrap(n.Location, err)
