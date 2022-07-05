@@ -16,14 +16,10 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
-	"namespacelabs.dev/foundation/internal/versions"
 )
 
 const (
 	workspaceFileTemplate = `module: "%s"
-requirements: {
-	api: %d
-}
 `
 	vscodeExtensionsFilePath = ".vscode/extensions.json"
 	vscodeExtensionsTemplate = `{
@@ -110,7 +106,7 @@ func writeWorkspaceConfig(ctx context.Context, fsfs fnfs.ReadWriteFS, args []str
 		return context.Canceled
 	}
 
-	return writeFileIfDoesntExist(ctx, nil, fsfs, cuefrontend.WorkspaceFile, fmt.Sprintf(workspaceFileTemplate, workspaceName, versions.APIVersion))
+	return writeFileIfDoesntExist(ctx, nil, fsfs, cuefrontend.WorkspaceFile, fmt.Sprintf(workspaceFileTemplate, workspaceName))
 }
 
 func writeFileIfDoesntExist(ctx context.Context, out io.Writer, fsfs fnfs.ReadWriteFS, fn string, content string) error {
