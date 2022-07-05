@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -27,11 +28,11 @@ import (
 )
 
 // Returns a Computable[v1.Image] with the results of the compilation.
-func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.Environment, description, baseOutput, basePath string, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
+func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.Environment, description, baseOutput, basePath string, externalModules []build.Workspace, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
 	hostPlatform := buildkit.HostPlatform()
 	conf := build.NewBuildTarget(&hostPlatform).WithSourceLabel(description)
 
-	local, base, err := viteBuildBase(ctx, conf, "/app", loc.Module, loc.Rel(), false, extraFiles...)
+	local, base, err := viteBuildBase(ctx, conf, "/app", loc.Module, loc.Rel(), loc.Module.Workspace, false, externalModules, extraFiles...)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +46,7 @@ func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.En
 		Run(llb.Shlexf("node_modules/vite/bin/vite.js build --base=%s --outDir=%s --emptyOutDir", basePath, filepath.Join("/out", baseOutput)), llb.Dir("/app")).
 		AddMount("/out", llb.Scratch())
 
-	image, err := buildkit.LLBToImage(ctx, env, conf, out, local)
+	image, err := buildkit.LLBToImage(ctx, env, conf, out, local...)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +54,7 @@ func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.En
 	return compute.Named(tasks.Action("web.vite.build").Arg("builder", "buildkit"), image), nil
 }
 
-func viteDevBuild(ctx context.Context, env ops.Environment, target string, loc workspace.Location, isFocus bool, conf build.BuildTarget, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
+func viteDevBuild(ctx context.Context, env ops.Environment, target string, loc workspace.Location, isFocus bool, conf build.BuildTarget, externalModules []build.Workspace, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
 	var module build.Workspace
 
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {
@@ -65,12 +66,12 @@ func viteDevBuild(ctx context.Context, env ops.Environment, target string, loc w
 		module = loc.Module
 	}
 
-	local, state, err := viteBuildBase(ctx, conf, target, module, loc.Rel(), isFocus, extraFiles...)
+	local, state, err := viteBuildBase(ctx, conf, target, module, loc.Rel(), loc.Module.Workspace, isFocus, externalModules, extraFiles...)
 	if err != nil {
 		return nil, err
 	}
 
-	image, err := buildkit.LLBToImage(ctx, env, conf, state, local)
+	image, err := buildkit.LLBToImage(ctx, env, conf, state, local...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,24 +79,33 @@ func viteDevBuild(ctx context.Context, env ops.Environment, target string, loc w
 	return compute.Named(tasks.Action("web.vite.build.dev").Arg("builder", "buildkit").Scope(loc.PackageName), image), nil
 }
 
-func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, module build.Workspace, rel string, rebuildOnChanges bool, extraFiles ...*memfs.FS) (buildkit.LocalContents, llb.State, error) {
-	local := buildkit.LocalContents{Module: module, Path: rel, ObserveChanges: rebuildOnChanges}
-
-	src := buildkit.MakeLocalState(local)
-
+func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, module build.Workspace, rel string, workspace *schema.Workspace, rebuildOnChanges bool, externalModules []build.Workspace, extraFiles ...*memfs.FS) ([]buildkit.LocalContents, llb.State, error) {
 	nodeImage, err := pins.CheckDefault("node")
 	if err != nil {
-		return buildkit.LocalContents{}, llb.State{}, err
+		return nil, llb.State{}, err
 	}
 
-	buildBase, err := prepareYarn(ctx, target, nodeImage, src, *conf.TargetPlatform())
+	buildBase, err := nodejs.PrepareNodejsBaseWithYarnForBuild(ctx, nodeImage, *conf.TargetPlatform())
 	if err != nil {
-		return buildkit.LocalContents{}, llb.State{}, err
+		return nil, llb.State{}, err
+	}
+
+	locals, buildBase, err := nodejs.AddExternalModules(ctx, workspace, module, rel, rebuildOnChanges, buildBase, externalModules)
+	if err != nil {
+		return nil, llb.State{}, err
+	}
+
+	src := buildkit.MakeLocalState(locals[0])
+
+	buildBase, err = runYarn(ctx, target, buildBase, src, *conf.TargetPlatform())
+	if err != nil {
+		return nil, llb.State{}, err
 	}
 
 	// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
 	base := llbutil.Image(nodeImage, *conf.TargetPlatform()).
-		With(llbutil.CopyFrom(buildBase, filepath.Join(target, "node_modules"), filepath.Join(target, "node_modules")))
+		With(llbutil.CopyFrom(buildBase, filepath.Join(target, "node_modules"), filepath.Join(target, "node_modules"))).
+		With(llbutil.CopyFrom(buildBase, nodejs.DepsRootPath, nodejs.DepsRootPath))
 
 	// Use separate layers for node_modules, and sources, as the latter change more often.
 	base = base.With(llbutil.CopyFrom(src, ".", target))
@@ -103,19 +113,14 @@ func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, m
 	for _, extra := range extraFiles {
 		base, err = llbutil.WriteFS(ctx, extra, base, target)
 		if err != nil {
-			return buildkit.LocalContents{}, llb.State{}, err
+			return nil, llb.State{}, err
 		}
 	}
 
-	return local, base, nil
+	return locals, base, nil
 }
 
-func prepareYarn(ctx context.Context, target, nodejsBase string, src llb.State, platform specs.Platform) (llb.State, error) {
-	base, err := nodejs.PrepareNodejsBaseWithYarnForBuild(ctx, nodejsBase, platform)
-	if err != nil {
-		return llb.State{}, err
-	}
-
+func runYarn(ctx context.Context, target string, base llb.State, src llb.State, platform specs.Platform) (llb.State, error) {
 	buildBase := base.With(
 		llbutil.CopyFrom(src, "package.json", filepath.Join(target, "package.json")),
 		llbutil.CopyFrom(src, "yarn.lock", filepath.Join(target, "yarn.lock")))

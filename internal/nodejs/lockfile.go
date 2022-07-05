@@ -25,7 +25,21 @@ type LockFileModule struct {
 	Path string `json:"path"`
 }
 
-func GenerateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string) (lockFile, error) {
+func ModulesFromWorkspace(workspace *schema.Workspace) []string {
+	modules := []string{workspace.ModuleName}
+
+	for _, dep := range workspace.Dep {
+		modules = append(modules, dep.ModuleName)
+	}
+
+	for _, replace := range workspace.Replace {
+		modules = append(modules, replace.ModuleName)
+	}
+
+	return modules
+}
+
+func generateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string, relPath string) (lockFile, error) {
 	moduleCacheRoot, err := dirs.ModuleCacheRoot()
 	if err != nil {
 		return lockFile{}, err
@@ -36,7 +50,9 @@ func GenerateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string) (
 	}
 
 	for _, dep := range workspace.Dep {
-		moduleRelPath, err := filepath.Rel(moduleAbsPath, filepath.Join(moduleCacheRoot, dep.ModuleName, dep.Version))
+		moduleRelPath, err := filepath.Rel(
+			filepath.Join(moduleAbsPath, relPath),
+			filepath.Join(moduleCacheRoot, dep.ModuleName, dep.Version))
 		if err != nil {
 			return lockFile{}, err
 		}
@@ -47,17 +63,47 @@ func GenerateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string) (
 	}
 
 	for _, replace := range workspace.Replace {
+		moduleRelPath, err := filepath.Rel(
+			filepath.Join(moduleAbsPath, relPath),
+			filepath.Join(moduleAbsPath, replace.Path))
+		if err != nil {
+			return lockFile{}, err
+		}
+
 		lock.Modules[replace.ModuleName] = LockFileModule{
-			Path: replace.Path,
+			Path: moduleRelPath,
 		}
 	}
 
+	moduleRelPath, err := filepath.Rel(filepath.Join(moduleAbsPath, relPath), moduleAbsPath)
+	if err != nil {
+		return lockFile{}, err
+	}
 	// The module itself is needed to resolve dependencies between nodes within the module.
+	lock.Modules[workspace.ModuleName] = LockFileModule{
+		Path: moduleRelPath,
+	}
+
+	return lock, nil
+}
+
+func generateLockFileStructForBuild(workspace *schema.Workspace) lockFile {
+	lock := lockFile{
+		Modules: map[string]LockFileModule{},
+	}
+
+	// When building an image we put all the dependencies under "depsRootPath" by their module name.
+	for _, moduleName := range ModulesFromWorkspace(workspace) {
+		lock.Modules[moduleName] = LockFileModule{
+			Path: filepath.Join(DepsRootPath, moduleName),
+		}
+	}
+
 	lock.Modules[workspace.ModuleName] = LockFileModule{
 		Path: ".",
 	}
 
-	return lock, nil
+	return lock
 }
 
 // Returns the filename

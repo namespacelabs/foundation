@@ -127,10 +127,12 @@ type impl struct {
 	languages.NoDev
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
+func GetExternalModuleForDeps(server provision.Server) []build.Workspace {
 	moduleMap := map[string]*workspace.Module{}
 	for _, dep := range server.Deps() {
-		if dep.Location.Module.ModuleName() != server.Module().ModuleName() {
+		if dep.Location.Module.ModuleName() != server.Module().ModuleName() &&
+			(dep.Node() != nil && (slices.Contains(dep.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS) ||
+				slices.Contains(dep.Node().CodegeneratedFrameworks(), schema.Framework_WEB))) {
 			moduleMap[dep.Location.Module.ModuleName()] = dep.Location.Module
 		}
 	}
@@ -139,6 +141,10 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 		modules = append(modules, module)
 	}
 
+	return modules
+}
+
+func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
 	yarnRoot, err := findYarnRoot(server.Location)
 	if err != nil {
 		return nil, err
@@ -161,7 +167,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 	return buildNodeJS{
 		module:          module,
 		workspace:       server.Location.Module.Workspace,
-		externalModules: modules,
+		externalModules: GetExternalModuleForDeps(server),
 		yarnRoot:        yarnRoot,
 		serverEnv:       server.Env(),
 		isDevBuild:      isDevBuild,
@@ -264,20 +270,15 @@ func (impl) TidyWorkspace(ctx context.Context, env provision.Env, packages []*wo
 }
 
 func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, path string) error {
-	lockFileStruct, err := nodejs.GenerateLockFileStruct(yarnRootData.workspace, "/")
-	if err != nil {
-		return err
-	}
-
 	dependencies := map[string]string{}
 	for k, v := range builtin().Dependencies {
 		dependencies[k] = v
 	}
-	for moduleName := range lockFileStruct.Modules {
+	for _, moduleName := range nodejs.ModulesFromWorkspace(yarnRootData.workspace) {
 		dependencies[toNpmNamespace(moduleName)] = "fn:" + moduleName
 	}
 
-	_, err = updatePackageJson(ctx, path, yarnRootData.module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
+	_, err := updatePackageJson(ctx, path, yarnRootData.module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
 		packageJson["private"] = true
 		packageJson["name"] = toNpmNamespace(yarnRootData.workspace.ModuleName)
 
