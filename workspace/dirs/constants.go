@@ -9,7 +9,7 @@ import (
 )
 
 // Any sub-directory.
-var DirsToExclude = []string{".git", ".parcel-cache", "node_modules"}
+var DirsToExclude = []string{"node_modules"}
 
 // Relative to the workspace.
 var FilesToExclude = []string{}
