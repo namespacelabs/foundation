@@ -88,7 +88,7 @@ do_install() {
   exe="$bin_dir/ns"
 
   if [ ! -d "$bin_dir" ]; then
-    $sh_c"mkdir -p ${bin_dir}"
+    $sh_c "mkdir -p ${bin_dir}"
   fi
 
   download_uri="https://ns-releases.s3.us-east-2.amazonaws.com/ns/v${version}/ns_${version}_${os}_${architecture}.tar.gz"
