@@ -501,6 +501,9 @@ func SetupViper() {
 
 	viper.SetDefault("enable_telemetry", true)
 
+	viper.SetDefault("enable_autoupdate", true)
+	_ = viper.BindEnv("enable_autoupdate")
+
 	viper.SetDefault("console_log_level", 0)
 	_ = viper.BindEnv("console_log_level")
 
