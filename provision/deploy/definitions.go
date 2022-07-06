@@ -329,11 +329,34 @@ func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema
 			return nil, err
 		}
 
-		invocation, err := tools.InvokeWithImage(ctx, env, compiledInvocation, compute.Transform(image, func(ctx context.Context, r oci.ResolvableImage) (oci.Image, error) {
-			return r.Image()
-		}))
-		if err != nil {
-			return nil, err
+		var invocation compute.Computable[*protocol.InvokeResponse]
+		switch {
+		case compiledInvocation.ExperimentalFunction != nil:
+			foundation, err := env.Resolve(ctx, "namespacelabs.dev/foundation")
+			if err != nil {
+				return nil, err
+			}
+
+			loc, err := env.Resolve(ctx, schema.PackageName(compiledInvocation.ExperimentalFunction.PackageName))
+			if err != nil {
+				return nil, err
+			}
+
+			invocation, err = tools.InvokeFunction(ctx, loc, foundation.Module.Abs(), compiledInvocation)
+			if err != nil {
+				return nil, err
+			}
+
+		case compiledInvocation.BinaryPackage != "":
+			invocation, err = tools.InvokeWithImage(ctx, env, compiledInvocation, compute.Transform(image, func(ctx context.Context, r oci.ResolvableImage) (oci.Image, error) {
+				return r.Image()
+			}))
+			if err != nil {
+				return nil, err
+			}
+
+		default:
+			return nil, fnerrors.BadInputError("don't know how to handle compiled invocation")
 		}
 
 		result, err := compute.GetValue(ctx, invocation)
@@ -353,6 +376,31 @@ func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema
 }
 
 func makeInvocation(ctx context.Context, env provision.ServerEnv, inv *types.DeferredInvocationSource) (*types.DeferredInvocation, compute.Computable[oci.ResolvableImage], error) {
+	if inv.ExperimentalFunction != "" {
+		if inv.Binary != "" {
+			return nil, nil, fnerrors.New("binary and experimentalFunction are exclusive (%q vs %q)", inv.Binary, inv.ExperimentalFunction)
+		}
+
+		pkg, err := env.LoadByName(ctx, schema.PackageName(inv.ExperimentalFunction))
+		if err != nil {
+			return nil, nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)
+		}
+
+		if pkg.ExperimentalFunction == nil {
+			return nil, nil, fnerrors.New("%s: missing function definition", inv.ExperimentalFunction)
+		}
+
+		return &types.DeferredInvocation{
+			ExperimentalFunction: pkg.ExperimentalFunction,
+			Cacheable:            inv.Cacheable,
+			WithInput:            inv.WithInput,
+		}, nil, nil
+	}
+
+	if inv.Binary == "" {
+		return nil, nil, fnerrors.New("binary package definition is missing")
+	}
+
 	pkg, err := env.LoadByName(ctx, schema.PackageName(inv.Binary))
 	if err != nil {
 		return nil, nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)

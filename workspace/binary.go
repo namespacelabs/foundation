@@ -33,3 +33,25 @@ func TransformBinary(loc Location, bin *schema.Binary) error {
 
 	return nil
 }
+
+func TransformFunction(loc Location, function *schema.ExperimentalFunction) error {
+	if function.PackageName != "" {
+		return fnerrors.UserError(loc, "package_name can not be set")
+	}
+
+	function.PackageName = loc.PackageName.String()
+
+	if function.Kind == "" {
+		return fnerrors.UserError(loc, "function kind can't be empty")
+	}
+
+	if function.Runtime == "" {
+		return fnerrors.UserError(loc, "function runtime can't be empty")
+	}
+
+	if function.Source == "" {
+		return fnerrors.UserError(loc, "function source must be specified")
+	}
+
+	return nil
+}

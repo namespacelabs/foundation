@@ -28,7 +28,7 @@ func newDenoCmd() *cobra.Command {
 			return err
 		}
 
-		if err := d.CacheImports(ctx, env.Root().Abs(), deno.IncludedImports...); err != nil {
+		if err := d.CacheImports(ctx, env.Root().Abs()); err != nil {
 			return err
 		}
 

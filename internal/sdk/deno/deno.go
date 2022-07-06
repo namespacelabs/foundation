@@ -1,6 +1,10 @@
 // Copyright 2022 Namespace Labs Inc; All rights reserved.
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
+
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
 package deno
 
 import (
@@ -106,7 +110,12 @@ func (deno Deno) Run(ctx context.Context, dir string, rio rtypes.IO, args ...str
 		return err
 	}
 
-	denoDir := filepath.Join(cacheDir, "deno")
+	d, err := schema.DigestOf(IncludedImports)
+	if err != nil {
+		return err
+	}
+
+	denoDir := filepath.Join(cacheDir, "deno", d.Hex)
 
 	cmd := exec.CommandContext(ctx, string(deno), args...)
 	cmd.Dir = dir
@@ -118,12 +127,10 @@ func (deno Deno) Run(ctx context.Context, dir string, rio rtypes.IO, args ...str
 	return cmd.Run()
 }
 
-func (deno Deno) CacheImports(ctx context.Context, dir string, imports ...string) error {
-	if len(imports) == 0 {
-		return nil
-	}
+func (deno Deno) CacheImports(ctx context.Context, dir string) error {
+	return tasks.Action("deno.cache-imports").Run(ctx, func(ctx context.Context) error {
+		out := console.Output(ctx, "deno")
 
-	out := console.Output(ctx, "deno")
-
-	return deno.Run(ctx, dir, rtypes.IO{Stdout: out, Stderr: out}, append([]string{"cache"}, imports...)...)
+		return deno.Run(ctx, dir, rtypes.IO{Stdout: out, Stderr: out}, append([]string{"cache"}, IncludedImports...)...)
+	})
 }

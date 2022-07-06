@@ -1,0 +1,20 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+// Declares a function invocation. This is still very much experimental as we
+// research how to best declare what protocol a particular function fulfills,
+// and the relationship between that protocol and the runtime support.
+message ExperimentalFunction {
+    // The package name (computed).
+    string package_name = 1;
+    string kind         = 2;
+    string runtime      = 3;
+    string source       = 4;  // Runtime specific.
+}

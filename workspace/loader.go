@@ -463,6 +463,10 @@ func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.Pac
 		return pkg.Location, nil
 	}
 
+	if mod, ok := sealed.modules[packageName.String()]; ok {
+		return Location{Module: mod, PackageName: packageName, relPath: "."}, nil
+	}
+
 	return Location{}, fnerrors.InternalError("%s: package not loaded while resolving!", packageName)
 }
 
