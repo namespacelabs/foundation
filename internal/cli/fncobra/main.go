@@ -112,26 +112,21 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		go checkRemoteStatus(console.Debug(ctxWithSink), remoteStatusChan)
 	}
 
-	var cmdBundle *CommandBundle
-	if !disableCommandBundle {
-		cmdBundle = NewCommandBundle()
+	cmdBundle := NewCommandBundle(disableCommandBundle)
 
-		// Delete stale commands asynchronously on startup.
-		defer func() {
-			_ = cmdBundle.RemoveStaleCommands()
-		}()
-	}
+	// Remove stale commands asynchronously on startup.
+	defer func() {
+		_ = cmdBundle.RemoveStaleCommands()
+	}()
 
 	var run *storedrun.Run
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
-		if cmdBundle != nil {
-			if err := cmdBundle.RegisterCommand(cmd, args); err != nil {
-				return err
-			}
-
-			tasks.ActionStorer = cmdBundle.CreateActionStorer(cmd.Context(), flushLogs)
+		if err := cmdBundle.RegisterCommand(cmd, args); err != nil {
+			return err
 		}
+
+		tasks.ActionStorer = cmdBundle.CreateActionStorer(cmd.Context(), flushLogs)
 
 		run = storedrun.New()
 
@@ -268,9 +263,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&compute.ExplainIndentValues, "compute_explain_indent_values", compute.ExplainIndentValues,
 		"If true, values output by --explain are indented.")
 
-	if cmdBundle != nil {
-		cmdBundle.SetupFlags(rootCmd.PersistentFlags())
-	}
+	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
 
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
@@ -307,7 +300,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	serializedErrToBundle := false
 
-	if cmdBundle != nil {
+	if run != nil {
 		if err != nil {
 			// This is a write into an in-memory FS and does not incur any I/O overhead.
 			if writeErr := cmdBundle.WriteError(ctx, err); writeErr != nil {
@@ -316,17 +309,14 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			// We set the bit to ensure we don't try re-serializing the error.
 			serializedErrToBundle = true
 		}
-		if run != nil {
-			actionLogs, logErr := cmdBundle.bundle.ActionLogs(ctxWithSink, debugSink)
-			if logErr == nil {
-				storedrun.Attach(actionLogs)
-			} else {
-				fmt.Fprintf(debugSink, "Failed to write action logs: %v\n", logErr)
-			}
+		actionLogs, logErr := cmdBundle.ActionLogs(ctxWithSink)
+		if actionLogs != nil {
+			storedrun.Attach(actionLogs)
 		}
-	}
+		if logErr != nil {
+			fmt.Fprintf(debugSink, "Failed to write action logs: %v\n", logErr)
+		}
 
-	if run != nil {
 		runErr := run.Output(cmdCtx, err) // If requested, store the run results.
 		if runErr != nil {
 			fmt.Fprintf(debugSink, "Failed to write run results: %v\n", runErr)
@@ -370,14 +360,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	// Ensures deferred routines after invoked gracefully before os.Exit.
 	defer handleExit(ctx)
-	if cmdBundle != nil {
-		defer func() {
-			// Capture useful information about the environment helpful for diagnostics in the bundle.
-			if flushErr := cmdBundle.FlushWithExitInfo(ctxWithSink); flushErr != nil {
-				fmt.Fprintf(debugSink, "Failed to flush the bundle with exit info: %v\n", flushErr)
-			}
-		}()
-	}
+	defer func() {
+		// Capture useful information about the environment helpful for diagnostics in the bundle.
+		if flushErr := cmdBundle.FlushWithExitInfo(ctxWithSink); flushErr != nil {
+			fmt.Fprintf(debugSink, "Failed to flush the bundle with exit info: %v\n", flushErr)
+		}
+	}()
 
 	if err != nil && !errors.Is(err, context.Canceled) {
 		exitCode := handleExitError(style, err)
@@ -386,7 +374,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		tel.RecordError(ctx, err)
 
 		// Ensure that the error with stack trace is a part of the command bundle if not written already.
-		if cmdBundle != nil && !serializedErrToBundle {
+		if !serializedErrToBundle {
 			if writeErr := cmdBundle.WriteError(ctx, err); writeErr != nil {
 				fmt.Fprintf(debugSink, "Failed to serialize the command execution error in the bundle: %v\n", writeErr)
 			}
