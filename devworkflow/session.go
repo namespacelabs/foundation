@@ -149,7 +149,7 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 			return err
 		}
 
-		resetStack(s.currentStack, env, provision.Server{})
+		resetStack(s.currentStack, env, nil)
 		pfw := s.setEnvironment(env)
 
 		s.executor.Go(func(ctx context.Context) error {

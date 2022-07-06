@@ -13,6 +13,7 @@ import "schema/networking.proto";
 import "schema/workspace.proto";
 import "workspace/tasks/protocol/tasks.proto";
 
+// Next ID: 12
 message Stack {
     uint64             revision                = 9;
     string             abs_root                = 1;
@@ -21,6 +22,7 @@ message Stack {
     repeated schema.Environment available_env  = 8;
     schema.Stack                stack          = 4;
     schema.Stack.Entry          current        = 5;
+    repeated string             focus          = 11;
     repeated StackEntryState    state          = 6;
     repeated ForwardedPort      forwarded_port = 7;
     // Pre-rendered "port forwarding" block. Contains ANSI color codes.

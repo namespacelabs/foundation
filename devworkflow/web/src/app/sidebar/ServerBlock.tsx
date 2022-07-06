@@ -17,13 +17,24 @@ import { useServerRoute } from "../server/routing";
 import classes from "./sidebar.module.css";
 
 export default function ServerBlock(props: { data: DataType }) {
-	const focusedServers = entriesToServers([props.data.current], props.data.state);
-	const supportServers = entriesToServers(
-		props.data.stack?.entry?.filter(
-			(s) => !s.server.cluster_admin && s.server.id != props.data.current.server.id
-		),
-		props.data.state
-	);
+	let focusedServersS: StackEntryType[] = [];
+	let supportServersS: StackEntryType[] = [];
+
+	let focus = props.data.focus;
+	if (!focus && props.data.current) {
+		focus = [props.data.current.server.package_name];
+	}
+
+	for (const server of props.data.stack?.entry || []) {
+		if (focus?.includes(server.server.package_name)) {
+			focusedServersS.push(server);
+		} else if (!server.server.cluster_admin) {
+			supportServersS.push(server);
+		}
+	}
+
+	const focusedServers = entriesToServers(focusedServersS, props.data.state);
+	const supportServers = entriesToServers(supportServersS, props.data.state);
 
 	let focusedServersTabs = [
 		{

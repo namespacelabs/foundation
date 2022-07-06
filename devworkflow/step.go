@@ -87,7 +87,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 
 	do.obs.updateStackInPlace(func(stack *Stack) {
 		// XXX We pass focus[0] as the focus as that's the model the web ui supports right now.
-		resetStack(stack, do.env, focus[0])
+		resetStack(stack, do.env, focus)
 	})
 
 	switch do.env.Purpose() {
@@ -201,7 +201,7 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-func resetStack(out *Stack, env provision.Env, t provision.Server) {
+func resetStack(out *Stack, env provision.Env, focus []provision.Server) {
 	workspace := protos.Clone(env.Root().Workspace)
 
 	// XXX handling broken web ui builds.
@@ -213,7 +213,15 @@ func resetStack(out *Stack, env provision.Env, t provision.Server) {
 	out.Env = env.Proto()
 	out.Workspace = workspace
 	out.AvailableEnv = workspace.Env
-	if ent := t.StackEntry(); ent != nil {
-		out.Current = ent
+
+	out.Focus = nil
+	out.Current = nil
+
+	if len(focus) > 0 {
+		out.Current = focus[0].StackEntry() // XXX legacy
+
+		for _, fs := range focus {
+			out.Focus = append(out.Focus, fs.PackageName().String())
+		}
 	}
 }
