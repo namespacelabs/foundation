@@ -13,9 +13,9 @@
 }
 
 .namespaceLabsImg {
+	display: flex;
 	width: 28px;
 	height: 28px;
-	border-radius: 4px;
 }
 
 .namespaceLabs {
