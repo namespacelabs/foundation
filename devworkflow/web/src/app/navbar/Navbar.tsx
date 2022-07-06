@@ -3,7 +3,7 @@
 // available at http://github.com/namespacelabs/foundation
 
 import { Link } from "wouter";
-import { LogoIcon } from "../logo/Logo";
+import { LogoIcon } from "@namespacelabs.dev/webui-components/logo/Logo";
 import classes from "./navbar.module.css";
 
 export function Navbar() {

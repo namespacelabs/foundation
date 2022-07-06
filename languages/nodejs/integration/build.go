@@ -204,7 +204,11 @@ func generateTsConfig(ctx context.Context, base llb.State, externalModules []bui
 		// These Web targets have Web-only dependencies that are not captured in the root yarn.lock.
 		// Hack: excluding them from compilation explicitly.
 		// TODO: find a better way to handle Web nodes under a Node.js Yarn root.
-		Exclude: []string{"**/devworkflow/web", "**/languages/nodejs/yarnplugin"},
+		Exclude: []string{
+			"**/webui",
+			"**/devworkflow/web",
+			"**/languages/nodejs/yarnplugin",
+		},
 		TsNode: &tsConfigTsNode{
 			// By default it ignores node_modules but we need to compile foundation-managed dependencies inside,
 			// so changing "ignore" to a pattern that doesn't match anything.

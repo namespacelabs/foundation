@@ -2,13 +2,13 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
+import { Logo } from "@namespacelabs.dev/webui-components/logo/Logo";
 import classNames from "classnames";
 import { useEffect } from "react";
 import { useRoute } from "wouter";
 import classes from "./app.module.css";
 import BuildPanel from "./app/build/BuildPanel";
 import CommandPanel from "./app/command/CommandPanel";
-import { Logo } from "./app/logo/Logo";
 import { Navbar } from "./app/navbar/Navbar";
 import ServerInfo from "./app/server/ServerInfo";
 import { ServerTabs, useCurrentServer } from "./app/server/ServerPanel";
