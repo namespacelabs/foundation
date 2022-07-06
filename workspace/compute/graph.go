@@ -458,6 +458,10 @@ func Cache(ctx context.Context) cache.Cache {
 func Do(parent context.Context, do func(context.Context) error) error {
 	parentOrch := On(parent)
 
+	if tasks.SinkFrom(parent) == nil {
+		panic("compute: action sink required in the context")
+	}
+
 	var c cache.Cache
 	if parentOrch != nil {
 		c = parentOrch.cache
