@@ -34,9 +34,14 @@ import (
 
 const (
 	// Public key used to encrypt bundles before uploading to the bundle service.
-	// Generate with `age-keygen` and needs to be kept in sync with the private
+	// Generated with `age-keygen` and needs to be kept in sync with the private
 	// internal key available only to foundation core devs.
 	publicKey = "age1ngp9m4wrhq4zvc2redr7jm8gat0qnkue4dfsklqdxg5yn7w0xsqqwp3jgw"
+
+	InvocationInfoFile = "invocation_info.json"
+	DockerInfoFile     = "docker_info.json"
+	MemstatsFile       = "memstats.json"
+	ErrorFile          = "error.json"
 )
 
 // Bundle is a fs with an associated timestamp.
@@ -55,6 +60,13 @@ type InvocationInfo struct {
 	Arch    string
 	NumCpu  int
 	Version version.BinaryVersion
+}
+
+func NewBundle(fsys fnfs.ReadWriteFS, timestamp time.Time) *Bundle {
+	return &Bundle{
+		fsys:      fsys,
+		Timestamp: timestamp,
+	}
 }
 
 func fullCommand(cmd *cobra.Command) string {
@@ -86,8 +98,8 @@ func (b *Bundle) WriteInvocationInfo(ctx context.Context, cmd *cobra.Command, ar
 	if err != nil {
 		return fnerrors.InternalError("failed to marshal `InvocationInfo` as JSON: %w", err)
 	}
-	if err := b.WriteFile(ctx, "invocation_info.json", encodedInfo, 0600); err != nil {
-		return fnerrors.InternalError("failed to write `InvocationInfo` to `invocation_info.json`: %w", err)
+	if err := b.WriteFile(ctx, InvocationInfoFile, encodedInfo, 0600); err != nil {
+		return fnerrors.InternalError("failed to write `InvocationInfo` to %q: %w", InvocationInfoFile, err)
 	}
 	return nil
 }
@@ -100,8 +112,8 @@ func (b *Bundle) WriteDockerInfo(ctx context.Context, dockerInfo *dockertypes.In
 	if err != nil {
 		return fnerrors.InternalError("failed to marshal docker `types.Info` as JSON: %w", err)
 	}
-	if err := b.WriteFile(ctx, "docker_info.json", encodedInfo, 0600); err != nil {
-		return fnerrors.InternalError("failed to write docker `types.Info` to `docker_info.json`: %w", err)
+	if err := b.WriteFile(ctx, DockerInfoFile, encodedInfo, 0600); err != nil {
+		return fnerrors.InternalError("failed to write docker `types.Info` to %q: %w", DockerInfoFile, err)
 	}
 	return nil
 }
@@ -114,8 +126,8 @@ func (b *Bundle) WriteMemStats(ctx context.Context) error {
 	if err != nil {
 		return fnerrors.InternalError("failed to marshal `runtime.MemStats` as JSON: %w", err)
 	}
-	if err := b.WriteFile(ctx, "memstats.json", encmstats, 0600); err != nil {
-		return fnerrors.InternalError("failed to write `runtime.MemStats` to `memstats.json`: %w", err)
+	if err := b.WriteFile(ctx, MemstatsFile, encmstats, 0600); err != nil {
+		return fnerrors.InternalError("failed to write `runtime.MemStats` to %q: %w", MemstatsFile, err)
 	}
 	return nil
 }
@@ -129,8 +141,8 @@ func (b *Bundle) WriteError(ctx context.Context, err error) error {
 	if err != nil {
 		return fnerrors.InternalError("failed to marshal `ErrorStacktrace` as JSON: %w", err)
 	}
-	if err := b.WriteFile(ctx, "error.json", encstack, 0600); err != nil {
-		return fnerrors.InternalError("failed to write `ErrorStacktrace` to `error.json`: %w", err)
+	if err := b.WriteFile(ctx, ErrorFile, encstack, 0600); err != nil {
+		return fnerrors.InternalError("failed to write `ErrorStacktrace` to %q: %w", ErrorFile, err)
 	}
 	return nil
 }
@@ -143,17 +155,17 @@ func (b *Bundle) WriteFile(ctx context.Context, path string, contents []byte, mo
 }
 
 func (b *Bundle) ReadInvocationInfo(ctx context.Context) (*InvocationInfo, error) {
-	f, err := b.fsys.Open("invocation_info.json")
+	f, err := b.fsys.Open(InvocationInfoFile)
 	if err != nil {
-		return nil, fnerrors.InternalError("failed to open `invocation_info.json`: %w", err)
+		return nil, fnerrors.InternalError("failed to open %q: %w", InvocationInfoFile, err)
 	}
 	bytes, err := ioutil.ReadAll(f)
 	if err != nil {
-		return nil, fnerrors.InternalError("failed to read `invocation_info.json`: %w", err)
+		return nil, fnerrors.InternalError("failed to read %q: %w", InvocationInfoFile, err)
 	}
 	var info InvocationInfo
 	if err := json.Unmarshal(bytes, &info); err != nil {
-		return nil, fnerrors.InternalError("failed to unmarshal `invocation_info.json`: %w", err)
+		return nil, fnerrors.InternalError("failed to unmarshal %q: %w", InvocationInfoFile, err)
 	}
 	return &info, nil
 }
@@ -195,14 +207,13 @@ func (b *Bundle) unmarshalAttachment(path string) (*storage.Command_Log, error) 
 	}, nil
 }
 
-func (b *Bundle) ActionLogs(ctx context.Context, debug io.Writer) (*storage.Command, error) {
+func (b *Bundle) ActionLogs(ctx context.Context) (*storage.Command, error) {
 	cmd := &storage.Command{}
 
 	var errs []error
 
 	err := fs.WalkDir(b.fsys, ".", func(path string, dirent fs.DirEntry, err error) error {
 		if err != nil {
-			fmt.Fprintf(debug, "Failed to walk %s: %v\n", path, err)
 			return nil
 		}
 
@@ -213,10 +224,8 @@ func (b *Bundle) ActionLogs(ctx context.Context, debug io.Writer) (*storage.Comm
 		// Unmarshal the action log file if present.
 		if strings.HasSuffix(path, "action.textpb") {
 			if storedTask, err := b.unmarshalStoredTaskFromActionLogs(path); err != nil {
-				fmt.Fprintf(debug, "Failed to unmarshal stored task from action logs for path %s: %v\n", path, err)
 				errs = append(errs, err)
 			} else {
-				fmt.Fprintf(debug, "Writing stored task %s from path %s\n", storedTask.Name, path)
 				cmd.ActionLog = append(cmd.ActionLog, storedTask)
 			}
 			return nil
@@ -224,10 +233,7 @@ func (b *Bundle) ActionLogs(ctx context.Context, debug io.Writer) (*storage.Comm
 			fileExtension := filepath.Ext(path)
 			if fileExtension != "" {
 				if attachment, err := b.unmarshalAttachment(path); err == nil {
-					fmt.Fprintf(debug, "Writing stored attachment with ID %q\n", attachment.Id)
 					cmd.AttachedLog = append(cmd.AttachedLog, attachment)
-				} else {
-					fmt.Fprintf(debug, "Failed to unmarshal artifact from path %s: %v\n", path, err)
 				}
 			}
 		}

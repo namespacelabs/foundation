@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/runtime/docker"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -21,15 +22,17 @@ var (
 // CommandBundle tracks all actions stored while invoking the command in addition to
 // diagnostic information about the environment and errors with serialized stack traces.
 type CommandBundle struct {
-	bundler *tasks.Bundler
-	bundle  *tasks.Bundle
+	disabled bool
+	bundler  *tasks.Bundler
+	bundle   *tasks.Bundle
 }
 
-func NewCommandBundle() *CommandBundle {
+func NewCommandBundle(disabled bool) *CommandBundle {
 	bundler := tasks.NewActionBundler()
 	return &CommandBundle{
-		bundler: bundler,
-		bundle:  bundler.NewInMemoryBundle(),
+		disabled: disabled,
+		bundler:  bundler,
+		bundle:   bundler.NewInMemoryBundle(),
 	}
 }
 
@@ -44,26 +47,48 @@ func (c *CommandBundle) SetupFlags(flags *pflag.FlagSet) {
 // RemoveStaleCommands removes all command bundles that are older than the configured bundle duration
 // or if they exceed the configured number of bundles to keep.
 func (c *CommandBundle) RemoveStaleCommands() error {
+	if c.disabled {
+		return nil
+	}
 	return c.bundler.RemoveStaleBundles()
 }
 
 // RegisterCommand writes invocation information about the command to the bundle.
 func (c *CommandBundle) RegisterCommand(cmd *cobra.Command, args []string) error {
+	if c.disabled {
+		return nil
+	}
 	return c.bundle.WriteInvocationInfo(cmd.Context(), cmd, args)
 }
 
 func (c *CommandBundle) CreateActionStorer(ctx context.Context, flushLogs func()) *tasks.Storer {
+	if c.disabled {
+		return nil
+	}
 	return tasks.NewStorer(ctx, c.bundler, c.bundle, tasks.StorerWithFlushLogs(flushLogs))
 }
 
 // WriteError serializes an error with an optional stack trace in the bundle.
 func (c *CommandBundle) WriteError(ctx context.Context, err error) error {
+	if c.disabled {
+		return nil
+	}
 	return c.bundle.WriteError(ctx, err)
+}
+
+func (c *CommandBundle) ActionLogs(ctx context.Context) (*storage.Command, error) {
+	if c.disabled {
+		return nil, nil
+	}
+	return c.bundle.ActionLogs(ctx)
 }
 
 // FlushWithExitInfo writes memory stats of the command, serialized docker info output, and
 // other diagnostic information before flushing the bundle.
 func (c *CommandBundle) FlushWithExitInfo(ctx context.Context) error {
+	if c.disabled {
+		return nil
+	}
 	if EnableMemoryDiagnostics {
 		if err := c.bundle.WriteMemStats(ctx); err != nil {
 			return err

@@ -5,15 +5,20 @@
 package tasks
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/klauspost/compress/zstd"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -23,6 +28,7 @@ const (
 	bundleTimeFormat      = "2006-01-02T15-04-05"
 	defaultBundlesToKeep  = 10
 	defaultBundleDuration = 48 * time.Hour
+	rootDir               = "action-bundles"
 )
 
 // Bundler manages creation and rolling of subdirectory `Bundle`s in a local fs.
@@ -59,10 +65,7 @@ func NewActionBundler() *Bundler {
 
 // Returns a new Bundle wrapping a memfs.FS with the current timestamp.
 func (b *Bundler) NewInMemoryBundle() *Bundle {
-	return &Bundle{
-		fsys:      &memfs.FS{},
-		Timestamp: time.Now().UTC(),
-	}
+	return NewBundle(&memfs.FS{}, time.Now().UTC())
 }
 
 func (b *Bundler) Flush(ctx context.Context, bundle *Bundle) error {
@@ -71,10 +74,50 @@ func (b *Bundler) Flush(ctx context.Context, bundle *Bundle) error {
 	root := filepath.Join(b.root, bundleDir)
 	dstfs := fnfs.ReadWriteLocalFS(root)
 
-	if err := fnfs.CopyTo(ctx, dstfs, ".", bundle.fsys); err != nil {
-		return fnerrors.InternalError("failed to copy bundle to %q: %w", root, err)
+	var errs []error
+	for _, src := range []string{InvocationInfoFile, DockerInfoFile, MemstatsFile, ErrorFile} {
+		if _, err := bundle.fsys.Open(src); err == nil {
+			if err := fnfs.CopyFile(dstfs, src, bundle.fsys, src); err != nil {
+				errs = append(errs, err)
+			}
+		}
 	}
-	return nil
+
+	if err := b.compressAndWriteActionLogs(ctx, bundle, dstfs); err != nil {
+		errs = append(errs, err)
+	}
+
+	return multierr.New(errs...)
+}
+
+func (b *Bundler) compressAndWriteActionLogs(ctx context.Context, bundle *Bundle, dstfs fnfs.LocalFS) error {
+	serializedActions, err := dstfs.OpenWrite("actions.binarypb.zst", 0600)
+	if err != nil {
+		return err
+	}
+
+	actionLogs, err := bundle.ActionLogs(ctx)
+	if err != nil {
+		return err
+	}
+
+	serializedBinaryLog, err := proto.MarshalOptions{Deterministic: true}.Marshal(actionLogs)
+	if err != nil {
+		return err
+	}
+
+	enc, err := zstd.NewWriter(serializedActions)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(enc, bytes.NewReader(serializedBinaryLog))
+	if err != nil {
+		enc.Close()
+		return err
+	}
+
+	return enc.Close()
 }
 
 func (b *Bundler) timeFromName(bundleName string) (time.Time, error) {
