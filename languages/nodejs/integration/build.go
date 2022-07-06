@@ -6,7 +6,6 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -18,8 +17,6 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/production"
@@ -34,10 +31,6 @@ const appRootPath = "/app"
 
 // These paths are only used within a buildkit environment.
 var (
-	// All dependencies that are not from the same module copied here. This includes
-	// dependencies used as "Dep" in workspace (copied from the Namespace cache)
-	// and the ones used as "Replace" (copied from the user's file system).
-	depsRootPath      = filepath.Join(appRootPath, "external_deps")
 	tsConfigPath      = filepath.Join(appRootPath, "tsconfig.production.fn.json")
 	nodemonConfigPath = filepath.Join(appRootPath, "nodemon.fn.json")
 )
@@ -118,38 +111,18 @@ type NodeJsBinary struct {
 }
 
 func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Configuration) (llb.State, []buildkit.LocalContents, error) {
-	local := buildkit.LocalContents{Module: bnj.module, Path: ".", ObserveChanges: bnj.isFocus}
-	src := buildkit.MakeLocalState(local)
-
-	locals := []buildkit.LocalContents{local}
-
-	yarnRoot := filepath.Join(appRootPath, bnj.yarnRoot)
 	buildBase, err := prepareYarnNodejsBase(ctx, n.NodeJsBase, *conf.TargetPlatform(), bnj.isDevBuild)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
-	lockFileStruct, err := nodejs.GenerateLockFileStruct(bnj.workspace, "/")
+	locals, buildBase, err := nodejs.AddExternalModules(ctx, bnj.workspace, bnj.module, ".", bnj.isFocus, buildBase, bnj.externalModules)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
-	// When building an image we simply put all the dependencies under "depsRootPath" by their module name.
-	for moduleName := range lockFileStruct.Modules {
-		if moduleName != bnj.module.ModuleName() {
-			lockFileStruct.Modules[moduleName] = nodejs.LockFileModule{
-				Path: filepath.Join(depsRootPath, moduleName),
-			}
-		}
-	}
-	buildBase, err = writeJsonAsFile(ctx, buildBase, lockFileStruct, nodejs.YarnLockFilePath)
-	if err != nil {
-		return llb.State{}, nil, err
-	}
+	yarnRoot := filepath.Join(appRootPath, bnj.yarnRoot)
 
-	// We have to copy the whole Yarn root because otherwise there may be missing workspaces
-	// and `yarn install --immutable` will fail.
-	buildBase = buildBase.With(llbutil.CopyFrom(src, bnj.yarnRoot, yarnRoot))
 	buildBase, err = generateTsConfig(ctx, buildBase, bnj.externalModules, bnj.workspace.ModuleName, yarnRoot)
 	if err != nil {
 		return llb.State{}, nil, err
@@ -158,21 +131,11 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	if err != nil {
 		return llb.State{}, nil, err
 	}
-	for _, module := range bnj.externalModules {
-		// Other modules live outside of this workspace.
-		// Copying them from their location to the corresponding place in "depsRootPath".
-		if module.ModuleName() != bnj.module.ModuleName() {
-			lfModule, ok := lockFileStruct.Modules[module.ModuleName()]
-			if !ok {
-				return llb.State{}, nil, fnerrors.InternalError("module %s not found in the Namespace lock file", module.ModuleName())
-			}
 
-			moduleLocal := buildkit.LocalContents{Module: module, Path: ".", ObserveChanges: false}
-			locals = append(locals, moduleLocal)
-			buildBase = buildBase.With(llbutil.CopyFrom(buildkit.MakeLocalState(moduleLocal), ".", lfModule.Path))
-		}
-	}
-	buildBase = runYarnInstall(*conf.TargetPlatform(), buildBase, yarnRoot, bnj.isDevBuild)
+	src := buildkit.MakeLocalState(locals[0])
+	buildBase = buildBase.With(llbutil.CopyFrom(src, bnj.yarnRoot, yarnRoot))
+
+	buildBase = runYarn(*conf.TargetPlatform(), buildBase, yarnRoot, bnj.isDevBuild)
 
 	var out llb.State
 	// The dev and prod builds are different:
@@ -216,22 +179,6 @@ func prepareYarnNodejsBase(ctx context.Context, nodejsBase string, platform spec
 	return buildBase, nil
 }
 
-func writeJsonAsFile(ctx context.Context, base llb.State, content any, path string) (llb.State, error) {
-	base = base.File(llb.Mkdir(filepath.Dir(path), 0755, llb.WithParents(true)))
-	json, err := json.MarshalIndent(content, "", "\t")
-	if err != nil {
-		return llb.State{}, err
-	}
-	var fsys memfs.FS
-	fsys.Add(path, json)
-	state, err := llbutil.WriteFS(ctx, &fsys, base, ".")
-	if err != nil {
-		return llb.State{}, err
-	}
-
-	return state, nil
-}
-
 type tsConfig struct {
 	CompilerOptions *tsConfigCompilerOptions `json:"compilerOptions,omitempty"`
 	Extends         string                   `json:"extends,omitempty"`
@@ -266,10 +213,10 @@ func generateTsConfig(ctx context.Context, base llb.State, externalModules []bui
 	}
 
 	for _, module := range externalModules {
-		tsConfig.Include = append(tsConfig.Include, fmt.Sprintf("%s/%s", depsRootPath, module.ModuleName()))
+		tsConfig.Include = append(tsConfig.Include, fmt.Sprintf("%s/%s", nodejs.DepsRootPath, module.ModuleName()))
 	}
 
-	return writeJsonAsFile(ctx, base, tsConfig, tsConfigPath)
+	return nodejs.WriteJsonAsFile(ctx, base, tsConfig, tsConfigPath)
 }
 
 type nodemonConfig struct {
@@ -287,10 +234,10 @@ func generateNodemonConfig(ctx context.Context, base llb.State) (llb.State, erro
 		},
 	}
 
-	return writeJsonAsFile(ctx, base, config, nodemonConfigPath)
+	return nodejs.WriteJsonAsFile(ctx, base, config, nodemonConfigPath)
 }
 
-func runYarnInstall(platform specs.Platform, buildBase llb.State, yarnRoot string, isDevBuild bool) llb.State {
+func runYarn(platform specs.Platform, buildBase llb.State, yarnRoot string, isDevBuild bool) llb.State {
 	yarnInstall := buildBase.
 		Run(nodejs.RunYarnShlex("install", "--immutable"), llb.Dir(yarnRoot))
 	yarnInstall.AddMount(nodejs.YarnContainerCacheDir, llb.Scratch(), llb.AsPersistentCacheDir(

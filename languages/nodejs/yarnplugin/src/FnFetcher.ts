@@ -2,14 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import {
-	Fetcher,
-	FetchOptions,
-	FetchResult,
-	Locator,
-	MinimalFetchOptions,
-	structUtils,
-} from "@yarnpkg/core";
+import { Fetcher, Locator, structUtils } from "@yarnpkg/core";
 import { CwdFS, PortablePath, ppath } from "@yarnpkg/fslib";
 import { readFileSync } from "fs";
 import { LOCK_FILE_PATH_ENV, PROTOCOL } from "./constants";
@@ -22,30 +15,28 @@ export class FnFetcher implements Fetcher {
 		if (!lockFn) {
 			throw new Error(`Lock file can't be found: ${LOCK_FILE_PATH_ENV} is not set.`);
 		}
-		let lockFileBytes = "{}";
-		try {
-			lockFileBytes = readFileSync(lockFn, "utf8");
-		} catch (e) {
-			// File can be not there for WEB at the moment.
-			// TODO: remove catching the exception once WEB is unified with NODEJS.
-		}
+		const lockFileBytes = readFileSync(lockFn, "utf8");
 		const lockFile = JSON.parse(lockFileBytes);
 		this.#modules = lockFile.modules || {};
 	}
 
-	supports(locator: Locator, opts: MinimalFetchOptions) {
+	supports(locator: Locator) {
 		return locator.reference.startsWith(PROTOCOL);
 	}
 
-	getLocalPath(locator: Locator, opts: FetchOptions) {
+	getLocalPath(locator: Locator) {
 		const { selector: packageName } = structUtils.parseRange(locator.reference);
 		if (!packageName) {
 			throw new Error(`locator.reference can't be parsed: ${locator.reference}`);
 		}
 
 		for (const [moduleName, module] of Object.entries(this.#modules)) {
-			if (packageName == moduleName) {
-				return ppath.resolve(process.cwd() as PortablePath, module.path as PortablePath);
+			if (packageName.startsWith(moduleName)) {
+				const relPath = packageName.slice(moduleName.length);
+				return ppath.join(
+					ppath.resolve(process.cwd() as PortablePath, module.path as PortablePath),
+					relPath as PortablePath
+				);
 			}
 		}
 		throw new Error(
@@ -57,8 +48,8 @@ export class FnFetcher implements Fetcher {
 		);
 	}
 
-	async fetch(locator: Locator, opts: FetchOptions) {
-		const path = this.getLocalPath(locator, opts);
+	async fetch(locator: Locator) {
+		const path = this.getLocalPath(locator);
 
 		return {
 			packageFs: new CwdFS(path),

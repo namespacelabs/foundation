@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/languages"
+	nodejsintegration "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -124,7 +125,9 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 
 		targetConf := build.NewBuildTarget(conf.TargetPlatform()).WithTargetName(conf.PublishName()).WithSourcePackage(srv.PackageName())
 
-		b, err := prepareBuild(ctx, loc, srv.Env(), targetConf, entry, isFocus, extra)
+		externalModules := nodejsintegration.GetExternalModuleForDeps(srv)
+
+		b, err := prepareBuild(ctx, loc, srv.Env(), targetConf, entry, isFocus, externalModules, extra)
 		if err != nil {
 			return nil, err
 		}
@@ -135,9 +138,9 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 	return builds, nil
 }
 
-func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environment, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, extra []*memfs.FS) (compute.Computable[oci.Image], error) {
+func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environment, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (compute.Computable[oci.Image], error) {
 	if !useDevBuild(env.Proto()) {
-		return ViteProductionBuild(ctx, loc, env, targetConf.SourceLabel(), filepath.Join(compiledPath, entry.PathPrefix), entry.PathPrefix, extra...)
+		return ViteProductionBuild(ctx, loc, env, targetConf.SourceLabel(), filepath.Join(compiledPath, entry.PathPrefix), entry.PathPrefix, externalModules, extra...)
 	}
 
 	var devwebConfig memfs.FS
@@ -164,7 +167,7 @@ func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environme
 
 	extra = append(extra, &devwebConfig)
 
-	return viteDevBuild(ctx, env, filepath.Join("/packages", entry.PackageName), loc, isFocus, targetConf, extra...)
+	return viteDevBuild(ctx, env, filepath.Join("/packages", entry.PackageName), loc, isFocus, targetConf, externalModules, extra...)
 }
 
 func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
