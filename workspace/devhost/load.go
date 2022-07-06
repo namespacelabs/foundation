@@ -160,3 +160,11 @@ func RewriteWith(ctx context.Context, root *workspace.Root, devhost *schema.DevH
 
 	return nil
 }
+
+func CheckEmptyErr(h *schema.DevHost) error {
+	if len(h.Configure) == 0 && len(h.ConfigurePlatform) == 0 && len(h.ConfigureTools) == 0 {
+		return fnerrors.UsageError("Try running `ns prepare local`.", "The workspace hasn't been configured for development yet.")
+	}
+
+	return nil
+}

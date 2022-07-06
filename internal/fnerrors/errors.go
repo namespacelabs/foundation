@@ -49,8 +49,8 @@ func UserError(loc Location, format string, args ...interface{}) error {
 }
 
 // Configuration or system setup is not correct and requires user intervention.
-func UsageError(what, whyFmt string, args ...interface{}) error {
-	return &usageError{fnError: fnError{Err: fmt.Errorf(whyFmt, args...), stack: stacktrace.New()}, Why: fmt.Sprintf(whyFmt, args...), What: what}
+func UsageError(runThis, toFixThis string, args ...interface{}) error {
+	return &usageError{fnError: fnError{Err: fmt.Errorf(toFixThis, args...), stack: stacktrace.New()}, Why: fmt.Sprintf(toFixThis, args...), What: runThis}
 }
 
 // Unexpected situation.

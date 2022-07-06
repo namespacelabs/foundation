@@ -294,7 +294,11 @@ func ComputeHostConfig(devHost *fnschema.DevHost, selector devhost.Selector) (*H
 
 	hostEnv := &HostEnv{}
 	if !cfg.Get(hostEnv) {
-		return nil, fnerrors.UserError(nil, "%s: no kubernetes runtime configuration available", selector.Description())
+		if err := devhost.CheckEmptyErr(devHost); err != nil {
+			return nil, err
+		}
+
+		return nil, fnerrors.UsageError("Try running one `ns prepare local` or `ns prepare eks`", "%s: no kubernetes configuration available", selector.Description())
 	}
 
 	var err error
