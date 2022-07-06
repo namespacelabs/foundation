@@ -243,10 +243,6 @@ func useDevBuild(env *schema.Environment) bool {
 }
 
 func (i impl) TidyNode(ctx context.Context, env provision.Env, pkgs workspace.Packages, p *workspace.Package) error {
-	if p.Node().Kind != schema.Node_SERVICE {
-		return nil
-	}
-
 	devPackages := []string{
 		"typescript@4.5.4",
 		"vite@2.7.13",
