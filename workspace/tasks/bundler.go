@@ -28,7 +28,6 @@ const (
 	bundleTimeFormat      = "2006-01-02T15-04-05"
 	defaultBundlesToKeep  = 10
 	defaultBundleDuration = 48 * time.Hour
-	rootDir               = "action-bundles"
 )
 
 // Bundler manages creation and rolling of subdirectory `Bundle`s in a local fs.
