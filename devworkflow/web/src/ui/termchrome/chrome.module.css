@@ -39,3 +39,10 @@
 .panelHeaderItem.active {
 	color: white;
 }
+
+.terminalWrapper {
+	flex-basis: 404px;
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+}

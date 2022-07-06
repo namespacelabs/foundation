@@ -1,0 +1,19 @@
+.header {
+	flex: 0 0 60px;
+
+	display: flex;
+	flex-direction: row;
+
+	color: white;
+	background-color: #141627;
+
+	padding: 16px;
+}
+
+.headerContent {
+	flex: 1;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	padding: 0 16px;
+}

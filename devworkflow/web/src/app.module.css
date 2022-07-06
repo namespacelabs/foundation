@@ -1,7 +1,7 @@
 .portForwardingPanel {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
+	min-height: 0;
 }
 
 .terminalWrapper {
@@ -10,4 +10,11 @@
 	flex-direction: column;
 	background-color: black;
 	padding: 0 10px;
+	min-height: 0;
+}
+
+.content {
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
 }

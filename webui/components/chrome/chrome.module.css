@@ -1,0 +1,27 @@
+.chrome {
+	display: flex;
+	flex-direction: column;
+	flex: 1 0;
+	min-height: 0;
+}
+
+.main {
+	display: grid;
+	grid-template-columns: 300px 1fr;
+	flex: 1 1;
+	overflow: hidden;
+	min-height: 0;
+}
+
+.content {
+	display: flex;
+	flex-direction: column;
+	overflow: auto;
+}
+
+.navbar {
+	display: flex;
+	flex-direction: column;
+	padding: 10px 20px;
+	overflow-y: auto;
+}

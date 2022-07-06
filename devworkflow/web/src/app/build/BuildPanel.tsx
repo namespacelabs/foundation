@@ -4,6 +4,7 @@
 
 import BuildKitLog from "../../ui/buildkit/BuildkitLog";
 import TerminalTabs from "../../ui/termchrome/TerminalTabs";
+import { TerminalWrapper } from "../../ui/termchrome/TerminalWrapper";
 import StreamSocket from "../server/StreamSocket";
 import { useBuildRoute } from "./routing";
 
@@ -29,7 +30,7 @@ export default function BuildPanel() {
 	let current = params?.what || tabs[0].what;
 
 	return (
-		<>
+		<TerminalWrapper>
 			<TerminalTabs tabs={tabs} makeHref={(what: string) => `/build/${what}`} current={current} />
 
 			{tabs.map((tab) => {
@@ -37,6 +38,6 @@ export default function BuildPanel() {
 
 				return constructors[tab.what]({ what: tab.what });
 			})}
-		</>
+		</TerminalWrapper>
 	);
 }

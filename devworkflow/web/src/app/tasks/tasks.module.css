@@ -1,4 +1,11 @@
+.taskPanel {
+	/* Expand to the whole height */
+	flex: 100000 0;
+	overflow: auto;
+}
+
 .taskGrid {
+	flex: 1 1;
 	display: grid;
 	grid-template-columns: 1fr 1fr 3fr 1fr;
 	font-size: 14px;

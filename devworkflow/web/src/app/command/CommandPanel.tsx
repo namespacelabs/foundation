@@ -3,6 +3,7 @@
 // available at http://github.com/namespacelabs/foundation
 
 import TerminalTabs from "../../ui/termchrome/TerminalTabs";
+import { TerminalWrapper } from "../../ui/termchrome/TerminalWrapper";
 import StreamSocket from "../server/StreamSocket";
 import { useCommandRoute } from "./routing";
 
@@ -24,7 +25,7 @@ export default function CommandPanel() {
 	let current = tabs[0].what;
 
 	return (
-		<>
+		<TerminalWrapper>
 			<TerminalTabs tabs={tabs} makeHref={(what: string) => "/command"} current={current} />
 
 			{tabs.map((tab) => {
@@ -32,6 +33,6 @@ export default function CommandPanel() {
 
 				return constructors[tab.what]({ what: tab.what });
 			})}
-		</>
+		</TerminalWrapper>
 	);
 }

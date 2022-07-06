@@ -12,22 +12,6 @@ input {
 	font-family: "Inter", sans-serif;
 }
 
-#content {
-	height: calc(100vh - 60px);
-	margin-top: 60px;
-	margin-left: 250px;
-	display: flex;
-	flex-direction: column;
-}
-
-#content.inlineSidebar {
-	margin-left: 0;
-}
-
-#content.hasFooter {
-	height: calc(100vh - (60px + 40px));
-}
-
 .fiddle {
 	display: flex;
 	flex-direction: row;
@@ -88,4 +72,7 @@ h6 {
 
 #app {
 	isolation: isolate;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
 }
