@@ -235,7 +235,7 @@ func (ev *ActionEvent) Clone(makeName func(string) string) *ActionEvent {
 func (ev *ActionEvent) toAction(ctx context.Context, state ActionState) *RunningAction {
 	sink := SinkFrom(ctx)
 	if sink == nil {
-		return nil
+		panic("compute: action sink required in the context")
 	}
 
 	var parent *RunningAction
