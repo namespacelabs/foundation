@@ -88,7 +88,8 @@ type frontendReq struct {
 }
 
 func MakeLocalState(src LocalContents) llb.State {
-	var excludePatterns []string
+	// Exlcluding files starting with ".". Consistent with dirs.IsExcluded
+	excludePatterns := []string{"**/.*/"}
 	for _, dir := range dirs.DirsToExclude {
 		excludePatterns = append(excludePatterns, "**/"+dir+"/")
 	}
