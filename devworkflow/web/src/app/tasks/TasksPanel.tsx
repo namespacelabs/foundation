@@ -5,16 +5,17 @@
 import { useTasksRoute } from "./routing";
 import Task from "./Task";
 import TaskList from "./TaskList";
+import classes from "./tasks.module.css";
 
 export default function TasksPanel() {
 	const [match, params] = useTasksRoute();
 
 	if (match) {
-		if (params?.id) {
-			return <Task id={params.id} what={params.what} />;
-		} else {
-			return <TaskList />;
-		}
+		return (
+			<div className={classes.taskPanel}>
+				{params?.id ? <Task id={params.id} what={params.what} /> : <TaskList />}
+			</div>
+		);
 	}
 
 	return null;

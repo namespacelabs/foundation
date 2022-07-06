@@ -1662,6 +1662,7 @@ __metadata:
     typescript: 4.5.4
     typescript-plugin-css-modules: ^3.4.0
     vite: 2.7.13
+    wouter: ^2.8.0-alpha.2
   languageName: unknown
   linkType: soft
 
@@ -2053,6 +2054,15 @@ __metadata:
   dependencies:
     string-width: ^1.0.2 || 2 || 3 || 4
   checksum: d5fc37cd561f9daee3c80e03b92ed3e84d80dde3365a8767263d03dacfc8fa06b065ffe1df00d8c2a09f731482fcacae745abfbb478d4af36d0a891fad4834d3
+  languageName: node
+  linkType: hard
+
+"wouter@npm:^2.8.0-alpha.2":
+  version: 2.8.0-alpha.2
+  resolution: "wouter@npm:2.8.0-alpha.2"
+  peerDependencies:
+    react: ">=16.8.0"
+  checksum: 748002712b6511ec2b93bd18966ae85ac99e66aa344b672c92f972bf4332d809d6466e831017bdf3030f4163d5cdb04a6993b27dea68993f2a3d845ed08f2b02
   languageName: node
   linkType: hard
 

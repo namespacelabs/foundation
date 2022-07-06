@@ -7,17 +7,12 @@ import { ReactNode } from "react";
 import { Link } from "wouter";
 import classes from "./sidebar.module.css";
 
-export function Sidebar(props: { fixed?: boolean; children: ReactNode; footer?: ReactNode }) {
+export function Sidebar(props: { fixed?: boolean; children: ReactNode }) {
 	return (
 		<div className={classNames(classes.sidebar, { [classes.fixed]: props.fixed })}>
 			<div className={classes.sidebarMain}>{props.children}</div>
-			{props.footer ? <div className={classes.sidebarFooter}>{props.footer}</div> : null}
 		</div>
 	);
-}
-
-export function Header(props: { children: ReactNode }) {
-	return <div className={classNames(classes.sidebarHeader)}>{props.children}</div>;
 }
 
 export function Block(props: { children: ReactNode }) {

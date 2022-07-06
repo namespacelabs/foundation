@@ -2,19 +2,20 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
+import React from "react";
 import { Link } from "wouter";
-import { LogoIcon } from "@namespacelabs.dev/webui-components/logo/Logo";
-import classes from "./navbar.module.css";
+import { LogoIcon } from "../logo/Logo";
+import classes from "./header.module.css";
 
-export function Navbar() {
+export function Header(props: { label: React.ReactNode }) {
 	return (
-		<div className={classes.fixedNavbar}>
+		<div className={classes.header}>
 			<Link href="/">
 				<a>
 					<LogoIcon filled />
 				</a>
 			</Link>
-			<div className={classes.navbarMain}>Development UI</div>
+			<div className={classes.headerContent}>{props.label}</div>
 		</div>
 	);
 }

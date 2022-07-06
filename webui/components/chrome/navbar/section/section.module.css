@@ -1,0 +1,12 @@
+.section {
+	font-size: 14px;
+}
+
+.section > div:nth-child(2) {
+	margin: 10px 0;
+}
+
+.sectionHeader span {
+	font-weight: bold;
+	border-bottom: 2px solid black;
+}

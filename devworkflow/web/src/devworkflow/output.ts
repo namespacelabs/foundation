@@ -10,7 +10,7 @@ export class OutputSocket {
 	private readonly endpoint: string;
 	private readonly logger;
 	private conn?: WebSocket;
-	private reconnectTimer?: number;
+	private reconnectTimer?: NodeJS.Timeout;
 	private observers: ObserverFunc[] = [];
 	private readonly setConnected: (connected: boolean) => void;
 
