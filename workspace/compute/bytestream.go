@@ -62,6 +62,11 @@ func (bsw *byteStream) Reader() (io.ReadCloser, error) {
 	return f, err
 }
 
+func (bsw *byteStream) ReaderAt() (bytestream.ReaderAtCloser, error) {
+	f, err := os.Open(bsw.path)
+	return f, err
+}
+
 var _ json.Marshaler = &byteStream{}
 
 func (bsw *byteStream) MarshalJSON() ([]byte, error) {

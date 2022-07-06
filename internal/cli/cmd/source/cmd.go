@@ -15,9 +15,14 @@ func NewSourceCmd() *cobra.Command {
 		Aliases: []string{"src"},
 	}
 
+	experimental := &cobra.Command{Use: "experimental"}
+
 	cmd.AddCommand(newBufGenerateCmd())
 	cmd.AddCommand(newNodejsCmd())
 	cmd.AddCommand(newNewIdCmd())
+	cmd.AddCommand(experimental)
+
+	experimental.AddCommand(newDenoCmd())
 
 	return cmd
 }

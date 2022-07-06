@@ -19,6 +19,11 @@ type ByteStream interface {
 	Reader() (io.ReadCloser, error)
 }
 
+type ReaderAtCloser interface {
+	io.ReaderAt
+	io.Closer
+}
+
 type ByteStreamWithDigest interface {
 	ByteStream
 	ComputeDigest(context.Context) (schema.Digest, error)
@@ -45,6 +50,35 @@ func Digest(ctx context.Context, bs ByteStream) (schema.Digest, error) {
 
 	return schema.FromHash("sha256", h), nil
 }
+
+func ReaderAt(bs ByteStream) (ReaderAtCloser, error) {
+	if v, ok := bs.(interface {
+		ReaderAt() (ReaderAtCloser, error)
+	}); ok {
+		return v.ReaderAt()
+	}
+
+	r, err := bs.Reader()
+	if err != nil {
+		return nil, err
+	}
+
+	defer r.Close()
+
+	// XXX expensive.
+	contents, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytesReaderWithClose{Reader: bytes.NewReader(contents)}, nil
+}
+
+type bytesReaderWithClose struct {
+	*bytes.Reader
+}
+
+func (bytesReaderWithClose) Close() error { return nil }
 
 type Static struct {
 	Contents []byte
