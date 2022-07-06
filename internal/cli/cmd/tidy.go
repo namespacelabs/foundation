@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
@@ -123,6 +124,7 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 	alloc := &allocator{
 		loader:   pl,
 		root:     root,
+		ws:       protos.Clone(root.Workspace),
 		resolved: map[string]*schema.Workspace_Dependency{},
 		modules:  map[string]*schema.Workspace_Dependency{},
 		left:     locs,
@@ -204,6 +206,7 @@ const foundationModule = "namespacelabs.dev/foundation"
 type allocator struct {
 	loader   *workspace.PackageLoader
 	root     *workspace.Root
+	ws       *schema.Workspace                       // Temporary workspace that accumulates deps (for package loading)
 	mu       sync.Mutex                              // Protects resolved and left.
 	modules  map[string]*schema.Workspace_Dependency // Previously loaded modules (i.e. already part of the workspace definition.)
 	resolved map[string]*schema.Workspace_Dependency // Newly resolved modules.
@@ -270,6 +273,12 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 				return workspace.Location{}, err
 			}
 			resolved = dep
+
+			// Add dep and reload package loader for new deps
+			alloc.ws.Dep = append(alloc.ws.Dep, dep)
+			root := alloc.root
+			root.Workspace = alloc.ws
+			alloc.loader = workspace.NewPackageLoader(root)
 		}
 
 		didResolve = true
