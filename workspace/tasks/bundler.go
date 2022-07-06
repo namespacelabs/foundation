@@ -100,17 +100,17 @@ func (b *Bundler) compressAndWriteActionLogs(ctx context.Context, bundle *Bundle
 		return err
 	}
 
-	serializedBinaryLog, err := proto.MarshalOptions{Deterministic: true}.Marshal(actionLogs)
-	if err != nil {
-		return err
-	}
-
 	enc, err := zstd.NewWriter(serializedActions)
 	if err != nil {
 		return err
 	}
 
-	_, err = io.Copy(enc, bytes.NewReader(serializedBinaryLog))
+	contents, err := proto.MarshalOptions{Deterministic: true}.Marshal(actionLogs)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(enc, bytes.NewReader(contents))
 	if err != nil {
 		enc.Close()
 		return err
