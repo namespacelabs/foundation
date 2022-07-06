@@ -6,7 +6,7 @@ require (
 	cuelang.org/go v0.4.3
 	filippo.io/age v1.0.0
 	github.com/andybalholm/brotli v1.0.4
-	github.com/aws/aws-sdk-go-v2 v1.16.5
+	github.com/aws/aws-sdk-go-v2 v1.16.7
 	github.com/aws/aws-sdk-go-v2/config v1.15.11
 	github.com/aws/aws-sdk-go-v2/credentials v1.12.6
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.17.6
@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.18.7
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.11
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.7
-	github.com/aws/smithy-go v1.11.3
+	github.com/aws/smithy-go v1.12.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.0.4
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
 	github.com/cenkalti/backoff/v4 v4.1.3
