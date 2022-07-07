@@ -60,8 +60,9 @@ func DevelopmentImage(ctx context.Context, name string, env ops.Environment, tar
 		return nil, err
 	}
 
-	state := prepareImage(llbutil.Image(serverBase, *target.TargetPlatform()), *base.NonRootUserID)
-	state = state.Run(llb.Shlex("apk add --no-cache bash")).Root()
+	state := llbutil.Image(serverBase, *target.TargetPlatform()).
+		With(WithNonRootUserWithUserID(*base.NonRootUserID)).
+		Run(llb.Shlex("apk add --no-cache bash")).Root()
 
 	t := build.NewBuildTarget(target.TargetPlatform()).WithTargetName(target.PublishName())
 
@@ -82,16 +83,15 @@ func ServerImageLLB(name string, target specs.Platform) (llb.State, error) {
 	return llbutil.Image(serverBase, target), nil
 }
 
-func PrepareImage(base llb.State, platform specs.Platform) llb.State {
-	return base.
-		Run(llb.Shlexf("addgroup -g %d nonroot", DefaultNonRootUserID)).
-		Run(llb.Shlexf("adduser -h /home/nonroot -D -s /sbin/nologin -G nonroot -u %d nonroot", DefaultNonRootUserID)).
-		Root()
+func NonRootUser() func(llb.State) llb.State {
+	return WithNonRootUserWithUserID(DefaultNonRootUserID)
 }
 
-func prepareImage(base llb.State, userid int) llb.State {
-	return base.
-		Run(llb.Shlexf("addgroup -g %d nonroot", userid)).
-		Run(llb.Shlexf("adduser -h /home/nonroot -D -s /sbin/nologin -G nonroot -u %d nonroot", userid)).
-		Root()
+func WithNonRootUserWithUserID(userid int) func(llb.State) llb.State {
+	return func(base llb.State) llb.State {
+		return base.
+			Run(llb.Shlexf("addgroup -g %d nonroot", userid)).
+			Run(llb.Shlexf("adduser -h /home/nonroot -D -s /sbin/nologin -G nonroot -u %d nonroot", userid)).
+			Root()
+	}
 }

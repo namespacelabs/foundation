@@ -127,15 +127,17 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	if err != nil {
 		return llb.State{}, nil, err
 	}
+
 	buildBase, err = generateNodemonConfig(ctx, buildBase)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
+	// locals[0] represents the module of the package being compiled.
 	src := buildkit.MakeLocalState(locals[0])
-	buildBase = buildBase.With(llbutil.CopyFrom(src, bnj.yarnRoot, yarnRoot))
-
-	buildBase = runYarn(*conf.TargetPlatform(), buildBase, yarnRoot, bnj.isDevBuild)
+	buildBase = buildBase.With(
+		llbutil.CopyFrom(src, bnj.yarnRoot, yarnRoot),
+		yarnInstallAndBuild(*conf.TargetPlatform(), yarnRoot, bnj.isDevBuild))
 
 	var out llb.State
 	// The dev and prod builds are different:
@@ -147,8 +149,10 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	} else {
 		// For non-dev builds creating an optimized, small image.
 		// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
-		out = production.PrepareImage(llbutil.Image(n.NodeJsBase, *conf.TargetPlatform()), *conf.TargetPlatform()).
-			With(llbutil.CopyFrom(buildBase, appRootPath, appRootPath))
+		out = llbutil.Image(n.NodeJsBase, *conf.TargetPlatform()).With(
+			production.NonRootUser(),
+			llbutil.CopyFrom(buildBase, appRootPath, appRootPath),
+		)
 	}
 
 	out = out.AddEnv("NODE_ENV", n.Env)
@@ -246,18 +250,20 @@ func generateNodemonConfig(ctx context.Context, base llb.State) (llb.State, erro
 	return llbutil.AddSerializedJsonAsFile(base, nodemonConfigPath, config)
 }
 
-func runYarn(platform specs.Platform, buildBase llb.State, yarnRoot string, isDevBuild bool) llb.State {
-	yarnInstall := buildBase.
-		Run(nodejs.RunYarnShlex("install", "--immutable"), llb.Dir(yarnRoot))
-	yarnInstall.AddMount(nodejs.YarnContainerCacheDir, llb.Scratch(), llb.AsPersistentCacheDir(
-		"yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
+func yarnInstallAndBuild(platform specs.Platform, yarnRoot string, isDevBuild bool) func(buildBase llb.State) llb.State {
+	return func(buildBase llb.State) llb.State {
+		yarnInstall := buildBase.
+			Run(nodejs.RunYarnShlex("install", "--immutable"), llb.Dir(yarnRoot))
+		yarnInstall.AddMount(nodejs.YarnContainerCacheDir, llb.Scratch(), llb.AsPersistentCacheDir(
+			"yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
 
-	out := yarnInstall.Root()
+		out := yarnInstall.Root()
 
-	// No need to compile Typescript for dev builds, "nodemon" does it itself.
-	if !isDevBuild {
-		out = out.Run(nodejs.RunYarnShlex("tsc", "--project", tsConfigPath), llb.Dir(yarnRoot)).Root()
+		// No need to compile Typescript for dev builds, "nodemon" does it itself.
+		if !isDevBuild {
+			out = out.Run(nodejs.RunYarnShlex("tsc", "--project", tsConfigPath), llb.Dir(yarnRoot)).Root()
+		}
+
+		return out
 	}
-
-	return out
 }
