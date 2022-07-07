@@ -49,7 +49,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 	// The request and response are attached to the parent context.
 
 	var resp Resp
-	if err := tasks.Action("lowlevel.invocation").LogLevel(1).Run(ctx, func(ctx context.Context) error {
+	if err := tasks.Action("lowlevel.invocation").Arg("package", pkg).LogLevel(1).Run(ctx, func(ctx context.Context) error {
 		// os.Pipe is used instead of io.Pipe, as exec.Command will anyway behind the scenes
 		// create an additional io.Pipe to copy back to os.Pipe; as we need real pipes to communicate
 		// with the underlying process.
