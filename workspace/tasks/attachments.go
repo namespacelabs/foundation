@@ -97,12 +97,7 @@ func (ev *EventAttachments) AttachSerializable(name, modifier string, body inter
 		return nil
 	}
 
-	msg, err := common.Serialize(body)
-	if err != nil {
-		return fnerrors.BadInputError("failed to serialize payload: %w", err)
-	}
-
-	bytes, err := common.SerializeToBytes(msg)
+	bytes, err := common.SerializeToBytes(body)
 	if err != nil {
 		return fnerrors.BadInputError("failed to serialize payload to bytes: %w", err)
 	}

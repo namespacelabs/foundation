@@ -16,7 +16,6 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/status"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/tasks/protocol"
@@ -124,11 +123,6 @@ func (ev *ActionEvent) HumanReadablef(label string, args ...interface{}) *Action
 	} else {
 		ev.data.HumanReadable = fmt.Sprintf(label, args...)
 	}
-	return ev
-}
-
-func (ev *ActionEvent) Serializable(name string, msg common.SerializableArgument) *ActionEvent {
-	ev.data.Arguments = append(ev.data.Arguments, ActionArgument{Name: name, Msg: msg})
 	return ev
 }
 

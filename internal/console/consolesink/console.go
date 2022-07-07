@@ -368,14 +368,10 @@ func (li *lineItem) precompute() {
 			}
 
 		default:
-			if s, err := common.Serialize(arg.Msg); err == nil {
-				if b, err := common.SerializeToBytes(s); err == nil {
-					value = string(b)
-				} else {
-					value = fmt.Sprintf("failed to serialize to json: %v", err)
-				}
+			if b, err := common.SerializeToBytes(arg.Msg); err == nil {
+				value = string(b)
 			} else {
-				value = fmt.Sprintf("failed to serialize: %v", err)
+				value = fmt.Sprintf("failed to serialize to json: %v", err)
 			}
 		}
 
@@ -387,14 +383,10 @@ func (li *lineItem) precompute() {
 	for _, r := range li.results.Items {
 		var value string
 
-		if s, err := common.Serialize(r.Msg); err == nil {
-			if b, err := common.SerializeToBytes(s); err == nil {
-				value = string(b)
-			} else {
-				value = fmt.Sprintf("failed to serialize to json: %v", err)
-			}
+		if b, err := common.SerializeToBytes(r.Msg); err == nil {
+			value = string(b)
 		} else {
-			value = fmt.Sprintf("failed to serialize: %v", err)
+			value = fmt.Sprintf("failed to serialize to json: %v", err)
 		}
 
 		if value != "" {
