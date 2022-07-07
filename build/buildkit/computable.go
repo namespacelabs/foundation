@@ -457,7 +457,7 @@ func (e *exportImage) Prepare(ctx context.Context) error {
 	// ExportEntry below takes care of closing f.
 	e.output = f
 
-	compute.On(ctx).Cleanup(tasks.Action("buildkit.build-image.cleanup"), func(ctx context.Context) error {
+	compute.On(ctx).Cleanup(tasks.Action("buildkit.build-image.cleanup").Arg("name", f.Name()), func(ctx context.Context) error {
 		return os.Remove(f.Name())
 	})
 
