@@ -245,7 +245,10 @@ func useDevBuild(env *schema.Environment) bool {
 func (i impl) TidyNode(ctx context.Context, env provision.Env, pkgs workspace.Packages, p *workspace.Package) error {
 	devPackages := []string{
 		"typescript@4.5.4",
-		"vite@2.7.13",
+	}
+
+	if p.Node().Kind == schema.Node_SERVICE {
+		devPackages = append(devPackages, "vite@2.7.13")
 	}
 
 	if err := nodejs.RunYarnForLocation(ctx, env, p.Location, append([]string{"add", "-D", "--mode=skip-build"}, devPackages...), p.Location.Module.WorkspaceData); err != nil {
