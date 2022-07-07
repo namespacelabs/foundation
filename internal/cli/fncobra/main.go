@@ -96,9 +96,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	debugSink := console.Debug(ctx)
 
-	if viper.GetBool("enable_pprof") {
-		go ListenPProf(debugSink)
-	}
 	// Some of our builds can go fairly wide on parallelism, requiring opening
 	// hundreds of files, between cache reads, cache writes, etc. This is a best
 	// effort attempt at increasing the file limit to a number we can be more
@@ -123,6 +120,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	var run *storedrun.Run
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
+		if viper.GetBool("enable_pprof") {
+			go ListenPProf(console.Debug(cmd.Context()))
+		}
+
 		if err := cmdBundle.RegisterCommand(cmd, args); err != nil {
 			return err
 		}

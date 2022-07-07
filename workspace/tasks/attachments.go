@@ -29,6 +29,9 @@ type EventAttachments struct {
 type readerWriter interface {
 	Writer() syncbuffer.Writer
 	Reader() io.ReadCloser
+
+	// Returns a potentially shared snapshot of the contents. Copy before modifying.
+	SharedSnapshot() []byte
 }
 
 type attachedBuffer struct {

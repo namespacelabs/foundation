@@ -548,6 +548,8 @@ func (af *RunningAction) CustomDone(t time.Time, err error) bool {
 
 		af.sink.Done(af)
 
+		// It's fundamental that seal() is called above before Store(); else
+		// we'll spin forever trying to consume the open buffers.
 		if ActionStorer != nil {
 			ActionStorer.Store(af)
 		}

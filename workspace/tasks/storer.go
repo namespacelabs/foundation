@@ -6,7 +6,6 @@ package tasks
 
 import (
 	"context"
-	"io/ioutil"
 	"path/filepath"
 
 	"google.golang.org/protobuf/encoding/prototext"
@@ -56,11 +55,7 @@ func (st *Storer) store(af *RunningAction) error {
 		for _, name := range af.attachments.insertionOrder {
 			buf := af.attachments.buffers[name.computed]
 
-			out, err := ioutil.ReadAll(buf.buffer.Reader())
-			if err != nil {
-				return err
-			}
-			if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId.String(), buf.id), out, 0600); err != nil {
+			if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId.String(), buf.id), buf.buffer.SharedSnapshot(), 0600); err != nil {
 				return err
 			}
 		}

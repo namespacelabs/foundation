@@ -18,7 +18,7 @@ import (
 
 func ListenPProf(debugSink io.Writer) {
 	if err := listenPProf(debugSink); err != nil {
-		fmt.Fprintf(debugSink, "pprof: failed to listen: %v", err)
+		fmt.Fprintf(debugSink, "pprof: failed to listen: %v\n", err)
 	}
 }
 
@@ -33,7 +33,7 @@ func listenPProf(debugSink io.Writer) error {
 	}
 
 	localPort := lst.Addr().(*net.TCPAddr).Port
-	fmt.Fprintf(debugSink, "pprof: listening on http://127.0.0.1:%d/debug/pprof/", localPort)
+	fmt.Fprintf(debugSink, "pprof: listening on http://127.0.0.1:%d/debug/pprof/\n", localPort)
 
 	return http.Serve(lst, h)
 }

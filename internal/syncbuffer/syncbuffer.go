@@ -9,6 +9,7 @@ import (
 	"io"
 	"sync"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
@@ -46,6 +47,12 @@ func (sb *ByteBuffer) Writer() Writer {
 
 func (sb *ByteBuffer) Reader() io.ReadCloser {
 	return &byteBufferReader{sb: sb, off: 0}
+}
+
+func (sb *ByteBuffer) SharedSnapshot() []byte {
+	sb.mu.Lock()
+	defer sb.mu.Unlock()
+	return slices.Clone(sb.buf.Bytes())
 }
 
 func (sb *ByteBuffer) Seal() *Sealed {
@@ -105,6 +112,10 @@ func (s *Sealed) Writer() Writer {
 
 func (s *Sealed) Reader() io.ReadCloser {
 	return io.NopCloser(bytes.NewReader(s.finalized))
+}
+
+func (s *Sealed) SharedSnapshot() []byte {
+	return s.finalized
 }
 
 func (s *Sealed) Bytes() []byte { return s.finalized }
