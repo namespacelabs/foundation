@@ -123,7 +123,7 @@ func (s *Sealed) Bytes() []byte { return s.finalized }
 type failedWriter struct{}
 
 func (failedWriter) GuaranteedWrite(p []byte) {
-	panic("already sealed")
+	// XXX increment metric.
 }
 
 func (failedWriter) Write(p []byte) (int, error) {
