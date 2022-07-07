@@ -4,6 +4,7 @@
 
 import { grpc } from "@namespacelabs.dev/foundation/std/nodejs/grpcgen";
 import yargs from "yargs/yargs";
+import { Backend } from "./protos/provider_pb";
 
 const args = yargs(process.argv)
 	.options({
@@ -11,7 +12,7 @@ const args = yargs(process.argv)
 	})
 	.parse();
 
-export function provideBackend<T>(clientFactory: (...args: any[]) => T): T {
+export function provideBackend<T>(unused: Backend, clientFactory: (...args: any[]) => T): T {
 	// TODO: support communication with services in other containers.
 	// TODO: support TLS.
 	return clientFactory(`127.0.0.1:${args.port}`, grpc.ChannelCredentials.createInsecure());

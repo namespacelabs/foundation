@@ -29,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -477,14 +476,11 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 		list = append(list, svc)
 	}
 
-	// TODO: bring back proto generation once dependency on the gRPC Backend proto
-	// is supported in node.js.
-	if len(list) > 0 && !shared.IsStdGrpcExtension(pkg.PackageName().String(), "Backend") {
+	if len(list) > 0 {
 		merged, err := protos.Merge(list...)
 		if err != nil {
 			return nil, err
 		}
-
 		dl.Add("Generate Typescript proto sources", &source.OpProtoGen{
 			PackageName: pkg.PackageName().String(),
 			Protos:      merged,
