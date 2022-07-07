@@ -10,6 +10,7 @@ option go_package = "namespacelabs.dev/foundation/schema/storage";
 
 import "schema/runtime.proto";
 import "schema/storage/task.proto";
+import "google/protobuf/timestamp.proto";
 
 message LogRef {
     string        package_name   = 1;
@@ -27,4 +28,13 @@ message Command {
         string id      = 1;
         bytes  content = 2;
     }
+}
+
+message LogLine {
+    string                    buffer_id       = 1;
+    string                    buffer_name     = 2;
+    string                    action_category = 3;
+    string                    action_id       = 4;
+    repeated string           line            = 5;
+    google.protobuf.Timestamp timestamp       = 6;
 }

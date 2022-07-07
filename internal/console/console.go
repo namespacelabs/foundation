@@ -13,8 +13,11 @@ import (
 	"time"
 
 	"github.com/kr/text"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -63,21 +66,11 @@ func ConsoleOutputName(name string) tasks.OutputName {
 
 func TypedOutput(ctx context.Context, name string, cat common.CatOutputType) io.Writer {
 	stored := tasks.Attachments(ctx).Output(ConsoleOutputName(name))
-	console := consoleOutputFromCtx(ctx, name, cat, writeStored{stored})
-	return io.MultiWriter(console, stored)
+	return consoleOutputFromCtx(ctx, name, cat, writeStored{stored})
 }
 
 type writeStored struct {
 	stored syncbuffer.Writer
-}
-
-type storedLine struct {
-	ID        common.IdAndHash `json:"id"`
-	Name      string           `json:"name"`
-	Category  string           `json:"cat"`
-	ActionID  string           `json:"actionID"`
-	Lines     []string         `json:"lines"`
-	Timestamp time.Time        `json:"ts"`
 }
 
 func (w writeStored) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, actionID tasks.ActionID, ts time.Time, lines [][]byte) {
@@ -86,13 +79,13 @@ func (w writeStored) WriteLines(id common.IdAndHash, name string, cat common.Cat
 		strLines[k] = string(line)
 	}
 
-	if m, err := json.Marshal(storedLine{
-		ID:        id,
-		Name:      name,
-		Category:  string(cat),
-		ActionID:  actionID.String(),
-		Lines:     strLines,
-		Timestamp: ts,
+	if m, err := protojson.Marshal(&storage.LogLine{
+		BufferId:       id.ID,
+		BufferName:     name,
+		ActionCategory: string(cat),
+		ActionId:       actionID.String(),
+		Line:           strLines,
+		Timestamp:      timestamppb.New(ts),
 	}); err == nil {
 		w.stored.GuaranteedWrite(append(m, []byte("\n")...))
 	} else {
