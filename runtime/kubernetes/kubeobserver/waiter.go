@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
@@ -71,6 +72,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 	}
 
 	return ev.Run(ctx, func(ctx context.Context) error {
+		fmt.Fprintf(console.Stdout(ctx), "Waiting for %s\n", w.Name)
 		ev := ops.Event{
 			ResourceID:          fmt.Sprintf("%s/%s", w.Namespace, w.Name),
 			Kind:                w.ResourceKind,
@@ -105,9 +107,11 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 					// only way to get here is by requesting that the resource
 					// be created.
 					if errors.IsNotFound(err) {
+						fmt.Fprintf(console.Stdout(ctx), "Deployment %s not found\n", w.Name)
 						return false, nil
 					}
 
+					fmt.Fprintf(console.Stdout(ctx), "Can't get Deployment %s: %v\n", w.Name, err)
 					return false, err
 				}
 
@@ -123,9 +127,11 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 					// only way to get here is by requesting that the resource
 					// be created.
 					if errors.IsNotFound(err) {
+						fmt.Fprintf(console.Stdout(ctx), "StatefulSet %s not found\n", w.Name)
 						return false, nil
 					}
 
+					fmt.Fprintf(console.Stdout(ctx), "Can't get StatefulSet %s: %v\n", w.Name, err)
 					return false, err
 				}
 
@@ -150,7 +156,11 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 			} else if observedGeneration == w.ExpectedGen {
 				if readyReplicas == replicas && replicas > 0 {
 					ev.Ready = ops.Ready
+				} else {
+					fmt.Fprintf(console.Stdout(ctx), "%s: Found expected gen %d. Ready %d out of %d\n", w.Name, w.ExpectedGen, readyReplicas, replicas)
 				}
+			} else {
+				fmt.Fprintf(console.Stdout(ctx), "%s: Expected gen %d, saw %d\n", w.Name, w.ExpectedGen, observedGeneration)
 			}
 
 			if ch != nil {
