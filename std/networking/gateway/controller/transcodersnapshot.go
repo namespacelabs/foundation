@@ -350,10 +350,18 @@ func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWit
 			ProtoDescriptorBin: bytes,
 		},
 		PrintOptions: &grpcjsontranscoder.GrpcJsonTranscoder_PrintOptions{
-			AddWhitespace:              true,
-			AlwaysPrintPrimitiveFields: true,
-			AlwaysPrintEnumsAsInts:     false,
-			PreserveProtoFieldNames:    true,
+			// Whether to add spaces, line breaks and indentation to make the JSON
+			// output easy to read. Defaults to false.
+			AddWhitespace: true,
+			// Ensures that primitive fields with default values will be omitted in the JSON output.
+			// For E.g., an int32 set to 0 or a string set to "".
+			AlwaysPrintPrimitiveFields: false,
+			// Ensures that enums are represented as strings in the JSON output.
+			AlwaysPrintEnumsAsInts: false,
+			// Whether to preserve proto field names. By default protobuf will
+			// generate JSON field names using the ``json_name`` option, or lower camel case,
+			// in that order. Setting this flag will preserve the original field names.
+			PreserveProtoFieldNames: true,
 		},
 	}
 	transcoderpbst, err := anypb.New(transcoderPb)
