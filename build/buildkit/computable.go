@@ -54,6 +54,8 @@ type LocalContents struct {
 	Module         build.Workspace
 	Path           string
 	ObserveChanges bool
+	// For Web we apply special handling temporarily: not including the root tsconfig.json as it belongs to Node.js
+	TemporaryIsWeb bool
 }
 
 func (l LocalContents) Name() string {

@@ -87,7 +87,7 @@ func generateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string, r
 	return lock, nil
 }
 
-func generateLockFileStructForBuild(workspace *schema.Workspace) lockFile {
+func generateLockFileStructForBuild(relPath string, workspace *schema.Workspace) (lockFile, error) {
 	lock := lockFile{
 		Modules: map[string]LockFileModule{},
 	}
@@ -99,11 +99,16 @@ func generateLockFileStructForBuild(workspace *schema.Workspace) lockFile {
 		}
 	}
 
-	lock.Modules[workspace.ModuleName] = LockFileModule{
-		Path: ".",
+	moduleRelPath, err := filepath.Rel(relPath, ".")
+	if err != nil {
+		return lockFile{}, err
 	}
 
-	return lock
+	lock.Modules[workspace.ModuleName] = LockFileModule{
+		Path: moduleRelPath,
+	}
+
+	return lock, nil
 }
 
 // Returns the filename

@@ -87,7 +87,7 @@ type frontendReq struct {
 	FrontendInputs map[string]llb.State
 }
 
-func MakeLocalState(src LocalContents) llb.State {
+func MakeLocalState(src LocalContents, includePatterns ...string) llb.State {
 	// Exlcluding files starting with ".". Consistent with dirs.IsExcluded
 	excludePatterns := []string{"**/.*/"}
 	for _, dir := range dirs.DirsToExclude {
@@ -95,12 +95,17 @@ func MakeLocalState(src LocalContents) llb.State {
 	}
 	excludePatterns = append(excludePatterns, dirs.FilesToExclude...)
 	excludePatterns = append(excludePatterns, devhost.HostOnlyFiles()...)
+	if src.TemporaryIsWeb {
+		// Not including the root tsconfig.json as it belongs to Node.js
+		excludePatterns = append(excludePatterns, "tsconfig.json")
+	}
 
 	return llb.Local(src.Name(),
 		llb.WithCustomName(fmt.Sprintf("Workspace %s (from %s)", src.Path, src.Module.ModuleName())),
 		llb.SharedKeyHint(src.Name()),
 		llb.LocalUniqueID(src.Name()),
-		llb.ExcludePatterns(excludePatterns))
+		llb.ExcludePatterns(excludePatterns),
+		llb.IncludePatterns(includePatterns))
 }
 
 func makeDockerOpts(platforms []specs.Platform) map[string]string {

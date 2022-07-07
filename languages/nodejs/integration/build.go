@@ -116,10 +116,13 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	locals, buildBase, err := nodejs.AddExternalModules(ctx, bnj.workspace, bnj.module, ".", bnj.isFocus, buildBase, bnj.externalModules)
+	local := buildkit.LocalContents{Module: bnj.module, Path: ".", ObserveChanges: bnj.isFocus}
+
+	locals, buildBase, err := nodejs.AddExternalModules(ctx, bnj.workspace, ".", buildBase, bnj.externalModules)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
+	locals = append(locals, local)
 
 	yarnRoot := filepath.Join(appRootPath, bnj.yarnRoot)
 
@@ -133,8 +136,7 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	// locals[0] represents the module of the package being compiled.
-	src := buildkit.MakeLocalState(locals[0])
+	src := buildkit.MakeLocalState(local)
 	buildBase = buildBase.With(
 		llbutil.CopyFrom(src, bnj.yarnRoot, yarnRoot),
 		yarnInstallAndBuild(*conf.TargetPlatform(), yarnRoot, bnj.isDevBuild))

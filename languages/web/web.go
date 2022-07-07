@@ -152,6 +152,11 @@ func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environme
 		  return defineConfig({
 			base: process.env.CMD_DEV_BASE || "/",
 
+			resolve: {
+				// Important to correctly handle ns-managed dependencies.
+				preserveSymlinks: true,
+			},
+
 			server: {
 			  watch: {
 				usePolling: true,
@@ -167,7 +172,7 @@ func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environme
 
 	extra = append(extra, &devwebConfig)
 
-	return viteDevBuild(ctx, env, filepath.Join("/packages", entry.PackageName), loc, isFocus, targetConf, externalModules, extra...)
+	return viteDevBuild(ctx, env, filepath.Join("/packages", loc.Module.ModuleName()), loc, isFocus, targetConf, externalModules, extra...)
 }
 
 func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
