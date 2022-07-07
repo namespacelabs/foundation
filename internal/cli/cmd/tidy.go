@@ -31,6 +31,7 @@ func NewTidyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tidy",
 		Short: "Ensures that each server has the appropriate dependencies configured.",
+		Args:  cobra.NoArgs,
 	}
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
