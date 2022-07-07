@@ -216,6 +216,11 @@ func generateTsConfig(ctx context.Context, base llb.State, externalModules []bui
 		},
 	}
 
+	// Skip Deno sources.
+	if rootModuleName == "namespacelabs.dev/foundation" {
+		tsConfig.Exclude = append(tsConfig.Exclude, "**/std/experimental", "**/std/testdata/datastore/denokeygen")
+	}
+
 	for _, module := range externalModules {
 		tsConfig.Include = append(tsConfig.Include, fmt.Sprintf("%s/%s", nodejs.DepsRootPath, module.ModuleName()))
 	}
