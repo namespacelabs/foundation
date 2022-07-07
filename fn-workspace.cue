@@ -15,7 +15,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/std/monitoring/prometheus/tool":                                 "sha256:6fd4b1b41b8fc4e5f51bc111312beaab9fef9bfddb08090c41df1c50aa532e36"
 		"namespacelabs.dev/foundation/std/networking/gateway/controller":                              "sha256:82fe5cb6766e1cad61996e38f7aef01000c8c4858bd24b5a122a1b768b5747bd"
 		"namespacelabs.dev/foundation/std/networking/gateway/server/configure":                        "sha256:40d53ae8c61adfdaae39f2a90844e800aa658bc97c66e6012e465b364cf9b35b"
-		"namespacelabs.dev/foundation/std/runtime/kubernetes/controller/img":                          "sha256:532af350ffee949f6557830e17844f58171bd16e1f2acda37c0a60aa54d6ae48"
+		"namespacelabs.dev/foundation/std/runtime/kubernetes/controller/img":                          "sha256:623154594a9edc30038330bef123354dc9c6ef6f74e6470609506d7f78a1f2cf"
 		"namespacelabs.dev/foundation/std/runtime/kubernetes/controller/tool":                         "sha256:93cf715829c24bebdf0876cac64a9d8b3112d13b236d68af88069d1003b32e3f"
 		"namespacelabs.dev/foundation/std/runtime/kubernetes/kube-state-metrics/configure":            "sha256:d911ccfc7ee483c332ee7838af84aff411aa953b3565e03b23f16fca1df61163"
 		"namespacelabs.dev/foundation/std/secrets/kubernetes":                                         "sha256:3f3c5c002b11a50806637046ff3283fa42fd22be81f16f87a10e230ce7435b94"

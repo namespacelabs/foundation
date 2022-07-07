@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"reflect"
 	"strings"
@@ -24,14 +25,6 @@ func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1
 			kubedef.SelectFocusServer(),
 		),
 	}
-
-	l, err := clientset.AppsV1().Deployments(ns.Name).List(ctx, opts)
-	if err != nil {
-		log.Fatalf("failed to list focus deployments in namespace %q: %v", ns.Name, err)
-	}
-
-	// Ensure that we only consider current focus servers when cleaning up unused deps.
-	opts.ResourceVersion = l.ResourceVersion
 
 	w, err := clientset.AppsV1().Deployments(ns.Name).Watch(ctx, opts)
 	if err != nil {
@@ -52,27 +45,26 @@ func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1
 				log.Fatalf("unexpected event watch closure for namespace %q: %v", ns.Name, err)
 			}
 
-			focus, ok := ev.Object.(*appsv1.Deployment)
+			_, ok = ev.Object.(*appsv1.Deployment)
 			if !ok {
 				log.Printf("received non-deployment watch event for namespace %q: %v", ns.Name, reflect.TypeOf(ev.Object))
 				continue
 			}
 
-			if focus.Status.Replicas < focus.Status.ReadyReplicas || focus.Status.Replicas < 1 {
-				// Not ready yet.
+			// We fetch all focus servers here to ensure we respect old deployments, too.
+			l, err := clientset.AppsV1().Deployments(ns.Name).List(ctx, opts)
+			if err != nil {
+				log.Fatalf("failed to list focus deployments in namespace %q: %v", ns.Name, err)
+			}
+
+			if !allReady(l) {
 				continue
 			}
 
-			stack, ok := focus.Annotations[kubedef.K8sFocusStack]
-			if !ok {
-				log.Printf("focus deployment %q in namespace %q does not contain a deps annotation", focus.Name, ns.Name)
+			required, err := requiredDeps(l)
+			if err != nil {
+				log.Printf("Unable to compute required deps: %v", err)
 				continue
-			}
-
-			log.Printf("updated focus deployment %q in namespace %q", focus.Name, ns.Name)
-			required := make(map[string]struct{})
-			for _, dep := range strings.Split(stack, ",") {
-				required[dep] = struct{}{}
 			}
 
 			// We only clean up deployments here. Consider cleaning up other resources (e.g. stateful sets).
@@ -104,4 +96,40 @@ func controlDev(ctx context.Context, clientset *kubernetes.Clientset, ns *corev1
 			}
 		}
 	}
+}
+
+func allReady(l *appsv1.DeploymentList) bool {
+	for _, focus := range l.Items {
+		if focus.Status.Replicas < focus.Status.ReadyReplicas || focus.Status.Replicas < 1 {
+			// Not ready yet.
+			return false
+		}
+	}
+
+	return true
+}
+
+func requiredDeps(l *appsv1.DeploymentList) (map[string]struct{}, error) {
+	required := make(map[string]struct{})
+
+	for _, focus := range l.Items {
+		// Each focus server is required
+		id, ok := focus.Labels[kubedef.K8sServerId]
+		if !ok {
+			return nil, fmt.Errorf("focus deployment %q in namespace %q does not have a server id", focus.Name, focus.Namespace)
+		}
+		required[id] = struct{}{}
+
+		// Each stack dep of focus servers is required
+		stack, ok := focus.Annotations[kubedef.K8sFocusStack]
+		if !ok {
+			return nil, fmt.Errorf("focus deployment %q in namespace %q does not contain a deps annotation", focus.Name, focus.Namespace)
+		}
+
+		for _, dep := range strings.Split(stack, ",") {
+			required[dep] = struct{}{}
+		}
+	}
+
+	return required, nil
 }
