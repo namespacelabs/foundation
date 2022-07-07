@@ -37,6 +37,12 @@ func newErrContext() *errContext {
 // WithLogs adds additional context to the error message, but only if a given message
 // hasn't been output in the most recent log lines.
 func WithLogs(ctx context.Context, err error) error {
+	if true {
+		// Disable logs processing until the formatter below is updated to deal
+		// with structured logs.
+		return err
+	}
+
 	sink := UnwrapSink(tasks.SinkFrom(ctx))
 	if sink == nil {
 		return err

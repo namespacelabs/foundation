@@ -331,6 +331,7 @@ func format(w io.Writer, err error, opts *FormatOptions) {
 func formatErrWithLogs(w io.Writer, err *errWithLogs, opts *FormatOptions) {
 	colors := opts.style
 	fmt.Fprintf(w, "%s\n", colors.LogCategory.Apply("Captured logs: "))
+
 	const limitLines = 10
 	lines := make([]string, 0, limitLines)
 	scanner := bufio.NewScanner(err.readerF())
