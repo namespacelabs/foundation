@@ -230,11 +230,8 @@ func (b *Bundle) ActionLogs(ctx context.Context) (*storage.Command, error) {
 			}
 			return nil
 		} else {
-			fileExtension := filepath.Ext(path)
-			if fileExtension != "" {
-				if attachment, err := b.unmarshalAttachment(path); err == nil {
-					cmd.AttachedLog = append(cmd.AttachedLog, attachment)
-				}
+			if attachment, err := b.unmarshalAttachment(path); err == nil {
+				cmd.AttachedLog = append(cmd.AttachedLog, attachment)
 			}
 		}
 		return nil

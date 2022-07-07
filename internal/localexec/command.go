@@ -6,7 +6,6 @@ package localexec
 
 import (
 	"context"
-	"io"
 	"os"
 	"os/exec"
 
@@ -34,21 +33,12 @@ func (c Command) Run(ctx context.Context) error {
 
 	return ev.Arg("command", c.Command).Arg("args", c.Args).Run(ctx, func(ctx context.Context) error {
 		out := console.Output(ctx, c.label())
-
-		stdout := io.MultiWriter(out,
-			tasks.Attachments(ctx).Output(tasks.Output("stdout", "text/plain")),
-		)
-
-		stderrOutputName := tasks.Output("stderr", "text/plain")
-		stderr := io.MultiWriter(out,
-			tasks.Attachments(ctx).Output(stderrOutputName),
-		)
-		console.GetErrContext(ctx).AddLog(stderrOutputName)
+		console.GetErrContext(ctx).AddLog(console.ConsoleOutputName(c.Label))
 
 		cmd := exec.CommandContext(ctx, c.Command, c.Args...)
 		cmd.Dir = c.Dir
-		cmd.Stdout = stdout
-		cmd.Stderr = stderr
+		cmd.Stdout = out
+		cmd.Stderr = out
 		cmd.Env = append(os.Environ(), c.AdditionalEnv...)
 
 		if err := RunAndPropagateCancelation(ctx, c.label(), cmd); err != nil {

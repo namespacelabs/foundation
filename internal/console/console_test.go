@@ -7,6 +7,7 @@ package console
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"gotest.tools/assert"
 	"namespacelabs.dev/foundation/internal/console/common"
@@ -15,7 +16,7 @@ import (
 
 func TestBuffers(t *testing.T) {
 	var liner bufferedLiner
-	w := &consoleBuffer{actual: &liner, name: "foobar"}
+	w := &consoleBuffer{actual: []writerLiner{&liner}, name: "foobar"}
 
 	fmt.Fprint(w, "foo")
 	fmt.Fprint(w, "bar")
@@ -53,7 +54,7 @@ type bufferedEv struct {
 	lines [][]byte
 }
 
-func (w *bufferedLiner) WriteLines(id common.IdAndHash, name string, _ common.CatOutputType, _ tasks.ActionID, lines [][]byte) {
+func (w *bufferedLiner) WriteLines(id common.IdAndHash, name string, _ common.CatOutputType, _ tasks.ActionID, _ time.Time, lines [][]byte) {
 	w.evs = append(w.evs, bufferedEv{id, name, lines})
 }
 

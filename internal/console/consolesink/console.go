@@ -954,7 +954,7 @@ func (c *ConsoleSink) AttachmentsUpdated(actionID tasks.ActionID, data *tasks.Re
 	}
 }
 
-func (c *ConsoleSink) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, actionID tasks.ActionID, lines [][]byte) {
+func (c *ConsoleSink) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, actionID tasks.ActionID, _ time.Time, lines [][]byte) {
 	c.ch <- consoleEvent{output: consoleOutput{id: id, name: name, cat: cat, lines: lines, actionID: actionID}}
 }
 

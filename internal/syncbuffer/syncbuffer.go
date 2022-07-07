@@ -23,6 +23,13 @@ type byteBufferReader struct {
 	off int // The reader is not thread-safe.
 }
 
+type Writer interface {
+	io.Writer
+	GuaranteedWrite([]byte)
+}
+
+var Discard = discard{io.Discard}
+
 func Seal(b []byte) *Sealed {
 	return &Sealed{b}
 }
@@ -33,7 +40,7 @@ func NewByteBuffer() *ByteBuffer {
 	return x
 }
 
-func (sb *ByteBuffer) Writer() io.Writer {
+func (sb *ByteBuffer) Writer() Writer {
 	return sb
 }
 
@@ -45,6 +52,11 @@ func (sb *ByteBuffer) Seal() *Sealed {
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
 	return &Sealed{sb.buf.Bytes()}
+}
+
+func (sb *ByteBuffer) GuaranteedWrite(p []byte) {
+	// Writes to a memory buffer never fail.
+	_, _ = sb.Write(p)
 }
 
 func (sb *ByteBuffer) Write(p []byte) (int, error) {
@@ -87,7 +99,7 @@ type Sealed struct {
 	finalized []byte
 }
 
-func (s *Sealed) Writer() io.Writer {
+func (s *Sealed) Writer() Writer {
 	return failedWriter{}
 }
 
@@ -99,6 +111,14 @@ func (s *Sealed) Bytes() []byte { return s.finalized }
 
 type failedWriter struct{}
 
+func (failedWriter) GuaranteedWrite(p []byte) {
+	panic("already sealed")
+}
+
 func (failedWriter) Write(p []byte) (int, error) {
 	return 0, fnerrors.New("already sealed")
 }
+
+type discard struct{ io.Writer }
+
+func (discard) GuaranteedWrite(p []byte) {}

@@ -60,7 +60,7 @@ func (st *Storer) store(af *RunningAction) error {
 			if err != nil {
 				return err
 			}
-			if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId.String(), buf.id+filepath.Ext(buf.name)), out, 0600); err != nil {
+			if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId.String(), buf.id), out, 0600); err != nil {
 				return err
 			}
 		}

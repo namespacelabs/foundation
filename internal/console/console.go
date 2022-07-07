@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/kr/text"
 	"namespacelabs.dev/foundation/internal/console/common"
+	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -55,13 +57,50 @@ func Errors(ctx context.Context) io.Writer {
 	return TypedOutput(ctx, "error", common.CatOutputErrors)
 }
 
+func ConsoleOutputName(name string) tasks.OutputName {
+	return tasks.Output("console:"+name, "application/json+ns-console-log")
+}
+
 func TypedOutput(ctx context.Context, name string, cat common.CatOutputType) io.Writer {
-	console := consoleOutputFromCtx(ctx, name, cat)
-	stored := tasks.Attachments(ctx).Output(tasks.Output("console:"+name, "text/plain"))
+	stored := tasks.Attachments(ctx).Output(ConsoleOutputName(name))
+	console := consoleOutputFromCtx(ctx, name, cat, writeStored{stored})
 	return io.MultiWriter(console, stored)
 }
 
-func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutputType) io.Writer {
+type writeStored struct {
+	stored syncbuffer.Writer
+}
+
+type storedLine struct {
+	ID        common.IdAndHash `json:"id"`
+	Name      string           `json:"name"`
+	Category  string           `json:"cat"`
+	ActionID  string           `json:"actionID"`
+	Lines     []string         `json:"lines"`
+	Timestamp time.Time        `json:"ts"`
+}
+
+func (w writeStored) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, actionID tasks.ActionID, ts time.Time, lines [][]byte) {
+	strLines := make([]string, len(lines))
+	for k, line := range lines {
+		strLines[k] = string(line)
+	}
+
+	if m, err := json.Marshal(storedLine{
+		ID:        id,
+		Name:      name,
+		Category:  string(cat),
+		ActionID:  actionID.String(),
+		Lines:     strLines,
+		Timestamp: ts,
+	}); err == nil {
+		w.stored.GuaranteedWrite(append(m, []byte("\n")...))
+	} else {
+		w.stored.GuaranteedWrite([]byte(`{"failure":"serialization failure"}\n`))
+	}
+}
+
+func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutputType, extra ...writerLiner) io.Writer {
 	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
 	if t, ok := unwrapped.(writerLiner); ok {
 		actionID := tasks.Attachments(ctx).ActionID()
@@ -74,7 +113,12 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutput
 			id = id[:6]
 		}
 
-		buf := &consoleBuffer{actual: t, name: name, cat: cat, id: common.IdAndHashFrom(id)}
+		buf := &consoleBuffer{
+			actual: append([]writerLiner{t}, extra...),
+			name:   name,
+			cat:    cat,
+			id:     common.IdAndHashFrom(id),
+		}
 		if actionID != "" {
 			buf.actionID = actionID
 		}
@@ -93,7 +137,7 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutput
 
 // ConsoleOutput returns a writer, whose output will be managed by the specified ConsoleSink.
 func ConsoleOutput(console writerLiner, name string) io.Writer {
-	return &consoleBuffer{actual: console, name: name}
+	return &consoleBuffer{actual: []writerLiner{console}, name: name}
 }
 
 func JSON(w io.Writer, message string, data interface{}) {
