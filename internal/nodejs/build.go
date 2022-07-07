@@ -6,10 +6,8 @@ package nodejs
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/moby/buildkit/client/llb"
@@ -121,7 +119,7 @@ func AddExternalModules(ctx context.Context, workspace *schema.Workspace, module
 
 	lockFileStruct := generateLockFileStructForBuild(workspace)
 
-	buildBase, err := WriteJsonAsFile(ctx, base, lockFileStruct, yarnLockFilePath)
+	buildBase, err := llbutil.AddSerializedJsonAsFile(base, yarnLockFilePath, lockFileStruct)
 	if err != nil {
 		return nil, llb.State{}, err
 	}
@@ -139,21 +137,4 @@ func AddExternalModules(ctx context.Context, workspace *schema.Workspace, module
 	}
 
 	return locals, buildBase, nil
-}
-
-// TODO: move elsewhere
-func WriteJsonAsFile(ctx context.Context, base llb.State, content any, path string) (llb.State, error) {
-	base = base.File(llb.Mkdir(filepath.Dir(path), 0755, llb.WithParents(true)))
-	json, err := json.MarshalIndent(content, "", "\t")
-	if err != nil {
-		return llb.State{}, err
-	}
-	var fsys memfs.FS
-	fsys.Add(path, json)
-	state, err := llbutil.WriteFS(ctx, &fsys, base, ".")
-	if err != nil {
-		return llb.State{}, err
-	}
-
-	return state, nil
 }

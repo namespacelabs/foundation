@@ -225,7 +225,7 @@ func generateTsConfig(ctx context.Context, base llb.State, externalModules []bui
 		tsConfig.Include = append(tsConfig.Include, fmt.Sprintf("%s/%s", nodejs.DepsRootPath, module.ModuleName()))
 	}
 
-	return nodejs.WriteJsonAsFile(ctx, base, tsConfig, tsConfigPath)
+	return llbutil.AddSerializedJsonAsFile(base, tsConfigPath, tsConfig)
 }
 
 type nodemonConfig struct {
@@ -243,7 +243,7 @@ func generateNodemonConfig(ctx context.Context, base llb.State) (llb.State, erro
 		},
 	}
 
-	return nodejs.WriteJsonAsFile(ctx, base, config, nodemonConfigPath)
+	return llbutil.AddSerializedJsonAsFile(base, nodemonConfigPath, config)
 }
 
 func runYarn(platform specs.Platform, buildBase llb.State, yarnRoot string, isDevBuild bool) llb.State {
