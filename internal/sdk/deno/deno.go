@@ -92,7 +92,13 @@ func SDK(ctx context.Context) (compute.Computable[Deno], error) {
 		compute.Inputs().Computable("deno", w),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (Deno, error) {
-			return Deno(filepath.Join(compute.MustGetDepValue(r, w, "deno").Files, "deno")), nil
+			denoBin := filepath.Join(compute.MustGetDepValue(r, w, "deno").Files, "deno")
+
+			if err := os.Chmod(denoBin, 0755); err != nil {
+				return Deno(denoBin), fnerrors.New("deno: failed to make binary executable: %w", err)
+			}
+
+			return Deno(denoBin), nil
 		}), nil
 }
 
