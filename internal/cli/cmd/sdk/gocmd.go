@@ -46,7 +46,7 @@ func newGoCmd(goVersion string) *cobra.Command {
 				return fnerrors.Wrap(loc, err)
 			}
 
-			return golang.ExecGo(ctx, loc, localSDK, args...)
+			return golang.RunGo(ctx, loc, localSDK, args...)
 		}),
 	}
 

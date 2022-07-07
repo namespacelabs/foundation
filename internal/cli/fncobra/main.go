@@ -30,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -223,7 +224,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, we also output debug log messages to the console.")
 	rootCmd.PersistentFlags().BoolVar(&compute.CachingEnabled, "caching", compute.CachingEnabled,
 		"If set to false, compute caching is disabled.")
-	rootCmd.PersistentFlags().BoolVar(&git.AssumeSSHAuth, "git_ssh_auth", git.AssumeSSHAuth,
+	rootCmd.PersistentFlags().BoolVar(&git.AssumeSSHAuth, "git_ssh_auth", !environment.IsRunningInCI(),
 		"If set to true, assume that you use SSH authentication with git (this enables us to properly instruct git when downloading private repositories).")
 
 	rootCmd.PersistentFlags().Var(buildkit.ImportCacheVar, "buildkit_import_cache", "Internal, set buildkit import-cache.")

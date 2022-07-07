@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
-	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/languages"
@@ -28,7 +27,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/protos"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const (
@@ -149,29 +147,17 @@ func (impl) TidyServer(ctx context.Context, env provision.Env, pkgs workspace.Pa
 		}
 
 		if foundationVersion != "" {
-			if err := ExecGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", foundationModule, foundationVersion)); err != nil {
+			if err := RunGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", foundationModule, foundationVersion)); err != nil {
 				return fnerrors.Wrap(loc, err)
 			}
 		}
 	}
 
-	if err := ExecGo(ctx, loc, localSDK, "mod", "tidy"); err != nil {
+	if err := RunGo(ctx, loc, localSDK, "mod", "tidy"); err != nil {
 		return fnerrors.Wrap(loc, err)
 	}
 
 	return nil
-}
-
-func ExecGo(ctx context.Context, loc workspace.Location, sdk golang.LocalSDK, args ...string) error {
-	return tasks.Action("go.run").HumanReadablef("go "+strings.Join(args, " ")).Run(ctx, func(ctx context.Context) error {
-		var cmd localexec.Command
-		cmd.Command = sdk.GoBin()
-		cmd.Args = args
-		cmd.AdditionalEnv = []string{sdk.GoRootEnv(), goPrivate()}
-		cmd.Dir = loc.Abs()
-		cmd.Label = "go " + strings.Join(cmd.Args, " ")
-		return cmd.Run(ctx)
-	})
 }
 
 func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {

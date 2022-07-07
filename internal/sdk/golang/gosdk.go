@@ -204,7 +204,7 @@ func (sdk LocalSDK) GoRoot() string { return filepath.Join(sdk.Path, "go") }
 func (sdk LocalSDK) GoBin() string  { return sdk.goBin }
 
 func (sdk LocalSDK) GoRootEnv() string {
-	return fmt.Sprintf("GOROOT=%s", filepath.Join(sdk.Path, "go"))
+	return fmt.Sprintf("GOROOT=%s", sdk.GoRoot())
 }
 
 func (sdk LocalSDK) ComputeDigest(context.Context) (schema.Digest, error) {

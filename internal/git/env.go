@@ -7,11 +7,9 @@ package git
 import (
 	"fmt"
 	"os"
-
-	"namespacelabs.dev/foundation/internal/environment"
 )
 
-var AssumeSSHAuth = !environment.IsRunningInCI()
+var AssumeSSHAuth = false
 
 func NoPromptEnv() []string {
 	// Disable password promts as we don't handle them properly, yet.

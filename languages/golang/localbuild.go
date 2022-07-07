@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
@@ -89,9 +88,6 @@ func platformToEnv(platform specs.Platform, cgo int) []string {
 
 func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targetDir string, bin GoBinary, platform specs.Platform) error {
 	env := platformToEnv(platform, 0)
-	env = append(env, "GOROOT="+sdk.GoRoot())
-	env = append(env, goPrivate())
-	env = append(env, git.NoPromptEnv()...)
 
 	if platform.Architecture == "arm" {
 		v, err := goarm(platform)
@@ -108,9 +104,8 @@ func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targ
 	var cmd localexec.Command
 	cmd.Label = "go build"
 	cmd.Command = sdk.GoBin()
-	cmd.Args = goBuildArgs(sdk.Version)
-	cmd.Args = append(cmd.Args, "-o="+out, pkg)
-	cmd.AdditionalEnv = env
+	cmd.Args = append(goBuildArgs(sdk.Version), "-o="+out, pkg)
+	cmd.AdditionalEnv = append(env, makeGoEnv(sdk)...)
 	cmd.Dir = modulePath
 	return cmd.Run(ctx)
 }

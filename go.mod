@@ -51,6 +51,7 @@ require (
 	github.com/jet/kube-webhook-certgen v1.5.2
 	github.com/jhump/protoreflect v1.12.1-0.20220417024638-438db461d753
 	github.com/keikoproj/aws-auth v0.4.0
+	github.com/klauspost/compress v1.15.6
 	github.com/kr/text v0.2.0
 	github.com/loft-sh/vcluster v0.10.2
 	github.com/maruel/panicparse/v2 v2.3.0
@@ -210,7 +211,6 @@ require (
 	github.com/jxskiss/base62 v1.1.0 // indirect
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/klauspost/compress v1.15.6 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/lib/pq v1.10.4 // indirect
