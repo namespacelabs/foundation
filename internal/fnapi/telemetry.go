@@ -23,7 +23,6 @@ import (
 	"go.uber.org/atomic"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -213,18 +212,7 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 		return
 	}
 
-	c, created := tel.makeClientID(ctx)
-
-	colors := colors.Ctx(ctx)
-	if created {
-		// First ns invocation with Telemetry. Add hint about early access plain text logging.
-		// TODO remove before public release.
-		out := console.TypedOutput(ctx, "telemetry", console.CatOutputUs)
-		fmt.Fprint(out, "During early access, errors are uploaded to our servers for debugging purposes.\n")
-		fmt.Fprint(out, "This default behavior will change ahead of release, but helps us understand what\nissues you may be hitting.\n\n")
-		fmt.Fprintf(out, "If you'd like to disable this behavior, set %s or\n%s at %s.\n",
-			colors.Highlight.Apply("DO_NOT_TRACK=1"), colors.Highlight.Apply("\"enable_telemetry\": false"), viper.ConfigFileUsed())
-	}
+	c, _ := tel.makeClientID(ctx)
 
 	req := buildRecordInvocationRequest(ctx, cmd, c, reqID, args)
 
