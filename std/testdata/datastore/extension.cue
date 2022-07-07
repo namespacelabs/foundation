@@ -23,12 +23,12 @@ extension: fn.#Extension & {
 		keygen: secrets.#Exports.Secret & {
 			name: "keygen"
 			initializeWith: {
+				binary: "namespacelabs.dev/foundation/std/testdata/datastore/keygen"
 				// The binary path is the battle-tested path;
 				// experimentalFunction is an exploration on a new method to
 				// invoke provisioning tools.
 				//
-				// binary: "namespacelabs.dev/foundation/std/testdata/datastore/keygen"
-				experimentalFunction: "namespacelabs.dev/foundation/std/testdata/datastore/denokeygen"
+				// experimentalFunction: "namespacelabs.dev/foundation/std/testdata/datastore/denokeygen"
 			}
 		}
 		readinessCheck: core.#Exports.ReadinessCheck
