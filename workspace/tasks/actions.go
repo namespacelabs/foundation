@@ -409,6 +409,9 @@ func makeStoreProto(data *EventData, at *EventAttachments) *storage.StoredTask {
 
 	if data.State == ActionDone {
 		p.CompletedTs = data.Completed.UnixNano()
+		p.RelStartedTs = data.Started.UnixNano() - data.Created.UnixNano()
+		p.RelCompletedTs = data.Completed.UnixNano() - data.Created.UnixNano()
+
 		if data.Err != nil {
 			st, _ := status.FromError(data.Err)
 			p.ErrorCode = int32(st.Code())

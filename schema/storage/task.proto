@@ -10,15 +10,17 @@ option go_package = "namespacelabs.dev/foundation/schema/storage";
 
 import "google/protobuf/any.proto";
 
-// Next ID: 17
+// Next ID: 19
 message StoredTask {
     string          id                   = 1;
     string          parent_id            = 12;
     string          anchor_id            = 13;
     string          name                 = 2;
     string          human_readable_label = 3;
-    int64           created_ts           = 4;  // Unix time.
-    int64           completed_ts         = 5;  // Unix time.
+    int64           created_ts           = 4;   // Unix time in nanoseconds.
+    int64           completed_ts         = 5;   // Unix time in nanoseconds.
+    int64           rel_started_ts       = 17;  // started_ts = created_ts + rel_started_ts
+    int64           rel_completed_ts     = 18;  // completed_ts = created_ts + rel_completed_ts
     repeated string scope                = 7;
     repeated Value  argument             = 8;
     repeated Value  result               = 9;
