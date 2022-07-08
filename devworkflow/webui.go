@@ -19,7 +19,7 @@ const (
 	WebPackage schema.PackageName = "namespacelabs.dev/foundation/devworkflow/web"
 
 	baseRepository = "us-docker.pkg.dev/foundation-344819/prebuilts"
-	prebuilt       = "sha256:ad4b46877bbbdfd95c1a11c06417495afe30e8271edd73acd5fc9d43aedeaedf"
+	prebuilt       = "sha256:2b17750f189a5b812d713fa57539cd28764743dc1afd592ad6e770455628adc3"
 )
 
 func PrebuiltWebUI(ctx context.Context) (*mux.Router, error) {
