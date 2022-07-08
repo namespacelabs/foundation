@@ -6,7 +6,6 @@ package compute
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -29,7 +28,6 @@ type Promise[V any] struct {
 
 type Future[V any] struct {
 	actionID tasks.ActionID
-	c        hasAction
 	ch       chan atom[V]
 	atom     atom[V]
 }
@@ -106,20 +104,18 @@ func (f *Promise[V]) Future() *Future[V] {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.done {
-		return &Future[V]{actionID: f.actionID, c: f.c, atom: f.resolved}
+		return &Future[V]{actionID: f.actionID, atom: f.resolved}
 	}
 	ch := make(chan atom[V], 1)
 	f.waiters = append(f.waiters, ch)
-	return &Future[V]{actionID: f.actionID, c: f.c, ch: ch}
+	return &Future[V]{actionID: f.actionID, ch: ch}
 }
 
 func (r Result[V]) HasDigest() bool { return r.Digest.IsSet() }
 
 func (f *Future[V]) Wait(ctx context.Context) (ResultWithTimestamp[V], error) {
 	if f.ch != nil {
-		if err := f.c.Action().
-			Clone(func(name string) string { return fmt.Sprintf("compute.wait (%s)", name) }).
-			Anchor(f.actionID).Run(ctx, func(ctx context.Context) error {
+		if err := tasks.Action("compute.wait").Anchor(f.actionID).Run(ctx, func(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
