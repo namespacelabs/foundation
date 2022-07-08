@@ -60,7 +60,7 @@ func newPullRequestCmd() *cobra.Command {
 
 		fmt.Fprintf(os.Stdout, "Found %d open pull requests related to branch %s\n", len(relatedPrs), *branch)
 		for _, pr := range relatedPrs {
-			fmt.Fprintf(os.Stdout, " - %s (%s)\n", *pr.HTMLURL, *pr.State)
+			fmt.Fprintf(os.Stdout, " - %s at %s (%s)\n", *pr.Title, *pr.HTMLURL, *pr.State)
 		}
 
 		hasPr := len(relatedPrs) > 0
