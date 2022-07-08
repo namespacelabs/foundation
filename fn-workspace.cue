@@ -5,7 +5,7 @@ requirements: {
 prebuilts: {
 	digest: {
 		"namespacelabs.dev/foundation/cmd/ns":                                                         "sha256:94a3caac122be692d78085d15e22db5c25c9d53e83fa8ab5f5530ca2b0d4a55d"
-		"namespacelabs.dev/foundation/cmd/nspipelines":                                                "sha256:47619a4bacb6fe8bda2e3980363a7ffeeb789e2e8f55ca2d655e32fd7442260d"
+		"namespacelabs.dev/foundation/cmd/nspipelines":                                                "sha256:03e73649679206610a7f43a71f4799d9c6107e03b249fd801785af77df162483"
 		"namespacelabs.dev/foundation/devworkflow/web":                                                "sha256:2b17750f189a5b812d713fa57539cd28764743dc1afd592ad6e770455628adc3"
 		"namespacelabs.dev/foundation/internal/sdk/buf/image/prebuilt":                                "sha256:f2cf5502f9b6afc27f73386fbbfd31954434968b048723f37e22996228972ee3"
 		"namespacelabs.dev/foundation/std/dev/controller":                                             "sha256:158c0d655240ac1d4c2360f7c1399433aef6e508eece3e048e23aa98ce2441c1"

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"text/template"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
@@ -62,6 +63,10 @@ func newUpdateStatusCmd() *cobra.Command {
 
 		if err := updateState(current, *success, *pipelineState, &state); err != nil {
 			return nil
+		}
+
+		if serialized, err := json.MarshalIndent(state, "", " "); err == nil {
+			fmt.Fprintf(os.Stdout, "Updated pipeline state:\n%s\n", string(serialized))
 		}
 
 		itr, err := ghinstallation.NewKeyFromFile(http.DefaultTransport, *appID, *installationID, *privateKey)
