@@ -6,7 +6,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"net"
+	"net/http"
 	"os"
 
 	corev1 "k8s.io/api/core/v1"
@@ -46,10 +49,10 @@ var (
 	// Kubernetes controller settings.
 	controllerPort = flag.Int("controller_port", 18443, "Port that the Kubernetes controller binds to.")
 
-	metricsAddress = flag.String("controller_metrics_address", ":18080",
+	metricsAddress = flag.String("controller_metrics_address", "0.0.0.0:18080",
 		"Address port pair that the Kubernetes controller metrics endpoint binds to.")
 
-	probeAddress = flag.String("controller_health_probe_bind_address", ":18081",
+	probeAddress = flag.String("controller_health_probe_bind_address", "0.0.0.0:18081",
 		"Address port pair that the Kubernetes controller health probe endpoint binds to.")
 
 	enableLeaderElection = flag.Bool("controller_enable_leader_election", false,
@@ -65,6 +68,11 @@ func main() {
 	}
 
 	log.Printf("Observing namespace %q...", controllerNamespace)
+
+	httpAddrPort, err := ParseAddressPort(*httpEnvoyListenAddress)
+	if err != nil {
+		log.Fatalf("failed to parse HTTP server address: %v", err)
+	}
 
 	xdsAddrPort, err := ParseAddressPort(*xdsServerAddress)
 	if err != nil {
@@ -135,7 +143,15 @@ func main() {
 	}
 
 	// Add readyz.
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+	if err := mgr.AddReadyzCheck("readyz", func(req *http.Request) error {
+		// Only become ready after the http listener is up.
+		var d net.Dialer
+		conn, err := d.DialContext(req.Context(), "tcp", fmt.Sprintf("127.0.0.1:%d", httpAddrPort.port))
+		if err != nil {
+			return err
+		}
+		return conn.Close()
+	}); err != nil {
 		log.Fatalf("failed to set up readyz: %+v", err)
 	}
 

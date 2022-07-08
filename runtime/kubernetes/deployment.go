@@ -325,13 +325,13 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			if livenessProbe == nil {
 				livenessProbe = probe
 			} else if !proto.Equal(probe, livenessProbe) {
-				return fnerrors.BadInputError("inconsistent probe definition")
+				return fnerrors.BadInputError("inconsistent live probe definition")
 			}
 		case runtime.FnServiceReadyz:
 			if readinessProbe == nil {
 				readinessProbe = probe
 			} else if !proto.Equal(probe, readinessProbe) {
-				return fnerrors.BadInputError("inconsistent probe definition")
+				return fnerrors.BadInputError("inconsistent ready probe definition")
 			}
 		default:
 			return fnerrors.BadInputError("%s: unknown probe kind", probe.Kind)

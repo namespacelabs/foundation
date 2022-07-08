@@ -29,6 +29,7 @@ var (
 	adminPort       = flag.Uint("admin_port", 19000, "Envoy admin port")
 	xdsServerPort   = flag.Uint("xds_server_port", 18000, "Port that the Envoy controller is listening on")
 	alsListenerPort = flag.Uint("als_listener_port", 18090, "gRPC Access Log Service (ALS) listener port")
+	probePort       = flag.Uint("controller_health_probe_bind_port", 18081, "Kubernetes controller health probe probe binds to.")
 	nodeCluster     = flag.String("node_cluster", "envoy_cluster", "Node cluster name")
 	nodeID          = flag.String("node_id", "envoy_node", "Node Identifier")
 )
@@ -169,7 +170,8 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				MountPath: "/config/",
 			}},
 			Probe: []*kubedef.ContainerExtension_Probe{
-				{Kind: runtime.FnServiceReadyz, Path: "/ready", ContainerPort: int32(*adminPort)},
+				// The controller's readyz will only become ready when it can connect to the http listener.
+				{Kind: runtime.FnServiceReadyz, Path: "/readyz", ContainerPort: int32(*probePort)},
 			},
 		},
 	})
