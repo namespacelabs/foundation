@@ -16,7 +16,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/dustin/go-humanize"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v4"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
@@ -27,7 +27,7 @@ var (
 	passwordFile = flag.String("postgres_password_file", "", "location of the password secret")
 )
 
-func existsDb(ctx context.Context, conn *pgxpool.Pool, dbName string) (bool, error) {
+func existsDb(ctx context.Context, conn *pgx.Conn, dbName string) (bool, error) {
 	rows, err := conn.Query(ctx, "SELECT FROM pg_database WHERE datname = $1;", dbName)
 	if err != nil {
 		return false, fmt.Errorf("failed to check for database %s: %w", dbName, err)
@@ -37,13 +37,13 @@ func existsDb(ctx context.Context, conn *pgxpool.Pool, dbName string) (bool, err
 	return rows.Next(), nil
 }
 
-func connect(ctx context.Context, user string, password string, address string, port uint32, db string) (conn *pgxpool.Pool, err error) {
+func connect(ctx context.Context, user string, password string, address string, port uint32, db string) (conn *pgx.Conn, err error) {
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", user, password, address, port, db)
 	count := 0
 	err = backoff.Retry(func() error {
 		count++
 		log.Printf("Connecting to postgres (%s try), address is `%s:%d`.", humanize.Ordinal(count), address, port)
-		conn, err = pgxpool.Connect(ctx, connString)
+		conn, err = pgx.Connect(ctx, connString)
 		if err != nil {
 			log.Printf("Failed to connect to postgres: %v", err)
 		}
@@ -57,14 +57,7 @@ func connect(ctx context.Context, user string, password string, address string, 
 	return conn, nil
 }
 
-func ensureDb(ctx context.Context, db *postgres.Database, user string, password string) error {
-	// Postgres needs a db to connect to so we pin one that is guaranteed to exist.
-	conn, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, "postgres")
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
+func ensureDb(ctx context.Context, conn *pgx.Conn, db *postgres.Database) error {
 	// Postgres does not support CREATE DATABASE IF NOT EXISTS
 	log.Printf("Querying for existing databases.")
 	exists, err := existsDb(ctx, conn, db.Name)
@@ -83,8 +76,8 @@ func ensureDb(ctx context.Context, db *postgres.Database, user string, password 
 	if len(strings.Fields(db.Name)) > 1 {
 		return fmt.Errorf("invalid database name: %s", db.Name)
 	}
-	_, err = conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s;", db.Name))
-	if err != nil {
+
+	if _, err := conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s;", db.Name)); err != nil {
 		return fmt.Errorf("failed to create database `%s`: %w", db.Name, err)
 	}
 
@@ -92,13 +85,7 @@ func ensureDb(ctx context.Context, db *postgres.Database, user string, password 
 	return nil
 }
 
-func applySchema(ctx context.Context, db *postgres.Database, user string, password string) error {
-	conn, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, db.Name)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
+func applySchema(ctx context.Context, conn *pgx.Conn, db *postgres.Database) error {
 	schema, err := ioutil.ReadFile(db.SchemaFile.Path)
 	if err != nil {
 		return fmt.Errorf("unable to read file %s: %v", db.SchemaFile.Path, err)
@@ -159,10 +146,17 @@ func main() {
 	}
 
 	for _, db := range dbs {
-		if err := ensureDb(ctx, db, user, string(password)); err != nil {
+		// Postgres needs a db to connect to so we pin one that is guaranteed to exist.
+		conn, err := connect(ctx, user, string(password), db.HostedAt.Address, db.HostedAt.Port, "postgres")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer conn.Close(ctx)
+
+		if err := ensureDb(ctx, conn, db); err != nil {
 			log.Fatalf("%v", err)
 		}
-		if err := applySchema(ctx, db, user, string(password)); err != nil {
+		if err := applySchema(ctx, conn, db); err != nil {
 			log.Fatalf("%v", err)
 		}
 	}
