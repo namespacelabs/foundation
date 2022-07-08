@@ -215,7 +215,9 @@ func printResult(out io.Writer, style colors.Style, res compute.ResultWithTimest
 			for _, srv := range res.Value.Bundle.ServerLog {
 				printLog(out, srv)
 			}
-			printLog(out, res.Value.Bundle.TestLog)
+			if res.Value.Bundle.TestLog != nil {
+				printLog(out, res.Value.Bundle.TestLog)
+			}
 		}
 
 		status = style.TestFailure.Apply("FAILED")

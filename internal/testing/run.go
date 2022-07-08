@@ -202,9 +202,11 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 	bundle.DeployPlan.Hints = nil
 
 	bundle.Result = testResults
-	bundle.TestLog = &InlineLog{
-		PackageName: test.TestBinPkg.String(),
-		Output:      testLogBuf.Seal().Bytes(),
+	if testLogBuf != nil {
+		bundle.TestLog = &InlineLog{
+			PackageName: test.TestBinPkg.String(),
+			Output:      testLogBuf.Seal().Bytes(),
+		}
 	}
 
 	return bundle, nil

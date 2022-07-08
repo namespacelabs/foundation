@@ -208,14 +208,16 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 			var fsys memfs.FS
 
-			tostore.TestLog = &storage.LogRef{
-				PackageName:   bundle.TestLog.PackageName,
-				ContainerName: bundle.TestLog.ContainerName,
-				LogFile:       "test.log",
-				LogSize:       uint64(len(bundle.TestLog.Output)),
+			if bundle.TestLog != nil {
+				tostore.TestLog = &storage.LogRef{
+					PackageName:   bundle.TestLog.PackageName,
+					ContainerName: bundle.TestLog.ContainerName,
+					LogFile:       "test.log",
+					LogSize:       uint64(len(bundle.TestLog.Output)),
+				}
+				fsys.Add("test.log", bundle.TestLog.Output)
 			}
 
-			fsys.Add("test.log", bundle.TestLog.Output)
 			for _, s := range bundle.ServerLog {
 				x, err := schema.DigestOf(s.PackageName, s.ContainerName)
 				if err != nil {
