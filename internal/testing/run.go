@@ -231,6 +231,8 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 	var serverLogs []serverLog
 	var mu sync.Mutex // Protects concurrent access to serverLogs.
 
+	rt := runtime.For(ctx, env)
+
 	for _, entry := range stack.Entry {
 		srv := entry.Server // Close on srv.
 
@@ -238,8 +240,6 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 			// Skip logs for admin servers.
 			continue
 		}
-
-		rt := runtime.For(ctx, env)
 
 		ex.Go(func(ctx context.Context) error {
 			containers, err := rt.ResolveContainers(ctx, srv)
@@ -271,7 +271,7 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 				mu.Unlock()
 
 				ex.Go(func(ctx context.Context) error {
-					err := runtime.For(ctx, env).FetchLogsTo(ctx, w, ctr, runtime.FetchLogsOpts{IncludeTimestamps: true})
+					err := rt.FetchLogsTo(ctx, w, ctr, runtime.FetchLogsOpts{IncludeTimestamps: true})
 					if errors.Is(err, context.Canceled) {
 						return nil
 					}
@@ -283,11 +283,23 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 		})
 	}
 
+	var diagnostics *storage.EnvironmentDiagnostics
+	ex.Go(func(ctx context.Context) error {
+		var err error
+		diagnostics, err = rt.FetchEnvironmentDiagnostics(ctx)
+		if err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to retrieve environment diagnostics: %v\n", err)
+		}
+		return nil
+	})
+
 	if err := ex.Wait(); err != nil {
 		return nil, err
 	}
 
-	bundle := &PreStoredTestBundle{}
+	bundle := &PreStoredTestBundle{
+		EnvDiagnostics: diagnostics,
+	}
 
 	for _, entry := range serverLogs {
 		bundle.ServerLog = append(bundle.ServerLog, &InlineLog{

@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 )
 
 const (
@@ -55,6 +56,9 @@ type Runtime interface {
 
 	// Fetch diagnostics of a particular container reference.
 	FetchDiagnostics(context.Context, ContainerReference) (Diagnostics, error)
+
+	// Fetch environment diagnostics, e.g. event list.
+	FetchEnvironmentDiagnostics(context.Context) (*storage.EnvironmentDiagnostics, error)
 
 	// Starts a new shell in the container of a previously deployed server. The
 	// image of the server must contain the specified command. For ephemeral

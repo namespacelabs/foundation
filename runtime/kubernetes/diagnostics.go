@@ -6,12 +6,15 @@ package kubernetes
 
 import (
 	"context"
+	"encoding/json"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
+	"namespacelabs.dev/foundation/schema/storage"
 )
 
 func (r Unbound) FetchDiagnostics(ctx context.Context, reference runtime.ContainerReference) (runtime.Diagnostics, error) {
@@ -38,4 +41,35 @@ func (r Unbound) FetchDiagnostics(ctx context.Context, reference runtime.Contain
 	}
 
 	return runtime.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.PodName, opaque.Container)
+}
+
+func (r K8sRuntime) FetchEnvironmentDiagnostics(ctx context.Context) (*storage.EnvironmentDiagnostics, error) {
+	systemInfo, err := r.SystemInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	events, err := r.cli.CoreV1().Events(r.moduleNamespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fnerrors.New("kubernetes: failed to obtain event list: %w", err)
+	}
+
+	// Ignore failures, this is best effort.
+	eventsBytes, _ := json.Marshal(events)
+
+	kube := &kubedef.KubernetesEnvDiagnostics{
+		SystemInfo:          systemInfo,
+		SerializedEventList: string(eventsBytes),
+	}
+
+	diag := &storage.EnvironmentDiagnostics{Runtime: "kubernetes"}
+
+	serializedKube, err := anypb.New(kube)
+	if err != nil {
+		return nil, fnerrors.New("kubernetes: failed to serialize KubernetesEnvDiagnostics")
+	}
+
+	diag.RuntimeSpecific = append(diag.RuntimeSpecific, serializedKube)
+
+	return diag, nil
 }

@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 )
 
 var (
@@ -68,6 +69,9 @@ func (r runtimeFwdErr) FetchLogsTo(context.Context, io.Writer, ContainerReferenc
 }
 func (r runtimeFwdErr) FetchDiagnostics(context.Context, ContainerReference) (Diagnostics, error) {
 	return Diagnostics{}, r.err
+}
+func (r runtimeFwdErr) FetchEnvironmentDiagnostics(context.Context) (*storage.EnvironmentDiagnostics, error) {
+	return nil, r.err
 }
 func (r runtimeFwdErr) StartTerminal(ctx context.Context, server *schema.Server, io TerminalIO, command string, rest ...string) error {
 	return r.err

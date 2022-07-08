@@ -10,8 +10,9 @@ option go_package = "namespacelabs.dev/foundation/schema/storage";
 
 import "google/protobuf/timestamp.proto";
 import "schema/storage/logs.proto";
+import "schema/storage/diagnostics.proto";
 
-// Next ID: 10
+// Next ID: 11
 message TestBundle {
     string          parent_run_id      = 9;
     string          test_package       = 6;
@@ -24,6 +25,8 @@ message TestBundle {
 
     LogRef          test_log   = 2;
     repeated LogRef server_log = 3;
+
+    EnvironmentDiagnostics env_diagnostics = 10;
 }
 
 message TestRuns {

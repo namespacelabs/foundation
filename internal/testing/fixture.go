@@ -186,6 +186,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 				ServersUnderTest: sutServers,
 				Created:          createdTs,
 				Completed:        timestamppb.Now(),
+				EnvDiagnostics:   bundle.EnvDiagnostics,
 			}, nil
 		})
 
