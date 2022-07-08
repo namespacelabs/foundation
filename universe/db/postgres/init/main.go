@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"strings"
 	"time"
 
@@ -21,7 +22,7 @@ import (
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
-const connBackoff = 500 * time.Millisecond
+const connBackoff = 1 * time.Second
 
 var (
 	userFile     = flag.String("postgres_user_file", "", "location of the user secret")
@@ -42,6 +43,19 @@ func connect(ctx context.Context, user string, password string, address string, 
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", user, password, address, port, db)
 	count := 0
 	err = backoff.Retry(func() error {
+		addrPort := fmt.Sprintf("%s:%d", address, port)
+
+		// Use a more aggressive connect to determine whether the server already
+		// has an open serving port. If it does, we then defer to pgx.Connect to
+		// take as much time as it needs.
+		rawConn, err := net.DialTimeout("tcp", addrPort, 3*connBackoff)
+		if err != nil {
+			log.Printf("Failed to tcp dial %s: %v", addrPort, err)
+			return err
+		}
+
+		rawConn.Close()
+
 		count++
 		log.Printf("Connecting to postgres (%s try), address is `%s:%d`.", humanize.Ordinal(count), address, port)
 		conn, err = pgx.Connect(ctx, connString)
