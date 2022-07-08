@@ -109,7 +109,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 
 	if stackVal := lookupTransition(vv, "stack"); stackVal.Exists() {
 		var stack cueStack
-		if err := stackVal.Val.Decode(&stack); err != nil {
+		if err := stackVal.Decode(&stack); err != nil {
 			return pdata, err
 		}
 
@@ -120,7 +120,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 
 	if with := vv.LookupPath("configure.with"); with.Exists() {
 		var dec cueInvokeBinary
-		if err := with.Val.Decode(&dec); err != nil {
+		if err := with.Decode(&dec); err != nil {
 			return pdata, err
 		}
 
@@ -128,14 +128,14 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 	}
 
 	if sidecar := lookupTransition(vv, "sidecar"); sidecar.Exists() {
-		pdata.Sidecars, err = parseContainers(sidecar.Val)
+		pdata.Sidecars, err = parseContainers(sidecar)
 		if err != nil {
 			return pdata, err
 		}
 	}
 
 	if init := lookupTransition(vv, "init"); init.Exists() {
-		pdata.Inits, err = parseContainers(init.Val)
+		pdata.Inits, err = parseContainers(init)
 		if err != nil {
 			return pdata, err
 		}
@@ -143,7 +143,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 
 	if naming := lookupTransition(vv, "naming"); naming.Exists() {
 		var data cueNaming
-		if err := naming.Val.Decode(&data); err != nil {
+		if err := naming.Decode(&data); err != nil {
 			return pdata, err
 		}
 
@@ -176,7 +176,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inp
 	return pdata, nil
 }
 
-func parseContainers(v cue.Value) ([]*schema.SidecarContainer, error) {
+func parseContainers(v *fncue.CueV) ([]*schema.SidecarContainer, error) {
 	if v.Kind() == cue.ListKind {
 		var containers []cueContainer
 

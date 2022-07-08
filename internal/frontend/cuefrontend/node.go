@@ -95,18 +95,18 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	// Ensure all fields are bound.
-	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
+	if err := v.Validate(cue.Concrete(true)); err != nil {
 		return err
 	}
 
 	// XXX use this block to use a Decode() function, instead of individual path parsing.
 
-	if err := v.LookupPath("import").Val.Decode(&node.Import); err != nil {
+	if err := v.LookupPath("import").Decode(&node.Import); err != nil {
 		return err
 	}
 
 	if fmwk := v.LookupPath("framework"); fmwk.Exists() {
-		fmwkStr, err := fmwk.Val.String()
+		fmwkStr, err := fmwk.String()
 		if err != nil {
 			return err
 		}
@@ -123,22 +123,22 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 
 	var initializeBefore []string
 	if beforeValue := v.LookupPath("initializeBefore"); beforeValue.Exists() {
-		if err := beforeValue.Val.Decode(&initializeBefore); err != nil {
+		if err := beforeValue.Decode(&initializeBefore); err != nil {
 			return err
 		}
 	}
 
 	var initializeAfter []string
 	if afterValue := v.LookupPath("initializeAfter"); afterValue.Exists() {
-		if err := afterValue.Val.Decode(&initializeAfter); err != nil {
+		if err := afterValue.Decode(&initializeAfter); err != nil {
 			return err
 		}
 	}
 
 	var initializeInFrameworks []string
 	if initializers := v.LookupPath("hasInitializerIn"); initializers.Exists() {
-		if err := initializers.Val.Decode(&initializeInFrameworks); err != nil {
-			fmwkStr, err := initializers.Val.String()
+		if err := initializers.Decode(&initializeInFrameworks); err != nil {
+			fmwkStr, err := initializers.String()
 			if err != nil {
 				return err
 			}
@@ -184,7 +184,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 
 	if packageData := v.LookupPath("packageData"); packageData.Exists() {
 		var paths []string
-		if err := packageData.Val.Decode(&paths); err != nil {
+		if err := packageData.Decode(&paths); err != nil {
 			return err
 		}
 
@@ -207,7 +207,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	if instantiate := v.LookupPath("instantiate"); instantiate.Exists() {
-		it, err := instantiate.Val.Fields()
+		it, err := instantiate.Fields()
 		if err != nil {
 			return err
 		}
@@ -217,10 +217,9 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 
 			var inst cueInstantiate
 
-			v := (&fncue.CueV{Val: it.Value()})
 			newAPI := false
-			if newDefinition := v.LookupPath("#Definition"); newDefinition.Exists() {
-				if err := newDefinition.Val.Decode(&inst); err != nil {
+			if newDefinition := it.Value().LookupPath("#Definition"); newDefinition.Exists() {
+				if err := newDefinition.Decode(&inst); err != nil {
 					return err
 				}
 				newAPI = true
@@ -254,7 +253,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	if ingress := v.LookupPath("ingress"); ingress.Exists() {
-		v, err := ingress.Val.String()
+		v, err := ingress.String()
 		if err != nil {
 			return err
 		}
@@ -262,7 +261,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	if e := v.LookupPath("exportServicesAsHttp"); e.Exists() {
-		vb, err := e.Val.Bool()
+		vb, err := e.Bool()
 		if err != nil {
 			return err
 		}
@@ -271,7 +270,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 
 	if exported := v.LookupPath("exportService"); exported.Exists() {
 		var svc cueProto
-		if err := exported.Val.Decode(&svc); err != nil {
+		if err := exported.Decode(&svc); err != nil {
 			return err
 		}
 
@@ -282,7 +281,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 
 	if exported := v.LookupPath("exportMethods"); exported.Exists() {
 		var export cueExportMethods
-		if err := exported.Val.Decode(&export); err != nil {
+		if err := exported.Decode(&export); err != nil {
 			return err
 		}
 
@@ -293,7 +292,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 
 	if exported := v.LookupPath("exportHttp"); exported.Exists() {
 		var paths []cueHttpPath
-		if err := exported.Val.Decode(&paths); err != nil {
+		if err := exported.Decode(&paths); err != nil {
 			return err
 		}
 
@@ -307,7 +306,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 
 	if exported := v.LookupPath("requirePersistentStorage"); exported.Exists() {
 		var d cueRequiredStorage
-		if err := exported.Val.Decode(&d); err != nil {
+		if err := exported.Decode(&d); err != nil {
 			return fnerrors.Wrapf(loc, err, "failed to parse")
 		}
 
@@ -329,7 +328,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 
 	if on := v.LookupPath("on.prepare"); on.Exists() {
 		var callback cueCallback
-		if err := on.Val.Decode(&callback); err != nil {
+		if err := on.Decode(&callback); err != nil {
 			return fnerrors.Wrapf(loc, err, "failed to parse `on.provision`")
 		}
 
@@ -353,7 +352,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		return strings.Compare(node.Instantiate[i].Name, node.Instantiate[j].Name) < 0
 	})
 
-	if err := fncue.WalkAttrs(parent.Val, func(v cue.Value, key, value string) error {
+	if err := fncue.WalkAttrs(parent, func(v cue.Value, key, value string) error {
 		switch key {
 		case fncue.InputKeyword:
 			if err := handleRef(loc, v, value, &node.Reference); err != nil {
@@ -451,7 +450,7 @@ func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc wor
 }
 
 func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, provides *fncue.CueV, pkg *workspace.Package, opts workspace.LoadPackageOpts, out *schema.Node) error {
-	it, err := provides.Val.Fields()
+	it, err := provides.Fields()
 	if err != nil {
 		return err
 	}
@@ -544,9 +543,9 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 			}
 		}
 
-		v := fncue.CueV{Val: it.Value()}
+		v := it.Value()
 		if instantiate := v.LookupPath("instantiate"); instantiate.Exists() {
-			it, err := instantiate.Val.Fields()
+			it, err := instantiate.Fields()
 			if err != nil {
 				return err
 			}
@@ -556,10 +555,10 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 
 				var inst cueInstantiate
 
-				v := (&fncue.CueV{Val: it.Value()})
+				v := it.Value()
 				newAPI := false
 				if newDefinition := v.LookupPath("#Definition"); newDefinition.Exists() {
-					if err := newDefinition.Val.Decode(&inst); err != nil {
+					if err := newDefinition.Decode(&inst); err != nil {
 						return err
 					}
 					newAPI = true

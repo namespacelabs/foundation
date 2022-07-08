@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/format"
 	"golang.org/x/exp/slices"
@@ -75,7 +74,7 @@ func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (wo
 		return nil, err
 	}
 
-	w, err := parseWorkspaceValue(p.Val)
+	w, err := parseWorkspaceValue(&p.CueV)
 	if err != nil {
 		return nil, err
 	}
@@ -85,11 +84,11 @@ func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (wo
 		definitionFile: workspaceFile,
 		data:           data,
 		parsed:         w,
-		source:         p.Val,
+		source:         &p.CueV,
 	}, nil
 }
 
-func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
+func parseWorkspaceValue(val *fncue.CueV) (*schema.Workspace, error) {
 	var m cueModule
 	if err := val.Decode(&m); err != nil {
 		return nil, fnerrors.New("failed to decode workspace contents: %w", err)
@@ -181,7 +180,7 @@ type workspaceData struct {
 	absPath, definitionFile string
 	data                    []byte
 	parsed                  *schema.Workspace
-	source                  cue.Value
+	source                  *fncue.CueV
 }
 
 func (r workspaceData) AbsPath() string           { return r.absPath }
@@ -315,7 +314,7 @@ func (r workspaceData) updateDependencies(add, update []*schema.Workspace_Depend
 	}
 
 	copy := r
-	copy.source = r.source.Context().BuildExpr(syntax)
+	copy.source = r.source.BuildExpr(syntax)
 
 	return copy
 }

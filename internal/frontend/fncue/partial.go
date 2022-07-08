@@ -4,9 +4,16 @@
 
 package fncue
 
-import "cuelang.org/go/cue"
+import (
+	"sync"
 
-type CueV struct{ Val cue.Value }
+	"cuelang.org/go/cue"
+)
+
+type CueV struct {
+	mu  sync.Mutex // protects val since CUE decoding can trigger data races https://github.com/cue-lang/cue/blob/v0.4.3/internal/core/adt/default.go#L72-L76
+	val cue.Value
+}
 
 // Represents a Cue value alongside a list of keys that are *left* to be resolved and filled later.
 type Partial struct {
@@ -15,6 +22,10 @@ type Partial struct {
 	Left       []KeyAndPath
 	Package    CuePackage
 	CueImports []CuePackage
+}
+
+func (p *Partial) Set(v *CueV) {
+	p.val = v.val
 }
 
 func SerializedEval[V any](p *Partial, f func() (V, error)) (V, error) {

@@ -11,7 +11,7 @@ import (
 )
 
 func (v *CueV) DecodeToProtoMessage(msg proto.Message) error {
-	b, err := v.Val.MarshalJSON()
+	b, err := v.MarshalJSON()
 	if err != nil {
 		return err
 	}

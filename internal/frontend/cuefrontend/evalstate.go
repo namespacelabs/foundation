@@ -7,7 +7,6 @@ package cuefrontend
 import (
 	"context"
 
-	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 )
 
@@ -16,7 +15,7 @@ type EvalFuncs struct {
 }
 
 type Fetcher interface {
-	Fetch(context.Context, cue.Value, fncue.KeyAndPath) (interface{}, error)
+	Fetch(context.Context, *fncue.CueV, fncue.KeyAndPath) (interface{}, error)
 }
 
 var (
@@ -24,7 +23,7 @@ var (
 	ConsumeNoValue = &consumeNoValue
 )
 
-type FetcherFunc func(context.Context, cue.Value) (interface{}, error)
+type FetcherFunc func(context.Context, *fncue.CueV) (interface{}, error)
 
 func newFuncs() *EvalFuncs {
 	return &EvalFuncs{
@@ -50,7 +49,7 @@ func (s *EvalFuncs) WithFetcher(key string, f FetcherFunc) *EvalFuncs {
 	return n
 }
 
-func (s *EvalFuncs) Fetch(ctx context.Context, v cue.Value, kp fncue.KeyAndPath) (interface{}, error) {
+func (s *EvalFuncs) Fetch(ctx context.Context, v *fncue.CueV, kp fncue.KeyAndPath) (interface{}, error) {
 	f := s.fetchers[kp.Key]
 	if f != nil {
 		return f(ctx, v)

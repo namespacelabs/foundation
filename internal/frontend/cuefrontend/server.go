@@ -55,12 +55,12 @@ type cueServiceSpecMetadata struct {
 
 func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, parent, v *fncue.CueV, pp *workspace.Package, opts workspace.LoadPackageOpts) (*schema.Server, error) {
 	// Ensure all fields are bound.
-	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
+	if err := v.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
 	}
 
 	var bits cueServer
-	if err := v.Val.Decode(&bits); err != nil {
+	if err := v.Decode(&bits); err != nil {
 		return nil, err
 	}
 
@@ -161,7 +161,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 		return out.Ingress[i].GetPort().GetContainerPort() < out.Ingress[j].GetPort().GetContainerPort()
 	})
 
-	if err := fncue.WalkAttrs(parent.Val, func(v cue.Value, key, value string) error {
+	if err := fncue.WalkAttrs(parent, func(v cue.Value, key, value string) error {
 		switch key {
 		case fncue.InputKeyword:
 			if err := handleRef(loc, v, value, &out.Reference); err != nil {

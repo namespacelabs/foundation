@@ -26,12 +26,12 @@ type cueFixture struct {
 
 func parseCueTest(ctx context.Context, loc workspace.Location, parent, v *fncue.CueV) (*schema.Test, error) {
 	// Ensure all fields are bound.
-	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
+	if err := v.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
 	}
 
 	test := cueTest{}
-	if err := v.Val.Decode(&test); err != nil {
+	if err := v.Decode(&test); err != nil {
 		return nil, err
 	}
 

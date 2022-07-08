@@ -45,7 +45,7 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.Earl
 			// Load packages without the serialization lock held.
 		for _, k := range firstPass.Left {
 			if k.Key == fncue.PackageIKW {
-				if _, err := FetchPackage(pl)(ctx, firstPass.CueV.Val.LookupPath(k.Target)); err != nil {
+				if _, err := FetchPackage(pl)(ctx, firstPass.CueV.LookupCuePath(k.Target)); err != nil {
 					return nil, err
 				}
 			}
@@ -58,7 +58,7 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.Earl
 			}
 
 			parsedPartial := *firstPass
-			parsedPartial.Val = newV.Val
+			parsedPartial.Set(newV)
 			parsedPartial.Left = newLeft
 
 			return &parsedPartial, nil

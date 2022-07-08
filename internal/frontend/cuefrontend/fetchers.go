@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"cuelang.org/go/cue"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -40,7 +40,7 @@ type cueEndpoint struct {
 }
 
 func FetchServer(packages workspace.Packages, stack *schema.Stack) FetcherFunc {
-	return func(ctx context.Context, v cue.Value) (interface{}, error) {
+	return func(ctx context.Context, v *fncue.CueV) (interface{}, error) {
 		var server cueServerReference
 		if err := v.Decode(&server); err != nil {
 			return nil, err
@@ -76,7 +76,7 @@ func FetchServer(packages workspace.Packages, stack *schema.Stack) FetcherFunc {
 }
 
 func FetchServerWorkspace(workspace *schema.Workspace, loc protos.Location) FetcherFunc {
-	return func(ctx context.Context, v cue.Value) (interface{}, error) {
+	return func(context.Context, *fncue.CueV) (interface{}, error) {
 		return cueWorkspace{
 			ModuleName: workspace.ModuleName,
 			ServerPath: loc.Rel(),
@@ -92,7 +92,7 @@ type cueProtoload struct {
 }
 
 func FetchProto(pl workspace.Packages, fsys fs.FS, loc workspace.Location) FetcherFunc {
-	return func(ctx context.Context, v cue.Value) (interface{}, error) {
+	return func(ctx context.Context, v *fncue.CueV) (interface{}, error) {
 		var load cueProtoload
 		if err := v.Decode(&load); err != nil {
 			return nil, err
@@ -176,7 +176,7 @@ type cueResource struct {
 }
 
 func FetchResource(fsys fs.FS, loc workspace.Location) FetcherFunc {
-	return func(ctx context.Context, v cue.Value) (interface{}, error) {
+	return func(ctx context.Context, v *fncue.CueV) (interface{}, error) {
 		var load cueResource
 		if err := v.Decode(&load); err != nil {
 			return nil, err
@@ -201,7 +201,7 @@ func FetchResource(fsys fs.FS, loc workspace.Location) FetcherFunc {
 }
 
 func FetchPackage(pl workspace.Packages) FetcherFunc {
-	return func(ctx context.Context, v cue.Value) (interface{}, error) {
+	return func(ctx context.Context, v *fncue.CueV) (interface{}, error) {
 		packageName, err := v.String()
 		if err != nil {
 			return nil, fnerrors.UserError(nil, "expected a string when loading a package: %w", err)
@@ -218,13 +218,13 @@ type cueServerResult struct {
 }
 
 func FetchFocusServer(serverImageRef string, srv *schema.Server) FetcherFunc {
-	return func(c context.Context, v cue.Value) (interface{}, error) {
+	return func(c context.Context, v *fncue.CueV) (interface{}, error) {
 		return cueServerResult{Image: serverImageRef, Framework: srv.Framework.String()}, nil
 	}
 }
 
 func FetchEnv(env *schema.Environment, workspace *schema.Workspace) FetcherFunc {
-	return func(context.Context, cue.Value) (interface{}, error) {
+	return func(context.Context, *fncue.CueV) (interface{}, error) {
 		return cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String(), Ephemeral: env.Ephemeral}, nil
 	}
 }
@@ -237,7 +237,7 @@ type cueEnv struct {
 }
 
 func FetchVCS(rootDir string) FetcherFunc {
-	return func(ctx context.Context, v cue.Value) (interface{}, error) {
+	return func(ctx context.Context, v *fncue.CueV) (interface{}, error) {
 		status, err := git.FetchStatus(ctx, rootDir)
 		if err != nil {
 			return nil, err

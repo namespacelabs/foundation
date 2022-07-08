@@ -12,7 +12,6 @@ import (
 	"path"
 	"sync"
 
-	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/errors"
 	"go.lsp.dev/uri"
 	"namespacelabs.dev/foundation/internal/console"
@@ -71,14 +70,14 @@ func (ws *FnWorkspace) AbsPathForPkgName(ctx context.Context, pkgName string) (s
 	return loc.Abs(), nil
 }
 
-func (ws *FnWorkspace) EvalPackage(ctx context.Context, pkgName string) (cue.Value, error) {
+func (ws *FnWorkspace) EvalPackage(ctx context.Context, pkgName string) (*fncue.CueV, error) {
 	value, err := ws.evalCtx.EvalPackage(ctx, pkgName)
 	if err != nil && value == nil {
 		// Retain Cue-level errors inside the "successful" value so that we can
 		// provide exploration features while having errors.
-		return cue.Value{}, err
+		return nil, err
 	}
-	return value.CueV.Val, nil
+	return &value.CueV, nil
 }
 
 func (ws *FnWorkspace) FS() fs.ReadDirFS {

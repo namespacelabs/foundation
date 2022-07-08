@@ -52,12 +52,12 @@ func (s phase2plan) EvalStartup(ctx context.Context, env ops.Environment, info f
 	}
 
 	if v := lookupTransition(res, "startup"); v.Exists() {
-		if err := v.Val.Validate(cue.Concrete(true)); err != nil {
+		if err := v.Validate(cue.Concrete(true)); err != nil {
 			return nil, err
 		}
 
 		var raw cueStartupPlan
-		if err := v.Val.Decode(&raw); err != nil {
+		if err := v.Decode(&raw); err != nil {
 			return nil, err
 		}
 

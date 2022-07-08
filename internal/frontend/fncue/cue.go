@@ -39,13 +39,86 @@ type KeyAndPath struct {
 }
 
 func (v *CueV) LookupPath(path string) *CueV {
-	return &CueV{Val: v.Val.LookupPath(cue.ParsePath(path))}
+	return &CueV{val: v.val.LookupPath(cue.ParsePath(path))}
 }
 
-func (v *CueV) Exists() bool { return v.Val.Exists() }
+func (v *CueV) LookupCuePath(path cue.Path) *CueV {
+	return &CueV{val: v.val.LookupPath(path)}
+}
+
+func (v *CueV) Exists() bool { return v.val.Exists() }
 
 func (v *CueV) FillPath(path cue.Path, rightSide interface{}) *CueV {
-	return &CueV{Val: v.Val.FillPath(path, rightSide)}
+	return &CueV{val: v.val.FillPath(path, rightSide)}
+}
+
+func (v *CueV) Decode(x interface{}) error {
+	v.mu.Lock()
+	v.mu.Unlock()
+
+	return v.val.Decode(x)
+}
+
+func (v *CueV) Raw() cue.Value {
+	return v.val
+}
+
+func (v *CueV) String() (string, error) {
+	return v.val.String()
+}
+
+func (v *CueV) Validate(opts ...cue.Option) error {
+	return v.val.Validate(opts...)
+}
+
+func (v *CueV) MarshalJSON() (b []byte, err error) {
+	return v.val.MarshalJSON()
+}
+
+func (v *CueV) Bool() (bool, error) {
+	return v.val.Bool()
+}
+func (v *CueV) Kind() cue.Kind {
+	return v.val.Kind()
+}
+
+func (v *CueV) Err() error {
+	return v.val.Err()
+}
+
+func (v *CueV) Syntax(opts ...cue.Option) ast.Node {
+	return v.val.Syntax(opts...)
+}
+func (v *CueV) BuildExpr(syntax *ast.StructLit) *CueV {
+	return &CueV{val: v.val.Context().BuildExpr(syntax)}
+}
+
+func (v *CueV) Walk(before func(cue.Value) bool, after func(cue.Value)) {
+	v.val.Walk(before, after)
+}
+
+func (v *CueV) Fields(opts ...cue.Option) (*Iterator, error) {
+	it, err := v.val.Fields(opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &Iterator{it: it}, nil
+}
+
+type Iterator struct {
+	it *cue.Iterator
+}
+
+func (it *Iterator) Next() bool {
+	return it.it.Next()
+}
+
+func (it *Iterator) Label() string {
+	return it.it.Label()
+}
+
+func (it *Iterator) Value() *CueV {
+	return &CueV{val: it.it.Value()}
 }
 
 type WorkspaceLoader interface {
@@ -248,7 +321,7 @@ func finishInstance(sc *snapshotCache, cuectx *cue.Context, p *build.Instance, p
 
 	partial := &Partial{Ctx: sc}
 	partial.Package = pkg
-	partial.Val = vv
+	partial.val = vv
 
 	var err error
 	partial.Left, err = parseTags(&partial.CueV)
@@ -371,7 +444,11 @@ func IsStandardImportPath(path string) bool {
 	return !strings.Contains(elem, ".")
 }
 
-func WalkAttrs(parent cue.Value, visit func(v cue.Value, key, value string) error) error {
+type Walkable interface {
+	Walk(before func(cue.Value) bool, after func(cue.Value))
+}
+
+func WalkAttrs(parent Walkable, visit func(v cue.Value, key, value string) error) error {
 	var errs []error
 
 	parent.Walk(nil, func(v cue.Value) {
@@ -396,7 +473,7 @@ func WalkAttrs(parent cue.Value, visit func(v cue.Value, key, value string) erro
 func parseTags(vv *CueV) ([]KeyAndPath, error) {
 	var recorded []KeyAndPath
 
-	if err := WalkAttrs(vv.Val, func(v cue.Value, key, value string) error {
+	if err := WalkAttrs(vv.val, func(v cue.Value, key, value string) error {
 		switch key {
 		case InputKeyword:
 			if !stringsContain(knownInputs, value) {

@@ -13,7 +13,7 @@ import (
 func applyInputs(ctx context.Context, fetcher Fetcher, vv *fncue.CueV, recorded []fncue.KeyAndPath) (*fncue.CueV, []fncue.KeyAndPath, error) {
 	var left []fncue.KeyAndPath
 	for _, rec := range recorded {
-		newV, err := fetcher.Fetch(ctx, vv.Val.LookupPath(rec.Target), rec)
+		newV, err := fetcher.Fetch(ctx, vv.LookupCuePath(rec.Target), rec)
 		if err != nil {
 			return nil, nil, err
 		}

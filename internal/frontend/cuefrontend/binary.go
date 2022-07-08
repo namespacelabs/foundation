@@ -15,12 +15,12 @@ import (
 
 func parseCueBinary(ctx context.Context, loc workspace.Location, parent, v *fncue.CueV) (*schema.Binary, error) {
 	// Ensure all fields are bound.
-	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
+	if err := v.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
 	}
 
 	bin := &schema.Binary{}
-	if err := v.Val.Decode(bin); err != nil {
+	if err := v.Decode(bin); err != nil {
 		return nil, err
 	}
 
@@ -33,12 +33,12 @@ func parseCueBinary(ctx context.Context, loc workspace.Location, parent, v *fncu
 
 func parseCueFunction(ctx context.Context, loc workspace.Location, parent, v *fncue.CueV) (*schema.ExperimentalFunction, error) {
 	// Ensure all fields are bound.
-	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
+	if err := v.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
 	}
 
 	function := &schema.ExperimentalFunction{}
-	if err := v.Val.Decode(function); err != nil {
+	if err := v.Decode(function); err != nil {
 		return nil, err
 	}
 

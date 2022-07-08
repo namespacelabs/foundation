@@ -384,10 +384,10 @@ func (s *server) Definition(ctx context.Context, params *protocol.DefinitionPara
 		return nil, err
 	}
 
-	s.logf("updateDiagnostics pkg=%v err=%v val=%s\n", fqName, err, describeValue(val, ""))
+	s.logf("updateDiagnostics pkg=%v err=%v val=%s\n", fqName, err, describeValue(val.Raw(), ""))
 
 	cuePos := lspPosToCue(fqName, params.Position)
-	bestMatch := cueValueAtPosition(val, cuePos)
+	bestMatch := cueValueAtPosition(val.Raw(), cuePos)
 	if bestMatch == nil {
 		return nil, nil
 	}
@@ -432,7 +432,7 @@ func (s *server) Hover(ctx context.Context, params *protocol.HoverParams) (resul
 	}
 
 	cuePos := lspPosToCue(importPath, params.Position)
-	bestMatch := cueValueAtPosition(val, cuePos)
+	bestMatch := cueValueAtPosition(val.Raw(), cuePos)
 	s.logf("Hover %v\n", bestMatch)
 
 	if bestMatch == nil {
