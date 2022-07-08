@@ -81,7 +81,11 @@ func RunNodejs(ctx context.Context, env provision.Env, relPath string, command s
 	return tools.Run(ctx, rtypes.RunToolOpts{
 		IO:          io,
 		AllocateTTY: opts.IsInteractive,
-		Mounts:      append(opts.Mounts, &rtypes.LocalMapping{HostPath: root.Abs(), ContainerPath: filepath.Join(workspaceContainerDir, root.Abs())}),
+		Mounts: append(opts.Mounts, &rtypes.LocalMapping{
+			HostPath: root.Abs(),
+			// The user's filesystem structure is replicated within the container.
+			ContainerPath: filepath.Join(workspaceContainerDir, root.Abs()),
+		}),
 		RunBinaryOpts: rtypes.RunBinaryOpts{
 			Image:      image,
 			WorkingDir: filepath.Join(workspaceContainerDir, root.Abs(), relPath),

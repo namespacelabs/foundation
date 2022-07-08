@@ -22,6 +22,8 @@ func newNodejsCmd() *cobra.Command {
 		Short: "Run nodejs.",
 	}
 
+	var relPath string
+
 	yarn := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "yarn",
 		Short: "Run Yarn.",
@@ -31,13 +33,18 @@ func newNodejsCmd() *cobra.Command {
 			return err
 		}
 
-		relPath, err := relCwd(ctx)
-		if err != nil {
-			return err
+		if relPath == "" {
+			var err error
+			relPath, err = relCwd(ctx)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nodejs.RunYarn(ctx, env, relPath, args, root.WorkspaceData)
 	})
+
+	yarn.Flags().StringVar(&relPath, "rel_path", "", "If not set, will be computed.")
 
 	cmd.AddCommand(yarn)
 
