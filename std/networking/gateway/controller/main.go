@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-logr/zapr"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -22,7 +24,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	controllerscheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
@@ -67,7 +68,19 @@ func main() {
 		log.Fatal("FN_KUBERNETES_NAMESPACE is required")
 	}
 
-	logger := zap.New(zap.UseDevMode(*debug), zap.ConsoleEncoder())
+	var zapLogger *zap.Logger
+	var err error
+	if *debug {
+		if zapLogger, err = zap.NewDevelopment(); err != nil {
+			log.Fatalf("failed to create development logger: %v", err)
+		}
+	} else {
+		if zapLogger, err = zap.NewProduction(); err != nil {
+			log.Fatalf("failed to create production logger: %v", err)
+		}
+	}
+	defer zapLogger.Sync() // flushes buffer, if any
+	logger := zapr.NewLogger(zapLogger)
 
 	logger.Info("Observing namespace", "namespace", controllerNamespace)
 
@@ -86,11 +99,9 @@ func main() {
 		log.Fatalf("failed to parse ALS server address: %v", err)
 	}
 
-	envoyLogger := NewLogger(*debug)
-
 	transcoderSnapshot := NewTranscoderSnapshot(
 		WithEnvoyNodeId(*nodeID),
-		WithLogger(envoyLogger),
+		WithLogger(zapLogger.Sugar()),
 		WithXdsCluster(*xdsClusterName, xdsAddrPort),
 		WithAlsCluster(*alsClusterName, alsAddrPort),
 	)
@@ -105,7 +116,7 @@ func main() {
 	// is terminated with exit code 1.
 	ctx := ctrl.SetupSignalHandler()
 
-	xdsServer := NewXdsServer(ctx, transcoderSnapshot.cache, envoyLogger)
+	xdsServer := NewXdsServer(ctx, transcoderSnapshot.cache, *debug)
 	xdsServer.RegisterServices()
 
 	// Run the Kubernetes controller responsible for handling the `HttpGrpcTranscoder` custom resource.

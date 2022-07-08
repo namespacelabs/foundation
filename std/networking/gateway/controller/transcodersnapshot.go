@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -77,7 +78,7 @@ type TranscoderSnapshot struct {
 type SnapshotOptions struct {
 	envoyNodeId string
 
-	logger *Logger
+	logger *zap.SugaredLogger
 
 	xdsClusterName string
 	xdsClusterAddr *AddressPort
@@ -94,7 +95,7 @@ func WithEnvoyNodeId(envoyNodeId string) SnapshotOption {
 	}
 }
 
-func WithLogger(logger *Logger) SnapshotOption {
+func WithLogger(logger *zap.SugaredLogger) SnapshotOption {
 	return func(o *SnapshotOptions) {
 		o.logger = logger
 	}
