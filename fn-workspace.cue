@@ -27,7 +27,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/universe/aws/s3/internal/configure":                             "sha256:cd015460ae128f08e16f3d4273bb4d9438ed8f65a4b94afdff5d6042b6e55d75"
 		"namespacelabs.dev/foundation/universe/aws/s3/internal/managebuckets/init":                    "sha256:a8e2852c25f94ba5bad5a10ba23e0286cd00944085fcd2ddb372d3a5caf43cad"
 		"namespacelabs.dev/foundation/universe/db/maria/incluster/tool":                               "sha256:1d20b6b3c130d1f9331356b23463e2d6034368ec2971546febf9541156b26c58"
-		"namespacelabs.dev/foundation/universe/db/maria/init":                                         "sha256:c663440e8ede6741cc00e73f20930c0b396d5ee6a94f07be8669d779bb028f0f"
+		"namespacelabs.dev/foundation/universe/db/maria/init":                                         "sha256:2b39e62767c38b49e2f905ff4e88439a11a2fc1161a0a01dfcf72a8c6eb07df8"
 		"namespacelabs.dev/foundation/universe/db/maria/server/creds/tool":                            "sha256:1c4c1ec01a59a384ddca8297b663c84d62747338ab59c3c06d3e42b314003180"
 		"namespacelabs.dev/foundation/universe/db/postgres/incluster/tool":                            "sha256:e35893ce7d23ab41779f4d02db66ab307eb029d9eb4acd0ab8cc74005c3ae9dd"
 		"namespacelabs.dev/foundation/universe/db/postgres/init":                                      "sha256:dd29083dd9a4b7a08d5ef7e325cc24705f4b2fd7c04d70faa65a0d07cfa4a1bd"

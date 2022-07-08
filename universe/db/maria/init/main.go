@@ -12,17 +12,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/dustin/go-humanize"
+	"golang.org/x/sync/errgroup"
 	"namespacelabs.dev/foundation/universe/db/maria"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const connBackoff = 500 * time.Millisecond
+const connBackoff = 1 * time.Second
 
 var (
 	passwordFile = flag.String("mariadb_password_file", "", "location of the password secret")
@@ -32,6 +34,19 @@ func connect(ctx context.Context, password string, address string, port uint32) 
 	connString := fmt.Sprintf("root:%s@tcp(%s:%d)/", password, address, port)
 	count := 0
 	err = backoff.Retry(func() error {
+		addrPort := fmt.Sprintf("%s:%d", address, port)
+
+		// Use a more aggressive connect to determine whether the server already
+		// has an open serving port. If it does, we then defer to sql.Open to
+		// take as much time as it needs.
+		rawConn, err := net.DialTimeout("tcp", addrPort, 3*connBackoff)
+		if err != nil {
+			log.Printf("Failed to tcp dial %s: %v", addrPort, err)
+			return err
+		}
+
+		rawConn.Close()
+
 		count++
 		log.Printf("Attempting to connect to MariaDB (%s try).", humanize.Ordinal(count))
 		db, err = sql.Open("mysql", connString)
@@ -142,10 +157,17 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
+	eg, ctx := errgroup.WithContext(ctx)
 	for _, db := range dbs {
-		if err := applySchema(ctx, db, string(password)); err != nil {
-			log.Fatalf("%v", err)
-		}
+		db := db // Close db
+		eg.Go(func() error {
+			return applySchema(ctx, db, string(password))
+		})
 	}
+
+	if err := eg.Wait(); err != nil {
+		log.Fatal(err)
+	}
+
 	log.Printf("mariadb init completed")
 }
