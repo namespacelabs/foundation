@@ -39,5 +39,7 @@ message TestRuns {
 }
 
 message TestResult {
-    bool success = 1;
+    bool   success       = 1;
+    int32  error_code    = 2;
+    string error_message = 3;
 }

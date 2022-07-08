@@ -10,14 +10,15 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"time"
 
 	"github.com/morikuni/aec"
 	"golang.org/x/exp/slices"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
@@ -111,95 +112,86 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 
 	waiters, err := p.Deployer.Execute(ctx, runtime.TaskServerDeploy, env)
 	if err != nil {
-		return nil, err
+		return nil, fnerrors.New("%s: failed to deploy: %w", test.TestBinPkg, err)
 	}
 
 	rt := runtime.For(ctx, env)
 
+	var waitErr error
 	if test.OutputProgress {
 		fmt.Fprintf(console.Stderr(ctx), "%s: Test %s\n", test.TestBinPkg, aec.LightBlackF.Apply("RUNNING"))
+		waitErr = deploy.Wait(ctx, env, waiters)
+	} else {
+		waitErr = ops.WaitMultiple(ctx, waiters, nil)
+	}
 
-		if err := deploy.Wait(ctx, env, waiters); err != nil {
-			var e runtime.ErrContainerFailed
-			if errors.As(err, &e) {
-				// Don't spend more than N time waiting for logs.
-				ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-				defer cancel()
+	var testLogBuf *syncbuffer.ByteBuffer
+	if waitErr == nil {
+		// All servers deployed. Lets start the test driver.
 
-				for k, failed := range e.FailedContainers {
-					out := console.TypedOutput(ctx, fmt.Sprintf("%s:%d", e.Name, k), console.CatOutputTool)
-					if err := rt.FetchLogsTo(ctx, out, failed, runtime.FetchLogsOpts{TailLines: 50}); err != nil {
-						fmt.Fprintf(console.Warnings(ctx), "failed to retrieve logs of %s: %v\n", e.Name, err)
-					}
+		testRun := runtime.ServerRunOpts{
+			Image:              compute.MustGetDepValue(r, test.TestBinImageID, "testBin"),
+			Command:            test.TestBinCommand,
+			Args:               nil,
+			ReadOnlyFilesystem: true,
+		}
+
+		if test.Debug {
+			testRun.Args = append(testRun.Args, "--debug")
+		}
+
+		localCtx, cancelAll := context.WithCancel(ctx)
+		defer cancelAll()
+
+		ex := executor.Newf(localCtx, "testing.run(%s)", test.TestName)
+
+		var extraOutput []io.Writer
+		if test.OutputProgress {
+			extraOutput = append(extraOutput, console.Output(ctx, "testlog"))
+		}
+
+		var testLog io.Writer
+		testLog, testLogBuf = makeLog(extraOutput...)
+
+		ex.Go(func(ctx context.Context) error {
+			defer cancelAll() // When the test is done, cancel logging.
+
+			if err := rt.RunOneShot(ctx, test.TestBinPkg, testRun, testLog); err != nil {
+				// XXX consolidate these two.
+				var e1 runtime.ErrContainerExitStatus
+				var e2 runtime.ErrContainerFailed
+				if errors.As(err, &e1) && e1.ExitCode > 0 {
+					return errTestFailed
+				} else if errors.As(err, &e2) {
+					return errTestFailed
+				} else {
+					return err
 				}
 			}
 
-			return nil, err
-		}
-	} else {
-		// We call ops.WaitMultiple directly here to skip visual output from deploy.Wait.
-		if err := ops.WaitMultiple(ctx, waiters, nil); err != nil {
-			return nil, err
-		}
+			return nil
+		})
+
+		waitErr = ex.Wait()
 	}
-
-	testRun := runtime.ServerRunOpts{
-		Image:              compute.MustGetDepValue(r, test.TestBinImageID, "testBin"),
-		Command:            test.TestBinCommand,
-		Args:               nil,
-		ReadOnlyFilesystem: true,
-	}
-
-	if test.Debug {
-		testRun.Args = append(testRun.Args, "--debug")
-	}
-
-	localCtx, cancelAll := context.WithCancel(ctx)
-	defer cancelAll()
-
-	ex := executor.Newf(localCtx, "testing.run(%s)", test.TestName)
-
-	var extraOutput []io.Writer
-	if test.OutputProgress {
-		extraOutput = append(extraOutput, console.Output(ctx, "testlog"))
-	}
-	testLog, testLogBuf := makeLog(extraOutput...)
-
-	ex.Go(func(ctx context.Context) error {
-		defer cancelAll() // When the test is done, cancel logging.
-
-		if err := rt.RunOneShot(ctx, test.TestBinPkg, testRun, testLog); err != nil {
-			// XXX consolidate these two.
-			var e1 runtime.ErrContainerExitStatus
-			var e2 runtime.ErrContainerFailed
-			if errors.As(err, &e1) && e1.ExitCode > 0 {
-				return errTestFailed
-			} else if errors.As(err, &e2) {
-				return errTestFailed
-			} else {
-				return err
-			}
-		}
-
-		return nil
-	})
 
 	testResults := &storage.TestResult{}
-
-	waitErr := ex.Wait()
 	if waitErr == nil {
 		testResults.Success = true
 	} else if errors.Is(waitErr, errTestFailed) {
 		testResults.Success = false
 	} else {
-		return nil, waitErr
+		testResults.Success = false
+		st, _ := status.FromError(err)
+		testResults.ErrorCode = int32(st.Code())
+		testResults.ErrorMessage = st.Message()
 	}
 
 	if test.OutputProgress {
 		fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
 	}
 
-	bundle, err := collectLogs(ctx, env, test.Stack, test.ServersUnderTest, test.OutputProgress)
+	bundle, err := collectLogs(ctx, env, test.TestBinPkg, test.Stack, test.ServersUnderTest, test.OutputProgress)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +210,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 	return bundle, nil
 }
 
-func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, focus []string, printLogs bool) (*PreStoredTestBundle, error) {
+func collectLogs(ctx context.Context, env ops.Environment, testPkg schema.PackageName, stack *schema.Stack, focus []string, printLogs bool) (*PreStoredTestBundle, error) {
 	ex := executor.New(ctx, "test.collect-logs")
 
 	type serverLog struct {
@@ -233,6 +225,8 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 
 	rt := runtime.For(ctx, env)
 
+	out := console.Output(ctx, "test.collect-logs")
+
 	for _, entry := range stack.Entry {
 		srv := entry.Server // Close on srv.
 
@@ -244,7 +238,8 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 		ex.Go(func(ctx context.Context) error {
 			containers, err := rt.ResolveContainers(ctx, srv)
 			if err != nil {
-				return err
+				fmt.Fprintf(out, "%s: failed to resolve containers: %s: %v\n", testPkg, srv.PackageName, err)
+				return nil
 			}
 
 			for _, ctr := range containers {
@@ -275,7 +270,10 @@ func collectLogs(ctx context.Context, env ops.Environment, stack *schema.Stack, 
 					if errors.Is(err, context.Canceled) {
 						return nil
 					}
-					return err
+					if err != nil {
+						fmt.Fprintf(out, "%s: failed to fetch logs: %s: %v\n", testPkg, srv.PackageName, err)
+					}
+					return nil
 				})
 			}
 

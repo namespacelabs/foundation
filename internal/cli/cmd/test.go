@@ -219,6 +219,10 @@ func printResult(out io.Writer, style colors.Style, res compute.ResultWithTimest
 		}
 
 		status = style.TestFailure.Apply("FAILED")
+
+		if res.Value.Bundle.Result.ErrorMessage != "" {
+			status += style.TestFailure.Apply(fmt.Sprintf(" (%s)", res.Value.Bundle.Result.ErrorMessage))
+		}
 	}
 
 	cached := ""
