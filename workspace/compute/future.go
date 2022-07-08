@@ -59,6 +59,8 @@ type atom[V any] struct {
 func initializePromise[V any](p *Promise[V], c hasAction, id string) *Promise[V] {
 	p.actionID = tasks.ActionID(id)
 	p.c = c
+
+	// Clone the action here to avoind concurrent reads from futures once the promise action starts running.
 	p.futureAction = c.Action().Clone(func(name string) string { return name })
 	return p
 }
