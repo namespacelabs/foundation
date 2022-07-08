@@ -43,7 +43,7 @@ func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.En
 
 	out := base.
 		AddEnv("NODE_ENV", "production").
-		Run(llb.Shlexf("node_modules/vite/bin/vite.js build --base=%s --outDir=%s --emptyOutDir", basePath, filepath.Join("/out", baseOutput)), llb.Dir("/app")).
+		Run(llb.Shlexf("node_modules/vite/bin/vite.js build --base=%s --outDir=%s --emptyOutDir", basePath, filepath.Join("/out", baseOutput)), llb.Dir(filepath.Join("/app", loc.Rel()))).
 		AddMount("/out", llb.Scratch())
 
 	image, err := buildkit.LLBToImage(ctx, env, conf, out, local...)
@@ -54,19 +54,19 @@ func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.En
 	return compute.Named(tasks.Action("web.vite.build").Arg("builder", "buildkit"), image), nil
 }
 
-func viteDevBuild(ctx context.Context, env ops.Environment, target string, loc workspace.Location, isFocus bool, conf build.BuildTarget, externalModules []build.Workspace, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
+func viteDevBuild(ctx context.Context, env ops.Environment, targetDir string, loc workspace.Location, isFocus bool, conf build.BuildTarget, externalModules []build.Workspace, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
 	var module build.Workspace
 
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {
 		module = nodejs.YarnHotReloadModule{
 			Module: loc.Module,
-			Sink:   r.For(&wsremote.Signature{ModuleName: loc.Module.ModuleName(), Rel: loc.Rel()}),
+			Sink:   r.For(&wsremote.Signature{ModuleName: loc.Module.ModuleName(), Rel: "."}),
 		}
 	} else {
 		module = loc.Module
 	}
 
-	local, state, err := viteBuildBase(ctx, conf, target, module, loc.Rel(), loc.Module.Workspace, isFocus, externalModules, extraFiles...)
+	local, state, err := viteBuildBase(ctx, conf, targetDir, module, loc.Rel(), loc.Module.Workspace, isFocus, externalModules, extraFiles...)
 	if err != nil {
 		return nil, err
 	}
@@ -90,28 +90,36 @@ func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, m
 		return nil, llb.State{}, err
 	}
 
-	locals, buildBase, err := nodejs.AddExternalModules(ctx, workspace, module, rel, rebuildOnChanges, buildBase, externalModules)
+	local := buildkit.LocalContents{Module: module, Path: ".", ObserveChanges: rebuildOnChanges, TemporaryIsWeb: true}
+
+	locals, buildBase, err := nodejs.AddExternalModules(ctx, workspace, rel, buildBase, externalModules)
 	if err != nil {
 		return nil, llb.State{}, err
 	}
+	locals = append(locals, local)
 
-	src := buildkit.MakeLocalState(locals[0])
+	// Use separate layers for node_modules/package.json/yarn.lock, and sources, as the latter change more often.
+	// Copy all package.json files, not only from the given package, to support resolving ns-managed dependencies within the same module.
+	srcForYarn := buildkit.MakeLocalState(local, "**/package.json", "**/yarn.lock")
 
-	buildBase, err = runYarn(ctx, target, buildBase, src, *conf.TargetPlatform())
+	buildBase, err = runYarn(ctx, rel, target, buildBase, srcForYarn, *conf.TargetPlatform())
 	if err != nil {
 		return nil, llb.State{}, err
 	}
 
 	// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
 	base := llbutil.Image(nodeImage, *conf.TargetPlatform()).
-		With(llbutil.CopyFrom(buildBase, filepath.Join(target, "node_modules"), filepath.Join(target, "node_modules"))).
-		With(llbutil.CopyFrom(buildBase, nodejs.DepsRootPath, nodejs.DepsRootPath))
+		With(llbutil.CopyFrom(buildBase, filepath.Join(target, rel, "node_modules"), filepath.Join(target, rel, "node_modules")))
+	if len(externalModules) > 0 {
+		base = base.With(llbutil.CopyFrom(buildBase, nodejs.DepsRootPath, nodejs.DepsRootPath))
+	}
 
+	src := buildkit.MakeLocalState(local)
 	// Use separate layers for node_modules, and sources, as the latter change more often.
 	base = base.With(llbutil.CopyFrom(src, ".", target))
 
 	for _, extra := range extraFiles {
-		base, err = llbutil.WriteFS(ctx, extra, base, target)
+		base, err = llbutil.WriteFS(ctx, extra, base, filepath.Join(target, rel))
 		if err != nil {
 			return nil, llb.State{}, err
 		}
@@ -120,12 +128,10 @@ func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, m
 	return locals, base, nil
 }
 
-func runYarn(ctx context.Context, target string, base llb.State, src llb.State, platform specs.Platform) (llb.State, error) {
-	buildBase := base.With(
-		llbutil.CopyFrom(src, "package.json", filepath.Join(target, "package.json")),
-		llbutil.CopyFrom(src, "yarn.lock", filepath.Join(target, "yarn.lock")))
+func runYarn(ctx context.Context, rel string, targetDir string, base llb.State, src llb.State, platform specs.Platform) (llb.State, error) {
+	buildBase := base.With(llbutil.CopyFrom(src, ".", filepath.Join(targetDir)))
 
-	yarnInstall := buildBase.Run(nodejs.RunYarnShlex("install", "--immutable"), llb.Dir(target))
+	yarnInstall := buildBase.Run(nodejs.RunYarnShlex("install", "--immutable"), llb.Dir(filepath.Join(targetDir, rel)))
 	yarnInstall.AddMount(nodejs.YarnContainerCacheDir, llb.Scratch(), llb.AsPersistentCacheDir("yarn-cache-"+strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-"), llb.CacheMountShared))
 
 	return yarnInstall.Root(), nil

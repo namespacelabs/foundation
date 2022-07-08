@@ -112,12 +112,13 @@ func PrepareNodejsBaseWithYarnForBuild(ctx context.Context, nodejsBase string, p
 	return buildBase, nil
 }
 
-func AddExternalModules(ctx context.Context, workspace *schema.Workspace, module build.Workspace, rel string, rebuildOnChanges bool, base llb.State, externalModules []build.Workspace) ([]buildkit.LocalContents, llb.State, error) {
-	local := buildkit.LocalContents{Module: module, Path: rel, ObserveChanges: rebuildOnChanges}
+func AddExternalModules(ctx context.Context, workspace *schema.Workspace, rel string, base llb.State, externalModules []build.Workspace) ([]buildkit.LocalContents, llb.State, error) {
+	locals := []buildkit.LocalContents{}
 
-	locals := []buildkit.LocalContents{local}
-
-	lockFileStruct := generateLockFileStructForBuild(workspace)
+	lockFileStruct, err := generateLockFileStructForBuild(rel, workspace)
+	if err != nil {
+		return nil, llb.State{}, err
+	}
 
 	buildBase, err := llbutil.AddSerializedJsonAsFile(base, yarnLockFilePath, lockFileStruct)
 	if err != nil {
@@ -128,7 +129,7 @@ func AddExternalModules(ctx context.Context, workspace *schema.Workspace, module
 		// Copying external modules to "DepsRootPath".
 		lfModule, ok := lockFileStruct.Modules[m.ModuleName()]
 		if !ok {
-			return nil, llb.State{}, fnerrors.InternalError("module %s not found in the Namespace lock file", module.ModuleName())
+			return nil, llb.State{}, fnerrors.InternalError("module %s not found in the Namespace lock file", workspace.ModuleName)
 		}
 
 		moduleLocal := buildkit.LocalContents{Module: m, Path: ".", ObserveChanges: false}
