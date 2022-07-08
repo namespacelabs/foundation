@@ -29,9 +29,10 @@ type Promise[V any] struct {
 }
 
 type Future[V any] struct {
-	action *tasks.ActionEvent
-	ch     chan atom[V]
-	atom   atom[V]
+	actionID tasks.ActionID
+	action   *tasks.ActionEvent
+	ch       chan atom[V]
+	atom     atom[V]
 }
 
 type Result[V any] struct {
@@ -58,9 +59,7 @@ type atom[V any] struct {
 func initializePromise[V any](p *Promise[V], c hasAction, id string) *Promise[V] {
 	p.actionID = tasks.ActionID(id)
 	p.c = c
-	p.futureAction = c.Action().
-		Clone(func(name string) string { return fmt.Sprintf("compute.wait (%s)", name) }).
-		Anchor(p.actionID)
+	p.futureAction = c.Action().Clone(func(name string) string { return name })
 	return p
 }
 
@@ -109,18 +108,20 @@ func (f *Promise[V]) Future() *Future[V] {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.done {
-		return &Future[V]{action: f.futureAction, atom: f.resolved}
+		return &Future[V]{actionID: f.actionID, action: f.futureAction, atom: f.resolved}
 	}
 	ch := make(chan atom[V], 1)
 	f.waiters = append(f.waiters, ch)
-	return &Future[V]{action: f.futureAction, ch: ch}
+	return &Future[V]{actionID: f.actionID, action: f.futureAction, ch: ch}
 }
 
 func (r Result[V]) HasDigest() bool { return r.Digest.IsSet() }
 
 func (f *Future[V]) Wait(ctx context.Context) (ResultWithTimestamp[V], error) {
 	if f.ch != nil {
-		if err := f.action.Run(ctx, func(ctx context.Context) error {
+		if err := f.action.
+			Clone(func(name string) string { return fmt.Sprintf("compute.wait (%s)", name) }).
+			Anchor(f.actionID).Run(ctx, func(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
