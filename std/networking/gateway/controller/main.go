@@ -171,11 +171,17 @@ func main() {
 		log.Fatalf("failed to set up readyz: %+v", err)
 	}
 
+	// Make sure that an empty HTTP listener is registered.
+	if err := transcoderSnapshot.GenerateSnapshot(ctx); err != nil {
+		log.Fatalf("failed to generate initial snapshot: %v", err)
+	}
+
 	// Set up the recorder for transcoder events.
 	kubeClient, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
 	if err != nil {
 		log.Fatalf("Error building kubernetes clientset: %+v", err)
 	}
+
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events(controllerNamespace)})
 	recorder := eventBroadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: "http-grpc-transcoder-controller"})
@@ -186,6 +192,7 @@ func main() {
 		snapshot: transcoderSnapshot,
 		recorder: recorder,
 	}
+
 	if err := httpGrpcTranscoderReconciler.SetupWithManager(mgr, controllerNamespace); err != nil {
 		log.Fatalf("failed to set up the HTTP gRPC Transcoder reconciler: %+v", err)
 	}
