@@ -79,7 +79,9 @@ func main() {
 			log.Fatalf("failed to create production logger: %v", err)
 		}
 	}
-	defer zapLogger.Sync() // flushes buffer, if any
+	defer func() {
+		_ = zapLogger.Sync() // flushes buffer, if any
+	}()
 	logger := zapr.NewLogger(zapLogger)
 
 	logger.Info("Observing namespace", "namespace", controllerNamespace)
