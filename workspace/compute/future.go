@@ -19,19 +19,19 @@ type hasAction interface {
 }
 
 type Promise[V any] struct {
-	actionID tasks.ActionID
-	c        hasAction
-	mu       sync.Mutex
-	waiters  []chan atom[V] // We use channels, to allow for select{}ing for cancelation.
-	resolved atom[V]
-	done     bool
+	actionID     tasks.ActionID
+	c            hasAction
+	futureAction *tasks.ActionEvent
+	mu           sync.Mutex
+	waiters      []chan atom[V] // We use channels, to allow for select{}ing for cancelation.
+	resolved     atom[V]
+	done         bool
 }
 
 type Future[V any] struct {
-	actionID tasks.ActionID
-	c        hasAction
-	ch       chan atom[V]
-	atom     atom[V]
+	action *tasks.ActionEvent
+	ch     chan atom[V]
+	atom   atom[V]
 }
 
 type Result[V any] struct {
@@ -58,6 +58,9 @@ type atom[V any] struct {
 func initializePromise[V any](p *Promise[V], c hasAction, id string) *Promise[V] {
 	p.actionID = tasks.ActionID(id)
 	p.c = c
+	p.futureAction = c.Action().
+		Clone(func(name string) string { return fmt.Sprintf("compute.wait (%s)", name) }).
+		Anchor(p.actionID)
 	return p
 }
 
@@ -106,20 +109,18 @@ func (f *Promise[V]) Future() *Future[V] {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.done {
-		return &Future[V]{actionID: f.actionID, c: f.c, atom: f.resolved}
+		return &Future[V]{action: f.futureAction, atom: f.resolved}
 	}
 	ch := make(chan atom[V], 1)
 	f.waiters = append(f.waiters, ch)
-	return &Future[V]{actionID: f.actionID, c: f.c, ch: ch}
+	return &Future[V]{action: f.futureAction, ch: ch}
 }
 
 func (r Result[V]) HasDigest() bool { return r.Digest.IsSet() }
 
 func (f *Future[V]) Wait(ctx context.Context) (ResultWithTimestamp[V], error) {
 	if f.ch != nil {
-		if err := f.c.Action().
-			Clone(func(name string) string { return fmt.Sprintf("compute.wait (%s)", name) }).
-			Anchor(f.actionID).Run(ctx, func(ctx context.Context) error {
+		if err := f.action.Run(ctx, func(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
