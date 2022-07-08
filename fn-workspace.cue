@@ -23,7 +23,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/std/testdata/datastore/keygen":                                  "sha256:c6509339ab193bee825208494b5f79a1c58f3e190e03fe546dfc8b8cb796ee46"
 		"namespacelabs.dev/foundation/std/web/http/configure":                                         "sha256:712eeb23a528f907df55f5edfd52e1683866db7271604eca9ec6b713d1af0821"
 		"namespacelabs.dev/foundation/universe/aws/ecr/configure":                                     "sha256:165948f95ffa4765e67df2cd144a57d0334db3c6f13cb2d9f07ad9aaf16b584c"
-		"namespacelabs.dev/foundation/universe/aws/irsa/prepare":                                      "sha256:90f30331cae7d7d93f6caa62aab80912f6314cc79b0683b8fd178c7b648e5ae5"
+		"namespacelabs.dev/foundation/universe/aws/irsa/prepare":                                      "sha256:0f66c98e52d900ccdf4d2b878976a1c2a447cc1cfbb7e9739b281f06e83c3129"
 		"namespacelabs.dev/foundation/universe/aws/s3/internal/configure":                             "sha256:cd015460ae128f08e16f3d4273bb4d9438ed8f65a4b94afdff5d6042b6e55d75"
 		"namespacelabs.dev/foundation/universe/aws/s3/internal/managebuckets/init":                    "sha256:a8e2852c25f94ba5bad5a10ba23e0286cd00944085fcd2ddb372d3a5caf43cad"
 		"namespacelabs.dev/foundation/universe/db/maria/incluster/tool":                               "sha256:1d20b6b3c130d1f9331356b23463e2d6034368ec2971546febf9541156b26c58"
