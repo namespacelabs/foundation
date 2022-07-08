@@ -40,19 +40,19 @@ func (r *HttpGrpcTranscoderReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	transcoder := &HttpGrpcTranscoder{}
 	if err := r.Get(ctx, req.NamespacedName, transcoder); err != nil {
-		log.Error(err, "unable to fetch HttpGrpcTranscoder", "namespace", req.Namespace, "name", req.Name)
+		log.Error(err, "Unable to fetch HttpGrpcTranscoder", "namespace", req.Namespace, "name", req.Name)
 
 		if apierrors.IsNotFound(err) {
 			r.snapshot.DeleteTranscoder(transcoder)
 			// Generate a new envoy snapshot since we have deleted a transcoder.
 			if err := r.snapshot.GenerateSnapshot(ctx); err != nil {
-				errmsg := "failed to delete transcoder and generate new envoy snapshot"
+				errmsg := "Failed to delete transcoder and generate new envoy snapshot"
 				r.recorder.Eventf(transcoder, WarningEvent, DeleteTranscoder,
 					"%s for namespace %q and name %q: %v", errmsg, req.Namespace, req.Name, err)
 				log.Error(err, errmsg, "namespace", req.Namespace, "name", req.Name)
 				return ctrl.Result{}, err
 			}
-			msg := "deleted transcoder and successfully generated a new envoy snapshot"
+			msg := "Deleted transcoder and successfully generated a new envoy snapshot"
 			r.recorder.Eventf(transcoder, NormalEvent, DeleteTranscoder,
 				"%s for namespace %q and name %q", msg, req.Namespace, req.Name)
 			log.Info(msg, "namespace", req.Namespace, "name", req.Name)
@@ -81,7 +81,7 @@ func (r *HttpGrpcTranscoderReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// Update the applied condition if we have an error generating the snapshot.
 	if snapshotErr != nil {
-		errmsg := "failed to generate a new envoy snapshot"
+		errmsg := "Failed to generate a new envoy snapshot"
 		r.recorder.Eventf(transcoder, WarningEvent, CreateTranscoder,
 			"%s for namespace %q and name %q: %v", errmsg, req.Namespace, req.Name, snapshotErr)
 		log.Error(snapshotErr, errmsg, "namespace", req.Namespace, "name", req.Name)
@@ -90,7 +90,7 @@ func (r *HttpGrpcTranscoderReconciler) Reconcile(ctx context.Context, req ctrl.R
 		appliedCondition.Reason = "FailedToGenerateSnapshot"
 		appliedCondition.Message = snapshotErr.Error()
 	} else {
-		msg := "successfully generated a new envoy snapshot"
+		msg := "Successfully generated a new envoy snapshot"
 		r.recorder.Eventf(transcoder, NormalEvent, CreateTranscoder,
 			"%s with version %d for namespace %q and name %q",
 			msg, r.snapshot.CurrentSnapshotId(), req.Namespace, req.Name)
@@ -104,20 +104,20 @@ func (r *HttpGrpcTranscoderReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if updateErr := r.Client.Status().Update(ctx, transcoder); updateErr != nil {
 		// Requeue (rate-limited) if we lost an update race.
 		if apierrors.IsConflict(updateErr) {
-			msg := "requeueing since we lost an update race"
+			msg := "Requeueing since we lost an update race"
 			r.recorder.Eventf(transcoder, NormalEvent, UpdateTranscoderStatus,
 				"%s for namespace %q and name %q", msg, req.Namespace, req.Name)
 			log.Info(msg, "namespace", req.Namespace, "name", req.Name)
 			return ctrl.Result{Requeue: true}, nil
 		}
 
-		errmsg := "failed to update transcoder status"
+		errmsg := "Failed to update transcoder status"
 		r.recorder.Eventf(transcoder, WarningEvent, UpdateTranscoderStatus,
 			"%s for namespace %q and name %q: %v", errmsg, req.Namespace, req.Name, updateErr)
 		log.Error(updateErr, errmsg, "namespace", req.Namespace, "name", req.Name)
 		return ctrl.Result{}, updateErr
 	} else {
-		msg := "successfully updated transcoder status"
+		msg := "Successfully updated transcoder status"
 		r.recorder.Eventf(transcoder, NormalEvent, UpdateTranscoderStatus,
 			"%s with version %d for namespace %q and name %q",
 			msg, r.snapshot.CurrentSnapshotId(), req.Namespace, req.Name)

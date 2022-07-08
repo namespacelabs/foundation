@@ -19,7 +19,7 @@ type Logger struct {
 func NewLogger(debug bool) *Logger {
 	return &Logger{
 		Debug:   debug,
-		logsink: log.New(os.Stdout, "[ns] ", log.Ldate|log.Ltime|log.Lmicroseconds),
+		logsink: log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lmicroseconds),
 	}
 
 }
