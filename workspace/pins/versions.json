@@ -8,7 +8,8 @@
     "docker.io/library/node:16.13-alpine": "2f50f4a428f8b5280817c9d4d896dbee03f072e93f4e0c70b90cc84bd1fcfe0d",
     "gcr.io/distroless/static:nonroot": "80c956fb0836a17a565c43a4026c9c80b2013c83bea09f74fa4da195a59b7a99",
     "nixos/nix:2.6.0": "f0c68f870c655d8d96658ca762a0704a30704de22d16b4956e762a2ddfbccb09",
-    "postgres:14.0": "db927beee892dd02fbe963559f29a7867708747934812a80f83bff406a0d54fd"
+    "postgres:14.0": "db927beee892dd02fbe963559f29a7867708747934812a80f83bff406a0d54fd",
+    "mariadb:10.7.3": "07e06f2e7ae9dfc63707a83130a62e00167c827f08fcac7a9aa33f4b6dc34e0e"
   },
   "defaults": {
     "node": "docker.io/library/node:16.13-alpine",

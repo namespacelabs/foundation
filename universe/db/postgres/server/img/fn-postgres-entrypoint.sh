@@ -2,10 +2,10 @@
 set -Eeo pipefail
 # TODO swap to -Eeuo pipefail above (after handling all potentially-unset variables)
 
-# Foundation: edit begin
+# Namespace: edit begin
 # Branched from on https://github.com/docker-library/postgres/blob/master/14/bullseye/docker-entrypoint.sh
 # All edits are marked like this block
-# Foundation: edit end
+# Namespace: edit end
 
 # usage: file_env VAR [DEFAULT]
 #    ie: file_env 'XYZ_DB_PASSWORD' 'example'
@@ -224,12 +224,12 @@ docker_setup_env() {
 	file_env 'POSTGRES_PASSWORD'
 
 	file_env 'POSTGRES_USER' 'postgres'
-	# Foundation: edit begin
+	# Namespace: edit begin
 	# pin POSTGRES_DB to postgres so that initdb is enough and we can skip starting a temp postgres
 	#
 	# file_env 'POSTGRES_DB' "$POSTGRES_USER"
 	export POSTGRES_DB=postgres
-	# Foundation: edit end
+	# Namespace: edit end
 	file_env 'POSTGRES_INITDB_ARGS'
 	: "${POSTGRES_HOST_AUTH_METHOD:=}"
 
@@ -303,7 +303,7 @@ _pg_want_help() {
 }
 
 _main() {
-	# Foundation: edit begin
+	# Namespace: edit begin
 	# if is required because script may restart below
 	if [ -z "$@" ]; then
 		# manually fix command
@@ -315,7 +315,7 @@ _main() {
 		export PATH=$PATH:/usr/lib/postgresql/$PG_MAJOR/bin
 		export PG_VERSION=4.2-1.pgdg110+1
 	fi
-	# Foundation: edit end
+	# Namespace: edit end
 
 	# if first arg looks like a flag, assume we want to run postgres server
 	if [ "${1:0:1}" = '-' ]; then
@@ -341,7 +341,7 @@ _main() {
 			docker_init_database_dir
 			pg_setup_hba_conf "$@"
 
-			# Foundation: edit begin
+			# Namespace: edit begin
 			# Skip temp server as we perform database initialization through init containers.
 			# This speeds up postgres startup time.
 			#
@@ -355,7 +355,7 @@ _main() {
 			#
 			# docker_temp_server_stop
 			# unset PGPASSWORD
-			# Foundation: edit end
+			# Namespace: edit end
 
 			echo
 			echo 'PostgreSQL init process complete; ready for start up.'

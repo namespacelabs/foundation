@@ -55,9 +55,9 @@ func connect(ctx context.Context, password string, address string, port uint32) 
 			return err
 		}
 		if err := db.PingContext(ctx); err != nil {
-			return fmt.Errorf("failed to ping connection: %w", err)
+			log.Printf("Failed to ping connection: %v", err)
+			return err
 		}
-		log.Printf("Pinged database.")
 		return nil
 	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx))
 
