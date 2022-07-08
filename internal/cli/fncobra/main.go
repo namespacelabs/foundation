@@ -311,17 +311,20 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			// We set the bit to ensure we don't try re-serializing the error.
 			serializedErrToBundle = true
 		}
+
 		actionLogs, logErr := cmdBundle.ActionLogs(ctxWithSink)
 		if actionLogs != nil {
 			storedrun.Attach(actionLogs)
 		}
+
 		if logErr != nil {
 			fmt.Fprintf(debugSink, "Failed to write action logs: %v\n", logErr)
 		}
 
 		runErr := run.Output(cmdCtx, err) // If requested, store the run results.
-		if runErr != nil {
-			fmt.Fprintf(debugSink, "Failed to write run results: %v\n", runErr)
+		if err == nil {
+			// Make sure that failing to output fails the execution.
+			err = runErr
 		}
 	}
 

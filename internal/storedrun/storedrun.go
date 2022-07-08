@@ -69,7 +69,7 @@ func (s *Run) Output(ctx context.Context, execErr error) error {
 		return err
 	}
 
-	return execErr
+	return nil
 }
 
 func consumeAttachments() []proto.Message {
