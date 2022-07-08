@@ -38,7 +38,7 @@ type XdsServer struct {
 	xdsServer  server.Server
 }
 
-func NewXdsServer(ctx context.Context, snapshotCache cache.SnapshotCache, logger *Logger) *XdsServer {
+func NewXdsServer(ctx context.Context, snapshotCache cache.SnapshotCache, debug bool) *XdsServer {
 	// gRPC golang library sets a very small upper bound for the number gRPC/h2
 	// streams over a single TCP connection. If a proxy multiplexes requests over
 	// a single connection to the management server, then it might lead to
@@ -56,10 +56,7 @@ func NewXdsServer(ctx context.Context, snapshotCache cache.SnapshotCache, logger
 		}),
 	)
 
-	var cb *test.Callbacks
-	if logger != nil {
-		cb = &test.Callbacks{Debug: logger.Debug}
-	}
+	cb := &test.Callbacks{Debug: debug}
 
 	return &XdsServer{
 		grpcServer: grpc.NewServer(grpcOptions...),

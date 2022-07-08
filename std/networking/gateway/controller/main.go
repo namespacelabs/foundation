@@ -12,6 +12,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-logr/zapr"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -22,7 +25,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	controllerscheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
@@ -67,7 +69,23 @@ func main() {
 		log.Fatal("FN_KUBERNETES_NAMESPACE is required")
 	}
 
-	log.Printf("Observing namespace %q...", controllerNamespace)
+	var level zapcore.Level
+	if *debug {
+		level = zap.DebugLevel
+	} else {
+		level = zap.InfoLevel
+	}
+	consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
+	core := zapcore.NewCore(consoleEncoder, zapcore.Lock(os.Stdout), level)
+
+	zapLogger := zap.New(core)
+	defer func() {
+		_ = zapLogger.Sync() // flushes buffer, if any
+	}()
+
+	logger := zapr.NewLogger(zapLogger)
+
+	logger.Info("Observing namespace", "namespace", controllerNamespace)
 
 	httpAddrPort, err := ParseAddressPort(*httpEnvoyListenAddress)
 	if err != nil {
@@ -84,11 +102,9 @@ func main() {
 		log.Fatalf("failed to parse ALS server address: %v", err)
 	}
 
-	logger := NewLogger(*debug)
-
 	transcoderSnapshot := NewTranscoderSnapshot(
 		WithEnvoyNodeId(*nodeID),
-		WithLogger(logger),
+		WithLogger(zapLogger.Sugar()),
 		WithXdsCluster(*xdsClusterName, xdsAddrPort),
 		WithAlsCluster(*alsClusterName, alsAddrPort),
 	)
@@ -96,14 +112,14 @@ func main() {
 	if err := transcoderSnapshot.RegisterHttpListener(*httpEnvoyListenAddress); err != nil {
 		log.Fatal(err)
 	}
-	logger.Infof("registered HTTP listener on %s\n", *httpEnvoyListenAddress)
+	logger.Info("Registered HTTP listener", "port", *httpEnvoyListenAddress)
 
 	// SetupSignalHandler registers for SIGTERM and SIGINT. A context is returned
 	// which is canceled on one of these signals. If a second signal is caught, the program
 	// is terminated with exit code 1.
 	ctx := ctrl.SetupSignalHandler()
 
-	xdsServer := NewXdsServer(ctx, transcoderSnapshot.cache, logger)
+	xdsServer := NewXdsServer(ctx, transcoderSnapshot.cache, *debug)
 	xdsServer.RegisterServices()
 
 	// Run the Kubernetes controller responsible for handling the `HttpGrpcTranscoder` custom resource.
@@ -120,7 +136,7 @@ func main() {
 		log.Fatalf("failed to add the HttpGrpcTranscoder scheme: %+v", err)
 	}
 
-	ctrl.SetLogger(zap.New(zap.UseDevMode(*debug)))
+	ctrl.SetLogger(logger)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -167,7 +183,6 @@ func main() {
 	}
 
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartStructuredLogging(0)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events(controllerNamespace)})
 	recorder := eventBroadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: "http-grpc-transcoder-controller"})
 
@@ -184,12 +199,12 @@ func main() {
 
 	errChan := make(chan error)
 	go func() {
-		logger.Infof("starting xDS server on port %d\n", xdsAddrPort.port)
+		logger.Info("Starting xDS server", "port", xdsAddrPort.port)
 		errChan <- xdsServer.Start(ctx, xdsAddrPort.port)
 	}()
 
 	go func() {
-		logger.Infof("starting the controller manager on port %d\n", *controllerPort)
+		logger.Info("Starting the controller manager", "port", *controllerPort)
 		errChan <- mgr.Start(ctx)
 	}()
 
