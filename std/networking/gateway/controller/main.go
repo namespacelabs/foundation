@@ -31,8 +31,7 @@ var (
 	// HTTP listening address:port pair.
 	httpEnvoyListenAddress = flag.String("http_envoy_listen_address", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
 
-	debug = flag.Bool("debug", false, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update. "+
-		"We additionally enable development logging for the Kubernetes controller.")
+	debug = flag.Bool("debug", false, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update.")
 
 	// The address:port pair that the xDS server listens on.
 	xdsServerAddress = flag.String("xds_server_port", "127.0.0.1:18000", "xDS gRPC management address:port pair.")
@@ -68,20 +67,17 @@ func main() {
 		log.Fatal("FN_KUBERNETES_NAMESPACE is required")
 	}
 
-	var zapLogger *zap.Logger
-	var err error
-	if *debug {
-		if zapLogger, err = zap.NewDevelopment(); err != nil {
-			log.Fatalf("failed to create development logger: %v", err)
-		}
-	} else {
-		if zapLogger, err = zap.NewProduction(); err != nil {
-			log.Fatalf("failed to create production logger: %v", err)
-		}
+	// zap.NewDevelopment creates a logger that writes DebugLevel and above logs to standard error
+	// in a human-friendly format.
+	zapLogger, err := zap.NewDevelopment()
+	if err != nil {
+		log.Fatalf("failed to create zap logger: %v", err)
 	}
+
 	defer func() {
 		_ = zapLogger.Sync() // flushes buffer, if any
 	}()
+
 	logger := zapr.NewLogger(zapLogger)
 
 	logger.Info("Observing namespace", "namespace", controllerNamespace)
