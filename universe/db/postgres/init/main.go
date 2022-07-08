@@ -17,6 +17,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/dustin/go-humanize"
 	"github.com/jackc/pgx/v4"
+	"golang.org/x/sync/errgroup"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
@@ -118,6 +119,27 @@ func readConfigs() ([]*postgres.Database, error) {
 	return dbs, nil
 }
 
+func prepareDatabase(ctx context.Context, db *postgres.Database, user, password string) error {
+	// Postgres needs a db to connect to so we pin one that is guaranteed to exist.
+	postgresDB, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, "postgres")
+	if err != nil {
+		return err
+	}
+	defer postgresDB.Close(ctx)
+
+	if err := ensureDb(ctx, postgresDB, db); err != nil {
+		return err
+	}
+
+	conn, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, db.Name)
+	if err != nil {
+		return err
+	}
+	defer conn.Close(ctx)
+
+	return applySchema(ctx, conn, db)
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
@@ -145,20 +167,17 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
+	eg, ctx := errgroup.WithContext(ctx)
 	for _, db := range dbs {
-		// Postgres needs a db to connect to so we pin one that is guaranteed to exist.
-		conn, err := connect(ctx, user, string(password), db.HostedAt.Address, db.HostedAt.Port, "postgres")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer conn.Close(ctx)
-
-		if err := ensureDb(ctx, conn, db); err != nil {
-			log.Fatalf("%v", err)
-		}
-		if err := applySchema(ctx, conn, db); err != nil {
-			log.Fatalf("%v", err)
-		}
+		db := db // Close db
+		eg.Go(func() error {
+			return prepareDatabase(ctx, db, user, string(password))
+		})
 	}
+
+	if err := eg.Wait(); err != nil {
+		log.Fatal(err)
+	}
+
 	log.Printf("postgres init completed")
 }
