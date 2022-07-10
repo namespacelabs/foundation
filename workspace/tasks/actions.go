@@ -190,6 +190,11 @@ func (ev *ActionEvent) LogLevel(level int) *ActionEvent {
 	return ev
 }
 
+func (ev *ActionEvent) Str(name string, msg fmt.Stringer) *ActionEvent {
+	ev.data.Arguments = append(ev.data.Arguments, ActionArgument{Name: name, Msg: msg.String()})
+	return ev
+}
+
 func (ev *ActionEvent) Arg(name string, msg interface{}) *ActionEvent {
 	ev.data.Arguments = append(ev.data.Arguments, ActionArgument{Name: name, Msg: msg})
 	return ev

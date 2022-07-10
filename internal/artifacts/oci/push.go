@@ -26,7 +26,7 @@ func pushImage(ctx context.Context, tag AllocatedName, img v1.Image) (ImageID, e
 	}
 
 	var rp RemoteProgress
-	if err := tasks.Action("oci.push-image").Progress(&rp).Arg("ref", ref).Arg("digest", digest).Run(ctx, func(ctx context.Context) error {
+	if err := tasks.Action("oci.push-image").Progress(&rp).Str("ref", ref).Str("digest", digest).Run(ctx, func(ctx context.Context) error {
 		remoteOpts := WriteRemoteOptsWithAuth(ctx, tag.Keychain)
 		remoteOpts = append(remoteOpts, rp.Track())
 

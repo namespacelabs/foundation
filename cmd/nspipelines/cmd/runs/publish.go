@@ -43,6 +43,8 @@ func newPublishCmd() *cobra.Command {
 	commitID := flags.String("source_commit", "", "The commit we pushed from.")
 	sourceBranch := flags.String("source_branch", "", "The branch we pushed from.")
 	pullRequest := flags.String("source_pull_request", "", "The pull request we pushed from.")
+	author := flags.String("author", "", "The username of author of the commit.")
+	moduleName := flags.String("module_name", "", "The module that was just worked on.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if len(args) == 0 {
@@ -72,6 +74,8 @@ func newPublishCmd() *cobra.Command {
 			CommitId:    *commitID,
 			Branch:      *sourceBranch,
 			PullRequest: *pullRequest,
+			AuthorLogin: *author,
+			ModuleName:  *moduleName,
 		}
 
 		userAuth, err := fnapi.LoadUser()
