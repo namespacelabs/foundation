@@ -200,8 +200,7 @@ func (t *TranscoderSnapshot) GenerateSnapshot(ctx context.Context) error {
 	for _, transcoder := range t.transcoders {
 		clusterName := fmt.Sprintf("cluster-%s", strings.ReplaceAll(transcoder.Spec.FullyQualifiedProtoServiceName, ".", "-"))
 		transcoders = append(transcoders, transcoderWithCluster{transcoder, clusterName})
-		cluster, err := makeCluster(clusterName, transcoder.Spec.ServiceAddress, transcoder.Spec.ServicePort)
-		if err != nil {
+		if cluster, err := makeCluster(clusterName, transcoder.Spec.ServiceAddress, transcoder.Spec.ServicePort); err != nil {
 			errs = append(errs, err)
 		} else {
 			clusters = append(clusters, cluster)
