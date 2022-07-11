@@ -39,7 +39,11 @@ static_resources:
               socket_address:
                 address: 127.0.0.1
                 port_value: {{.XDSServerPort}}
-    http2_protocol_options: {}
+    typed_extension_protocol_options:
+      envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+        "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+        explicit_http_config:
+          http2_protocol_options: {}
     name: xds_cluster
   - connect_timeout: 1s
     load_assignment:
@@ -51,5 +55,9 @@ static_resources:
               socket_address:
                 address: 127.0.0.1
                 port_value: {{.ALSListenerPort}}
-    http2_protocol_options: {}
+    typed_extension_protocol_options:
+      envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+        "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+        explicit_http_config:
+          http2_protocol_options: {}
     name: als_cluster

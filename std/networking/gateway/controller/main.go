@@ -102,15 +102,18 @@ func main() {
 		log.Fatalf("failed to parse ALS server address: %v", err)
 	}
 
-	transcoderSnapshot := NewTranscoderSnapshot(
+	transcoderSnapshot, err := NewTranscoderSnapshot(
 		WithEnvoyNodeId(*nodeID),
 		WithLogger(zapLogger.Sugar()),
 		WithXdsCluster(*xdsClusterName, xdsAddrPort),
 		WithAlsCluster(*alsClusterName, alsAddrPort),
 	)
+	if err != nil {
+		log.Fatalf("failed to create transcoder snapshot: %+v", err)
+	}
 
 	if err := transcoderSnapshot.RegisterHttpListener(*httpEnvoyListenAddress); err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to register HTTP listener: %+v", err)
 	}
 	logger.Info("Registered HTTP listener", "port", *httpEnvoyListenAddress)
 
@@ -173,7 +176,7 @@ func main() {
 
 	// Make sure that an empty HTTP listener is registered.
 	if err := transcoderSnapshot.GenerateSnapshot(ctx); err != nil {
-		log.Fatalf("failed to generate initial snapshot: %v", err)
+		log.Fatalf("failed to generate initial snapshot: %+v", err)
 	}
 
 	// Set up the recorder for transcoder events.
@@ -213,8 +216,8 @@ func main() {
 
 	select {
 	case err := <-errChan:
-		log.Fatalf("killing the controller manager: %v", err)
+		log.Fatalf("killing the controller manager: %+v", err)
 	case <-ctx.Done():
-		log.Fatalf("killing the controller manager: %v", ctx.Err())
+		log.Fatalf("killing the controller manager: %+v", ctx.Err())
 	}
 }
