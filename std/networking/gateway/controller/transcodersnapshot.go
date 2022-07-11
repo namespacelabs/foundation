@@ -28,10 +28,12 @@ import (
 	grpcjsontranscoder "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/grpc_json_transcoder/v3"
 	routerfilter "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+	httpv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/upstreams/http/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
+	"github.com/golang/protobuf/ptypes/any"
 	"google.golang.org/protobuf/proto"
 	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 )
@@ -115,15 +117,31 @@ func WithAlsCluster(alsClusterName string, alsClusterAddr *AddressPort) Snapshot
 	}
 }
 
-func NewTranscoderSnapshot(args ...SnapshotOption) *TranscoderSnapshot {
+func NewTranscoderSnapshot(args ...SnapshotOption) (*TranscoderSnapshot, error) {
 	opts := &SnapshotOptions{}
 	for _, opt := range args {
 		opt(opts)
 	}
 
 	var defaultClusters []types.Resource
-	defaultClusters = append(defaultClusters, makeCluster(opts.xdsClusterName, opts.xdsClusterAddr.addr, opts.xdsClusterAddr.port))
-	defaultClusters = append(defaultClusters, makeCluster(opts.alsClusterName, opts.alsClusterAddr.addr, opts.alsClusterAddr.port))
+
+	var errs []error
+
+	if xdsCluster, err := makeCluster(opts.xdsClusterName, opts.xdsClusterAddr.addr, opts.xdsClusterAddr.port); err != nil {
+		errs = append(errs, err)
+	} else {
+		defaultClusters = append(defaultClusters, xdsCluster)
+	}
+
+	if alsCluster, err := makeCluster(opts.alsClusterName, opts.alsClusterAddr.addr, opts.alsClusterAddr.port); err != nil {
+		errs = append(errs, err)
+	} else {
+		defaultClusters = append(defaultClusters, alsCluster)
+	}
+
+	if len(errs) > 0 {
+		return nil, multierr.New(errs...)
+	}
 
 	cache := cache.NewSnapshotCache(false, cache.IDHash{}, opts.logger)
 	return &TranscoderSnapshot{
@@ -132,7 +150,7 @@ func NewTranscoderSnapshot(args ...SnapshotOption) *TranscoderSnapshot {
 		cache:           cache,
 		transcoders:     make(map[string]*HttpGrpcTranscoder),
 		defaultClusters: defaultClusters,
-	}
+	}, nil
 }
 
 func (t *TranscoderSnapshot) CurrentSnapshotId() int {
@@ -178,10 +196,18 @@ func (t *TranscoderSnapshot) GenerateSnapshot(ctx context.Context) error {
 	var clusters []types.Resource
 	clusters = append(clusters, t.defaultClusters...)
 
+	var errs []error
 	for _, transcoder := range t.transcoders {
 		clusterName := fmt.Sprintf("cluster-%s", strings.ReplaceAll(transcoder.Spec.FullyQualifiedProtoServiceName, ".", "-"))
 		transcoders = append(transcoders, transcoderWithCluster{transcoder, clusterName})
-		clusters = append(clusters, makeCluster(clusterName, transcoder.Spec.ServiceAddress, transcoder.Spec.ServicePort))
+		if cluster, err := makeCluster(clusterName, transcoder.Spec.ServiceAddress, transcoder.Spec.ServicePort); err != nil {
+			errs = append(errs, err)
+		} else {
+			clusters = append(clusters, cluster)
+		}
+	}
+	if len(errs) > 0 {
+		return multierr.New(errs...)
 	}
 
 	httpListener, err := makeHTTPListener(t.httpConfig, transcoders)
@@ -213,7 +239,19 @@ func (t *TranscoderSnapshot) GenerateSnapshot(ctx context.Context) error {
 	return nil
 }
 
-func makeCluster(clusterName string, socketAddress string, port uint32) *cluster.Cluster {
+func makeCluster(clusterName string, socketAddress string, port uint32) (*cluster.Cluster, error) {
+	httpopts := &httpv3.HttpProtocolOptions{
+		UpstreamProtocolOptions: &httpv3.HttpProtocolOptions_ExplicitHttpConfig_{
+			ExplicitHttpConfig: &httpv3.HttpProtocolOptions_ExplicitHttpConfig{
+				ProtocolConfig: &httpv3.HttpProtocolOptions_ExplicitHttpConfig_Http2ProtocolOptions{},
+			},
+		},
+	}
+	httpoptsanypb, err := anypb.New(httpopts)
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to serialize http options: %w", err)
+	}
+
 	return &cluster.Cluster{
 		Name:                 clusterName,
 		ConnectTimeout:       durationpb.New(60 * time.Second),
@@ -221,8 +259,10 @@ func makeCluster(clusterName string, socketAddress string, port uint32) *cluster
 		LbPolicy:             cluster.Cluster_ROUND_ROBIN,
 		LoadAssignment:       makeEndpoint(clusterName, socketAddress, port),
 		DnsLookupFamily:      cluster.Cluster_V4_ONLY,
-		Http2ProtocolOptions: &core.Http2ProtocolOptions{},
-	}
+		TypedExtensionProtocolOptions: map[string]*any.Any{
+			"envoy.extensions.upstreams.http.v3.HttpProtocolOptions": httpoptsanypb,
+		},
+	}, nil
 }
 
 func makeEndpoint(clusterName string, socketAddress string, port uint32) *endpoint.ClusterLoadAssignment {
