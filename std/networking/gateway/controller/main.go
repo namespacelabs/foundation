@@ -183,6 +183,9 @@ func main() {
 	}
 
 	eventBroadcaster := record.NewBroadcaster()
+	if *debug {
+		eventBroadcaster.StartLogging(zapLogger.Sugar().Debugf)
+	}
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events(controllerNamespace)})
 	recorder := eventBroadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: "http-grpc-transcoder-controller"})
 
