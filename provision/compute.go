@@ -202,6 +202,10 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 
 			newSnapshot, err := computeSnapshot(ctx, snap.env, snap.packages)
 			if err != nil {
+				if msg, ok := fnerrors.IsExpected(err); ok {
+					fmt.Fprintf(console.Stderr(ctx), "\n  %s\n\n", msg)
+					continue // Swallow the error in case it is expected.
+				}
 				compute.Stop(ctx, err)
 				break
 			}
