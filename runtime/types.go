@@ -69,7 +69,7 @@ type Runtime interface {
 	AttachTerminal(ctx context.Context, container ContainerReference, io TerminalIO) error
 
 	// Forwards a single port.
-	ForwardPort(ctx context.Context, server *schema.Server, endpoint *schema.Endpoint, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error)
+	ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error)
 
 	// Exposes the cluster's ingress, in the specified local address and port.
 	// This is used to create stable localhost-bound ingress addresses (for e.g.

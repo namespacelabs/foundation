@@ -82,12 +82,7 @@ func (do *FileSyncDevObserver) OnDeployment() {
 	}
 
 	// An endpoint is manufactored here, we don't actually export this in our metadata.
-	do.port, err = do.rt.ForwardPort(do.ctx, do.server, &schema.Endpoint{
-		ServiceName: "filesync",
-		Port: &schema.Endpoint_Port{
-			ContainerPort: do.fileSyncPort,
-		},
-	}, []string{"127.0.0.1"}, func(fp runtime.ForwardedPort) {
+	do.port, err = do.rt.ForwardPort(do.ctx, do.server, do.fileSyncPort, []string{"127.0.0.1"}, func(fp runtime.ForwardedPort) {
 		do.onEndpoint(fp)
 	})
 	if err != nil {

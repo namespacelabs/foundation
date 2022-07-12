@@ -79,7 +79,7 @@ func (r runtimeFwdErr) StartTerminal(ctx context.Context, server *schema.Server,
 func (r runtimeFwdErr) AttachTerminal(ctx context.Context, _ ContainerReference, io TerminalIO) error {
 	return r.err
 }
-func (r runtimeFwdErr) ForwardPort(ctx context.Context, server *schema.Server, endpoint *schema.Endpoint, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error) {
+func (r runtimeFwdErr) ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error) {
 	return nil, r.err
 }
 func (r runtimeFwdErr) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f PortForwardedFunc) (io.Closer, error) {
