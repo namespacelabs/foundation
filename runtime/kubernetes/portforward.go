@@ -51,9 +51,7 @@ func (r K8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, cont
 
 	ns := serverNamespace(r, server)
 
-	return r.RawForwardPort(ctx, server.PackageName, ns, map[string]string{
-		kubedef.K8sServerId: server.Id,
-	}, int(containerPort), localAddrs, callback)
+	return r.RawForwardPort(ctx, server.PackageName, ns, map[string]string{kubedef.K8sServerId: server.Id}, int(containerPort), localAddrs, callback)
 }
 
 func (u Unbound) RawForwardPort(ctx context.Context, desc, ns string, podLabels map[string]string, containerPort int, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {

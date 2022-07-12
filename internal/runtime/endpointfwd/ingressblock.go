@@ -6,12 +6,10 @@ package endpointfwd
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"sync"
 
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
@@ -22,7 +20,12 @@ import (
 
 type PortForward struct {
 	LocalAddr string
-	Selector  runtime.Selector
+	Env       *schema.Environment
+	Debug     io.Writer
+	Warnings  io.Writer
+
+	ForwardPort    func(*schema.Server, int32, []string, runtime.SinglePortForwardedFunc) (io.Closer, error)
+	ForwardIngress func([]string, int, runtime.PortForwardedFunc) (io.Closer, error)
 
 	OnAdd    func(*schema.Endpoint, uint)
 	OnDelete func([]*schema.Endpoint)
@@ -53,7 +56,7 @@ type localPortFwd struct {
 	localPort uint
 }
 
-func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []schema.PackageName, fragments []*schema.IngressFragment) {
+func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, fragments []*schema.IngressFragment) {
 	pi.mu.Lock()
 	defer pi.mu.Unlock()
 
@@ -65,7 +68,7 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 	})
 
 	pi.revision++
-	fmt.Fprintf(console.Debug(ctx), "portfwd: revision: %d\n", pi.revision)
+	fmt.Fprintf(pi.Debug, "portfwd: revision: %d\n", pi.revision)
 
 	newState := map[string]*endpointState{}
 	for _, endpoint := range stack.Endpoint {
@@ -119,11 +122,11 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 		instance := &localPortFwd{users: reqs.Users, revision: pi.revision}
 
 		reqs := reqs // Close reqs
-		closer, err := pi.portFwd(ctx, reqs.ServerOwner, reqs.ContainerPort, pi.revision, func(wasrevision int, localPort uint) {
+		closer, err := pi.portFwd(reqs.ServerOwner, reqs.ContainerPort, pi.revision, func(wasrevision int, localPort uint) {
 			pi.mu.Lock()
 			defer pi.mu.Unlock()
 
-			fmt.Fprintf(console.Debug(ctx), "portfwd: event: revisions: %d/%d localPort: %d done: %v\n",
+			fmt.Fprintf(pi.Debug, "portfwd: event: revisions: %d/%d localPort: %d done: %v\n",
 				wasrevision, pi.revision, localPort, pi.done)
 
 			if wasrevision != pi.revision {
@@ -145,7 +148,7 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 		instance.closer = closer
 		instance.err = err
 		if err != nil {
-			fmt.Fprintf(console.Warnings(ctx), "%s/%d: failed to forward port: %v\n", reqs.ServerOwner, reqs.ContainerPort, err)
+			fmt.Fprintf(pi.Warnings, "%s/%d: failed to forward port: %v\n", reqs.ServerOwner, reqs.ContainerPort, err)
 		}
 
 		pi.localPorts[key] = instance
@@ -167,9 +170,9 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 		}
 	}
 
-	if len(pi.domains) > 0 && pi.Selector.Proto().Purpose == schema.Environment_DEVELOPMENT {
+	if len(pi.domains) > 0 && pi.Env.GetPurpose() == schema.Environment_DEVELOPMENT {
 		if pi.ingressState.closer == nil {
-			pi.ingressState.closer, pi.ingressState.err = runtime.For(ctx, pi.Selector).ForwardIngress(ctx, []string{pi.LocalAddr}, runtime.LocalIngressPort, func(fpe runtime.ForwardedPortEvent) {
+			pi.ingressState.closer, pi.ingressState.err = pi.ForwardIngress([]string{pi.LocalAddr}, runtime.LocalIngressPort, func(fpe runtime.ForwardedPortEvent) {
 				pi.mu.Lock()
 				defer pi.mu.Unlock()
 
@@ -186,7 +189,7 @@ func (pi *PortForward) Update(ctx context.Context, stack *schema.Stack, focus []
 				}
 			})
 			if pi.ingressState.err != nil {
-				fmt.Fprintf(console.Warnings(ctx), "failed to forward ingress: %v\n", pi.ingressState.err)
+				fmt.Fprintf(pi.Warnings, "failed to forward ingress: %v\n", pi.ingressState.err)
 			}
 		}
 	} else if pi.ingressState.closer != nil {
@@ -221,13 +224,13 @@ func (pi *PortForward) Render(style colors.Style) string {
 	return out.String()
 }
 
-func (pi *PortForward) portFwd(ctx context.Context, serverOwner string, containerPort int32, revision int, callback func(int, uint)) (io.Closer, error) {
+func (pi *PortForward) portFwd(serverOwner string, containerPort int32, revision int, callback func(int, uint)) (io.Closer, error) {
 	server := pi.stack.GetServer(schema.PackageName(serverOwner))
 	if server == nil {
 		return nil, fnerrors.UserError(nil, "%s: missing in the stack", serverOwner)
 	}
 
-	return runtime.For(ctx, pi.Selector).ForwardPort(ctx, server.Server, containerPort, []string{pi.LocalAddr}, func(fp runtime.ForwardedPort) {
+	return pi.ForwardPort(server.Server, containerPort, []string{pi.LocalAddr}, func(fp runtime.ForwardedPort) {
 		callback(revision, fp.LocalPort)
 	})
 }

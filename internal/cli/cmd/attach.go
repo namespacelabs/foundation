@@ -8,11 +8,11 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/devworkflow"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/runtime"
@@ -33,16 +33,12 @@ func NewAttachCmd() *cobra.Command {
 				return err
 			}
 
-			pfwd := endpointfwd.PortForward{
-				LocalAddr: "localhost",
-				Selector:  res.Env,
-			}
-
+			pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, "localhost")
 			pfwd.OnUpdate = func() {
 				console.SetStickyContent(ctx, "ingress", pfwd.Render(colors.Ctx(ctx)))
 			}
 
-			pfwd.Update(ctx, res.Stack, res.Focus, res.Ingress)
+			pfwd.Update(res.Stack, res.Focus, res.Ingress)
 
 			// XXX do cmd/logs too.
 			<-ctx.Done()

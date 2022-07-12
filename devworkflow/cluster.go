@@ -62,7 +62,7 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 		obs.OnDeployment()
 	}
 
-	pi.pfw.Update(ctx, pi.stack, pi.focus, plan.IngressFragments)
+	pi.pfw.Update(pi.stack, pi.focus, plan.IngressFragments)
 
 	return nil
 }

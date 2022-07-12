@@ -150,7 +150,7 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 		}
 
 		resetStack(s.currentStack, env, nil)
-		pfw := s.setEnvironment(env)
+		pfw := s.setEnvironment(parentCtx, env)
 
 		s.executor.Go(func(ctx context.Context) error {
 			err := setWorkspace(ctx, env, servers[0], servers[1:], s, pfw)
@@ -264,7 +264,7 @@ func (s *Session) TaskLogByName(taskID, name string) io.ReadCloser {
 	return s.sink.HistoricReaderByName(tasks.ActionID(taskID), name)
 }
 
-func (s *Session) setEnvironment(env runtime.Selector) *endpointfwd.PortForward {
+func (s *Session) setEnvironment(parentCtx context.Context, env runtime.Selector) *endpointfwd.PortForward {
 	if s.pfw != nil && proto.Equal(s.currentEnv.Proto(), env.Proto()) {
 		// Nothing to do.
 		return s.pfw
@@ -272,7 +272,7 @@ func (s *Session) setEnvironment(env runtime.Selector) *endpointfwd.PortForward 
 
 	s.cancelPortForward()
 
-	s.pfw = newPortFwd(s, env, s.localHostname)
+	s.pfw = NewPortFwd(parentCtx, s, env, s.localHostname)
 	s.currentEnv = env
 	return s.pfw
 }
