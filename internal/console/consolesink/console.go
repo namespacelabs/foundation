@@ -61,6 +61,11 @@ var (
 		aec.NewRGB8Bit(0x56, 0xd7, 0xd7),
 	}
 
+	StickyRequired = map[string]bool{
+		"webui":    true,
+		"commands": true,
+	}
+
 	StickyPriorities = map[string]int{
 		"stack":    1,
 		"webui":    10,
@@ -741,10 +746,17 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		return
 	}
 
+	maxDepth, actionBlockLines, renderActions := c.calculateActionHeight(height)
+
 	if len(c.stickyContent) > 0 {
+		availableHeight := int(height-actionBlockLines) - 3 // Always leave at least 3 lines for logs.
+		renderBlocks, surpressed := c.fitStickies(availableHeight)
+
 		hdr := fmt.Sprintf("%s ", stickyBar)
-		c.writeLineWithMaxW(out, width, hdr, "")
-		for k, block := range c.stickyContent {
+		if availableHeight > 2 {
+			c.writeLineWithMaxW(out, width, hdr, "")
+		}
+		for k, block := range renderBlocks {
 			if k > 0 && len(block.content) > 0 {
 				c.writeLineWithMaxW(out, width, hdr, "")
 			}
@@ -752,7 +764,13 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 				c.writeLineWithMaxW(out, width, fmt.Sprintf("%s%s", hdr, line), "")
 			}
 		}
-		c.writeLineWithMaxW(out, width, hdr, "")
+		if len(surpressed) > 0 {
+			c.writeLineWithMaxW(out, width, hdr, fmt.Sprintf("[... hiding %s]", strings.Join(surpressed, ", ")))
+
+		}
+		if availableHeight > 2 {
+			c.writeLineWithMaxW(out, width, hdr, "")
+		}
 	}
 
 	if (waiting + running + anchored) == 0 {
@@ -767,32 +785,14 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		return
 	}
 
-	// The idea here is that we traverse the tree to figure out how many drawn lines would
-	// have been emitted. And if we see too many, we try to reduce the tree depth, until
-	// the number of lines is acceptable.
-	maxDepth, lineCount := c.maxRenderDepth(c.root, 0, 16)
-
-	const reportLines = 2
 	shortenLabel := ""
-	if height > reportLines {
-		maxHeight := (height - reportLines) / 2 // Only use up to half-height of actions.
-
-		for lineCount > maxHeight {
-			maxDepth--
-			shortenLabel = "[...] "
-			if maxDepth < 2 { // If we would go below 2, then we lose so much information may as well only render the report.
-				goto report
-			}
-			_, lineCount = c.maxRenderDepth(c.root, 0, maxDepth)
-		}
-
+	if renderActions {
 		// Recurse through the line item tree.
 		c.renderLineRec(out, width, c.root, t, " => ", 0, maxDepth)
 	} else {
 		shortenLabel = "[...] "
 	}
 
-report:
 	report := ""
 	report += fmt.Sprintf("[+] %s%s", shortenLabel, timefmt.Seconds(t.Sub(c.startedCounting)))
 	report += fmt.Sprintf(" %s %s running", num(aec.GreenF, running), plural(running, "action", "actions"))
@@ -801,6 +801,70 @@ report:
 	}
 
 	c.writeLineWithMaxW(out, width, report+".", "")
+}
+
+func (c *ConsoleSink) calculateActionHeight(height uint) (uint, uint, bool) {
+	// The height of the fixed action block.
+	const reportLines = 2
+
+	// The idea here is that we traverse the tree to figure out how many drawn lines would
+	// have been emitted. And if we see too many, we try to reduce the tree depth, until
+	// the number of lines is acceptable.
+	maxDepth, lineCount := c.maxRenderDepth(c.root, 0, 16)
+
+	if height <= reportLines {
+		return 0, 0, false
+	}
+
+	maxHeight := (height - reportLines) / 2 // Only use up to half-height of actions.
+
+	for lineCount > maxHeight {
+		maxDepth--
+		if maxDepth < 2 { // If we would go below 2, then we lose so much information may as well only render the report.
+			return 0, 0, false
+		}
+		_, lineCount = c.maxRenderDepth(c.root, 0, maxDepth)
+	}
+
+	return lineCount, maxDepth, true
+}
+
+func (c *ConsoleSink) fitStickies(availableHeight int) ([]*stickyContent, []string) {
+	if measureBlocksHeight(c.stickyContent) <= availableHeight {
+		return c.stickyContent, nil
+	}
+
+	var surpressed []string
+	var actual []*stickyContent
+
+	for _, block := range c.stickyContent {
+		if StickyRequired[block.name] {
+			actual = append(actual, block)
+		} else {
+			surpressed = append(surpressed, block.name)
+		}
+	}
+
+	if measureBlocksHeight(actual) <= availableHeight {
+		return actual, surpressed
+	}
+
+	names := make([]string, len(c.stickyContent))
+	for k, block := range c.stickyContent {
+		names[k] = block.name
+	}
+	return nil, names
+}
+
+func measureBlocksHeight(blocks []*stickyContent) int {
+	requiredHeight := 2 // Margin
+	for k, block := range blocks {
+		if k > 0 {
+			requiredHeight++
+		}
+		requiredHeight += len(block.content)
+	}
+	return requiredHeight
 }
 
 func (c *ConsoleSink) recordLogSource(id tasks.ActionID) {
@@ -861,6 +925,7 @@ func (c *ConsoleSink) maxRenderDepth(n *node, currDepth, maxDepth uint) (uint, u
 			depth = subDepth
 		}
 	}
+
 	return depth, drawn
 }
 
