@@ -25,14 +25,10 @@ import (
 
 func NewBundlesCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "command-history",
-		Short: "List foundation command invocations with the ability to upload and download command diagnostics.",
-	}
-
-	list := &cobra.Command{
-		Use:   "list",
-		Short: "Lists previous command invocations.",
-		Args:  cobra.NoArgs,
+		Use:     "history",
+		Aliases: []string{"command-history"},
+		Short:   "List command invocations with the ability to upload and download command diagnostics.",
+		Args:    cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			bundler := tasks.NewActionBundler()
@@ -136,7 +132,6 @@ func NewBundlesCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.AddCommand(list)
 	cmd.AddCommand(upload)
 	cmd.AddCommand(download)
 
