@@ -277,6 +277,7 @@ type Run struct {
 	PusherLogin string        `protobuf:"bytes,8,opt,name=pusher_login,json=pusherLogin,proto3" json:"pusher_login,omitempty"` // E.g. namespace[bot]
 	AuthorLogin string        `protobuf:"bytes,9,opt,name=author_login,json=authorLogin,proto3" json:"author_login,omitempty"` // E.g. hugosantos
 	ModuleName  string        `protobuf:"bytes,10,opt,name=module_name,json=moduleName,proto3" json:"module_name,omitempty"`   // E.g. namespacelabs.dev/foundation
+	Attachment  []*anypb.Any  `protobuf:"bytes,11,rep,name=attachment,proto3" json:"attachment,omitempty"`                     // E.g. a GithubEvent.
 	SectionRun  []*SectionRun `protobuf:"bytes,1,rep,name=section_run,json=sectionRun,proto3" json:"section_run,omitempty"`
 }
 
@@ -368,11 +369,65 @@ func (x *Run) GetModuleName() string {
 	return ""
 }
 
+func (x *Run) GetAttachment() []*anypb.Any {
+	if x != nil {
+		return x.Attachment
+	}
+	return nil
+}
+
 func (x *Run) GetSectionRun() []*SectionRun {
 	if x != nil {
 		return x.SectionRun
 	}
 	return nil
+}
+
+type GithubEvent struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	SerializedJson string `protobuf:"bytes,1,opt,name=serialized_json,json=serializedJson,proto3" json:"serialized_json,omitempty"`
+}
+
+func (x *GithubEvent) Reset() {
+	*x = GithubEvent{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_schema_storage_runs_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GithubEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GithubEvent) ProtoMessage() {}
+
+func (x *GithubEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_schema_storage_runs_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GithubEvent.ProtoReflect.Descriptor instead.
+func (*GithubEvent) Descriptor() ([]byte, []int) {
+	return file_schema_storage_runs_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GithubEvent) GetSerializedJson() string {
+	if x != nil {
+		return x.SerializedJson
+	}
+	return ""
 }
 
 // Attachments that are too large, may end being stored individually.
@@ -389,7 +444,7 @@ type SectionRun_StoredAttachment struct {
 func (x *SectionRun_StoredAttachment) Reset() {
 	*x = SectionRun_StoredAttachment{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_storage_runs_proto_msgTypes[3]
+		mi := &file_schema_storage_runs_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -402,7 +457,7 @@ func (x *SectionRun_StoredAttachment) String() string {
 func (*SectionRun_StoredAttachment) ProtoMessage() {}
 
 func (x *SectionRun_StoredAttachment) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_storage_runs_proto_msgTypes[3]
+	mi := &file_schema_storage_runs_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -506,7 +561,7 @@ var file_schema_storage_runs_proto_rawDesc = []byte{
 	0x22, 0x39, 0x0a, 0x04, 0x4b, 0x69, 0x6e, 0x64, 0x12, 0x10, 0x0a, 0x0c, 0x4b, 0x49, 0x4e, 0x44,
 	0x5f, 0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57, 0x4e, 0x10, 0x00, 0x12, 0x09, 0x0a, 0x05, 0x42, 0x55,
 	0x49, 0x4c, 0x44, 0x10, 0x01, 0x12, 0x08, 0x0a, 0x04, 0x54, 0x45, 0x53, 0x54, 0x10, 0x02, 0x12,
-	0x0a, 0x0a, 0x06, 0x44, 0x45, 0x50, 0x4c, 0x4f, 0x59, 0x10, 0x03, 0x22, 0xc3, 0x02, 0x0a, 0x03,
+	0x0a, 0x0a, 0x06, 0x44, 0x45, 0x50, 0x4c, 0x4f, 0x59, 0x10, 0x03, 0x22, 0xf9, 0x02, 0x0a, 0x03,
 	0x52, 0x75, 0x6e, 0x12, 0x15, 0x0a, 0x06, 0x72, 0x75, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x05, 0x72, 0x75, 0x6e, 0x49, 0x64, 0x12, 0x1e, 0x0a, 0x0a, 0x72, 0x65,
 	0x70, 0x6f, 0x73, 0x69, 0x74, 0x6f, 0x72, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a,
@@ -522,15 +577,22 @@ var file_schema_storage_runs_proto_rawDesc = []byte{
 	0x6c, 0x6f, 0x67, 0x69, 0x6e, 0x18, 0x09, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x61, 0x75, 0x74,
 	0x68, 0x6f, 0x72, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x12, 0x1f, 0x0a, 0x0b, 0x6d, 0x6f, 0x64, 0x75,
 	0x6c, 0x65, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6d,
-	0x6f, 0x64, 0x75, 0x6c, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x46, 0x0a, 0x0b, 0x73, 0x65, 0x63,
-	0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x72, 0x75, 0x6e, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x25,
-	0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65,
-	0x6d, 0x61, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x2e, 0x53, 0x65, 0x63, 0x74, 0x69,
-	0x6f, 0x6e, 0x52, 0x75, 0x6e, 0x52, 0x0a, 0x73, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x75,
-	0x6e, 0x42, 0x2d, 0x5a, 0x2b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61,
-	0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6f, 0x64, 0x75, 0x6c, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x34, 0x0a, 0x0a, 0x61, 0x74, 0x74,
+	0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74, 0x18, 0x0b, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x14, 0x2e,
+	0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e,
+	0x41, 0x6e, 0x79, 0x52, 0x0a, 0x61, 0x74, 0x74, 0x61, 0x63, 0x68, 0x6d, 0x65, 0x6e, 0x74, 0x12,
+	0x46, 0x0a, 0x0b, 0x73, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x72, 0x75, 0x6e, 0x18, 0x01,
+	0x20, 0x03, 0x28, 0x0b, 0x32, 0x25, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65,
+	0x2e, 0x53, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x75, 0x6e, 0x52, 0x0a, 0x73, 0x65, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x52, 0x75, 0x6e, 0x22, 0x36, 0x0a, 0x0b, 0x47, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x27, 0x0a, 0x0f, 0x73, 0x65, 0x72, 0x69, 0x61, 0x6c,
+	0x69, 0x7a, 0x65, 0x64, 0x5f, 0x6a, 0x73, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x0e, 0x73, 0x65, 0x72, 0x69, 0x61, 0x6c, 0x69, 0x7a, 0x65, 0x64, 0x4a, 0x73, 0x6f, 0x6e, 0x42,
+	0x2d, 0x5a, 0x2b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73,
+	0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f,
+	0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x62, 0x06,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -546,34 +608,36 @@ func file_schema_storage_runs_proto_rawDescGZIP() []byte {
 }
 
 var file_schema_storage_runs_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_schema_storage_runs_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_schema_storage_runs_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_schema_storage_runs_proto_goTypes = []interface{}{
 	(SectionRun_Kind)(0),                // 0: foundation.schema.storage.SectionRun.Kind
 	(*UndifferentiatedRun)(nil),         // 1: foundation.schema.storage.UndifferentiatedRun
 	(*SectionRun)(nil),                  // 2: foundation.schema.storage.SectionRun
 	(*Run)(nil),                         // 3: foundation.schema.storage.Run
-	(*SectionRun_StoredAttachment)(nil), // 4: foundation.schema.storage.SectionRun.StoredAttachment
-	(*status.Status)(nil),               // 5: google.rpc.Status
-	(*timestamppb.Timestamp)(nil),       // 6: google.protobuf.Timestamp
-	(*anypb.Any)(nil),                   // 7: google.protobuf.Any
+	(*GithubEvent)(nil),                 // 4: foundation.schema.storage.GithubEvent
+	(*SectionRun_StoredAttachment)(nil), // 5: foundation.schema.storage.SectionRun.StoredAttachment
+	(*status.Status)(nil),               // 6: google.rpc.Status
+	(*timestamppb.Timestamp)(nil),       // 7: google.protobuf.Timestamp
+	(*anypb.Any)(nil),                   // 8: google.protobuf.Any
 }
 var file_schema_storage_runs_proto_depIdxs = []int32{
-	5,  // 0: foundation.schema.storage.UndifferentiatedRun.status:type_name -> google.rpc.Status
-	6,  // 1: foundation.schema.storage.UndifferentiatedRun.created:type_name -> google.protobuf.Timestamp
-	6,  // 2: foundation.schema.storage.UndifferentiatedRun.completed:type_name -> google.protobuf.Timestamp
-	7,  // 3: foundation.schema.storage.UndifferentiatedRun.attachment:type_name -> google.protobuf.Any
+	6,  // 0: foundation.schema.storage.UndifferentiatedRun.status:type_name -> google.rpc.Status
+	7,  // 1: foundation.schema.storage.UndifferentiatedRun.created:type_name -> google.protobuf.Timestamp
+	7,  // 2: foundation.schema.storage.UndifferentiatedRun.completed:type_name -> google.protobuf.Timestamp
+	8,  // 3: foundation.schema.storage.UndifferentiatedRun.attachment:type_name -> google.protobuf.Any
 	0,  // 4: foundation.schema.storage.SectionRun.kind:type_name -> foundation.schema.storage.SectionRun.Kind
-	5,  // 5: foundation.schema.storage.SectionRun.status:type_name -> google.rpc.Status
-	6,  // 6: foundation.schema.storage.SectionRun.created:type_name -> google.protobuf.Timestamp
-	6,  // 7: foundation.schema.storage.SectionRun.completed:type_name -> google.protobuf.Timestamp
-	7,  // 8: foundation.schema.storage.SectionRun.attachment:type_name -> google.protobuf.Any
-	4,  // 9: foundation.schema.storage.SectionRun.stored_attachment:type_name -> foundation.schema.storage.SectionRun.StoredAttachment
-	2,  // 10: foundation.schema.storage.Run.section_run:type_name -> foundation.schema.storage.SectionRun
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	6,  // 5: foundation.schema.storage.SectionRun.status:type_name -> google.rpc.Status
+	7,  // 6: foundation.schema.storage.SectionRun.created:type_name -> google.protobuf.Timestamp
+	7,  // 7: foundation.schema.storage.SectionRun.completed:type_name -> google.protobuf.Timestamp
+	8,  // 8: foundation.schema.storage.SectionRun.attachment:type_name -> google.protobuf.Any
+	5,  // 9: foundation.schema.storage.SectionRun.stored_attachment:type_name -> foundation.schema.storage.SectionRun.StoredAttachment
+	8,  // 10: foundation.schema.storage.Run.attachment:type_name -> google.protobuf.Any
+	2,  // 11: foundation.schema.storage.Run.section_run:type_name -> foundation.schema.storage.SectionRun
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_schema_storage_runs_proto_init() }
@@ -619,6 +683,18 @@ func file_schema_storage_runs_proto_init() {
 			}
 		}
 		file_schema_storage_runs_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GithubEvent); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_schema_storage_runs_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*SectionRun_StoredAttachment); i {
 			case 0:
 				return &v.state
@@ -637,7 +713,7 @@ func file_schema_storage_runs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_storage_runs_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -51,14 +51,19 @@ message SectionRun {
 
 // Next ID: 11
 message Run {
-    string run_id       = 2;
-    string repository   = 3;  // E.g. github.com/namespacelabs/foundation
-    string commit_id    = 4;  // E.g. c0c3859
-    string branch       = 5;  // E.g. main
-    string pull_request = 7;
-    string pusher_login = 8;   // E.g. namespace[bot]
-    string author_login = 9;   // E.g. hugosantos
-    string module_name  = 10;  // E.g. namespacelabs.dev/foundation
+    string   run_id                         = 2;
+    string   repository                     = 3;  // E.g. github.com/namespacelabs/foundation
+    string   commit_id                      = 4;  // E.g. c0c3859
+    string   branch                         = 5;  // E.g. main
+    string   pull_request                   = 7;
+    string   pusher_login                   = 8;   // E.g. namespace[bot]
+    string   author_login                   = 9;   // E.g. hugosantos
+    string   module_name                    = 10;  // E.g. namespacelabs.dev/foundation
+    repeated google.protobuf.Any attachment = 11;  // E.g. a GithubEvent.
 
     repeated SectionRun section_run = 1;
+}
+
+message GithubEvent {
+    string serialized_json = 1;
 }

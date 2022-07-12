@@ -8,11 +8,13 @@ import (
 	"archive/tar"
 	"context"
 	"io/fs"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -45,6 +47,7 @@ func newPublishCmd() *cobra.Command {
 	pullRequest := flags.String("source_pull_request", "", "The pull request we pushed from.")
 	author := flags.String("author", "", "The username of author of the commit.")
 	moduleName := flags.String("module_name", "", "The module that was just worked on.")
+	githubEvent := flags.String("github_event_path", "", "Path to a file with github's event json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if len(args) == 0 {
@@ -76,6 +79,22 @@ func newPublishCmd() *cobra.Command {
 			PullRequest: *pullRequest,
 			AuthorLogin: *author,
 			ModuleName:  *moduleName,
+		}
+
+		if *githubEvent != "" {
+			contents, err := ioutil.ReadFile(*githubEvent)
+			if err != nil {
+				return fnerrors.InternalError("failed to load %q: %w", *githubEvent, err)
+			}
+
+			serialized, err := anypb.New(&storage.GithubEvent{
+				SerializedJson: string(contents),
+			})
+			if err != nil {
+				return fnerrors.InternalError("failed to serialize json: %w", err)
+			}
+
+			run.Attachment = append(run.Attachment, serialized)
 		}
 
 		userAuth, err := fnapi.LoadUser()
