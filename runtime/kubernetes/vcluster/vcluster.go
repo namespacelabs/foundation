@@ -13,7 +13,6 @@ import (
 	"github.com/loft-sh/vcluster/cmd/vclusterctl/log"
 	"github.com/loft-sh/vcluster/pkg/util/servicecidr"
 	"helm.sh/helm/v3/pkg/chart"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/console"
@@ -124,15 +123,13 @@ func (vc *VCluster) Access(parentCtx context.Context) (*Connection, error) {
 	return tasks.Return(parentCtx, tasks.Action("vcluster.access").Arg("name", vc.clusterName), func(parentCtx context.Context) (*Connection, error) {
 		conn := &Connection{}
 
-		p := kubernetes.NewPodObserver(vc.kr.Client(), vc.namespace, map[string]string{
-			"app":     "vcluster",
-			"release": vc.clusterName,
-		})
-
 		ctx, cancel := context.WithCancel(parentCtx)
 		conn.cancel = cancel
 
-		p.Start(ctx)
+		p := kubeobserver.NewPodObserver(ctx, vc.kr.Client(), vc.namespace, map[string]string{
+			"app":     "vcluster",
+			"release": vc.clusterName,
+		})
 
 		errch := make(chan error, 1)
 		portch := make(chan runtime.ForwardedPort)
@@ -147,11 +144,7 @@ func (vc *VCluster) Access(parentCtx context.Context) (*Connection, error) {
 				LocalAddrs:    []string{"127.0.0.1"},
 				LocalPort:     0,
 				ContainerPort: 8443,
-
-				Watch: func(ctx context.Context, f func(*v1.Pod, int64, error)) func() {
-					return p.Watch(f)
-				},
-
+				PodResolver:   p,
 				ReportPorts: func(fp runtime.ForwardedPort) {
 					portch <- fp
 				},

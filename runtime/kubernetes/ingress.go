@@ -10,10 +10,9 @@ import (
 	"io"
 
 	"google.golang.org/protobuf/types/known/anypb"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
@@ -98,18 +97,8 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 func (r Unbound) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
 	svc := nginx.IngressLoadBalancerService()
 
-	// XXX watch?
-	resolved, err := r.cli.CoreV1().Services(svc.Namespace).Get(ctx, svc.ServiceName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	pod, err := resolvePodByLabels(ctx, r.cli, io.Discard, svc.Namespace, resolved.Spec.Selector)
-	if err != nil {
-		return nil, err
-	}
-
 	ctxWithCancel, cancel := context.WithCancel(ctx)
+	obs := kubeobserver.NewPodObserver(ctxWithCancel, r.cli, svc.Namespace, nginx.ControllerSelector())
 
 	go func() {
 		if err := r.StartAndBlockPortFwd(ctxWithCancel, StartAndBlockPortFwdArgs{
@@ -118,11 +107,7 @@ func (r Unbound) ForwardIngress(ctx context.Context, localAddrs []string, localP
 			LocalAddrs:    localAddrs,
 			LocalPort:     localPort,
 			ContainerPort: svc.ContainerPort,
-
-			Watch: func(_ context.Context, f func(*v1.Pod, int64, error)) func() {
-				f(&pod, 1, nil)
-				return func() {}
-			},
+			PodResolver:   obs,
 			ReportPorts: func(p runtime.ForwardedPort) {
 				f(runtime.ForwardedPortEvent{
 					Added: []runtime.ForwardedPort{{

@@ -2,10 +2,11 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package kubernetes
+package kubeobserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -20,51 +21,49 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
 )
 
-// podObserver continuously attempts to resolve a single pod that match the specified set of labels.
+// PodObserver continuously attempts to resolve a single pod that match the specified set of labels.
 // If the resolved pod is terminated, a new one is picked.
-type podObserver struct {
+type PodObserver struct {
 	client    *k8s.Clientset
 	namespace string
 	labels    map[string]string
 
-	mu          sync.Mutex
-	cond        *sync.Cond
-	revision    int64
-	runningPods []v1.Pod
-	watchers    []watcherRegistration
+	mu           sync.Mutex
+	cond         *sync.Cond
+	revision     int64
+	runningPods  []v1.Pod
+	watchers     []watcherRegistration
+	permanentErr error
 }
 
 type watcherRegistration struct {
-	id string
-	f  func(*v1.Pod, int64, error)
+	id    string
+	onPod func(*v1.Pod, int64, error)
 }
 
-func NewPodObserver(client *k8s.Clientset, namespace string, labels map[string]string) *podObserver {
-	p := &podObserver{
+func NewPodObserver(ctx context.Context, client *k8s.Clientset, namespace string, labels map[string]string) *PodObserver {
+	p := &PodObserver{
 		client:    client,
 		namespace: namespace,
 		labels:    labels,
 	}
 	p.cond = sync.NewCond(&p.mu)
+	p.start(ctx)
 	return p
 }
 
-func (p *podObserver) Start(ctx context.Context) {
-	compute.On(ctx).Detach(tasks.Action("kubernetes.pod-resolver").Indefinite(), func(rootCtx context.Context) error {
-		// Note: the passed in ctx is used instead, as we want to react to cancelations.
-
+func (p *PodObserver) start(ctx context.Context) {
+	go func() {
 		defer p.cond.Broadcast() // On exit, wake up all waiters.
 
 		debug := console.Debug(ctx)
 		for {
 			retry, err := p.runWatcher(ctx, debug)
 			if err == nil {
-				return nil
+				return
 			}
 
 			if retry {
@@ -72,18 +71,27 @@ func (p *podObserver) Start(ctx context.Context) {
 				// XXX exponential back-off?
 				time.Sleep(2 * time.Second)
 			} else {
-				return err
+				p.mu.Lock()
+				p.permanentErr = err
+				p.mu.Unlock()
+
+				if !errors.Is(err, context.Canceled) {
+					fmt.Fprintf(console.Errors(ctx), "kube/podresolver: failed: %v.\n", err)
+				}
+
+				return
 			}
 		}
-	})
+	}()
 }
 
 // Return true for a retry.
-func (p *podObserver) runWatcher(ctx context.Context, debug io.Writer) (bool, error) {
+func (p *PodObserver) runWatcher(ctx context.Context, debug io.Writer) (bool, error) {
 	sel := kubedef.SerializeSelector(p.labels)
+
 	w, err := p.client.CoreV1().Pods(p.namespace).Watch(ctx, metav1.ListOptions{LabelSelector: sel})
 	if err != nil {
-		return false, err
+		return true, err
 	}
 
 	defer w.Stop()
@@ -96,7 +104,7 @@ func (p *podObserver) runWatcher(ctx context.Context, debug io.Writer) (bool, er
 		case ev, ok := <-w.ResultChan():
 			if !ok {
 				fmt.Fprintf(debug, "kube/podresolver: %s: closed.\n", sel)
-				return true, fnerrors.New("unexpected watch closure")
+				return true, fnerrors.New("unexpected watch closure, will retry")
 			}
 
 			if ev.Object == nil {
@@ -142,7 +150,7 @@ func (p *podObserver) runWatcher(ctx context.Context, debug io.Writer) (bool, er
 	}
 }
 
-func (p *podObserver) Watch(f func(*v1.Pod, int64, error)) func() {
+func (p *PodObserver) Watch(f func(*v1.Pod, int64, error)) func() {
 	id := ids.NewRandomBase32ID(8)
 
 	p.mu.Lock()
@@ -165,7 +173,7 @@ func (p *podObserver) Watch(f func(*v1.Pod, int64, error)) func() {
 	}
 }
 
-func (p *podObserver) selectPod() *v1.Pod {
+func (p *PodObserver) selectPod() *v1.Pod {
 	if len(p.runningPods) > 0 {
 		// Always pick the last pod, as that's the most recent to show up and is
 		// likely to be the one that survives e.g. a new deployment.
@@ -174,30 +182,43 @@ func (p *podObserver) selectPod() *v1.Pod {
 	return nil
 }
 
-func (p *podObserver) broadcast() {
+func (p *PodObserver) broadcast() {
+	if p.permanentErr != nil {
+		for _, w := range p.watchers {
+			w.onPod(nil, p.revision, p.permanentErr)
+		}
+		return
+	}
+
 	pod := p.selectPod()
 	for _, w := range p.watchers {
-		w.f(pod, p.revision, nil)
+		w.onPod(pod, p.revision, nil)
 	}
 }
 
-func (p *podObserver) Wait(ctx context.Context) (v1.Pod, error) {
-	return cancelableWait(ctx, p.cond, func() (v1.Pod, bool) {
+func (p *PodObserver) Resolve(ctx context.Context) (v1.Pod, error) {
+	return cancelableWait(ctx, p.cond, func() (v1.Pod, bool, error) {
+		if p.permanentErr != nil {
+			return v1.Pod{}, false, p.permanentErr
+		}
+
 		pod := p.selectPod()
 		if pod == nil {
-			return v1.Pod{}, false
+			return v1.Pod{}, false, nil
 		}
-		return *pod, true
+		return *pod, true, nil
 	})
 }
 
-func cancelableWait[V any](ctx context.Context, cond *sync.Cond, resolve func() (V, bool)) (V, error) {
+func cancelableWait[V any](ctx context.Context, cond *sync.Cond, resolve func() (V, bool, error)) (V, error) {
 	cond.L.Lock()
 	defer cond.L.Unlock()
 
 	for {
-		v, ok := resolve()
-		if !ok {
+		v, ok, err := resolve()
+		if err != nil {
+			return v, err
+		} else if !ok {
 			// Has the context been canceled?
 			if err := ctx.Err(); err != nil {
 				return v, err
