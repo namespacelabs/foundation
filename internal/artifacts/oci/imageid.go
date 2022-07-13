@@ -60,7 +60,11 @@ func ParseImageID(ref string) (ImageID, error) {
 	i := ImageID{Repository: t.Repository.Name(), Tag: t.TagStr()}
 
 	if len(parts) == 2 {
-		i.Digest = parts[1]
+		d, err := name.NewDigest(ref)
+		if err != nil {
+			return ImageID{}, err
+		}
+		i.Digest = d.DigestStr()
 	}
 
 	return i, nil

@@ -51,7 +51,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 
 	imgid, err := oci.ParseImageID(image)
 	if err != nil {
-		return nil, err
+		return nil, fnerrors.Wrapf(server.Location, err, "unable to parse image")
 	}
 
 	return build.PrebuiltPlan(imgid, false), nil
