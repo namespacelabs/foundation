@@ -26,7 +26,8 @@ debug mode.
 ## Profiling Envoy
 
 Please note that you need to update [container.securitycontext.yaml](https://github.com/namespacelabs/foundation/blob/main/std/runtime/kubernetes/defaults/container.securitycontext.yaml#L1) in privileged
-mode and rebuild `nsdev` before profiling an Envoy started with `nsdev dev std/testdata/server/gogrpc`.
+mode and rebuild `nsdev` before profiling an Envoy started with `nsdev dev std/testdata/server/gogrpc`
+to allow overriding sysctl defaults for gauging CPU traces.
 
 ```yaml
 privileged: true
