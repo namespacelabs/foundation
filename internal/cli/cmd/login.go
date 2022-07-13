@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
-const loginUrl = "https://signin.prod.namespacelabs.nscloud.dev/login"
+const loginUrl = "https://login.namespace.so/login"
 
 func NewLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
