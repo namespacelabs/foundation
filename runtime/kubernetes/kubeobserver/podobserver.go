@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kr/text"
 	"golang.org/x/exp/slices"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,43 +60,46 @@ func (p *PodObserver) start(ctx context.Context) {
 	go func() {
 		defer p.cond.Broadcast() // On exit, wake up all waiters.
 
-		debug := console.Debug(ctx)
+		debug := text.NewIndentWriter(console.Debug(ctx), []byte(fmt.Sprintf("kube/podresolver: %s: ", kubedef.SerializeSelector(p.labels))))
+
 		for {
 			retry, err := p.runWatcher(ctx, debug)
 			if err == nil {
 				return
 			}
 
-			if retry {
-				fmt.Fprintf(console.Debug(ctx), "kube/podresolver: retrying: %v.\n", err)
-				// XXX exponential back-off?
-				time.Sleep(2 * time.Second)
-			} else {
-				p.mu.Lock()
+			p.mu.Lock()
+			if !retry {
 				p.permanentErr = err
-				p.mu.Unlock()
+			}
+			p.runningPods = nil // Reset the internal state.
+			p.revision++
+			p.mu.Unlock()
 
+			if !retry {
 				if !errors.Is(err, context.Canceled) {
-					fmt.Fprintf(console.Errors(ctx), "kube/podresolver: failed: %v.\n", err)
+					fmt.Fprintf(console.Errors(ctx), "kube/podresolver: %s: failed: %v.\n", kubedef.SerializeSelector(p.labels), err)
 				}
-
 				return
 			}
+
+			fmt.Fprintf(debug, "retrying: %v.\n", err)
+			// XXX exponential back-off?
+			time.Sleep(2 * time.Second)
 		}
 	}()
 }
 
 // Return true for a retry.
 func (p *PodObserver) runWatcher(ctx context.Context, debug io.Writer) (bool, error) {
-	sel := kubedef.SerializeSelector(p.labels)
-
-	w, err := p.client.CoreV1().Pods(p.namespace).Watch(ctx, metav1.ListOptions{LabelSelector: sel})
+	w, err := p.client.CoreV1().Pods(p.namespace).Watch(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(p.labels)})
 	if err != nil {
 		return true, err
 	}
 
 	defer w.Stop()
 
+	connected := time.Now()
 	for {
 		select {
 		case <-ctx.Done():
@@ -103,8 +107,7 @@ func (p *PodObserver) runWatcher(ctx context.Context, debug io.Writer) (bool, er
 
 		case ev, ok := <-w.ResultChan():
 			if !ok {
-				fmt.Fprintf(debug, "kube/podresolver: %s: closed.\n", sel)
-				return true, fnerrors.New("unexpected watch closure, will retry")
+				return true, fnerrors.New("unexpected watch closure, will retry (was connected for %v)", time.Since(connected))
 			}
 
 			if ev.Object == nil {
@@ -113,12 +116,11 @@ func (p *PodObserver) runWatcher(ctx context.Context, debug io.Writer) (bool, er
 
 			pod, ok := ev.Object.(*v1.Pod)
 			if !ok {
-				fmt.Fprintf(debug, "kube/podresolver: %s: received non-pod event: %v\n", sel, reflect.TypeOf(ev.Object))
+				fmt.Fprintf(debug, "received non-pod event: %v\n", reflect.TypeOf(ev.Object))
 				continue
 			}
 
-			fmt.Fprintf(debug, "kube/podresolver: %s: event type %s: name %s phase %s\n",
-				sel, ev.Type, pod.Name, pod.Status.Phase)
+			fmt.Fprintf(debug, "event type %s: name %s phase %s\n", ev.Type, pod.Name, pod.Status.Phase)
 
 			p.mu.Lock()
 			existingIndex := slices.IndexFunc(p.runningPods, func(existing v1.Pod) bool {
@@ -130,13 +132,13 @@ func (p *PodObserver) runWatcher(ctx context.Context, debug io.Writer) (bool, er
 				if existingIndex >= 0 {
 					p.runningPods = slices.Delete(p.runningPods, existingIndex, existingIndex+1)
 					modified = true
-					fmt.Fprintf(debug, "kube/podresolver: %s: remove pod-uid %s\n", sel, pod.UID)
+					fmt.Fprintf(debug, "remove pod-uid %s\n", pod.UID)
 				}
 			} else if (ev.Type == watch.Added || ev.Type == watch.Modified) && pod.Status.Phase == v1.PodRunning {
 				if existingIndex < 0 {
 					p.runningPods = append(p.runningPods, *pod)
 					modified = true
-					fmt.Fprintf(debug, "kube/podresolver: %s: add pod-uid %s\n", sel, pod.UID)
+					fmt.Fprintf(debug, "add pod-uid %s\n", pod.UID)
 				}
 			}
 
