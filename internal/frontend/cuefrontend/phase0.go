@@ -42,7 +42,7 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.Earl
 			WithFetcher(fncue.ResourceIKw, FetchResource(fsys, loc)).
 			WithFetcher(fncue.PackageIKW, FetchPackage(pl))
 
-			// Load packages without the serialization lock held.
+		// Load packages without the serialization lock held.
 		for _, k := range firstPass.Left {
 			if k.Key == fncue.PackageIKW {
 				if _, err := FetchPackage(pl)(ctx, firstPass.CueV.Val.LookupPath(k.Target)); err != nil {

@@ -75,6 +75,10 @@ func (ce codegenEnv) LoadByName(ctx context.Context, packageName schema.PackageN
 	return ce.packages.LoadByName(ctx, packageName)
 }
 
+func (ce codegenEnv) Ensure(ctx context.Context, packageName schema.PackageName) error {
+	return ce.packages.Ensure(ctx, packageName)
+}
+
 func codegenServer(ctx context.Context, srv provision.Server) error {
 	// XXX we should be able to disable codegen for pure builds.
 	if srv.Module().IsExternal() {

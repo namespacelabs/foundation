@@ -111,3 +111,7 @@ func (g genEnv) Resolve(ctx context.Context, pkg schema.PackageName) (workspace.
 func (g genEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*workspace.Package, error) {
 	return g.r.LoadByName(ctx, packageName)
 }
+
+func (g genEnv) Ensure(ctx context.Context, packageName schema.PackageName) error {
+	return g.r.Ensure(ctx, packageName)
+}

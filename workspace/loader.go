@@ -24,6 +24,7 @@ import (
 type Packages interface {
 	Resolve(ctx context.Context, packageName schema.PackageName) (Location, error)
 	LoadByName(ctx context.Context, packageName schema.PackageName) (*Package, error)
+	Ensure(ctx context.Context, packageName schema.PackageName) error
 }
 
 type ModuleSources struct {
@@ -256,6 +257,31 @@ func (pl *PackageLoader) LoadByNameWithOpts(ctx context.Context, packageName sch
 	return pl.loadPackage(ctx, loc, opt...)
 }
 
+func (pl *PackageLoader) Ensure(ctx context.Context, packageName schema.PackageName) error {
+	loc, err := pl.Resolve(ctx, packageName)
+	if err != nil {
+		return err
+	}
+
+	pl.mu.Lock()
+	loading := pl.loading[packageName]
+	if loading != nil {
+		// Someone is already loading the package
+		pl.mu.Unlock()
+		return nil
+	}
+	loading = &loadingPackage{
+		pl:   pl,
+		loc:  loc,
+		opts: LoadPackageOpts{LoadPackageReferences: true},
+	}
+
+	pl.loading[packageName] = loading
+	pl.mu.Unlock()
+
+	return loading.Ensure(ctx)
+}
+
 func (pl *PackageLoader) loadPackage(ctx context.Context, loc Location, opt ...LoadPackageOpt) (*Package, error) {
 	opts := LoadPackageOpts{LoadPackageReferences: true}
 	for _, o := range opt {
@@ -285,7 +311,11 @@ func (pl *PackageLoader) loadPackage(ctx context.Context, loc Location, opt ...L
 	}
 	pl.mu.Unlock()
 
-	return loading.Load(ctx)
+	if err := loading.Ensure(ctx); err != nil {
+		return nil, err
+	}
+
+	return loading.Get(ctx)
 }
 
 func (pl *PackageLoader) ExternalLocation(ctx context.Context, mod *schema.Workspace_Dependency, packageName schema.PackageName) (Location, error) {
@@ -400,41 +430,46 @@ func (pl *PackageLoader) complete(pkg *Package) {
 	pl.mu.Unlock()
 }
 
-func (l *loadingPackage) Load(ctx context.Context) (*Package, error) {
+func (l *loadingPackage) Ensure(ctx context.Context) error {
 	l.mu.Lock()
 
 	rev := l.waiting
 	l.waiting++
 
-	// We've been selected to load the package.
-	if rev == 0 {
+	if rev > 0 {
+		// Someone is already loading the package.
 		l.mu.Unlock()
-		var res resultPair
-		res.value, res.err = tasks.Return(ctx, tasks.Action("package.load").Scope(l.loc.PackageName), func(ctx context.Context) (*Package, error) {
-			return l.pl.frontend.ParsePackage(ctx, l.loc, l.opts)
-		})
-
-		l.mu.Lock()
-
-		l.done = true
-		l.result = res
-
-		if res.err == nil {
-			l.pl.complete(res.value)
-		}
-
-		waiters := l.waiters
-		l.waiters = nil
-		l.mu.Unlock()
-
-		for _, ch := range waiters {
-			ch <- res
-			close(ch)
-		}
-
-		return res.value, res.err
+		return nil
 	}
 
+	l.mu.Unlock()
+	var res resultPair
+	res.value, res.err = tasks.Return(ctx, tasks.Action("package.load").Scope(l.loc.PackageName), func(ctx context.Context) (*Package, error) {
+		return l.pl.frontend.ParsePackage(ctx, l.loc, l.opts)
+	})
+
+	l.mu.Lock()
+
+	l.done = true
+	l.result = res
+
+	if res.err == nil {
+		l.pl.complete(res.value)
+	}
+
+	waiters := l.waiters
+	l.waiters = nil
+	l.mu.Unlock()
+
+	for _, ch := range waiters {
+		ch <- res
+		close(ch)
+	}
+	return nil
+}
+
+func (l *loadingPackage) Get(ctx context.Context) (*Package, error) {
+	l.mu.Lock()
 	if l.done {
 		defer l.mu.Unlock()
 		return l.result.value, l.result.err
@@ -468,6 +503,11 @@ func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.Pac
 	}
 
 	return Location{}, fnerrors.InternalError("%s: package not loaded while resolving!", packageName)
+}
+
+func (sealed sealedPackages) Ensure(ctx context.Context, packageName schema.PackageName) error {
+	_, err := sealed.LoadByName(ctx, packageName)
+	return err
 }
 
 func (sealed sealedPackages) LoadByName(ctx context.Context, packageName schema.PackageName) (*Package, error) {

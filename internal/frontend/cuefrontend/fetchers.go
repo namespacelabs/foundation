@@ -207,8 +207,7 @@ func FetchPackage(pl workspace.Packages) FetcherFunc {
 			return nil, fnerrors.UserError(nil, "expected a string when loading a package: %w", err)
 		}
 
-		_, err = pl.LoadByName(ctx, schema.PackageName(packageName))
-		return ConsumeNoValue, err
+		return ConsumeNoValue, pl.Ensure(ctx, schema.PackageName(packageName))
 	}
 }
 

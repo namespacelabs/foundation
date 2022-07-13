@@ -34,6 +34,9 @@ func (noPackageEnv) Resolve(ctx context.Context, packageName schema.PackageName)
 func (noPackageEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*workspace.Package, error) {
 	return nil, fnerrors.New("not supported")
 }
+func (noPackageEnv) Ensure(ctx context.Context, packageName schema.PackageName) error {
+	return fnerrors.New("not supported")
+}
 
 func (p noPackageEnv) KubeconfigProvider() (*client.HostConfig, error) {
 	return p.hostConfig, nil

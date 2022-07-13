@@ -70,6 +70,9 @@ func (e boundEnv) Resolve(ctx context.Context, packageName schema.PackageName) (
 func (e boundEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*workspace.Package, error) {
 	return e.sp.LoadByName(ctx, packageName)
 }
+func (e boundEnv) Ensure(ctx context.Context, packageName schema.PackageName) error {
+	return e.sp.Ensure(ctx, packageName)
+}
 func (e boundEnv) Sources() []workspace.ModuleSources {
 	return e.sp.Sources()
 }
