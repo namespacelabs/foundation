@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"golang.org/x/net/html"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/git"
@@ -103,6 +104,7 @@ func moduleHeadTo(ctx context.Context, resolved *ResolvedPackage, dep *schema.Wo
 		cmd := exec.CommandContext(ctx, "git", "ls-remote", "-q", resolved.Repository, "HEAD")
 		cmd.Env = append(os.Environ(), git.NoPromptEnv()...)
 		cmd.Stdout = &out
+		cmd.Stderr = console.Output(ctx, "git")
 
 		if err := cmd.Run(); err != nil {
 			return fnerrors.InvocationError("%s: failed to `git ls-remote`: %w", resolved.Repository, err)
