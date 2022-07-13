@@ -73,6 +73,7 @@ func NewPrepareCmd() *cobra.Command {
 				return err
 			}
 			prepares = append(prepares, prepare.PrepareEksCluster(eksClusterName, env))
+			prepares = append(prepares, prepare.PrepareEksHostEnv("aws/eks", env))
 			return wp.collectPreparesAndUpdateDevhost(ctx, prepares)
 		}),
 	}
@@ -159,8 +160,6 @@ func (p *workspacePrepare) prepareK8s(ctx context.Context) compute.Computable[*c
 		if p.contextName != "" {
 			return prepare.PrepareExistingK8s(p.env,
 				prepare.WithK8sContextName(p.contextName))
-		} else if p.eksClusterName != "" {
-			return prepare.PrepareExistingK8s(p.env)
 		}
 	}
 	return nil
@@ -169,6 +168,23 @@ func (p *workspacePrepare) prepareK8s(ctx context.Context) compute.Computable[*c
 func (p *workspacePrepare) makePrepareComputables(ctx context.Context) ([]compute.Computable[[]*schema.DevHost_ConfigureEnvironment], error) {
 	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
 	prepares = append(prepares, prepare.PrepareBuildkit(p.env))
+
+	if p.env.Purpose() == schema.Environment_PRODUCTION {
+		if p.awsProfile == "" {
+			return nil, fnerrors.UsageError("Please also specify `--aws_profile`.",
+				"Preparing a production environment requires using AWS at the moment.")
+		}
+		// The context name is required if we are not on an EKS cluster.
+		if p.contextName == "" && p.eksClusterName == "" {
+			return nil, fnerrors.UsageError("Please also specify `--context`.",
+				"Kubernetes context is required for preparing a production environment.")
+		}
+	}
+
+	if p.awsProfile != "" {
+		prepares = append(prepares, prepare.PrepareAWSProfile(p.awsProfile, p.env))
+		prepares = append(prepares, prepare.PrepareAWSRegistry("aws/ecr", p.env))
+	}
 
 	k8sconfig := p.prepareK8s(ctx)
 	if k8sconfig != nil {
@@ -202,24 +218,6 @@ func (p *workspacePrepare) makePrepareComputables(ctx context.Context) ([]comput
 				}
 				return confs, nil
 			}))
-	}
-
-	if p.awsProfile != "" {
-		prepares = append(prepares, prepare.PrepareAWSProfile(p.awsProfile, p.env)) // XXX make provider configurable.
-	}
-
-	if p.env.Purpose() == schema.Environment_PRODUCTION {
-		if p.awsProfile == "" {
-			return nil, fnerrors.UsageError("Please also specify `--aws_profile`.",
-				"Preparing a production environment requires using AWS at the moment.")
-		}
-		// The context name is required if we are not on an EKS cluster.
-		if p.contextName == "" && p.eksClusterName == "" {
-			return nil, fnerrors.UsageError("Please also specify `--context`.",
-				"Kubernetes context is required for preparing a production environment.")
-		}
-
-		prepares = append(prepares, prepare.PrepareAWSRegistry(p.env)) // XXX make provider configurable.
 	}
 
 	if k8sconfig != nil {
