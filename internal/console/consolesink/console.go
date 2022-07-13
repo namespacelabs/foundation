@@ -804,6 +804,10 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 }
 
 func (c *ConsoleSink) calculateActionHeight(height uint) (uint, uint, bool) {
+	if c.root == nil {
+		return 0, 0, false
+	}
+
 	// The height of the fixed action block.
 	const reportLines = 2
 
