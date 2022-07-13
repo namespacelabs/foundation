@@ -54,10 +54,7 @@ func NewBuildCmd() *cobra.Command {
 			return err
 		}
 
-		var opts deploy.Opts
-		opts.BaseServerPort = 10000
-
-		_, images, err := deploy.ComputeStackAndImages(ctx, env, servers, opts)
+		_, images, err := deploy.ComputeStackAndImages(ctx, env, servers)
 		if err != nil {
 			return err
 		}

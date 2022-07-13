@@ -36,7 +36,7 @@ type Stack struct {
 }
 
 type ProvisionOpts struct {
-	PortBase int32
+	PortRange runtime.PortRange
 }
 
 type ParsedServer struct {
@@ -201,31 +201,29 @@ func (cs *computeState) computeStackContents(ctx context.Context, server provisi
 
 		var allocatedPorts eval.PortAllocations
 		var allocators []eval.AllocatorFunc
-		if cs.opts.PortBase != 0 {
-			allocators = append(allocators, eval.MakePortAllocator(cs.opts.PortBase, &allocatedPorts))
+		allocators = append(allocators, eval.MakePortAllocator(server.Proto(), cs.opts.PortRange, &allocatedPorts))
 
-			var depsWithNeeds []*ParsedNode
-			for _, p := range parsedDeps {
-				if len(p.Package.Node().GetNeed()) > 0 {
-					depsWithNeeds = append(depsWithNeeds, p)
-				}
+		var depsWithNeeds []*ParsedNode
+		for _, p := range parsedDeps {
+			if len(p.Package.Node().GetNeed()) > 0 {
+				depsWithNeeds = append(depsWithNeeds, p)
+			}
+		}
+
+		// Make sure that port allocation is stable.
+		sort.Slice(depsWithNeeds, func(i, j int) bool {
+			return strings.Compare(depsWithNeeds[i].Package.PackageName().String(),
+				depsWithNeeds[j].Package.PackageName().String()) < 0
+		})
+
+		state := eval.NewAllocState()
+		for _, dwn := range depsWithNeeds {
+			allocs, err := fillNeeds(ctx, server.Proto(), state, allocators, dwn.Package.Node())
+			if err != nil {
+				return err
 			}
 
-			// Make sure that port allocation is stable.
-			sort.Slice(depsWithNeeds, func(i, j int) bool {
-				return strings.Compare(depsWithNeeds[i].Package.PackageName().String(),
-					depsWithNeeds[j].Package.PackageName().String()) < 0
-			})
-
-			state := eval.NewAllocState()
-			for _, dwn := range depsWithNeeds {
-				allocs, err := fillNeeds(ctx, server.Proto(), state, allocators, dwn.Package.Node())
-				if err != nil {
-					return err
-				}
-
-				dwn.Allocations = allocs
-			}
+			dwn.Allocations = allocs
 		}
 
 		ps.Deps = parsedDeps

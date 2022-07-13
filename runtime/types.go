@@ -231,6 +231,12 @@ type ContainerReference interface {
 	Kind() schema.ContainerKind
 }
 
+type PortRange struct {
+	Base, Max int32
+}
+
+func DefaultPortRange() PortRange { return PortRange{40000, 41000} }
+
 func (cw ContainerWaitStatus) WaitStatus() string {
 	var inits []string
 	for _, init := range cw.Initializers {

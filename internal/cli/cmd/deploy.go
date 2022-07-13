@@ -32,7 +32,6 @@ import (
 func NewDeployCmd() *cobra.Command {
 	var (
 		usePackageNames bool
-		runOpts         deploy.Opts
 		explain         bool
 		serializePath   string
 		deployOpts      deployOpts
@@ -45,7 +44,6 @@ func NewDeployCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&usePackageNames, "use_package_names", usePackageNames, "Specify servers by using their fully qualified package name instead.")
-	cmd.Flags().Int32Var(&runOpts.BaseServerPort, "port_base", 40000, "Base port to listen on (additional requested ports will be base port + n).")
 	cmd.Flags().BoolVar(&deployOpts.alsoWait, "wait", true, "Wait for the deployment after running.")
 	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 	cmd.Flags().BoolVar(&runtime.NamingNoTLS, "naming_no_tls", runtime.NamingNoTLS, "If set to true, no TLS certificate is requested for ingress names.")
@@ -64,7 +62,7 @@ func NewDeployCmd() *cobra.Command {
 			return err
 		}
 
-		stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortBase: runOpts.BaseServerPort})
+		stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 		if err != nil {
 			return err
 		}

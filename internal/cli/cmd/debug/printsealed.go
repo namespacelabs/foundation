@@ -59,7 +59,7 @@ func newPrintSealedCmd() *cobra.Command {
 					return err
 				}
 
-				plan, err := deploy.PrepareDeployServers(ctx, env, []provision.Server{t}, deploy.Opts{StackOpts: deploy.StackOpts{BaseServerPort: 39999}}, nil)
+				plan, err := deploy.PrepareDeployServers(ctx, env, []provision.Server{t}, nil)
 				if err != nil {
 					return err
 				}

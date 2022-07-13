@@ -117,7 +117,7 @@ func (h *hydrateArgs) ComputeStack(ctx context.Context, args []string) (*hydrate
 		res.Ingress = rehydrated.IngressFragments
 		res.Rehydrated = rehydrated
 	} else {
-		stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortBase: 40000})
+		stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 		if err != nil {
 			return nil, err
 		}

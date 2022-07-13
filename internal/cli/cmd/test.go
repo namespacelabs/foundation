@@ -21,7 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace"
@@ -34,7 +34,6 @@ const exitCode = 3
 
 func NewTestCmd() *cobra.Command {
 	var (
-		runOpts        deploy.Opts
 		testOpts       testing.TestOpts
 		includeServers bool
 		parallel       bool
@@ -115,7 +114,7 @@ func NewTestCmd() *cobra.Command {
 						suts = append(suts, sut)
 					}
 
-					stack, err := stack.Compute(ctx, suts, stack.ProvisionOpts{PortBase: runOpts.BaseServerPort})
+					stack, err := stack.Compute(ctx, suts, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 					if err != nil {
 						return nil, nil, err
 					}
@@ -196,7 +195,6 @@ func NewTestCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.Flags().Int32Var(&runOpts.BaseServerPort, "port_base", 40000, "Base port to listen on (additional requested ports will be base port + n).")
 	cmd.Flags().BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
 	cmd.Flags().BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, don't cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
 	cmd.Flags().BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")

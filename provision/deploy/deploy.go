@@ -33,14 +33,6 @@ import (
 
 var AlsoDeployIngress = true
 
-type StackOpts struct {
-	BaseServerPort int32
-}
-
-type Opts struct {
-	StackOpts
-}
-
 type ServerImages struct {
 	Package schema.PackageName
 	Binary  compute.Computable[oci.ImageID]
@@ -54,8 +46,8 @@ type ResolvedServerImages struct {
 	Config         oci.ImageID
 }
 
-func PrepareDeployServers(ctx context.Context, env ops.Environment, focus []provision.Server, opts Opts, onStack func(*stack.Stack)) (compute.Computable[*Plan], error) {
-	stack, err := stack.Compute(ctx, focus, stack.ProvisionOpts{PortBase: opts.BaseServerPort})
+func PrepareDeployServers(ctx context.Context, env ops.Environment, focus []provision.Server, onStack func(*stack.Stack)) (compute.Computable[*Plan], error) {
+	stack, err := stack.Compute(ctx, focus, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 	if err != nil {
 		return nil, err
 	}
@@ -490,8 +482,8 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) (map[s
 	return res, nil
 }
 
-func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []provision.Server, opts Opts) (*stack.Stack, []compute.Computable[ResolvedServerImages], error) {
-	stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortBase: opts.BaseServerPort})
+func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []provision.Server) (*stack.Stack, []compute.Computable[ResolvedServerImages], error) {
+	stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 	if err != nil {
 		return nil, nil, err
 	}
