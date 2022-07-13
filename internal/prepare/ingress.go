@@ -41,7 +41,7 @@ func (p noPackageEnv) KubeconfigProvider() (*client.HostConfig, error) {
 
 func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
-		tasks.Action("prepare.ingress").HumanReadablef("Prepare and deploy the Kubernetes ingress controller"),
+		tasks.Action("prepare.ingress").HumanReadablef("Deploying the Kubernetes ingress controller (may take up to 30 seconds)"),
 		compute.Inputs().Computable("k8sconfig", k8sconfig).Proto("env", env.Proto()).Proto("workspace", env.Workspace()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
