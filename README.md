@@ -8,7 +8,7 @@ prod. Enabling you to focus on developing your own services, rather than managin
 ## Getting Started
 
 Read an overview of our platform and instructions to get started at
-**https://docs.namespacelabs.com**
+**https://docs.namespace.so**
 
 ## Useful links
 

@@ -515,7 +515,7 @@ func (sealed sealedPackages) LoadByName(ctx context.Context, packageName schema.
 		return pkg, nil
 	}
 
-	return nil, fnerrors.InternalError("%s: package not loaded! See https://docs.namespacelabs.com/reference/debug#package-loading", packageName)
+	return nil, fnerrors.InternalError("%s: package not loaded! See https://docs.namespace.so/reference/debug#package-loading", packageName)
 }
 
 func (sealed sealedPackages) Sources() []ModuleSources {

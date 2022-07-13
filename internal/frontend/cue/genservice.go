@@ -42,7 +42,7 @@ $proto: inputs.#Proto & {
 }
 {{end}}
 
-// Declare a new service, see also https://docs.namespacelabs.com/concepts/service
+// Declare a new service, see also https://docs.namespace.so/concepts/service
 service: fn.#Service & {
 	framework: "{{.Framework}}"
 
@@ -54,7 +54,7 @@ service: fn.#Service & {
 	exportServicesAsHttp: true
 
 	// Make this service available to the public Internet.
-	// See also https://docs.namespacelabs.com/guides/internet-facing/
+	// See also https://docs.namespace.so/guides/internet-facing/
 	ingress:              "INTERNET_FACING"
 	{{end}}
 
