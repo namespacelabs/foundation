@@ -7,9 +7,11 @@ orchestrated by a Kubernetes controller wrapping Envoy's [go control plane](http
 
 We leverage the following images:
 
-- Default [envoyproxy/envoy](https://hub.docker.com/r/envoyproxy/envoy/tags/): Release binary with symbols stripped on top of an Ubuntu Bionic base.
+- Default [envoyproxy/envoy](https://hub.docker.com/r/envoyproxy/envoy/tags/): Release binary with
+symbols stripped on top of an Ubuntu Bionic base.
 
-- [envoyproxy/envoy-debug](https://hub.docker.com/r/envoyproxy/envoy-debug/tags/) for profiling and debugging: Release binary with debug symbols on top of an Ubuntu Bionic base.
+- [envoyproxy/envoy-debug](https://hub.docker.com/r/envoyproxy/envoy-debug/tags/) for profiling
+and debugging: Release binary with debug symbols on top of an Ubuntu Bionic base.
 
  See [pre-built docker images](https://www.envoyproxy.io/docs/envoy/latest/start/install#pre-built-envoy-docker-images) for additional images.
 
@@ -23,13 +25,23 @@ debug mode.
 
 ## Profiling Envoy
 
+Please note that you need to update [container.securitycontext.yaml](https://github.com/namespacelabs/foundation/blob/main/std/runtime/kubernetes/defaults/container.securitycontext.yaml#L1) in privileged
+mode and rebuild `nsdev` before profiling an Envoy started with `nsdev dev std/testdata/server/gogrpc`.
+
+```yaml
+privileged: true
+allowPrivilegeEscalation: true
+readOnlyRootFilesystem: false
+```
+
 Exec into a shell in the gateway:
 
 ```bash
 nsdev t kubectl exec -- -it gateway-sun4qtee50l61888bdj0-8648b4f64d-nthv7 -c gateway -- bash
 ```
 
-We need to download and `make` perf from src since we get a `WARNING: perf not found for kernel ...` if we try installing `linux-tools-generic` in the Envoy container.
+We need to download and `make` perf from src since we get a `WARNING: perf not found for kernel ...`
+if we try installing `linux-tools-generic` in the Envoy container.
 
 ```bash
 apt-get update && apt-get install -y build-essential git flex bison
