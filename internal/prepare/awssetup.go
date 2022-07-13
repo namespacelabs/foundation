@@ -16,21 +16,20 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareAWSRegistry(env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareAWSRegistry(registryName string, env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.aws-registry").HumanReadablef("Prepare the AWS registry configuration"),
-		compute.Inputs().Proto("env", env.Proto()),
-		compute.Output{NotCacheable: true},
+		compute.Inputs().Str("registryName", registryName).Proto("env", env.Proto()),
+		compute.Output{NotCacheable: true, NonDeterministic: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			p := &registry.Provider{
-				Provider: "aws/ecr",
+				Provider: registryName,
 			}
 			c, err := devhost.MakeConfiguration(p)
 			if err != nil {
 				return nil, err
 			}
 			c.Purpose = env.Proto().GetPurpose()
-
 			return []*schema.DevHost_ConfigureEnvironment{c}, nil
 		})
 }
