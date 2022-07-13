@@ -1,3 +1,3 @@
-privileged: true
-allowPrivilegeEscalation: true
+privileged: false
+allowPrivilegeEscalation: false
 readOnlyRootFilesystem: false
