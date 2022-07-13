@@ -1,0 +1,56 @@
+# Envoy Networking Gateway
+
+We run [Envoy](https://www.envoyproxy.io/) as a HTTP-gRPC gateway with updates to Envoy
+orchestrated by a Kubernetes controller wrapping Envoy's [go control plane](https://github.com/envoyproxy/go-control-plane).
+
+## Pre-built Envoy Docker images
+
+We leverage the following images:
+
+- Default [envoyproxy/envoy](https://hub.docker.com/r/envoyproxy/envoy/tags/): Release binary with symbols stripped on top of an Ubuntu Bionic base.
+
+- [envoyproxy/envoy-debug](https://hub.docker.com/r/envoyproxy/envoy-debug/tags/) for profiling and debugging: Release binary with debug symbols on top of an Ubuntu Bionic base.
+
+ See [pre-built docker images](https://www.envoyproxy.io/docs/envoy/latest/start/install#pre-built-envoy-docker-images) for additional images.
+
+## Debugging the controller
+
+[--debug](https://github.com/namespacelabs/foundation/blob/30863ba3e03271b7e17cb4bf905795ce178a5e68/std/networking/gateway/controller/main.go#L35) enables xDS gRPC server debug logging, giving visibility
+into each Envoy snapshot update. All Kubernetes events and reconciler actions are also logged in
+debug mode.
+
+![debug_controller](https://user-images.githubusercontent.com/102962107/178251463-d54d994c-f5d7-45e1-a4d3-f8c28a757f32.png)
+
+## Profiling Envoy
+
+Exec into a shell in the gateway:
+
+```bash
+nsdev t kubectl exec -- -it gateway-sun4qtee50l61888bdj0-8648b4f64d-nthv7 -c gateway -- bash
+```
+
+We need to download and `make` perf from src since we get a `WARNING: perf not found for kernel ...` if we try installing `linux-tools-generic` in the Envoy container.
+
+```bash
+apt-get update && apt-get install -y build-essential git flex bison
+
+git clone --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+
+cd linux/tools/perf
+
+make
+
+cp perf /usr/bin
+
+echo -1 > /proc/sys/kernel/perf_event_paranoid
+
+perf record -F 49 -g -o /tmp/envoy.perf -p 1 -- sleep 60
+
+perf report
+```
+
+Copy the generated profile out of the container:
+
+```bash
+ nsdev t kubectl cp -- gateway-sun4qtee50l61888bdj0-8648b4f64d-nthv7:/tmp/envoy.perf /tmp/envoy.perf -c gateway
+```
