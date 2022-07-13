@@ -258,20 +258,19 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 		fmt.Fprintln(w)
 	}
 	cause := err
-	// Keep unwrapping to get to the root cause which isn't a fnError.
-	for isFnError(cause) {
-		if opts.tracing {
+	// Keep unwrapping to get the root fnError.
+	for {
+		if opts.tracing && cause != err {
 			w = indent(w)
 			format(w, cause, opts)
 			writeSourceFileAndLine(w, cause, opts.style)
 		}
-		if x := errors.Unwrap(cause); x != nil {
-			cause = x
-		} else {
+		child := errors.Unwrap(cause)
+		if child == nil || !isFnError(child) {
 			break
 		}
+		cause = child
 	}
-
 	format(w, cause, opts)
 }
 
