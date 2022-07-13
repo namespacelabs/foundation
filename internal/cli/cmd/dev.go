@@ -158,7 +158,6 @@ func NewDevCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
 	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to provision (as defined in the workspace).")
 	cmd.Flags().BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
-	cmd.Flags().BoolVar(&devworkflow.AlsoOutputBuildToStderr, "alsooutputtostderr", devworkflow.AlsoOutputBuildToStderr, "Also send build output to stderr.")
 
 	return cmd
 }

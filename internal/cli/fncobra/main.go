@@ -38,7 +38,6 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
-	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/ulimit"
@@ -531,14 +530,10 @@ func consoleFromFile() (*os.File, bool) {
 }
 
 func consoleToSink(out *os.File, interactive bool) (tasks.ActionSink, colors.Style, func()) {
-	logout := logoutput.OutputTo{Writer: out, WithColors: interactive}
-
 	maxLogLevel := viper.GetInt("console_log_level")
 	if interactive && !viper.GetBool("console_no_colors") {
 		consoleSink := consolesink.NewSink(out, interactive, maxLogLevel)
 		cleanup := consoleSink.Start()
-		logout.Writer = console.ConsoleOutput(consoleSink, common.KnownStderr)
-
 		return consoleSink, colors.WithColors, cleanup
 	}
 

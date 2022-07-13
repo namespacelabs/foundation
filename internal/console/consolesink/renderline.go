@@ -11,17 +11,18 @@ import (
 	"time"
 
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
+
+const StampMilliTZ = "Jan _2 15:04:05.000 MST"
 
 func renderLine(w io.Writer, s colors.Style, li lineItem) {
 	data := li.data
 
 	if data.State.IsDone() {
 		// XXX using UTC() here to be consistent with zerolog.ConsoleWriter.
-		t := data.Completed.UTC().Format(logoutput.StampMilliTZ)
+		t := data.Completed.UTC().Format(StampMilliTZ)
 		fmt.Fprint(w, s.Header.Apply(t), " ")
 
 		if OutputActionID {

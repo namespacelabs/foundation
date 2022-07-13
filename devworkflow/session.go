@@ -5,6 +5,7 @@
 package devworkflow
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -16,10 +17,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/logoutput"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
-	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -27,10 +26,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/foundation/workspace/tasks/protocol"
 )
-
-var AlsoOutputToStderr = false
-var AlsoOutputBuildToStderr = false
-var TaskOutputBuildkitJsonLog = tasks.Output("buildkit.json", "application/json+fn.buildkit")
 
 type Session struct {
 	requestCh chan *DevWorkflowRequest
@@ -42,10 +37,6 @@ type Session struct {
 	localHostname string
 	obs           *Observers
 	sink          *tasks.StatefulSink
-
-	commandOutput *syncbuffer.ByteBuffer // XXX cap the size
-	buildOutput   *syncbuffer.ByteBuffer // XXX cap the size
-	buildkitJSON  *syncbuffer.ByteBuffer
 
 	mu        sync.Mutex // Protect below.
 	requested struct {
@@ -71,9 +62,6 @@ func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname str
 		executor:      executor.New(ctx, "devworkflow.session"),
 		localHostname: localHostname,
 		obs:           NewObservers(ctx),
-		commandOutput: syncbuffer.NewByteBuffer(),
-		buildOutput:   syncbuffer.NewByteBuffer(),
-		buildkitJSON:  syncbuffer.NewByteBuffer(),
 		sink:          sink,
 	}, nil
 }
@@ -102,9 +90,10 @@ func (s *Session) NewClient(needsHistory bool) (*Observer, error) {
 	return s.obs.New(tu)
 }
 
-func (s *Session) CommandOutput() io.ReadCloser   { return s.commandOutput.Reader() }
-func (s *Session) BuildOutput() io.ReadCloser     { return s.buildOutput.Reader() }
-func (s *Session) BuildJSONOutput() io.ReadCloser { return s.buildkitJSON.Reader() }
+// XXX these need to be re-implemented.
+func (s *Session) CommandOutput() io.ReadCloser   { return io.NopCloser(bytes.NewReader(nil)) }
+func (s *Session) BuildOutput() io.ReadCloser     { return io.NopCloser(bytes.NewReader(nil)) }
+func (s *Session) BuildJSONOutput() io.ReadCloser { return io.NopCloser(bytes.NewReader(nil)) }
 
 func (s *Session) ResolveServer(ctx context.Context, serverID string) (runtime.Selector, *schema.Server, error) {
 	s.mu.Lock()
@@ -194,19 +183,6 @@ func (s *Session) Run(ctx context.Context) error {
 	cancel := s.sink.Observe(&sinkObserver{s})
 	defer cancel()
 
-	writers := []io.Writer{s.commandOutput}
-
-	if AlsoOutputToStderr {
-		writers = append(writers, console.Stderr(ctx))
-	}
-
-	var w io.Writer
-	if len(writers) != 1 {
-		w = io.MultiWriter(writers...)
-	} else {
-		w = writers[0]
-	}
-
 	defer func() {
 		s.mu.Lock()
 		defer s.mu.Unlock()
@@ -216,11 +192,6 @@ func (s *Session) Run(ctx context.Context) error {
 	defer close(s.requestCh)
 
 	s.executor.Go(func(ctx context.Context) error {
-		ctx = logoutput.WithOutput(ctx, logoutput.OutputTo{
-			Writer:     w,
-			WithColors: true, // Assume xterm.js can handle color.
-		})
-
 		for {
 			select {
 			case <-ctx.Done():
