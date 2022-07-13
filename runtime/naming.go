@@ -6,12 +6,15 @@ package runtime
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -26,6 +29,7 @@ const (
 )
 
 var NamingNoTLS = false // Set to true in CI.
+var ReuseStoredCertificates = true
 
 var errLogin = fnerrors.UsageError("Please run `ns login` to login.",
 	"Namespace automatically manages nscloud.dev-based sub-domains and issues SSL certificates on your behalf. To use these features, you'll need to login to Namespace using your Github account.")
@@ -78,9 +82,11 @@ func allocateName(ctx context.Context, srv *schema.Server, opts fnapi.AllocateOp
 	}
 
 	previous, _ := checkStored(ctx, srv, opts.Org, cacheKey)
-	if previous != nil && isResourceValid(previous) {
-		// We ignore errors.
-		return certFromResource(previous), nil
+	if ReuseStoredCertificates {
+		if previous != nil && isResourceValid(previous) {
+			// We ignore errors.
+			return certFromResource(previous), nil
+		}
 	}
 
 	opts.NoTLS = NamingNoTLS
@@ -90,11 +96,6 @@ func allocateName(ctx context.Context, srv *schema.Server, opts fnapi.AllocateOp
 	if err != nil {
 		return nil, err
 	}
-
-	// nr, err := fnapi.AllocateName(ctx, srv, opts)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	if err := storeCert(ctx, srv, opts.Org, cacheKey, nr); err != nil {
 		fmt.Fprintf(console.Warnings(ctx), "failed to persistent certificate for cacheKey=%s: %v\n", cacheKey, err)
@@ -115,7 +116,29 @@ func certFromResource(res *fnapi.NameResource) *schema.Domain_Certificate {
 }
 
 func isResourceValid(nr *fnapi.NameResource) bool {
-	return nr.FQDN != "" && nr.Certificate.PrivateKey != nil && nr.Certificate.CertificateBundle != nil
+	if nr.FQDN != "" && nr.Certificate.PrivateKey != nil && nr.Certificate.CertificateBundle != nil {
+		valid, _, _ := certIsValid(nr.Certificate.CertificateBundle)
+		return valid
+	}
+
+	return false
+}
+
+func certIsValid(bundle []byte) (bool, time.Time, error) {
+	now := time.Now()
+
+	// The rest is ignored, as we only care about the first pem block.
+	block, _ := pem.Decode(bundle)
+	if block == nil || block.Type != "CERTIFICATE" {
+		return false, now, fnerrors.BadInputError("expected CERTIFICATE block")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false, now, fnerrors.BadInputError("invalid certificate")
+	}
+
+	return now.Add(30 * 24 * time.Hour).Before(cert.NotAfter), cert.NotAfter, nil
 }
 
 func checkStored(ctx context.Context, srv *schema.Server, org, cacheKey string) (*fnapi.NameResource, error) {
