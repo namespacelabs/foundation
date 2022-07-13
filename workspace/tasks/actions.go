@@ -272,19 +272,34 @@ type RunOpts struct {
 	Run  func(context.Context) error
 }
 
+type handledPanic struct {
+	v any
+}
+
+// Separate function to make the stack trace more readable.
+func panicHandler(ctx context.Context) {
+	r := recover()
+	if r == nil {
+		return
+	}
+
+	if _, ok := r.(handledPanic); ok {
+		// bubble up panic.
+		panic(r)
+	}
+
+	// Capture the stack on panic.
+	_ = ActionStorer.WriteRuntimeStack(ctx, debug.Stack())
+
+	// Ensure that we always have an audit trail.
+	_ = ActionStorer.Flush(ctx)
+
+	// Mark panic as handled and bubble it up.
+	panic(handledPanic{v: r})
+}
+
 func (ev *ActionEvent) RunWithOpts(ctx context.Context, opts RunOpts) error {
-	defer func() {
-		if r := recover(); r != nil {
-			// Capture the stack on panic.
-			_ = ActionStorer.WriteRuntimeStack(ctx, debug.Stack())
-
-			// Ensure that we always have an audit trail.
-			_ = ActionStorer.Flush(ctx)
-
-			// Bubble up the panic.
-			panic(r)
-		}
-	}()
+	defer panicHandler(ctx)
 
 	ra := ev.toAction(ctx, ActionWaiting)
 	ra.sink.Waiting(ra)
