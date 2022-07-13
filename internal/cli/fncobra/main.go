@@ -90,7 +90,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	tel := fnapi.NewTelemetry()
 
-	sink, style, flushLogs := consoleToSink(consoleFromFile())
+	sink, style, flushLogs := consoleToSink()
 	ctxWithSink := colors.WithStyle(tasks.WithSink(ctx, sink), style)
 
 	debugSink := console.Debug(ctx)
@@ -524,15 +524,17 @@ func ensureFnConfig() {
 	}
 }
 
-func consoleFromFile() (*os.File, bool) {
-	out := os.Stderr
+func consoleFromFile(out *os.File) (*os.File, bool) {
 	return out, termios.IsTerm(out.Fd())
 }
 
-func consoleToSink(out *os.File, interactive bool) (tasks.ActionSink, colors.Style, func()) {
+func consoleToSink() (tasks.ActionSink, colors.Style, func()) {
+	_, isStdoutTerm := consoleFromFile(os.Stdout)
+	out, isStderrTerm := consoleFromFile(os.Stderr)
+
 	maxLogLevel := viper.GetInt("console_log_level")
-	if interactive && !viper.GetBool("console_no_colors") {
-		consoleSink := consolesink.NewSink(out, interactive, maxLogLevel)
+	if isStdoutTerm && isStderrTerm && !viper.GetBool("console_no_colors") {
+		consoleSink := consolesink.NewSink(out, isStderrTerm, maxLogLevel)
 		cleanup := consoleSink.Start()
 		return consoleSink, colors.WithColors, cleanup
 	}
