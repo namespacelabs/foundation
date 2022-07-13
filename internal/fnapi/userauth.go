@@ -20,7 +20,6 @@ var ErrRelogin = errors.New("not logged in, please run `ns login`")
 
 type UserAuth struct {
 	Username string `json:"username"`
-	Org      string `json:"org"`
 	Opaque   []byte `json:"opaque"`
 }
 
