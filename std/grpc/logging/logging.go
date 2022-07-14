@@ -6,6 +6,7 @@ package logging
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -16,6 +17,8 @@ import (
 	"namespacelabs.dev/go-ids"
 )
 
+const maxOutputToTerminal = 128
+
 var Log = log.New(os.Stderr, "[grpclog] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 
 type interceptor struct{}
@@ -25,7 +28,7 @@ func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryS
 	reqid := logHeader(ctx, "request", info.FullMethod, req)
 	resp, err := handler(ctx, req)
 	if err == nil {
-		Log.Printf("%s: id=%s: took %v; response: %+v", info.FullMethod, reqid, time.Since(t), resp)
+		Log.Printf("%s: id=%s: took %v; response: %s", info.FullMethod, reqid, time.Since(t), serializeMessage(resp))
 	} else {
 		Log.Printf("%s: id=%s: took %v; error: %v", info.FullMethod, reqid, time.Since(t), err)
 	}
@@ -63,7 +66,7 @@ func logHeader(ctx context.Context, what, fullMethod string, req interface{}) st
 	}
 
 	if req != nil {
-		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s): %+v", fullMethod, reqid, peerAddr, authType, deadline, req)
+		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s): %s", fullMethod, reqid, peerAddr, authType, deadline, serializeMessage(req))
 	} else {
 		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s)", fullMethod, reqid, peerAddr, authType, deadline)
 	}
@@ -74,4 +77,17 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	var interceptor interceptor
 	deps.Interceptors.ForServer(interceptor.unary, interceptor.streaming)
 	return nil
+}
+
+func serializeMessage(msg interface{}) string {
+	if msg == nil {
+		return "<nil>"
+	}
+
+	reqBytes, _ := json.Marshal(msg)
+	reqStr := string(reqBytes)
+	if len(reqStr) > maxOutputToTerminal {
+		return fmt.Sprintf("%s [...%d chars truncated]", reqStr[:maxOutputToTerminal], len(reqStr)-maxOutputToTerminal)
+	}
+	return reqStr
 }
