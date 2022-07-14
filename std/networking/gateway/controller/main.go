@@ -32,7 +32,7 @@ var (
 	// HTTP listening address:port pair.
 	httpEnvoyListenAddress = flag.String("http_envoy_listen_address", "0.0.0.0:10000", "HTTP address that Envoy should listen on.")
 
-	debug = flag.Bool("debug", false, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update. "+
+	debug = flag.Bool("controller_debug", false, "Enable xDS gRPC server debug logging, giving us visibility into each snapshot update. "+
 		"We additionally enable development logging for the Kubernetes controller.")
 
 	// The address:port pair that the xDS server listens on.

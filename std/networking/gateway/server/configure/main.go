@@ -26,12 +26,16 @@ import (
 )
 
 var (
-	adminPort       = flag.Uint("admin_port", 19000, "Envoy admin port")
+	adminPort = flag.Uint("admin_port", 19000, "Envoy admin port")
+	debug     = flag.Bool("envoy_debug", false, "Sets the envoy log level to debug and "+
+		"additionally enables the fine-grain logger with file level log control and runtime update "+
+		"at administration interface.")
 	xdsServerPort   = flag.Uint("xds_server_port", 18000, "Port that the Envoy controller is listening on")
 	alsListenerPort = flag.Uint("als_listener_port", 18090, "gRPC Access Log Service (ALS) listener port")
-	probePort       = flag.Uint("controller_health_probe_bind_port", 18081, "Kubernetes controller health probe probe binds to.")
-	nodeCluster     = flag.String("node_cluster", "envoy_cluster", "Node cluster name")
-	nodeID          = flag.String("node_id", "envoy_node", "Node Identifier")
+	probePort       = flag.Uint("controller_health_probe_bind_port", 18081,
+		"Kubernetes controller health probe probe binds to.")
+	nodeCluster = flag.String("node_cluster", "envoy_cluster", "Node cluster name")
+	nodeID      = flag.String("node_id", "envoy_node", "Node Identifier")
 )
 
 //go:embed bootstrap-xds.yaml.tmpl
@@ -155,10 +159,18 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	})
 
 	envoyArgs := []string{"-c", filepath.Join("/config/", filename)}
+
 	// Envoy uses shared memory regions during hot restarts and this flag guarantees that
 	// shared memory regions do not conflict when there are multiple running Envoy instances
 	// on the same machine. See https://www.envoyproxy.io/docs/envoy/latest/operations/cli#cmdoption-use-dynamic-base-id.
 	envoyArgs = append(envoyArgs, "--use-dynamic-base-id")
+
+	if *debug {
+		// https://www.envoyproxy.io/docs/envoy/latest/operations/cli#cmdoption-l
+		envoyArgs = append(envoyArgs, "--log-level", "debug")
+		// https://www.envoyproxy.io/docs/envoy/latest/operations/cli#cmdoption-enable-fine-grain-logging
+		envoyArgs = append(envoyArgs, "--enable-fine-grain-logging")
+	}
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
