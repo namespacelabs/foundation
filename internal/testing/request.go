@@ -16,8 +16,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func makeRequestDataLayer(testReq *testboot.TestRequest) compute.Computable[oci.Layer] {
-	return oci.MakeLayer("test-fixture-data",
+func makeRequestDataLayer(testReq *testboot.TestRequest) oci.NamedLayer {
+	return oci.MakeLayer("test-request-data",
 		compute.Map(tasks.Action("test.make-request"),
 			compute.Inputs().Proto("req", testReq).Str("basePath", testboot.TestRequestPath),
 			compute.Output{},

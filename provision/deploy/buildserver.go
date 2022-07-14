@@ -131,8 +131,8 @@ func prepareConfigImage(ctx context.Context, server provision.Server, stack *sta
 	})
 
 	return oci.MakeImage(
-		oci.Scratch(),
-		oci.MakeLayer("config",
+		oci.ScratchM(),
+		oci.MakeLayer(fmt.Sprintf("config %s", server.PackageName()),
 			&prepareServerConfig{
 				env:             server.Env().Proto(),
 				stack:           stack.Proto(),

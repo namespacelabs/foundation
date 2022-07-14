@@ -88,8 +88,8 @@ func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBui
 	}, nil
 }
 
-func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments compute.Computable[[]*schema.IngressFragment], srv provision.Server, isFocus bool) ([]compute.Computable[oci.Image], error) {
-	var builds []compute.Computable[oci.Image]
+func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments compute.Computable[[]*schema.IngressFragment], srv provision.Server, isFocus bool) ([]oci.NamedImage, error) {
+	var builds []oci.NamedImage
 
 	for _, entry := range srv.Proto().UrlMap {
 		dep := srv.GetDep(schema.PackageName(entry.PackageName))
@@ -138,7 +138,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 	return builds, nil
 }
 
-func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environment, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (compute.Computable[oci.Image], error) {
+func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environment, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (oci.NamedImage, error) {
 	if !useDevBuild(env.Proto()) {
 		return ViteProductionBuild(ctx, loc, env, targetConf.SourceLabel(), filepath.Join(compiledPath, entry.PathPrefix), entry.PathPrefix, externalModules, extra...)
 	}
@@ -326,7 +326,7 @@ func (bws buildDevServer) BuildImage(ctx context.Context, env ops.Environment, c
 		return nil, err
 	}
 
-	images := []compute.Computable[oci.Image]{baseImage}
+	images := []oci.NamedImage{oci.M(bws.baseImage.SourceLabel, baseImage)}
 	images = append(images, builds...)
 
 	return oci.MergeImageLayers(images...), nil
@@ -367,9 +367,9 @@ func (bws buildProdWebServer) BuildImage(ctx context.Context, env ops.Environmen
 }`, httpPort, compiledPath)))
 	config := oci.MakeLayer("conf", compute.Precomputed[fs.FS](&defaultConf, digestfs.Digest))
 
-	images := []compute.Computable[oci.Image]{
+	images := []oci.NamedImage{
 		oci.ResolveImage("nginx:1.21.5-alpine", *conf.TargetPlatform()),
-		oci.MakeImage(oci.Scratch(), config),
+		oci.M("nginx-configuration", oci.MakeImage(oci.ScratchM(), config)),
 	}
 	images = append(images, builds...)
 	return oci.MergeImageLayers(images...), nil

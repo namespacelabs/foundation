@@ -21,8 +21,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func ResolveImage(ref string, platform specs.Platform) compute.Computable[Image] {
-	return ImageP(ref, &platform, false)
+func ResolveImage(ref string, platform specs.Platform) NamedImage {
+	return M(ref, ImageP(ref, &platform, false))
 }
 
 // Returns a Computable which constraints on platform if one is specified.

@@ -88,17 +88,17 @@ func prepareImage(ctx context.Context, env ops.Environment, p build.Plan) (compu
 		return nil, err
 	}
 
-	var images []compute.Computable[oci.Image]
+	var images []oci.NamedImage
 	for _, br := range r.requests {
 		image, err := p.Spec.BuildImage(ctx, env, br.Configuration)
 		if err != nil {
 			return nil, err
 		}
-		images = append(images, image)
+		images = append(images, oci.M(p.SourceLabel, image))
 	}
 
 	if len(r.platformIndex) == 1 {
-		return oci.AsResolvable(images[0]), nil
+		return oci.AsResolvable(images[0].Image), nil
 	}
 
 	var iwp []oci.ImageWithPlatform

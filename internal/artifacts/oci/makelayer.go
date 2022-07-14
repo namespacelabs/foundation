@@ -16,17 +16,13 @@ type MakeLayerOpts struct {
 	Label string
 }
 
-func MakeLayer(name string, vfs compute.Computable[fs.FS]) compute.Computable[Layer] {
-	return &makeLayer{vfs: vfs, opts: MakeLayerOpts{Label: name}}
-}
-
-func MakeLayerWithOpts(vfs compute.Computable[fs.FS], opts MakeLayerOpts) compute.Computable[Layer] {
-	return &makeLayer{vfs: vfs, opts: opts}
+func MakeLayer(name string, vfs compute.Computable[fs.FS]) NamedLayer {
+	return L(name, &makeLayer{vfs: vfs, description: name})
 }
 
 type makeLayer struct {
-	vfs  compute.Computable[fs.FS]
-	opts MakeLayerOpts
+	vfs         compute.Computable[fs.FS]
+	description string // Does not affect output.
 
 	compute.LocalScoped[Layer]
 }
@@ -36,7 +32,7 @@ func (m *makeLayer) Inputs() *compute.In {
 }
 
 func (m *makeLayer) Action() *tasks.ActionEvent {
-	return tasks.Action("oci.make-layer").Arg("label", m.opts.Label)
+	return tasks.Action("oci.make-layer").Arg("name", m.description)
 }
 
 func (m *makeLayer) Compute(ctx context.Context, deps compute.Resolved) (Layer, error) {

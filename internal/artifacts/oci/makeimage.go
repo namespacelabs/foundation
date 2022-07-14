@@ -15,32 +15,50 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func MakeImage(base compute.Computable[Image], layers ...compute.Computable[Layer]) compute.Computable[Image] {
+type NamedImage struct {
+	Description string
+	Image       compute.Computable[Image]
+}
+
+type NamedLayer struct {
+	Description string
+	Layer       compute.Computable[Layer]
+}
+
+func M(description string, image compute.Computable[Image]) NamedImage {
+	return NamedImage{description, image}
+}
+
+func L(description string, layer compute.Computable[Layer]) NamedLayer {
+	return NamedLayer{description, layer}
+}
+
+func MakeImage(base NamedImage, layers ...NamedLayer) compute.Computable[Image] {
 	return &makeImage{base: base, layers: layers}
 }
 
 type makeImage struct {
-	base   compute.Computable[Image]
-	layers []compute.Computable[Layer]
+	base   NamedImage
+	layers []NamedLayer
 
 	compute.LocalScoped[Image]
 }
 
 func (al *makeImage) Action() *tasks.ActionEvent {
-	count := 0
+	var descs []string
 	for _, layer := range al.layers {
-		if layer != nil {
-			count++
+		if layer.Layer != nil {
+			descs = append(descs, layer.Description)
 		}
 	}
-	return tasks.Action("oci.make-image").Arg("base", RefFrom(al.base)).Arg("len(layers)", count)
+	return tasks.Action("oci.make-image").Arg("base", al.base.Description).Arg("layers", descs)
 }
 
 func (al *makeImage) Inputs() *compute.In {
-	in := compute.Inputs().Computable("base", al.base)
+	in := compute.Inputs().Computable("base", al.base.Image)
 	for k, layer := range al.layers {
-		if layer != nil {
-			in = in.Computable(fmt.Sprintf("layer%d", k), layer)
+		if layer.Layer != nil {
+			in = in.Computable(fmt.Sprintf("layer%d", k), layer.Layer)
 		}
 	}
 	return in
@@ -49,11 +67,11 @@ func (al *makeImage) Inputs() *compute.In {
 func (al *makeImage) ImageRef() string { return "(new image)" }
 
 func (al *makeImage) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
-	base := compute.MustGetDepValue(deps, al.base, "base")
+	base := compute.MustGetDepValue(deps, al.base.Image, "base")
 
 	var layers []v1.Layer
 	for k, layer := range al.layers {
-		l, ok := compute.GetDep(deps, layer, fmt.Sprintf("layer%d", k))
+		l, ok := compute.GetDep(deps, layer.Layer, fmt.Sprintf("layer%d", k))
 		if ok {
 			layers = append(layers, l.Value)
 		}

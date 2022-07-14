@@ -91,7 +91,7 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 	imageID.Repository = p.Image
 	imageID.Tag = p.Version
 
-	image, err := compute.GetValue(ctx, oci.ResolveImage(imageID.ImageRef(), docker.HostPlatform()))
+	image, err := compute.GetValue(ctx, oci.ResolveImage(imageID.ImageRef(), docker.HostPlatform()).Image)
 	if err != nil {
 		return err
 	}

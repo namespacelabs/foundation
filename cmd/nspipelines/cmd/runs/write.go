@@ -122,7 +122,7 @@ func (v *resultImage) ComputeImage(ctx context.Context, load string) (compute.Co
 		return nil, err
 	}
 
-	image := oci.MakeImage(oci.Scratch(), oci.MakeLayer("results", compute.Precomputed[fs.FS](&fsys, digestfs.Digest)))
+	image := oci.MakeImage(oci.ScratchM(), oci.MakeLayer("section-run", compute.Precomputed[fs.FS](&fsys, digestfs.Digest)))
 
 	return image, nil
 }

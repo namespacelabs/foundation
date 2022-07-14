@@ -14,12 +14,14 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type ImageWithPlatform struct {
-	Image    compute.Computable[Image]
+	Image    NamedImage
 	Platform specs.Platform
 }
 
@@ -34,29 +36,29 @@ type makeImageIndex struct {
 }
 
 func (al *makeImageIndex) Inputs() *compute.In {
-	var platforms []specs.Platform
+	var platforms []string
 	in := compute.Inputs()
 	for k, d := range al.images {
-		in = in.Computable(fmt.Sprintf("image%d", k), d.Image)
-		platforms = append(platforms, d.Platform)
+		in = in.Computable(fmt.Sprintf("image%d", k), d.Image.Image)
+		platforms = append(platforms, devhost.FormatPlatform(d.Platform))
 	}
-	return in.JSON("platforms", platforms)
+	return in.Strs("platforms", platforms)
 }
 
 func (al *makeImageIndex) Action() *tasks.ActionEvent {
-	var refs []string
-	var platforms []specs.Platform
+	var u uniquestrings.List
+	var platforms []string
 	for _, d := range al.images {
-		refs = append(refs, RefFrom(d.Image))
-		platforms = append(platforms, d.Platform)
+		u.Add(d.Image.Description)
+		platforms = append(platforms, devhost.FormatPlatform(d.Platform))
 	}
-	return tasks.Action("oci.make-image-index").Arg("refs", refs).Arg("platforms", platforms)
+	return tasks.Action("oci.make-image-index").Arg("refs", u.Strings()).Arg("platforms", platforms)
 }
 
 func (al *makeImageIndex) Compute(ctx context.Context, deps compute.Resolved) (ResolvableImage, error) {
 	var adds []mutate.IndexAddendum
 	for k, d := range al.images {
-		image := compute.MustGetDepValue(deps, d.Image, fmt.Sprintf("image%d", k))
+		image := compute.MustGetDepValue(deps, d.Image.Image, fmt.Sprintf("image%d", k))
 
 		digest, err := image.Digest()
 		if err != nil {

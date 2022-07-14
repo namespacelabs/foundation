@@ -6,6 +6,7 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -28,13 +29,13 @@ import (
 )
 
 // Returns a Computable[v1.Image] with the results of the compilation.
-func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.Environment, description, baseOutput, basePath string, externalModules []build.Workspace, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
+func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.Environment, description, baseOutput, basePath string, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
 	hostPlatform := buildkit.HostPlatform()
 	conf := build.NewBuildTarget(&hostPlatform).WithSourceLabel(description)
 
 	local, base, err := viteBuildBase(ctx, conf, "/app", loc.Module, loc.Rel(), loc.Module.Workspace, false, externalModules, extraFiles...)
 	if err != nil {
-		return nil, err
+		return oci.NamedImage{}, err
 	}
 
 	if !strings.HasSuffix(basePath, "/") {
@@ -48,13 +49,14 @@ func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.En
 
 	image, err := buildkit.LLBToImage(ctx, env, conf, out, local...)
 	if err != nil {
-		return nil, err
+		return oci.NamedImage{}, err
 	}
 
-	return compute.Named(tasks.Action("web.vite.build").Arg("builder", "buildkit"), image), nil
+	return oci.M(fmt.Sprintf("vite-production-build-%s", loc.PackageName),
+		compute.Named(tasks.Action("web.vite.build").Arg("builder", "buildkit"), image)), nil
 }
 
-func viteDevBuild(ctx context.Context, env ops.Environment, targetDir string, loc workspace.Location, isFocus bool, conf build.BuildTarget, externalModules []build.Workspace, extraFiles ...*memfs.FS) (compute.Computable[oci.Image], error) {
+func viteDevBuild(ctx context.Context, env ops.Environment, targetDir string, loc workspace.Location, isFocus bool, conf build.BuildTarget, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
 	var module build.Workspace
 
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {
@@ -68,15 +70,16 @@ func viteDevBuild(ctx context.Context, env ops.Environment, targetDir string, lo
 
 	local, state, err := viteBuildBase(ctx, conf, targetDir, module, loc.Rel(), loc.Module.Workspace, isFocus, externalModules, extraFiles...)
 	if err != nil {
-		return nil, err
+		return oci.NamedImage{}, err
 	}
 
 	image, err := buildkit.LLBToImage(ctx, env, conf, state, local...)
 	if err != nil {
-		return nil, err
+		return oci.NamedImage{}, err
 	}
 
-	return compute.Named(tasks.Action("web.vite.build.dev").Arg("builder", "buildkit").Scope(loc.PackageName), image), nil
+	return oci.M(fmt.Sprintf("vite-dev-build-%s", loc.PackageName),
+		compute.Named(tasks.Action("web.vite.build.dev").Arg("builder", "buildkit").Scope(loc.PackageName), image)), nil
 }
 
 func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, module build.Workspace, rel string, workspace *schema.Workspace, rebuildOnChanges bool, externalModules []build.Workspace, extraFiles ...*memfs.FS) ([]buildkit.LocalContents, llb.State, error) {

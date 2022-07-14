@@ -126,7 +126,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		InternalEndpoint: stack.InternalEndpoints,
 	}
 
-	testBin.Plan.Spec = buildAndAttachDataLayer{testBin.Plan.Spec, makeRequestDataLayer(testReq)}
+	testBin.Plan.Spec = buildAndAttachDataLayer{testBin.Plan.SourceLabel, testBin.Plan.Spec, makeRequestDataLayer(testReq)}
 
 	// We build multi-platform binaries because we don't know if the target cluster
 	// is actually multi-platform as well (although we could probably resolve it at
@@ -253,7 +253,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 			return &fsys, nil
 		})
 
-	imageID := oci.PublishImage(tag, oci.MakeImage(oci.Scratch(), oci.MakeLayer("results", toFS)))
+	imageID := oci.PublishImage(tag, oci.MakeImage(oci.ScratchM(), oci.MakeLayer("test-results", toFS)))
 
 	return compute.Map(tasks.Action("test.make-results"),
 		compute.Inputs().
@@ -272,8 +272,9 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 }
 
 type buildAndAttachDataLayer struct {
+	baseName  string
 	spec      build.Spec
-	dataLayer compute.Computable[oci.Layer]
+	dataLayer oci.NamedLayer
 }
 
 func (b buildAndAttachDataLayer) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
@@ -281,7 +282,7 @@ func (b buildAndAttachDataLayer) BuildImage(ctx context.Context, env ops.Environ
 	if err != nil {
 		return nil, err
 	}
-	return oci.MakeImage(base, b.dataLayer), nil
+	return oci.MakeImage(oci.M(b.baseName, base), b.dataLayer), nil
 }
 
 func (b buildAndAttachDataLayer) PlatformIndependent() bool {

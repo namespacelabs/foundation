@@ -15,29 +15,33 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func MergeImageLayers(images ...compute.Computable[Image]) compute.Computable[Image] {
+func MergeImageLayers(images ...NamedImage) compute.Computable[Image] {
 	return &mergeImages{images: images}
 }
 
 type mergeImages struct {
-	images []compute.Computable[Image]
+	images []NamedImage
 	compute.LocalScoped[Image]
 }
 
 func (al *mergeImages) Action() *tasks.ActionEvent {
-	count := 0
+	var names []string
 	for _, image := range al.images {
-		if image != nil {
-			count++
+		if image.Image == nil {
+			continue
 		}
+		names = append(names, image.Description)
 	}
-	return tasks.Action("oci.merge-images").Arg("len(images)", count)
+	return tasks.Action("oci.merge-images").Arg("images", names)
 }
 
 func (al *mergeImages) Inputs() *compute.In {
 	in := compute.Inputs()
 	for k, image := range al.images {
-		in = in.Computable(fmt.Sprintf("image%d", k), image)
+		if image.Image == nil {
+			continue
+		}
+		in = in.Computable(fmt.Sprintf("image%d", k), image.Image)
 	}
 	return in
 }
@@ -47,7 +51,11 @@ func (al *mergeImages) ImageRef() string { return "(new image)" }
 func (al *mergeImages) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
 	var layers []v1.Layer
 	for k, image := range al.images {
-		image, ok := compute.GetDep(deps, image, fmt.Sprintf("image%d", k))
+		if image.Image == nil {
+			continue
+		}
+
+		image, ok := compute.GetDep(deps, image.Image, fmt.Sprintf("image%d", k))
 		if !ok {
 			continue
 		}

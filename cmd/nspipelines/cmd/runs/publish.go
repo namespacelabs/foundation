@@ -58,7 +58,7 @@ func newPublishCmd() *cobra.Command {
 
 		for _, arg := range args {
 			if _, err := os.Stat(arg); err == nil {
-				images = append(images, oci.MakeImage(oci.Scratch(), oci.LayerFromFile(os.DirFS(filepath.Dir(arg)), filepath.Base(arg))))
+				images = append(images, oci.MakeImage(oci.ScratchM(), oci.L(arg, oci.LayerFromFile(os.DirFS(filepath.Dir(arg)), filepath.Base(arg)))))
 			} else {
 				images = append(images, oci.ImageP(arg, nil, *insecure))
 			}
@@ -131,7 +131,7 @@ func newPublishCmd() *cobra.Command {
 			return err
 		}
 
-		return u.PublishAndWrite(ctx, oci.MakeImage(oci.Scratch(), oci.MakeLayer("results", compute.Precomputed[fs.FS](&runFS, digestfs.Digest))))
+		return u.PublishAndWrite(ctx, oci.MakeImage(oci.ScratchM(), oci.MakeLayer("run", compute.Precomputed[fs.FS](&runFS, digestfs.Digest))))
 
 	})
 

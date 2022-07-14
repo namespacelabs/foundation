@@ -42,7 +42,7 @@ func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.W
 		return nil, err
 	}
 
-	var base compute.Computable[oci.Image]
+	var base oci.NamedImage
 
 	if !bin.BinaryOnly {
 		var err error
@@ -51,13 +51,13 @@ func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.W
 			return nil, err
 		}
 	} else {
-		base = oci.Scratch()
+		base = oci.ScratchM()
 	}
 
-	layers := []compute.Computable[oci.Layer]{
+	layers := []oci.NamedLayer{
 		// By depending on workspace.Contents we both get continued updates on changes to the workspace,
 		// but also are guaranteed to only be invoked after generation functions run.
-		oci.MakeLayer("binary", &compilation{
+		oci.MakeLayer(fmt.Sprintf("go binary %s", bin.PackageName), &compilation{
 			sdk:       sdk,
 			workspace: workspace.VersionedFS(bin.GoModulePath, bin.isFocus),
 			binary:    bin,
@@ -68,7 +68,7 @@ func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.W
 	return compute.Named(tasks.Action("go.make-binary-image").Arg("binary", bin), oci.MakeImage(base, layers...)), nil
 }
 
-func baseImage(ctx context.Context, env ops.Environment, target build.BuildTarget) (compute.Computable[oci.Image], error) {
+func baseImage(ctx context.Context, env ops.Environment, target build.BuildTarget) (oci.NamedImage, error) {
 	// We use a different base for development because most Kubernetes installations don't
 	// yet support ephemeral containers, which would allow us to side-load into the same
 	// namespace as the running server, for debugging. So we instead add a base with some

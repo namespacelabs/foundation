@@ -17,6 +17,10 @@ func Scratch() compute.Computable[Image] {
 	return scratch{}
 }
 
+func ScratchM() NamedImage {
+	return M("scratch", Scratch())
+}
+
 type scratch struct {
 	compute.PrecomputeScoped[Image]
 }
