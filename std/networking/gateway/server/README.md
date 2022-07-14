@@ -25,6 +25,8 @@ and debugging: Release binary with debug symbols on top of an Ubuntu Bionic base
 
 `--envoy_debug` sets the envoy log level to `debug` and additionally enables the fine-grain logger with file level log control and runtime update at administration interface.
 
+![debug_envoy](https://user-images.githubusercontent.com/102962107/179016003-039a66d5-93d4-40b5-ac34-7a6c6c0f450b.gif)
+
 ## Profiling Envoy
 
 Please note that you need to update [container.securitycontext.yaml](https://github.com/namespacelabs/foundation/blob/main/std/runtime/kubernetes/defaults/container.securitycontext.yaml#L1) in privileged
