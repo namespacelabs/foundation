@@ -29,8 +29,6 @@ extension: fn.#Extension & {
 	}
 }
 
-$env: inputs.#Environment
-
 configure: fn.#Configure & {
 	// The internal/configure package gathers and provides invocation arguments into the init binary.
 	with: binary: "namespacelabs.dev/foundation/universe/aws/s3/internal/configure"
