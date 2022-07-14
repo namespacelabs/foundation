@@ -423,6 +423,7 @@ func makeStoreProto(data *EventData, at *EventAttachments) *storage.StoredTask {
 		ParentId:           data.ParentID.String(),
 		AnchorId:           data.AnchorID.String(),
 		Name:               data.Name,
+		Category:           data.Category,
 		HumanReadableLabel: data.HumanReadable,
 		CreatedTs:          data.Created.UnixNano(),
 		Scope:              data.Scope.PackageNamesAsString(),
