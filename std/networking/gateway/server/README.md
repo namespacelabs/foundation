@@ -17,11 +17,13 @@ and debugging: Release binary with debug symbols on top of an Ubuntu Bionic base
 
 ## Debugging the controller
 
-[--debug](https://github.com/namespacelabs/foundation/blob/30863ba3e03271b7e17cb4bf905795ce178a5e68/std/networking/gateway/controller/main.go#L35) enables xDS gRPC server debug logging, giving visibility
-into each Envoy snapshot update. All Kubernetes events and reconciler actions are also logged in
-debug mode.
+[--controller_debug](https://github.com/namespacelabs/foundation/blob/30863ba3e03271b7e17cb4bf905795ce178a5e68/std/networking/gateway/controller/main.go#L35) enables xDS gRPC server debug logging, giving visibility into each Envoy snapshot update. All Kubernetes events and reconciler actions are also logged in debug mode.
 
 ![debug_controller](https://user-images.githubusercontent.com/102962107/178251463-d54d994c-f5d7-45e1-a4d3-f8c28a757f32.png)
+
+## Debugging Envoy
+
+`--envoy_debug` sets the envoy log level to `debug` and additionally enables the fine-grain logger with file level log control and runtime update at administration interface.
 
 ## Profiling Envoy
 
