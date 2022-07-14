@@ -46,8 +46,6 @@ func (al *mergeImages) Inputs() *compute.In {
 	return in
 }
 
-func (al *mergeImages) ImageRef() string { return "(new image)" }
-
 func (al *mergeImages) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
 	var layers []v1.Layer
 	for k, image := range al.images {

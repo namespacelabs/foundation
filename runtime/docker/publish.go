@@ -36,11 +36,6 @@ func (pi *publishImage) Action() *tasks.ActionEvent {
 	return tasks.Action("docker.publish")
 }
 
-// Implements `HasImageRef`.
-func (pi *publishImage) ImageRef() string {
-	return oci.RefFrom(pi.tag)
-}
-
 func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (oci.ImageID, error) {
 	tag := compute.MustGetDepValue(deps, pi.tag, "tag")
 	resolvable := compute.MustGetDepValue(deps, pi.image, "image")

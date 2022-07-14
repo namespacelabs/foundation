@@ -79,7 +79,7 @@ func buildUsingBuildkit(ctx context.Context, env ops.Environment, bin GoBinary, 
 	}
 
 	return compute.Named(
-		tasks.Action("go.build.binary").WellKnown(tasks.WkModule, bin.ModuleName), image), nil
+		tasks.Action("go.build.binary").Scope(bin.PackageName).WellKnown(tasks.WkModule, bin.ModuleName), image), nil
 }
 
 func prepareGoMod(base, src llb.State, platform *specs.Platform) llb.ExecState {

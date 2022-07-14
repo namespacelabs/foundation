@@ -38,11 +38,6 @@ func (pi *publishImage) Action() *tasks.ActionEvent {
 	return tasks.Action("oci.publish-image")
 }
 
-// Implements `HasImageRef`.
-func (pi *publishImage) ImageRef() string {
-	return RefFrom(pi.tag)
-}
-
 func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (ImageID, error) {
 	tag := compute.MustGetDepValue(deps, pi.tag, "tag")
 	tasks.Attachments(ctx).AddResult("tag", tag.ImageRef())

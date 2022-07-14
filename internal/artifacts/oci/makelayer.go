@@ -12,10 +12,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type MakeLayerOpts struct {
-	Label string
-}
-
 func MakeLayer(name string, vfs compute.Computable[fs.FS]) NamedLayer {
 	return L(name, &makeLayer{vfs: vfs, description: name})
 }

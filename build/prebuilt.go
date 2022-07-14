@@ -62,5 +62,3 @@ func (p prebuiltImage) Compute(context.Context, compute.Resolved) (oci.ImageID, 
 func (p prebuiltImage) ComputeDigest(context.Context) (schema.Digest, error) {
 	return schema.DigestOf(p.imgid)
 }
-
-func (p prebuiltImage) ImageRef() string { return p.imgid.ImageRef() }

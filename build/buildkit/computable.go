@@ -270,8 +270,6 @@ func (l *reqToImage) Output() compute.Output {
 	return l.buildOutput()
 }
 
-func (l *reqToImage) ImageRef() string { return "(buildkit)" } // Implements HasImageRef
-
 func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
 	// TargetName is not added as a dependency of the `reqToImage` compute node, or
 	// our inputs are not stable.

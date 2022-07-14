@@ -7,8 +7,6 @@ package oci
 import (
 	"bytes"
 	"context"
-	"fmt"
-	"reflect"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -49,7 +47,7 @@ func toV1Plat(p *specs.Platform) *v1.Platform {
 }
 
 type fetchImage struct {
-	imageid    compute.Computable[ImageID]
+	imageid    NamedImageID
 	descriptor compute.Computable[*RawDescriptor]
 	platform   *specs.Platform
 	insecure   bool
@@ -58,7 +56,7 @@ type fetchImage struct {
 }
 
 func (r *fetchImage) Action() *tasks.ActionEvent {
-	action := tasks.Action("oci.pull-image").Arg("ref", RefFrom(r.imageid))
+	action := tasks.Action("oci.pull-image").Arg("ref", r.imageid.Description)
 	if r.platform != nil {
 		action = action.Arg("platform", devhost.FormatPlatform(*r.platform))
 	}
@@ -66,11 +64,7 @@ func (r *fetchImage) Action() *tasks.ActionEvent {
 }
 
 func (r *fetchImage) Inputs() *compute.In {
-	return compute.Inputs().JSON("platform", r.platform).Computable("descriptor", r.descriptor).Computable("imageid", r.imageid)
-}
-
-func (r *fetchImage) ImageRef() string {
-	return RefFrom(r.imageid)
+	return compute.Inputs().JSON("platform", r.platform).Computable("descriptor", r.descriptor).Computable("imageid", r.imageid.ImageID)
 }
 
 func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
@@ -94,7 +88,7 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 		})
 
 	case types.DockerManifestSchema2:
-		imageid := compute.MustGetDepValue(deps, r.imageid, "imageid")
+		imageid := compute.MustGetDepValue(deps, r.imageid.ImageID, "imageid")
 
 		var nameOpts []name.Option
 		if r.insecure {
@@ -137,42 +131,22 @@ func ParseRef(imageRef string, insecure bool) (name.Reference, error) {
 	return name.ParseReference(imageRef, nameOpts...)
 }
 
-type HasImageRef interface {
-	ImageRef() string
-}
-
-func RefFrom(c any) string {
-	if x, ok := compute.Unwrap(c); ok {
-		return RefFrom(x)
-	}
-
-	switch x := c.(type) {
-	case HasImageRef:
-		return x.ImageRef()
-	}
-	return fmt.Sprintf("<was expecting Image() got %q>", reflect.TypeOf(c).String())
-}
-
 type fetchDescriptor struct {
-	imageID  compute.Computable[ImageID]
+	imageID  NamedImageID
 	insecure bool
 	compute.LocalScoped[*RawDescriptor]
 }
 
 func (r *fetchDescriptor) Inputs() *compute.In {
-	return compute.Inputs().Computable("resolved", r.imageID).Bool("insecure", r.insecure)
+	return compute.Inputs().Computable("resolved", r.imageID.ImageID).Bool("insecure", r.insecure)
 }
 
 func (r *fetchDescriptor) Action() *tasks.ActionEvent {
-	return tasks.Action("oci.fetch-descriptor").Arg("ref", RefFrom(r.imageID))
-}
-
-func (r *fetchDescriptor) ImageRef() string {
-	return RefFrom(r.imageID)
+	return tasks.Action("oci.fetch-descriptor").Arg("ref", r.imageID.Description)
 }
 
 func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*RawDescriptor, error) {
-	digest := compute.MustGetDepValue(deps, r.imageID, "resolved")
+	digest := compute.MustGetDepValue(deps, r.imageID.ImageID, "resolved")
 	d, err := fetchRemoteDescriptor(ctx, digest.ImageRef(), r.insecure)
 	if err != nil {
 		return nil, fnerrors.InvocationError("failed to fetch descriptor: %w", err)

@@ -19,27 +19,27 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func ReadFiles(image compute.Computable[v1.Image], paths ...string) compute.Computable[fs.FS] {
+func ReadFiles(image NamedImage, paths ...string) compute.Computable[fs.FS] {
 	return &readFiles{image: image, paths: paths}
 }
 
 type readFiles struct {
-	image compute.Computable[v1.Image]
+	image NamedImage
 	paths []string
 
 	compute.LocalScoped[fs.FS]
 }
 
 func (r *readFiles) Inputs() *compute.In {
-	return compute.Inputs().Strs("paths", r.paths).Computable("image", r.image)
+	return compute.Inputs().Strs("paths", r.paths).Computable("image", r.image.Image)
 }
 
 func (r *readFiles) Action() *tasks.ActionEvent {
-	return tasks.Action("oci.read-image-contents").Arg("image", RefFrom(r.image)).Arg("paths", r.paths)
+	return tasks.Action("oci.read-image-contents").Arg("image", r.image.Description).Arg("paths", r.paths)
 }
 
 func (r *readFiles) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-	return ReadFilesFromImage(compute.MustGetDepValue(deps, r.image, "image"), r.paths...)
+	return ReadFilesFromImage(compute.MustGetDepValue(deps, r.image.Image, "image"), r.paths...)
 }
 
 type leftMap map[string]struct{}

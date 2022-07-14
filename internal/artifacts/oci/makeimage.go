@@ -15,6 +15,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+type NamedImageID struct {
+	Description string
+	ImageID     compute.Computable[ImageID]
+}
+
 type NamedImage struct {
 	Description string
 	Image       compute.Computable[Image]
@@ -23,6 +28,10 @@ type NamedImage struct {
 type NamedLayer struct {
 	Description string
 	Layer       compute.Computable[Layer]
+}
+
+func I(description string, imageID compute.Computable[ImageID]) NamedImageID {
+	return NamedImageID{description, imageID}
 }
 
 func M(description string, image compute.Computable[Image]) NamedImage {
@@ -63,8 +72,6 @@ func (al *makeImage) Inputs() *compute.In {
 	}
 	return in
 }
-
-func (al *makeImage) ImageRef() string { return "(new image)" }
 
 func (al *makeImage) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
 	base := compute.MustGetDepValue(deps, al.base.Image, "base")

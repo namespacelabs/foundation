@@ -37,5 +37,3 @@ func (scratch) ComputeDigest(context.Context) (schema.Digest, error) {
 	h, err := empty.Image.Digest()
 	return schema.Digest(h), err
 }
-
-func (scratch) ImageRef() string { return "(scratch)" }

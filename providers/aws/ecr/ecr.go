@@ -79,16 +79,14 @@ func (em ecrManager) AllocateName(repository string) compute.Computable[oci.Allo
 	}
 
 	return compute.Map(tasks.Action("ecr.allocate-tag").Category("aws"),
-		compute.Inputs().
-			Str("repository", repository).
-			Computable("repo", repo),
+		compute.Inputs().Str("repository", repository).Computable("repo", repo),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (oci.AllocatedName, error) {
 			imgid := oci.ImageID{
 				Repository: compute.MustGetDepValue(deps, repo, "repo"),
 			}
 
-			tasks.Attachments(ctx).AddResult("image_id", imgid)
+			tasks.Attachments(ctx).AddResult("repository", imgid.Repository)
 
 			return oci.AllocatedName{
 				Keychain: keychain,

@@ -12,8 +12,8 @@ import (
 )
 
 // Resolves the image tag into a digest. If one is already specified, this is a no-op.
-func ResolveDigest(ref string, insecure bool) compute.Computable[ImageID] {
-	return &resolveDigest{ref: ref, insecure: insecure}
+func ResolveDigest(ref string, insecure bool) NamedImageID {
+	return I(ref, &resolveDigest{ref: ref, insecure: insecure})
 }
 
 type resolveDigest struct {
@@ -25,10 +25,6 @@ type resolveDigest struct {
 
 func (r *resolveDigest) Inputs() *compute.In {
 	return compute.Inputs().Str("ref", r.ref).Bool("insecure", r.insecure)
-}
-
-func (r *resolveDigest) ImageRef() string {
-	return r.ref
 }
 
 func (r *resolveDigest) Action() *tasks.ActionEvent {

@@ -46,6 +46,8 @@ func (r *resolveAccount) Compute(ctx context.Context, _ compute.Resolved) (*sts.
 		return nil, fnerrors.InvocationError("expected GetCallerIdentityOutput.Account to be present")
 	}
 
+	tasks.Attachments(ctx).AddResult("account", *out.Account)
+
 	return out, nil
 }
 

@@ -75,7 +75,7 @@ func GetRegistryByName(ctx context.Context, conf *devhost.ConfigKey, name string
 }
 
 func StaticName(registry *registry.Registry, imageID oci.ImageID) compute.Computable[oci.AllocatedName] {
-	return compute.Map(tasks.Action("registry.allocate-tag"), compute.Inputs().
+	return compute.Map(tasks.Action("registry.allocate-tag").Arg("ref", imageID.ImageRef()), compute.Inputs().
 		JSON("imageID", imageID).
 		Indigestible("registry", registry),
 		compute.Output{NotCacheable: true},
@@ -143,5 +143,3 @@ func (r precomputedTag) Compute(ctx context.Context, _ compute.Resolved) (oci.Al
 func (r precomputedTag) ComputeDigest(ctx context.Context) (schema.Digest, error) {
 	return r.tag.ComputeDigest(ctx)
 }
-
-func (r precomputedTag) ImageRef() string { return r.tag.ImageRef() }
