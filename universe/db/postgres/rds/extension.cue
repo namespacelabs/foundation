@@ -14,7 +14,7 @@ $providerProto: inputs.#Proto & {
 extension: fn.#Extension & {
 	instantiate: {
 		clientFactory:  client.#Exports.ClientFactory
-		// TODO: Move creds instantiation into provides
+		// TODO: Move creds instantiation into provides when incluster server supports multiple creds
 		"creds": creds.#Exports.Creds
 		wire:    base.#Exports.WireDatabase
 	}
