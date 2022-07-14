@@ -18,21 +18,21 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	fniam "namespacelabs.dev/foundation/providers/aws/iam"
+	fnrds "namespacelabs.dev/foundation/providers/aws/rds"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
-	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 )
 
 const (
 	self    = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/prepare"
-	rdsInit = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init"
 	rdsNode = "namespacelabs.dev/foundation/universe/db/postgres/rds"
 
-	inclusterInit   = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
+	initContainer = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init"
+
 	inclusterTool   = "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool"
 	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/server"
 )
@@ -60,7 +60,7 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 					{Binary: inclusterTool},
 				},
 				Init: []*schema.SidecarContainer{
-					{Binary: inclusterInit},
+					{Binary: initContainer},
 				},
 				DeclaredStack: []string{inclusterServer},
 			},
@@ -73,7 +73,7 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 				{Binary: self}, // Call me back.
 			},
 			Init: []*schema.SidecarContainer{
-				{Binary: rdsInit},
+				{Binary: initContainer},
 			},
 		},
 	}, nil
@@ -147,31 +147,18 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Access IAM Policy", associate))
 
-	col, err := secrets.Collect(req.Focus.Server)
-	if err != nil {
-		return err
+	ensureDb := &fnrds.OpEnsureDBCluster{
+		DbClusterIdentifier: "todo-fix-identifier",
+		Engine:              "postgres",
 	}
 
-	var commonArgs, initArgs []string
+	out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Setup", ensureDb))
 
-	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/aws/client") {
-		if secret.Name == "aws_credentials_file" {
-			initArgs = append(initArgs, fmt.Sprintf("--aws_credentials_file=%s", secret.FromPath))
-		}
-	}
-
-	initArgs = append(initArgs, commonArgs...)
-
+	var commonArgs []string
+	// TODO postgres endpoint propagation?
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
 			Args: commonArgs,
-		},
-	})
-
-	out.Extensions = append(out.Extensions, kubedef.ExtendInitContainer{
-		With: &kubedef.InitContainerExtension{
-			PackageName: rdsInit,
-			Args:        initArgs,
 		},
 	})
 

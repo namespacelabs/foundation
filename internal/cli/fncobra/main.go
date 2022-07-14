@@ -49,6 +49,7 @@ import (
 	"namespacelabs.dev/foundation/providers/aws/ecr"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/providers/aws/iam"
+	"namespacelabs.dev/foundation/providers/aws/rds"
 	artifactregistry "namespacelabs.dev/foundation/providers/gcp/registry"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/provision/tool"
@@ -205,6 +206,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		eks.Register()
 		oci.RegisterDomainKeychain("pkg.dev", artifactregistry.DefaultKeychain, oci.Keychain_UseOnWrites)
 		iam.RegisterGraphHandlers()
+		rds.RegisterGraphHandlers()
 
 		// Runtimes.
 		kubernetes.Register()
