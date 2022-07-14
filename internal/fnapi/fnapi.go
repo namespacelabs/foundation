@@ -21,25 +21,25 @@ import (
 func callProdAPI(ctx context.Context, method string, req interface{}, handle func(dec *json.Decoder) error) error {
 	endpoint := viper.GetString("api_endpoint")
 	return tasks.Action("fnapi.call").LogLevel(2).IncludesPrivateData().Arg("endpoint", endpoint).Arg("method", method).Arg("request", req).Run(ctx, func(ctx context.Context) error {
-		return callAPI(ctx, endpoint, method, req, handle)
+		return CallAPI(ctx, endpoint, method, req, handle)
 	})
 }
 
-func callAPI(ctx context.Context, endpoint string, method string, req interface{}, handle func(dec *json.Decoder) error) error {
+func CallAPI(ctx context.Context, endpoint string, method string, req interface{}, handle func(dec *json.Decoder) error) error {
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return err
+		return fnerrors.InvocationError("failed to marshal request: %w", err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/"+method, bytes.NewReader(reqBytes))
 	if err != nil {
-		return err
+		return fnerrors.InvocationError("failed to construct request: %w", err)
 	}
 
 	c := &http.Client{}
 	response, err := c.Do(httpReq)
 	if err != nil {
-		return err
+		return fnerrors.InvocationError("failed to perform invocation: %w", err)
 	}
 
 	defer response.Body.Close()

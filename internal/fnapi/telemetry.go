@@ -202,7 +202,7 @@ func (tel *Telemetry) postRecordInvocationRequest(ctx context.Context, req *reco
 	ctx, cancel := context.WithTimeout(ctx, postTimeout)
 	defer cancel()
 
-	return callAPI(ctx, tel.backendAddress, fmt.Sprintf("%s/RecordInvocation", telemetryServiceName), req, func(dec *json.Decoder) error {
+	return CallAPI(ctx, tel.backendAddress, fmt.Sprintf("%s/RecordInvocation", telemetryServiceName), req, func(dec *json.Decoder) error {
 		return nil // ignore the response
 	})
 }
@@ -237,7 +237,7 @@ func (tel *Telemetry) postRecordErrorRequest(ctx context.Context, req recordErro
 	ctx, cancel := context.WithTimeout(ctx, postTimeout)
 	defer cancel()
 
-	return callAPI(ctx, tel.backendAddress, fmt.Sprintf("%s/RecordError", telemetryServiceName), req, func(dec *json.Decoder) error {
+	return CallAPI(ctx, tel.backendAddress, fmt.Sprintf("%s/RecordError", telemetryServiceName), req, func(dec *json.Decoder) error {
 		return nil // ignore the response
 	})
 }
