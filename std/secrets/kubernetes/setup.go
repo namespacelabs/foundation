@@ -10,7 +10,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -264,38 +263,6 @@ func fillData(ctx context.Context, server *schema.Server, env *schema.Environmen
 		}
 	}
 
-	// Legacy path.
-	if secrets, ok := contentSnapshots["secrets"]; ok {
-		if len(contentSnapshots) > 1 {
-			return nil, fnerrors.UserError(nil, "use of old-style secrets/ directory and secret bundles are mutually exclusive")
-		}
-
-		contents, err := loadSnapshot(ctx, secrets, snapshotKeys)
-		if err != nil {
-			return nil, err
-		}
-
-		data := map[string][]byte{}
-		for k, userManaged := range col.UserManaged {
-			if len(userManaged) == 0 {
-				continue
-			}
-
-			m, err := provideSecretsFromFS(ctx, contents, col.InstanceOwners[k], userManaged...)
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", server.PackageName, err)
-			}
-
-			names := col.Names[k]
-			for j, sec := range userManaged {
-				name := names[j]
-				data[name] = m[sec.Name]
-			}
-		}
-
-		return data, nil
-	}
-
 	var bundles []*fnsecrets.Bundle
 	var bundleNames []string
 
@@ -387,73 +354,4 @@ func sliceContains(strs []string, str string) bool {
 		}
 	}
 	return false
-}
-
-func loadSnapshot(ctx context.Context, contents, keyDir fs.FS) (fs.FS, error) {
-	archive, err := contents.Open(keys.EncryptedFile)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	} else if err == nil {
-		defer archive.Close()
-
-		if keyDir == nil {
-			return nil, fmt.Errorf("can't use encrypted secrets without keys")
-		}
-
-		contents, err = keys.DecryptAsFS(ctx, keyDir, archive)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt: %w", err)
-		}
-	}
-
-	return contents, nil
-}
-
-func provideSecretsFromFS(ctx context.Context, src fs.FS, caller string, userManaged ...*secrets.Secret) (map[string][]byte, error) {
-	sdm, err := secrets.LoadSourceDevMap(src)
-	if err != nil {
-		return nil, fmt.Errorf("%v: failed to provision secrets: %w", caller, err)
-	}
-
-	cfg := secrets.LookupConfig(sdm, caller)
-	if cfg == nil {
-		return nil, fmt.Errorf("no secret configuration for %q", caller)
-	}
-
-	result := map[string][]byte{}
-	for _, s := range userManaged {
-		spec := lookupSecret(cfg, s.Name)
-		if spec == nil {
-			return nil, fmt.Errorf("no secret configuration for %s of %q", s.Name, caller)
-		}
-
-		if spec.FromPath != "" {
-			var contents []byte
-			var err error
-
-			if filepath.IsAbs(spec.FromPath) {
-				return nil, fmt.Errorf("%s: %s: absolute paths are not supported in devmaps", caller, s.Name)
-			}
-
-			contents, err = fs.ReadFile(src, spec.FromPath)
-			if err != nil {
-				return nil, fmt.Errorf("failed while reading secret %s: %w", s.Name, err)
-			}
-			result[s.Name] = []byte(strings.TrimSpace(string(contents)))
-		} else {
-			result[s.Name] = []byte(spec.Value)
-		}
-	}
-
-	return result, nil
-}
-
-func lookupSecret(c *secrets.SecretDevMap_Configure, name string) *secrets.SecretDevMap_SecretSpec {
-	for _, s := range c.Secret {
-		if s.Name == name {
-			return s
-		}
-	}
-
-	return nil
 }

@@ -30,11 +30,6 @@ configure: fn.#Configure & {
 		with: {
 			binary: $tool
 			snapshot: {
-				secrets: {
-					// XXX we need a validation step that is more understandable to users.
-					fromWorkspace: path.Join([$workspace.serverPath, "secrets"])
-					optional:      true
-				}
 				serverSecrets: {
 					// XXX we need a validation step that is more understandable to users.
 					fromWorkspace: path.Join([$workspace.serverPath, "server.secrets"])
