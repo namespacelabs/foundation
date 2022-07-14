@@ -1,4 +1,4 @@
 binary: {
-	name: "setup-rds-postgres"
+	name: "rds-prepare-hook"
 	from: go_package: "."
 }

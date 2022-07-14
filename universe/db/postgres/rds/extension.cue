@@ -11,8 +11,6 @@ $providerProto: inputs.#Proto & {
 	source: "provider.proto"
 }
 
-// This extension uses RDS for all environments.
-// We recommend to use namespacelabs.dev/foundation/universe/db/postgres instead.
 extension: fn.#Extension & {
 	instantiate: {
 		clientFactory:  client.#Exports.ClientFactory
@@ -33,8 +31,18 @@ extension: fn.#Extension & {
 			}
 		}
 	}
-}
 
-configure: fn.#Configure & {
-	with: binary: "namespacelabs.dev/foundation/universe/db/postgres/rds/tool"
+	on: {
+		prepare: {
+			invokeBinary: {
+				binary: "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/prepare"
+			}
+			requires: [
+                "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool",
+                "namespacelabs.dev/foundation/universe/db/postgres/internal/init",
+                "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init",
+				"namespacelabs.dev/foundation/universe/db/postgres/server",
+			]
+		}
+	}
 }
