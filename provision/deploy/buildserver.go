@@ -58,6 +58,7 @@ func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (bu
 }
 
 type prepareServerConfig struct {
+	serverPackage   schema.PackageName
 	env             *schema.Environment
 	stack           *schema.Stack
 	moduleSrcs      []moduleAndFiles
@@ -67,7 +68,8 @@ type prepareServerConfig struct {
 }
 
 func (c *prepareServerConfig) Inputs() *compute.In {
-	in := compute.Inputs().Proto("env", c.env).Proto("stack", c.stack).Computable("computedConfigs", c.computedConfigs)
+	in := compute.Inputs().JSON("serverPackage", c.serverPackage).Proto("env", c.env).
+		Proto("stack", c.stack).Computable("computedConfigs", c.computedConfigs)
 
 	return in.Marshal("moduleSrcs", func(ctx context.Context, w io.Writer) error {
 		for _, m := range c.moduleSrcs {
@@ -84,7 +86,7 @@ func (c *prepareServerConfig) Inputs() *compute.In {
 }
 
 func (c *prepareServerConfig) Action() *tasks.ActionEvent {
-	return tasks.Action("deploy.prepare-server-config")
+	return tasks.Action("deploy.prepare-server-config").Arg("env", c.env.Name).Scope(c.serverPackage)
 }
 
 func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
@@ -134,6 +136,7 @@ func prepareConfigImage(ctx context.Context, server provision.Server, stack *sta
 		oci.ScratchM(),
 		oci.MakeLayer(fmt.Sprintf("config %s", server.PackageName()),
 			&prepareServerConfig{
+				serverPackage:   server.PackageName(),
 				env:             server.Env().Proto(),
 				stack:           stack.Proto(),
 				computedConfigs: computedConfigs,
