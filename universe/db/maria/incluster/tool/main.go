@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/db/maria"
 	"namespacelabs.dev/foundation/universe/db/maria/incluster"
-	"namespacelabs.dev/foundation/universe/db/maria/toolcommon"
+	"namespacelabs.dev/foundation/universe/db/maria/internal/toolcommon"
 )
 
 type tool struct{}
@@ -66,7 +66,7 @@ func internalEndpoint(s *schema.Stack) *schema.Endpoint {
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	args := []string{}
+	initArgs := []string{}
 
 	col, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
@@ -77,18 +77,11 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/maria/incluster/creds") {
 		switch secret.Name {
 		case "mariadb-password-file":
-			args = append(args, fmt.Sprintf("--mariadb_password_file=%s", secret.FromPath))
+			initArgs = append(initArgs, fmt.Sprintf("--mariadb_password_file=%s", secret.FromPath))
 		default:
 		}
 	}
 
-	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-		With: &kubedef.ContainerExtension{
-			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
-				PackageName: "namespacelabs.dev/foundation/universe/db/maria/init",
-				Arg:         args,
-			}},
-		}})
 	endpoint := internalEndpoint(r.Stack)
 
 	value, err := json.Marshal(endpoint)
@@ -110,7 +103,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return err
 	}
 
-	return toolcommon.Apply(ctx, r, dbs, "incluster", out)
+	return toolcommon.Apply(ctx, r, dbs, "incluster", initArgs, out)
 }
 
 func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {

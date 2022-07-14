@@ -12,7 +12,7 @@ $providerProto: inputs.#Proto & {
 
 extension: fn.#Extension & {
 	import: [
-		"namespacelabs.dev/foundation/universe/db/maria",
+		"namespacelabs.dev/foundation/universe/db/maria/internal/base",
 	]
 
 	instantiate: {

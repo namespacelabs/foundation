@@ -115,7 +115,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace stri
 	return args, nil
 }
 
-func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.PackageName][]*maria.Database, name string, out *configure.ApplyOutput) error {
+func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.PackageName][]*maria.Database, name string, initArgs []string, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
@@ -127,11 +127,13 @@ func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.Package
 		return err
 	}
 
+	initArgs = append(initArgs, args...)
+
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
 			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
-				PackageName: "namespacelabs.dev/foundation/universe/db/maria/init",
-				Arg:         args,
+				PackageName: "namespacelabs.dev/foundation/universe/db/maria/internal/init",
+				Arg:         initArgs,
 			}},
 		}})
 
