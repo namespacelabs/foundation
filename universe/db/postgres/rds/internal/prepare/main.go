@@ -83,7 +83,7 @@ type provisionHook struct{}
 
 func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
 	eksDetails := &eks.EKSServerDetails{}
-	// This tool should only be invoked for the prod/RDS case, so we can err out if there are no EKS details.
+	// This tool is only invoked for the prod/RDS case, so we can err out if there are no EKS details.
 	if err := req.UnpackInput(eksDetails); err != nil {
 		return err
 	}
@@ -148,6 +148,7 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 	out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Access IAM Policy", associate))
 
 	ensureDb := &fnrds.OpEnsureDBCluster{
+		// TODO!
 		DbClusterIdentifier: "todo-fix-identifier",
 		Engine:              "postgres",
 	}
