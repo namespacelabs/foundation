@@ -12,7 +12,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/kr/text"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/util/progress/progressui"
 	"github.com/opencontainers/go-digest"
@@ -24,7 +23,7 @@ import (
 
 var TaskOutputBuildkitJsonLog = tasks.Output("buildkit.json", "application/json+fn.buildkit")
 
-var OutputToStdout = false
+var UsePlaintextLogging = false
 
 type jsonEvent struct {
 	SessionID string              `json:"s"`
@@ -43,13 +42,14 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 	writers := []io.Writer{outText}
 	jsonWriters := []io.Writer{outJSON}
 
-	if OutputToStdout {
-		writers = append(writers, text.NewIndentWriter(console.Stdout(ctx), []byte("[buildkit] ")))
+	channelCount := len(writers) + len(jsonWriters) + 1
+	if UsePlaintextLogging {
+		writers = append(writers, console.Output(ctx, console.MakeConsoleName(logid, sid, "")))
+	} else {
+		channelCount++
 	}
 
-	count := len(writers) + len(jsonWriters) + 1
-
-	chs := make([]chan *client.SolveStatus, count)
+	chs := make([]chan *client.SolveStatus, channelCount)
 	for k := range chs {
 		chs[k] = make(chan *client.SolveStatus)
 	}
@@ -111,6 +111,10 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 
 			return nil
 		})
+	}
+
+	if UsePlaintextLogging {
+		return // Skip the next block.
 	}
 
 	eg.Go(func(ctx context.Context) error {
