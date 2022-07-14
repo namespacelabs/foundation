@@ -5,7 +5,7 @@
 package runtime
 
 const (
-	TaskGraphCompute    = "graph.compute"
+	TaskStackCompute    = "stack.compute"
 	TaskProvisionInvoke = "provision.invoke"
 	TaskServerBuild     = "server.build"
 	TaskServerProvision = "server.provision"

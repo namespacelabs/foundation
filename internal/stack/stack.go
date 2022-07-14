@@ -102,7 +102,7 @@ func (stack *Stack) GetParsed(srv schema.PackageName) []*ParsedNode {
 }
 
 func Compute(ctx context.Context, servers []provision.Server, opts ProvisionOpts) (*Stack, error) {
-	return tasks.Return(ctx, tasks.Action(runtime.TaskGraphCompute).Scope(provision.ServerPackages(servers).PackageNames()...),
+	return tasks.Return(ctx, tasks.Action(runtime.TaskStackCompute).Scope(provision.ServerPackages(servers).PackageNames()...),
 		func(ctx context.Context) (*Stack, error) {
 			return computeStack(ctx, opts, servers...)
 		})
