@@ -88,7 +88,7 @@ func (r runtimeFwdErr) ForwardIngress(ctx context.Context, localAddrs []string, 
 func (r runtimeFwdErr) Observe(context.Context, *schema.Server, ObserveOpts, func(ObserveEvent) error) error {
 	return r.err
 }
-func (r runtimeFwdErr) RunOneShot(context.Context, schema.PackageName, ServerRunOpts, io.Writer) error {
+func (r runtimeFwdErr) RunOneShot(context.Context, string, ServerRunOpts, io.Writer, bool) error {
 	return r.err
 }
 func (r runtimeFwdErr) RunAttached(context.Context, string, ServerRunOpts, TerminalIO) error {

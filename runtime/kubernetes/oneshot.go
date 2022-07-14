@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -21,17 +20,11 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
-	"namespacelabs.dev/go-ids"
 )
 
-func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runOpts runtime.ServerRunOpts, logOutput io.Writer) error {
-	parts := strings.Split(pkg.String(), "/")
-
-	name := strings.ToLower(parts[len(parts)-1]) + "-" + ids.NewRandomBase32ID(8)
-
+func (r K8sRuntime) RunOneShot(ctx context.Context, name string, runOpts runtime.ServerRunOpts, logOutput io.Writer, follow bool) error {
 	spec, err := makePodSpec(name, runOpts)
 	if err != nil {
 		return err
@@ -41,8 +34,16 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 		return err
 	}
 
-	if err := fetchPodLogs(ctx, r.cli, logOutput, r.moduleNamespace, name, "", runtime.FetchLogsOpts{Follow: true}); err != nil {
-		return err
+	defer func() {
+		if err := r.cli.CoreV1().Pods(r.moduleNamespace).Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to delete pod %s/%s: %v\n", r.moduleNamespace, name, err)
+		}
+	}()
+
+	if follow {
+		if err := fetchPodLogs(ctx, r.cli, logOutput, r.moduleNamespace, name, "", runtime.FetchLogsOpts{Follow: true}); err != nil {
+			return err
+		}
 	}
 
 	for k := 0; ; k++ {
@@ -53,24 +54,34 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, pkg schema.PackageName, runO
 
 		for _, containerStatus := range finalState.Status.ContainerStatuses {
 			if term := containerStatus.State.Terminated; term != nil {
-				if k > 0 {
-					fmt.Fprintln(logOutput, "<Attempting to fetch the last 50 lines of test log.>")
+				var logErr error
+				if k > 0 || !follow {
+					if follow {
+						fmt.Fprintln(logOutput, "<Attempting to fetch the last 50 lines of test log.>")
+					}
 
-					ctxWithTimeout, cancel := context.WithTimeout(ctx, 3*time.Second)
+					ctxWithTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
 					defer cancel()
 
-					_ = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, r.moduleNamespace, name, "", runtime.FetchLogsOpts{TailLines: 50})
+					opts := runtime.FetchLogsOpts{}
+					if follow {
+						opts.TailLines = 50
+					}
+
+					logErr = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, r.moduleNamespace, name, "", opts)
 				}
 
 				if term.ExitCode != 0 {
 					return runtime.ErrContainerExitStatus{ExitCode: term.ExitCode}
 				}
 
-				return nil
+				return logErr
 			}
 		}
 
-		fmt.Fprintln(logOutput, "<No longer streaming pod logs, but pod is still running, waiting for completion.>")
+		if follow {
+			fmt.Fprintln(logOutput, "<No longer streaming pod logs, but pod is still running, waiting for completion.>")
+		}
 
 		if err := kubeobserver.WaitForCondition(ctx, r.cli,
 			tasks.Action("kubernetes.pod.wait").Arg("namespace", r.moduleNamespace).Arg("name", name).Arg("condition", "terminated"),

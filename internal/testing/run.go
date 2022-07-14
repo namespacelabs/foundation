@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	"github.com/morikuni/aec"
@@ -28,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/go-ids"
 )
 
 const TestRunAction = "test.run"
@@ -156,7 +158,10 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 		ex.Go(func(ctx context.Context) error {
 			defer cancelAll() // When the test is done, cancel logging.
 
-			if err := rt.RunOneShot(ctx, test.TestBinPkg, testRun, testLog); err != nil {
+			parts := strings.Split(test.TestBinPkg.String(), "/")
+			name := strings.ToLower(parts[len(parts)-1]) + "-" + ids.NewRandomBase32ID(8)
+
+			if err := rt.RunOneShot(ctx, name, testRun, testLog, true); err != nil {
 				// XXX consolidate these two.
 				var e1 runtime.ErrContainerExitStatus
 				var e2 runtime.ErrContainerFailed

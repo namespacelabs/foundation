@@ -83,7 +83,7 @@ type Runtime interface {
 	// Runs the specified container as a one-shot, streaming it's output to the
 	// specified writer. This mechanism is targeted at invoking test runners
 	// within the runtime environment.
-	RunOneShot(context.Context, schema.PackageName, ServerRunOpts, io.Writer) error
+	RunOneShot(context.Context, string /*name*/, ServerRunOpts, io.Writer, bool /*follow*/) error
 
 	// RunAttached runs the specified container, and attaches to it.
 	RunAttached(context.Context, string, ServerRunOpts, TerminalIO) error
