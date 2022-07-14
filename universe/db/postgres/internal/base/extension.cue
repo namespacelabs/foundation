@@ -7,7 +7,7 @@ import (
 
 $typesProto: inputs.#Proto & {
 	sources: [
-		"database.proto",
+		"wire.proto",
 	]
 }
 
@@ -30,6 +30,6 @@ extension: fn.#Extension & {
 
 configure: fn.#Configure & {
 	init: setup: {
-		binary: "namespacelabs.dev/foundation/universe/db/postgres/init"
+		binary: "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
 	}
 }

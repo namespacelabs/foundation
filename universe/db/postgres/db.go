@@ -7,10 +7,7 @@ package postgres
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
-	"os"
-	"time"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
@@ -18,7 +15,6 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
-	"namespacelabs.dev/foundation/std/go/core"
 )
 
 // pgx does not provide for instrumentation hooks, only logging. So we wrap access to it, retaining the API.
@@ -28,6 +24,10 @@ import (
 type DB struct {
 	pool   *pgxpool.Pool
 	tracer trace.Tracer
+}
+
+func NewDB(conn *pgxpool.Pool, tracer trace.Tracer) *DB {
+	return &DB{pool: conn, tracer: tracer}
 }
 
 func (db DB) Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error) {
@@ -83,56 +83,4 @@ func (db DB) withSpan(ctx context.Context, name, sql string, f func(context.Cont
 	}
 
 	return err
-}
-
-type WireDatabase struct {
-	ready          core.Check
-	tracerProvider trace.TracerProvider
-}
-
-func logf(message string, args ...interface{}) {
-	fmt.Fprintf(os.Stdout, "%s : %s\n", time.Now().String(), fmt.Sprintf(message, args...))
-}
-
-func (w WireDatabase) ProvideDatabase(ctx context.Context, db *Database, username string, password string) (*DB, error) {
-	// Config has to be created by ParseConfig
-	config, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
-		username,
-		password,
-		db.HostedAt.Address,
-		db.HostedAt.Port,
-		db.Name))
-	if err != nil {
-		return nil, err
-	}
-
-	// Only connect when the pool starts to be used.
-	config.LazyConnect = true
-
-	conn, err := pgxpool.ConnectConfig(ctx, config)
-	if err != nil {
-		logf("failed to connect: %v", err)
-		return nil, err
-	}
-
-	// Asynchronously wait until a database connection is ready.
-	w.ready.RegisterFunc(fmt.Sprintf("%s/%s", core.InstantiationPathFromContext(ctx), db.Name), func(ctx context.Context) error {
-		return conn.Ping(ctx)
-	})
-
-	var tracer trace.Tracer
-	if w.tracerProvider != nil {
-		tracer = w.tracerProvider.Tracer(Package__sfr1nt.PackageName)
-	}
-
-	return &DB{conn, tracer}, nil
-}
-
-func ProvideWireDatabase(_ context.Context, _ *WireDatabaseArgs, deps ExtensionDeps) (WireDatabase, error) {
-	t, err := deps.OpenTelemetry.GetTracerProvider()
-	if err != nil {
-		return WireDatabase{}, err
-	}
-
-	return WireDatabase{deps.ReadinessCheck, t}, nil
 }

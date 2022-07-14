@@ -2,7 +2,7 @@ import (
 	"encoding/json"
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/universe/db/postgres"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/base"
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 )
 
@@ -14,7 +14,7 @@ extension: fn.#Extension & {
 	instantiate: {
 		// TODO: Move creds instantiation into provides when the server supports multiple users
 		"creds": creds.#Exports.Creds
-		wire:    postgres.#Exports.WireDatabase
+		wire:    base.#Exports.WireDatabase
 	}
 
 	provides: {

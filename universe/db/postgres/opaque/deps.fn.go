@@ -7,12 +7,13 @@ import (
 	"context"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/universe/db/postgres"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/base"
 	"namespacelabs.dev/foundation/universe/db/postgres/opaque/creds"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
-	Wire postgres.WireDatabase
+	Wire base.WireDatabase
 }
 
 // Scoped dependencies that are instantiated for each call to ProvideDatabase.
@@ -43,8 +44,8 @@ var (
 func makeDeps__pj9age(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
-	if err := di.Instantiate(ctx, postgres.Provider__sfr1nt, func(ctx context.Context, v interface{}) (err error) {
-		if deps.Wire, err = postgres.ProvideWireDatabase(ctx, nil, v.(postgres.ExtensionDeps)); err != nil {
+	if err := di.Instantiate(ctx, base.Provider__26debk, func(ctx context.Context, v interface{}) (err error) {
+		if deps.Wire, err = base.ProvideWireDatabase(ctx, nil, v.(base.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil

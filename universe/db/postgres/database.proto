@@ -22,8 +22,6 @@ message Database {
     Endpoint                      hosted_at   = 3;
 }
 
-message WireDatabaseArgs {}
-
 // This type represents a fully formed database. This is an internal type, used
 // for internal configuration.
 message InstantiatedDatabase {

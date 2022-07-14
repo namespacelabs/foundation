@@ -1,7 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/universe/db/postgres"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/base"
 	"namespacelabs.dev/foundation/universe/db/postgres/opaque/creds"
 )
 
@@ -14,7 +14,7 @@ $providerProto: inputs.#Proto & {
 
 extension: fn.#Extension & {
 	instantiate: {
-		wire: postgres.#Exports.WireDatabase
+		wire: base.#Exports.WireDatabase
 	}
 
 	provides: {

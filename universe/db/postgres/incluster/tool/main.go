@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
-	"namespacelabs.dev/foundation/universe/db/postgres/toolcommon"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/toolcommon"
 )
 
 type tool struct{}
@@ -69,7 +69,7 @@ func internalEndpoint(s *schema.Stack) *schema.Endpoint {
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	args := []string{}
+	initArgs := []string{}
 
 	col, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
@@ -85,16 +85,8 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	}
 
 	if credsSecret != nil {
-		args = append(args, fmt.Sprintf("--postgres_password_file=%s", credsSecret.FromPath))
+		initArgs = append(initArgs, fmt.Sprintf("--postgres_password_file=%s", credsSecret.FromPath))
 	}
-
-	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-		With: &kubedef.ContainerExtension{
-			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
-				PackageName: "namespacelabs.dev/foundation/universe/db/postgres/init",
-				Arg:         args,
-			}},
-		}})
 
 	endpoint := internalEndpoint(r.Stack)
 
@@ -146,7 +138,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		Impl:  serializedComputed,
 	})
 
-	return toolcommon.Apply(ctx, r, dbs, "incluster", out)
+	return toolcommon.Apply(ctx, r, dbs, "incluster", initArgs, out)
 }
 
 func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {

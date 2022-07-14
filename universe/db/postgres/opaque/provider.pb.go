@@ -28,7 +28,6 @@ const (
 
 type Endpoint = postgres.Endpoint
 type Database = postgres.Database
-type WireDatabaseArgs = postgres.WireDatabaseArgs
 type InstantiatedDatabase = postgres.InstantiatedDatabase
 type InstantiatedDatabases = postgres.InstantiatedDatabases
 type InstantiatedDatabase_Credentials = postgres.InstantiatedDatabase_Credentials

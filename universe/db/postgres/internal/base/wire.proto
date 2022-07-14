@@ -1,0 +1,11 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.universe.db.postgres.internal.base;
+
+option go_package = "namespacelabs.dev/foundation/universe/db/postgres/internal/base";
+
+message WireDatabaseArgs {}
