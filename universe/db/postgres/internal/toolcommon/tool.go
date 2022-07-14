@@ -33,7 +33,11 @@ func makeKey(s string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func mountConfigs(dbMap map[schema.PackageName][]*postgres.Database, namespace string, name string, focus string, out *configure.ApplyOutput) ([]string, error) {
+func configMapName(focus *schema.Server, name string) string {
+	return fmt.Sprintf("%s.%s.%s", focus.Id, name, id)
+}
+
+func mountConfigs(dbMap map[schema.PackageName][]*postgres.Database, namespace string, name string, focus *schema.Server, out *configure.ApplyOutput) ([]string, error) {
 	args := []string{}
 
 	data := map[string]string{}
@@ -78,7 +82,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*postgres.Database, namespace s
 		}
 	}
 
-	configMapName := fmt.Sprintf("%s.%s.%s", focus, name, id)
+	configMapName := configMapName(focus, name)
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Postgres Init ConfigMap",
@@ -122,7 +126,7 @@ func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.Package
 
 	namespace := kubetool.FromRequest(r).Namespace
 
-	args, err := mountConfigs(dbs, namespace, name, r.Focus.Server.Id, out)
+	args, err := mountConfigs(dbs, namespace, name, r.Focus.Server, out)
 	if err != nil {
 		return err
 	}
@@ -151,7 +155,7 @@ func Delete(r configure.StackRequest, name string, out *configure.DeleteOutput) 
 		Description: "Postgres Delete ConfigMap",
 		Resource:    "configmaps",
 		Namespace:   namespace,
-		Name:        fmt.Sprintf("%s.%s", name, id),
+		Name:        configMapName(r.Focus.Server, name),
 	})
 
 	return nil
