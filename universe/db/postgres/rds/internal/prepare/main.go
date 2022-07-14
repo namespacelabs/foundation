@@ -31,7 +31,7 @@ const (
 	self    = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/prepare"
 	rdsNode = "namespacelabs.dev/foundation/universe/db/postgres/rds"
 
-	initContainer = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init"
+	initContainer = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
 
 	inclusterTool   = "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool"
 	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/server"
