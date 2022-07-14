@@ -7,6 +7,7 @@ package tasks
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	statuscodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -437,6 +439,10 @@ func makeStoreProto(data *EventData, at *EventAttachments) *storage.StoredTask {
 			p.ErrorCode = int32(st.Code())
 			p.ErrorMessage = st.Message()
 			p.ErrorDetails = st.Proto().Details
+
+			if errors.Is(data.Err, context.Canceled) {
+				p.ErrorCode = int32(statuscodes.Canceled)
+			}
 		}
 	}
 
@@ -451,10 +457,14 @@ func makeStoreProto(data *EventData, at *EventAttachments) *storage.StoredTask {
 		at.mu.Lock()
 		if at.ResultData.Items != nil {
 			for _, x := range at.Items {
-				p.Result = append(p.Result, &storage.StoredTask_Value{
-					Key:       x.Name,
-					JsonValue: serialize(x.Msg, data.HasPrivateData),
-				})
+				if x.Name == "cached" && x.Msg == true {
+					p.Cached = true
+				} else {
+					p.Result = append(p.Result, &storage.StoredTask_Value{
+						Key:       x.Name,
+						JsonValue: serialize(x.Msg, data.HasPrivateData),
+					})
+				}
 			}
 		}
 
