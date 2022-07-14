@@ -44,9 +44,10 @@ type Bundle struct {
 }
 
 type valueDatabase struct {
-	filename string
-	m        *ValueDatabase
-	files    *memfs.FS
+	filename     string
+	m            *ValueDatabase
+	files        *memfs.FS
+	wasEncrypted bool
 }
 
 func (b *Bundle) Readers() []*Manifest_Reader {
@@ -130,6 +131,18 @@ func (b *Bundle) Lookup(ctx context.Context, key *ValueKey) ([]byte, error) {
 	}
 
 	return nil, nil
+}
+
+func (b *Bundle) WasEncrypted(key *ValueKey) (bool, bool) {
+	for _, sec := range b.values {
+		for _, v := range sec.m.Value {
+			if keyMatches(v.Key, key) {
+				return sec.wasEncrypted, true
+			}
+		}
+	}
+
+	return false, false
 }
 
 type LookupResult struct {
@@ -337,6 +350,9 @@ func (b *Bundle) DescribeTo(out io.Writer) {
 		for _, def := range b.Definitions() {
 			fmt.Fprintf(out, "  ")
 			DescribeKey(out, def.Key)
+			if wasEncrypted, found := b.WasEncrypted(def.Key); found && !wasEncrypted {
+				fmt.Fprintf(out, " (unencrypted)")
+			}
 			fmt.Fprintln(out)
 		}
 	}
@@ -427,9 +443,10 @@ func LoadBundle(ctx context.Context, keyDir fs.FS, raw []byte) (*Bundle, error) 
 		}
 
 		encbundle := valueDatabase{
-			filename: enc.Filename,
-			m:        encm,
-			files:    &memfs.FS{},
+			filename:     enc.Filename,
+			m:            encm,
+			files:        &memfs.FS{},
+			wasEncrypted: !enc.RawText,
 		}
 
 		for _, value := range encm.Value {
