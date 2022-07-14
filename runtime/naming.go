@@ -52,7 +52,10 @@ func ComputeNaming(env *schema.Environment, source *schema.Naming) (*schema.Comp
 		return nil, err
 	}
 
-	org := userAuth.Username
+	org := userAuth.Org
+	if org == "" {
+		org = userAuth.Username
+	}
 
 	if env.Purpose == schema.Environment_PRODUCTION {
 		if orgOverride := source.GetWithOrg(); orgOverride != "" {
