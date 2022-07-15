@@ -121,7 +121,7 @@ func newNewCmd() *cobra.Command {
 			// req.Attachment = append(req.Attachment, any)
 			req.ManualAttachment = append(req.ManualAttachment, &NewRunRequest_Attachment{
 				TypeUrl:     any.TypeUrl,
-				Base64Value: base64.RawURLEncoding.EncodeToString(any.Value),
+				Base64Value: base64.RawStdEncoding.EncodeToString(any.Value),
 			})
 		}
 
