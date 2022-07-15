@@ -7,16 +7,18 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"reflect"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	awsrds "github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"golang.org/x/sync/errgroup"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds/internal"
 )
@@ -70,17 +72,14 @@ func prepareDatabase(ctx context.Context, rdscli *awsrds.Client, db *postgres.Da
 		Iops:                   &iops,
 	}
 
-	out, err := rdscli.CreateDBCluster(ctx, input)
-	if err != nil {
-		return fmt.Errorf("failed to create database cluster: %v", err)
+	if _, err := rdscli.CreateDBCluster(ctx, input); err != nil {
+		var e *types.DBClusterAlreadyExistsFault
+		if errors.As(err, &e) {
+			// TODO update?
+		} else {
+			return fmt.Errorf("failed to create database cluster: %v (type: %v)", err, reflect.TypeOf(err))
+		}
 	}
-
-	// Debug
-	serialized, err := json.MarshalIndent(out, "", " ")
-	if err != nil {
-		return fmt.Errorf("failed to mashal response: %v", err)
-	}
-	fmt.Fprintf(console.Stdout(ctx), "rdscli.CreateDBCluster:\n%s\n", string(serialized))
 
 	return nil
 }
