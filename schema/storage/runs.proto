@@ -66,6 +66,17 @@ message Run {
     repeated SectionRun section_run = 1;
 }
 
+// This is an attachment to a RunStorage Run.
+// Next ID: 6
+message NamespaceBinaryVersion {
+    string                    version        = 1;
+    string                    git_commit     = 2;
+    string                    build_time_str = 3;
+    google.protobuf.Timestamp build_time     = 4;
+    bool                      modified       = 5;
+}
+
+// This is an attachment to a RunStorage Run.
 // Next ID: 5
 message RunMetadata {
     string          repository  = 1;  // E.g. github.com/namespacelabs/foundation
@@ -74,6 +85,20 @@ message RunMetadata {
     repeated string module_name = 4;  // E.g. namespacelabs.dev/foundation
 }
 
+// This is an attachment to a RunStorage Run.
+message InvocationDescription {
+    Kind   kind         = 1;
+    string command_line = 2;
+
+    enum Kind {
+        KIND_UNKNOWN = 0;
+        BUILD        = 1;
+        TEST         = 2;
+        DEPLOY       = 3;
+    }
+}
+
+// This is an attachment to a RunStorage Run.
 message GithubEvent {
     string serialized_json = 1;
 }

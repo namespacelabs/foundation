@@ -8,7 +8,9 @@ import (
 	"runtime/debug"
 	"time"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/schema/storage"
 )
 
 const DevelopmentBuildVersion = "dev"
@@ -16,15 +18,7 @@ const DevelopmentBuildVersion = "dev"
 // Set by goreleaser to the tag being released.
 var Tag = DevelopmentBuildVersion
 
-type BinaryVersion struct {
-	Version      string
-	GitCommit    string
-	BuildTimeStr string
-	BuildTime    *time.Time
-	Modified     bool
-}
-
-func Version() (*BinaryVersion, error) {
+func Current() (*storage.NamespaceBinaryVersion, error) {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		return nil, fnerrors.InternalError("buildinfo is missing")
@@ -33,7 +27,7 @@ func Version() (*BinaryVersion, error) {
 	return VersionFrom(info)
 }
 
-func VersionFrom(info *debug.BuildInfo) (*BinaryVersion, error) {
+func VersionFrom(info *debug.BuildInfo) (*storage.NamespaceBinaryVersion, error) {
 	var modified bool
 	var revision, buildtime string
 
@@ -52,7 +46,7 @@ func VersionFrom(info *debug.BuildInfo) (*BinaryVersion, error) {
 		return nil, fnerrors.InternalError("binary does not include version information")
 	}
 
-	v := &BinaryVersion{
+	v := &storage.NamespaceBinaryVersion{
 		Version:      Tag,
 		GitCommit:    revision,
 		BuildTimeStr: buildtime,
@@ -61,7 +55,7 @@ func VersionFrom(info *debug.BuildInfo) (*BinaryVersion, error) {
 
 	if v.BuildTimeStr != "" {
 		if parsed, err := time.Parse(time.RFC3339, v.BuildTimeStr); err == nil {
-			v.BuildTime = &parsed
+			v.BuildTime = timestamppb.New(parsed)
 		}
 	}
 

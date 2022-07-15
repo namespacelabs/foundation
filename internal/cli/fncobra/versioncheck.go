@@ -18,7 +18,7 @@ import (
 func checkRemoteStatus(debugLogger io.Writer, channel chan remoteStatus) {
 	defer close(channel)
 
-	ver, err := version.Version()
+	ver, err := version.Current()
 	if err != nil {
 		fmt.Fprintln(debugLogger, "failed to obtain version information", err)
 		return

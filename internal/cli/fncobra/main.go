@@ -408,7 +408,7 @@ func handleExitError(style colors.Style, err error) int {
 	} else if versionError, ok := err.(*fnerrors.VersionError); ok {
 		fnerrors.Format(os.Stderr, versionError, fnerrors.WithStyle(style))
 
-		if version, err := version.Version(); err == nil {
+		if version, err := version.Current(); err == nil {
 			ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 

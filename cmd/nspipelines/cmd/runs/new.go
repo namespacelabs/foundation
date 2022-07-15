@@ -12,11 +12,15 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/runs/github"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/schema/storage"
 )
 
 const storageEndpoint = "https://grpc-gateway-eg999pfts0vbcol25ao0.prod.namespacelabs.nscloud.dev"
@@ -30,14 +34,13 @@ func newNewCmd() *cobra.Command {
 
 	flags := cmd.Flags()
 
-	storeRunID := flags.String("output_run_id", "", "Where to output the run id.")
-	parentRunID := flags.String("parent_run_id", "", "The parent run id.")
+	storeRunID := flags.String("output_run_id_path", "", "Where to output the run id.")
+	parentRunIDPath := flags.String("parent_run_id_path", "", "The parent run id.")
 	workspaceDir := flags.String("workspace", ".", "The workspace directory to parse.")
 	githubEvent := flags.String("github_event_path", "", "Path to a file with github's event json.")
+	kind := flags.String("invocation_kind", "", "If set, adds an InvocationDescription to the run.")
 
-	_ = cmd.MarkFlagRequired("output_run_id")
-	_ = cmd.MarkFlagRequired("workspace")
-	_ = cmd.MarkFlagRequired("github_event_path")
+	_ = cmd.MarkFlagRequired("output_run_id_path")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		userAuth, err := fnapi.LoadUser()
@@ -45,31 +48,80 @@ func newNewCmd() *cobra.Command {
 			return err
 		}
 
-		workspaceData, err := cuefrontend.ModuleLoader.ModuleAt(ctx, *workspaceDir)
+		var attachments []proto.Message
+
+		v, err := version.Current()
 		if err != nil {
 			return err
 		}
 
-		eventData, err := ioutil.ReadFile(*githubEvent)
-		if err != nil {
-			return err
+		attachments = append(attachments, v)
+
+		if *kind != "" {
+			parsedKind, ok := storage.InvocationDescription_Kind_value[strings.ToUpper(*kind)]
+			if !ok {
+				return fnerrors.BadInputError("%s: no such kind", *kind)
+			}
+
+			attachments = append(attachments, &storage.InvocationDescription{
+				Kind: storage.InvocationDescription_Kind(parsedKind),
+				// XXX command line
+			})
 		}
 
-		var ev github.PushEvent
-		if err := json.Unmarshal(eventData, &ev); err != nil {
-			return fnerrors.BadInputError("failed to unmarshal push event: %w", err)
+		if *githubEvent != "" {
+			if *workspaceDir == "" {
+				return fnerrors.BadInputError("--workspace is required")
+			}
+
+			workspaceData, err := cuefrontend.ModuleLoader.ModuleAt(ctx, *workspaceDir)
+			if err != nil {
+				return err
+			}
+
+			eventData, err := ioutil.ReadFile(*githubEvent)
+			if err != nil {
+				return err
+			}
+
+			var ev github.PushEvent
+			if err := json.Unmarshal(eventData, &ev); err != nil {
+				return fnerrors.BadInputError("failed to unmarshal push event: %w", err)
+			}
+
+			attachments = append(attachments, &storage.GithubEvent{SerializedJson: string(eventData)})
+			attachments = append(attachments, &storage.RunMetadata{
+				Branch:     parseBranch(ev.Ref),
+				Repository: "github.com/" + ev.Repository.FullName,
+				CommitId:   ev.HeadCommit.ID,
+				ModuleName: []string{workspaceData.Parsed().ModuleName},
+			})
 		}
 
 		req := &NewRunRequest{
 			OpaqueUserAuth: userAuth.Opaque,
-			ParentRunId:    *parentRunID,
-			Metadata: &RunMetadata{
-				Branch:              parseBranch(ev.Ref),
-				Repository:          "github.com/" + ev.Repository.FullName,
-				CommitId:            ev.HeadCommit.ID,
-				ModuleName:          []string{workspaceData.Parsed().ModuleName},
-				GithubEventMetadata: string(eventData),
-			},
+		}
+
+		if *parentRunIDPath != "" {
+			contents, err := ioutil.ReadFile(*parentRunIDPath)
+			if err != nil {
+				return fnerrors.InternalError("failed to load parent run id: %w", err)
+			}
+
+			var r NewRunResponse
+			if err := json.Unmarshal(contents, &r); err != nil {
+				return fnerrors.InternalError("failed to unmarshal parent run id: %w", err)
+			}
+
+			req.ParentRunId = r.RunId
+		}
+
+		for _, attachment := range attachments {
+			any, err := anypb.New(attachment)
+			if err != nil {
+				return fnerrors.InternalError("failed to serialize attachment: %w", err)
+			}
+			req.Attachment = append(req.Attachment, any)
 		}
 
 		var resp NewRunResponse
@@ -109,15 +161,7 @@ func parseBranch(ref string) string {
 type NewRunRequest struct {
 	OpaqueUserAuth []byte       `json:"opaque_user_auth,omitempty"`
 	ParentRunId    string       `json:"parent_run_id,omitempty"`
-	Metadata       *RunMetadata `json:"metadata,omitempty"`
-}
-
-type RunMetadata struct {
-	Repository          string   `json:"repository,omitempty"`
-	Branch              string   `json:"branch,omitempty"`
-	CommitId            string   `json:"commit_id,omitempty"`
-	ModuleName          []string `json:"module_name,omitempty"`
-	GithubEventMetadata string   `json:"github_event_metadata,omitempty"`
+	Attachment     []*anypb.Any `json:"attachment,omitempty"`
 }
 
 type NewRunResponse struct {

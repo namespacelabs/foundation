@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/encoding/prototext"
-	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	stacktraceserializer "namespacelabs.dev/foundation/internal/fnerrors/stacktrace/serializer"
@@ -59,7 +58,7 @@ type InvocationInfo struct {
 	Os      string
 	Arch    string
 	NumCpu  int
-	Version version.BinaryVersion
+	Version *storage.NamespaceBinaryVersion
 }
 
 func NewBundle(fsys fnfs.ReadWriteFS, timestamp time.Time) *Bundle {
