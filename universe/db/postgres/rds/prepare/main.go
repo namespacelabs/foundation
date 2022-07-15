@@ -20,6 +20,7 @@ import (
 	fniam "namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/secrets"
@@ -134,6 +135,11 @@ func applyIncluster(ctx context.Context, req configure.StackRequest, dbs map[str
 }
 
 func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*rds.Database, out *configure.ApplyOutput) error {
+	systemInfo := &kubedef.SystemInfo{}
+	if err := req.UnpackInput(systemInfo); err != nil {
+		return err
+	}
+
 	eksDetails := &eks.EKSServerDetails{}
 	if err := req.UnpackInput(eksDetails); err != nil {
 		return err
@@ -148,9 +154,19 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 		return strings.Compare(orderedDbs[i].Name, orderedDbs[j].Name) < 0
 	})
 
+	// TODO improve robustness - configurable?
+	if len(systemInfo.Regions) != 1 {
+		return fmt.Errorf("Unable to infer region.")
+	}
+	region := systemInfo.Regions[0]
+
+	clusterArns := make([]string, len(orderedDbs))
 	dbArns := make([]string, len(orderedDbs))
 	for k, db := range orderedDbs {
-		dbArns[k] = fmt.Sprintf("arn:aws:rds:::cluster:%s", internal.ClusterIdentifier(db.Name))
+		// TODO all accounts? Really?
+		id := internal.ClusterIdentifier(db.Name)
+		clusterArns[k] = fmt.Sprintf("arn:aws:rds:%s:*:cluster:%s", region, id)
+		dbArns[k] = fmt.Sprintf("arn:aws:rds:%s:*:db:%s*", region, id)
 	}
 
 	// https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_rds_region.html
@@ -160,12 +176,12 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 			{
 				Effect:   "Allow",
 				Action:   []string{"rds:*"},
-				Resource: dbArns,
+				Resource: clusterArns,
 			},
 			{
 				Effect:   "Allow",
-				Action:   []string{"rds:Describe*"},
-				Resource: []string{"*"},
+				Action:   []string{"rds:*"},
+				Resource: dbArns,
 			},
 		},
 	}
