@@ -13,7 +13,9 @@ import "google/rpc/status.proto";
 import "google/protobuf/any.proto";
 
 // Emitted by each individual run, regardless of kind and storage type.
+// Next ID: 7
 message UndifferentiatedRun {
+    string                    run_id        = 6;
     string                    parent_run_id = 1;
     google.rpc.Status         status        = 2;
     google.protobuf.Timestamp created       = 3;
@@ -62,6 +64,14 @@ message Run {
     repeated google.protobuf.Any attachment = 11;  // E.g. a GithubEvent.
 
     repeated SectionRun section_run = 1;
+}
+
+// Next ID: 5
+message RunMetadata {
+    string          repository  = 1;  // E.g. github.com/namespacelabs/foundation
+    string          branch      = 2;  // E.g. main
+    string          commit_id   = 3;  // E.g. c782373xd
+    repeated string module_name = 4;  // E.g. namespacelabs.dev/foundation
 }
 
 message GithubEvent {

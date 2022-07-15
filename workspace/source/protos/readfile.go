@@ -12,19 +12,24 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-func ReadFile[V proto.Message](path string) (V, error) {
+func ReadFileAndBytes[V proto.Message](path string) (V, []byte, error) {
 	var empty V
 
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		return empty, fnerrors.New("%s: failed to load: %w", path, err)
+		return empty, nil, fnerrors.New("%s: failed to load: %w", path, err)
 	}
 
 	s := reflect.New(reflect.TypeOf(empty).Elem()).Interface().(V)
 
 	if err := proto.Unmarshal(bytes, s); err != nil {
-		return empty, fnerrors.New("%s: unmarshal failed: %w", path, err)
+		return empty, nil, fnerrors.New("%s: unmarshal failed: %w", path, err)
 	}
 
-	return s, nil
+	return s, bytes, nil
+}
+
+func ReadFile[V proto.Message](path string) (V, error) {
+	v, _, err := ReadFileAndBytes[V](path)
+	return v, err
 }
