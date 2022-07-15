@@ -47,7 +47,7 @@ func NewTelemetry() *Telemetry {
 	return &Telemetry{
 		UseTelemetry:   true,
 		errorLogging:   false,
-		backendAddress: viper.GetString("api_endpoint"),
+		backendAddress: EndpointAddress(),
 		makeClientID:   generateClientIDAndSalt,
 	}
 }

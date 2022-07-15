@@ -9,8 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 
-	"github.com/spf13/viper"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,8 +18,16 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+func EndpointAddress() string {
+	endpoint := "https://api.namespacelabs.net"
+	if override := os.Getenv("NS_OVERRIDE_FNAPI_ENDPOINT"); override != "" {
+		endpoint = override
+	}
+	return endpoint
+}
+
 func callProdAPI(ctx context.Context, method string, req interface{}, handle func(dec *json.Decoder) error) error {
-	endpoint := viper.GetString("api_endpoint")
+	endpoint := EndpointAddress()
 	return tasks.Action("fnapi.call").LogLevel(2).IncludesPrivateData().Arg("endpoint", endpoint).Arg("method", method).Arg("request", req).Run(ctx, func(ctx context.Context) error {
 		return CallAPI(ctx, endpoint, method, req, handle)
 	})
