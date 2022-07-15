@@ -1,6 +1,6 @@
 # Deploying the Linux installation script to AWS
 
-Update the version variable in the schell script and deploy the script to the private s3 bucket
+Update the version variable in the shell script and deploy the script to the private s3 bucket
 hosting installation scripts with a public ACL.
 
 ```bash
