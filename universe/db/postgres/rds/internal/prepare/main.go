@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/aws/eks"
@@ -24,14 +23,13 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/toolcommon"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 )
 
 const (
 	self    = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/prepare"
 	rdsNode = "namespacelabs.dev/foundation/universe/db/postgres/rds"
-
-	initContainer = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
 
 	inclusterTool   = "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool"
 	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/server"
@@ -49,63 +47,77 @@ func main() {
 	}
 }
 
+func useIncluster(env *schema.Environment) bool {
+	return env.GetPurpose() == schema.Environment_DEVELOPMENT || env.GetPurpose() == schema.Environment_TESTING
+}
+
 type prepareHook struct{}
 
 func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*protocol.PrepareResponse, error) {
-	// In development or testing, use incluster Postgres.
-	if useIncluster(req.Env) {
-		return &protocol.PrepareResponse{
-			PreparedProvisionPlan: &protocol.PreparedProvisionPlan{
-				Provisioning: []*schema.Invocation{
-					{Binary: inclusterTool},
-				},
-				Init: []*schema.SidecarContainer{
-					{Binary: initContainer},
-				},
-				DeclaredStack: []string{inclusterServer},
-			},
-		}, nil
-	}
-
-	return &protocol.PrepareResponse{
+	resp := &protocol.PrepareResponse{
 		PreparedProvisionPlan: &protocol.PreparedProvisionPlan{
 			Provisioning: []*schema.Invocation{
 				{Binary: self}, // Call me back.
 			},
-			Init: []*schema.SidecarContainer{
-				{Binary: initContainer},
-			},
 		},
-	}, nil
+	}
+
+	// In development or testing, use incluster Postgres.
+	if useIncluster(req.Env) {
+		resp.PreparedProvisionPlan.DeclaredStack = append(resp.PreparedProvisionPlan.DeclaredStack, inclusterServer)
+	}
+
+	return resp, nil
 }
 
 type provisionHook struct{}
 
 func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
-	eksDetails := &eks.EKSServerDetails{}
-	// This tool is only invoked for the prod/RDS case, so we can err out if there are no EKS details.
-	if err := req.UnpackInput(eksDetails); err != nil {
-		return err
-	}
-
-	dbs := map[string]*rds.Database{}
+	dbs := map[schema.PackageName][]*rds.Database{}
 	if err := allocations.Visit(req.Focus.Server.Allocation, rdsNode, &rds.Database{},
 		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, db *rds.Database) error {
-			if existing, ok := dbs[db.GetName()]; ok {
-				if !proto.Equal(existing, db) {
-					return fnerrors.UserError(nil, "%s: incompatible database definitions for %q", alloc.InstanceOwner, db.GetName())
-				}
-			} else {
-				dbs[db.GetName()] = db
-			}
+			owner := schema.PackageName(alloc.InstanceOwner)
+			dbs[owner] = append(dbs[owner], db)
 			return nil
 		}); err != nil {
 		return err
 	}
 
+	if useIncluster(req.Env) {
+		return applyIncluster(ctx, req, dbs, out)
+	}
+
+	return applyRds(ctx, req, dbs, out)
+}
+
+func (provisionHook) Delete(ctx context.Context, req configure.StackRequest, out *configure.DeleteOutput) error {
+	if useIncluster(req.Env) {
+		// TODO avoid magic string
+		return toolcommon.Delete(req, "incluster", out)
+	}
+
+	// TODO
+	return nil
+}
+
+func applyIncluster(ctx context.Context, req configure.StackRequest, dbs map[schema.PackageName][]*rds.Database, out *configure.ApplyOutput) error {
+	// TODO
+	return nil
+}
+
+func applyRds(ctx context.Context, req configure.StackRequest, dbs map[schema.PackageName][]*rds.Database, out *configure.ApplyOutput) error {
+	eksDetails := &eks.EKSServerDetails{}
+	if err := req.UnpackInput(eksDetails); err != nil {
+		return err
+	}
+
+	// TODO handle conflicts
+
 	var orderedDbs []*rds.Database
-	for _, db := range dbs {
-		orderedDbs = append(orderedDbs, db)
+	for _, owned := range dbs {
+		for _, db := range owned {
+			orderedDbs = append(orderedDbs, db)
+		}
 	}
 
 	sort.Slice(orderedDbs, func(i, j int) bool {
@@ -163,13 +175,5 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 		},
 	})
 
-	return nil
-}
-
-func useIncluster(env *schema.Environment) bool {
-	return env.GetPurpose() == schema.Environment_DEVELOPMENT || env.GetPurpose() == schema.Environment_TESTING
-}
-
-func (provisionHook) Delete(ctx context.Context, req configure.StackRequest, out *configure.DeleteOutput) error {
 	return nil
 }
