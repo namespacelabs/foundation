@@ -6,6 +6,8 @@ package storedrun
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"sync"
 	"time"
 
@@ -20,8 +22,9 @@ import (
 )
 
 var (
-	OutputPath string
-	ParentID   string
+	OutputPath      string
+	ParentID        string
+	AllocatedIDPath string
 
 	mu          sync.Mutex
 	attachments []proto.Message
@@ -31,12 +34,18 @@ type Run struct {
 	Started time.Time
 }
 
+type StoredRunID struct {
+	RunId string `json:"run_id,omitempty"`
+}
+
 func SetupFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&OutputPath, "stored_run_output_path", "", "If set, outputs a serialized run to the specified path.")
 	flags.StringVar(&ParentID, "stored_run_parent_id", "", "If set, tags this section with the specified push.")
+	flags.StringVar(&AllocatedIDPath, "stored_run_id_path", "", "If set, uses the contents as a previously created run id.")
 
 	_ = flags.MarkHidden("stored_run_output_path")
 	_ = flags.MarkHidden("stored_run_parent_id")
+	_ = flags.MarkHidden("stored_run_id_path")
 }
 
 func New() *Run {
@@ -55,6 +64,15 @@ func (s *Run) Output(ctx context.Context, execErr error) error {
 		Status:      st.Proto(),
 		Created:     timestamppb.New(s.Started),
 		Completed:   timestamppb.Now(),
+	}
+
+	if AllocatedIDPath != "" {
+		p, err := LoadStoredID(AllocatedIDPath)
+		if err != nil {
+			return err
+		}
+
+		run.RunId = p.RunId
 	}
 
 	for _, attachment := range consumeAttachments() {
@@ -84,4 +102,22 @@ func Attach(m proto.Message) {
 	mu.Lock()
 	defer mu.Unlock()
 	attachments = append(attachments, m)
+}
+
+func LoadStoredID(path string) (StoredRunID, error) {
+	contents, err := ioutil.ReadFile(path)
+	if err != nil {
+		return StoredRunID{}, fnerrors.InternalError("failed to load run id: %w", err)
+	}
+
+	var r StoredRunID
+	if err := json.Unmarshal(contents, &r); err != nil {
+		return StoredRunID{}, fnerrors.InternalError("failed to load run id: %w", err)
+	}
+
+	if r.RunId == "" {
+		return StoredRunID{}, fnerrors.InternalError("invalid run id")
+	}
+
+	return r, nil
 }

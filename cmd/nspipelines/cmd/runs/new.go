@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
@@ -103,14 +104,9 @@ func newNewCmd() *cobra.Command {
 		}
 
 		if *parentRunIDPath != "" {
-			contents, err := ioutil.ReadFile(*parentRunIDPath)
+			r, err := storedrun.LoadStoredID(*parentRunIDPath)
 			if err != nil {
-				return fnerrors.InternalError("failed to load parent run id: %w", err)
-			}
-
-			var r NewRunResponse
-			if err := json.Unmarshal(contents, &r); err != nil {
-				return fnerrors.InternalError("failed to unmarshal parent run id: %w", err)
+				return err
 			}
 
 			req.ParentRunId = r.RunId
@@ -124,7 +120,7 @@ func newNewCmd() *cobra.Command {
 			req.Attachment = append(req.Attachment, any)
 		}
 
-		var resp NewRunResponse
+		var resp storedrun.StoredRunID
 		if err := fnapi.CallAPI(ctx, storageEndpoint, fmt.Sprintf("%s/NewRun", storageService), req, func(dec *json.Decoder) error {
 			if err := dec.Decode(&resp); err != nil {
 				return err
@@ -162,8 +158,4 @@ type NewRunRequest struct {
 	OpaqueUserAuth []byte       `json:"opaque_user_auth,omitempty"`
 	ParentRunId    string       `json:"parent_run_id,omitempty"`
 	Attachment     []*anypb.Any `json:"attachment,omitempty"`
-}
-
-type NewRunResponse struct {
-	RunId string `json:"run_id,omitempty"`
 }
