@@ -18,10 +18,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-var EndpointAddress string
+var EndpointAddress = "https://api.namespacelabs.net"
 
 func SetupFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&EndpointAddress, "fnapi_endpoint", "", "The fnapi endpoint address.")
+	flags.StringVar(&EndpointAddress, "fnapi_endpoint", EndpointAddress, "The fnapi endpoint address.")
 	_ = flags.MarkHidden("fnapi_endpoint")
 }
 
