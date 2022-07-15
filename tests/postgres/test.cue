@@ -1,7 +1,7 @@
 import "namespacelabs.dev/foundation/std/fn"
 
 test: fn.#Test & {
-	name: "test-postgres-incluster"
+	name: "test-postgres"
 
 	binary: {
 		from: go_package: "."
