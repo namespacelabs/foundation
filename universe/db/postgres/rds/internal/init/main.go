@@ -18,6 +18,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/universe/db/postgres"
+	"namespacelabs.dev/foundation/universe/db/postgres/rds/internal"
 )
 
 const connBackoff = 1 * time.Second
@@ -57,14 +58,16 @@ func readConfigs() ([]*postgres.Database, error) {
 
 // TODO dedup
 func prepareDatabase(ctx context.Context, rdscli *awsrds.Client, db *postgres.Database, user, password string) error {
+	id := internal.ClusterIdentifier(db.Name)
 	input := &awsrds.CreateDBClusterInput{
+		DBClusterIdentifier:    &id,
+		DatabaseName:           &db.Name,
+		MasterUsername:         &user,
+		MasterUserPassword:     &password,
 		Engine:                 &engine, // Also set engine version?
 		AllocatedStorage:       &storage,
 		DBClusterInstanceClass: &class,
 		Iops:                   &iops,
-		MasterUsername:         &user,
-		MasterUserPassword:     &password,
-		DatabaseName:           &db.Name,
 	}
 
 	out, err := rdscli.CreateDBCluster(ctx, input)

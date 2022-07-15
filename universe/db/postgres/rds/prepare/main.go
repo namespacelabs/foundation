@@ -28,15 +28,17 @@ import (
 	inclustertool "namespacelabs.dev/foundation/universe/db/postgres/incluster/configure"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/toolcommon"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds"
+	"namespacelabs.dev/foundation/universe/db/postgres/rds/internal"
 )
 
 const (
 	postgresType = "rds"
 
-	self     = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/prepare"
-	rdsCreds = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init"
-	rdsInit  = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init"
-	rdsNode  = "namespacelabs.dev/foundation/universe/db/postgres/rds"
+	creds = "namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds"
+
+	self    = "namespacelabs.dev/foundation/universe/db/postgres/rds/prepare"
+	rdsInit = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init"
+	rdsNode = "namespacelabs.dev/foundation/universe/db/postgres/rds"
 
 	inclusterInit   = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
 	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/server"
@@ -148,7 +150,7 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 
 	dbArns := make([]string, len(orderedDbs))
 	for k, db := range orderedDbs {
-		dbArns[k] = fmt.Sprintf("arn:aws:rds:::%s", db.Name)
+		dbArns[k] = fmt.Sprintf("arn:aws:rds:::cluster:%s", internal.ClusterIdentifier(db.Name))
 	}
 
 	// https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_rds_region.html
@@ -194,15 +196,22 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 		return err
 	}
 
+	initArgs := []string{}
 	// TODO: creds should be definable per db instance #217
 	var credsSecret *secrets.SecretDevMap_SecretSpec
-	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds") {
+	for _, secret := range col.SecretsOf(creds) {
 		if secret.Name == "postgres-password-file" {
-			credsSecret = secret
+			initArgs = append(initArgs, fmt.Sprintf("--postgres_password_file=%s", secret.FromPath))
+			break
+		}
+	}
+	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/aws/client") {
+		if secret.Name == "aws_credentials_file" {
+			initArgs = append(initArgs, fmt.Sprintf("--aws_credentials_file=%s", secret.FromPath))
+			break
 		}
 	}
 
-	initArgs := []string{}
 	if credsSecret != nil {
 		initArgs = append(initArgs, fmt.Sprintf("--postgres_password_file=%s", credsSecret.FromPath))
 	}
