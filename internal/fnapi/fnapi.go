@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/spf13/pflag"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
@@ -63,6 +64,18 @@ func CallAPI(ctx context.Context, endpoint string, method string, req interface{
 		}
 
 		return status.ErrorProto(st)
+	}
+
+	grpcMessage := response.Header[http.CanonicalHeaderKey("grpc-message")]
+	grpcStatus := response.Header[http.CanonicalHeaderKey("grpc-status")]
+
+	if len(grpcMessage) > 0 && len(grpcStatus) > 0 {
+		intVar, err := strconv.Atoi(grpcStatus[0])
+		if err == nil {
+			st.Code = int32(intVar)
+			st.Message = grpcMessage[0]
+			return status.ErrorProto(st)
+		}
 	}
 
 	switch response.StatusCode {
