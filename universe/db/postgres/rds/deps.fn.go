@@ -8,14 +8,14 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/universe/aws/client"
 	"namespacelabs.dev/foundation/universe/db/postgres"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/base"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
 	ClientFactory client.ClientFactory
-	Creds         *creds.Creds
+	Creds         *gencreds.Creds
 	Wire          base.WireDatabase
 }
 
@@ -46,8 +46,8 @@ func makeDeps__4j13h1(ctx context.Context, di core.Dependencies) (_ interface{},
 		return nil, err
 	}
 
-	if err := di.Instantiate(ctx, creds.Provider__9gpcgr, func(ctx context.Context, v interface{}) (err error) {
-		if deps.Creds, err = creds.ProvideCreds(ctx, nil, v.(creds.ExtensionDeps)); err != nil {
+	if err := di.Instantiate(ctx, gencreds.Provider__ih9ch5, func(ctx context.Context, v interface{}) (err error) {
+		if deps.Creds, err = gencreds.ProvideCreds(ctx, nil, v.(gencreds.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil

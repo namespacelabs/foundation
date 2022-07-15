@@ -18,21 +18,25 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	fniam "namespacelabs.dev/foundation/providers/aws/iam"
-	fnrds "namespacelabs.dev/foundation/providers/aws/rds"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
+	"namespacelabs.dev/foundation/std/secrets"
+	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	inclustertool "namespacelabs.dev/foundation/universe/db/postgres/incluster/configure"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/toolcommon"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 )
 
 const (
-	self    = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/prepare"
-	rdsInit = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init"
-	rdsNode = "namespacelabs.dev/foundation/universe/db/postgres/rds"
+	postgresType = "rds"
+
+	self     = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/prepare"
+	rdsCreds = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init"
+	rdsInit  = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init"
+	rdsNode  = "namespacelabs.dev/foundation/universe/db/postgres/rds"
 
 	inclusterInit   = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
 	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/server"
@@ -177,22 +181,25 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 
 	out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Access IAM Policy", associate))
 
-	for _, db := range orderedDbs {
-		ensureDb := &fnrds.OpEnsureDBCluster{
-			DbClusterIdentifier: fmt.Sprintf("%s-cluster", db.Name),
-			Name:                db.Name,
-		}
+	baseDbs := map[string]*postgres.Database{}
 
-		out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Setup", ensureDb))
+	initArgs := []string{}
+
+	col, err := secrets.Collect(req.Focus.Server)
+	if err != nil {
+		return err
 	}
 
-	var commonArgs []string
-	// TODO postgres endpoint propagation?
-	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-		With: &kubedef.ContainerExtension{
-			Args: commonArgs,
-		},
-	})
+	// TODO: creds should be definable per db instance #217
+	var credsSecret *secrets.SecretDevMap_SecretSpec
+	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds") {
+		if secret.Name == "postgres-password-file" {
+			credsSecret = secret
+		}
+	}
 
-	return nil
+	if credsSecret != nil {
+		initArgs = append(initArgs, fmt.Sprintf("--postgres_password_file=%s", credsSecret.FromPath))
+	}
+	return toolcommon.ApplyForInit(ctx, req, baseDbs, postgresType, rdsInit, initArgs, out)
 }

@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.universe.db.postgres.incluster;
+package foundation.universe.db.postgres.gencreds;
 
-option go_package = "namespacelabs.dev/foundation/universe/db/postgres/incluster/creds";
+option go_package = "namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds";
 
 message CredsRequest {
 }

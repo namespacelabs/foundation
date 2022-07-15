@@ -119,6 +119,10 @@ func mountConfigs(dbs map[string]*postgres.Database, namespace string, name stri
 }
 
 func Apply(ctx context.Context, r configure.StackRequest, dbs map[string]*postgres.Database, name string, initArgs []string, out *configure.ApplyOutput) error {
+	return ApplyForInit(ctx, r, dbs, name, "namespacelabs.dev/foundation/universe/db/postgres/internal/init", initArgs, out)
+}
+
+func ApplyForInit(ctx context.Context, r configure.StackRequest, dbs map[string]*postgres.Database, name string, initPkg string, initArgs []string, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}

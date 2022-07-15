@@ -4,7 +4,7 @@ import (
 
 extension: fn.#Extension & {
 	import: [
-		"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds",
+		"namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds",
 	]
 }
 

@@ -13,8 +13,8 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/universe/db/postgres"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/base"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds"
 )
 
 const EndpointFlag = "postgresql_endpoint"
@@ -49,7 +49,7 @@ func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*po
 	return ProvideDb(ctx, db.Name, db.SchemaFile, endpoint, deps.Creds, deps.Wire)
 }
 
-func ProvideDb(ctx context.Context, name string, schema *types.Resource, endpoint *schema.Endpoint, creds *creds.Creds, wire base.WireDatabase) (*postgres.DB, error) {
+func ProvideDb(ctx context.Context, name string, schema *types.Resource, endpoint *schema.Endpoint, creds *gencreds.Creds, wire base.WireDatabase) (*postgres.DB, error) {
 	base := &postgres.Database{
 		Name:       name,
 		SchemaFile: schema,

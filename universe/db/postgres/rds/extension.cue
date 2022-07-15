@@ -4,7 +4,7 @@ import (
 	"namespacelabs.dev/foundation/std/fn:inputs"
 	"namespacelabs.dev/foundation/universe/aws/client"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/base"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds"
 )
 
 $providerProto: inputs.#Proto & {
@@ -15,8 +15,8 @@ extension: fn.#Extension & {
 	instantiate: {
 		clientFactory: client.#Exports.ClientFactory
 		// TODO: Move creds instantiation into provides when incluster server supports multiple creds
-		"creds": creds.#Exports.Creds
-		wire:    base.#Exports.WireDatabase
+		creds: gencreds.#Exports.Creds
+		wire:  base.#Exports.WireDatabase
 	}
 
 	provides: {
@@ -35,7 +35,7 @@ extension: fn.#Extension & {
 	on: {
 		prepare: {
 			invokeBinary: {
-				binary: "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/prepare"
+				binary: "namespacelabs.dev/foundation/universe/db/postgres/rds/prepare"
 			}
 			requires: [
 				"namespacelabs.dev/foundation/universe/db/postgres/incluster/tool",

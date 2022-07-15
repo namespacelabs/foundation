@@ -7,13 +7,13 @@ import (
 	"context"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/universe/db/postgres"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster/creds"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/base"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
-	Creds *creds.Creds
+	Creds *gencreds.Creds
 	Wire  base.WireDatabase
 }
 
@@ -35,8 +35,8 @@ var (
 func makeDeps__udoubi(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
-	if err := di.Instantiate(ctx, creds.Provider__9gpcgr, func(ctx context.Context, v interface{}) (err error) {
-		if deps.Creds, err = creds.ProvideCreds(ctx, nil, v.(creds.ExtensionDeps)); err != nil {
+	if err := di.Instantiate(ctx, gencreds.Provider__ih9ch5, func(ctx context.Context, v interface{}) (err error) {
+		if deps.Creds, err = gencreds.ProvideCreds(ctx, nil, v.(gencreds.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil

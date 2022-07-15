@@ -41,7 +41,7 @@ func Apply(ctx context.Context, r configure.StackRequest, dbs map[string]*inclus
 
 	// TODO: creds should be definable per db instance #217
 	var credsSecret *secrets.SecretDevMap_SecretSpec
-	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/incluster/creds") {
+	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds") {
 		if secret.Name == "postgres-password-file" {
 			credsSecret = secret
 		}
