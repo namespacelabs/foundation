@@ -31,9 +31,10 @@ import (
 
 const (
 	self    = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/prepare"
+	rdsInit = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init"
 	rdsNode = "namespacelabs.dev/foundation/universe/db/postgres/rds"
 
-	inclusterTool   = "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool"
+	inclusterInit   = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
 	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/server"
 )
 
@@ -66,7 +67,10 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 
 	// In development or testing, use incluster Postgres.
 	if useIncluster(req.Env) {
+		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{Binary: inclusterInit})
 		resp.PreparedProvisionPlan.DeclaredStack = append(resp.PreparedProvisionPlan.DeclaredStack, inclusterServer)
+	} else {
+		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{Binary: rdsInit})
 	}
 
 	return resp, nil
@@ -75,18 +79,26 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 type provisionHook struct{}
 
 func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
-	dbs := map[schema.PackageName][]*rds.Database{}
+	dbs := map[string]*rds.Database{}
+	owners := map[string][]string{}
 	if err := allocations.Visit(req.Focus.Server.Allocation, rdsNode, &rds.Database{},
 		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, db *rds.Database) error {
-			owner := schema.PackageName(alloc.InstanceOwner)
-			dbs[owner] = append(dbs[owner], db)
+			if existing, ok := dbs[db.Name]; ok {
+				if !proto.Equal(existing, db) {
+					return fnerrors.UserError(nil, "%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.Name, strings.Join(owners[db.Name], ","))
+				}
+			} else {
+				dbs[db.Name] = db
+			}
+
+			owners[db.Name] = append(owners[db.Name], alloc.InstanceOwner)
 			return nil
 		}); err != nil {
 		return err
 	}
 
 	if useIncluster(req.Env) {
-		return applyIncluster(ctx, req, dbs, out)
+		return applyIncluster(ctx, req, dbs, owners, out)
 	}
 
 	return applyRds(ctx, req, dbs, out)
@@ -101,53 +113,38 @@ func (provisionHook) Delete(ctx context.Context, req configure.StackRequest, out
 	return nil
 }
 
-func applyIncluster(ctx context.Context, req configure.StackRequest, dbs map[schema.PackageName][]*rds.Database, out *configure.ApplyOutput) error {
+func applyIncluster(ctx context.Context, req configure.StackRequest, dbs map[string]*rds.Database, owners map[string][]string, out *configure.ApplyOutput) error {
 	inclusterDbs := map[string]*incluster.Database{}
-	owners := map[string][]string{}
 
-	for owner, owned := range dbs {
-		for _, db := range owned {
-			inclusterDb := &incluster.Database{
-				Name:       db.GetName(),
-				SchemaFile: db.GetSchemaFile(),
-			}
-			if existing, ok := inclusterDbs[db.GetName()]; ok {
-				// TODO Incluster only check?
-				if !proto.Equal(existing, inclusterDb) {
-					return fnerrors.UserError(nil, "%s: database definition for %q is incompatible with %s", owner, db.GetName(), strings.Join(owners[db.GetName()], ","))
-				}
-			} else {
-				inclusterDbs[db.GetName()] = inclusterDb
-			}
-			owners[db.GetName()] = append(owners[db.GetName()], owner.String())
+	for name, db := range dbs {
+		inclusterDb := &incluster.Database{
+			Name:       db.Name,
+			SchemaFile: db.SchemaFile,
 		}
+		inclusterDbs[name] = inclusterDb
 	}
 
 	return inclustertool.Apply(ctx, req, inclusterDbs, owners, out)
 }
 
-func applyRds(ctx context.Context, req configure.StackRequest, dbs map[schema.PackageName][]*rds.Database, out *configure.ApplyOutput) error {
+func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*rds.Database, out *configure.ApplyOutput) error {
 	eksDetails := &eks.EKSServerDetails{}
 	if err := req.UnpackInput(eksDetails); err != nil {
 		return err
 	}
 
-	// TODO handle conflicts
-
 	var orderedDbs []*rds.Database
-	for _, owned := range dbs {
-		for _, db := range owned {
-			orderedDbs = append(orderedDbs, db)
-		}
+	for _, db := range dbs {
+		orderedDbs = append(orderedDbs, db)
 	}
 
 	sort.Slice(orderedDbs, func(i, j int) bool {
-		return strings.Compare(orderedDbs[i].GetName(), orderedDbs[j].GetName()) < 0
+		return strings.Compare(orderedDbs[i].Name, orderedDbs[j].Name) < 0
 	})
 
 	dbArns := make([]string, len(orderedDbs))
 	for k, db := range orderedDbs {
-		dbArns[k] = fmt.Sprintf("arn:aws:rds:::%s", db.GetName())
+		dbArns[k] = fmt.Sprintf("arn:aws:rds:::%s", db.Name)
 	}
 
 	// https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_rds_region.html
@@ -180,14 +177,14 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[schema.Pa
 
 	out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Access IAM Policy", associate))
 
-	ensureDb := &fnrds.OpEnsureDBCluster{
-		// TODO!
-		DbClusterIdentifier: "todo-fix-identifier",
-		Engine:              "postgres",
-		AllocatedStorage:    10, // TODO configurable?
-	}
+	for _, db := range orderedDbs {
+		ensureDb := &fnrds.OpEnsureDBCluster{
+			DbClusterIdentifier: fmt.Sprintf("%s-cluster", db.Name),
+			Name:                db.Name,
+		}
 
-	out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Setup", ensureDb))
+		out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Setup", ensureDb))
+	}
 
 	var commonArgs []string
 	// TODO postgres endpoint propagation?

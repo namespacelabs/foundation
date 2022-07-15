@@ -6,6 +6,7 @@ package rds
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
@@ -21,6 +22,5 @@ func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*po
 		return incluster.ProvideDb(ctx, db.Name, db.SchemaFile, endpoint, deps.Creds, deps.Wire)
 	}
 
-	// TODO ??
-	return nil, nil
+	return nil, fmt.Errorf("TODO: connect to RDS")
 }

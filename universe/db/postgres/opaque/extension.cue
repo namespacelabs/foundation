@@ -36,4 +36,8 @@ extension: fn.#Extension & {
 
 configure: fn.#Configure & {
 	with: binary: "namespacelabs.dev/foundation/universe/db/postgres/opaque/tool"
+
+	init: setup: {
+		binary: "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
+	}
 }

@@ -41,4 +41,9 @@ configure: fn.#Configure & {
 	}
 
 	with: binary: "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool"
+
+	init: setup: {
+		binary: "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
+	}
 }
+
