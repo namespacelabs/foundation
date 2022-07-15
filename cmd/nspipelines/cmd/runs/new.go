@@ -35,9 +35,9 @@ func newNewCmd() *cobra.Command {
 	workspaceDir := flags.String("workspace", ".", "The workspace directory to parse.")
 	githubEvent := flags.String("github_event_path", "", "Path to a file with github's event json.")
 
-	cmd.MarkFlagRequired("output_run_id")
-	cmd.MarkFlagRequired("workspace")
-	cmd.MarkFlagRequired("github_event_path")
+	_ = cmd.MarkFlagRequired("output_run_id")
+	_ = cmd.MarkFlagRequired("workspace")
+	_ = cmd.MarkFlagRequired("github_event_path")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		userAuth, err := fnapi.LoadUser()
