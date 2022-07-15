@@ -43,8 +43,14 @@ func NewLoginCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.AddCommand(NewRobotLogin("robot"))
+
+	return cmd
+}
+
+func NewRobotLogin(use string) *cobra.Command {
 	robotLogin := &cobra.Command{
-		Use:    "robot",
+		Use:    use,
 		Short:  "Login as a robot.",
 		Args:   cobra.ExactArgs(1),
 		Hidden: true,
@@ -65,7 +71,5 @@ func NewLoginCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.AddCommand(robotLogin)
-
-	return cmd
+	return robotLogin
 }
