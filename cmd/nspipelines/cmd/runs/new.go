@@ -6,6 +6,7 @@ package runs
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -117,7 +118,11 @@ func newNewCmd() *cobra.Command {
 			if err != nil {
 				return fnerrors.InternalError("failed to serialize attachment: %w", err)
 			}
-			req.Attachment = append(req.Attachment, any)
+			// req.Attachment = append(req.Attachment, any)
+			req.ManualAttachment = append(req.ManualAttachment, &NewRunRequest_Attachment{
+				TypeUrl:     any.TypeUrl,
+				Base64Value: base64.RawURLEncoding.EncodeToString(any.Value),
+			})
 		}
 
 		var resp storedrun.StoredRunID
@@ -155,7 +160,13 @@ func parseBranch(ref string) string {
 }
 
 type NewRunRequest struct {
-	OpaqueUserAuth []byte       `json:"opaque_user_auth,omitempty"`
-	ParentRunId    string       `json:"parent_run_id,omitempty"`
-	Attachment     []*anypb.Any `json:"attachment,omitempty"`
+	OpaqueUserAuth   []byte                      `json:"opaque_user_auth,omitempty"`
+	ParentRunId      string                      `json:"parent_run_id,omitempty"`
+	Attachment       []*anypb.Any                `json:"attachment,omitempty"`
+	ManualAttachment []*NewRunRequest_Attachment `json:"manual_attachment,omitempty"`
+}
+
+type NewRunRequest_Attachment struct {
+	TypeUrl     string `json:"type_url,omitempty"`
+	Base64Value string `json:"base64_value,omitempty"`
 }
