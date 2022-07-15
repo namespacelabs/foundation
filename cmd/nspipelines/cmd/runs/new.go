@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -51,12 +52,11 @@ func newNewCmd() *cobra.Command {
 
 		var attachments []proto.Message
 
-		v, err := version.Current()
-		if err != nil {
-			return err
+		if v, err := version.Current(); err == nil {
+			attachments = append(attachments, v)
+		} else {
+			log.Printf("won't attach versioning information: %v", err)
 		}
-
-		attachments = append(attachments, v)
 
 		if *kind != "" {
 			parsedKind, ok := storage.InvocationDescription_Kind_value[strings.ToUpper(*kind)]

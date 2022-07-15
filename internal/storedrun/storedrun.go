@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -75,7 +76,13 @@ func (s *Run) Output(ctx context.Context, execErr error) error {
 		run.RunId = p.RunId
 	}
 
-	for _, attachment := range consumeAttachments() {
+	attachments := consumeAttachments()
+
+	if v, err := version.Current(); err == nil {
+		attachments = append(attachments, v)
+	}
+
+	for _, attachment := range attachments {
 		serialized, err := anypb.New(attachment)
 		if err != nil {
 			return fnerrors.InternalError("failed to serialize attachment: %w", err)
