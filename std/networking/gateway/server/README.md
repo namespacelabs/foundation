@@ -110,3 +110,7 @@ docker build -t envoy-perf-pprof --build-arg ENVOY_VERSION=v1.22.0 profiling/
 
 docker run -p 8888:8888 -v /tmp/envoy.perf:/root/envoy.perf envoy-perf-pprof /root/envoy.perf
 ```
+
+Navigate to port `8888` to view and drill down into the profile:
+
+![pprof_envoy](https://user-images.githubusercontent.com/102962107/179289106-76b1976a-486c-4b06-822c-e711de46383f.png)
