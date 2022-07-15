@@ -182,8 +182,12 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 	out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Access IAM Policy", associate))
 
 	baseDbs := map[string]*postgres.Database{}
-
-	initArgs := []string{}
+	for name, db := range dbs {
+		baseDbs[name] = &postgres.Database{
+			Name:       db.Name,
+			SchemaFile: db.SchemaFile,
+		}
+	}
 
 	col, err := secrets.Collect(req.Focus.Server)
 	if err != nil {
@@ -198,8 +202,10 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 		}
 	}
 
+	initArgs := []string{}
 	if credsSecret != nil {
 		initArgs = append(initArgs, fmt.Sprintf("--postgres_password_file=%s", credsSecret.FromPath))
 	}
+
 	return toolcommon.ApplyForInit(ctx, req, baseDbs, postgresType, rdsInit, initArgs, out)
 }
