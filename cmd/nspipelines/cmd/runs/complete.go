@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
@@ -27,8 +28,8 @@ func newCompleteCmd() *cobra.Command {
 
 	flags := cmd.Flags()
 
+	runIDPath := flags.String("run_id_path", "", "The run id.")
 	storedRun := flags.String("stored_run_path", "", "Path to a file with a stored run's contents.")
-	_ = cmd.MarkFlagRequired("stored_run_path")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		userAuth, err := fnapi.LoadUser()
@@ -36,40 +37,71 @@ func newCompleteCmd() *cobra.Command {
 			return err
 		}
 
-		run, marshalled, err := protos.ReadFileAndBytes[*storage.UndifferentiatedRun](*storedRun)
-		if err != nil {
-			return fnerrors.BadInputError("invalid run: %w", err)
+		var runID string
+		if *storedRun != "" {
+			run, marshalled, err := protos.ReadFileAndBytes[*storage.UndifferentiatedRun](*storedRun)
+			if err != nil {
+				return fnerrors.BadInputError("invalid run: %w", err)
+			}
+
+			if run.RunId == "" {
+				return fnerrors.BadInputError("missing embedded run id")
+			}
+
+			runID = run.RunId
+
+			var out bytes.Buffer
+			enc, err := zstd.NewWriter(&out)
+			if err != nil {
+				return err
+			}
+
+			if _, err := enc.Write(marshalled); err != nil {
+				return fnerrors.InternalError("failed to compress: %w", err)
+			}
+
+			if err := enc.Close(); err != nil {
+				return fnerrors.InternalError("failed to complete compression: %w", err)
+			}
+
+			req := &UploadSectionRunRequest{
+				OpaqueUserAuth: userAuth.Opaque,
+				RunId:          run.RunId,
+				PayloadFormat:  "application/vnd.namespace.run+pb-zstd",
+				Payload:        out.Bytes(),
+			}
+
+			if err := fnapi.CallAPI(ctx, storageEndpoint, fmt.Sprintf("%s/UploadSection", storageService), req, func(dec *json.Decoder) error {
+				// No response to check.
+				return nil
+			}); err != nil {
+				return err
+			}
 		}
 
-		if run.RunId == "" {
-			return fnerrors.BadInputError("missing embedded run id")
+		if *runIDPath != "" {
+			r, err := storedrun.LoadStoredID(*runIDPath)
+			if err != nil {
+				return err
+			}
+
+			if runID != "" && runID != r.RunId {
+				return fnerrors.BadInputError("inconsistent run ids %q vs %q", runID, r.RunId)
+			}
+
+			runID = r.RunId
 		}
 
-		var out bytes.Buffer
-		enc, err := zstd.NewWriter(&out)
-		if err != nil {
-			return err
+		if runID == "" {
+			return fnerrors.BadInputError("either --run_id_path or --stored_run_path are required")
 		}
 
-		if _, err := enc.Write(marshalled); err != nil {
-			return fnerrors.InternalError("failed to compress: %w", err)
-		}
-
-		if err := enc.Close(); err != nil {
-			return fnerrors.InternalError("failed to complete compression: %w", err)
-		}
-
-		req := &UploadSectionRunRequest{
-			OpaqueUserAuth: userAuth.Opaque,
-			RunId:          run.RunId,
-			PayloadFormat:  "application/vnd.namespace.run+pb-zstd",
-			Payload:        out.Bytes(),
-		}
-
-		if err := fnapi.CallAPI(ctx, storageEndpoint, fmt.Sprintf("%s/NewRun", storageService), req, func(dec *json.Decoder) error {
-			// No response to check.
-			return nil
-		}); err != nil {
+		if err := fnapi.CallAPI(ctx, storageEndpoint, fmt.Sprintf("%s/CompleteRun", storageService),
+			&CompleteRunRequest{OpaqueUserAuth: userAuth.Opaque, RunId: runID},
+			func(dec *json.Decoder) error {
+				// No response to check.
+				return nil
+			}); err != nil {
 			return err
 		}
 
@@ -84,4 +116,9 @@ type UploadSectionRunRequest struct {
 	RunId          string `json:"run_id,omitempty"`
 	PayloadFormat  string `json:"payload_format,omitempty"`
 	Payload        []byte `json:"payload,omitempty"`
+}
+
+type CompleteRunRequest struct {
+	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
+	RunId          string `json:"run_id,omitempty"`
 }
