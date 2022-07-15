@@ -184,6 +184,7 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[schema.Pa
 		// TODO!
 		DbClusterIdentifier: "todo-fix-identifier",
 		Engine:              "postgres",
+		AllocatedStorage:    10, // TODO configurable?
 	}
 
 	out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Setup", ensureDb))

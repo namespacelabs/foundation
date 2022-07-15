@@ -11,4 +11,8 @@ option go_package = "namespacelabs.dev/foundation/providers/aws/rds";
 message OpEnsureDBCluster {
     string db_cluster_identifier = 1;
     string engine                = 2;
+
+    // The amount of storage in gibibytes (GiB) to allocate to each DB instance in the
+	// Multi-AZ DB cluster.
+    int32 allocated_storage = 3;
 }

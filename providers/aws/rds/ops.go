@@ -29,6 +29,7 @@ func RegisterGraphHandlers() {
 			// TODO!
 			DBClusterIdentifier: &op.DbClusterIdentifier,
 			Engine:              &op.Engine,
+			AllocatedStorage:    &op.AllocatedStorage,
 		}
 
 		rdscli := awsrds.NewFromConfig(sesh.Config())
