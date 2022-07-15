@@ -23,6 +23,35 @@ and debugging: Release binary with debug symbols on top of an Ubuntu Bionic base
 
 ## Debugging Envoy
 
+Dynamically change the debug level for all loggers:
+
+```bash
+ curl -X POST localhost:19000/logging?level=debug
+```
+
+Dynamically change the log level for specific loggers:
+
+```bash
+ curl -X POST localhost:19000/logging?http=debug&http2=debug&filter=debug
+```
+
+Visit localhost:19000/logging to see all active loggers.
+
+```
+  admin: info
+  alternate_protocols_cache: info
+  aws: info
+  assert: info
+  backtrace: info
+  cache_filter: info
+  client: info
+  config: info
+  connection: info
+  conn_handler: info
+  decompression: info:
+```
+
+
 `--envoy_debug` sets the envoy log level to `debug` and additionally enables the fine-grain logger with file level log control and runtime update at administration interface.
 
 ![debug_envoy](https://user-images.githubusercontent.com/102962107/179016003-039a66d5-93d4-40b5-ac34-7a6c6c0f450b.gif)
