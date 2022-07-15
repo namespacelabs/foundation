@@ -13,7 +13,7 @@ $providerProto: inputs.#Proto & {
 
 extension: fn.#Extension & {
 	instantiate: {
-		clientFactory:  client.#Exports.ClientFactory
+		clientFactory: client.#Exports.ClientFactory
 		// TODO: Move creds instantiation into provides when incluster server supports multiple creds
 		"creds": creds.#Exports.Creds
 		wire:    base.#Exports.WireDatabase
@@ -38,8 +38,8 @@ extension: fn.#Extension & {
 				binary: "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/prepare"
 			}
 			requires: [
-                "namespacelabs.dev/foundation/universe/db/postgres/incluster/tool",
-                "namespacelabs.dev/foundation/universe/db/postgres/internal/init",
+				"namespacelabs.dev/foundation/universe/db/postgres/incluster/tool",
+				"namespacelabs.dev/foundation/universe/db/postgres/internal/init",
 				"namespacelabs.dev/foundation/universe/db/postgres/server",
 			]
 		}
