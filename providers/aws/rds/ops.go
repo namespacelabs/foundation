@@ -6,8 +6,11 @@ package rds
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	awsrds "github.com/aws/aws-sdk-go-v2/service/rds"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
@@ -30,9 +33,17 @@ func RegisterGraphHandlers() {
 
 		rdscli := awsrds.NewFromConfig(sesh.Config())
 
-		if _, err := rdscli.CreateDBCluster(ctx, input); err != nil {
+		out, err := rdscli.CreateDBCluster(ctx, input)
+		if err != nil {
 			return nil, fnerrors.InvocationError("failed to create database cluster: %w", err)
 		}
+
+		serialized, err := json.MarshalIndent(out, "", " ")
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "rdscli.CreateDBCluster:\n%s\n", string(serialized))
 
 		return nil, nil
 	})
