@@ -43,11 +43,11 @@ type Telemetry struct {
 	makeClientID func(context.Context) (clientID, bool)
 }
 
-func NewTelemetry() *Telemetry {
+func NewTelemetry(enabled bool) *Telemetry {
 	return &Telemetry{
-		UseTelemetry:   true,
+		UseTelemetry:   enabled,
 		errorLogging:   false,
-		backendAddress: EndpointAddress(),
+		backendAddress: EndpointAddress,
 		makeClientID:   generateClientIDAndSalt,
 	}
 }

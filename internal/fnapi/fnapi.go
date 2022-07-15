@@ -9,8 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 
+	"github.com/spf13/pflag"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,18 +18,16 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func EndpointAddress() string {
-	endpoint := "https://api.namespacelabs.net"
-	if override := os.Getenv("NS_OVERRIDE_FNAPI_ENDPOINT"); override != "" {
-		endpoint = override
-	}
-	return endpoint
+var EndpointAddress string
+
+func SetupFlags(flags *pflag.FlagSet) {
+	flags.StringVar(&EndpointAddress, "fnapi_endpoint", "", "The fnapi endpoint address.")
+	_ = flags.MarkHidden("fnapi_endpoint")
 }
 
 func callProdAPI(ctx context.Context, method string, req interface{}, handle func(dec *json.Decoder) error) error {
-	endpoint := EndpointAddress()
-	return tasks.Action("fnapi.call").LogLevel(2).IncludesPrivateData().Arg("endpoint", endpoint).Arg("method", method).Arg("request", req).Run(ctx, func(ctx context.Context) error {
-		return CallAPI(ctx, endpoint, method, req, handle)
+	return tasks.Action("fnapi.call").LogLevel(2).IncludesPrivateData().Arg("endpoint", EndpointAddress).Arg("method", method).Arg("request", req).Run(ctx, func(ctx context.Context) error {
+		return CallAPI(ctx, EndpointAddress, method, req, handle)
 	})
 }
 

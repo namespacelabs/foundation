@@ -88,8 +88,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		ctx, cleanupTracer = actiontracing.SetupTracing(ctx, tracerEndpoint)
 	}
 
-	tel := fnapi.NewTelemetry()
-
 	sink, style, flushLogs := consoleToSink()
 	ctxWithSink := colors.WithStyle(tasks.WithSink(ctx, sink), style)
 
@@ -102,23 +100,26 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	ulimit.SetFileLimit(ctxWithSink, 4096)
 
 	var remoteStatusChan chan remoteStatus
-	// Checking a version could be used for fingerprinting purposes,
-	// and thus we don't do it if the user has opted-out from providing data.
-	if tel.IsTelemetryEnabled() {
-		remoteStatusChan = make(chan remoteStatus)
-		go checkRemoteStatus(console.Debug(ctxWithSink), remoteStatusChan)
-	}
 
 	cmdBundle := NewCommandBundle(disableCommandBundle)
-
 	// Remove stale commands asynchronously on startup.
 	defer func() {
 		_ = cmdBundle.RemoveStaleCommands()
 	}()
 
+	var tel *fnapi.Telemetry
 	var run *storedrun.Run
+	var useTelemetry bool
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
+		tel := fnapi.NewTelemetry(useTelemetry)
+		// Checking a version could be used for fingerprinting purposes,
+		// and thus we don't do it if the user has opted-out from providing data.
+		if tel.IsTelemetryEnabled() {
+			remoteStatusChan = make(chan remoteStatus)
+			go checkRemoteStatus(console.Debug(ctxWithSink), remoteStatusChan)
+		}
+
 		if viper.GetBool("enable_pprof") {
 			go ListenPProf(console.Debug(cmd.Context()))
 		}
@@ -215,6 +216,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	})
 
 	tasks.SetupFlags(rootCmd.PersistentFlags())
+	fnapi.SetupFlags(rootCmd.PersistentFlags())
 
 	rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 		"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
@@ -238,7 +240,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set, go invocations in buildkit get the specified secret mounted as ~/.git-credentials")
 	rootCmd.PersistentFlags().BoolVar(&deploy.AlsoDeployIngress, "also_compute_ingress", deploy.AlsoDeployIngress,
 		"[development] Set to false, to skip ingress computation.")
-	rootCmd.PersistentFlags().BoolVar(&tel.UseTelemetry, "send_usage_data", tel.UseTelemetry,
+	rootCmd.PersistentFlags().BoolVar(&useTelemetry, "send_usage_data", true,
 		"If set to false, ns does not upload any usage data.")
 	rootCmd.PersistentFlags().BoolVar(&buildkit.SkipExpectedMaxWorkspaceSizeCheck, "skip_buildkit_workspace_size_check", buildkit.SkipExpectedMaxWorkspaceSizeCheck,
 		"If set to true, skips our enforcement of the maximum workspace size we're willing to push to buildkit.")
@@ -373,9 +375,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	if err != nil && !errors.Is(err, context.Canceled) {
 		exitCode := handleExitError(style, err)
-		// Record errors only after the user sees them to hide potential latency implications.
-		// We pass the original ctx without sink since logs have already been flushed.
-		tel.RecordError(ctx, err)
+
+		if tel != nil {
+			// Record errors only after the user sees them to hide potential latency implications.
+			// We pass the original ctx without sink since logs have already been flushed.
+			tel.RecordError(ctx, err)
+		}
 
 		// Ensure that the error with stack trace is a part of the command bundle if not written already.
 		if !serializedErrToBundle {
@@ -383,6 +388,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 				fmt.Fprintf(debugSink, "Failed to serialize the command execution error in the bundle: %v\n", writeErr)
 			}
 		}
+
 		// Ensures graceful invocation of deferred routines in the block above before we exit.
 		panic(exitWithCode{exitCode})
 	}
