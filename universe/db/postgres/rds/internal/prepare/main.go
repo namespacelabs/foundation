@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/aws/eks"
@@ -23,7 +24,8 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
-	"namespacelabs.dev/foundation/universe/db/postgres/internal/toolcommon"
+	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
+	inclustertool "namespacelabs.dev/foundation/universe/db/postgres/incluster/configure"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 )
 
@@ -92,8 +94,7 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 
 func (provisionHook) Delete(ctx context.Context, req configure.StackRequest, out *configure.DeleteOutput) error {
 	if useIncluster(req.Env) {
-		// TODO avoid magic string
-		return toolcommon.Delete(req, "incluster", out)
+		return inclustertool.Delete(ctx, req, out)
 	}
 
 	// TODO
@@ -101,8 +102,28 @@ func (provisionHook) Delete(ctx context.Context, req configure.StackRequest, out
 }
 
 func applyIncluster(ctx context.Context, req configure.StackRequest, dbs map[schema.PackageName][]*rds.Database, out *configure.ApplyOutput) error {
-	// TODO
-	return nil
+	inclusterDbs := map[string]*incluster.Database{}
+	owners := map[string][]string{}
+
+	for owner, owned := range dbs {
+		for _, db := range owned {
+			inclusterDb := &incluster.Database{
+				Name:       db.GetName(),
+				SchemaFile: db.GetSchemaFile(),
+			}
+			if existing, ok := inclusterDbs[db.GetName()]; ok {
+				// TODO Incluster only check?
+				if !proto.Equal(existing, inclusterDb) {
+					return fnerrors.UserError(nil, "%s: database definition for %q is incompatible with %s", owner, db.GetName(), strings.Join(owners[db.GetName()], ","))
+				}
+			} else {
+				inclusterDbs[db.GetName()] = inclusterDb
+			}
+			owners[db.GetName()] = append(owners[db.GetName()], owner.String())
+		}
+	}
+
+	return inclustertool.Apply(ctx, req, inclusterDbs, owners, out)
 }
 
 func applyRds(ctx context.Context, req configure.StackRequest, dbs map[schema.PackageName][]*rds.Database, out *configure.ApplyOutput) error {
