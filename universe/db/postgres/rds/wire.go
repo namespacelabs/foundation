@@ -8,8 +8,10 @@ import (
 	"context"
 	"fmt"
 
+	awsrds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
+	"namespacelabs.dev/foundation/universe/db/postgres/rds/internal"
 )
 
 func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*postgres.DB, error) {
@@ -19,8 +21,34 @@ func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*po
 	}
 
 	if endpoint != nil {
-		return incluster.ProvideDb(ctx, db.Name, db.SchemaFile, endpoint, deps.Creds, deps.Wire)
+		return incluster.ProvideDb(ctx, db.Name, endpoint, deps.Creds, deps.Wire)
 	}
 
-	return nil, fmt.Errorf("TODO: connect to RDS")
+	awsCfg, err := deps.ClientFactory.New(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rdscli := awsrds.NewFromConfig(awsCfg)
+
+	id := internal.ClusterIdentifier(db.Name)
+
+	desc, err := rdscli.DescribeDBClusters(ctx, &awsrds.DescribeDBClustersInput{
+		DBClusterIdentifier: &id,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(desc.DBClusters) != 1 {
+		return nil, fmt.Errorf("Expected one cluster with identifier %s, got %d", id, len(desc.DBClusters))
+	}
+
+	base := &postgres.Database{
+		Name: db.Name,
+		HostedAt: &postgres.Endpoint{
+			Address: *desc.DBClusters[0].Endpoint,
+			Port:    uint32(*desc.DBClusters[0].Port),
+		},
+	}
+	return deps.Wire.ProvideDatabase(ctx, base, "postgres", deps.Creds.Password)
 }

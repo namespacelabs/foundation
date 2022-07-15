@@ -61,7 +61,7 @@ func readConfigs() ([]*postgres.Database, error) {
 // TODO dedup
 func prepareDatabase(ctx context.Context, rdscli *awsrds.Client, db *postgres.Database, user, password string) error {
 	id := internal.ClusterIdentifier(db.Name)
-	input := &awsrds.CreateDBClusterInput{
+	create := &awsrds.CreateDBClusterInput{
 		DBClusterIdentifier:    &id,
 		DatabaseName:           &db.Name,
 		MasterUsername:         &user,
@@ -72,7 +72,7 @@ func prepareDatabase(ctx context.Context, rdscli *awsrds.Client, db *postgres.Da
 		Iops:                   &iops,
 	}
 
-	if _, err := rdscli.CreateDBCluster(ctx, input); err != nil {
+	if _, err := rdscli.CreateDBCluster(ctx, create); err != nil {
 		var e *types.DBClusterAlreadyExistsFault
 		if errors.As(err, &e) {
 			// TODO update?
@@ -80,6 +80,17 @@ func prepareDatabase(ctx context.Context, rdscli *awsrds.Client, db *postgres.Da
 			return fmt.Errorf("failed to create database cluster: %v (type: %v)", err, reflect.TypeOf(err))
 		}
 	}
+
+	describe := &awsrds.DescribeDBClustersInput{
+		DBClusterIdentifier: &id,
+	}
+
+	out, err := rdscli.DescribeDBClusters(ctx, describe)
+	if err != nil {
+		return err
+	}
+
+	// TODO initialize DB and schema
 
 	return nil
 }
