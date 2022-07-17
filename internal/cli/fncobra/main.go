@@ -475,14 +475,8 @@ func setupViper() {
 		viper.AddConfigPath(cfg)
 	}
 
-	viper.SetDefault("log_level", "info")
-	_ = viper.BindEnv("log_level")
-
 	viper.SetDefault("jaeger_endpoint", "")
 	_ = viper.BindEnv("jaeger_endpoint")
-
-	viper.SetDefault("console_output", "text")
-	_ = viper.BindEnv("console_output")
 
 	viper.SetDefault("console_no_colors", false)
 	_ = viper.BindEnv("console_no_colors")
