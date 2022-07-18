@@ -128,7 +128,7 @@ func newPgrestore() *cobra.Command {
 	database := pgrestore.Flags().String("database", "", "Connect to the specified database.")
 	restore := pgrestore.Flags().String("restore", "", "The contents to be restored.")
 
-	cobra.MarkFlagRequired(pgrestore.Flags(), "restore")
+	_ = cobra.MarkFlagRequired(pgrestore.Flags(), "restore")
 
 	pgrestore.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		return runPostgresCmd(ctx, h, *database, args, func(ctx context.Context, rt kubernetes.K8sRuntime, bind databaseBind, opts runtime.ServerRunOpts) error {
