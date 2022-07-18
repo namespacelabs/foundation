@@ -221,7 +221,7 @@ func (p *workspacePrepare) makePrepareComputables(ctx context.Context) ([]comput
 	}
 
 	if k8sconfig != nil {
-		prepares = append(prepares, prepare.PrepareIngress(p.env, k8sconfig))
+		prepares = append(prepares, prepare.PrepareIngressFromHostConfig(p.env, k8sconfig))
 	}
 
 	var prebuilts = []schema.PackageName{

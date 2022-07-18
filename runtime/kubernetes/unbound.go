@@ -46,6 +46,10 @@ func (u Unbound) Client() *k8s.Clientset {
 	return u.cli
 }
 
+func (u Unbound) HostConfig() *client.HostConfig {
+	return u.host
+}
+
 func (u Unbound) Bind(ws *schema.Workspace, env *schema.Environment) K8sRuntime {
 	return u.BindToNamespace(env, ModuleNamespace(ws, env))
 }

@@ -42,46 +42,55 @@ func (p noPackageEnv) KubeconfigProvider() (*client.HostConfig, error) {
 	return p.hostConfig, nil
 }
 
-func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareIngressFromHostConfig(env ops.Environment, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+	return PrepareIngress(env, compute.Transform(k8sconfig, func(ctx context.Context, cfg *client.HostConfig) (kubernetes.Unbound, error) {
+		return kubernetes.NewFromConfig(ctx, cfg)
+	}))
+}
+
+func PrepareIngress(env ops.Environment, k8sconfig compute.Computable[kubernetes.Unbound]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.ingress").HumanReadablef("Deploying the Kubernetes ingress controller (may take up to 30 seconds)"),
-		compute.Inputs().Computable("k8sconfig", k8sconfig).Proto("env", env.Proto()).Proto("workspace", env.Workspace()),
+		compute.Inputs().Computable("runtime", k8sconfig).Proto("env", env.Proto()).Proto("workspace", env.Workspace()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			config := compute.MustGetDepValue(deps, k8sconfig, "k8sconfig")
+			kube := compute.MustGetDepValue(deps, k8sconfig, "runtime")
 
-			kube, err := kubernetes.NewFromConfig(ctx, config)
-			if err != nil {
-				return nil, err
-			}
-
-			state, err := kube.PrepareCluster(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			g := ops.NewPlan()
-			if err := g.Add(state.Definitions()...); err != nil {
-				return nil, err
-			}
-
-			waiters, err := g.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{config, env})
-			if err != nil {
-				return nil, err
-			}
-
-			if err := ops.WaitMultiple(ctx, waiters, nil); err != nil {
-				return nil, err
-			}
-
-			// XXX this should be part of WaitUntilReady.
-			if err := waitForIngress(ctx, kube, tasks.Action("kubernetes.ingress.deploy")); err != nil {
+			if err := PrepareIngressInKube(ctx, env, kube); err != nil {
 				return nil, err
 			}
 
 			// The ingress produces no unique configuration.
 			return nil, nil
 		})
+}
+
+func PrepareIngressInKube(ctx context.Context, env ops.Environment, kube kubernetes.Unbound) error {
+	state, err := kube.PrepareCluster(ctx)
+	if err != nil {
+		return err
+	}
+
+	g := ops.NewPlan()
+	if err := g.Add(state.Definitions()...); err != nil {
+		return err
+	}
+
+	waiters, err := g.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{kube.HostConfig(), env})
+	if err != nil {
+		return err
+	}
+
+	if err := ops.WaitMultiple(ctx, waiters, nil); err != nil {
+		return err
+	}
+
+	// XXX this should be part of WaitUntilReady.
+	if err := waitForIngress(ctx, kube, tasks.Action("kubernetes.ingress.deploy")); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func waitForIngress(ctx context.Context, kube kubernetes.Unbound, action *tasks.ActionEvent) error {

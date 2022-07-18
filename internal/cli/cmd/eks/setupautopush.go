@@ -25,7 +25,7 @@ import (
 
 const appURL = "https://github.com/apps/namespace-continuous-integration/installations/new"
 
-func NewSetupAutopushCmd() *cobra.Command {
+func newSetupAutopushCmd() *cobra.Command {
 	var iamRole string
 	var dryRun bool
 
@@ -109,7 +109,7 @@ func getAwsAccount(ctx context.Context, env provision.Env) (string, error) {
 	}
 
 	if res.Value.Account == nil {
-		return "", fmt.Errorf("Unable to fetch AWS account")
+		return "", fmt.Errorf("unable to fetch AWS account")
 	}
 
 	return *res.Value.Account, nil
