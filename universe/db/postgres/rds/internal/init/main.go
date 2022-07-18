@@ -40,14 +40,16 @@ var (
 	userFile           = flag.String("postgres_user_file", "", "location of the user secret")
 	passwordFile       = flag.String("postgres_password_file", "", "location of the password secret")
 
-	engine = "postgres"
-
-	// TODO configurable?!
-	storage          = int32(100) // min GB
-	class            = "db.m5d.xlarge"
-	iops             = int32(3000)
+	engine           = "postgres"
+	protocol         = "tcp"
 	deleteProtection = true // can still be disabled and deleted by hand
 	public           = false
+	ipRange          = "0.0.0.0/0" // TODO lock down
+
+	// TODO configurable?!
+	storage = int32(100) // min GB
+	class   = "db.m5d.xlarge"
+	iops    = int32(3000)
 )
 
 // TODO dedup
@@ -287,9 +289,11 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 	}
 
 	if _, err := ec2cli.AuthorizeSecurityGroupIngress(ctx, &ec2.AuthorizeSecurityGroupIngressInput{
-		GroupId:  &groupId,
-		FromPort: desc.Port,
-		ToPort:   desc.Port,
+		GroupId:    &groupId,
+		FromPort:   desc.Port,
+		ToPort:     desc.Port,
+		IpProtocol: &protocol,
+		CidrIp:     &ipRange,
 	}); err != nil {
 		return fmt.Errorf("failed to add permissions to security group: %v", explain(err))
 	}
@@ -314,8 +318,8 @@ wait:
 			continue
 		}
 
-		for _, endpoint := range resp.DBClusterEndpoints {
-			log.Printf("Endpoint %s has status %s", *endpoint.DBClusterEndpointIdentifier, *endpoint.Status)
+		for k, endpoint := range resp.DBClusterEndpoints {
+			log.Printf("Endpoint %d has status %s", k, *endpoint.Status)
 			if *endpoint.Status != "available" {
 				continue wait
 			}
