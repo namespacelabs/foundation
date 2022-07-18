@@ -60,7 +60,7 @@ func newPublishCmd() *cobra.Command {
 			if _, err := os.Stat(arg); err == nil {
 				images = append(images, oci.MakeImage(oci.ScratchM(), oci.L(arg, oci.LayerFromFile(os.DirFS(filepath.Dir(arg)), filepath.Base(arg)))))
 			} else {
-				images = append(images, oci.ImageP(arg, nil, *insecure))
+				images = append(images, oci.ImageP(arg, nil, oci.ResolveOpts{InsecureRegistry: *insecure}))
 			}
 		}
 

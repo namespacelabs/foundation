@@ -142,13 +142,14 @@ func planImage(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 		for _, prebuilt := range loc.Module.Workspace.PrebuiltBinary {
 			if prebuilt.PackageName == loc.PackageName.String() {
 				imgid := oci.ImageID{Repository: prebuilt.Repository, Digest: prebuilt.Digest}
+				public := true // We assume all prebuilts are public, unless noted otherwise.
 				if imgid.Repository == "" {
 					if loc.Module.Workspace.PrebuiltBaseRepository == "" {
 						break // Silently fail.
 					}
 					imgid.Repository = filepath.Join(loc.Module.Workspace.PrebuiltBaseRepository, prebuilt.PackageName)
 				}
-				return build.PrebuiltPlan(imgid, spec.PlatformIndependent()), nil
+				return build.PrebuiltPlan(imgid, spec.PlatformIndependent(), oci.ResolveOpts{PublicImage: public}), nil
 			}
 		}
 	}

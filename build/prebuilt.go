@@ -14,8 +14,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrebuiltPlan(imgid oci.ImageID, platformIndependent bool) Spec {
-	return prebuilt{imgid, platformIndependent}
+func PrebuiltPlan(imgid oci.ImageID, platformIndependent bool, opts oci.ResolveOpts) Spec {
+	return prebuilt{imgid, platformIndependent, opts}
 }
 
 func IsPrebuilt(spec Spec) (oci.ImageID, bool) {
@@ -28,10 +28,11 @@ func IsPrebuilt(spec Spec) (oci.ImageID, bool) {
 type prebuilt struct {
 	imgid               oci.ImageID
 	platformIndependent bool
+	opts                oci.ResolveOpts
 }
 
 func (p prebuilt) BuildImage(ctx context.Context, _ ops.Environment, conf Configuration) (compute.Computable[oci.Image], error) {
-	return oci.ImageP(p.imgid.ImageRef(), conf.TargetPlatform(), false), nil
+	return oci.ImageP(p.imgid.ImageRef(), conf.TargetPlatform(), p.opts), nil
 }
 
 func (p prebuilt) PlatformIndependent() bool { return p.platformIndependent }

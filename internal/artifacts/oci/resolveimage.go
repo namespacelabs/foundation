@@ -11,20 +11,26 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+type ResolveOpts struct {
+	InsecureRegistry bool
+	PublicImage      bool
+	Keychain         Keychain
+}
+
 // Resolves the image tag into a digest. If one is already specified, this is a no-op.
-func ResolveDigest(ref string, insecure bool) NamedImageID {
-	return I(ref, &resolveDigest{ref: ref, insecure: insecure})
+func ResolveDigest(ref string, opts ResolveOpts) NamedImageID {
+	return I(ref, &resolveDigest{ref: ref, opts: opts})
 }
 
 type resolveDigest struct {
-	ref      string
-	insecure bool
+	ref  string
+	opts ResolveOpts
 
 	compute.LocalScoped[ImageID]
 }
 
 func (r *resolveDigest) Inputs() *compute.In {
-	return compute.Inputs().Str("ref", r.ref).Bool("insecure", r.insecure)
+	return compute.Inputs().Str("ref", r.ref).JSON("opts", r.opts)
 }
 
 func (r *resolveDigest) Action() *tasks.ActionEvent {
@@ -41,7 +47,7 @@ func (r *resolveDigest) Compute(ctx context.Context, _ compute.Resolved) (ImageI
 		return imageID, nil
 	}
 
-	desc, err := fetchRemoteDescriptor(ctx, r.ref, r.insecure)
+	desc, err := fetchRemoteDescriptor(ctx, r.ref, r.opts)
 	if err != nil {
 		return ImageID{}, err
 	}

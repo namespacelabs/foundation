@@ -12,6 +12,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
@@ -39,16 +40,32 @@ func RegisterDomainKeychain(suffix string, keychain Keychain, purpose KeychainWh
 	staticMapping = append(staticMapping, keychainMap{"." + suffix, keychain, purpose})
 }
 
-func ReadRemoteOpts(ctx context.Context) []remote.Option {
-	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(defaultKeychain{ctx, false})}
-}
-
-func ReadRemoteOptsWithAuth(ctx context.Context, keychain Keychain) []remote.Option {
-	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(keychainSequence{ctx, keychain, false})}
-}
-
 func WriteRemoteOptsWithAuth(ctx context.Context, keychain Keychain) []remote.Option {
 	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(keychainSequence{ctx, keychain, true})}
+}
+
+func ParseRefAndKeychain(ctx context.Context, imageRef string, opts ResolveOpts) (name.Reference, []remote.Option, error) {
+	var nameOpts []name.Option
+	if opts.InsecureRegistry {
+		nameOpts = append(nameOpts, name.Insecure)
+	}
+
+	ref, err := name.ParseReference(imageRef, nameOpts...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	options := []remote.Option{remote.WithContext(ctx)}
+
+	if !opts.PublicImage {
+		if opts.Keychain != nil {
+			options = append(options, remote.WithAuthFromKeychain(keychainSequence{ctx, opts.Keychain, false}))
+		} else {
+			options = append(options, remote.WithAuthFromKeychain(defaultKeychain{ctx, false}))
+		}
+	}
+
+	return ref, options, nil
 }
 
 type keychainSequence struct {

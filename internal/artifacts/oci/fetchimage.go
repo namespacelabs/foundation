@@ -20,17 +20,16 @@ import (
 )
 
 func ResolveImage(ref string, platform specs.Platform) NamedImage {
-	return M(ref, ImageP(ref, &platform, false))
+	return M(ref, ImageP(ref, &platform, ResolveOpts{}))
 }
 
 // Returns a Computable which constraints on platform if one is specified.
-func ImageP(ref string, platform *specs.Platform, insecure bool) compute.Computable[Image] {
-	imageID := ResolveDigest(ref, insecure)
+func ImageP(ref string, platform *specs.Platform, opts ResolveOpts) compute.Computable[Image] {
+	imageID := ResolveDigest(ref, opts)
 	return &fetchImage{
 		imageid:    imageID,
-		descriptor: &fetchDescriptor{imageID: imageID, insecure: insecure},
+		descriptor: &fetchDescriptor{imageID: imageID, opts: opts},
 		platform:   platform,
-		insecure:   insecure,
 	}
 }
 
@@ -50,7 +49,7 @@ type fetchImage struct {
 	imageid    NamedImageID
 	descriptor compute.Computable[*RawDescriptor]
 	platform   *specs.Platform
-	insecure   bool
+	opts       ResolveOpts // Does not affect output.
 
 	compute.DoScoped[Image] // Need long-lived ctx, as it's captured to fetch Layers.
 }
@@ -84,22 +83,18 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 			// When we do a recursive lookup we don't constrain platform anymore, as more
 			// often than not images that are referred to from an index don't carry a platform
 			// specification.
-			return compute.GetValue(ctx, ImageP(d.ImageRef(), nil, r.insecure))
+			return compute.GetValue(ctx, ImageP(d.ImageRef(), nil, r.opts))
 		})
 
 	case types.DockerManifestSchema2:
 		imageid := compute.MustGetDepValue(deps, r.imageid.ImageID, "imageid")
 
-		var nameOpts []name.Option
-		if r.insecure {
-			nameOpts = append(nameOpts, name.Insecure)
-		}
-		name, err := name.NewDigest(imageid.RepoAndDigest(), nameOpts...)
+		ref, remoteOpts, err := ParseRefAndKeychain(ctx, imageid.RepoAndDigest(), r.opts)
 		if err != nil {
-			return nil, fnerrors.InternalError("failed to parse: %w", err)
+			return nil, fnerrors.InternalError("%s: failed to parse: %w", imageid.RepoAndDigest(), err)
 		}
 
-		img, err := remote.Image(name, ReadRemoteOpts(ctx)...)
+		img, err := remote.Image(ref, remoteOpts...)
 		if err != nil {
 			return nil, fnerrors.InvocationError("failed to fetch image: %w", err)
 		}
@@ -110,16 +105,13 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 	return nil, fnerrors.BadInputError("unexpected media type: %s (expected image or image index)", descriptor.MediaType)
 }
 
-func fetchRemoteDescriptor(ctx context.Context, ref string, insecure bool, moreOpts ...remote.Option) (*remote.Descriptor, error) {
-	opts := ReadRemoteOpts(ctx)
-	opts = append(opts, moreOpts...)
-
-	baseRef, err := ParseRef(ref, insecure)
+func fetchRemoteDescriptor(ctx context.Context, imageRef string, opts ResolveOpts) (*remote.Descriptor, error) {
+	ref, remoteOpts, err := ParseRefAndKeychain(ctx, imageRef, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return remote.Get(baseRef, opts...)
+	return remote.Get(ref, remoteOpts...)
 }
 
 func ParseRef(imageRef string, insecure bool) (name.Reference, error) {
@@ -132,13 +124,13 @@ func ParseRef(imageRef string, insecure bool) (name.Reference, error) {
 }
 
 type fetchDescriptor struct {
-	imageID  NamedImageID
-	insecure bool
+	imageID NamedImageID
+	opts    ResolveOpts
 	compute.LocalScoped[*RawDescriptor]
 }
 
 func (r *fetchDescriptor) Inputs() *compute.In {
-	return compute.Inputs().Computable("resolved", r.imageID.ImageID).Bool("insecure", r.insecure)
+	return compute.Inputs().Computable("resolved", r.imageID.ImageID).JSON("opts", r.opts)
 }
 
 func (r *fetchDescriptor) Action() *tasks.ActionEvent {
@@ -147,7 +139,7 @@ func (r *fetchDescriptor) Action() *tasks.ActionEvent {
 
 func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*RawDescriptor, error) {
 	digest := compute.MustGetDepValue(deps, r.imageID.ImageID, "resolved")
-	d, err := fetchRemoteDescriptor(ctx, digest.ImageRef(), r.insecure)
+	d, err := fetchRemoteDescriptor(ctx, digest.ImageRef(), r.opts)
 	if err != nil {
 		return nil, fnerrors.InvocationError("failed to fetch descriptor: %w", err)
 	}

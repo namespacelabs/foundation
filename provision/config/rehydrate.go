@@ -7,7 +7,6 @@ package config
 import (
 	"context"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -42,17 +41,12 @@ func Rehydrate(ctx context.Context, srv provision.Server, imageID oci.ImageID) (
 		return nil, err
 	}
 
-	var opts []name.Option
-	if allocated.InsecureRegistry {
-		opts = append(opts, name.Insecure)
-	}
-
-	ref, err := name.ParseReference(allocated.ImageRef(), opts...)
+	ref, remoteOpts, err := oci.ParseRefAndKeychain(ctx, allocated.ImageRef(), oci.ResolveOpts{Keychain: allocated.Keychain})
 	if err != nil {
 		return nil, err
 	}
 
-	img, err := remote.Image(ref, oci.ReadRemoteOptsWithAuth(ctx, allocated.Keychain)...)
+	img, err := remote.Image(ref, remoteOpts...)
 	if err != nil {
 		return nil, err
 	}
