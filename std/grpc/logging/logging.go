@@ -26,7 +26,8 @@ type interceptor struct{}
 func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	t := time.Now()
 	ctx, reqid := logHeader(ctx, "request", info.FullMethod, req)
-	resp, err := handler(ctx, req)
+	resp, unaryErr := handler(ctx, req)
+	err := AttachRequestIDToError(unaryErr, reqid)
 	if err == nil {
 		Log.Printf("%s: id=%s: took %v; response: %s", info.FullMethod, reqid, time.Since(t), serializeMessage(resp))
 	} else {
@@ -38,7 +39,8 @@ func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryS
 func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	t := time.Now()
 	ctx, reqid := logHeader(stream.Context(), "stream", info.FullMethod, nil)
-	err := handler(serverStream{stream, ctx}, stream)
+	streamErr := handler(serverStream{stream, ctx}, stream)
+	err := AttachRequestIDToError(streamErr, reqid)
 	if err == nil {
 		Log.Printf("%s: id=%s: took %v, finished ok", info.FullMethod, reqid, time.Since(t))
 	} else {

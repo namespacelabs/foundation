@@ -1,6 +1,11 @@
 package logging
 
-import "context"
+import (
+	"context"
+
+	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/std/protocol"
+)
 
 type contextKey string
 
@@ -21,4 +26,19 @@ func RequestID(ctx context.Context) string {
 
 func withRequestID(ctx context.Context, rd requestData) context.Context {
 	return context.WithValue(ctx, ck, rd)
+}
+
+func AttachRequestIDToError(err error, reqid string) error {
+	if err == nil {
+		return nil
+	}
+
+	st, _ := status.FromError(err)
+	tSt, tErr := st.WithDetails(&protocol.RequestID{Id: reqid})
+	if err == nil {
+		return tSt.Err()
+	}
+
+	Log.Printf("[warning] failed to attach %q to error: %v", reqid, tErr)
+	return err
 }

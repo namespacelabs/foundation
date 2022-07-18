@@ -1,0 +1,14 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.std.protocol;
+
+option go_package = "namespacelabs.dev/foundation/std/protocol";
+
+// A request ID may be attached to a status.Status used as an error.
+message RequestID {
+    string id = 1;
+}
