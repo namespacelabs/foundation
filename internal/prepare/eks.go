@@ -7,6 +7,7 @@ package prepare
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -16,38 +17,27 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareEksCluster(clusterName string, env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareEksCluster(env ops.Environment, clusterName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.eks-cluster-config").HumanReadablef("Prepare the EKS cluster configuration"),
 		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Proto()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			hostEnv := &eks.EKSCluster{
+			k8sHostEnv := &client.HostEnv{
+				Provider: "aws/eks",
+			}
+			eksCluster := &eks.EKSCluster{
 				Name: clusterName,
 			}
-			c, err := devhost.MakeConfiguration(hostEnv)
-			if err != nil {
-				return nil, err
+			registryProvider := &registry.Provider{
+				Provider: "aws/ecr",
 			}
-			c.Purpose = env.Proto().GetPurpose()
-			return []*schema.DevHost_ConfigureEnvironment{c}, nil
-		})
-}
 
-func PrepareEksHostEnv(provider string, env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
-	return compute.Map(
-		tasks.Action("prepare.eks-host-env").HumanReadablef("Prepare the EKS host environment"),
-		compute.Inputs().Str("provider", provider).Proto("env", env.Proto()),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			hostEnv := &client.HostEnv{
-				Provider: provider,
-			}
-			c, err := devhost.MakeConfiguration(hostEnv)
+			c, err := devhost.MakeConfiguration(k8sHostEnv, eksCluster, registryProvider)
 			if err != nil {
 				return nil, err
 			}
-			c.Purpose = env.Proto().GetPurpose()
+			c.Name = env.Proto().Name
 			return []*schema.DevHost_ConfigureEnvironment{c}, nil
 		})
 }

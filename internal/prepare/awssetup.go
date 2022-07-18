@@ -7,7 +7,6 @@ package prepare
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/schema"
@@ -16,25 +15,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareAWSRegistry(registryName string, env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
-	return compute.Map(
-		tasks.Action("prepare.aws-registry").HumanReadablef("Prepare the AWS registry configuration"),
-		compute.Inputs().Str("registryName", registryName).Proto("env", env.Proto()),
-		compute.Output{NotCacheable: true, NonDeterministic: true},
-		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			p := &registry.Provider{
-				Provider: registryName,
-			}
-			c, err := devhost.MakeConfiguration(p)
-			if err != nil {
-				return nil, err
-			}
-			c.Purpose = env.Proto().GetPurpose()
-			return []*schema.DevHost_ConfigureEnvironment{c}, nil
-		})
-}
-
-func PrepareAWSProfile(profileName string, env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareAWSProfile(env ops.Environment, profileName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.aws-profile").HumanReadablef("Prepare the AWS profile configuration"),
 		compute.Inputs().Str("profileName", profileName).Proto("env", env.Proto()),
@@ -47,7 +28,7 @@ func PrepareAWSProfile(profileName string, env ops.Environment) compute.Computab
 			if err != nil {
 				return nil, err
 			}
-			c.Purpose = env.Proto().GetPurpose()
+			c.Name = env.Proto().GetName()
 			return []*schema.DevHost_ConfigureEnvironment{c}, nil
 		})
 }

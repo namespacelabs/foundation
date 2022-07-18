@@ -10,12 +10,15 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -33,18 +36,14 @@ func NewPrepareCmd() *cobra.Command {
 	var contextName string
 	var awsProfile string
 	var envRef string
+	var clusterName string
 
 	// The subcommand `eks` does all of the work done by the parent command in addition to
 	// writing the host configuration for the EKS cluster.
 	eksCmd := &cobra.Command{
-		Use:   "eks [clustername]",
+		Use:   "eks",
 		Short: "Prepares the Elastic Kubernetes Service host config for production.",
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) < 1 {
-				return fnerrors.UserError(nil, "%q is a required argument, run %q to proceed", "[clustername]", "eks [clustername]")
-			}
-			return nil
-		},
+		Args:  cobra.NoArgs,
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
@@ -55,53 +54,28 @@ func NewPrepareCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if env.Purpose() == schema.Environment_DEVELOPMENT {
-				return fnerrors.UsageError("Use `--env=prod`.", "eks is not supported yet in development mode.")
-			}
-			if contextName != "" {
-				return fnerrors.UsageError("Remove `--context=<name>`.", "--context was provided but is not used in the eks integration.")
-			}
-			eksClusterName := args[0]
 
-			wp := workspacePrepare{
-				env:            env,
-				awsProfile:     awsProfile,
-				eksClusterName: eksClusterName,
-			}
-			prepares, err := wp.makePrepareComputables(ctx)
-			if err != nil {
-				return err
-			}
-			prepares = append(prepares, prepare.PrepareEksCluster(eksClusterName, env))
-			prepares = append(prepares, prepare.PrepareEksHostEnv("aws/eks", env))
-			return wp.collectPreparesAndUpdateDevhost(ctx, prepares)
+			prepares := baseline(env)
+
+			var aws []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
+			aws = append(aws, prepare.PrepareAWSProfile(env, awsProfile))
+			aws = append(aws, prepare.PrepareEksCluster(env, clusterName))
+			prepares = append(prepares, aws...)
+			prepares = append(prepares, prepare.PrepareIngress(env, instantiateKube(env, aws)))
+			return collectPreparesAndUpdateDevhost(ctx, env, prepares)
 		}),
 	}
 
-	rootCmd := &cobra.Command{
-		Use:   "prepare local",
+	eksCmd.Flags().StringVar(&clusterName, "cluster", "", "The name of the cluster we're configuring.")
+	eksCmd.Flags().StringVar(&awsProfile, "aws_profile", awsProfile, "Configures the specified AWS configuration profile.")
+
+	_ = cobra.MarkFlagRequired(eksCmd.Flags(), "cluster")
+	_ = cobra.MarkFlagRequired(eksCmd.Flags(), "aws_profile")
+
+	localCmd := &cobra.Command{
+		Use:   "local",
 		Short: "Prepares the local workspace for development or production.",
-		Long: "Prepares the local workspace for development or production.\n\n" +
-			"This command will download, create, and run Buildkit and Kubernetes\n" +
-			"orchestration containers (conditional on development or production),\n" +
-			"in addition to downloading and caching required pre-built images.\n" +
-			"Developers will typically run this command only after initializing\n" +
-			"the workspace, and it's not a part of the normal refresh-edit\n" +
-			"workspace lifecycle.",
-		Args: func(cmd *cobra.Command, args []string) error {
-			expectedArg := "local"
-			expectedCmd := "ns prepare local"
-			if len(args) < 1 {
-				return fnerrors.UserError(nil, "%q is a required argument, run %q to proceed", expectedArg, expectedCmd)
-			}
-			if args[0] == "aws" {
-				return fnerrors.UserError(nil, "aws is not a supported target. Use local to setup a local development environment, or eks to setup a EKS-based environment.")
-			}
-			if args[0] != "local" {
-				return fnerrors.UserError(nil, "%q is a required argument, run %q to proceed", expectedArg, expectedCmd)
-			}
-			return nil
-		},
+
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
@@ -118,112 +92,103 @@ func NewPrepareCmd() *cobra.Command {
 					"Kubernetes context is required for preparing a production environment.")
 			}
 
-			wp := workspacePrepare{
-				env:         env,
-				awsProfile:  awsProfile,
-				contextName: contextName,
-			}
-			prepares, err := wp.makePrepareComputables(ctx)
-			if err != nil {
-				return err
-			}
-			return wp.collectPreparesAndUpdateDevhost(ctx, prepares)
+			prepares := baseline(env)
+
+			k8sconfig := prepareK8s(ctx, env, contextName)
+			prepares = append(prepares, localK8sConfiguration(env, k8sconfig))
+			prepares = append(prepares, prepare.PrepareIngressFromHostConfig(env, k8sconfig))
+
+			return collectPreparesAndUpdateDevhost(ctx, env, prepares)
 		}),
 	}
+
+	localCmd.Flags().StringVar(&contextName, "context", "", "If set, configures Namespace to use the specific context.")
+
+	rootCmd := &cobra.Command{
+		Use:   "prepare",
+		Short: "Prepares the local workspace for development or production.",
+		Long: "Prepares the local workspace for development or production.\n\n" +
+			"This command will download, create, and run Buildkit and Kubernetes\n" +
+			"orchestration containers (conditional on development or production),\n" +
+			"in addition to downloading and caching required pre-built images.\n" +
+			"Developers will typically run this command only after initializing\n" +
+			"the workspace, and it's not a part of the normal refresh-edit\n" +
+			"workspace lifecycle.",
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			return fnerrors.UsageError("For example, you may call `ns prepare local` to configure a local development environment.",
+				"One of `local` or `eks` is required.")
+		}),
+	}
+
 	rootCmd.AddCommand(eksCmd)
+	rootCmd.AddCommand(localCmd)
+
 	rootCmd.PersistentFlags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")
-	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "If set, configures Namespace to use the specific context.")
-	rootCmd.PersistentFlags().StringVar(&awsProfile, "aws_profile", awsProfile, "Configures the specified AWS configuration profile.")
 
 	return rootCmd
 }
 
-type workspacePrepare struct {
-	env            provision.Env
-	awsProfile     string
-	contextName    string
-	eksClusterName string
+func instantiateKube(env ops.Environment, confs []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) compute.Computable[kubernetes.Unbound] {
+	return compute.Map(tasks.Action("prepare.kubernetes"),
+		compute.Inputs().Computable("conf", compute.Transform(compute.Collect(tasks.Action("prepare.kubernetes.configs"), confs...),
+			func(ctx context.Context, computed []compute.ResultWithTimestamp[[]*schema.DevHost_ConfigureEnvironment]) ([]*schema.DevHost_ConfigureEnvironment, error) {
+				var result []*schema.DevHost_ConfigureEnvironment
+				for _, conf := range computed {
+					result = append(result, conf.Value...)
+				}
+				return result, nil
+			})),
+		compute.Output{},
+		func(ctx context.Context, r compute.Resolved) (kubernetes.Unbound, error) {
+			computed, _ := compute.GetDepWithType[[]*schema.DevHost_ConfigureEnvironment](r, "conf")
+
+			return kubernetes.New(ctx, &schema.DevHost{Configure: computed.Value}, devhost.ByEnvironment(env.Proto()))
+		})
 }
 
-func (p *workspacePrepare) PrepareWorkspace(ctx context.Context) error {
-	prepares, err := p.makePrepareComputables(ctx)
-	if err != nil {
-		return err
+func prepareK8s(ctx context.Context, env provision.Env, contextName string) compute.Computable[*client.HostConfig] {
+	if contextName != "" {
+		return prepare.PrepareExistingK8s(env, prepare.WithK8sContextName(contextName))
 	}
-	return p.collectPreparesAndUpdateDevhost(ctx, prepares)
+
+	return prepare.PrepareK3d("fn", env)
 }
 
-func (p *workspacePrepare) prepareK8s(ctx context.Context) compute.Computable[*client.HostConfig] {
-	if p.env.Purpose() == schema.Environment_DEVELOPMENT {
-		return prepare.PrepareK3d("fn", p.env)
-	} else if p.env.Purpose() == schema.Environment_PRODUCTION {
-		if p.contextName != "" {
-			return prepare.PrepareExistingK8s(p.env,
-				prepare.WithK8sContextName(p.contextName))
+func localK8sConfiguration(env provision.Env, hostConfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+	return compute.Transform(hostConfig, func(ctx context.Context, k8sconfigval *client.HostConfig) ([]*schema.DevHost_ConfigureEnvironment, error) {
+		var messages []proto.Message
+
+		registry := k8sconfigval.Registry()
+		if registry != nil {
+			messages = append(messages, registry)
 		}
-	}
-	return nil
+
+		hostEnv := k8sconfigval.ClientHostEnv()
+		if hostEnv != nil {
+			messages = append(messages, hostEnv)
+		}
+
+		c, err := devhost.MakeConfiguration(messages...)
+		if err != nil {
+			return nil, err
+		}
+		c.Name = env.Proto().GetName()
+		c.Runtime = "kubernetes"
+
+		var confs []*schema.DevHost_ConfigureEnvironment
+		confs = append(confs, c)
+		return confs, nil
+	})
 }
 
-func (p *workspacePrepare) makePrepareComputables(ctx context.Context) ([]compute.Computable[[]*schema.DevHost_ConfigureEnvironment], error) {
+func baseline(env provision.Env) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
-	prepares = append(prepares, prepare.PrepareBuildkit(p.env))
+	prepares = append(prepares, prepare.PrepareBuildkit(env))
+	prepares = append(prepares, prebuilts(env)...)
+	return prepares
+}
 
-	if p.env.Purpose() == schema.Environment_PRODUCTION {
-		if p.awsProfile == "" {
-			return nil, fnerrors.UsageError("Please also specify `--aws_profile`.",
-				"Preparing a production environment requires using AWS at the moment.")
-		}
-		// The context name is required if we are not on an EKS cluster.
-		if p.contextName == "" && p.eksClusterName == "" {
-			return nil, fnerrors.UsageError("Please also specify `--context`.",
-				"Kubernetes context is required for preparing a production environment.")
-		}
-	}
-
-	if p.awsProfile != "" {
-		prepares = append(prepares, prepare.PrepareAWSProfile(p.awsProfile, p.env))
-		prepares = append(prepares, prepare.PrepareAWSRegistry("aws/ecr", p.env))
-	}
-
-	k8sconfig := p.prepareK8s(ctx)
-	if k8sconfig != nil {
-		prepares = append(prepares, compute.Map(
-			tasks.Action("prepare.map-k8s"),
-			compute.Inputs().Computable("k8sconfig", k8sconfig),
-			compute.Output{NotCacheable: true},
-			func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-				k8sconfigval := compute.MustGetDepValue(deps, k8sconfig, "k8sconfig")
-				var confs []*schema.DevHost_ConfigureEnvironment
-
-				registry := k8sconfigval.Registry()
-				if registry != nil {
-					c, err := devhost.MakeConfiguration(registry)
-					if err != nil {
-						return nil, err
-					}
-					c.Purpose = schema.Environment_DEVELOPMENT
-					confs = append(confs, c)
-				}
-
-				hostEnv := k8sconfigval.ClientHostEnv()
-				if hostEnv != nil {
-					c, err := devhost.MakeConfiguration(hostEnv)
-					if err != nil {
-						return nil, err
-					}
-					c.Purpose = p.env.Proto().GetPurpose()
-					c.Runtime = "kubernetes"
-					confs = append(confs, c)
-				}
-				return confs, nil
-			}))
-	}
-
-	if k8sconfig != nil {
-		prepares = append(prepares, prepare.PrepareIngressFromHostConfig(p.env, k8sconfig))
-	}
-
+func prebuilts(env provision.Env) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	var prebuilts = []schema.PackageName{
 		"namespacelabs.dev/foundation/devworkflow/web",
 		"namespacelabs.dev/foundation/std/dev/controller",
@@ -232,7 +197,9 @@ func (p *workspacePrepare) makePrepareComputables(ctx context.Context) ([]comput
 		"namespacelabs.dev/foundation/std/secrets/kubernetes",
 	}
 
-	preparedPrebuilts := prepare.DownloadPrebuilts(p.env, workspace.NewPackageLoader(p.env.Root()), prebuilts)
+	preparedPrebuilts := prepare.DownloadPrebuilts(env, workspace.NewPackageLoader(env.Root()), prebuilts)
+
+	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
 	prepares = append(prepares, compute.Map(
 		tasks.Action("prepare.map-prebuilts"),
 		compute.Inputs().Computable("preparedPrebuilts", preparedPrebuilts),
@@ -240,10 +207,10 @@ func (p *workspacePrepare) makePrepareComputables(ctx context.Context) ([]comput
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			return nil, nil
 		}))
-	return prepares, nil
+	return prepares
 }
 
-func (p *workspacePrepare) collectPreparesAndUpdateDevhost(ctx context.Context, prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) error {
+func collectPreparesAndUpdateDevhost(ctx context.Context, env provision.Env, prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) error {
 	prepareAll := compute.Collect(tasks.Action("prepare.collect-all"), prepares...)
 	results, err := compute.GetValue(ctx, prepareAll)
 	if err != nil {
@@ -257,7 +224,7 @@ func (p *workspacePrepare) collectPreparesAndUpdateDevhost(ctx context.Context, 
 
 	stdout := console.Stdout(ctx)
 
-	updateCount, err := devHostUpdates(ctx, p.env.Root(), confs)
+	updateCount, err := devHostUpdates(ctx, env.Root(), confs)
 	if err != nil {
 		return err
 	}
@@ -266,7 +233,8 @@ func (p *workspacePrepare) collectPreparesAndUpdateDevhost(ctx context.Context, 
 		fmt.Fprintln(stdout, "Configuration is up to date, nothing to do.")
 		return nil
 	}
-	return devhost.RewriteWith(ctx, p.env.Root(), p.env.DevHost())
+
+	return devhost.RewriteWith(ctx, env.Root(), env.DevHost())
 }
 
 func devHostUpdates(ctx context.Context, root *workspace.Root, confs [][]*schema.DevHost_ConfigureEnvironment) (int, error) {

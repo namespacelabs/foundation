@@ -87,13 +87,15 @@ func ConfigurationForEnv(env ops.Environment) ConfSlice {
 	return Select(env.DevHost(), ByEnvironment(env.Proto()))
 }
 
-func MakeConfiguration(msg proto.Message) (*schema.DevHost_ConfigureEnvironment, error) {
+func MakeConfiguration(messages ...proto.Message) (*schema.DevHost_ConfigureEnvironment, error) {
 	c := &schema.DevHost_ConfigureEnvironment{}
-	packed, err := anypb.New(msg)
-	if err != nil {
-		return nil, err
+	for _, msg := range messages {
+		packed, err := anypb.New(msg)
+		if err != nil {
+			return nil, err
+		}
+		c.Configuration = append(c.Configuration, packed)
 	}
-	c.Configuration = append(c.Configuration, packed)
 	return c, nil
 }
 
