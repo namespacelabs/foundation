@@ -25,7 +25,7 @@ type interceptor struct{}
 
 func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	t := time.Now()
-	reqid := logHeader(ctx, "request", info.FullMethod, req)
+	ctx, reqid := logHeader(ctx, "request", info.FullMethod, req)
 	resp, err := handler(ctx, req)
 	if err == nil {
 		Log.Printf("%s: id=%s: took %v; response: %s", info.FullMethod, reqid, time.Since(t), serializeMessage(resp))
@@ -37,8 +37,8 @@ func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryS
 
 func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	t := time.Now()
-	reqid := logHeader(stream.Context(), "stream", info.FullMethod, nil)
-	err := handler(srv, stream)
+	ctx, reqid := logHeader(stream.Context(), "stream", info.FullMethod, nil)
+	err := handler(serverStream{stream, ctx}, stream)
 	if err == nil {
 		Log.Printf("%s: id=%s: took %v, finished ok", info.FullMethod, reqid, time.Since(t))
 	} else {
@@ -47,9 +47,16 @@ func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *gr
 	return err
 }
 
-func logHeader(ctx context.Context, what, fullMethod string, req interface{}) string {
+type serverStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (s serverStream) Context() context.Context { return s.ctx }
+
+func logHeader(ctx context.Context, what, fullMethod string, req interface{}) (context.Context, string) {
 	// XXX establish request id propagation.
-	reqid := ids.NewRandomBase32ID(8)
+	reqid := ids.NewRandomBase32ID(16)
 	peerAddr := "unknown"
 	authType := "none"
 	deadline := "none"
@@ -70,7 +77,8 @@ func logHeader(ctx context.Context, what, fullMethod string, req interface{}) st
 	} else {
 		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s)", fullMethod, reqid, peerAddr, authType, deadline)
 	}
-	return reqid
+
+	return withRequestID(ctx, requestData{rid: reqid}), reqid
 }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
