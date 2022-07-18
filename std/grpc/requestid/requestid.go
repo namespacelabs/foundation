@@ -24,6 +24,14 @@ type RequestData struct {
 	RequestID string
 }
 
+func RequestIDFromContext(ctx context.Context) string {
+	if data, has := RequestDataFromContext(ctx); has {
+		return data.RequestID
+	}
+
+	return "<unknown>"
+}
+
 func RequestDataFromContext(ctx context.Context) (RequestData, bool) {
 	v := ctx.Value(ck)
 	if v != nil {
