@@ -135,16 +135,6 @@ func applyIncluster(ctx context.Context, req configure.StackRequest, dbs map[str
 }
 
 func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*rds.Database, out *configure.ApplyOutput) error {
-	systemInfo := &kubedef.SystemInfo{}
-	if err := req.UnpackInput(systemInfo); err != nil {
-		return err
-	}
-
-	eksDetails := &eks.EKSServerDetails{}
-	if err := req.UnpackInput(eksDetails); err != nil {
-		return err
-	}
-
 	var orderedDbs []*rds.Database
 	for _, db := range dbs {
 		orderedDbs = append(orderedDbs, db)
@@ -154,19 +144,31 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 		return strings.Compare(orderedDbs[i].Name, orderedDbs[j].Name) < 0
 	})
 
+	systemInfo := &kubedef.SystemInfo{}
+	if err := req.UnpackInput(systemInfo); err != nil {
+		return err
+	}
+
+	eksCluster := &eks.EKSCluster{}
+	if err := req.UnpackInput(eksCluster); err != nil {
+		return err
+	}
+
 	// TODO improve robustness - configurable?
 	if len(systemInfo.Regions) != 1 {
 		return fmt.Errorf("Unable to infer region.")
 	}
 	region := systemInfo.Regions[0]
 
-	clusterArns := make([]string, len(orderedDbs))
-	dbArns := make([]string, len(orderedDbs))
-	for k, db := range orderedDbs {
+	var rdsArns []string
+	for _, db := range orderedDbs {
 		// TODO all accounts? Really?
 		id := internal.ClusterIdentifier(req.Env.Name, db.Name)
-		clusterArns[k] = fmt.Sprintf("arn:aws:rds:%s:*:cluster:%s", region, id)
-		dbArns[k] = fmt.Sprintf("arn:aws:rds:%s:*:db:%s*", region, id)
+		rdsArns = append(rdsArns,
+			fmt.Sprintf("arn:aws:rds:%s:*:cluster:%s", region, id),
+			fmt.Sprintf("arn:aws:rds:%s:*:db:%s*", region, id),
+			fmt.Sprintf("arn:aws:rds:%s:*:subgrp:*", region),
+		)
 	}
 
 	// https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_examples_rds_region.html
@@ -176,12 +178,20 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 			{
 				Effect:   "Allow",
 				Action:   []string{"rds:*"},
-				Resource: clusterArns,
+				Resource: rdsArns,
 			},
 			{
 				Effect:   "Allow",
-				Action:   []string{"rds:*"},
-				Resource: dbArns,
+				Action:   []string{"ec2:Describe*"},
+				Resource: []string{"*"}, // TODO, investigate why fmt.Sprintf("arn:aws:ec2:%s:*:subnet/*", region) doesn't work
+			},
+			{
+				Effect: "Allow",
+				Action: []string{"ec2:CreateSecurityGroup"}, // TODO should this be Namespace, not in the init?
+				Resource: []string{
+					fmt.Sprintf("arn:aws:ec2:%s:*:security-group/*", region),
+					fmt.Sprintf("arn:aws:ec2:%s:*:vpc/%s", region, eksCluster.VpcId),
+				}, // TODO all accounts? Really?
 			},
 		},
 	}
@@ -189,6 +199,11 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 	policyBytes, err := json.Marshal(policy)
 	if err != nil {
 		return fnerrors.InternalError("failed to serialize policy: %w", err)
+	}
+
+	eksDetails := &eks.EKSServerDetails{}
+	if err := req.UnpackInput(eksDetails); err != nil {
+		return err
 	}
 
 	associate := &fniam.OpAssociatePolicy{
@@ -214,7 +229,7 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 
 	initArgs := []string{
 		fmt.Sprintf("--env_name=%s", req.Env.Name),
-		fmt.Sprintf("--eks_cluster_name=%s", systemInfo.EksClusterName),
+		fmt.Sprintf("--eks_vpc_id=%s", eksCluster.VpcId),
 	}
 
 	// TODO: creds should be definable per db instance #217

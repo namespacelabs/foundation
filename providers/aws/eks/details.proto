@@ -12,6 +12,7 @@ message EKSCluster {
     string name        = 1;
     string arn         = 2;
     string oidc_issuer = 3;
+    string vpc_id      = 4;
 }
 
 message EKSServerDetails {

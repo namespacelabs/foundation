@@ -17,11 +17,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/eks"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	awsrds "github.com/aws/aws-sdk-go-v2/service/rds"
-	"github.com/aws/aws-sdk-go-v2/service/rds/types"
+	rdstypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
+	"github.com/aws/smithy-go"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/dustin/go-humanize"
 	"github.com/jackc/pgx/v4"
@@ -34,7 +35,7 @@ const connBackoff = 1 * time.Second
 
 var (
 	envName            = flag.String("env_name", "", "Name of current environment.")
-	eksClusterName     = flag.String("eks_cluster_name", "", "Name of the EKS cluster.")
+	vpcID              = flag.String("eks_vpc_id", "", "VPC ID of the current EKS cluster.")
 	awsCredentialsFile = flag.String("aws_credentials_file", "", "Path to the AWS credentials file.")
 	userFile           = flag.String("postgres_user_file", "", "location of the user secret")
 	passwordFile       = flag.String("postgres_password_file", "", "location of the password secret")
@@ -180,8 +181,60 @@ func prepareDatabase(ctx context.Context, db *postgres.Database, user, password 
 	return applySchema(ctx, conn, db)
 }
 
-func prepareCluster(ctx context.Context, envName string, rdscli *awsrds.Client, db *postgres.Database, user, password string) error {
+func explain(err error) error {
+	child := err
+	for {
+		log.Printf("Type: %v", reflect.TypeOf(child))
+		child = errors.Unwrap(child)
+		if child == nil {
+			break
+		}
+	}
+	return fmt.Errorf("%w", err)
+}
+
+func ensureSecurityGroup(ctx context.Context, ec2cli *ec2.Client, clusterId, vpcId string) (string, error) {
+	name := fmt.Sprintf("%s-security-group", clusterId)
+	desc := fmt.Sprintf("Security group for %s", clusterId)
+	res, err := ec2cli.CreateSecurityGroup(ctx, &ec2.CreateSecurityGroupInput{
+		GroupName:   &name,
+		Description: &desc,
+		VpcId:       vpcID,
+	})
+	if err == nil {
+		log.Printf("Created security group %s", name)
+		return *res.GroupId, nil
+	}
+
+	// Apparently there's no nicer type for this.
+	var e smithy.APIError
+	if errors.As(err, &e) && e.ErrorCode() == "InvalidGroup.Duplicate" {
+		log.Printf("Security group %s already exists", name)
+		res, err := ec2cli.DescribeSecurityGroups(ctx, &ec2.DescribeSecurityGroupsInput{
+			GroupNames: []string{name},
+		})
+		if err != nil {
+			return "", err
+		}
+
+		if len(res.SecurityGroups) != 1 {
+			return "", fmt.Errorf("Expected one security group with name %s, got %d", name, len(res.SecurityGroups))
+		}
+
+		return *res.SecurityGroups[0].GroupId, nil
+	}
+
+	return "", fmt.Errorf("failed to create security group: %v", explain(err))
+}
+
+func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.Client, ec2cli *ec2.Client, dbGroup string, db *postgres.Database, user, password string) error {
 	id := internal.ClusterIdentifier(envName, db.Name)
+
+	groupId, err := ensureSecurityGroup(ctx, ec2cli, id, vpcId)
+	if err != nil {
+		return err
+	}
+
 	create := &awsrds.CreateDBClusterInput{
 		DBClusterIdentifier:    &id,
 		DatabaseName:           &db.Name,
@@ -193,50 +246,65 @@ func prepareCluster(ctx context.Context, envName string, rdscli *awsrds.Client, 
 		Iops:                   &iops,
 		DeletionProtection:     &deleteProtection,
 		PubliclyAccessible:     &public,
+		DBSubnetGroupName:      &dbGroup,
+		VpcSecurityGroupIds:    []string{groupId},
 	}
 
 	if _, err := rdscli.CreateDBCluster(ctx, create); err != nil {
-		var e *types.DBClusterAlreadyExistsFault
+		var e *rdstypes.DBClusterAlreadyExistsFault
 		if errors.As(err, &e) {
 			log.Printf("RDS DB cluster %s already exists", id)
 			// TODO ModifyDBCluster?
 		} else {
-			return fmt.Errorf("failed to create database cluster: %v (type: %v)", err, reflect.TypeOf(err))
+			return fmt.Errorf("failed to create database cluster: %v", explain(err))
 		}
 	} else {
 		log.Printf("Creating RDS DB cluster %s", id)
 	}
 
+	resp, err := rdscli.DescribeDBClusters(ctx, &awsrds.DescribeDBClustersInput{
+		DBClusterIdentifier: &id,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(resp.DBClusters) != 1 {
+		return fmt.Errorf("Expected one cluster with identifier %s, got %d", id, len(resp.DBClusters))
+	}
+
+	db.HostedAt = &postgres.Endpoint{
+		Address: *resp.DBClusters[0].Endpoint,
+		Port:    uint32(*resp.DBClusters[0].Port),
+	}
+
 	// Wait for cluster to be ready
 	// TODO tidy up
+wait:
 	for {
-		resp, err := rdscli.DescribeDBClusters(ctx, &awsrds.DescribeDBClustersInput{
+		// watch would be nice
+		time.Sleep(connBackoff)
+
+		resp, err := rdscli.DescribeDBClusterEndpoints(ctx, &awsrds.DescribeDBClusterEndpointsInput{
 			DBClusterIdentifier: &id,
 		})
 		if err != nil {
 			return err
 		}
 
-		if len(resp.DBClusters) != 1 {
-			return fmt.Errorf("Expected one cluster with identifier %s, got %d", id, len(resp.DBClusters))
+		if len(resp.DBClusterEndpoints) == 0 {
+			// keep waiting
+			continue
 		}
 
-		desc := resp.DBClusters[0]
-
-		log.Printf("Cluster is %s", *desc.Status)
-
-		switch *desc.Status {
-		// TODO handle other cases?
-		case "available":
-			db.HostedAt = &postgres.Endpoint{
-				Address: *desc.Endpoint,
-				Port:    uint32(*desc.Port),
+		for _, endpoint := range resp.DBClusterEndpoints {
+			log.Printf("Endpoint %s has status %s", *endpoint.DBClusterEndpointIdentifier, *endpoint.Status)
+			if *endpoint.Status != "available" {
+				continue wait
 			}
-
-			return prepareDatabase(ctx, db, user, password)
 		}
 
-		time.Sleep(connBackoff)
+		return prepareDatabase(ctx, db, user, password)
 	}
 }
 
@@ -268,15 +336,20 @@ func main() {
 		log.Fatalf("Failed to load aws config: %v", err)
 	}
 
-	vpc, err := computeVpcName(ctx, awsCfg)
-	if err != nil {
-		log.Fatalf("Failed to compute EKS VPC name: %v", err)
-	}
-	// TODO remove debug output
-	log.Printf("EKS VPC is %q", vpc)
+	// TODO do we really want to reuse the same VPC, or rather create a new one + peering?
+	// https://aws.amazon.com/about-aws/whats-new/2021/05/amazon-vpc-announces-pricing-change-for-vpc-peering/
+	log.Printf("EKS VPC is %q", *vpcID)
+
+	rdscli := awsrds.NewFromConfig(awsCfg)
+	ec2cli := ec2.NewFromConfig(awsCfg)
 
 	if *envName == "" {
 		log.Fatalf("Required flag --env_name is not set.")
+	}
+
+	dbGroup, err := createDBSubnetGroup(ctx, *envName, rdscli, ec2cli, *vpcID)
+	if err != nil {
+		log.Fatalf("unable to create DB subnet group: %v", err)
 	}
 
 	dbs, err := readConfigs()
@@ -284,12 +357,11 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
-	rdscli := awsrds.NewFromConfig(awsCfg)
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, db := range dbs {
 		db := db // Close db
 		eg.Go(func() error {
-			return prepareCluster(ctx, *envName, rdscli, db, user, password)
+			return prepareCluster(ctx, *envName, *vpcID, rdscli, ec2cli, dbGroup, db, user, password)
 		})
 	}
 
@@ -322,19 +394,43 @@ func readPassword() (string, error) {
 	return string(pw), nil
 }
 
-func computeVpcName(ctx context.Context, cfg aws.Config) (string, error) {
-	ekscli := eks.NewFromConfig(cfg)
-
-	if *eksClusterName == "" {
-		return "", fmt.Errorf("Required flag --eks_cluster_name is not set.")
-	}
-
-	desc, err := ekscli.DescribeCluster(ctx, &eks.DescribeClusterInput{
-		Name: eksClusterName,
+func createDBSubnetGroup(ctx context.Context, envName string, rdscli *awsrds.Client, ec2cli *ec2.Client, vpcId string) (string, error) {
+	idFilter := "vpc-id"
+	resp, err := ec2cli.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
+		Filters: []ec2types.Filter{{
+			Name:   &idFilter,
+			Values: []string{vpcId},
+		}},
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Unable to list subnets for VPC %s: %v", vpcId, explain(err))
 	}
 
-	return *desc.Cluster.ResourcesVpcConfig.VpcId, nil
+	if len(resp.Subnets) == 0 {
+		return "", fmt.Errorf("Found no subnets for VPC %s", vpcId)
+	}
+
+	var subnetIds []string
+	for _, subnet := range resp.Subnets {
+		subnetIds = append(subnetIds, *subnet.SubnetId)
+	}
+
+	name := fmt.Sprintf("ns-%s-db-subnet", envName)
+	desc := fmt.Sprintf("Namespace DB Subnet group for RDS deployments in %s environment.", envName)
+	if _, err := rdscli.CreateDBSubnetGroup(ctx, &awsrds.CreateDBSubnetGroupInput{
+		DBSubnetGroupName:        &name,
+		DBSubnetGroupDescription: &desc,
+		SubnetIds:                subnetIds, // TODO Should we create our own?
+	}); err != nil {
+		var e *rdstypes.DBSubnetGroupAlreadyExistsFault
+		if errors.As(err, &e) {
+			log.Printf("RDS DB subnet group %s already exists", name)
+			return name, nil
+		} else {
+			return "", fmt.Errorf("failed to create db subnet group: %v", explain(err))
+		}
+	}
+
+	log.Printf("Created DB subnet group %q", name)
+	return name, nil
 }

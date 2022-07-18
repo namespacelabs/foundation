@@ -146,8 +146,9 @@ func PrepareClusterInfo(ctx context.Context, s *Session) (*EKSCluster, error) {
 	}
 
 	eksCluster := &EKSCluster{
-		Name: sysInfo.EksClusterName,
-		Arn:  *cluster.Arn,
+		Name:  sysInfo.EksClusterName,
+		Arn:   *cluster.Arn,
+		VpcId: *cluster.ResourcesVpcConfig.VpcId,
 	}
 
 	if cluster.Identity != nil && cluster.Identity.Oidc != nil {
