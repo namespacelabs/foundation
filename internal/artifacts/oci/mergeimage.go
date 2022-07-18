@@ -27,10 +27,10 @@ type mergeImages struct {
 func (al *mergeImages) Action() *tasks.ActionEvent {
 	var names []string
 	for _, image := range al.images {
-		if image.Image == nil {
+		if image.Image() == nil {
 			continue
 		}
-		names = append(names, image.Description)
+		names = append(names, image.Description())
 	}
 	return tasks.Action("oci.merge-images").Arg("images", names)
 }
@@ -38,10 +38,10 @@ func (al *mergeImages) Action() *tasks.ActionEvent {
 func (al *mergeImages) Inputs() *compute.In {
 	in := compute.Inputs()
 	for k, image := range al.images {
-		if image.Image == nil {
+		if image.Image() == nil {
 			continue
 		}
-		in = in.Computable(fmt.Sprintf("image%d", k), image.Image)
+		in = in.Computable(fmt.Sprintf("image%d", k), image.Image())
 	}
 	return in
 }
@@ -49,11 +49,11 @@ func (al *mergeImages) Inputs() *compute.In {
 func (al *mergeImages) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
 	var layers []v1.Layer
 	for k, image := range al.images {
-		if image.Image == nil {
+		if image.Image() == nil {
 			continue
 		}
 
-		image, ok := compute.GetDep(deps, image.Image, fmt.Sprintf("image%d", k))
+		image, ok := compute.GetDep(deps, image.Image(), fmt.Sprintf("image%d", k))
 		if !ok {
 			continue
 		}

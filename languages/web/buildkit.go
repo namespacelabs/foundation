@@ -35,7 +35,7 @@ func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.En
 
 	local, base, err := viteBuildBase(ctx, conf, "/app", loc.Module, loc.Rel(), loc.Module.Workspace, false, externalModules, extraFiles...)
 	if err != nil {
-		return oci.NamedImage{}, err
+		return nil, err
 	}
 
 	if !strings.HasSuffix(basePath, "/") {
@@ -49,10 +49,10 @@ func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.En
 
 	image, err := buildkit.LLBToImage(ctx, env, conf, out, local...)
 	if err != nil {
-		return oci.NamedImage{}, err
+		return nil, err
 	}
 
-	return oci.M(fmt.Sprintf("vite-production-build-%s", loc.PackageName),
+	return oci.MakeNamedImage(fmt.Sprintf("vite-production-build-%s", loc.PackageName),
 		compute.Named(tasks.Action("web.vite.build").Arg("builder", "buildkit"), image)), nil
 }
 
@@ -70,15 +70,15 @@ func viteDevBuild(ctx context.Context, env ops.Environment, targetDir string, lo
 
 	local, state, err := viteBuildBase(ctx, conf, targetDir, module, loc.Rel(), loc.Module.Workspace, isFocus, externalModules, extraFiles...)
 	if err != nil {
-		return oci.NamedImage{}, err
+		return nil, err
 	}
 
 	image, err := buildkit.LLBToImage(ctx, env, conf, state, local...)
 	if err != nil {
-		return oci.NamedImage{}, err
+		return nil, err
 	}
 
-	return oci.M(fmt.Sprintf("vite-dev-build-%s", loc.PackageName),
+	return oci.MakeNamedImage(fmt.Sprintf("vite-dev-build-%s", loc.PackageName),
 		compute.Named(tasks.Action("web.vite.build.dev").Arg("builder", "buildkit").Scope(loc.PackageName), image)), nil
 }
 

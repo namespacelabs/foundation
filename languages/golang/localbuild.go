@@ -42,22 +42,10 @@ func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.W
 		return nil, err
 	}
 
-	var base oci.NamedImage
-
-	if !bin.BinaryOnly {
-		var err error
-		base, err = baseImage(ctx, env, target)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		base = oci.ScratchM()
-	}
-
 	layers := []oci.NamedLayer{
 		// By depending on workspace.Contents we both get continued updates on changes to the workspace,
 		// but also are guaranteed to only be invoked after generation functions run.
-		oci.MakeLayer(fmt.Sprintf("go binary %s", bin.PackageName), &compilation{
+		oci.MakeLayer(fmt.Sprintf("go binary layer %s", bin.PackageName), &compilation{
 			sdk:       sdk,
 			workspace: workspace.VersionedFS(bin.GoModulePath, bin.isFocus),
 			binary:    bin,
@@ -65,7 +53,17 @@ func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.W
 		}),
 	}
 
-	return compute.Named(tasks.Action("go.make-binary-image").Arg("binary", bin), oci.MakeImage(base, layers...)), nil
+	if bin.BinaryOnly {
+		return oci.MakeImageFromScratch(fmt.Sprintf("Go binary %s", bin.PackageName), layers...).Image(), nil
+	}
+
+	base, err := baseImage(ctx, env, target)
+	if err != nil {
+		return nil, err
+	}
+
+	return compute.Named(tasks.Action("go.make-binary-image").Arg("binary", bin),
+		oci.MakeImage(fmt.Sprintf("Go binary %s", bin.PackageName), base, layers...).Image()), nil
 }
 
 func baseImage(ctx context.Context, env ops.Environment, target build.BuildTarget) (oci.NamedImage, error) {

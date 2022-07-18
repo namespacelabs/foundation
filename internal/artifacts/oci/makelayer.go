@@ -13,7 +13,7 @@ import (
 )
 
 func MakeLayer(name string, vfs compute.Computable[fs.FS]) NamedLayer {
-	return L(name, &makeLayer{vfs: vfs, description: name})
+	return MakeNamedLayer(name, &makeLayer{vfs: vfs, description: name})
 }
 
 type makeLayer struct {

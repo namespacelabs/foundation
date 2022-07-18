@@ -13,12 +13,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Scratch() compute.Computable[Image] {
-	return scratch{}
-}
-
-func ScratchM() NamedImage {
-	return M("scratch", Scratch())
+func Scratch() NamedImage {
+	return MakeNamedImage("scratch", scratch{})
 }
 
 type scratch struct {

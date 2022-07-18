@@ -65,7 +65,7 @@ func (v *imageUploader) SetupFlags(cmd *cobra.Command, flags *pflag.FlagSet) {
 	_ = cmd.MarkFlagRequired("output")
 }
 
-func (v *imageUploader) Publish(ctx context.Context, img compute.Computable[oci.Image]) (oci.ImageID, error) {
+func (v *imageUploader) Publish(ctx context.Context, img oci.NamedImage) (oci.ImageID, error) {
 	devhost.HasRuntime = func(_ string) bool { return true } // We never really use the runtime, so just assert that any runtime exists.
 
 	workspace.ModuleLoader = cuefrontend.ModuleLoader
@@ -86,7 +86,7 @@ func (v *imageUploader) Publish(ctx context.Context, img compute.Computable[oci.
 		return oci.ImageID{}, fnerrors.InternalError("failed to allocate image for stored results: %w", err)
 	}
 
-	imageID, err := compute.GetValue(ctx, oci.PublishImage(tag, img))
+	imageID, err := compute.GetValue(ctx, oci.PublishImage(tag, img).ImageID())
 	if err != nil {
 		return oci.ImageID{}, fnerrors.InternalError("failed to store results: %w", err)
 	}
@@ -94,7 +94,7 @@ func (v *imageUploader) Publish(ctx context.Context, img compute.Computable[oci.
 	return imageID, nil
 }
 
-func (v *imageUploader) PublishAndWrite(ctx context.Context, img compute.Computable[oci.Image]) error {
+func (v *imageUploader) PublishAndWrite(ctx context.Context, img oci.NamedImage) error {
 	imageID, err := v.Publish(ctx, img)
 	if err != nil {
 		return err

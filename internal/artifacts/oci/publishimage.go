@@ -11,8 +11,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PublishImage(tag compute.Computable[AllocatedName], image compute.Computable[Image]) compute.Computable[ImageID] {
-	return &publishImage{tag: tag, image: AsResolvable(image)}
+func PublishImage(tag compute.Computable[AllocatedName], image NamedImage) NamedImageID {
+	return MakeNamedImageID(image.Description(), &publishImage{tag: tag, label: image.Description(), image: AsResolvable(image.Image())})
 }
 
 func PublishResolvable(tag compute.Computable[AllocatedName], image compute.Computable[ResolvableImage]) compute.Computable[ImageID] {
@@ -22,6 +22,7 @@ func PublishResolvable(tag compute.Computable[AllocatedName], image compute.Comp
 type publishImage struct {
 	tag   compute.Computable[AllocatedName]
 	image compute.Computable[ResolvableImage]
+	label string // Does not affect the output.
 
 	compute.LocalScoped[ImageID]
 }
@@ -35,11 +36,15 @@ func (pi *publishImage) Output() compute.Output {
 }
 
 func (pi *publishImage) Action() *tasks.ActionEvent {
-	return tasks.Action("oci.publish-image")
+	action := tasks.Action("oci.publish-image")
+	if pi.label != "" {
+		action = action.Arg("image", pi.label)
+	}
+	return action
 }
 
 func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (ImageID, error) {
 	tag := compute.MustGetDepValue(deps, pi.tag, "tag")
-	tasks.Attachments(ctx).AddResult("tag", tag.ImageRef())
+	tasks.Attachments(ctx).AddResult("ref", tag.ImageRef())
 	return compute.MustGetDepValue(deps, pi.image, "image").Push(ctx, tag)
 }

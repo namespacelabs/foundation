@@ -31,12 +31,12 @@ const (
 func ServerImage(name string, target specs.Platform) (oci.NamedImage, error) {
 	base := pins.Server(name)
 	if base == nil || base.Base == "" {
-		return oci.NamedImage{}, fnerrors.InternalError("missing base server definition for %q", name)
+		return nil, fnerrors.InternalError("missing base server definition for %q", name)
 	}
 
 	serverBase, err := pins.CheckImage(base.Base)
 	if err != nil {
-		return oci.NamedImage{}, err
+		return nil, err
 	}
 
 	return oci.ResolveImage(serverBase, target), nil
@@ -48,16 +48,16 @@ func ServerImage(name string, target specs.Platform) (oci.NamedImage, error) {
 func DevelopmentImage(ctx context.Context, name string, env ops.Environment, target build.BuildTarget) (oci.NamedImage, error) {
 	base := pins.Server(name)
 	if base == nil || base.Base == "" {
-		return oci.NamedImage{}, fnerrors.InternalError("missing base server definition for %q", name)
+		return nil, fnerrors.InternalError("missing base server definition for %q", name)
 	}
 
 	if base.NonRootUserID == nil {
-		return oci.NamedImage{}, fnerrors.InternalError("base definition missing userid")
+		return nil, fnerrors.InternalError("base definition missing userid")
 	}
 
 	serverBase, err := pins.CheckImage(base.Base)
 	if err != nil {
-		return oci.NamedImage{}, err
+		return nil, err
 	}
 
 	state := llbutil.Image(serverBase, *target.TargetPlatform()).
@@ -68,10 +68,10 @@ func DevelopmentImage(ctx context.Context, name string, env ops.Environment, tar
 
 	img, err := buildkit.LLBToImage(ctx, env, t.WithSourceLabel("base:"+name), state)
 	if err != nil {
-		return oci.NamedImage{}, err
+		return nil, err
 	}
 
-	return oci.M(fmt.Sprintf("%s + dev tools", serverBase), img), nil
+	return oci.MakeNamedImage(fmt.Sprintf("%s + dev tools", serverBase), img), nil
 }
 
 func ServerImageLLB(name string, target specs.Platform) (llb.State, error) {

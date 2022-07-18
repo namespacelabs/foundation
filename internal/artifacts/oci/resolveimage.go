@@ -19,7 +19,7 @@ type ResolveOpts struct {
 
 // Resolves the image tag into a digest. If one is already specified, this is a no-op.
 func ResolveDigest(ref string, opts ResolveOpts) NamedImageID {
-	return I(ref, &resolveDigest{ref: ref, opts: opts})
+	return MakeNamedImageID(ref, &resolveDigest{ref: ref, opts: opts})
 }
 
 type resolveDigest struct {

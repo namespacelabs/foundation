@@ -49,7 +49,7 @@ func newWriteCmd() *cobra.Command {
 			return err
 		}
 
-		computed, err := compute.GetValue(ctx, image)
+		computed, err := compute.GetValue(ctx, image.Image())
 		if err != nil {
 			return err
 		}
@@ -78,7 +78,7 @@ type resultImage struct {
 	Label string
 }
 
-func (v *resultImage) ComputeImage(ctx context.Context, load string) (compute.Computable[oci.Image], error) {
+func (v *resultImage) ComputeImage(ctx context.Context, load string) (oci.NamedImage, error) {
 	stored, err := protos.ReadFile[*storage.UndifferentiatedRun](load)
 	if err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func (v *resultImage) ComputeImage(ctx context.Context, load string) (compute.Co
 		return nil, err
 	}
 
-	image := oci.MakeImage(oci.ScratchM(), oci.MakeLayer("section-run", compute.Precomputed[fs.FS](&fsys, digestfs.Digest)))
+	image := oci.MakeImageFromScratch("section-run", oci.MakeLayer("section-run", compute.Precomputed[fs.FS](&fsys, digestfs.Digest)))
 
 	return image, nil
 }

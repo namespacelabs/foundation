@@ -29,10 +29,10 @@ func (m mergeSpecs) BuildImage(ctx context.Context, env ops.Environment, conf bu
 			return nil, err
 		}
 
-		images[k] = oci.NamedImage{
-			Description: fmt.Sprintf("plan#%d", k), // XXX propagate better names.
-			Image:       image,
-		}
+		images[k] = oci.MakeNamedImage(
+			fmt.Sprintf("plan#%d", k), // XXX propagate better names.
+			image,
+		)
 	}
 
 	return oci.MergeImageLayers(images...), nil

@@ -20,7 +20,7 @@ import (
 )
 
 func ResolveImage(ref string, platform specs.Platform) NamedImage {
-	return M(ref, ImageP(ref, &platform, ResolveOpts{}))
+	return MakeNamedImage(ref, ImageP(ref, &platform, ResolveOpts{}))
 }
 
 // Returns a Computable which constraints on platform if one is specified.
@@ -55,7 +55,7 @@ type fetchImage struct {
 }
 
 func (r *fetchImage) Action() *tasks.ActionEvent {
-	action := tasks.Action("oci.pull-image").Arg("ref", r.imageid.Description)
+	action := tasks.Action("oci.pull-image").Arg("ref", r.imageid.Description())
 	if r.platform != nil {
 		action = action.Arg("platform", devhost.FormatPlatform(*r.platform))
 	}
@@ -63,7 +63,7 @@ func (r *fetchImage) Action() *tasks.ActionEvent {
 }
 
 func (r *fetchImage) Inputs() *compute.In {
-	return compute.Inputs().JSON("platform", r.platform).Computable("descriptor", r.descriptor).Computable("imageid", r.imageid.ImageID)
+	return compute.Inputs().JSON("platform", r.platform).Computable("descriptor", r.descriptor).Computable("imageid", r.imageid.ImageID())
 }
 
 func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
@@ -87,7 +87,7 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 		})
 
 	case types.DockerManifestSchema2:
-		imageid := compute.MustGetDepValue(deps, r.imageid.ImageID, "imageid")
+		imageid := compute.MustGetDepValue(deps, r.imageid.ImageID(), "imageid")
 
 		ref, remoteOpts, err := ParseRefAndKeychain(ctx, imageid.RepoAndDigest(), r.opts)
 		if err != nil {
@@ -130,15 +130,15 @@ type fetchDescriptor struct {
 }
 
 func (r *fetchDescriptor) Inputs() *compute.In {
-	return compute.Inputs().Computable("resolved", r.imageID.ImageID).JSON("opts", r.opts)
+	return compute.Inputs().Computable("resolved", r.imageID.ImageID()).JSON("opts", r.opts)
 }
 
 func (r *fetchDescriptor) Action() *tasks.ActionEvent {
-	return tasks.Action("oci.fetch-descriptor").Arg("ref", r.imageID.Description)
+	return tasks.Action("oci.fetch-descriptor").Arg("ref", r.imageID.Description())
 }
 
 func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*RawDescriptor, error) {
-	digest := compute.MustGetDepValue(deps, r.imageID.ImageID, "resolved")
+	digest := compute.MustGetDepValue(deps, r.imageID.ImageID(), "resolved")
 	d, err := fetchRemoteDescriptor(ctx, digest.ImageRef(), r.opts)
 	if err != nil {
 		return nil, fnerrors.InvocationError("failed to fetch descriptor: %w", err)

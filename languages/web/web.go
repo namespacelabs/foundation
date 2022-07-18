@@ -326,7 +326,7 @@ func (bws buildDevServer) BuildImage(ctx context.Context, env ops.Environment, c
 		return nil, err
 	}
 
-	images := []oci.NamedImage{oci.M(bws.baseImage.SourceLabel, baseImage)}
+	images := []oci.NamedImage{oci.MakeNamedImage(bws.baseImage.SourceLabel, baseImage)}
 	images = append(images, builds...)
 
 	return oci.MergeImageLayers(images...), nil
@@ -369,7 +369,7 @@ func (bws buildProdWebServer) BuildImage(ctx context.Context, env ops.Environmen
 
 	images := []oci.NamedImage{
 		oci.ResolveImage("nginx:1.21.5-alpine", *conf.TargetPlatform()),
-		oci.M("nginx-configuration", oci.MakeImage(oci.ScratchM(), config)),
+		oci.MakeImageFromScratch("nginx-configuration", config),
 	}
 	images = append(images, builds...)
 	return oci.MergeImageLayers(images...), nil

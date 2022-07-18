@@ -253,7 +253,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 			return &fsys, nil
 		})
 
-	imageID := oci.PublishImage(tag, oci.MakeImage(oci.ScratchM(), oci.MakeLayer("test-results", toFS)))
+	imageID := oci.PublishImage(tag, oci.MakeImageFromScratch("test-results", oci.MakeLayer("test-results", toFS))).ImageID()
 
 	return compute.Map(tasks.Action("test.make-results"),
 		compute.Inputs().
@@ -282,7 +282,7 @@ func (b buildAndAttachDataLayer) BuildImage(ctx context.Context, env ops.Environ
 	if err != nil {
 		return nil, err
 	}
-	return oci.MakeImage(oci.M(b.baseName, base), b.dataLayer), nil
+	return oci.MakeImage(b.baseName, oci.MakeNamedImage(b.baseName, base), b.dataLayer).Image(), nil
 }
 
 func (b buildAndAttachDataLayer) PlatformIndependent() bool {

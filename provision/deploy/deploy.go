@@ -422,7 +422,7 @@ func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *s
 				return nil, err
 			}
 
-			images.Config = oci.PublishImage(cfgtag, configImage)
+			images.Config = oci.PublishImage(cfgtag, configImage).ImageID()
 		}
 
 		imageMap[srv.PackageName()] = images

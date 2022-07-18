@@ -31,15 +31,15 @@ type readFiles struct {
 }
 
 func (r *readFiles) Inputs() *compute.In {
-	return compute.Inputs().Strs("paths", r.paths).Computable("image", r.image.Image)
+	return compute.Inputs().Strs("paths", r.paths).Computable("image", r.image.Image())
 }
 
 func (r *readFiles) Action() *tasks.ActionEvent {
-	return tasks.Action("oci.read-image-contents").Arg("image", r.image.Description).Arg("paths", r.paths)
+	return tasks.Action("oci.read-image-contents").Arg("image", r.image.Description()).Arg("paths", r.paths)
 }
 
 func (r *readFiles) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-	return ReadFilesFromImage(compute.MustGetDepValue(deps, r.image.Image, "image"), r.paths...)
+	return ReadFilesFromImage(compute.MustGetDepValue(deps, r.image.Image(), "image"), r.paths...)
 }
 
 type leftMap map[string]struct{}

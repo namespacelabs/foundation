@@ -24,7 +24,7 @@ func (w StaticBuild) BuildImage(ctx context.Context, env ops.Environment, conf b
 		return nil, err
 	}
 
-	return img.Image, nil
+	return img.Image(), nil
 }
 
 func (w StaticBuild) PlatformIndependent() bool { return true }

@@ -38,8 +38,8 @@ func LayerFromFS(ctx context.Context, vfs fs.FS) (Layer, error) {
 	}, tarball.WithCompressedCaching)
 }
 
-func LayerFromFile(vfs fs.FS, path string) compute.Computable[Layer] {
-	return &loadLayer{vfs: vfs, path: path}
+func LayerFromFile(description string, vfs fs.FS, path string) NamedLayer {
+	return MakeNamedLayer(description, &loadLayer{vfs: vfs, path: path})
 }
 
 type loadLayer struct {

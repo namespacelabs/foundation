@@ -39,7 +39,7 @@ func (al *makeImageIndex) Inputs() *compute.In {
 	var platforms []string
 	in := compute.Inputs()
 	for k, d := range al.images {
-		in = in.Computable(fmt.Sprintf("image%d", k), d.Image.Image)
+		in = in.Computable(fmt.Sprintf("image%d", k), d.Image.Image())
 		platforms = append(platforms, devhost.FormatPlatform(d.Platform))
 	}
 	return in.Strs("platforms", platforms)
@@ -49,7 +49,7 @@ func (al *makeImageIndex) Action() *tasks.ActionEvent {
 	var u uniquestrings.List
 	var platforms []string
 	for _, d := range al.images {
-		u.Add(d.Image.Description)
+		u.Add(d.Image.Description())
 		platforms = append(platforms, devhost.FormatPlatform(d.Platform))
 	}
 	return tasks.Action("oci.make-image-index").Arg("refs", u.Strings()).Arg("platforms", platforms)
@@ -58,7 +58,7 @@ func (al *makeImageIndex) Action() *tasks.ActionEvent {
 func (al *makeImageIndex) Compute(ctx context.Context, deps compute.Resolved) (ResolvableImage, error) {
 	var adds []mutate.IndexAddendum
 	for k, d := range al.images {
-		image := compute.MustGetDepValue(deps, d.Image.Image, fmt.Sprintf("image%d", k))
+		image := compute.MustGetDepValue(deps, d.Image.Image(), fmt.Sprintf("image%d", k))
 
 		digest, err := image.Digest()
 		if err != nil {

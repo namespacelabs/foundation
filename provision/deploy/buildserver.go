@@ -119,7 +119,7 @@ type moduleAndFiles struct {
 }
 
 func prepareConfigImage(ctx context.Context, server provision.Server, stack *stack.Stack,
-	computedConfigs compute.Computable[*schema.ComputedConfigurations]) compute.Computable[oci.Image] {
+	computedConfigs compute.Computable[*schema.ComputedConfigurations]) oci.NamedImage {
 	var modulesSrcs []moduleAndFiles
 	for _, srcs := range server.Env().Sources() {
 		modulesSrcs = append(modulesSrcs, moduleAndFiles{
@@ -132,8 +132,7 @@ func prepareConfigImage(ctx context.Context, server provision.Server, stack *sta
 		return strings.Compare(modulesSrcs[i].moduleName, modulesSrcs[j].moduleName) < 0
 	})
 
-	return oci.MakeImage(
-		oci.ScratchM(),
+	return oci.MakeImageFromScratch(fmt.Sprintf("config %s", server.PackageName()),
 		oci.MakeLayer(fmt.Sprintf("config %s", server.PackageName()),
 			&prepareServerConfig{
 				serverPackage:   server.PackageName(),

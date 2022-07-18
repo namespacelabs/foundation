@@ -87,7 +87,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env ops.Environment, conf
 			return nil, err
 		}
 
-		images := []oci.NamedImage{oci.M(fmt.Sprintf("%s + %s", nodeImage, bnj.module.ModuleName()), nodejsImage), oci.M(p.Plan.SourceLabel, devControllerImage)}
+		images := []oci.NamedImage{oci.MakeNamedImage(fmt.Sprintf("%s + %s", nodeImage, bnj.module.ModuleName()), nodejsImage), oci.MakeNamedImage(p.Plan.SourceLabel, devControllerImage)}
 
 		return oci.MergeImageLayers(images...), nil
 	}
