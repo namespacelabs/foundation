@@ -7,14 +7,19 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/toolcommon"
 )
+
+const postgresType = "opaque"
 
 type tool struct{}
 
@@ -25,21 +30,28 @@ func main() {
 	configure.Handle(h)
 }
 
-func collectDatabases(server *schema.Server, owner string) (map[schema.PackageName][]*postgres.Database, error) {
-	dbs := map[schema.PackageName][]*postgres.Database{}
-	for _, alloc := range server.Allocation {
-		for _, instance := range alloc.Instance {
-			for _, instantiate := range instance.Instantiated {
-				if instantiate.GetPackageName() == owner && instantiate.GetType() == "Database" {
-					db := postgres.Database{}
-					if err := proto.Unmarshal(instantiate.Constructor.Value, &db); err != nil {
-						return nil, err
-					}
-					dbs[schema.PackageName(instance.InstanceOwner)] = append(dbs[schema.PackageName(instance.InstanceOwner)], &db)
-				}
+func collectDatabases(server *schema.Server, owner string) (map[string]*postgres.Database, error) {
+	dbs := map[string]*postgres.Database{}
+	owners := map[string][]string{}
+	if err := allocations.Visit(server.Allocation, schema.PackageName(owner), &postgres.Database{},
+		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, db *postgres.Database) error {
+			if db.HostedAt == nil {
+				return fnerrors.UserError(nil, "%s: database %q is missing an endpoint", alloc.InstanceOwner, db.GetName())
 			}
-		}
+			key := fmt.Sprintf("%s/%d/%s", db.HostedAt.GetAddress(), db.HostedAt.GetPort(), db.GetName())
+			if existing, ok := dbs[key]; ok {
+				if !proto.Equal(existing, db) {
+					return fnerrors.UserError(nil, "%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.GetName(), strings.Join(owners[db.GetName()], ","))
+				}
+			} else {
+				dbs[key] = db
+				owners[key] = append(owners[key], alloc.InstanceOwner)
+			}
+			return nil
+		}); err != nil {
+		return nil, err
 	}
+
 	return dbs, nil
 }
 
@@ -67,9 +79,9 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return err
 	}
 
-	return toolcommon.Apply(ctx, r, dbs, "opaque", initArgs, out)
+	return toolcommon.Apply(ctx, r, dbs, postgresType, initArgs, out)
 }
 
 func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
-	return toolcommon.Delete(r, "opaque", out)
+	return toolcommon.Delete(r, postgresType, out)
 }

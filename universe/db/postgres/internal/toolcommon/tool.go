@@ -25,6 +25,7 @@ import (
 const (
 	id       = "init.postgres.fn"
 	basePath = "/postgres/init"
+	initPkg  = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
 )
 
 func makeKey(s string) string {
@@ -37,7 +38,7 @@ func configMapName(focus *schema.Server, name string) string {
 	return fmt.Sprintf("%s.%s.%s", focus.Id, name, id)
 }
 
-func mountConfigs(dbMap map[schema.PackageName][]*postgres.Database, namespace string, name string, focus *schema.Server, out *configure.ApplyOutput) ([]string, error) {
+func mountConfigs(dbs map[string]*postgres.Database, namespace string, name string, focus *schema.Server, out *configure.ApplyOutput) ([]string, error) {
 	args := []string{}
 
 	data := map[string]string{}
@@ -45,41 +46,39 @@ func mountConfigs(dbMap map[schema.PackageName][]*postgres.Database, namespace s
 
 	mountPath := filepath.Join(basePath, name)
 
-	for packageName, dbs := range dbMap {
-		for _, db := range dbs {
-			schemaPath := filepath.Join(packageName.String(), "schema", db.SchemaFile.Path)
-			schemaKey := makeKey(schemaPath)
+	for name, db := range dbs {
+		schemaPath := filepath.Join(name, "schema", db.SchemaFile.Path)
+		schemaKey := makeKey(schemaPath)
 
-			data[schemaKey] = string(db.SchemaFile.Contents)
-			items = append(items, &kubedef.SpecExtension_Volume_ConfigMap_Item{
-				Key:  schemaKey,
-				Path: schemaPath,
-			})
+		data[schemaKey] = string(db.SchemaFile.Contents)
+		items = append(items, &kubedef.SpecExtension_Volume_ConfigMap_Item{
+			Key:  schemaKey,
+			Path: schemaPath,
+		})
 
-			configPath := filepath.Join(packageName.String(), "config", db.Name)
-			configKey := makeKey(configPath)
+		configPath := filepath.Join(name, "config", db.Name)
+		configKey := makeKey(configPath)
 
-			config := &postgres.Database{
-				Name: db.Name,
-				SchemaFile: &types.Resource{
-					Path: filepath.Join(mountPath, schemaPath),
-				},
-				HostedAt: db.HostedAt,
-			}
-
-			configBytes, err := json.Marshal(config)
-			if err != nil {
-				return nil, err
-			}
-			data[configKey] = string(configBytes)
-
-			items = append(items, &kubedef.SpecExtension_Volume_ConfigMap_Item{
-				Key:  configKey,
-				Path: configPath,
-			})
-
-			args = append(args, filepath.Join(mountPath, configPath))
+		config := &postgres.Database{
+			Name: db.Name,
+			SchemaFile: &types.Resource{
+				Path: filepath.Join(mountPath, schemaPath),
+			},
+			HostedAt: db.HostedAt,
 		}
+
+		configBytes, err := json.Marshal(config)
+		if err != nil {
+			return nil, err
+		}
+		data[configKey] = string(configBytes)
+
+		items = append(items, &kubedef.SpecExtension_Volume_ConfigMap_Item{
+			Key:  configKey,
+			Path: configPath,
+		})
+
+		args = append(args, filepath.Join(mountPath, configPath))
 	}
 
 	configMapName := configMapName(focus, name)
@@ -119,7 +118,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*postgres.Database, namespace s
 	return args, nil
 }
 
-func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.PackageName][]*postgres.Database, name string, initArgs []string, out *configure.ApplyOutput) error {
+func Apply(ctx context.Context, r configure.StackRequest, dbs map[string]*postgres.Database, name string, initArgs []string, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
@@ -136,7 +135,7 @@ func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.Package
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
 			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
-				PackageName: "namespacelabs.dev/foundation/universe/db/postgres/internal/init",
+				PackageName: initPkg,
 				Arg:         initArgs,
 			}},
 		}})

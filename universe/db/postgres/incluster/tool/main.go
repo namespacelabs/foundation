@@ -8,17 +8,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/toolcommon"
 )
+
+const postgresType = "incluster"
 
 type tool struct{}
 
@@ -29,33 +34,25 @@ func main() {
 	configure.Handle(h)
 }
 
-func collectDatabases(server *schema.Server, owner string, internalEndpoint *schema.Endpoint) (map[schema.PackageName][]*postgres.Database, error) {
-	dbs := map[schema.PackageName][]*postgres.Database{}
-	for _, alloc := range server.Allocation {
-		for _, instance := range alloc.Instance {
-			for _, instantiate := range instance.Instantiated {
-				if instantiate.GetPackageName() == owner && instantiate.GetType() == "Database" {
-					in := &incluster.Database{}
-					if err := proto.Unmarshal(instantiate.Constructor.Value, in); err != nil {
-						return nil, err
-					}
-
-					db := &postgres.Database{
-						Name:       in.Name,
-						SchemaFile: in.SchemaFile,
-						HostedAt: &postgres.Endpoint{
-							Address: internalEndpoint.AllocatedName,
-							Port:    uint32(internalEndpoint.Port.ContainerPort),
-						},
-					}
-
-					dbs[schema.PackageName(instance.InstanceOwner)] = append(dbs[schema.PackageName(instance.InstanceOwner)], db)
+func collectDatabases(server *schema.Server, owner string, internalEndpoint *schema.Endpoint) (map[string]*incluster.Database, map[string][]string, error) {
+	dbs := map[string]*incluster.Database{}
+	owners := map[string][]string{}
+	if err := allocations.Visit(server.Allocation, schema.PackageName(owner), &incluster.Database{},
+		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, db *incluster.Database) error {
+			if existing, ok := dbs[db.GetName()]; ok {
+				if !proto.Equal(existing, db) {
+					return fnerrors.UserError(nil, "%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.GetName(), strings.Join(owners[db.GetName()], ","))
 				}
+			} else {
+				dbs[db.GetName()] = db
 			}
-		}
+			owners[db.GetName()] = append(owners[db.GetName()], alloc.InstanceOwner)
+			return nil
+		}); err != nil {
+		return nil, nil, err
 	}
 
-	return dbs, nil
+	return dbs, owners, nil
 }
 
 func internalEndpoint(s *schema.Stack) *schema.Endpoint {
@@ -105,7 +102,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 			}},
 		}})
 
-	dbs, err := collectDatabases(r.Focus.Server, r.PackageOwner(), endpoint)
+	dbs, owners, err := collectDatabases(r.Focus.Server, r.PackageOwner(), endpoint)
 	if err != nil {
 		return err
 	}
@@ -119,10 +116,28 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		}
 	}
 
+	endpointedDbs := map[string]*postgres.Database{}
+	for name, db := range dbs {
+		endpointedDbs[name] = &postgres.Database{
+			Name:       db.Name,
+			SchemaFile: db.SchemaFile,
+			HostedAt: &postgres.Endpoint{
+				Address: endpoint.AllocatedName,
+				Port:    uint32(endpoint.Port.ContainerPort),
+			},
+		}
+	}
+
+	ownedDbs := map[string][]*postgres.Database{}
+	for name, db := range endpointedDbs {
+		for _, owner := range owners[name] {
+			ownedDbs[owner] = append(ownedDbs[owner], db)
+		}
+	}
 	computed := &postgres.InstantiatedDatabases{}
-	for owner, databases := range dbs {
+	for owner, databases := range ownedDbs {
 		computed.Instantiated = append(computed.Instantiated, &postgres.InstantiatedDatabase{
-			PackageName: owner.String(),
+			PackageName: owner,
 			Credentials: creds,
 			Database:    databases,
 		})
@@ -138,9 +153,9 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		Impl:  serializedComputed,
 	})
 
-	return toolcommon.Apply(ctx, r, dbs, "incluster", initArgs, out)
+	return toolcommon.Apply(ctx, r, endpointedDbs, postgresType, initArgs, out)
 }
 
 func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
-	return toolcommon.Delete(r, "incluster", out)
+	return toolcommon.Delete(r, postgresType, out)
 }
