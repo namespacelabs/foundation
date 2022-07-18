@@ -210,8 +210,15 @@ func ensureSecurityGroup(ctx context.Context, ec2cli *ec2.Client, clusterId, vpc
 	var e smithy.APIError
 	if errors.As(err, &e) && e.ErrorCode() == "InvalidGroup.Duplicate" {
 		log.Printf("Security group %s already exists", name)
+
+		nameFilter := "group-name"
+		idFilter := "vpc-id"
+
 		res, err := ec2cli.DescribeSecurityGroups(ctx, &ec2.DescribeSecurityGroupsInput{
-			GroupNames: []string{name},
+			Filters: []ec2types.Filter{
+				{Name: &nameFilter, Values: []string{name}},
+				{Name: &idFilter, Values: []string{vpcId}},
+			},
 		})
 		if err != nil {
 			return "", err
