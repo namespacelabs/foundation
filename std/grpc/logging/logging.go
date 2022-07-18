@@ -14,7 +14,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
-	"namespacelabs.dev/go-ids"
+	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
 
 const maxOutputToTerminal = 128
@@ -24,41 +24,39 @@ var Log = log.New(os.Stderr, "[grpclog] ", log.Ldate|log.Ltime|log.Lmicroseconds
 type interceptor struct{}
 
 func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	t := time.Now()
-	ctx, reqid := logHeader(ctx, "request", info.FullMethod, req)
-	resp, unaryErr := handler(ctx, req)
-	err := AttachRequestIDToError(unaryErr, reqid)
+	rdata, has := requestid.RequestDataFromContext(ctx)
+	if !has {
+		return handler(ctx, req)
+	}
+
+	logHeader(ctx, rdata.RequestID, "request", info.FullMethod, req)
+
+	resp, err := handler(ctx, req)
 	if err == nil {
-		Log.Printf("%s: id=%s: took %v; response: %s", info.FullMethod, reqid, time.Since(t), serializeMessage(resp))
+		Log.Printf("%s: id=%s: took %v; response: %s", info.FullMethod, rdata.RequestID, time.Since(rdata.Started), serializeMessage(resp))
 	} else {
-		Log.Printf("%s: id=%s: took %v; error: %v", info.FullMethod, reqid, time.Since(t), err)
+		Log.Printf("%s: id=%s: took %v; error: %v", info.FullMethod, rdata.RequestID, time.Since(rdata.Started), err)
 	}
 	return resp, err
 }
 
 func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	t := time.Now()
-	ctx, reqid := logHeader(stream.Context(), "stream", info.FullMethod, nil)
-	streamErr := handler(serverStream{stream, ctx}, stream)
-	err := AttachRequestIDToError(streamErr, reqid)
+	rdata, has := requestid.RequestDataFromContext(stream.Context())
+	if !has {
+		return handler(srv, stream)
+	}
+
+	logHeader(stream.Context(), rdata.RequestID, "stream", info.FullMethod, nil)
+	err := handler(srv, stream)
 	if err == nil {
-		Log.Printf("%s: id=%s: took %v, finished ok", info.FullMethod, reqid, time.Since(t))
+		Log.Printf("%s: id=%s: took %v, finished ok", info.FullMethod, rdata.RequestID, time.Since(rdata.Started))
 	} else {
-		Log.Printf("%s: id=%s: took %v; error: %v", info.FullMethod, reqid, time.Since(t), err)
+		Log.Printf("%s: id=%s: took %v; error: %v", info.FullMethod, rdata.RequestID, time.Since(rdata.Started), err)
 	}
 	return err
 }
 
-type serverStream struct {
-	grpc.ServerStream
-	ctx context.Context
-}
-
-func (s serverStream) Context() context.Context { return s.ctx }
-
-func logHeader(ctx context.Context, what, fullMethod string, req interface{}) (context.Context, string) {
-	// XXX establish request id propagation.
-	reqid := ids.NewRandomBase32ID(16)
+func logHeader(ctx context.Context, reqid, what, fullMethod string, req interface{}) {
 	peerAddr := "unknown"
 	authType := "none"
 	deadline := "none"
@@ -79,8 +77,6 @@ func logHeader(ctx context.Context, what, fullMethod string, req interface{}) (c
 	} else {
 		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s)", fullMethod, reqid, peerAddr, authType, deadline)
 	}
-
-	return withRequestID(ctx, requestData{rid: reqid}), reqid
 }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {

@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/http/middleware"
+	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
 
 var (
@@ -107,9 +108,21 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 func interceptorsAsOpts() []grpc.ServerOption {
 	unary, streaming := interceptors.ServerInterceptors()
 
+	var coreU []grpc.UnaryServerInterceptor
+	var coreS []grpc.StreamServerInterceptor
+
+	// Interceptors are always invoked in order. It's **imperative** that the
+	// request id handling interceptor shows up first.
+
+	coreU = append(coreU, requestid.Interceptor{}.Unary)
+	coreS = append(coreS, requestid.Interceptor{}.Streaming)
+
+	coreU = append(coreU, unary...)
+	coreS = append(coreS, streaming...)
+
 	return []grpc.ServerOption{
-		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(streaming...)),
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unary...)),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(coreS...)),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(coreU...)),
 	}
 }
 
