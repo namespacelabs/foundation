@@ -24,7 +24,7 @@ func EnsureBucketExists(ctx context.Context, client *s3.Client, bc *BucketConfig
 }
 
 func EnsureBucketExistsByName(ctx context.Context, client *s3.Client, name, region string) error {
-	log.Printf("Creating bucket %s in region: %s\n", name, region)
+	log.Printf("%s (%s): creating bucket...\n", name, region)
 	if err := backoff.Retry(func() error {
 		input := &s3.CreateBucketInput{
 			Bucket: &name,
@@ -40,6 +40,7 @@ func EnsureBucketExistsByName(ctx context.Context, client *s3.Client, name, regi
 			var alreadyExists *types.BucketAlreadyExists
 			var alreadyOwned *types.BucketAlreadyOwnedByYou
 			if errors.As(err, &alreadyExists) || errors.As(err, &alreadyOwned) {
+				log.Printf("%s (%s): bucket already exists.\n", name, region)
 				return nil
 			}
 
@@ -47,6 +48,8 @@ func EnsureBucketExistsByName(ctx context.Context, client *s3.Client, name, regi
 			log.Println(err)
 			return err
 		}
+
+		log.Printf("%s (%s): bucket created.\n", name, region)
 
 		return nil
 	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx)); err != nil {

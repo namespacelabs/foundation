@@ -39,6 +39,7 @@ func apply(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal: %w", err)
 	}
+
 	minioCreds, err := getMinioCreds()
 	if err != nil {
 		return fmt.Errorf("failed to read Minio credentials: %w", err)
@@ -78,10 +79,13 @@ func getMinioCreds() (*minio.Creds, error) {
 			return nil, err
 		}
 
+		log.Printf("Connecting to minio.")
 		return &minio.Creds{
 			User:     string(user),
 			Password: string(pass),
 		}, nil
 	}
+
+	log.Printf("Connecting to AWS S3.")
 	return nil, nil
 }
