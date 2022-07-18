@@ -99,20 +99,30 @@ func (r deploymentState) Hints() []string {
 }
 
 func (r K8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
-	// XXX need a StatefulSet variant.
-	d, err := r.cli.AppsV1().Deployments(serverNamespace(r, server)).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
-	if err != nil {
-		// XXX better error messages.
-		return oci.ImageID{}, err
-	}
+	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.PackageName)),
+		func(ctx context.Context) (oci.ImageID, error) {
+			// XXX need a StatefulSet variant.
+			d, err := r.cli.AppsV1().Deployments(serverNamespace(r, server)).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
+			if err != nil {
+				// XXX better error messages.
+				return oci.ImageID{}, err
+			}
 
-	cfgimage, ok := d.Annotations[kubedef.K8sConfigImage]
-	if !ok {
-		return oci.ImageID{}, fnerrors.BadInputError("%s: %q is missing as an annotation in %q",
-			server.GetPackageName(), kubedef.K8sConfigImage, kubedef.MakeDeploymentId(server))
-	}
+			cfgimage, ok := d.Annotations[kubedef.K8sConfigImage]
+			if !ok {
+				return oci.ImageID{}, fnerrors.BadInputError("%s: %q is missing as an annotation in %q",
+					server.GetPackageName(), kubedef.K8sConfigImage, kubedef.MakeDeploymentId(server))
+			}
 
-	return oci.ParseImageID(cfgimage)
+			imgid, err := oci.ParseImageID(cfgimage)
+			if err != nil {
+				return imgid, err
+			}
+
+			tasks.Attachments(ctx).AddResult("ref", imgid.ImageRef())
+
+			return imgid, nil
+		})
 }
 
 func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
