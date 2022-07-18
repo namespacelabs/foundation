@@ -4,7 +4,7 @@ import (
 
 server: fn.#Server & {
 	id:        "q311n9u9uvirr2i42ms0"
-	name:      "postgresserver"
+	name:      "postgresdemoserver"
 	framework: "GO"
 
 	import: [
