@@ -187,7 +187,10 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 			},
 			{
 				Effect: "Allow",
-				Action: []string{"ec2:CreateSecurityGroup"}, // TODO should this be Namespace, not in the init?
+				Action: []string{
+					"ec2:CreateSecurityGroup",
+					"ec2:AuthorizeSecurityGroupIngress",
+				}, // TODO should this be Namespace, not in the init?
 				Resource: []string{
 					fmt.Sprintf("arn:aws:ec2:%s:*:security-group/*", region),
 					fmt.Sprintf("arn:aws:ec2:%s:*:vpc/%s", region, eksCluster.VpcId),

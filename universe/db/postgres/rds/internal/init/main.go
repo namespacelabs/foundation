@@ -273,10 +273,20 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 		return fmt.Errorf("Expected one cluster with identifier %s, got %d", id, len(resp.DBClusters))
 	}
 
+	desc := resp.DBClusters[0]
 	db.HostedAt = &postgres.Endpoint{
-		Address: *resp.DBClusters[0].Endpoint,
-		Port:    uint32(*resp.DBClusters[0].Port),
+		Address: *desc.Endpoint,
+		Port:    uint32(*desc.Port),
 	}
+
+	if _, err := ec2cli.AuthorizeSecurityGroupIngress(ctx, &ec2.AuthorizeSecurityGroupIngressInput{
+		GroupId:  &groupId,
+		FromPort: desc.Port,
+		ToPort:   desc.Port,
+	}); err != nil {
+		return fmt.Errorf("failed to add permissions to security group: %v", explain(err))
+	}
+	log.Printf("Authorized security group ingress for port %d", *desc.Port)
 
 	// Wait for cluster to be ready
 	// TODO tidy up
