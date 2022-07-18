@@ -164,7 +164,7 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 	dbArns := make([]string, len(orderedDbs))
 	for k, db := range orderedDbs {
 		// TODO all accounts? Really?
-		id := internal.ClusterIdentifier(db.Name)
+		id := internal.ClusterIdentifier(req.Env.Name, db.Name)
 		clusterArns[k] = fmt.Sprintf("arn:aws:rds:%s:*:cluster:%s", region, id)
 		dbArns[k] = fmt.Sprintf("arn:aws:rds:%s:*:db:%s*", region, id)
 	}
@@ -212,9 +212,11 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 		return err
 	}
 
-	initArgs := []string{}
+	initArgs := []string{
+		fmt.Sprintf("--env_name=%s", req.Env.Name),
+	}
+
 	// TODO: creds should be definable per db instance #217
-	var credsSecret *secrets.SecretDevMap_SecretSpec
 	for _, secret := range col.SecretsOf(creds) {
 		if secret.Name == "postgres-password-file" {
 			initArgs = append(initArgs, fmt.Sprintf("--postgres_password_file=%s", secret.FromPath))
@@ -226,10 +228,6 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 			initArgs = append(initArgs, fmt.Sprintf("--aws_credentials_file=%s", secret.FromPath))
 			break
 		}
-	}
-
-	if credsSecret != nil {
-		initArgs = append(initArgs, fmt.Sprintf("--postgres_password_file=%s", credsSecret.FromPath))
 	}
 
 	return toolcommon.ApplyForInit(ctx, req, baseDbs, postgresType, rdsInit, initArgs, out)

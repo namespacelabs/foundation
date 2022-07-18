@@ -4,8 +4,10 @@
 
 package internal
 
-import "fmt"
+import (
+	"fmt"
+)
 
-func ClusterIdentifier(dbName string) string {
-	return fmt.Sprintf("ns-postgres-%s", dbName)
+func ClusterIdentifier(env, dbName string) string {
+	return fmt.Sprintf("ns-%s-postgres-%s", env, dbName)
 }

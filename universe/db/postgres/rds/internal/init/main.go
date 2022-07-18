@@ -31,13 +31,14 @@ import (
 const connBackoff = 1 * time.Second
 
 var (
+	envName            = flag.String("env_name", "", "Name of current environment.")
 	awsCredentialsFile = flag.String("aws_credentials_file", "", "Path to the AWS credentials file.")
 	userFile           = flag.String("postgres_user_file", "", "location of the user secret")
 	passwordFile       = flag.String("postgres_password_file", "", "location of the password secret")
 
 	engine = "postgres"
 
-	// TODO configurable?
+	// TODO configurable?!
 	storage = int32(100) // min GB
 	class   = "db.m5d.xlarge"
 	iops    = int32(3000)
@@ -174,8 +175,8 @@ func prepareDatabase(ctx context.Context, db *postgres.Database, user, password 
 	return applySchema(ctx, conn, db)
 }
 
-func prepareCluster(ctx context.Context, rdscli *awsrds.Client, db *postgres.Database, user, password string) error {
-	id := internal.ClusterIdentifier(db.Name)
+func prepareCluster(ctx context.Context, envName string, rdscli *awsrds.Client, db *postgres.Database, user, password string) error {
+	id := internal.ClusterIdentifier(envName, db.Name)
 	create := &awsrds.CreateDBClusterInput{
 		DBClusterIdentifier:    &id,
 		DatabaseName:           &db.Name,
@@ -244,6 +245,10 @@ func main() {
 	}
 	rdscli := awsrds.NewFromConfig(awsCfg)
 
+	if envName == nil || *envName == "" {
+		log.Fatalf("Required flag --env_name is not set.")
+	}
+
 	dbs, err := readConfigs()
 	if err != nil {
 		log.Fatalf("%v", err)
@@ -253,7 +258,7 @@ func main() {
 	for _, db := range dbs {
 		db := db // Close db
 		eg.Go(func() error {
-			return prepareCluster(ctx, rdscli, db, user, password)
+			return prepareCluster(ctx, *envName, rdscli, db, user, password)
 		})
 	}
 

@@ -30,7 +30,7 @@ func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*po
 	}
 	rdscli := awsrds.NewFromConfig(awsCfg)
 
-	id := internal.ClusterIdentifier(db.Name)
+	id := internal.ClusterIdentifier(deps.ServerInfo.EnvName, db.Name)
 
 	desc, err := rdscli.DescribeDBClusters(ctx, &awsrds.DescribeDBClustersInput{
 		DBClusterIdentifier: &id,
