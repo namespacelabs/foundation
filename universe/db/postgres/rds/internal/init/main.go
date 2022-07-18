@@ -39,9 +39,11 @@ var (
 	engine = "postgres"
 
 	// TODO configurable?!
-	storage = int32(100) // min GB
-	class   = "db.m5d.xlarge"
-	iops    = int32(3000)
+	storage          = int32(100) // min GB
+	class            = "db.m5d.xlarge"
+	iops             = int32(3000)
+	deleteProtection = true // can still be disabled and deleted by hand
+	public           = false
 )
 
 // TODO dedup
@@ -186,6 +188,8 @@ func prepareCluster(ctx context.Context, envName string, rdscli *awsrds.Client, 
 		AllocatedStorage:       &storage,
 		DBClusterInstanceClass: &class,
 		Iops:                   &iops,
+		DeletionProtection:     &deleteProtection,
+		PubliclyAccessible:     &public,
 	}
 
 	if _, err := rdscli.CreateDBCluster(ctx, create); err != nil {
