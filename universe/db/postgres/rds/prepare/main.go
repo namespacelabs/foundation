@@ -214,6 +214,7 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 
 	initArgs := []string{
 		fmt.Sprintf("--env_name=%s", req.Env.Name),
+		fmt.Sprintf("--eks_cluster_name=%s", systemInfo.EksClusterName),
 	}
 
 	// TODO: creds should be definable per db instance #217

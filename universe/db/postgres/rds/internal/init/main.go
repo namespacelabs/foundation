@@ -17,7 +17,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/eks"
 	awsrds "github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/cenkalti/backoff/v4"
@@ -32,6 +34,7 @@ const connBackoff = 1 * time.Second
 
 var (
 	envName            = flag.String("env_name", "", "Name of current environment.")
+	eksClusterName     = flag.String("eks_cluster_name", "", "Name of the EKS cluster.")
 	awsCredentialsFile = flag.String("aws_credentials_file", "", "Path to the AWS credentials file.")
 	userFile           = flag.String("postgres_user_file", "", "location of the user secret")
 	passwordFile       = flag.String("postgres_password_file", "", "location of the password secret")
@@ -195,29 +198,46 @@ func prepareCluster(ctx context.Context, envName string, rdscli *awsrds.Client, 
 	if _, err := rdscli.CreateDBCluster(ctx, create); err != nil {
 		var e *types.DBClusterAlreadyExistsFault
 		if errors.As(err, &e) {
-			// TODO update?
+			log.Printf("RDS DB cluster %s already exists", id)
+			// TODO ModifyDBCluster?
 		} else {
 			return fmt.Errorf("failed to create database cluster: %v (type: %v)", err, reflect.TypeOf(err))
 		}
+	} else {
+		log.Printf("Creating RDS DB cluster %s", id)
 	}
 
-	desc, err := rdscli.DescribeDBClusters(ctx, &awsrds.DescribeDBClustersInput{
-		DBClusterIdentifier: &id,
-	})
-	if err != nil {
-		return err
-	}
+	// Wait for cluster to be ready
+	// TODO tidy up
+	for {
+		resp, err := rdscli.DescribeDBClusters(ctx, &awsrds.DescribeDBClustersInput{
+			DBClusterIdentifier: &id,
+		})
+		if err != nil {
+			return err
+		}
 
-	if len(desc.DBClusters) != 1 {
-		return fmt.Errorf("Expected one cluster with identifier %s, got %d", id, len(desc.DBClusters))
-	}
+		if len(resp.DBClusters) != 1 {
+			return fmt.Errorf("Expected one cluster with identifier %s, got %d", id, len(resp.DBClusters))
+		}
 
-	db.HostedAt = &postgres.Endpoint{
-		Address: *desc.DBClusters[0].Endpoint,
-		Port:    uint32(*desc.DBClusters[0].Port),
-	}
+		desc := resp.DBClusters[0]
 
-	return prepareDatabase(ctx, db, user, password)
+		log.Printf("Cluster is %s", *desc.Status)
+
+		switch *desc.Status {
+		// TODO handle other cases?
+		case "available":
+			db.HostedAt = &postgres.Endpoint{
+				Address: *desc.Endpoint,
+				Port:    uint32(*desc.Port),
+			}
+
+			return prepareDatabase(ctx, db, user, password)
+		}
+
+		time.Sleep(connBackoff)
+	}
 }
 
 func main() {
@@ -239,17 +259,23 @@ func main() {
 	}
 
 	if *awsCredentialsFile == "" {
-		log.Fatalf("aws_credentials_file must be set")
+		log.Fatalf("Required flag --aws_credentials_file is not set.")
 	}
 
 	awsCfg, err := config.LoadDefaultConfig(ctx,
 		config.WithSharedCredentialsFiles([]string{*awsCredentialsFile}))
 	if err != nil {
-		log.Fatalf("Failed to load aws config: %s", err)
+		log.Fatalf("Failed to load aws config: %v", err)
 	}
-	rdscli := awsrds.NewFromConfig(awsCfg)
 
-	if envName == nil || *envName == "" {
+	vpc, err := computeVpcName(ctx, awsCfg)
+	if err != nil {
+		log.Fatalf("Failed to compute EKS VPC name: %v", err)
+	}
+	// TODO remove debug output
+	log.Printf("EKS VPC is %q", vpc)
+
+	if *envName == "" {
 		log.Fatalf("Required flag --env_name is not set.")
 	}
 
@@ -258,6 +284,7 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 
+	rdscli := awsrds.NewFromConfig(awsCfg)
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, db := range dbs {
 		db := db // Close db
@@ -293,4 +320,21 @@ func readPassword() (string, error) {
 	}
 
 	return string(pw), nil
+}
+
+func computeVpcName(ctx context.Context, cfg aws.Config) (string, error) {
+	ekscli := eks.NewFromConfig(cfg)
+
+	if *eksClusterName == "" {
+		return "", fmt.Errorf("Required flag --eks_cluster_name is not set.")
+	}
+
+	desc, err := ekscli.DescribeCluster(ctx, &eks.DescribeClusterInput{
+		Name: eksClusterName,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return *desc.Cluster.ResourcesVpcConfig.VpcId, nil
 }
