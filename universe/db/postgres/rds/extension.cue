@@ -42,7 +42,7 @@ extension: fn.#Extension & {
 			requires: [
 				"namespacelabs.dev/foundation/universe/db/postgres/incluster/tool",
 				"namespacelabs.dev/foundation/universe/db/postgres/internal/init",
-				"namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init",
+				"namespacelabs.dev/foundation/universe/db/postgres/rds/init",
 				"namespacelabs.dev/foundation/universe/db/postgres/server",
 			]
 		}

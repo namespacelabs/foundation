@@ -6,15 +6,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -23,11 +19,9 @@ import (
 	awsrds "github.com/aws/aws-sdk-go-v2/service/rds"
 	rdstypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/aws/smithy-go"
-	"github.com/cenkalti/backoff/v4"
-	"github.com/dustin/go-humanize"
-	"github.com/jackc/pgx/v4"
 	"golang.org/x/sync/errgroup"
 	"namespacelabs.dev/foundation/universe/db/postgres"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/initcommon"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds/internal"
 )
 
@@ -51,149 +45,6 @@ var (
 	class   = "db.m5d.xlarge"
 	iops    = int32(3000)
 )
-
-// TODO dedup
-func existsDb(ctx context.Context, conn *pgx.Conn, dbName string) (bool, error) {
-	rows, err := conn.Query(ctx, "SELECT FROM pg_database WHERE datname = $1;", dbName)
-	if err != nil {
-		return false, fmt.Errorf("failed to check for database %s: %w", dbName, err)
-	}
-	defer rows.Close()
-
-	return rows.Next(), nil
-}
-
-// TODO dedup
-func connect(ctx context.Context, user string, password string, address string, port uint32, db string) (conn *pgx.Conn, err error) {
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", user, password, address, port, db)
-	count := 0
-	err = backoff.Retry(func() error {
-		addrPort := fmt.Sprintf("%s:%d", address, port)
-
-		// Use a more aggressive connect to determine whether the server already
-		// has an open serving port. If it does, we then defer to pgx.Connect to
-		// take as much time as it needs.
-		rawConn, err := net.DialTimeout("tcp", addrPort, 3*connBackoff)
-		if err != nil {
-			log.Printf("Failed to tcp dial %s: %v", addrPort, err)
-			return err
-		}
-
-		rawConn.Close()
-
-		count++
-		log.Printf("Connecting to postgres (%s try), address is `%s:%d`.", humanize.Ordinal(count), address, port)
-		conn, err = pgx.Connect(ctx, connString)
-		if err != nil {
-			log.Printf("Failed to connect to postgres: %v", err)
-		}
-		return err
-	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx))
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to establish postgres connection: %w", err)
-	}
-
-	return conn, nil
-}
-
-// TODO dedup
-func ensureDb(ctx context.Context, conn *pgx.Conn, db *postgres.Database) error {
-	// Postgres does not support CREATE DATABASE IF NOT EXISTS
-	log.Printf("Querying for existing databases.")
-	exists, err := existsDb(ctx, conn, db.Name)
-	if err != nil {
-		return err
-	}
-
-	if exists {
-		log.Printf("Database `%s` already exists.", db.Name)
-		return nil
-	}
-
-	// SQL arguments can only be values, not identifiers.
-	// https://www.postgresql.org/docs/9.5/xfunc-sql.html
-	// As we need to use Sprintf instead, let's do some basic sanity checking (whitespaces are forbidden).
-	if len(strings.Fields(db.Name)) > 1 {
-		return fmt.Errorf("invalid database name: %s", db.Name)
-	}
-
-	if _, err := conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s;", db.Name)); err != nil {
-		return fmt.Errorf("failed to create database `%s`: %w", db.Name, err)
-	}
-
-	log.Printf("Created database `%s`.", db.Name)
-	return nil
-}
-
-// TODO dedup
-func applySchema(ctx context.Context, conn *pgx.Conn, db *postgres.Database) error {
-	schema, err := ioutil.ReadFile(db.SchemaFile.Path)
-	if err != nil {
-		return fmt.Errorf("unable to read file %s: %v", db.SchemaFile.Path, err)
-	}
-
-	log.Printf("Applying schema %s.", db.SchemaFile.Path)
-	_, err = conn.Exec(ctx, string(schema))
-	if err != nil {
-		return fmt.Errorf("unable to execute schema %s: %v", db.SchemaFile.Path, err)
-	}
-	return nil
-}
-
-// TODO dedup
-func readConfigs() ([]*postgres.Database, error) {
-	dbs := []*postgres.Database{}
-
-	for _, path := range flag.Args() {
-		file, err := ioutil.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("unable to read file %s: %v", path, err)
-		}
-
-		db := &postgres.Database{}
-		if err := json.Unmarshal(file, db); err != nil {
-			return nil, err
-		}
-		dbs = append(dbs, db)
-	}
-
-	return dbs, nil
-}
-
-// TODO dedup
-func prepareDatabase(ctx context.Context, db *postgres.Database, user, password string) error {
-	// Postgres needs a db to connect to so we pin one that is guaranteed to exist.
-	postgresDB, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, "postgres")
-	if err != nil {
-		return err
-	}
-	defer postgresDB.Close(ctx)
-
-	if err := ensureDb(ctx, postgresDB, db); err != nil {
-		return err
-	}
-
-	conn, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, db.Name)
-	if err != nil {
-		return err
-	}
-	defer conn.Close(ctx)
-
-	return applySchema(ctx, conn, db)
-}
-
-func explain(err error) error {
-	child := err
-	for {
-		log.Printf("Type: %v", reflect.TypeOf(child))
-		child = errors.Unwrap(child)
-		if child == nil {
-			break
-		}
-	}
-	return fmt.Errorf("%w", err)
-}
 
 func ensureSecurityGroup(ctx context.Context, ec2cli *ec2.Client, clusterId, vpcId string) (string, error) {
 	name := fmt.Sprintf("%s-security-group", clusterId)
@@ -233,7 +84,7 @@ func ensureSecurityGroup(ctx context.Context, ec2cli *ec2.Client, clusterId, vpc
 		return *res.SecurityGroups[0].GroupId, nil
 	}
 
-	return "", fmt.Errorf("failed to create security group: %v", explain(err))
+	return "", fmt.Errorf("failed to create security group: %v", err)
 }
 
 func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.Client, ec2cli *ec2.Client, dbGroup string, db *postgres.Database, user, password string) error {
@@ -265,7 +116,7 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 			log.Printf("RDS DB cluster %s already exists", id)
 			// TODO ModifyDBCluster?
 		} else {
-			return fmt.Errorf("failed to create database cluster: %v", explain(err))
+			return fmt.Errorf("failed to create database cluster: %v", err)
 		}
 	} else {
 		log.Printf("Creating RDS DB cluster %s", id)
@@ -295,15 +146,14 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 		IpProtocol: &protocol,
 		CidrIp:     &ipRange,
 	}); err != nil {
-		return fmt.Errorf("failed to add permissions to security group: %v", explain(err))
+		return fmt.Errorf("failed to add permissions to security group: %v", err)
 	}
 	log.Printf("Authorized security group ingress for port %d", *desc.Port)
 
-	// Wait for cluster to be ready
-	// TODO tidy up
+	// Wait for endpoints to be ready
 wait:
 	for {
-		// watch would be nice
+		// TODO watch would be nice
 		time.Sleep(connBackoff)
 
 		resp, err := rdscli.DescribeDBClusterEndpoints(ctx, &awsrds.DescribeDBClusterEndpointsInput{
@@ -325,8 +175,49 @@ wait:
 			}
 		}
 
-		return prepareDatabase(ctx, db, user, password)
+		return initcommon.PrepareDatabase(ctx, db, user, password)
 	}
+}
+
+func createDBSubnetGroup(ctx context.Context, envName string, rdscli *awsrds.Client, ec2cli *ec2.Client, vpcId string) (string, error) {
+	idFilter := "vpc-id"
+	resp, err := ec2cli.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
+		Filters: []ec2types.Filter{{
+			Name:   &idFilter,
+			Values: []string{vpcId},
+		}},
+	})
+	if err != nil {
+		return "", fmt.Errorf("Unable to list subnets for VPC %s: %v", vpcId, err)
+	}
+
+	if len(resp.Subnets) == 0 {
+		return "", fmt.Errorf("Found no subnets for VPC %s", vpcId)
+	}
+
+	var subnetIds []string
+	for _, subnet := range resp.Subnets {
+		subnetIds = append(subnetIds, *subnet.SubnetId)
+	}
+
+	name := fmt.Sprintf("ns-%s-db-subnet", envName)
+	desc := fmt.Sprintf("Namespace DB Subnet group for RDS deployments in %s environment.", envName)
+	if _, err := rdscli.CreateDBSubnetGroup(ctx, &awsrds.CreateDBSubnetGroupInput{
+		DBSubnetGroupName:        &name,
+		DBSubnetGroupDescription: &desc,
+		SubnetIds:                subnetIds, // TODO Should we create our own?
+	}); err != nil {
+		var e *rdstypes.DBSubnetGroupAlreadyExistsFault
+		if errors.As(err, &e) {
+			log.Printf("RDS DB subnet group %s already exists", name)
+			return name, nil
+		} else {
+			return "", fmt.Errorf("failed to create db subnet group: %v", err)
+		}
+	}
+
+	log.Printf("Created DB subnet group %q", name)
+	return name, nil
 }
 
 func main() {
@@ -373,7 +264,7 @@ func main() {
 		log.Fatalf("unable to create DB subnet group: %v", err)
 	}
 
-	dbs, err := readConfigs()
+	dbs, err := initcommon.ReadConfigs()
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -413,45 +304,4 @@ func readPassword() (string, error) {
 	}
 
 	return string(pw), nil
-}
-
-func createDBSubnetGroup(ctx context.Context, envName string, rdscli *awsrds.Client, ec2cli *ec2.Client, vpcId string) (string, error) {
-	idFilter := "vpc-id"
-	resp, err := ec2cli.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
-		Filters: []ec2types.Filter{{
-			Name:   &idFilter,
-			Values: []string{vpcId},
-		}},
-	})
-	if err != nil {
-		return "", fmt.Errorf("Unable to list subnets for VPC %s: %v", vpcId, explain(err))
-	}
-
-	if len(resp.Subnets) == 0 {
-		return "", fmt.Errorf("Found no subnets for VPC %s", vpcId)
-	}
-
-	var subnetIds []string
-	for _, subnet := range resp.Subnets {
-		subnetIds = append(subnetIds, *subnet.SubnetId)
-	}
-
-	name := fmt.Sprintf("ns-%s-db-subnet", envName)
-	desc := fmt.Sprintf("Namespace DB Subnet group for RDS deployments in %s environment.", envName)
-	if _, err := rdscli.CreateDBSubnetGroup(ctx, &awsrds.CreateDBSubnetGroupInput{
-		DBSubnetGroupName:        &name,
-		DBSubnetGroupDescription: &desc,
-		SubnetIds:                subnetIds, // TODO Should we create our own?
-	}); err != nil {
-		var e *rdstypes.DBSubnetGroupAlreadyExistsFault
-		if errors.As(err, &e) {
-			log.Printf("RDS DB subnet group %s already exists", name)
-			return name, nil
-		} else {
-			return "", fmt.Errorf("failed to create db subnet group: %v", explain(err))
-		}
-	}
-
-	log.Printf("Created DB subnet group %q", name)
-	return name, nil
 }

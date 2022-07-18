@@ -38,7 +38,7 @@ const (
 	creds = "namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds"
 
 	self    = "namespacelabs.dev/foundation/universe/db/postgres/rds/prepare"
-	rdsInit = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/init"
+	rdsInit = "namespacelabs.dev/foundation/universe/db/postgres/rds/init"
 	rdsNode = "namespacelabs.dev/foundation/universe/db/postgres/rds"
 
 	inclusterInit   = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
