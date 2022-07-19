@@ -5,7 +5,6 @@
 package configure
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 
@@ -31,7 +30,7 @@ func internalEndpoint(s *schema.Stack) *schema.Endpoint {
 	return nil
 }
 
-func Apply(ctx context.Context, r configure.StackRequest, dbs map[string]*incluster.Database, owners map[string][]string, out *configure.ApplyOutput) error {
+func Apply(r configure.StackRequest, dbs map[string]*incluster.Database, owners map[string][]string, out *configure.ApplyOutput) error {
 	initArgs := []string{}
 
 	col, err := secrets.Collect(r.Focus.Server)
@@ -114,9 +113,9 @@ func Apply(ctx context.Context, r configure.StackRequest, dbs map[string]*inclus
 		Impl:  serializedComputed,
 	})
 
-	return toolcommon.Apply(ctx, r, endpointedDbs, postgresType, initArgs, out)
+	return toolcommon.Apply(r, endpointedDbs, postgresType, initArgs, out)
 }
 
-func Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func Delete(r configure.StackRequest, out *configure.DeleteOutput) error {
 	return toolcommon.Delete(r, postgresType, out)
 }

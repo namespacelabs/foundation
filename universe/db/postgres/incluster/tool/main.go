@@ -26,11 +26,11 @@ func main() {
 	configure.Handle(h)
 }
 
-func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
 	dbs := map[string]*incluster.Database{}
 	owners := map[string][]string{}
 	if err := allocations.Visit(r.Focus.Server.Allocation, schema.PackageName(r.PackageOwner()), &incluster.Database{},
-		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, db *incluster.Database) error {
+		func(alloc *schema.Allocation_Instance, _ *schema.Instantiate, db *incluster.Database) error {
 			if existing, ok := dbs[db.GetName()]; ok {
 				if !proto.Equal(existing, db) {
 					return fnerrors.UserError(nil, "%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.GetName(), strings.Join(owners[db.GetName()], ","))
@@ -44,9 +44,9 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return err
 	}
 
-	return pgconfigure.Apply(ctx, r, dbs, owners, out)
+	return pgconfigure.Apply(r, dbs, owners, out)
 }
 
-func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
-	return pgconfigure.Delete(ctx, r, out)
+func (tool) Delete(_ context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+	return pgconfigure.Delete(r, out)
 }

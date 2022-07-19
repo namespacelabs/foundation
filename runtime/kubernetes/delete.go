@@ -89,7 +89,7 @@ func DeleteAllRecursively(ctx context.Context, cli *kubernetes.Clientset, wait b
 			return len(removed) > 0, nil
 		}
 
-		return tasks.Return(ctx, tasks.Action("kubernetes.namespace.delete-wait").Arg("namespaces", removed), func(ctx context.Context) (bool, error) {
+		return tasks.Return(ctx, tasks.Action("kubernetes.namespace.delete-wait").Arg("namespaces", removed), func(context.Context) (bool, error) {
 			for ev := range w.ResultChan() {
 				if ev.Type != watch.Deleted {
 					continue

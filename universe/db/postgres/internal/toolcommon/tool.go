@@ -5,7 +5,6 @@
 package toolcommon
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -118,11 +117,11 @@ func mountConfigs(dbs map[string]*postgres.Database, namespace string, name stri
 	return args, nil
 }
 
-func Apply(ctx context.Context, r configure.StackRequest, dbs map[string]*postgres.Database, name string, initArgs []string, out *configure.ApplyOutput) error {
-	return ApplyForInit(ctx, r, dbs, name, initPkg, initArgs, out)
+func Apply(r configure.StackRequest, dbs map[string]*postgres.Database, name string, initArgs []string, out *configure.ApplyOutput) error {
+	return ApplyForInit(r, dbs, name, initPkg, initArgs, out)
 }
 
-func ApplyForInit(ctx context.Context, r configure.StackRequest, dbs map[string]*postgres.Database, name string, initPkg string, initArgs []string, out *configure.ApplyOutput) error {
+func ApplyForInit(r configure.StackRequest, dbs map[string]*postgres.Database, name string, initPkg string, initArgs []string, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}

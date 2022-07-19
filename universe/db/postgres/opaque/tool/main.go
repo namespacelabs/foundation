@@ -55,7 +55,7 @@ func collectDatabases(server *schema.Server, owner string) (map[string]*postgres
 	return dbs, nil
 }
 
-func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
 	initArgs := []string{}
 
 	col, err := secrets.Collect(r.Focus.Server)
@@ -79,9 +79,9 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		return err
 	}
 
-	return toolcommon.Apply(ctx, r, dbs, postgresType, initArgs, out)
+	return toolcommon.Apply(r, dbs, postgresType, initArgs, out)
 }
 
-func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (tool) Delete(_ context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
 	return toolcommon.Delete(r, postgresType, out)
 }

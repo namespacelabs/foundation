@@ -96,7 +96,7 @@ func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPor
 			return err
 		}
 
-		eg.Go(func(ctx context.Context) error {
+		eg.Go(func(context.Context) error {
 			defer lst.Close()
 
 			localPort := lst.Addr().(*net.TCPAddr).Port

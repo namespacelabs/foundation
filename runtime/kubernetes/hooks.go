@@ -16,11 +16,11 @@ import (
 	kubenode "namespacelabs.dev/foundation/std/runtime/kubernetes"
 )
 
-func prepareApplyServerExtensions(ctx context.Context, env ops.Environment, srv *schema.Stack_Entry) (*frontend.PrepareProps, error) {
+func prepareApplyServerExtensions(_ context.Context, _ ops.Environment, srv *schema.Stack_Entry) (*frontend.PrepareProps, error) {
 	var ensureServiceAccount bool
 
 	if err := allocations.Visit(srv.Server.Allocation, kubeNode, &kubenode.ServerExtensionArgs{},
-		func(instance *schema.Allocation_Instance, instantiate *schema.Instantiate, args *kubenode.ServerExtensionArgs) error {
+		func(_ *schema.Allocation_Instance, _ *schema.Instantiate, args *kubenode.ServerExtensionArgs) error {
 			if args.EnsureServiceAccount {
 				ensureServiceAccount = true
 			}

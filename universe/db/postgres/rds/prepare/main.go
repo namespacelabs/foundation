@@ -85,11 +85,11 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 
 type provisionHook struct{}
 
-func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
+func (provisionHook) Apply(_ context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
 	dbs := map[string]*rds.Database{}
 	owners := map[string][]string{}
 	if err := allocations.Visit(req.Focus.Server.Allocation, rdsNode, &rds.Database{},
-		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, db *rds.Database) error {
+		func(alloc *schema.Allocation_Instance, _ *schema.Instantiate, db *rds.Database) error {
 			if existing, ok := dbs[db.Name]; ok {
 				if !proto.Equal(existing, db) {
 					return fnerrors.UserError(nil, "%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.Name, strings.Join(owners[db.Name], ","))
@@ -105,22 +105,22 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 	}
 
 	if useIncluster(req.Env) {
-		return applyIncluster(ctx, req, dbs, owners, out)
+		return applyIncluster(req, dbs, owners, out)
 	}
 
-	return applyRds(ctx, req, dbs, out)
+	return applyRds(req, dbs, out)
 }
 
-func (provisionHook) Delete(ctx context.Context, req configure.StackRequest, out *configure.DeleteOutput) error {
+func (provisionHook) Delete(_ context.Context, req configure.StackRequest, out *configure.DeleteOutput) error {
 	if useIncluster(req.Env) {
-		return inclustertool.Delete(ctx, req, out)
+		return inclustertool.Delete(req, out)
 	}
 
 	// TODO
 	return nil
 }
 
-func applyIncluster(ctx context.Context, req configure.StackRequest, dbs map[string]*rds.Database, owners map[string][]string, out *configure.ApplyOutput) error {
+func applyIncluster(req configure.StackRequest, dbs map[string]*rds.Database, owners map[string][]string, out *configure.ApplyOutput) error {
 	inclusterDbs := map[string]*incluster.Database{}
 
 	for name, db := range dbs {
@@ -131,10 +131,10 @@ func applyIncluster(ctx context.Context, req configure.StackRequest, dbs map[str
 		inclusterDbs[name] = inclusterDb
 	}
 
-	return inclustertool.Apply(ctx, req, inclusterDbs, owners, out)
+	return inclustertool.Apply(req, inclusterDbs, owners, out)
 }
 
-func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*rds.Database, out *configure.ApplyOutput) error {
+func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *configure.ApplyOutput) error {
 	var orderedDbs []*rds.Database
 	for _, db := range dbs {
 		orderedDbs = append(orderedDbs, db)
@@ -249,5 +249,5 @@ func applyRds(ctx context.Context, req configure.StackRequest, dbs map[string]*r
 		}
 	}
 
-	return toolcommon.ApplyForInit(ctx, req, baseDbs, postgresType, rdsInit, initArgs, out)
+	return toolcommon.ApplyForInit(req, baseDbs, postgresType, rdsInit, initArgs, out)
 }
