@@ -40,6 +40,7 @@ type PortForward struct {
 	ingressState  localPortFwd
 	localPorts    map[string]*localPortFwd
 	domains       []*runtime.FilteredDomain
+	fragments     []*schema.IngressFragment
 }
 
 type endpointState struct {
@@ -66,6 +67,7 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 	pi.domains = runtime.FilterAndDedupDomains(fragments, func(d *schema.Domain) bool {
 		return d.GetManaged() != schema.Domain_MANAGED_UNKNOWN
 	})
+	pi.fragments = fragments
 
 	pi.revision++
 	fmt.Fprintf(pi.Debug, "portfwd: revision: %d\n", pi.revision)
@@ -219,7 +221,7 @@ func (pi *PortForward) Render(style colors.Style) string {
 	deploy.SortPorts(portFwds, pi.focus)
 
 	var out bytes.Buffer
-	r := deploy.RenderPortsAndIngresses(pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, nil)
+	r := deploy.RenderPortsAndIngresses(pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, pi.fragments)
 	deploy.RenderText(&out, style, r, true, pi.LocalAddr)
 	return out.String()
 }

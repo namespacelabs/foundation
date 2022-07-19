@@ -15,12 +15,22 @@ message NetworkPlan {
     repeated Ingress  non_local_non_managed = 4;
     int32             internal_count        = 5;
 
+    message AccessCmd {
+        // url for http
+        // "grpcurl" command line for grpc
+        // "curl" command line for http transcoding.
+        // "private:" if the service can't be accessed from outside.
+        string cmd = 1;
+        // Whether it is managed by Namespace.
+        bool is_managed = 2;
+    }
+
     message Endpoint {
-        Label  label          = 1;
-        bool   focus          = 2;
-        string url            = 3;
-        uint32 local_port     = 4;
-        string endpoint_owner = 5;
+        Label              label             = 1;
+        bool               focus             = 2;
+        repeated AccessCmd access_cmd        = 3;
+        bool               is_port_forwarded = 4;
+        string             endpoint_owner    = 5;
     }
 
     message Ingress {
