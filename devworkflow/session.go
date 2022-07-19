@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/provision"
@@ -87,7 +88,16 @@ func (s *Session) NewClient(needsHistory bool) (*Observer, error) {
 	tu := &Update{TaskUpdate: taskHistory, StackUpdate: protos.Clone(s.currentStack)}
 	s.mu.Unlock()
 
-	return s.obs.New(tu)
+	return s.obs.New(tu, false)
+}
+
+// Implements observers.SessionProvider.
+func (s *Session) NewStackClient() (observers.StackSession, error) {
+	s.mu.Lock()
+	tu := &Update{StackUpdate: protos.Clone(s.currentStack)}
+	s.mu.Unlock()
+
+	return s.obs.New(tu, true)
 }
 
 // XXX these need to be re-implemented.

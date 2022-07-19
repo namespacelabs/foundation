@@ -13,9 +13,9 @@ import (
 	"github.com/morikuni/aec"
 	"github.com/muesli/cancelreader"
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/devworkflow"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/termios"
+	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -61,7 +61,7 @@ type Control struct {
 
 // StartHandler processes user keystroke events and dev workflow updates.
 // Here we also take care on calling `onDone` callback on user exiting.
-func StartHandler(ctx context.Context, stackState *devworkflow.Session, handlers []Handler, onDone func()) error {
+func StartHandler(ctx context.Context, provider observers.SessionProvider, handlers []Handler, onDone func()) error {
 	if !termios.IsTerm(os.Stdin.Fd()) {
 		return nil
 	}
@@ -71,7 +71,7 @@ func StartHandler(ctx context.Context, stackState *devworkflow.Session, handlers
 		return err
 	}
 
-	go handleEvents(ctx, stdin, stackState, handlers, onDone)
+	go handleEvents(ctx, stdin, provider, handlers, onDone)
 	return nil
 }
 
@@ -84,8 +84,8 @@ type handlerState struct {
 	HandlingEvent string
 }
 
-func handleEvents(ctx context.Context, stdin *rawStdinReader, stackState *devworkflow.Session, handlers []Handler, onDone func()) {
-	obs, err := stackState.NewClient(false)
+func handleEvents(ctx context.Context, stdin *rawStdinReader, provider observers.SessionProvider, handlers []Handler, onDone func()) {
+	obs, err := provider.NewStackClient()
 	if err != nil {
 		fmt.Fprintln(console.Debug(ctx), "failed to create observer", err)
 		return
@@ -153,17 +153,17 @@ func handleEvents(ctx context.Context, stdin *rawStdinReader, stackState *devwor
 
 		eventID++
 		select {
-		case update, ok := <-obs.Events():
+		case update, ok := <-obs.StackEvents():
 			if !ok {
 				return
 			}
 
-			if update.StackUpdate != nil && len(state) > 0 {
+			if len(state) > 0 {
 				// Decouple changes made by devworkflow. Handlers should be able
 				// to assume that the received event data is immutable.
-				env := protos.Clone(update.StackUpdate.Env)
-				stack := protos.Clone(update.StackUpdate.Stack)
-				focus := slices.Clone(update.StackUpdate.Focus)
+				env := protos.Clone(update.Env)
+				stack := protos.Clone(update.Stack)
+				focus := slices.Clone(update.Focus)
 
 				for _, handler := range state {
 					ev := Event{

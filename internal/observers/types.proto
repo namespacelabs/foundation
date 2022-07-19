@@ -1,0 +1,17 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.internal.observers;
+
+option go_package = "namespacelabs.dev/foundation/internal/observers";
+
+import "schema/schema.proto";
+
+message StackUpdateEvent {
+    schema.Environment env   = 1;
+    schema.Stack       stack = 2;
+    repeated string    focus = 3;
+}

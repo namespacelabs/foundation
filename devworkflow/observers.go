@@ -11,6 +11,7 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/protos"
 )
 
@@ -36,9 +37,10 @@ type Observers struct {
 }
 
 type Observer struct {
-	parent *Observers
-	ch     chan *Update
-	closed atomic.Bool
+	parent       *Observers
+	allUpdates   chan *Update                     // Either this channel is set, or stackUpdates is.
+	stackUpdates chan *observers.StackUpdateEvent // If only stackUpdates is set, observer only receives updates to the stack.
+	closed       atomic.Bool
 }
 
 func NewObservers(ctx context.Context) *Observers {
@@ -47,11 +49,17 @@ func NewObservers(ctx context.Context) *Observers {
 	return &Observers{ch: ch}
 }
 
-func (obs *Observers) New(update *Update) (*Observer, error) {
-	cli := &Observer{parent: obs, ch: make(chan *Update, 1)}
+func (obs *Observers) New(update *Update, stackUpdates bool) (*Observer, error) {
+	cli := &Observer{parent: obs}
+	if !stackUpdates {
+		cli.allUpdates = make(chan *Update, 1)
+	} else {
+		cli.stackUpdates = make(chan *observers.StackUpdateEvent, 1)
+	}
+
 	if update != nil {
 		// Write before anyone has the chance of closing the channel.
-		cli.ch <- update
+		cli.post(update)
 	}
 
 	if !obs.pushCheckClosed(obsMsg{op: pOpAddCh, observer: cli}) {
@@ -102,12 +110,18 @@ func doLoop(ctx context.Context, ch chan obsMsg) {
 		case pOpRemoveCh:
 			index := slices.Index(observers, op.observer)
 			if index >= 0 {
-				close(op.observer.ch)
+				if op.observer.allUpdates != nil {
+					close(op.observer.allUpdates)
+				}
+				if op.observer.stackUpdates != nil {
+					close(op.observer.stackUpdates)
+				}
+
 				observers = slices.Delete(observers, index, index+1)
 			}
 		case pOpNewData:
 			for _, obs := range observers {
-				obs.ch <- op.message
+				obs.post(op.message)
 			}
 		}
 
@@ -119,7 +133,12 @@ func doLoop(ctx context.Context, ch chan obsMsg) {
 	// Make sure that any observers that were not canceled, become canceled.
 	for _, obs := range observers {
 		obs.closed.Store(true)
-		close(obs.ch)
+		if obs.allUpdates != nil {
+			close(obs.allUpdates)
+		}
+		if obs.stackUpdates != nil {
+			close(obs.stackUpdates)
+		}
 	}
 }
 
@@ -135,5 +154,23 @@ func (o *Observer) Close() {
 }
 
 func (o *Observer) Events() chan *Update {
-	return o.ch
+	return o.allUpdates
+}
+
+func (o *Observer) StackEvents() chan *observers.StackUpdateEvent {
+	return o.stackUpdates
+}
+
+func (o *Observer) post(update *Update) {
+	if o.stackUpdates != nil {
+		if update.StackUpdate != nil {
+			o.stackUpdates <- &observers.StackUpdateEvent{
+				Env:   update.StackUpdate.Env,
+				Stack: update.StackUpdate.Stack,
+				Focus: update.StackUpdate.Focus,
+			}
+		}
+	} else {
+		o.allUpdates <- update
+	}
 }
