@@ -18,100 +18,88 @@ func RenderText(out io.Writer, style colors.Style, r *storage.NetworkPlan, check
 	if localHostname == "" {
 		fmt.Fprintf(out, " Services deployed:\n\n")
 	} else {
-		fmt.Fprintf(out, " Services forwarded to %s", style.LessRelevant.Apply("localhost"))
-		if r.InternalCount > 0 {
-			fmt.Fprintf(out, " (+%d internal)", r.InternalCount)
-		}
-		fmt.Fprintf(out, ":\n\n")
+		fmt.Fprintf(out, "Development mode, services forwarded to %s.\n\n", style.LessRelevant.Apply("localhost"))
 	}
 
-	var longestLabel, longestUrl uint
+	supportServices := []*storage.NetworkPlan_Endpoint{}
+	mainServices := []*storage.NetworkPlan_Endpoint{}
 	for _, entry := range r.Endpoint {
+		if entry.Focus {
+			mainServices = append(mainServices, entry)
+		} else {
+			supportServices = append(supportServices, entry)
+		}
+	}
+
+	if len(supportServices) > 0 {
+		fmt.Fprint(out, style.Header.Apply(" Support services:\n\n"))
+
+		renderNotFocusedEndpointsText(out, style, supportServices, checkmark)
+	}
+
+	if len(mainServices) > 0 {
+		fmt.Fprint(out, "\n Main services:\n")
+
+		renderFocusedEndpointsText(out, style, mainServices, checkmark)
+	}
+
+	if len(r.Endpoint) == 0 {
+		fmt.Fprintf(out, "   %s\n", style.LessRelevant.Apply("No services exported"))
+	}
+}
+
+func renderNotFocusedEndpointsText(out io.Writer, style colors.Style, services []*storage.NetworkPlan_Endpoint, checkmark bool) {
+	var longestLabel, longestUrl uint
+	for _, entry := range services {
 		if l := uint(len(renderLabel(entry.Label))); l > longestLabel {
 			longestLabel = l
 		}
 
-		if l := uint(len(entry.Url)); l > longestUrl {
-			longestUrl = l
-		}
-	}
-
-	for k, entry := range r.Endpoint {
-		label := renderLabel(entry.Label)
-		url := entry.Url
-
-		if entry.Focus {
-			label = style.Highlight.Apply(label)
-		} else {
-			label = style.Header.Apply(label)
-		}
-
-		if !entry.Focus {
-			url = style.Header.Apply(url)
-		}
-
-		if entry.Focus {
-			if k > 0 && !r.Endpoint[k-1].Focus {
-				fmt.Fprintln(out)
+		for _, cmd := range entry.AccessCmd {
+			if l := uint(len(cmd.Cmd)); l > longestUrl {
+				longestUrl = l
 			}
 		}
+	}
 
-		fmt.Fprintf(out, " %s%s  %s%s\n", checkLabel(style, checkmark, entry.Focus, entry.LocalPort),
-			padding.String(label, longestLabel), padding.String(url, longestUrl+1),
+	for _, entry := range services {
+		label := style.Header.Apply(renderLabel(entry.Label))
+		url := style.Header.Apply(entry.AccessCmd[0].Cmd)
+
+		fmt.Fprintf(out, " %s%s  %s%s\n",
+			checkLabel(style, checkmark, entry.Focus, entry.IsPortForwarded),
+			padding.String(label, longestLabel),
+			padding.String(url, longestUrl+1),
 			comment(style, entry.EndpointOwner))
 	}
-
-	if len(r.Endpoint) == 0 {
-		fmt.Fprintf(out, "   %s\n", style.LessRelevant.Apply("(none)"))
-	}
-
-	renderIngressText(out, style, r, checkmark, "Ingress endpoints forwarded to your workstation")
-	renderIngressBlockText(out, style, "Ingress configured", r.NonLocalManaged)
-	renderIngressBlockText(out, style, "Ingress configured, but not managed", r.NonLocalNonManaged)
 }
 
-func renderIngressText(out io.Writer, style colors.Style, r *storage.NetworkPlan, checkmark bool, label string) {
-	if len(r.Ingress) == 0 {
-		return
-	}
+func renderFocusedEndpointsText(out io.Writer, style colors.Style, services []*storage.NetworkPlan_Endpoint, checkmark bool) {
+	hasNotManagedDomains := false
 
-	fmt.Fprintf(out, "\n %s:\n\n", label)
-
-	for _, ingress := range r.Ingress {
-		fmt.Fprintf(out, " %s%s%s%s%s%s\n", checkLabel(style, checkmark, true, ingress.LocalPort),
-			ingress.Schema, ingress.Fqdn, ingress.PortLabel, ingress.Command, comment(style, ingress.Comment))
-	}
-}
-
-func renderIngressBlockText(out io.Writer, style colors.Style, label string, fragments []*storage.NetworkPlan_Ingress) {
-	if len(fragments) == 0 {
-		return
-	}
-
-	fmt.Fprintf(out, "\n %s:\n\n", label)
-
-	labels := make([]string, len(fragments))
-	comments := make([]string, len(fragments))
-
-	var longestLabel uint
-	for k, n := range fragments {
-		labels[k] = fmt.Sprintf("%s%s%s%s", n.Schema, n.Fqdn, n.PortLabel, n.Command)
-		comments[k] = n.Comment
-
-		if x := uint(len(labels[k])); x > longestLabel {
-			longestLabel = x
+	for _, entry := range services {
+		fmt.Fprintf(out, "\n %s%s\n",
+			checkLabel(style, checkmark, entry.Focus, entry.IsPortForwarded),
+			style.Highlight.Apply(renderLabel(entry.Label)))
+		for _, cmd := range entry.AccessCmd {
+			notManagedHint := "  "
+			if !cmd.IsManaged {
+				notManagedHint = style.LessRelevant.Apply("* ")
+				hasNotManagedDomains = true
+			}
+			fmt.Fprintf(out, "    %s%s\n", notManagedHint, style.Comment.Apply(cmd.Cmd))
 		}
 	}
 
-	for k, n := range fragments {
-		fmt.Fprintf(out, " %s%s %s%s\n", checkbox(style, true, false),
-			padding.String(labels[k], longestLabel),
-			comment(style, strings.Join(n.PackageOwner, ", ")), comment(style, comments[k]))
+	if hasNotManagedDomains {
+		fmt.Fprintf(out, "\n %s\n     %s\n",
+			style.LessRelevant.Apply("(*) The ingress has been configured to support this domain name, but its DNS records are not managed by Namespace."),
+			style.LessRelevant.Apply("See https://docs.namespace.so/reference/managed-domains/ for more details."))
 	}
 }
 
-func checkLabel(style colors.Style, b, isFocus bool, port uint32) string {
-	return checkbox(style, !b || port > 0, !isFocus)
+func checkLabel(style colors.Style, b, isFocus bool, isPortForwarded bool) string {
+	return checkbox(style, !b || isPortForwarded, !isFocus)
 }
 
 func checkbox(style colors.Style, on, notFocus bool) string {
