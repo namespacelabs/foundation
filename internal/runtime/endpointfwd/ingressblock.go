@@ -5,17 +5,16 @@
 package endpointfwd
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"sync"
 
-	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 )
 
 type PortForward struct {
@@ -202,7 +201,7 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 	pi.OnUpdate()
 }
 
-func (pi *PortForward) Render(style colors.Style) string {
+func (pi *PortForward) ToNetworkPlan() *storage.NetworkPlan {
 	var portFwds []*deploy.PortFwd
 	for _, fwd := range pi.endpointState {
 		portFwds = append(portFwds, &deploy.PortFwd{
@@ -220,10 +219,7 @@ func (pi *PortForward) Render(style colors.Style) string {
 
 	deploy.SortPorts(portFwds, pi.focus)
 
-	var out bytes.Buffer
-	r := deploy.RenderPortsAndIngresses(pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, pi.fragments)
-	deploy.RenderText(&out, style, r, true, pi.LocalAddr)
-	return out.String()
+	return deploy.RenderPortsAndIngresses(pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, pi.fragments)
 }
 
 func (pi *PortForward) portFwd(serverOwner string, containerPort int32, revision int, callback func(int, uint)) (io.Closer, error) {

@@ -11,13 +11,13 @@ import (
 	"namespacelabs.dev/foundation/devworkflow"
 	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/observers"
+	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision/config"
+	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -36,6 +36,8 @@ func NewAttachCmd() *cobra.Command {
 				return err
 			}
 
+			stackRenderer := deploy.NewStickyTextRenderer("ingress", true /* checkmark */)
+
 			return keyboard.Handle(ctx, keyboard.HandleOpts{
 				Provider: observers.Static(&observers.StackUpdateEvent{
 					Env:   res.Rehydrated.Env,
@@ -52,12 +54,12 @@ func NewAttachCmd() *cobra.Command {
 							return nil, fnerrors.InternalError("requested invalid environment: %s", name)
 						},
 					},
+					deploy.NewSupportServicesKeybinding(stackRenderer),
 				},
 				Handler: func(ctx context.Context) error {
-					pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, "localhost")
-					pfwd.OnUpdate = func() {
-						console.SetStickyContent(ctx, "ingress", pfwd.Render(colors.Ctx(ctx)))
-					}
+					pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, "localhost", func(pfwd *endpointfwd.PortForward) {
+						stackRenderer.UpdatePlan(ctx, pfwd.ToNetworkPlan())
+					})
 
 					pfwd.Update(res.Stack, res.Focus, res.Ingress)
 					return nil

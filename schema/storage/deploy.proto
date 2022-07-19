@@ -14,6 +14,7 @@ message NetworkPlan {
     repeated Ingress  non_local_managed     = 3;
     repeated Ingress  non_local_non_managed = 4;
     int32             internal_count        = 5;
+    string            local_host_name       = 6;
 
     message AccessCmd {
         // url for http

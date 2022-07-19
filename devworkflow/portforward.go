@@ -10,13 +10,12 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
 
-func NewPortFwd(ctx context.Context, obs *Session, selector runtime.Selector, localaddr string) *endpointfwd.PortForward {
+func NewPortFwd(ctx context.Context, obs *Session, selector runtime.Selector, localaddr string, onUpdate func(*endpointfwd.PortForward)) *endpointfwd.PortForward {
 	pfw := &endpointfwd.PortForward{
 		Env:       selector.Proto(),
 		LocalAddr: localaddr,
@@ -70,7 +69,11 @@ func NewPortFwd(ctx context.Context, obs *Session, selector runtime.Selector, lo
 
 		pfw.OnUpdate = func() {
 			obs.updateStackInPlace(func(stack *Stack) {})
-			obs.setSticky(pfw.Render(colors.WithColors))
+			onUpdate(pfw)
+		}
+	} else {
+		pfw.OnUpdate = func() {
+			onUpdate(pfw)
 		}
 	}
 

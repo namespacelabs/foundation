@@ -139,7 +139,11 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 	deploy.SortPorts(ports, focusServer)
 	deploy.SortIngresses(plan.IngressFragment)
 	r := deploy.RenderPortsAndIngresses("", plan.Stack, focusServer, ports, domains, plan.IngressFragment)
-	deploy.RenderText(out, colors.Ctx(ctx), r, false, "")
+	deploy.NetworkPlanToText(out, r, &deploy.NetworkPlanToTextOpts{
+		Style:                 colors.Ctx(ctx),
+		Checkmark:             false,
+		IncludeSupportServers: true,
+	})
 
 	storedrun.Attach(r)
 

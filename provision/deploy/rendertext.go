@@ -5,20 +5,63 @@
 package deploy
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/muesli/reflow/padding"
+	"namespacelabs.dev/foundation/devworkflow/keyboard"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
-func RenderText(out io.Writer, style colors.Style, r *storage.NetworkPlan, checkmark bool, localHostname string) {
-	if localHostname == "" {
-		fmt.Fprintf(out, " Services deployed:\n\n")
+// Shows "Support services" and "Main services" in the terminal.
+type StickyTextRenderer struct {
+	ShowSupportServers bool
+	plan               *storage.NetworkPlan
+}
+
+func NewStickyTextRenderer(name string, checkmark bool) *StickyTextRenderer {
+	return &StickyTextRenderer{}
+}
+
+func (r *StickyTextRenderer) render(ctx context.Context) {
+	content := ""
+	if r.plan != nil {
+		var out bytes.Buffer
+		NetworkPlanToText(&out, r.plan, &NetworkPlanToTextOpts{
+			Style:                 colors.WithColors,
+			Checkmark:             true,
+			IncludeSupportServers: r.ShowSupportServers})
+		content = out.String()
+	}
+	console.SetStickyContent(ctx, "stack", content)
+}
+
+func (r *StickyTextRenderer) UpdatePlan(ctx context.Context, plan *storage.NetworkPlan) {
+	r.plan = plan
+	r.render(ctx)
+}
+
+func (r *StickyTextRenderer) SetShowSupportServers(ctx context.Context, showSupportServers bool) {
+	r.ShowSupportServers = showSupportServers
+	r.render(ctx)
+}
+
+type NetworkPlanToTextOpts struct {
+	Style                 colors.Style
+	Checkmark             bool
+	IncludeSupportServers bool
+}
+
+func NetworkPlanToText(out io.Writer, r *storage.NetworkPlan, opts *NetworkPlanToTextOpts) {
+	if r.LocalHostName == "" {
+		fmt.Fprintf(out, "Services deployed:\n")
 	} else {
-		fmt.Fprintf(out, " Development mode, services forwarded to %s.\n\n", style.LessRelevant.Apply("localhost"))
+		fmt.Fprintf(out, "Development mode, services forwarded to %s.\n", opts.Style.LessRelevant.Apply("localhost"))
 	}
 
 	supportServices := []*storage.NetworkPlan_Endpoint{}
@@ -31,20 +74,20 @@ func RenderText(out io.Writer, style colors.Style, r *storage.NetworkPlan, check
 		}
 	}
 
-	if len(supportServices) > 0 {
-		fmt.Fprint(out, style.Header.Apply(" Support services:\n\n"))
+	if opts.IncludeSupportServers && len(supportServices) > 0 {
+		fmt.Fprintf(out, "\n %s\n\n", opts.Style.Comment.Apply("Support services:"))
 
-		renderNotFocusedEndpointsText(out, style, supportServices, checkmark)
+		renderNotFocusedEndpointsText(out, opts.Style, supportServices, opts.Checkmark)
 	}
 
 	if len(mainServices) > 0 {
 		fmt.Fprint(out, "\n Main services:\n")
 
-		renderFocusedEndpointsText(out, style, mainServices, checkmark)
+		renderFocusedEndpointsText(out, opts.Style, mainServices, opts.Checkmark)
 	}
 
 	if len(r.Endpoint) == 0 {
-		fmt.Fprintf(out, "   %s\n", style.LessRelevant.Apply("No services exported"))
+		fmt.Fprintf(out, "   %s\n", opts.Style.LessRelevant.Apply("No services exported"))
 	}
 }
 
@@ -63,8 +106,8 @@ func renderNotFocusedEndpointsText(out io.Writer, style colors.Style, services [
 	}
 
 	for _, entry := range services {
-		label := style.Header.Apply(renderLabel(entry.Label))
-		url := style.Header.Apply(entry.AccessCmd[0].Cmd)
+		label := style.Comment.Apply(renderLabel(entry.Label))
+		url := style.Comment.Apply(entry.AccessCmd[0].Cmd)
 
 		fmt.Fprintf(out, " %s%s  %s%s\n",
 			checkLabel(style, checkmark, entry.Focus, entry.IsPortForwarded),
@@ -137,4 +180,36 @@ func compressProtoTypename(t string) string {
 		parts[k] = string(parts[k][0])
 	}
 	return strings.Join(parts, ".")
+}
+
+type SupportServicesKeybinding struct {
+	renderer *StickyTextRenderer
+}
+
+func NewSupportServicesKeybinding(renderer *StickyTextRenderer) *SupportServicesKeybinding {
+	return &SupportServicesKeybinding{renderer: renderer}
+}
+
+func (k SupportServicesKeybinding) Key() string { return "s" }
+
+func (k SupportServicesKeybinding) Label(enabled bool) string {
+	if !enabled {
+		return "show support servers"
+	}
+	return "hide support servers " // Additional space at the end for a better allignment.
+}
+
+func (k SupportServicesKeybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
+	for event := range ch {
+		switch event.Operation {
+		case keyboard.OpSet:
+			k.renderer.SetShowSupportServers(ctx, event.Enabled)
+
+			c := keyboard.Control{Operation: keyboard.ControlAck}
+			c.AckEvent.HandlerID = event.HandlerID
+			c.AckEvent.EventID = event.EventID
+
+			control <- c
+		}
+	}
 }
