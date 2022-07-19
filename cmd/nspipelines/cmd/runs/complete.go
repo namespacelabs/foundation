@@ -31,7 +31,7 @@ func newCompleteCmd() *cobra.Command {
 	runIDPath := flags.String("run_id_path", "", "The run id.")
 	storedRun := flags.String("stored_run_path", "", "Path to a file with a stored run's contents.")
 
-	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
 		userAuth, err := fnapi.LoadUser()
 		if err != nil {
 			return err

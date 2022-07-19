@@ -41,11 +41,13 @@ func newNewCmd() *cobra.Command {
 	parentRunIDPath := flags.String("parent_run_id_path", "", "The parent run id.")
 	workspaceDir := flags.String("workspace", ".", "The workspace directory to parse.")
 	githubEvent := flags.String("github_event_path", "", "Path to a file with github's event json.")
+	pipelineName := flags.String("pipeline_name", "", "Name of the pipeline that spawned this run (e.g. autopush, preview).")
+	nspipelinesVersion := flags.String("nspipelines_version", "", "Digest of nspipelines image.")
 	kind := flags.String("invocation_kind", "", "If set, adds an InvocationDescription to the run.")
 
 	_ = cmd.MarkFlagRequired("output_run_id_path")
 
-	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
 		userAuth, err := fnapi.LoadUser()
 		if err != nil {
 			return err
@@ -93,10 +95,12 @@ func newNewCmd() *cobra.Command {
 
 			attachments = append(attachments, &storage.GithubEvent{SerializedJson: string(eventData)})
 			attachments = append(attachments, &storage.RunMetadata{
-				Branch:     parseBranch(ev.Ref),
-				Repository: "github.com/" + ev.Repository.FullName,
-				CommitId:   ev.HeadCommit.ID,
-				ModuleName: []string{workspaceData.Parsed().ModuleName},
+				Branch:             parseBranch(ev.Ref),
+				Repository:         "github.com/" + ev.Repository.FullName,
+				CommitId:           ev.HeadCommit.ID,
+				ModuleName:         []string{workspaceData.Parsed().ModuleName},
+				PipelineName:       *pipelineName,
+				NspipelinesVersion: *nspipelinesVersion,
 			})
 		}
 

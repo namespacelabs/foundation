@@ -79,10 +79,12 @@ message NamespaceBinaryVersion {
 // This is an attachment to a RunStorage Run.
 // Next ID: 5
 message RunMetadata {
-    string          repository  = 1;  // E.g. github.com/namespacelabs/foundation
-    string          branch      = 2;  // E.g. main
-    string          commit_id   = 3;  // E.g. c782373xd
-    repeated string module_name = 4;  // E.g. namespacelabs.dev/foundation
+    string          repository          = 1;  // E.g. github.com/namespacelabs/foundation
+    string          branch              = 2;  // E.g. main
+    string          commit_id           = 3;  // E.g. c782373xd
+    repeated string module_name         = 4;  // E.g. namespacelabs.dev/foundation
+    string          pipeline_name       = 5;  // E.g. autopush, preview
+    string          nspipelines_version = 6;  // E.g. sha256:7f7bcef8d0dd0a1cee824a90919644e5e8013b2a1f64850378d11c709b1e2988
 }
 
 // This is an attachment to a RunStorage Run.
