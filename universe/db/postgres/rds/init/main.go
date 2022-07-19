@@ -148,7 +148,7 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 	}); err != nil {
 		// Apparently there's no nicer type for this.
 		var e smithy.APIError
-		if errors.As(err, &e) && e.ErrorCode() == "InvalidGroup.Duplicate" {
+		if errors.As(err, &e) && e.ErrorCode() == "InvalidPermission.Duplicate" {
 			log.Printf("Ingress for security group %s is already authorized for port %d", groupId, desc.Port)
 			// TODO update?
 		} else {
