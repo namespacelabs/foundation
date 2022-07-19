@@ -363,25 +363,39 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			return fnerrors.UserError(server.Server.Location, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
 		}
 
+		name := makeStorageVolumeName(rs)
+
 		container = container.WithVolumeMounts(
 			applycorev1.VolumeMount().
-				WithName(makeStorageVolumeName(rs)).
+				WithName(name).
 				WithMountPath(rs.MountPath))
-		spec = spec.WithVolumes(applycorev1.Volume().
-			WithName(makeStorageVolumeName(rs)).
-			WithPersistentVolumeClaim(
-				applycorev1.PersistentVolumeClaimVolumeSource().
-					WithClaimName(rs.PersistentId)))
 
-		s.declarations = append(s.declarations, kubedef.Apply{
-			Description: fmt.Sprintf("Persistent storage for %s", rs.Owner),
-			Resource: applycorev1.PersistentVolumeClaim(rs.PersistentId, ns).
-				WithSpec(applycorev1.PersistentVolumeClaimSpec().
-					WithAccessModes(corev1.ReadWriteOnce).
-					WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
-						corev1.ResourceStorage: *resource.NewScaledQuantity(int64(rs.ByteCount), resource.Scale(1)),
-					}))),
-		})
+		quantity := resource.NewScaledQuantity(int64(rs.ByteCount), resource.Scale(1))
+
+		// Test environments are ephemeral and short lived, so there is no need for persistent volume claims.
+		// Admin servers are excluded here as they run as singletons in a global namespace.
+		if r.env.Purpose == schema.Environment_TESTING && !srv.Proto().ClusterAdmin {
+			spec = spec.WithVolumes(applycorev1.Volume().
+				WithName(name).
+				WithEmptyDir(applycorev1.EmptyDirVolumeSource().
+					WithSizeLimit(*quantity)))
+		} else {
+			spec = spec.WithVolumes(applycorev1.Volume().
+				WithName(name).
+				WithPersistentVolumeClaim(
+					applycorev1.PersistentVolumeClaimVolumeSource().
+						WithClaimName(rs.PersistentId)))
+
+			s.declarations = append(s.declarations, kubedef.Apply{
+				Description: fmt.Sprintf("Persistent storage for %s", rs.Owner),
+				Resource: applycorev1.PersistentVolumeClaim(rs.PersistentId, ns).
+					WithSpec(applycorev1.PersistentVolumeClaimSpec().
+						WithAccessModes(corev1.ReadWriteOnce).
+						WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
+							corev1.ResourceStorage: *quantity,
+						}))),
+			})
+		}
 	}
 
 	for _, sidecar := range server.Sidecars {
