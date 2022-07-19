@@ -12,6 +12,8 @@ $providerProto: inputs.#Proto & {
 	]
 }
 
+// This extension provides simple compatibility with an existing database.
+// Usage is discouraged as Namespace won't be able to manage the database (e.g. environments are not isolated).
 extension: fn.#Extension & {
 	instantiate: {
 		wire: base.#Exports.WireDatabase
@@ -36,4 +38,8 @@ extension: fn.#Extension & {
 
 configure: fn.#Configure & {
 	with: binary: "namespacelabs.dev/foundation/universe/db/postgres/opaque/tool"
+
+	init: setup: {
+		binary: "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
+	}
 }

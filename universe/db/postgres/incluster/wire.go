@@ -7,21 +7,24 @@ package incluster
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/universe/db/postgres"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/base"
+	"namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds"
 )
+
+const EndpointFlag = "postgresql_endpoint"
 
 var (
-	postgresqlEndpoint = flag.String("postgresql_endpoint", "", "Endpoint configuration.")
+	postgresqlEndpoint = flag.String(EndpointFlag, "", "Endpoint configuration.")
 )
 
-func getEndpoint() (*schema.Endpoint, error) {
+func GetEndpoint() (*schema.Endpoint, error) {
 	if *postgresqlEndpoint == "" {
-		return nil, errors.New("startup configuration missing, --postgresql_endpoint not specified")
+		return nil, nil
 	}
 
 	var endpoint schema.Endpoint
@@ -33,19 +36,26 @@ func getEndpoint() (*schema.Endpoint, error) {
 }
 
 func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*postgres.DB, error) {
-	endpoint, err := getEndpoint()
+	endpoint, err := GetEndpoint()
 	if err != nil {
 		return nil, err
 	}
 
+	if endpoint == nil {
+		return nil, fmt.Errorf("startup configuration missing, --%s not specified", EndpointFlag)
+	}
+
+	return ProvideDb(ctx, db.Name, endpoint, deps.Creds, deps.Wire)
+}
+
+func ProvideDb(ctx context.Context, name string, endpoint *schema.Endpoint, creds *gencreds.Creds, wire base.WireDatabase) (*postgres.DB, error) {
 	base := &postgres.Database{
-		Name:       db.Name,
-		SchemaFile: db.SchemaFile,
+		Name: name,
 		HostedAt: &postgres.Endpoint{
 			Address: endpoint.AllocatedName,
 			Port:    uint32(endpoint.Port.ContainerPort),
 		},
 	}
 
-	return deps.Wire.ProvideDatabase(ctx, base, "postgres", deps.Creds.Password)
+	return wire.ProvideDatabase(ctx, base, "postgres", creds.Password)
 }

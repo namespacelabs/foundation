@@ -1,7 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
+	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 )
 
 $proto: inputs.#Proto & {
@@ -12,7 +12,7 @@ service: fn.#Service & {
 	framework: "GO"
 
 	instantiate: {
-		db: incluster.#Exports.Database & {
+		db: rds.#Exports.Database & {
 			name:       "list"
 			schemaFile: inputs.#FromFile & {
 				path: "schema.sql"

@@ -1,7 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	postgresdb "namespacelabs.dev/foundation/universe/db/postgres/incluster"
+	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 	mariadb "namespacelabs.dev/foundation/universe/db/maria/incluster"
 )
 
@@ -13,7 +13,7 @@ service: fn.#Service & {
 	framework: "GO"
 
 	instantiate: {
-		postgres: postgresdb.#Exports.Database & {
+		postgres: rds.#Exports.Database & {
 			name:       "postgreslist"
 			schemaFile: inputs.#FromFile & {
 				path: "schema_postgres.sql"

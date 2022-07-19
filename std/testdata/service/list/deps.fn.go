@@ -8,7 +8,7 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/universe/db/postgres"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
+	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 )
 
 // Dependencies that are instantiated once for the lifetime of the service.
@@ -35,9 +35,9 @@ var (
 func makeDeps__ffkppv(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ServiceDeps
 
-	if err := di.Instantiate(ctx, incluster.Provider__udoubi, func(ctx context.Context, v interface{}) (err error) {
+	if err := di.Instantiate(ctx, rds.Provider__4j13h1, func(ctx context.Context, v interface{}) (err error) {
 		// name: "list"
-		if deps.Db, err = incluster.ProvideDatabase(ctx, core.MustUnwrapProto("CgRsaXN0", &incluster.Database{}).(*incluster.Database), v.(incluster.ExtensionDeps)); err != nil {
+		if deps.Db, err = rds.ProvideDatabase(ctx, core.MustUnwrapProto("CgRsaXN0", &rds.Database{}).(*rds.Database), v.(rds.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
