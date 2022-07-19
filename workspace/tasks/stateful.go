@@ -22,7 +22,7 @@ type statefulState struct {
 	running   []*RunningAction
 	observers []Observer
 
-	allTasks      []*protocol.Task
+	allTasks       []*protocol.Task
 	protoIndex     map[ActionID]int
 	allAttachments map[ActionID]*EventAttachments
 }
@@ -46,6 +46,8 @@ func WithStatefulSink(ctx context.Context) (context.Context, *StatefulSink) {
 
 	return WithSink(ctx, state), &StatefulSink{state}
 }
+
+func (s *StatefulSink) Sink() ActionSink { return s.state }
 
 func (s *StatefulSink) HistoricReaderByName(id ActionID, name string) io.ReadCloser {
 	s.state.mu.Lock()

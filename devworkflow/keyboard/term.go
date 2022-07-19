@@ -7,14 +7,17 @@ package keyboard
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/morikuni/aec"
-	"github.com/muesli/cancelreader"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/termios"
+	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
@@ -59,20 +62,79 @@ type Control struct {
 	}
 }
 
-// StartHandler processes user keystroke events and dev workflow updates.
-// Here we also take care on calling `onDone` callback on user exiting.
-func StartHandler(ctx context.Context, provider observers.SessionProvider, handlers []Handler, onDone func()) error {
+type HandleOpts struct {
+	Provider    observers.SessionProvider
+	Keybindings []Handler
+	Handler     func(context.Context) error
+}
+
+// Handle processes user keystroke events and dev workflow updates. Here we also
+// take care on calling `onDone` callback on user exiting.
+func Handle(ctx context.Context, opts HandleOpts) error {
 	if !termios.IsTerm(os.Stdin.Fd()) {
+		return opts.Handler(ctx)
+	}
+
+	keych := make(chan tea.KeyMsg)
+	p := tea.NewProgram(&program{ch: keych, w: console.Stderr(ctx)}, tea.WithoutRenderer())
+
+	eg := executor.New(ctx, "keyboard-handler")
+	eg.Go(func(ctx context.Context) error {
+		obs, err := opts.Provider.NewStackClient()
+		if err != nil {
+			return fnerrors.InternalError("failed to create observer: %w", err)
+		}
+
+		defer obs.Close()
+
+		handleEvents(ctx, obs, opts.Keybindings, keych)
 		return nil
+	})
+	eg.Go(func(ctx context.Context) error {
+		m, err := p.StartReturningModel()
+		if err != nil {
+			return err
+		}
+		if m.(*program).canceled {
+			return context.Canceled
+		}
+		return nil
+	})
+	eg.Go(opts.Handler)
+
+	return eg.Wait()
+}
+
+type program struct {
+	ch       chan tea.KeyMsg
+	canceled bool
+	w        io.Writer
+}
+
+func (m *program) Init() tea.Cmd { return nil }
+func (m *program) View() string  { return "" }
+
+func (m *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			m.canceled = true
+			return m, tea.Quit
+
+		default:
+			if msg.String() == "q" {
+				m.canceled = true
+				return m, tea.Quit
+			}
+
+			m.ch <- msg
+		}
+
+	case tea.WindowSizeMsg:
 	}
 
-	stdin, err := newStdinReader(ctx)
-	if err != nil {
-		return err
-	}
-
-	go handleEvents(ctx, stdin, provider, handlers, onDone)
-	return nil
+	return m, nil
 }
 
 type handlerState struct {
@@ -84,22 +146,7 @@ type handlerState struct {
 	HandlingEvent string
 }
 
-func handleEvents(ctx context.Context, stdin *rawStdinReader, provider observers.SessionProvider, handlers []Handler, onDone func()) {
-	obs, err := provider.NewStackClient()
-	if err != nil {
-		fmt.Fprintln(console.Debug(ctx), "failed to create observer", err)
-		return
-	}
-
-	defer obs.Close()
-	defer stdin.restore()
-
-	defer func() {
-		if ctx.Err() == nil {
-			onDone()
-		}
-	}()
-
+func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Handler, keych chan tea.KeyMsg) {
 	control := make(chan Control)
 	state := make([]*handlerState, len(handlers))
 
@@ -178,19 +225,13 @@ func handleEvents(ctx context.Context, stdin *rawStdinReader, provider observers
 				}
 			}
 
-		case err := <-stdin.errors:
-			fmt.Fprintf(console.Errors(ctx), "Error while reading from Stdin: %v\n", err)
-			return
-
-		case c := <-stdin.input:
-			if int(c) == 3 || string(c) == "q" { // ctrl+c
+		case key, ok := <-keych:
+			if !ok {
 				return
 			}
 
-			key := string(c)
-
 			for _, state := range state {
-				if state.Handler.Key() != key {
+				if state.Handler.Key() != key.String() {
 					continue
 				}
 
@@ -226,47 +267,4 @@ func handleEvents(ctx context.Context, stdin *rawStdinReader, provider observers
 			return
 		}
 	}
-}
-
-type rawStdinReader struct {
-	input   chan byte
-	errors  chan error
-	cancel  func() bool
-	restore func()
-}
-
-func newStdinReader(ctx context.Context) (*rawStdinReader, error) {
-	cr, err := cancelreader.NewReader(os.Stdin)
-	if err != nil {
-		return nil, err
-	}
-
-	r := &rawStdinReader{
-		input:  make(chan byte),
-		cancel: cr.Cancel,
-	}
-
-	restore, err := termios.MakeRaw(os.Stdin.Fd())
-	if err != nil {
-		return nil, err
-	}
-
-	r.restore = func() {
-		cr.Cancel()
-		_ = restore()
-	}
-
-	go func() {
-		var buf [256]byte
-		for {
-			_, err := cr.Read(buf[:])
-			if err != nil {
-				r.errors <- err
-				return
-			}
-			r.input <- buf[0]
-		}
-	}()
-
-	return r, nil
 }

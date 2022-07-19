@@ -62,11 +62,9 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 			logging = event.Enabled
 
 		case keyboard.OpStackUpdate:
-			if event.StackUpdate.Stack != nil {
-				newStack = event.StackUpdate.Stack
-				newEnv = event.StackUpdate.Env.GetName()
-				newFocus = event.StackUpdate.Focus
-			}
+			newStack = event.StackUpdate.Stack
+			newEnv = event.StackUpdate.Env.GetName()
+			newFocus = event.StackUpdate.Focus
 		}
 
 		if logging {

@@ -18,7 +18,11 @@ func SetIdleLabel(ctx context.Context, label string) {
 }
 
 func SetStickyContent(ctx context.Context, name string, content string) {
-	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
+	SetStickyContentOnSink(tasks.SinkFrom(ctx), name, content)
+}
+
+func SetStickyContentOnSink(sink tasks.ActionSink, name string, content string) {
+	unwrapped := UnwrapSink(sink)
 	if t, ok := unwrapped.(consoleLike); ok {
 		t.SetStickyContent(name, []byte(content))
 	}

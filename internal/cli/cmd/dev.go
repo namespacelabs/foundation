@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
@@ -47,10 +48,7 @@ func NewDevCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, sink := tasks.WithStatefulSink(cmd.Context())
 
-			ctxWithCancel, cancel := fncobra.WithSigIntCancel(ctx)
-			defer cancel()
-
-			return compute.Do(ctxWithCancel, func(ctx context.Context) error {
+			return compute.Do(ctx, func(ctx context.Context) error {
 				root, err := module.FindRoot(ctx, ".")
 				if err != nil {
 					return err
@@ -83,7 +81,7 @@ func NewDevCmd() *cobra.Command {
 
 				updateWebUISticky(ctx, "preparing")
 
-				sesh, err := devworkflow.NewSession(ctx, sink, localHost)
+				sesh, err := devworkflow.NewSession(console.Errors(ctx), sink, localHost)
 				if err != nil {
 					return err
 				}
@@ -102,63 +100,63 @@ func NewDevCmd() *cobra.Command {
 					},
 				})
 
-				r := mux.NewRouter()
-				fncobra.RegisterPprof(r)
-				devworkflow.RegisterEndpoints(sesh, r)
-
-				keybindings := []keyboard.Handler{
-					logtail.Keybinding{
-						LoadEnvironment: func(env string) (runtime.Selector, error) {
-							return provision.RequireEnv(root, env)
+				return keyboard.Handle(ctx, keyboard.HandleOpts{
+					Provider: sesh,
+					Keybindings: []keyboard.Handler{
+						logtail.Keybinding{
+							LoadEnvironment: func(env string) (runtime.Selector, error) {
+								return provision.RequireEnv(root, env)
+							},
 						},
 					},
-				}
+					Handler: func(ctx context.Context) error {
+						r := mux.NewRouter()
+						fncobra.RegisterPprof(r)
+						devworkflow.RegisterEndpoints(sesh, r)
 
-				if err := keyboard.StartHandler(ctx, sesh, keybindings, cancel); err != nil {
-					return err
-				}
+						if devWebServer {
+							localPort := lis.Addr().(*net.TCPAddr).Port
+							webPort := localPort + 1
+							proxyTarget, err := web.StartDevServer(ctx, root, devworkflow.WebPackage, localPort, webPort)
+							if err != nil {
+								return err
+							}
+							r.PathPrefix("/").Handler(reverseproxy.Make(proxyTarget, reverseproxy.DefaultLocalProxy()))
+						} else {
+							mux, err := devworkflow.PrebuiltWebUI(ctx)
+							if err != nil {
+								return err
+							}
 
-				if devWebServer {
-					localPort := lis.Addr().(*net.TCPAddr).Port
-					webPort := localPort + 1
-					proxyTarget, err := web.StartDevServer(ctx, root, devworkflow.WebPackage, localPort, webPort)
-					if err != nil {
-						return err
-					}
-					r.PathPrefix("/").Handler(reverseproxy.Make(proxyTarget, reverseproxy.DefaultLocalProxy()))
-				} else {
-					mux, err := devworkflow.PrebuiltWebUI(ctx)
-					if err != nil {
-						return err
-					}
+							r.PathPrefix("/").Handler(mux)
+						}
 
-					r.PathPrefix("/").Handler(mux)
-				}
+						srv := &http.Server{
+							Handler:      r,
+							Addr:         servingAddr,
+							WriteTimeout: 15 * time.Second,
+							ReadTimeout:  15 * time.Second,
+							BaseContext:  func(l net.Listener) context.Context { return ctx },
+						}
 
-				srv := &http.Server{
-					Handler:      r,
-					Addr:         servingAddr,
-					WriteTimeout: 15 * time.Second,
-					ReadTimeout:  15 * time.Second,
-					BaseContext:  func(l net.Listener) context.Context { return ctx },
-				}
+						return sesh.Run(ctx, func(eg *executor.Executor) {
+							eg.Go(func(ctx context.Context) error {
+								// On cancelation, i.e. Ctrl-C, ask the server to shutdown. This will lead to the next go-routine below, actually returns.
+								<-ctx.Done()
 
-				sesh.RunInContext(func(ctx context.Context) error {
-					// On cancelation, i.e. Ctrl-C, ask the server to shutdown. This will lead to the next go-routine below, actually returns.
-					<-ctx.Done()
+								ctxT, cancelT := context.WithTimeout(ctx, 1*time.Second)
+								defer cancelT()
 
-					ctxT, cancelT := context.WithTimeout(ctx, 1*time.Second)
-					defer cancelT()
+								return srv.Shutdown(ctxT)
+							})
 
-					return srv.Shutdown(ctxT)
+							eg.Go(func(ctx context.Context) error {
+								updateWebUISticky(ctx, "running at: http://%s", lis.Addr())
+								return srv.Serve(lis)
+							})
+						})
+					},
 				})
-
-				sesh.RunInContext(func(ctx context.Context) error {
-					updateWebUISticky(ctx, "running at: http://%s", lis.Addr())
-					return srv.Serve(lis)
-				})
-
-				return sesh.Run(ctx)
 			})
 		},
 	}

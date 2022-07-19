@@ -36,39 +36,33 @@ func NewAttachCmd() *cobra.Command {
 				return err
 			}
 
-			ctx, cancel := fncobra.WithSigIntCancel(ctx)
-			defer cancel()
+			return keyboard.Handle(ctx, keyboard.HandleOpts{
+				Provider: observers.Static(&observers.StackUpdateEvent{
+					Env:   res.Rehydrated.Env,
+					Stack: res.Stack,
+					Focus: schema.Strs(res.Focus...),
+				}),
+				Keybindings: []keyboard.Handler{
+					logtail.Keybinding{
+						LoadEnvironment: func(name string) (runtime.Selector, error) {
+							if name == res.Rehydrated.Env.Name {
+								return res.Env, nil
+							}
 
-			keybindings := []keyboard.Handler{
-				logtail.Keybinding{
-					LoadEnvironment: func(name string) (runtime.Selector, error) {
-						if name == res.Rehydrated.Env.Name {
-							return res.Env, nil
-						}
-
-						return nil, fnerrors.InternalError("requested invalid environment: %s", name)
+							return nil, fnerrors.InternalError("requested invalid environment: %s", name)
+						},
 					},
 				},
-			}
+				Handler: func(ctx context.Context) error {
+					pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, "localhost")
+					pfwd.OnUpdate = func() {
+						console.SetStickyContent(ctx, "ingress", pfwd.Render(colors.Ctx(ctx)))
+					}
 
-			if err := keyboard.StartHandler(ctx, observers.Static(&observers.StackUpdateEvent{
-				Env:   res.Rehydrated.Env,
-				Stack: res.Stack,
-				Focus: schema.Strs(res.Focus...),
-			}), keybindings, cancel); err != nil {
-				return err
-			}
-
-			pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, "localhost")
-			pfwd.OnUpdate = func() {
-				console.SetStickyContent(ctx, "ingress", pfwd.Render(colors.Ctx(ctx)))
-			}
-
-			pfwd.Update(res.Stack, res.Focus, res.Ingress)
-
-			// XXX do cmd/logs too.
-			<-ctx.Done()
-			return ctx.Err()
+					pfwd.Update(res.Stack, res.Focus, res.Ingress)
+					return nil
+				},
+			})
 		}),
 	}
 

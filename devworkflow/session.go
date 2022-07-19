@@ -34,7 +34,6 @@ type Session struct {
 	Errors    io.Writer
 	setSticky func(string)
 
-	executor      *executor.Executor
 	localHostname string
 	obs           *Observers
 	sink          *tasks.StatefulSink
@@ -51,18 +50,17 @@ type Session struct {
 	pfw             *endpointfwd.PortForward
 }
 
-func NewSession(ctx context.Context, sink *tasks.StatefulSink, localHostname string) (*Session, error) {
+func NewSession(errorLog io.Writer, sink *tasks.StatefulSink, localHostname string) (*Session, error) {
 	setSticky := func(b string) {
-		console.SetStickyContent(ctx, "stack", b)
+		console.SetStickyContentOnSink(sink.Sink(), "stack", b)
 	}
 
 	return &Session{
 		requestCh:     make(chan *DevWorkflowRequest, 1),
-		Errors:        console.Errors(ctx),
+		Errors:        errorLog,
 		setSticky:     setSticky,
-		executor:      executor.New(ctx, "devworkflow.session"),
 		localHostname: localHostname,
-		obs:           NewObservers(ctx),
+		obs:           NewObservers(),
 		sink:          sink,
 	}, nil
 }
@@ -117,7 +115,7 @@ func (s *Session) ResolveServer(ctx context.Context, serverID string) (runtime.S
 	return nil, nil, fnerrors.UserError(nil, "%s: no such server in the current session", serverID)
 }
 
-func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName string, servers []string) error {
+func (s *Session) handleSetWorkspace(parentCtx context.Context, eg *executor.Executor, absRoot, envName string, servers []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -151,7 +149,7 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, absRoot, envName
 		resetStack(s.currentStack, env, nil)
 		pfw := s.setEnvironment(parentCtx, env)
 
-		s.executor.Go(func(ctx context.Context) error {
+		eg.Go(func(ctx context.Context) error {
 			err := setWorkspace(ctx, env, servers[0], servers[1:], s, pfw)
 
 			if err != nil && !errors.Is(err, context.Canceled) {
@@ -187,7 +185,7 @@ func (so *sinkObserver) OnStart(ra *tasks.RunningAction)  { so.pushUpdate(ra) }
 func (so *sinkObserver) OnUpdate(ra *tasks.RunningAction) { so.pushUpdate(ra) }
 func (so *sinkObserver) OnDone(ra *tasks.RunningAction)   { so.pushUpdate(ra) }
 
-func (s *Session) Run(ctx context.Context) error {
+func (s *Session) Run(ctx context.Context, extra func(*executor.Executor)) error {
 	defer s.obs.Close()
 
 	cancel := s.sink.Observe(&sinkObserver{s})
@@ -201,7 +199,14 @@ func (s *Session) Run(ctx context.Context) error {
 
 	defer close(s.requestCh)
 
-	s.executor.Go(func(ctx context.Context) error {
+	eg := executor.New(ctx, "devworkflow.session")
+	extra(eg)
+
+	// Not attaching to the executor, as we only leave on Close, which is called
+	// outside the executor.
+	go s.obs.Loop(ctx)
+
+	eg.Go(func(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
@@ -213,8 +218,8 @@ func (s *Session) Run(ctx context.Context) error {
 					set := x.SetWorkspace
 					servers := append([]string{set.GetPackageName()}, set.GetAdditionalServers()...)
 
-					s.executor.Go(func(ctx context.Context) error {
-						return s.handleSetWorkspace(ctx, set.GetAbsRoot(), set.GetEnvName(), servers)
+					eg.Go(func(ctx context.Context) error {
+						return s.handleSetWorkspace(ctx, eg, set.GetAbsRoot(), set.GetEnvName(), servers)
 					})
 
 				case *DevWorkflowRequest_ReloadWorkspace:
@@ -225,8 +230,8 @@ func (s *Session) Run(ctx context.Context) error {
 						servers := s.requested.servers
 						s.mu.Unlock()
 
-						s.executor.Go(func(ctx context.Context) error {
-							return s.handleSetWorkspace(ctx, absRoot, envName, servers)
+						eg.Go(func(ctx context.Context) error {
+							return s.handleSetWorkspace(ctx, eg, absRoot, envName, servers)
 						})
 					}
 				}
@@ -234,11 +239,7 @@ func (s *Session) Run(ctx context.Context) error {
 		}
 	})
 
-	return s.executor.Wait()
-}
-
-func (s *Session) RunInContext(f func(context.Context) error) {
-	s.executor.Go(f)
+	return eg.Wait()
 }
 
 func (s *Session) TaskLogByName(taskID, name string) io.ReadCloser {

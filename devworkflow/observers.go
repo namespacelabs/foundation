@@ -43,10 +43,13 @@ type Observer struct {
 	closed       atomic.Bool
 }
 
-func NewObservers(ctx context.Context) *Observers {
+func NewObservers() *Observers {
 	ch := make(chan obsMsg)
-	go doLoop(ctx, ch)
 	return &Observers{ch: ch}
+}
+
+func (obs *Observers) Loop(ctx context.Context) {
+	doLoop(ctx, obs.ch)
 }
 
 func (obs *Observers) New(update *Update, stackUpdates bool) (*Observer, error) {

@@ -76,10 +76,13 @@ func (p *PodObserver) start(ctx context.Context) {
 			p.revision++
 			p.mu.Unlock()
 
+			if errors.Is(err, context.Canceled) {
+				// No messages, no retries.
+				return
+			}
+
 			if !retry {
-				if !errors.Is(err, context.Canceled) {
-					fmt.Fprintf(console.Errors(ctx), "kube/podresolver: %s: failed: %v.\n", kubedef.SerializeSelector(p.labels), err)
-				}
+				fmt.Fprintf(console.Errors(ctx), "kube/podresolver: %s: failed: %v.\n", kubedef.SerializeSelector(p.labels), err)
 				return
 			}
 
