@@ -12,18 +12,17 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type Keybinding struct {
-	Root *workspace.Root
+	LoadEnvironment func(name string) (runtime.Selector, error)
 }
 
 type logState struct {
@@ -46,6 +45,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 
 	var previousStack *schema.Stack
 	var previousEnv string
+	var previousFocus []string
 
 	// This map keeps track of which servers we're streaming logs for, keyed
 	// also by environment. This leads to a natural cancelation of servers that
@@ -55,6 +55,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 	for event := range ch {
 		newStack := previousStack
 		newEnv := previousEnv
+		newFocus := previousFocus
 
 		switch event.Operation {
 		case keyboard.OpSet:
@@ -64,11 +65,16 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 			if event.StackUpdate.Stack != nil {
 				newStack = event.StackUpdate.Stack
 				newEnv = event.StackUpdate.Env.GetName()
+				newFocus = event.StackUpdate.Focus
 			}
 		}
 
 		if logging {
 			for _, server := range newStack.GetEntry() {
+				if slices.Index(newFocus, server.Server.PackageName) < 0 {
+					continue
+				}
+
 				key := fmt.Sprintf("%s[%s]", server.Server.PackageName, newEnv)
 				if previous, has := listening[key]; has {
 					previous.Revision = event.EventID
@@ -85,7 +91,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 
 					server := server.Server // Capture server.
 					go func() {
-						env, err := provision.RequireEnv(l.Root, newEnv)
+						env, err := l.LoadEnvironment(newEnv)
 						if err == nil {
 							err = Listen(ctxWithCancel, env, server)
 						}
@@ -113,6 +119,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 
 		previousStack = newStack
 		previousEnv = newEnv
+		previousFocus = newFocus
 
 		switch event.Operation {
 		case keyboard.OpSet:
