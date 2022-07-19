@@ -12,6 +12,7 @@ $providerProto: inputs.#Proto & {
 	source: "provider.proto"
 }
 
+// Experimental! This extension is still under active development.
 extension: fn.#Extension & {
 	instantiate: {
 		clientFactory: client.#Exports.ClientFactory
