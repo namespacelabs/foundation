@@ -6,24 +6,62 @@ package keyboard
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/morikuni/aec"
 	"github.com/muesli/cancelreader"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/devworkflow"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/termios"
-	"namespacelabs.dev/foundation/internal/logs/logtail"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 )
+
+type Handler interface {
+	// Key MUST be a pure function. E.g. "l"
+	Key() string
+	// Label MUST be a pure function. E.g. "stream logs"
+	Label(bool) string
+	// Must only leave when chan Event is closed. OpSet events must be Acknowledged by writing to Control.
+	Handle(context.Context, chan Event, chan<- Control)
+}
+
+type EventOp string
+type ControlOp string
+
+const (
+	OpStackUpdate EventOp = "op.stackupdate"
+	OpSet         EventOp = "op.set"
+
+	ControlAck ControlOp = "control.ack"
+)
+
+type Event struct {
+	HandlerID   int
+	EventID     string
+	Operation   EventOp
+	StackUpdate struct {
+		Env   *schema.Environment
+		Stack *schema.Stack
+		Focus []string
+	}
+	Enabled bool
+}
+
+type Control struct {
+	Operation ControlOp
+	AckEvent  struct {
+		HandlerID int
+		EventID   string
+	}
+}
 
 // StartHandler processes user keystroke events and dev workflow updates.
 // Here we also take care on calling `onDone` callback on user exiting.
-func StartHandler(ctx context.Context, stackState *devworkflow.Session, root *workspace.Root, serverProtos []*schema.Server, onDone func()) error {
+func StartHandler(ctx context.Context, stackState *devworkflow.Session, handlers []Handler, onDone func()) error {
 	if !termios.IsTerm(os.Stdin.Fd()) {
 		return nil
 	}
@@ -33,17 +71,20 @@ func StartHandler(ctx context.Context, stackState *devworkflow.Session, root *wo
 		return err
 	}
 
-	t := &termState{}
-	go t.handleEvents(ctx, stdin, stackState, root, serverProtos, onDone)
+	go handleEvents(ctx, stdin, stackState, handlers, onDone)
 	return nil
 }
 
-type termState struct {
-	cancelFuncs []context.CancelFunc
-	showingLogs bool
+type handlerState struct {
+	Handler       Handler
+	HandlerID     int
+	Ch            chan Event
+	ExitCh        chan struct{}
+	Enabled       bool
+	HandlingEvent string
 }
 
-func (t *termState) handleEvents(ctx context.Context, stdin *rawStdinReader, stackState *devworkflow.Session, root *workspace.Root, serverProtos []*schema.Server, onDone func()) {
+func handleEvents(ctx context.Context, stdin *rawStdinReader, stackState *devworkflow.Session, handlers []Handler, onDone func()) {
 	obs, err := stackState.NewClient(false)
 	if err != nil {
 		fmt.Fprintln(console.Debug(ctx), "failed to create observer", err)
@@ -51,9 +92,6 @@ func (t *termState) handleEvents(ctx context.Context, stdin *rawStdinReader, sta
 	}
 
 	defer obs.Close()
-
-	t.updateSticky(ctx)
-
 	defer stdin.restore()
 
 	defer func() {
@@ -62,22 +100,82 @@ func (t *termState) handleEvents(ctx context.Context, stdin *rawStdinReader, sta
 		}
 	}()
 
-	defer t.stopLogging()
+	control := make(chan Control)
+	state := make([]*handlerState, len(handlers))
 
-	envRef := ""
+	for k, handler := range handlers {
+		st := &handlerState{
+			Handler:   handler,
+			HandlerID: k,
+			Ch:        make(chan Event),
+			ExitCh:    make(chan struct{}),
+			Enabled:   false,
+		}
+
+		state[k] = st
+
+		go func() {
+			defer close(st.ExitCh)
+			st.Handler.Handle(ctx, st.Ch, control)
+		}()
+	}
+
+	defer func() {
+		for _, state := range state {
+			close(state.Ch)
+		}
+
+		for _, state := range state {
+			<-state.ExitCh // Wait until the go routine exits.
+		}
+
+		// Only close control after all goroutines have exited.
+		//
+		// XXX there's a race condition here: if a go routine is waiting on
+		// writing to control before returning, then we may never arrive here.
+		close(control)
+	}()
+
+	eventID := uint64(0)
 	for {
+		var labels []string
+		for _, state := range state {
+			style := aec.DefaultF
+			if state.HandlingEvent != "" {
+				style = aec.LightBlackF
+			}
+
+			labels = append(labels, fmt.Sprintf(" (%s): %s", aec.Bold.Apply(state.Handler.Key()), style.Apply(state.Handler.Label(state.Enabled))))
+		}
+
+		keybindings := fmt.Sprintf(" %s%s (%s): quit", aec.LightBlackF.Apply("Key bindings"), strings.Join(labels, ""), aec.Bold.Apply("q"))
+		console.SetStickyContent(ctx, "commands", keybindings)
+
+		eventID++
 		select {
 		case update, ok := <-obs.Events():
 			if !ok {
 				return
 			}
 
-			if update.StackUpdate != nil && update.StackUpdate.Env != nil {
-				if t.showingLogs && envRef != update.StackUpdate.Env.Name {
-					t.stopLogging()
-					t.newLogTailMultiple(ctx, root, update.StackUpdate.Env.Name, serverProtos)
+			if update.StackUpdate != nil && len(state) > 0 {
+				// Decouple changes made by devworkflow. Handlers should be able
+				// to assume that the received event data is immutable.
+				env := protos.Clone(update.StackUpdate.Env)
+				stack := protos.Clone(update.StackUpdate.Stack)
+				focus := slices.Clone(update.StackUpdate.Focus)
+
+				for _, handler := range state {
+					ev := Event{
+						HandlerID: handler.HandlerID,
+						EventID:   fmt.Sprintf("%d", eventID),
+						Operation: OpStackUpdate,
+					}
+					ev.StackUpdate.Env = env
+					ev.StackUpdate.Stack = stack
+					ev.StackUpdate.Focus = focus
+					handler.Ch <- ev
 				}
-				envRef = update.StackUpdate.Env.Name
 			}
 
 		case err := <-stdin.errors:
@@ -89,56 +187,45 @@ func (t *termState) handleEvents(ctx context.Context, stdin *rawStdinReader, sta
 				return
 			}
 
-			if string(c) == "l" && envRef != "" {
-				if t.showingLogs {
-					t.stopLogging()
-				} else {
-					t.newLogTailMultiple(ctx, root, envRef, serverProtos)
+			key := string(c)
+
+			for _, state := range state {
+				if state.Handler.Key() != key {
+					continue
 				}
 
-				t.showingLogs = !t.showingLogs
-				t.updateSticky(ctx)
+				// Don't allow multiple state changes until the handler acknowledges the command.
+				if state.HandlingEvent == "" {
+					state.HandlingEvent = fmt.Sprintf("%d", eventID)
+					state.Enabled = !state.Enabled
+
+					state.Ch <- Event{
+						HandlerID: state.HandlerID,
+						EventID:   state.HandlingEvent,
+						Operation: OpSet,
+						Enabled:   state.Enabled,
+					}
+				}
+
+				break
+			}
+
+		case c := <-control:
+			if c.Operation == ControlAck {
+				if c.AckEvent.HandlerID < 0 || c.AckEvent.HandlerID >= len(state) {
+					panic("handler id is invalid")
+				}
+
+				state := state[c.AckEvent.HandlerID]
+				if state.HandlingEvent == c.AckEvent.EventID {
+					state.HandlingEvent = ""
+				}
 			}
 
 		case <-ctx.Done():
 			return
 		}
 	}
-}
-
-func (t *termState) updateSticky(ctx context.Context) {
-	logCmd := "stream logs"
-	if t.showingLogs {
-		logCmd = "pause logs " // Additional space at the end for a better allignment.
-	}
-
-	keybindings := fmt.Sprintf(" %s (%s): %s (%s): quit", aec.LightBlackF.Apply("Key bindings"), aec.Bold.Apply("l"), logCmd, aec.Bold.Apply("q"))
-	console.SetStickyContent(ctx, "commands", keybindings)
-}
-
-func (t *termState) newLogTailMultiple(ctx context.Context, root *workspace.Root, envRef string, serverProtos []*schema.Server) {
-	for _, server := range serverProtos {
-		server := server // Capture server
-		ctxWithCancel, cancelF := context.WithCancel(ctx)
-		t.cancelFuncs = append(t.cancelFuncs, cancelF)
-		go func() {
-			env, err := provision.RequireEnv(root, envRef)
-			if err == nil {
-				err = logtail.Listen(ctxWithCancel, env, server)
-			}
-
-			if err != nil && !errors.Is(err, context.Canceled) {
-				fmt.Fprintf(console.Errors(ctx), "Error starting logs: %v\n", err)
-			}
-		}()
-	}
-}
-
-func (t *termState) stopLogging() {
-	for _, cancelF := range t.cancelFuncs {
-		cancelF()
-	}
-	t.cancelFuncs = nil
 }
 
 type rawStdinReader struct {

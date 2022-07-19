@@ -21,9 +21,9 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -64,7 +64,6 @@ func NewDevCmd() *cobra.Command {
 				pl := workspace.NewPackageLoader(root)
 
 				var serverPackages []string
-				var serverProtos []*schema.Server
 				for _, p := range args {
 					parsed, err := pl.LoadByName(ctx, root.RelPackage(p).AsPackageName())
 					if err != nil {
@@ -76,7 +75,6 @@ func NewDevCmd() *cobra.Command {
 					}
 
 					serverPackages = append(serverPackages, parsed.PackageName().String())
-					serverProtos = append(serverProtos, parsed.Server)
 				}
 
 				localHost := lis.Addr().(*net.TCPAddr).IP.String()
@@ -106,7 +104,11 @@ func NewDevCmd() *cobra.Command {
 				fncobra.RegisterPprof(r)
 				devworkflow.RegisterEndpoints(sesh, r)
 
-				if err := keyboard.StartHandler(ctx, sesh, root, serverProtos, cancel); err != nil {
+				keybindings := []keyboard.Handler{
+					logtail.Keybinding{Root: root},
+				}
+
+				if err := keyboard.StartHandler(ctx, sesh, keybindings, cancel); err != nil {
 					return err
 				}
 

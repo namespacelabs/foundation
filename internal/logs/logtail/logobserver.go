@@ -6,16 +6,128 @@ package logtail
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 
+	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
+
+type Keybinding struct {
+	Root *workspace.Root
+}
+
+type logState struct {
+	Revision string // Revisions are used to track whether the log state is still required.
+
+	PackageName schema.PackageName
+	Cancel      func()
+}
+
+func (l Keybinding) Key() string { return "l" }
+func (l Keybinding) Label(enabled bool) string {
+	if !enabled {
+		return "stream logs"
+	}
+	return "pause logs " // Additional space at the end for a better allignment.
+}
+
+func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
+	logging := false
+
+	var previousStack *schema.Stack
+	var previousEnv string
+
+	// This map keeps track of which servers we're streaming logs for, keyed
+	// also by environment. This leads to a natural cancelation of servers that
+	// are no longer in the stack, or as part of an environment change.
+	listening := map[string]*logState{} // `{env}/{package}` --> LogState
+
+	for event := range ch {
+		newStack := previousStack
+		newEnv := previousEnv
+
+		switch event.Operation {
+		case keyboard.OpSet:
+			logging = event.Enabled
+
+		case keyboard.OpStackUpdate:
+			if event.StackUpdate.Stack != nil {
+				newStack = event.StackUpdate.Stack
+				newEnv = event.StackUpdate.Env.GetName()
+			}
+		}
+
+		if logging {
+			for _, server := range newStack.GetEntry() {
+				key := fmt.Sprintf("%s[%s]", server.Server.PackageName, newEnv)
+				if previous, has := listening[key]; has {
+					previous.Revision = event.EventID
+				} else {
+					fmt.Fprintf(console.Output(ctx, "logs"), "starting log for %s\n", key)
+
+					// Start logging.
+					ctxWithCancel, cancelF := context.WithCancel(ctx)
+					listening[key] = &logState{
+						Revision:    event.EventID,
+						PackageName: server.GetPackageName(),
+						Cancel:      cancelF,
+					}
+
+					server := server.Server // Capture server.
+					go func() {
+						env, err := provision.RequireEnv(l.Root, newEnv)
+						if err == nil {
+							err = Listen(ctxWithCancel, env, server)
+						}
+
+						if err != nil && !errors.Is(err, context.Canceled) {
+							fmt.Fprintf(console.Errors(ctx), "Error starting logs: %v\n", err)
+						}
+					}()
+				}
+			}
+		}
+
+		var keys []string
+		for key, l := range listening {
+			if l.Revision != event.EventID {
+				keys = append(keys, key)
+				l.Cancel()
+				delete(listening, key)
+			}
+		}
+
+		if len(keys) > 0 {
+			fmt.Fprintf(console.Stderr(ctx), "Stopped listening to logs of: %s\n", strings.Join(keys, ", "))
+		}
+
+		previousStack = newStack
+		previousEnv = newEnv
+
+		switch event.Operation {
+		case keyboard.OpSet:
+			c := keyboard.Control{Operation: keyboard.ControlAck}
+			c.AckEvent.HandlerID = event.HandlerID
+			c.AckEvent.EventID = event.EventID
+
+			control <- c
+		}
+	}
+
+	for _, l := range listening {
+		l.Cancel()
+	}
+}
 
 // Listen blocks fetching logs from a container.
 func Listen(ctx context.Context, env runtime.Selector, server *schema.Server) error {
