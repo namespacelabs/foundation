@@ -372,9 +372,9 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 		quantity := resource.NewScaledQuantity(int64(rs.ByteCount), resource.Scale(1))
 
-		// Test environments are ephemeral and short lived, so there is no need for persistent volume claims.
+		// Ephemeral environments are short lived, so there is no need for persistent volume claims.
 		// Admin servers are excluded here as they run as singletons in a global namespace.
-		if r.env.Purpose == schema.Environment_TESTING && !srv.Proto().ClusterAdmin {
+		if r.env.Ephemeral && !srv.Proto().ClusterAdmin {
 			spec = spec.WithVolumes(applycorev1.Volume().
 				WithName(name).
 				WithEmptyDir(applycorev1.EmptyDirVolumeSource().
