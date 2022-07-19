@@ -42,14 +42,14 @@ func RenderPortsAndIngresses(localHostname string, stack *schema.Stack, focus []
 			continue
 		}
 
-		var protocols uniquestrings.List
+		protocolToKind := map[string]string{}
 		for _, md := range p.Endpoint.ServiceMetadata {
-			protocols.Add(md.Protocol)
+			protocolToKind[md.Protocol] = md.Kind
 		}
 
 		isFocus := isFocusEndpoint(focus, p.Endpoint)
 
-		endpoint := storage.NetworkPlan_Endpoint{
+		endpoint := &storage.NetworkPlan_Endpoint{
 			Focus:           isFocus,
 			Label:           makeServiceLabel(stack, p.Endpoint),
 			AccessCmd:       []*storage.NetworkPlan_AccessCmd{},
@@ -106,21 +106,17 @@ func RenderPortsAndIngresses(localHostname string, stack *schema.Stack, focus []
 			}
 		}
 
-		if protocols.Has("grpc") && len(grpcAccessCmds) == 0 {
+		if kind, ok := protocolToKind["grpc"]; ok && len(grpcAccessCmds) == 0 {
 			if p.LocalPort == 0 {
 				grpcAccessCmds = append(grpcAccessCmds, &storage.NetworkPlan_AccessCmd{
 					Cmd: fmt.Sprintf("private: container port %d gprc", p.Endpoint.Port.ContainerPort), IsManaged: true})
 			} else {
-				for _, svc := range p.Endpoint.ServiceMetadata {
-					if svc.Protocol == "grpc" {
-						grpcAccessCmds = append(grpcAccessCmds, &storage.NetworkPlan_AccessCmd{
-							Cmd: grpcAccessCmd(false, p.LocalPort, localHostname, svc.Kind), IsManaged: true})
-					}
-				}
+				grpcAccessCmds = append(grpcAccessCmds, &storage.NetworkPlan_AccessCmd{
+					Cmd: grpcAccessCmd(false, p.LocalPort, localHostname, kind), IsManaged: true})
 			}
 		}
 
-		if protocols.Has("http") && len(httpAccessCmds) == 0 {
+		if _, ok := protocolToKind["http"]; ok && len(httpAccessCmds) == 0 {
 			if p.LocalPort == 0 {
 				httpAccessCmds = append(httpAccessCmds, &storage.NetworkPlan_AccessCmd{
 					Cmd: fmt.Sprintf("private: container port %d http", p.Endpoint.Port.ContainerPort), IsManaged: true})
@@ -142,7 +138,7 @@ func RenderPortsAndIngresses(localHostname string, stack *schema.Stack, focus []
 			}
 		}
 
-		r.Endpoint = append(r.Endpoint, &endpoint)
+		r.Endpoint = append(r.Endpoint, endpoint)
 	}
 
 	var nonLocalManaged, nonLocalNonManaged []*runtime.FilteredDomain
