@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"math/rand"
 	"os"
 	"sort"
@@ -69,8 +68,10 @@ var (
 	StickyPriorities = map[string]int{
 		"stack":    1,
 		"webui":    10,
-		"commands": 20,
+		"commands": 99,
 	}
+
+	DefaultStickyPriority = 50
 )
 
 var (
@@ -274,13 +275,13 @@ loop:
 						if p, ok := StickyPriorities[a.name]; ok {
 							acost = p
 						} else {
-							acost = math.MaxInt
+							acost = DefaultStickyPriority
 						}
 
 						if p, ok := StickyPriorities[b.name]; ok {
 							bcost = p
 						} else {
-							bcost = math.MaxInt
+							bcost = DefaultStickyPriority
 						}
 
 						return acost < bcost

@@ -9,10 +9,13 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/devworkflow"
+	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/logs/logtail"
+	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/runtime"
@@ -30,6 +33,29 @@ func NewAttachCmd() *cobra.Command {
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			res, err := h.ComputeStack(ctx, args)
 			if err != nil {
+				return err
+			}
+
+			ctx, cancel := fncobra.WithSigIntCancel(ctx)
+			defer cancel()
+
+			keybindings := []keyboard.Handler{
+				logtail.Keybinding{
+					LoadEnvironment: func(name string) (runtime.Selector, error) {
+						if name == res.Rehydrated.Env.Name {
+							return res.Env, nil
+						}
+
+						return nil, fnerrors.InternalError("requested invalid environment: %s", name)
+					},
+				},
+			}
+
+			if err := keyboard.StartHandler(ctx, observers.Static(&observers.StackUpdateEvent{
+				Env:   res.Rehydrated.Env,
+				Stack: res.Stack,
+				Focus: schema.Strs(res.Focus...),
+			}), keybindings, cancel); err != nil {
 				return err
 			}
 

@@ -24,6 +24,8 @@ import (
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
+	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -105,7 +107,11 @@ func NewDevCmd() *cobra.Command {
 				devworkflow.RegisterEndpoints(sesh, r)
 
 				keybindings := []keyboard.Handler{
-					logtail.Keybinding{Root: root},
+					logtail.Keybinding{
+						LoadEnvironment: func(env string) (runtime.Selector, error) {
+							return provision.RequireEnv(root, env)
+						},
+					},
 				}
 
 				if err := keyboard.StartHandler(ctx, sesh, keybindings, cancel); err != nil {

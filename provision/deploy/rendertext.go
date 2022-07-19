@@ -18,7 +18,7 @@ func RenderText(out io.Writer, style colors.Style, r *storage.NetworkPlan, check
 	if localHostname == "" {
 		fmt.Fprintf(out, " Services deployed:\n\n")
 	} else {
-		fmt.Fprintf(out, "Development mode, services forwarded to %s.\n\n", style.LessRelevant.Apply("localhost"))
+		fmt.Fprintf(out, " Development mode, services forwarded to %s.\n\n", style.LessRelevant.Apply("localhost"))
 	}
 
 	supportServices := []*storage.NetworkPlan_Endpoint{}
