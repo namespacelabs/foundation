@@ -146,7 +146,14 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 		IpProtocol: &protocol,
 		CidrIp:     &ipRange,
 	}); err != nil {
-		return fmt.Errorf("failed to add permissions to security group: %v", err)
+		// Apparently there's no nicer type for this.
+		var e smithy.APIError
+		if errors.As(err, &e) && e.ErrorCode() == "InvalidGroup.Duplicate" {
+			log.Printf("Ingress for security group %s is already authorized for port %d", groupId, desc.Port)
+			// TODO update?
+		} else {
+			return fmt.Errorf("failed to add permissions to security group: %v", err)
+		}
 	}
 	log.Printf("Authorized security group ingress for port %d", *desc.Port)
 
