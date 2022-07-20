@@ -53,6 +53,7 @@ func RenderPortsAndIngresses(localHostname string, stack *schema.Stack, focus []
 			Focus:           isFocus,
 			Label:           makeServiceLabel(stack, p.Endpoint),
 			AccessCmd:       []*storage.NetworkPlan_AccessCmd{},
+			LocalPort:       uint32(p.LocalPort), // XXX to be removed.
 			IsPortForwarded: p.LocalPort > 0,
 			EndpointOwner:   p.Endpoint.EndpointOwner, // Comment
 		}
@@ -85,6 +86,8 @@ func RenderPortsAndIngresses(localHostname string, stack *schema.Stack, focus []
 						IsManaged: isManaged,
 					})
 				}
+
+				endpoint.Url = url
 			}
 
 			// If LocalPort != 0 this means we are running local dev and

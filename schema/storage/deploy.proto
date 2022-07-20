@@ -26,11 +26,14 @@ message NetworkPlan {
     }
 
     message Endpoint {
-        Label              label             = 1;
-        bool               focus             = 2;
-        repeated AccessCmd access_cmd        = 3;
-        bool               is_port_forwarded = 4;
-        string             endpoint_owner    = 5;
+        Label  label          = 1;
+        bool   focus          = 2;
+        string url            = 3;
+        uint32 local_port     = 4;
+        string endpoint_owner = 5;
+
+        repeated AccessCmd access_cmd        = 6;
+        bool               is_port_forwarded = 7;
     }
 
     message Ingress {
