@@ -17,7 +17,8 @@ import (
 
 func newAccessTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "access-token",
+		Use:  "access-token",
+		Args: cobra.NoArgs,
 	}
 
 	flag := cmd.Flags()
@@ -26,7 +27,7 @@ func newAccessTokenCmd() *cobra.Command {
 	appID := flag.Int64("app_id", -1, "app ID of the app we're requesting an access token to.")
 	privateKey := flag.String("private_key", "", "Path to the app's private key.")
 
-	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
 		itr, err := ghinstallation.NewKeyFromFile(http.DefaultTransport, *appID, *installationID, *privateKey)
 		if err != nil {
 			return err
