@@ -31,7 +31,7 @@ export function StackObserver(props: { children: React.ReactNode }) {
 			if (stackUpdate) {
 				setData({
 					...stackUpdate,
-					stack: sortStack(stackUpdate.current.server.package_name, stackUpdate.stack),
+					stack: sortStack(stackUpdate.focus || [], stackUpdate.stack),
 				});
 			}
 		});
@@ -40,13 +40,13 @@ export function StackObserver(props: { children: React.ReactNode }) {
 	return <DataContext.Provider value={data}>{props.children}</DataContext.Provider>;
 }
 
-function sortStack(current: string, stack?: StackType) {
+function sortStack(focus: string[], stack?: StackType) {
 	// Can sort in place as we just this out of the wire.
 
 	stack?.entry?.sort((a, b) => {
-		if (a.server.package_name == current) {
+		if (focus.includes(a.server.package_name)) {
 			return -1;
-		} else if (b.server.package_name == current) {
+		} else if (focus.includes(b.server.package_name)) {
 			return 1;
 		}
 

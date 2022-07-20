@@ -21,9 +21,6 @@ export default function ServerBlock(props: { data: DataType }) {
 	let supportServersS: StackEntryType[] = [];
 
 	let focus = props.data.focus;
-	if (!focus && props.data.current) {
-		focus = [props.data.current.server.package_name];
-	}
 
 	for (const server of props.data.stack?.entry || []) {
 		if (focus?.includes(server.server.package_name)) {
@@ -184,7 +181,7 @@ function ForwardedPorts(props: { data: DataType }) {
 			label: "Ports",
 			render: () => (
 				<>
-					{sortPorts(props.data.current.server.package_name, props.data.forwarded_port).map((p) => (
+					{sortPorts(props.data.focus || [], props.data.forwarded_port).map((p) => (
 						<Port key={`${p.container_port}_${p.endpoint.service_name}`} data={props.data} p={p} />
 					))}
 				</>
@@ -195,16 +192,16 @@ function ForwardedPorts(props: { data: DataType }) {
 	return <Tabs tabs={tabs} />;
 }
 
-function sortPorts(current: string, ports?: ForwardedPort[]) {
+function sortPorts(focus: string[], ports?: ForwardedPort[]) {
 	let copy = [...(ports || [])];
 
 	copy.sort((a, b) => {
 		let apkg = a.endpoint.server_owner || "<stack>";
 		let bpkg = b.endpoint.server_owner || "<stack>";
 
-		if (apkg === current) {
+		if (focus.includes(apkg)) {
 			return -1;
-		} else if (bpkg === current) {
+		} else if (focus.includes(bpkg)) {
 			return 1;
 		}
 

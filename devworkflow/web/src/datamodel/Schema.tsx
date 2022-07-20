@@ -89,7 +89,6 @@ export type DataType = {
 	env: EnvironmentType;
 	available_env: EnvironmentType[];
 	stack?: StackType;
-	current: StackEntryType;
 	focus?: string[];
 	state?: StackEntryStateType[];
 	forwarded_port?: ForwardedPort[];

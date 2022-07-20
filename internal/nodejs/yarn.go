@@ -22,7 +22,6 @@ import (
 const (
 	yarnBinaryPath   = "/yarn.cjs"
 	fnYarnLockEnvVar = "FN_YARN_LOCK_FILENAME"
-	lockContainerDir = "/fnyarnlock"
 	pluginFn         = "plugin-foundation.cjs"
 	yarnRcFn         = ".yarnrc.yml"
 )
