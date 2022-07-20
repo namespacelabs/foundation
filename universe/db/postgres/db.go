@@ -39,6 +39,13 @@ func (db DB) Exec(ctx context.Context, sql string, arguments ...interface{}) (pg
 	return tag, spanErr
 }
 
+func (db DB) BeginTxFunc(ctx context.Context, txOptions pgx.TxOptions, callback func(pgx.Tx) error) error {
+	return db.withSpan(ctx, "db.BeginTxFunc", "", func(ctx context.Context) error {
+		// XXX wrap transaction for span logging.
+		return db.pool.BeginTxFunc(ctx, txOptions, callback)
+	})
+}
+
 func (db DB) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
 	var rows pgx.Rows
 	spanErr := db.withSpan(ctx, "db.Query", sql, func(ctx context.Context) (err error) {
@@ -71,9 +78,13 @@ func (db DB) withSpan(ctx context.Context, name, sql string, f func(context.Cont
 		return f(ctx)
 	}
 
-	ctx, span := db.tracer.Start(ctx, name,
-		trace.WithSpanKind(trace.SpanKindClient),
-		trace.WithAttributes(semconv.DBStatementKey.String(sql)))
+	options := []trace.SpanStartOption{trace.WithSpanKind(trace.SpanKindClient)}
+
+	if sql != "" {
+		options = append(options, trace.WithAttributes(semconv.DBStatementKey.String(sql)))
+	}
+
+	ctx, span := db.tracer.Start(ctx, name, options...)
 	defer span.End()
 
 	err := f(ctx)
