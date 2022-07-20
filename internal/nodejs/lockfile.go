@@ -6,9 +6,9 @@ package nodejs
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"path/filepath"
 
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
@@ -112,17 +112,11 @@ func generateLockFileStructForBuild(relPath string, workspace *schema.Workspace)
 }
 
 // Returns the filename
-func writeLockFileToTemp(lockFileStruct lockFile) (string, error) {
+func writeLockFileToTemp(target string, lockFileStruct lockFile) error {
 	lock, err := json.MarshalIndent(lockFileStruct, "", "\t")
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	file, err := dirs.CreateUserTemp("nodejs", lockFn)
-	if err != nil {
-		return "", fnerrors.InternalError("failed to create the %s file: %w", lockFn, err)
-	}
-
-	_, err = file.Write(lock)
-	return file.Name(), err
+	return ioutil.WriteFile(target, lock, 0644)
 }

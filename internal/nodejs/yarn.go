@@ -6,8 +6,13 @@ package nodejs
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"path/filepath"
 
+	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/sdk/yarn"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
@@ -22,6 +27,8 @@ const (
 	yarnRcFn         = ".yarnrc.yml"
 )
 
+var UseNativeNode = false
+
 // Runs a configured Yarn.
 func RunYarn(ctx context.Context, env provision.Env, relPath string, args []string, workspaceData workspace.WorkspaceData) error {
 	return RunYarnForScope(ctx, env, "", relPath, args, workspaceData)
@@ -32,27 +39,54 @@ func RunYarnForLocation(ctx context.Context, env provision.Env, loc workspace.Lo
 }
 
 func RunYarnForScope(ctx context.Context, env provision.Env, scope schema.PackageName, relPath string, args []string, workspaceData workspace.WorkspaceData) error {
-	lockFileStruct, err := generateLockFileStruct(
-		workspaceData.Parsed(), workspaceData.AbsPath(), relPath)
+	lockFileStruct, err := generateLockFileStruct(workspaceData.Parsed(), workspaceData.AbsPath(), relPath)
 	if err != nil {
 		return err
 	}
 
-	lockFn, err := writeLockFileToTemp(lockFileStruct)
+	dir, err := os.MkdirTemp("", "ns-yarn")
 	if err != nil {
 		return err
 	}
-	lockBaseFn := filepath.Base(lockFn)
-	lockDir := filepath.Dir(lockFn)
-	lockContainerFn := filepath.Join(lockContainerDir, lockBaseFn)
+
+	if err := writeLockFileToTemp(filepath.Join(dir, lockFn), lockFileStruct); err != nil {
+		return err
+	}
+
+	yarnFilesDir := "/"
+	targetLockDirFn := "/ns-yarn-lock/"
+	if UseNativeNode {
+		yarnFilesDir = dir
+		targetLockDirFn = dir
+	}
 
 	envArgs := []*schema.BinaryConfig_EnvEntry{}
-	for k, v := range yarnEnvArgs("/") {
+	for k, v := range yarnEnvArgs(yarnFilesDir) {
 		envArgs = append(envArgs, &schema.BinaryConfig_EnvEntry{Name: k, Value: v})
 	}
-	envArgs = append(envArgs, &schema.BinaryConfig_EnvEntry{Name: fnYarnLockEnvVar, Value: lockContainerFn})
+	envArgs = append(envArgs, &schema.BinaryConfig_EnvEntry{Name: fnYarnLockEnvVar, Value: filepath.Join(targetLockDirFn, lockFn)})
 
-	mounts := []*rtypes.LocalMapping{{HostPath: lockDir, ContainerPath: lockContainerDir}}
+	if UseNativeNode {
+		yarnBin, err := yarn.EnsureSDK(ctx)
+		if err != nil {
+			return err
+		}
+
+		if err := writeYarnAuxFiles(ctx, fnfs.ReadWriteLocalFS(dir)); err != nil {
+			return err
+		}
+
+		var cmd localexec.Command
+		cmd.Command = "node"
+		for _, kv := range envArgs {
+			cmd.AdditionalEnv = append(cmd.AdditionalEnv, fmt.Sprintf("%s=%s", kv.Name, kv.Value))
+		}
+		cmd.Args = append([]string{string(yarnBin)}, args...)
+		cmd.Dir = filepath.Join(env.Root().Abs(), relPath)
+		return cmd.Run(ctx)
+	}
+
+	mounts := []*rtypes.LocalMapping{{HostPath: dir, ContainerPath: targetLockDirFn}}
 	for moduleName, module := range lockFileStruct.Modules {
 		if moduleName != workspaceData.Parsed().ModuleName {
 			path := filepath.Join(workspaceData.AbsPath(), relPath, module.Path)

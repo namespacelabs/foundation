@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/sdk/yarn"
@@ -83,10 +84,25 @@ func copyYarnBinaryFromCache(ctx context.Context, base llb.State) (llb.State, er
 	return state, nil
 }
 
+func writeYarnAuxFiles(ctx context.Context, out fnfs.WriteFS) error {
+	if err := fnfs.WriteFile(ctx, out, pluginFn, yarnplugin.PluginContent(), 0644); err != nil {
+		return err
+	}
+
+	if err := fnfs.WriteFile(ctx, out, yarnRcFn, []byte(yarnRcContent), 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func generateYarnAuxFiles(ctx context.Context, base llb.State) (llb.State, error) {
 	var fsys memfs.FS
-	fsys.Add(pluginFn, yarnplugin.PluginContent())
-	fsys.Add(yarnRcFn, []byte(yarnRcContent))
+
+	if err := writeYarnAuxFiles(ctx, &fsys); err != nil {
+		return llb.State{}, err
+	}
+
 	state, err := llbutil.WriteFS(ctx, &fsys, base, ".")
 	if err != nil {
 		return llb.State{}, err

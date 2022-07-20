@@ -38,12 +38,13 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/ulimit"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/languages/golang"
-	nodejs "namespacelabs.dev/foundation/languages/nodejs/integration"
+	nodeintegration "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/languages/web"
 	"namespacelabs.dev/foundation/providers/aws/ecr"
@@ -193,7 +194,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Languages.
 		golang.Register()
 		web.Register()
-		nodejs.Register()
+		nodeintegration.Register()
 		opaque.Register()
 
 		// Codegen
@@ -265,6 +266,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If true, servers in tests are deployed as pods instead of deployments.")
 	rootCmd.PersistentFlags().BoolVar(&compute.ExplainIndentValues, "compute_explain_indent_values", compute.ExplainIndentValues,
 		"If true, values output by --explain are indented.")
+	rootCmd.PersistentFlags().BoolVar(&nodejs.UseNativeNode, "nodejs_use_native_node", nodejs.UseNativeNode, "If true, invokes a locally installed node.")
 
 	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
@@ -292,6 +294,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"fnapi_naming_force_stored",
 		"kubernetes_deploy_as_pods_in_tests",
 		"compute_explain_indent_values",
+		"nodejs_use_native_node",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

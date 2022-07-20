@@ -13,18 +13,21 @@ type StackSession interface {
 	Close()
 }
 
-func Static(update *StackUpdateEvent) SessionProvider {
-	return staticProvider{update}
+func Static(update *StackUpdateEvent) *StaticProvider {
+	return &StaticProvider{update}
 }
 
-type staticProvider struct{ update *StackUpdateEvent }
-type staticSession struct{ ch chan *StackUpdateEvent }
+type StaticProvider struct {
+	update *StackUpdateEvent
+}
 
-func (p staticProvider) NewStackClient() (StackSession, error) {
+func (p StaticProvider) NewStackClient() (StackSession, error) {
 	ch := make(chan *StackUpdateEvent, 1)
 	ch <- p.update
 	return staticSession{ch}, nil
 }
+
+type staticSession struct{ ch chan *StackUpdateEvent }
 
 func (s staticSession) StackEvents() chan *StackUpdateEvent { return s.ch }
 func (s staticSession) Close()                              { close(s.ch) }
