@@ -68,7 +68,7 @@ func NewPortFwd(ctx context.Context, obs *Session, selector runtime.Selector, lo
 		}
 
 		pfw.OnUpdate = func() {
-			obs.updateStackInPlace(func(stack *Stack) { stack.NetworkPlan = pfw.ToNetworkPlan() })
+			obs.updateStackInPlace(func(stack *Stack) { stack.NetworkPlan, _ = pfw.ToNetworkPlan() })
 		}
 	}
 

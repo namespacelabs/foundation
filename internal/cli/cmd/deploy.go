@@ -23,6 +23,8 @@ import (
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/provision/deploy/render"
+	deploystorage "namespacelabs.dev/foundation/provision/deploy/storage"
 	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -119,14 +121,12 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 		}
 	}
 
-	var ports []*deploy.PortFwd
+	var ports []*deploystorage.PortFwd
 	for _, endpoint := range plan.Stack.Endpoint {
-		ports = append(ports, &deploy.PortFwd{
+		ports = append(ports, &deploystorage.PortFwd{
 			Endpoint: endpoint,
 		})
 	}
-
-	domains := runtime.FilterAndDedupDomains(plan.IngressFragment, nil)
 
 	out := console.TypedOutput(ctx, "deploy", console.CatOutputUs)
 
@@ -137,10 +137,12 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 		}
 	}
 
-	deploy.SortPorts(ports, focusServer)
-	deploy.SortIngresses(plan.IngressFragment)
-	r := deploy.RenderPortsAndIngresses("", plan.Stack, focusServer, ports, domains, plan.IngressFragment)
-	view.NetworkPlanToText(out, r, &view.NetworkPlanToTextOpts{
+	r, err := deploystorage.ToStorageNetworkPlan("", plan.Stack, focusServer, ports, plan.IngressFragment)
+	if err != nil {
+		return err
+	}
+	summary := render.NetworkPlanToSummary(r)
+	view.NetworkPlanToText(out, summary, &view.NetworkPlanToTextOpts{
 		Style:                 colors.Ctx(ctx),
 		Checkmark:             false,
 		IncludeSupportServers: true,

@@ -1,0 +1,184 @@
+{
+  "endpoint": [
+    {
+      "label": {
+        "service_proto": "kind12"
+      },
+      "focus": true,
+      "local_port": 123,
+      "endpoint_owner": "my/service1",
+      "access_cmd": [
+        {
+          "cmd": "http://localhost:123",
+          "is_managed": true
+        },
+        {
+          "cmd": "ns tools grpcurl -plaintext -d '{}' localhost:123 kind12/<METHOD>",
+          "is_managed": true
+        }
+      ]
+    },
+    {
+      "label": {
+        "label": "label2"
+      },
+      "local_port": 234,
+      "endpoint_owner": "my/service2",
+      "access_cmd": [
+        {
+          "cmd": "localhost:234 --> 2340",
+          "is_managed": true
+        }
+      ]
+    }
+  ],
+  "non_local_managed": [
+    {
+      "fqdn": "domain1.example.com",
+      "schema": "(multiple: http, grpc) ",
+      "package_owner": [
+        "server1"
+      ]
+    }
+  ],
+  "local_hostname": "localhost",
+  "ingress_fragments": [
+    {
+      "name": "fragment2",
+      "owner": "owner2",
+      "domain": {
+        "fqdn": "domain2.example.com",
+        "managed": "LOCAL_MANAGED"
+      },
+      "manager": "manager2"
+    },
+    {
+      "name": "fragment1",
+      "owner": "owner1",
+      "domain": {
+        "fqdn": "domain1.example.com",
+        "has_certificate": true,
+        "managed": "CLOUD_MANAGED"
+      },
+      "endpoint": {
+        "type": "INTERNET_FACING",
+        "service_name": "service1",
+        "endpoint_owner": "my/service1",
+        "port": {
+          "name": "port1",
+          "container_port": 1230
+        },
+        "allocated_name": "allocated1",
+        "server_owner": "server1",
+        "service_metadata": [
+          {},
+          {
+            "kind": "kind11",
+            "protocol": "http"
+          },
+          {
+            "kind": "kind12",
+            "protocol": "grpc"
+          }
+        ],
+        "service_label": "label1"
+      },
+      "http_path": [
+        {},
+        {
+          "path": "/path1",
+          "kind": "kind1",
+          "owner": "owner1",
+          "service": "service1",
+          "port": {
+            "name": "port1",
+            "container_port": 1230
+          }
+        },
+        {
+          "path": "/path2",
+          "kind": "kind2",
+          "owner": "owner2",
+          "service": "service2",
+          "port": {
+            "name": "port2",
+            "container_port": 2340
+          }
+        }
+      ],
+      "grpc_service": [
+        {},
+        {
+          "grpc_service": "grpc1",
+          "owner": "owner1",
+          "service": "service1",
+          "method": [
+            "method1",
+            "method2"
+          ],
+          "port": {
+            "name": "port1",
+            "container_port": 1231
+          }
+        },
+        {
+          "grpc_service": "grpc2",
+          "owner": "owner2",
+          "service": "service2",
+          "port": {
+            "name": "port2",
+            "container_port": 2341
+          }
+        }
+      ],
+      "manager": "manager1"
+    },
+    {
+      "domain": {}
+    }
+  ],
+  "endpoints": [
+    {},
+    {
+      "type": "PRIVATE",
+      "service_name": "service2",
+      "endpoint_owner": "my/service2",
+      "port": {
+        "name": "port2",
+        "container_port": 2340
+      },
+      "allocated_name": "allocated2",
+      "server_owner": "server3",
+      "service_label": "label2",
+      "local_port": 234
+    },
+    {
+      "type": "INTERNET_FACING",
+      "service_name": "service1",
+      "endpoint_owner": "my/service1",
+      "port": {
+        "name": "port1",
+        "container_port": 1230
+      },
+      "allocated_name": "allocated1",
+      "server_owner": "server1",
+      "service_metadata": [
+        {},
+        {
+          "kind": "kind11",
+          "protocol": "http"
+        },
+        {
+          "kind": "kind12",
+          "protocol": "grpc"
+        }
+      ],
+      "service_label": "label1",
+      "local_port": 123
+    }
+  ],
+  "focused_server_packages": [
+    "server1",
+    "server2"
+  ]
+}

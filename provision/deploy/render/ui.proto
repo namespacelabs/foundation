@@ -1,0 +1,40 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package provision.deploy.render;
+
+option go_package = "namespacelabs.dev/provision/deploy/render";
+
+message NetworkPlanSummary {
+    string           local_hostname   = 1;
+    repeated Service focused_services = 2;
+    repeated Service support_services = 3;
+
+    message Service {
+        Label  label        = 1;
+        bool   focus        = 2;
+        uint32 local_port   = 4;
+        string package_name = 5;
+
+        message AccessCmd {
+            // url for http
+            // "grpcurl" command line for grpc
+            // "curl" command line for http transcoding.
+            // "private:" if the service can't be accessed from outside.
+            string cmd = 1;
+            // Whether it is managed by Namespace.
+            bool is_managed = 2;
+        }
+
+        // Guaranteed to be non-empty.
+        repeated AccessCmd access_cmd = 6;
+    }
+}
+
+message Label {
+    string label         = 1;
+    string service_proto = 2;
+}

@@ -1,0 +1,24 @@
+Services deployed:
+
+ Support services:
+
+  [✓] Label             http://web.example.com/path1
+  [✓] Longer Label      grpcurl hello world long command
+  [✓] short.proto.name  http://localhost                  # my/package/name
+  [✓] l.p.name          http://localhost
+
+ Main services:
+
+  [✓] Focused Label
+      http://web.example.com/path1
+      http://web.example.com/path2
+
+  [✓] Focused Longer Label
+      grpcurl hello world long command
+
+  [✓] focused.short.proto.name
+      http://localhost
+
+  [✓] f.l.p.name
+      http://localhost
+

@@ -1,0 +1,133 @@
+{
+  "local_hostname": "localhost",
+  "support_services": [
+    {
+      "label": {
+        "label": "my-service-label1"
+      },
+      "access_cmd": [
+        {
+          "cmd": "private: container port 1",
+          "is_managed": true
+        }
+      ]
+    },
+    {
+      "label": {
+        "label": "service-label"
+      },
+      "access_cmd": [
+        {
+          "cmd": "private: container port 1",
+          "is_managed": true
+        }
+      ]
+    },
+    {
+      "label": {},
+      "access_cmd": [
+        {
+          "cmd": "private: container port 1234 http",
+          "is_managed": true
+        }
+      ]
+    },
+    {
+      "label": {
+        "service_proto": "my.service4.MyPrivateService"
+      },
+      "access_cmd": [
+        {
+          "cmd": "private: container port 1235 gprc",
+          "is_managed": true
+        }
+      ]
+    },
+    {
+      "label": {
+        "label": "gRPC gateway"
+      },
+      "access_cmd": [
+        {
+          "cmd": "private: container port 1",
+          "is_managed": true
+        }
+      ]
+    },
+    {
+      "label": {
+        "service_proto": "my.service.MyGrpcService"
+      },
+      "package_name": "my/grpc_service",
+      "access_cmd": [
+        {
+          "cmd": "curl -X POST http://local.domain:456/grpc-transcoding2/<METHOD>",
+          "is_managed": true
+        },
+        {
+          "cmd": "ns tools grpcurl -plaintext -d '{}' local.domain:443 my.service.MyGrpcService/<METHOD>",
+          "is_managed": true
+        }
+      ]
+    },
+    {
+      "label": {
+        "label": "my-http-server"
+      },
+      "access_cmd": [
+        {
+          "cmd": "private: container port 1",
+          "is_managed": true
+        }
+      ]
+    },
+    {
+      "label": {
+        "label": "main_http_server"
+      },
+      "package_name": "my/http_service",
+      "access_cmd": [
+        {
+          "cmd": "https://domain1.example.com/path1"
+        },
+        {
+          "cmd": "https://domain1.example.com/path2"
+        }
+      ]
+    },
+    {
+      "label": {
+        "label": "my-service-name1"
+      },
+      "access_cmd": [
+        {
+          "cmd": "private: container port 1",
+          "is_managed": true
+        }
+      ]
+    },
+    {
+      "label": {
+        "label": "my-server3/my-service3"
+      },
+      "access_cmd": [
+        {
+          "cmd": "private: container port 1",
+          "is_managed": true
+        }
+      ]
+    },
+    {
+      "label": {
+        "label": "with-local-port"
+      },
+      "local_port": 1236,
+      "access_cmd": [
+        {
+          "cmd": "localhost:1236 --> 1",
+          "is_managed": true
+        }
+      ]
+    }
+  ]
+}

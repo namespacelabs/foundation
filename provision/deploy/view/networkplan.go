@@ -11,7 +11,7 @@ import (
 
 	"github.com/muesli/reflow/padding"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/provision/deploy/render"
 )
 
 type NetworkPlanToTextOpts struct {
@@ -20,51 +20,39 @@ type NetworkPlanToTextOpts struct {
 	IncludeSupportServers bool
 }
 
-func NetworkPlanToText(out io.Writer, r *storage.NetworkPlan, opts *NetworkPlanToTextOpts) {
+func NetworkPlanToText(out io.Writer, r *render.NetworkPlanSummary, opts *NetworkPlanToTextOpts) {
 	if r.LocalHostname == "" {
 		fmt.Fprintf(out, "Services deployed:\n")
 	} else {
-		fmt.Fprintf(out, "Development mode, services forwarded to %s.\n", opts.Style.LessRelevant.Apply("localhost"))
+		fmt.Fprintf(out, "Development mode, services forwarded to %s.\n", r.LocalHostname)
 	}
 
-	supportServices := []*storage.NetworkPlan_Endpoint{}
-	mainServices := []*storage.NetworkPlan_Endpoint{}
-	for _, entry := range r.Endpoint {
-		if entry.Focus {
-			mainServices = append(mainServices, entry)
-		} else {
-			supportServices = append(supportServices, entry)
-		}
-	}
-
-	if opts.IncludeSupportServers && len(supportServices) > 0 {
+	if opts.IncludeSupportServers && len(r.SupportServices) > 0 {
 		fmt.Fprintf(out, "\n %s\n\n", opts.Style.Comment.Apply("Support services:"))
 
-		renderNotFocusedEndpointsText(out, opts.Style, supportServices, opts.Checkmark)
+		renderNotFocusedEndpointsText(out, opts.Style, r.SupportServices, opts.Checkmark)
 	}
 
-	if len(mainServices) > 0 {
+	if len(r.FocusedServices) > 0 {
 		fmt.Fprint(out, "\n Main services:\n")
 
-		renderFocusedEndpointsText(out, opts.Style, mainServices, opts.Checkmark)
+		renderFocusedEndpointsText(out, opts.Style, r.FocusedServices, opts.Checkmark)
 	}
 
-	if len(r.Endpoint) == 0 {
+	if len(r.FocusedServices) == 0 && len(r.SupportServices) == 0 {
 		fmt.Fprintf(out, "\n   %s\n", opts.Style.LessRelevant.Apply("No services exported"))
 	}
 }
 
-func renderNotFocusedEndpointsText(out io.Writer, style colors.Style, services []*storage.NetworkPlan_Endpoint, checkmark bool) {
-	var longestLabel, longestUrl uint
+func renderNotFocusedEndpointsText(out io.Writer, style colors.Style, services []*render.NetworkPlanSummary_Service, checkmark bool) {
+	var longestLabel, longestCmd uint
 	for _, entry := range services {
 		if l := uint(len(renderLabel(entry.Label))); l > longestLabel {
 			longestLabel = l
 		}
 
-		for _, cmd := range entry.AccessCmd {
-			if l := uint(len(cmd.Cmd)); l > longestUrl {
-				longestUrl = l
-			}
+		if l := uint(len(entry.AccessCmd[0].Cmd)); l > longestCmd {
+			longestCmd = l
 		}
 	}
 
@@ -73,19 +61,19 @@ func renderNotFocusedEndpointsText(out io.Writer, style colors.Style, services [
 		url := style.Comment.Apply(entry.AccessCmd[0].Cmd)
 
 		fmt.Fprintf(out, " %s%s  %s%s\n",
-			checkLabel(style, checkmark, entry.Focus, entry.IsPortForwarded),
+			checkLabel(style, checkmark, false /* isFocus */, entry.LocalPort > 0),
 			padding.String(label, longestLabel),
-			padding.String(url, longestUrl+1),
-			comment(style, entry.EndpointOwner))
+			padding.String(url, longestCmd+1),
+			comment(style, entry.PackageName))
 	}
 }
 
-func renderFocusedEndpointsText(out io.Writer, style colors.Style, services []*storage.NetworkPlan_Endpoint, checkmark bool) {
+func renderFocusedEndpointsText(out io.Writer, style colors.Style, services []*render.NetworkPlanSummary_Service, checkmark bool) {
 	hasNotManagedDomains := false
 
 	for _, entry := range services {
 		fmt.Fprintf(out, "\n %s%s\n",
-			checkLabel(style, checkmark, entry.Focus, entry.IsPortForwarded),
+			checkLabel(style, checkmark, true /* isFocus */, entry.LocalPort > 0),
 			style.Highlight.Apply(renderLabel(entry.Label)))
 		for _, cmd := range entry.AccessCmd {
 			notManagedHint := "  "
@@ -126,7 +114,7 @@ func comment(style colors.Style, str string) string {
 	return style.Comment.Apply(" # " + str)
 }
 
-func renderLabel(lbl *storage.NetworkPlan_Label) string {
+func renderLabel(lbl *render.Label) string {
 	if lbl.ServiceProto != "" {
 		return compressProtoTypename(lbl.ServiceProto)
 	}
