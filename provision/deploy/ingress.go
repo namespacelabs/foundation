@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -62,19 +63,29 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 	computed := compute.MustGetDepValue(deps, ci.fragments, "fragments")
 	allFragments = append(allFragments, computed...)
 
-	// XXX parallelism
+	eg := executor.New(ctx, "compute.ingress")
 	for _, fragment := range allFragments {
-		sch := ci.stack.GetServer(schema.PackageName(fragment.Owner))
-		if sch == nil {
-			return nil, fnerrors.BadInputError("%s: not present in the stack", fragment.Owner)
-		}
+		fragment := fragment // Close fragment.
 
-		if ci.allocate {
-			fragment.Domain, err = runtime.MaybeAllocateDomainCertificate(ctx, sch, fragment.Domain)
-			if err != nil {
-				return nil, err
+		eg.Go(func(ctx context.Context) error {
+			sch := ci.stack.GetServer(schema.PackageName(fragment.Owner))
+			if sch == nil {
+				return fnerrors.BadInputError("%s: not present in the stack", fragment.Owner)
 			}
-		}
+
+			if ci.allocate {
+				fragment.Domain, err = runtime.MaybeAllocateDomainCertificate(ctx, sch, fragment.Domain)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
 	}
 
 	return &ComputeIngressResult{
