@@ -87,7 +87,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 				// image has been loaded. In CI in particular, access to docker has high contention and
 				// we see up to 20 secs waiting time loading an image.
 				eg.Go(func(ctx context.Context) error {
-					session, err := grpcstdio.NewSession(ctx, outr, inw)
+					session, err := grpcstdio.NewSession(ctx, outr, inw, grpcstdio.WithVersion(2), grpcstdio.WithDefaults())
 					if err != nil {
 						return err
 					}

@@ -20,7 +20,9 @@ const IntroducedGrpcTranscodeNode = 35
 const MinimumAPIVersion = 29
 
 // Embedded into provisioning tools.
-const ToolAPIVersion = 2
+const ToolAPIVersion = 3
+
+const IntroducedCompression = 3
 
 // Allow for global cache invalidation.
 const CacheVersion = 1

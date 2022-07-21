@@ -22,61 +22,70 @@ func init() {
 }
 
 func TestProtocol(t *testing.T) {
-	ar, aw := io.Pipe()
-	br, bw := io.Pipe()
+	opts := [][]NewSessionOpt{
+		{},
+		{WithCompression(ZstdCompression)},
+		{WithVersion(2), WithDefaults()},
+		{WithVersion(3), WithDefaults()},
+	}
 
-	ctx := context.Background()
+	for _, opts := range opts {
+		ar, aw := io.Pipe()
+		br, bw := io.Pipe()
 
-	eg := executor.New(ctx, "testprotocol")
+		ctx := context.Background()
 
-	s := grpc.NewServer()
+		eg := executor.New(ctx, "testprotocol")
 
-	eg.Go(func(ctx context.Context) error {
-		x, err := NewSession(ctx, ar, bw)
-		if err != nil {
-			return err
-		}
-
-		testdata.RegisterTestServiceServer(s, &impl{})
-
-		return s.Serve(x.Listener())
-	})
-
-	eg.Go(func(ctx context.Context) error {
-		y, err := NewSession(ctx, br, aw)
-		if err != nil {
-			return err
-		}
-
-		conn, err := grpc.DialContext(ctx, "stdio",
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithReadBufferSize(0),
-			grpc.WithWriteBufferSize(0),
-			grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
-				return y.Dial(nil)
-			}))
-		if err != nil {
-			return err
-		}
-
-		defer conn.Close()
-
-		for k := 0; k < 3; k++ {
-			log.Println("will issue make")
-			_, err = testdata.NewTestServiceClient(conn).Make(ctx, &testdata.Request{})
-			log.Println("got a make response")
-		}
+		s := grpc.NewServer()
 
 		eg.Go(func(ctx context.Context) error {
-			s.GracefulStop()
-			return nil
+			x, err := NewSession(ctx, ar, bw, opts...)
+			if err != nil {
+				return err
+			}
+
+			testdata.RegisterTestServiceServer(s, &impl{})
+
+			return s.Serve(x.Listener())
 		})
 
-		return err
-	})
+		eg.Go(func(ctx context.Context) error {
+			y, err := NewSession(ctx, br, aw, opts...)
+			if err != nil {
+				return err
+			}
 
-	if err := eg.Wait(); err != nil {
-		t.Fatal(err)
+			conn, err := grpc.DialContext(ctx, "stdio",
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+				grpc.WithReadBufferSize(0),
+				grpc.WithWriteBufferSize(0),
+				grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+					return y.Dial(nil)
+				}))
+			if err != nil {
+				return err
+			}
+
+			defer conn.Close()
+
+			for k := 0; k < 3; k++ {
+				log.Println("will issue make")
+				_, err = testdata.NewTestServiceClient(conn).Make(ctx, &testdata.Request{})
+				log.Println("got a make response")
+			}
+
+			eg.Go(func(ctx context.Context) error {
+				s.GracefulStop()
+				return nil
+			})
+
+			return err
+		})
+
+		if err := eg.Wait(); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

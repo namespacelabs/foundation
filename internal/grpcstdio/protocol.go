@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/klauspost/compress/zstd"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -55,13 +56,17 @@ const (
 
 	dirServer direction = 1 // Accept'd
 	dirClient direction = 2 // Dial'd
+
+	NoCompression   compressionKind = "compression.none"
+	ZstdCompression compressionKind = "compression.zstd"
 )
 
 type op int
 type direction int
+type compressionKind string
 
 type msg struct {
-	op_length       uint32
+	op              op
 	stream_reserved uint32
 	checksum        uint64
 	payload         []byte
@@ -73,8 +78,10 @@ type Session struct {
 	w       *bufferedPipeWriter
 	wreader *bufferedPipeReader // `w`'s pair.
 
-	debugf        func(string, ...interface{})
-	onCloseStream func(*Stream)
+	debugf         func(string, ...interface{})
+	onCloseStream  func(*Stream)
+	version        int
+	zstdCompressed bool
 
 	mu           sync.Mutex
 	cond         *sync.Cond
@@ -116,6 +123,7 @@ func NewSession(ctx context.Context, r io.Reader, w io.Writer, opts ...NewSessio
 		ourStreams:   map[uint32]*Stream{},
 		peerStreams:  map[uint32]*Stream{},
 		debugf:       func(s string, a ...interface{}) {},
+		version:      versions.ToolAPIVersion,
 	}
 
 	for _, opt := range opts {
@@ -133,7 +141,7 @@ func NewSession(ctx context.Context, r io.Reader, w io.Writer, opts ...NewSessio
 		return nil, err
 	}
 
-	if err := sess.sendRaw(makeMsg(opHello, 0, helloBytes)); err != nil {
+	if err := sess.sendRaw(makeMsg(opHello, 0, helloBytes, false)); err != nil {
 		return nil, err
 	}
 
@@ -179,45 +187,95 @@ func WithCloseNotifier(f func(*Stream)) NewSessionOpt {
 	}
 }
 
-func (m msg) op() op {
-	return op((m.op_length & 0xf000_0000) >> 28)
+func WithCompression(kind compressionKind) NewSessionOpt {
+	return func(s *Session) {
+		if kind == ZstdCompression {
+			s.zstdCompressed = true
+		}
+	}
 }
 
-func (m msg) length() uint32 {
-	return m.op_length & 0x0fff_ffff
+func WithVersion(version int) NewSessionOpt {
+	return func(s *Session) {
+		s.version = version
+	}
+}
+
+func WithDefaults() NewSessionOpt {
+	return func(s *Session) {
+		if s.version >= versions.IntroducedCompression {
+			s.zstdCompressed = true
+		}
+	}
 }
 
 func (m msg) streamID() uint32 {
 	return (m.stream_reserved >> 16) & 0xffff
 }
 
+func (m msg) zstdCompressed() bool {
+	return (m.stream_reserved & 0x1) != 0
+}
+
 func (m msg) serializePayloadTo(w io.Writer) error {
-	if err := binary.Write(w, binary.BigEndian, m.op_length); err != nil {
+	payload, err := maybeCompress(m.payload, m.zstdCompressed())
+	if err != nil {
+		return err
+	}
+
+	op_length := ((uint32(m.op) << 28) & 0xf000_0000) | uint32(len(payload))
+
+	if err := binary.Write(w, binary.BigEndian, op_length); err != nil {
 		return err
 	}
 	if err := binary.Write(w, binary.BigEndian, m.stream_reserved); err != nil {
 		return err
 	}
-	if _, err := w.Write(m.payload); err != nil {
+	if _, err := w.Write(payload); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func (m msg) serializeTo(w io.Writer) error {
-	if err := m.serializePayloadTo(w); err != nil {
-		return err
+func maybeCompress(payload []byte, zstdCompress bool) ([]byte, error) {
+	if zstdCompress {
+		var out bytes.Buffer
+		enc, err := zstd.NewWriter(&out)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := enc.Write(payload); err != nil {
+			return nil, err
+		}
+		if err := enc.Close(); err != nil {
+			return nil, err
+		}
+
+		return out.Bytes(), nil
 	}
-	if err := binary.Write(w, binary.BigEndian, m.calculateChecksum()); err != nil {
-		return err
-	}
-	return nil
+
+	return payload, nil
 }
 
-func (m msg) calculateChecksum() uint64 {
+func serializeMessage(m msg) (*bytes.Buffer, error) {
+	var buf bytes.Buffer // XXX re-use buffers.
+
+	if err := m.serializePayloadTo(&buf); err != nil {
+		return nil, err
+	}
+
+	if err := binary.Write(&buf, binary.BigEndian, calculateChecksum(buf.Bytes())); err != nil {
+		return nil, err
+	}
+
+	return &buf, nil
+}
+
+func calculateChecksum(payload []byte) uint64 {
 	h := xxhash.New()
 
-	if err := m.serializePayloadTo(h); err != nil {
+	if _, err := h.Write(payload); err != nil {
 		panic("failed to write hash")
 	}
 
@@ -249,7 +307,7 @@ func (s *Session) Dial(dial *DialArgs) (*Stream, error) {
 		return nil, err
 	}
 
-	if err := s.sendRaw(makeMsg(opDial, id, dialBytes)); err != nil {
+	if err := s.sendRaw(makeMsg(opDial, id, dialBytes, false)); err != nil {
 		return nil, err
 	}
 
@@ -259,20 +317,35 @@ func (s *Session) Dial(dial *DialArgs) (*Stream, error) {
 
 func (s *Session) readmsg() (msg, error) {
 	var msg msg
-	var err error
-	msg.op_length, err = s.readword()
+	op_length, err := s.readword()
 	if err != nil {
 		return msg, err
 	}
+
+	msg.op = op((op_length & 0xf000_0000) >> 28)
+	length := op_length & 0x0fff_ffff
 
 	msg.stream_reserved, err = s.readword()
 	if err != nil {
 		return msg, err
 	}
 
-	msg.payload, err = s.mustread(msg.length())
+	payload, err := s.mustread(length)
 	if err != nil {
 		return msg, err
+	}
+
+	if msg.zstdCompressed() {
+		r, err := zstd.NewReader(bytes.NewReader(payload))
+		if err != nil {
+			return msg, err
+		}
+		msg.payload, err = io.ReadAll(r)
+		if err != nil {
+			return msg, err
+		}
+	} else {
+		msg.payload = payload
 	}
 
 	msg.checksum, err = s.readlongword()
@@ -325,7 +398,13 @@ func (s *Session) loop() {
 			break
 		}
 
-		if msg.checksum != msg.calculateChecksum() {
+		var buf bytes.Buffer
+		if err := msg.serializePayloadTo(&buf); err != nil {
+			s.quit(fnerrors.New("failed to check checksum"))
+			break
+		}
+
+		if msg.checksum != calculateChecksum(buf.Bytes()) {
 			s.quit(fnerrors.New("bad checksum"))
 			break
 		}
@@ -335,25 +414,29 @@ func (s *Session) loop() {
 }
 
 func (s *Session) handle(msg msg) {
-	s.debugf("handle op=%s sid=%d [%x %x]", msg.op(), msg.streamID(), msg.op_length, msg.stream_reserved)
+	s.debugf("handle op=%s sid=%d [%x %x]", msg.op, msg.streamID(), len(msg.payload), msg.stream_reserved)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	switch msg.op() {
+	switch msg.op {
 	case opHello:
+		args := &HelloArgs{}
+		if err := proto.Unmarshal(msg.payload, args); err != nil {
+			panic(err)
+		}
 
 	case opDial:
 		dial := &DialArgs{}
 		if err := proto.Unmarshal(msg.payload, dial); err != nil {
-			s.send(serverError(msg.streamID(), err))
+			s.sendControl(serverError(msg.streamID(), err))
 		} else {
 			if _, has := s.peerStreams[msg.streamID()]; has {
-				s.send(serverError(msg.streamID(), status.Error(codes.AlreadyExists, "stream already exists")))
+				s.sendControl(serverError(msg.streamID(), status.Error(codes.AlreadyExists, "stream already exists")))
 			} else {
 				newStream, err := s.newStream(dirServer, msg.streamID())
 				if err != nil {
-					s.send(serverError(msg.streamID(), err))
+					s.sendControl(serverError(msg.streamID(), err))
 				} else {
 					s.peerStreams[msg.streamID()] = newStream
 					s.pending = append(s.pending, &DialedStream{newStream, dial})
@@ -368,7 +451,7 @@ func (s *Session) handle(msg msg) {
 				stream.failed(err)
 			}
 		} else {
-			s.send(serverError(msg.streamID(), status.Error(codes.NotFound, "no such stream")))
+			s.sendControl(serverError(msg.streamID(), status.Error(codes.NotFound, "no such stream")))
 		}
 
 	case opSendToClient:
@@ -377,7 +460,7 @@ func (s *Session) handle(msg msg) {
 				stream.failed(err)
 			}
 		} else {
-			s.send(clientError(msg.streamID(), status.Error(codes.NotFound, "no such stream")))
+			s.sendControl(clientError(msg.streamID(), status.Error(codes.NotFound, "no such stream")))
 		}
 
 	case opCloseClientSide:
@@ -422,19 +505,18 @@ func (s *Session) newStream(dir direction, id uint32) (*Stream, error) {
 	return stream, nil
 }
 
-func (s *Session) send(m msg) {
+func (s *Session) sendControl(m msg) {
 	if err := s.sendRaw(m); err != nil {
 		s.quit(err)
 	}
 }
 
 func (s *Session) sendRaw(m msg) error {
-	var buf bytes.Buffer // XXX re-use buffers.
-
-	if err := m.serializeTo(&buf); err != nil {
+	buf, err := serializeMessage(m)
+	if err != nil {
 		return err
 	} else {
-		s.debugf("sendRaw op=%s %d bytes [%x %x]", m.op(), len(m.payload), m.op_length, m.stream_reserved)
+		s.debugf("sendRaw op=%s %d bytes [%x]", m.op, len(m.payload), m.stream_reserved)
 		// Doesn't block to write to the actual destination, as `w` is a buffered pipe.
 		if _, err := buf.WriteTo(s.w); err != nil {
 			return err
@@ -479,7 +561,7 @@ func (s *Session) writeToStream(dir direction, id uint32, p []byte) (int, error)
 		op = opSendToClient
 	}
 
-	err := s.sendRaw(makeMsg(op, id, p))
+	err := s.sendRaw(makeMsg(op, id, p, s.zstdCompressed))
 	return len(p), err
 }
 
@@ -521,14 +603,14 @@ func (s *Session) closeStreamUnsafe(stream *Stream) {
 		}
 
 		s.debugf("close stream %s %x", stream.direction, stream.id)
-		s.send(makeMsg(opCloseClientSide, stream.id, nil))
+		s.sendControl(makeMsg(opCloseClientSide, stream.id, nil, false))
 	} else {
 		if _, ok := s.peerStreams[stream.id]; !ok {
 			return
 		}
 
 		s.debugf("close stream %s %x", stream.direction, stream.id)
-		s.send(makeMsg(opCloseServerSide, stream.id, nil))
+		s.sendControl(makeMsg(opCloseServerSide, stream.id, nil, false))
 	}
 
 	s.finStream(stream, nil)
@@ -624,14 +706,17 @@ func makeError(op op, streamID uint32, err error) msg {
 		payload = nil
 	}
 
-	return makeMsg(op, streamID, payload)
+	return makeMsg(op, streamID, payload, false)
 }
 
-func makeMsg(op op, streamID uint32, payload []byte) msg {
+func makeMsg(op op, streamID uint32, payload []byte, zstdCompressed bool) msg {
 	// XXX check payload size
 	var msg msg
-	msg.op_length = ((uint32(op) << 28) & 0xf000_0000) | uint32(len(payload))
+	msg.op = op
 	msg.stream_reserved = (streamID << 16) & 0xffff_0000
+	if zstdCompressed {
+		msg.stream_reserved |= 0x1
+	}
 	msg.payload = payload
 	return msg
 }
