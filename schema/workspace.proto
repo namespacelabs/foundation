@@ -49,7 +49,8 @@ message Workspace {
     }
 
     message FoundationRequirements {
-        int32 minimum_api = 1;
+        int32 minimum_api   = 1;
+        int32 tools_version = 2;
     }
 
     message ProtoModuleImports {

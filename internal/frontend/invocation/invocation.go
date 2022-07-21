@@ -25,15 +25,16 @@ import (
 )
 
 type Invocation struct {
-	ImageName     string
-	Image         compute.Computable[oci.Image]
-	PublicImageID *oci.ImageID
-	Command       []string
-	Args          []string
-	Snapshots     []Snapshot
-	WorkingDir    string
-	NoCache       bool
-	Inject        []*schema.Invocation_ValueInjection
+	ImageName            string
+	Image                compute.Computable[oci.Image]
+	PublicImageID        *oci.ImageID
+	SupportedToolVersion int
+	Command              []string
+	Args                 []string
+	Snapshots            []Snapshot
+	WorkingDir           string
+	NoCache              bool
+	Inject               []*schema.Invocation_ValueInjection
 }
 
 type Snapshot struct {
@@ -69,6 +70,10 @@ func Make(ctx context.Context, env provision.ServerEnv, serverLocRef *workspace.
 		WorkingDir:    with.WorkingDir,
 		NoCache:       with.NoCache,
 		Inject:        with.Inject,
+	}
+
+	if v := binPkg.Location.Module.Workspace.GetFoundation().GetToolsVersion(); v != 0 {
+		invocation.SupportedToolVersion = int(v)
 	}
 
 	invocation.Args = with.Args

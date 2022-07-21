@@ -101,7 +101,8 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 
 	if m.Foundation != nil {
 		w.Foundation = &schema.Workspace_FoundationRequirements{
-			MinimumApi: int32(m.Foundation.MinimumAPI),
+			MinimumApi:   int32(m.Foundation.MinimumAPI),
+			ToolsVersion: int32(m.Foundation.ToolsVersion),
 		}
 
 		if err := workspace.ValidateAPIRequirements(m.ModuleName, w.Foundation); err != nil {
@@ -338,7 +339,8 @@ type cueModule struct {
 }
 
 type cueModuleFoundation struct {
-	MinimumAPI int `json:"api"`
+	MinimumAPI   int `json:"api"`
+	ToolsVersion int `json:"toolsVersion"`
 }
 
 type cueModuleVersion struct {

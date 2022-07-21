@@ -164,6 +164,8 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		opts.Image = compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
 	}
 
+	opts.SupportedToolVersion = r.Invocation.SupportedToolVersion
+
 	if InvocationDebug {
 		opts.RunBinaryOpts.Args = append(opts.RunBinaryOpts.Args, "--debug")
 	}

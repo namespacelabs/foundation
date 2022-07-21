@@ -24,7 +24,8 @@ type RunBinaryOpts struct {
 }
 
 type RunToolOpts struct {
-	PublicImageID *oci.ImageID // If set, and runtime supports public images, `Image` is ignored.
+	PublicImageID        *oci.ImageID // If set, and runtime supports public images, `Image` is ignored.
+	SupportedToolVersion int
 	RunBinaryOpts
 	IO
 	ImageName    string

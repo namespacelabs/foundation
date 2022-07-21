@@ -350,7 +350,7 @@ type TestRuns_Run struct {
 	unknownFields protoimpl.UnknownFields
 
 	TestBundleId string            `protobuf:"bytes,1,opt,name=test_bundle_id,json=testBundleId,proto3" json:"test_bundle_id,omitempty"`
-	TestSummary  *TestBundle       `protobuf:"bytes,2,opt,name=test_summary,json=testSummary,proto3" json:"test_summary,omitempty"`
+	TestSummary  *TestBundle       `protobuf:"bytes,2,opt,name=test_summary,json=testSummary,proto3" json:"test_summary,omitempty"` // XXX replace with test_results.
 	TestResults  *TestResultBundle `protobuf:"bytes,3,opt,name=test_results,json=testResults,proto3" json:"test_results,omitempty"`
 }
 

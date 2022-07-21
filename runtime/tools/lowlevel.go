@@ -20,14 +20,13 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/grpcstdio"
-	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-var LowLevelToolsProtocolVersion = versions.ToolAPIVersion
+var LowLevelToolsProtocolVersion = 2
 
 const (
 	MaxInvocationDuration = 1 * time.Minute
@@ -86,11 +85,16 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 
 		eg.Go(func(ctx context.Context) error {
 			return RunWithOpts(ctx, opts, func() {
+				version := LowLevelToolsProtocolVersion
+				if opts.SupportedToolVersion != 0 {
+					version = opts.SupportedToolVersion
+				}
+
 				// Only kick off the session after the binary is started; i.e. after the underlying
 				// image has been loaded. In CI in particular, access to docker has high contention and
 				// we see up to 20 secs waiting time loading an image.
 				eg.Go(func(ctx context.Context) error {
-					session, err := grpcstdio.NewSession(ctx, outr, inw, grpcstdio.WithVersion(LowLevelToolsProtocolVersion), grpcstdio.WithDefaults())
+					session, err := grpcstdio.NewSession(ctx, outr, inw, grpcstdio.WithVersion(version), grpcstdio.WithDefaults())
 					if err != nil {
 						return err
 					}

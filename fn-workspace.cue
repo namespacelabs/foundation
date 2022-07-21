@@ -1,6 +1,7 @@
 module: "namespacelabs.dev/foundation"
 requirements: {
-	api: 38
+	api:          37
+	toolsVersion: 3
 }
 prebuilts: {
 	digest: {
