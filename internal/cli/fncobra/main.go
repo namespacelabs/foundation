@@ -267,6 +267,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&compute.ExplainIndentValues, "compute_explain_indent_values", compute.ExplainIndentValues,
 		"If true, values output by --explain are indented.")
 	rootCmd.PersistentFlags().BoolVar(&nodejs.UseNativeNode, "nodejs_use_native_node", nodejs.UseNativeNode, "If true, invokes a locally installed node.")
+	rootCmd.PersistentFlags().IntVar(&tools.LowLevelToolsProtocolVersion, "lowlevel_tools_protocol_version", tools.LowLevelToolsProtocolVersion,
+		"The protocol version to use with invocation tools.")
 
 	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
@@ -295,6 +297,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"kubernetes_deploy_as_pods_in_tests",
 		"compute_explain_indent_values",
 		"nodejs_use_native_node",
+		"lowlevel_tools_protocol_version",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

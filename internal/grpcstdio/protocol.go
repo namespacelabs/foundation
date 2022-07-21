@@ -425,6 +425,7 @@ func (s *Session) handle(msg msg) {
 		if err := proto.Unmarshal(msg.payload, args); err != nil {
 			panic(err)
 		}
+		s.zstdCompressed = (args.ToolApiVersion >= versions.IntroducedCompression) && (s.version >= versions.IntroducedCompression)
 
 	case opDial:
 		dial := &DialArgs{}

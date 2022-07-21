@@ -20,11 +20,14 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/grpcstdio"
+	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
+
+var LowLevelToolsProtocolVersion = versions.ToolAPIVersion
 
 const (
 	MaxInvocationDuration = 1 * time.Minute
@@ -87,7 +90,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 				// image has been loaded. In CI in particular, access to docker has high contention and
 				// we see up to 20 secs waiting time loading an image.
 				eg.Go(func(ctx context.Context) error {
-					session, err := grpcstdio.NewSession(ctx, outr, inw, grpcstdio.WithVersion(2), grpcstdio.WithDefaults())
+					session, err := grpcstdio.NewSession(ctx, outr, inw, grpcstdio.WithVersion(LowLevelToolsProtocolVersion), grpcstdio.WithDefaults())
 					if err != nil {
 						return err
 					}
