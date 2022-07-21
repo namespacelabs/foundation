@@ -1,0 +1,6 @@
+#TODO
+tasks:
+  - init: echo init
+    command: echo command
+
+
