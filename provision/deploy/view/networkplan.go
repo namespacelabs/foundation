@@ -2,20 +2,14 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-// TODO: move to a subpackage "view."
-
-package deploy
+package view
 
 import (
-	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/muesli/reflow/padding"
-	"namespacelabs.dev/foundation/devworkflow/keyboard"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/schema/storage"
 )
@@ -149,61 +143,4 @@ func compressProtoTypename(t string) string {
 		parts[k] = string(parts[k][0])
 	}
 	return strings.Join(parts, ".")
-}
-
-type NetworkPlanKeybinding struct {
-	name string
-}
-
-func NewNetworkPlanKeybinding(name string) *NetworkPlanKeybinding {
-	return &NetworkPlanKeybinding{
-		name: name,
-	}
-}
-
-func (k NetworkPlanKeybinding) Key() string { return "s" }
-
-func (k NetworkPlanKeybinding) Label(enabled bool) string {
-	if !enabled {
-		return "show support servers"
-	}
-	return "hide support servers " // Additional space at the end for a better allignment.
-}
-
-func (k NetworkPlanKeybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
-	showSupportServers := false
-	var networkPlan *storage.NetworkPlan
-
-	for event := range ch {
-		switch event.Operation {
-		case keyboard.OpSet:
-			showSupportServers := event.Enabled
-
-			k.renderStickyNetworkPlan(ctx, networkPlan, showSupportServers)
-
-			c := keyboard.Control{Operation: keyboard.ControlAck}
-			c.AckEvent.HandlerID = event.HandlerID
-			c.AckEvent.EventID = event.EventID
-
-			control <- c
-
-		case keyboard.OpStackUpdate:
-			networkPlan = event.StackUpdate.NetworkPlan
-
-			k.renderStickyNetworkPlan(ctx, networkPlan, showSupportServers)
-		}
-	}
-}
-
-func (k NetworkPlanKeybinding) renderStickyNetworkPlan(ctx context.Context, plan *storage.NetworkPlan, showSupportServers bool) {
-	content := ""
-	if plan != nil {
-		var out bytes.Buffer
-		NetworkPlanToText(&out, plan, &NetworkPlanToTextOpts{
-			Style:                 colors.WithColors,
-			Checkmark:             true,
-			IncludeSupportServers: showSupportServers})
-		content = out.String()
-	}
-	console.SetStickyContent(ctx, k.name, content)
 }

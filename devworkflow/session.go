@@ -21,7 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -266,7 +266,7 @@ func (s *Session) updateStackInPlace(f func(stack *Stack)) {
 
 	s.currentStack.NetworkPlan = s.pfw.ToNetworkPlan()
 	var out bytes.Buffer
-	deploy.NetworkPlanToText(&out, s.currentStack.NetworkPlan, &deploy.NetworkPlanToTextOpts{
+	view.NetworkPlanToText(&out, s.currentStack.NetworkPlan, &view.NetworkPlanToTextOpts{
 		Style:                 colors.WithColors,
 		Checkmark:             true,
 		IncludeSupportServers: true,

@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision/config"
-	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -55,7 +55,7 @@ func NewAttachCmd() *cobra.Command {
 							return nil, fnerrors.InternalError("requested invalid environment: %s", name)
 						},
 					},
-					deploy.NewNetworkPlanKeybinding("ingress"),
+					view.NewNetworkPlanKeybinding("ingress"),
 				},
 				Handler: func(ctx context.Context) error {
 					pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, "localhost")
