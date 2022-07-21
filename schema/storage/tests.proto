@@ -8,6 +8,9 @@ package foundation.schema.storage;
 
 option go_package = "namespacelabs.dev/foundation/schema/storage";
 
+import "schema/runtime.proto";
+import "schema/definition.proto";
+import "schema/serialized.proto";
 import "google/protobuf/timestamp.proto";
 import "schema/storage/logs.proto";
 import "schema/storage/diagnostics.proto";
@@ -33,8 +36,9 @@ message TestRuns {
     repeated Run run = 1;
 
     message Run {
-        string     test_bundle_id = 1;
-        TestBundle test_summary   = 2;
+        string           test_bundle_id = 1;
+        TestBundle       test_summary   = 2;  // XXX replace with test_results.
+        TestResultBundle test_results   = 3;
     }
 }
 
@@ -42,4 +46,21 @@ message TestResult {
     bool   success       = 1;
     int32  error_code    = 2;
     string error_message = 3;
+}
+
+// Next ID: 7
+message TestResultBundle {
+    TestResult                               result                  = 1;
+    foundation.schema.DeployPlan             deploy_plan             = 4;
+    foundation.schema.ComputedConfigurations computed_configurations = 5;
+    InlineLog                                test_log                = 2;
+    repeated InlineLog                       server_log              = 3;
+    EnvironmentDiagnostics                   env_diagnostics         = 6;
+
+    message InlineLog {
+        string                          package_name   = 1;
+        string                          container_name = 3;
+        foundation.schema.ContainerKind container_kind = 4;
+        bytes                           output         = 2;
+    }
 }

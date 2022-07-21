@@ -233,7 +233,7 @@ func printResult(out io.Writer, style colors.Style, res compute.ResultWithTimest
 	fmt.Fprintf(out, "%s: Test %s%s %s\n", res.Value.Package, status, cached, style.Comment.Apply(res.Value.ImageRef.ImageRef()))
 }
 
-func printLog(out io.Writer, log *testing.InlineLog) {
+func printLog(out io.Writer, log *storage.TestResultBundle_InlineLog) {
 	for _, line := range bytes.Split(log.Output, []byte("\n")) {
 		fmt.Fprintf(out, "%s:%s: %s\n", log.PackageName, log.ContainerName, line)
 	}

@@ -40,7 +40,7 @@ import (
 const startupTestBinary = "namespacelabs.dev/foundation/std/startup/testdriver"
 
 type StoredTestResults struct {
-	Bundle            *PreStoredTestBundle
+	Bundle            *storage.TestResultBundle
 	TestBundleSummary *storage.TestBundle
 	ImageRef          oci.ImageID
 	Package           schema.PackageName
@@ -150,7 +150,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 	packages := pl.Seal()
 
-	var results compute.Computable[*PreStoredTestBundle] = &testRun{
+	var results compute.Computable[*storage.TestResultBundle] = &testRun{
 		TestName:         testDef.Name,
 		Env:              env.BindWith(packages),
 		Plan:             deployPlan,

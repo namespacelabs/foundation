@@ -55,10 +55,10 @@ type testRun struct {
 	// If VClusters are enabled.
 	VCluster compute.Computable[*vcluster.VCluster]
 
-	compute.LocalScoped[*PreStoredTestBundle]
+	compute.LocalScoped[*storage.TestResultBundle]
 }
 
-var _ compute.Computable[*PreStoredTestBundle] = &testRun{}
+var _ compute.Computable[*storage.TestResultBundle] = &testRun{}
 
 func (test *testRun) Action() *tasks.ActionEvent {
 	return tasks.Action("test").Arg("name", test.TestName).Arg("package_name", test.TestBinPkg)
@@ -91,14 +91,14 @@ func (test *testRun) prepareDeployEnv(ctx context.Context, r compute.Resolved) (
 	return test.Env, makeDeleteEnv(test.Env), nil
 }
 
-func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*PreStoredTestBundle, error) {
+func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
 	// The actual test run is wrapped in another action, so we can apply policies to it (e.g. constrain how many tests are deployed in parallel).
-	return tasks.Return(ctx, tasks.Action(TestRunAction), func(ctx context.Context) (*PreStoredTestBundle, error) {
+	return tasks.Return(ctx, tasks.Action(TestRunAction), func(ctx context.Context) (*storage.TestResultBundle, error) {
 		return test.compute(ctx, r)
 	})
 }
 
-func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStoredTestBundle, error) {
+func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
 	p := compute.MustGetDepValue(r, test.Plan, "plan")
 
 	env, cleanup, err := test.prepareDeployEnv(ctx, r)
@@ -208,7 +208,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 
 	bundle.Result = testResults
 	if testLogBuf != nil {
-		bundle.TestLog = &InlineLog{
+		bundle.TestLog = &storage.TestResultBundle_InlineLog{
 			PackageName: test.TestBinPkg.String(),
 			Output:      testLogBuf.Seal().Bytes(),
 		}
@@ -217,7 +217,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*PreStore
 	return bundle, nil
 }
 
-func collectLogs(ctx context.Context, env ops.Environment, testPkg schema.PackageName, stack *schema.Stack, focus []string, printLogs bool) (*PreStoredTestBundle, error) {
+func collectLogs(ctx context.Context, env ops.Environment, testPkg schema.PackageName, stack *schema.Stack, focus []string, printLogs bool) (*storage.TestResultBundle, error) {
 	ex := executor.New(ctx, "test.collect-logs")
 
 	type serverLog struct {
@@ -302,12 +302,12 @@ func collectLogs(ctx context.Context, env ops.Environment, testPkg schema.Packag
 		return nil, err
 	}
 
-	bundle := &PreStoredTestBundle{
+	bundle := &storage.TestResultBundle{
 		EnvDiagnostics: diagnostics,
 	}
 
 	for _, entry := range serverLogs {
-		bundle.ServerLog = append(bundle.ServerLog, &InlineLog{
+		bundle.ServerLog = append(bundle.ServerLog, &storage.TestResultBundle_InlineLog{
 			PackageName:   entry.PackageName,
 			ContainerName: entry.ContainerName,
 			ContainerKind: entry.ContainerKind,
