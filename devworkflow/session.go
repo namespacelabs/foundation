@@ -32,8 +32,6 @@ import (
 type Session struct {
 	requestCh chan *DevWorkflowRequest
 
-	OnPortForwardUpdate func(*endpointfwd.PortForward)
-
 	Errors io.Writer
 
 	localHostname string
@@ -248,7 +246,7 @@ func (s *Session) setEnvironment(parentCtx context.Context, env runtime.Selector
 
 	s.cancelPortForward()
 
-	s.pfw = NewPortFwd(parentCtx, s, env, s.localHostname, s.OnPortForwardUpdate)
+	s.pfw = NewPortFwd(parentCtx, s, env, s.localHostname)
 	s.currentEnv = env
 	return s.pfw
 }
@@ -266,8 +264,9 @@ func (s *Session) updateStackInPlace(f func(stack *Stack)) {
 	s.mu.Lock()
 	f(s.currentStack)
 
+	s.currentStack.NetworkPlan = s.pfw.ToNetworkPlan()
 	var out bytes.Buffer
-	deploy.NetworkPlanToText(&out, s.pfw.ToNetworkPlan(), &deploy.NetworkPlanToTextOpts{
+	deploy.NetworkPlanToText(&out, s.currentStack.NetworkPlan, &deploy.NetworkPlanToTextOpts{
 		Style:                 colors.WithColors,
 		Checkmark:             true,
 		IncludeSupportServers: true,

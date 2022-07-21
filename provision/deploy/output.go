@@ -23,7 +23,7 @@ type PortFwd struct {
 
 func RenderPortsAndIngresses(localHostname string, stack *schema.Stack, focus []*schema.Server, portFwds []*PortFwd, ingressDomains []*runtime.FilteredDomain, ingressFragments []*schema.IngressFragment) *storage.NetworkPlan {
 	r := &storage.NetworkPlan{
-		LocalHostName: localHostname,
+		LocalHostname: localHostname,
 	}
 
 	localIngressPort := uint(0)

@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func NewPortFwd(ctx context.Context, obs *Session, selector runtime.Selector, localaddr string, onUpdate func(*endpointfwd.PortForward)) *endpointfwd.PortForward {
+func NewPortFwd(ctx context.Context, obs *Session, selector runtime.Selector, localaddr string) *endpointfwd.PortForward {
 	pfw := &endpointfwd.PortForward{
 		Env:       selector.Proto(),
 		LocalAddr: localaddr,
@@ -68,12 +68,7 @@ func NewPortFwd(ctx context.Context, obs *Session, selector runtime.Selector, lo
 		}
 
 		pfw.OnUpdate = func() {
-			obs.updateStackInPlace(func(stack *Stack) {})
-			onUpdate(pfw)
-		}
-	} else {
-		pfw.OnUpdate = func() {
-			onUpdate(pfw)
+			obs.updateStackInPlace(func(stack *Stack) { stack.NetworkPlan = pfw.ToNetworkPlan() })
 		}
 	}
 

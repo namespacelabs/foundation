@@ -24,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
-	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/languages/web"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -102,12 +101,6 @@ func NewDevCmd() *cobra.Command {
 					},
 				})
 
-				stackRenderer := deploy.NewStickyTextRenderer("stack", true /* checkmark */)
-
-				sesh.OnPortForwardUpdate = func(pfw *endpointfwd.PortForward) {
-					stackRenderer.UpdatePlan(ctx, pfw.ToNetworkPlan())
-				}
-
 				return keyboard.Handle(ctx, keyboard.HandleOpts{
 					Provider: sesh,
 					Keybindings: []keyboard.Handler{
@@ -116,7 +109,7 @@ func NewDevCmd() *cobra.Command {
 								return provision.RequireEnv(root, env)
 							},
 						},
-						deploy.NewSupportServicesKeybinding(stackRenderer),
+						deploy.NewNetworkPlanKeybinding("stack"),
 					},
 					Handler: func(ctx context.Context) error {
 						r := mux.NewRouter()

@@ -2,6 +2,8 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
+// TODO: move to a subpackage "view."
+
 package deploy
 
 import (
@@ -18,39 +20,6 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
-// Shows "Support services" and "Main services" in the terminal.
-type StickyTextRenderer struct {
-	ShowSupportServers bool
-	plan               *storage.NetworkPlan
-}
-
-func NewStickyTextRenderer(name string, checkmark bool) *StickyTextRenderer {
-	return &StickyTextRenderer{}
-}
-
-func (r *StickyTextRenderer) render(ctx context.Context) {
-	content := ""
-	if r.plan != nil {
-		var out bytes.Buffer
-		NetworkPlanToText(&out, r.plan, &NetworkPlanToTextOpts{
-			Style:                 colors.WithColors,
-			Checkmark:             true,
-			IncludeSupportServers: r.ShowSupportServers})
-		content = out.String()
-	}
-	console.SetStickyContent(ctx, "stack", content)
-}
-
-func (r *StickyTextRenderer) UpdatePlan(ctx context.Context, plan *storage.NetworkPlan) {
-	r.plan = plan
-	r.render(ctx)
-}
-
-func (r *StickyTextRenderer) SetShowSupportServers(ctx context.Context, showSupportServers bool) {
-	r.ShowSupportServers = showSupportServers
-	r.render(ctx)
-}
-
 type NetworkPlanToTextOpts struct {
 	Style                 colors.Style
 	Checkmark             bool
@@ -58,7 +27,7 @@ type NetworkPlanToTextOpts struct {
 }
 
 func NetworkPlanToText(out io.Writer, r *storage.NetworkPlan, opts *NetworkPlanToTextOpts) {
-	if r.LocalHostName == "" {
+	if r.LocalHostname == "" {
 		fmt.Fprintf(out, "Services deployed:\n")
 	} else {
 		fmt.Fprintf(out, "Development mode, services forwarded to %s.\n", opts.Style.LessRelevant.Apply("localhost"))
@@ -87,7 +56,7 @@ func NetworkPlanToText(out io.Writer, r *storage.NetworkPlan, opts *NetworkPlanT
 	}
 
 	if len(r.Endpoint) == 0 {
-		fmt.Fprintf(out, "   %s\n", opts.Style.LessRelevant.Apply("No services exported"))
+		fmt.Fprintf(out, "\n   %s\n", opts.Style.LessRelevant.Apply("No services exported"))
 	}
 }
 
@@ -182,34 +151,59 @@ func compressProtoTypename(t string) string {
 	return strings.Join(parts, ".")
 }
 
-type SupportServicesKeybinding struct {
-	renderer *StickyTextRenderer
+type NetworkPlanKeybinding struct {
+	name string
 }
 
-func NewSupportServicesKeybinding(renderer *StickyTextRenderer) *SupportServicesKeybinding {
-	return &SupportServicesKeybinding{renderer: renderer}
+func NewNetworkPlanKeybinding(name string) *NetworkPlanKeybinding {
+	return &NetworkPlanKeybinding{
+		name: name,
+	}
 }
 
-func (k SupportServicesKeybinding) Key() string { return "s" }
+func (k NetworkPlanKeybinding) Key() string { return "s" }
 
-func (k SupportServicesKeybinding) Label(enabled bool) string {
+func (k NetworkPlanKeybinding) Label(enabled bool) string {
 	if !enabled {
 		return "show support servers"
 	}
 	return "hide support servers " // Additional space at the end for a better allignment.
 }
 
-func (k SupportServicesKeybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
+func (k NetworkPlanKeybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
+	showSupportServers := false
+	var networkPlan *storage.NetworkPlan
+
 	for event := range ch {
 		switch event.Operation {
 		case keyboard.OpSet:
-			k.renderer.SetShowSupportServers(ctx, event.Enabled)
+			showSupportServers := event.Enabled
+
+			k.renderStickyNetworkPlan(ctx, networkPlan, showSupportServers)
 
 			c := keyboard.Control{Operation: keyboard.ControlAck}
 			c.AckEvent.HandlerID = event.HandlerID
 			c.AckEvent.EventID = event.EventID
 
 			control <- c
+
+		case keyboard.OpStackUpdate:
+			networkPlan = event.StackUpdate.NetworkPlan
+
+			k.renderStickyNetworkPlan(ctx, networkPlan, showSupportServers)
 		}
 	}
+}
+
+func (k NetworkPlanKeybinding) renderStickyNetworkPlan(ctx context.Context, plan *storage.NetworkPlan, showSupportServers bool) {
+	content := ""
+	if plan != nil {
+		var out bytes.Buffer
+		NetworkPlanToText(&out, plan, &NetworkPlanToTextOpts{
+			Style:                 colors.WithColors,
+			Checkmark:             true,
+			IncludeSupportServers: showSupportServers})
+		content = out.String()
+	}
+	console.SetStickyContent(ctx, k.name, content)
 }
