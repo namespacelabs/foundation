@@ -31,6 +31,7 @@ import (
 )
 
 var InvocationDebug = false
+var InvocationCanUseBuildkit = false
 
 const toolBackoff = 500 * time.Millisecond
 
@@ -44,16 +45,16 @@ func MakeInvocation(ctx context.Context, env ops.Environment, r *Definition, sta
 		handler: *r,
 		stack:   stack,
 		focus:   focus,
-		env:     env.Proto(),
+		env:     env,
 		props:   props,
 	}
 }
 
 type cacheableInvocation struct {
+	env     ops.Environment // env.Proto() is used as cache key.
 	handler Definition
 	stack   *schema.Stack
 	focus   schema.PackageName
-	env     *schema.Environment
 	props   InvokeProps
 
 	compute.LocalScoped[*protocol.ToolResponse]
@@ -72,10 +73,10 @@ func (inv *cacheableInvocation) Inputs() *compute.In {
 
 	in := compute.Inputs().
 		JSON("handler", Definition{TargetServer: inv.handler.TargetServer, Source: inv.handler.Source, Invocation: &invocation}). // Without image and PackageAbsPath.
-		Proto("stack", inv.stack).Stringer("focus", inv.focus).Proto("env", inv.env).
+		Proto("stack", inv.stack).Stringer("focus", inv.focus).Proto("env", inv.env.Proto()).
 		JSON("props", inv.props)
 
-	if tools.CanConsumePublicImages() && inv.handler.Invocation.PublicImageID != nil {
+	if (InvocationCanUseBuildkit || tools.CanConsumePublicImages()) && inv.handler.Invocation.PublicImageID != nil {
 		return in.JSON("publicImageID", *inv.handler.Invocation.PublicImageID)
 	} else {
 		return in.Computable("image", inv.handler.Invocation.Image)
@@ -96,13 +97,13 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		// XXX temporary.
 		Stack:         inv.stack,
 		FocusedServer: inv.focus.String(),
-		Env:           inv.env,
+		Env:           inv.env.Proto(),
 	}
 
 	header := &protocol.StackRelated{
 		Stack:         inv.stack,
 		FocusedServer: inv.focus.String(),
-		Env:           inv.env,
+		Env:           inv.env.Proto(),
 	}
 
 	switch inv.props.Event {
@@ -158,7 +159,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		NoNetworking: true,
 	}
 
-	if tools.CanConsumePublicImages() && r.Invocation.PublicImageID != nil {
+	if (InvocationCanUseBuildkit || tools.CanConsumePublicImages()) && r.Invocation.PublicImageID != nil {
 		opts.PublicImageID = r.Invocation.PublicImageID
 	} else {
 		opts.Image = compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
@@ -178,7 +179,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 			return nil, fnerrors.BadInputError("%s: no such provider", inject)
 		}
 
-		input, err := provider(ctx, inv.env, inv.stack.GetServer(inv.focus))
+		input, err := provider(ctx, inv.env.Proto(), inv.stack.GetServer(inv.focus))
 		if err != nil {
 			return nil, err
 		}
@@ -186,19 +187,17 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		req.Input = append(req.Input, input)
 	}
 
+	invocation := tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{RedactRequest: redactMessage}
+
+	if InvocationCanUseBuildkit && opts.PublicImageID != nil {
+		return invocation.BuildkitInvocation(ctx, inv.env, r.Source.PackageName, *r.Invocation.PublicImageID, opts, req)
+	}
+
 	count := 0
 	err = backoff.Retry(func() error {
 		count++
 
-		res, err = tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{
-			RedactRequest: func(req proto.Message) proto.Message {
-				// XXX security: think through whether it is OK or not to expose Snapshots here.
-				// For now, assume not.
-				reqcopy := protos.Clone(req).(*protocol.ToolRequest)
-				reqcopy.Snapshot = nil
-				return reqcopy
-			},
-		}.Invoke(ctx, r.Source.PackageName, opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
+		res, err = invocation.Invoke(ctx, r.Source.PackageName, opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
 			return protocol.NewInvocationServiceClient(conn).Invoke
 		})
 
@@ -213,4 +212,12 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	}, backoff.WithContext(backoff.NewConstantBackOff(toolBackoff), ctx))
 
 	return res, err
+}
+
+func redactMessage(req proto.Message) proto.Message {
+	// XXX security: think through whether it is OK or not to expose Snapshots here.
+	// For now, assume not.
+	reqcopy := protos.Clone(req).(*protocol.ToolRequest)
+	reqcopy.Snapshot = nil
+	return reqcopy
 }

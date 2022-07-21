@@ -7,22 +7,31 @@ package tools
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"reflect"
 	"time"
 
+	"github.com/moby/buildkit/client/llb"
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/buildkit"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/grpcstdio"
+	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -39,14 +48,18 @@ type LowLevelInvokeOptions[Req, Resp proto.Message] struct {
 	RedactResponse func(proto.Message) proto.Message
 }
 
-func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schema.PackageName, opts rtypes.RunToolOpts, req Req, resolve ResolveMethodFunc[Req, Resp]) (Resp, error) {
-	// XXX security: think through whether it is OK or not to expose Snapshots here.
-	// For now, assume not.
+func attachToAction(ctx context.Context, name string, msg proto.Message, redactMessage func(proto.Message) proto.Message) {
 	attachments := tasks.Attachments(ctx)
-	err := attachments.AttachSerializable("request.textpb", "", redact(req, oo.RedactRequest))
+	err := attachments.AttachSerializable(name+".textpb", "", redact(msg, redactMessage))
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize request: %v", err)
 	}
+}
+
+func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schema.PackageName, opts rtypes.RunToolOpts, req Req, resolve ResolveMethodFunc[Req, Resp]) (Resp, error) {
+	// XXX security: think through whether it is OK or not to expose Snapshots here.
+	// For now, assume not.
+	attachToAction(ctx, "request", req, oo.RedactRequest)
 
 	// The request and response are attached to the parent context.
 
@@ -134,12 +147,63 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 		return resp, err
 	}
 
-	err = attachments.AttachSerializable("response.textpb", "", redact(resp, oo.RedactResponse))
-	if err != nil {
-		fmt.Fprintf(console.Debug(ctx), "failed to serialize response: %v", err)
-	}
+	attachToAction(ctx, "response", resp, oo.RedactResponse)
 
 	return resp, nil
+}
+
+func (oo LowLevelInvokeOptions[Req, Resp]) BuildkitInvocation(ctx context.Context, env ops.Environment, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {
+	return tasks.Return(ctx, tasks.Action("buildkit.invocation").Scope(pkg).Arg("ref", imageID.ImageRef()).LogLevel(1), func(ctx context.Context) (*protocol.ToolResponse, error) {
+		attachToAction(ctx, "request", req, oo.RedactRequest)
+
+		p := buildkit.HostPlatform()
+		base := llbutil.Image(imageID.RepoAndDigest(), p)
+
+		args := append(slices.Clone(opts.Command), opts.Args...)
+		args = append(args, "--inline_invocation=foundation.provision.tool.protocol.InvocationService/Invoke")
+		args = append(args, "--inline_invocation_input=/request/request.binarypb")
+		args = append(args, "--inline_invocation_output=/out/response.binarypb")
+
+		runOpts := []llb.RunOption{llb.ReadonlyRootFS(), llb.Network(llb.NetModeNone), llb.Args(args)}
+		if opts.WorkingDir != "" {
+			runOpts = append(runOpts, llb.Dir(opts.WorkingDir))
+		}
+
+		run := base.Run(runOpts...)
+
+		requestBytes, err := proto.Marshal(req)
+		if err != nil {
+			return nil, err
+		}
+
+		requestState := llb.Scratch().File(llb.Mkfile("request.binarypb", 0644, requestBytes))
+
+		run.AddMount("/request", requestState, llb.Readonly)
+		out := run.AddMount("/out", llb.Scratch())
+
+		output, err := buildkit.LLBToFS(ctx, env, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), out)
+		if err != nil {
+			return nil, err
+		}
+
+		fsys, err := compute.GetValue(ctx, output)
+		if err != nil {
+			return nil, err
+		}
+
+		responseBytes, err := fs.ReadFile(fsys, "response.binarypb")
+		if err != nil {
+			return nil, err
+		}
+
+		res := &protocol.ToolResponse{}
+		if err := proto.Unmarshal(responseBytes, res); err != nil {
+			return nil, err
+		}
+
+		attachToAction(ctx, "response", res, oo.RedactResponse)
+		return res, nil
+	})
 }
 
 func redact(m proto.Message, f func(proto.Message) proto.Message) proto.Message {
