@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 )
 
 type Handler interface {
@@ -47,9 +48,10 @@ type Event struct {
 	EventID     string
 	Operation   EventOp
 	StackUpdate struct {
-		Env   *schema.Environment
-		Stack *schema.Stack
-		Focus []string
+		Env         *schema.Environment
+		Stack       *schema.Stack
+		Focus       []string
+		NetworkPlan *storage.NetworkPlan
 	}
 	Enabled bool
 }
@@ -211,6 +213,7 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 				env := protos.Clone(update.Env)
 				stack := protos.Clone(update.Stack)
 				focus := slices.Clone(update.Focus)
+				networkPlan := protos.Clone(update.NetworkPlan)
 
 				for _, handler := range state {
 					ev := Event{
@@ -221,6 +224,7 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 					ev.StackUpdate.Env = env
 					ev.StackUpdate.Stack = stack
 					ev.StackUpdate.Focus = focus
+					ev.StackUpdate.NetworkPlan = networkPlan
 					handler.Ch <- ev
 				}
 			}

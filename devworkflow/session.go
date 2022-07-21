@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -31,8 +32,7 @@ import (
 type Session struct {
 	requestCh chan *DevWorkflowRequest
 
-	Errors    io.Writer
-	setSticky func(string)
+	Errors io.Writer
 
 	localHostname string
 	obs           *Observers
@@ -51,14 +51,9 @@ type Session struct {
 }
 
 func NewSession(errorLog io.Writer, sink *tasks.StatefulSink, localHostname string) (*Session, error) {
-	setSticky := func(b string) {
-		console.SetStickyContentOnSink(sink.Sink(), "stack", b)
-	}
-
 	return &Session{
 		requestCh:     make(chan *DevWorkflowRequest, 1),
 		Errors:        errorLog,
-		setSticky:     setSticky,
 		localHostname: localHostname,
 		obs:           NewObservers(),
 		sink:          sink,
@@ -136,9 +131,6 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, eg *executor.Exe
 	if len(servers) > 0 {
 		ctx, newCancel := context.WithCancel(parentCtx)
 		s.cancelWorkspace = newCancel
-
-		// Reset the banner.
-		s.setSticky("")
 
 		env, err := loadWorkspace(ctx, absRoot, envName)
 		if err != nil {
@@ -271,7 +263,16 @@ func (s *Session) cancelPortForward() {
 func (s *Session) updateStackInPlace(f func(stack *Stack)) {
 	s.mu.Lock()
 	f(s.currentStack)
-	s.currentStack.RenderedPortForwarding = s.pfw.Render(colors.WithColors)
+
+	s.currentStack.NetworkPlan = s.pfw.ToNetworkPlan()
+	var out bytes.Buffer
+	view.NetworkPlanToText(&out, s.currentStack.NetworkPlan, &view.NetworkPlanToTextOpts{
+		Style:                 colors.WithColors,
+		Checkmark:             true,
+		IncludeSupportServers: true,
+	})
+	s.currentStack.RenderedPortForwarding = out.String()
+
 	s.currentStack.Revision++
 	copy := protos.Clone(s.currentStack)
 	s.mu.Unlock()

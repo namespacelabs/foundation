@@ -10,10 +10,11 @@ option go_package = "namespacelabs.dev/foundation/devworkflow";
 
 import "schema/schema.proto";
 import "schema/networking.proto";
+import "schema/storage/deploy.proto";
 import "schema/workspace.proto";
 import "workspace/tasks/protocol/tasks.proto";
 
-// Next ID: 12
+// Next ID: 13
 message Stack {
     uint64             revision                = 9;
     string             abs_root                = 1;
@@ -25,8 +26,10 @@ message Stack {
     repeated string             focus          = 11;
     repeated StackEntryState    state          = 6;
     repeated ForwardedPort      forwarded_port = 7;
-    // Pre-rendered "port forwarding" block. Contains ANSI color codes.
-    string rendered_port_forwarding = 10;
+    // Pre-rendered "network_plan" as text. Contains ANSI color codes.
+    // TODO: remove and use native Web rendering.
+    string                     rendered_port_forwarding = 10;
+    schema.storage.NetworkPlan network_plan             = 12;
 }
 
 message ForwardedPort {

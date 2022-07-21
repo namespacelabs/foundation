@@ -4,6 +4,8 @@
 
 package observers
 
+import sync "sync"
+
 type SessionProvider interface {
 	NewStackClient() (StackSession, error)
 }
@@ -13,21 +15,65 @@ type StackSession interface {
 	Close()
 }
 
-func Static(update *StackUpdateEvent) *StaticProvider {
-	return &StaticProvider{update}
+func Static() *StaticProvider {
+	return &StaticProvider{
+		clients: []chan *StackUpdateEvent{},
+		mu:      sync.Mutex{},
+	}
 }
 
 type StaticProvider struct {
-	update *StackUpdateEvent
+	update  *StackUpdateEvent
+	clients []chan *StackUpdateEvent
+	mu      sync.Mutex
 }
 
-func (p StaticProvider) NewStackClient() (StackSession, error) {
+func (p *StaticProvider) PushUpdate(update *StackUpdateEvent) {
+	p.mu.Lock()
+	clients := p.clients
+	p.update = update
+	p.mu.Unlock()
+
+	for _, ch := range clients {
+		ch <- update
+	}
+}
+
+func (p *StaticProvider) NewStackClient() (StackSession, error) {
 	ch := make(chan *StackUpdateEvent, 1)
-	ch <- p.update
-	return staticSession{ch}, nil
+
+	p.mu.Lock()
+	p.clients = append(p.clients, ch)
+	update := p.update
+	p.mu.Unlock()
+
+	if update != nil {
+		ch <- update
+	}
+
+	return staticSession{ch, p}, nil
 }
 
-type staticSession struct{ ch chan *StackUpdateEvent }
+func (p *StaticProvider) RemoveClient(ch chan *StackUpdateEvent) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	newClients := []chan *StackUpdateEvent{}
+	for _, client := range p.clients {
+		if client != ch {
+			newClients = append(newClients, client)
+		}
+	}
+	p.clients = newClients
+
+	close(ch)
+}
+
+type staticSession struct {
+	ch     chan *StackUpdateEvent
+	parent *StaticProvider
+}
 
 func (s staticSession) StackEvents() chan *StackUpdateEvent { return s.ch }
-func (s staticSession) Close()                              { close(s.ch) }
+
+func (s staticSession) Close() { s.parent.RemoveClient(s.ch) }

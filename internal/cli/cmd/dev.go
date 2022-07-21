@@ -26,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -108,6 +109,7 @@ func NewDevCmd() *cobra.Command {
 								return provision.RequireEnv(root, env)
 							},
 						},
+						view.NewNetworkPlanKeybinding("stack"),
 					},
 					Handler: func(ctx context.Context) error {
 						r := mux.NewRouter()

@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -139,7 +140,11 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 	deploy.SortPorts(ports, focusServer)
 	deploy.SortIngresses(plan.IngressFragment)
 	r := deploy.RenderPortsAndIngresses("", plan.Stack, focusServer, ports, domains, plan.IngressFragment)
-	deploy.RenderText(out, colors.Ctx(ctx), r, false, "")
+	view.NetworkPlanToText(out, r, &view.NetworkPlanToTextOpts{
+		Style:                 colors.Ctx(ctx),
+		Checkmark:             false,
+		IncludeSupportServers: true,
+	})
 
 	storedrun.Attach(r)
 

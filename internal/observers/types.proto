@@ -9,9 +9,11 @@ package foundation.internal.observers;
 option go_package = "namespacelabs.dev/foundation/internal/observers";
 
 import "schema/schema.proto";
+import "schema/storage/deploy.proto";
 
 message StackUpdateEvent {
-    schema.Environment env   = 1;
-    schema.Stack       stack = 2;
-    repeated string    focus = 3;
+    schema.Environment         env          = 1;
+    schema.Stack               stack        = 2;
+    repeated string            focus        = 3;
+    schema.storage.NetworkPlan network_plan = 4;
 }

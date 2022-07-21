@@ -11,13 +11,12 @@ import (
 	"namespacelabs.dev/foundation/devworkflow"
 	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision/config"
+	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -36,12 +35,16 @@ func NewAttachCmd() *cobra.Command {
 				return err
 			}
 
+			event := &observers.StackUpdateEvent{
+				Env:   res.Rehydrated.Env,
+				Stack: res.Stack,
+				Focus: schema.Strs(res.Focus...),
+			}
+			observer := observers.Static()
+			observer.PushUpdate(event)
+
 			return keyboard.Handle(ctx, keyboard.HandleOpts{
-				Provider: observers.Static(&observers.StackUpdateEvent{
-					Env:   res.Rehydrated.Env,
-					Stack: res.Stack,
-					Focus: schema.Strs(res.Focus...),
-				}),
+				Provider: observer,
 				Keybindings: []keyboard.Handler{
 					logtail.Keybinding{
 						LoadEnvironment: func(name string) (runtime.Selector, error) {
@@ -52,11 +55,13 @@ func NewAttachCmd() *cobra.Command {
 							return nil, fnerrors.InternalError("requested invalid environment: %s", name)
 						},
 					},
+					view.NewNetworkPlanKeybinding("ingress"),
 				},
 				Handler: func(ctx context.Context) error {
 					pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, "localhost")
 					pfwd.OnUpdate = func() {
-						console.SetStickyContent(ctx, "ingress", pfwd.Render(colors.Ctx(ctx)))
+						event.NetworkPlan = pfwd.ToNetworkPlan()
+						observer.PushUpdate(event)
 					}
 
 					pfwd.Update(res.Stack, res.Focus, res.Ingress)

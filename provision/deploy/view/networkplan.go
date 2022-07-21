@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package deploy
+package view
 
 import (
 	"fmt"
@@ -14,11 +14,17 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
-func RenderText(out io.Writer, style colors.Style, r *storage.NetworkPlan, checkmark bool, localHostname string) {
-	if localHostname == "" {
-		fmt.Fprintf(out, " Services deployed:\n\n")
+type NetworkPlanToTextOpts struct {
+	Style                 colors.Style
+	Checkmark             bool
+	IncludeSupportServers bool
+}
+
+func NetworkPlanToText(out io.Writer, r *storage.NetworkPlan, opts *NetworkPlanToTextOpts) {
+	if r.LocalHostname == "" {
+		fmt.Fprintf(out, "Services deployed:\n")
 	} else {
-		fmt.Fprintf(out, " Development mode, services forwarded to %s.\n\n", style.LessRelevant.Apply("localhost"))
+		fmt.Fprintf(out, "Development mode, services forwarded to %s.\n", opts.Style.LessRelevant.Apply("localhost"))
 	}
 
 	supportServices := []*storage.NetworkPlan_Endpoint{}
@@ -31,20 +37,20 @@ func RenderText(out io.Writer, style colors.Style, r *storage.NetworkPlan, check
 		}
 	}
 
-	if len(supportServices) > 0 {
-		fmt.Fprint(out, style.Header.Apply(" Support services:\n\n"))
+	if opts.IncludeSupportServers && len(supportServices) > 0 {
+		fmt.Fprintf(out, "\n %s\n\n", opts.Style.Comment.Apply("Support services:"))
 
-		renderNotFocusedEndpointsText(out, style, supportServices, checkmark)
+		renderNotFocusedEndpointsText(out, opts.Style, supportServices, opts.Checkmark)
 	}
 
 	if len(mainServices) > 0 {
 		fmt.Fprint(out, "\n Main services:\n")
 
-		renderFocusedEndpointsText(out, style, mainServices, checkmark)
+		renderFocusedEndpointsText(out, opts.Style, mainServices, opts.Checkmark)
 	}
 
 	if len(r.Endpoint) == 0 {
-		fmt.Fprintf(out, "   %s\n", style.LessRelevant.Apply("No services exported"))
+		fmt.Fprintf(out, "\n   %s\n", opts.Style.LessRelevant.Apply("No services exported"))
 	}
 }
 
@@ -63,8 +69,8 @@ func renderNotFocusedEndpointsText(out io.Writer, style colors.Style, services [
 	}
 
 	for _, entry := range services {
-		label := style.Header.Apply(renderLabel(entry.Label))
-		url := style.Header.Apply(entry.AccessCmd[0].Cmd)
+		label := style.Comment.Apply(renderLabel(entry.Label))
+		url := style.Comment.Apply(entry.AccessCmd[0].Cmd)
 
 		fmt.Fprintf(out, " %s%s  %s%s\n",
 			checkLabel(style, checkmark, entry.Focus, entry.IsPortForwarded),
