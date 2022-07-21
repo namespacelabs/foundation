@@ -277,20 +277,25 @@ func evalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 				return nil, fnerrors.BadInputError("injection requested when it's not possible: %v", inv.Inject)
 			}
 
-			image, err := compute.GetValue(ctx, inv.Image)
-			if err != nil {
-				return nil, err
-			}
-
 			opts := rtypes.RunToolOpts{
 				ImageName: inv.ImageName,
 				RunBinaryOpts: rtypes.RunBinaryOpts{
-					Image:      image,
 					Command:    inv.Command,
 					Args:       inv.Args,
 					WorkingDir: inv.WorkingDir,
 				},
 				// XXX security prepare invocations have network access.
+			}
+
+			if tools.CanConsumePublicImages() && inv.PublicImageID != nil {
+				opts.PublicImageID = inv.PublicImageID
+			} else {
+				image, err := compute.GetValue(ctx, inv.Image)
+				if err != nil {
+					return nil, err
+				}
+
+				opts.Image = image
 			}
 
 			var invoke tools.LowLevelInvokeOptions[*protocol.PrepareRequest, *protocol.PrepareResponse]

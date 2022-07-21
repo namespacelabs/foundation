@@ -24,6 +24,8 @@ type k8stools struct{}
 
 const toolNamespace = "fn-pipeline-tools"
 
+func (k k8stools) CanConsumePublicImages() bool { return true }
+
 func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
 	k8s, ck, err := k.k8s(ctx)
 	if err != nil {
@@ -38,26 +40,31 @@ func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSt
 		return fnerrors.New("not supported: RunAsUser")
 	}
 
-	if opts.ImageName == "" {
-		return fnerrors.New("ImageName is required")
-	}
+	var imgid oci.ImageID
+	if opts.PublicImageID == nil {
+		if opts.ImageName == "" {
+			return fnerrors.New("ImageName is required")
+		}
 
-	// XXX handle opts.NoNetworking
+		// XXX handle opts.NoNetworking
 
-	name, err := registry.RawAllocateName(ctx, ck, opts.ImageName)
-	if err != nil {
-		return err
-	}
+		name, err := registry.RawAllocateName(ctx, ck, opts.ImageName)
+		if err != nil {
+			return err
+		}
 
-	resolvedName, err := compute.GetValue(ctx, name)
-	if err != nil {
-		return err
-	}
+		resolvedName, err := compute.GetValue(ctx, name)
+		if err != nil {
+			return err
+		}
 
-	// XXX this ideally would have done by the parent, so we'd have parallelism.
-	imgid, err := oci.RawAsResolvable(opts.Image).Push(ctx, resolvedName)
-	if err != nil {
-		return err
+		// XXX this ideally would have done by the parent, so we'd have parallelism.
+		imgid, err = oci.RawAsResolvable(opts.Image).Push(ctx, resolvedName)
+		if err != nil {
+			return err
+		}
+	} else {
+		imgid = *opts.PublicImageID
 	}
 
 	// XXX use more meaningful names.

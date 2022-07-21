@@ -25,14 +25,15 @@ import (
 )
 
 type Invocation struct {
-	ImageName  string
-	Image      compute.Computable[oci.Image]
-	Command    []string
-	Args       []string
-	Snapshots  []Snapshot
-	WorkingDir string
-	NoCache    bool
-	Inject     []*schema.Invocation_ValueInjection
+	ImageName     string
+	Image         compute.Computable[oci.Image]
+	PublicImageID *oci.ImageID
+	Command       []string
+	Args          []string
+	Snapshots     []Snapshot
+	WorkingDir    string
+	NoCache       bool
+	Inject        []*schema.Invocation_ValueInjection
 }
 
 type Snapshot struct {
@@ -61,12 +62,13 @@ func Make(ctx context.Context, env provision.ServerEnv, serverLocRef *workspace.
 	}
 
 	invocation := &Invocation{
-		ImageName:  bin.Name,
-		Command:    bin.Command,
-		Image:      bin.Image,
-		WorkingDir: with.WorkingDir,
-		NoCache:    with.NoCache,
-		Inject:     with.Inject,
+		ImageName:     bin.Name,
+		Command:       bin.Command,
+		Image:         bin.Image,
+		PublicImageID: binary.PrebuiltImageID(binPkg.Location), // The assumption at the moment is that all prebuilts are public.
+		WorkingDir:    with.WorkingDir,
+		NoCache:       with.NoCache,
+		Inject:        with.Inject,
 	}
 
 	invocation.Args = with.Args
