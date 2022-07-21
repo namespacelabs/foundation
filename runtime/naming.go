@@ -6,16 +6,14 @@ package runtime
 
 import (
 	"context"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"time"
 
+	"namespacelabs.dev/foundation/internal/certificates"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -120,28 +118,11 @@ func certFromResource(res *fnapi.NameResource) *schema.Domain_Certificate {
 
 func isResourceValid(nr *fnapi.NameResource) bool {
 	if nr.FQDN != "" && nr.Certificate.PrivateKey != nil && nr.Certificate.CertificateBundle != nil {
-		valid, _, _ := certIsValid(nr.Certificate.CertificateBundle)
+		valid, _, _ := certificates.CertIsValid(nr.Certificate.CertificateBundle)
 		return valid
 	}
 
 	return false
-}
-
-func certIsValid(bundle []byte) (bool, time.Time, error) {
-	now := time.Now()
-
-	// The rest is ignored, as we only care about the first pem block.
-	block, _ := pem.Decode(bundle)
-	if block == nil || block.Type != "CERTIFICATE" {
-		return false, now, fnerrors.BadInputError("expected CERTIFICATE block")
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return false, now, fnerrors.BadInputError("invalid certificate")
-	}
-
-	return now.Add(30 * 24 * time.Hour).Before(cert.NotAfter), cert.NotAfter, nil
 }
 
 func checkStored(ctx context.Context, srv *schema.Server, org, cacheKey string) (*fnapi.NameResource, error) {

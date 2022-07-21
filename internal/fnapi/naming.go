@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"namespacelabs.dev/foundation/internal/certificates"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -64,7 +65,20 @@ func AllocateName(ctx context.Context, srv *schema.Server, opts AllocateOpts) (*
 			return opts.Stored, nil
 		}
 
-		return RawAllocateName(ctx, opts)
+		nr, err := RawAllocateName(ctx, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(nr.Certificate.CertificateBundle) > 0 {
+			tasks.Attachments(ctx).Attach(tasks.Output("certificate.pem", "application/x-pem-file"), nr.Certificate.CertificateBundle)
+
+			if _, ts, err := certificates.CertIsValid(nr.Certificate.CertificateBundle); err == nil {
+				tasks.Attachments(ctx).AddResult("notAfter", ts)
+			}
+		}
+
+		return nr, nil
 	})
 }
 
