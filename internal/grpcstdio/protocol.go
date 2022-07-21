@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/compression"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
 )
@@ -203,7 +204,7 @@ func WithVersion(version int) NewSessionOpt {
 
 func WithDefaults() NewSessionOpt {
 	return func(s *Session) {
-		if s.version >= versions.IntroducedCompression {
+		if s.version >= versions.ToolsIntroducedCompression {
 			s.zstdCompressed = true
 		}
 	}
@@ -336,11 +337,7 @@ func (s *Session) readmsg() (msg, error) {
 	}
 
 	if msg.zstdCompressed() {
-		r, err := zstd.NewReader(bytes.NewReader(payload))
-		if err != nil {
-			return msg, err
-		}
-		msg.payload, err = io.ReadAll(r)
+		msg.payload, err = compression.DecompressZstd(payload)
 		if err != nil {
 			return msg, err
 		}
@@ -425,7 +422,7 @@ func (s *Session) handle(msg msg) {
 		if err := proto.Unmarshal(msg.payload, args); err != nil {
 			panic(err)
 		}
-		s.zstdCompressed = (args.ToolApiVersion >= versions.IntroducedCompression) && (s.version >= versions.IntroducedCompression)
+		s.zstdCompressed = (args.ToolApiVersion >= versions.ToolsIntroducedCompression) && (s.version >= versions.ToolsIntroducedCompression)
 
 	case opDial:
 		dial := &DialArgs{}

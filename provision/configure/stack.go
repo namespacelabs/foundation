@@ -54,17 +54,16 @@ func parseStackRequest(br Request, header *protocol.StackRelated) (StackRequest,
 		}
 	}
 
-	var p StackRequest
+	p := StackRequest{Request: br, Env: header.Env, Stack: header.Stack}
 
-	s := header.Stack.GetServer(schema.PackageName(header.FocusedServer))
-	if s == nil {
-		return p, fnerrors.InternalError("%s: focused server not present in the stack", header.FocusedServer)
+	if header.FocusedServer != "" {
+		s := header.Stack.GetServer(schema.PackageName(header.FocusedServer))
+		if s == nil {
+			return p, fnerrors.InternalError("%s: focused server not present in the stack", header.FocusedServer)
+		}
+
+		p.Focus = s
 	}
-
-	p.Request = br
-	p.Env = header.Env
-	p.Focus = s
-	p.Stack = header.Stack
 
 	return p, nil
 }

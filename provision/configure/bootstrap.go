@@ -78,10 +78,8 @@ func HandleInvoke(f InvokeFunc) {
 	Handle(h)
 }
 
-func handleRequest(ctx context.Context, req *protocol.ToolRequest, t AllHandlers) (*protocol.ToolResponse, error) {
-	var br Request
-	br.r = req
-	br.Snapshots = map[string]fs.FS{}
+func handleRequest(ctx context.Context, req *protocol.ToolRequest, handlers AllHandlers) (*protocol.ToolResponse, error) {
+	br := Request{r: req, Snapshots: map[string]fs.FS{}}
 
 	for _, snapshot := range req.Snapshot {
 		var m memfs.FS
@@ -101,7 +99,7 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, t AllHandlers
 		}
 
 		var out ApplyOutput
-		if err := t.Apply(ctx, p, &out); err != nil {
+		if err := handlers.Apply(ctx, p, &out); err != nil {
 			return nil, err
 		}
 
@@ -134,7 +132,7 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, t AllHandlers
 		}
 
 		var out DeleteOutput
-		if err := t.Delete(ctx, p, &out); err != nil {
+		if err := handlers.Delete(ctx, p, &out); err != nil {
 			return nil, err
 		}
 
@@ -145,7 +143,7 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, t AllHandlers
 		}
 
 	case *protocol.ToolRequest_InvokeRequest:
-		output, err := t.Invoke(ctx, br)
+		output, err := handlers.Invoke(ctx, br)
 		if err != nil {
 			return nil, err
 		}
