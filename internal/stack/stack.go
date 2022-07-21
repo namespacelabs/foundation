@@ -287,7 +287,7 @@ func evalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 				// XXX security prepare invocations have network access.
 			}
 
-			if tools.CanConsumePublicImages() && inv.PublicImageID != nil {
+			if (tools.CanConsumePublicImages() || tools.InvocationCanUseBuildkit) && inv.PublicImageID != nil {
 				opts.PublicImageID = inv.PublicImageID
 			} else {
 				image, err := compute.GetValue(ctx, inv.Image)
@@ -300,12 +300,22 @@ func evalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 
 			var invoke tools.LowLevelInvokeOptions[*protocol.PrepareRequest, *protocol.PrepareResponse]
 
-			resp, err := invoke.Invoke(ctx, n.PackageName(), opts, &protocol.PrepareRequest{
+			req := &protocol.PrepareRequest{
 				Env:    server.Env().Proto(),
 				Server: server.Proto(),
-			}, func(conn *grpc.ClientConn) func(context.Context, *protocol.PrepareRequest, ...grpc.CallOption) (*protocol.PrepareResponse, error) {
-				return protocol.NewPrepareServiceClient(conn).Prepare
-			})
+			}
+
+			var resp *protocol.PrepareResponse
+
+			if tools.InvocationCanUseBuildkit && opts.PublicImageID != nil {
+				resp, err = invoke.BuildkitInvocation(ctx, server.Env(), "foundation.provision.tool.protocol.PrepareService/Prepare",
+					schema.PackageName(hook.InvokeBinary.Binary), *opts.PublicImageID, opts, req)
+			} else {
+				resp, err = invoke.Invoke(ctx, n.PackageName(), opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.PrepareRequest, ...grpc.CallOption) (*protocol.PrepareResponse, error) {
+					return protocol.NewPrepareServiceClient(conn).Prepare
+				})
+			}
+
 			if err != nil {
 				return nil, err
 			}

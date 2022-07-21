@@ -16,7 +16,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/binary"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -324,7 +323,7 @@ func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema
 			return nil, fnerrors.BadInputError("don't know how to compute resource")
 		}
 
-		compiledInvocation, image, err := makeInvocation(ctx, env, x.FromInvocation)
+		compiledInvocation, prepared, err := makeInvocation(ctx, env, x.FromInvocation)
 		if err != nil {
 			return nil, err
 		}
@@ -348,9 +347,7 @@ func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema
 			}
 
 		case compiledInvocation.BinaryPackage != "":
-			invocation, err = tools.InvokeWithImage(ctx, env, compiledInvocation, compute.Transform(image, func(ctx context.Context, r oci.ResolvableImage) (oci.Image, error) {
-				return r.Image()
-			}))
+			invocation, err = tools.InvokeWithBinary(ctx, env, compiledInvocation, prepared)
 			if err != nil {
 				return nil, err
 			}
@@ -375,7 +372,7 @@ func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema
 	}
 }
 
-func makeInvocation(ctx context.Context, env provision.ServerEnv, inv *types.DeferredInvocationSource) (*types.DeferredInvocation, compute.Computable[oci.ResolvableImage], error) {
+func makeInvocation(ctx context.Context, env provision.ServerEnv, inv *types.DeferredInvocationSource) (*types.DeferredInvocation, *binary.Prepared, error) {
 	if inv.ExperimentalFunction != "" {
 		if inv.Binary != "" {
 			return nil, nil, fnerrors.New("binary and experimentalFunction are exclusive (%q vs %q)", inv.Binary, inv.ExperimentalFunction)
@@ -416,11 +413,6 @@ func makeInvocation(ctx context.Context, env provision.ServerEnv, inv *types.Def
 		return nil, nil, err
 	}
 
-	img, err := prepared.Image(ctx, env)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	return &types.DeferredInvocation{
 		BinaryPackage: inv.Binary,
 		BinaryConfig: &schema.BinaryConfig{
@@ -428,5 +420,5 @@ func makeInvocation(ctx context.Context, env provision.ServerEnv, inv *types.Def
 		},
 		Cacheable: inv.Cacheable,
 		WithInput: inv.WithInput,
-	}, img, nil
+	}, prepared, nil
 }

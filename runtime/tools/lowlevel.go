@@ -36,6 +36,7 @@ import (
 )
 
 var LowLevelToolsProtocolVersion = 2
+var InvocationCanUseBuildkit = false
 
 const (
 	MaxInvocationDuration = 1 * time.Minute
@@ -152,15 +153,15 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 	return resp, nil
 }
 
-func (oo LowLevelInvokeOptions[Req, Resp]) BuildkitInvocation(ctx context.Context, env ops.Environment, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req *protocol.ToolRequest) (*protocol.ToolResponse, error) {
-	return tasks.Return(ctx, tasks.Action("buildkit.invocation").Scope(pkg).Arg("ref", imageID.ImageRef()).LogLevel(1), func(ctx context.Context) (*protocol.ToolResponse, error) {
+func (oo LowLevelInvokeOptions[Req, Resp]) BuildkitInvocation(ctx context.Context, env ops.Environment, method string, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req Req) (Resp, error) {
+	return tasks.Return(ctx, tasks.Action("buildkit.invocation").Scope(pkg).Arg("ref", imageID.ImageRef()).Arg("method", method).LogLevel(1), func(ctx context.Context) (Resp, error) {
 		attachToAction(ctx, "request", req, oo.RedactRequest)
 
 		p := buildkit.HostPlatform()
 		base := llbutil.Image(imageID.RepoAndDigest(), p)
 
 		args := append(slices.Clone(opts.Command), opts.Args...)
-		args = append(args, "--inline_invocation=foundation.provision.tool.protocol.InvocationService/Invoke")
+		args = append(args, "--inline_invocation="+method)
 		args = append(args, "--inline_invocation_input=/request/request.binarypb")
 		args = append(args, "--inline_invocation_output=/out/response.binarypb")
 
@@ -171,9 +172,11 @@ func (oo LowLevelInvokeOptions[Req, Resp]) BuildkitInvocation(ctx context.Contex
 
 		run := base.Run(runOpts...)
 
+		var resp Resp
+
 		requestBytes, err := proto.Marshal(req)
 		if err != nil {
-			return nil, err
+			return resp, err
 		}
 
 		requestState := llb.Scratch().File(llb.Mkfile("request.binarypb", 0644, requestBytes))
@@ -183,26 +186,26 @@ func (oo LowLevelInvokeOptions[Req, Resp]) BuildkitInvocation(ctx context.Contex
 
 		output, err := buildkit.LLBToFS(ctx, env, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), out)
 		if err != nil {
-			return nil, err
+			return resp, err
 		}
 
 		fsys, err := compute.GetValue(ctx, output)
 		if err != nil {
-			return nil, err
+			return resp, err
 		}
 
 		responseBytes, err := fs.ReadFile(fsys, "response.binarypb")
 		if err != nil {
-			return nil, err
+			return resp, err
 		}
 
-		res := &protocol.ToolResponse{}
-		if err := proto.Unmarshal(responseBytes, res); err != nil {
-			return nil, err
+		resp = reflect.New(reflect.TypeOf(resp).Elem()).Interface().(Resp)
+		if err := proto.Unmarshal(responseBytes, resp); err != nil {
+			return resp, err
 		}
 
-		attachToAction(ctx, "response", res, oo.RedactResponse)
-		return res, nil
+		attachToAction(ctx, "response", resp, oo.RedactResponse)
+		return resp, nil
 	})
 }
 

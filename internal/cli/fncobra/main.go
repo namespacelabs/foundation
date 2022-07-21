@@ -269,7 +269,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&nodejs.UseNativeNode, "nodejs_use_native_node", nodejs.UseNativeNode, "If true, invokes a locally installed node.")
 	rootCmd.PersistentFlags().IntVar(&tools.LowLevelToolsProtocolVersion, "lowlevel_tools_protocol_version", tools.LowLevelToolsProtocolVersion,
 		"The protocol version to use with invocation tools.")
-	rootCmd.PersistentFlags().BoolVar(&tool.InvocationCanUseBuildkit, "tools_invocation_can_use_buildkit", tool.InvocationCanUseBuildkit,
+	rootCmd.PersistentFlags().BoolVar(&tools.InvocationCanUseBuildkit, "tools_invocation_can_use_buildkit", tools.InvocationCanUseBuildkit,
 		"If set to true, tool invocations will use buildkit whenever possible.")
 
 	cmdBundle.SetupFlags(rootCmd.PersistentFlags())

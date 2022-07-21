@@ -9,6 +9,8 @@ import (
 
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
+	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
@@ -19,15 +21,31 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func InvokeWithImage(ctx context.Context, env ops.Environment, inv *types.DeferredInvocation, image compute.Computable[oci.Image]) (compute.Computable[*protocol.InvokeResponse], error) {
-	return &invokeTool{
+func InvokeWithBinary(ctx context.Context, env ops.Environment, inv *types.DeferredInvocation, prepared *binary.Prepared) (compute.Computable[*protocol.InvokeResponse], error) {
+	it := &invokeTool{
+		env:        env,
 		invocation: inv,
-		image:      image,
-	}, nil
+	}
+
+	if imgid, ok := build.IsPrebuilt(prepared.Plan.Spec); ok && InvocationCanUseBuildkit {
+		it.imageID = imgid
+	} else {
+		image, err := prepared.Image(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		it.image = compute.Transform(image, func(ctx context.Context, r oci.ResolvableImage) (oci.Image, error) {
+			return r.Image()
+		})
+	}
+
+	return it, nil
 }
 
 type invokeTool struct {
+	env        ops.Environment // Does not affect the output.
 	invocation *types.DeferredInvocation
+	imageID    oci.ImageID // Use buildkit to invoke instead of the tools runtime.
 	image      compute.Computable[oci.Image]
 
 	compute.LocalScoped[*protocol.InvokeResponse]
@@ -38,7 +56,12 @@ func (inv *invokeTool) Action() *tasks.ActionEvent {
 }
 
 func (inv *invokeTool) Inputs() *compute.In {
-	return compute.Inputs().Proto("invocation", inv.invocation).Computable("image", inv.image)
+	in := compute.Inputs().Proto("invocation", inv.invocation)
+	if inv.image != nil {
+		return in.Computable("image", inv.image)
+	} else {
+		return in.JSON("imageID", inv.imageID)
+	}
 }
 
 func (inv *invokeTool) Output() compute.Output {
@@ -62,18 +85,26 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 		// NoNetworking: true, // XXX security
 
 		RunBinaryOpts: rtypes.RunBinaryOpts{
-			Image:      compute.MustGetDepValue(r, inv.image, "image"),
 			WorkingDir: "/",
 			Command:    inv.invocation.BinaryConfig.Command,
 			Args:       inv.invocation.BinaryConfig.Args,
 			Env:        append(slices.Clone(inv.invocation.BinaryConfig.Env), &schema.BinaryConfig_EnvEntry{Name: "HOME", Value: "/tmp"}),
 		}}
 
-	invoke := LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{}
+	var invoke LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]
+	var resp *protocol.ToolResponse
+	var err error
 
-	resp, err := invoke.Invoke(ctx, schema.PackageName(inv.invocation.BinaryPackage), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
-		return protocol.NewInvocationServiceClient(conn).Invoke
-	})
+	if inv.image != nil {
+		run.Image = compute.MustGetDepValue(r, inv.image, "image")
+
+		resp, err = invoke.Invoke(ctx, schema.PackageName(inv.invocation.BinaryPackage), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
+			return protocol.NewInvocationServiceClient(conn).Invoke
+		})
+	} else {
+		resp, err = invoke.BuildkitInvocation(ctx, inv.env, "foundation.provision.tool.protocol.InvocationService/Invoke", schema.PackageName(inv.invocation.BinaryPackage), inv.imageID, run, req)
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -31,7 +31,6 @@ import (
 )
 
 var InvocationDebug = false
-var InvocationCanUseBuildkit = false
 
 const toolBackoff = 500 * time.Millisecond
 
@@ -76,7 +75,7 @@ func (inv *cacheableInvocation) Inputs() *compute.In {
 		Proto("stack", inv.stack).Stringer("focus", inv.focus).Proto("env", inv.env.Proto()).
 		JSON("props", inv.props)
 
-	if (InvocationCanUseBuildkit || tools.CanConsumePublicImages()) && inv.handler.Invocation.PublicImageID != nil {
+	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages()) && inv.handler.Invocation.PublicImageID != nil {
 		return in.JSON("publicImageID", *inv.handler.Invocation.PublicImageID)
 	} else {
 		return in.Computable("image", inv.handler.Invocation.Image)
@@ -159,7 +158,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		NoNetworking: true,
 	}
 
-	if (InvocationCanUseBuildkit || tools.CanConsumePublicImages()) && r.Invocation.PublicImageID != nil {
+	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages()) && r.Invocation.PublicImageID != nil {
 		opts.PublicImageID = r.Invocation.PublicImageID
 	} else {
 		opts.Image = compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
@@ -189,8 +188,9 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 
 	invocation := tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{RedactRequest: redactMessage}
 
-	if InvocationCanUseBuildkit && opts.PublicImageID != nil {
-		return invocation.BuildkitInvocation(ctx, inv.env, r.Source.PackageName, *r.Invocation.PublicImageID, opts, req)
+	if tools.InvocationCanUseBuildkit && opts.PublicImageID != nil {
+		return invocation.BuildkitInvocation(ctx, inv.env, "foundation.provision.tool.protocol.InvocationService/Invoke",
+			r.Source.PackageName, *r.Invocation.PublicImageID, opts, req)
 	}
 
 	count := 0
