@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/module"
+	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -47,22 +48,26 @@ func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSt
 		}
 
 		// XXX handle opts.NoNetworking
+		imgid, err = tasks.Return(ctx, tasks.Action("kubernetes.invocation.push-image"), func(ctx context.Context) (oci.ImageID, error) {
+			name, err := registry.RawAllocateName(ctx, ck, opts.ImageName)
+			if err != nil {
+				return oci.ImageID{}, err
+			}
 
-		name, err := registry.RawAllocateName(ctx, ck, opts.ImageName)
+			resolvedName, err := compute.GetValue(ctx, name)
+			if err != nil {
+				return oci.ImageID{}, err
+			}
+
+			tasks.Attachments(ctx).AddResult("ref", resolvedName.ImageID.ImageRef())
+
+			// XXX this ideally would have done by the parent, so we'd have parallelism.
+			return oci.RawAsResolvable(opts.Image).Push(ctx, resolvedName, true)
+		})
 		if err != nil {
 			return err
 		}
 
-		resolvedName, err := compute.GetValue(ctx, name)
-		if err != nil {
-			return err
-		}
-
-		// XXX this ideally would have done by the parent, so we'd have parallelism.
-		imgid, err = oci.RawAsResolvable(opts.Image).Push(ctx, resolvedName)
-		if err != nil {
-			return err
-		}
 	} else {
 		imgid = *opts.PublicImageID
 	}

@@ -29,7 +29,7 @@ type ResolvableImage interface {
 	Digest() (schema.Digest, error)
 	Image() (Image, error)
 	ImageIndex() (ImageIndex, error)
-	Push(context.Context, AllocatedName) (ImageID, error)
+	Push(context.Context, AllocatedName, bool) (ImageID, error)
 
 	cache(context.Context, cache.Cache) (schema.Digest, error)
 }
@@ -64,8 +64,8 @@ func (raw rawImage) ImageIndex() (ImageIndex, error) {
 	return nil, fnerrors.InternalError("expected an image index, saw an image")
 }
 
-func (raw rawImage) Push(ctx context.Context, tag AllocatedName) (ImageID, error) {
-	return pushImage(ctx, tag, raw.image)
+func (raw rawImage) Push(ctx context.Context, tag AllocatedName, trackProgress bool) (ImageID, error) {
+	return pushImage(ctx, tag, raw.image, trackProgress)
 }
 
 func (raw rawImage) cache(ctx context.Context, c cache.Cache) (schema.Digest, error) {
@@ -89,13 +89,13 @@ func (raw rawImageIndex) ImageIndex() (ImageIndex, error) {
 	return raw.index, nil
 }
 
-func (raw rawImageIndex) Push(ctx context.Context, tag AllocatedName) (ImageID, error) {
+func (raw rawImageIndex) Push(ctx context.Context, tag AllocatedName, trackProgress bool) (ImageID, error) {
 	digest, err := raw.index.Digest()
 	if err != nil {
 		return ImageID{}, err
 	}
 
-	if err := pushImageIndex(ctx, tag, raw.index); err != nil {
+	if err := pushImageIndex(ctx, tag, raw.index, trackProgress); err != nil {
 		return ImageID{}, err
 	}
 

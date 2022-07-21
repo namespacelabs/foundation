@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func pushImage(ctx context.Context, tag AllocatedName, img v1.Image) (ImageID, error) {
+func pushImage(ctx context.Context, tag AllocatedName, img v1.Image, trackProgress bool) (ImageID, error) {
 	digest, err := img.Digest()
 	if err != nil {
 		return ImageID{}, fnerrors.InternalError("digest missing on %q: %w", reflect.TypeOf(img).String(), err)
@@ -25,24 +25,21 @@ func pushImage(ctx context.Context, tag AllocatedName, img v1.Image) (ImageID, e
 		return ImageID{}, fnerrors.InternalError("failed to parse tag: %w", err)
 	}
 
-	var rp RemoteProgress
-	if err := tasks.Action("oci.push-image").Progress(&rp).Str("ref", ref).Str("digest", digest).Run(ctx, func(ctx context.Context) error {
-		remoteOpts := WriteRemoteOptsWithAuth(ctx, tag.Keychain)
+	remoteOpts := WriteRemoteOptsWithAuth(ctx, tag.Keychain)
+	if trackProgress {
+		var rp RemoteProgress
+		tasks.Attachments(ctx).SetProgress(&rp)
 		remoteOpts = append(remoteOpts, rp.Track())
+	}
 
-		if err := remote.Write(ref, img, remoteOpts...); err != nil {
-			return fnerrors.InvocationError("failed to push to registry %q: %w", ref, err)
-		}
-
-		return nil
-	}); err != nil {
-		return ImageID{}, err
+	if err := remote.Write(ref, img, remoteOpts...); err != nil {
+		return ImageID{}, fnerrors.InvocationError("failed to push to registry %q: %w", ref, err)
 	}
 
 	return tag.WithDigest(digest), nil
 }
 
-func pushImageIndex(ctx context.Context, tag AllocatedName, img v1.ImageIndex) error {
+func pushImageIndex(ctx context.Context, tag AllocatedName, img v1.ImageIndex, trackProgress bool) error {
 	digest, err := img.Digest()
 	if err != nil {
 		return err
@@ -53,14 +50,12 @@ func pushImageIndex(ctx context.Context, tag AllocatedName, img v1.ImageIndex) e
 		return err
 	}
 
-	var rp RemoteProgress
-	return tasks.Action("oci.write-image-index").Progress(&rp).Str("ref", ref).Str("digest", digest).Run(ctx, func(ctx context.Context) error {
-		remoteOpts := WriteRemoteOptsWithAuth(ctx, tag.Keychain)
+	remoteOpts := WriteRemoteOptsWithAuth(ctx, tag.Keychain)
+	if trackProgress {
+		var rp RemoteProgress
 		remoteOpts = append(remoteOpts, rp.Track())
+		tasks.Attachments(ctx).SetProgress(&rp)
+	}
 
-		if err := remote.WriteIndex(ref, img, remoteOpts...); err != nil {
-			return err
-		}
-		return nil
-	})
+	return remote.WriteIndex(ref, img, remoteOpts...)
 }

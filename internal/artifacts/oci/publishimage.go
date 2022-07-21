@@ -46,5 +46,5 @@ func (pi *publishImage) Action() *tasks.ActionEvent {
 func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (ImageID, error) {
 	tag := compute.MustGetDepValue(deps, pi.tag, "tag")
 	tasks.Attachments(ctx).AddResult("ref", tag.ImageRef())
-	return compute.MustGetDepValue(deps, pi.image, "image").Push(ctx, tag)
+	return compute.MustGetDepValue(deps, pi.image, "image").Push(ctx, tag, true)
 }
