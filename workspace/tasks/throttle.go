@@ -13,22 +13,33 @@ import (
 	"sync"
 
 	"google.golang.org/protobuf/encoding/prototext"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 var (
-	BaseDefaultConfig = []*ThrottleConfiguration{
-		{Labels: map[string]string{"action": "provision.invoke"}, Capacity: 5}, // Even though the limit is actually lowlevel.invocation,
+	BaseDefaultConfig = computeDefaultConfig()
+
+	baseTestConfig = []*ThrottleConfiguration{
+		{Labels: map[string]string{"action": "test"}, Capacity: 5},
+	}
+)
+
+func computeDefaultConfig() []*ThrottleConfiguration {
+	confs := []*ThrottleConfiguration{
 		{Labels: map[string]string{"action": "lowlevel.invocation"}, Capacity: 3},
 		{Labels: map[string]string{"action": "go.build.binary"}, Capacity: 3},
 		{Labels: map[string]string{"action": "vcluster.create"}, Capacity: 2},
 		{Labels: map[string]string{"action": "vcluster.access"}, Capacity: 2},
 	}
 
-	baseTestConfig = []*ThrottleConfiguration{
-		{Labels: map[string]string{"action": "test"}, Capacity: 5},
+	if !environment.IsRunningInCI() {
+		// This is for presentation purposes alone; so users don't see a bunch of waiting provision.invoke.
+		confs = append(confs, &ThrottleConfiguration{Labels: map[string]string{"action": "provision.invoke"}, Capacity: 3})
 	}
-)
+
+	return confs
+}
 
 var (
 	_throttleKey = contextKey("fn.workspace.tasks.throttler")
