@@ -130,6 +130,28 @@ func PlanImage(ctx context.Context, pkg *workspace.Package, env ops.Environment,
 	}, nil
 }
 
+func PrebuiltImageID(loc workspace.Location) *oci.ImageID {
+	if !UsePrebuilts {
+		return nil
+	}
+
+	for _, prebuilt := range loc.Module.Workspace.PrebuiltBinary {
+		if prebuilt.PackageName == loc.PackageName.String() {
+			imgid := oci.ImageID{Repository: prebuilt.Repository, Digest: prebuilt.Digest}
+			if imgid.Repository == "" {
+				if loc.Module.Workspace.PrebuiltBaseRepository == "" {
+					break // Silently fail.
+				}
+				imgid.Repository = filepath.Join(loc.Module.Workspace.PrebuiltBaseRepository, prebuilt.PackageName)
+			}
+
+			return &imgid
+		}
+	}
+
+	return nil
+}
+
 func planImage(ctx context.Context, loc workspace.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
 	// We prepare the build spec, as we need information, e.g. whether it's platform independent,
 	// if a prebuilt is specified.
@@ -138,19 +160,11 @@ func planImage(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 		return nil, err
 	}
 
-	if opts.UsePrebuilts && UsePrebuilts {
-		for _, prebuilt := range loc.Module.Workspace.PrebuiltBinary {
-			if prebuilt.PackageName == loc.PackageName.String() {
-				imgid := oci.ImageID{Repository: prebuilt.Repository, Digest: prebuilt.Digest}
-				public := true // We assume all prebuilts are public, unless noted otherwise.
-				if imgid.Repository == "" {
-					if loc.Module.Workspace.PrebuiltBaseRepository == "" {
-						break // Silently fail.
-					}
-					imgid.Repository = filepath.Join(loc.Module.Workspace.PrebuiltBaseRepository, prebuilt.PackageName)
-				}
-				return build.PrebuiltPlan(imgid, spec.PlatformIndependent(), oci.ResolveOpts{PublicImage: public}), nil
-			}
+	if opts.UsePrebuilts {
+		imgid := PrebuiltImageID(loc)
+		if imgid != nil {
+			public := true // We assume all prebuilts are public, unless noted otherwise.
+			return build.PrebuiltPlan(*imgid, spec.PlatformIndependent(), oci.ResolveOpts{PublicImage: public}), nil
 		}
 	}
 

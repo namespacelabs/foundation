@@ -17,6 +17,7 @@ var UseKubernetesRuntime = false
 type Runtime interface {
 	RunWithOpts(context.Context, rtypes.RunToolOpts, func()) error
 	HostPlatform(context.Context) (specs.Platform, error)
+	CanConsumePublicImages() bool // Whether this runtime implementation can use an ImageID directly if one is available.
 }
 
 func Run(ctx context.Context, opts rtypes.RunToolOpts) error {
@@ -30,6 +31,8 @@ func RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) e
 func HostPlatform(ctx context.Context) (specs.Platform, error) {
 	return impl().HostPlatform(ctx)
 }
+
+func CanConsumePublicImages() bool { return impl().CanConsumePublicImages() }
 
 func impl() Runtime {
 	if UseKubernetesRuntime {

@@ -9,14 +9,14 @@ import (
 	"io"
 	"os"
 
-	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	schema "namespacelabs.dev/foundation/schema"
 )
 
 type RunBinaryOpts struct {
 	WorkingDir string
-	Image      v1.Image
+	Image      oci.Image
 	Command    []string
 	Args       []string
 	Env        []*schema.BinaryConfig_EnvEntry
@@ -24,6 +24,7 @@ type RunBinaryOpts struct {
 }
 
 type RunToolOpts struct {
+	PublicImageID *oci.ImageID // If set, and runtime supports public images, `Image` is ignored.
 	RunBinaryOpts
 	IO
 	ImageName    string

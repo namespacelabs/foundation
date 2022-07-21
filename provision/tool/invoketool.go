@@ -66,13 +66,20 @@ func (inv *cacheableInvocation) Action() *tasks.ActionEvent {
 }
 
 func (inv *cacheableInvocation) Inputs() *compute.In {
-	invocation := *inv.handler.Invocation
-	invocation.Image = nil // To make the invocation JSON serializable.
-	return compute.Inputs().
-		Computable("image", inv.handler.Invocation.Image).
+	invocation := *inv.handler.Invocation // Copy
+	invocation.Image = nil                // To make the invocation JSON serializable.
+	invocation.PublicImageID = nil
+
+	in := compute.Inputs().
 		JSON("handler", Definition{TargetServer: inv.handler.TargetServer, Source: inv.handler.Source, Invocation: &invocation}). // Without image and PackageAbsPath.
 		Proto("stack", inv.stack).Stringer("focus", inv.focus).Proto("env", inv.env).
 		JSON("props", inv.props)
+
+	if tools.CanConsumePublicImages() && inv.handler.Invocation.PublicImageID != nil {
+		return in.JSON("publicImageID", *inv.handler.Invocation.PublicImageID)
+	} else {
+		return in.Computable("image", inv.handler.Invocation.Image)
+	}
 }
 
 func (inv *cacheableInvocation) Output() compute.Output {
@@ -82,7 +89,6 @@ func (inv *cacheableInvocation) Output() compute.Output {
 }
 
 func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolved) (res *protocol.ToolResponse, err error) {
-	resolvedImage := compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
 	r := inv.handler
 
 	req := &protocol.ToolRequest{
@@ -142,7 +148,6 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	opts := rtypes.RunToolOpts{
 		ImageName: r.Invocation.ImageName,
 		RunBinaryOpts: rtypes.RunBinaryOpts{
-			Image:      resolvedImage,
 			Command:    r.Invocation.Command,
 			Args:       r.Invocation.Args,
 			WorkingDir: r.Invocation.WorkingDir,
@@ -151,6 +156,12 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		// expected to produce operations which can be inspected. And then these
 		// operations are applied by the caller.
 		NoNetworking: true,
+	}
+
+	if tools.CanConsumePublicImages() && r.Invocation.PublicImageID != nil {
+		opts.PublicImageID = r.Invocation.PublicImageID
+	} else {
+		opts.Image = compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
 	}
 
 	if InvocationDebug {
