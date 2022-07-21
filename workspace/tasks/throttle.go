@@ -18,7 +18,7 @@ import (
 
 var (
 	BaseDefaultConfig = []*ThrottleConfiguration{
-		{Labels: map[string]string{"action": "provision.invoke"}, Capacity: 3}, // Even though the limit is actually lowlevel.invocation,
+		{Labels: map[string]string{"action": "provision.invoke"}, Capacity: 5}, // Even though the limit is actually lowlevel.invocation,
 		{Labels: map[string]string{"action": "lowlevel.invocation"}, Capacity: 3},
 		{Labels: map[string]string{"action": "go.build.binary"}, Capacity: 3},
 		{Labels: map[string]string{"action": "vcluster.create"}, Capacity: 2},
