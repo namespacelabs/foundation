@@ -66,6 +66,7 @@ type EventData struct {
 	ActionID       ActionID
 	ParentID       ActionID
 	AnchorID       ActionID // This action represents "waiting" on the action represented by `anchorID`.
+	SpanID         string
 	State          ActionState
 	Name           string
 	HumanReadable  string // If not set, name is used.
@@ -340,6 +341,7 @@ func (ev *ActionEvent) RunWithOpts(ctx context.Context, opts RunOpts) error {
 	// Only record a Starting event if we had to wait.
 	if (opts.Wait != nil || releaseLease != nil) && ra.span != nil && ra.span.IsRecording() {
 		ra.span.AddEvent("starting", trace.WithAttributes(attribute.Bool("cached", wasCached)))
+		ra.Data.SpanID = ra.span.SpanContext().SpanID().String()
 	}
 
 	if wasCached {
@@ -422,6 +424,7 @@ func makeStoreProto(data *EventData, at *EventAttachments) *storage.StoredTask {
 		Id:                 data.ActionID.String(),
 		ParentId:           data.ParentID.String(),
 		AnchorId:           data.AnchorID.String(),
+		SpanId:             data.SpanID,
 		Name:               data.Name,
 		Category:           data.Category,
 		HumanReadableLabel: data.HumanReadable,

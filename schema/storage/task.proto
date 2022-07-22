@@ -10,11 +10,12 @@ option go_package = "namespacelabs.dev/foundation/schema/storage";
 
 import "google/protobuf/any.proto";
 
-// Next ID: 20
+// Next ID: 21
 message StoredTask {
     string          id                   = 1;
     string          parent_id            = 12;
     string          anchor_id            = 13;
+    string          span_id              = 20;
     string          name                 = 2;
     string          human_readable_label = 3;
     string          category             = 19;
