@@ -34,6 +34,7 @@ import (
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -49,6 +50,9 @@ import (
 const maxExpectedWorkspaceSize uint64 = 32 * 1024 * 1024 // 32MB should be enough for everyone.
 
 var SkipExpectedMaxWorkspaceSizeCheck = false
+
+// XXX make this a flag instead. The assumption here is that in CI the filesystem is readonly.
+var PreDigestLocalInputs = environment.IsRunningInCI()
 
 type LocalContents struct {
 	Module         build.Workspace
@@ -131,10 +135,32 @@ func (l reqBase) buildInputs() *compute.In {
 		Str("frontend", l.req.Frontend).
 		StrMap("frontendOpt", l.req.FrontendOpt)
 
-	for k, local := range l.localDirs {
-		in = in.
-			Computable(fmt.Sprintf("local%d:contents", k), local.Module.VersionedFS(local.Path, local.ObserveChanges)).
-			Str(fmt.Sprintf("local%d:path", k), local.Path)
+	if !PreDigestLocalInputs {
+		// Local contents are added as dependencies to trigger continuous builds.
+		for k, local := range l.localDirs {
+			in = in.
+				Computable(fmt.Sprintf("local%d:contents", k), local.Module.VersionedFS(local.Path, local.ObserveChanges)).
+				Str(fmt.Sprintf("local%d:path", k), local.Path)
+		}
+	} else {
+		// We compute the digest so that the compute graph can dedup this build
+		// with others that may be happening concurrently.
+		for _, local := range l.localDirs {
+			in = in.Marshal(fmt.Sprintf("local-contents:%s:%s", local.Module.Abs(), local.Path), func(ctx context.Context, w io.Writer) error {
+				contents, err := compute.GetValue(ctx, local.Module.VersionedFS(local.Path, local.ObserveChanges))
+				if err != nil {
+					return err
+				}
+
+				digest, err := contents.ComputeDigest(ctx)
+				if err != nil {
+					return err
+				}
+
+				fmt.Fprintf(w, "%s\n", digest)
+				return nil
+			})
+		}
 	}
 
 	return in.Marshal("states", func(ctx context.Context, w io.Writer) error {
@@ -345,16 +371,18 @@ func solve[V any](ctx context.Context, deps compute.Resolved, l reqBase, e expor
 	if len(l.localDirs) > 0 {
 		solveOpt.LocalDirs = map[string]string{}
 		for k, p := range l.localDirs {
-			ws, ok := compute.GetDepWithType[wscontents.Versioned](deps, fmt.Sprintf("local%d:contents", k))
-			if !ok {
-				return res, fnerrors.InternalError("expected local contents to have been computed")
-			}
+			if !PreDigestLocalInputs {
+				ws, ok := compute.GetDepWithType[wscontents.Versioned](deps, fmt.Sprintf("local%d:contents", k))
+				if !ok {
+					return res, fnerrors.InternalError("expected local contents to have been computed")
+				}
 
-			totalSize, err := fnfs.TotalSize(ctx, ws.Value.FS())
-			if err != nil {
-				fmt.Fprintln(console.Warnings(ctx), "Failed to estimate workspace size:", err)
-			} else if totalSize > maxExpectedWorkspaceSize && !SkipExpectedMaxWorkspaceSizeCheck {
-				return res, reportWorkspaceSizeErr(ctx, ws.Value.FS(), totalSize)
+				totalSize, err := fnfs.TotalSize(ctx, ws.Value.FS())
+				if err != nil {
+					fmt.Fprintln(console.Warnings(ctx), "Failed to estimate workspace size:", err)
+				} else if totalSize > maxExpectedWorkspaceSize && !SkipExpectedMaxWorkspaceSizeCheck {
+					return res, reportWorkspaceSizeErr(ctx, ws.Value.FS(), totalSize)
+				}
 			}
 
 			solveOpt.LocalDirs[p.Name()] = filepath.Join(p.Module.Abs(), p.Path)

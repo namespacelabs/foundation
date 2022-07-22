@@ -545,7 +545,11 @@ func addInputsToSpan(ctx context.Context, in *In, inputs *computedInputs, should
 	}
 
 	for _, input := range inputs.digests {
-		span.SetAttributes(attribute.String(fmt.Sprintf("fn.input.%s.digest", input.Name), input.Digest))
+		digest := input.Digest
+		if digest == "" {
+			digest = "<unset>"
+		}
+		span.SetAttributes(attribute.String(fmt.Sprintf("fn.input.%s.digest", input.Name), digest))
 	}
 
 	span.SetAttributes(attribute.Bool("fn.inputs.nonDeterministic", inputs.nonDeterministic))
