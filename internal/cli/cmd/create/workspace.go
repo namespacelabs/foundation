@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -16,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/git"
 )
 
 const (
@@ -76,10 +78,22 @@ func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) 
 }
 
 func askWorkspaceName(ctx context.Context) (string, error) {
+	placeholder := "github.com/username/reponame"
+	if out, _, err := git.RunGit(ctx, ".", "config", "--get", "remote.origin.url"); err == nil {
+		url := strings.TrimSuffix(string(out), "\n")
+		url = strings.TrimSuffix(url, ".git")
+
+		// Trim protocol.
+		parts := strings.SplitN(url, "://", 2)
+		if len(parts) == 2 && parts[1] != "" {
+			placeholder = parts[1]
+		}
+	}
+
 	return tui.Ask(ctx,
 		"Workspace name?",
 		"The workspace name should to match the Github repository name.",
-		"github.com/username/reponame")
+		placeholder)
 }
 
 func workspaceNameFromArgs(ctx context.Context, args []string) (string, error) {
