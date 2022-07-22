@@ -1,0 +1,11 @@
+FROM gitpod/workspace-full
+
+# From https://github.com/gitpod-io/template-k3s/blob/main/.gitpod.yml#L9
+# RUN sudo apt update -y
+# RUN sudo apt upgrade -y
+RUN sudo apt install qemu -y
+RUN sudo apt install qemu-system-x86 -y
+RUN sudo apt install linux-image-generic -y
+RUN sudo apt install libguestfs-tools -y
+RUN sudo apt install sshpass -y
+RUN sudo apt install netcat -y
