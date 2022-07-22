@@ -158,7 +158,7 @@ func validateVersions(ver types.Version) (bool, bool, string) {
 
 	runcVersion := "<not present>"
 	for _, comp := range ver.Components {
-		if comp.Name == "runc" || comp.Name == "gitpod" {
+		if comp.Name == "runc" {
 			runcVersion = comp.Version
 
 			// Debian uses a different format for versions, using ~ instead of -
