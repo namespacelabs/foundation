@@ -263,19 +263,19 @@ func ensureInvocationOrder(ctx context.Context, handlers []*tool.Definition, per
 	// This guarantees the pattern where B is a provider of an API -- and A is
 	// the consumer, works. For example, B may create a CRD definition, and A
 	// may instantiate that CRD.
-	edges := map[string][]string{} // Server --> depends on list of servers.
+	edges := map[string]map[string]struct{}{} // Server --> depends on a set of servers.
 
 	for _, handler := range handlers {
 		target := handler.TargetServer.String()
 		if _, ok := edges[target]; !ok {
-			edges[target] = []string{} // Make sure that all nodes exist.
+			edges[target] = make(map[string]struct{}) // Make sure that all nodes exist.
 		}
 
 		for _, pkg := range handler.Source.DeclaredStack {
 			// The server itself is always part of the declared stack, but
 			// shouldn't be a dependency of itself.
 			if pkg != handler.TargetServer {
-				edges[target] = append(edges[target], pkg.String())
+				edges[target][pkg.String()] = struct{}{}
 			}
 		}
 	}
@@ -289,7 +289,7 @@ func ensureInvocationOrder(ctx context.Context, handlers []*tool.Definition, per
 	}
 
 	for srv, deps := range edges {
-		for _, dep := range deps {
+		for dep := range deps {
 			graph.AddEdge(dep, srv)
 		}
 	}
