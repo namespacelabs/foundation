@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -24,6 +25,9 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			// Best effort. We ignore errors here, as the user can open the link manually.
+			browser.OpenURL(loginUrl)
+
 			code, err := tui.Ask(ctx, "Login to Namespace", fmt.Sprintf("In order to login, open the following URL in your browser, and then copy-paste the resulting code:\n\n  %s", loginUrl), "Code")
 			if err != nil {
 				return err
