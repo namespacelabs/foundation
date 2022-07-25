@@ -15,6 +15,15 @@ type StartLoginResponse struct {
 	LoginId string `json:"login_id"`
 }
 
+type FinishLoginRequest struct {
+	LoginId string `json:"login_id"`
+}
+
+type FinishLoginResponse struct {
+	Completed bool     `json:"completed"`
+	UserAuth  UserAuth `json:"user_auth"`
+}
+
 type CheckRequest struct {
 	UserData string `json:"userData"`
 }
@@ -33,6 +42,19 @@ func StartLogin(ctx context.Context) (string, error) {
 	})
 
 	return resp.LoginId, err
+}
+
+func FinishLogin(ctx context.Context, id string) (*FinishLoginResponse, error) {
+	req := FinishLoginRequest{
+		LoginId: id,
+	}
+
+	resp := &FinishLoginResponse{}
+	err := callProdAPI(ctx, "nsl.signin.SigninService/FinishLogin", req, func(dec *json.Decoder) error {
+		return dec.Decode(resp)
+	})
+
+	return resp, err
 }
 
 func CheckSignin(ctx context.Context, userData string) (*UserAuth, error) {

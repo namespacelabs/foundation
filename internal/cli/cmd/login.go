@@ -7,6 +7,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/morikuni/aec"
 	"github.com/pkg/browser"
@@ -17,7 +18,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
-const baseUrl = "https://login.namespace.so/login"
+const (
+	baseUrl      = "https://login.namespace.so/login"
+	pollInterval = 500 * time.Millisecond
+)
 
 func NewLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -38,9 +42,22 @@ func NewLoginCmd() *cobra.Command {
 			fmt.Fprintf(console.Stdout(ctx), "%s\n", aec.Bold.Apply("Login to Namespace"))
 			fmt.Fprintf(console.Stdout(ctx), "In order to login, open the following URL in your browser, and then copy-paste the resulting code:\n\n  %s", loginUrl)
 
-			// TODO
-			code := "fooo"
-			username, err := fnapi.StoreUser(ctx, code)
+			// Poll if login succeeded
+			var resp *fnapi.FinishLoginResponse
+			for {
+				resp, err = fnapi.FinishLogin(ctx, id)
+				if err != nil {
+					return err
+				}
+
+				if resp.Completed {
+					break
+				}
+
+				time.Sleep(pollInterval)
+			}
+
+			username, err := fnapi.StoreUser(ctx, &resp.UserAuth)
 			if err != nil {
 				return err
 			}
