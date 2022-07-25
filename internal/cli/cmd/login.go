@@ -26,7 +26,7 @@ func NewLoginCmd() *cobra.Command {
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			// Best effort. We ignore errors here, as the user can open the link manually.
-			browser.OpenURL(loginUrl)
+			_ = browser.OpenURL(loginUrl)
 
 			code, err := tui.Ask(ctx, "Login to Namespace", fmt.Sprintf("In order to login, open the following URL in your browser, and then copy-paste the resulting code:\n\n  %s", loginUrl), "Code")
 			if err != nil {
