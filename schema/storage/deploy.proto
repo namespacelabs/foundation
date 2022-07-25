@@ -59,7 +59,13 @@ message NetworkPlan {
     reserved 2, 5;
 }
 
-// Needs to be consistent with networking.proto
+// The messages below are storeable versions of messages in networking.proto.
+// "NetworkPlan" is stored in a database on every deployment in push-on-green.
+// These messages do not need to have the same field names or ids as the original protos,
+// only the ones that may be important later.
+// On the other hand, there are additional compatility requirements for these messages,
+// so they may diverge from the original protos as the latter ones evolve.
+
 // Next ID: 13
 message Endpoint {
     enum Type {
