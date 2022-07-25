@@ -36,9 +36,6 @@ RUN virt-customize -a jammy-server-cloudimg-amd64.img --run-command "mkdir -p /e
 COPY registries.yaml registries.yaml
 RUN mirrorconf=`cat registries.yaml` && virt-customize -a jammy-server-cloudimg-amd64.img --run-command "echo '${mirrorconf}' > /etc/rancher/k3s/registries.yaml"
 
-# copy kernel modules
-RUN for kernel_versions in `find /lib/modules -mindepth 1 -maxdepth 1 -type d`; do virt-customize -a jammy-server-cloudimg-amd64.img --copy-in ${kernel_versions}:/lib/modules done
-
 # ssh
 RUN virt-customize -a jammy-server-cloudimg-amd64.img --run-command 'apt remove openssh-server -y && apt install openssh-server -y'
 RUN virt-customize -a jammy-server-cloudimg-amd64.img --run-command "sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config"
