@@ -1,27 +1,5 @@
 {
   "nodes": {
-    "alejandra": {
-      "inputs": {
-        "flakeCompat": "flakeCompat",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1646937181,
-        "narHash": "sha256-vkFKYnSmhPPXtc3AH7iRtqRRqxhj0o5WySqPT+klDWU=",
-        "owner": "kamadorueda",
-        "repo": "alejandra",
-        "rev": "b75302002c94a158faebf5fca9e0d72f2ca59f4d",
-        "type": "github"
-      },
-      "original": {
-        "owner": "kamadorueda",
-        "ref": "1.1.0",
-        "repo": "alejandra",
-        "type": "github"
-      }
-    },
     "flake-utils": {
       "locked": {
         "lastModified": 1656928814,
