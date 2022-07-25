@@ -29,14 +29,12 @@ RUN virt-customize -a jammy-server-cloudimg-amd64.img --root-password password:r
 
 # networking setup
 COPY 01-net.yaml 01-net.yaml
-RUN netconf=`cat 01-net.yaml`
-RUN virt-customize -a jammy-server-cloudimg-amd64.img --run-command "echo '${netconf}' > /etc/netplan/01-net.yaml"
+RUN netconf=`cat 01-net.yaml` && virt-customize -a jammy-server-cloudimg-amd64.img --run-command "echo '${netconf}' > /etc/netplan/01-net.yaml"
 
 # registry setup
 RUN virt-customize -a jammy-server-cloudimg-amd64.img --run-command "mkdir -p /etc/rancher/k3s/"
 COPY registries.yaml registries.yaml
-RUN mirrorconf=`cat registries.yaml`
-RUN virt-customize -a jammy-server-cloudimg-amd64.img --run-command "echo '${mirrorconf}' > /etc/rancher/k3s/registries.yaml"
+RUN mirrorconf=`cat registries.yaml` && virt-customize -a jammy-server-cloudimg-amd64.img --run-command "echo '${mirrorconf}' > /etc/rancher/k3s/registries.yaml"
 
 # copy kernel modules
 RUN for kernel_versions in `find /lib/modules -mindepth 1 -maxdepth 1 -type d`; do virt-customize -a jammy-server-cloudimg-amd64.img --copy-in ${kernel_versions}:/lib/modules done
