@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/morikuni/aec"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -16,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
-const loginUrl = "https://login.namespace.so/login"
+const baseUrl = "https://login.namespace.so/login"
 
 func NewLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -25,18 +26,17 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			token := "ABCD-EFGH" // TODO
+
+			loginUrl := fmt.Sprintf("%s?token=%s", baseUrl, token)
 			// Best effort. We ignore errors here, as the user can open the link manually.
 			_ = browser.OpenURL(loginUrl)
 
-			code, err := tui.Ask(ctx, "Login to Namespace", fmt.Sprintf("In order to login, open the following URL in your browser, and then copy-paste the resulting code:\n\n  %s", loginUrl), "Code")
-			if err != nil {
-				return err
-			}
+			fmt.Fprintf(console.Stdout(ctx), "%s\n", aec.Bold.Apply("Login to Namespace"))
+			fmt.Fprintf(console.Stdout(ctx), "In order to login, open the following URL in your browser, and then copy-paste the resulting code:\n\n  %s", loginUrl)
 
-			if code == "" {
-				return context.Canceled
-			}
-
+			// TODO
+			code := "fooo"
 			username, err := fnapi.StoreUser(ctx, code)
 			if err != nil {
 				return err
