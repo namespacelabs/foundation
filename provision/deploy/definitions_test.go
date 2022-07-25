@@ -10,15 +10,59 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/testing/protocmp"
-	"namespacelabs.dev/foundation/provision/tool"
+	"namespacelabs.dev/foundation/internal/frontend"
+	"namespacelabs.dev/foundation/internal/stack"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 )
 
 func TestEnsureInvocationOrder(t *testing.T) {
-	handlers := []*tool.Definition{
-		{TargetServer: "a", Source: tool.Source{DeclaredStack: []schema.PackageName{"a", "b", "c"}}},
-		{TargetServer: "b", Source: tool.Source{DeclaredStack: []schema.PackageName{"b", "c"}}},
-		{TargetServer: "c", Source: tool.Source{}},
+	stack := &stack.Stack{
+		Servers: []provision.Server{{
+			Location: workspace.Location{
+				PackageName: "a",
+			},
+		}, {
+			Location: workspace.Location{
+				PackageName: "b",
+			},
+		}, {
+			Location: workspace.Location{
+				PackageName: "c",
+			},
+		}},
+		ParsedServers: []*stack.ParsedServer{{
+			Deps: []*stack.ParsedNode{{
+				ProvisionPlan: frontend.ProvisionPlan{
+					PreparedProvisionPlan: frontend.PreparedProvisionPlan{
+						ProvisionStack: frontend.ProvisionStack{
+							DeclaredStack: []schema.PackageName{"a", "b", "c"},
+						},
+					},
+				},
+			}},
+		}, {
+			Deps: []*stack.ParsedNode{{
+				ProvisionPlan: frontend.ProvisionPlan{
+					PreparedProvisionPlan: frontend.PreparedProvisionPlan{
+						ProvisionStack: frontend.ProvisionStack{
+							DeclaredStack: []schema.PackageName{"b", "c"},
+						},
+					},
+				},
+			}},
+		}, {
+			Deps: []*stack.ParsedNode{{
+				ProvisionPlan: frontend.ProvisionPlan{
+					PreparedProvisionPlan: frontend.PreparedProvisionPlan{
+						ProvisionStack: frontend.ProvisionStack{
+							DeclaredStack: []schema.PackageName{},
+						},
+					},
+				},
+			}},
+		}},
 	}
 
 	perServer := map[schema.PackageName]*serverDefs{
@@ -27,7 +71,7 @@ func TestEnsureInvocationOrder(t *testing.T) {
 		"c": {Ops: []*schema.SerializedInvocation{{Description: "c"}}},
 	}
 
-	got, err := ensureInvocationOrder(context.Background(), handlers, perServer)
+	got, err := ensureInvocationOrder(context.Background(), stack, perServer)
 	if err != nil {
 		t.Fatal(err)
 	}
