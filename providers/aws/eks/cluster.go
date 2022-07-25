@@ -7,11 +7,13 @@ package eks
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/eks/types"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
@@ -139,11 +141,12 @@ func PrepareClusterInfo(ctx context.Context, s *Session) (*EKSCluster, error) {
 		return nil, nil
 	}
 
-	// XXX use a compute.Computable here to cache the cluster information if multiple servers depend on it.
-	cluster, err := DescribeCluster(ctx, s, sysInfo.EksClusterName)
+	// XXX use a compute.Computable here to cache the awsCluster information if multiple servers depend on it.
+	awsCluster, err := DescribeCluster(ctx, s, sysInfo.EksClusterName)
 	if err != nil {
 		return nil, err
 	}
+	cluster := awsCluster.Cluster
 
 	eksCluster := &EKSCluster{
 		Name:  sysInfo.EksClusterName,
@@ -154,19 +157,25 @@ func PrepareClusterInfo(ctx context.Context, s *Session) (*EKSCluster, error) {
 	if cluster.Identity != nil && cluster.Identity.Oidc != nil {
 		eksCluster.OidcIssuer = *cluster.Identity.Oidc.Issuer
 	}
+	eksCluster.HasOidcProvider = awsCluster.HasOidcProvider
 
 	return eksCluster, nil
 }
 
-func DescribeCluster(ctx context.Context, s *Session, name string) (*types.Cluster, error) {
-	return compute.GetValue[*types.Cluster](ctx, &cachedDescribeCluster{session: s, name: name})
+func DescribeCluster(ctx context.Context, s *Session, name string) (*AwsCluster, error) {
+	return compute.GetValue[*AwsCluster](ctx, &cachedDescribeCluster{session: s, name: name})
+}
+
+type AwsCluster struct {
+	Cluster         *types.Cluster
+	HasOidcProvider bool
 }
 
 type cachedDescribeCluster struct {
 	session *Session
 	name    string
 
-	compute.DoScoped[*types.Cluster]
+	compute.DoScoped[*AwsCluster]
 }
 
 func (cd *cachedDescribeCluster) Action() *tasks.ActionEvent {
@@ -179,7 +188,7 @@ func (cd *cachedDescribeCluster) Inputs() *compute.In {
 
 func (cd *cachedDescribeCluster) Output() compute.Output { return compute.Output{NotCacheable: true} }
 
-func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved) (*types.Cluster, error) {
+func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved) (*AwsCluster, error) {
 	out, err := cd.session.eks.DescribeCluster(ctx, &eks.DescribeClusterInput{
 		Name: &cd.name,
 	})
@@ -189,9 +198,27 @@ func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved
 		})
 	}
 
+	hasOidcProvider := false
+	oidcProviders, err := cd.session.iam.ListOpenIDConnectProviders(ctx, &iam.ListOpenIDConnectProvidersInput{})
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to list OpenID Connect providers: %w", err)
+	}
+
+	issuerParts := strings.Split(*out.Cluster.Identity.Oidc.Issuer, "/")
+	issuerId := issuerParts[len(issuerParts)-1]
+	for _, oidcProvider := range oidcProviders.OpenIDConnectProviderList {
+		if strings.HasSuffix(*oidcProvider.Arn, issuerId) {
+			hasOidcProvider = true
+			break
+		}
+	}
+
 	if out.Cluster == nil {
 		return nil, fnerrors.InvocationError("api didn't return a cluster description as expected")
 	}
 
-	return out.Cluster, nil
+	return &AwsCluster{
+		Cluster:         out.Cluster,
+		HasOidcProvider: hasOidcProvider,
+	}, nil
 }
