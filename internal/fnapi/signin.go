@@ -9,6 +9,12 @@ import (
 	"encoding/json"
 )
 
+type StartLoginRequest struct{}
+
+type StartLoginResponse struct {
+	LoginId string `json:"login_id"`
+}
+
 type CheckRequest struct {
 	UserData string `json:"userData"`
 }
@@ -16,6 +22,17 @@ type CheckRequest struct {
 type RobotLoginRequest struct {
 	Repository  string `json:"repository"`
 	AccessToken string `json:"accessToken"`
+}
+
+func StartLogin(ctx context.Context) (string, error) {
+	req := StartLoginRequest{}
+
+	resp := &StartLoginResponse{}
+	err := callProdAPI(ctx, "nsl.signin.SigninService/StartLogin", req, func(dec *json.Decoder) error {
+		return dec.Decode(resp)
+	})
+
+	return resp.LoginId, err
 }
 
 func CheckSignin(ctx context.Context, userData string) (*UserAuth, error) {

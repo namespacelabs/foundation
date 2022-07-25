@@ -26,9 +26,12 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			token := "ABCD-EFGH" // TODO
+			id, err := fnapi.StartLogin(ctx)
+			if err != nil {
+				return nil
+			}
 
-			loginUrl := fmt.Sprintf("%s?token=%s", baseUrl, token)
+			loginUrl := fmt.Sprintf("%s?id=%s", baseUrl, id)
 			// Best effort. We ignore errors here, as the user can open the link manually.
 			_ = browser.OpenURL(loginUrl)
 
