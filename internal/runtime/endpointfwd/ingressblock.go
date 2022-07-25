@@ -11,7 +11,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
-	"namespacelabs.dev/foundation/provision/deploy"
+	deploystorage "namespacelabs.dev/foundation/provision/deploy/storage"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -38,7 +38,6 @@ type PortForward struct {
 	endpointState map[string]*endpointState
 	ingressState  localPortFwd
 	localPorts    map[string]*localPortFwd
-	domains       []*runtime.FilteredDomain
 	fragments     []*schema.IngressFragment
 }
 
@@ -63,9 +62,6 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 	pi.stack = stack
 	pi.focus = focusServers(stack, focus)
 
-	pi.domains = runtime.FilterAndDedupDomains(fragments, func(d *schema.Domain) bool {
-		return d.GetManaged() != schema.Domain_MANAGED_UNKNOWN
-	})
 	pi.fragments = fragments
 
 	pi.revision++
@@ -171,7 +167,16 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 		}
 	}
 
-	if len(pi.domains) > 0 && pi.Env.GetPurpose() == schema.Environment_DEVELOPMENT {
+	hasDomains := false
+	for _, frag := range fragments {
+		if frag.Domain.GetManaged() != schema.Domain_MANAGED_UNKNOWN &&
+			frag.Domain.GetFqdn() != "" {
+			hasDomains = true
+			break
+		}
+	}
+
+	if hasDomains && pi.Env.GetPurpose() == schema.Environment_DEVELOPMENT {
 		if pi.ingressState.closer == nil {
 			pi.ingressState.closer, pi.ingressState.err = pi.ForwardIngress([]string{pi.LocalAddr}, runtime.LocalIngressPort, func(fpe runtime.ForwardedPortEvent) {
 				pi.mu.Lock()
@@ -201,25 +206,23 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 	pi.OnUpdate()
 }
 
-func (pi *PortForward) ToNetworkPlan() *storage.NetworkPlan {
-	var portFwds []*deploy.PortFwd
+func (pi *PortForward) ToNetworkPlan() (*storage.NetworkPlan, error) {
+	var portFwds []*deploystorage.PortFwd
 	for _, fwd := range pi.endpointState {
-		portFwds = append(portFwds, &deploy.PortFwd{
+		portFwds = append(portFwds, &deploystorage.PortFwd{
 			Endpoint:  fwd.endpoint,
-			LocalPort: fwd.port.localPort,
+			LocalPort: uint32(fwd.port.localPort),
 		})
 	}
 
 	if len(pi.ingressState.users) > 0 {
-		portFwds = append(portFwds, &deploy.PortFwd{
+		portFwds = append(portFwds, &deploystorage.PortFwd{
 			Endpoint:  pi.ingressState.users[0].endpoint,
-			LocalPort: pi.ingressState.localPort,
+			LocalPort: uint32(pi.ingressState.localPort),
 		})
 	}
 
-	deploy.SortPorts(portFwds, pi.focus)
-
-	return deploy.RenderPortsAndIngresses(pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.domains, pi.fragments)
+	return deploystorage.ToStorageNetworkPlan(pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.fragments)
 }
 
 func (pi *PortForward) portFwd(serverOwner string, containerPort int32, revision int, callback func(int, uint)) (io.Closer, error) {

@@ -9,12 +9,15 @@ package foundation.schema.storage;
 option go_package = "namespacelabs.dev/foundation/schema/storage";
 
 message NetworkPlan {
-    repeated Endpoint endpoint              = 1;
-    repeated Ingress  ingress               = 2;
-    repeated Ingress  non_local_managed     = 3;
-    repeated Ingress  non_local_non_managed = 4;
-    int32             internal_count        = 5;
-    string            local_hostname        = 6;
+    // TODO: remove once "internal" is migrated to "networkplanutils"
+    repeated NetworkPlan.Endpoint endpoint              = 1 [deprecated = true];
+    repeated Ingress              non_local_managed     = 3 [deprecated = true];
+    repeated Ingress              non_local_non_managed = 4 [deprecated = true];
+
+    string                   local_hostname           = 6;
+    repeated IngressFragment ingress_fragments        = 7;
+    repeated storage.Endpoint endpoints               = 8;
+    repeated string           focused_server_packages = 9;
 
     message AccessCmd {
         // url for http
@@ -33,8 +36,9 @@ message NetworkPlan {
         uint32 local_port     = 4;
         string endpoint_owner = 5;
 
-        repeated AccessCmd access_cmd        = 6;
-        bool               is_port_forwarded = 7;
+        repeated AccessCmd access_cmd = 6;
+
+        reserved 7;
     }
 
     message Ingress {
@@ -50,5 +54,92 @@ message NetworkPlan {
     message Label {
         string label         = 1;
         string service_proto = 2;
+    }
+
+    reserved 2, 5;
+}
+
+// The messages below are storeable versions of messages in networking.proto.
+// "NetworkPlan" is stored in a database on every deployment in push-on-green.
+// These messages do not need to have the same field names or ids as the original protos,
+// only the ones that may be important later.
+// On the other hand, there are additional compatility requirements for these messages,
+// so they may diverge from the original protos as the latter ones evolve.
+
+// Next ID: 13
+message Endpoint {
+    enum Type {
+        INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
+        PRIVATE             = 1;
+        INTERNET_FACING     = 2;
+    }
+
+    Type type = 1;
+
+    // The tuple (endpoint_owner, service_name) uniquely identifies an endpoint.
+    string service_name   = 3;
+    string endpoint_owner = 4;  // Package name.
+
+    Port                     port             = 5;
+    string                   allocated_name   = 6;
+    string                   server_owner     = 7;  // Package name.
+    repeated ServiceMetadata service_metadata = 8;
+    repeated IngressHttpPath http_path        = 9;  // Only valid if type=INTERNET_FACING.
+
+    string service_label = 10;
+
+    // Present only when running `ns dev`, NetworkPlan is not stored in this case.
+    uint32 local_port  = 11;
+    string server_name = 12;
+
+    message Port {
+        string name           = 1;
+        int32  container_port = 2;
+    }
+
+    message ServiceMetadata {
+        string kind     = 1;
+        string protocol = 2;
+    }
+}
+
+// Needs to be consistent with networking.proto
+message IngressFragment {
+    string                      name         = 1;
+    string                      owner        = 2;  // Server package name.
+    Domain                      domain       = 3;
+    storage.Endpoint            endpoint     = 6;
+    repeated IngressHttpPath    http_path    = 4;
+    repeated IngressGrpcService grpc_service = 7;
+    string                      manager      = 8;  // If this is a specialized ingress, it may be annotated as such. E.g. with namespacelabs.dev/foundation/std/grp/httptranscoding.
+}
+
+message IngressHttpPath {
+    string                path    = 1;
+    string                kind    = 2;
+    string                owner   = 3;  // Package name.
+    string                service = 4;  // Backend service.
+    storage.Endpoint.Port port    = 5;
+}
+
+message IngressGrpcService {
+    string                grpc_service = 1;  // Fully qualified name.
+    string                owner        = 2;  // Package name.
+    string                service      = 3;  // Backing service.
+    repeated string       method       = 5;  // If not set, forward all methods.
+    storage.Endpoint.Port port         = 4;
+}
+
+message Domain {
+    string      fqdn            = 1;
+    bool        has_certificate = 2;
+    ManagedType managed         = 3;
+
+    enum ManagedType {
+        MANAGED_UNKNOWN            = 0;
+        LOCAL_MANAGED              = 1;
+        CLOUD_MANAGED              = 2;
+        USER_SPECIFIED             = 3;
+        USER_SPECIFIED_TLS_MANAGED = 4;
     }
 }

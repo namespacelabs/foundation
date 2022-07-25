@@ -317,38 +317,3 @@ func serverScoped(srv *schema.Server, name string) string {
 
 	return name
 }
-
-type FilteredDomain struct {
-	Domain    *schema.Domain
-	Endpoints []*schema.Endpoint
-}
-
-func FilterAndDedupDomains(fragments []*schema.IngressFragment, filter func(*schema.Domain) bool) []*FilteredDomain {
-	seen := map[string]*FilteredDomain{} // Map fqdn:type to schema.
-	domains := []*FilteredDomain{}
-	for _, frag := range fragments {
-		d := frag.Domain
-
-		if d.GetFqdn() == "" {
-			continue
-		}
-
-		if filter != nil && !filter(d) {
-			continue
-		}
-
-		key := fmt.Sprintf("%s:%s", d.GetFqdn(), d.GetManaged())
-
-		if _, ok := seen[key]; !ok {
-			fd := &FilteredDomain{Domain: d}
-			domains = append(domains, fd)
-			seen[key] = fd
-		}
-
-		if frag.Endpoint != nil {
-			seen[key].Endpoints = append(seen[key].Endpoints, frag.Endpoint)
-		}
-	}
-
-	return domains
-}

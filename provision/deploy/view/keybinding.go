@@ -11,6 +11,7 @@ import (
 	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/provision/deploy/render"
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
@@ -61,8 +62,9 @@ func (k NetworkPlanKeybinding) Handle(ctx context.Context, ch chan keyboard.Even
 func (k NetworkPlanKeybinding) renderStickyNetworkPlan(ctx context.Context, plan *storage.NetworkPlan, showSupportServers bool) {
 	content := ""
 	if plan != nil {
+		summary := render.NetworkPlanToSummary(plan)
 		var out bytes.Buffer
-		NetworkPlanToText(&out, plan, &NetworkPlanToTextOpts{
+		NetworkPlanToText(&out, summary, &NetworkPlanToTextOpts{
 			Style:                 colors.WithColors,
 			Checkmark:             true,
 			IncludeSupportServers: showSupportServers})

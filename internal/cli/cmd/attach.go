@@ -60,7 +60,7 @@ func NewAttachCmd() *cobra.Command {
 				Handler: func(ctx context.Context) error {
 					pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, "localhost")
 					pfwd.OnUpdate = func() {
-						event.NetworkPlan = pfwd.ToNetworkPlan()
+						event.NetworkPlan, _ = pfwd.ToNetworkPlan()
 						observer.PushUpdate(event)
 					}
 
