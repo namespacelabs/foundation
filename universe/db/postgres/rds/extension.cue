@@ -41,7 +41,6 @@ extension: fn.#Extension & {
 				binary: "namespacelabs.dev/foundation/universe/db/postgres/rds/prepare"
 			}
 			requires: [
-				"namespacelabs.dev/foundation/universe/db/postgres/incluster/tool",
 				"namespacelabs.dev/foundation/universe/db/postgres/internal/init",
 				"namespacelabs.dev/foundation/universe/db/postgres/rds/init",
 				"namespacelabs.dev/foundation/universe/db/postgres/server",

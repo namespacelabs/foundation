@@ -41,6 +41,7 @@ const (
 	rdsInit = "namespacelabs.dev/foundation/universe/db/postgres/rds/init"
 	rdsNode = "namespacelabs.dev/foundation/universe/db/postgres/rds"
 
+	inclusterNode   = "namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	inclusterInit   = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
 	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/server"
 )
@@ -86,6 +87,10 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 type provisionHook struct{}
 
 func (provisionHook) Apply(_ context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
+	if err := checkPrecondition(req); err != nil {
+		return err
+	}
+
 	dbs := map[string]*rds.Database{}
 	owners := map[string][]string{}
 	if err := allocations.Visit(req.Focus.Server.Allocation, rdsNode, &rds.Database{},
@@ -250,4 +255,36 @@ func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *con
 	}
 
 	return toolcommon.ApplyForInit(req, baseDbs, postgresType, rdsInit, initArgs, out)
+}
+
+func checkPrecondition(req configure.StackRequest) error {
+	owner := findOwner(req.Focus.Server.Allocation, inclusterNode)
+
+	if owner == "" {
+		return nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString("We currently don't support mixing incluster Postgres with RDS Postgres in a single server:\n")
+	sb.WriteString(fmt.Sprintf("%s includes %s which instantiates %s. ", req.Focus.Server.Name, owner, inclusterNode))
+
+	// For debug help, also add RDS dep.
+	owner = findOwner(req.Focus.Server.Allocation, rdsNode)
+	if owner != "" {
+		sb.WriteString(fmt.Sprintf("\n%s includes %s which instantiates %s. ", req.Focus.Server.Name, owner, rdsNode))
+	}
+
+	return fmt.Errorf(sb.String())
+}
+
+func findOwner(allocs []*schema.Allocation, pkg string) string {
+	for _, alloc := range allocs {
+		for _, inst := range alloc.Instance {
+			if inst.PackageName == pkg {
+				return inst.InstanceOwner
+			}
+		}
+	}
+
+	return ""
 }
