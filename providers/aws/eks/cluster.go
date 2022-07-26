@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/eks/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/providers/aws/auth"
@@ -189,22 +190,50 @@ func (cd *cachedDescribeCluster) Inputs() *compute.In {
 func (cd *cachedDescribeCluster) Output() compute.Output { return compute.Output{NotCacheable: true} }
 
 func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved) (*AwsCluster, error) {
-	out, err := cd.session.eks.DescribeCluster(ctx, &eks.DescribeClusterInput{
-		Name: &cd.name,
-	})
-	if err != nil {
-		return nil, auth.CheckNeedsLoginOr(cd.session.sesh, err, func(err error) error {
-			return fnerrors.New("eks: describe cluster failed: %w", err)
+	// Doing two requests to AWS in parallel since each takes 600-700ms.
+	// Total time is still around 1000-1100ms.
+	eg := executor.New(ctx, "eks.describe-cluster")
+
+	var output eks.DescribeClusterOutput
+	eg.Go(func(ctx context.Context) error {
+		out, err := cd.session.eks.DescribeCluster(ctx, &eks.DescribeClusterInput{
+			Name: &cd.name,
 		})
+		if err != nil {
+			return auth.CheckNeedsLoginOr(cd.session.sesh, err, func(err error) error {
+				return fnerrors.New("eks: describe cluster failed: %w", err)
+			})
+		}
+
+		if out.Cluster == nil {
+			return fnerrors.InvocationError("api didn't return a cluster description as expected")
+		}
+
+		output = *out
+		return nil
+	})
+
+	var oidcProviders iam.ListOpenIDConnectProvidersOutput
+	eg.Go(func(ctx context.Context) error {
+		providers, err := cd.session.iam.ListOpenIDConnectProviders(ctx, &iam.ListOpenIDConnectProvidersInput{})
+		if err != nil {
+			return auth.CheckNeedsLoginOr(cd.session.sesh, err, func(err error) error {
+				return fnerrors.InvocationError("failed to list OpenID Connect providers: %w", err)
+			})
+		}
+
+		oidcProviders = *providers
+
+		return nil
+	})
+
+	err := eg.Wait()
+	if err != nil {
+		return nil, err
 	}
 
 	hasOidcProvider := false
-	oidcProviders, err := cd.session.iam.ListOpenIDConnectProviders(ctx, &iam.ListOpenIDConnectProvidersInput{})
-	if err != nil {
-		return nil, fnerrors.InternalError("failed to list OpenID Connect providers: %w", err)
-	}
-
-	issuerParts := strings.Split(*out.Cluster.Identity.Oidc.Issuer, "/")
+	issuerParts := strings.Split(*output.Cluster.Identity.Oidc.Issuer, "/")
 	issuerId := issuerParts[len(issuerParts)-1]
 	for _, oidcProvider := range oidcProviders.OpenIDConnectProviderList {
 		if strings.HasSuffix(*oidcProvider.Arn, issuerId) {
@@ -213,12 +242,8 @@ func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved
 		}
 	}
 
-	if out.Cluster == nil {
-		return nil, fnerrors.InvocationError("api didn't return a cluster description as expected")
-	}
-
 	return &AwsCluster{
-		Cluster:         out.Cluster,
+		Cluster:         output.Cluster,
 		HasOidcProvider: hasOidcProvider,
 	}, nil
 }
