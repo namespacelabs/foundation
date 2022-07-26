@@ -37,7 +37,7 @@ func TestEnsureInvocationOrder(t *testing.T) {
 				ProvisionPlan: frontend.ProvisionPlan{
 					PreparedProvisionPlan: frontend.PreparedProvisionPlan{
 						ProvisionStack: frontend.ProvisionStack{
-							DeclaredStack: []schema.PackageName{"a", "b", "c"},
+							DeclaredStack: []schema.PackageName{"b", "c"},
 						},
 					},
 				},
@@ -47,7 +47,7 @@ func TestEnsureInvocationOrder(t *testing.T) {
 				ProvisionPlan: frontend.ProvisionPlan{
 					PreparedProvisionPlan: frontend.PreparedProvisionPlan{
 						ProvisionStack: frontend.ProvisionStack{
-							DeclaredStack: []schema.PackageName{"b", "c"},
+							DeclaredStack: []schema.PackageName{"c"},
 						},
 					},
 				},
