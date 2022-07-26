@@ -28,6 +28,7 @@ type cueServer struct {
 	ClusterAdmin bool                       `json:"clusterAdmin"`
 	Import       []string                   `json:"import"`
 	Services     map[string]cueServiceSpec  `json:"service"`
+	Ingress      map[string]cueServiceSpec  `json:"ingress"`
 	StaticEnv    map[string]string          `json:"env"`
 	Binary       interface{}                `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
 
@@ -135,6 +136,23 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 		}
 
 		out.Service = append(out.Service, &schema.Server_ServiceSpec{
+			Name:  name,
+			Label: svc.Label,
+			Port:  &schema.Endpoint_Port{Name: svc.Name, ContainerPort: svc.ContainerPort},
+			Metadata: &schema.ServiceMetadata{
+				Kind:     svc.Metadata.Kind,
+				Protocol: svc.Metadata.Protocol,
+			},
+			Internal: svc.Internal,
+		})
+	}
+
+	for name, svc := range bits.Ingress {
+		if svc.Metadata.Protocol == "" {
+			return nil, fnerrors.UserError(loc, "ingress[%s]: a protocol is required", name)
+		}
+
+		out.Ingress = append(out.Ingress, &schema.Server_ServiceSpec{
 			Name:  name,
 			Label: svc.Label,
 			Port:  &schema.Endpoint_Port{Name: svc.Name, ContainerPort: svc.ContainerPort},

@@ -94,6 +94,7 @@ _#Node: {
 
 	if framework == "OPAQUE" || framework == "NODEJS" {
 		service: [string]: #ServiceSpec
+		ingress: [string]: #ServiceSpec
 	}
 
 	// XXX temporary
