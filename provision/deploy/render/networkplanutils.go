@@ -51,11 +51,11 @@ func NetworkPlanToSummary(plan *storage.NetworkPlan) *NetworkPlanSummary {
 			protocolToKind[md.Protocol] = md.Kind
 		}
 
-		isFocus := isFocusEndpoint(plan.FocusedServerPackages, p)
+		isFocus := IsFocusEndpoint(plan.FocusedServerPackages, p)
 
 		endpoint := &NetworkPlanSummary_Service{
 			Focus:       isFocus,
-			Label:       makeServiceLabel(p),
+			Label:       MakeServiceLabel(p),
 			AccessCmd:   []*NetworkPlanSummary_Service_AccessCmd{},
 			LocalPort:   uint32(p.LocalPort),
 			PackageName: p.EndpointOwner,
@@ -175,7 +175,7 @@ func isInternal(endpoint *storage.Endpoint) bool {
 	return false
 }
 
-func isFocusEndpoint(focusedPackages []string, endpoint *storage.Endpoint) bool {
+func IsFocusEndpoint(focusedPackages []string, endpoint *storage.Endpoint) bool {
 	if endpoint == nil {
 		return false
 	}
@@ -189,7 +189,7 @@ func isFocusEndpoint(focusedPackages []string, endpoint *storage.Endpoint) bool 
 	return false
 }
 
-func makeServiceLabel(endpoint *storage.Endpoint) *Label {
+func MakeServiceLabel(endpoint *storage.Endpoint) *Label {
 	// This is depends on a convention.
 	// TODO: uplift this to the schema.
 	if endpoint.ServiceName == "http" {
@@ -301,11 +301,11 @@ func sortPorts(portFwds []*storage.Endpoint, focusedPackages []string) {
 		} else if isIngress(a) {
 			return false
 		} else {
-			if isFocusEndpoint(focusedPackages, a) {
-				if !isFocusEndpoint(focusedPackages, b) {
+			if IsFocusEndpoint(focusedPackages, a) {
+				if !IsFocusEndpoint(focusedPackages, b) {
 					return false
 				}
-			} else if isFocusEndpoint(focusedPackages, b) {
+			} else if IsFocusEndpoint(focusedPackages, b) {
 				return true
 			}
 
