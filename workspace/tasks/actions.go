@@ -291,11 +291,13 @@ func panicHandler(ctx context.Context) {
 		panic(r)
 	}
 
-	// Capture the stack on panic.
-	_ = ActionStorer.WriteRuntimeStack(ctx, debug.Stack())
+	if ActionStorer != nil {
+		// Capture the stack on panic.
+		_ = ActionStorer.WriteRuntimeStack(ctx, debug.Stack())
 
-	// Ensure that we always have an audit trail.
-	_ = ActionStorer.Flush(ctx)
+		// Ensure that we always have an audit trail.
+		_ = ActionStorer.Flush(ctx)
+	}
 
 	// Mark panic as handled and bubble it up.
 	panic(handledPanic{v: r})
