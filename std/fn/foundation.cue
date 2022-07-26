@@ -244,6 +244,7 @@ _#ConfigureBase: {
 			binary_only?: bool
 		}
 		dockerfile?: string
+		nix_flake?:  string
 		web_build?:  string
 		llb_plan?: {output_of: #Binary}
 	}
