@@ -176,7 +176,7 @@ func NewSink(out *os.File, interactive bool, maxLevel int) *ConsoleSink {
 	return &ConsoleSink{
 		out:         out,
 		interactive: interactive,
-		outbuf:      bytes.NewBuffer(make([]byte, 4*1024)), // Start with 4k, enough to hold 20 lines of 100 bytes. bytes.Buffer will grow as needed.
+		outbuf:      bytes.NewBuffer(make([]byte, 0, 4*1024)), // Start with 4k, enough to hold 20 lines of 100 bytes. bytes.Buffer will grow as needed.
 		idling:      true,
 		maxLevel:    maxLevel,
 	}
@@ -562,7 +562,10 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 	copy(newFrame, c.outbuf.Bytes())
 	c.outbuf.Reset()
 
-	newLines := bytes.Split(bytes.TrimSpace(newFrame), []byte("\n"))
+	var newLines [][]byte
+	if len(newFrame) > 0 {
+		newLines = bytes.Split(bytes.TrimSpace(newFrame), []byte("\n"))
+	}
 	c.previousLines = newLines
 
 	// If there was no console buffer output, check if perhaps we're emitting exactly the same.
