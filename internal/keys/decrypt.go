@@ -9,6 +9,7 @@ import (
 	"context"
 	"io"
 	"io/fs"
+	"strings"
 
 	"filippo.io/age"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -39,6 +40,17 @@ func Decrypt(ctx context.Context, keyDir fs.FS, src io.Reader) ([]byte, error) {
 
 	decrypted, err := age.Decrypt(src, identities...)
 	if err != nil {
+		if _, ok := err.(*age.NoIdentityMatchError); ok {
+			var recipients []string
+			for _, x := range identities {
+				if id, ok := x.(*age.X25519Identity); ok {
+					recipients = append(recipients, id.Recipient().String())
+				}
+			}
+
+			return nil, fnerrors.New("failed to decrypt: no identity matched (had %s)", strings.Join(recipients, ", "))
+		}
+
 		return nil, err
 	}
 
