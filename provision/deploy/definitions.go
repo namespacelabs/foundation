@@ -6,7 +6,6 @@ package deploy
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -227,27 +226,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 		return strings.Compare(a.GetServerPackage(), b.GetServerPackage()) < 0
 	})
 
-	// We make sure that serialized invocations produced by a server A, that
-	// depends on server B, are always run after B's serialized invocations.
-	// This guarantees the pattern where B is a provider of an API -- and A is
-	// the consumer, works. For example, B may create a CRD definition, and A
-	// may instantiate that CRD.
-	edges := map[string][]string{} // Server --> depends on list of servers.
-
-	for _, handler := range r.handlers {
-		target := handler.TargetServer.String()
-		edges[target] = []string{} // Make sure that all nodes exist.
-
-		for _, pkg := range handler.Source.DeclaredStack {
-			// The server itself is always part of the declared stack, but
-			// shouldn't be a dependency of itself.
-			if pkg != handler.TargetServer {
-				edges[target] = append(edges[target], pkg.String())
-			}
-		}
-	}
-
-	orderedOps, err := ensureInvocationOrder(ctx, r.handlers, perServer)
+	orderedOps, err := ensureInvocationOrder(ctx, r.stack, perServer)
 	if err != nil {
 		return nil, err
 	}
@@ -257,40 +236,41 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 	return &handlerResult{r.stack, allOps, computed, perServer}, nil
 }
 
-func ensureInvocationOrder(ctx context.Context, handlers []*tool.Definition, perServer map[schema.PackageName]*serverDefs) ([]*schema.SerializedInvocation, error) {
+const controllerPkg = "namespacelabs.dev/foundation/std/runtime/kubernetes/controller"
+
+func ensureInvocationOrder(ctx context.Context, stack *stack.Stack, perServer map[schema.PackageName]*serverDefs) ([]*schema.SerializedInvocation, error) {
 	// We make sure that serialized invocations produced by a server A, that
 	// depends on server B, are always run after B's serialized invocations.
 	// This guarantees the pattern where B is a provider of an API -- and A is
 	// the consumer, works. For example, B may create a CRD definition, and A
 	// may instantiate that CRD.
-	edges := map[string]map[string]struct{}{} // Server --> depends on a set of servers.
-
-	for _, handler := range handlers {
-		target := handler.TargetServer.String()
-		if _, ok := edges[target]; !ok {
-			edges[target] = make(map[string]struct{}) // Make sure that all nodes exist.
-		}
-
-		for _, pkg := range handler.Source.DeclaredStack {
-			// The server itself is always part of the declared stack, but
-			// shouldn't be a dependency of itself.
-			if pkg != handler.TargetServer {
-				edges[target][pkg.String()] = struct{}{}
-			}
-		}
-	}
-
-	edgesDebug, _ := json.MarshalIndent(edges, "", "  ")
-	fmt.Fprintf(console.Debug(ctx), "invocation edges: %s\n", edgesDebug)
-
 	graph := toposort.NewGraph(0)
-	for srv := range edges {
-		graph.AddNode(srv)
+
+	// First ensure all nodes exist.
+	for _, srv := range stack.Servers {
+		fmt.Fprintf(console.Debug(ctx), "adding server: %s\n", srv.PackageName())
+		if !graph.AddNode(srv.PackageName().String()) {
+			return nil, fnerrors.InternalError("server %s appears multiple times in the stack", srv.PackageName())
+		}
 	}
 
-	for srv, deps := range edges {
-		for dep := range deps {
-			graph.AddEdge(dep, srv)
+	// Add edges for each server dep.
+	for k, srv := range stack.Servers {
+		for _, dep := range stack.ParsedServers[k].Deps {
+			for _, backend := range dep.ProvisionPlan.DeclaredStack {
+				if backend == srv.PackageName() {
+					if srv.PackageName() == controllerPkg {
+						// This is expected because the controller is added as a dependency to all servers (including itself).
+						continue
+					}
+					return nil, fnerrors.InternalError("unexpected loop: %s depends on itself", srv.PackageName())
+				}
+
+				fmt.Fprintf(console.Debug(ctx), "adding edge: %s -> %s\n", backend, srv.PackageName())
+				if !graph.AddEdge(backend.String(), srv.PackageName().String()) {
+					return nil, fnerrors.InternalError("server dependency %s -> %s appears multiple times", backend, srv.PackageName())
+				}
+			}
 		}
 	}
 
