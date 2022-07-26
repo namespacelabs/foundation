@@ -11,7 +11,14 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
-func RunE(f func(ctx context.Context, args []string) error) func(*cobra.Command, []string) error {
+type CmdHandler func(context.Context, []string) error
+
+type ArgParser interface {
+	AddFlags(*cobra.Command)
+	Parse(ctx context.Context, args []string) error
+}
+
+func RunE(f CmdHandler) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		ctx, cancel := WithSigIntCancel(cmd.Context())
 		defer cancel()
@@ -20,4 +27,22 @@ func RunE(f func(ctx context.Context, args []string) error) func(*cobra.Command,
 			return f(ctx, args)
 		})
 	}
+}
+
+func CmdWithHandler(cmd *cobra.Command, f CmdHandler, argParsers ...ArgParser) *cobra.Command {
+	for _, parser := range argParsers {
+		parser.AddFlags(cmd)
+	}
+
+	cmd.RunE = RunE(func(ctx context.Context, args []string) error {
+		for _, parser := range argParsers {
+			if err := parser.Parse(ctx, args); err != nil {
+				return err
+			}
+		}
+
+		return f(ctx, args)
+	})
+
+	return cmd
 }

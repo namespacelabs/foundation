@@ -23,8 +23,17 @@ func newRevealCmd() *cobra.Command {
 		Use:   "reveal",
 		Short: "Reveals the specified secret value.",
 		Args:  cobra.MaximumNArgs(1),
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			_, bundle, err := loadBundleFromArgs(ctx, args, nil)
+	}
+
+	cmd.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
+	cmd.Flags().StringVar(&specificEnv, "env", "", "If set, matches specified secret with the named environment (e.g. dev, or prod).")
+	_ = cmd.MarkFlagRequired("secret")
+
+	var locs fncobra.Locations
+	return fncobra.CmdWithHandler(
+		cmd,
+		func(ctx context.Context, args []string) error {
+			_, bundle, err := loadBundleFromArgs(ctx, &locs, nil)
 			if err != nil {
 				return err
 			}
@@ -66,12 +75,6 @@ func newRevealCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
-	}
-
-	cmd.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
-	cmd.Flags().StringVar(&specificEnv, "env", "", "If set, matches specified secret with the named environment (e.g. dev, or prod).")
-	_ = cmd.MarkFlagRequired("secret")
-
-	return cmd
+		},
+		fncobra.NewLocationsParser(&locs))
 }

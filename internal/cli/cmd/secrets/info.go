@@ -13,21 +13,22 @@ import (
 )
 
 func newInfoCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "info",
-		Short: "Describes the contents of the specified server's secrets archive.",
-		Args:  cobra.MaximumNArgs(1),
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			_, bundle, err := loadBundleFromArgs(ctx, args, nil)
+	var locs fncobra.Locations
+	return fncobra.CmdWithHandler(
+		&cobra.Command{
+			Use:   "info",
+			Short: "Describes the contents of the specified server's secrets archive.",
+			Args:  cobra.MaximumNArgs(1),
+		},
+		func(ctx context.Context, args []string) error {
+			_, bundle, err := loadBundleFromArgs(ctx, &locs, nil)
 			if err != nil {
 				return err
 			}
 
 			bundle.DescribeTo(console.Stdout(ctx))
 			return nil
-		}),
-	}
-
-	return cmd
+		},
+		fncobra.NewLocationsParser(&locs),
+	)
 }

@@ -43,41 +43,45 @@ func NewBuildCmd() *cobra.Command {
 	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
 	cmd.Flags().BoolVarP(&continuously, "continuously", "c", continuously, "If set to true, builds continuously, listening to changes to the workspace.")
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
-		serverLocs, specified, err := allServersOrFromArgs(ctx, env, false, args)
-		if err != nil {
-			return err
-		}
+	var env provision.Env
+	return fncobra.CmdWithHandler(
+		cmd,
+		func(ctx context.Context, args []string) error {
+			serverLocs, specified, err := allServersOrFromArgs(ctx, env, false, args)
+			if err != nil {
+				return err
+			}
 
-		_, servers, err := loadServers(ctx, env, serverLocs, specified)
-		if err != nil {
-			return err
-		}
+			_, servers, err := loadServers(ctx, env, serverLocs, specified)
+			if err != nil {
+				return err
+			}
 
-		_, images, err := deploy.ComputeStackAndImages(ctx, env, servers)
-		if err != nil {
-			return err
-		}
+			_, images, err := deploy.ComputeStackAndImages(ctx, env, servers)
+			if err != nil {
+				return err
+			}
 
-		buildAll := compute.Collect(tasks.Action("build.all-images"), images...)
+			buildAll := compute.Collect(tasks.Action("build.all-images"), images...)
 
-		if explain {
-			return compute.Explain(ctx, console.Stdout(ctx), buildAll)
-		}
+			if explain {
+				return compute.Explain(ctx, console.Stdout(ctx), buildAll)
+			}
 
-		if continuously {
-			console.SetIdleLabel(ctx, "waiting for workspace changes")
-			return compute.Continuously(ctx, continuousBuild{allImages: buildAll}, nil)
-		}
+			if continuously {
+				console.SetIdleLabel(ctx, "waiting for workspace changes")
+				return compute.Continuously(ctx, continuousBuild{allImages: buildAll}, nil)
+			}
 
-		res, err := compute.GetValue(ctx, buildAll)
-		if err != nil {
-			return err
-		}
+			res, err := compute.GetValue(ctx, buildAll)
+			if err != nil {
+				return err
+			}
 
-		outputResults(ctx, res)
-		return nil
-	})
+			outputResults(ctx, res)
+			return nil
+		},
+		fncobra.NewEnvParser(&env))
 }
 
 func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[deploy.ResolvedServerImages]) {

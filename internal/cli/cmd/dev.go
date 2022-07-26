@@ -30,13 +30,11 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func NewDevCmd() *cobra.Command {
 	var (
-		envRef       = "dev"
 		servingAddr  string
 		devWebServer = false
 	)
@@ -45,16 +43,19 @@ func NewDevCmd() *cobra.Command {
 		Use:   "dev",
 		Short: "Starts a development session, continuously building and deploying a server.",
 		Args:  cobra.MinimumNArgs(1),
+	}
 
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, sink := tasks.WithStatefulSink(cmd.Context())
+	cmd.Flags().StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
+	cmd.Flags().BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
+
+	var env provision.Env
+	var locs fncobra.Locations
+	return fncobra.CmdWithHandler(
+		cmd,
+		func(ctx context.Context, args []string) error {
+			ctx, sink := tasks.WithStatefulSink(ctx)
 
 			return compute.Do(ctx, func(ctx context.Context) error {
-				root, err := module.FindRoot(ctx, ".")
-				if err != nil {
-					return err
-				}
-
 				lis, err := startListener(servingAddr)
 				if err != nil {
 					return fnerrors.InternalError("Failed to start listener at %q: %w", servingAddr, err)
@@ -62,11 +63,12 @@ func NewDevCmd() *cobra.Command {
 
 				defer lis.Close()
 
-				pl := workspace.NewPackageLoader(root)
+				root := env.Root()
 
+				pl := workspace.NewPackageLoader(root)
 				var serverPackages []string
-				for _, p := range args {
-					parsed, err := pl.LoadByName(ctx, root.RelPackage(p).AsPackageName())
+				for _, p := range locs.All() {
+					parsed, err := pl.LoadByName(ctx, p.AsPackageName())
 					if err != nil {
 						return err
 					}
@@ -96,7 +98,7 @@ func NewDevCmd() *cobra.Command {
 							AbsRoot:           root.Abs(),
 							PackageName:       serverPackages[0],
 							AdditionalServers: serverPackages[1:],
-							EnvName:           envRef,
+							EnvName:           env.Name(),
 						},
 					},
 				})
@@ -161,13 +163,9 @@ func NewDevCmd() *cobra.Command {
 				})
 			})
 		},
-	}
-
-	cmd.Flags().StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
-	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to provision (as defined in the workspace).")
-	cmd.Flags().BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
-
-	return cmd
+		fncobra.NewEnvParser(&env),
+		fncobra.NewLocationsParser(&locs),
+	)
 }
 
 func updateWebUISticky(ctx context.Context, format string, args ...any) {
