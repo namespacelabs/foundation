@@ -104,10 +104,6 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 			MinimumApi:   int32(m.Foundation.MinimumAPI),
 			ToolsVersion: int32(m.Foundation.ToolsVersion),
 		}
-
-		if err := workspace.ValidateAPIRequirements(m.ModuleName, w.Foundation); err != nil {
-			return nil, err
-		}
 	}
 
 	for moduleName, relPath := range m.Replaces {

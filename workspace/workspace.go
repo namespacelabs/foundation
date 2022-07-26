@@ -50,8 +50,16 @@ func FindModuleRoot(dir string) (string, error) {
 	return ModuleLoader.FindModuleRoot(dir)
 }
 
+// Loads and validates a module at a given path.
 func ModuleAt(ctx context.Context, path string) (WorkspaceData, error) {
-	return ModuleLoader.ModuleAt(ctx, path)
+	ws, err := ModuleLoader.ModuleAt(ctx, path)
+	if err != nil {
+		return ws, err
+	}
+	if err := validateAPIRequirements(ws.Parsed().ModuleName, ws.Parsed().Foundation); err != nil {
+		return ws, err
+	}
+	return ws, nil
 }
 
 func RawFindModuleRoot(dir string, names ...string) (string, error) {
@@ -77,10 +85,6 @@ func RawModuleAt(ctx context.Context, path string) (WorkspaceData, error) {
 			return data, fnerrors.Wrapf(nil, err, "failed to parse %s for validation", file)
 		}
 
-		if err := ValidateAPIRequirements(firstPass.ModuleName, firstPass.Foundation); err != nil {
-			return data, err
-		}
-
 		w := &schema.Workspace{}
 		if err := prototext.Unmarshal(moduleBytes, w); err != nil {
 			return data, fnerrors.Wrapf(nil, err, "failed to parse %s", file)
@@ -92,7 +96,7 @@ func RawModuleAt(ctx context.Context, path string) (WorkspaceData, error) {
 	})
 }
 
-func ValidateAPIRequirements(moduleName string, w *schema.Workspace_FoundationRequirements) error {
+func validateAPIRequirements(moduleName string, w *schema.Workspace_FoundationRequirements) error {
 	if w.GetMinimumApi() > versions.APIVersion {
 		return fnerrors.DoesNotMeetVersionRequirements(moduleName, w.GetMinimumApi(), versions.APIVersion)
 	}
