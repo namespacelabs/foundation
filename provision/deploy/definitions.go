@@ -236,6 +236,8 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 	return &handlerResult{r.stack, allOps, computed, perServer}, nil
 }
 
+const controllerPkg = "namespacelabs.dev/foundation/std/runtime/kubernetes/controller"
+
 func ensureInvocationOrder(ctx context.Context, stack *stack.Stack, perServer map[schema.PackageName]*serverDefs) ([]*schema.SerializedInvocation, error) {
 	// We make sure that serialized invocations produced by a server A, that
 	// depends on server B, are always run after B's serialized invocations.
@@ -256,14 +258,17 @@ func ensureInvocationOrder(ctx context.Context, stack *stack.Stack, perServer ma
 	for k, srv := range stack.Servers {
 		for _, dep := range stack.ParsedServers[k].Deps {
 			for _, backend := range dep.ProvisionPlan.DeclaredStack {
-				// Skip self loops here.
-				// We add runtime-specific controllers to all servers - including themselves.
-				// TODO fix this earlier?
-				if backend != srv.PackageName() {
-					fmt.Fprintf(console.Debug(ctx), "adding edge: %s -> %s\n", backend, srv.PackageName())
-					if !graph.AddEdge(backend.String(), srv.PackageName().String()) {
-						return nil, fnerrors.InternalError("server dependency %s -> %s appears multiple times", backend, srv.PackageName())
+				if backend == srv.PackageName() {
+					if srv.PackageName() == controllerPkg {
+						// This is expected because the controller is added as a dependency to all servers (including itself).
+						continue
 					}
+					return nil, fnerrors.InternalError("unexpected loop: %s depends on itself", srv.PackageName())
+				}
+
+				fmt.Fprintf(console.Debug(ctx), "adding edge: %s -> %s\n", backend, srv.PackageName())
+				if !graph.AddEdge(backend.String(), srv.PackageName().String()) {
+					return nil, fnerrors.InternalError("server dependency %s -> %s appears multiple times", backend, srv.PackageName())
 				}
 			}
 		}
