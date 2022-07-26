@@ -8,12 +8,12 @@ import (
 	"context"
 	"encoding/base64"
 
-	"github.com/aws/aws-sdk-go-v2/service/eks/types"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-func Kubeconfig(cluster *types.Cluster) (*clientcmdapi.Config, error) {
+func Kubeconfig(awsCluster *AwsCluster) (*clientcmdapi.Config, error) {
+	cluster := awsCluster.Cluster
 	if cluster.Name == nil {
 		return nil, fnerrors.BadInputError("cluster name is missing")
 	}

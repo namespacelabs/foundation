@@ -28,8 +28,10 @@ func PrepareIrsa(eksCluster *EKSCluster, iamRole, namespace, serviceAccount stri
 		return nil, fnerrors.InternalError("eks_cluster.arn is missing")
 	}
 
-	if eksCluster.OidcIssuer == "" {
-		return nil, fnerrors.BadInputError("eks_cluster does not have an OIDC issuer assigned")
+	if !eksCluster.HasOidcProvider {
+		return nil, fnerrors.UsageError(
+			"See https://docs.namespace.so/guides/production/#no-oidc-provider-for-a-cluster for ways to solve this issue",
+			"eks_cluster does not have an OIDC issuer assigned: %s", eksCluster.OidcIssuer)
 	}
 
 	clusterArn, err := arn.Parse(eksCluster.Arn)

@@ -7,12 +7,15 @@ package eks
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/eks/types"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/providers/aws/auth"
@@ -139,11 +142,12 @@ func PrepareClusterInfo(ctx context.Context, s *Session) (*EKSCluster, error) {
 		return nil, nil
 	}
 
-	// XXX use a compute.Computable here to cache the cluster information if multiple servers depend on it.
-	cluster, err := DescribeCluster(ctx, s, sysInfo.EksClusterName)
+	// XXX use a compute.Computable here to cache the awsCluster information if multiple servers depend on it.
+	awsCluster, err := DescribeCluster(ctx, s, sysInfo.EksClusterName)
 	if err != nil {
 		return nil, err
 	}
+	cluster := awsCluster.Cluster
 
 	eksCluster := &EKSCluster{
 		Name:  sysInfo.EksClusterName,
@@ -154,19 +158,25 @@ func PrepareClusterInfo(ctx context.Context, s *Session) (*EKSCluster, error) {
 	if cluster.Identity != nil && cluster.Identity.Oidc != nil {
 		eksCluster.OidcIssuer = *cluster.Identity.Oidc.Issuer
 	}
+	eksCluster.HasOidcProvider = awsCluster.HasOidcProvider
 
 	return eksCluster, nil
 }
 
-func DescribeCluster(ctx context.Context, s *Session, name string) (*types.Cluster, error) {
-	return compute.GetValue[*types.Cluster](ctx, &cachedDescribeCluster{session: s, name: name})
+func DescribeCluster(ctx context.Context, s *Session, name string) (*AwsCluster, error) {
+	return compute.GetValue[*AwsCluster](ctx, &cachedDescribeCluster{session: s, name: name})
+}
+
+type AwsCluster struct {
+	Cluster         *types.Cluster
+	HasOidcProvider bool
 }
 
 type cachedDescribeCluster struct {
 	session *Session
 	name    string
 
-	compute.DoScoped[*types.Cluster]
+	compute.DoScoped[*AwsCluster]
 }
 
 func (cd *cachedDescribeCluster) Action() *tasks.ActionEvent {
@@ -179,19 +189,61 @@ func (cd *cachedDescribeCluster) Inputs() *compute.In {
 
 func (cd *cachedDescribeCluster) Output() compute.Output { return compute.Output{NotCacheable: true} }
 
-func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved) (*types.Cluster, error) {
-	out, err := cd.session.eks.DescribeCluster(ctx, &eks.DescribeClusterInput{
-		Name: &cd.name,
-	})
-	if err != nil {
-		return nil, auth.CheckNeedsLoginOr(cd.session.sesh, err, func(err error) error {
-			return fnerrors.New("eks: describe cluster failed: %w", err)
+func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved) (*AwsCluster, error) {
+	// Doing two requests to AWS in parallel since each takes 600-700ms.
+	// Total time is still around 1000-1100ms.
+	eg := executor.New(ctx, "eks.describe-cluster")
+
+	var output eks.DescribeClusterOutput
+	eg.Go(func(ctx context.Context) error {
+		out, err := cd.session.eks.DescribeCluster(ctx, &eks.DescribeClusterInput{
+			Name: &cd.name,
 		})
+		if err != nil {
+			return auth.CheckNeedsLoginOr(cd.session.sesh, err, func(err error) error {
+				return fnerrors.New("eks: describe cluster failed: %w", err)
+			})
+		}
+
+		if out.Cluster == nil {
+			return fnerrors.InvocationError("api didn't return a cluster description as expected")
+		}
+
+		output = *out
+		return nil
+	})
+
+	var oidcProviders iam.ListOpenIDConnectProvidersOutput
+	eg.Go(func(ctx context.Context) error {
+		providers, err := cd.session.iam.ListOpenIDConnectProviders(ctx, &iam.ListOpenIDConnectProvidersInput{})
+		if err != nil {
+			return auth.CheckNeedsLoginOr(cd.session.sesh, err, func(err error) error {
+				return fnerrors.InvocationError("failed to list OpenID Connect providers: %w", err)
+			})
+		}
+
+		oidcProviders = *providers
+
+		return nil
+	})
+
+	err := eg.Wait()
+	if err != nil {
+		return nil, err
 	}
 
-	if out.Cluster == nil {
-		return nil, fnerrors.InvocationError("api didn't return a cluster description as expected")
+	hasOidcProvider := false
+	issuerParts := strings.Split(*output.Cluster.Identity.Oidc.Issuer, "/")
+	issuerId := issuerParts[len(issuerParts)-1]
+	for _, oidcProvider := range oidcProviders.OpenIDConnectProviderList {
+		if strings.HasSuffix(*oidcProvider.Arn, issuerId) {
+			hasOidcProvider = true
+			break
+		}
 	}
 
-	return out.Cluster, nil
+	return &AwsCluster{
+		Cluster:         output.Cluster,
+		HasOidcProvider: hasOidcProvider,
+	}, nil
 }

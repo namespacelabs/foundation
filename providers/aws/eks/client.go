@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/service/eks"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -18,6 +19,7 @@ type Session struct {
 	selector devhost.Selector
 	sesh     *awsprovider.Session
 	eks      *eks.Client
+	iam      *iam.Client
 }
 
 func NewSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
@@ -31,6 +33,7 @@ func NewSession(ctx context.Context, devHost *schema.DevHost, selector devhost.S
 		selector: selector,
 		sesh:     sesh,
 		eks:      eks.NewFromConfig(sesh.Config()),
+		iam:      iam.NewFromConfig(sesh.Config()),
 	}, nil
 }
 
