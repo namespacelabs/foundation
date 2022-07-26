@@ -82,7 +82,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		defer done()
 	}
 
-	setupViper()
+	SetupViper()
 
 	ctx := context.Background()
 
@@ -91,7 +91,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		ctx, cleanupTracer = actiontracing.SetupTracing(ctx, tracerEndpoint)
 	}
 
-	sink, style, flushLogs := consoleToSink(standardConsole())
+	sink, style, flushLogs := ConsoleToSink(StandardConsole())
 	ctxWithSink := colors.WithStyle(tasks.WithSink(ctx, sink), style)
 
 	debugSink := console.Debug(ctx)
@@ -479,7 +479,7 @@ func newRoot(name string, preRunE func(cmd *cobra.Command, args []string) error)
 	}
 }
 
-func setupViper() {
+func SetupViper() {
 	ensureFnConfig()
 
 	viper.SetEnvPrefix("ns")
@@ -536,13 +536,13 @@ func ensureFnConfig() {
 	}
 }
 
-func standardConsole() (*os.File, bool) {
+func StandardConsole() (*os.File, bool) {
 	isStdoutTerm := termios.IsTerm(os.Stdout.Fd())
 	isStderrTerm := termios.IsTerm(os.Stderr.Fd())
 	return os.Stderr, isStdoutTerm && isStderrTerm
 }
 
-func consoleToSink(out *os.File, isTerm bool) (tasks.ActionSink, colors.Style, func()) {
+func ConsoleToSink(out *os.File, isTerm bool) (tasks.ActionSink, colors.Style, func()) {
 	maxLogLevel := viper.GetInt("console_log_level")
 	if isTerm && !viper.GetBool("console_no_colors") {
 		consoleSink := consolesink.NewSink(out, isTerm, maxLogLevel)
