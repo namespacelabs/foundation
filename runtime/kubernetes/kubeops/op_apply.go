@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
@@ -212,11 +213,41 @@ func registerApply() {
 								return ready, nil
 							}))
 				})
+
 			}
 
 			return &ops.HandleResult{
 				Waiters: waiters,
 			}, nil
+
+		case "Namespace":
+			// Special-case namespace, we don't return until the default service account has been created.
+			c, err := k8s.NewForConfig(restcfg)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := tasks.Action("kubernetes.apply.wait-for-namespace").Arg("name", header.Name).Run(ctx, func(ctx context.Context) error {
+				w, err := c.CoreV1().ServiceAccounts(header.Name).Watch(ctx, metav1.ListOptions{})
+				if err != nil {
+					return fnerrors.InternalError("kubernetes: failed to wait until the namespace was ready: %w", err)
+				}
+
+				defer w.Stop()
+
+				// Wait until the default service account has been created.
+				for ev := range w.ResultChan() {
+					if account, ok := ev.Object.(*v1.ServiceAccount); ok && ev.Type == watch.Added {
+						if account.Name == "default" {
+							return nil // Service account is ready.
+						}
+					}
+				}
+
+				return nil
+			}); err != nil {
+				return nil, err
+			}
 		}
 
 		return nil, nil
