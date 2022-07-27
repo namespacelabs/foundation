@@ -38,17 +38,22 @@ func NewUseCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO: this, and other commands, should be dynamically discovered. See #414.
 func newPsql() *cobra.Command {
-	// TODO: this, and other commands, should be dynamically discovered. See #414.
-	h := hydrateArgs{envRef: "dev", rehydrateOnly: true}
-
+	var res hydrateResult
 	var database string
-	psql := &cobra.Command{
-		Use:   "psql",
-		Short: "Start a Postgres SQL shell for the specified server.",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			return runPostgresCmd(ctx, h, database, args, func(ctx context.Context, rt kubernetes.K8sRuntime, bind databaseBind, opts runtime.ServerRunOpts) error {
+
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "psql",
+			Short: "Start a Postgres SQL shell for the specified server.",
+		}).
+		WithFlags(func(cmd *cobra.Command) {
+			cmd.Flags().StringVar(&database, "database", "", "Connect to the specified database.")
+		}).
+		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
+		Do(func(ctx context.Context) error {
+			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt kubernetes.K8sRuntime, bind databaseBind, opts runtime.ServerRunOpts) error {
 				opts.Command = []string{"psql"}
 				opts.Args = []string{
 					"-h", bind.Database.HostedAt.Address,
@@ -63,99 +68,93 @@ func newPsql() *cobra.Command {
 					Stderr: os.Stderr,
 				})
 			})
-		}),
-	}
-
-	psql.Flags().StringVar(&database, "database", "", "Connect to the specified database.")
-
-	h.Configure(psql)
-	return psql
+		})
 }
 
+// TODO: this, and other commands, should be dynamically discovered. See #414.
 func newPgdump() *cobra.Command {
-	// TODO: this, and other commands, should be dynamically discovered. See #414.
-	h := hydrateArgs{envRef: "dev", rehydrateOnly: true}
+	var res hydrateResult
+	var database string
+	var out string
 
-	pgdump := &cobra.Command{
-		Use:   "pgdump",
-		Short: "Performs a dump of the contents of an existing database.",
-		Args:  cobra.MaximumNArgs(1),
-	}
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "pgdump",
+			Short: "Performs a dump of the contents of an existing database.",
+		}).
+		WithFlags(func(cmd *cobra.Command) {
+			cmd.Flags().StringVar(&database, "database", "", "Connect to the specified database.")
+			cmd.Flags().StringVar(&out, "out", "", "If set, dumps the output to the specified file.")
+		}).
+		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
+		Do(func(ctx context.Context) error {
+			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt kubernetes.K8sRuntime, bind databaseBind, opts runtime.ServerRunOpts) error {
+				opts.Command = []string{"pg_dump"}
+				opts.Args = []string{
+					"-h", bind.Database.HostedAt.Address,
+					"-p", fmt.Sprintf("%d", bind.Database.HostedAt.Port),
+					"-U", "postgres",
+					bind.Database.Name,
+				}
 
-	database := pgdump.Flags().String("database", "", "Connect to the specified database.")
-	out := pgdump.Flags().String("out", "", "If set, dumps the output to the specified file.")
+				var outw io.Writer
+				if out != "" {
+					f, err := os.Create(out)
+					if err != nil {
+						return err
+					}
+					defer f.Close()
+					outw = f
+				} else {
+					outw = console.Stdout(ctx)
+				}
 
-	pgdump.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return runPostgresCmd(ctx, h, *database, args, func(ctx context.Context, rt kubernetes.K8sRuntime, bind databaseBind, opts runtime.ServerRunOpts) error {
-			opts.Command = []string{"pg_dump"}
-			opts.Args = []string{
-				"-h", bind.Database.HostedAt.Address,
-				"-p", fmt.Sprintf("%d", bind.Database.HostedAt.Port),
-				"-U", "postgres",
-				bind.Database.Name,
-			}
+				return rt.RunOneShot(ctx, "pgdump-"+ids.NewRandomBase32ID(8), opts, outw, false)
+			})
+		})
+}
 
-			var outw io.Writer
-			if *out != "" {
-				f, err := os.Create(*out)
+// TODO: this, and other commands, should be dynamically discovered. See #414.
+func newPgrestore() *cobra.Command {
+	var res hydrateResult
+	var database string
+	var restore string
+
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "pgrestore",
+			Short: "Performs a restore of the contents of an existing backup.",
+		}).
+		WithFlags(func(cmd *cobra.Command) {
+			cmd.Flags().StringVar(&database, "database", "", "Connect to the specified database.")
+			cmd.Flags().StringVar(&restore, "restore", "", "The contents to be restored.")
+
+			_ = cobra.MarkFlagRequired(cmd.Flags(), "restore")
+		}).
+		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
+		Do(func(ctx context.Context) error {
+			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt kubernetes.K8sRuntime, bind databaseBind, opts runtime.ServerRunOpts) error {
+				opts.Command = []string{"psql"}
+				opts.Args = []string{
+					"-h", bind.Database.HostedAt.Address,
+					"-p", fmt.Sprintf("%d", bind.Database.HostedAt.Port),
+					bind.Database.Name, "postgres",
+				}
+
+				f, err := os.Open(restore)
 				if err != nil {
 					return err
 				}
+
 				defer f.Close()
-				outw = f
-			} else {
-				outw = console.Stdout(ctx)
-			}
 
-			return rt.RunOneShot(ctx, "pgdump-"+ids.NewRandomBase32ID(8), opts, outw, false)
-		})
-	})
-
-	h.Configure(pgdump)
-	return pgdump
-}
-
-func newPgrestore() *cobra.Command {
-	// TODO: this, and other commands, should be dynamically discovered. See #414.
-	h := hydrateArgs{envRef: "dev", rehydrateOnly: true}
-
-	pgrestore := &cobra.Command{
-		Use:   "pgrestore",
-		Short: "Performs a restore of the contents of an existing backup.",
-		Args:  cobra.MaximumNArgs(1),
-	}
-
-	database := pgrestore.Flags().String("database", "", "Connect to the specified database.")
-	restore := pgrestore.Flags().String("restore", "", "The contents to be restored.")
-
-	_ = cobra.MarkFlagRequired(pgrestore.Flags(), "restore")
-
-	pgrestore.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return runPostgresCmd(ctx, h, *database, args, func(ctx context.Context, rt kubernetes.K8sRuntime, bind databaseBind, opts runtime.ServerRunOpts) error {
-			opts.Command = []string{"psql"}
-			opts.Args = []string{
-				"-h", bind.Database.HostedAt.Address,
-				"-p", fmt.Sprintf("%d", bind.Database.HostedAt.Port),
-				bind.Database.Name, "postgres",
-			}
-
-			f, err := os.Open(*restore)
-			if err != nil {
-				return err
-			}
-
-			defer f.Close()
-
-			return rt.RunAttached(ctx, "pgrestore-"+ids.NewRandomBase32ID(8), opts, runtime.TerminalIO{
-				Stdin:  f,
-				Stdout: os.Stdout,
-				Stderr: os.Stderr,
+				return rt.RunAttached(ctx, "pgrestore-"+ids.NewRandomBase32ID(8), opts, runtime.TerminalIO{
+					Stdin:  f,
+					Stdout: os.Stdout,
+					Stderr: os.Stderr,
+				})
 			})
 		})
-	})
-
-	h.Configure(pgrestore)
-	return pgrestore
 }
 
 type databaseBind struct {
@@ -212,16 +211,7 @@ func (d databaseItem) Title() string       { return d.bind.Database.Name }
 func (d databaseItem) Description() string { return d.bind.PackageName }
 func (d databaseItem) FilterValue() string { return d.bind.Database.Name }
 
-func runPostgresCmd(ctx context.Context, h hydrateArgs, database string, args []string, run func(context.Context, kubernetes.K8sRuntime, databaseBind, runtime.ServerRunOpts) error) error {
-	res, err := h.ComputeStack(ctx, args)
-	if err != nil {
-		return err
-	}
-
-	if len(res.Focus) != 1 {
-		return fnerrors.New("psql takes exactly one server, not more, not less")
-	}
-
+func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, run func(context.Context, kubernetes.K8sRuntime, databaseBind, runtime.ServerRunOpts) error) error {
 	config, err := determineConfiguration(res)
 	if err != nil {
 		return err
