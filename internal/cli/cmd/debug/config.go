@@ -20,20 +20,23 @@ import (
 )
 
 func newComputeConfigCmd() *cobra.Command {
-	envRef := "dev"
-
-	cmd := &cobra.Command{
-		Use:   "compute-config",
-		Short: "Computes the runtime configuration of the specified server.",
-		Args:  cobra.RangeArgs(0, 1),
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			t, err := requireServer(ctx, args, envRef)
-			if err != nil {
-				return err
-			}
-
-			plan, err := deploy.PrepareDeployServers(ctx, t.Env(), []provision.Server{t}, nil)
+	var (
+		env     provision.Env
+		locs    fncobra.Locations
+		servers fncobra.Servers
+	)
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "compute-config",
+			Short: "Computes the runtime configuration of the specified server.",
+		}).
+		With(
+			fncobra.ParseEnv(&env),
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true}),
+			fncobra.ParseServers(&servers, &env, &locs)).
+		Do(func(ctx context.Context) error {
+			server := servers.Servers[0]
+			plan, err := deploy.PrepareDeployServers(ctx, env, servers.Servers, nil)
 			if err != nil {
 				return err
 			}
@@ -45,16 +48,16 @@ func newComputeConfigCmd() *cobra.Command {
 
 			stack := computedPlan.ComputedStack
 
-			s := stack.Get(t.PackageName())
+			s := stack.Get(server.PackageName())
 			if s == nil {
-				return fnerrors.InternalError("expected to find %s in the stack, but didn't", t.PackageName())
+				return fnerrors.InternalError("expected to find %s in the stack, but didn't", server.PackageName())
 			}
 
 			sargs := frontend.StartupInputs{
 				Stack:         stack.Proto(),
-				Server:        t.Proto(),
+				Server:        server.Proto(),
 				ServerImage:   "imageversion",
-				ServerRootAbs: t.Location.Abs(),
+				ServerRootAbs: server.Location.Abs(),
 			}
 
 			evald := stack.GetParsed(s.PackageName())
@@ -67,10 +70,5 @@ func newComputeConfigCmd() *cobra.Command {
 			j := json.NewEncoder(os.Stdout)
 			j.SetIndent("", "  ")
 			return j.Encode(c)
-		}),
-	}
-
-	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to provision (as defined in the workspace).")
-
-	return cmd
+		})
 }
