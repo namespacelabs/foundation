@@ -31,7 +31,7 @@ func (sr staticRegistry) AllocateName(repository string) compute.Computable[oci.
 
 	imgid := oci.ImageID{Repository: w}
 
-	return StaticName(sr.r, imgid)
+	return StaticName(sr.r, imgid, nil)
 }
 
 func (sr staticRegistry) AuthRepository(img oci.ImageID) (oci.AllocatedName, error) {

@@ -74,15 +74,16 @@ func GetRegistryByName(ctx context.Context, conf *devhost.ConfigKey, name string
 	return nil, fnerrors.UserError(nil, "%q is not a known registry provider", name)
 }
 
-func StaticName(registry *registry.Registry, imageID oci.ImageID) compute.Computable[oci.AllocatedName] {
+func StaticName(registry *registry.Registry, imageID oci.ImageID, keychain oci.Keychain) compute.Computable[oci.AllocatedName] {
 	return compute.Map(tasks.Action("registry.allocate-tag").Arg("ref", imageID.ImageRef()), compute.Inputs().
 		JSON("imageID", imageID).
-		Indigestible("registry", registry),
+		Indigestible("registry", registry).Indigestible("keychain", keychain),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, r compute.Resolved) (oci.AllocatedName, error) {
 			return oci.AllocatedName{
 				InsecureRegistry: registry.GetInsecure(),
 				ImageID:          imageID,
+				Keychain:         keychain,
 			}, nil
 		})
 }

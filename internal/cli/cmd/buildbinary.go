@@ -138,7 +138,7 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 		if baseRepository != "" {
 			tag = registry.StaticName(nil, oci.ImageID{
 				Repository: filepath.Join(baseRepository, pkg.PackageName().String()),
-			})
+			}, nil)
 		} else {
 			tag, err = registry.AllocateName(ctx, env, pkg.PackageName())
 			if err != nil {
