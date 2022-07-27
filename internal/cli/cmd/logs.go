@@ -16,17 +16,28 @@ import (
 )
 
 func NewLogsCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "logs",
-		Short: "Stream logs of the specified server.",
-		Args:  cobra.RangeArgs(0, 1),
-	}
+	var (
+		env     provision.Env
+		locs    fncobra.Locations
+		servers fncobra.Servers
+	)
 
-	cmd.Flags().BoolVar(&kubernetes.ObserveInitContainerLogs, "observe_init_containers", kubernetes.ObserveInitContainerLogs, "Kubernetes-specific flag to also fetch logs from init containers.")
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "logs",
+			Short: "Stream logs of the specified server.",
+		}).
+		WithFlags(func(cmd *cobra.Command) {
+			cmd.Flags().BoolVar(&kubernetes.ObserveInitContainerLogs, "observe_init_containers", kubernetes.ObserveInitContainerLogs, "Kubernetes-specific flag to also fetch logs from init containers.")
+		}).
+		With(
+			fncobra.ParseEnv(&env),
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true}),
+			fncobra.ParseServers(&servers, &env, &locs)).
+		Do(func(ctx context.Context) error {
+			console.SetIdleLabel(ctx, "listening for deployment changes")
+			server := servers.Servers[0]
 
-	return fncobra.CmdWithServer(cmd, func(ctx context.Context, server provision.Server) error {
-		console.SetIdleLabel(ctx, "listening for deployment changes")
-
-		return logtail.Listen(ctx, server.Env(), server.Proto())
-	})
+			return logtail.Listen(ctx, server.Env(), server.Proto())
+		})
 }
