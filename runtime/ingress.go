@@ -57,7 +57,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 
 		var protocol *string
 		var protocolDetails []*anypb.Any
-		var extensions []*anypb.Any
+		var httpExtensions []*anypb.Any
 		for _, md := range endpoint.ServiceMetadata {
 			if md.Protocol != "" {
 				if protocol == nil {
@@ -71,7 +71,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 			}
 
 			if md.Kind == "http-extension" && md.Details != nil {
-				extensions = append(extensions, md.Details)
+				httpExtensions = append(httpExtensions, md.Details)
 			}
 		}
 
@@ -139,7 +139,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 			Name:        endpoint.ServiceName,
 			Owner:       endpoint.ServerOwner,
 			Endpoint:    endpoint,
-			Extension:   extensions,
+			Extension:   httpExtensions,
 			HttpPath:    paths,
 			GrpcService: grpc,
 		}, endpoint.AllocatedName)

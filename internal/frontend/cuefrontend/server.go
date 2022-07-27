@@ -140,69 +140,25 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	out.Import = append(out.Import, webServices.PackageNamesAsString()...)
 
 	for name, svc := range bits.Services {
-		if svc.Metadata.Protocol == "" {
-			return nil, fnerrors.UserError(loc, "service[%s]: a protocol is required", name)
-		}
-
-		if svc.Metadata.ExperimentalDetails.TypeUrl != "" {
-			return nil, fnerrors.UserError(loc, "service[%s]: only additional metadata support details", name)
-		}
-
-		parsed := &schema.Server_ServiceSpec{
-			Name:  name,
-			Label: svc.Label,
-			Port:  &schema.Endpoint_Port{Name: svc.Name, ContainerPort: svc.ContainerPort},
-			Metadata: []*schema.ServiceMetadata{{
-				Kind:     svc.Metadata.Kind,
-				Protocol: svc.Metadata.Protocol,
-			}},
-			Internal: svc.Internal,
-		}
-
-		for _, add := range svc.ExperimentalAdditionalMetadata {
-			details, err := parseDetails(add.ExperimentalDetails)
-			if err != nil {
-				return nil, fnerrors.UserError(loc, "service[%s]: failed to parse: %w", name, err)
-			}
-			parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{Kind: add.Kind, Protocol: add.Protocol, Details: details})
+		parsed, err := parseService(loc, "service", name, svc)
+		if err != nil {
+			return nil, err
 		}
 
 		out.Service = append(out.Service, parsed)
 	}
 
 	for name, svc := range bits.Ingress {
-		if svc.Metadata.Protocol == "" {
-			return nil, fnerrors.UserError(loc, "ingress[%s]: a protocol is required", name)
-		}
-
 		if svc.Internal {
 			return nil, fnerrors.UserError(loc, "ingress[%s]: can't be internal", name)
 		}
 
-		if svc.Metadata.ExperimentalDetails.TypeUrl != "" {
-			return nil, fnerrors.UserError(loc, "service[%s]: only additional metadata support details", name)
+		parsed, err := parseService(loc, "ingress", name, svc)
+		if err != nil {
+			return nil, err
 		}
 
-		parsed := &schema.Server_ServiceSpec{
-			Name:  name,
-			Label: svc.Label,
-			Port:  &schema.Endpoint_Port{Name: svc.Name, ContainerPort: svc.ContainerPort},
-			Metadata: []*schema.ServiceMetadata{{
-				Kind:     svc.Metadata.Kind,
-				Protocol: svc.Metadata.Protocol,
-			}},
-			Internal: svc.Internal,
-		}
-
-		for _, add := range svc.ExperimentalAdditionalMetadata {
-			details, err := parseDetails(add.ExperimentalDetails)
-			if err != nil {
-				return nil, fnerrors.UserError(loc, "ingress[%s]: failed to parse: %w", name, err)
-			}
-			parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{Kind: add.Kind, Protocol: add.Protocol, Details: details})
-		}
-
-		out.Service = append(out.Service, parsed)
+		out.Ingress = append(out.Ingress, parsed)
 	}
 
 	// Make services and endpoints stable.
@@ -252,6 +208,36 @@ func parseDetails(detail inlineAnyJson) (*anypb.Any, error) {
 	if err := protojson.Unmarshal([]byte(detail.Body), msg); err != nil {
 		return nil, err
 	}
+	return anypb.New(msg)
+}
 
-	return any, nil
+func parseService(loc workspace.Location, kind, name string, svc cueServiceSpec) (*schema.Server_ServiceSpec, error) {
+	if svc.Metadata.ExperimentalDetails.TypeUrl != "" {
+		return nil, fnerrors.UserError(loc, "%s[%s]: only additional metadata support details", kind, name)
+	}
+
+	if svc.Metadata.Protocol == "" {
+		return nil, fnerrors.UserError(loc, "%s[%s]: a protocol is required", kind, name)
+	}
+
+	parsed := &schema.Server_ServiceSpec{
+		Name:  name,
+		Label: svc.Label,
+		Port:  &schema.Endpoint_Port{Name: svc.Name, ContainerPort: svc.ContainerPort},
+		Metadata: []*schema.ServiceMetadata{{
+			Kind:     svc.Metadata.Kind,
+			Protocol: svc.Metadata.Protocol,
+		}},
+		Internal: svc.Internal,
+	}
+
+	for _, add := range svc.ExperimentalAdditionalMetadata {
+		details, err := parseDetails(add.ExperimentalDetails)
+		if err != nil {
+			return nil, fnerrors.UserError(loc, "%s[%s]: failed to parse: %w", kind, name, err)
+		}
+		parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{Kind: add.Kind, Protocol: add.Protocol, Details: details})
+	}
+
+	return parsed, nil
 }
