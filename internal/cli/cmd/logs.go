@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
@@ -27,8 +28,8 @@ func NewLogsCmd() *cobra.Command {
 			Use:   "logs",
 			Short: "Stream logs of the specified server.",
 		}).
-		WithFlags(func(cmd *cobra.Command) {
-			cmd.Flags().BoolVar(&kubernetes.ObserveInitContainerLogs, "observe_init_containers", kubernetes.ObserveInitContainerLogs, "Kubernetes-specific flag to also fetch logs from init containers.")
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.BoolVar(&kubernetes.ObserveInitContainerLogs, "observe_init_containers", kubernetes.ObserveInitContainerLogs, "Kubernetes-specific flag to also fetch logs from init containers.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),

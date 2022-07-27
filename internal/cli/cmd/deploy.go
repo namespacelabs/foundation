@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -48,13 +49,13 @@ func NewDeployCmd() *cobra.Command {
 			Short: "Deploy one, or more servers to the specified environment.",
 			Args:  cobra.ArbitraryArgs,
 		}).
-		WithFlags(func(cmd *cobra.Command) {
-			cmd.Flags().BoolVar(&deployOpts.alsoWait, "wait", true, "Wait for the deployment after running.")
-			cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
-			cmd.Flags().BoolVar(&runtime.NamingNoTLS, "naming_no_tls", runtime.NamingNoTLS, "If set to true, no TLS certificate is requested for ingress names.")
-			cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
-			cmd.Flags().StringVar(&serializePath, "serialize_to", "", "If set, rather than execute on the plan, output a serialization of the plan.")
-			cmd.Flags().StringVar(&deployOpts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.BoolVar(&deployOpts.alsoWait, "wait", true, "Wait for the deployment after running.")
+			flags.BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
+			flags.BoolVar(&runtime.NamingNoTLS, "naming_no_tls", runtime.NamingNoTLS, "If set to true, no TLS certificate is requested for ingress names.")
+			flags.Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
+			flags.StringVar(&serializePath, "serialize_to", "", "If set, rather than execute on the plan, output a serialization of the plan.")
+			flags.StringVar(&deployOpts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -29,8 +30,8 @@ func newGoSourcesCmd() *cobra.Command {
 		Cmd(&cobra.Command{
 			Use:   "go-sources",
 			Short: "List go sources of a package."}).
-		WithFlags(func(cmd *cobra.Command) {
-			cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),

@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -48,8 +49,8 @@ func newPsql() *cobra.Command {
 			Use:   "psql",
 			Short: "Start a Postgres SQL shell for the specified server.",
 		}).
-		WithFlags(func(cmd *cobra.Command) {
-			cmd.Flags().StringVar(&database, "database", "", "Connect to the specified database.")
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.StringVar(&database, "database", "", "Connect to the specified database.")
 		}).
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
 		Do(func(ctx context.Context) error {
@@ -82,9 +83,9 @@ func newPgdump() *cobra.Command {
 			Use:   "pgdump",
 			Short: "Performs a dump of the contents of an existing database.",
 		}).
-		WithFlags(func(cmd *cobra.Command) {
-			cmd.Flags().StringVar(&database, "database", "", "Connect to the specified database.")
-			cmd.Flags().StringVar(&out, "out", "", "If set, dumps the output to the specified file.")
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.StringVar(&database, "database", "", "Connect to the specified database.")
+			flags.StringVar(&out, "out", "", "If set, dumps the output to the specified file.")
 		}).
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
 		Do(func(ctx context.Context) error {
@@ -125,11 +126,10 @@ func newPgrestore() *cobra.Command {
 			Use:   "pgrestore",
 			Short: "Performs a restore of the contents of an existing backup.",
 		}).
-		WithFlags(func(cmd *cobra.Command) {
-			cmd.Flags().StringVar(&database, "database", "", "Connect to the specified database.")
-			cmd.Flags().StringVar(&restore, "restore", "", "The contents to be restored.")
-
-			_ = cobra.MarkFlagRequired(cmd.Flags(), "restore")
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.StringVar(&database, "database", "", "Connect to the specified database.")
+			flags.StringVar(&restore, "restore", "", "The contents to be restored.")
+			_ = cobra.MarkFlagRequired(flags, "restore")
 		}).
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
 		Do(func(ctx context.Context) error {

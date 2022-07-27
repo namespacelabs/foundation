@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
@@ -31,8 +32,8 @@ func newPrintComputedCmd() *cobra.Command {
 			Use:   "print-computed",
 			Short: "Load a service or server definition and print it's computed contents as JSON.",
 		}).
-		WithFlags(func(cmd *cobra.Command) {
-			cmd.Flags().StringVar(&outputType, "output", "json", "One of json, textproto.")
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.StringVar(&outputType, "output", "json", "One of json, textproto.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),

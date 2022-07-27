@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
@@ -46,7 +47,7 @@ func (c *CommandCtrl) With(argParser ...ArgParser) *CommandCtrl {
 	return c
 }
 
-func (c *CommandCtrl) WithFlags(f func(cmd *cobra.Command)) *CommandCtrl {
+func (c *CommandCtrl) WithFlags(f func(flags *pflag.FlagSet)) *CommandCtrl {
 	return c.With(&simpleFlagParser{f})
 }
 
@@ -75,10 +76,10 @@ func (c *CommandCtrl) DoWithArgs(handler CmdHandler) *cobra.Command {
 }
 
 type simpleFlagParser struct {
-	f func(cmd *cobra.Command)
+	f func(flags *pflag.FlagSet)
 }
 
 func (p *simpleFlagParser) AddFlags(cmd *cobra.Command) {
-	p.f(cmd)
+	p.f(cmd.Flags())
 }
 func (p *simpleFlagParser) Parse(ctx context.Context, args []string) error { return nil }

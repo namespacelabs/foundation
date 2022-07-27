@@ -16,6 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/devworkflow"
 	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -47,9 +48,9 @@ func NewDevCmd() *cobra.Command {
 			Short: "Starts a development session, continuously building and deploying a server.",
 			Args:  cobra.MinimumNArgs(1),
 		}).
-		WithFlags(func(cmd *cobra.Command) {
-			cmd.Flags().StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
-			cmd.Flags().BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
+			flags.BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),
