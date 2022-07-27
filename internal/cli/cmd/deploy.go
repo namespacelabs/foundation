@@ -39,6 +39,7 @@ func NewDeployCmd() *cobra.Command {
 		deployOpts    deployOpts
 		env           provision.Env
 		locs          fncobra.Locations
+		servers       fncobra.Servers
 	)
 
 	return fncobra.
@@ -57,19 +58,15 @@ func NewDeployCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.ParseEnv(&env),
-			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true}),
+			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			packages, servers, err := loadServers(ctx, env, locs.Locs, locs.AreSpecified)
+			stack, err := stack.Compute(ctx, servers.Servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 			if err != nil {
 				return err
 			}
 
-			stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
-			if err != nil {
-				return err
-			}
-
-			plan, err := deploy.PrepareDeployStack(ctx, env, stack, servers)
+			plan, err := deploy.PrepareDeployStack(ctx, env, stack, servers.Servers)
 			if err != nil {
 				return err
 			}
@@ -83,13 +80,13 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			deployPlan := deploy.Serialize(env.Workspace(), env.Proto(), stack.Proto(), computed, provision.ServerPackages(servers).PackageNamesAsString())
+			deployPlan := deploy.Serialize(env.Workspace(), env.Proto(), stack.Proto(), computed, provision.ServerPackages(servers.Servers).PackageNamesAsString())
 
 			if serializePath != "" {
 				return protos.WriteFile(serializePath, deployPlan)
 			}
 
-			return completeDeployment(ctx, env.BindWith(packages), computed.Deployer, deployPlan, deployOpts)
+			return completeDeployment(ctx, env.BindWith(servers.SealedPackages), computed.Deployer, deployPlan, deployOpts)
 		})
 }
 

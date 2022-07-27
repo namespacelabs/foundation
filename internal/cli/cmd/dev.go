@@ -28,7 +28,6 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -39,6 +38,7 @@ func NewDevCmd() *cobra.Command {
 		devWebServer = false
 		env          provision.Env
 		locs         fncobra.Locations
+		servers      fncobra.Servers
 	)
 
 	return fncobra.
@@ -50,11 +50,11 @@ func NewDevCmd() *cobra.Command {
 		WithFlags(func(cmd *cobra.Command) {
 			cmd.Flags().StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
 			cmd.Flags().BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
-
 		}).
 		With(
 			fncobra.ParseEnv(&env),
-			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{})).
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{}),
+			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
 			ctx, sink := tasks.WithStatefulSink(ctx)
 
@@ -68,19 +68,9 @@ func NewDevCmd() *cobra.Command {
 
 				root := env.Root()
 
-				pl := workspace.NewPackageLoader(root)
 				var serverPackages []string
-				for _, p := range locs.Locs {
-					parsed, err := pl.LoadByName(ctx, p.AsPackageName())
-					if err != nil {
-						return err
-					}
-
-					if parsed.Server == nil {
-						return fnerrors.UserError(parsed.Location, "`ns dev` works exclusively with servers (for now)")
-					}
-
-					serverPackages = append(serverPackages, parsed.PackageName().String())
+				for _, s := range servers.Servers {
+					serverPackages = append(serverPackages, s.PackageName().String())
 				}
 
 				localHost := lis.Addr().(*net.TCPAddr).IP.String()

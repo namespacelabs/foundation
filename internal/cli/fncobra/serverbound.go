@@ -8,53 +8,82 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func CmdWithServer(cmd *cobra.Command, f func(context.Context, provision.Server) error) *cobra.Command {
-	var envRef string
-	var packageName string
+type Servers struct {
+	Servers        []provision.Server
+	SealedPackages workspace.SealedPackages
+}
 
-	cmd.Flags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")
-	cmd.Flags().StringVar(&packageName, "package_name", "", "Specify the server by package name instead.")
+func ParseServers(serversOut *Servers, env *provision.Env, locs *Locations) *ServersParser {
+	return &ServersParser{
+		serversOut: serversOut,
+		locs:       locs,
+		env:        env,
+	}
+}
 
-	cmd.RunE = RunE(func(ctx context.Context, args []string) error {
-		var root *workspace.Root
-		var pkg schema.PackageName
+type ServersParser struct {
+	serversOut *Servers
+	locs       *Locations
+	env        *provision.Env
+}
 
-		if packageName != "" {
-			var err error
-			root, err = module.FindRoot(ctx, ".")
+func (p *ServersParser) AddFlags(cmd *cobra.Command) {}
+
+func (p *ServersParser) Parse(ctx context.Context, args []string) error {
+	if p.serversOut == nil {
+		return fnerrors.InternalError("serversOut must be set")
+	}
+	if p.locs == nil {
+		return fnerrors.InternalError("locs must be set")
+	}
+	if p.env == nil {
+		return fnerrors.InternalError("env must be set")
+	}
+
+	var servers []provision.Server
+	pl := workspace.NewPackageLoader(p.env.Root())
+	for _, loc := range p.locs.Locs {
+		if err := tasks.Action("package.load-server").Scope(loc.AsPackageName()).Run(ctx, func(ctx context.Context) error {
+			pp, err := pl.LoadByName(ctx, loc.AsPackageName())
+			if err != nil {
+				return fnerrors.Wrap(loc, err)
+			}
+
+			if pp.Server == nil {
+				if p.locs.AreSpecified {
+					return fnerrors.UserError(loc, "expected a server")
+				}
+
+				return nil
+			}
+
+			server, err := p.env.RequireServerWith(ctx, pl, loc.AsPackageName())
 			if err != nil {
 				return err
 			}
 
-			pkg = schema.PackageName(packageName)
-		} else {
-			detectedRoot, loc, err := module.PackageAtArgs(ctx, args)
-			if err != nil {
-				return err
+			// If the user doesn't explicitly specify this server should be loaded, don't load it, if it's tagged as being testonly.
+			if !p.locs.AreSpecified && server.Package.Server.Testonly {
+				return nil
 			}
 
-			root = detectedRoot
-			pkg = loc.AsPackageName()
-		}
-
-		env, err := provision.RequireEnv(root, envRef)
-		if err != nil {
+			servers = append(servers, server)
+			return nil
+		}); err != nil {
 			return err
 		}
+	}
 
-		server, err := env.RequireServer(ctx, pkg)
-		if err != nil {
-			return err
-		}
+	*p.serversOut = Servers{
+		Servers:        servers,
+		SealedPackages: pl.Seal(),
+	}
 
-		return f(ctx, server)
-	})
-
-	return cmd
+	return nil
 }
