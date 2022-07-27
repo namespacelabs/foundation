@@ -6,10 +6,7 @@ package nscloud
 
 import (
 	"sync"
-	"time"
 )
-
-var Expired = time.Unix(0, 0)
 
 type Cache[V any] struct {
 	mu      sync.Mutex
@@ -17,10 +14,9 @@ type Cache[V any] struct {
 }
 
 type result[V any] struct {
-	deadline time.Time
-	once     sync.Once
-	value    V
-	err      error
+	once  sync.Once
+	value V
+	err   error
 }
 
 func NewCache[V any]() *Cache[V] {
@@ -29,33 +25,18 @@ func NewCache[V any]() *Cache[V] {
 	}
 }
 
-func (c *Cache[V]) Compute(key string, produce func() (V, time.Time, error)) (V, error) {
-	now := time.Now()
-
+func (c *Cache[V]) Compute(key string, produce func() (V, error)) (V, error) {
 	c.mu.Lock()
 	v, ok := c.entries[key]
-	if !ok || (!v.deadline.IsZero() && !now.Before(v.deadline)) {
+	if !ok {
 		v = &result[V]{}
 		c.entries[key] = v
 	}
 	c.mu.Unlock()
 
 	v.once.Do(func() {
-		v.value, v.deadline, v.err = produce()
+		v.value, v.err = produce()
 	})
 
-	c.mu.Lock()
-	if !time.Now().Before(v.deadline) || v.err != nil {
-		delete(c.entries, key)
-	}
-	c.mu.Unlock()
-
 	return v.value, v.err
-}
-
-func DontCache[V any](callback func() (V, error)) func() (V, time.Time, error) {
-	return func() (V, time.Time, error) {
-		v, err := callback()
-		return v, Expired, err
-	}
 }
