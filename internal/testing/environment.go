@@ -7,9 +7,12 @@ package testing
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -17,9 +20,12 @@ import (
 	"namespacelabs.dev/go-ids"
 )
 
-var UseVClusters = false
+var (
+	UseVClusters      = false
+	UseNamespaceCloud = false
+)
 
-func PrepareBuildEnv(ctx context.Context, sourceEnv provision.Env, ephemeral bool) provision.Env {
+func PrepareEnv(ctx context.Context, sourceEnv provision.Env, ephemeral bool) provision.Env {
 	testInv := ids.NewRandomBase32ID(8)
 	testEnv := &schema.Environment{
 		Name:      "test-" + testInv,
@@ -31,6 +37,15 @@ func PrepareBuildEnv(ctx context.Context, sourceEnv provision.Env, ephemeral boo
 	devHost := &schema.DevHost{
 		Configure:         devhost.ConfigurationForEnv(sourceEnv).WithoutConstraints(),
 		ConfigurePlatform: sourceEnv.DevHost().ConfigurePlatform,
+	}
+
+	if UseNamespaceCloud {
+		devHost.Configure = []*schema.DevHost_ConfigureEnvironment{
+			{Configuration: protos.WrapAnysOrDie(
+				&registry.Provider{Provider: "nscloud"},
+				&client.HostEnv{Provider: "nscloud"},
+			)},
+		}
 	}
 
 	env := provision.MakeEnv(&workspace.Root{

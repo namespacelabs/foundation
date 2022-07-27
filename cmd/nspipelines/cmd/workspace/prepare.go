@@ -6,14 +6,12 @@ package workspace
 
 import (
 	"context"
-	"log"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -49,17 +47,17 @@ func newPrepareCmd() *cobra.Command {
 			Configure: []*schema.DevHost_ConfigureEnvironment{
 				{
 					Purpose: schema.Environment_DEVELOPMENT,
-					Configuration: wrapAnysOrDie(
+					Configuration: protos.WrapAnysOrDie(
 						&registry.Provider{Provider: "aws/ecr"},
 						&aws.Conf{UseInjectedWebIdentity: true}),
 				}, {
 					Purpose: schema.Environment_DEVELOPMENT,
 					Runtime: "kubernetes",
-					Configuration: wrapAnysOrDie(
+					Configuration: protos.WrapAnysOrDie(
 						&client.HostEnv{Incluster: true}),
 				}, {
 					Purpose: schema.Environment_PRODUCTION,
-					Configuration: wrapAnysOrDie(
+					Configuration: protos.WrapAnysOrDie(
 						&registry.Provider{Provider: "aws/ecr"},
 						&aws.Conf{
 							UseInjectedWebIdentity: true,
@@ -68,7 +66,7 @@ func newPrepareCmd() *cobra.Command {
 				}, {
 					Purpose: schema.Environment_PRODUCTION,
 					Runtime: "kubernetes",
-					Configuration: wrapAnysOrDie(
+					Configuration: protos.WrapAnysOrDie(
 						&client.HostEnv{Provider: "aws/eks"},
 						&eks.EKSCluster{
 							Name: clusterName,
@@ -76,13 +74,13 @@ func newPrepareCmd() *cobra.Command {
 						}),
 				}},
 
-			ConfigureTools: wrapAnysOrDie(
+			ConfigureTools: protos.WrapAnysOrDie(
 				&aws.Conf{UseInjectedWebIdentity: true},
 				&registry.Provider{Provider: "aws/ecr"},
 				&client.HostEnv{Incluster: true}),
 
 			ConfigurePlatform: []*schema.DevHost_ConfigurePlatform{{
-				Configuration: wrapAnysOrDie(
+				Configuration: protos.WrapAnysOrDie(
 					&buildkit.Overrides{
 						BuildkitAddr: *buildkitAddr,
 					}),
@@ -93,18 +91,4 @@ func newPrepareCmd() *cobra.Command {
 	})
 
 	return cmd
-}
-
-func wrapAnysOrDie(srcs ...protoreflect.ProtoMessage) []*anypb.Any {
-	var out []*anypb.Any
-
-	for _, src := range srcs {
-		any, err := anypb.New(src)
-		if err != nil {
-			log.Fatalf("Failed to wrap %s proto in an Any proto: %s", src.ProtoReflect().Descriptor().FullName(), err)
-		}
-		out = append(out, any)
-	}
-
-	return out
 }

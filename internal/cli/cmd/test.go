@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/stack"
@@ -88,62 +89,76 @@ func NewTestCmd() *cobra.Command {
 			stderr := console.Stderr(ctx)
 			pl := workspace.NewPackageLoader(devEnv.Root())
 
-			var parallelTests []compute.Computable[testing.StoredTestResults]
-
 			testOpts.ParentRunID = storedrun.ParentID
 			testOpts.OutputProgress = !parallel
 
-			runs := &storage.TestRuns{}
-
 			style := colors.Ctx(ctx)
-			for _, loc := range locs {
-				// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
-				buildEnv := testing.PrepareBuildEnv(ctx, devEnv, ephemeral)
 
-				status := style.Header.Apply("BUILDING")
-				fmt.Fprintf(stderr, "%s: Test %s\n", loc.AsPackageName(), status)
+			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(locs))
+			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(locs))}
 
-				test, err := testing.PrepareTest(ctx, pl, buildEnv, loc.AsPackageName(), testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
-					var suts []provision.Server
+			if err := tasks.Action("test.prepare").Run(ctx, func(ctx context.Context) error {
+				eg := executor.New(ctx, "test")
+				for k, loc := range locs {
+					k := k     // Capture k.
+					loc := loc // Capture loc.
 
-					for _, pkg := range test.ServersUnderTest {
-						sut, err := buildEnv.RequireServerWith(ctx, pl, schema.PackageName(pkg))
+					eg.Go(func(ctx context.Context) error {
+						// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
+						buildEnv := testing.PrepareEnv(ctx, devEnv, ephemeral)
+
+						status := style.Header.Apply("BUILDING")
+						fmt.Fprintf(stderr, "%s: Test %s\n", loc.AsPackageName(), status)
+
+						test, err := testing.PrepareTest(ctx, pl, buildEnv, loc.AsPackageName(), testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
+							var suts []provision.Server
+
+							for _, pkg := range test.ServersUnderTest {
+								sut, err := buildEnv.RequireServerWith(ctx, pl, schema.PackageName(pkg))
+								if err != nil {
+									return nil, nil, err
+								}
+								suts = append(suts, sut)
+							}
+
+							stack, err := stack.Compute(ctx, suts, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+							if err != nil {
+								return nil, nil, err
+							}
+
+							return suts, stack, nil
+						})
 						if err != nil {
-							return nil, nil, err
+							return fnerrors.UserError(loc, "failed to prepare test: %w", err)
 						}
-						suts = append(suts, sut)
-					}
 
-					stack, err := stack.Compute(ctx, suts, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
-					if err != nil {
-						return nil, nil, err
-					}
+						if parallel || parallelWork {
+							parallelTests[k] = test
+						} else {
+							if explain {
+								return compute.Explain(ctx, console.Stdout(ctx), test)
+							}
 
-					return suts, stack, nil
-				})
-				if err != nil {
-					return fnerrors.UserError(loc, "failed to prepare test: %w", err)
-				}
+							testResults, err := compute.Get(ctx, test)
+							if err != nil {
+								return err
+							}
 
-				if parallel || parallelWork {
-					parallelTests = append(parallelTests, test)
-				} else {
-					if explain {
-						return compute.Explain(ctx, console.Stdout(ctx), test)
-					}
+							printResult(stderr, style, testResults, false)
 
-					testResults, err := compute.Get(ctx, test)
-					if err != nil {
-						return err
-					}
+							runs.Run[k] = &storage.TestRuns_Run{
+								TestBundleId: testResults.Value.ImageRef.ImageRef(),
+								TestSummary:  testResults.Value.TestBundleSummary,
+							}
+						}
 
-					printResult(stderr, style, testResults, false)
-
-					runs.Run = append(runs.Run, &storage.TestRuns_Run{
-						TestBundleId: testResults.Value.ImageRef.ImageRef(),
-						TestSummary:  testResults.Value.TestBundleSummary,
+						return nil
 					})
 				}
+
+				return eg.Wait()
+			}); err != nil {
+				return err
 			}
 
 			testCtx := ctx
@@ -168,13 +183,13 @@ func NewTestCmd() *cobra.Command {
 					return err
 				}
 
-				for _, res := range results {
+				for k, res := range results {
 					printResult(stderr, style, res, true)
 
-					runs.Run = append(runs.Run, &storage.TestRuns_Run{
+					runs.Run[k] = &storage.TestRuns_Run{
 						TestBundleId: res.Value.ImageRef.ImageRef(),
 						TestSummary:  res.Value.TestBundleSummary,
-					})
+					}
 				}
 			}
 

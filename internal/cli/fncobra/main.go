@@ -41,6 +41,7 @@ import (
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/storedrun"
+	"namespacelabs.dev/foundation/internal/testing"
 	"namespacelabs.dev/foundation/internal/ulimit"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/languages/golang"
@@ -274,6 +275,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"The protocol version to use with invocation tools.")
 	rootCmd.PersistentFlags().BoolVar(&tools.InvocationCanUseBuildkit, "tools_invocation_can_use_buildkit", tools.InvocationCanUseBuildkit,
 		"If set to true, tool invocations will use buildkit whenever possible.")
+	rootCmd.PersistentFlags().BoolVar(&testing.UseNamespaceCloud, "testing_use_namespace_cloud", testing.UseNamespaceCloud,
+		"If set to true, allocate cluster for tests on demand.")
 
 	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
