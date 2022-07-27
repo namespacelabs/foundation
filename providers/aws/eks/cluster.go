@@ -150,9 +150,10 @@ func PrepareClusterInfo(ctx context.Context, s *Session) (*EKSCluster, error) {
 	cluster := awsCluster.Cluster
 
 	eksCluster := &EKSCluster{
-		Name:  sysInfo.EksClusterName,
-		Arn:   *cluster.Arn,
-		VpcId: *cluster.ResourcesVpcConfig.VpcId,
+		Name:            sysInfo.EksClusterName,
+		Arn:             *cluster.Arn,
+		VpcId:           *cluster.ResourcesVpcConfig.VpcId,
+		SecurityGroupId: *cluster.ResourcesVpcConfig.ClusterSecurityGroupId,
 	}
 
 	if cluster.Identity != nil && cluster.Identity.Oidc != nil {

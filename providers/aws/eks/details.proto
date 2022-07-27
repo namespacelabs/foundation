@@ -8,11 +8,13 @@ package foundation.providers.aws.eks;
 
 option go_package = "namespacelabs.dev/foundation/providers/aws/eks";
 
+// Next ID: 7
 message EKSCluster {
-    string name        = 1;
-    string arn         = 2;
-    string oidc_issuer = 3;
-    string vpc_id      = 4;
+    string name              = 1;
+    string arn               = 2;
+    string oidc_issuer       = 3;
+    string vpc_id            = 4;
+    string security_group_id = 6;
     // Whether the "oidc_issuer" is a registered OIDC provider.
     // When false but needed, we ask the user to register the OIDC provider similar to this:
     //   https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html
