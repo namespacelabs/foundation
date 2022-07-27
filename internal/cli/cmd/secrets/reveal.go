@@ -18,22 +18,22 @@ import (
 
 func newRevealCmd() *cobra.Command {
 	var secretKey, specificEnv string
-
-	cmd := &cobra.Command{
-		Use:   "reveal",
-		Short: "Reveals the specified secret value.",
-		Args:  cobra.MaximumNArgs(1),
-	}
-
-	cmd.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
-	cmd.Flags().StringVar(&specificEnv, "env", "", "If set, matches specified secret with the named environment (e.g. dev, or prod).")
-	_ = cmd.MarkFlagRequired("secret")
-
 	var locs fncobra.Locations
-	return fncobra.CmdWithHandler(
-		cmd,
-		func(ctx context.Context, args []string) error {
-			_, bundle, err := loadBundleFromArgs(ctx, &locs, nil)
+
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "reveal",
+			Short: "Reveals the specified secret value.",
+			Args:  cobra.MaximumNArgs(1),
+		}).
+		WithLocalFlags(func(cmd *cobra.Command) {
+			cmd.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
+			cmd.Flags().StringVar(&specificEnv, "env", "", "If set, matches specified secret with the named environment (e.g. dev, or prod).")
+			_ = cmd.MarkFlagRequired("secret")
+		}).
+		With(fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
+		Do(func(ctx context.Context) error {
+			_, bundle, err := loadBundleFromArgs(ctx, locs.All[0], nil)
 			if err != nil {
 				return err
 			}
@@ -75,6 +75,5 @@ func newRevealCmd() *cobra.Command {
 			}
 
 			return nil
-		},
-		fncobra.NewLocationsParser(&locs))
+		})
 }

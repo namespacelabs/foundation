@@ -16,25 +16,23 @@ import (
 )
 
 type Locations struct {
-	locs []fnfs.Location
-}
-
-func (l *Locations) All() []fnfs.Location { return l.locs }
-func (l *Locations) AssertSingle() (fnfs.Location, error) {
-	if len(l.locs) != 1 {
-		return fnfs.Location{}, fnerrors.UserError(nil, "expected exactly one package")
-	}
-	return l.locs[0], nil
+	All []fnfs.Location
 }
 
 type LocationsParser struct {
 	locsOut         *Locations
+	opts            *ParseLocationsOpts
 	usePackageNames bool
 }
 
-func NewLocationsParser(locsOut *Locations) *LocationsParser {
+type ParseLocationsOpts struct {
+	RequireSingle bool
+}
+
+func ParseLocations(locsOut *Locations, opts *ParseLocationsOpts) *LocationsParser {
 	return &LocationsParser{
 		locsOut: locsOut,
+		opts:    opts,
 	}
 }
 
@@ -57,7 +55,11 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 		return err
 	}
 
-	*p.locsOut = Locations{locs: locs}
+	if p.opts.RequireSingle && len(locs) != 1 {
+		return fnerrors.UserError(nil, "expected exactly one package")
+	}
+
+	*p.locsOut = Locations{All: locs}
 
 	return nil
 }

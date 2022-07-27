@@ -41,7 +41,7 @@ type EnvParser struct {
 	envRef string
 }
 
-func NewEnvParser(envOut *provision.Env) *EnvParser {
+func ParseEnv(envOut *provision.Env) *EnvParser {
 	return &EnvParser{envOut: envOut}
 }
 

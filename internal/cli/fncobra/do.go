@@ -29,20 +29,56 @@ func RunE(f CmdHandler) func(*cobra.Command, []string) error {
 	}
 }
 
-func CmdWithHandler(cmd *cobra.Command, f CmdHandler, argParsers ...ArgParser) *cobra.Command {
-	for _, parser := range argParsers {
-		parser.AddFlags(cmd)
+type CommandCtrl struct {
+	cmd        *cobra.Command
+	argParsers []ArgParser
+}
+
+func Cmd(cmd *cobra.Command) *CommandCtrl {
+	return &CommandCtrl{
+		cmd:        cmd,
+		argParsers: []ArgParser{},
+	}
+}
+
+func (c *CommandCtrl) With(argParser ...ArgParser) *CommandCtrl {
+	c.argParsers = append(c.argParsers, argParser...)
+	return c
+}
+
+func (c *CommandCtrl) WithLocalFlags(f func(cmd *cobra.Command)) *CommandCtrl {
+	return c.With(&simpleFlagParser{f})
+}
+
+func (c *CommandCtrl) Do(handler func(context.Context) error) *cobra.Command {
+	return c.DoWithArgs(func(ctx context.Context, args []string) error {
+		return handler(ctx)
+	})
+}
+
+func (c *CommandCtrl) DoWithArgs(handler CmdHandler) *cobra.Command {
+	for _, parser := range c.argParsers {
+		parser.AddFlags(c.cmd)
 	}
 
-	cmd.RunE = RunE(func(ctx context.Context, args []string) error {
-		for _, parser := range argParsers {
+	c.cmd.RunE = RunE(func(ctx context.Context, args []string) error {
+		for _, parser := range c.argParsers {
 			if err := parser.Parse(ctx, args); err != nil {
 				return err
 			}
 		}
 
-		return f(ctx, args)
+		return handler(ctx, args)
 	})
 
-	return cmd
+	return c.cmd
 }
+
+type simpleFlagParser struct {
+	f func(cmd *cobra.Command)
+}
+
+func (p *simpleFlagParser) AddFlags(cmd *cobra.Command) {
+	p.f(cmd)
+}
+func (p *simpleFlagParser) Parse(ctx context.Context, args []string) error { return nil }

@@ -38,21 +38,24 @@ func NewDevCmd() *cobra.Command {
 		servingAddr  string
 		devWebServer = false
 	)
-
-	cmd := &cobra.Command{
-		Use:   "dev",
-		Short: "Starts a development session, continuously building and deploying a server.",
-		Args:  cobra.MinimumNArgs(1),
-	}
-
-	cmd.Flags().StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
-	cmd.Flags().BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
-
 	var env provision.Env
 	var locs fncobra.Locations
-	return fncobra.CmdWithHandler(
-		cmd,
-		func(ctx context.Context, args []string) error {
+
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "dev",
+			Short: "Starts a development session, continuously building and deploying a server.",
+			Args:  cobra.MinimumNArgs(1),
+		}).
+		WithLocalFlags(func(cmd *cobra.Command) {
+			cmd.Flags().StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
+			cmd.Flags().BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
+
+		}).
+		With(
+			fncobra.ParseEnv(&env),
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{})).
+		Do(func(ctx context.Context) error {
 			ctx, sink := tasks.WithStatefulSink(ctx)
 
 			return compute.Do(ctx, func(ctx context.Context) error {
@@ -67,7 +70,7 @@ func NewDevCmd() *cobra.Command {
 
 				pl := workspace.NewPackageLoader(root)
 				var serverPackages []string
-				for _, p := range locs.All() {
+				for _, p := range locs.All {
 					parsed, err := pl.LoadByName(ctx, p.AsPackageName())
 					if err != nil {
 						return err
@@ -163,9 +166,7 @@ func NewDevCmd() *cobra.Command {
 				})
 			})
 		},
-		fncobra.NewEnvParser(&env),
-		fncobra.NewLocationsParser(&locs),
-	)
+		)
 }
 
 func updateWebUISticky(ctx context.Context, format string, args ...any) {

@@ -31,22 +31,24 @@ func NewBuildCmd() *cobra.Command {
 		explain      = false
 		continuously = false
 	)
-
-	cmd := &cobra.Command{
-		Use:   "build",
-		Short: "Build one, or more servers.",
-		Long:  "Build one, or more servers.\nAutomatically invoked with `deploy`.",
-		Args:  cobra.ArbitraryArgs,
-	}
-
-	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
-	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
-	cmd.Flags().BoolVarP(&continuously, "continuously", "c", continuously, "If set to true, builds continuously, listening to changes to the workspace.")
-
 	var env provision.Env
-	return fncobra.CmdWithHandler(
-		cmd,
-		func(ctx context.Context, args []string) error {
+
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "build",
+			Short: "Build one, or more servers.",
+			Long:  "Build one, or more servers.\nAutomatically invoked with `deploy`.",
+			Args:  cobra.ArbitraryArgs,
+		}).
+		WithLocalFlags(func(cmd *cobra.Command) {
+
+			cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
+			cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
+			cmd.Flags().BoolVarP(&continuously, "continuously", "c", continuously, "If set to true, builds continuously, listening to changes to the workspace.")
+
+		}).
+		With(fncobra.ParseEnv(&env)).
+		DoWithArgs(func(ctx context.Context, args []string) error {
 			serverLocs, specified, err := allServersOrFromArgs(ctx, env, false, args)
 			if err != nil {
 				return err
@@ -80,8 +82,7 @@ func NewBuildCmd() *cobra.Command {
 
 			outputResults(ctx, res)
 			return nil
-		},
-		fncobra.NewEnvParser(&env))
+		})
 }
 
 func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[deploy.ResolvedServerImages]) {

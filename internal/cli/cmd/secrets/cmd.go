@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -46,12 +45,7 @@ type location struct {
 	loc  workspace.Location
 }
 
-func loadBundleFromArgs(ctx context.Context, locs *fncobra.Locations, createIfMissing createFunc) (*location, *secrets.Bundle, error) {
-	loc, err := locs.AssertSingle()
-	if err != nil {
-		return nil, nil, err
-	}
-
+func loadBundleFromArgs(ctx context.Context, loc fnfs.Location, createIfMissing createFunc) (*location, *secrets.Bundle, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return nil, nil, err
