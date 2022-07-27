@@ -19,7 +19,7 @@ func MakeUrl(path string) (string, error) {
 		return "", fnerrors.BadInputError("%s: failed to read: %w", path, err)
 	}
 
-	var runId *storedrun.StoredRunID
+	runId := &storedrun.StoredRunID{}
 	if err := json.Unmarshal(content, runId); err != nil {
 		return "", fnerrors.InternalError("%s: unable to parse stored run: %w", path, err)
 	}
