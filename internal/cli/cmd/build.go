@@ -31,53 +31,56 @@ func NewBuildCmd() *cobra.Command {
 		explain      = false
 		continuously = false
 	)
+	var env provision.Env
 
-	cmd := &cobra.Command{
-		Use:   "build",
-		Short: "Build one, or more servers.",
-		Long:  "Build one, or more servers.\nAutomatically invoked with `deploy`.",
-		Args:  cobra.ArbitraryArgs,
-	}
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "build",
+			Short: "Build one, or more servers.",
+			Long:  "Build one, or more servers.\nAutomatically invoked with `deploy`.",
+			Args:  cobra.ArbitraryArgs,
+		}).
+		WithFlags(func(cmd *cobra.Command) {
+			cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
+			cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
+			cmd.Flags().BoolVarP(&continuously, "continuously", "c", continuously, "If set to true, builds continuously, listening to changes to the workspace.")
+		}).
+		With(fncobra.ParseEnv(&env)).
+		DoWithArgs(func(ctx context.Context, args []string) error {
+			serverLocs, specified, err := allServersOrFromArgs(ctx, env, false, args)
+			if err != nil {
+				return err
+			}
 
-	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
-	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
-	cmd.Flags().BoolVarP(&continuously, "continuously", "c", continuously, "If set to true, builds continuously, listening to changes to the workspace.")
+			_, servers, err := loadServers(ctx, env, serverLocs, specified)
+			if err != nil {
+				return err
+			}
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
-		serverLocs, specified, err := allServersOrFromArgs(ctx, env, false, args)
-		if err != nil {
-			return err
-		}
+			_, images, err := deploy.ComputeStackAndImages(ctx, env, servers)
+			if err != nil {
+				return err
+			}
 
-		_, servers, err := loadServers(ctx, env, serverLocs, specified)
-		if err != nil {
-			return err
-		}
+			buildAll := compute.Collect(tasks.Action("build.all-images"), images...)
 
-		_, images, err := deploy.ComputeStackAndImages(ctx, env, servers)
-		if err != nil {
-			return err
-		}
+			if explain {
+				return compute.Explain(ctx, console.Stdout(ctx), buildAll)
+			}
 
-		buildAll := compute.Collect(tasks.Action("build.all-images"), images...)
+			if continuously {
+				console.SetIdleLabel(ctx, "waiting for workspace changes")
+				return compute.Continuously(ctx, continuousBuild{allImages: buildAll}, nil)
+			}
 
-		if explain {
-			return compute.Explain(ctx, console.Stdout(ctx), buildAll)
-		}
+			res, err := compute.GetValue(ctx, buildAll)
+			if err != nil {
+				return err
+			}
 
-		if continuously {
-			console.SetIdleLabel(ctx, "waiting for workspace changes")
-			return compute.Continuously(ctx, continuousBuild{allImages: buildAll}, nil)
-		}
-
-		res, err := compute.GetValue(ctx, buildAll)
-		if err != nil {
-			return err
-		}
-
-		outputResults(ctx, res)
-		return nil
-	})
+			outputResults(ctx, res)
+			return nil
+		})
 }
 
 func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[deploy.ResolvedServerImages]) {
