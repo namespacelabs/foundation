@@ -7,6 +7,7 @@ package fnapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 )
 
 type StartLoginRequest struct{}
@@ -15,11 +16,11 @@ type StartLoginResponse struct {
 	LoginId string `json:"login_id"`
 }
 
-type FinishLoginRequest struct {
+type CompleteLoginRequest struct {
 	LoginId string `json:"login_id"`
 }
 
-type FinishLoginResponse struct {
+type CompleteLoginResponse struct {
 	Completed bool     `json:"completed"`
 	UserAuth  UserAuth `json:"user_auth"`
 }
@@ -44,17 +45,25 @@ func StartLogin(ctx context.Context) (string, error) {
 	return resp.LoginId, err
 }
 
-func FinishLogin(ctx context.Context, id string) (*FinishLoginResponse, error) {
-	req := FinishLoginRequest{
+func CompleteLogin(ctx context.Context, id string) (*UserAuth, error) {
+	req := CompleteLoginRequest{
 		LoginId: id,
 	}
 
-	resp := &FinishLoginResponse{}
-	err := callProdAPI(ctx, "nsl.signin.SigninService/FinishLogin", req, func(dec *json.Decoder) error {
-		return dec.Decode(resp)
-	})
+	method := "nsl.signin.SigninService/CompleteLogin"
 
-	return resp, err
+	resp := &[]CompleteLoginResponse{}
+	if err := callProdAPI(ctx, method, req, func(dec *json.Decoder) error {
+		return dec.Decode(resp)
+	}); err != nil {
+		return nil, err
+	}
+
+	if len(*resp) != 1 {
+		return nil, fmt.Errorf("Expected exactly one response from %s - got %d", method, len(*resp))
+	}
+
+	return &(*resp)[0].UserAuth, nil
 }
 
 func CheckSignin(ctx context.Context, userData string) (*UserAuth, error) {
