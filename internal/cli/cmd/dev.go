@@ -37,9 +37,9 @@ func NewDevCmd() *cobra.Command {
 	var (
 		servingAddr  string
 		devWebServer = false
+		env          provision.Env
+		locs         fncobra.Locations
 	)
-	var env provision.Env
-	var locs fncobra.Locations
 
 	return fncobra.
 		Cmd(&cobra.Command{
@@ -70,7 +70,7 @@ func NewDevCmd() *cobra.Command {
 
 				pl := workspace.NewPackageLoader(root)
 				var serverPackages []string
-				for _, p := range locs.All {
+				for _, p := range locs.Locs {
 					parsed, err := pl.LoadByName(ctx, p.AsPackageName())
 					if err != nil {
 						return err

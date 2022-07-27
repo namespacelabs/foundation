@@ -23,7 +23,7 @@ func newInfoCmd() *cobra.Command {
 		}).
 		With(fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
-			_, bundle, err := loadBundleFromArgs(ctx, locs.All[0], nil)
+			_, bundle, err := loadBundleFromArgs(ctx, locs.Locs[0], nil)
 			if err != nil {
 				return err
 			}

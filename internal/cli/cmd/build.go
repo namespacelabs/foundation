@@ -30,8 +30,8 @@ func NewBuildCmd() *cobra.Command {
 	var (
 		explain      = false
 		continuously = false
+		env          provision.Env
 	)
-	var env provision.Env
 
 	return fncobra.
 		Cmd(&cobra.Command{
