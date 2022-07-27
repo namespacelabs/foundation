@@ -20,11 +20,6 @@ type CompleteLoginRequest struct {
 	LoginId string `json:"login_id"`
 }
 
-type CompleteLoginResponse struct {
-	Completed bool     `json:"completed"`
-	UserAuth  UserAuth `json:"user_auth"`
-}
-
 type CheckRequest struct {
 	UserData string `json:"userData"`
 }
@@ -52,7 +47,7 @@ func CompleteLogin(ctx context.Context, id string) (*UserAuth, error) {
 
 	method := "nsl.signin.SigninService/CompleteLogin"
 
-	resp := &[]CompleteLoginResponse{}
+	resp := &[]UserAuth{}
 	if err := callProdAPI(ctx, method, req, func(dec *json.Decoder) error {
 		return dec.Decode(resp)
 	}); err != nil {
@@ -63,7 +58,7 @@ func CompleteLogin(ctx context.Context, id string) (*UserAuth, error) {
 		return nil, fmt.Errorf("Expected exactly one response from %s - got %d", method, len(*resp))
 	}
 
-	return &(*resp)[0].UserAuth, nil
+	return &(*resp)[0], nil
 }
 
 func CheckSignin(ctx context.Context, userData string) (*UserAuth, error) {

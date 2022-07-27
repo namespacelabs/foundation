@@ -31,14 +31,15 @@ func NewLoginCmd() *cobra.Command {
 				return nil
 			}
 
+			stdout := console.Stdout(ctx)
 			fmt.Fprintf(console.Stdout(ctx), "%s\n", aec.Bold.Apply("Login to Namespace"))
 
 			loginUrl := fmt.Sprintf("%s?id=%s", baseUrl, id)
 
 			if err = browser.OpenURL(loginUrl); err != nil {
-				fmt.Fprintf(console.Stdout(ctx), "In order to login, open the following URL in your browser:\n\n  %s\n", loginUrl)
+				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", loginUrl)
 			} else {
-				fmt.Fprintf(console.Stdout(ctx), "Please complete the login flow in your browser.\n\n  %s\n", loginUrl)
+				fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", loginUrl)
 			}
 
 			auth, err := fnapi.CompleteLogin(ctx, id)
@@ -51,7 +52,7 @@ func NewLoginCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintf(console.Stdout(ctx), "\nHi %s, you are now logged in, have a nice day.\n", username)
+			fmt.Fprintf(stdout, "\nHi %s, you are now logged in, have a nice day.\n", username)
 			return nil
 		}),
 	}
