@@ -38,7 +38,8 @@ func NewTestCmd() *cobra.Command {
 		testOpts       testing.TestOpts
 		includeServers bool
 		parallel       bool
-		parallelWork   bool
+		parallelWork   bool = true
+		rocketShip     bool
 		ephemeral      bool = true
 		explain        bool
 	)
@@ -49,6 +50,8 @@ func NewTestCmd() *cobra.Command {
 		Args:  cobra.ArbitraryArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			ctx = prepareContext(ctx, parallelWork, rocketShip)
+
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
 				return err
@@ -60,6 +63,10 @@ func NewTestCmd() *cobra.Command {
 			}
 
 			var locs []fnfs.Location
+
+			if rocketShip {
+				parallel = true
+			}
 
 			if len(args) == 0 {
 				list, err := workspace.ListSchemas(ctx, root)
@@ -161,16 +168,6 @@ func NewTestCmd() *cobra.Command {
 				return err
 			}
 
-			testCtx := ctx
-			if parallelWork {
-				configs := &tasks.ThrottleConfigurations{}
-				configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, tasks.BaseDefaultConfig...)
-				configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, &tasks.ThrottleConfiguration{
-					Labels: map[string]string{"action": testing.TestRunAction}, Capacity: 1,
-				})
-				testCtx = tasks.ContextWithThrottler(testCtx, console.Debug(testCtx), configs)
-			}
-
 			if len(parallelTests) > 0 {
 				runTests := compute.Collect(tasks.Action("test.all-tests"), parallelTests...)
 
@@ -178,7 +175,7 @@ func NewTestCmd() *cobra.Command {
 					return compute.Explain(ctx, console.Stdout(ctx), runTests)
 				}
 
-				results, err := compute.GetValue(testCtx, runTests)
+				results, err := compute.GetValue(ctx, runTests)
 				if err != nil {
 					return err
 				}
@@ -214,11 +211,31 @@ func NewTestCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, don't cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
 	cmd.Flags().BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
 	cmd.Flags().BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
-	cmd.Flags().BoolVar(&parallelWork, "parallel_work", true, "If true, performs all work in parallel except running the actual test (e.g. builds).")
+	cmd.Flags().BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
 	cmd.Flags().BoolVar(&testing.UseVClusters, "vcluster", testing.UseVClusters, "If true, creates a separate vcluster per test invocation.")
 	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
+	cmd.Flags().BoolVar(&rocketShip, "rocket_ship", false, "If set, go full parallel without constraints.")
+
+	cmd.Flags().MarkHidden("rocket_ship")
 
 	return cmd
+}
+
+func prepareContext(ctx context.Context, parallelWork, rocketShip bool) context.Context {
+	if rocketShip {
+		return tasks.ContextWithThrottler(ctx, console.Debug(ctx), &tasks.ThrottleConfigurations{})
+	}
+
+	if parallelWork {
+		configs := &tasks.ThrottleConfigurations{}
+		configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, tasks.BaseDefaultConfig...)
+		configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, &tasks.ThrottleConfiguration{
+			Labels: map[string]string{"action": testing.TestRunAction}, Capacity: 1,
+		})
+		return tasks.ContextWithThrottler(ctx, console.Debug(ctx), configs)
+	}
+
+	return ctx
 }
 
 func printResult(out io.Writer, style colors.Style, res compute.ResultWithTimestamp[testing.StoredTestResults], printResults bool) {
