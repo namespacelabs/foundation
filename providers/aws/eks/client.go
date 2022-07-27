@@ -55,5 +55,6 @@ func NewOptionalSession(ctx context.Context, env *schema.Environment, devHost *s
 		selector: selector,
 		sesh:     sesh,
 		eks:      eks.NewFromConfig(sesh.Config()),
+		iam:      iam.NewFromConfig(sesh.Config()),
 	}, nil
 }
