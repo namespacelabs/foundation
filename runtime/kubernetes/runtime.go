@@ -32,7 +32,7 @@ var (
 
 func Register() {
 	runtime.Register("kubernetes", func(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (runtime.Runtime, error) {
-		unbound, err := New(ctx, devHost, devhost.ByEnvironment(env))
+		unbound, err := New(ctx, env, devHost, devhost.ByEnvironment(env))
 		if err != nil {
 			return nil, err
 		}

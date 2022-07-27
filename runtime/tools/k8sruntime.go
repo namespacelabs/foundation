@@ -113,7 +113,8 @@ func (k8stools) k8s(ctx context.Context) (kubernetes.Unbound, *devhost.ConfigKey
 
 	ck := &devhost.ConfigKey{DevHost: root.DevHost, Selector: devhost.ForToolsRuntime()}
 
-	k, err := kubernetes.New(ctx, ck.DevHost, ck.Selector)
+	// Passing no environment here.
+	k, err := kubernetes.New(ctx, nil, ck.DevHost, ck.Selector)
 	if err != nil {
 		return kubernetes.Unbound{}, nil, err
 	}

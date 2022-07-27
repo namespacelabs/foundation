@@ -208,6 +208,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		oci.RegisterDomainKeychain("pkg.dev", artifactregistry.DefaultKeychain, oci.Keychain_UseOnWrites)
 		iam.RegisterGraphHandlers()
 		nscloud.RegisterRegistry()
+		nscloud.RegisterClusterProvider()
 
 		// Runtimes.
 		kubernetes.Register()

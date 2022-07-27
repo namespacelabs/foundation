@@ -15,6 +15,7 @@ import (
 )
 
 type Session struct {
+	env      *schema.Environment
 	devHost  *schema.DevHost
 	selector devhost.Selector
 	sesh     *awsprovider.Session
@@ -22,13 +23,14 @@ type Session struct {
 	iam      *iam.Client
 }
 
-func NewSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
+func NewSession(ctx context.Context, env *schema.Environment, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
 	sesh, err := awsprovider.MustConfiguredSession(ctx, devHost, selector)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Session{
+		env:      env,
 		devHost:  devHost,
 		selector: selector,
 		sesh:     sesh,
@@ -37,7 +39,7 @@ func NewSession(ctx context.Context, devHost *schema.DevHost, selector devhost.S
 	}, nil
 }
 
-func NewOptionalSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
+func NewOptionalSession(ctx context.Context, env *schema.Environment, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
 	sesh, err := awsprovider.ConfiguredSession(ctx, devHost, selector)
 	if err != nil {
 		return nil, err
@@ -48,6 +50,7 @@ func NewOptionalSession(ctx context.Context, devHost *schema.DevHost, selector d
 	}
 
 	return &Session{
+		env:      env,
 		devHost:  devHost,
 		selector: selector,
 		sesh:     sesh,

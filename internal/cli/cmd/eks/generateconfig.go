@@ -22,7 +22,7 @@ func newGenerateConfigCmd() *cobra.Command {
 		Short: "Generates a EKS kubeconfig.",
 		Args:  cobra.ExactArgs(1),
 	}, func(ctx context.Context, env provision.Env, args []string) error {
-		s, err := eks.NewSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		s, err := eks.NewSession(ctx, env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
 		if err != nil {
 			return err
 		}

@@ -294,7 +294,7 @@ func maybeCreateVCluster(env provision.Env) compute.Computable[*vcluster.VCluste
 		return nil
 	}
 
-	hostConfig, err := client.ComputeHostConfig(env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	hostConfig, err := client.ComputeHostConfig(env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
 	if err != nil {
 		return compute.Error[*vcluster.VCluster](err)
 	}

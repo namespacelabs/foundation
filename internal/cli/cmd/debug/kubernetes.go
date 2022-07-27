@@ -66,7 +66,7 @@ func newKubernetesCmd() *cobra.Command {
 		Use:  "create-vcluster",
 		Args: cobra.ExactArgs(1),
 	}, func(ctx context.Context, env provision.Env, args []string) error {
-		hostConfig, err := client.ComputeHostConfig(env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		hostConfig, err := client.ComputeHostConfig(env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
 		if err != nil {
 			return err
 		}

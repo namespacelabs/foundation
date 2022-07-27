@@ -39,7 +39,7 @@ func PrepareExistingK8s(env ops.Environment, args ...PrepareK8sOption) compute.C
 			if opts.contextName != "" {
 				return client.NewHostConfig(opts.contextName, env)
 			} else {
-				return client.ComputeHostConfig(env.DevHost(), devhost.ByEnvironment(env.Proto()))
+				return client.ComputeHostConfig(env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
 			}
 		})
 }

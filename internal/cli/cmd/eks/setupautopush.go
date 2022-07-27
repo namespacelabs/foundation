@@ -40,7 +40,7 @@ func newSetupAutopushCmd() *cobra.Command {
 		}
 		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", acc, iamRole)
 
-		s, err := eks.NewSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		s, err := eks.NewSession(ctx, env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
 		if err != nil {
 			return err
 		}

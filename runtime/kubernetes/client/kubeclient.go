@@ -39,19 +39,21 @@ type Provider struct {
 
 type TokenProviderFunc func(context.Context) (string, error)
 
+type ProviderFunc func(context.Context, *fnschema.Environment, *devhost.ConfigKey) (Provider, error)
+
 var (
 	clientCache struct {
 		mu    sync.Mutex
 		cache map[string]*k8s.Clientset
 	}
-	providers = map[string]func(context.Context, *devhost.ConfigKey) (Provider, error){}
+	providers = map[string]ProviderFunc{}
 )
 
 func init() {
 	clientCache.cache = map[string]*k8s.Clientset{}
 }
 
-func RegisterProvider(name string, p func(context.Context, *devhost.ConfigKey) (Provider, error)) {
+func RegisterProvider(name string, p ProviderFunc) {
 	providers[name] = p
 }
 
@@ -90,6 +92,7 @@ func (cfg *configWithToken) computeConfig() (clientcmd.ClientConfig, TokenProvid
 
 		cached := &cachedProviderConfig{
 			providerName: c.Provider,
+			env:          cfg.host.Environment,
 			configKey:    &devhost.ConfigKey{DevHost: cfg.host.DevHost, Selector: cfg.host.Selector},
 			provider:     p,
 		}
@@ -281,7 +284,7 @@ func ResolveConfig(ctx context.Context, env ops.Environment) (*rest.Config, erro
 		return NewRestConfigFromHostEnv(ctx, cfg)
 	}
 
-	cfg, err := ComputeHostConfig(env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	cfg, err := ComputeHostConfig(env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +292,7 @@ func ResolveConfig(ctx context.Context, env ops.Environment) (*rest.Config, erro
 	return NewRestConfigFromHostEnv(ctx, cfg)
 }
 
-func ComputeHostConfig(devHost *fnschema.DevHost, selector devhost.Selector) (*HostConfig, error) {
+func ComputeHostConfig(env *fnschema.Environment, devHost *fnschema.DevHost, selector devhost.Selector) (*HostConfig, error) {
 	cfg := devhost.Select(devHost, selector)
 
 	hostEnv := &HostEnv{}
@@ -307,15 +310,16 @@ func ComputeHostConfig(devHost *fnschema.DevHost, selector devhost.Selector) (*H
 		return nil, fnerrors.InternalError("failed to expand %q", hostEnv.Kubeconfig)
 	}
 
-	return &HostConfig{DevHost: devHost, Selector: selector, HostEnv: hostEnv}, nil
+	return &HostConfig{Environment: env, DevHost: devHost, Selector: selector, HostEnv: hostEnv}, nil
 }
 
 // Only compute configurations once per `ns` invocation.
 type cachedProviderConfig struct {
 	providerName string
+	env          *fnschema.Environment
 	configKey    *devhost.ConfigKey
 
-	provider func(context.Context, *devhost.ConfigKey) (Provider, error)
+	provider ProviderFunc
 
 	compute.DoScoped[Provider]
 }
@@ -326,9 +330,9 @@ func (t *cachedProviderConfig) Action() *tasks.ActionEvent {
 	return tasks.Action("kubernetes.compute-config").Arg("provider", t.providerName)
 }
 func (t *cachedProviderConfig) Inputs() *compute.In {
-	return compute.Inputs().Str("provider", t.providerName).Proto("devhost", t.configKey.DevHost)
+	return compute.Inputs().Str("provider", t.providerName).Proto("devhost", t.configKey.DevHost).Proto("env", t.env)
 }
 func (t *cachedProviderConfig) Output() compute.Output { return compute.Output{NotCacheable: true} }
 func (t *cachedProviderConfig) Compute(ctx context.Context, _ compute.Resolved) (Provider, error) {
-	return t.provider(ctx, t.configKey)
+	return t.provider(ctx, t.env, t.configKey)
 }

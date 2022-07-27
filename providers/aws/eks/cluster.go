@@ -38,14 +38,14 @@ func Register() {
 	RegisterGraphHandlers()
 }
 
-func provideEKS(ctx context.Context, ck *devhost.ConfigKey) (client.Provider, error) {
+func provideEKS(ctx context.Context, env *schema.Environment, ck *devhost.ConfigKey) (client.Provider, error) {
 	conf := &EKSCluster{}
 
 	if !ck.Selector.Select(ck.DevHost).Get(conf) {
 		return client.Provider{}, fnerrors.BadInputError("eks provider configured, but missing EKSCluster")
 	}
 
-	s, err := NewSession(ctx, ck.DevHost, ck.Selector)
+	s, err := NewSession(ctx, env, ck.DevHost, ck.Selector)
 	if err != nil {
 		return client.Provider{}, fnerrors.InternalError("failed to create session: %w", err)
 	}
@@ -90,7 +90,7 @@ func prepareDescribeCluster(ctx context.Context, env ops.Environment, se *schema
 		return nil, nil
 	}
 
-	s, err := NewOptionalSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	s, err := NewOptionalSession(ctx, env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func prepareDescribeCluster(ctx context.Context, env ops.Environment, se *schema
 }
 
 func PrepareClusterInfo(ctx context.Context, s *Session) (*EKSCluster, error) {
-	rt, err := kubernetes.New(ctx, s.devHost, s.selector)
+	rt, err := kubernetes.New(ctx, s.env, s.devHost, s.selector)
 	if err != nil {
 		return nil, err
 	}
