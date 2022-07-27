@@ -5,21 +5,24 @@
 package runs
 
 import (
-	"bytes"
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/storedrun"
 )
 
-func MakeUrl(imagePath string) (string, error) {
-	content, err := ioutil.ReadFile(imagePath)
+func MakeUrl(path string) (string, error) {
+	content, err := ioutil.ReadFile(path)
 	if err != nil {
-		return "", fnerrors.BadInputError("%s: failed to read: %w", imagePath, err)
+		return "", fnerrors.BadInputError("%s: failed to read: %w", path, err)
 	}
 
-	clean := bytes.TrimSpace(content)
+	var runId *storedrun.StoredRunID
+	if err := json.Unmarshal(content, runId); err != nil {
+		return "", fnerrors.InternalError("%s: unable to parse stored run: %w", path, err)
+	}
 
-	return fmt.Sprintf("https://results.prod.namespacelabs.nscloud.dev/push/%s", base64.RawURLEncoding.EncodeToString(clean)), nil
+	return fmt.Sprintf("https://dashboard.namespace.so/run/%s", runId.RunId), nil
 }

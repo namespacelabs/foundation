@@ -42,7 +42,7 @@ func newUpdateStatusCmd() *cobra.Command {
 	phase := flag.String("phase", "", "Indicate which pipeline phase has been started. Valid values are INIT, TEST, BUILD, DEPLOY, FINAL.")
 	success := flag.Bool("success", false, "Indicate the final status of the pipeline. Ignored unless --phase=FINAL.")
 	specifiedUrl := flag.String("url", "", "Target URL from status entry.")
-	runResult := flag.String("run_result", "", "A file with the output of runs publish.")
+	runId := flag.String("run_id_path", "", "A file with the output of runs new.")
 	pipelineState := flag.String("pipeline_state", "", "A file the pipeline state.")
 
 	// Optional - adding a comment to a commit.
@@ -76,13 +76,13 @@ func newUpdateStatusCmd() *cobra.Command {
 		client := github.NewClient(&http.Client{Transport: itr})
 
 		url := *specifiedUrl
-		if *runResult != "" {
+		if *runId != "" {
 			if url != "" {
 				return fnerrors.New("can't specify --url and --run_result")
 			}
 
 			var err error
-			url, err = runs.MakeUrl(*runResult)
+			url, err = runs.MakeUrl(*runId)
 			if err != nil {
 				return err
 			}
