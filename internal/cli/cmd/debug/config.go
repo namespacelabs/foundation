@@ -25,6 +25,7 @@ func newComputeConfigCmd() *cobra.Command {
 		locs    fncobra.Locations
 		servers fncobra.Servers
 	)
+
 	return fncobra.
 		Cmd(&cobra.Command{
 			Use:   "compute-config",

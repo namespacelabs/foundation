@@ -14,39 +14,39 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/source/protos/resolver"
 )
 
 func newPrintComputedCmd() *cobra.Command {
-	var outputType string
+	var (
+		env        provision.Env
+		locs       fncobra.Locations
+		outputType string
+	)
 
-	cmd := &cobra.Command{
-		Use:   "print-computed",
-		Short: "Load a service or server definition and print it's computed contents as JSON.",
-		Args:  cobra.RangeArgs(0, 1),
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "print-computed",
+			Short: "Load a service or server definition and print it's computed contents as JSON.",
+		}).
+		WithFlags(func(cmd *cobra.Command) {
+			cmd.Flags().StringVar(&outputType, "output", "json", "One of json, textproto.")
+		}).
+		With(
+			fncobra.ParseEnv(&env),
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
+		Do(func(ctx context.Context) error {
+			pl := workspace.NewPackageLoader(env.Root())
 
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, loc, err := module.PackageAtArgs(ctx, args)
-			if err != nil {
-				return err
-			}
-
-			pl := workspace.NewPackageLoader(root)
-
-			sealed, err := workspace.Seal(ctx, pl, loc.AsPackageName(), nil)
+			sealed, err := workspace.Seal(ctx, pl, locs.Locs[0].AsPackageName(), nil)
 			if err != nil {
 				return err
 			}
 
 			return output(ctx, pl, sealed.Proto, outputType)
-		}),
-	}
-
-	cmd.Flags().StringVar(&outputType, "output", "json", "One of json, textproto.")
-
-	return cmd
+		})
 }
 
 func output(ctx context.Context, pl workspace.Packages, msg proto.Message, outputType string) error {
