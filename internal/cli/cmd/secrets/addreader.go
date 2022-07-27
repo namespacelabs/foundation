@@ -29,7 +29,7 @@ func newAddReaderCmd() *cobra.Command {
 		}).
 		With(fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
-			loc, bundle, err := loadBundleFromArgs(ctx, locs.All[0], nil)
+			loc, bundle, err := loadBundleFromArgs(ctx, locs.Locs[0], nil)
 			if err != nil {
 				return err
 			}

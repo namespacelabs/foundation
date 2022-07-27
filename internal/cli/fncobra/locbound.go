@@ -16,7 +16,10 @@ import (
 )
 
 type Locations struct {
-	All []fnfs.Location
+	Locs []fnfs.Location
+	// Whether the user explicitly specified a list of locations.
+	// If true, "All" can be not empty if "DefaultToAllWhenEmpty" is true
+	AreSpecified bool
 }
 
 type LocationsParser struct {
@@ -26,7 +29,10 @@ type LocationsParser struct {
 }
 
 type ParseLocationsOpts struct {
+	// Verify that exactly one location is specified.
 	RequireSingle bool
+	// If true, and no locations are specified, then "workspace.ListSchemas" result is used.
+	DefaultToAllWhenEmpty bool
 }
 
 func ParseLocations(locsOut *Locations, opts *ParseLocationsOpts) *LocationsParser {
@@ -59,7 +65,19 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 		return fnerrors.UserError(nil, "expected exactly one package")
 	}
 
-	*p.locsOut = Locations{All: locs}
+	if p.opts.DefaultToAllWhenEmpty && len(locs) == 0 {
+		schemaList, err := workspace.ListSchemas(ctx, root)
+		if err != nil {
+			return err
+		}
+
+		locs = schemaList.Locations
+	}
+
+	*p.locsOut = Locations{
+		Locs:         locs,
+		AreSpecified: len(args) > 0,
+	}
 
 	return nil
 }

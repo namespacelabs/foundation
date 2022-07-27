@@ -36,54 +36,36 @@ import (
 
 func NewBuildBinaryCmd() *cobra.Command {
 	var (
-		all            = false
-		envRef         = "dev"
 		baseRepository string
 		buildOpts      buildOpts
+		env            provision.Env
+		cmdLocs        fncobra.Locations
 	)
 
-	cmd := &cobra.Command{
-		Use:   "build-binary",
-		Short: "Builds the specified tool binary.",
-		Args:  cobra.ArbitraryArgs,
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "build-binary",
+			Short: "Builds the specified tool binary.",
+			Args:  cobra.ArbitraryArgs,
+		}).
+		WithFlags(func(cmd *cobra.Command) {
+			cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
+			cmd.Flags().BoolVar(&buildOpts.publishToDocker, "docker", false, "If set to true, don't push to registries, but to local docker.")
+			cmd.Flags().StringVar(&baseRepository, "base_repository", baseRepository, "If set, overrides the registry we'll upload the images to.")
+			cmd.Flags().BoolVar(&buildOpts.outputPrebuilts, "output_prebuilts", false, "If true, also outputs a prebuilt configuration which can be embedded in your workspace configuration.")
+			cmd.Flags().StringVar(&buildOpts.outputPath, "output_to", "", "If set, a list of all binaries is emitted to the specified file.")
+		}).
+		With(
+			fncobra.ParseEnv(&env),
+			fncobra.ParseLocations(&cmdLocs, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
+		Do(func(ctx context.Context) error {
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
 				return err
 			}
 
-			var locs []fnfs.Location
-			if all {
-				list, err := workspace.ListSchemas(ctx, root)
-				if err != nil {
-					return err
-				}
-
-				locs = list.Locations
-			} else {
-				for _, arg := range args {
-					_, loc, err := module.PackageAt(ctx, arg)
-					if err != nil {
-						return err
-					}
-					locs = append(locs, loc)
-				}
-			}
-
-			return buildLocations(ctx, root, locs, envRef, baseRepository, buildOpts)
-		}),
-	}
-
-	cmd.Flags().BoolVar(&all, "all", all, "Build all images in the current workspace.")
-	cmd.Flags().StringVar(&envRef, "env", envRef, "The environment to build for (as defined in the workspace).")
-	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
-	cmd.Flags().BoolVar(&buildOpts.publishToDocker, "docker", false, "If set to true, don't push to registries, but to local docker.")
-	cmd.Flags().StringVar(&baseRepository, "base_repository", baseRepository, "If set, overrides the registry we'll upload the images to.")
-	cmd.Flags().BoolVar(&buildOpts.outputPrebuilts, "output_prebuilts", false, "If true, also outputs a prebuilt configuration which can be embedded in your workspace configuration.")
-	cmd.Flags().StringVar(&buildOpts.outputPath, "output_to", "", "If set, a list of all binaries is emitted to the specified file.")
-
-	return cmd
+			return buildLocations(ctx, root, cmdLocs.Locs, env, baseRepository, buildOpts)
+		})
 }
 
 type buildOpts struct {
@@ -92,12 +74,7 @@ type buildOpts struct {
 	outputPath      string
 }
 
-func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Location, envRef, baseRepository string, opts buildOpts) error {
-	env, err := provision.RequireEnv(root, envRef)
-	if err != nil {
-		return err
-	}
-
+func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Location, env provision.Env, baseRepository string, opts buildOpts) error {
 	pl := workspace.NewPackageLoader(root)
 
 	var pkgs []*workspace.Package

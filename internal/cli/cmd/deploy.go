@@ -34,64 +34,63 @@ import (
 
 func NewDeployCmd() *cobra.Command {
 	var (
-		usePackageNames bool
-		explain         bool
-		serializePath   string
-		deployOpts      deployOpts
+		explain       bool
+		serializePath string
+		deployOpts    deployOpts
+		env           provision.Env
+		locs          fncobra.Locations
 	)
 
-	cmd := &cobra.Command{
-		Use:   "deploy",
-		Short: "Deploy one, or more servers to the specified environment.",
-		Args:  cobra.ArbitraryArgs,
-	}
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "deploy",
+			Short: "Deploy one, or more servers to the specified environment.",
+			Args:  cobra.ArbitraryArgs,
+		}).
+		WithFlags(func(cmd *cobra.Command) {
+			cmd.Flags().BoolVar(&deployOpts.alsoWait, "wait", true, "Wait for the deployment after running.")
+			cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
+			cmd.Flags().BoolVar(&runtime.NamingNoTLS, "naming_no_tls", runtime.NamingNoTLS, "If set to true, no TLS certificate is requested for ingress names.")
+			cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
+			cmd.Flags().StringVar(&serializePath, "serialize_to", "", "If set, rather than execute on the plan, output a serialization of the plan.")
+			cmd.Flags().StringVar(&deployOpts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
+		}).
+		With(
+			fncobra.ParseEnv(&env),
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
+		Do(func(ctx context.Context) error {
+			packages, servers, err := loadServers(ctx, env, locs.Locs, locs.AreSpecified)
+			if err != nil {
+				return err
+			}
 
-	cmd.Flags().BoolVar(&usePackageNames, "use_package_names", usePackageNames, "Specify servers by using their fully qualified package name instead.")
-	cmd.Flags().BoolVar(&deployOpts.alsoWait, "wait", true, "Wait for the deployment after running.")
-	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
-	cmd.Flags().BoolVar(&runtime.NamingNoTLS, "naming_no_tls", runtime.NamingNoTLS, "If set to true, no TLS certificate is requested for ingress names.")
-	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
-	cmd.Flags().StringVar(&serializePath, "serialize_to", "", "If set, rather than execute on the plan, output a serialization of the plan.")
-	cmd.Flags().StringVar(&deployOpts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
+			stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+			if err != nil {
+				return err
+			}
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
-		locations, specified, err := allServersOrFromArgs(ctx, env, usePackageNames, args)
-		if err != nil {
-			return err
-		}
+			plan, err := deploy.PrepareDeployStack(ctx, env, stack, servers)
+			if err != nil {
+				return err
+			}
 
-		packages, servers, err := loadServers(ctx, env, locations, specified)
-		if err != nil {
-			return err
-		}
+			if explain {
+				return compute.Explain(ctx, console.Stdout(ctx), plan)
+			}
 
-		stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
-		if err != nil {
-			return err
-		}
+			computed, err := compute.GetValue(ctx, plan)
+			if err != nil {
+				return err
+			}
 
-		plan, err := deploy.PrepareDeployStack(ctx, env, stack, servers)
-		if err != nil {
-			return err
-		}
+			deployPlan := deploy.Serialize(env.Workspace(), env.Proto(), stack.Proto(), computed, provision.ServerPackages(servers).PackageNamesAsString())
 
-		if explain {
-			return compute.Explain(ctx, console.Stdout(ctx), plan)
-		}
+			if serializePath != "" {
+				return protos.WriteFile(serializePath, deployPlan)
+			}
 
-		computed, err := compute.GetValue(ctx, plan)
-		if err != nil {
-			return err
-		}
-
-		deployPlan := deploy.Serialize(env.Workspace(), env.Proto(), stack.Proto(), computed, provision.ServerPackages(servers).PackageNamesAsString())
-
-		if serializePath != "" {
-			return protos.WriteFile(serializePath, deployPlan)
-		}
-
-		return completeDeployment(ctx, env.BindWith(packages), computed.Deployer, deployPlan, deployOpts)
-	})
+			return completeDeployment(ctx, env.BindWith(packages), computed.Deployer, deployPlan, deployOpts)
+		})
 }
 
 type deployOpts struct {
