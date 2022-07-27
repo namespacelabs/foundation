@@ -49,13 +49,13 @@ type cueServiceSpec struct {
 	ContainerPort                  int32                    `json:"containerPort"`
 	Metadata                       cueServiceSpecMetadata   `json:"metadata"`
 	Internal                       bool                     `json:"internal"`
-	ExperimentalAdditionalMetadata []cueServiceSpecMetadata `json:"experimental_additional_metadata"` // To consolidate with Metadata.
+	ExperimentalAdditionalMetadata []cueServiceSpecMetadata `json:"experimentalAdditionalMetadata"` // To consolidate with Metadata.
 }
 
 type cueServiceSpecMetadata struct {
 	Kind                string        `json:"kind"`
 	Protocol            string        `json:"protocol"`
-	ExperimentalDetails inlineAnyJson `json:"experimental_details"`
+	ExperimentalDetails inlineAnyJson `json:"experimentalDetails"`
 }
 
 type inlineAnyJson struct {

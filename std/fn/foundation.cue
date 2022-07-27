@@ -111,6 +111,15 @@ _#Node: {
 			protocol: string
 		}
 		internal: *false | true
+
+		experimentalAdditionalMetadata?: [...{
+			kind?:     string
+			protocol?: string
+			experimentalDetails?: {
+				typeUrl: string
+				body:    string
+			}
+		}]
 	}
 
 	#UrlMapEntry: {
