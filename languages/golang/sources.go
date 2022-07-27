@@ -6,6 +6,8 @@ package golang
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
@@ -40,6 +42,10 @@ func computeSources(ctx context.Context, root string, srv provision.Server, plat
 
 	for _, platform := range platforms {
 		env := platformToEnv(platform, 1)
+		env = append(env,
+			fmt.Sprintf("GOCACHE=%s", os.Getenv("GOCACHE")),
+			fmt.Sprintf("XDG_CACHE_HOME=%s", os.Getenv("XDG_CACHE_HOME")),
+			fmt.Sprintf("HOME=%s", os.Getenv("HOME")))
 
 		cfg := &packages.Config{
 			Context: ctx,

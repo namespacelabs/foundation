@@ -5,11 +5,7 @@
 package debug
 
 import (
-	"context"
-
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewDebugCmd() *cobra.Command {
@@ -36,18 +32,4 @@ func NewDebugCmd() *cobra.Command {
 	cmd.AddCommand(newFindConfigCmd())
 
 	return cmd
-}
-
-func requireServer(ctx context.Context, args []string, envRef string) (provision.Server, error) {
-	root, loc, err := module.PackageAtArgs(ctx, args)
-	if err != nil {
-		return provision.Server{}, err
-	}
-
-	env, err := provision.RequireEnv(root, envRef)
-	if err != nil {
-		return provision.Server{}, err
-	}
-
-	return env.RequireServer(ctx, loc.AsPackageName())
 }

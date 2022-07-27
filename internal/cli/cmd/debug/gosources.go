@@ -14,21 +14,37 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/languages/golang"
+	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/runtime"
 )
 
 func newGoSourcesCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "go-sources",
-		Short: "List go sources of a package.",
-		Args:  cobra.RangeArgs(0, 1),
+	var (
+		env     provision.Env
+		locs    fncobra.Locations
+		servers fncobra.Servers
+	)
 
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			t, err := requireServer(ctx, args, "dev")
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "go-sources",
+			Short: "List go sources of a package."}).
+		WithFlags(func(cmd *cobra.Command) {
+			cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
+		}).
+		With(
+			fncobra.ParseEnv(&env),
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true}),
+			fncobra.ParseServers(&servers, &env, &locs)).
+		Do(func(ctx context.Context) error {
+			t := servers.Servers[0]
+
+			platforms, err := runtime.For(ctx, env).TargetPlatforms(ctx)
 			if err != nil {
 				return err
 			}
 
-			res, err := golang.ComputeSources(ctx, t.Module().Abs(), t, build.PlatformsOrOverrides(nil))
+			res, err := golang.ComputeSources(ctx, t.Module().Abs(), t, build.PlatformsOrOverrides(platforms))
 			if err != nil {
 				return err
 			}
@@ -48,10 +64,5 @@ func newGoSourcesCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
-	}
-
-	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
-
-	return cmd
+		})
 }
