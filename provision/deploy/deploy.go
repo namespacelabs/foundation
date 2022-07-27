@@ -439,7 +439,7 @@ type containerImage struct {
 func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) (map[schema.PackageName]containerImage, error) {
 	res := map[schema.PackageName]containerImage{}
 	for k, srv := range stack.Servers {
-		platforms, err := runtime.For(ctx, srv.Env()).TargetPlatforms(ctx)
+		platforms, err := runtime.TargetPlatforms(ctx, srv.Env())
 		if err != nil {
 			return nil, err
 		}

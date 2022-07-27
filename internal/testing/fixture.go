@@ -94,7 +94,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		return nil, fnerrors.UserError(pkgname, "expected a test definition")
 	}
 
-	platforms, err := runtime.For(ctx, env).TargetPlatforms(ctx)
+	platforms, err := runtime.TargetPlatforms(ctx, env)
 	if err != nil {
 		return nil, err
 	}

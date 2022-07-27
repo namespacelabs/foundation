@@ -8,13 +8,18 @@ import (
 	"context"
 	"encoding/json"
 
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -31,9 +36,14 @@ func init() {
 
 func RegisterClusterProvider() {
 	client.RegisterProvider("nscloud", provideCluster)
+	client.RegisterDeferredProvider("nscloud", provideDeferred)
 }
 
 func provideCluster(ctx context.Context, env *schema.Environment, key *devhost.ConfigKey) (client.Provider, error) {
+	return createCluster(ctx, env)
+}
+
+func createCluster(ctx context.Context, env *schema.Environment) (client.Provider, error) {
 	if env == nil {
 		return client.Provider{}, fnerrors.InternalError("env is missing")
 	}
@@ -125,6 +135,55 @@ func provideCluster(ctx context.Context, env *schema.Environment, key *devhost.C
 
 		return client.Provider{Config: *cfg}, nil
 	})
+}
+
+func provideDeferred(ctx context.Context, ws *schema.Workspace, cfg *client.HostConfig) (runtime.DeferredRuntime, error) {
+	compute.On(ctx).DetachWith(compute.Detach{
+		Action: tasks.Action("nscloud.k8s-cluster.prepare"),
+		Do: func(ctx context.Context) error {
+			// Kick off the cluster provisioning as soon as we can.
+			_, _ = createCluster(ctx, cfg.Environment)
+			return nil
+		},
+		BestEffort: true,
+	})
+
+	return deferred{ws, cfg}, nil
+}
+
+type deferred struct {
+	ws  *schema.Workspace
+	cfg *client.HostConfig
+}
+
+var _ runtime.DeferredRuntime = deferred{}
+var _ runtime.HasPrepareProvision = deferred{}
+var _ runtime.HasTargetPlatforms = deferred{}
+
+func (d deferred) New(ctx context.Context) (runtime.Runtime, error) {
+	unbound, err := kubernetes.New(ctx, d.cfg.Environment, d.cfg.DevHost, devhost.ByEnvironment(d.cfg.Environment))
+	if err != nil {
+		return nil, err
+	}
+
+	return unbound.Bind(d.ws, d.cfg.Environment), nil
+}
+
+func (d deferred) PrepareProvision(context.Context) (*rtypes.ProvisionProps, error) {
+	// XXX fetch SystemInfo in the future.
+	return kubernetes.PrepareProvisionWith(d.cfg.Environment, kubernetes.ModuleNamespace(d.ws, d.cfg.Environment), &kubedef.SystemInfo{
+		NodePlatform:         []string{"linux/amd64"},
+		DetectedDistribution: "k3s",
+	})
+}
+
+func (d deferred) TargetPlatforms(context.Context) ([]specs.Platform, error) {
+	// XXX fetch this in the future.
+	p, err := devhost.ParsePlatform("linux/amd64")
+	if err != nil {
+		return nil, err
+	}
+	return []specs.Platform{p}, nil
 }
 
 type CreateKubernetesClusterRequest struct {

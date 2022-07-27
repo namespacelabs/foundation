@@ -40,7 +40,7 @@ func newGoSourcesCmd() *cobra.Command {
 		Do(func(ctx context.Context) error {
 			t := servers.Servers[0]
 
-			platforms, err := runtime.For(ctx, env).TargetPlatforms(ctx)
+			platforms, err := runtime.TargetPlatforms(ctx, env)
 			if err != nil {
 				return err
 			}

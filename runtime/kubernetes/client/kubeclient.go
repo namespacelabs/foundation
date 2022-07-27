@@ -24,6 +24,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -37,8 +38,11 @@ type Provider struct {
 	TokenProvider TokenProviderFunc
 }
 
+type DeferredProvider struct{}
+
 type TokenProviderFunc func(context.Context) (string, error)
 
+type DeferredProviderFunc func(context.Context, *fnschema.Workspace, *HostConfig) (runtime.DeferredRuntime, error)
 type ProviderFunc func(context.Context, *fnschema.Environment, *devhost.ConfigKey) (Provider, error)
 
 var (
@@ -46,7 +50,8 @@ var (
 		mu    sync.Mutex
 		cache map[string]*k8s.Clientset
 	}
-	providers = map[string]ProviderFunc{}
+	providers         = map[string]ProviderFunc{}
+	deferredProviders = map[string]DeferredProviderFunc{}
 )
 
 func init() {
@@ -55,6 +60,10 @@ func init() {
 
 func RegisterProvider(name string, p ProviderFunc) {
 	providers[name] = p
+}
+
+func RegisterDeferredProvider(name string, p DeferredProviderFunc) {
+	deferredProviders[name] = p
 }
 
 func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*rest.Config, error) {
@@ -311,6 +320,16 @@ func ComputeHostConfig(env *fnschema.Environment, devHost *fnschema.DevHost, sel
 	}
 
 	return &HostConfig{Environment: env, DevHost: devHost, Selector: selector, HostEnv: hostEnv}, nil
+}
+
+func MakeDeferredRuntime(ctx context.Context, ws *fnschema.Workspace, cfg *HostConfig) (runtime.DeferredRuntime, error) {
+	if cfg.HostEnv.Provider != "" {
+		if p := deferredProviders[cfg.HostEnv.Provider]; p != nil {
+			return p(ctx, ws, cfg)
+		}
+	}
+
+	return nil, nil
 }
 
 // Only compute configurations once per `ns` invocation.

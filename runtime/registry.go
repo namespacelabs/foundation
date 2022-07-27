@@ -11,6 +11,7 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -20,7 +21,7 @@ var (
 	mapping = map[string]MakeRuntimeFunc{}
 )
 
-type MakeRuntimeFunc func(context.Context, *schema.Workspace, *schema.DevHost, *schema.Environment) (Runtime, error)
+type MakeRuntimeFunc func(context.Context, *schema.Workspace, *schema.DevHost, *schema.Environment) (DeferredRuntime, error)
 
 func Register(name string, r MakeRuntimeFunc) {
 	mapping[strings.ToLower(name)] = r
@@ -44,10 +45,61 @@ func For(ctx context.Context, env Selector) Runtime {
 			return runtimeFwdErr{err}
 		}
 
-		return r
+		rt, err := r.New(ctx)
+		if err != nil {
+			return runtimeFwdErr{err}
+		}
+
+		return rt
 	}
 
 	return nil
+}
+
+func TargetPlatforms(ctx context.Context, env Selector) ([]specs.Platform, error) {
+	rt := strings.ToLower(env.Proto().Runtime)
+	if obtain, ok := mapping[rt]; ok {
+		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Proto())
+		if err != nil {
+			return nil, err
+		}
+
+		if h, ok := r.(HasTargetPlatforms); ok {
+			return h.TargetPlatforms(ctx)
+		}
+
+		runtime, err := r.New(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return runtime.TargetPlatforms(ctx)
+	}
+
+	return nil, fnerrors.InternalError("%s: no such runtime", rt)
+}
+
+func PrepareProvision(ctx context.Context, env Selector) (*rtypes.ProvisionProps, error) {
+	rt := strings.ToLower(env.Proto().Runtime)
+	if obtain, ok := mapping[rt]; ok {
+		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Proto())
+		if err != nil {
+			return nil, err
+		}
+
+		if h, ok := r.(HasPrepareProvision); ok {
+			return h.PrepareProvision(ctx)
+		}
+
+		runtime, err := r.New(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return runtime.PrepareProvision(ctx)
+	}
+
+	return nil, fnerrors.InternalError("%s: no such runtime", rt)
 }
 
 type runtimeFwdErr struct{ err error }

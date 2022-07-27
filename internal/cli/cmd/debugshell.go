@@ -37,7 +37,7 @@ func NewDebugShellCmd() *cobra.Command {
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
 		var imageID oci.ImageID
 
-		platforms, err := runtime.For(ctx, env).TargetPlatforms(ctx)
+		platforms, err := runtime.TargetPlatforms(ctx, env)
 		if err != nil {
 			return err
 		}

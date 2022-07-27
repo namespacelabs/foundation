@@ -26,11 +26,6 @@ const (
 )
 
 type Runtime interface {
-	// PrepareProvision is called before invoking a provisioning tool, to offer
-	// the runtime implementation a way to pass runtime-specific information to
-	// the tool. E.g. what's the Kubernetes namespace we're working with.
-	PrepareProvision(context.Context) (*rtypes.ProvisionProps, error)
-
 	// DeployedConfigImageID retrieves the image reference of the "configuration
 	// image" used to deploy the specified server. Configuration images are only
 	// generated for production environments for now.
@@ -98,6 +93,22 @@ type Runtime interface {
 	// removed. Returns true if resources were deleted.
 	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
 
+	HasPrepareProvision
+	HasTargetPlatforms
+}
+
+type DeferredRuntime interface {
+	New(context.Context) (Runtime, error)
+}
+
+type HasPrepareProvision interface {
+	// PrepareProvision is called before invoking a provisioning tool, to offer
+	// the runtime implementation a way to pass runtime-specific information to
+	// the tool. E.g. what's the Kubernetes namespace we're working with.
+	PrepareProvision(context.Context) (*rtypes.ProvisionProps, error)
+}
+
+type HasTargetPlatforms interface {
 	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
 	TargetPlatforms(context.Context) ([]specs.Platform, error)
 }

@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -31,15 +32,40 @@ var (
 )
 
 func Register() {
-	runtime.Register("kubernetes", func(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (runtime.Runtime, error) {
-		unbound, err := New(ctx, env, devHost, devhost.ByEnvironment(env))
+	runtime.Register("kubernetes", func(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (runtime.DeferredRuntime, error) {
+		hostConfig, err := client.ComputeHostConfig(env, devHost, devhost.ByEnvironment(env))
 		if err != nil {
 			return nil, err
 		}
-		return unbound.Bind(ws, env), nil
+
+		p, err := client.MakeDeferredRuntime(ctx, ws, hostConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		if p != nil {
+			return p, nil
+		}
+
+		return deferredRuntime{ws, devHost, env}, nil
 	})
 
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
+}
+
+type deferredRuntime struct {
+	ws      *schema.Workspace
+	devHost *schema.DevHost
+	env     *schema.Environment
+}
+
+func (d deferredRuntime) New(ctx context.Context) (runtime.Runtime, error) {
+	unbound, err := New(ctx, d.env, d.devHost, devhost.ByEnvironment(d.env))
+	if err != nil {
+		return nil, err
+	}
+
+	return unbound.Bind(d.ws, d.env), nil
 }
 
 func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApplyConfiguration {
@@ -49,12 +75,16 @@ func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApp
 }
 
 func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, error) {
-	packedHostEnv, err := anypb.New(&kubetool.KubernetesEnv{Namespace: r.moduleNamespace})
+	systemInfo, err := r.SystemInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	systemInfo, err := r.SystemInfo(ctx)
+	return PrepareProvisionWith(r.env, r.moduleNamespace, systemInfo)
+}
+
+func PrepareProvisionWith(env *schema.Environment, moduleNamespace string, systemInfo *kubedef.SystemInfo) (*rtypes.ProvisionProps, error) {
+	packedHostEnv, err := anypb.New(&kubetool.KubernetesEnv{Namespace: moduleNamespace})
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +97,8 @@ func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProp
 	// Ensure the namespace exist, before we go and apply definitions to it. Also, deployServer
 	// assumes that a namespace already exists.
 	def, err := (kubedef.Apply{
-		Description: fmt.Sprintf("Namespace for %q", r.env.Name),
-		Resource:    MakeNamespace(r.env, r.moduleNamespace),
+		Description: fmt.Sprintf("Namespace for %q", env.Name),
+		Resource:    MakeNamespace(env, moduleNamespace),
 	}).ToDefinition()
 	if err != nil {
 		return nil, err
