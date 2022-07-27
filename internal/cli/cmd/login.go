@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/morikuni/aec"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -16,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
-const loginUrl = "https://login.namespace.so/login"
+const baseUrl = "https://login.namespace.so/login/cli"
 
 func NewLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -25,24 +26,33 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			// Best effort. We ignore errors here, as the user can open the link manually.
-			_ = browser.OpenURL(loginUrl)
+			id, err := fnapi.StartLogin(ctx)
+			if err != nil {
+				return nil
+			}
 
-			code, err := tui.Ask(ctx, "Login to Namespace", fmt.Sprintf("In order to login, open the following URL in your browser, and then copy-paste the resulting code:\n\n  %s", loginUrl), "Code")
+			stdout := console.Stdout(ctx)
+			fmt.Fprintf(console.Stdout(ctx), "%s\n", aec.Bold.Apply("Login to Namespace"))
+
+			loginUrl := fmt.Sprintf("%s?id=%s", baseUrl, id)
+
+			if err = browser.OpenURL(loginUrl); err != nil {
+				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", loginUrl)
+			} else {
+				fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", loginUrl)
+			}
+
+			auth, err := fnapi.CompleteLogin(ctx, id)
 			if err != nil {
 				return err
 			}
 
-			if code == "" {
-				return context.Canceled
-			}
-
-			username, err := fnapi.StoreUser(ctx, code)
+			username, err := fnapi.StoreUser(ctx, auth)
 			if err != nil {
 				return err
 			}
 
-			fmt.Fprintf(console.Stdout(ctx), "\nHi %s, you are now logged in, have a nice day.\n", username)
+			fmt.Fprintf(stdout, "\nHi %s, you are now logged in, have a nice day.\n", username)
 			return nil
 		}),
 	}

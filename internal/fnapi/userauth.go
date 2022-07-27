@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
@@ -32,19 +31,10 @@ func LoginAsRobotAndStore(ctx context.Context, repository, accessToken string) (
 		return "", err
 	}
 
-	return storeUser(ctx, userAuth)
+	return StoreUser(ctx, userAuth)
 }
 
-func StoreUser(ctx context.Context, userData string) (string, error) {
-	userAuth, err := CheckSignin(ctx, strings.TrimSpace(userData))
-	if err != nil {
-		return "", err
-	}
-
-	return storeUser(ctx, userAuth)
-}
-
-func storeUser(ctx context.Context, userAuth *UserAuth) (string, error) {
+func StoreUser(ctx context.Context, userAuth *UserAuth) (string, error) {
 	userAuthData, err := json.Marshal(userAuth)
 	if err != nil {
 		return "", err
