@@ -167,9 +167,11 @@ func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb
 	}
 
 	var cors *schema.HttpCors
+	var entityLimit *ProxyBodySize
 
 	for _, ext := range extensions {
 		corsConf := &schema.HttpCors{}
+		entityLimitConf := &ProxyBodySize{}
 
 		switch {
 		case ext.MessageIs(corsConf):
@@ -183,6 +185,17 @@ func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb
 				return nil, fnerrors.InternalError("nginx: incompatible CORS configurations")
 			}
 
+		case ext.MessageIs(entityLimit):
+			if err := ext.UnmarshalTo(entityLimitConf); err != nil {
+				return nil, fnerrors.InternalError("nginx: failed to unpack ProxyBodySize configuration: %v", err)
+			}
+
+			if entityLimit == nil {
+				entityLimit = entityLimitConf
+			} else if !proto.Equal(entityLimit, entityLimitConf) {
+				return nil, fnerrors.InternalError("nginx: incompatible ProxyBodySize configurations")
+			}
+
 		default:
 			return nil, fnerrors.InternalError("nginx: don't know how to handle extension %q", ext.TypeUrl)
 		}
@@ -192,6 +205,10 @@ func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb
 		// XXX validate allowed origin syntax.
 		annotations["nginx.ingress.kubernetes.io/enable-cors"] = "true"
 		annotations["nginx.ingress.kubernetes.io/cors-allow-origin"] = strings.Join(cors.AllowedOrigin, ", ")
+	}
+
+	if entityLimit != nil {
+		annotations["nginx.ingress.kubernetes.io/proxy-body-size"] = entityLimit.Limit
 	}
 
 	return annotations, nil
