@@ -26,14 +26,6 @@ import (
 
 var ActionStorer *Storer = nil
 
-type ActionSink interface {
-	Waiting(*RunningAction)
-	Started(*RunningAction)
-	Done(*RunningAction)
-	Instant(*EventData)
-	AttachmentsUpdated(ActionID, *ResultData)
-}
-
 type ActionState string
 
 const (
