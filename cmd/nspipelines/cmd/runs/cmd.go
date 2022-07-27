@@ -11,9 +11,6 @@ func NewRunsCmd() *cobra.Command {
 		Use: "runs",
 	}
 
-	cmd.AddCommand(newUploadCmd())
-	cmd.AddCommand(newWriteCmd())
-	cmd.AddCommand(newPublishCmd())
 	cmd.AddCommand(newNewCmd())
 	cmd.AddCommand(newCompleteCmd())
 
