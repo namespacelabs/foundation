@@ -11,47 +11,35 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewLintCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "lint",
-		Short: "Verify if package definitions are correct.",
-		Args:  cobra.RangeArgs(0, 1),
+	var (
+		env  provision.Env
+		locs fncobra.Locations
+	)
 
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			if len(args) == 0 {
-				root, err := module.FindRoot(ctx, ".")
-				if err != nil {
-					return err
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "lint",
+			Short: "Verify if package definitions are correct.",
+		}).
+		With(
+			fncobra.ParseEnv(&env),
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
+		Do(func(ctx context.Context) error {
+			for _, loc := range locs.Locs {
+				fmt.Fprintln(console.Stderr(ctx), "Checking", loc.AsPackageName())
+				if _, err := workspace.LoadPackageByName(ctx, locs.Root, loc.AsPackageName()); err != nil {
+					fmt.Fprintln(console.Stderr(ctx))
+					fnerrors.Format(console.Stderr(ctx), err, fnerrors.WithStyle(colors.WithColors))
+					fmt.Fprintln(console.Stderr(ctx))
 				}
-
-				list, err := workspace.ListSchemas(ctx, root)
-				if err != nil {
-					return err
-				}
-
-				for _, loc := range list.Locations {
-					fmt.Fprintln(console.Stderr(ctx), "Checking", loc.AsPackageName())
-					if _, err := workspace.LoadPackageByName(ctx, root, loc.AsPackageName()); err != nil {
-						fmt.Fprintln(console.Stderr(ctx), loc.AsPackageName(), err)
-					}
-				}
-
-				return nil
 			}
-
-			root, loc, err := module.PackageAtArgs(ctx, args)
-			if err != nil {
-				return err
-			}
-
-			_, err = workspace.LoadPackageByName(ctx, root, loc.AsPackageName())
-			return err
-		}),
-	}
-
-	return cmd
+			return nil
+		})
 }

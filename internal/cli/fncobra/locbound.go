@@ -17,6 +17,7 @@ import (
 
 type Locations struct {
 	Locs []fnfs.Location
+	Root *workspace.Root
 	// Whether the user explicitly specified a list of locations.
 	// If true, "All" can be not empty if "DefaultToAllWhenEmpty" is true
 	AreSpecified bool
@@ -75,6 +76,7 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 	}
 
 	*p.locsOut = Locations{
+		Root:         root,
 		Locs:         locs,
 		AreSpecified: len(args) > 0,
 	}
