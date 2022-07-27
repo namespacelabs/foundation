@@ -11,7 +11,6 @@ import (
 	"log"
 	"os"
 	"runtime/pprof"
-	"strings"
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/logs"
@@ -24,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/build/binary/genbinary"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/common"
@@ -116,12 +114,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
 		tel := fnapi.NewTelemetry(useTelemetry)
-		// Checking a version could be used for fingerprinting purposes,
-		// and thus we don't do it if the user has opted-out from providing data.
-		if tel.IsTelemetryEnabled() {
-			remoteStatusChan = make(chan remoteStatus)
-			go checkRemoteStatus(console.Debug(ctxWithSink), remoteStatusChan)
-		}
 
 		if viper.GetBool("enable_pprof") {
 			go ListenPProf(console.Debug(cmd.Context()))
@@ -142,6 +134,17 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		workspace.MakeFrontend = cuefrontend.NewFrontend
 
 		filewatcher.SetupFileWatcher()
+
+		// Checking a version could be used for fingerprinting purposes,
+		// and thus we don't do it if the user has opted-out from providing data.
+		if tel.IsTelemetryEnabled() {
+			remoteStatusChan = make(chan remoteStatus)
+			// Remote status check may linger until after we flush the main sink.
+			// So here we just suppress any messages from the background version check.
+			ctxWithNullSink := tasks.WithSink(ctx, tasks.NullSink())
+			// NB: Requires workspace.ModuleLoader.
+			go checkRemoteStatus(ctxWithNullSink, remoteStatusChan)
+		}
 
 		binary.BuildGo = func(loc workspace.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
 			gobin, err := golang.FromLocation(loc, plan.RelPath)
@@ -354,26 +357,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	// Check if this is a version requirement error, if yes, skip the regular version checker.
 	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
-		// Printing the new version message if any.
 		select {
 		case status, ok := <-remoteStatusChan:
-			if ok {
-				var messages []string
-
-				if status.NewVersion {
-					messages = append(messages, fmt.Sprintf("New Namespace release %s is available.\nDownload: %s", status.Version, downloadUrl(status.Version)))
-				}
-
-				if status.Message != "" {
-					if len(messages) > 0 {
-						messages = append(messages, "")
-					}
-					messages = append(messages, status.Message)
-				}
-
-				if len(messages) > 0 {
-					fmt.Fprintln(os.Stdout, strings.Join(messages, "\n"))
-				}
+			if ok && status.NewVersion {
+				fmt.Fprintf(os.Stdout, "New Namespace release %s is available.\nDownload: %s",
+					status.Version, downloadUrl(status.Version))
 			}
 		default:
 		}
@@ -389,7 +377,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	}()
 
 	if err != nil && !errors.Is(err, context.Canceled) {
-		exitCode := handleExitError(style, err)
+		exitCode := handleExitError(style, err, remoteStatusChan)
 
 		if tel != nil {
 			// Record errors only after the user sees them to hide potential latency implications.
@@ -421,7 +409,7 @@ func handleExit(ctx context.Context) {
 	}
 }
 
-func handleExitError(style colors.Style, err error) int {
+func handleExitError(style colors.Style, err error, remoteStatusChan chan remoteStatus) int {
 	if exitError, ok := err.(fnerrors.ExitError); ok {
 		// If we are exiting, because a sub-process failed, don't bother outputting
 		// an error again, just forward the appropriate exit code.
@@ -429,11 +417,10 @@ func handleExitError(style colors.Style, err error) int {
 	} else if versionError, ok := err.(*fnerrors.VersionError); ok {
 		fnerrors.Format(os.Stderr, versionError, fnerrors.WithStyle(style))
 
-		if version, err := version.Current(); err == nil {
-			ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			if status, err := FetchLatestRemoteStatus(ctxWithTimeout, versionCheckEndpoint, version.GitCommit); err == nil && status.Version != "" {
+		select {
+		case <-time.After(5 * time.Second):
+		case status, ok := <-remoteStatusChan:
+			if ok {
 				fmt.Fprintln(os.Stderr, indent.String(
 					wordwrap.String(
 						fmt.Sprintf("\nThe latest version of Namespace is %s, available at %s\n",
