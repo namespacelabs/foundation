@@ -31,7 +31,7 @@ func newSetCmd() *cobra.Command {
 			Short: "Sets the specified secret value.",
 			Args:  cobra.MaximumNArgs(1),
 		}).
-		WithLocalFlags(func(cmd *cobra.Command) {
+		WithFlags(func(cmd *cobra.Command) {
 			cmd.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
 			cmd.Flags().StringVar(&keyID, "key", "", "Use this specific key identity when creating a new bundle.")
 			cmd.Flags().StringVar(&fromFile, "from_file", "", "Load the file contents as the secret value.")

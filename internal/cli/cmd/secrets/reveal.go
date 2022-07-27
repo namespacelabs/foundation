@@ -26,7 +26,7 @@ func newRevealCmd() *cobra.Command {
 			Short: "Reveals the specified secret value.",
 			Args:  cobra.MaximumNArgs(1),
 		}).
-		WithLocalFlags(func(cmd *cobra.Command) {
+		WithFlags(func(cmd *cobra.Command) {
 			cmd.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
 			cmd.Flags().StringVar(&specificEnv, "env", "", "If set, matches specified secret with the named environment (e.g. dev, or prod).")
 			_ = cmd.MarkFlagRequired("secret")

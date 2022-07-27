@@ -46,7 +46,7 @@ func (c *CommandCtrl) With(argParser ...ArgParser) *CommandCtrl {
 	return c
 }
 
-func (c *CommandCtrl) WithLocalFlags(f func(cmd *cobra.Command)) *CommandCtrl {
+func (c *CommandCtrl) WithFlags(f func(cmd *cobra.Command)) *CommandCtrl {
 	return c.With(&simpleFlagParser{f})
 }
 

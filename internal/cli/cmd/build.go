@@ -40,12 +40,10 @@ func NewBuildCmd() *cobra.Command {
 			Long:  "Build one, or more servers.\nAutomatically invoked with `deploy`.",
 			Args:  cobra.ArbitraryArgs,
 		}).
-		WithLocalFlags(func(cmd *cobra.Command) {
-
+		WithFlags(func(cmd *cobra.Command) {
 			cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 			cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
 			cmd.Flags().BoolVarP(&continuously, "continuously", "c", continuously, "If set to true, builds continuously, listening to changes to the workspace.")
-
 		}).
 		With(fncobra.ParseEnv(&env)).
 		DoWithArgs(func(ctx context.Context, args []string) error {

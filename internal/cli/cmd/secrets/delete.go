@@ -23,7 +23,7 @@ func newDeleteCmd() *cobra.Command {
 			Short: "Deletes the specified secret value.",
 			Args:  cobra.MaximumNArgs(1),
 		}).
-		WithLocalFlags(func(cmd *cobra.Command) {
+		WithFlags(func(cmd *cobra.Command) {
 			cmd.Flags().StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
 			cmd.Flags().BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
 			_ = cmd.MarkFlagRequired("secret")

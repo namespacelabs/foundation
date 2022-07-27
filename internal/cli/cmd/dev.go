@@ -47,7 +47,7 @@ func NewDevCmd() *cobra.Command {
 			Short: "Starts a development session, continuously building and deploying a server.",
 			Args:  cobra.MinimumNArgs(1),
 		}).
-		WithLocalFlags(func(cmd *cobra.Command) {
+		WithFlags(func(cmd *cobra.Command) {
 			cmd.Flags().StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
 			cmd.Flags().BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
 
