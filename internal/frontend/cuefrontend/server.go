@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"cuelang.org/go/cue"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
@@ -42,16 +44,23 @@ type cueURLMapEntry struct {
 }
 
 type cueServiceSpec struct {
-	Name          string                 `json:"name"`
-	Label         string                 `json:"label"`
-	ContainerPort int32                  `json:"containerPort"`
-	Metadata      cueServiceSpecMetadata `json:"metadata"`
-	Internal      bool                   `json:"internal"`
+	Name                           string                   `json:"name"`
+	Label                          string                   `json:"label"`
+	ContainerPort                  int32                    `json:"containerPort"`
+	Metadata                       cueServiceSpecMetadata   `json:"metadata"`
+	Internal                       bool                     `json:"internal"`
+	ExperimentalAdditionalMetadata []cueServiceSpecMetadata `json:"experimental_additional_metadata"` // To consolidate with Metadata.
 }
 
 type cueServiceSpecMetadata struct {
-	Kind     string `json:"kind"`
-	Protocol string `json:"protocol"`
+	Kind                string        `json:"kind"`
+	Protocol            string        `json:"protocol"`
+	ExperimentalDetails inlineAnyJson `json:"experimental_details"`
+}
+
+type inlineAnyJson struct {
+	TypeUrl string `json:"typeUrl"`
+	Body    string `json:"body"`
 }
 
 func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, parent, v *fncue.CueV, pp *workspace.Package, opts workspace.LoadPackageOpts) (*schema.Server, error) {
@@ -135,16 +144,30 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 			return nil, fnerrors.UserError(loc, "service[%s]: a protocol is required", name)
 		}
 
-		out.Service = append(out.Service, &schema.Server_ServiceSpec{
+		if svc.Metadata.ExperimentalDetails.TypeUrl != "" {
+			return nil, fnerrors.UserError(loc, "service[%s]: only additional metadata support details", name)
+		}
+
+		parsed := &schema.Server_ServiceSpec{
 			Name:  name,
 			Label: svc.Label,
 			Port:  &schema.Endpoint_Port{Name: svc.Name, ContainerPort: svc.ContainerPort},
-			Metadata: &schema.ServiceMetadata{
+			Metadata: []*schema.ServiceMetadata{{
 				Kind:     svc.Metadata.Kind,
 				Protocol: svc.Metadata.Protocol,
-			},
+			}},
 			Internal: svc.Internal,
-		})
+		}
+
+		for _, add := range svc.ExperimentalAdditionalMetadata {
+			details, err := parseDetails(add.ExperimentalDetails)
+			if err != nil {
+				return nil, fnerrors.UserError(loc, "service[%s]: failed to parse: %w", name, err)
+			}
+			parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{Kind: add.Kind, Protocol: add.Protocol, Details: details})
+		}
+
+		out.Service = append(out.Service, parsed)
 	}
 
 	for name, svc := range bits.Ingress {
@@ -152,16 +175,34 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 			return nil, fnerrors.UserError(loc, "ingress[%s]: a protocol is required", name)
 		}
 
-		out.Ingress = append(out.Ingress, &schema.Server_ServiceSpec{
+		if svc.Internal {
+			return nil, fnerrors.UserError(loc, "ingress[%s]: can't be internal", name)
+		}
+
+		if svc.Metadata.ExperimentalDetails.TypeUrl != "" {
+			return nil, fnerrors.UserError(loc, "service[%s]: only additional metadata support details", name)
+		}
+
+		parsed := &schema.Server_ServiceSpec{
 			Name:  name,
 			Label: svc.Label,
 			Port:  &schema.Endpoint_Port{Name: svc.Name, ContainerPort: svc.ContainerPort},
-			Metadata: &schema.ServiceMetadata{
+			Metadata: []*schema.ServiceMetadata{{
 				Kind:     svc.Metadata.Kind,
 				Protocol: svc.Metadata.Protocol,
-			},
+			}},
 			Internal: svc.Internal,
-		})
+		}
+
+		for _, add := range svc.ExperimentalAdditionalMetadata {
+			details, err := parseDetails(add.ExperimentalDetails)
+			if err != nil {
+				return nil, fnerrors.UserError(loc, "ingress[%s]: failed to parse: %w", name, err)
+			}
+			parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{Kind: add.Kind, Protocol: add.Protocol, Details: details})
+		}
+
+		out.Service = append(out.Service, parsed)
 	}
 
 	// Make services and endpoints stable.
@@ -196,4 +237,21 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	}
 
 	return workspace.TransformServer(ctx, pl, loc, out, pp, opts)
+}
+
+func parseDetails(detail inlineAnyJson) (*anypb.Any, error) {
+	if detail.TypeUrl == "" {
+		return nil, nil
+	}
+
+	any := &anypb.Any{TypeUrl: detail.TypeUrl}
+	msg, err := any.UnmarshalNew()
+	if err != nil {
+		return nil, err
+	}
+	if err := protojson.Unmarshal([]byte(detail.Body), msg); err != nil {
+		return nil, err
+	}
+
+	return any, nil
 }

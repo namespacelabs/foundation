@@ -174,17 +174,14 @@ func computeServiceEndpoint(server *schema.Server, pkg *workspace.Package, n *sc
 
 func ServiceSpecToEndpoint(srv *schema.Server, spec *schema.Server_ServiceSpec, t schema.Endpoint_Type) (*schema.Endpoint, error) {
 	endpoint := &schema.Endpoint{
-		ServiceName:   spec.GetName(),
-		ServerOwner:   srv.GetPackageName(),
-		EndpointOwner: srv.GetPackageName(),
-		Type:          t,
-		Port:          spec.GetPort(),
-		AllocatedName: fmt.Sprintf("%s-%s", spec.GetName(), srv.Id),
-		ServiceLabel:  spec.GetLabel(),
-	}
-
-	if spec.Metadata != nil {
-		endpoint.ServiceMetadata = []*schema.ServiceMetadata{spec.Metadata}
+		ServiceName:     spec.GetName(),
+		ServerOwner:     srv.GetPackageName(),
+		EndpointOwner:   srv.GetPackageName(),
+		Type:            t,
+		Port:            spec.GetPort(),
+		AllocatedName:   fmt.Sprintf("%s-%s", spec.GetName(), srv.Id),
+		ServiceLabel:    spec.GetLabel(),
+		ServiceMetadata: spec.Metadata,
 	}
 
 	// XXX Rethink this -- i.e. consolidate with InternalEndpoint.

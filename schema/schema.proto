@@ -268,11 +268,13 @@ message Server {
     }
 
     message ServiceSpec {
-        string          name     = 1;
-        string          label    = 5;
-        ServiceMetadata metadata = 2;
-        Endpoint.Port   port     = 3;
-        bool            internal = 4;  // This service is of no relevance for development.
+        string                   name     = 1;
+        string                   label    = 5;
+        repeated ServiceMetadata metadata = 6;
+        Endpoint.Port            port     = 3;
+        bool                     internal = 4;  // This service is of no relevance for development.
+
+        reserved 2;
     }
 
     message URLMapEntry {

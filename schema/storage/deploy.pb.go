@@ -231,7 +231,6 @@ func (x *NetworkPlan) GetFocusedServerPackages() []string {
 	return nil
 }
 
-// Needs to be consistent with networking.proto
 // Next ID: 13
 type Endpoint struct {
 	state         protoimpl.MessageState
