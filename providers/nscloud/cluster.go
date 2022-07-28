@@ -28,10 +28,10 @@ import (
 
 const machineEndpoint = "https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal.namespacelabs.nscloud.dev"
 
-var t *Cache[client.Provider]
+var t *Cache[*CreateClusterResult]
 
 func init() {
-	t = NewCache[client.Provider]()
+	t = NewCache[*CreateClusterResult]()
 }
 
 func RegisterClusterProvider() {
@@ -40,18 +40,40 @@ func RegisterClusterProvider() {
 }
 
 func provideCluster(ctx context.Context, env *schema.Environment, key *devhost.ConfigKey) (client.Provider, error) {
-	return createCluster(ctx, env)
-}
+	conf := &PrebuiltCluster{}
 
-func createCluster(ctx context.Context, env *schema.Environment) (client.Provider, error) {
-	if env == nil {
-		return client.Provider{}, fnerrors.InternalError("env is missing")
+	if key.Selector.Select(key.DevHost).Get(conf) {
+		var p client.Provider
+		if err := json.Unmarshal(conf.SerializedConfig, &p.Config); err != nil {
+			return p, err
+		}
+		return p, nil
 	}
 
-	return t.Compute(env.Name, func() (client.Provider, error) {
+	cfg, err := CreateCluster(ctx, env, true)
+	if err != nil {
+		return client.Provider{}, err
+	}
+
+	return client.Provider{Config: *cfg.KubeConfig}, nil
+}
+
+type CreateClusterResult struct {
+	ClusterId  string
+	Cluster    *KubernetesCluster
+	Registry   *ImageRegistry
+	KubeConfig *api.Config
+}
+
+func CreateCluster(ctx context.Context, env *schema.Environment, ephemeral bool) (*CreateClusterResult, error) {
+	if env == nil {
+		return nil, fnerrors.InternalError("env is missing")
+	}
+
+	return t.Compute(env.Name, func() (*CreateClusterResult, error) {
 		user, err := fnapi.LoadUser()
 		if err != nil {
-			return client.Provider{}, err
+			return nil, err
 		}
 
 		var responses []CreateKubernetesClusterResponse
@@ -63,25 +85,27 @@ func createCluster(ctx context.Context, env *schema.Environment) (client.Provide
 				return dec.Decode(&responses)
 			})
 		}); err != nil {
-			return client.Provider{}, err
+			return nil, err
 		}
 
 		if len(responses) == 0 || responses[len(responses)-1].Status != "CLUSTER_READY" {
-			return client.Provider{}, fnerrors.InvocationError("failed to create cluster")
+			return nil, fnerrors.InvocationError("failed to create cluster")
 		}
 
 		r := responses[len(responses)-1]
 
-		tasks.Attachments(ctx).AddResult("cluster_id", r.Cluster.Id).AddResult("cluster_address", r.Cluster.EndpointAddress)
+		tasks.Attachments(ctx).AddResult("cluster_id", r.ClusterId).AddResult("cluster_address", r.Cluster.EndpointAddress)
 
-		compute.On(ctx).Cleanup(tasks.Action("nscloud.k8s-cluster.cleanup"), func(ctx context.Context) error {
-			return fnapi.CallAPI(ctx, machineEndpoint, "nsl.vm.api.VMService/DestroyKubernetesCluster", &DestroyKubernetesClusterRequest{
-				OpaqueUserAuth: user.Opaque,
-				ClusterId:      r.Cluster.Id,
-			}, func(dec *json.Decoder) error {
-				return nil
+		if ephemeral {
+			compute.On(ctx).Cleanup(tasks.Action("nscloud.k8s-cluster.cleanup"), func(ctx context.Context) error {
+				return fnapi.CallAPI(ctx, machineEndpoint, "nsl.vm.api.VMService/DestroyKubernetesCluster", &DestroyKubernetesClusterRequest{
+					OpaqueUserAuth: user.Opaque,
+					ClusterId:      r.ClusterId,
+				}, func(dec *json.Decoder) error {
+					return nil
+				})
 			})
-		})
+		}
 
 		cfg := api.NewConfig()
 		cluster := api.NewCluster()
@@ -130,23 +154,31 @@ func createCluster(ctx context.Context, env *schema.Environment) (client.Provide
 
 			return nil
 		}); err != nil {
-			return client.Provider{}, err
+			return nil, err
 		}
 
-		return client.Provider{Config: *cfg}, nil
+		return &CreateClusterResult{
+			ClusterId:  r.ClusterId,
+			Cluster:    r.Cluster,
+			Registry:   r.Registry,
+			KubeConfig: cfg,
+		}, nil
 	})
 }
 
 func provideDeferred(ctx context.Context, ws *schema.Workspace, cfg *client.HostConfig) (runtime.DeferredRuntime, error) {
-	compute.On(ctx).DetachWith(compute.Detach{
-		Action: tasks.Action("nscloud.k8s-cluster.prepare"),
-		Do: func(ctx context.Context) error {
-			// Kick off the cluster provisioning as soon as we can.
-			_, _ = createCluster(ctx, cfg.Environment)
-			return nil
-		},
-		BestEffort: true,
-	})
+	conf := &PrebuiltCluster{}
+	if !cfg.Selector.Select(cfg.DevHost).Get(conf) {
+		compute.On(ctx).DetachWith(compute.Detach{
+			Action: tasks.Action("nscloud.k8s-cluster.prepare"),
+			Do: func(ctx context.Context) error {
+				// Kick off the cluster provisioning as soon as we can.
+				_, _ = CreateCluster(ctx, cfg.Environment, true)
+				return nil
+			},
+			BestEffort: true,
+		})
+	}
 
 	return deferred{ws, cfg}, nil
 }
@@ -191,13 +223,13 @@ type CreateKubernetesClusterRequest struct {
 }
 
 type CreateKubernetesClusterResponse struct {
-	Status   string             `json:"status,omitempty"`
-	Cluster  *KubernetesCluster `json:"cluster,omitempty"`
-	Registry *ImageRegistry     `json:"registry,omitempty"`
+	Status    string             `json:"status,omitempty"`
+	ClusterId string             `json:"cluster_id,omitempty"`
+	Cluster   *KubernetesCluster `json:"cluster,omitempty"`
+	Registry  *ImageRegistry     `json:"registry,omitempty"`
 }
 
 type KubernetesCluster struct {
-	Id                       string `json:"id,omitempty"`
 	EndpointAddress          string `json:"endpoint_address,omitempty"`
 	CertificateAuthorityData []byte `json:"certificate_authority_data,omitempty"`
 	ClientCertificateData    []byte `json:"client_certificate_data,omitempty"`

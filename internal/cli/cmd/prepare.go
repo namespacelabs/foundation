@@ -104,6 +104,31 @@ func NewPrepareCmd() *cobra.Command {
 
 	localCmd.Flags().StringVar(&contextName, "context", "", "If set, configures Namespace to use the specific context.")
 
+	newClusterCmd := &cobra.Command{
+		Use:    "new-cluster",
+		Args:   cobra.NoArgs,
+		Hidden: true,
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			root, err := module.FindRoot(ctx, ".")
+			if err != nil {
+				return err
+			}
+
+			env, err := provision.RequireEnv(root, envRef)
+			if err != nil {
+				return err
+			}
+
+			prepares := baseline(env)
+
+			var configs []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
+			configs = append(configs, prepare.PrepareNewNamespaceCluster(env))
+			prepares = append(prepares, configs...)
+			prepares = append(prepares, prepare.PrepareIngress(env, instantiateKube(env, configs)))
+			return collectPreparesAndUpdateDevhost(ctx, env, prepares)
+		}),
+	}
+
 	rootCmd := &cobra.Command{
 		Use:   "prepare",
 		Short: "Prepares the local workspace for development or production.",
@@ -122,6 +147,7 @@ func NewPrepareCmd() *cobra.Command {
 
 	rootCmd.AddCommand(eksCmd)
 	rootCmd.AddCommand(localCmd)
+	rootCmd.AddCommand(newClusterCmd)
 
 	rootCmd.PersistentFlags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")
 

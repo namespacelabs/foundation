@@ -1,0 +1,14 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.providers.nscloud;
+
+option go_package = "namespacelabs.dev/foundation/providers/nscloud";
+
+message PrebuiltCluster {
+    string cluster_id        = 1;
+    bytes  serialized_config = 2;
+}
