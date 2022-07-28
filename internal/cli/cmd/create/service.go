@@ -11,6 +11,7 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -24,89 +25,91 @@ import (
 const serviceSuffix = "service"
 
 func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
-	use := "service"
-	cmd := &cobra.Command{
-		Use:   use,
-		Short: "Creates a service.",
-	}
+	var (
+		targetPkg      targetPkg
+		fmwkFlag       string
+		name           string
+		httpBackendPkg string
+	)
 
-	fmwkStr := frameworkFlag(cmd)
-	name := cmd.Flags().String("name", "", "Service name.")
-	httpBackendPkg := cmd.Flags().String("with_http_backend", "", "Package name of the API backend server.")
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "service",
+			Short: "Creates a service.",
+		}).
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.StringVar(&name, "name", "", "Service name.")
+			flags.StringVar(&httpBackendPkg, "with_http_backend", "", "Package name of the API backend server.")
+		}).
+		With(parseTargetPkgWithDeps(&targetPkg, "service")...).
+		With(withFramework(&fmwkFlag)).
+		Do(func(ctx context.Context) error {
 
-	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		root, loc, err := targetPackage(ctx, args, use)
-		if err != nil {
-			return err
-		}
-
-		fmwk, err := selectFramework(ctx, "Which framework would you like to use?", fmwkStr)
-		if err != nil {
-			return err
-		}
-
-		if fmwk == nil {
-			return context.Canceled
-		}
-
-		if *fmwk == schema.Framework_GO {
-			if err := runGoInitCmdIfNeeded(ctx, root, runCommand); err != nil {
+			fmwk, err := selectFramework(ctx, "Which framework would you like to use?", fmwkFlag)
+			if err != nil {
 				return err
 			}
-		}
 
-		isNameUsed := *fmwk == schema.Framework_WEB
+			if fmwk == nil {
+				return context.Canceled
+			}
 
-		if !isNameUsed {
-			if *name == "" {
-				*name, err = tui.Ask(ctx, "How would you like to name your service?",
-					"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
-					serviceName(loc))
-				if err != nil {
+			if *fmwk == schema.Framework_GO {
+				if err := runGoInitCmdIfNeeded(ctx, targetPkg.Root, runCommand); err != nil {
 					return err
 				}
 			}
 
-			if *name == "" {
-				return context.Canceled
-			}
-		} else {
-			*name = ""
-		}
+			isNameUsed := *fmwk == schema.Framework_WEB
 
-		if *fmwk == schema.Framework_GO || *fmwk == schema.Framework_NODEJS {
-			protoOpts := proto.GenServiceOpts{Name: *name, Framework: *fmwk}
-			if err := proto.CreateProtoScaffold(ctx, root.FS(), loc, protoOpts); err != nil {
+			if !isNameUsed {
+				if name == "" {
+					name, err = tui.Ask(ctx, "How would you like to name your service?",
+						"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
+						serviceName(targetPkg.Loc))
+					if err != nil {
+						return err
+					}
+				}
+
+				if name == "" {
+					return context.Canceled
+				}
+			} else {
+				name = ""
+			}
+
+			if *fmwk == schema.Framework_GO || *fmwk == schema.Framework_NODEJS {
+				protoOpts := proto.GenServiceOpts{Name: name, Framework: *fmwk}
+				if err := proto.CreateProtoScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc, protoOpts); err != nil {
+					return err
+				}
+			}
+
+			cueOpts := cue.GenServiceOpts{
+				ExportedServiceName: name,
+				Framework:           *fmwk,
+				HttpBackendPkg:      httpBackendPkg,
+			}
+			if err := cue.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc, cueOpts); err != nil {
 				return err
 			}
-		}
 
-		cueOpts := cue.GenServiceOpts{
-			ExportedServiceName: *name,
-			Framework:           *fmwk,
-			HttpBackendPkg:      *httpBackendPkg,
-		}
-		if err := cue.CreateServiceScaffold(ctx, root.FS(), loc, cueOpts); err != nil {
-			return err
-		}
-
-		switch *fmwk {
-		case schema.Framework_GO:
-			goOpts := golang.GenServiceOpts{Name: *name}
-			if err := golang.CreateServiceScaffold(ctx, root.FS(), loc, goOpts); err != nil {
-				return err
+			switch *fmwk {
+			case schema.Framework_GO:
+				goOpts := golang.GenServiceOpts{Name: name}
+				if err := golang.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc, goOpts); err != nil {
+					return err
+				}
+			case schema.Framework_WEB:
+				webOpts := web.GenServiceOpts{}
+				if err := web.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc, webOpts); err != nil {
+					return err
+				}
 			}
-		case schema.Framework_WEB:
-			webOpts := web.GenServiceOpts{}
-			if err := web.CreateServiceScaffold(ctx, root.FS(), loc, webOpts); err != nil {
-				return err
-			}
-		}
 
-		return codegenNode(ctx, root, loc)
-	})
-
-	return cmd
+			return codegenNode(ctx, targetPkg.Root, targetPkg.Loc)
+		})
 }
 
 func serviceName(loc fnfs.Location) string {

@@ -6,51 +6,26 @@ package create
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cue"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
-func targetPackage(ctx context.Context, args []string, typ string) (*workspace.Root, fnfs.Location, error) {
-	root, loc, err := module.PackageAtArgs(ctx, args)
-	if err != nil {
-		return nil, fnfs.Location{}, err
-	}
-
-	if loc.RelPath == "." {
-		cmd := fmt.Sprintf("ns create %s", typ)
-		return nil, fnfs.Location{}, fmt.Errorf(
-			"cannot create %s at workspace root. Please specify %s location or run %s at the target directory",
-			typ, typ, colors.Ctx(ctx).Highlight.Apply(cmd))
-	}
-
-	return root, loc, nil
-}
-
 func newExtensionCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "extension",
-		Short: "Creates an extension.",
+	var targetPkg targetPkg
 
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, loc, err := targetPackage(ctx, args, "extension")
-			if err != nil {
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "extension",
+			Short: "Creates an extension.",
+		}).
+		With(parseTargetPkgWithDeps(&targetPkg, "extension")...).
+		Do(func(ctx context.Context) error {
+			if err := cue.CreateExtensionScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc); err != nil {
 				return err
 			}
 
-			if err := cue.CreateExtensionScaffold(ctx, root.FS(), loc); err != nil {
-				return err
-			}
-
-			return codegenNode(ctx, root, loc)
-		}),
-	}
-
-	return cmd
+			return codegenNode(ctx, targetPkg.Root, targetPkg.Loc)
+		})
 }

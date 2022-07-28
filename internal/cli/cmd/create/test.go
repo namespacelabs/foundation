@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/frontend/cue"
 	"namespacelabs.dev/foundation/internal/frontend/golang"
@@ -15,42 +16,43 @@ import (
 )
 
 func newTestCmd() *cobra.Command {
-	use := "test"
-	cmd := &cobra.Command{
-		Use:   use,
-		Short: "Creates a stub for an e2e test.",
-	}
+	var (
+		targetPkg  targetPkg
+		serverPkg  string
+		servicePkg string
+	)
 
-	serverPkg := cmd.Flags().String("server", "", "Package name of the server.")
-	servicePkg := cmd.Flags().String("service", "", "Package name of the service.")
-	_ = cmd.MarkFlagRequired("server")
-	_ = cmd.MarkFlagRequired("service")
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "test",
+			Short: "Creates a stub for an e2e test.",
+		}).
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.StringVar(&serverPkg, "server", "", "Package name of the server.")
+			flags.StringVar(&servicePkg, "service", "", "Package name of the service.")
+			_ = cobra.MarkFlagRequired(flags, "server")
+			_ = cobra.MarkFlagRequired(flags, "service")
+		}).
+		With(parseTargetPkgWithDeps(&targetPkg, "test")...).
+		Do(func(ctx context.Context) error {
 
-	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		root, loc, err := targetPackage(ctx, args, use)
-		if err != nil {
-			return err
-		}
+			fmwk := schema.Framework_GO
 
-		fmwk := schema.Framework_GO
-
-		cueOpts := cue.GenTestOpts{
-			ServerPkg: *serverPkg,
-		}
-		if err := cue.CreateTestScaffold(ctx, root.FS(), loc, cueOpts); err != nil {
-			return err
-		}
-
-		switch fmwk {
-		case schema.Framework_GO:
-			goOpts := golang.GenTestOpts{ServicePkg: *servicePkg}
-			if err := golang.CreateTestScaffold(ctx, root.FS(), loc, goOpts); err != nil {
+			cueOpts := cue.GenTestOpts{
+				ServerPkg: serverPkg,
+			}
+			if err := cue.CreateTestScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc, cueOpts); err != nil {
 				return err
 			}
-		}
 
-		return nil
-	})
+			switch fmwk {
+			case schema.Framework_GO:
+				goOpts := golang.GenTestOpts{ServicePkg: servicePkg}
+				if err := golang.CreateTestScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc, goOpts); err != nil {
+					return err
+				}
+			}
 
-	return cmd
+			return nil
+		})
 }

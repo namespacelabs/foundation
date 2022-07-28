@@ -12,15 +12,6 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-func PackageAtArgs(ctx context.Context, args []string) (*workspace.Root, fnfs.Location, error) {
-	directory := "."
-	if len(args) > 0 {
-		directory = args[0]
-	}
-
-	return PackageAt(ctx, directory)
-}
-
 func PackageAt(ctx context.Context, dir string) (*workspace.Root, fnfs.Location, error) {
 	abs, err := filepath.Abs(dir)
 	if err != nil {

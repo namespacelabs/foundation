@@ -16,7 +16,7 @@ import (
 
 var ExperimentalEnableTypescript = false
 
-func selectFramework(ctx context.Context, title string, fmwkFlag *string) (*schema.Framework, error) {
+func selectFramework(ctx context.Context, title string, fmwkFlag string) (*schema.Framework, error) {
 	frameworks := []frameworkItem{
 		{schema.Framework_GO, "Go gRPC and HTTP handlers (beta)."},
 		{schema.Framework_WEB, "Typescript-based web application, built with Vite (alpha)."},
@@ -27,15 +27,15 @@ func selectFramework(ctx context.Context, title string, fmwkFlag *string) (*sche
 	}
 
 	var item frameworkItem
-	if *fmwkFlag != "" {
+	if fmwkFlag != "" {
 		for _, f := range frameworks {
-			if strings.ToLower(f.Title()) == *fmwkFlag {
+			if strings.ToLower(f.Title()) == fmwkFlag {
 				item = f
 				break
 			}
 		}
 		if item.fwmk == 0 {
-			return nil, fnerrors.UserError(nil, "invalid framework: %s", *fmwkFlag)
+			return nil, fnerrors.UserError(nil, "invalid framework: %s", fmwkFlag)
 		}
 	} else {
 		selected, err := tui.Select(ctx, title, frameworks)
@@ -62,6 +62,16 @@ func (f frameworkItem) Title() string       { return f.fwmk.String() }
 func (f frameworkItem) Description() string { return f.desc }
 func (f frameworkItem) FilterValue() string { return f.Title() }
 
-func frameworkFlag(cmd *cobra.Command) *string {
-	return cmd.Flags().String("framework", "", "The framework to use (go, web or nodejs).")
+func withFramework(fmwkOut *string) *fmwkParser {
+	return &fmwkParser{fmwkOut: fmwkOut}
 }
+
+type fmwkParser struct {
+	fmwkOut *string
+}
+
+func (p *fmwkParser) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(p.fmwkOut, "framework", "", "The framework to use (go, web or nodejs).")
+}
+
+func (p *fmwkParser) Parse(ctx context.Context, args []string) error { return nil }
