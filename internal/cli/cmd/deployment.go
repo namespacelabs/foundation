@@ -87,13 +87,9 @@ func checkDelete(ctx context.Context, env string, single bool) error {
 
 	written, err := tui.Ask(ctx, title,
 		fmt.Sprintf("Removing a deployment is a destructive operation -- any data that is a part of the environment will not be recoverable.\n\nPlease type %q to confirm you'd like to remove all of its resources.", env),
-		env)
+		"")
 	if err != nil {
 		return err
-	}
-
-	if written == "" {
-		return context.Canceled
 	}
 
 	if written != env {
