@@ -140,6 +140,18 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 
 func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environment, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (oci.NamedImage, error) {
 	if !useDevBuild(env.Proto()) {
+
+		var prodwebConfig memfs.FS
+		prodwebConfig.Add("prodweb.config.js", []byte(`
+			export default {
+				resolve: {
+					// Important to correctly handle ns-managed dependencies.
+					preserveSymlinks: true,
+				},
+			}`))
+
+		extra = append(extra, &prodwebConfig)
+
 		return ViteProductionBuild(ctx, loc, env, targetConf.SourceLabel(), filepath.Join(compiledPath, entry.PathPrefix), entry.PathPrefix, externalModules, extra...)
 	}
 
@@ -150,23 +162,23 @@ func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environme
 		  process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
 
 		  return defineConfig({
-			base: process.env.CMD_DEV_BASE || "/",
+				base: process.env.CMD_DEV_BASE || "/",
 
-			resolve: {
-				// Important to correctly handle ns-managed dependencies.
-				preserveSymlinks: true,
-			},
+				resolve: {
+					// Important to correctly handle ns-managed dependencies.
+					preserveSymlinks: true,
+				},
 
-			server: {
-			  watch: {
-				usePolling: true,
-				interval: 500,
-				binaryInterval: 1000,
-			  },
-			  hmr: {
-				clientPort: process.env.CMD_DEV_PORT,
-			  },
-			},
+				server: {
+					watch: {
+						usePolling: true,
+						interval: 500,
+						binaryInterval: 1000,
+					},
+					hmr: {
+						clientPort: process.env.CMD_DEV_PORT,
+					},
+				},
 		  });
 		};`))
 
