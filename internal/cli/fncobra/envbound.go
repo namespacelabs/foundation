@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
-// Deprecated
+// Deprecated, use "ParseEnv"/"FixedEnv" instead.
 func CmdWithEnv(cmd *cobra.Command, f func(context.Context, provision.Env, []string) error) *cobra.Command {
 	var envRef string
 
@@ -45,8 +45,14 @@ func ParseEnv(envOut *provision.Env) *EnvParser {
 	return &EnvParser{envOut: envOut}
 }
 
+func FixedEnv(envOut *provision.Env, env string) *EnvParser {
+	return &EnvParser{envOut: envOut, envRef: env}
+}
+
 func (p *EnvParser) AddFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&p.envRef, "env", "dev", "The environment to access (as defined in the workspace).")
+	if p.envRef == "" {
+		cmd.Flags().StringVar(&p.envRef, "env", "dev", "The environment to access (as defined in the workspace).")
+	}
 }
 
 func (p *EnvParser) Parse(ctx context.Context, args []string) error {
