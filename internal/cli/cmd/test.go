@@ -216,7 +216,7 @@ func NewTestCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 	cmd.Flags().BoolVar(&rocketShip, "rocket_ship", false, "If set, go full parallel without constraints.")
 
-	cmd.Flags().MarkHidden("rocket_ship")
+	_ = cmd.Flags().MarkHidden("rocket_ship")
 
 	return cmd
 }
