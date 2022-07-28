@@ -6,11 +6,13 @@ package fncobra
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -24,9 +26,8 @@ type Locations struct {
 }
 
 type LocationsParser struct {
-	locsOut         *Locations
-	opts            *ParseLocationsOpts
-	usePackageNames bool
+	locsOut *Locations
+	opts    *ParseLocationsOpts
 }
 
 type ParseLocationsOpts struct {
@@ -43,9 +44,7 @@ func ParseLocations(locsOut *Locations, opts *ParseLocationsOpts) *LocationsPars
 	}
 }
 
-func (p *LocationsParser) AddFlags(cmd *cobra.Command) {
-	cmd.Flags().BoolVar(&p.usePackageNames, "use_package_names", p.usePackageNames, "Specify locations by using their fully qualified package name instead.")
-}
+func (p *LocationsParser) AddFlags(cmd *cobra.Command) {}
 
 func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 	if p.locsOut == nil {
@@ -57,7 +56,17 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 		return err
 	}
 
-	locs, err := packagesFromArgs(ctx, root, p.usePackageNames, args)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	relCwd, err := filepath.Rel(root.Abs(), cwd)
+	if err != nil {
+		return err
+	}
+
+	locs, err := locationsFromArgs(root.Workspace.ModuleName, relCwd, args)
 	if err != nil {
 		return err
 	}
@@ -84,25 +93,29 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 	return nil
 }
 
-func packagesFromArgs(ctx context.Context, root *workspace.Root, usePackageNames bool, args []string) ([]fnfs.Location, error) {
+func locationsFromArgs(moduleName string, relCwd string, args []string) ([]fnfs.Location, error) {
 	var locations []fnfs.Location
-	pl := workspace.NewPackageLoader(root)
 	for _, arg := range args {
-		var fsloc fnfs.Location
-		if usePackageNames {
-			loc, err := pl.Resolve(ctx, schema.PackageName(arg))
-			if err != nil {
-				return nil, err
-			}
-			fsloc = fnfs.Location{
-				ModuleName: loc.Module.ModuleName(),
-				RelPath:    loc.Rel(),
-			}
-		} else {
-			// XXX RelPackage should probably validate that it's a valid path (e.g. doesn't escape module).
-			fsloc = root.RelPackage(arg)
+		if filepath.IsAbs(arg) {
+			return nil, fnerrors.UserError(nil, "absolute paths are not supported: %s", arg)
 		}
 
+		var rel string
+		modulePrefix := moduleName + "/"
+		if strings.HasPrefix(arg, modulePrefix) {
+			rel = arg[len(modulePrefix):]
+		} else {
+			rel = filepath.Join(relCwd, filepath.Clean(arg))
+		}
+
+		if strings.HasPrefix(rel, "..") {
+			return nil, fnerrors.UserError(nil, "can't refer to packages outside of the module root: %s", rel)
+		}
+
+		fsloc := fnfs.Location{
+			ModuleName: moduleName,
+			RelPath:    rel,
+		}
 		locations = append(locations, fsloc)
 	}
 
