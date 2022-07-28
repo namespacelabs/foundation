@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -27,7 +28,6 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -35,6 +35,8 @@ const exitCode = 3
 
 func NewTestCmd() *cobra.Command {
 	var (
+		env            provision.Env
+		locs           fncobra.Locations
 		testOpts       testing.TestOpts
 		includeServers bool
 		parallel       bool
@@ -44,38 +46,42 @@ func NewTestCmd() *cobra.Command {
 		explain        bool
 	)
 
-	cmd := &cobra.Command{
-		Use:   "test",
-		Short: "Run a functional end-to-end test.",
-		Args:  cobra.ArbitraryArgs,
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:   "test",
+			Short: "Run a functional end-to-end test.",
+			Args:  cobra.ArbitraryArgs,
+		}).
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
+			flags.BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, don't cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
+			flags.BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
+			flags.BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
+			flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
+			flags.BoolVar(&testing.UseVClusters, "vcluster", testing.UseVClusters, "If true, creates a separate vcluster per test invocation.")
+			flags.BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
+			flags.BoolVar(&rocketShip, "rocket_ship", false, "If set, go full parallel without constraints.")
 
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			_ = flags.MarkHidden("rocket_ship")
+		}).
+		With(
+			// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
+			fncobra.FixedEnv(&env, "dev"),
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
+		Do(func(ctx context.Context) error {
 			ctx = prepareContext(ctx, parallelWork, rocketShip)
 
-			root, err := module.FindRoot(ctx, ".")
-			if err != nil {
-				return err
-			}
-
-			devEnv, err := provision.RequireEnv(root, "dev")
-			if err != nil {
-				return err
-			}
-
-			var locs []fnfs.Location
+			var testLocs []fnfs.Location
 
 			if rocketShip {
 				parallel = true
 			}
 
-			if len(args) == 0 {
-				list, err := workspace.ListSchemas(ctx, root)
-				if err != nil {
-					return err
-				}
-
-				pl := workspace.NewPackageLoader(root)
-				for _, l := range list.Locations {
+			if locs.AreSpecified {
+				testLocs = locs.Locs
+			} else {
+				pl := workspace.NewPackageLoader(locs.Root)
+				for _, l := range locs.Locs {
 					pp, err := pl.LoadByName(ctx, l.AsPackageName())
 					if err != nil {
 						return err
@@ -83,13 +89,8 @@ func NewTestCmd() *cobra.Command {
 
 					// We also automatically generate a startup-test for each server.
 					if pp.Test != nil || (includeServers && pp.Server != nil) {
-						locs = append(locs, l)
+						testLocs = append(testLocs, l)
 					}
-				}
-			} else {
-				for _, arg := range args {
-					loc := root.RelPackage(arg)
-					locs = append(locs, loc)
 				}
 			}
 
@@ -99,20 +100,19 @@ func NewTestCmd() *cobra.Command {
 			testOpts.ParentRunID = storedrun.ParentID
 			testOpts.OutputProgress = !parallel
 
-			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(locs))
-			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(locs))}
+			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(testLocs))
+			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(testLocs))}
 
 			if err := tasks.Action("test.prepare").Run(ctx, func(ctx context.Context) error {
 				eg := executor.New(ctx, "test")
-				for k, loc := range locs {
+				for k, loc := range testLocs {
 					k := k     // Capture k.
 					loc := loc // Capture loc.
 
 					eg.Go(func(ctx context.Context) error {
-						pl := workspace.NewPackageLoader(devEnv.Root())
+						pl := workspace.NewPackageLoader(env.Root())
 
-						// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
-						buildEnv := testing.PrepareEnv(ctx, devEnv, ephemeral)
+						buildEnv := testing.PrepareEnv(ctx, env, ephemeral)
 
 						status := style.Header.Apply("BUILDING")
 						fmt.Fprintf(stderr, "%s: Test %s\n", loc.AsPackageName(), status)
@@ -204,21 +204,7 @@ func NewTestCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
-	}
-
-	cmd.Flags().BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
-	cmd.Flags().BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, don't cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
-	cmd.Flags().BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
-	cmd.Flags().BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
-	cmd.Flags().BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
-	cmd.Flags().BoolVar(&testing.UseVClusters, "vcluster", testing.UseVClusters, "If true, creates a separate vcluster per test invocation.")
-	cmd.Flags().BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
-	cmd.Flags().BoolVar(&rocketShip, "rocket_ship", false, "If set, go full parallel without constraints.")
-
-	_ = cmd.Flags().MarkHidden("rocket_ship")
-
-	return cmd
+		})
 }
 
 func prepareContext(ctx context.Context, parallelWork, rocketShip bool) context.Context {
