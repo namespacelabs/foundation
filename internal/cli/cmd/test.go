@@ -94,12 +94,10 @@ func NewTestCmd() *cobra.Command {
 			}
 
 			stderr := console.Stderr(ctx)
-			pl := workspace.NewPackageLoader(devEnv.Root())
+			style := colors.Ctx(ctx)
 
 			testOpts.ParentRunID = storedrun.ParentID
 			testOpts.OutputProgress = !parallel
-
-			style := colors.Ctx(ctx)
 
 			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(locs))
 			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(locs))}
@@ -111,6 +109,8 @@ func NewTestCmd() *cobra.Command {
 					loc := loc // Capture loc.
 
 					eg.Go(func(ctx context.Context) error {
+						pl := workspace.NewPackageLoader(devEnv.Root())
+
 						// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
 						buildEnv := testing.PrepareEnv(ctx, devEnv, ephemeral)
 
