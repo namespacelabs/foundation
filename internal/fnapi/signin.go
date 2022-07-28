@@ -7,7 +7,8 @@ package fnapi
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 type StartLoginRequest struct{}
@@ -47,18 +48,19 @@ func CompleteLogin(ctx context.Context, id string) (*UserAuth, error) {
 
 	method := "nsl.signin.SigninService/CompleteLogin"
 
-	resp := &[]UserAuth{}
-	if err := callProdAPI(ctx, method, req, func(dec *json.Decoder) error {
-		return dec.Decode(resp)
+	var resp []UserAuth
+	// Explicitly use CallAPI() so we don't surface an action to the user while waiting.
+	if err := CallAPI(ctx, EndpointAddress, method, req, func(dec *json.Decoder) error {
+		return dec.Decode(&resp)
 	}); err != nil {
 		return nil, err
 	}
 
-	if len(*resp) != 1 {
-		return nil, fmt.Errorf("Expected exactly one response from %s - got %d", method, len(*resp))
+	if len(resp) != 1 {
+		return nil, fnerrors.InternalError("expected exactly one response (got %d)", len(resp))
 	}
 
-	return &(*resp)[0], nil
+	return &resp[0], nil
 }
 
 func CheckSignin(ctx context.Context, userData string) (*UserAuth, error) {
