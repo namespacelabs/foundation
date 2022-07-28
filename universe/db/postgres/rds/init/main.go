@@ -13,6 +13,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -34,25 +35,21 @@ var (
 	userFile           = flag.String("postgres_user_file", "", "location of the user secret")
 	passwordFile       = flag.String("postgres_password_file", "", "location of the password secret")
 
-	engine           = "postgres"
-	protocol         = "tcp"
-	deleteProtection = true // can still be disabled and deleted by hand
-	public           = false
-	ipRange          = "0.0.0.0/0" // TODO lock down
+	ipRange = "0.0.0.0/0" // TODO lock down
 
 	// TODO configurable?!
 	storage = int32(100) // min GB
 	class   = "db.m5d.xlarge"
-	iops    = int32(3000)
+	iops    = 3000
 )
 
 func ensureSecurityGroup(ctx context.Context, ec2cli *ec2.Client, clusterId, vpcId string) (string, error) {
 	name := fmt.Sprintf("%s-security-group", clusterId)
 	desc := fmt.Sprintf("Security group for %s", clusterId)
 	res, err := ec2cli.CreateSecurityGroup(ctx, &ec2.CreateSecurityGroupInput{
-		GroupName:   &name,
-		Description: &desc,
-		VpcId:       vpcID,
+		GroupName:   aws.String(name),
+		Description: aws.String(desc),
+		VpcId:       aws.String(vpcId),
 	})
 	if err == nil {
 		log.Printf("Created security group %s", name)
@@ -64,13 +61,10 @@ func ensureSecurityGroup(ctx context.Context, ec2cli *ec2.Client, clusterId, vpc
 	if errors.As(err, &e) && e.ErrorCode() == "InvalidGroup.Duplicate" {
 		log.Printf("Security group %s already exists", name)
 
-		nameFilter := "group-name"
-		idFilter := "vpc-id"
-
 		res, err := ec2cli.DescribeSecurityGroups(ctx, &ec2.DescribeSecurityGroupsInput{
 			Filters: []ec2types.Filter{
-				{Name: &nameFilter, Values: []string{name}},
-				{Name: &idFilter, Values: []string{vpcId}},
+				{Name: aws.String("group-name"), Values: []string{name}},
+				{Name: aws.String("vpc-id"), Values: []string{vpcId}},
 			},
 		})
 		if err != nil {
@@ -96,17 +90,17 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 	}
 
 	create := &awsrds.CreateDBClusterInput{
-		DBClusterIdentifier:    &id,
-		DatabaseName:           &db.Name,
-		MasterUsername:         &user,
-		MasterUserPassword:     &password,
-		Engine:                 &engine, // Also set engine version?
-		AllocatedStorage:       &storage,
-		DBClusterInstanceClass: &class,
-		Iops:                   &iops,
-		DeletionProtection:     &deleteProtection,
-		PubliclyAccessible:     &public,
-		DBSubnetGroupName:      &dbGroup,
+		DBClusterIdentifier:    aws.String(id),
+		DatabaseName:           aws.String(db.Name),
+		MasterUsername:         aws.String(user),
+		MasterUserPassword:     aws.String(password),
+		Engine:                 aws.String("postgres"), // Also set engine version?
+		AllocatedStorage:       aws.Int32(int32(storage)),
+		DBClusterInstanceClass: aws.String(class),
+		Iops:                   aws.Int32(int32(iops)),
+		DeletionProtection:     aws.Bool(true), // can still be disabled and deleted by hand
+		PubliclyAccessible:     aws.Bool(false),
+		DBSubnetGroupName:      aws.String(dbGroup),
 		VpcSecurityGroupIds:    []string{groupId},
 	}
 
@@ -123,7 +117,7 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 	}
 
 	resp, err := rdscli.DescribeDBClusters(ctx, &awsrds.DescribeDBClustersInput{
-		DBClusterIdentifier: &id,
+		DBClusterIdentifier: aws.String(id),
 	})
 	if err != nil {
 		return err
@@ -140,16 +134,16 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 	}
 
 	if _, err := ec2cli.AuthorizeSecurityGroupIngress(ctx, &ec2.AuthorizeSecurityGroupIngressInput{
-		GroupId:    &groupId,
+		GroupId:    aws.String(groupId),
 		FromPort:   desc.Port,
 		ToPort:     desc.Port,
-		IpProtocol: &protocol,
-		CidrIp:     &ipRange,
+		IpProtocol: aws.String("tcp"),
+		CidrIp:     aws.String(ipRange),
 	}); err != nil {
 		// Apparently there's no nicer type for this.
 		var e smithy.APIError
 		if errors.As(err, &e) && e.ErrorCode() == "InvalidPermission.Duplicate" {
-			log.Printf("Ingress for security group %s is already authorized for port %d", groupId, desc.Port)
+			log.Printf("Ingress for security group %s is already authorized for port %d", groupId, *desc.Port)
 			// TODO update?
 		} else {
 			return fmt.Errorf("failed to add permissions to security group: %v", err)
@@ -164,7 +158,7 @@ wait:
 		time.Sleep(connBackoff)
 
 		resp, err := rdscli.DescribeDBClusterEndpoints(ctx, &awsrds.DescribeDBClusterEndpointsInput{
-			DBClusterIdentifier: &id,
+			DBClusterIdentifier: aws.String(id),
 		})
 		if err != nil {
 			return err
@@ -187,10 +181,9 @@ wait:
 }
 
 func createDBSubnetGroup(ctx context.Context, envName string, rdscli *awsrds.Client, ec2cli *ec2.Client, vpcId string) (string, error) {
-	idFilter := "vpc-id"
 	resp, err := ec2cli.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
 		Filters: []ec2types.Filter{{
-			Name:   &idFilter,
+			Name:   aws.String("vpc-id"),
 			Values: []string{vpcId},
 		}},
 	})
@@ -208,10 +201,9 @@ func createDBSubnetGroup(ctx context.Context, envName string, rdscli *awsrds.Cli
 	}
 
 	name := fmt.Sprintf("ns-%s-db-subnet", envName)
-	desc := fmt.Sprintf("Namespace DB Subnet group for RDS deployments in %s environment.", envName)
 	if _, err := rdscli.CreateDBSubnetGroup(ctx, &awsrds.CreateDBSubnetGroupInput{
-		DBSubnetGroupName:        &name,
-		DBSubnetGroupDescription: &desc,
+		DBSubnetGroupName:        aws.String(name),
+		DBSubnetGroupDescription: aws.String(fmt.Sprintf("Namespace DB Subnet group for RDS deployments in %s environment.", envName)),
 		SubnetIds:                subnetIds, // TODO Should we create our own?
 	}); err != nil {
 		var e *rdstypes.DBSubnetGroupAlreadyExistsFault

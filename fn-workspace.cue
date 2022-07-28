@@ -34,7 +34,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/universe/db/postgres/incluster/tool":                            "sha256:f6a2404e3aa780f963416bb2a20007be020b4629dbbe8ffbc551b5bc12bfd19b"
 		"namespacelabs.dev/foundation/universe/db/postgres/internal/init":                             "sha256:077f1791f73c531761c6837eadf05d27478f6e30ab08d326bcc031879ce08d7e"
 		"namespacelabs.dev/foundation/universe/db/postgres/opaque/tool":                               "sha256:4e68c0f108cb5e635a775d5549cee3797f91f7744415344ded9b2b155ea6c6d0"
-		"namespacelabs.dev/foundation/universe/db/postgres/rds/init":                                  "sha256:08ba037d31c4091f5a1bf42d7fd33288055269a6a62da368c71793c5e21a6f48"
+		"namespacelabs.dev/foundation/universe/db/postgres/rds/init":                                  "sha256:46838f3386f2d606e1dd56cfb2da3a876872e02e4ba64b1e9cbda388ea3e9c93"
 		"namespacelabs.dev/foundation/universe/db/postgres/rds/prepare":                               "sha256:001758fb8e4afde926f5f5f1d1dc25916ac71bf5376347394565ecfe4cdbd165"
 		"namespacelabs.dev/foundation/universe/db/postgres/server/creds/tool":                         "sha256:e3030c12d5173f4bc98ffbc28c8cdf554ddb69b4be63110a881677d48f775082"
 		"namespacelabs.dev/foundation/universe/db/postgres/server/img":                                "sha256:414c76ce30ca9baaa021c5f37e23e145cb9f18f918b623a1b6d6b8cc6d1d14ee"
