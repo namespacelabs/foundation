@@ -80,7 +80,7 @@ type cueCallback struct {
 }
 
 type cueEnvironmentRequirements struct {
-	RequireLabels map[string]string `json:"require"`
+	RequiredLabels map[string]string `json:"required"`
 }
 
 func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *workspace.Package, opts workspace.LoadPackageOpts) error {
@@ -338,7 +338,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		}
 
 		node.EnvironmentRequirement = &schema.Node_EnvironmentRequirement{}
-		for k, v := range er.RequireLabels {
+		for k, v := range er.RequiredLabels {
 			node.EnvironmentRequirement.EnvironmentHasLabel = append(node.EnvironmentRequirement.EnvironmentHasLabel, &schema.Environment_Label{
 				Name:  k,
 				Value: v,
