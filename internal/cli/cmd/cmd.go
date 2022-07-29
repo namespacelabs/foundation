@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/create"
 	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
 	"namespacelabs.dev/foundation/internal/cli/cmd/lsp"
@@ -50,6 +51,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(source.NewSourceCmd())
 	root.AddCommand(tools.NewToolsCmd())
 	root.AddCommand(create.NewCreateCmd(RunCommand))
+	root.AddCommand(cluster.NewClusterCmd())
 }
 
 // Programmatically trigger an `ns` command.
