@@ -80,7 +80,9 @@ func CreateCluster(ctx context.Context, env *schema.Environment, ephemeral bool)
 
 		if err := tasks.Action("nscloud.k8s-cluster.create").Arg("env", env.Name).Run(ctx, func(ctx context.Context) error {
 			return fnapi.CallAPI(ctx, machineEndpoint, "nsl.vm.api.VMService/CreateKubernetesCluster", &CreateKubernetesClusterRequest{
-				OpaqueUserAuth: user.Opaque,
+				OpaqueUserAuth:    user.Opaque,
+				Ephemeral:         ephemeral,
+				DocumentedPurpose: env.Name, // Best we can do right now.
 			}, func(dec *json.Decoder) error {
 				return dec.Decode(&responses)
 			})
@@ -219,7 +221,9 @@ func (d deferred) TargetPlatforms(context.Context) ([]specs.Platform, error) {
 }
 
 type CreateKubernetesClusterRequest struct {
-	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
+	OpaqueUserAuth    []byte `json:"opaque_user_auth,omitempty"`
+	Ephemeral         bool   `json:"ephemeral,omitempty"`
+	DocumentedPurpose string `json:"documented_purpose,omitempty"`
 }
 
 type CreateKubernetesClusterResponse struct {
