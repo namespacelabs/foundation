@@ -206,7 +206,7 @@ func resetStack(out *Stack, env provision.Env, focus []provision.Server) {
 
 	// XXX handling broken web ui builds.
 	if workspace.Env == nil {
-		workspace.Env = provision.EnvsOrDefault(workspace)
+		workspace.Env = provision.EnvsOrDefault(env.DevHost(), workspace)
 	}
 
 	out.AbsRoot = env.Root().Abs()

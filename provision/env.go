@@ -7,6 +7,7 @@ package provision
 import (
 	"context"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/schema"
@@ -77,12 +78,14 @@ func (e boundEnv) Sources() []workspace.ModuleSources {
 	return e.sp.Sources()
 }
 
-func EnvsOrDefault(workspace *schema.Workspace) []*schema.Environment {
+func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*schema.Environment {
+	baseEnvs := slices.Clone(devHost.LocalEnv)
+
 	if workspace.Env != nil {
-		return workspace.Env
+		return append(baseEnvs, workspace.Env...)
 	}
 
-	return []*schema.Environment{
+	return append(baseEnvs, []*schema.Environment{
 		{
 			Name:    "dev",
 			Runtime: "kubernetes", // XXX
@@ -98,11 +101,11 @@ func EnvsOrDefault(workspace *schema.Workspace) []*schema.Environment {
 			Runtime: "kubernetes",
 			Purpose: schema.Environment_PRODUCTION,
 		},
-	}
+	}...)
 }
 
 func RequireEnv(root *workspace.Root, name string) (Env, error) {
-	for _, env := range EnvsOrDefault(root.Workspace) {
+	for _, env := range EnvsOrDefault(root.DevHost, root.Workspace) {
 		if env.Name == name {
 			return MakeEnv(root, env), nil
 		}

@@ -63,6 +63,7 @@ message DevHost {
     repeated ConfigureEnvironment configure          = 1;
     repeated ConfigurePlatform    configure_platform = 2;
     repeated google.protobuf.Any configure_tools     = 3;
+    repeated Environment         local_env           = 4;  // Allows specifying environments for local use alone.
 
     message ConfigureEnvironment {
         string              name                   = 1;
