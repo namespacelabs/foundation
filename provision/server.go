@@ -75,30 +75,6 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 		env:      bind(),
 	}
 
-	for _, req := range sealed.ParsedPackage.Server.GetEnvironmentRequirement() {
-		for _, r := range req.GetEnvironmentHasLabel() {
-			if !env.HasLabel(r) {
-				return Server{}, IncompatibleEnvironmentErr{
-					Env:              t.env.Proto(),
-					Server:           sealed.ParsedPackage.Server,
-					RequirementOwner: schema.PackageName(req.Package),
-					RequiredLabel:    r,
-				}
-			}
-		}
-
-		for _, r := range req.GetEnvironmentDoesNotHaveLabel() {
-			if env.HasLabel(r) {
-				return Server{}, IncompatibleEnvironmentErr{
-					Env:               t.env.Proto(),
-					Server:            sealed.ParsedPackage.Server,
-					RequirementOwner:  schema.PackageName(req.Package),
-					IncompatibleLabel: r,
-				}
-			}
-		}
-	}
-
 	t.Package = sealed.ParsedPackage
 	t.entry = sealed.Proto
 	t.deps = sealed.Deps
@@ -119,4 +95,32 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 	t.entry.ServerNaming = pdata.Naming
 
 	return t, nil
+}
+
+func CheckCompatible(t Server) error {
+	for _, req := range t.Proto().GetEnvironmentRequirement() {
+		for _, r := range req.GetEnvironmentHasLabel() {
+			if !t.Env().Proto().HasLabel(r) {
+				return IncompatibleEnvironmentErr{
+					Env:              t.env.Proto(),
+					Server:           t.Proto(),
+					RequirementOwner: schema.PackageName(req.Package),
+					RequiredLabel:    r,
+				}
+			}
+		}
+
+		for _, r := range req.GetEnvironmentDoesNotHaveLabel() {
+			if t.Env().Proto().HasLabel(r) {
+				return IncompatibleEnvironmentErr{
+					Env:               t.env.Proto(),
+					Server:            t.Proto(),
+					RequirementOwner:  schema.PackageName(req.Package),
+					IncompatibleLabel: r,
+				}
+			}
+		}
+	}
+
+	return nil
 }

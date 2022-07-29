@@ -60,6 +60,12 @@ func PrepareDeployServers(ctx context.Context, env ops.Environment, focus []prov
 }
 
 func PrepareDeployStack(ctx context.Context, env ops.Environment, stack *stack.Stack, focus []provision.Server) (compute.Computable[*Plan], error) {
+	for _, srv := range stack.Servers {
+		if err := provision.CheckCompatible(srv); err != nil {
+			return nil, err
+		}
+	}
+
 	def, err := prepareHandlerInvocations(ctx, env, stack)
 	if err != nil {
 		return nil, err
