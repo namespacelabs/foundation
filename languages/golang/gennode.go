@@ -86,7 +86,8 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 	}
 
 	// Irrespective of whether instances are declared, if there's no code to consume them, don't codegen.
-	if len(n.ExportService) == 0 && len(n.ExportHttp) == 0 && !hasInitialization && providesCount == 0 {
+	if n.ServiceFramework == schema.Framework_FRAMEWORK_UNSPECIFIED &&
+		len(n.ExportService) == 0 && len(n.ExportHttp) == 0 && !hasInitialization && providesCount == 0 {
 		return nil
 	}
 
