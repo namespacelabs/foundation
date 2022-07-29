@@ -34,6 +34,10 @@ _#Node: {
 		byteCount:    string
 		mountPath:    string
 	}
+
+	environment?: {
+		require?: [string]: string
+	}
 }
 
 #Extension: {

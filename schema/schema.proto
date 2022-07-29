@@ -36,7 +36,7 @@ message Stack {
 // This is temporary; without extensions protos are pretty monolithic.
 // And we don't want to be in a situation where all possible integrations
 // have to be known ahead of time.
-// Next ID: 21
+// Next ID: 22
 message Node {
     // The package name (computed).
     string package_name = 1;
@@ -96,10 +96,18 @@ message Node {
     // Storage claims.
     repeated RequiredStorage required_storage = 18;
 
+    // Environment requirements determine whether a particular node is compatible with a particular environment.
+    EnvironmentRequirement environment_requirement = 21;
+
     enum Kind {
         KIND_UNSPECIFIED = 0;
         SERVICE          = 1;
         EXTENSION        = 2;
+    }
+
+    message EnvironmentRequirement {
+        repeated Environment.Label environment_has_label           = 1;
+        repeated Environment.Label environment_does_not_have_label = 2;
     }
 }
 
@@ -203,7 +211,7 @@ message Reference {
     }
 }
 
-// Next ID: 24
+// Next ID: 25
 message Server {
     reserved 17, 19;
 
@@ -262,6 +270,8 @@ message Server {
     // Aggregated from all nodes.
     repeated RequiredStorage required_storage = 18;
 
+    repeated EnvironmentRequirement environment_requirement = 24;
+
     message Binary {
         string prebuilt     = 1;
         string package_name = 2;
@@ -288,6 +298,12 @@ message Server {
         string label    = 1;
         string url      = 2;
         string icon_url = 3;
+    }
+
+    message EnvironmentRequirement {
+        string   package                                           = 1;
+        repeated Environment.Label environment_has_label           = 2;
+        repeated Environment.Label environment_does_not_have_label = 3;
     }
 }
 
@@ -328,11 +344,18 @@ message Environment {
     // Typically only set for tests. Signals that this environment is single-use and not meant to be user serviceable.
     bool ephemeral = 4;
 
+    repeated Label labels = 5;
+
     enum Purpose {
         PURPOSE_UNKNOWN = 0;
         DEVELOPMENT     = 1;
         TESTING         = 2;
         PRODUCTION      = 3;
+    }
+
+    message Label {
+        string name  = 1;
+        string value = 2;
     }
 }
 

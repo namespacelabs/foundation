@@ -40,6 +40,7 @@ type Result[V any] struct {
 
 type ResultWithTimestamp[V any] struct {
 	Result[V]
+	Set       bool
 	Cached    bool
 	ActionID  tasks.ActionID
 	Started   time.Time

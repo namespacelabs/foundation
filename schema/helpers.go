@@ -180,3 +180,13 @@ func (p *Provides_AvailableIn) ProvidedInFrameworks() map[Framework]bool {
 	}
 	return fmwksSet
 }
+
+func (env *Environment) HasLabel(lbl *Environment_Label) bool {
+	for _, x := range env.GetLabels() {
+		if x.Name == lbl.Name {
+			return x.Value == lbl.Value
+		}
+	}
+
+	return false
+}

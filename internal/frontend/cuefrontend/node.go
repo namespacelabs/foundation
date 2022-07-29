@@ -79,6 +79,10 @@ type cueCallback struct {
 	InvokeBinary   cueInvokeBinary `json:"invokeBinary"`
 }
 
+type cueEnvironmentRequirements struct {
+	RequireLabels map[string]string `json:"require"`
+}
+
 func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *workspace.Package, opts workspace.LoadPackageOpts) error {
 	node := &schema.Node{
 		PackageName: loc.PackageName.String(),
@@ -324,6 +328,28 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			PersistentId: d.PersistentID,
 			ByteCount:    uint64(v),
 			MountPath:    d.MountPath,
+		})
+	}
+
+	if environment := v.LookupPath("environment"); environment.Exists() {
+		var er cueEnvironmentRequirements
+		if err := environment.Val.Decode(&er); err != nil {
+			return fnerrors.Wrapf(loc, err, "failed to parse")
+		}
+
+		node.EnvironmentRequirement = &schema.Node_EnvironmentRequirement{}
+		for k, v := range er.RequireLabels {
+			node.EnvironmentRequirement.EnvironmentHasLabel = append(node.EnvironmentRequirement.EnvironmentHasLabel, &schema.Environment_Label{
+				Name:  k,
+				Value: v,
+			})
+		}
+
+		slices.SortFunc(node.EnvironmentRequirement.EnvironmentHasLabel, func(a, b *schema.Environment_Label) bool {
+			if a.GetName() == b.GetName() {
+				return strings.Compare(a.GetValue(), b.GetValue()) < 0
+			}
+			return strings.Compare(a.GetName(), b.GetName()) < 0
 		})
 	}
 

@@ -7,6 +7,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -102,6 +103,7 @@ func NewTestCmd() *cobra.Command {
 
 			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(testLocs))
 			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(testLocs))}
+			incompatible := make([]*provision.IncompatibleEnvironmentErr, len(testLocs))
 
 			if err := tasks.Action("test.prepare").Run(ctx, func(ctx context.Context) error {
 				eg := executor.New(ctx, "test")
@@ -136,6 +138,17 @@ func NewTestCmd() *cobra.Command {
 							return suts, stack, nil
 						})
 						if err != nil {
+							var inc provision.IncompatibleEnvironmentErr
+							if errors.As(err, &inc) {
+								incompatible[k] = &inc
+								if !parallel && !parallelWork {
+									var noResults compute.ResultWithTimestamp[testing.StoredTestResults]
+									printResult(stderr, style, loc.AsPackageName(), noResults, false)
+								}
+
+								return nil
+							}
+
 							return fnerrors.UserError(loc, "failed to prepare test: %w", err)
 						}
 
@@ -151,7 +164,7 @@ func NewTestCmd() *cobra.Command {
 								return err
 							}
 
-							printResult(stderr, style, testResults, false)
+							printResult(stderr, style, loc.AsPackageName(), testResults, false)
 
 							runs.Run[k] = &storage.TestRuns_Run{
 								TestBundleId: testResults.Value.ImageRef.ImageRef(),
@@ -181,21 +194,41 @@ func NewTestCmd() *cobra.Command {
 				}
 
 				for k, res := range results {
-					printResult(stderr, style, res, true)
+					printResult(stderr, style, testLocs[k].AsPackageName(), res, true)
 
-					runs.Run[k] = &storage.TestRuns_Run{
-						TestBundleId: res.Value.ImageRef.ImageRef(),
-						TestSummary:  res.Value.TestBundleSummary,
+					if res.Set {
+						runs.Run[k] = &storage.TestRuns_Run{
+							TestBundleId: res.Value.ImageRef.ImageRef(),
+							TestSummary:  res.Value.TestBundleSummary,
+						}
+					} else {
+						runs.IncompatibleTest = append(runs.IncompatibleTest, &storage.TestRuns_IncompatibleTest{
+							TestPackage:       testLocs[k].AsPackageName().String(),
+							ServerPackage:     incompatible[k].Server.PackageName,
+							RequirementOwner:  incompatible[k].RequirementOwner.String(),
+							RequiredLabel:     incompatible[k].RequiredLabel,
+							IncompatibleLabel: incompatible[k].IncompatibleLabel,
+						})
 					}
 				}
 			}
 
 			var failed []string
 			for _, run := range runs.Run {
-				if !run.GetTestSummary().GetResult().Success {
-					failed = append(failed, run.GetTestSummary().GetTestPackage())
+				if run != nil {
+					if !run.GetTestSummary().GetResult().Success {
+						failed = append(failed, run.GetTestSummary().GetTestPackage())
+					}
 				}
 			}
+
+			var withoutNils []*storage.TestRuns_Run
+			for _, run := range runs.Run {
+				if run != nil {
+					withoutNils = append(withoutNils, run)
+				}
+			}
+			runs.Run = withoutNils
 
 			storedrun.Attach(runs)
 
@@ -224,31 +257,36 @@ func prepareContext(ctx context.Context, parallelWork, rocketShip bool) context.
 	return ctx
 }
 
-func printResult(out io.Writer, style colors.Style, res compute.ResultWithTimestamp[testing.StoredTestResults], printResults bool) {
+func printResult(out io.Writer, style colors.Style, pkg schema.PackageName, res compute.ResultWithTimestamp[testing.StoredTestResults], printResults bool) {
 	status := style.TestSuccess.Apply("PASSED")
-	if !res.Value.Bundle.Result.Success {
-		if printResults {
-			for _, srv := range res.Value.Bundle.ServerLog {
-				printLog(out, srv)
-			}
-			if res.Value.Bundle.TestLog != nil {
-				printLog(out, res.Value.Bundle.TestLog)
-			}
-		}
-
-		status = style.TestFailure.Apply("FAILED")
-
-		if res.Value.Bundle.Result.ErrorMessage != "" {
-			status += style.TestFailure.Apply(fmt.Sprintf(" (%s)", res.Value.Bundle.Result.ErrorMessage))
-		}
-	}
-
 	cached := ""
-	if res.Cached {
-		cached = style.LogCachedName.Apply(" (CACHED)")
+
+	if res.Set {
+		if !res.Value.Bundle.Result.Success {
+			if printResults {
+				for _, srv := range res.Value.Bundle.ServerLog {
+					printLog(out, srv)
+				}
+				if res.Value.Bundle.TestLog != nil {
+					printLog(out, res.Value.Bundle.TestLog)
+				}
+			}
+
+			status = style.TestFailure.Apply("FAILED")
+
+			if res.Value.Bundle.Result.ErrorMessage != "" {
+				status += style.TestFailure.Apply(fmt.Sprintf(" (%s)", res.Value.Bundle.Result.ErrorMessage))
+			}
+		}
+
+		if res.Cached {
+			cached = style.LogCachedName.Apply(" (CACHED)")
+		}
+	} else {
+		status = style.LogCachedName.Apply("INCOMPATIBLE")
 	}
 
-	fmt.Fprintf(out, "%s: Test %s%s %s\n", res.Value.Package, status, cached, style.Comment.Apply(res.Value.ImageRef.ImageRef()))
+	fmt.Fprintf(out, "%s: Test %s%s %s\n", pkg, status, cached, style.Comment.Apply(res.Value.ImageRef.ImageRef()))
 }
 
 func printLog(out io.Writer, log *storage.TestResultBundle_InlineLog) {

@@ -162,11 +162,24 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 			return nil, fnerrors.UserError(nil, "%s: no such environment purpose %q", name, env.Purpose)
 		}
 
-		w.Env = append(w.Env, &schema.Environment{
+		out := &schema.Environment{
 			Name:    name,
 			Runtime: env.Runtime,
 			Purpose: schema.Environment_Purpose(purpose),
+		}
+
+		for k, v := range env.Labels {
+			out.Labels = append(out.Labels, &schema.Environment_Label{Name: k, Value: v})
+		}
+
+		slices.SortFunc(out.Labels, func(a, b *schema.Environment_Label) bool {
+			if a.GetName() == b.GetName() {
+				return strings.Compare(a.GetValue(), b.GetValue()) < 0
+			}
+			return strings.Compare(a.GetName(), b.GetName()) < 0
 		})
+
+		w.Env = append(w.Env, out)
 	}
 
 	slices.SortFunc(w.Env, func(a, b *schema.Environment) bool {
@@ -353,6 +366,7 @@ type cueWorkspacePrebuilts struct {
 }
 
 type cueEnvironment struct {
-	Runtime string `json:"runtime"`
-	Purpose string `json:"purpose"`
+	Runtime string            `json:"runtime"`
+	Purpose string            `json:"purpose"`
+	Labels  map[string]string `json:"labels"`
 }

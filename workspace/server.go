@@ -90,7 +90,6 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 		}
 	}
 
-	// XXX verify there are no conflicts.
 	for _, dep := range sealed.Deps {
 		if node := dep.Node(); node != nil {
 			for _, rs := range node.RequiredStorage {
@@ -99,6 +98,14 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 					PersistentId: rs.PersistentId,
 					ByteCount:    rs.ByteCount,
 					MountPath:    rs.MountPath,
+				})
+			}
+
+			if node.EnvironmentRequirement != nil {
+				sealed.Proto.Server.EnvironmentRequirement = append(sealed.Proto.Server.EnvironmentRequirement, &schema.Server_EnvironmentRequirement{
+					Package:                     node.PackageName,
+					EnvironmentHasLabel:         node.EnvironmentRequirement.EnvironmentHasLabel,
+					EnvironmentDoesNotHaveLabel: node.EnvironmentRequirement.EnvironmentDoesNotHaveLabel,
 				})
 			}
 		}
