@@ -36,7 +36,7 @@ _#Node: {
 	}
 
 	environment?: {
-		requires?: [string]: string
+		required?: [string]: string
 	}
 }
 
