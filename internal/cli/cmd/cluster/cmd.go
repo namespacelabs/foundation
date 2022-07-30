@@ -17,7 +17,9 @@ import (
 	"github.com/jpillora/chisel/share/cnet"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/providers/nscloud"
 )
 
 func NewClusterCmd() *cobra.Command {
@@ -27,7 +29,36 @@ func NewClusterCmd() *cobra.Command {
 		Hidden: true,
 	}
 
+	cmd.AddCommand(newCreateCmd())
 	cmd.AddCommand(newSshCmd())
+
+	return cmd
+}
+
+func newCreateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Creates a new cluster.",
+		Args:  cobra.NoArgs,
+	}
+
+	ephemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral cluster.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		cluster, err := nscloud.CreateCluster(ctx, *ephemeral, "manually created")
+		if err != nil {
+			return err
+		}
+
+		stdout := console.Stdout(ctx)
+		fmt.Fprintf(stdout, "Created cluster %q\n", cluster.ClusterId)
+		if cluster.Deadline != nil {
+			fmt.Fprintf(stdout, " deadline: %s\n", cluster.Deadline.Format(time.RFC3339))
+		} else {
+			fmt.Fprintf(stdout, " no deadline\n")
+		}
+		return nil
+	})
 
 	return cmd
 }

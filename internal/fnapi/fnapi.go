@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -33,6 +34,12 @@ func callProdAPI(ctx context.Context, method string, req interface{}, handle fun
 }
 
 func CallAPI(ctx context.Context, endpoint string, method string, req interface{}, handle func(dec *json.Decoder) error) error {
+	return CallAPIRaw(ctx, endpoint, method, req, func(body io.Reader) error {
+		return handle(json.NewDecoder(body))
+	})
+}
+
+func CallAPIRaw(ctx context.Context, endpoint string, method string, req interface{}, handle func(body io.Reader) error) error {
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		return fnerrors.InvocationError("failed to marshal request: %w", err)
@@ -51,13 +58,12 @@ func CallAPI(ctx context.Context, endpoint string, method string, req interface{
 
 	defer response.Body.Close()
 
-	dec := json.NewDecoder(response.Body)
-
 	if response.StatusCode == http.StatusOK {
-		return handle(dec)
+		return handle(response.Body)
 	}
 
 	st := &spb.Status{}
+	dec := json.NewDecoder(response.Body)
 	if err := dec.Decode(st); err == nil {
 		if st.Code == int32(codes.Unauthenticated) {
 			return ErrRelogin
