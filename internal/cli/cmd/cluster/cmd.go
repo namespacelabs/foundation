@@ -82,7 +82,7 @@ func newSshCmd() *cobra.Command {
 		localPort := lst.Addr().(*net.TCPAddr).Port
 
 		sshArgs := args[1:]
-		sshArgs = append(sshArgs, "-p", fmt.Sprintf("%d", localPort), "root@127.0.0.1")
+		sshArgs = append(sshArgs, "-p", fmt.Sprintf("%d", localPort), "janitor@127.0.0.1")
 
 		cmd := exec.CommandContext(ctx, "ssh", sshArgs...)
 		return localexec.RunInteractive(ctx, cmd)
