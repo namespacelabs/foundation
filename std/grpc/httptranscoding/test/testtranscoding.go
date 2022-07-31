@@ -22,7 +22,9 @@ func main() {
 	testing.Do(func(ctx context.Context, t testing.Test) error {
 		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/std/networking/gateway/server", "grpc-http-transcoder")
 
-		// XXX we're missing a synchronization mechanism that waits for the transcoder configuration to have been applied.
+		if err := t.WaitForEndpoint(ctx, endpoint); err != nil {
+			return err
+		}
 
 		// Lets check if the grpc service is being transcoded to http.
 

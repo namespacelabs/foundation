@@ -6,7 +6,10 @@ package testing
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -22,6 +25,24 @@ func (t Test) Connect(ctx context.Context, endpoint *schema.Endpoint) (*grpc.Cli
 	return grpc.DialContext(ctx, endpoint.Address(),
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials())) ///  XXX mTLS etc.
+}
+
+func (t Test) WaitForEndpoint(ctx context.Context, endpoint *schema.Endpoint) error {
+	ctx, done := context.WithTimeout(ctx, 10*time.Second)
+	defer done()
+
+	for {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("endpoint not ready: %v", err)
+		}
+
+		var d net.Dialer
+		conn, err := d.DialContext(ctx, "tcp", endpoint.Address())
+		if err == nil {
+			conn.Close()
+			return nil
+		}
+	}
 }
 
 func Do(testFunc func(context.Context, Test) error) {
