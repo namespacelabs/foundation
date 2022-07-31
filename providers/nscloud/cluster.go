@@ -112,7 +112,7 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 
 				progress.set(resp.Status)
 
-				if resp.Status == "CLUSTER_READY" {
+				if resp.Status == "READY" {
 					cr = &resp
 					return nil
 				}
