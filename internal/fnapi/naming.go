@@ -50,64 +50,63 @@ type NameCertificate struct {
 
 // JSON annotations below are used for the Arg() serialization below.
 type AllocateOpts struct {
-	FQDN      string `json:"fqdn,omitempty"`
-	Subdomain string `json:"subdomain,omitempty"`
-	NoTLS     bool   `json:"-"`
-	Org       string `json:"org,omitempty"`
+	Scope     schema.PackageName `json:"-"`
+	FQDN      string             `json:"fqdn,omitempty"`
+	Subdomain string             `json:"subdomain,omitempty"`
+	NoTLS     bool               `json:"-"`
+	Org       string             `json:"org,omitempty"`
 
 	Stored *NameResource `json:"-"`
 }
 
-func AllocateName(ctx context.Context, srv *schema.Server, opts AllocateOpts) (*NameResource, error) {
-	return tasks.Return(ctx, tasks.Action("dns.allocate-name").Scope(schema.PackageName(srv.PackageName)).Arg("opts", opts), func(ctx context.Context) (*NameResource, error) {
+func AllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error) {
+	action := tasks.Action("dns.allocate-name")
+	if opts.Scope != "" {
+		action = action.Scope(opts.Scope)
+	}
+
+	return tasks.Return(ctx, action.Arg("opts", opts), func(ctx context.Context) (*NameResource, error) {
 		if NamingForceStored && opts.Stored != nil {
 			tasks.Attachments(ctx).AddResult("force_stored", true)
 			return opts.Stored, nil
 		}
 
-		nr, err := RawAllocateName(ctx, opts)
+		userAuth, err := LoadUser()
 		if err != nil {
 			return nil, err
 		}
 
-		if len(nr.Certificate.CertificateBundle) > 0 {
-			tasks.Attachments(ctx).Attach(tasks.Output("certificate.pem", "application/x-pem-file"), nr.Certificate.CertificateBundle)
+		req := IssueRequest{
+			UserAuth: *userAuth,
+			NameRequest: NameRequest{
+				FQDN:      opts.FQDN,
+				Subdomain: opts.Subdomain,
+				NoTLS:     opts.NoTLS,
+				Org:       opts.Org,
+			},
+		}
 
-			if _, ts, err := certificates.CertIsValid(nr.Certificate.CertificateBundle); err == nil {
+		if opts.Stored != nil {
+			req.Resource = *opts.Stored
+		}
+
+		var nr IssueResponse
+		if err := callProdAPI(ctx, "nsl.naming.NamingService/Issue", req, func(dec *json.Decoder) error {
+			return dec.Decode(&nr)
+		}); err != nil {
+			return nil, err
+		}
+
+		res := &nr.Resource
+
+		if len(res.Certificate.CertificateBundle) > 0 {
+			tasks.Attachments(ctx).Attach(tasks.Output("certificate.pem", "application/x-pem-file"), res.Certificate.CertificateBundle)
+
+			if _, ts, err := certificates.CertIsValid(res.Certificate.CertificateBundle); err == nil {
 				tasks.Attachments(ctx).AddResult("notAfter", ts)
 			}
 		}
 
-		return nr, nil
+		return res, nil
 	})
-}
-
-func RawAllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error) {
-	userAuth, err := LoadUser()
-	if err != nil {
-		return nil, err
-	}
-
-	req := IssueRequest{
-		UserAuth: *userAuth,
-		NameRequest: NameRequest{
-			FQDN:      opts.FQDN,
-			Subdomain: opts.Subdomain,
-			NoTLS:     opts.NoTLS,
-			Org:       opts.Org,
-		},
-	}
-
-	if opts.Stored != nil {
-		req.Resource = *opts.Stored
-	}
-
-	var nr IssueResponse
-	if err := callProdAPI(ctx, "nsl.naming.NamingService/Issue", req, func(dec *json.Decoder) error {
-		return dec.Decode(&nr)
-	}); err != nil {
-		return nil, err
-	}
-
-	return &nr.Resource, nil
 }

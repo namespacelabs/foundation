@@ -66,7 +66,7 @@ func NewFnServicesCmd() *cobra.Command {
 		Short: "Allocates a TLS certificate within Namespace Cloud's scope.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env provision.Env, args []string) error {
-		nr, err := fnapi.RawAllocateName(ctx, fnapi.AllocateOpts{
+		nr, err := fnapi.AllocateName(ctx, fnapi.AllocateOpts{
 			FQDN: fqdn,
 			Org:  org,
 		})
