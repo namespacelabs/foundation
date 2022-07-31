@@ -6,7 +6,10 @@ package nscloud
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"fmt"
 	"io"
 	"time"
 
@@ -17,6 +20,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
@@ -157,6 +161,16 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 	cfg.CurrentContext = "default"
 
 	if err := tasks.Action("nscloud.k8s-cluster.wait-for-node").Arg("cluster_id", cr.ClusterId).Run(ctx, func(ctx context.Context) error {
+		notBefore, err := decodeCert(cr.Cluster.CertificateAuthorityData)
+		if err == nil {
+			x := time.Until(notBefore)
+			if x > 0 {
+				time.Sleep(x)
+			}
+		} else {
+			fmt.Fprintf(console.Warnings(ctx), "certificate check failed, skipping: %v", err)
+		}
+
 		clientCfg := clientcmd.NewDefaultClientConfig(*cfg, nil)
 		restCfg, err := clientCfg.ClientConfig()
 		if err != nil {
@@ -202,6 +216,22 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 	}
 
 	return result, nil
+}
+
+func decodeCert(certData []byte) (time.Time, error) {
+	var zero time.Time
+
+	block, _ := pem.Decode(certData)
+	if block == nil || block.Type != "CERTIFICATE" {
+		return zero, fnerrors.InternalError("expected CERTIFICATE block")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return zero, fnerrors.InternalError("invalid certificate: %w", err)
+	}
+
+	return cert.NotBefore, nil
 }
 
 type clusterCreateProgress struct {
