@@ -46,7 +46,7 @@ func newDemoCmd() *cobra.Command {
 				return err
 			}
 
-			url, err := fnapi.CreateDemo(ctx, userAuth, access.(accessItem).private, name)
+			url, err := fnapi.CreateWorkspace(ctx, userAuth, access.(accessItem).private, name)
 			if err != nil {
 				return fmt.Errorf("Unable to provision Namespace demo: %w", err)
 			}
