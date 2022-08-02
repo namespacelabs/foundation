@@ -19,10 +19,11 @@ type CreateDemoResponse struct {
 	Url string `json:"url"`
 }
 
-func CreateDemo(ctx context.Context, ua *UserAuth, private bool) (string, error) {
+func CreateDemo(ctx context.Context, ua *UserAuth, private bool, name string) (string, error) {
 	req := CreateDemoRequest{
 		OpaqueUserAuth: ua.Opaque,
 		Private:        private,
+		Name:           name,
 	}
 
 	resp := &CreateDemoResponse{}

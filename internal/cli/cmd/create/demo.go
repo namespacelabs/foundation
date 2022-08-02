@@ -31,10 +31,14 @@ func newDemoCmd() *cobra.Command {
 			stdout := console.Stdout(ctx)
 			fmt.Fprintf(stdout, "%s\n", aec.Bold.Apply("Namespace Demo"))
 
-			// TODO add  tui.Ask(ctx, ...) for repo name when we support it.
-			fmt.Fprintf(stdout, "Namespace will create a demo repository under your Github account.\n")
+			name, err := tui.Ask(ctx, "What name should the new repository have?",
+				"Namespace will create a demo repository under your Github account that contains an isolated development environment.\n",
+				"namespace-demo")
+			if err != nil {
+				return err
+			}
 
-			access, err := tui.Select(ctx, "Which access type should the demo repository have?", []accessItem{
+			access, err := tui.Select(ctx, "Which access type should the new repository have?", []accessItem{
 				{private: false, desc: "Anyone on the internet can see this repository. You choose who can commit."},
 				{private: true, desc: "Noone can see or commit to this repository."},
 			})
@@ -42,7 +46,7 @@ func newDemoCmd() *cobra.Command {
 				return err
 			}
 
-			url, err := fnapi.CreateDemo(ctx, userAuth, access.(accessItem).private)
+			url, err := fnapi.CreateDemo(ctx, userAuth, access.(accessItem).private, name)
 			if err != nil {
 				return fmt.Errorf("Unable to provision Namespace demo: %w", err)
 			}
