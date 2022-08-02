@@ -32,7 +32,7 @@ func NewLoginCmd() *cobra.Command {
 			}
 
 			stdout := console.Stdout(ctx)
-			fmt.Fprintf(console.Stdout(ctx), "%s\n", aec.Bold.Apply("Login to Namespace"))
+			fmt.Fprintf(stdout, "%s\n", aec.Bold.Apply("Login to Namespace"))
 
 			loginUrl := fmt.Sprintf("%s?id=%s", baseUrl, id)
 
