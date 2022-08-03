@@ -2,4 +2,5 @@ FROM ubuntu:22.04
 
 RUN apt update
 RUN apt install git -y
+RUN apt install nodejs -y
 RUN apt clean
