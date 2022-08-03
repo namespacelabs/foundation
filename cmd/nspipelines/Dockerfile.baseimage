@@ -1,5 +1,5 @@
-FROM alpine:3.14
+FROM ubuntu:22.04
 
-RUN apk add git
-RUN apk add bash
-RUN apk add gcompat
+RUN apt update
+RUN apt install git -y
+RUN apt clean
