@@ -8,8 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
-	"os"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/spf13/cobra"
@@ -25,6 +25,9 @@ func newAccessTokenCmd() *cobra.Command {
 
 	flag := cmd.Flags()
 
+	// Required
+	output := flag.String("output", "", "Where to write the token response.")
+
 	session := flag.String("session", "", "Session ID for a custom Namespace pipeline run.")
 
 	// The following flags may only be set if session is not set.
@@ -33,6 +36,10 @@ func newAccessTokenCmd() *cobra.Command {
 	privateKey := flag.String("private_key", "", "Path to the app's private key.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
+		if *output == "" {
+			return fmt.Errorf("no output location specified")
+		}
+
 		var token string
 		if *session != "" {
 			if *appID != -1 || *installationID != -1 || *privateKey != "" {
@@ -56,8 +63,12 @@ func newAccessTokenCmd() *cobra.Command {
 			}
 		}
 
-		fmt.Fprintln(os.Stdout, token)
-		return nil
+		// TODO remove?
+		if token == "" {
+			return fmt.Errorf("failed to compute token")
+		}
+
+		return ioutil.WriteFile(*output, []byte(token), 0644)
 	})
 
 	return cmd
