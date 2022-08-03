@@ -2,3 +2,4 @@ FROM alpine:3.14
 
 RUN apk add git
 RUN apk add bash
+RUN apk add gcompat
