@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/create"
 	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
 	"namespacelabs.dev/foundation/internal/cli/cmd/lsp"
+	"namespacelabs.dev/foundation/internal/cli/cmd/prepare"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/secrets"
 	"namespacelabs.dev/foundation/internal/cli/cmd/source"
@@ -25,7 +26,6 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewGenerateCmd())
 	root.AddCommand(NewDeployCmd())
 	root.AddCommand(NewFmtCmd())
-	root.AddCommand(NewPrepareCmd())
 	root.AddCommand(NewUnprepareCmd())
 	root.AddCommand(NewDevCmd())
 	root.AddCommand(NewBuildBinaryCmd())
@@ -47,6 +47,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewImagesCmd())
 	root.AddCommand(eks.NewEksCmd())
 	root.AddCommand(lsp.NewLSPCmd())
+	root.AddCommand(prepare.NewPrepareCmd())
 	root.AddCommand(secrets.NewSecretsCmd())
 	root.AddCommand(source.NewSourceCmd())
 	root.AddCommand(tools.NewToolsCmd())
