@@ -1,0 +1,2 @@
+# slimmer than gitpod/workspace-full, includes base, Go, Docker and Tailscale.
+FROM gitpod/workspace-go
