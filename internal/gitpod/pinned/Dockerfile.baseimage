@@ -1,2 +1,5 @@
 # slimmer than gitpod/workspace-full, includes base, Go, Docker and Tailscale.
 FROM gitpod/workspace-go
+
+WORKDIR /
+COPY setup.sh setup.sh

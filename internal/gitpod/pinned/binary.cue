@@ -11,4 +11,7 @@ binary: {
 			}},
 		]
 	}
+	config: {
+		command: ["/setup.sh"]
+	}
 }
