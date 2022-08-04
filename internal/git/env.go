@@ -7,6 +7,8 @@ package git
 import (
 	"fmt"
 	"os"
+
+	"namespacelabs.dev/foundation/internal/gitpod"
 )
 
 var AssumeSSHAuth = false
@@ -18,7 +20,9 @@ func NoPromptEnv() []string {
 	// Also disable prompting for passwords by the 'ssh' subprocess spawned by Git.
 	//
 	// See https://github.com/golang/go/blob/fad67f8a5342f4bc309f26f0ae021ce9d21724e6/src/cmd/go/internal/get/get.go#L129
-	if os.Getenv("GIT_SSH") == "" && os.Getenv("GIT_SSH_COMMAND") == "" {
+	//
+	// TODO understand better why this breaks in gitpod.
+	if os.Getenv("GIT_SSH") == "" && os.Getenv("GIT_SSH_COMMAND") == "" && !gitpod.IsGitpod() {
 		env = append(env, "GIT_SSH_COMMAND=ssh -o ControlMaster=no -o BatchMode=yes")
 	}
 
