@@ -7,6 +7,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/morikuni/aec"
 	"github.com/pkg/browser"
@@ -27,20 +28,27 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			id, err := fnapi.StartLogin(ctx)
-			if err != nil {
-				return nil
-			}
-
 			stdout := console.Stdout(ctx)
-			fmt.Fprintf(console.Stdout(ctx), "%s\n", aec.Bold.Apply("Login to Namespace"))
 
-			loginUrl := fmt.Sprintf("%s?id=%s", baseUrl, id)
+			id, exists := os.LookupEnv("nslogintoken")
+			if !exists {
+				var err error
+				id, err = fnapi.StartLogin(ctx)
+				if err != nil {
+					return nil
+				}
 
-			if openURL(loginUrl) {
-				fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", loginUrl)
+				fmt.Fprintf(stdout, "%s\n", aec.Bold.Apply("Login to Namespace"))
+
+				loginUrl := fmt.Sprintf("%s?id=%s", baseUrl, id)
+
+				if openURL(loginUrl) {
+					fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", loginUrl)
+				} else {
+					fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", loginUrl)
+				}
 			} else {
-				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", loginUrl)
+				fmt.Fprintf(stdout, "Login pre-approved with a single-use token.\n")
 			}
 
 			auth, err := fnapi.CompleteLogin(ctx, id)
