@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/gitpod"
 )
 
 const baseUrl = "https://login.namespace.so/login/cli"
@@ -36,10 +37,10 @@ func NewLoginCmd() *cobra.Command {
 
 			loginUrl := fmt.Sprintf("%s?id=%s", baseUrl, id)
 
-			if err = browser.OpenURL(loginUrl); err != nil {
-				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", loginUrl)
-			} else {
+			if openURL(loginUrl) {
 				fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", loginUrl)
+			} else {
+				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", loginUrl)
 			}
 
 			auth, err := fnapi.CompleteLogin(ctx, id)
@@ -60,6 +61,17 @@ func NewLoginCmd() *cobra.Command {
 	cmd.AddCommand(NewRobotLogin("robot"))
 
 	return cmd
+}
+
+func openURL(url string) bool {
+	if gitpod.IsGitpod() {
+		// This is to avoid using www-browser (lynx) in gitpods.
+		// TODO is there a way to open a browser here?
+		return false
+	}
+
+	err := browser.OpenURL(url)
+	return err == nil
 }
 
 func NewRobotLogin(use string) *cobra.Command {
