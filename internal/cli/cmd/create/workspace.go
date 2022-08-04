@@ -46,6 +46,15 @@ node_modules
 !**/.yarn/sdks
 !**/.yarn/versions
 `
+	gitpodFilePath = ".gitpod.yaml"
+	gitpodTemplate = `image: us-docker.pkg.dev/foundation-344819/prebuilts/namespacelabs.dev/foundation/internal/gitpod/pinned@sha256:290531bc4d87884ebdd992d7044b763524f09c7b1290eb8f18b0a15db163abe1
+checkoutLocation: current
+tasks:
+	- name: prepare
+	command: |
+		ns login
+		ns prepare new-cluster
+`
 )
 
 func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
@@ -69,6 +78,9 @@ func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) 
 			return err
 		}
 		if err := updateGitignore(ctx, console.Stdout(ctx), fsfs); err != nil {
+			return err
+		}
+		if err := writeFileIfDoesntExist(ctx, console.Stdout(ctx), fsfs, gitpodFilePath, gitpodTemplate); err != nil {
 			return err
 		}
 
