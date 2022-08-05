@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc/codes"
@@ -66,11 +67,7 @@ func writeJSONLoop(ctx context.Context, ws *websocket.Conn, ch chan *Update) {
 }
 
 func serveStream(kind string, w http.ResponseWriter, r *http.Request, handler func(context.Context, *websocket.Conn, io.Writer) error) {
-	upgrader := websocket.Upgrader{
-		ReadBufferSize:    64 * 1024,
-		WriteBufferSize:   64 * 1024,
-		EnableCompression: true,
-	}
+	upgrader := newWebsocketUpgrader(r)
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -129,4 +126,31 @@ type writeStream struct{ ws *websocket.Conn }
 
 func (w writeStream) Write(p []byte) (int, error) {
 	return len(p), w.ws.WriteMessage(websocket.BinaryMessage, p)
+}
+
+func newWebsocketUpgrader(r *http.Request) *websocket.Upgrader {
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:    64 * 1024,
+		WriteBufferSize:   64 * 1024,
+		EnableCompression: true,
+	}
+
+	// Allowing all requests from "localhost".
+	// This is needed for the case of running inside a Gitpod instance due to the way Gitpod does
+	// port forwarding:
+	//   r.Host is "localhost:<port>" in this case.
+	if isLocalhost(r.Host) {
+		upgrader.CheckOrigin = func(rr *http.Request) bool { return true }
+	}
+	return &upgrader
+}
+
+func isLocalhost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	if strings.HasPrefix(host, "localhost:") {
+		return true
+	}
+	return false
 }

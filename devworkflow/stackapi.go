@@ -15,11 +15,7 @@ import (
 )
 
 func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
-	upgrader := websocket.Upgrader{
-		ReadBufferSize:    64 * 1024,
-		WriteBufferSize:   64 * 1024,
-		EnableCompression: true,
-	}
+	upgrader := newWebsocketUpgrader(r)
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -31,7 +27,7 @@ func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
 
 	_ = ws.SetCompressionLevel(6)
 
-	fmt.Fprintf(console.Debug(r.Context()), "(%s) websocket: connected\n", r.RemoteAddr)
+	fmt.Fprintf(console.Debug(r.Context()), "(%s) websocket2: connected\n", r.RemoteAddr)
 
 	ch, err := s.NewClient(true)
 	if err != nil {
