@@ -141,16 +141,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environment, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (oci.NamedImage, error) {
 	if !useDevBuild(env.Proto()) {
 
-		var prodwebConfig memfs.FS
-		prodwebConfig.Add("prodweb.config.js", []byte(`
-			export default {
-				resolve: {
-					// Important to correctly handle ns-managed dependencies.
-					preserveSymlinks: true,
-				},
-			}`))
-
-		extra = append(extra, &prodwebConfig)
+		extra = append(extra, generateProdViteConfig())
 
 		return ViteProductionBuild(ctx, loc, env, targetConf.SourceLabel(), filepath.Join(compiledPath, entry.PathPrefix), entry.PathPrefix, externalModules, extra...)
 	}
@@ -185,6 +176,18 @@ func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environme
 	extra = append(extra, &devwebConfig)
 
 	return viteDevBuild(ctx, env, filepath.Join("/packages", loc.Module.ModuleName()), loc, isFocus, targetConf, externalModules, extra...)
+}
+
+func generateProdViteConfig() *memfs.FS {
+	var prodwebConfig memfs.FS
+	prodwebConfig.Add("prodweb.config.js", []byte(`
+			export default {
+				resolve: {
+					// Important to correctly handle ns-managed dependencies.
+					preserveSymlinks: true,
+				},
+			}`))
+	return &prodwebConfig
 }
 
 func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
