@@ -97,6 +97,7 @@ message InvocationDescription {
         BUILD        = 1;
         TEST         = 2;
         DEPLOY       = 3;
+        STARTER      = 4;
     }
 }
 
