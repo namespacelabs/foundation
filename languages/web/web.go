@@ -147,12 +147,16 @@ func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environme
 	}
 
 	var devwebConfig memfs.FS
-	devwebConfig.Add("devweb.config.js", []byte(`import { defineConfig, loadEnv } from "vite";
+	devwebConfig.Add("devweb.config.js", []byte(`
+	  import { defineConfig, loadEnv } from "vite";
+	  import react from "@vitejs/plugin-react";
 
 		export default ({ mode }) => {
 		  process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
 
 		  return defineConfig({
+    		plugins: [react()],
+
 				base: process.env.CMD_DEV_BASE || "/",
 
 				resolve: {
@@ -181,7 +185,11 @@ func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environme
 func generateProdViteConfig() *memfs.FS {
 	var prodwebConfig memfs.FS
 	prodwebConfig.Add("prodweb.config.js", []byte(`
+	    import react from "@vitejs/plugin-react";
+
 			export default {
+    		plugins: [react()],
+
 				resolve: {
 					// Important to correctly handle ns-managed dependencies.
 					preserveSymlinks: true,
