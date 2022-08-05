@@ -47,7 +47,7 @@ node_modules
 !**/.yarn/versions
 `
 	gitpodFilePath = ".gitpod.yaml"
-	gitpodTemplate = `image: us-docker.pkg.dev/foundation-344819/prebuilts/namespacelabs.dev/foundation/internal/gitpod/pinned@sha256:9ec2893bc6f71fd4f84412030799c2bbb484d9f4664b7bb80138d47c03441e10
+	gitpodTemplate = `image: us-docker.pkg.dev/foundation-344819/prebuilts/namespacelabs.dev/foundation/internal/gitpod/pinned@sha256:beeb15e492888d7c743c4ef0db9748564383c86448ed3965e739ee1abbafa808
 checkoutLocation: current
 tasks:
 	- name: prepare
