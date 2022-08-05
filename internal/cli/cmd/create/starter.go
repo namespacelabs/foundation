@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/git"
 )
 
 const (
@@ -41,6 +42,11 @@ var (
 
 Next steps:
 
+{{if .RemoteUrl -}}
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#{{.RemoteUrl}})
+
+{{end -}}
+
 {{if .Dir -}}
 - Switch to the project directory: ` + "`" + `cd {{.Dir}}` + "`" + `
 {{end -}}
@@ -54,6 +60,7 @@ type readmeTmplOpts struct {
 	Dir       string
 	ServerPkg string
 	TestPkg   string
+	RemoteUrl string
 }
 
 func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
@@ -188,6 +195,12 @@ func generateAndPrintReadme(ctx context.Context, out io.Writer, dir string) erro
 		Dir:       dir,
 		ServerPkg: webServerPkg,
 		TestPkg:   testPkg,
+	}
+
+	if isRoot, err := git.IsRepoRoot(ctx); err == nil && isRoot {
+		if url, err := git.RemoteUrl(ctx); err == nil {
+			data.RemoteUrl = url
+		}
 	}
 
 	var body bytes.Buffer

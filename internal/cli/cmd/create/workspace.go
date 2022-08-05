@@ -81,8 +81,11 @@ func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) 
 		if err := updateGitignore(ctx, console.Stdout(ctx), fsfs); err != nil {
 			return err
 		}
-		if err := writeFileIfDoesntExist(ctx, console.Stdout(ctx), fsfs, gitpodFilePath, gitpodTemplate); err != nil {
-			return err
+
+		if isRoot, err := git.IsRepoRoot(ctx); err == nil && isRoot {
+			if err := writeFileIfDoesntExist(ctx, console.Stdout(ctx), fsfs, gitpodFilePath, gitpodTemplate); err != nil {
+				return err
+			}
 		}
 
 		return runCommand(ctx, []string{"tidy"})
@@ -93,10 +96,7 @@ func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) 
 
 func askWorkspaceName(ctx context.Context) (string, error) {
 	placeholder := "github.com/username/reponame"
-	if out, _, err := git.RunGit(ctx, ".", "config", "--get", "remote.origin.url"); err == nil {
-		url := strings.TrimSuffix(string(out), "\n")
-		url = strings.TrimSuffix(url, ".git")
-
+	if url, err := git.RemoteUrl(ctx); err == nil {
 		// Trim protocol.
 		parts := strings.SplitN(url, "://", 2)
 		if len(parts) == 2 && parts[1] != "" {
