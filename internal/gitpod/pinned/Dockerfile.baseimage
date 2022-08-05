@@ -1,8 +1,10 @@
 # slimmer than gitpod/workspace-full, includes base, Go, Docker and Tailscale.
 FROM gitpod/workspace-go
 
-WORKDIR /
-COPY setup.sh setup.sh
+USER gitpod
 
-# Reset gitpod path - why does it disappear?
-ENV PATH=/workspace/go/bin:/home/gitpod/go/bin:/home/gitpod/go-packages/bin:/home/gitpod/.local/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# 1. Adding "/" to the PATH so "ns" can be found: "go_build" doesn't allow to specify the target dir.
+#
+# 2. Adding current $PATH to .bashrc so it survives "layer_build_plan" merging that copies only files
+#    from layers but not environment variables.
+RUN echo "export PATH=${PATH}:/:\$PATH" > $HOME/.bashrc.d/ns-path
