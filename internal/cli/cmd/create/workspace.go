@@ -97,11 +97,7 @@ func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) 
 func askWorkspaceName(ctx context.Context) (string, error) {
 	placeholder := "github.com/username/reponame"
 	if url, err := git.RemoteUrl(ctx); err == nil {
-		// Trim protocol.
-		parts := strings.SplitN(url, "://", 2)
-		if len(parts) == 2 && parts[1] != "" {
-			placeholder = parts[1]
-		}
+		placeholder = url
 	}
 
 	return tui.Ask(ctx,

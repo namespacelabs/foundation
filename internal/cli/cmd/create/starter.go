@@ -199,7 +199,7 @@ func generateAndPrintReadme(ctx context.Context, out io.Writer, dir string) erro
 
 	if isRoot, err := git.IsRepoRoot(ctx); err == nil && isRoot {
 		if url, err := git.RemoteUrl(ctx); err == nil {
-			data.RemoteUrl = url
+			data.RemoteUrl = fmt.Sprintf("https://%s", url)
 		}
 	}
 

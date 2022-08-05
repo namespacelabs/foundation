@@ -26,6 +26,7 @@ func IsRepoRoot(ctx context.Context) (bool, error) {
 	return cwd == root, nil
 }
 
+// E.g. github.com/username/reponame
 func RemoteUrl(ctx context.Context) (string, error) {
 	out, _, err := RunGit(ctx, ".", "config", "--get", "remote.origin.url")
 	if err != nil {
@@ -34,6 +35,16 @@ func RemoteUrl(ctx context.Context) (string, error) {
 
 	url := strings.TrimSuffix(string(out), "\n")
 	url = strings.TrimSuffix(url, ".git")
+
+	// Trim protocol.
+	if parts := strings.SplitN(url, "://", 2); len(parts) == 2 && parts[1] != "" {
+		url = parts[1]
+	}
+
+	// Trim login.
+	if parts := strings.SplitN(url, "@", 2); len(parts) == 2 && parts[1] != "" {
+		url = parts[1]
+	}
 
 	return url, nil
 }
