@@ -25,7 +25,7 @@ export abstract class Socket {
 	}
 
 	private connect(timeout: number) {
-		const conn = new WebSocket(`ws://${window.location.host}/ws/fn/${this.apiUrl}`);
+		const conn = createWebSocket(this.apiUrl);
 
 		conn.addEventListener("open", (evt) => {
 			this.logger.info("connected", evt);
@@ -94,7 +94,7 @@ export abstract class Socket {
 		const newTimeout = timeout ? Math.min(10000, timeout * 2) : 250;
 		this.logger.info("will connect in", timeout, "next", newTimeout);
 
-		this.reconnectTimer = setTimeout(() => {
+		this.reconnectTimer = window.setTimeout(() => {
 			this.reconnectTimer = undefined;
 			this.connect(newTimeout);
 		}, timeout);
@@ -124,4 +124,9 @@ export class BytesSocket extends Socket {
 			this.observers = this.observers.filter((v) => v != observer);
 		};
 	}
+}
+
+export function createWebSocket(endpoint: string) {
+	const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+	return new WebSocket(`${protocol}://${window.location.host}/ws/fn/${endpoint}`);
 }

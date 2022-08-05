@@ -3,6 +3,7 @@
 // available at http://github.com/namespacelabs/foundation
 
 import { Logger } from "../api/logger";
+import { createWebSocket } from "../api/websocket";
 
 type ObserverFunc = (data: ArrayBuffer) => void;
 
@@ -21,7 +22,7 @@ export class OutputSocket {
 	}
 
 	private connect(timeout: number) {
-		const conn = new WebSocket(`ws://${window.location.host}/ws/fn/${this.endpoint}`);
+		const conn = createWebSocket(this.endpoint);
 
 		conn.addEventListener("open", (evt) => {
 			this.logger.info("connected", evt);
