@@ -3,3 +3,6 @@ FROM gitpod/workspace-go
 
 WORKDIR /
 COPY setup.sh setup.sh
+
+# Reset gitpod path - why does it disappear?
+ENV PATH=/workspace/go/bin:/home/gitpod/go/bin:/home/gitpod/go-packages/bin:/home/gitpod/.local/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
