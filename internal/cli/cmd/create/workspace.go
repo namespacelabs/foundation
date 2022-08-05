@@ -50,11 +50,11 @@ node_modules
 	gitpodTemplate = `image: us-docker.pkg.dev/foundation-344819/prebuilts/namespacelabs.dev/foundation/internal/gitpod/pinned@sha256:beeb15e492888d7c743c4ef0db9748564383c86448ed3965e739ee1abbafa808
 checkoutLocation: current
 tasks:
-	- name: prepare
-	command: |
-		/setup.sh
-		ns login
-		ns prepare new-cluster
+  - name: prepare
+    command: |
+      /setup.sh
+      ns login
+      ns prepare new-cluster
 `
 )
 
