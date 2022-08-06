@@ -28,8 +28,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-var CheckChecksums = true
-
 type Unpacked struct {
 	Files string // Points to the unpacked filesystem.
 }
@@ -49,12 +47,19 @@ func WithChecksumPaths(paths ...string) UnpackOpt {
 	}
 }
 
+func SkipChecksumCheck() UnpackOpt {
+	return func(uf *unpackFS) {
+		uf.skipChecksums = true
+	}
+}
+
 type UnpackOpt func(*unpackFS)
 
 type unpackFS struct {
 	what          string
 	fsys          compute.Computable[fs.FS]
 	checksumPaths []string
+	skipChecksums bool
 
 	compute.LocalScoped[Unpacked]
 }
@@ -93,7 +98,7 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked
 			for _, cksum := range checksums {
 				cksum := cksum // Close cksum.
 				eg.Go(func(ctx context.Context) error {
-					if !CheckChecksums {
+					if u.skipChecksums {
 						_, err := os.Stat(filepath.Join(targetDir, cksum.Path))
 						return err
 					}
