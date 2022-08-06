@@ -219,7 +219,7 @@ func fetchBinary(ctx context.Context, version *toolVersion) (string, error) {
 		},
 	}
 
-	fsys := unpack.Unpack("tool", tarfs.TarGunzip(download.URL(tarRef)))
+	fsys := unpack.Unpack("tool", tarfs.TarGunzip(download.URL(tarRef)), unpack.SkipChecksumCheck())
 	unpacked, err := compute.GetValue(ctx, fsys)
 	if err != nil {
 		return "", err
