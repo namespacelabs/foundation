@@ -46,7 +46,7 @@ func newPsql() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "psql",
+			Use:   "psql [--database <database-name>]",
 			Short: "Start a Postgres SQL shell for the specified server.",
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {
@@ -80,7 +80,7 @@ func newPgdump() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "pgdump",
+			Use:   "pgdump [--database <database-name>] [--out <file>]",
 			Short: "Performs a dump of the contents of an existing database.",
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {
@@ -123,7 +123,7 @@ func newPgrestore() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "pgrestore",
+			Use:   "pgrestore [--database <database-name>] --restore <file>",
 			Short: "Performs a restore of the contents of an existing backup.",
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {

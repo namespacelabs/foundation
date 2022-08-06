@@ -58,7 +58,7 @@ tasks:
 
 func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "workspace",
+		Use:   "workspace [directory]",
 		Short: "Initializes a workspace.",
 	}
 

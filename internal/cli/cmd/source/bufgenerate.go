@@ -25,7 +25,7 @@ func newBufGenerateCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:     "proto-generate",
+			Use:     "proto-generate [--lang go|typescript] <path>...",
 			Short:   "Run buf.build generate on your codebase.",
 			Aliases: []string{"proto-gen", "protogen"},
 		}).

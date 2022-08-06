@@ -24,7 +24,7 @@ func newTestCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "test",
+			Use:   "test [path/to/package] --server {path/to/server} --service {path/to/service}",
 			Short: "Creates a stub for an e2e test.",
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {

@@ -18,7 +18,7 @@ import (
 
 func newKubeCtlCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "kubectl",
+		Use:   "kubectl ...",
 		Short: "Run kubectl, configured for the specified environment.",
 	}
 

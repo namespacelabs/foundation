@@ -17,7 +17,7 @@ func newInfoCmd() *cobra.Command {
 
 	return fncobra.Cmd(
 		&cobra.Command{
-			Use:   "info",
+			Use:   "info {path/to/server}",
 			Short: "Describes the contents of the specified server's secrets archive.",
 			Args:  cobra.MaximumNArgs(1),
 		}).

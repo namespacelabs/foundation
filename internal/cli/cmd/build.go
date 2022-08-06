@@ -33,7 +33,7 @@ func NewBuildCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "build",
+			Use:   "build [path/to/server]...",
 			Short: "Build one, or more servers.",
 			Long:  "Build one, or more servers.\nAutomatically invoked with `deploy`.",
 			Args:  cobra.ArbitraryArgs,

@@ -49,7 +49,7 @@ func NewTestCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "test",
+			Use:   "test [path/to/package]...",
 			Short: "Run a functional end-to-end test.",
 			Args:  cobra.ArbitraryArgs,
 		}).

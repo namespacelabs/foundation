@@ -23,7 +23,7 @@ func newEksCmd() *cobra.Command {
 	// The subcommand `eks` does all of the work done by the parent command in addition to
 	// writing the host configuration for the EKS cluster.
 	eksCmd := &cobra.Command{
-		Use:   "eks",
+		Use:   "eks --cluster={cluster-name} --env={staging|prod} --aws_profile={profile}",
 		Short: "Prepares the Elastic Kubernetes Service host config for production.",
 		Args:  cobra.NoArgs,
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {

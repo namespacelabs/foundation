@@ -35,7 +35,7 @@ func NewImagesCmd() *cobra.Command {
 	var extract []string
 
 	unpack := &cobra.Command{
-		Use:   "unpack",
+		Use:   "unpack --image <image-ref> --target <path/to/dir>",
 		Short: "Unpack an image to the local filesystem.",
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {

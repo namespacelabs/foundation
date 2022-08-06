@@ -27,7 +27,7 @@ func NewDeploymentCmd() *cobra.Command {
 	wait := true
 
 	remove := fncobra.CmdWithEnv(&cobra.Command{
-		Use:   "remove",
+		Use:   "remove --env {dev|staging|prod}",
 		Short: "Removes all deployment assets associated with the specified environment.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env provision.Env, args []string) error {

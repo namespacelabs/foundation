@@ -33,7 +33,7 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "server",
+			Use:   "server [path/to/package]",
 			Short: "Creates a server.",
 			Args:  cobra.RangeArgs(0, 1),
 		}).

@@ -20,7 +20,7 @@ func newDeleteCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "delete",
+			Use:   "delete {path/to/server} --secret {package_name}:{secret_name}",
 			Short: "Deletes the specified secret value.",
 			Args:  cobra.MaximumNArgs(1),
 		}).

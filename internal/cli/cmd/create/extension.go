@@ -17,7 +17,7 @@ func newExtensionCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "extension",
+			Use:   "extension [path/to/package]",
 			Short: "Creates an extension.",
 		}).
 		With(parseTargetPkgWithDeps(&targetPkg, "extension")...).

@@ -24,7 +24,7 @@ func NewAttachCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "attach",
+			Use:   "attach [path/to/server]...",
 			Short: "Attaches to the specified environment, of the specified servers.",
 			Args:  cobra.ArbitraryArgs}).
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true}, &hydrateOpts{rehydrate: true})...).

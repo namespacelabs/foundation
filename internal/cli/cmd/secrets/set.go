@@ -28,7 +28,7 @@ func newSetCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "set",
+			Use:   "set {path/to/server} --secret {package_name}:{name} [--from_file <path>]",
 			Short: "Sets the specified secret value.",
 			Args:  cobra.MaximumNArgs(1),
 		}).

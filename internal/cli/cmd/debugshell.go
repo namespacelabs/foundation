@@ -26,7 +26,7 @@ func NewDebugShellCmd() *cobra.Command {
 	var imageRef, binaryPackage string
 
 	cmd := &cobra.Command{
-		Use:   "debug-shell",
+		Use:   "debug-shell [--image <image-id>] [--binary_package <path/to/package>]",
 		Short: "Starts a debug shell in the runtime in the specified environment (e.g. kubernetes cluster).",
 		Args:  cobra.NoArgs,
 	}

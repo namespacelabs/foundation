@@ -34,7 +34,7 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "service",
+			Use:   "service [path/to/package]",
 			Short: "Creates a service.",
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {

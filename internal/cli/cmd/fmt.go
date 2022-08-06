@@ -27,7 +27,7 @@ func NewFmtCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "fmt",
-		Short: "Format foundation configurations of the specified packages.",
+		Short: "Format foundation configurations of all packages in the workspace.",
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {

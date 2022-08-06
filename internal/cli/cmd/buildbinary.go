@@ -45,7 +45,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "build-binary",
+			Use:   "build-binary [path/to/package]...",
 			Short: "Builds the specified tool binary.",
 			Args:  cobra.ArbitraryArgs,
 		}).

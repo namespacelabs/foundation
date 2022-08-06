@@ -19,12 +19,12 @@ func newAddReaderCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "add-reader",
+			Use:   "add-reader {path/to/server} --key {public-key}",
 			Short: "Adds a receipient to a secret bundle.",
 			Args:  cobra.MaximumNArgs(1),
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {
-			flags.StringVar(&keyID, "key", "", "The key to add to the bundle.")
+			flags.StringVar(&keyID, "key", "", "The reader public key to add to the bundle.")
 			flags.BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
 			_ = cobra.MarkFlagRequired(flags, "key")
 		}).

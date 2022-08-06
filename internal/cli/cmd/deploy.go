@@ -45,7 +45,7 @@ func NewDeployCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "deploy",
+			Use:   "deploy [path/to/server]...",
 			Short: "Deploy one, or more servers to the specified environment.",
 			Args:  cobra.ArbitraryArgs,
 		}).

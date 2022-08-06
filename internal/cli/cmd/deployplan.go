@@ -22,7 +22,7 @@ func NewDeployPlanCmd() *cobra.Command {
 	var opts deployOpts
 
 	cmd := &cobra.Command{
-		Use:    "deploy-plan",
+		Use:    "deploy-plan <path/to/plan>",
 		Short:  "Deploys a previously serialized plan.",
 		Args:   cobra.ExactArgs(1),
 		Hidden: true,

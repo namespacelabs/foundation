@@ -25,7 +25,7 @@ func NewLogsCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "logs",
+			Use:   "logs <path/to/server>",
 			Short: "Stream logs of the specified server.",
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {

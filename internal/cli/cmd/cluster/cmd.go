@@ -65,7 +65,7 @@ func newCreateCmd() *cobra.Command {
 
 func newSshCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "ssh",
+		Use:   "ssh {cluster-id}",
 		Short: "Start an SSH session.",
 		Args:  cobra.MinimumNArgs(1),
 	}

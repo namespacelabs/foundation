@@ -44,7 +44,7 @@ func NewDevCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "dev",
+			Use:   "dev <path/to/server>...",
 			Short: "Starts a development session, continuously building and deploying a server.",
 			Args:  cobra.MinimumNArgs(1),
 		}).

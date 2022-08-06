@@ -89,7 +89,7 @@ func NewKeysCmd() *cobra.Command {
 	reencrypt := false
 
 	encrypt := &cobra.Command{
-		Use:   "encrypt",
+		Use:   "encrypt <path/to/dir>",
 		Short: "Encrypt a directory (e.g. secrets).",
 		Args:  cobra.ExactArgs(1),
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -98,7 +98,7 @@ func NewKeysCmd() *cobra.Command {
 	}
 
 	importCmd := &cobra.Command{
-		Use:   "import [public-key]",
+		Use:   "import <public-key>",
 		Short: "Import an existing public/private key pair.",
 		Args:  cobra.ExactArgs(1),
 
@@ -108,7 +108,7 @@ func NewKeysCmd() *cobra.Command {
 	}
 
 	shell := &cobra.Command{
-		Use:   "shell",
+		Use:   "shell <path/to/dir>",
 		Short: "Spawns a shell with the decrypted contents, allowing changes, which are then encrypted.",
 		Args:  cobra.ExactArgs(1),
 

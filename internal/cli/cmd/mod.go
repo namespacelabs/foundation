@@ -61,7 +61,7 @@ func newModDownloadCmd() *cobra.Command {
 
 func newModGetCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get",
+		Use:   "get <module-uri>",
 		Short: "Gets the latest version of the specified module.",
 		Args:  cobra.ExactArgs(1),
 

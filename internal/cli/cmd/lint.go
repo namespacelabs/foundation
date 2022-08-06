@@ -25,7 +25,7 @@ func NewLintCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "lint",
+			Use:   "lint [path/to/package]...",
 			Short: "Verify if package definitions are correct.",
 		}).
 		With(

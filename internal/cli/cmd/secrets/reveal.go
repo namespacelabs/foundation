@@ -23,7 +23,7 @@ func newRevealCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "reveal",
+			Use:   "reveal {path/to/server} --secret {package_name}:{name}",
 			Short: "Reveals the specified secret value.",
 			Args:  cobra.MaximumNArgs(1),
 		}).
