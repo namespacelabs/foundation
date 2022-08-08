@@ -5,7 +5,7 @@
 
 set -e
 
-VERSION=0.0.48
+VERSION=0.0.51
 
 is_wsl() {
 	case "$(uname -r)" in
@@ -83,27 +83,29 @@ do_install() {
 
   echo "Detected ${architecture} as the platform architecture"
 
-  ns_install="${NS_INSTALL:-$HOME/.ns}"
-  bin_dir="$ns_install/bin"
-  exe="$bin_dir/ns"
+  ns_root="${NS_ROOT:-$HOME/.ns}"
+  bin_dir="$ns_root/bin"
+  tar="$(mktemp -t nsboot.tgz)"
 
   if [ ! -d "$bin_dir" ]; then
     $sh_c "mkdir -p ${bin_dir}"
   fi
 
-  download_uri="https://ns-releases.s3.us-east-2.amazonaws.com/ns/v${version}/ns_${version}_${os}_${architecture}.tar.gz"
+  download_uri="https://ns-releases.s3.us-east-2.amazonaws.com/nsboot/v${version}/nsboot_${version}_${os}_${architecture}.tar.gz"
 
   echo "Downloading and installing the Namespace CLI from ${download_uri}"
 
-  $sh_c "curl --fail --location --progress-bar --output ${exe}.tar.gz ${download_uri}"
+  $sh_c "curl --fail --location --progress-bar --output ${tar} ${download_uri}"
 
-  $sh_c "tar -xzf ${exe}.tar.gz -C ${bin_dir}"
+  $sh_c "tar -xzf ${tar} -C ${bin_dir}"
 
-  $sh_c "chmod +x ${exe}"
+  $sh_c "chmod +x ${bin_dir}/nsboot"
 
-  $sh_c "rm ${exe}.tar.gz"
+  $sh_c "ln -sf ./nsboot ${bin_dir}/ns"
 
-  echo "Namespace CLI was installed successfully to $exe"
+  $sh_c "rm ${tar}"
+
+  echo "Namespace CLI was installed successfully to ${bin_dir}/ns"
 
   if ! $dry_run; then 
     if command -v ns >/dev/null; then
@@ -114,9 +116,9 @@ do_install() {
 	      *) shell_profile=".bashrc" ;;
       esac
       echo "Manually add the directory to your \$HOME/$shell_profile (or similar)"
-	    echo "  export NS_INSTALL=\"$ns_install\""
-	    echo "  export PATH=\"\$NS_INSTALL/bin:\$PATH\""
-	    echo "Run '$exe create starter' to get started"
+	    echo "  export NS_ROOT=\"$ns_root\""
+	    echo "  export PATH=\"\$NS_ROOT/bin:\$PATH\""
+	    echo "Run '${bin_dir}/ns create starter' to get started"
 	  fi
   fi 
 }
