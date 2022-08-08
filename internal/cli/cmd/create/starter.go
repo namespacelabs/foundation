@@ -40,12 +40,12 @@ const (
 var (
 	readmeTemplate = template.Must(template.New("readme").Parse(`Your starter Namespace project has been generated!
 
-Next steps:
-
 {{if .RemoteUrl -}}
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#{{.RemoteUrl}})
 
 {{end -}}
+
+Next steps:
 
 {{if .Dir -}}
 - Switch to the project directory: ` + "`" + `cd {{.Dir}}` + "`" + `

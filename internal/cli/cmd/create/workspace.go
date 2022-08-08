@@ -53,6 +53,12 @@ tasks:
     command: |
       ns login
       ns prepare new-cluster
+			cat README.md
+
+ports:
+- name: Namespace Dev UI
+	port: 4001
+	onOpen: open-preview
 `
 )
 
