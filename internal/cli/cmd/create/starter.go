@@ -37,6 +37,7 @@ const (
 func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	var (
 		workspaceName string
+		dryRun        bool
 	)
 
 	return fncobra.
@@ -48,6 +49,8 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.StringVar(&workspaceName, "workspace_name", "", "Name of the workspace.")
+			flags.BoolVar(&dryRun, "dry_run", false, "If true, does not create the workspace and only prints the commands.")
+			_ = flags.MarkHidden("dry_run")
 		}).
 		DoWithArgs(func(ctx context.Context, args []string) error {
 			stdout := console.Stdout(ctx)
@@ -58,38 +61,54 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 			var dirName string
 
 			if workspaceName == "" {
-				workspaceName, err = askWorkspaceName(ctx)
-				if err != nil {
-					return err
-				}
-				if workspaceName == "" {
-					return context.Canceled
+				// Trying to auto-detect a git repository.
+				if isRoot, err := git.IsRepoRoot(ctx); err == nil && isRoot {
+					if url, err := git.RemoteUrl(ctx); err == nil {
+						workspaceName = url
+						if len(args) == 0 {
+							dirName = "."
+						}
+					}
+				} else {
+					workspaceName, err = askWorkspaceName(ctx)
+					if err != nil {
+						return err
+					}
+					if workspaceName == "" {
+						return context.Canceled
+					}
 				}
 			}
 
-			if len(args) > 0 {
-				dirName = args[0]
-			} else {
-				nameParts := strings.Split(workspaceName, "/")
-				dirNamePlaceholder := nameParts[len(nameParts)-1]
-				dirName, err = tui.Ask(ctx,
-					"Directory for the new project?",
-					"It can be a relative or an absolute path. Use '.' to generate the project in the current directory.",
-					dirNamePlaceholder)
-				if err != nil {
-					return err
+			if dirName == "" {
+				if len(args) > 0 {
+					dirName = args[0]
+				} else {
+					nameParts := strings.Split(workspaceName, "/")
+					dirNamePlaceholder := nameParts[len(nameParts)-1]
+					dirName, err = tui.Ask(ctx,
+						"Directory for the new project?",
+						"It can be a relative or an absolute path. Use '.' to generate the project in the current directory.",
+						dirNamePlaceholder)
+					if err != nil {
+						return err
+					}
 				}
 			}
 
 			if dirName != "." {
-				if err := os.MkdirAll(dirName, 0755); err != nil {
-					return err
+				if !dryRun {
+					if err := os.MkdirAll(dirName, 0755); err != nil {
+						return err
+					}
 				}
 
 				fmt.Fprintf(stdout, "\nCreated directory '%s'.\n", dirName)
 
-				if err := os.Chdir(dirName); err != nil {
-					return err
+				if !dryRun {
+					if err := os.Chdir(dirName); err != nil {
+						return err
+					}
 				}
 
 				printConsoleCmd(ctx, stdout, fmt.Sprintf("cd %s", dirName))
@@ -141,18 +160,24 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 
 			for _, starterCmd := range starterCmds {
 				printConsoleCmd(ctx, stdout, fmt.Sprintf("ns %s", strings.Join(starterCmd.args, " ")))
-				fmt.Fprintf(stdout, "%s\n\n", wordwrap.String(colors.Ctx(ctx).Comment.Apply(starterCmd.description), 80))
-				if err := runCommand(ctx, starterCmd.args); err != nil {
-					return err
+				fmt.Fprintf(stdout, "%s\n", wordwrap.String(colors.Ctx(ctx).Comment.Apply(starterCmd.description), 80))
+
+				if !dryRun {
+					fmt.Fprintln(stdout)
+					if err := runCommand(ctx, starterCmd.args); err != nil {
+						return err
+					}
 				}
 			}
 
 			// README.md file content and the content to print to console are slightly different.
-			err = generateAndWriteReadmeFile(ctx, stdout)
-			if err != nil {
-				return err
+			if !dryRun {
+				err = generateAndWriteReadmeFile(ctx, stdout)
+				if err != nil {
+					return err
+				}
 			}
-			return generateAndPrintReadme(ctx, stdout, dirName)
+			return generateAndPrintReadme(ctx, stdout, dirName, dryRun)
 		})
 }
 
@@ -189,9 +214,10 @@ func generateAndWriteReadmeFile(ctx context.Context, out io.Writer) error {
 	return nil
 }
 
-func generateAndPrintReadme(ctx context.Context, out io.Writer, dirName string) error {
+func generateAndPrintReadme(ctx context.Context, out io.Writer, dirName string, dryRun bool) error {
 	opts := readmeOpts{
-		Dir: dirName,
+		Dir:    dirName,
+		DryRun: dryRun,
 	}
 	readmeContent, err := generateReadme(ctx, &opts)
 	if err != nil {
