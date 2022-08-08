@@ -53,7 +53,8 @@ tasks:
     command: |
       ns login
       ns prepare new-cluster
-			cat README.md
+			# Print to the terminal in VSCode what we have done for the user.
+			ns create starter --dry_run --suggest_prepare=false
 
 ports:
 - name: Namespace Dev UI

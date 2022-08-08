@@ -36,8 +36,9 @@ const (
 
 func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	var (
-		workspaceName string
-		dryRun        bool
+		workspaceName  string
+		dryRun         bool
+		suggestPrepare bool
 	)
 
 	return fncobra.
@@ -51,6 +52,8 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 			flags.StringVar(&workspaceName, "workspace_name", "", "Name of the workspace.")
 			flags.BoolVar(&dryRun, "dry_run", false, "If true, does not create the workspace and only prints the commands.")
 			_ = flags.MarkHidden("dry_run")
+			flags.BoolVar(&suggestPrepare, "suggest_prepare", true, "If true, suggest to run `ns prepare` in README. This is false when `prepare` has been done already, e.g. in a Gitpod instance.")
+			_ = flags.MarkHidden("suggest_prepare")
 		}).
 		DoWithArgs(func(ctx context.Context, args []string) error {
 			stdout := console.Stdout(ctx)
@@ -172,12 +175,16 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 
 			// README.md file content and the content to print to console are slightly different.
 			if !dryRun {
-				err = generateAndWriteReadmeFile(ctx, stdout)
+				err = generateAndWriteReadmeFile(ctx, stdout, suggestPrepare)
 				if err != nil {
 					return err
 				}
 			}
-			return generateAndPrintReadme(ctx, stdout, dirName, dryRun)
+			return generateAndPrintReadme(ctx, stdout, &readmeOpts{
+				Dir:            dirName,
+				DryRun:         dryRun,
+				SuggestPrepare: suggestPrepare,
+			})
 		})
 }
 
@@ -190,8 +197,10 @@ func printConsoleCmd(ctx context.Context, out io.Writer, text string) {
 	fmt.Fprintf(out, "\n> %s\n", colors.Ctx(ctx).Highlight.Apply(text))
 }
 
-func generateAndWriteReadmeFile(ctx context.Context, out io.Writer) error {
-	opts := readmeOpts{}
+func generateAndWriteReadmeFile(ctx context.Context, out io.Writer, suggestPrepare bool) error {
+	opts := readmeOpts{
+		SuggestPrepare: suggestPrepare,
+	}
 	if isRoot, err := git.IsRepoRoot(ctx); err == nil && isRoot {
 		if url, err := git.RemoteUrl(ctx); err == nil {
 			opts.RepoUrlForGitpod = fmt.Sprintf("https://%s", url)
@@ -214,12 +223,8 @@ func generateAndWriteReadmeFile(ctx context.Context, out io.Writer) error {
 	return nil
 }
 
-func generateAndPrintReadme(ctx context.Context, out io.Writer, dirName string, dryRun bool) error {
-	opts := readmeOpts{
-		Dir:    dirName,
-		DryRun: dryRun,
-	}
-	readmeContent, err := generateReadme(ctx, &opts)
+func generateAndPrintReadme(ctx context.Context, out io.Writer, opts *readmeOpts) error {
+	readmeContent, err := generateReadme(ctx, opts)
 	if err != nil {
 		return err
 	}
