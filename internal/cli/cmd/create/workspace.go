@@ -53,13 +53,13 @@ tasks:
     command: |
       ns login
       ns prepare new-cluster
-			# Print to the terminal in VSCode what we have done for the user.
-			ns create starter --dry_run --suggest_prepare=false
+      # Print to the terminal in VSCode what we have done for the user.
+      ns create starter --dry_run --suggest_prepare=false
 
 ports:
 - name: Namespace Dev UI
-	port: 4001
-	onOpen: open-preview
+  port: 4001
+  onOpen: open-preview
 `
 )
 
