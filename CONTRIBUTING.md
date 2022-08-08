@@ -34,32 +34,42 @@ ns
 
 We use `goreleaser` for our releases. You should have it under your `nix-shell`.
 
+Our releases are published to:
+
+- [GitHub releases](https://github.com/namespacelabs/foundation/releases),
+- [Public S3 bucket](https://s3.console.aws.amazon.com/s3/buckets/ns-releases).
+  This allows end-users easily download binaries without messing with GitHub authentication
+  to access the private repos.
+- [Homebew TAP](https://github.com/namespacelabs/homebrew-namespace)
+
+We have two distict packages to release:
+
+- `ns` core binary, defined in `.goreleaser.yaml` which contains the actual commands.
+  Released to GitHub releases and to the public S3 bucket.
+- `nsboot` binary, defined in `.goreleaser.nsboot.yaml` which is a thin wrapper
+  which downloads and runs the appropriate version of `ns` upon every invocation.
+  This is intended to be the primary entry point for end users and is published
+  to the package repositories (along withj GitHub releases and the S3 bucket).
+
 You can test a release by running:
 
 ```bash
 goreleaser release --rm-dist --snapshot
 ```
 
+Our versioning scheme uses a ever-increasing minor version. After `0.0.23` comes `0.0.24`, and so
+on.
+
 To issue an actual release:
 
 1. Create a Github PAT with `write_packages` permissions and place it in
    `~/.github/github_token`. This allows GoReleaser to upload to Github releases.
-2. Get AWS temporary credentials with [aws-sso-creds](https://github.com/jaxxstorm/aws-sso-creds)
-   to upload releases to `ns-releases` S3 bucket. Unfortunately GoReleaser doesn't support
-   SSO credentials out of box, so we must resort to using temporary creds in environment variables.
-
-Our versioning scheme uses a ever-increasing minor version. After `0.0.23` comes `0.0.24`, and so
-on.
-
-Pick a new version, and run:
-
-```bash
-git tag -a v0.0.24
-goreleaser release
-```
-
-The releases are published to GitHub releases, S3 bucket `ns-releases` and
-to [our Homebrew TAP](https://github.com/namespacelabs/homebrew-namespace).
+1. Log into AWS with `aws --profile prod-main sso login`.
+1. Export AWS temporary credentials with [aws-sso-creds](https://github.com/jaxxstorm/aws-sso-creds)
+   `aws-sso-creds set default -p prod-main`.
+1. Pick a new version (check the existing tag list): `git tag -a v0.0.24`
+1. Run the release `goreleaser release`.
+1. When releasing `nsboot` update the version in `install/install.sh`.
 
 NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
 `test:` or `nochangelog` are excluded from the changelog.
