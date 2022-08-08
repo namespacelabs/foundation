@@ -32,6 +32,7 @@ const (
 	webServerPkg   = "server/web"
 	webServerName  = "webserver"
 	testPkg        = "tests/echo"
+	readmeFilePath = "README.md"
 )
 
 func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
@@ -180,7 +181,7 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 					return err
 				}
 			}
-			return generateAndPrintReadme(ctx, stdout, &readmeOpts{
+			return generateAndPrintStarterInfo(ctx, stdout, &starterInfoOpts{
 				Dir:            dirName,
 				DryRun:         dryRun,
 				SuggestPrepare: suggestPrepare,
@@ -198,7 +199,7 @@ func printConsoleCmd(ctx context.Context, out io.Writer, text string) {
 }
 
 func generateAndWriteReadmeFile(ctx context.Context, out io.Writer, suggestPrepare bool) error {
-	opts := readmeOpts{
+	opts := starterInfoOpts{
 		SuggestPrepare: suggestPrepare,
 	}
 	if isRoot, err := git.IsRepoRoot(ctx); err == nil && isRoot {
@@ -207,7 +208,7 @@ func generateAndWriteReadmeFile(ctx context.Context, out io.Writer, suggestPrepa
 		}
 	}
 
-	readmeContent, err := generateReadme(ctx, &opts)
+	readmeContent, err := generateStarterInfo(ctx, readmeFileTemplate, &opts)
 	if err != nil {
 		return err
 	}
@@ -223,8 +224,8 @@ func generateAndWriteReadmeFile(ctx context.Context, out io.Writer, suggestPrepa
 	return nil
 }
 
-func generateAndPrintReadme(ctx context.Context, out io.Writer, opts *readmeOpts) error {
-	readmeContent, err := generateReadme(ctx, opts)
+func generateAndPrintStarterInfo(ctx context.Context, out io.Writer, opts *starterInfoOpts) error {
+	readmeContent, err := generateStarterInfo(ctx, starterInfoTemplate, opts)
 	if err != nil {
 		return err
 	}
