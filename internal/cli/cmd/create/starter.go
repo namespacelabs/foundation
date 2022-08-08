@@ -5,10 +5,8 @@
 package create
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"io"
 	"os"
 	"strings"
@@ -19,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/tui"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/git"
 )
@@ -34,34 +31,7 @@ const (
 	webServerPkg   = "server/web"
 	webServerName  = "webserver"
 	testPkg        = "tests/echo"
-	readmeFilePath = "README.md"
 )
-
-var (
-	readmeTemplate = template.Must(template.New("readme").Parse(`Your starter Namespace project has been generated!
-
-{{if .RemoteUrl -}}
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#{{.RemoteUrl}})
-
-{{end -}}
-
-Next steps:
-
-{{if .Dir -}}
-- Switch to the project directory: ` + "`" + `cd {{.Dir}}` + "`" + `
-{{end -}}
-- Run ` + "`" + `ns prepare local` + "`" + ` to prepare the local dev environment.
-- Run ` + "`" + `ns test {{.TestPkg}}` + "`" + ` to run the e2e test.
-- Run ` + "`" + `ns dev {{.ServerPkg}}` + "`" + ` to start the server stack in the development mode with hot reload.
-`))
-)
-
-type readmeTmplOpts struct {
-	Dir       string
-	ServerPkg string
-	TestPkg   string
-	RemoteUrl string
-}
 
 func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	cmd := &cobra.Command{
@@ -171,6 +141,11 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 			}
 		}
 
+		// README.md file content and the content to print to console are slightly different.
+		err = generateAndWriteReadmeFile(ctx, stdout)
+		if err != nil {
+			return err
+		}
 		return generateAndPrintReadme(ctx, stdout, dirName)
 	})
 
@@ -186,29 +161,18 @@ func printConsoleCmd(ctx context.Context, out io.Writer, text string) {
 	fmt.Fprintf(out, "\n> %s\n", colors.Ctx(ctx).Highlight.Apply(text))
 }
 
-func generateAndPrintReadme(ctx context.Context, out io.Writer, dir string) error {
-	// No need to change the directorty if it's the current one.
-	if dir == "." {
-		dir = ""
-	}
-	data := readmeTmplOpts{
-		Dir:       dir,
-		ServerPkg: webServerPkg,
-		TestPkg:   testPkg,
-	}
-
+func generateAndWriteReadmeFile(ctx context.Context, out io.Writer) error {
+	opts := readmeOpts{}
 	if isRoot, err := git.IsRepoRoot(ctx); err == nil && isRoot {
 		if url, err := git.RemoteUrl(ctx); err == nil {
-			data.RemoteUrl = fmt.Sprintf("https://%s", url)
+			opts.RepoUrlForGitpod = fmt.Sprintf("https://%s", url)
 		}
 	}
 
-	var body bytes.Buffer
-	if err := readmeTemplate.Execute(&body, data); err != nil {
-		return fnerrors.InternalError("failed to apply template: %w", err)
+	readmeContent, err := generateReadme(ctx, &opts)
+	if err != nil {
+		return err
 	}
-
-	readmeContent := body.String()
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -218,7 +182,18 @@ func generateAndPrintReadme(ctx context.Context, out io.Writer, dir string) erro
 		return err
 	}
 
-	fmt.Fprintf(out, "\n\n%s\n", colors.Ctx(ctx).Highlight.Apply(readmeContent))
-
 	return nil
+}
+
+func generateAndPrintReadme(ctx context.Context, out io.Writer, dirName string) error {
+	opts := readmeOpts{
+		Dir: dirName,
+	}
+	readmeContent, err := generateReadme(ctx, &opts)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(out)
+	return renderMarkdown(out, readmeContent)
 }
