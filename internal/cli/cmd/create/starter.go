@@ -66,8 +66,8 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 
 			if workspaceName == "" {
 				// Trying to auto-detect a git repository.
-				if isRoot, err := git.IsRepoRoot(ctx); err == nil && isRoot {
-					if url, err := git.RemoteUrl(ctx); err == nil {
+				if isRoot, err := git.IsRepoRoot(ctx, "."); err == nil && isRoot {
+					if url, err := git.RemoteUrl(ctx, "."); err == nil {
 						workspaceName = url
 						if len(args) == 0 {
 							dirName = "."
@@ -202,8 +202,8 @@ func generateAndWriteReadmeFile(ctx context.Context, out io.Writer, suggestPrepa
 	opts := starterInfoOpts{
 		SuggestPrepare: suggestPrepare,
 	}
-	if isRoot, err := git.IsRepoRoot(ctx); err == nil && isRoot {
-		if url, err := git.RemoteUrl(ctx); err == nil {
+	if isRoot, err := git.IsRepoRoot(ctx, "."); err == nil && isRoot {
+		if url, err := git.RemoteUrl(ctx, "."); err == nil {
 			opts.RepoUrlForGitpod = fmt.Sprintf("https://%s", url)
 		}
 	}

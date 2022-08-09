@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/schema/storage"
 )
@@ -99,6 +100,34 @@ func newNewCmd() *cobra.Command {
 				Repository:         "github.com/" + ev.Repository.FullName,
 				CommitId:           ev.HeadCommit.ID,
 				ModuleName:         []string{workspaceData.Parsed().ModuleName},
+				PipelineName:       *pipelineName,
+				NspipelinesVersion: *nspipelinesVersion,
+			})
+		} else if *workspaceDir != "" {
+			// This code path is executed when running `ns starter` in a pipeline.
+
+			workspaceData, err := cuefrontend.ModuleLoader.ModuleAt(ctx, *workspaceDir)
+			var moduleName string
+			// The workspace may be not initialized yet, for example before running `ns starter`.
+			if err == nil {
+				moduleName = workspaceData.Parsed().ModuleName
+			}
+
+			remoteUrl, err := git.RemoteUrl(ctx, *workspaceDir)
+			if err != nil {
+				return err
+			}
+
+			status, err := git.FetchStatus(ctx, *workspaceDir)
+			if err != nil {
+				return err
+			}
+
+			attachments = append(attachments, &storage.RunMetadata{
+				Branch:             "",
+				Repository:         remoteUrl,
+				CommitId:           status.Revision,
+				ModuleName:         []string{moduleName},
 				PipelineName:       *pipelineName,
 				NspipelinesVersion: *nspipelinesVersion,
 			})

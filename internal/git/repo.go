@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-func IsRepoRoot(ctx context.Context) (bool, error) {
-	out, _, err := RunGit(ctx, ".", "rev-parse", "--show-toplevel")
+func IsRepoRoot(ctx context.Context, path string) (bool, error) {
+	out, _, err := RunGit(ctx, path, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return false, err
 	}
@@ -27,8 +27,8 @@ func IsRepoRoot(ctx context.Context) (bool, error) {
 }
 
 // E.g. github.com/username/reponame
-func RemoteUrl(ctx context.Context) (string, error) {
-	out, _, err := RunGit(ctx, ".", "config", "--get", "remote.origin.url")
+func RemoteUrl(ctx context.Context, path string) (string, error) {
+	out, _, err := RunGit(ctx, path, "config", "--get", "remote.origin.url")
 	if err != nil {
 		return "", err
 	}
@@ -45,6 +45,9 @@ func RemoteUrl(ctx context.Context) (string, error) {
 	if parts := strings.SplitN(url, "@", 2); len(parts) == 2 && parts[1] != "" {
 		url = parts[1]
 	}
+
+	// SSH path here looks like: "github.com:namespacelabs/examples"
+	url = strings.ReplaceAll(url, ":", "/")
 
 	return url, nil
 }

@@ -88,7 +88,7 @@ func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) 
 			return err
 		}
 
-		if isRoot, err := git.IsRepoRoot(ctx); err == nil && isRoot {
+		if isRoot, err := git.IsRepoRoot(ctx, "."); err == nil && isRoot {
 			if err := writeFileIfDoesntExist(ctx, console.Stdout(ctx), fsfs, gitpodFilePath, gitpodTemplate); err != nil {
 				return err
 			}
@@ -102,7 +102,7 @@ func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) 
 
 func askWorkspaceName(ctx context.Context) (string, error) {
 	placeholder := "github.com/username/reponame"
-	if url, err := git.RemoteUrl(ctx); err == nil {
+	if url, err := git.RemoteUrl(ctx, "."); err == nil {
 		placeholder = url
 	}
 
