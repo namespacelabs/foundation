@@ -103,8 +103,9 @@ func newNewCmd() *cobra.Command {
 				PipelineName:       *pipelineName,
 				NspipelinesVersion: *nspipelinesVersion,
 			})
-		} else if *workspaceDir != "" {
+		} else if *parentRunIDPath == "" {
 			// This code path is executed when running `ns starter` in a pipeline.
+			// Even though there is no Github event, we still need to fill "storage.RunMetadata".
 
 			workspaceData, err := cuefrontend.ModuleLoader.ModuleAt(ctx, *workspaceDir)
 			var moduleName string
