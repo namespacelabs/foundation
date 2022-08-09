@@ -217,11 +217,12 @@ func generateAndWriteReadmeFile(ctx context.Context, out io.Writer, suggestPrepa
 	if err != nil {
 		return err
 	}
-	if err := writeFileIfDoesntExist(ctx, nil, fnfs.ReadWriteLocalFS(cwd), readmeFilePath, readmeContent); err != nil {
-		return err
-	}
 
-	return nil
+	// Writing the README.md file even if it exists, important for the workflow in Gitpod.
+	return fnfs.WriteWorkspaceFile(ctx, nil, fnfs.ReadWriteLocalFS(cwd), readmeFilePath, func(w io.Writer) error {
+		_, err := fmt.Fprint(w, readmeContent)
+		return err
+	})
 }
 
 func generateAndPrintStarterInfo(ctx context.Context, out io.Writer, opts *starterInfoOpts) error {
