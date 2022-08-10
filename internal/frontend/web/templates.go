@@ -71,6 +71,7 @@ function postAPI(request: any) {
 		"@types/react": "^17.0.35",
 		"@types/react-dom": "^17.0.11",
 		"@vitejs/plugin-react": "^1.1.0",
+		"vite-plugin-rewrite-all": "^1.0.0",
 		"typescript": "4.5.4",
 		"vite": "2.7.13"
 	},

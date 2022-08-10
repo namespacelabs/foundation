@@ -724,6 +724,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"connect-history-api-fallback@npm:^1.6.0":
+  version: 1.6.0
+  resolution: "connect-history-api-fallback@npm:1.6.0"
+  checksum: 804ca2be28c999032ecd37a9f71405e5d7b7a4b3defcebbe41077bb8c5a0a150d7b59f51dcc33b2de30bc7e217a31d10f8cfad27e8e74c2fc7655eeba82d6e7e
+  languageName: node
+  linkType: hard
+
 "console-control-strings@npm:^1.1.0":
   version: 1.1.0
   resolution: "console-control-strings@npm:1.1.0"
@@ -2301,6 +2308,7 @@ __metadata:
     typescript: ^4.5.2
     typescript-plugin-css-modules: ^3.4.0
     vite: ^2.6.14
+    vite-plugin-rewrite-all: ^1.0.0
     wouter: ^2.8.0-alpha.2
     xterm-addon-fit: ^0.5.0
     xterm-addon-web-links: ^0.6.0
@@ -2676,6 +2684,17 @@ __metadata:
   version: 1.0.2
   resolution: "util-deprecate@npm:1.0.2"
   checksum: 474acf1146cb2701fe3b074892217553dfcf9a031280919ba1b8d651a068c9b15d863b7303cb15bd00a862b498e6cf4ad7b4a08fb134edd5a6f7641681cb54a2
+  languageName: node
+  linkType: hard
+
+"vite-plugin-rewrite-all@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "vite-plugin-rewrite-all@npm:1.0.0"
+  dependencies:
+    connect-history-api-fallback: ^1.6.0
+  peerDependencies:
+    vite: ^2.0.0 || ^3.0.0
+  checksum: 5efb6f0b54452126067619a1a230d2dfc9264d963801159f9050aaf18d9335e600a017b2ce751e98c597535215c4732a79804f0bb664b4aafbaa6283f06b9aee
   languageName: node
   linkType: hard
 
