@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/klauspost/compress/zstd"
 	"github.com/spf13/cobra"
@@ -104,6 +105,8 @@ func newCompleteCmd() *cobra.Command {
 			}); err != nil {
 			return err
 		}
+
+		fmt.Fprintf(os.Stdout, "Completed run %q\n", runID)
 
 		return nil
 	})

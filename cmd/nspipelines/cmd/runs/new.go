@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -178,6 +179,8 @@ func newNewCmd() *cobra.Command {
 		if err != nil {
 			return fnerrors.InternalError("failed to marshal response: %w", err)
 		}
+
+		fmt.Fprintf(os.Stdout, "Created run %q, parent: %q\n", resp.RunId, req.ParentRunId)
 
 		return ioutil.WriteFile(*storeRunID, r, 0644)
 	})
