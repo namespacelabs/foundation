@@ -49,7 +49,9 @@ node_modules
 	gitpodFilePath = ".gitpod.yml"
 
 	// `ns create starter --dry_run` prints to the terminal in VSCode what we have done for the user.
-	gitpodTemplate = `image: us-docker.pkg.dev/foundation-344819/prebuilts/namespacelabs.dev/foundation/internal/gitpod/pinned@sha256:b7dc2bbda2aa97c17f875a55c95b38dafad8a7ec933e34fdd88a0185caeac18e
+	//
+	// Use the pinned ns for testing/development, e.g. "image: us-docker.pkg.dev/foundation-344819/prebuilts/namespacelabs.dev/foundation/internal/gitpod/pinned@sha256:<SHA>"
+	gitpodTemplate = `image: us-docker.pkg.dev/foundation-344819/prebuilts/namespacelabs.dev/foundation/internal/gitpod/nsboot@sha256:b8b169a9c5a8074e26e4f6949ab56b060cfed7af31b5c7f073199ad3cea88c89
 tasks:
   - name: prepare
     init: |
