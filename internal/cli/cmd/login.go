@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -22,6 +23,10 @@ import (
 const baseUrl = "https://login.namespace.so/login/cli"
 
 func NewLoginCmd() *cobra.Command {
+	var (
+		readFromEnvVar string
+	)
+
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Login to use Namespace services (DNS and SSL management, etc).",
@@ -30,30 +35,44 @@ func NewLoginCmd() *cobra.Command {
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			stdout := console.Stdout(ctx)
 
-			id, exists := os.LookupEnv("nslogintoken")
-			if !exists {
-				var err error
-				id, err = fnapi.StartLogin(ctx)
-				if err != nil {
-					return nil
+			var auth *fnapi.UserAuth
+
+			if readFromEnvVar != "" {
+				if nsAuthJson := os.Getenv(readFromEnvVar); nsAuthJson != "" {
+					auth = &fnapi.UserAuth{}
+					if err := json.Unmarshal([]byte(nsAuthJson), auth); err != nil {
+						return err
+					}
 				}
-
-				fmt.Fprintf(stdout, "%s\n", aec.Bold.Apply("Login to Namespace"))
-
-				loginUrl := fmt.Sprintf("%s?id=%s", baseUrl, id)
-
-				if openURL(loginUrl) {
-					fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", loginUrl)
-				} else {
-					fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", loginUrl)
-				}
-			} else {
-				fmt.Fprintf(stdout, "Login pre-approved with a single-use token.\n")
 			}
 
-			auth, err := fnapi.CompleteLogin(ctx, id)
-			if err != nil {
-				return err
+			if auth == nil {
+				id, exists := os.LookupEnv("nslogintoken")
+				if !exists {
+					var err error
+					id, err = fnapi.StartLogin(ctx)
+					if err != nil {
+						return nil
+					}
+
+					fmt.Fprintf(stdout, "%s\n", aec.Bold.Apply("Login to Namespace"))
+
+					loginUrl := fmt.Sprintf("%s?id=%s", baseUrl, id)
+
+					if openURL(loginUrl) {
+						fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", loginUrl)
+					} else {
+						fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", loginUrl)
+					}
+				} else {
+					fmt.Fprintf(stdout, "Login pre-approved with a single-use token.\n")
+				}
+
+				var err error
+				auth, err = fnapi.CompleteLogin(ctx, id)
+				if err != nil {
+					return err
+				}
 			}
 
 			username, err := fnapi.StoreUser(ctx, auth)
@@ -62,9 +81,13 @@ func NewLoginCmd() *cobra.Command {
 			}
 
 			fmt.Fprintf(stdout, "\nHi %s, you are now logged in, have a nice day.\n", username)
+
 			return nil
 		}),
 	}
+
+	// This flags is used from Gitpod.
+	cmd.Flags().StringVar(&readFromEnvVar, "read_from_env_var", "", "If true, try reading the auth data as JSON from this environment variable.")
 
 	cmd.AddCommand(NewRobotLogin("robot"))
 

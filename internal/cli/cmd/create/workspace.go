@@ -54,8 +54,10 @@ node_modules
 	gitpodTemplate = `image: us-docker.pkg.dev/foundation-344819/prebuilts/namespacelabs.dev/foundation/internal/gitpod/nsboot@sha256:b8b169a9c5a8074e26e4f6949ab56b060cfed7af31b5c7f073199ad3cea88c89
 tasks:
   - name: prepare
+    before: |
+      ns login --read_from_env_var=NS_AUTH
     init: |
-      ns login
+      gp env NS_AUTH=` + "`" + `cat ~/.config/fn/auth.json` + "`" + ` &> /dev/null
       ns prepare new-cluster
       ns create starter --dry_run --suggest_prepare=false
 
