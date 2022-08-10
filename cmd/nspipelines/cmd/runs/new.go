@@ -181,6 +181,11 @@ func newNewCmd() *cobra.Command {
 		}
 
 		fmt.Fprintf(os.Stdout, "Created run %q, parent: %q\n", resp.RunId, req.ParentRunId)
+		fmt.Fprintln(os.Stdout, "Attachments:")
+		for _, attachment := range attachments {
+			text, _ := json.MarshalIndent(attachment, "", "  ")
+			fmt.Fprintf(os.Stdout, "%s\n", text)
+		}
 
 		return ioutil.WriteFile(*storeRunID, r, 0644)
 	})
