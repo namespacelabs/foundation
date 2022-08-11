@@ -19,9 +19,10 @@ import (
 
 func NewUnprepareCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "unprepare",
-		Short: "Reverts the local workspace to zero state by deleting all Namespace-managed containers and caches.",
-		Args:  cobra.NoArgs,
+		Use:     "unprepare",
+		Aliases: []string{"clean"},
+		Short:   "Reverts the local workspace to zero state by deleting all Namespace-managed containers and caches.",
+		Args:    cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			root, err := module.FindRoot(ctx, ".")
