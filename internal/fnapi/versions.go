@@ -35,7 +35,9 @@ type Artifact struct {
 }
 
 func GetLatestVersion(ctx context.Context, nsReqs *schema.Workspace_FoundationRequirements) (*GetLatestResponse, error) {
-	telemetryEnabled := NewTelemetry(true).IsTelemetryEnabled()
+	tel := NewTelemetry()
+	tel.Enable()
+	telemetryEnabled := tel.IsTelemetryEnabled()
 	req := GetLatestRequest{
 		TelemetryEnabled: telemetryEnabled,
 	}

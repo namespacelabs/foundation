@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -25,7 +26,7 @@ func TestTelemetryDisabled(t *testing.T) {
 	defer reset()
 
 	tel := &Telemetry{
-		UseTelemetry: false,
+		useTelemetry: false,
 		errorLogging: true,
 		makeClientID: generateTestIDs,
 	}
@@ -45,10 +46,13 @@ func TestTelemetryDisabled(t *testing.T) {
 
 	_ = cmd.Execute()
 	tel.RecordError(context.Background(), fmt.Errorf("foo error"))
+
+	// Due to the async http server nature it may not have time to handle the request.
+	time.Sleep(time.Millisecond * 100)
 }
 
-func generateTestIDs(ctx context.Context) (clientID, bool) {
-	return clientID{newRandID(), newRandID()}, false
+func generateTestIDs(ctx context.Context) ephemeralCliID {
+	return ephemeralCliID{newRandID(), newRandID()}
 }
 
 func TestTelemetryDisabledViaEnv(t *testing.T) {
@@ -56,10 +60,11 @@ func TestTelemetryDisabledViaEnv(t *testing.T) {
 	defer reset()
 
 	tel := &Telemetry{
-		UseTelemetry: true,
+		useTelemetry: true,
 		errorLogging: true,
 		makeClientID: generateTestIDs,
 	}
+
 	t.Setenv("DO_NOT_TRACK", "1")
 
 	cmd := &cobra.Command{
@@ -80,6 +85,9 @@ func TestTelemetryDisabledViaEnv(t *testing.T) {
 
 	_ = cmd.Execute()
 	tel.RecordError(context.Background(), fmt.Errorf("foo error"))
+
+	// Due to the async http server nature it may not have time to handle the request.
+	time.Sleep(time.Millisecond * 100)
 }
 
 func TestTelemetryDisabledViaViper(t *testing.T) {
@@ -89,7 +97,7 @@ func TestTelemetryDisabledViaViper(t *testing.T) {
 	viper.Set("enable_telemetry", false)
 
 	tel := &Telemetry{
-		UseTelemetry: true,
+		useTelemetry: true,
 		errorLogging: true,
 		makeClientID: generateTestIDs,
 	}
@@ -112,6 +120,9 @@ func TestTelemetryDisabledViaViper(t *testing.T) {
 
 	_ = cmd.Execute()
 	tel.RecordError(context.Background(), fmt.Errorf("foo error"))
+
+	// Due to the async http server nature it may not have time to handle the request.
+	time.Sleep(time.Millisecond * 100)
 }
 
 func TestTelemetryRecordInvocationAnon(t *testing.T) {
@@ -119,7 +130,7 @@ func TestTelemetryRecordInvocationAnon(t *testing.T) {
 	defer reset()
 
 	tel := &Telemetry{
-		UseTelemetry: true,
+		useTelemetry: true,
 		errorLogging: true,
 		makeClientID: generateTestIDs,
 	}
@@ -172,7 +183,7 @@ func TestTelemetryRecordErrorPlaintext(t *testing.T) {
 	defer reset()
 
 	tel := &Telemetry{
-		UseTelemetry: true,
+		useTelemetry: true,
 		errorLogging: true,
 		recID:        *atomic.NewString("fake-id"),
 		makeClientID: generateTestIDs,

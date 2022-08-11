@@ -34,28 +34,50 @@ const telemetryServiceName = "telemetry.TelemetryService"
 const postTimeout = 1 * time.Second
 
 type Telemetry struct {
-	UseTelemetry bool
+	useTelemetry bool
 	errorLogging bool // For testing and debugging.
 
 	backendAddress string
 	recID          atomic.String // Set after an invocation is recorded.
-	// The client ID should be anonymous and never be associated with any user credentials.
-	makeClientID func(context.Context) (clientID, bool)
+	makeClientID   func(context.Context) ephemeralCliID
 }
 
-func NewTelemetry(enabled bool) *Telemetry {
+func NewTelemetry() *Telemetry {
 	return &Telemetry{
-		UseTelemetry:   enabled,
 		errorLogging:   false,
 		backendAddress: EndpointAddress,
-		makeClientID:   generateClientIDAndSalt,
+		makeClientID:   getOrGenerateEphemeralCliID,
 	}
+}
+
+type contextKey string
+
+var (
+	_telemetryKey = contextKey("fn.telemetry")
+)
+
+func TelemetryOn(ctx context.Context) *Telemetry {
+	v := ctx.Value(_telemetryKey)
+	if v == nil {
+		return nil
+	}
+	return v.(*Telemetry)
+}
+
+func WithTelemetry(ctx context.Context, t *Telemetry) context.Context {
+	return context.WithValue(ctx, _telemetryKey, t)
+}
+
+// Telemetry needs to be excplicitly enabled by calling this function.
+// IsTelemetryEnabled() may still be false if telemetry is disabled through DO_NOT_TRACK, etc.
+func (tel *Telemetry) Enable() {
+	tel.useTelemetry = true
 }
 
 func (tel *Telemetry) IsTelemetryEnabled() bool {
 	doNotTrack := os.Getenv("DO_NOT_TRACK")
 	enableTelemetry := viper.GetBool("enable_telemetry")
-	return !environment.IsRunningInCI() && tel.UseTelemetry && doNotTrack == "" && enableTelemetry
+	return !environment.IsRunningInCI() && tel.useTelemetry && doNotTrack == "" && enableTelemetry
 }
 
 func (tel *Telemetry) logError(ctx context.Context, err error) {
@@ -107,7 +129,7 @@ type recordErrorRequest struct {
 	Message string `json:"message,omitempty"`
 }
 
-type clientID struct {
+type ephemeralCliID struct {
 	ID   string `json:"id"`
 	Salt string `json:"salt"`
 }
@@ -116,29 +138,29 @@ func newRandID() string {
 	return ids.NewRandomBase62ID(16)
 }
 
-func generateClientIDAndSalt(ctx context.Context) (clientID, bool) {
+func getOrGenerateEphemeralCliID(ctx context.Context) ephemeralCliID {
 	configDir, err := dirs.Config()
 	if err != nil {
-		return clientID{newRandID(), newRandID()}, false
+		return ephemeralCliID{newRandID(), newRandID()}
 	}
 
 	idfile := filepath.Join(configDir, "clientid.json")
 	idcontents, err := ioutil.ReadFile(idfile)
 	if err == nil {
-		var clientID clientID
+		var clientID ephemeralCliID
 		if err := json.Unmarshal(idcontents, &clientID); err == nil {
 			if clientID.ID != "" && clientID.Salt != "" {
-				return clientID, false
+				return clientID
 			}
 		}
 	}
 
-	newClientID := clientID{newRandID(), newRandID()}
+	newClientID := ephemeralCliID{newRandID(), newRandID()}
 	if err := writeJSON(idfile, newClientID); err != nil {
 		fmt.Fprintln(console.Warnings(ctx), "failed to persist user-id", err)
 	}
 
-	return newClientID, true
+	return newClientID
 }
 
 func writeJSON(path string, msg interface{}) error {
@@ -159,7 +181,7 @@ func fullCommand(cmd *cobra.Command) string {
 }
 
 // Extracts command name and set flags from cmd. Reports args and flag values in hashed form.
-func buildRecordInvocationRequest(ctx context.Context, cmd *cobra.Command, c clientID, reqID string, args []string) *recordInvocationRequest {
+func buildRecordInvocationRequest(ctx context.Context, cmd *cobra.Command, c ephemeralCliID, reqID string, args []string) *recordInvocationRequest {
 	req := recordInvocationRequest{
 		ID:      reqID,
 		Command: fullCommand(cmd),
@@ -212,7 +234,7 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 		return
 	}
 
-	c, _ := tel.makeClientID(ctx)
+	c := tel.makeClientID(ctx)
 
 	req := buildRecordInvocationRequest(ctx, cmd, c, reqID, args)
 
@@ -271,4 +293,12 @@ func (tel *Telemetry) recordError(ctx context.Context, recID string, err error) 
 	if err := tel.postRecordErrorRequest(ctx, req); err != nil {
 		tel.logError(ctx, err)
 	}
+}
+
+func (tel *Telemetry) GetEphemeralCliID(ctx context.Context) string {
+	if !tel.IsTelemetryEnabled() {
+		return ""
+	}
+
+	return tel.makeClientID(ctx).ID
 }

@@ -89,8 +89,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		ctx, cleanupTracer = actiontracing.SetupTracing(ctx, tracerEndpoint)
 	}
 
+	tel := fnapi.NewTelemetry()
+
 	sink, style, flushLogs := ConsoleToSink(StandardConsole())
-	ctxWithSink := colors.WithStyle(tasks.WithSink(ctx, sink), style)
+	ctxWithSink := fnapi.WithTelemetry(colors.WithStyle(tasks.WithSink(ctx, sink), style), tel)
 
 	debugSink := console.Debug(ctx)
 
@@ -108,12 +110,14 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		_ = cmdBundle.RemoveStaleCommands()
 	}()
 
-	var tel *fnapi.Telemetry
 	var run *storedrun.Run
 	var useTelemetry bool
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
-		tel := fnapi.NewTelemetry(useTelemetry)
+		// Now that "useTelemetry" flag is parsed, we can conditionally enable telemetry.
+		if useTelemetry {
+			tel.Enable()
+		}
 
 		if viper.GetBool("enable_pprof") {
 			go ListenPProf(console.Debug(cmd.Context()))

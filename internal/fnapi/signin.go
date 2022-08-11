@@ -18,7 +18,8 @@ type StartLoginResponse struct {
 }
 
 type CompleteLoginRequest struct {
-	LoginId string `json:"login_id"`
+	LoginId        string `json:"login_id"`
+	EphemeralCliId string `json:"ephemeral_cli_id"`
 }
 
 type CheckRequest struct {
@@ -41,9 +42,10 @@ func StartLogin(ctx context.Context) (string, error) {
 	return resp.LoginId, err
 }
 
-func CompleteLogin(ctx context.Context, id string) (*UserAuth, error) {
+func CompleteLogin(ctx context.Context, id string, ephemeralCliId string) (*UserAuth, error) {
 	req := CompleteLoginRequest{
-		LoginId: id,
+		LoginId:        id,
+		EphemeralCliId: ephemeralCliId,
 	}
 
 	method := "nsl.signin.SigninService/CompleteLogin"
