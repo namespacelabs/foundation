@@ -68,13 +68,15 @@ To issue an actual release:
 1. Export AWS temporary credentials with [aws-sso-creds](https://github.com/jaxxstorm/aws-sso-creds)
    `aws-sso-creds set default -p prod-main`.
 1. Pick a new version (check the existing tag list): `git tag -a v0.0.24`
-1. Run the release `goreleaser release`.
+1. Run the release `goreleaser release --rm-dist` (add `-f .goreleaser.nsboot.yaml` to release `nsboot`).
 1. When releasing `nsboot` update the version in `install/install.sh`.
 
 NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
 `test:` or `nochangelog` are excluded from the changelog.
 
 ### MacOS Notarization
+
+Note: currently the notarization is not required (and can only be done by hugo@).
 
 In order to allow `ns` binaries to be installed outside of the App store, they need to be notarized.
 
