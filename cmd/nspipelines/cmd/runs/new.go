@@ -41,6 +41,7 @@ func newNewCmd() *cobra.Command {
 
 	storeRunID := flags.String("output_run_id_path", "", "Where to output the run id.")
 	parentRunIDPath := flags.String("parent_run_id_path", "", "The parent run id.")
+	commandLine := flags.String("command_line", "", "Command to reproduce the run.")
 	workspaceDir := flags.String("workspace", ".", "The workspace directory to parse.")
 	githubEvent := flags.String("github_event_path", "", "Path to a file with github's event json.")
 	pipelineName := flags.String("pipeline_name", "", "Name of the pipeline that spawned this run (e.g. autopush, preview).")
@@ -70,8 +71,8 @@ func newNewCmd() *cobra.Command {
 			}
 
 			attachments = append(attachments, &storage.InvocationDescription{
-				Kind: storage.InvocationDescription_Kind(parsedKind),
-				// XXX command line
+				Kind:        storage.InvocationDescription_Kind(parsedKind),
+				CommandLine: *commandLine,
 			})
 		}
 

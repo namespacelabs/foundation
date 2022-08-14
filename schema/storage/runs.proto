@@ -90,6 +90,10 @@ message RunMetadata {
 // This is an attachment to a RunStorage Run.
 message InvocationDescription {
     Kind   kind         = 1;
+
+    // The invocation command line that can be used to reproduce the invocation.
+    // It should include flags having semantic meaning (e.g. --include_servers)
+    // but be free of the flags specific to the exact execution environment (e.g. --run_tools_on_kubernetes)
     string command_line = 2;
 
     enum Kind {
