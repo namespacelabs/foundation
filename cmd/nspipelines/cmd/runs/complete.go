@@ -21,6 +21,12 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
+const (
+	// Section log data will be streamed in chunks of this size.
+	// The chunks need to fit into Envoy transfer buffer (1M by default).
+	uploadChunkSize = 128 * 1024
+)
+
 func newCompleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:  "complete",
@@ -65,14 +71,27 @@ func newCompleteCmd() *cobra.Command {
 				return fnerrors.InternalError("failed to complete compression: %w", err)
 			}
 
-			req := &UploadSectionRunRequest{
-				OpaqueUserAuth: userAuth.Opaque,
-				RunId:          run.RunId,
-				PayloadFormat:  "application/vnd.namespace.run+pb-zstd",
-				Payload:        out.Bytes(),
+			var reqs = []*UploadSectionRunRequest{}
+			var bytes = out.Bytes()
+			for i := 0; i < len(bytes); i += uploadChunkSize {
+				chunkEnd := i + uploadChunkSize
+				if chunkEnd > len(bytes) {
+					chunkEnd = len(bytes)
+				}
+				chunk := bytes[i:chunkEnd]
+				req := &UploadSectionRunRequest{
+					Payload: chunk,
+				}
+				if i == 0 {
+					req.OpaqueUserAuth = userAuth.Opaque
+					req.RunId = run.RunId
+					req.PayloadFormat = "application/vnd.namespace.run+pb-zstd"
+					req.PayloadLength = len(bytes)
+				}
+				reqs = append(reqs, req)
 			}
 
-			if err := fnapi.CallAPI(ctx, storageEndpoint, fmt.Sprintf("%s/UploadSection", storageService), req, func(dec *json.Decoder) error {
+			if err := fnapi.CallAPI(ctx, storageEndpoint, fmt.Sprintf("%s/UploadSectionStream", storageService), reqs, func(dec *json.Decoder) error {
 				// No response to check.
 				return nil
 			}); err != nil {
@@ -118,6 +137,7 @@ type UploadSectionRunRequest struct {
 	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
 	RunId          string `json:"run_id,omitempty"`
 	PayloadFormat  string `json:"payload_format,omitempty"`
+	PayloadLength  int    `json:"payload_length,omitempty"`
 	Payload        []byte `json:"payload,omitempty"`
 }
 

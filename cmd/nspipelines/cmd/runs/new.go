@@ -28,7 +28,7 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
-const storageEndpoint = "https://grpc-gateway-eg999pfts0vbcol25ao0.prod.namespacelabs.nscloud.dev"
+const storageEndpoint = "http://grpc-gateway-eg999pfts0vbcol25ao0.dev.nslocal.host:40080"
 const storageService = "nsl.runs.storage.RunStorageService"
 
 func newNewCmd() *cobra.Command {
