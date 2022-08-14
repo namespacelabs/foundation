@@ -76,12 +76,12 @@ NOTE: all commits end up in an automatically generated changelog. Commits that i
 
 ### MacOS Notarization
 
-Note: currently the notarization is not required (and can only be done by hugo@).
+Note: currently the notarization is not required. Namespace binaries are downloaded by Homebrew and `nsboot`
+and these tools do not set the quarantine flag (see [SO](https://stackoverflow.com/questions/67446317/why-are-executables-installed-with-homebrew-trusted-on-macos), verified on a fresh macOS install by Kirill).
 
-In order to allow `ns` binaries to be installed outside of the App store, they need to be notarized.
-
-Notarization must be done in MacOSX, and requires XCode, and
-https://github.com/mitchellh/gon#installation.
+If needed, notarization is to be done in MacOSX, and requires XCode, and
+https://github.com/mitchellh/gon#installation. Currently Hugo is the only person to perform notarization
+as he posesses the right Apple Developer Certificate.
 
 ## Development Workflows
 
