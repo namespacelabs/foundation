@@ -12,9 +12,11 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/github"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/runs"
-	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/workspace"
+	workspaceCmd "namespacelabs.dev/foundation/cmd/nspipelines/cmd/workspace"
 	"namespacelabs.dev/foundation/internal/cli/cmd"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/providers/aws/ecr"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
 )
@@ -29,13 +31,15 @@ func main() {
 	}
 
 	root.AddCommand(github.NewGithubCmd())
-	root.AddCommand(workspace.NewWorkspaceCmd())
+	root.AddCommand(workspaceCmd.NewWorkspaceCmd())
 	root.AddCommand(runs.NewRunsCmd())
 	root.AddCommand(cmd.NewRobotLogin("robot-login"))
 
 	ctx := tasks.WithSink(context.Background(), simplelog.NewSink(os.Stderr, maxLogLevel))
 
 	ecr.Register()
+	workspace.ModuleLoader = cuefrontend.ModuleLoader
+	workspace.MakeFrontend = cuefrontend.NewFrontend
 
 	tasks.SetupFlags(root.PersistentFlags())
 
