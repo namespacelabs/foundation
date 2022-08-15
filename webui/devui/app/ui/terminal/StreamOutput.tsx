@@ -4,7 +4,7 @@
 
 import { useEffect, useRef } from "react";
 import { OutputSocket } from "../../devworkflow/output";
-import Terminal from "../../ui/terminal/Terminal";
+import Terminal from "./Terminal";
 import classes from "./terminal.module.css";
 
 export function StreamOutput(props: { makeSocket: () => OutputSocket }) {

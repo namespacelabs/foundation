@@ -10,7 +10,7 @@ import {
 	StackEntryType,
 } from "../../datamodel/Schema";
 import { useTasksByServer } from "../../datamodel/TasksObserver";
-import { ExternalLinkIcon } from "../../icons";
+import { ExternalLinkIcon } from "../../ui/icons";
 import Selectable from "../../ui/sidebar/Selectable";
 import Tabs from "../../ui/sidebar/Tabs";
 import { useServerRoute } from "../server/routing";

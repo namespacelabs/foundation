@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-import { cmdData, historyData, makeIcon, monitorData } from "../../icons";
+import { cmdData, historyData, makeIcon, monitorData } from "../../ui/icons";
 import { Item } from "../../ui/sidebar/Sidebar";
 import { useBuildRoute } from "../build/routing";
 import { useCommandRoute } from "../command/routing";

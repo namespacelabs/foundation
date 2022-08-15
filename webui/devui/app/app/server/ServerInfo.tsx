@@ -13,7 +13,7 @@ import {
 	StackType,
 } from "../../datamodel/Schema";
 import { useTasks } from "../../datamodel/TasksObserver";
-import { ExternalLinkIcon } from "../../icons";
+import { ExternalLinkIcon } from "../../ui/icons";
 import Button from "../../ui/button/Button";
 import { useMediaQuery } from "../../ui/mediaquery/observe";
 import { TaskLink } from "../tasks/TaskList";

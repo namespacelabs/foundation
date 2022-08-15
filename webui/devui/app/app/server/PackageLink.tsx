@@ -5,7 +5,7 @@
 import classNames from "classnames";
 import { Link } from "wouter";
 import { useData } from "../../datamodel/StackObserver";
-import { ExternalLinkIcon } from "../../icons";
+import { ExternalLinkIcon } from "../../ui/icons";
 import classes from "./server.module.css";
 
 export function PackageLink(props: {

@@ -4,7 +4,7 @@
 
 import classNames from "classnames";
 import React from "react";
-import { chevronDownData, makeIcon } from "../../icons";
+import { chevronDownData, makeIcon } from "../icons";
 import classes from "./combobox.module.css";
 
 export default function ComboBox(props: {
