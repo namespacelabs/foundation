@@ -126,8 +126,13 @@ func newNewCmd() *cobra.Command {
 				return err
 			}
 
+			branch, err := git.CurrentBranch(ctx, *workspaceDir)
+			if err != nil {
+				return err
+			}
+
 			attachments = append(attachments, &storage.RunMetadata{
-				Branch:             "",
+				Branch:             branch,
 				Repository:         remoteUrl,
 				CommitId:           status.Revision,
 				ModuleName:         []string{moduleName},
