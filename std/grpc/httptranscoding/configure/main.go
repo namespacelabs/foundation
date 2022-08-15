@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
+	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -110,6 +111,17 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		return err
 	}
 
+	proxyBodySize := &nginx.ProxyBodySize{
+		// Remove the body size limit on nginx level. This is useful for large streaming RPCs as nginx limit
+		// applies to the cumulative body size constructed out of all the JSON payloads.
+		// Note Envoy still improses the (default) buffer limit of 1M on unary requests and individual payloads.
+		Limit: "0",
+	}
+	packedProxyBodySize, err := anypb.New(proxyBodySize)
+	if err != nil {
+		return fnerrors.UserError(nil, "failed to pack ProxyBodySize configuration: %v", err)
+	}
+
 	cors := &schema.HttpCors{Enabled: true, AllowedOrigin: []string{"*"}}
 	packedCors, err := anypb.New(cors)
 	if err != nil {
@@ -179,7 +191,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 					Service: transcoderEndpoint.AllocatedName,
 					Port:    transcoderEndpoint.Port,
 				}},
-				Extension: []*anypb.Any{packedCors},
+				Extension: []*anypb.Any{packedCors, packedProxyBodySize},
 				Manager:   "namespacelabs.dev/foundation/std/grpc/httptranscoding",
 			})
 			if err != nil {
