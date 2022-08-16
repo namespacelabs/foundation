@@ -101,6 +101,10 @@ func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.Ser
 }
 
 func (impl) TidyServer(ctx context.Context, env provision.Env, pkgs workspace.Packages, loc workspace.Location, server *schema.Server) error {
+	if UseBuildKitForBuilding {
+		return tidyBuildkit(ctx, env, loc, server)
+	}
+
 	ext := &FrameworkExt{}
 	if err := workspace.MustExtension(server.Ext, ext); err != nil {
 		return fnerrors.Wrap(loc, err)

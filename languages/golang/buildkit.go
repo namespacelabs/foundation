@@ -7,6 +7,9 @@ package golang
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 
 	"github.com/moby/buildkit/client/llb"
@@ -17,8 +20,13 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
+	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/pins"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -127,4 +135,57 @@ func makeGoBuildBase(ctx context.Context, version string, platform specs.Platfor
 	}
 
 	return st
+}
+
+func tidyBuildkit(ctx context.Context, env provision.Env, loc workspace.Location, server *schema.Server) error {
+	_, modPath, err := gosupport.LookupGoModule(loc.Abs())
+	if err != nil {
+		return err
+	}
+
+	local := buildkit.LocalContents{
+		Module:         loc.Module,
+		Path:           modPath,
+		ObserveChanges: false,
+	}
+
+	p := buildkit.HostPlatform()
+
+	src := buildkit.MakeLocalState(local)
+
+	ext := &FrameworkExt{}
+	if err := workspace.MustExtension(server.Ext, ext); err != nil {
+		return fnerrors.Wrap(loc, err)
+	}
+	base := makeGoBuildBase(ctx, ext.GoVersion, p)
+
+	state := (llbutil.RunGo{
+		Base:       base,
+		SrcMount:   src,
+		WorkingDir: ".", // Correct?
+		Platform:   &p,
+	}).With(
+		llbutil.PrefixSh("go mod tidy", &p, "go mod tidy")...)
+
+	output, err := buildkit.LLBToFS(ctx, env,
+		build.NewBuildTarget(&p).WithWorkspace(loc.Module), state.Root())
+	if err != nil {
+		return err
+	}
+
+	fsys, err := compute.GetValue(ctx, output)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range []string{"go.mod", "go.sum"} {
+		data, err := fs.ReadFile(fsys, file)
+		if err != nil {
+			return err
+		}
+
+		ioutil.WriteFile(filepath.Join(filepath.Dir(modPath), file), data, 0644)
+	}
+
+	return nil
 }
