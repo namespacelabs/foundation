@@ -181,6 +181,7 @@ func newStarterCmd(runCommand func(ctx context.Context, args []string) error) *c
 					return err
 				}
 			}
+
 			return generateAndPrintStarterInfo(ctx, stdout, &starterInfoOpts{
 				Dir:            dirName,
 				DryRun:         dryRun,

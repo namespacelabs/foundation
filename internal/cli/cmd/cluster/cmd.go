@@ -30,6 +30,7 @@ func NewClusterCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newCreateCmd())
+	cmd.AddCommand(newListCmd())
 	cmd.AddCommand(newSshCmd())
 
 	return cmd
@@ -57,6 +58,31 @@ func newCreateCmd() *cobra.Command {
 		} else {
 			fmt.Fprintf(stdout, " no deadline\n")
 		}
+		return nil
+	})
+
+	return cmd
+}
+
+func newListCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "Lists all of your clusters.",
+		Args:  cobra.NoArgs,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		clusters, err := nscloud.ListClusters(ctx)
+		if err != nil {
+			return err
+		}
+
+		stdout := console.Stdout(ctx)
+
+		for _, cluster := range clusters.Clusters {
+			fmt.Fprintf(stdout, "%s (created %s, until %s): %s\n", cluster.ClusterId, cluster.Created, cluster.Deadline, cluster.DocumentedPurpose)
+		}
+
 		return nil
 	})
 

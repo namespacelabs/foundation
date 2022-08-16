@@ -160,7 +160,7 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 	cfg.APIVersion = "v1"
 	cfg.CurrentContext = "default"
 
-	if err := tasks.Action("nscloud.k8s-cluster.wait-for-node").Arg("cluster_id", cr.ClusterId).Run(ctx, func(ctx context.Context) error {
+	if err := tasks.Action("nscloud.k8s-cluster.wait-until-ready").Arg("cluster_id", cr.ClusterId).Run(ctx, func(ctx context.Context) error {
 		notBefore, err := decodeCert(cr.Cluster.CertificateAuthorityData)
 		if err == nil {
 			x := time.Until(notBefore)
@@ -216,6 +216,27 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 	}
 
 	return result, nil
+}
+
+func ListClusters(ctx context.Context) (*KubernetesClusterList, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.k8s-cluster.list"), func(ctx context.Context) (*KubernetesClusterList, error) {
+		user, err := fnapi.LoadUser()
+		if err != nil {
+			return nil, err
+		}
+
+		var list KubernetesClusterList
+
+		if err := fnapi.CallAPIRaw(ctx, machineEndpoint, "nsl.vm.api.VMService/ListKubernetesClusters", &ListKubernetesClustersRequest{
+			OpaqueUserAuth: user.Opaque,
+		}, func(body io.Reader) error {
+			return json.NewDecoder(body).Decode(&list)
+		}); err != nil {
+			return nil, err
+		}
+
+		return &list, nil
+	})
 }
 
 func decodeCert(certData []byte) (time.Time, error) {
@@ -316,7 +337,21 @@ type CreateKubernetesClusterResponse struct {
 	Deadline  string             `json:"deadline,omitempty"`
 }
 
+type ListKubernetesClustersRequest struct {
+	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
+}
+
+type KubernetesClusterList struct {
+	Clusters []KubernetesCluster `json:"cluster"`
+}
+
 type KubernetesCluster struct {
+	ClusterId         string `json:"cluster_id,omitempty"`
+	Created           string `json:"created,omitempty"`
+	Deadline          string `json:"deadline,omitempty"`
+	SSHProxyEndpoint  string `json:"ssh_proxy_endpoint,omitempty"`
+	DocumentedPurpose string `json:"documented_purpose,omitempty"`
+
 	EndpointAddress          string `json:"endpoint_address,omitempty"`
 	CertificateAuthorityData []byte `json:"certificate_authority_data,omitempty"`
 	ClientCertificateData    []byte `json:"client_certificate_data,omitempty"`
