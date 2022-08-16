@@ -85,6 +85,7 @@ message RunMetadata {
     repeated string module_name         = 4;  // E.g. namespacelabs.dev/foundation
     string          pipeline_name       = 5;  // E.g. autopush, preview
     string          nspipelines_version = 6;  // E.g. sha256:7f7bcef8d0dd0a1cee824a90919644e5e8013b2a1f64850378d11c709b1e2988
+    string          author_login        = 7;  // E.g. n-g
 }
 
 // This is an attachment to a RunStorage Run.

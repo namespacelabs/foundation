@@ -78,7 +78,7 @@ func newUpdateStatusCmd() *cobra.Command {
 		url := *specifiedUrl
 		if *runId != "" {
 			if url != "" {
-				return fnerrors.New("can't specify --url and --run_result")
+				return fnerrors.BadInputError("can't specify --url and --run_result")
 			}
 
 			var err error

@@ -43,10 +43,13 @@ func newNewCmd() *cobra.Command {
 	parentRunIDPath := flags.String("parent_run_id_path", "", "The parent run id.")
 	commandLine := flags.String("command_line", "", "Command to reproduce the run.")
 	workspaceDir := flags.String("workspace", ".", "The workspace directory to parse.")
-	githubEvent := flags.String("github_event_path", "", "Path to a file with github's event json.")
 	pipelineName := flags.String("pipeline_name", "", "Name of the pipeline that spawned this run (e.g. autopush, preview).")
 	nspipelinesVersion := flags.String("nspipelines_version", "", "Digest of nspipelines image.")
 	kind := flags.String("invocation_kind", "", "If set, adds an InvocationDescription to the run.")
+
+	// At most one of these should be set.
+	githubEvent := flags.String("github_event_path", "", "Path to a file with github's event json.")
+	author := flags.String("author_login", "", "Path to a file with github's event json.")
 
 	_ = cmd.MarkFlagRequired("output_run_id_path")
 
@@ -77,6 +80,10 @@ func newNewCmd() *cobra.Command {
 		}
 
 		if *githubEvent != "" {
+			if *author != "" {
+				return fnerrors.BadInputError("can't specify --github_event_path and --author_login")
+			}
+
 			if *workspaceDir == "" {
 				return fnerrors.BadInputError("--workspace is required")
 			}
@@ -101,6 +108,7 @@ func newNewCmd() *cobra.Command {
 				Branch:             parseBranch(ev.Ref),
 				Repository:         "github.com/" + ev.Repository.FullName,
 				CommitId:           ev.HeadCommit.ID,
+				AuthorLogin:        ev.Sender.Login,
 				ModuleName:         []string{workspaceData.Parsed().ModuleName},
 				PipelineName:       *pipelineName,
 				NspipelinesVersion: *nspipelinesVersion,
@@ -135,6 +143,7 @@ func newNewCmd() *cobra.Command {
 				Branch:             branch,
 				Repository:         remoteUrl,
 				CommitId:           status.Revision,
+				AuthorLogin:        *author,
 				ModuleName:         []string{moduleName},
 				PipelineName:       *pipelineName,
 				NspipelinesVersion: *nspipelinesVersion,
