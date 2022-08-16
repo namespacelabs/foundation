@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/andybalholm/brotli"
@@ -35,7 +35,7 @@ func newDecodeProtoCmd() *cobra.Command {
 				return err
 			}
 
-			input, err := ioutil.ReadAll(os.Stdin)
+			input, err := io.ReadAll(os.Stdin)
 			if err != nil {
 				return err
 			}
@@ -48,7 +48,7 @@ func newDecodeProtoCmd() *cobra.Command {
 			}
 
 			if unbrotli {
-				input, err = ioutil.ReadAll(brotli.NewReader(bytes.NewReader(input)))
+				input, err = io.ReadAll(brotli.NewReader(bytes.NewReader(input)))
 				if err != nil {
 					return err
 				}

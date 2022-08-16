@@ -9,7 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -95,7 +95,7 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 		return nil, fnerrors.InvocationError("%s: unexpected status when fetching an access token: %d", r, resp.StatusCode)
 	}
 
-	tokenData, err := ioutil.ReadAll(resp.Body)
+	tokenData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fnerrors.InvocationError("%s: unexpected error when fetching an access token: %w", r, err)
 	}

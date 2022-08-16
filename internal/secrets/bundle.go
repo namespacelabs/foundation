@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 
 	"filippo.io/age"
@@ -425,7 +424,7 @@ func LoadBundle(ctx context.Context, keyDir fs.FS, raw []byte) (*Bundle, error) 
 				return nil, err
 			}
 		} else {
-			archiveBytes, err = ioutil.ReadAll(encFile)
+			archiveBytes, err = io.ReadAll(encFile)
 			if err != nil {
 				return nil, err
 			}
@@ -480,7 +479,7 @@ func detect(raw []byte) ([]byte, error) {
 		return nil, fnerrors.New("invalid bundle: missing end guard")
 	}
 
-	return ioutil.ReadAll(base64.NewDecoder(base64.StdEncoding, bytes.NewReader(rawLeft[:endIdx])))
+	return io.ReadAll(base64.NewDecoder(base64.StdEncoding, bytes.NewReader(rawLeft[:endIdx])))
 }
 
 func readManifest(what string, fsys fs.FS, m proto.Message) error {

@@ -13,21 +13,21 @@
       ]
     },
     {
+      "label": {},
+      "access_cmd": [
+        {
+          "cmd": "private: container port 1234 http",
+          "is_managed": true
+        }
+      ]
+    },
+    {
       "label": {
         "label": "service-label"
       },
       "access_cmd": [
         {
           "cmd": "private: container port 1",
-          "is_managed": true
-        }
-      ]
-    },
-    {
-      "label": {},
-      "access_cmd": [
-        {
-          "cmd": "private: container port 1234 http",
           "is_managed": true
         }
       ]

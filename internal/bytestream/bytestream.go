@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"io"
-	"io/ioutil"
 
 	"namespacelabs.dev/foundation/schema"
 )
@@ -112,5 +111,5 @@ func ReadAll(contents ByteStream) ([]byte, error) {
 
 	defer r.Close()
 
-	return ioutil.ReadAll(r)
+	return io.ReadAll(r)
 }

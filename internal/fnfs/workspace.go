@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/internal/bytestream"
@@ -63,7 +62,7 @@ func WriteFileExtended(ctx context.Context, dst ReadWriteFS, filePath string, mo
 
 		if opts.CompareContents {
 			// XXX use a compare writer, instead of buffering contents.
-			contents, err := ioutil.ReadAll(f)
+			contents, err := io.ReadAll(f)
 			if err != nil {
 				return err
 			}

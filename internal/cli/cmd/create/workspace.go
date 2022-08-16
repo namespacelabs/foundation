@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -168,7 +167,7 @@ func updateGitignore(ctx context.Context, out io.Writer, fsfs fnfs.ReadWriteFS) 
 
 	defer f.Close()
 
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return err
 	}

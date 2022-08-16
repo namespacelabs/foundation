@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
@@ -192,7 +191,7 @@ func handleConnection(ctx context.Context, streamConn httpstream.Connection, con
 	go func() {
 		defer close(errorChan)
 
-		message, err := ioutil.ReadAll(errorStream)
+		message, err := io.ReadAll(errorStream)
 		switch {
 		case err != nil:
 			errorChan <- makeErr("error reading from error stream", err)

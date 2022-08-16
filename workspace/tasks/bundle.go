@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -158,7 +157,7 @@ func (b *Bundle) ReadInvocationInfo(ctx context.Context) (*InvocationInfo, error
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to open %q: %w", InvocationInfoFile, err)
 	}
-	bytes, err := ioutil.ReadAll(f)
+	bytes, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to read %q: %w", InvocationInfoFile, err)
 	}
@@ -175,7 +174,7 @@ func (b *Bundle) unmarshalStoredTaskFromActionLogs(path string) (*storage.Stored
 		return nil, err
 	}
 
-	content, err := ioutil.ReadAll(f)
+	content, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +194,7 @@ func (b *Bundle) unmarshalAttachment(path string) (*storage.Command_Log, error) 
 		return nil, err
 	}
 
-	content, err := ioutil.ReadAll(f)
+	content, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}

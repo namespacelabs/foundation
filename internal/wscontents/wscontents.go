@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -499,7 +498,7 @@ func checkChanges(ctx context.Context, snapshot fs.FS, ws fs.FS, path string) (*
 		return nil, fnerrors.New("%s: inconsistent event, is a directory in the local workspace but not in the snapshot", path)
 	}
 
-	contents, err := ioutil.ReadAll(f)
+	contents, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}

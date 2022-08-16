@@ -7,7 +7,6 @@ package docker
 import (
 	"context"
 	"io"
-	"io/ioutil"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -84,7 +83,7 @@ func writeImage(ctx context.Context, client Client, tag name.Tag, img v1.Image) 
 		return "", fnerrors.InvocationError("error loading image: %w", err)
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	response := string(b)
 	if err != nil {
 		return response, fnerrors.InvocationError("error reading load response body: %w", err)
