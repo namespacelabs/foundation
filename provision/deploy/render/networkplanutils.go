@@ -289,7 +289,7 @@ func sortIngresses(ingress []*storage.IngressFragment) {
 }
 
 func sortPorts(portFwds []*storage.Endpoint, focusedPackages []string) {
-	sort.Slice(portFwds, func(i, j int) bool {
+	sort.SliceStable(portFwds, func(i, j int) bool {
 		a, b := portFwds[i], portFwds[j]
 
 		if isIngress(b) {

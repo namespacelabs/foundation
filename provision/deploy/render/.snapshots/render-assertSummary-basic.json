@@ -2,21 +2,21 @@
   "local_hostname": "localhost",
   "support_services": [
     {
-      "label": {
-        "label": "my-service-label1"
-      },
+      "label": {},
       "access_cmd": [
         {
-          "cmd": "private: container port 1",
+          "cmd": "private: container port 1234 http",
           "is_managed": true
         }
       ]
     },
     {
-      "label": {},
+      "label": {
+        "service_proto": "my.service4.MyPrivateService"
+      },
       "access_cmd": [
         {
-          "cmd": "private: container port 1234 http",
+          "cmd": "private: container port 1235 gprc",
           "is_managed": true
         }
       ]
@@ -34,11 +34,11 @@
     },
     {
       "label": {
-        "service_proto": "my.service4.MyPrivateService"
+        "label": "my-service-label1"
       },
       "access_cmd": [
         {
-          "cmd": "private: container port 1235 gprc",
+          "cmd": "private: container port 1",
           "is_managed": true
         }
       ]
@@ -72,17 +72,6 @@
     },
     {
       "label": {
-        "label": "my-http-server"
-      },
-      "access_cmd": [
-        {
-          "cmd": "private: container port 1",
-          "is_managed": true
-        }
-      ]
-    },
-    {
-      "label": {
         "label": "main_http_server"
       },
       "package_name": "my/http_service",
@@ -92,6 +81,17 @@
         },
         {
           "cmd": "https://domain1.example.com/path2"
+        }
+      ]
+    },
+    {
+      "label": {
+        "label": "my-http-server"
+      },
+      "access_cmd": [
+        {
+          "cmd": "private: container port 1",
+          "is_managed": true
         }
       ]
     },
