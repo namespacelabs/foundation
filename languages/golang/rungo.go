@@ -16,12 +16,16 @@ import (
 )
 
 func RunGo(ctx context.Context, loc workspace.Location, sdk golang.LocalSDK, args ...string) error {
-	return tasks.Action("go.run").Arg("dir", loc.Rel()).HumanReadablef("go "+strings.Join(args, " ")).Run(ctx, func(ctx context.Context) error {
+	return runGo(ctx, loc.Rel(), loc.Abs(), sdk, args...)
+}
+
+func runGo(ctx context.Context, rel, abs string, sdk golang.LocalSDK, args ...string) error {
+	return tasks.Action("go.run").Arg("dir", rel).HumanReadablef("go "+strings.Join(args, " ")).Run(ctx, func(ctx context.Context) error {
 		var cmd localexec.Command
 		cmd.Command = sdk.GoBin()
 		cmd.Args = args
 		cmd.AdditionalEnv = makeGoEnv(sdk)
-		cmd.Dir = loc.Abs()
+		cmd.Dir = abs
 		cmd.Label = "go " + strings.Join(cmd.Args, " ")
 		return cmd.Run(ctx)
 	})

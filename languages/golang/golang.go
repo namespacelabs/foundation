@@ -125,12 +125,12 @@ func (impl) TidyServer(ctx context.Context, env provision.Env, pkgs workspace.Pa
 		}
 	}
 
-	if foundationVersion != "" {
-		mod, _, err := gosupport.LookupGoModule(loc.Abs())
-		if err != nil {
-			return err
-		}
+	mod, modFile, err := gosupport.LookupGoModule(loc.Abs())
+	if err != nil {
+		return err
+	}
 
+	if foundationVersion != "" {
 		// XXX resolve version back to a tag, to support tag based comparison.
 		for _, require := range mod.Require {
 			if v := require.Mod; v.Path == foundationModule {
@@ -153,7 +153,14 @@ func (impl) TidyServer(ctx context.Context, env provision.Env, pkgs workspace.Pa
 		}
 	}
 
-	if err := RunGo(ctx, loc, localSDK, "mod", "tidy"); err != nil {
+	// Running go mod tidy once per mod file is enough (not once per server).
+	abs := filepath.Dir(modFile)
+	rel, err := filepath.Rel(loc.Module.Abs(), abs)
+	if err != nil {
+		return fnerrors.Wrap(loc, err)
+	}
+
+	if err := runGo(ctx, rel, abs, localSDK, "mod", "tidy"); err != nil {
 		return fnerrors.Wrap(loc, err)
 	}
 
