@@ -412,6 +412,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/react-dom@npm:^17.0.11":
+  version: 17.0.17
+  resolution: "@types/react-dom@npm:17.0.17"
+  dependencies:
+    "@types/react": ^17
+  checksum: 23caf98aa03e968811560f92a2c8f451694253ebe16b670929b24eaf0e7fa62ba549abe9db0ac028a9d8a9086acd6ab9c6c773f163fa21224845edbc00ba6232
+  languageName: node
+  linkType: hard
+
+"@types/react@npm:^17":
+  version: 17.0.48
+  resolution: "@types/react@npm:17.0.48"
+  dependencies:
+    "@types/prop-types": "*"
+    "@types/scheduler": "*"
+    csstype: ^3.0.2
+  checksum: b683fa33f751ced0b8c8715df9f40de15513c1d7ce66064a75cdfb8805cc913b0b214a2e7022ef0b724bd62a1e8651d040cd265dd0452bde03cca9b8e495742d
+  languageName: node
+  linkType: hard
+
 "@types/react@npm:^17.0.35":
   version: 17.0.35
   resolution: "@types/react@npm:17.0.35"
@@ -2146,6 +2166,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-dom@npm:^17.0.2":
+  version: 17.0.2
+  resolution: "react-dom@npm:17.0.2"
+  dependencies:
+    loose-envify: ^1.1.0
+    object-assign: ^4.1.1
+    scheduler: ^0.20.2
+  peerDependencies:
+    react: 17.0.2
+  checksum: 1c1eaa3bca7c7228d24b70932e3d7c99e70d1d04e13bb0843bbf321582bc25d7961d6b8a6978a58a598af2af496d1cedcfb1bf65f6b0960a0a8161cb8dab743c
+  languageName: node
+  linkType: hard
+
 "react-is@npm:^16.8.1":
   version: 16.13.1
   resolution: "react-is@npm:16.13.1"
@@ -2275,17 +2308,20 @@ __metadata:
   dependencies:
     "@namespacelabs.dev/webui-components": "fn:namespacelabs.dev/foundation/webui/components"
     "@types/react": ^17.0.35
+    "@types/react-dom": ^17.0.11
     "@vitejs/plugin-react": ^1.1.0
     classnames: ^2.3.1
     date-fns: ^2.28.0
     minimist: ^1.2.6
     postcss: ^7.0.36
     react: ^17.0.2
+    react-dom: ^17.0.2
     typescript: 4.5.4
     typescript-plugin-css-modules: ^3.4.0
     vite: ^2.6.14
     vite-plugin-rewrite-all: ^1.0.0
     wouter: ^2.8.0-alpha.2
+    xterm: ^4.19.0
     xterm-addon-fit: ^0.5.0
     xterm-addon-web-links: ^0.6.0
     xterm-for-react: ^1.0.4
@@ -2328,6 +2364,16 @@ __metadata:
   version: 1.2.4
   resolution: "sax@npm:1.2.4"
   checksum: d3df7d32b897a2c2f28e941f732c71ba90e27c24f62ee918bd4d9a8cfb3553f2f81e5493c7f0be94a11c1911b643a9108f231dd6f60df3fa9586b5d2e3e9e1fe
+  languageName: node
+  linkType: hard
+
+"scheduler@npm:^0.20.2":
+  version: 0.20.2
+  resolution: "scheduler@npm:0.20.2"
+  dependencies:
+    loose-envify: ^1.1.0
+    object-assign: ^4.1.1
+  checksum: c4b35cf967c8f0d3e65753252d0f260271f81a81e427241295c5a7b783abf4ea9e905f22f815ab66676f5313be0a25f47be582254db8f9241b259213e999b8fc
   languageName: node
   linkType: hard
 
@@ -2757,6 +2803,13 @@ __metadata:
     react: ^16.0.0
     react-dom: ^16.0.0
   checksum: 3c4bffdf78b9194e9b0b567c326adb8bdba0de75d9abb8cd3a8d34e9d3602c3e3e1a9215d7201ea2fde462f0614fd29915f77e7b70f68c42c331312330981d96
+  languageName: node
+  linkType: hard
+
+"xterm@npm:^4.19.0":
+  version: 4.19.0
+  resolution: "xterm@npm:4.19.0"
+  checksum: 4385e08d6f1e26d0db295ba55f0ed9c304686a72c2cfdd32502cf59de23ae9c93434d469fc3735f44375602f209f767a1ba643a86be6f8e0f1cf7e5bfdccde87
   languageName: node
   linkType: hard
 
