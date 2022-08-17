@@ -283,7 +283,7 @@ func provideDeferred(ctx context.Context, ws *schema.Workspace, cfg *client.Host
 	conf := &PrebuiltCluster{}
 	if !cfg.Selector.Select(cfg.DevHost).Get(conf) {
 		compute.On(ctx).DetachWith(compute.Detach{
-			Action: tasks.Action("nscloud.k8s-cluster.prepare"),
+			Action: tasks.Action("nscloud.k8s-cluster.prepare").LogLevel(1),
 			Do: func(ctx context.Context) error {
 				// Kick off the cluster provisioning as soon as we can.
 				_, _ = CreateClusterForEnv(ctx, cfg.Environment, true)
@@ -354,20 +354,29 @@ type KubernetesClusterList struct {
 }
 
 type KubernetesCluster struct {
-	ClusterId         string `json:"cluster_id,omitempty"`
-	Created           string `json:"created,omitempty"`
-	Deadline          string `json:"deadline,omitempty"`
-	SSHProxyEndpoint  string `json:"ssh_proxy_endpoint,omitempty"`
-	DocumentedPurpose string `json:"documented_purpose,omitempty"`
+	ClusterId         string        `json:"cluster_id,omitempty"`
+	Created           string        `json:"created,omitempty"`
+	Deadline          string        `json:"deadline,omitempty"`
+	SSHProxyEndpoint  string        `json:"ssh_proxy_endpoint,omitempty"`
+	DocumentedPurpose string        `json:"documented_purpose,omitempty"`
+	Shape             *ClusterShape `json:"shape,omitempty"`
 
 	EndpointAddress          string `json:"endpoint_address,omitempty"`
 	CertificateAuthorityData []byte `json:"certificate_authority_data,omitempty"`
 	ClientCertificateData    []byte `json:"client_certificate_data,omitempty"`
 	ClientKeyData            []byte `json:"client_key_data,omitempty"`
+
+	KubernetesDistribution string   `json:"kubernetes_distribution,omitempty"`
+	Platform               []string `json:"platform,omitempty"`
 }
 
 type ImageRegistry struct {
 	EndpointAddress string `json:"endpoint_address,omitempty"`
+}
+
+type ClusterShape struct {
+	VirtualCpu      int32 `json:"virtual_cpu,omitempty"`
+	MemoryMegabytes int32 `json:"memory_megabytes,omitempty"`
 }
 
 type DestroyKubernetesClusterRequest struct {

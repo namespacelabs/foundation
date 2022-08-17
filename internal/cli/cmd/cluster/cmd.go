@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/gorilla/websocket"
 	"github.com/jpillora/chisel/share/cnet"
 	"github.com/spf13/cobra"
@@ -80,7 +81,19 @@ func newListCmd() *cobra.Command {
 		stdout := console.Stdout(ctx)
 
 		for _, cluster := range clusters.Clusters {
-			fmt.Fprintf(stdout, "%s (created %s, until %s): %s\n", cluster.ClusterId, cluster.Created, cluster.Deadline, cluster.DocumentedPurpose)
+			cpu := "<unknown>"
+			ram := "<unknown>"
+
+			if shape := cluster.Shape; shape != nil {
+				cpu = fmt.Sprintf("%d", shape.VirtualCpu)
+				ram = humanize.Bytes(uint64(shape.MemoryMegabytes) * humanize.MiByte)
+			}
+
+			created, _ := time.Parse(time.RFC3339, cluster.Created)
+			deadline, _ := time.Parse(time.RFC3339, cluster.Deadline)
+
+			fmt.Fprintf(stdout, "%s [cpu: %s ram: %s] (created %v, for %v, dist: %s): %s\n", cluster.ClusterId, cpu, ram, created.Local(), time.Until(deadline),
+				cluster.KubernetesDistribution, cluster.DocumentedPurpose)
 		}
 
 		return nil
