@@ -14,8 +14,11 @@ import (
 	"time"
 
 	"github.com/bcicen/jstream"
+	"github.com/dustin/go-humanize"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"go.uber.org/atomic"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -59,7 +62,7 @@ func provideCluster(ctx context.Context, env *schema.Environment, key *devhost.C
 		return client.Provider{}, err
 	}
 
-	return client.Provider{Config: *cfg.KubeConfig}, nil
+	return client.Provider{Config: *cfg.KubeConfig, ProviderSpecific: cfg}, nil
 }
 
 type CreateClusterResult struct {
@@ -132,20 +135,28 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 		return nil, err
 	}
 
-	tasks.Attachments(ctx).AddResult("cluster_id", cr.ClusterId).AddResult("cluster_address", cr.Cluster.EndpointAddress)
+	tasks.Attachments(ctx).
+		AddResult("cluster_id", cr.ClusterId).
+		AddResult("cluster_address", cr.Cluster.EndpointAddress).
+		AddResult("deadline", cr.Cluster.Deadline)
+
+	if shape := cr.Cluster.Shape; shape != nil {
+		tasks.Attachments(ctx).
+			AddResult("cluster_cpu", shape.VirtualCpu).
+			AddResult("cluster_ram", humanize.IBytes(uint64(shape.MemoryMegabytes)*humanize.MiByte))
+	}
 
 	if ephemeral {
 		compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
-			return fnapi.Call[DestroyKubernetesClusterRequest]{
-				Endpoint: machineEndpoint,
-				Method:   "nsl.vm.api.VMService/DestroyKubernetesCluster",
-				PreAuthenticateRequest: func(ua *fnapi.UserAuth, rt *DestroyKubernetesClusterRequest) error {
-					rt.OpaqueUserAuth = ua.Opaque
+			if err := DestroyCluster(ctx, cr.ClusterId); err != nil {
+				// The cluster being gone is an acceptable state (it could have
+				// been deleted by DeleteRecursively for example).
+				if status.Code(err) == codes.NotFound {
 					return nil
-				},
-			}.Do(ctx, DestroyKubernetesClusterRequest{
-				ClusterId: cr.ClusterId,
-			}, nil)
+				}
+			}
+
+			return nil
 		})
 	}
 
@@ -224,6 +235,20 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 	}
 
 	return result, nil
+}
+
+func DestroyCluster(ctx context.Context, clusterId string) error {
+	return fnapi.Call[DestroyKubernetesClusterRequest]{
+		Endpoint: machineEndpoint,
+		Method:   "nsl.vm.api.VMService/DestroyKubernetesCluster",
+		PreAuthenticateRequest: func(ua *fnapi.UserAuth, rt *DestroyKubernetesClusterRequest) error {
+			rt.OpaqueUserAuth = ua.Opaque
+			return nil
+		},
+	}.Do(ctx, DestroyKubernetesClusterRequest{
+		ClusterId: clusterId,
+	}, nil)
+
 }
 
 func ListClusters(ctx context.Context) (*KubernetesClusterList, error) {
@@ -310,7 +335,18 @@ func (d deferred) New(ctx context.Context) (runtime.Runtime, error) {
 		return nil, err
 	}
 
-	return unbound.Bind(d.ws, d.cfg.Environment), nil
+	p, err := unbound.Provider()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.ProviderSpecific == nil {
+		return nil, fnerrors.InternalError("cluster creation state is missing")
+	}
+
+	bound := unbound.Bind(d.ws, d.cfg.Environment)
+
+	return clusterRuntime{Runtime: bound, ClusterId: p.ProviderSpecific.(*CreateClusterResult).ClusterId}, nil
 }
 
 func (d deferred) PrepareProvision(context.Context) (*rtypes.ProvisionProps, error) {
@@ -328,6 +364,29 @@ func (d deferred) TargetPlatforms(context.Context) ([]specs.Platform, error) {
 		return nil, err
 	}
 	return []specs.Platform{p}, nil
+}
+
+type clusterRuntime struct {
+	runtime.Runtime
+	ClusterId string
+}
+
+func (cr clusterRuntime) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
+	return cr.deleteCluster(ctx)
+}
+
+func (cr clusterRuntime) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
+	return cr.deleteCluster(ctx)
+}
+
+func (cr clusterRuntime) deleteCluster(ctx context.Context) (bool, error) {
+	if err := DestroyCluster(ctx, cr.ClusterId); err != nil {
+		if status.Code(err) == codes.NotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 type CreateKubernetesClusterRequest struct {

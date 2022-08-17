@@ -79,7 +79,10 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 		httpReq.Header[k] = append(httpReq.Header[k], v...)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Transport: http.DefaultTransport,
+	}
+
 	response, err := client.Do(httpReq)
 	if err != nil {
 		return fnerrors.InvocationError("failed to perform invocation: %w", err)

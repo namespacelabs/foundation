@@ -34,8 +34,9 @@ import (
 )
 
 type Provider struct {
-	Config        clientcmdapi.Config
-	TokenProvider TokenProviderFunc
+	Config           clientcmdapi.Config
+	TokenProvider    TokenProviderFunc
+	ProviderSpecific any // Up to an implementation to attach state if needed.
 }
 
 type DeferredProvider struct{}
@@ -48,14 +49,32 @@ type ProviderFunc func(context.Context, *fnschema.Environment, *devhost.ConfigKe
 var (
 	clientCache struct {
 		mu    sync.Mutex
-		cache map[string]*k8s.Clientset
+		cache map[string]*ComputedClient
 	}
 	providers         = map[string]ProviderFunc{}
 	deferredProviders = map[string]DeferredProviderFunc{}
 )
 
+type ComputedClient struct {
+	Clientset *k8s.Clientset
+	parent    *computedConfig
+}
+
+func (cc ComputedClient) Provider() (Provider, error) {
+	if cc.parent == nil {
+		return Provider{}, nil
+	}
+
+	x, err := cc.parent.computeConfig()
+	if err != nil {
+		return Provider{}, err
+	}
+
+	return x.Provider, nil
+}
+
 func init() {
-	clientCache.cache = map[string]*k8s.Clientset{}
+	clientCache.cache = map[string]*ComputedClient{}
 }
 
 func RegisterProvider(name string, p ProviderFunc) {
@@ -70,25 +89,30 @@ func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*rest.Conf
 	return NewClientConfig(ctx, host).ClientConfig()
 }
 
-func NewClientConfig(ctx context.Context, host *HostConfig) clientcmd.ClientConfig {
-	return &configWithToken{ctx: ctx, host: host}
+func NewClientConfig(ctx context.Context, host *HostConfig) *computedConfig {
+	return &computedConfig{ctx: ctx, host: host}
 }
 
-type configWithToken struct {
+type computedConfig struct {
 	ctx  context.Context
 	host *HostConfig
 
-	mu            sync.Mutex
-	computed      clientcmd.ClientConfig
-	tokenProvider TokenProviderFunc
+	mu       sync.Mutex
+	computed *configResult
 }
 
-func (cfg *configWithToken) computeConfig() (clientcmd.ClientConfig, TokenProviderFunc, error) {
+type configResult struct {
+	ClientConfig  clientcmd.ClientConfig
+	TokenProvider TokenProviderFunc
+	Provider      Provider
+}
+
+func (cfg *computedConfig) computeConfig() (*configResult, error) {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
 
 	if cfg.computed != nil {
-		return cfg.computed, cfg.tokenProvider, nil
+		return cfg.computed, nil
 	}
 
 	c := cfg.host.HostEnv
@@ -96,7 +120,7 @@ func (cfg *configWithToken) computeConfig() (clientcmd.ClientConfig, TokenProvid
 	if c.Provider != "" {
 		p := providers[c.Provider]
 		if p == nil {
-			return nil, nil, fnerrors.BadInputError("%s: no such kubernetes configuration provider", c.Provider)
+			return nil, fnerrors.BadInputError("%s: no such kubernetes configuration provider", c.Provider)
 		}
 
 		cached := &cachedProviderConfig{
@@ -108,51 +132,57 @@ func (cfg *configWithToken) computeConfig() (clientcmd.ClientConfig, TokenProvid
 
 		x, err := compute.GetValue[Provider](cfg.ctx, cached)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
-		cfg.computed = clientcmd.NewDefaultClientConfig(x.Config, nil)
-		cfg.tokenProvider = x.TokenProvider
-		return cfg.computed, cfg.tokenProvider, nil
+		cfg.computed = &configResult{
+			ClientConfig:  clientcmd.NewDefaultClientConfig(x.Config, nil),
+			TokenProvider: x.TokenProvider,
+			Provider:      x,
+		}
+
+		return cfg.computed, nil
 	}
 
 	if c.GetKubeconfig() == "" {
-		return nil, nil, fnerrors.New("hostEnv.Kubeconfig is required")
+		return nil, fnerrors.New("hostEnv.Kubeconfig is required")
 	}
 
-	cfg.computed = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{ExplicitPath: c.GetKubeconfig()},
-		&clientcmd.ConfigOverrides{CurrentContext: c.GetContext()})
+	cfg.computed = &configResult{
+		ClientConfig: clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: c.GetKubeconfig()},
+			&clientcmd.ConfigOverrides{CurrentContext: c.GetContext()}),
+	}
 
-	return cfg.computed, nil, nil
+	return cfg.computed, nil
 }
 
-func (cfg *configWithToken) RawConfig() (clientcmdapi.Config, error) {
-	x, _, err := cfg.computeConfig()
+func (cfg *computedConfig) RawConfig() (clientcmdapi.Config, error) {
+	x, err := cfg.computeConfig()
 	if err != nil {
 		return clientcmdapi.Config{}, err
 	}
 
-	return x.RawConfig()
+	return x.ClientConfig.RawConfig()
 }
 
-func (cfg *configWithToken) ClientConfig() (*rest.Config, error) {
+func (cfg *computedConfig) ClientConfig() (*rest.Config, error) {
 	if cfg.host.HostEnv.GetIncluster() {
 		return rest.InClusterConfig()
 	}
 
-	x, tokenProvider, err := cfg.computeConfig()
+	x, err := cfg.computeConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	computed, err := x.ClientConfig()
+	computed, err := x.ClientConfig.ClientConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	if tokenProvider != nil {
-		token, err := tokenProvider(cfg.ctx)
+	if x.TokenProvider != nil {
+		token, err := x.TokenProvider(cfg.ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -163,26 +193,32 @@ func (cfg *configWithToken) ClientConfig() (*rest.Config, error) {
 	return computed, nil
 }
 
-func (cfg *configWithToken) Namespace() (string, bool, error) {
-	x, _, err := cfg.computeConfig()
+func (cfg *computedConfig) Namespace() (string, bool, error) {
+	x, err := cfg.computeConfig()
 	if err != nil {
 		return "", false, err
 	}
-	return x.Namespace()
+	return x.ClientConfig.Namespace()
 }
 
-func (cfg *configWithToken) ConfigAccess() clientcmd.ConfigAccess {
+func (cfg *computedConfig) ConfigAccess() clientcmd.ConfigAccess {
 	panic("ConfigAccess is not implemented")
 }
 
-func NewClient(ctx context.Context, host *HostConfig) (*k8s.Clientset, error) {
+func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
+	// Tools path, i.e. no environment to select on.
 	if host.Selector == nil {
 		config, err := NewRestConfigFromHostEnv(ctx, host)
 		if err != nil {
 			return nil, err
 		}
 
-		return k8s.NewForConfig(config)
+		client, err := k8s.NewForConfig(config)
+		if err != nil {
+			return nil, err
+		}
+
+		return &ComputedClient{Clientset: client}, nil
 	}
 
 	keyBytes, err := json.Marshal(struct {
@@ -199,7 +235,9 @@ func NewClient(ctx context.Context, host *HostConfig) (*k8s.Clientset, error) {
 	defer clientCache.mu.Unlock()
 
 	if _, ok := clientCache.cache[key]; !ok {
-		config, err := NewRestConfigFromHostEnv(ctx, host)
+		parent := NewClientConfig(ctx, host)
+
+		config, err := parent.ClientConfig()
 		if err != nil {
 			return nil, err
 		}
@@ -209,7 +247,10 @@ func NewClient(ctx context.Context, host *HostConfig) (*k8s.Clientset, error) {
 			return nil, err
 		}
 
-		clientCache.cache[key] = clientset
+		clientCache.cache[key] = &ComputedClient{
+			Clientset: clientset,
+			parent:    parent,
+		}
 	}
 
 	return clientCache.cache[key], nil

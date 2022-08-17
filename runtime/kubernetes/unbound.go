@@ -16,8 +16,9 @@ import (
 )
 
 type Unbound struct {
-	cli  *k8s.Clientset
-	host *client.HostConfig
+	cli            *k8s.Clientset
+	computedClient *client.ComputedClient
+	host           *client.HostConfig
 }
 
 func NewFromConfig(ctx context.Context, config *client.HostConfig) (Unbound, error) {
@@ -26,7 +27,7 @@ func NewFromConfig(ctx context.Context, config *client.HostConfig) (Unbound, err
 		return Unbound{}, err
 	}
 
-	return Unbound{cli, config}, nil
+	return Unbound{cli.Clientset, cli, config}, nil
 }
 
 func NewFromEnv(ctx context.Context, env runtime.Selector) (Unbound, error) {
@@ -40,6 +41,10 @@ func New(ctx context.Context, env *schema.Environment, devHost *schema.DevHost, 
 	}
 
 	return NewFromConfig(ctx, hostConfig)
+}
+
+func (u Unbound) Provider() (client.Provider, error) {
+	return u.computedClient.Provider()
 }
 
 func (u Unbound) Client() *k8s.Clientset {
