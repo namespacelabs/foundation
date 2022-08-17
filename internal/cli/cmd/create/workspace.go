@@ -22,6 +22,12 @@ import (
 
 const (
 	workspaceFileTemplate = `module: "%s"
+
+dependency: {
+				"namespacelabs.dev/foundation": {
+								version: "ebb907038407a7a7688606fcef48e029b357a173"
+				}
+}
 `
 	vscodeExtensionsFilePath = ".vscode/extensions.json"
 	vscodeExtensionsTemplate = `{
@@ -97,7 +103,8 @@ func newWorkspaceCmd(runCommand func(ctx context.Context, args []string) error) 
 			}
 		}
 
-		return runCommand(ctx, []string{"tidy"})
+		// return runCommand(ctx, []string{"tidy"})
+		return nil
 	})
 
 	return cmd

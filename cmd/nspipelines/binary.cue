@@ -14,6 +14,7 @@ binary: {
 				binary_name: "nspipelines"
 				binary_only: true
 			}},
+			{dockerfile: "Dockerfile.starter"},
 		]
 	}
 }

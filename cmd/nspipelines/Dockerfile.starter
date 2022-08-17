@@ -1,0 +1,36 @@
+FROM us-docker.pkg.dev/foundation-344819/prebuilts/namespacelabs.dev/foundation/cmd/nspipelines:7b11d2afc2a6a5f7c986e8280087960a8729f4c1d665a99210427ee3e67ae632
+
+# RUN apt update
+# RUN apt install git -y
+
+# # Install Node 16
+# RUN apt install curl -y
+# RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
+# RUN apt install nodejs -y
+
+# RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/c017ced9ca817138cc03acabb59454a0a0ca889e/install.sh)"
+# RUN /home/linuxbrew/.linuxbrew/bin/brew install namespacelabs/namespace/ns
+
+RUN apt install openssh-client git
+# download public key for github.com
+RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+RUN mkdir workspace
+
+RUN /nspipelines workspace prepare workspace
+
+RUN cd workspace
+
+# RUN --mount=type=ssh /ns create workspace github.com/username/reponame
+
+# RUN /ns prepare new-cluster \
+#   --golang_use_buildkit \
+#   --run_tools_on_kubernetes
+
+RUN --mount=type=ssh /ns create starter \
+  . \
+  --workspace_name=github.com/username/reponame \
+  # --golang_use_buildkit \
+  # --run_tools_on_kubernetes \
+  --suggest_prepare=false \
+  --nodejs_use_native_node
