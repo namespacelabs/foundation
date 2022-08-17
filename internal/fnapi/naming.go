@@ -6,7 +6,6 @@ package fnapi
 
 import (
 	"context"
-	"encoding/json"
 
 	"namespacelabs.dev/foundation/internal/certificates"
 	"namespacelabs.dev/foundation/schema"
@@ -71,13 +70,7 @@ func AllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error)
 			return opts.Stored, nil
 		}
 
-		userAuth, err := LoadUser()
-		if err != nil {
-			return nil, err
-		}
-
 		req := IssueRequest{
-			UserAuth: *userAuth,
 			NameRequest: NameRequest{
 				FQDN:      opts.FQDN,
 				Subdomain: opts.Subdomain,
@@ -91,9 +84,15 @@ func AllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error)
 		}
 
 		var nr IssueResponse
-		if err := callProdAPI(ctx, "nsl.naming.NamingService/Issue", req, func(dec *json.Decoder) error {
-			return dec.Decode(&nr)
-		}); err != nil {
+
+		if err := (Call[IssueRequest]{
+			Endpoint: EndpointAddress,
+			Method:   "nsl.naming.NamingService/Issue",
+			PreAuthenticateRequest: func(ua *UserAuth, rt *IssueRequest) error {
+				rt.UserAuth = *ua
+				return nil
+			},
+		}).Do(ctx, req, DecodeJSONResponse(&nr)); err != nil {
 			return nil, err
 		}
 

@@ -6,7 +6,6 @@ package fnapi
 
 import (
 	"context"
-	"encoding/json"
 
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -28,23 +27,16 @@ func Map(ctx context.Context, fqdn, target string) error {
 }
 
 func doMap(ctx context.Context, fqdn, target string) error {
-	userAuth, err := LoadUser()
-	if err != nil {
-		return err
-	}
-
-	req := MapRequest{
-		UserAuth: *userAuth,
-		FQDN:     fqdn,
-		Target:   target,
-	}
-
-	return callProdAPI(ctx, "nsl.naming.NamingService/Map", req, func(dec *json.Decoder) error {
-		var nr MapResponse
-		if err := dec.Decode(&nr); err != nil {
-			return err
-		}
-
-		return nil
-	})
+	var nr MapResponse
+	return Call[MapRequest]{
+		Endpoint: EndpointAddress,
+		Method:   "nsl.naming.NamingService/Map",
+		PreAuthenticateRequest: func(ua *UserAuth, rt *MapRequest) error {
+			rt.UserAuth = *ua
+			return nil
+		},
+	}.Do(ctx, MapRequest{
+		FQDN:   fqdn,
+		Target: target,
+	}, DecodeJSONResponse(&nr))
 }

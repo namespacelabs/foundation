@@ -6,7 +6,6 @@ package fnapi
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"namespacelabs.dev/foundation/schema"
@@ -46,10 +45,9 @@ func GetLatestVersion(ctx context.Context, nsReqs *schema.Workspace_FoundationRe
 			MinimumApi: nsReqs.MinimumApi,
 		}
 	}
+
 	var resp GetLatestResponse
-	if err := callProdAPI(ctx, "nsl.versions.VersionsService/GetLatest", &req, func(dec *json.Decoder) error {
-		return dec.Decode(&resp)
-	}); err != nil {
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatest", &req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 

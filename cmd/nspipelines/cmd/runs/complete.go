@@ -7,7 +7,6 @@ package runs
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -91,10 +90,7 @@ func newCompleteCmd() *cobra.Command {
 				reqs = append(reqs, req)
 			}
 
-			if err := fnapi.CallAPI(ctx, storageEndpoint, fmt.Sprintf("%s/UploadSectionStream", storageService), reqs, func(dec *json.Decoder) error {
-				// No response to check.
-				return nil
-			}); err != nil {
+			if err := fnapi.AnonymousCall(ctx, storageEndpoint, fmt.Sprintf("%s/UploadSectionStream", storageService), reqs, nil); err != nil {
 				return err
 			}
 		}
@@ -116,12 +112,8 @@ func newCompleteCmd() *cobra.Command {
 			return fnerrors.BadInputError("either --run_id_path or --stored_run_path are required")
 		}
 
-		if err := fnapi.CallAPI(ctx, storageEndpoint, fmt.Sprintf("%s/CompleteRun", storageService),
-			&CompleteRunRequest{OpaqueUserAuth: userAuth.Opaque, RunId: runID},
-			func(dec *json.Decoder) error {
-				// No response to check.
-				return nil
-			}); err != nil {
+		if err := fnapi.AnonymousCall(ctx, storageEndpoint, fmt.Sprintf("%s/CompleteRun", storageService),
+			&CompleteRunRequest{OpaqueUserAuth: userAuth.Opaque, RunId: runID}, nil); err != nil {
 			return err
 		}
 

@@ -6,7 +6,6 @@ package github
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -74,8 +73,6 @@ func newAccessTokenCmd() *cobra.Command {
 	return cmd
 }
 
-const WorkspaceService = "nsl.workspace.WorkspaceService"
-
 type GetGithubTokenRequest struct {
 	SessionId string `json:"session_id"`
 }
@@ -89,13 +86,7 @@ func getSessionToken(ctx context.Context, session string) (string, error) {
 	}
 
 	var resp GetGithubTokenResponse
-	if err := fnapi.CallAPI(ctx, fnapi.EndpointAddress, fmt.Sprintf("%s/GetGithubToken", WorkspaceService), req, func(dec *json.Decoder) error {
-		if err := dec.Decode(&resp); err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
+	if err := fnapi.AnonymousCall(ctx, fnapi.EndpointAddress, "nsl.workspace.WorkspaceService/GetGithubToken", req, fnapi.DecodeJSONResponse(&resp)); err != nil {
 		return "", err
 	}
 

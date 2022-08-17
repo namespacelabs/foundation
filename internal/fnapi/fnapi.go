@@ -18,7 +18,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 var EndpointAddress = "https://api.namespacelabs.net"
@@ -28,23 +27,18 @@ func SetupFlags(flags *pflag.FlagSet) {
 	_ = flags.MarkHidden("fnapi_endpoint")
 }
 
-func callProdAPI(ctx context.Context, method string, req interface{}, handle func(dec *json.Decoder) error) error {
-	return tasks.Action("fnapi.call").LogLevel(2).IncludesPrivateData().Arg("endpoint", EndpointAddress).Arg("method", method).Arg("request", req).Run(ctx, func(ctx context.Context) error {
-		return CallAPI(ctx, EndpointAddress, method, req, handle)
-	})
-}
-
-func CallAPI(ctx context.Context, endpoint string, method string, req interface{}, handle func(dec *json.Decoder) error) error {
-	return CallAPIRaw(ctx, endpoint, method, req, func(body io.Reader) error {
-		return handle(json.NewDecoder(body))
-	})
+// A nil handle indicates that the caller wants to discard the response.
+func AnonymousCall(ctx context.Context, endpoint string, method string, req interface{}, handle func(io.Reader) error) error {
+	return Call[any]{
+		Endpoint:  endpoint,
+		Method:    method,
+		Anonymous: true, // Callers of this API do not assume that credentials are injected.
+	}.Do(ctx, req, handle)
 }
 
 type Call[RequestT any] struct {
 	Endpoint               string
 	Method                 string
-	Request                RequestT
-	Handle                 func(io.Reader) error
 	PreAuthenticateRequest func(*UserAuth, *RequestT) error
 	Anonymous              bool
 }
@@ -55,7 +49,7 @@ func DecodeJSONResponse(resp any) func(io.Reader) error {
 	}
 }
 
-func (c Call[RequestT]) Do(ctx context.Context) error {
+func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io.Reader) error) error {
 	headers := http.Header{}
 
 	if !c.Anonymous {
@@ -67,11 +61,11 @@ func (c Call[RequestT]) Do(ctx context.Context) error {
 		headers.Add("Authorization", "Bearer "+base64.RawStdEncoding.EncodeToString(user.Opaque))
 
 		if c.PreAuthenticateRequest != nil {
-			c.PreAuthenticateRequest(user, &c.Request)
+			c.PreAuthenticateRequest(user, &request)
 		}
 	}
 
-	reqBytes, err := json.Marshal(c.Request)
+	reqBytes, err := json.Marshal(request)
 	if err != nil {
 		return fnerrors.InvocationError("failed to marshal request: %w", err)
 	}
@@ -94,11 +88,11 @@ func (c Call[RequestT]) Do(ctx context.Context) error {
 	defer response.Body.Close()
 
 	if response.StatusCode == http.StatusOK {
-		if c.Handle == nil {
+		if handle == nil {
 			return nil
 		}
 
-		return c.Handle(response.Body)
+		return handle(response.Body)
 	}
 
 	st := &spb.Status{}
@@ -133,14 +127,4 @@ func (c Call[RequestT]) Do(ctx context.Context) error {
 	default:
 		return fnerrors.InvocationError("unexpected %d error reaching %q: %s", response.StatusCode, c.Endpoint, response.Status)
 	}
-}
-
-func CallAPIRaw(ctx context.Context, endpoint string, method string, req interface{}, handle func(body io.Reader) error) error {
-	return Call[any]{
-		Endpoint:  endpoint,
-		Method:    method,
-		Request:   req,
-		Handle:    handle,
-		Anonymous: true, // Callers of this API do not assume that credentials are injected.
-	}.Do(ctx)
 }

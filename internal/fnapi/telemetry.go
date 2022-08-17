@@ -224,9 +224,7 @@ func (tel *Telemetry) postRecordInvocationRequest(ctx context.Context, req *reco
 	ctx, cancel := context.WithTimeout(ctx, postTimeout)
 	defer cancel()
 
-	return CallAPI(ctx, tel.backendAddress, fmt.Sprintf("%s/RecordInvocation", telemetryServiceName), req, func(dec *json.Decoder) error {
-		return nil // ignore the response
-	})
+	return AnonymousCall(ctx, tel.backendAddress, fmt.Sprintf("%s/RecordInvocation", telemetryServiceName), req, nil)
 }
 
 func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, reqID string, args []string) {
@@ -259,9 +257,7 @@ func (tel *Telemetry) postRecordErrorRequest(ctx context.Context, req recordErro
 	ctx, cancel := context.WithTimeout(ctx, postTimeout)
 	defer cancel()
 
-	return CallAPI(ctx, tel.backendAddress, fmt.Sprintf("%s/RecordError", telemetryServiceName), req, func(dec *json.Decoder) error {
-		return nil // ignore the response
-	})
+	return AnonymousCall(ctx, tel.backendAddress, fmt.Sprintf("%s/RecordError", telemetryServiceName), req, nil)
 }
 
 func (tel *Telemetry) RecordError(ctx context.Context, err error) {

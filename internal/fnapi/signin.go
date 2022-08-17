@@ -6,7 +6,6 @@ package fnapi
 
 import (
 	"context"
-	"encoding/json"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
@@ -35,9 +34,7 @@ func StartLogin(ctx context.Context) (string, error) {
 	req := StartLoginRequest{}
 
 	resp := &StartLoginResponse{}
-	err := callProdAPI(ctx, "nsl.signin.SigninService/StartLogin", req, func(dec *json.Decoder) error {
-		return dec.Decode(resp)
-	})
+	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/StartLogin", req, DecodeJSONResponse(resp))
 
 	return resp.LoginId, err
 }
@@ -52,9 +49,7 @@ func CompleteLogin(ctx context.Context, id string, ephemeralCliId string) (*User
 
 	var resp []UserAuth
 	// Explicitly use CallAPI() so we don't surface an action to the user while waiting.
-	if err := CallAPI(ctx, EndpointAddress, method, req, func(dec *json.Decoder) error {
-		return dec.Decode(&resp)
-	}); err != nil {
+	if err := AnonymousCall(ctx, EndpointAddress, method, req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 
@@ -71,9 +66,7 @@ func CheckSignin(ctx context.Context, userData string) (*UserAuth, error) {
 	}
 
 	userAuth := &UserAuth{}
-	err := callProdAPI(ctx, "nsl.signin.SigninService/Check", req, func(dec *json.Decoder) error {
-		return dec.Decode(userAuth)
-	})
+	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/Check", req, DecodeJSONResponse(userAuth))
 	return userAuth, err
 }
 
@@ -84,8 +77,6 @@ func RobotLogin(ctx context.Context, repository, accessToken string) (*UserAuth,
 	}
 
 	userAuth := &UserAuth{}
-	err := callProdAPI(ctx, "nsl.signin.SigninService/RobotLogin", req, func(dec *json.Decoder) error {
-		return dec.Decode(userAuth)
-	})
+	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/RobotLogin", req, DecodeJSONResponse(userAuth))
 	return userAuth, err
 }

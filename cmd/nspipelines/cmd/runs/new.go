@@ -176,7 +176,7 @@ func newNewCmd() *cobra.Command {
 		}
 
 		var resp storedrun.StoredRunID
-		if err := fnapi.CallAPI(ctx, storageEndpoint, fmt.Sprintf("%s/NewRun", storageService), req, func(dec *json.Decoder) error {
+		if err := fnapi.AnonymousCall(ctx, storageEndpoint, fmt.Sprintf("%s/NewRun", storageService), req, func(dec *json.Decoder) error {
 			if err := dec.Decode(&resp); err != nil {
 				return err
 			}
