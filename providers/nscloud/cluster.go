@@ -36,11 +36,7 @@ import (
 
 const machineEndpoint = "https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal.namespacelabs.nscloud.dev"
 
-var t *Cache[*CreateClusterResult]
-
-func init() {
-	t = NewCache[*CreateClusterResult]()
-}
+var clusterCache = NewCache[*CreateClusterResult]()
 
 func RegisterClusterProvider() {
 	client.RegisterProvider("nscloud", provideCluster)
@@ -79,59 +75,61 @@ func CreateClusterForEnv(ctx context.Context, env *schema.Environment, ephemeral
 		return nil, fnerrors.InternalError("env is missing")
 	}
 
-	return t.Compute(env.Name, func() (*CreateClusterResult, error) {
+	return clusterCache.Compute(env.Name, func() (*CreateClusterResult, error) {
 		return CreateCluster(ctx, ephemeral, env.Name) // The environment name is the best we can do right now as a documented purpose.
 	})
 }
 
 func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*CreateClusterResult, error) {
-	user, err := fnapi.LoadUser()
-	if err != nil {
-		return nil, err
-	}
-
 	var cr *CreateKubernetesClusterResponse
-
 	if err := tasks.Action("nscloud.cluster-create").Run(ctx, func(ctx context.Context) error {
-		return fnapi.CallAPIRaw(ctx, machineEndpoint, "nsl.vm.api.VMService/CreateKubernetesCluster", &CreateKubernetesClusterRequest{
-			OpaqueUserAuth:    user.Opaque,
-			Ephemeral:         ephemeral,
-			DocumentedPurpose: purpose,
-		}, func(body io.Reader) error {
-			var progress clusterCreateProgress
-			progress.status.Store("...")
-			tasks.Attachments(ctx).SetProgress(&progress)
+		return fnapi.Call[CreateKubernetesClusterRequest]{
+			Endpoint: machineEndpoint,
+			Method:   "nsl.vm.api.VMService/CreateKubernetesCluster",
+			Request: CreateKubernetesClusterRequest{
+				Ephemeral:         ephemeral,
+				DocumentedPurpose: purpose,
+			},
+			PreAuthenticateRequest: func(user *fnapi.UserAuth, rt *CreateKubernetesClusterRequest) error {
+				rt.OpaqueUserAuth = user.Opaque
+				return nil
+			},
+			Handle: func(body io.Reader) error {
+				var progress clusterCreateProgress
+				progress.status.Store("...")
+				tasks.Attachments(ctx).SetProgress(&progress)
 
-			decoder := jstream.NewDecoder(body, 1)
+				decoder := jstream.NewDecoder(body, 1)
 
-			// jstream gives us the streamed array segmentation, however it
-			// returns map[string]interface{} rather than typed objects. We
-			// re-triggering parsing into the response type so the remainder
-			// of our codebase operates on types.
+				// jstream gives us the streamed array segmentation, however it
+				// returns map[string]interface{} rather than typed objects. We
+				// re-triggering parsing into the response type so the remainder
+				// of our codebase operates on types.
 
-			clusterId := "<unknown>"
-			lastStatus := "<none>"
-			for mv := range decoder.Stream() {
-				var resp CreateKubernetesClusterResponse
-				if err := reparse(mv.Value, &resp); err != nil {
-					return fnerrors.InvocationError("failed to parse response: %w", err)
+				clusterId := "<unknown>"
+				lastStatus := "<none>"
+				for mv := range decoder.Stream() {
+					var resp CreateKubernetesClusterResponse
+					if err := reparse(mv.Value, &resp); err != nil {
+						return fnerrors.InvocationError("failed to parse response: %w", err)
+					}
+
+					progress.set(resp.Status)
+					lastStatus = resp.Status
+
+					if resp.ClusterId != "" {
+						clusterId = resp.ClusterId
+					}
+
+					if resp.Status == "READY" {
+						cr = &resp
+						return nil
+					}
 				}
 
-				progress.set(resp.Status)
-				lastStatus = resp.Status
-
-				if resp.ClusterId != "" {
-					clusterId = resp.ClusterId
-				}
-
-				if resp.Status == "READY" {
-					cr = &resp
-					return nil
-				}
-			}
-
-			return fnerrors.InvocationError("cluster never became ready (last status was %q, cluster id: %s)", lastStatus, clusterId)
-		})
+				return fnerrors.InvocationError("cluster never became ready (last status was %q, cluster id: %s)", lastStatus, clusterId)
+			},
+		}.Do(ctx)
 	}); err != nil {
 		return nil, err
 	}
@@ -140,12 +138,17 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 
 	if ephemeral {
 		compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
-			return fnapi.CallAPI(ctx, machineEndpoint, "nsl.vm.api.VMService/DestroyKubernetesCluster", &DestroyKubernetesClusterRequest{
-				OpaqueUserAuth: user.Opaque,
-				ClusterId:      cr.ClusterId,
-			}, func(dec *json.Decoder) error {
-				return nil
-			})
+			return fnapi.Call[DestroyKubernetesClusterRequest]{
+				Endpoint: machineEndpoint,
+				Method:   "nsl.vm.api.VMService/DestroyKubernetesCluster",
+				Request: DestroyKubernetesClusterRequest{
+					ClusterId: cr.ClusterId,
+				},
+				PreAuthenticateRequest: func(ua *fnapi.UserAuth, rt *DestroyKubernetesClusterRequest) error {
+					rt.OpaqueUserAuth = ua.Opaque
+					return nil
+				},
+			}.Do(ctx)
 		})
 	}
 
@@ -228,18 +231,17 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 
 func ListClusters(ctx context.Context) (*KubernetesClusterList, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.cluster-list"), func(ctx context.Context) (*KubernetesClusterList, error) {
-		user, err := fnapi.LoadUser()
-		if err != nil {
-			return nil, err
-		}
-
 		var list KubernetesClusterList
-
-		if err := fnapi.CallAPIRaw(ctx, machineEndpoint, "nsl.vm.api.VMService/ListKubernetesClusters", &ListKubernetesClustersRequest{
-			OpaqueUserAuth: user.Opaque,
-		}, func(body io.Reader) error {
-			return json.NewDecoder(body).Decode(&list)
-		}); err != nil {
+		c := fnapi.Call[ListKubernetesClustersRequest]{
+			Endpoint: machineEndpoint,
+			Method:   "nsl.vm.api.VMService/ListKubernetesClusters",
+			PreAuthenticateRequest: func(ua *fnapi.UserAuth, rt *ListKubernetesClustersRequest) error {
+				rt.OpaqueUserAuth = ua.Opaque
+				return nil
+			},
+			Handle: fnapi.DecodeJSONResponse(&list),
+		}
+		if err := c.Do(ctx); err != nil {
 			return nil, err
 		}
 

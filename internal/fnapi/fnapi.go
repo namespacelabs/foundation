@@ -7,6 +7,7 @@ package fnapi
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -39,19 +40,53 @@ func CallAPI(ctx context.Context, endpoint string, method string, req interface{
 	})
 }
 
-func CallAPIRaw(ctx context.Context, endpoint string, method string, req interface{}, handle func(body io.Reader) error) error {
-	reqBytes, err := json.Marshal(req)
+type Call[RequestT any] struct {
+	Endpoint               string
+	Method                 string
+	Request                RequestT
+	Handle                 func(io.Reader) error
+	PreAuthenticateRequest func(*UserAuth, *RequestT) error
+	Anonymous              bool
+}
+
+func DecodeJSONResponse(resp any) func(io.Reader) error {
+	return func(body io.Reader) error {
+		return json.NewDecoder(body).Decode(resp)
+	}
+}
+
+func (c Call[RequestT]) Do(ctx context.Context) error {
+	headers := http.Header{}
+
+	if !c.Anonymous {
+		user, err := LoadUser()
+		if err != nil {
+			return err
+		}
+
+		headers.Add("Authorization", "Bearer "+base64.RawStdEncoding.EncodeToString(user.Opaque))
+
+		if c.PreAuthenticateRequest != nil {
+			c.PreAuthenticateRequest(user, &c.Request)
+		}
+	}
+
+	reqBytes, err := json.Marshal(c.Request)
 	if err != nil {
 		return fnerrors.InvocationError("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/"+method, bytes.NewReader(reqBytes))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.Endpoint+"/"+c.Method, bytes.NewReader(reqBytes))
 	if err != nil {
 		return fnerrors.InvocationError("failed to construct request: %w", err)
 	}
 
-	c := &http.Client{}
-	response, err := c.Do(httpReq)
+	for k, v := range headers {
+		httpReq.Header[k] = append(httpReq.Header[k], v...)
+	}
+
+	client := &http.Client{}
+	response, err := client.Do(httpReq)
 	if err != nil {
 		return fnerrors.InvocationError("failed to perform invocation: %w", err)
 	}
@@ -59,7 +94,11 @@ func CallAPIRaw(ctx context.Context, endpoint string, method string, req interfa
 	defer response.Body.Close()
 
 	if response.StatusCode == http.StatusOK {
-		return handle(response.Body)
+		if c.Handle == nil {
+			return nil
+		}
+
+		return c.Handle(response.Body)
 	}
 
 	st := &spb.Status{}
@@ -92,6 +131,16 @@ func CallAPIRaw(ctx context.Context, endpoint string, method string, req interfa
 	case http.StatusUnauthorized:
 		return ErrRelogin
 	default:
-		return fnerrors.InvocationError("unexpected %d error reaching %q: %s", response.StatusCode, endpoint, response.Status)
+		return fnerrors.InvocationError("unexpected %d error reaching %q: %s", response.StatusCode, c.Endpoint, response.Status)
 	}
+}
+
+func CallAPIRaw(ctx context.Context, endpoint string, method string, req interface{}, handle func(body io.Reader) error) error {
+	return Call[any]{
+		Endpoint:  endpoint,
+		Method:    method,
+		Request:   req,
+		Handle:    handle,
+		Anonymous: true, // Callers of this API do not assume that credentials are injected.
+	}.Do(ctx)
 }
