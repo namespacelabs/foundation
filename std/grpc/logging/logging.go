@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
@@ -67,15 +68,17 @@ func logHeader(ctx context.Context, reqid, what, fullMethod string, req interfac
 		}
 	}
 
+	md, _ := metadata.FromIncomingContext(ctx)
+
 	if t, ok := ctx.Deadline(); ok {
 		left := time.Until(t)
 		deadline = fmt.Sprintf("%v", left)
 	}
 
 	if req != nil {
-		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s): %s", fullMethod, reqid, peerAddr, authType, deadline, serializeMessage(req))
+		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s, metadata: %+v): %s", fullMethod, reqid, peerAddr, authType, deadline, md, serializeMessage(req))
 	} else {
-		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s)", fullMethod, reqid, peerAddr, authType, deadline)
+		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s, metadata: %+v)", fullMethod, reqid, peerAddr, authType, deadline, md)
 	}
 }
 
