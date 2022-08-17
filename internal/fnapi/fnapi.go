@@ -61,7 +61,9 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 		headers.Add("Authorization", "Bearer "+base64.RawStdEncoding.EncodeToString(user.Opaque))
 
 		if c.PreAuthenticateRequest != nil {
-			c.PreAuthenticateRequest(user, &request)
+			if err := c.PreAuthenticateRequest(user, &request); err != nil {
+				return err
+			}
 		}
 	}
 
