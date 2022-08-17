@@ -108,6 +108,9 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 			// returns map[string]interface{} rather than typed objects. We
 			// re-triggering parsing into the response type so the remainder
 			// of our codebase operates on types.
+
+			clusterId := "<unknown>"
+			lastStatus := "<none>"
 			for mv := range decoder.Stream() {
 				var resp CreateKubernetesClusterResponse
 				if err := reparse(mv.Value, &resp); err != nil {
@@ -115,6 +118,11 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 				}
 
 				progress.set(resp.Status)
+				lastStatus = resp.Status
+
+				if clusterId == "" {
+					clusterId = resp.ClusterId
+				}
 
 				if resp.Status == "READY" {
 					cr = &resp
@@ -122,7 +130,7 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 				}
 			}
 
-			return fnerrors.InvocationError("cluster never became ready")
+			return fnerrors.InvocationError("cluster never became ready (last status was %q, cluster id: %s)", lastStatus, clusterId)
 		})
 	}); err != nil {
 		return nil, err

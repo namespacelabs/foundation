@@ -263,6 +263,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&tools.UseKubernetesRuntime, "run_tools_on_kubernetes", tools.UseKubernetesRuntime,
 		"If set to true, runs tools in Kubernetes, instead of Docker.")
 	rootCmd.PersistentFlags().BoolVar(&deploy.RunCodegen, "run_codegen", deploy.RunCodegen, "If set to false, skip codegen.")
+	rootCmd.PersistentFlags().BoolVar(&deploy.PushPrebuiltsToRegistry, "deploy_push_prebuilts_to_registry", deploy.PushPrebuiltsToRegistry,
+		"If set to true, prebuilts are uploaded to the target registry.")
 	rootCmd.PersistentFlags().BoolVar(&tool.InvocationDebug, "invocation_debug", tool.InvocationDebug,
 		"If set to true, pass --debug to invocations.")
 	rootCmd.PersistentFlags().BoolVar(&kubernetes.UseNodePlatformsForProduction, "kubernetes_use_node_platforms_in_production_builds",
@@ -314,6 +316,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"nodejs_use_native_node",
 		"lowlevel_tools_protocol_version",
 		"tools_invocation_can_use_buildkit",
+		"deploy_push_prebuilts_to_registry",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

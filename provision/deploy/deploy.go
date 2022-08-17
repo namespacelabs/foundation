@@ -31,7 +31,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-var AlsoDeployIngress = true
+var (
+	AlsoDeployIngress       = true
+	PushPrebuiltsToRegistry = false
+)
 
 type ServerImages struct {
 	Package schema.PackageName
@@ -390,7 +393,7 @@ func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *s
 			return nil, err
 		}
 
-		if imgid, ok := build.IsPrebuilt(spec); ok {
+		if imgid, ok := build.IsPrebuilt(spec); ok && !PushPrebuiltsToRegistry {
 			images.Binary = build.Prebuilt(imgid)
 		} else {
 			p, err := makePlan(ctx, srv, spec)
