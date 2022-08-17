@@ -176,18 +176,12 @@ func newNewCmd() *cobra.Command {
 		}
 
 		var resp storedrun.StoredRunID
-		if err := fnapi.AnonymousCall(ctx, storageEndpoint, fmt.Sprintf("%s/NewRun", storageService), req, func(dec *json.Decoder) error {
-			if err := dec.Decode(&resp); err != nil {
-				return err
-			}
-
-			if resp.RunId == "" {
-				return fnerrors.InvocationError("expected a run id to be produced")
-			}
-
-			return nil
-		}); err != nil {
+		if err := fnapi.AnonymousCall(ctx, storageEndpoint, fmt.Sprintf("%s/NewRun", storageService), req, fnapi.DecodeJSONResponse(&resp)); err != nil {
 			return err
+		}
+
+		if resp.RunId == "" {
+			return fnerrors.InvocationError("expected a run id to be produced")
 		}
 
 		r, err := json.Marshal(resp)
