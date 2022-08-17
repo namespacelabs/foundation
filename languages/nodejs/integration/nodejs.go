@@ -273,7 +273,7 @@ func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, 
 	for k, v := range builtin().Dependencies {
 		dependencies[k] = v
 	}
-	for _, moduleName := range nodejs.ModulesFromWorkspace(yarnRootData.workspace) {
+	for _, moduleName := range yarnRootData.workspace.AllReferencedModules() {
 		dependencies[toNpmNamespace(moduleName)] = "fn:" + moduleName
 	}
 

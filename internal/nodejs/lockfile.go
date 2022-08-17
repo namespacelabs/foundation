@@ -25,20 +25,6 @@ type LockFileModule struct {
 	Path string `json:"path"`
 }
 
-func ModulesFromWorkspace(workspace *schema.Workspace) []string {
-	modules := []string{workspace.ModuleName}
-
-	for _, dep := range workspace.Dep {
-		modules = append(modules, dep.ModuleName)
-	}
-
-	for _, replace := range workspace.Replace {
-		modules = append(modules, replace.ModuleName)
-	}
-
-	return modules
-}
-
 func generateLockFileStruct(workspace *schema.Workspace, moduleAbsPath string, relPath string) (lockFile, error) {
 	moduleCacheRoot, err := dirs.ModuleCacheRoot()
 	if err != nil {
@@ -93,7 +79,7 @@ func generateLockFileStructForBuild(relPath string, workspace *schema.Workspace)
 	}
 
 	// When building an image we put all the dependencies under "depsRootPath" by their module name.
-	for _, moduleName := range ModulesFromWorkspace(workspace) {
+	for _, moduleName := range workspace.AllReferencedModules() {
 		lock.Modules[moduleName] = LockFileModule{
 			Path: filepath.Join(DepsRootPath, moduleName),
 		}

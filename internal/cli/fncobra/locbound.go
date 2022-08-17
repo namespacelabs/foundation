@@ -66,7 +66,7 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 		return err
 	}
 
-	locs, err := locationsFromArgs(root.Workspace.ModuleName, relCwd, args)
+	locs, err := locationsFromArgs(root.Workspace.ModuleName, root.Workspace.AllReferencedModules(), relCwd, args)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 	return nil
 }
 
-func locationsFromArgs(moduleName string, relCwd string, args []string) ([]fnfs.Location, error) {
+func locationsFromArgs(mainModuleName string, moduleNames []string, relCwd string, args []string) ([]fnfs.Location, error) {
 	var locations []fnfs.Location
 	for _, arg := range args {
 		if filepath.IsAbs(arg) {
@@ -101,10 +101,17 @@ func locationsFromArgs(moduleName string, relCwd string, args []string) ([]fnfs.
 		}
 
 		var rel string
-		modulePrefix := moduleName + "/"
-		if strings.HasPrefix(arg, modulePrefix) {
-			rel = arg[len(modulePrefix):]
-		} else {
+		var moduleName string
+		for _, m := range moduleNames {
+			modulePrefix := m + "/"
+			if strings.HasPrefix(arg, modulePrefix) {
+				moduleName = m
+				rel = arg[len(modulePrefix):]
+				break
+			}
+		}
+		if rel == "" {
+			moduleName = mainModuleName
 			rel = filepath.Join(relCwd, filepath.Clean(arg))
 		}
 

@@ -190,3 +190,18 @@ func (env *Environment) HasLabel(lbl *Environment_Label) bool {
 
 	return false
 }
+
+// All modules referenced in the workspace file, including the main module.
+func (workspace *Workspace) AllReferencedModules() []string {
+	modules := []string{workspace.ModuleName}
+
+	for _, dep := range workspace.Dep {
+		modules = append(modules, dep.ModuleName)
+	}
+
+	for _, replace := range workspace.Replace {
+		modules = append(modules, replace.ModuleName)
+	}
+
+	return modules
+}
