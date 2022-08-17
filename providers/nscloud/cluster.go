@@ -120,7 +120,7 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 				progress.set(resp.Status)
 				lastStatus = resp.Status
 
-				if clusterId == "" {
+				if resp.ClusterId != "" {
 					clusterId = resp.ClusterId
 				}
 
