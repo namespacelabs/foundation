@@ -30,6 +30,20 @@ go install -v ./cmd/ns
 ns
 ```
 
+## Committing
+
+We use `pre-commit` to enforce consistent code formatting.
+Install `pre-commit` with one of the options at https://pre-commit.com/#install.
+
+[By default](https://pre-commit.com/#usage), `pre-commit` requires you to run `pre-commit install` for _every_ cloned repo containing a `.pre-commit-config.yaml` file.
+
+Alternatively, you can [configure your local git](https://pre-commit.com/#automatically-enabling-pre-commit-on-repositories) to run `pre-commit` for each relevant repository automatically.
+
+```bash
+git config --global init.templateDir ~/.git-template
+pre-commit init-templatedir ~/.git-template
+```
+
 ## Releasing
 
 We use `goreleaser` for our releases. You should have it under your `nix-shell`.
