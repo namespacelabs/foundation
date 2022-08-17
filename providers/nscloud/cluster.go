@@ -92,7 +92,7 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 
 	var cr *CreateKubernetesClusterResponse
 
-	if err := tasks.Action("nscloud.k8s-cluster.create").Run(ctx, func(ctx context.Context) error {
+	if err := tasks.Action("nscloud.cluster-create").Run(ctx, func(ctx context.Context) error {
 		return fnapi.CallAPIRaw(ctx, machineEndpoint, "nsl.vm.api.VMService/CreateKubernetesCluster", &CreateKubernetesClusterRequest{
 			OpaqueUserAuth:    user.Opaque,
 			Ephemeral:         ephemeral,
@@ -139,7 +139,7 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 	tasks.Attachments(ctx).AddResult("cluster_id", cr.ClusterId).AddResult("cluster_address", cr.Cluster.EndpointAddress)
 
 	if ephemeral {
-		compute.On(ctx).Cleanup(tasks.Action("nscloud.k8s-cluster.cleanup"), func(ctx context.Context) error {
+		compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
 			return fnapi.CallAPI(ctx, machineEndpoint, "nsl.vm.api.VMService/DestroyKubernetesCluster", &DestroyKubernetesClusterRequest{
 				OpaqueUserAuth: user.Opaque,
 				ClusterId:      cr.ClusterId,
@@ -168,7 +168,7 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 	cfg.APIVersion = "v1"
 	cfg.CurrentContext = "default"
 
-	if err := tasks.Action("nscloud.k8s-cluster.wait-until-ready").Arg("cluster_id", cr.ClusterId).Run(ctx, func(ctx context.Context) error {
+	if err := tasks.Action("nscloud.cluster-wait-readiness").Arg("cluster_id", cr.ClusterId).Run(ctx, func(ctx context.Context) error {
 		notBefore, err := decodeCert(cr.Cluster.CertificateAuthorityData)
 		if err == nil {
 			x := time.Until(notBefore)
@@ -227,7 +227,7 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 }
 
 func ListClusters(ctx context.Context) (*KubernetesClusterList, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.k8s-cluster.list"), func(ctx context.Context) (*KubernetesClusterList, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.cluster-list"), func(ctx context.Context) (*KubernetesClusterList, error) {
 		user, err := fnapi.LoadUser()
 		if err != nil {
 			return nil, err
@@ -283,7 +283,7 @@ func provideDeferred(ctx context.Context, ws *schema.Workspace, cfg *client.Host
 	conf := &PrebuiltCluster{}
 	if !cfg.Selector.Select(cfg.DevHost).Get(conf) {
 		compute.On(ctx).DetachWith(compute.Detach{
-			Action: tasks.Action("nscloud.k8s-cluster.prepare").LogLevel(1),
+			Action: tasks.Action("nscloud.cluster-prepare").LogLevel(1),
 			Do: func(ctx context.Context) error {
 				// Kick off the cluster provisioning as soon as we can.
 				_, _ = CreateClusterForEnv(ctx, cfg.Environment, true)

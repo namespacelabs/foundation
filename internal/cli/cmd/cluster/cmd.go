@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/providers/nscloud"
 )
@@ -81,19 +82,7 @@ func newListCmd() *cobra.Command {
 		stdout := console.Stdout(ctx)
 
 		for _, cluster := range clusters.Clusters {
-			cpu := "<unknown>"
-			ram := "<unknown>"
-
-			if shape := cluster.Shape; shape != nil {
-				cpu = fmt.Sprintf("%d", shape.VirtualCpu)
-				ram = humanize.Bytes(uint64(shape.MemoryMegabytes) * humanize.MiByte)
-			}
-
-			created, _ := time.Parse(time.RFC3339, cluster.Created)
-			deadline, _ := time.Parse(time.RFC3339, cluster.Deadline)
-
-			fmt.Fprintf(stdout, "%s [cpu: %s ram: %s] (created %v, for %v, dist: %s): %s\n", cluster.ClusterId, cpu, ram, created.Local(), time.Until(deadline),
-				cluster.KubernetesDistribution, cluster.DocumentedPurpose)
+			fmt.Fprintf(stdout, "%s %s\n", cluster.ClusterId, formatDescription(cluster))
 		}
 
 		return nil
@@ -106,57 +95,104 @@ func newSshCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ssh {cluster-id}",
 		Short: "Start an SSH session.",
-		Args:  cobra.MinimumNArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		clusterId := args[0]
+		if len(args) > 0 {
+			return ssh(ctx, args[0], args[1:])
+		}
 
-		lst, err := net.Listen("tcp", "127.0.0.1:0")
+		clusters, err := nscloud.ListClusters(ctx)
 		if err != nil {
 			return err
 		}
 
-		go func() {
-			for {
-				conn, err := lst.Accept()
-				if err != nil {
-					return
-				}
+		var cls []cluster
+		for _, cl := range clusters.Clusters {
+			cls = append(cls, cluster(cl))
+		}
 
-				go func() {
-					defer conn.Close()
+		cl, err := tui.Select(ctx, "Which cluster would you like to connect to?", cls)
+		if err != nil {
+			return err
+		}
 
-					d := websocket.Dialer{
-						HandshakeTimeout: 15 * time.Second,
-					}
+		if cl == nil {
+			return nil
+		}
 
-					serverUrl := fmt.Sprintf("ws://ssh-%s.a.nscluster.cloud/proxy", clusterId)
-					wsConn, _, err := d.DialContext(ctx, serverUrl, nil)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
-						return
-					}
-
-					proxyConn := cnet.NewWebSocketConn(wsConn)
-
-					go func() {
-						_, _ = io.Copy(conn, proxyConn)
-					}()
-
-					_, _ = io.Copy(proxyConn, conn)
-				}()
-			}
-		}()
-
-		localPort := lst.Addr().(*net.TCPAddr).Port
-
-		sshArgs := args[1:]
-		sshArgs = append(sshArgs, "-p", fmt.Sprintf("%d", localPort), "janitor@127.0.0.1")
-
-		cmd := exec.CommandContext(ctx, "ssh", sshArgs...)
-		return localexec.RunInteractive(ctx, cmd)
+		return ssh(ctx, cl.(cluster).ClusterId, nil)
 	})
 
 	return cmd
+}
+
+type cluster nscloud.KubernetesCluster
+
+func (d cluster) Title() string       { return d.ClusterId }
+func (d cluster) Description() string { return formatDescription(nscloud.KubernetesCluster(d)) }
+func (d cluster) FilterValue() string { return d.ClusterId }
+
+func formatDescription(cluster nscloud.KubernetesCluster) string {
+	cpu := "<unknown>"
+	ram := "<unknown>"
+
+	if shape := cluster.Shape; shape != nil {
+		cpu = fmt.Sprintf("%d", shape.VirtualCpu)
+		ram = humanize.IBytes(uint64(shape.MemoryMegabytes) * humanize.MiByte)
+	}
+
+	created, _ := time.Parse(time.RFC3339, cluster.Created)
+	deadline, _ := time.Parse(time.RFC3339, cluster.Deadline)
+
+	return fmt.Sprintf("[cpu: %s ram: %s] (created %v, for %v, dist: %s): %s",
+		cpu, ram, created.Local(), time.Until(deadline),
+		cluster.KubernetesDistribution, cluster.DocumentedPurpose)
+}
+
+func ssh(ctx context.Context, clusterId string, args []string) error {
+	lst, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for {
+			conn, err := lst.Accept()
+			if err != nil {
+				return
+			}
+
+			go func() {
+				defer conn.Close()
+
+				d := websocket.Dialer{
+					HandshakeTimeout: 15 * time.Second,
+				}
+
+				serverUrl := fmt.Sprintf("ws://ssh-%s.a.nscluster.cloud/proxy", clusterId)
+				wsConn, _, err := d.DialContext(ctx, serverUrl, nil)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
+					return
+				}
+
+				proxyConn := cnet.NewWebSocketConn(wsConn)
+
+				go func() {
+					_, _ = io.Copy(conn, proxyConn)
+				}()
+
+				_, _ = io.Copy(proxyConn, conn)
+			}()
+		}
+	}()
+
+	localPort := lst.Addr().(*net.TCPAddr).Port
+
+	args = append(args, "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-p", fmt.Sprintf("%d", localPort), "janitor@127.0.0.1")
+
+	cmd := exec.CommandContext(ctx, "ssh", args...)
+	return localexec.RunInteractive(ctx, cmd)
 }
