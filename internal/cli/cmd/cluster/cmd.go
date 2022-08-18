@@ -87,7 +87,7 @@ func newListCmd() *cobra.Command {
 		if *rawOutput {
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
-			_ = enc.Encode(clusters)
+			return enc.Encode(clusters)
 		} else {
 			for _, cluster := range clusters.Clusters {
 				fmt.Fprintf(stdout, "%s %s\n", cluster.ClusterId, formatDescription(cluster))

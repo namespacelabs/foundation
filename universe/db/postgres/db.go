@@ -15,6 +15,8 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
+	statuscodes "google.golang.org/grpc/codes"
+	"namespacelabs.dev/foundation/std/go/rpcerrors"
 )
 
 // pgx does not provide for instrumentation hooks, only logging. So we wrap access to it, retaining the API.
@@ -87,10 +89,18 @@ func (db DB) withSpan(ctx context.Context, name, sql string, f func(context.Cont
 	ctx, span := db.tracer.Start(ctx, name, options...)
 	defer span.End()
 
-	err := f(ctx)
+	err := checkErr(f(ctx))
 	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, pgx.ErrNoRows) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+	}
+
+	return err
+}
+
+func checkErr(err error) error {
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		return rpcerrors.Wrap(statuscodes.Unavailable, err)
 	}
 
 	return err
