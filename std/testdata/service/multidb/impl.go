@@ -20,6 +20,7 @@ import (
 type Service struct {
 	maria    *sql.DB
 	postgres *postgres.DB
+	rds      *postgres.DB
 }
 
 const timeout = 2 * time.Second
@@ -30,6 +31,17 @@ func addPostgres(ctx context.Context, db *postgres.DB, item string) error {
 
 	_, err := db.Exec(ctx, "INSERT INTO list (Item) VALUES ($1);", item)
 	return err
+}
+
+func (svc *Service) AddRds(ctx context.Context, req *proto.AddRequest) (*emptypb.Empty, error) {
+	log.Printf("new AddRds request: %+v\n", req)
+
+	if err := addPostgres(ctx, svc.rds, req.Item); err != nil {
+		log.Fatalf("failed to add list item: %v", err)
+	}
+
+	response := &emptypb.Empty{}
+	return response, nil
 }
 
 func (svc *Service) AddPostgres(ctx context.Context, req *proto.AddRequest) (*emptypb.Empty, error) {
@@ -111,17 +123,27 @@ func listMaria(ctx context.Context, db *sql.DB) ([]string, error) {
 func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*proto.ListResponse, error) {
 	log.Print("new List request\n")
 
+	var list []string
+
+	rdslist, err := listPostgres(ctx, svc.rds)
+	if err != nil {
+		log.Fatalf("failed to read list: %v", err)
+	}
+	list = append(list, rdslist...)
+
 	pglist, err := listPostgres(ctx, svc.postgres)
 	if err != nil {
 		log.Fatalf("failed to read list: %v", err)
 	}
+	list = append(list, pglist...)
 
 	marialist, err := listMaria(ctx, svc.maria)
 	if err != nil {
 		log.Fatalf("failed to read list: %v", err)
 	}
+	list = append(list, marialist...)
 
-	response := &proto.ListResponse{Item: append(pglist, marialist...)}
+	response := &proto.ListResponse{Item: list}
 	return response, nil
 }
 
@@ -129,6 +151,7 @@ func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	svc := &Service{
 		maria:    deps.Maria,
 		postgres: deps.Postgres,
+		rds:      deps.Rds,
 	}
 	proto.RegisterMultiDbListServiceServer(srv, svc)
 }
