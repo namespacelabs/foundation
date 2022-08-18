@@ -26,7 +26,6 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
-	inclustertool "namespacelabs.dev/foundation/universe/db/postgres/incluster/configure"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/toolcommon"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds/internal"
@@ -43,7 +42,7 @@ const (
 
 	inclusterNode   = "namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	inclusterInit   = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
-	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/server"
+	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/rds/testing/server"
 )
 
 func main() {
@@ -118,10 +117,20 @@ func (provisionHook) Apply(_ context.Context, req configure.StackRequest, out *c
 
 func (provisionHook) Delete(_ context.Context, req configure.StackRequest, out *configure.DeleteOutput) error {
 	if useIncluster(req.Env) {
-		return inclustertool.Delete(req, out)
+		return toolcommon.Delete(req, postgresType, out)
 	}
 
 	// TODO
+	return nil
+}
+
+func internalEndpoint(s *schema.Stack) *schema.Endpoint {
+	for _, e := range s.Endpoint {
+		if e.ServiceName == "postgres" && e.ServerOwner == inclusterServer {
+			return e
+		}
+	}
+
 	return nil
 }
 
@@ -136,7 +145,24 @@ func applyIncluster(req configure.StackRequest, dbs map[string]*rds.Database, ow
 		inclusterDbs[name] = inclusterDb
 	}
 
-	return inclustertool.Apply(req, inclusterDbs, owners, out)
+	endpoint := internalEndpoint(req.Stack)
+
+	value, err := json.Marshal(endpoint)
+	if err != nil {
+		return err
+	}
+
+	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
+		With: &kubedef.ContainerExtension{
+			Args: []string{fmt.Sprintf("--%s=%s", rds.InclusterEndpointFlag, value)},
+			// XXX remove when backwards compat no longer necessary.
+			ArgTuple: []*kubedef.ContainerExtension_ArgTuple{{
+				Name:  rds.InclusterEndpointFlag,
+				Value: string(value),
+			}},
+		}})
+
+	return toolcommon.Apply(req, endpointedDbs, postgresType, initArgs, out)
 }
 
 func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *configure.ApplyOutput) error {

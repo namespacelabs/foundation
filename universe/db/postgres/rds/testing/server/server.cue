@@ -3,6 +3,6 @@ import (
 )
 
 server: template.#PostgresServer & {
-	id:   "422eajpp5jt8pjwfp2vrq5f0ce"
-	name: "postgresql"
+	id:   "4djdk432rddfl9fmpa30"
+	name: "mockrds-postgresql"
 }

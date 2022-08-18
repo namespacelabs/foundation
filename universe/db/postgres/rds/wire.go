@@ -6,22 +6,30 @@ package rds
 
 import (
 	"context"
+	"encoding/json"
+	"flag"
 	"fmt"
 
 	awsrds "github.com/aws/aws-sdk-go-v2/service/rds"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/universe/db/postgres"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds/internal"
 )
 
-func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*postgres.DB, error) {
-	endpoint, err := incluster.GetEndpoint()
-	if err != nil {
-		return nil, err
-	}
+const InclusterEndpointFlag = "rds_postgresql_endpoint"
 
-	if endpoint != nil {
-		return incluster.ProvideDb(ctx, db.Name, endpoint, deps.Creds, deps.Wire)
+var (
+	inclusterEndpoint = flag.String(InclusterEndpointFlag, "", "Endpoint configuration.")
+)
+
+func getEndpoint(ctx context.Context, db *Database, deps ExtensionDeps) (*schema.Endpoint, error) {
+	if *inclusterEndpoint != "" {
+		var endpoint schema.Endpoint
+		if err := json.Unmarshal([]byte(*inclusterEndpoint), &endpoint); err != nil {
+			return nil, fmt.Errorf("failed to parse postgresql endpoint configuration: %w", err)
+		}
+
+		return &endpoint, nil
 	}
 
 	awsCfg, err := deps.ClientFactory.New(ctx)
@@ -40,15 +48,30 @@ func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*po
 	}
 
 	if len(desc.DBClusters) != 1 {
-		return nil, fmt.Errorf("Expected one cluster with identifier %s, got %d", id, len(desc.DBClusters))
+		return nil, fmt.Errorf("expected one cluster with identifier %s, got %d", id, len(desc.DBClusters))
+	}
+
+	return &schema.Endpoint{
+		AllocatedName: *desc.DBClusters[0].Endpoint,
+		Port: &schema.Endpoint_Port{
+			ContainerPort: *desc.DBClusters[0].Port,
+		},
+	}, nil
+}
+
+func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*postgres.DB, error) {
+	endpoint, err := getEndpoint(ctx, db, deps)
+	if err != nil {
+		return nil, err
 	}
 
 	base := &postgres.Database{
 		Name: db.Name,
 		HostedAt: &postgres.Endpoint{
-			Address: *desc.DBClusters[0].Endpoint,
-			Port:    uint32(*desc.DBClusters[0].Port),
+			Address: endpoint.AllocatedName,
+			Port:    uint32(endpoint.Port.ContainerPort),
 		},
 	}
+
 	return deps.Wire.ProvideDatabase(ctx, base, "postgres", deps.Creds.Password)
 }

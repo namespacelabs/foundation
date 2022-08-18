@@ -16,7 +16,7 @@ import (
 
 var (
 	userFile     = flag.String("postgres_user_file", "", "location of the user secret")
-	passwordFile = flag.String("postgres_password_file", "", "location of the password secret")
+	passwordFile = flag.String("postgres_password_file", "", "location of the password secret") // should be per DB
 )
 
 func main() {

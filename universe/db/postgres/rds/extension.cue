@@ -43,7 +43,7 @@ extension: fn.#Extension & {
 			requires: [
 				"namespacelabs.dev/foundation/universe/db/postgres/internal/init",
 				"namespacelabs.dev/foundation/universe/db/postgres/rds/init",
-				"namespacelabs.dev/foundation/universe/db/postgres/server",
+				"namespacelabs.dev/foundation/universe/db/postgres/rds/testing/server",
 			]
 		}
 	}
