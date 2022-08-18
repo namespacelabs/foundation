@@ -206,7 +206,7 @@ func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *con
 
 	// TODO improve robustness - configurable?
 	if len(systemInfo.Regions) != 1 {
-		return fmt.Errorf("Unable to infer region.")
+		return fmt.Errorf("unable to infer region")
 	}
 	region := systemInfo.Regions[0]
 
