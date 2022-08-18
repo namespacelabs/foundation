@@ -25,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/db/postgres"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/toolcommon"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds/internal"
@@ -135,16 +134,6 @@ func internalEndpoint(s *schema.Stack) *schema.Endpoint {
 }
 
 func applyIncluster(req configure.StackRequest, dbs map[string]*rds.Database, owners map[string][]string, out *configure.ApplyOutput) error {
-	inclusterDbs := map[string]*incluster.Database{}
-
-	for name, db := range dbs {
-		inclusterDb := &incluster.Database{
-			Name:       db.Name,
-			SchemaFile: db.SchemaFile,
-		}
-		inclusterDbs[name] = inclusterDb
-	}
-
 	endpoint := internalEndpoint(req.Stack)
 
 	value, err := json.Marshal(endpoint)
@@ -169,7 +158,7 @@ func applyIncluster(req configure.StackRequest, dbs map[string]*rds.Database, ow
 
 	// TODO: creds should be definable per db instance #217
 	var credsSecret *secrets.SecretDevMap_SecretSpec
-	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds") {
+	for _, secret := range col.SecretsOf(creds) {
 		if secret.Name == "postgres-password-file" {
 			credsSecret = secret
 		}

@@ -58,15 +58,11 @@ func mountConfigs(dbs map[string]*postgres.Database, namespace string, name stri
 		configPath := filepath.Join(name, "config", db.Name)
 		configKey := makeKey(configPath)
 
-		config := &postgres.Database{
-			Name: db.Name,
-			SchemaFile: &types.Resource{
-				Path: filepath.Join(mountPath, schemaPath),
-			},
-			HostedAt: db.HostedAt,
+		db.SchemaFile = &types.Resource{
+			Path: filepath.Join(mountPath, schemaPath),
 		}
 
-		configBytes, err := json.Marshal(config)
+		configBytes, err := json.Marshal(db)
 		if err != nil {
 			return nil, err
 		}
