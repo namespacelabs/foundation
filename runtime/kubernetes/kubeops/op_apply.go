@@ -6,8 +6,10 @@ package kubeops
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,6 +88,49 @@ func registerApply() {
 					if err := kobs.WaitForCondition[*apiextensionsv1.ApiextensionsV1Client](
 						ctx, cli, tasks.Action("kubernetes.wait-for-crd").Arg("crd", crd),
 						waitForCRD{apply.ResourceClass.Resource, crd}); err != nil {
+						return false, err
+					}
+				}
+
+				// Creating Deployments and Statefulsets that refer to the
+				// default service account, requires that the default service
+				// account actually exists. And creating the default service
+				// account takes a bit of time after creating a namespace.
+				var waitOnNamespace string
+				switch header.Kind {
+				case "Deployment":
+					var d appsv1.Deployment
+					if err := json.Unmarshal([]byte(apply.BodyJson), &d); err != nil {
+						return false, err
+					}
+					if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
+						waitOnNamespace = header.Namespace
+					}
+				case "Statefulset":
+					var d appsv1.StatefulSet
+					if err := json.Unmarshal([]byte(apply.BodyJson), &d); err != nil {
+						return false, err
+					}
+					if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
+						waitOnNamespace = header.Namespace
+					}
+				case "Pod":
+					var d v1.Pod
+					if err := json.Unmarshal([]byte(apply.BodyJson), &d); err != nil {
+						return false, err
+					}
+					if d.Spec.ServiceAccountName == "" || d.Spec.ServiceAccountName == "default" {
+						waitOnNamespace = header.Namespace
+					}
+				}
+
+				if waitOnNamespace != "" {
+					c, err := k8s.NewForConfig(restcfg)
+					if err != nil {
+						return false, err
+					}
+
+					if err := waitForDefaultServiceAccount(ctx, c, waitOnNamespace); err != nil {
 						return false, err
 					}
 				}
@@ -219,38 +264,31 @@ func registerApply() {
 			return &ops.HandleResult{
 				Waiters: waiters,
 			}, nil
-
-		case "Namespace":
-			// Special-case namespace, we don't return until the default service account has been created.
-			c, err := k8s.NewForConfig(restcfg)
-			if err != nil {
-				return nil, err
-			}
-
-			if err := tasks.Action("kubernetes.apply.wait-for-namespace").Arg("name", header.Name).Run(ctx, func(ctx context.Context) error {
-				w, err := c.CoreV1().ServiceAccounts(header.Name).Watch(ctx, metav1.ListOptions{})
-				if err != nil {
-					return fnerrors.InternalError("kubernetes: failed to wait until the namespace was ready: %w", err)
-				}
-
-				defer w.Stop()
-
-				// Wait until the default service account has been created.
-				for ev := range w.ResultChan() {
-					if account, ok := ev.Object.(*v1.ServiceAccount); ok && ev.Type == watch.Added {
-						if account.Name == "default" {
-							return nil // Service account is ready.
-						}
-					}
-				}
-
-				return nil
-			}); err != nil {
-				return nil, err
-			}
 		}
 
 		return nil, nil
+	})
+}
+
+func waitForDefaultServiceAccount(ctx context.Context, c *k8s.Clientset, namespace string) error {
+	return tasks.Action("kubernetes.apply.wait-for-namespace").Arg("name", namespace).Run(ctx, func(ctx context.Context) error {
+		w, err := c.CoreV1().ServiceAccounts(namespace).Watch(ctx, metav1.ListOptions{})
+		if err != nil {
+			return fnerrors.InternalError("kubernetes: failed to wait until the namespace was ready: %w", err)
+		}
+
+		defer w.Stop()
+
+		// Wait until the default service account has been created.
+		for ev := range w.ResultChan() {
+			if account, ok := ev.Object.(*v1.ServiceAccount); ok && ev.Type == watch.Added {
+				if account.Name == "default" {
+					return nil // Service account is ready.
+				}
+			}
+		}
+
+		return nil
 	})
 }
 
