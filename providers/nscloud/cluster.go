@@ -6,10 +6,7 @@ package nscloud
 
 import (
 	"context"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
-	"fmt"
 	"io"
 	"time"
 
@@ -19,11 +16,7 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8s "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -248,47 +241,6 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 	cfg.APIVersion = "v1"
 	cfg.CurrentContext = "default"
 
-	if err := tasks.Action("nscloud.cluster-wait-readiness").Arg("cluster_id", cr.ClusterId).Run(ctx, func(ctx context.Context) error {
-		notBefore, err := decodeCert(cr.Cluster.CertificateAuthorityData)
-		if err == nil {
-			x := time.Until(notBefore)
-			if x > 0 {
-				time.Sleep(x)
-			}
-		} else {
-			fmt.Fprintf(console.Warnings(ctx), "certificate check failed, skipping: %v", err)
-		}
-
-		clientCfg := clientcmd.NewDefaultClientConfig(*cfg, nil)
-		restCfg, err := clientCfg.ClientConfig()
-		if err != nil {
-			return err
-		}
-
-		cli, err := k8s.NewForConfig(restCfg)
-		if err != nil {
-			return err
-		}
-
-		w, err := cli.CoreV1().Nodes().Watch(ctx, v1.ListOptions{})
-		if err != nil {
-			return err
-		}
-
-		defer w.Stop()
-
-		// Wait until we see a node.
-		for e := range w.ResultChan() {
-			if e.Object != nil {
-				return nil
-			}
-		}
-
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
 	result := &CreateClusterResult{
 		ClusterId:  cr.ClusterId,
 		Cluster:    cr.Cluster,
@@ -321,22 +273,6 @@ func ListClusters(ctx context.Context) (*KubernetesClusterList, error) {
 
 		return &list, nil
 	})
-}
-
-func decodeCert(certData []byte) (time.Time, error) {
-	var zero time.Time
-
-	block, _ := pem.Decode(certData)
-	if block == nil || block.Type != "CERTIFICATE" {
-		return zero, fnerrors.InternalError("expected CERTIFICATE block")
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return zero, fnerrors.InternalError("invalid certificate: %w", err)
-	}
-
-	return cert.NotBefore, nil
 }
 
 type clusterCreateProgress struct {
