@@ -8,5 +8,12 @@ package foundation.universe.db.postgres.opaque;
 
 option go_package = "namespacelabs.dev/foundation/universe/db/postgres/opaque";
 
-// Export Database type in current package for codegen compatibility
-import public "universe/db/postgres/database.proto";
+import "std/proto/options.proto";
+import "std/types/resource.proto";
+import "universe/db/postgres/database.proto";
+
+message Database {
+    string                                            name        = 1;
+    foundation.std.types.Resource                     schema_file = 2 [(foundation.std.proto.provision_only) = true];
+    foundation.universe.db.postgres.Database.Endpoint hosted_at   = 3;
+}

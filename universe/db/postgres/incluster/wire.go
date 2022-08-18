@@ -12,8 +12,6 @@ import (
 
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/universe/db/postgres"
-	"namespacelabs.dev/foundation/universe/db/postgres/internal/base"
-	"namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds"
 )
 
 const EndpointFlag = "postgresql_endpoint"
@@ -45,17 +43,15 @@ func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*po
 		return nil, fmt.Errorf("startup configuration missing, --%s not specified", EndpointFlag)
 	}
 
-	return ProvideDb(ctx, db.Name, endpoint, deps.Creds, deps.Wire)
-}
-
-func ProvideDb(ctx context.Context, name string, endpoint *schema.Endpoint, creds *gencreds.Creds, wire base.WireDatabase) (*postgres.DB, error) {
-	base := &postgres.Database{
-		Name: name,
-		HostedAt: &postgres.Endpoint{
+	return deps.Wire.ProvideDatabase(ctx, &postgres.Database{
+		Name: db.Name,
+		HostedAt: &postgres.Database_Endpoint{
 			Address: endpoint.AllocatedName,
 			Port:    uint32(endpoint.Port.ContainerPort),
 		},
-	}
-
-	return wire.ProvideDatabase(ctx, base, "postgres", creds.Password)
+		Credentials: &postgres.Database_Credentials{
+			User:     &postgres.Database_Credentials_Secret{Value: "postgres"},
+			Password: &postgres.Database_Credentials_Secret{Value: deps.Creds.Password},
+		},
+	})
 }

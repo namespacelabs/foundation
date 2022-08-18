@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/toolcommon"
+	"namespacelabs.dev/foundation/universe/db/postgres/opaque"
 )
 
 const postgresType = "opaque"
@@ -30,11 +31,11 @@ func main() {
 	configure.Handle(h)
 }
 
-func collectDatabases(server *schema.Server, owner string) (map[string]*postgres.Database, error) {
-	dbs := map[string]*postgres.Database{}
+func collectDatabases(server *schema.Server, owner string) (map[string]*opaque.Database, error) {
+	dbs := map[string]*opaque.Database{}
 	owners := map[string][]string{}
-	if err := allocations.Visit(server.Allocation, schema.PackageName(owner), &postgres.Database{},
-		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, db *postgres.Database) error {
+	if err := allocations.Visit(server.Allocation, schema.PackageName(owner), &opaque.Database{},
+		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, db *opaque.Database) error {
 			if db.HostedAt == nil {
 				return fnerrors.UserError(nil, "%s: database %q is missing an endpoint", alloc.InstanceOwner, db.GetName())
 			}
@@ -56,30 +57,45 @@ func collectDatabases(server *schema.Server, owner string) (map[string]*postgres
 }
 
 func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	initArgs := []string{}
-
 	col, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
 		return err
 	}
 
 	// TODO: creds should be definable per db instance #217
+	var user, password *postgres.Database_Credentials_Secret
 	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/opaque/creds") {
 		switch secret.Name {
 		case "postgres-user-file":
-			initArgs = append(initArgs, fmt.Sprintf("--postgres_user_file=%s", secret.FromPath))
+			user = &postgres.Database_Credentials_Secret{
+				FromPath: secret.FromPath,
+			}
 		case "postgres-password-file":
-			initArgs = append(initArgs, fmt.Sprintf("--postgres_password_file=%s", secret.FromPath))
+			password = &postgres.Database_Credentials_Secret{
+				FromPath: secret.FromPath,
+			}
 		default:
 		}
 	}
 
-	dbs, err := collectDatabases(r.Focus.Server, r.PackageOwner())
+	inputs, err := collectDatabases(r.Focus.Server, r.PackageOwner())
 	if err != nil {
 		return err
 	}
 
-	return toolcommon.Apply(r, dbs, postgresType, initArgs, out)
+	dbs := map[string]*postgres.Database{}
+	for key, db := range inputs {
+		dbs[key] = &postgres.Database{
+			Name:     db.Name,
+			HostedAt: db.HostedAt,
+			Credentials: &postgres.Database_Credentials{
+				User:     user,
+				Password: password,
+			},
+		}
+	}
+
+	return toolcommon.Apply(r, dbs, postgresType, out)
 }
 
 func (tool) Delete(_ context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {

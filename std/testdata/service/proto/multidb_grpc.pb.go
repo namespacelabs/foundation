@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MultiDbListServiceClient interface {
+	AddRds(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	AddPostgres(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	AddMaria(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Merges from all dbs.
@@ -35,6 +36,15 @@ type multiDbListServiceClient struct {
 
 func NewMultiDbListServiceClient(cc grpc.ClientConnInterface) MultiDbListServiceClient {
 	return &multiDbListServiceClient{cc}
+}
+
+func (c *multiDbListServiceClient) AddRds(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/std.testdata.service.proto.MultiDbListService/AddRds", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *multiDbListServiceClient) AddPostgres(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -68,6 +78,7 @@ func (c *multiDbListServiceClient) List(ctx context.Context, in *emptypb.Empty, 
 // All implementations should embed UnimplementedMultiDbListServiceServer
 // for forward compatibility
 type MultiDbListServiceServer interface {
+	AddRds(context.Context, *AddRequest) (*emptypb.Empty, error)
 	AddPostgres(context.Context, *AddRequest) (*emptypb.Empty, error)
 	AddMaria(context.Context, *AddRequest) (*emptypb.Empty, error)
 	// Merges from all dbs.
@@ -78,6 +89,9 @@ type MultiDbListServiceServer interface {
 type UnimplementedMultiDbListServiceServer struct {
 }
 
+func (UnimplementedMultiDbListServiceServer) AddRds(context.Context, *AddRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddRds not implemented")
+}
 func (UnimplementedMultiDbListServiceServer) AddPostgres(context.Context, *AddRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddPostgres not implemented")
 }
@@ -97,6 +111,24 @@ type UnsafeMultiDbListServiceServer interface {
 
 func RegisterMultiDbListServiceServer(s grpc.ServiceRegistrar, srv MultiDbListServiceServer) {
 	s.RegisterService(&MultiDbListService_ServiceDesc, srv)
+}
+
+func _MultiDbListService_AddRds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MultiDbListServiceServer).AddRds(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/std.testdata.service.proto.MultiDbListService/AddRds",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MultiDbListServiceServer).AddRds(ctx, req.(*AddRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _MultiDbListService_AddPostgres_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -160,6 +192,10 @@ var MultiDbListService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "std.testdata.service.proto.MultiDbListService",
 	HandlerType: (*MultiDbListServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "AddRds",
+			Handler:    _MultiDbListService_AddRds_Handler,
+		},
 		{
 			MethodName: "AddPostgres",
 			Handler:    _MultiDbListService_AddPostgres_Handler,

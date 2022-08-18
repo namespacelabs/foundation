@@ -9,7 +9,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"time"
 
@@ -32,8 +31,6 @@ var (
 	envName            = flag.String("env_name", "", "Name of current environment.")
 	vpcID              = flag.String("eks_vpc_id", "", "VPC ID of the current EKS cluster.")
 	awsCredentialsFile = flag.String("aws_credentials_file", "", "Path to the AWS credentials file.")
-	userFile           = flag.String("postgres_user_file", "", "location of the user secret")
-	passwordFile       = flag.String("postgres_password_file", "", "location of the password secret")
 
 	ipRange = "0.0.0.0/0" // TODO lock down
 
@@ -81,7 +78,7 @@ func ensureSecurityGroup(ctx context.Context, ec2cli *ec2.Client, clusterId, vpc
 	return "", fmt.Errorf("failed to create security group: %v", err)
 }
 
-func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.Client, ec2cli *ec2.Client, dbGroup string, db *postgres.Database, user, password string) error {
+func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.Client, ec2cli *ec2.Client, dbGroup string, db *postgres.Database) error {
 	id := internal.ClusterIdentifier(envName, db.Name)
 
 	groupId, err := ensureSecurityGroup(ctx, ec2cli, id, vpcId)
@@ -92,8 +89,8 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 	create := &awsrds.CreateDBClusterInput{
 		DBClusterIdentifier:    aws.String(id),
 		DatabaseName:           aws.String(db.Name),
-		MasterUsername:         aws.String(user),
-		MasterUserPassword:     aws.String(password),
+		MasterUsername:         aws.String(db.Credentials.User.Value),
+		MasterUserPassword:     aws.String(db.Credentials.Password.Value),
 		Engine:                 aws.String("postgres"), // Also set engine version?
 		AllocatedStorage:       aws.Int32(int32(storage)),
 		DBClusterInstanceClass: aws.String(class),
@@ -124,11 +121,11 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 	}
 
 	if len(resp.DBClusters) != 1 {
-		return fmt.Errorf("Expected one cluster with identifier %s, got %d", id, len(resp.DBClusters))
+		return fmt.Errorf("expected one cluster with identifier %s, got %d", id, len(resp.DBClusters))
 	}
 
 	desc := resp.DBClusters[0]
-	db.HostedAt = &postgres.Endpoint{
+	db.HostedAt = &postgres.Database_Endpoint{
 		Address: *desc.Endpoint,
 		Port:    uint32(*desc.Port),
 	}
@@ -176,7 +173,7 @@ wait:
 			}
 		}
 
-		return initcommon.PrepareDatabase(ctx, db, user, password)
+		return initcommon.PrepareDatabase(ctx, db)
 	}
 }
 
@@ -227,16 +224,6 @@ func main() {
 	log.Printf("postgres init begins")
 	ctx := context.Background()
 
-	user, err := readUser()
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	password, err := readPassword()
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-
 	if *awsCredentialsFile == "" {
 		log.Fatalf("Required flag --aws_credentials_file is not set.")
 	}
@@ -272,7 +259,7 @@ func main() {
 	for _, db := range dbs {
 		db := db // Close db
 		eg.Go(func() error {
-			return prepareCluster(ctx, *envName, *vpcID, rdscli, ec2cli, dbGroup, db, user, password)
+			return prepareCluster(ctx, *envName, *vpcID, rdscli, ec2cli, dbGroup, db)
 		})
 	}
 
@@ -281,26 +268,4 @@ func main() {
 	}
 
 	log.Printf("postgres init completed")
-}
-
-func readUser() (string, error) {
-	if *userFile == "" {
-		return "postgres", nil
-	}
-
-	user, err := ioutil.ReadFile(*userFile)
-	if err != nil {
-		return "", fmt.Errorf("unable to read file %s: %v", *userFile, err)
-	}
-
-	return string(user), nil
-}
-
-func readPassword() (string, error) {
-	pw, err := ioutil.ReadFile(*passwordFile)
-	if err != nil {
-		return "", fmt.Errorf("unable to read file %s: %v", *passwordFile, err)
-	}
-
-	return string(pw), nil
 }

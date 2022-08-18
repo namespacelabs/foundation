@@ -25,8 +25,6 @@ import (
 	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/db/postgres"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
-	inclustertool "namespacelabs.dev/foundation/universe/db/postgres/incluster/configure"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/toolcommon"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds/internal"
@@ -41,9 +39,8 @@ const (
 	rdsInit = "namespacelabs.dev/foundation/universe/db/postgres/rds/init"
 	rdsNode = "namespacelabs.dev/foundation/universe/db/postgres/rds"
 
-	inclusterNode   = "namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	inclusterInit   = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
-	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/server"
+	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/server"
 )
 
 func main() {
@@ -75,7 +72,7 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 
 	// In development or testing, use incluster Postgres.
 	if useIncluster(req.Env) {
-		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{Binary: inclusterInit})
+		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{Binary: inclusterInit}) // If a server also depends on incluster postgres, this init will be added twice. This is ok for now, since the init is idempotent.
 		resp.PreparedProvisionPlan.DeclaredStack = append(resp.PreparedProvisionPlan.DeclaredStack, inclusterServer)
 	} else {
 		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{Binary: rdsInit})
@@ -87,10 +84,6 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 type provisionHook struct{}
 
 func (provisionHook) Apply(_ context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
-	if err := checkPrecondition(req); err != nil {
-		return err
-	}
-
 	dbs := map[string]*rds.Database{}
 	owners := map[string][]string{}
 	if err := allocations.Visit(req.Focus.Server.Allocation, rdsNode, &rds.Database{},
@@ -118,25 +111,72 @@ func (provisionHook) Apply(_ context.Context, req configure.StackRequest, out *c
 
 func (provisionHook) Delete(_ context.Context, req configure.StackRequest, out *configure.DeleteOutput) error {
 	if useIncluster(req.Env) {
-		return inclustertool.Delete(req, out)
+		return toolcommon.Delete(req, postgresType, out)
 	}
 
 	// TODO
 	return nil
 }
 
-func applyIncluster(req configure.StackRequest, dbs map[string]*rds.Database, owners map[string][]string, out *configure.ApplyOutput) error {
-	inclusterDbs := map[string]*incluster.Database{}
-
-	for name, db := range dbs {
-		inclusterDb := &incluster.Database{
-			Name:       db.Name,
-			SchemaFile: db.SchemaFile,
+func internalEndpoint(s *schema.Stack) *schema.Endpoint {
+	for _, e := range s.Endpoint {
+		if e.ServiceName == "postgres" && e.ServerOwner == inclusterServer {
+			return e
 		}
-		inclusterDbs[name] = inclusterDb
 	}
 
-	return inclustertool.Apply(req, inclusterDbs, owners, out)
+	return nil
+}
+
+func applyIncluster(req configure.StackRequest, dbs map[string]*rds.Database, owners map[string][]string, out *configure.ApplyOutput) error {
+	endpoint := internalEndpoint(req.Stack)
+
+	value, err := json.Marshal(endpoint)
+	if err != nil {
+		return err
+	}
+
+	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
+		With: &kubedef.ContainerExtension{
+			Args: []string{fmt.Sprintf("--%s=%s", rds.InclusterEndpointFlag, value)},
+			// XXX remove when backwards compat no longer necessary.
+			ArgTuple: []*kubedef.ContainerExtension_ArgTuple{{
+				Name:  rds.InclusterEndpointFlag,
+				Value: string(value),
+			}},
+		}})
+
+	col, err := secrets.Collect(req.Focus.Server)
+	if err != nil {
+		return err
+	}
+
+	// TODO: creds should be definable per db instance #217
+	var credsSecret *secrets.SecretDevMap_SecretSpec
+	for _, secret := range col.SecretsOf(creds) {
+		if secret.Name == "postgres-password-file" {
+			credsSecret = secret
+		}
+	}
+
+	endpointedDbs := map[string]*postgres.Database{}
+	for name, db := range dbs {
+		endpointedDbs[name] = &postgres.Database{
+			Name:       db.Name,
+			SchemaFile: db.SchemaFile,
+			HostedAt: &postgres.Database_Endpoint{
+				Address: endpoint.AllocatedName,
+				Port:    uint32(endpoint.Port.ContainerPort),
+			},
+			Credentials: &postgres.Database_Credentials{
+				Password: &postgres.Database_Credentials_Secret{
+					FromPath: credsSecret.FromPath,
+				},
+			},
+		}
+	}
+
+	return toolcommon.Apply(req, endpointedDbs, postgresType, out)
 }
 
 func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *configure.ApplyOutput) error {
@@ -161,7 +201,7 @@ func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *con
 
 	// TODO improve robustness - configurable?
 	if len(systemInfo.Regions) != 1 {
-		return fmt.Errorf("Unable to infer region.")
+		return fmt.Errorf("unable to infer region")
 	}
 	region := systemInfo.Regions[0]
 
@@ -222,14 +262,6 @@ func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *con
 
 	out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Access IAM Policy", associate))
 
-	baseDbs := map[string]*postgres.Database{}
-	for name, db := range dbs {
-		baseDbs[name] = &postgres.Database{
-			Name:       db.Name,
-			SchemaFile: db.SchemaFile,
-		}
-	}
-
 	col, err := secrets.Collect(req.Focus.Server)
 	if err != nil {
 		return err
@@ -241,9 +273,10 @@ func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *con
 	}
 
 	// TODO: creds should be definable per db instance #217
+	var credsSecret *secrets.SecretDevMap_SecretSpec
 	for _, secret := range col.SecretsOf(creds) {
 		if secret.Name == "postgres-password-file" {
-			initArgs = append(initArgs, fmt.Sprintf("--postgres_password_file=%s", secret.FromPath))
+			credsSecret = secret
 			break
 		}
 	}
@@ -254,37 +287,26 @@ func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *con
 		}
 	}
 
-	return toolcommon.ApplyForInit(req, baseDbs, postgresType, rdsInit, initArgs, out)
-}
+	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
+		With: &kubedef.ContainerExtension{
+			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
+				PackageName: rdsInit,
+				Arg:         initArgs,
+			}},
+		}})
 
-func checkPrecondition(req configure.StackRequest) error {
-	owner := findOwner(req.Focus.Server.Allocation, inclusterNode)
-
-	if owner == "" {
-		return nil
-	}
-
-	var sb strings.Builder
-	sb.WriteString("We currently don't support mixing incluster Postgres with RDS Postgres in a single server:\n")
-	sb.WriteString(fmt.Sprintf("%s includes %s which instantiates %s. ", req.Focus.Server.Name, owner, inclusterNode))
-
-	// For debug help, also add RDS dep.
-	owner = findOwner(req.Focus.Server.Allocation, rdsNode)
-	if owner != "" {
-		sb.WriteString(fmt.Sprintf("\n%s includes %s which instantiates %s. ", req.Focus.Server.Name, owner, rdsNode))
-	}
-
-	return fmt.Errorf(sb.String())
-}
-
-func findOwner(allocs []*schema.Allocation, pkg string) string {
-	for _, alloc := range allocs {
-		for _, inst := range alloc.Instance {
-			if inst.PackageName == pkg {
-				return inst.InstanceOwner
-			}
+	baseDbs := map[string]*postgres.Database{}
+	for name, db := range dbs {
+		baseDbs[name] = &postgres.Database{
+			Name:       db.Name,
+			SchemaFile: db.SchemaFile,
+			Credentials: &postgres.Database_Credentials{
+				Password: &postgres.Database_Credentials_Secret{
+					FromPath: credsSecret.FromPath,
+				},
+			},
 		}
 	}
 
-	return ""
+	return toolcommon.ApplyForInit(req, baseDbs, postgresType, rdsInit, out)
 }
