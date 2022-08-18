@@ -11,15 +11,28 @@ option go_package = "namespacelabs.dev/foundation/universe/db/postgres";
 import "std/proto/options.proto";
 import "std/types/resource.proto";
 
-message Endpoint {
-    string address = 1;
-    uint32 port    = 2;
-}
 
 message Database {
     string                        name        = 1;
     foundation.std.types.Resource schema_file = 2 [(foundation.std.proto.provision_only) = true];
     Endpoint                      hosted_at   = 3;
+    Credentials                   credentials = 4;
+
+    message Endpoint {
+        string address = 1;
+        uint32 port    = 2;
+    }
+
+    message Credentials {
+        Secret user     = 1;
+        Secret password = 2;
+
+        message Secret {
+            // Only set one of these fields.
+            string value = 1;
+            string from_path  = 2;
+        }
+    }
 }
 
 // This type represents a fully formed database. This is an internal type, used

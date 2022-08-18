@@ -117,11 +117,11 @@ func mountConfigs(dbs map[string]*postgres.Database, namespace string, name stri
 	return args, nil
 }
 
-func Apply(r configure.StackRequest, dbs map[string]*postgres.Database, name string, initArgs []string, out *configure.ApplyOutput) error {
-	return ApplyForInit(r, dbs, name, initPkg, initArgs, out)
+func Apply(r configure.StackRequest, dbs map[string]*postgres.Database, name string, out *configure.ApplyOutput) error {
+	return ApplyForInit(r, dbs, name, initPkg, out)
 }
 
-func ApplyForInit(r configure.StackRequest, dbs map[string]*postgres.Database, name string, initPkg string, initArgs []string, out *configure.ApplyOutput) error {
+func ApplyForInit(r configure.StackRequest, dbs map[string]*postgres.Database, name string, initPkg string, out *configure.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
@@ -133,13 +133,11 @@ func ApplyForInit(r configure.StackRequest, dbs map[string]*postgres.Database, n
 		return err
 	}
 
-	initArgs = append(initArgs, args...)
-
 	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
 		With: &kubedef.ContainerExtension{
 			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
 				PackageName: initPkg,
-				Arg:         initArgs,
+				Arg:         args,
 			}},
 		}})
 

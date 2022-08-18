@@ -162,7 +162,37 @@ func applyIncluster(req configure.StackRequest, dbs map[string]*rds.Database, ow
 			}},
 		}})
 
-	return toolcommon.Apply(req, endpointedDbs, postgresType, initArgs, out)
+	col, err := secrets.Collect(req.Focus.Server)
+	if err != nil {
+		return err
+	}
+
+	// TODO: creds should be definable per db instance #217
+	var credsSecret *secrets.SecretDevMap_SecretSpec
+	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds") {
+		if secret.Name == "postgres-password-file" {
+			credsSecret = secret
+		}
+	}
+
+	endpointedDbs := map[string]*postgres.Database{}
+	for name, db := range dbs {
+		endpointedDbs[name] = &postgres.Database{
+			Name:       db.Name,
+			SchemaFile: db.SchemaFile,
+			HostedAt: &postgres.Database_Endpoint{
+				Address: endpoint.AllocatedName,
+				Port:    uint32(endpoint.Port.ContainerPort),
+			},
+			Credentials: &postgres.Database_Credentials{
+				Password: &postgres.Database_Credentials_Secret{
+					FromPath: credsSecret.FromPath,
+				},
+			},
+		}
+	}
+
+	return toolcommon.Apply(req, endpointedDbs, postgresType, out)
 }
 
 func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *configure.ApplyOutput) error {
@@ -248,14 +278,6 @@ func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *con
 
 	out.Invocations = append(out.Invocations, defs.Static("RDS Postgres Access IAM Policy", associate))
 
-	baseDbs := map[string]*postgres.Database{}
-	for name, db := range dbs {
-		baseDbs[name] = &postgres.Database{
-			Name:       db.Name,
-			SchemaFile: db.SchemaFile,
-		}
-	}
-
 	col, err := secrets.Collect(req.Focus.Server)
 	if err != nil {
 		return err
@@ -267,9 +289,10 @@ func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *con
 	}
 
 	// TODO: creds should be definable per db instance #217
+	var credsSecret *secrets.SecretDevMap_SecretSpec
 	for _, secret := range col.SecretsOf(creds) {
 		if secret.Name == "postgres-password-file" {
-			initArgs = append(initArgs, fmt.Sprintf("--postgres_password_file=%s", secret.FromPath))
+			credsSecret = secret
 			break
 		}
 	}
@@ -280,7 +303,28 @@ func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *con
 		}
 	}
 
-	return toolcommon.ApplyForInit(req, baseDbs, postgresType, rdsInit, initArgs, out)
+	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
+		With: &kubedef.ContainerExtension{
+			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
+				PackageName: rdsInit,
+				Arg:         initArgs,
+			}},
+		}})
+
+	baseDbs := map[string]*postgres.Database{}
+	for name, db := range dbs {
+		baseDbs[name] = &postgres.Database{
+			Name:       db.Name,
+			SchemaFile: db.SchemaFile,
+			Credentials: &postgres.Database_Credentials{
+				Password: &postgres.Database_Credentials_Secret{
+					FromPath: credsSecret.FromPath,
+				},
+			},
+		}
+	}
+
+	return toolcommon.ApplyForInit(req, baseDbs, postgresType, rdsInit, out)
 }
 
 func checkPrecondition(req configure.StackRequest) error {

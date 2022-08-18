@@ -79,8 +79,6 @@ func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.Ap
 			}},
 		}})
 
-	initArgs := []string{}
-
 	col, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
 		return err
@@ -92,10 +90,6 @@ func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.Ap
 		if secret.Name == "postgres-password-file" {
 			credsSecret = secret
 		}
-	}
-
-	if credsSecret != nil {
-		initArgs = append(initArgs, fmt.Sprintf("--postgres_password_file=%s", credsSecret.FromPath))
 	}
 
 	var creds *postgres.InstantiatedDatabase_Credentials
@@ -112,9 +106,14 @@ func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.Ap
 		endpointedDbs[name] = &postgres.Database{
 			Name:       db.Name,
 			SchemaFile: db.SchemaFile,
-			HostedAt: &postgres.Endpoint{
+			HostedAt: &postgres.Database_Endpoint{
 				Address: endpoint.AllocatedName,
 				Port:    uint32(endpoint.Port.ContainerPort),
+			},
+			Credentials: &postgres.Database_Credentials{
+				Password: &postgres.Database_Credentials_Secret{
+					FromPath: credsSecret.FromPath,
+				},
 			},
 		}
 	}
@@ -144,7 +143,7 @@ func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.Ap
 		Impl:  serializedComputed,
 	})
 
-	return toolcommon.Apply(r, endpointedDbs, postgresType, initArgs, out)
+	return toolcommon.Apply(r, endpointedDbs, postgresType, out)
 }
 
 func (tool) Delete(_ context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {

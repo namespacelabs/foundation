@@ -65,13 +65,15 @@ func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*po
 		return nil, err
 	}
 
-	base := &postgres.Database{
+	return deps.Wire.ProvideDatabase(ctx, &postgres.Database{
 		Name: db.Name,
-		HostedAt: &postgres.Endpoint{
+		HostedAt: &postgres.Database_Endpoint{
 			Address: endpoint.AllocatedName,
 			Port:    uint32(endpoint.Port.ContainerPort),
 		},
-	}
-
-	return deps.Wire.ProvideDatabase(ctx, base, "postgres", deps.Creds.Password)
+		Credentials: &postgres.Database_Credentials{
+			User:     &postgres.Database_Credentials_Secret{Value: "postgres"},
+			Password: &postgres.Database_Credentials_Secret{Value: deps.Creds.Password},
+		},
+	})
 }

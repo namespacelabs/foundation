@@ -25,11 +25,15 @@ func logf(message string, args ...interface{}) {
 	fmt.Fprintf(os.Stdout, "%s : %s\n", time.Now().String(), fmt.Sprintf(message, args...))
 }
 
-func (w WireDatabase) ProvideDatabase(ctx context.Context, db *postgres.Database, username string, password string) (*postgres.DB, error) {
+func (w WireDatabase) ProvideDatabase(ctx context.Context, db *postgres.Database) (*postgres.DB, error) {
+	if db.Credentials.User.GetFromPath() != "" || db.Credentials.Password.GetFromPath() != "" {
+		return nil, fmt.Errorf("user and password secrets should already be resolved during provide")
+	}
+
 	// Config has to be created by ParseConfig
 	config, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
-		username,
-		password,
+		db.Credentials.User.GetValue(),
+		db.Credentials.Password.GetValue(),
 		db.HostedAt.Address,
 		db.HostedAt.Port,
 		db.Name))

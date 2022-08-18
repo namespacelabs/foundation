@@ -108,6 +108,53 @@ func applySchema(ctx context.Context, conn *pgx.Conn, db *postgres.Database) err
 	return nil
 }
 
+func readSecret(secret *postgres.Database_Credentials_Secret, cache map[string]string) error {
+	if secret.Value != "" {
+		if secret.FromPath != "" {
+			return fmt.Errorf("value and from_path may not both be set")
+		}
+		return nil
+	}
+
+	if val, ok := cache[secret.FromPath]; ok {
+		secret.Value = val
+		return nil
+	}
+
+	bytes, err := ioutil.ReadFile(secret.FromPath)
+	if err != nil {
+		return fmt.Errorf("unable to read file %s: %w", secret.FromPath, err)
+	}
+
+	secret.Value = string(bytes)
+	secret.FromPath = "" // Unset path now that we read the content.
+	cache[secret.FromPath] = secret.Value
+
+	return nil
+}
+
+func readCreds(dbs []*postgres.Database) error {
+	cache := map[string]string{}
+
+	for _, db := range dbs {
+		if err := readSecret(db.Credentials.Password, cache); err != nil {
+			return err
+		}
+
+		if db.Credentials.User.GetFromPath() == "" && db.Credentials.GetUser().GetValue() == "" {
+			db.Credentials.User = &postgres.Database_Credentials_Secret{
+				Value: "postgres", // default user
+			}
+		} else {
+			if err := readSecret(db.Credentials.User, cache); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func ReadConfigs() ([]*postgres.Database, error) {
 	dbs := []*postgres.Database{}
 
@@ -121,15 +168,20 @@ func ReadConfigs() ([]*postgres.Database, error) {
 		if err := json.Unmarshal(file, db); err != nil {
 			return nil, err
 		}
+
 		dbs = append(dbs, db)
+	}
+
+	if err := readCreds(dbs); err != nil {
+		return nil, err
 	}
 
 	return dbs, nil
 }
 
-func PrepareDatabase(ctx context.Context, db *postgres.Database, user, password string) error {
+func PrepareDatabase(ctx context.Context, db *postgres.Database) error {
 	// Postgres needs a db to connect to so we pin one that is guaranteed to exist.
-	postgresDB, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, "postgres")
+	postgresDB, err := connect(ctx, db.Credentials.User.Value, db.Credentials.Password.Value, db.HostedAt.Address, db.HostedAt.Port, "postgres")
 	if err != nil {
 		return err
 	}
@@ -139,7 +191,7 @@ func PrepareDatabase(ctx context.Context, db *postgres.Database, user, password 
 		return err
 	}
 
-	conn, err := connect(ctx, user, password, db.HostedAt.Address, db.HostedAt.Port, db.Name)
+	conn, err := connect(ctx, db.Credentials.User.Value, db.Credentials.Password.Value, db.HostedAt.Address, db.HostedAt.Port, db.Name)
 	if err != nil {
 		return err
 	}

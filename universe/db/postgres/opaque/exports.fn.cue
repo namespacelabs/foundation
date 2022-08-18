@@ -18,7 +18,7 @@ import (
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres/opaque"
 			type:        "Database"
 			typeDefinition: {
-				"typename": "foundation.universe.db.postgres.Database"
+				"typename": "foundation.universe.db.postgres.opaque.Database"
 				"source": [
 					"provider.proto",
 					"../database.proto",
