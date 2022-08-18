@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
@@ -86,6 +87,27 @@ func CreateClusterForEnv(ctx context.Context, env *schema.Environment, ephemeral
 func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*CreateClusterResult, error) {
 	var cr *CreateKubernetesClusterResponse
 	if err := tasks.Action("nscloud.cluster-create").Run(ctx, func(ctx context.Context) error {
+		req := CreateKubernetesClusterRequest{
+			Ephemeral:         ephemeral,
+			DocumentedPurpose: purpose,
+		}
+
+		if !environment.IsRunningInCI() {
+			keys, err := UserSSHKeys()
+			if err != nil {
+				return err
+			}
+
+			if keys != nil {
+				actualKeys, err := compute.GetValue(ctx, keys)
+				if err != nil {
+					return err
+				}
+
+				req.AuthorizedSshKeys = actualKeys
+			}
+		}
+
 		return fnapi.Call[CreateKubernetesClusterRequest]{
 			Endpoint: machineEndpoint,
 			Method:   "nsl.vm.api.VMService/CreateKubernetesCluster",
@@ -93,10 +115,7 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 				rt.OpaqueUserAuth = user.Opaque
 				return nil
 			},
-		}.Do(ctx, CreateKubernetesClusterRequest{
-			Ephemeral:         ephemeral,
-			DocumentedPurpose: purpose,
-		}, func(body io.Reader) error {
+		}.Do(ctx, req, func(body io.Reader) error {
 			var progress clusterCreateProgress
 			progress.status.Store("...")
 			tasks.Attachments(ctx).SetProgress(&progress)
@@ -248,7 +267,6 @@ func DestroyCluster(ctx context.Context, clusterId string) error {
 	}.Do(ctx, DestroyKubernetesClusterRequest{
 		ClusterId: clusterId,
 	}, nil)
-
 }
 
 func ListClusters(ctx context.Context) (*KubernetesClusterList, error) {
@@ -390,9 +408,10 @@ func (cr clusterRuntime) deleteCluster(ctx context.Context) (bool, error) {
 }
 
 type CreateKubernetesClusterRequest struct {
-	OpaqueUserAuth    []byte `json:"opaque_user_auth,omitempty"`
-	Ephemeral         bool   `json:"ephemeral,omitempty"`
-	DocumentedPurpose string `json:"documented_purpose,omitempty"`
+	OpaqueUserAuth    []byte   `json:"opaque_user_auth,omitempty"`
+	Ephemeral         bool     `json:"ephemeral,omitempty"`
+	DocumentedPurpose string   `json:"documented_purpose,omitempty"`
+	AuthorizedSshKeys []string `json:"authorized_ssh_keys,omitempty"`
 }
 
 type CreateKubernetesClusterResponse struct {
@@ -416,6 +435,7 @@ type KubernetesCluster struct {
 	Created           string        `json:"created,omitempty"`
 	Deadline          string        `json:"deadline,omitempty"`
 	SSHProxyEndpoint  string        `json:"ssh_proxy_endpoint,omitempty"`
+	SshPrivateKey     []byte        `json:"ssh_private_key,omitempty"`
 	DocumentedPurpose string        `json:"documented_purpose,omitempty"`
 	Shape             *ClusterShape `json:"shape,omitempty"`
 

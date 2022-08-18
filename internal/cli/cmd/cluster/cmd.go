@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -73,6 +74,8 @@ func newListCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
+	rawOutput := cmd.Flags().Bool("raw_output", false, "Dump the resulting server response, without formatting.")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		clusters, err := nscloud.ListClusters(ctx)
 		if err != nil {
@@ -81,8 +84,14 @@ func newListCmd() *cobra.Command {
 
 		stdout := console.Stdout(ctx)
 
-		for _, cluster := range clusters.Clusters {
-			fmt.Fprintf(stdout, "%s %s\n", cluster.ClusterId, formatDescription(cluster))
+		if *rawOutput {
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			enc.Encode(clusters)
+		} else {
+			for _, cluster := range clusters.Clusters {
+				fmt.Fprintf(stdout, "%s %s\n", cluster.ClusterId, formatDescription(cluster))
+			}
 		}
 
 		return nil
