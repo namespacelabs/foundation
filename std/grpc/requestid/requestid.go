@@ -56,7 +56,7 @@ func attachRequestIDToError(err error, reqid string) error {
 
 	st, _ := status.FromError(err)
 	tSt, tErr := st.WithDetails(&protocol.RequestID{Id: reqid})
-	if err == nil {
+	if tErr == nil {
 		return tSt.Err()
 	}
 
