@@ -39,9 +39,8 @@ const (
 	rdsInit = "namespacelabs.dev/foundation/universe/db/postgres/rds/init"
 	rdsNode = "namespacelabs.dev/foundation/universe/db/postgres/rds"
 
-	inclusterNode   = "namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	inclusterInit   = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
-	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/rds/testing/server"
+	inclusterServer = "namespacelabs.dev/foundation/universe/db/postgres/rds/internal/server"
 )
 
 func main() {
@@ -73,7 +72,7 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 
 	// In development or testing, use incluster Postgres.
 	if useIncluster(req.Env) {
-		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{Binary: inclusterInit})
+		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{Binary: inclusterInit}) // If a server also depends on incluster postgres, this init will be added twice. This is ok for now, since the init is idempotent.
 		resp.PreparedProvisionPlan.DeclaredStack = append(resp.PreparedProvisionPlan.DeclaredStack, inclusterServer)
 	} else {
 		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{Binary: rdsInit})
