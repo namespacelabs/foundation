@@ -17,6 +17,12 @@ import (
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
+type WellKnown string
+
+const (
+	WkAction = "action"
+)
+
 var (
 	BaseDefaultConfig = computeDefaultConfig()
 

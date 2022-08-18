@@ -141,7 +141,6 @@ type compilation struct {
 
 func (c *compilation) Action() *tasks.ActionEvent {
 	return tasks.Action("go.build.binary").
-		WellKnown(tasks.WkModule, c.binary.ModuleName).
 		Arg("binary", c.binary.BinaryName).
 		Arg("module_path", c.binary.GoModulePath).
 		Arg("source_path", c.binary.SourcePath).

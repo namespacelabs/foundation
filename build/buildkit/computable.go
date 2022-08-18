@@ -277,9 +277,7 @@ type reqToImage struct {
 
 func (l *reqToImage) Action() *tasks.ActionEvent {
 	ev := tasks.Action("buildkit.build-image").
-		Arg("platform", devhost.FormatPlatform(l.targetPlatform)).
-		WellKnown(tasks.WkCategory, "build").
-		WellKnown(tasks.WkRuntime, "docker")
+		Arg("platform", devhost.FormatPlatform(l.targetPlatform))
 
 	if l.sourcePackage != "" {
 		return ev.Scope(l.sourcePackage)
@@ -327,7 +325,14 @@ type reqToFS struct {
 }
 
 func (l *reqToFS) Action() *tasks.ActionEvent {
-	return tasks.Action("buildkit.build-fs").Arg("platform", devhost.FormatPlatform(l.targetPlatform)).WellKnown(tasks.WkAction, "build")
+	ev := tasks.Action("buildkit.build-fs").
+		Arg("platform", devhost.FormatPlatform(l.targetPlatform))
+
+	if l.sourcePackage != "" {
+		return ev.Scope(l.sourcePackage)
+	}
+
+	return ev
 }
 func (l *reqToFS) Inputs() *compute.In {
 	return l.buildInputs()

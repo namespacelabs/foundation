@@ -41,18 +41,9 @@ func (a ActionState) IsDone() bool    { return a == ActionDone || a == ActionIns
 
 type OnDoneFunc func(*protocol.Task)
 
-type WellKnown string
-
 type ActionID string
 
 func (a ActionID) String() string { return string(a) }
-
-const (
-	WkAction   = "action"
-	WkCategory = "category"
-	WkModule   = "module"
-	WkRuntime  = "tool-runtime"
-)
 
 type EventData struct {
 	ActionID       ActionID
@@ -75,10 +66,9 @@ type EventData struct {
 }
 
 type ActionEvent struct {
-	data      EventData
-	progress  ActionProgress
-	onDone    OnDoneFunc
-	wellKnown map[WellKnown]string
+	data     EventData
+	progress ActionProgress
+	onDone   OnDoneFunc
 }
 
 type ResultData struct {
@@ -158,15 +148,6 @@ func (ev *ActionEvent) Scope(pkgs ...schema.PackageName) *ActionEvent {
 
 func (ev *ActionEvent) IncludesPrivateData() *ActionEvent {
 	ev.data.HasPrivateData = true
-	return ev
-}
-
-// Register a well known property, used internally only (e.g. for throttling purposes).
-func (ev *ActionEvent) WellKnown(key WellKnown, value string) *ActionEvent {
-	if ev.wellKnown == nil {
-		ev.wellKnown = map[WellKnown]string{}
-	}
-	ev.wellKnown[key] = value
 	return ev
 }
 
@@ -304,13 +285,6 @@ func (ev *ActionEvent) RunWithOpts(ctx context.Context, opts RunOpts) error {
 	var wasCached bool
 	var releaseLease func()
 	err := ra.Call(ctx, func(ctx context.Context) error {
-		if _, ok := ev.wellKnown[WkAction]; !ok {
-			if ev.wellKnown == nil {
-				ev.wellKnown = map[WellKnown]string{}
-			}
-			ev.wellKnown[WkAction] = ev.data.Name
-		}
-
 		if opts.Wait != nil {
 			cached, err := opts.Wait(ctx)
 			if err != nil {
@@ -325,7 +299,7 @@ func (ev *ActionEvent) RunWithOpts(ctx context.Context, opts RunOpts) error {
 
 		// Classify the wait for lease time as "wait time".
 		var err error
-		releaseLease, err = throttlerFromContext(ctx).AcquireLease(ctx, ev.wellKnown)
+		releaseLease, err = throttlerFromContext(ctx).AcquireLease(ctx, map[WellKnown]string{WkAction: ev.data.Name})
 		return err
 	})
 	if err != nil {
