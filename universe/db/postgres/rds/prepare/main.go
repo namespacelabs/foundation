@@ -231,6 +231,11 @@ func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *con
 				Resource: []string{"*"}, // TODO, investigate why fmt.Sprintf("arn:aws:ec2:%s:*:subnet/*", region) doesn't work
 			},
 			{
+				Effect:   "Allow",
+				Action:   []string{"iam:CreateServiceLinkedRole"},
+				Resource: []string{"*"}, // TODO, investigate if we can limit this
+			},
+			{
 				Effect: "Allow",
 				Action: []string{
 					"ec2:CreateSecurityGroup",
