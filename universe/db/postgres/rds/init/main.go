@@ -35,9 +35,10 @@ var (
 	ipRange = "0.0.0.0/0" // TODO lock down
 
 	// TODO configurable?!
-	storage = int32(100) // min GB
-	class   = "db.m5d.xlarge"
-	iops    = 3000
+	storage       = int32(100) // min GB
+	class         = "db.m5d.xlarge"
+	iops          = 3000
+	engineVersion = "13.4"
 )
 
 func ensureSecurityGroup(ctx context.Context, ec2cli *ec2.Client, clusterId, vpcId string) (string, error) {
@@ -69,7 +70,7 @@ func ensureSecurityGroup(ctx context.Context, ec2cli *ec2.Client, clusterId, vpc
 		}
 
 		if len(res.SecurityGroups) != 1 {
-			return "", fmt.Errorf("Expected one security group with name %s, got %d", name, len(res.SecurityGroups))
+			return "", fmt.Errorf("expected one security group with name %s, got %d", name, len(res.SecurityGroups))
 		}
 
 		return *res.SecurityGroups[0].GroupId, nil
@@ -91,7 +92,8 @@ func prepareCluster(ctx context.Context, envName, vpcId string, rdscli *awsrds.C
 		DatabaseName:           aws.String(db.Name),
 		MasterUsername:         aws.String(db.Credentials.User.Value),
 		MasterUserPassword:     aws.String(db.Credentials.Password.Value),
-		Engine:                 aws.String("postgres"), // Also set engine version?
+		Engine:                 aws.String("postgres"),
+		EngineVersion:          aws.String(engineVersion),
 		AllocatedStorage:       aws.Int32(int32(storage)),
 		DBClusterInstanceClass: aws.String(class),
 		Iops:                   aws.Int32(int32(iops)),
@@ -185,11 +187,11 @@ func createDBSubnetGroup(ctx context.Context, envName string, rdscli *awsrds.Cli
 		}},
 	})
 	if err != nil {
-		return "", fmt.Errorf("Unable to list subnets for VPC %s: %v", vpcId, err)
+		return "", fmt.Errorf("unable to list subnets for VPC %s: %v", vpcId, err)
 	}
 
 	if len(resp.Subnets) == 0 {
-		return "", fmt.Errorf("Found no subnets for VPC %s", vpcId)
+		return "", fmt.Errorf("found no subnets for VPC %s", vpcId)
 	}
 
 	var subnetIds []string
