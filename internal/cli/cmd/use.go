@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -90,13 +91,8 @@ func newPgdump() *cobra.Command {
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
 		Do(func(ctx context.Context) error {
 			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt kubernetes.K8sRuntime, bind databaseBind, opts runtime.ServerRunOpts) error {
-				opts.Command = []string{"pg_dump"}
-				opts.Args = []string{
-					"-h", bind.Database.HostedAt.Address,
-					"-p", fmt.Sprintf("%d", bind.Database.HostedAt.Port),
-					"-U", "postgres",
-					bind.Database.Name,
-				}
+				opts.Command = []string{"/bin/bash"}
+				opts.Args = []string{}
 
 				var outw io.Writer
 				if out != "" {
@@ -110,7 +106,18 @@ func newPgdump() *cobra.Command {
 					outw = console.Stdout(ctx)
 				}
 
-				return rt.RunOneShot(ctx, "pgdump-"+ids.NewRandomBase32ID(8), opts, outw, false)
+				cmd := strings.NewReader(strings.Join([]string{
+					"pg_dump",
+					"-h", bind.Database.HostedAt.Address,
+					"-p", fmt.Sprintf("%d", bind.Database.HostedAt.Port),
+					"-U", "postgres",
+					bind.Database.Name,
+				}, " "))
+				return rt.RunAttached(ctx, "pgdump-"+ids.NewRandomBase32ID(8), opts, runtime.TerminalIO{
+					Stdin:  cmd,
+					Stdout: outw,
+					Stderr: os.Stderr,
+				})
 			})
 		})
 }
