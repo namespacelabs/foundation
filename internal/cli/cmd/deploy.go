@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -170,7 +170,7 @@ func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, p
 			return err
 		}
 
-		if err := ioutil.WriteFile(opts.outputPath, serialized, 0644); err != nil {
+		if err := os.WriteFile(opts.outputPath, serialized, 0644); err != nil {
 			return fnerrors.New("failed to write %q: %w", opts.outputPath, err)
 		}
 	}

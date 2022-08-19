@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -94,7 +94,7 @@ func walkSchemas(ctx context.Context, root *workspace.Root, f func(fnfs.Location
 	}
 
 	for _, e := range list.Locations {
-		ents, err := ioutil.ReadDir(filepath.Join(root.Abs(), e.RelPath))
+		ents, err := os.ReadDir(filepath.Join(root.Abs(), e.RelPath))
 		if err != nil {
 			fmt.Fprintln(console.Stderr(ctx), "failed to readdir", err)
 			continue

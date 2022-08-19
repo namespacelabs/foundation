@@ -6,7 +6,7 @@ package cmd
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
@@ -37,7 +37,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return err
 		}
 
-		raw, err := ioutil.ReadFile(args[0])
+		raw, err := os.ReadFile(args[0])
 		if err != nil {
 			return fnerrors.New("failed to load %q: %w", args[0], err)
 		}

@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"path/filepath"
 	"sort"
@@ -141,7 +141,7 @@ func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Locat
 		for _, r := range res.Value {
 			fmt.Fprintf(out, "%s\n", r.Value)
 		}
-		if err := ioutil.WriteFile(opts.outputPath, out.Bytes(), 0644); err != nil {
+		if err := os.WriteFile(opts.outputPath, out.Bytes(), 0644); err != nil {
 			return fnerrors.New("failed to write %q: %w", opts.outputPath, err)
 		}
 	}
