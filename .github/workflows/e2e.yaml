@@ -85,7 +85,7 @@ jobs:
 
       # Required by buildkit gha cache.
       - name: Expose GitHub Runtime
-        uses: crazy-max/ghaction-github-runtime@v1
+        uses: crazy-max/ghaction-github-runtime@v2
 
       - name: Setup cross-invocation caching (Go)
         uses: actions/cache@v3
@@ -152,7 +152,7 @@ jobs:
 
       # Required by buildkit gha cache.
       - name: Expose GitHub Runtime
-        uses: crazy-max/ghaction-github-runtime@v1
+        uses: crazy-max/ghaction-github-runtime@v2
 
       - name: Setup cross-invocation caching (Go)
         uses: actions/cache@v3
