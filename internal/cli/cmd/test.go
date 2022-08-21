@@ -169,6 +169,7 @@ func NewTestCmd() *cobra.Command {
 							runs.Run[k] = &storage.TestRuns_Run{
 								TestBundleId: testResults.Value.ImageRef.ImageRef(),
 								TestSummary:  testResults.Value.TestBundleSummary,
+								TestResults:  testResults.Value.Bundle,
 							}
 						}
 
@@ -200,6 +201,7 @@ func NewTestCmd() *cobra.Command {
 						runs.Run[k] = &storage.TestRuns_Run{
 							TestBundleId: res.Value.ImageRef.ImageRef(),
 							TestSummary:  res.Value.TestBundleSummary,
+							TestResults:  res.Value.Bundle,
 						}
 					} else {
 						runs.IncompatibleTest = append(runs.IncompatibleTest, &storage.TestRuns_IncompatibleTest{
