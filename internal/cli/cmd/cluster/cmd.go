@@ -200,7 +200,11 @@ func ssh(ctx context.Context, clusterId string, args []string) error {
 
 	localPort := lst.Addr().(*net.TCPAddr).Port
 
-	args = append(args, "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-p", fmt.Sprintf("%d", localPort), "janitor@127.0.0.1")
+	args = append(args,
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "UpdateHostKeys no",
+		"-p", fmt.Sprintf("%d", localPort), "janitor@127.0.0.1")
 
 	cmd := exec.CommandContext(ctx, "ssh", args...)
 	return localexec.RunInteractive(ctx, cmd)
