@@ -11,11 +11,17 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+var ConvertImagesToEstargz = false
+
 func PublishImage(tag compute.Computable[AllocatedName], image NamedImage) NamedImageID {
 	return MakeNamedImageID(image.Description(), &publishImage{tag: tag, label: image.Description(), image: AsResolvable(image.Image())})
 }
 
 func PublishResolvable(tag compute.Computable[AllocatedName], image compute.Computable[ResolvableImage]) compute.Computable[ImageID] {
+	if ConvertImagesToEstargz {
+		image = &convertToEstargz{resolvable: image}
+	}
+
 	return &publishImage{tag: tag, image: image}
 }
 

@@ -265,6 +265,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&deploy.RunCodegen, "run_codegen", deploy.RunCodegen, "If set to false, skip codegen.")
 	rootCmd.PersistentFlags().BoolVar(&deploy.PushPrebuiltsToRegistry, "deploy_push_prebuilts_to_registry", deploy.PushPrebuiltsToRegistry,
 		"If set to true, prebuilts are uploaded to the target registry.")
+	rootCmd.PersistentFlags().BoolVar(&oci.ConvertImagesToEstargz, "oci_convert_images_to_estargz", oci.ConvertImagesToEstargz,
+		"If set to true, images are converted to estargz before being uploaded to a registry.")
 	rootCmd.PersistentFlags().BoolVar(&tool.InvocationDebug, "invocation_debug", tool.InvocationDebug,
 		"If set to true, pass --debug to invocations.")
 	rootCmd.PersistentFlags().BoolVar(&kubernetes.UseNodePlatformsForProduction, "kubernetes_use_node_platforms_in_production_builds",
@@ -317,6 +319,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"lowlevel_tools_protocol_version",
 		"tools_invocation_can_use_buildkit",
 		"deploy_push_prebuilts_to_registry",
+		"oci_convert_images_to_estargz",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
