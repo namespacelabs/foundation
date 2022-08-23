@@ -27,6 +27,7 @@ require (
 	github.com/charmbracelet/glamour v0.5.0
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/containerd/containerd v1.6.6
+	github.com/containerd/stargz-snapshotter/estargz v0.11.4
 	github.com/docker/cli v20.10.17+incompatible
 	github.com/docker/docker v20.10.16+incompatible
 	github.com/docker/go-connections v0.4.0
@@ -157,7 +158,6 @@ require (
 	github.com/cockroachdb/apd/v2 v2.0.1 // indirect
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/containerd/continuity v0.2.3-0.20220330195504-d132b287edc8 // indirect
-	github.com/containerd/stargz-snapshotter/estargz v0.11.4 // indirect
 	github.com/containerd/ttrpc v1.1.0 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
