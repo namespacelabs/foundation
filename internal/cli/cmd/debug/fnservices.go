@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
 )
 
@@ -59,16 +60,21 @@ func NewFnServicesCmd() *cobra.Command {
 	_ = mapAddr.MarkFlagRequired("fqdn")
 	_ = mapAddr.MarkFlagRequired("target")
 
-	var org string
+	var subDomain, org string
 
 	allocateName := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "naming-allocate-name",
 		Short: "Allocates a TLS certificate within Namespace Cloud's scope.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env provision.Env, args []string) error {
+		if fqdn == "" && subDomain == "" {
+			return fnerrors.BadInputError("either --fqdn or --subdomain need to be specified")
+		}
+
 		nr, err := fnapi.AllocateName(ctx, fnapi.AllocateOpts{
-			FQDN: fqdn,
-			Org:  org,
+			FQDN:      fqdn,
+			Subdomain: subDomain,
+			Org:       org,
 		})
 		if err != nil {
 			return err
@@ -80,9 +86,8 @@ func NewFnServicesCmd() *cobra.Command {
 	})
 
 	allocateName.Flags().StringVar(&fqdn, "fqdn", "", "Fully qualified domain.")
+	allocateName.Flags().StringVar(&subDomain, "subdomain", "", "Wildcard domain.")
 	allocateName.Flags().StringVar(&org, "org", "", "Organization to identify as.")
-
-	_ = allocateName.MarkFlagRequired("fqdn")
 
 	cmd.AddCommand(robotLogin)
 	cmd.AddCommand(mapAddr)

@@ -33,7 +33,6 @@ type IssueResponse struct {
 
 type NameResource struct {
 	ID          ResourceID      `json:"id"`
-	FQDN        string          `json:"fqdn"`
 	Certificate NameCertificate `json:"certificate"`
 }
 

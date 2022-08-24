@@ -118,7 +118,7 @@ func certFromResource(res *fnapi.NameResource) *schema.Domain_Certificate {
 }
 
 func isResourceValid(nr *fnapi.NameResource) bool {
-	if nr.FQDN != "" && nr.Certificate.PrivateKey != nil && nr.Certificate.CertificateBundle != nil {
+	if nr.Certificate.PrivateKey != nil && nr.Certificate.CertificateBundle != nil {
 		valid, _, _ := certificates.CertIsValid(nr.Certificate.CertificateBundle)
 		return valid
 	}
