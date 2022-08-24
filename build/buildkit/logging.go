@@ -45,6 +45,7 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 	channelCount := len(writers) + len(jsonWriters)
 	if UsePlaintextLogging {
 		writers = append(writers, console.Output(ctx, console.MakeConsoleName(logid, sid, "")))
+		channelCount++
 	} else {
 		channelCount++
 	}
