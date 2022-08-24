@@ -83,6 +83,7 @@ func provideCluster(ctx context.Context, env *schema.Environment, key *devhost.C
 
 	if key.Selector.Select(key.DevHost).Get(conf) {
 		var p client.Provider
+		p.ProviderSpecific = conf.ClusterId
 		if err := json.Unmarshal(conf.SerializedConfig, &p.Config); err != nil {
 			return p, err
 		}
@@ -94,7 +95,7 @@ func provideCluster(ctx context.Context, env *schema.Environment, key *devhost.C
 		return client.Provider{}, err
 	}
 
-	return client.Provider{Config: *cfg.KubeConfig, ProviderSpecific: cfg}, nil
+	return client.Provider{Config: *cfg.KubeConfig, ProviderSpecific: cfg.ClusterId}, nil
 }
 
 type CreateClusterResult struct {
@@ -334,7 +335,7 @@ func (d deferred) New(ctx context.Context) (runtime.Runtime, error) {
 
 	bound := unbound.Bind(d.ws, d.cfg.Environment)
 
-	return clusterRuntime{Runtime: bound, ClusterId: p.ProviderSpecific.(*CreateClusterResult).ClusterId}, nil
+	return clusterRuntime{Runtime: bound, ClusterId: p.ProviderSpecific.(string)}, nil
 }
 
 func (d deferred) PrepareProvision(context.Context) (*rtypes.ProvisionProps, error) {
