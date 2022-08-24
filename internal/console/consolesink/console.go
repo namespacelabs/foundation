@@ -750,7 +750,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		return
 	}
 
-	maxDepth, actionBlockLines, renderActions := c.calculateActionHeight(height)
+	actionBlockLines, maxDepth, renderActions := c.calculateActionHeight(height)
 
 	if len(c.stickyContent) > 0 {
 		availableHeight := int(height-actionBlockLines) - 3 // Always leave at least 3 lines for logs.
