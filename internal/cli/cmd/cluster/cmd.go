@@ -180,7 +180,7 @@ func ssh(ctx context.Context, clusterId string, args []string) error {
 					HandshakeTimeout: 15 * time.Second,
 				}
 
-				serverUrl := fmt.Sprintf("ws://ssh-%s.a.nscluster.cloud/proxy", clusterId)
+				serverUrl := fmt.Sprintf("wss://ssh-%s.a.nscluster.cloud/proxy", clusterId)
 				wsConn, _, err := d.DialContext(ctx, serverUrl, nil)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
