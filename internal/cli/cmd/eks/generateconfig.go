@@ -32,7 +32,7 @@ func newGenerateConfigCmd() *cobra.Command {
 			return err
 		}
 
-		cfg, err := eks.Kubeconfig(cluster)
+		cfg, err := eks.Kubeconfig(cluster, env.Proto())
 		if err != nil {
 			return err
 		}
