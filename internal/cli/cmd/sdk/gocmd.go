@@ -20,7 +20,7 @@ import (
 
 func newGoCmd(goVersion string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                "go ...",
+		Use:                "go -- ...",
 		Short:              "Run Go.",
 		DisableFlagParsing: true,
 

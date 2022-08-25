@@ -16,7 +16,7 @@ import (
 
 func newGRPCurlCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                "grpcurl ...",
+		Use:                "grpcurl -- ...",
 		Short:              "Run grpcurl.",
 		DisableFlagParsing: true,
 

@@ -18,7 +18,7 @@ import (
 
 func newOctantCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "octant ...",
+		Use:   "octant -- ...",
 		Short: "[Experimental] Run Octant, configured for the specified environment.",
 	}
 
