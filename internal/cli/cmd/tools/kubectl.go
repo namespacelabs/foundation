@@ -6,12 +6,14 @@ package tools
 
 import (
 	"context"
-	"os"
+	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
@@ -39,6 +41,7 @@ func newKubeCtlCmd() *cobra.Command {
 		}
 
 		runtime := k8s.Bind(env.Workspace(), env.Proto())
+		k8sconfig := runtime.KubeConfig()
 		clientConfig := client.NewClientConfig(ctx, runtime.HostConfig())
 		rawConfig, err := clientConfig.RawConfig()
 		if err != nil {
@@ -52,7 +55,8 @@ func newKubeCtlCmd() *cobra.Command {
 		if err != nil {
 			return fnerrors.Wrapf(nil, err, "failed to create temp file")
 		}
-		defer os.Remove(tmpFile.Name())
+		// Keep the file so that the user may inspect and copy-paste the config.
+		// defer os.Remove(tmpFile.Name())
 		if _, err := tmpFile.Write(configBytes); err != nil {
 			return fnerrors.Wrapf(nil, err, "failed to write kubeconfig")
 		}
@@ -60,14 +64,11 @@ func newKubeCtlCmd() *cobra.Command {
 			return fnerrors.Wrapf(nil, err, "failed to close kubeconfig")
 		}
 
-		ns, _, err := clientConfig.Namespace()
-		if err != nil {
-			return fnerrors.Wrapf(nil, err, "failed to determine namespace")
-		}
 		cmdLine := append([]string{
 			"--kubeconfig=" + tmpFile.Name(),
-			"-n", ns,
+			"-n", k8sconfig.Namespace,
 		}, args...)
+		fmt.Fprintf(console.Stderr(ctx), "Running kubectl %s\n", strings.Join(cmdLine, " "))
 		kubectl := exec.CommandContext(ctx, string(kubectlBin), cmdLine...)
 		return localexec.RunInteractive(ctx, kubectl)
 	})

@@ -7,6 +7,7 @@ package eks
 import (
 	"context"
 	"encoding/base64"
+	"os"
 
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -52,9 +53,10 @@ func Kubeconfig(awsCluster *AwsCluster, env *schema.Environment) (*clientcmdapi.
 			contextName: {
 				Exec: &clientcmdapi.ExecConfig{
 					APIVersion: "client.authentication.k8s.io/v1",
-					Command:    "ns",
+					Command:    os.Args[0],
 					Args: []string{"eks", "generate-token", "--exec_credential",
 						"--env", env.Name, clusterName},
+					Env:             []clientcmdapi.ExecEnvVar{},
 					InteractiveMode: clientcmdapi.NeverExecInteractiveMode,
 				},
 			},
