@@ -36,8 +36,14 @@ _#Configurable: {
 }
 
 _#Content: {
+    { fromDir: string } | _#FileContent
+}
+
+_#FileContent: {
     // TODO consider adding fromInvocation & fromConfiguration
-    { fromFile: string } | { fromDir: string } | { fromSecret: string }
+
+    // string is used for inline content
+    string | { fromFile: string } | { fromSecret: string }
 }
 
 _#PackageSync: {

@@ -45,7 +45,7 @@ _#FromImage: {
 
 _#ContainerArgs: {
     args?:    [...string]
-    env?:     [string]: (*string | { fromSecret: string })
+    env?:     [string]: _#FileContent
     command?: string
 }
 
