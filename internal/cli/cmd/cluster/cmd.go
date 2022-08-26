@@ -109,7 +109,12 @@ func newSshCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if len(args) > 0 {
-			return ssh(ctx, args[0], args[1:])
+			cluster, err := nscloud.GetCluster(ctx, args[0])
+			if err != nil {
+				return err
+			}
+
+			return ssh(ctx, *cluster, args[1:])
 		}
 
 		clusters, err := nscloud.ListClusters(ctx)
@@ -131,7 +136,9 @@ func newSshCmd() *cobra.Command {
 			return nil
 		}
 
-		return ssh(ctx, cl.(cluster).ClusterId, nil)
+		cluster := cl.(cluster)
+
+		return ssh(ctx, cluster.Cluster(), nil)
 	})
 
 	return cmd
@@ -139,9 +146,10 @@ func newSshCmd() *cobra.Command {
 
 type cluster nscloud.KubernetesCluster
 
-func (d cluster) Title() string       { return d.ClusterId }
-func (d cluster) Description() string { return formatDescription(nscloud.KubernetesCluster(d)) }
-func (d cluster) FilterValue() string { return d.ClusterId }
+func (d cluster) Cluster() nscloud.KubernetesCluster { return nscloud.KubernetesCluster(d) }
+func (d cluster) Title() string                      { return d.ClusterId }
+func (d cluster) Description() string                { return formatDescription(nscloud.KubernetesCluster(d)) }
+func (d cluster) FilterValue() string                { return d.ClusterId }
 
 func formatDescription(cluster nscloud.KubernetesCluster) string {
 	cpu := "<unknown>"
@@ -160,7 +168,7 @@ func formatDescription(cluster nscloud.KubernetesCluster) string {
 		cluster.KubernetesDistribution, cluster.DocumentedPurpose)
 }
 
-func ssh(ctx context.Context, clusterId string, args []string) error {
+func ssh(ctx context.Context, cluster nscloud.KubernetesCluster, args []string) error {
 	lst, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return err
@@ -180,8 +188,7 @@ func ssh(ctx context.Context, clusterId string, args []string) error {
 					HandshakeTimeout: 15 * time.Second,
 				}
 
-				serverUrl := fmt.Sprintf("wss://ssh-%s.a.nscluster.cloud/proxy", clusterId)
-				wsConn, _, err := d.DialContext(ctx, serverUrl, nil)
+				wsConn, _, err := d.DialContext(ctx, cluster.SSHProxyEndpoint, nil)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
 					return

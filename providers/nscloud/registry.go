@@ -27,7 +27,6 @@ import (
 
 var DefaultKeychain oci.Keychain = defaultKeychain{}
 
-const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal.namespacelabs.nscloud.dev"
 const loginEndpoint = "login.namespace.so/token"
 
 type r struct{}

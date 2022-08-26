@@ -32,6 +32,10 @@ import (
 )
 
 const machineEndpoint = "https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal.namespacelabs.nscloud.dev"
+const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal.namespacelabs.nscloud.dev"
+
+// const machineEndpoint = "https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal-c.namespacelabs.nscloud.dev"
+// const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal-c.namespacelabs.nscloud.dev"
 
 var (
 	clusterCache = NewCache[*CreateClusterResult]()
@@ -40,6 +44,15 @@ var (
 		Endpoint: machineEndpoint,
 		Method:   "nsl.vm.api.VMService/StartCreateKubernetesCluster",
 		PreAuthenticateRequest: func(user *fnapi.UserAuth, rt *CreateKubernetesClusterRequest) error {
+			rt.OpaqueUserAuth = user.Opaque
+			return nil
+		},
+	}
+
+	getKubernetesCluster = fnapi.Call[GetKubernetesClusterRequest]{
+		Endpoint: machineEndpoint,
+		Method:   "nsl.vm.api.VMService/GetKubernetesCluster",
+		PreAuthenticateRequest: func(user *fnapi.UserAuth, rt *GetKubernetesClusterRequest) error {
 			rt.OpaqueUserAuth = user.Opaque
 			return nil
 		},
@@ -265,6 +278,17 @@ func DestroyCluster(ctx context.Context, clusterId string) error {
 	}, nil)
 }
 
+func GetCluster(ctx context.Context, clusterId string) (*KubernetesCluster, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.get").Arg("id", clusterId), func(ctx context.Context) (*KubernetesCluster, error) {
+		var response GetKubernetesClusterResponse
+		if err := getKubernetesCluster.Do(ctx, GetKubernetesClusterRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+		return response.Cluster, nil
+	})
+
+}
+
 func ListClusters(ctx context.Context) (*KubernetesClusterList, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.cluster-list"), func(ctx context.Context) (*KubernetesClusterList, error) {
 		var list KubernetesClusterList
@@ -385,6 +409,11 @@ type CreateKubernetesClusterRequest struct {
 	AuthorizedSshKeys []string `json:"authorized_ssh_keys,omitempty"`
 }
 
+type GetKubernetesClusterRequest struct {
+	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
+	ClusterId      string `json:"cluster_id,omitempty"`
+}
+
 type WaitKubernetesClusterRequest struct {
 	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
 	ClusterId      string `json:"cluster_id,omitempty"`
@@ -396,6 +425,12 @@ type CreateKubernetesClusterResponse struct {
 	Cluster   *KubernetesCluster `json:"cluster,omitempty"`
 	Registry  *ImageRegistry     `json:"registry,omitempty"`
 	Deadline  string             `json:"deadline,omitempty"`
+}
+
+type GetKubernetesClusterResponse struct {
+	Cluster  *KubernetesCluster `json:"cluster,omitempty"`
+	Registry *ImageRegistry     `json:"registry,omitempty"`
+	Deadline string             `json:"deadline,omitempty"`
 }
 
 type StartCreateKubernetesClusterResponse struct {
