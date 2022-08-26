@@ -5,5 +5,5 @@ import (
 )
 
 #Requires: {
-    [...inputs.#Package]
+	[...inputs.#Package]
 }

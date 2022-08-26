@@ -5,17 +5,17 @@ import (
 )
 
 #Tests: {
-    [string]: {
-        source: string
+	[string]: {
+		source: string
 
-        // Defaults to current package, if empty.
-        serversUnderTest: [...inputs.#Package]
+		// Defaults to current package, if empty.
+		serversUnderTest: [...inputs.#Package]
 
-        _#TestIntegration
-    }
+		_#TestIntegration
+	}
 }
 
 _#TestIntegration: {
-    // TODO introduce types when integrations require parameters
-    integration: "namespace.so/pkg/testing/go" | "namespace.so/testing/shell-script"
+	// TODO introduce types when integrations require parameters
+	integration: "namespace.so/pkg/testing/go" | "namespace.so/testing/shell-script"
 }

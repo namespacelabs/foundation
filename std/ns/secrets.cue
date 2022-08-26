@@ -1,7 +1,7 @@
 package ns
 
 #Secrets: {
-    [string]: {
-        description: string
-    }
+	[string]: {
+		description: string
+	}
 }
