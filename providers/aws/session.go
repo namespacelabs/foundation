@@ -88,7 +88,11 @@ func innerSession(ctx context.Context, devHost *schema.DevHost, selector devhost
 	}
 
 	return func(opts ...func(*config.LoadOptions) error) (aws.Config, error) {
-		return config.LoadDefaultConfig(ctx, append(opts, config.WithSharedConfigProfile(conf.Profile))...)
+		opts = append(opts, config.WithSharedConfigProfile(conf.Profile))
+		if conf.Region != "" {
+			opts = append(opts, config.WithRegion(conf.Region))
+		}
+		return config.LoadDefaultConfig(ctx, opts...)
 	}, conf, nil
 }
 

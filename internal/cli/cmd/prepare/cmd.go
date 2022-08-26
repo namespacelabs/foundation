@@ -32,7 +32,6 @@ var deprecatedConfigs = []string{
 var envRef string
 
 func NewPrepareCmd() *cobra.Command {
-
 	rootCmd := &cobra.Command{
 		Use:   "prepare",
 		Short: "Prepares the local workspace for development or production.",
