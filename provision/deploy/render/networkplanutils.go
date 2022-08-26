@@ -222,27 +222,13 @@ func MakeServiceLabel(endpoint *storage.Endpoint) *Label {
 }
 
 func httpUrl(domain *storage.Domain, localIngressPort uint32, path string) string {
-	var ingressPort uint32
-	if domain.GetManaged() == storage.Domain_USER_SPECIFIED ||
-		domain.GetManaged() == storage.Domain_CLOUD_MANAGED ||
-		domain.GetManaged() == storage.Domain_USER_SPECIFIED_TLS_MANAGED {
-		ingressPort = 443
-	} else {
-		ingressPort = localIngressPort
-	}
-
-	// Using URL for merging the base URL and the path.
-	var url url.URL
-	var port string
-	if domain.HasCertificate || ingressPort == 443 {
+	url := url.URL{Host: domain.Fqdn, Path: path}
+	if domain.TlsFrontend {
 		url.Scheme = "https"
-		port = checkPort(ingressPort, 443)
 	} else {
 		url.Scheme = "http"
-		port = checkPort(ingressPort, 80)
+		url.Host += checkPort(localIngressPort, 80)
 	}
-	url.Host = fmt.Sprintf("%s%s", domain.Fqdn, port)
-	url.Path = path
 
 	return url.String()
 }

@@ -231,42 +231,37 @@ func AttachComputedDomains(ctx context.Context, env *schema.Environment, sch *sc
 func MaybeAllocateDomainCertificate(ctx context.Context, entry *schema.Stack_Entry, template *schema.Domain) (*schema.Domain, error) {
 	domain := protos.Clone(template)
 
-	switch domain.Managed {
-	case schema.Domain_LOCAL_MANAGED:
-		// Nothing to do
+	if domain.TlsInclusterTermination {
+		if domain.Managed == schema.Domain_CLOUD_MANAGED {
+			if !strings.HasSuffix(domain.Fqdn, "."+CloudBaseDomain) {
+				return nil, fnerrors.InternalError("%s: expected a %q suffix", domain.Fqdn, CloudBaseDomain)
+			}
 
-	case schema.Domain_CLOUD_MANAGED:
-		if !strings.HasSuffix(domain.Fqdn, "."+CloudBaseDomain) {
-			return nil, fnerrors.InternalError("%s: expected a %q suffix", domain.Fqdn, CloudBaseDomain)
+			withoutSuffix := strings.TrimSuffix(domain.Fqdn, "."+CloudBaseDomain)
+			parts := strings.Split(withoutSuffix, ".") // Name, Env, Org
+			if len(parts) != 3 {
+				return nil, fnerrors.InternalError("%s: expected domain to be {name}.{env}.{org}", domain.Fqdn)
+			}
+
+			cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
+				Subdomain: fmt.Sprintf("%s.%s", parts[0], parts[1]),
+				Org:       parts[2],
+			})
+			if err != nil {
+				return nil, err
+			}
+			domain.Certificate = cert
+		} else {
+			cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
+				FQDN: domain.Fqdn,
+				Org:  entry.ServerNaming.GetWithOrg(),
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			domain.Certificate = cert
 		}
-
-		withoutSuffix := strings.TrimSuffix(domain.Fqdn, "."+CloudBaseDomain)
-		parts := strings.Split(withoutSuffix, ".") // Name, Env, Org
-		if len(parts) != 3 {
-			return nil, fnerrors.InternalError("%s: expected domain to be {name}.{env}.{org}", domain.Fqdn)
-		}
-
-		cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
-			Subdomain: fmt.Sprintf("%s.%s", parts[0], parts[1]),
-			Org:       parts[2],
-		})
-		if err != nil {
-			return nil, err
-		}
-		domain.Certificate = cert
-
-	case schema.Domain_USER_SPECIFIED_TLS_MANAGED:
-		cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
-			FQDN: domain.Fqdn,
-			Org:  entry.ServerNaming.GetWithOrg(),
-		})
-		if err != nil {
-			return nil, err
-		}
-		domain.Certificate = cert
-
-	case schema.Domain_USER_SPECIFIED:
-		// Nothing to do.
 	}
 
 	return domain, nil
@@ -282,26 +277,42 @@ func computeDomains(env *schema.Environment, naming *schema.Naming, allocatedNam
 }
 
 func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, allocatedName string) ([]*schema.Domain, error) {
-	var domains []*schema.Domain
+	computedDomain := &schema.Domain{
+		Managed:                 computed.Managed,
+		TlsFrontend:             computed.TlsFrontend,
+		TlsInclusterTermination: computed.TlsInclusterTermination,
+	}
 
-	domains = append(domains, &schema.Domain{
-		// XXX include stack?
-		Fqdn:    fmt.Sprintf("%s.%s.%s", allocatedName, env.Name, computed.BaseDomain),
-		Managed: computed.Managed,
-	})
+	if computed.DomainFragmentSuffix != "" {
+		computedDomain.Fqdn = fmt.Sprintf("%s-%s-%s.%s", allocatedName, env.Name, computed.DomainFragmentSuffix, computed.BaseDomain)
+	} else {
+		computedDomain.Fqdn = fmt.Sprintf("%s.%s.%s", allocatedName, env.Name, computed.BaseDomain)
+	}
+
+	domains := []*schema.Domain{computedDomain}
 
 	naming := computed.Source
 
 	for _, d := range naming.GetAdditionalTlsManaged() {
 		d := d // Capture d.
 		if d.AllocatedName == allocatedName {
-			domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED_TLS_MANAGED})
+			domains = append(domains, &schema.Domain{
+				Fqdn:                    d.Fqdn,
+				Managed:                 schema.Domain_USER_SPECIFIED_TLS_MANAGED,
+				TlsFrontend:             true,
+				TlsInclusterTermination: true,
+			})
 		}
 	}
 
 	for _, d := range naming.GetAdditionalUserSpecified() {
 		if d.AllocatedName == allocatedName {
-			domains = append(domains, &schema.Domain{Fqdn: d.Fqdn, Managed: schema.Domain_USER_SPECIFIED})
+			domains = append(domains, &schema.Domain{
+				Fqdn:                    d.Fqdn,
+				Managed:                 schema.Domain_USER_SPECIFIED,
+				TlsFrontend:             true,
+				TlsInclusterTermination: false,
+			})
 		}
 	}
 

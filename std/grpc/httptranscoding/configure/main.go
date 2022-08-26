@@ -106,6 +106,13 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	// that version will be at odds with the fn scheduler. Ideally we'd receive
 	// these set of domains in.
 	ingressName := fmt.Sprintf("grpc-gateway-%s", req.Focus.Server.Id)
+
+	// If a suffix is being used, constrain the prefix size.
+	// XXX work in progress.
+	if computedNaming.DomainFragmentSuffix != "" {
+		ingressName = "grpc-" + req.Focus.Server.Id[:4]
+	}
+
 	domains, err := runtime.CalculateDomains(req.Env, computedNaming, ingressName)
 	if err != nil {
 		return err

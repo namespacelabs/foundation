@@ -72,14 +72,18 @@ func convertDomain(d *schema.Domain) (*storage.Domain, error) {
 	if d == nil {
 		return nil, nil
 	}
+
 	managedType, err := convertManagedType(d.Managed)
 	if err != nil {
 		return nil, err
 	}
+
 	return &storage.Domain{
-		Fqdn:           d.Fqdn,
-		Managed:        managedType,
-		HasCertificate: d.Certificate != nil,
+		Fqdn:                    d.Fqdn,
+		Managed:                 managedType,
+		HasCertificate:          d.Certificate != nil,
+		TlsFrontend:             d.TlsFrontend,
+		TlsInclusterTermination: d.TlsInclusterTermination,
 	}, nil
 }
 

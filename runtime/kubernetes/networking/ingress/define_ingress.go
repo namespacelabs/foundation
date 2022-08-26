@@ -258,7 +258,7 @@ func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv
 			tlsCount++
 		}
 
-		if ng.Domain.Managed == schema.Domain_CLOUD_MANAGED {
+		if ng.Domain.Managed == schema.Domain_CLOUD_MANAGED && ng.Domain.TlsInclusterTermination {
 			if err := managed.Add(MapAddress{
 				FQDN:    ng.Domain.Fqdn,
 				Ingress: IngressRef{ns, name},

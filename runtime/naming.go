@@ -26,18 +26,36 @@ const (
 	CloudBaseDomain = "nscloud.dev"
 )
 
-var NamingNoTLS = false // Set to true in CI.
-var ReuseStoredCertificates = true
+var (
+	NamingNoTLS             = false // Set to true in CI.
+	ReuseStoredCertificates = true
+
+	WorkInProgressComputedDomainSuffixBasedNames = false
+)
 
 var errLogin = fnerrors.UsageError("Please run `ns login` to login.",
 	"Namespace automatically manages nscloud.dev-based sub-domains and issues SSL certificates on your behalf. To use these features, you'll need to login to Namespace using your Github account.")
 
 func ComputeNaming(env *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
+	if WorkInProgressComputedDomainSuffixBasedNames {
+		return &schema.ComputedNaming{
+			// XXX get information from cluster.
+			Source:                  source,
+			BaseDomain:              "a.nscluster.cloud",
+			Managed:                 schema.Domain_CLOUD_MANAGED,
+			TlsFrontend:             true,
+			TlsInclusterTermination: false,
+			DomainFragmentSuffix:    "880g-674g3ttig51ajfl6l343b5jcuo",
+		}, nil
+	}
+
 	if env.Purpose != schema.Environment_PRODUCTION {
 		return &schema.ComputedNaming{
-			Source:     source,
-			BaseDomain: LocalBaseDomain,
-			Managed:    schema.Domain_LOCAL_MANAGED,
+			Source:                  source,
+			BaseDomain:              LocalBaseDomain,
+			Managed:                 schema.Domain_LOCAL_MANAGED,
+			TlsFrontend:             false,
+			TlsInclusterTermination: false,
 		}, nil
 	}
 
@@ -62,9 +80,11 @@ func ComputeNaming(env *schema.Environment, source *schema.Naming) (*schema.Comp
 	}
 
 	return &schema.ComputedNaming{
-		Source:     source,
-		BaseDomain: fmt.Sprintf("%s.%s", org, CloudBaseDomain),
-		Managed:    schema.Domain_CLOUD_MANAGED,
+		Source:                  source,
+		BaseDomain:              fmt.Sprintf("%s.%s", org, CloudBaseDomain),
+		Managed:                 schema.Domain_CLOUD_MANAGED,
+		TlsFrontend:             true,
+		TlsInclusterTermination: true,
 	}, nil
 }
 
