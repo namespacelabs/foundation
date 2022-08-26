@@ -87,7 +87,11 @@ _#Ingress: {
 _#HttpPathList: [...string]
 
 _#HttpUrlMap: {
-    [string]: *string | {
+    [string]: _#HttpUrlMapEntry
+}
+
+_#HttpUrlMapEntry: {
+    *string | {
         cors:  *true | false
         mapTo: string
     } | {
