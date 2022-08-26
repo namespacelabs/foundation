@@ -106,9 +106,9 @@ func allocateName(ctx context.Context, srv *schema.Server, opts fnapi.AllocateOp
 		if opts.Org == "" {
 			return nil, fnerrors.InternalError("%s: org must be specified", opts.Subdomain)
 		}
-		cacheKey = opts.Subdomain
+		cacheKey = opts.Subdomain + ".wildcard"
 	} else if opts.FQDN != "" {
-		cacheKey = opts.FQDN + ".specific"
+		cacheKey = opts.FQDN
 	} else {
 		return nil, fnerrors.BadInputError("either FQDN or Subdomain must be set")
 	}

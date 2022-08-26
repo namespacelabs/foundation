@@ -233,19 +233,9 @@ func MaybeAllocateDomainCertificate(ctx context.Context, entry *schema.Stack_Ent
 
 	if domain.TlsInclusterTermination {
 		if domain.Managed == schema.Domain_CLOUD_MANAGED {
-			if !strings.HasSuffix(domain.Fqdn, "."+CloudBaseDomain) {
-				return nil, fnerrors.InternalError("%s: expected a %q suffix", domain.Fqdn, CloudBaseDomain)
-			}
-
-			withoutSuffix := strings.TrimSuffix(domain.Fqdn, "."+CloudBaseDomain)
-			parts := strings.Split(withoutSuffix, ".") // Name, Env, Org
-			if len(parts) != 3 {
-				return nil, fnerrors.InternalError("%s: expected domain to be {name}.{env}.{org}", domain.Fqdn)
-			}
-
 			cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
-				Subdomain: fmt.Sprintf("%s.%s", parts[0], parts[1]),
-				Org:       parts[2],
+				FQDN: domain.Fqdn,
+				Org:  entry.ServerNaming.GetWithOrg(),
 			})
 			if err != nil {
 				return nil, err
