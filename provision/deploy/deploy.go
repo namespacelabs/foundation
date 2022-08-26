@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
@@ -103,7 +104,7 @@ func makeBuildAssets(ingressFragments compute.Computable[*ComputeIngressResult])
 }
 
 func computeIngressWithHandlerResult(env ops.Environment, stack *stack.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
-	computedIngressFragments := compute.Transform(def, func(_ context.Context, h *handlerResult) ([]*schema.IngressFragment, error) {
+	computedIngressFragments := compute.Transform(def, func(ctx context.Context, h *handlerResult) ([]*schema.IngressFragment, error) {
 		var fragments []*schema.IngressFragment
 
 		for _, computed := range h.Computed.GetEntry() {
@@ -116,6 +117,8 @@ func computeIngressWithHandlerResult(env ops.Environment, stack *stack.Stack, de
 				if err := conf.Impl.UnmarshalTo(p); err != nil {
 					return nil, err
 				}
+
+				fmt.Fprintf(console.Debug(ctx), "%s: received domain: %+v\n", conf.Owner, p.Domain)
 
 				fragments = append(fragments, p)
 			}

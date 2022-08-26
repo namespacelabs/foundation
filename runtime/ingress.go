@@ -212,7 +212,7 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 }
 
 func AttachComputedDomains(ctx context.Context, env *schema.Environment, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName string) ([]*schema.IngressFragment, error) {
-	domains, err := computeDomains(env, sch.ServerNaming, allocatedName)
+	domains, err := computeDomains(ctx, env, sch.ServerNaming, allocatedName)
 	if err != nil {
 		return nil, err
 	}
@@ -267,8 +267,8 @@ func MaybeAllocateDomainCertificate(ctx context.Context, entry *schema.Stack_Ent
 	return domain, nil
 }
 
-func computeDomains(env *schema.Environment, naming *schema.Naming, allocatedName string) ([]*schema.Domain, error) {
-	computed, err := ComputeNaming(env, naming)
+func computeDomains(ctx context.Context, env *schema.Environment, naming *schema.Naming, allocatedName string) ([]*schema.Domain, error) {
+	computed, err := ComputeNaming(ctx, env, naming)
 	if err != nil {
 		return nil, err
 	}

@@ -36,7 +36,18 @@ var (
 var errLogin = fnerrors.UsageError("Please run `ns login` to login.",
 	"Namespace automatically manages nscloud.dev-based sub-domains and issues SSL certificates on your behalf. To use these features, you'll need to login to Namespace using your Github account.")
 
-func ComputeNaming(env *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
+func ComputeNaming(ctx context.Context, env *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
+	result, err := computeNaming(env, source)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "computed naming: %+v\n", result)
+
+	return result, nil
+}
+
+func computeNaming(env *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
 	if WorkInProgressComputedDomainSuffixBasedNames {
 		return &schema.ComputedNaming{
 			// XXX get information from cluster.
