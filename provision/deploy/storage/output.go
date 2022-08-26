@@ -81,7 +81,6 @@ func convertDomain(d *schema.Domain) (*storage.Domain, error) {
 	return &storage.Domain{
 		Fqdn:                    d.Fqdn,
 		Managed:                 managedType,
-		HasCertificate:          d.Certificate != nil,
 		TlsFrontend:             d.TlsFrontend,
 		TlsInclusterTermination: d.TlsInclusterTermination,
 	}, nil
@@ -299,8 +298,8 @@ func domainSchema(domain *storage.Domain, localPort uint, endpoints ...*storage.
 		schema, portLabel = httpSchema(domain, localPort)
 	case 1:
 		if protocols.Strings()[0] == "grpc" {
-			schema, portLabel, cmd = grpcSchema(domain.HasCertificate, localPort)
-			if !domain.HasCertificate {
+			schema, portLabel, cmd = grpcSchema(domain.TlsFrontend, localPort)
+			if !domain.TlsFrontend {
 				suffix = "not currently working, see #26"
 			}
 		} else {
@@ -323,7 +322,7 @@ func grpcSchema(tls bool, port uint) (string, string, string) {
 
 // Deprecated
 func httpSchema(d *storage.Domain, port uint) (string, string) {
-	if d.HasCertificate || port == 443 {
+	if d.TlsFrontend || port == 443 {
 		return "https://", checkPort(port, 443)
 	}
 	return "http://", checkPort(port, 80)

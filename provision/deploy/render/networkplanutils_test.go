@@ -118,9 +118,9 @@ func TestNetworkPlanToSummary(t *testing.T) {
 			{
 				Owner: "my/http_service",
 				Domain: &storage.Domain{
-					Fqdn:           "domain1.example.com",
-					Managed:        storage.Domain_USER_SPECIFIED,
-					HasCertificate: true,
+					Fqdn:        "domain1.example.com",
+					Managed:     storage.Domain_USER_SPECIFIED,
+					TlsFrontend: true,
 				},
 				Endpoint: &storage.Endpoint{
 					ServiceName: "service1",
@@ -135,9 +135,9 @@ func TestNetworkPlanToSummary(t *testing.T) {
 			{
 				Owner: "my/grpc_service",
 				Domain: &storage.Domain{
-					Fqdn:           "local.domain",
-					Managed:        storage.Domain_LOCAL_MANAGED,
-					HasCertificate: false,
+					Fqdn:        "local.domain",
+					Managed:     storage.Domain_LOCAL_MANAGED,
+					TlsFrontend: false,
 				},
 				Endpoint: &storage.Endpoint{
 					ServiceName:   "grpc_service",

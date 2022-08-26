@@ -101,7 +101,7 @@ func NetworkPlanToSummary(plan *storage.NetworkPlan) *NetworkPlanSummary {
 					for _, svc := range p.ServiceMetadata {
 						if svc.Kind == grpcService.GrpcService {
 							grpcAccessCmds = append(grpcAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
-								Cmd:       grpcAccessCmd(ingress.Domain.HasCertificate, 443, ingress.Domain.Fqdn, svc.Kind),
+								Cmd:       grpcAccessCmd(ingress.Domain.TlsFrontend, 443, ingress.Domain.Fqdn, svc.Kind),
 								IsManaged: isManaged,
 							})
 						}

@@ -131,8 +131,9 @@ message IngressGrpcService {
 }
 
 message Domain {
+    reserved 2;
+
     string      fqdn                      = 1;
-    bool        has_certificate           = 2;
     ManagedType managed                   = 3;
     bool        tls_frontend              = 4;  // If set to true, this domain's ingress is TLS terminated.
     bool        tls_incluster_termination = 5;  // If set to true, we manage the TLS termination in cluster.
