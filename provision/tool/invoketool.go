@@ -178,7 +178,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 			return nil, fnerrors.BadInputError("%s: no such provider", inject)
 		}
 
-		input, err := provider(ctx, inv.env.Proto(), inv.stack.GetServer(inv.focus))
+		input, err := provider(ctx, inv.env, inv.stack.GetServer(inv.focus))
 		if err != nil {
 			return nil, err
 		}

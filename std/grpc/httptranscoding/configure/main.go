@@ -113,7 +113,11 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		ingressName = "grpc-" + req.Focus.Server.Id[:4]
 	}
 
-	domains, err := runtime.CalculateDomains(req.Env, computedNaming, ingressName)
+	domains, err := runtime.CalculateDomains(req.Env, computedNaming, runtime.DomainsRequest{
+		ServerID: req.Focus.Server.Id,
+		Key:      ingressName,
+		Alias:    "grpc",
+	})
 	if err != nil {
 		return err
 	}

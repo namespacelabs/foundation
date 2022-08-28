@@ -245,7 +245,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 
 	// computedOnly is used exclusively by config images. They include the set of
 	// computed configurations that provision tools may have emitted.
-	imgs, err := prepareServerImages(ctx, focus, stack, buildAssets, computedOnly)
+	imgs, err := prepareServerImages(ctx, env, focus, stack, buildAssets, computedOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +383,8 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 	return c1, nil
 }
 
-func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *stack.Stack,
+func prepareServerImages(ctx context.Context, env ops.Environment,
+	focus schema.PackageList, stack *stack.Stack,
 	buildAssets languages.AvailableBuildAssets,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) (map[schema.PackageName]ServerImages, error) {
 	imageMap := map[schema.PackageName]ServerImages{}
@@ -427,7 +428,7 @@ func prepareServerImages(ctx context.Context, focus schema.PackageList, stack *s
 		// source configuration files used to compute a startup configuration, so it can be re-
 		// evaluated on a need basis.
 		if focus.Includes(srv.PackageName()) && !srv.Env().Proto().Ephemeral && computedConfigs != nil {
-			configImage := prepareConfigImage(ctx, srv, stack, computedConfigs)
+			configImage := prepareConfigImage(ctx, env, srv, stack, computedConfigs)
 
 			cfgtag, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName())
 			if err != nil {
@@ -511,7 +512,7 @@ func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []p
 		return h.Computed, nil
 	})
 
-	imageMap, err := prepareServerImages(ctx, provision.ServerPackages(servers), stack, makeBuildAssets(ingressFragments), computedOnly)
+	imageMap, err := prepareServerImages(ctx, env, provision.ServerPackages(servers), stack, makeBuildAssets(ingressFragments), computedOnly)
 	if err != nil {
 		return nil, nil, err
 	}

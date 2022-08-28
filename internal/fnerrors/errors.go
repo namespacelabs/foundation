@@ -79,8 +79,8 @@ func ExpectedError(format string, args ...interface{}) error {
 }
 
 // This error means that Namespace does not meet the minimum version requirements.
-func DoesNotMeetVersionRequirements(pkg string, expected, got int32) error {
-	return &VersionError{pkg, expected, got}
+func DoesNotMeetVersionRequirements(what string, expected, got int32) error {
+	return &VersionError{what, expected, got}
 }
 
 // This error is purely for wiring and ensures that Namespace exits with an appropriate exit code.
@@ -192,12 +192,16 @@ func (e *errWithLogs) Error() string {
 }
 
 type VersionError struct {
-	Pkg           string
+	What          string
 	Expected, Got int32
 }
 
 func (e *VersionError) Error() string {
-	return fmt.Sprintf("`ns` needs to be updated to use %q, (need api version %d, got %d)", e.Pkg, e.Expected, e.Got)
+	if e.Expected == 0 && e.Got == 0 {
+		return fmt.Sprintf("`ns` needs to be updated to use %q", e.What)
+	}
+
+	return fmt.Sprintf("`ns` needs to be updated to use %q, (need api version %d, got %d)", e.What, e.Expected, e.Got)
 }
 
 type ExitError interface {

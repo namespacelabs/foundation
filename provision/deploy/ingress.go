@@ -55,7 +55,7 @@ func (ci *computeIngress) Output() compute.Output {
 	return compute.Output{NotCacheable: true}
 }
 func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*ComputeIngressResult, error) {
-	allFragments, err := computeDeferredIngresses(ctx, ci.env, ci.stack)
+	allFragments, err := computeDeferredIngresses(ctx, ci.rootenv.Workspace().ModuleName, ci.env, ci.stack)
 	if err != nil {
 		return nil, err
 	}
@@ -95,12 +95,12 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 	}, nil
 }
 
-func computeDeferredIngresses(ctx context.Context, env *schema.Environment, stack *schema.Stack) ([]*schema.IngressFragment, error) {
+func computeDeferredIngresses(ctx context.Context, ws string, env *schema.Environment, stack *schema.Stack) ([]*schema.IngressFragment, error) {
 	var fragments []*schema.IngressFragment
 
 	// XXX parallelism.
 	for _, srv := range stack.Entry {
-		frags, err := runtime.ComputeIngress(ctx, env, srv, stack.Endpoint)
+		frags, err := runtime.ComputeIngress(ctx, ws, env, srv, stack.Endpoint)
 		if err != nil {
 			return nil, err
 		}

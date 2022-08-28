@@ -81,9 +81,6 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 	if h.servers == nil {
 		return fnerrors.InternalError("servers must be set")
 	}
-	if h.env == nil {
-		return fnerrors.InternalError("env must be set")
-	}
 
 	servers := h.servers.Servers
 
@@ -119,7 +116,7 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 
 		h.resultOut.Stack = stack.Proto()
 		for _, entry := range stack.Proto().Entry {
-			deferred, err := runtime.ComputeIngress(ctx, h.env.Proto(), entry, stack.Endpoints)
+			deferred, err := runtime.ComputeIngress(ctx, h.env.Workspace().ModuleName, h.env.Proto(), entry, stack.Endpoints)
 			if err != nil {
 				return err
 			}

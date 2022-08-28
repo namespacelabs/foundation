@@ -113,7 +113,7 @@ require (
 	k8s.io/apimachinery v0.24.2
 	k8s.io/client-go v0.24.2
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
-	namespacelabs.dev/go-ids v0.0.0-20220216144417-79021816502e
+	namespacelabs.dev/go-ids v0.0.0-20220708072700-49c0a87d068b
 	sigs.k8s.io/controller-runtime v0.12.2
 	sigs.k8s.io/yaml v1.3.0
 )

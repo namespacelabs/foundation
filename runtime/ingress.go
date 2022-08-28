@@ -6,6 +6,7 @@ package runtime
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/go-ids"
 )
 
 const (
@@ -40,7 +42,7 @@ func RegisterSupport(fmwk schema.Framework, f LanguageRuntimeSupport) {
 	supportByFramework[fmwk.String()] = f
 }
 
-func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]*schema.IngressFragment, error) {
+func ComputeIngress(ctx context.Context, ws string, env *schema.Environment, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]*schema.IngressFragment, error) {
 	var ingresses []*schema.IngressFragment
 
 	var serverEndpoints []*schema.Endpoint
@@ -125,7 +127,8 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 					Port:        endpoint.Port,
 					Method:      p.Method,
 				})
-				// XXX rethink this.
+
+				// XXX security rethink this.
 				grpc = append(grpc, &schema.IngressFragment_IngressGrpcService{
 					GrpcService: "grpc.reflection.v1alpha.ServerReflection",
 					Owner:       endpoint.EndpointOwner,
@@ -135,14 +138,19 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 			}
 		}
 
-		attached, err := AttachComputedDomains(ctx, env, sch, &schema.IngressFragment{
+		attached, err := AttachComputedDomains(ctx, ws, env, sch, &schema.IngressFragment{
 			Name:        endpoint.ServiceName,
 			Owner:       endpoint.ServerOwner,
 			Endpoint:    endpoint,
 			Extension:   httpExtensions,
 			HttpPath:    paths,
 			GrpcService: grpc,
-		}, endpoint.AllocatedName)
+		}, DomainsRequest{
+			ServerID:    sch.Server.Id,
+			ServiceName: endpoint.ServiceName,
+			Key:         endpoint.AllocatedName,
+			Alias:       endpoint.ServiceName,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -152,28 +160,34 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 
 	// Handle HTTP.
 	if needsHTTP := len(sch.Server.UrlMap) > 0; needsHTTP {
-		var httpEndpoint *schema.Endpoint
+		var httpEndpoints []*schema.Endpoint
 		for _, endpoint := range serverEndpoints {
-			if endpoint.ServiceName == "http" {
-				httpEndpoint = endpoint
+			if endpoint.ServiceName == HttpServiceName {
+				httpEndpoints = append(httpEndpoints, endpoint)
 				break
 			}
 		}
 
-		if httpEndpoint == nil {
-			return nil, fnerrors.InternalError("urlmap is present, but http endpoint is missing")
+		if len(httpEndpoints) != 1 {
+			return nil, fnerrors.InternalError("urlmap is present, but single http endpoint is missing")
 		}
 
+		httpEndpoint := httpEndpoints[0]
+
 		perIngress := map[string][]*schema.Server_URLMapEntry{}
+		perIngressAlias := map[string]string{}
 		ingressNames := uniquestrings.List{}
 
-		for _, u := range sch.Server.UrlMap {
-			ingressName := u.IngressName
+		for _, url := range sch.Server.UrlMap {
+			ingressName := url.IngressName
+			alias := url.IngressName
 			if ingressName == "" {
 				ingressName = httpEndpoint.AllocatedName
+				alias = httpEndpoint.ServiceName
 			}
 
-			perIngress[ingressName] = append(perIngress[ingressName], u)
+			perIngress[ingressName] = append(perIngress[ingressName], url)
+			perIngressAlias[ingressName] = alias
 			ingressNames.Add(ingressName)
 		}
 
@@ -195,11 +209,15 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 				})
 			}
 
-			attached, err := AttachComputedDomains(ctx, env, sch, &schema.IngressFragment{
+			attached, err := AttachComputedDomains(ctx, ws, env, sch, &schema.IngressFragment{
 				Name:     serverScoped(sch.Server, name),
 				Owner:    sch.GetPackageName().String(),
 				HttpPath: paths,
-			}, name)
+			}, DomainsRequest{
+				ServerID: sch.GetServer().GetId(),
+				Key:      name,
+				Alias:    perIngressAlias[name],
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -211,8 +229,8 @@ func ComputeIngress(ctx context.Context, env *schema.Environment, sch *schema.St
 	return ingresses, nil
 }
 
-func AttachComputedDomains(ctx context.Context, env *schema.Environment, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName string) ([]*schema.IngressFragment, error) {
-	domains, err := computeDomains(ctx, env, sch.ServerNaming, allocatedName)
+func AttachComputedDomains(ctx context.Context, ws string, env *schema.Environment, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName DomainsRequest) ([]*schema.IngressFragment, error) {
+	domains, err := computeDomains(ctx, ws, env, sch.ServerNaming, allocatedName)
 	if err != nil {
 		return nil, err
 	}
@@ -232,33 +250,22 @@ func MaybeAllocateDomainCertificate(ctx context.Context, entry *schema.Stack_Ent
 	domain := protos.Clone(template)
 
 	if domain.TlsInclusterTermination {
-		if domain.Managed == schema.Domain_CLOUD_MANAGED {
-			cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
-				FQDN: domain.Fqdn,
-				Org:  entry.ServerNaming.GetWithOrg(),
-			})
-			if err != nil {
-				return nil, err
-			}
-			domain.Certificate = cert
-		} else {
-			cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
-				FQDN: domain.Fqdn,
-				Org:  entry.ServerNaming.GetWithOrg(),
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			domain.Certificate = cert
+		cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
+			FQDN: domain.Fqdn,
+			// XXX remove org -- it should be parsed from fqdn.
+			Org: entry.ServerNaming.GetWithOrg(),
+		})
+		if err != nil {
+			return nil, err
 		}
+		domain.Certificate = cert
 	}
 
 	return domain, nil
 }
 
-func computeDomains(ctx context.Context, env *schema.Environment, naming *schema.Naming, allocatedName string) ([]*schema.Domain, error) {
-	computed, err := ComputeNaming(ctx, env, naming)
+func computeDomains(ctx context.Context, ws string, env *schema.Environment, naming *schema.Naming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
+	computed, err := ComputeNaming(ctx, ws, env, naming)
 	if err != nil {
 		return nil, err
 	}
@@ -266,18 +273,51 @@ func computeDomains(ctx context.Context, env *schema.Environment, naming *schema
 	return CalculateDomains(env, computed, allocatedName)
 }
 
-func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, allocatedName string) ([]*schema.Domain, error) {
+type DomainsRequest struct {
+	ServerID    string
+	ServiceName string
+	Key         string // Usually `{ServiceName}-{ServerID}`
+	Alias       string
+}
+
+func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
 	computedDomain := &schema.Domain{
 		Managed:                 computed.Managed,
 		TlsFrontend:             computed.TlsFrontend,
 		TlsInclusterTermination: computed.TlsInclusterTermination,
 	}
 
-	if computed.DomainFragmentSuffix != "" {
-		computedDomain.Fqdn = fmt.Sprintf("%s-%s-%s.%s", allocatedName, env.Name, computed.DomainFragmentSuffix, computed.BaseDomain)
+	if computed.UseShortAlias {
+		// grpc-abcdef.nslocal.host
+		//
+		// grpc-abcdef.hugosantos.nscloud.dev
+		//
+		// grpc-abcdef-9d5h25dto9nkm.a.nscluster.cloud
+		// -> abcdef = hash(dev, workspace.module_name)
+
+		if computed.MainModuleName == "" {
+			return nil, fnerrors.DoesNotMeetVersionRequirements("domain allocation", 0, 0)
+		}
+
+		h := sha256.New()
+		fmt.Fprintf(h, "%s:%s", env.Name, computed.MainModuleName)
+		x := ids.EncodeToBase32String(h.Sum(nil))[:6]
+		name := fmt.Sprintf("%s-%s", allocatedName.Alias, x)
+
+		if computed.DomainFragmentSuffix != "" {
+			computedDomain.Fqdn = fmt.Sprintf("%s-%s", name, computed.DomainFragmentSuffix)
+		} else {
+			computedDomain.Fqdn = name
+		}
 	} else {
-		computedDomain.Fqdn = fmt.Sprintf("%s.%s.%s", allocatedName, env.Name, computed.BaseDomain)
+		if computed.DomainFragmentSuffix != "" {
+			computedDomain.Fqdn = fmt.Sprintf("%s-%s-%s", allocatedName, env.Name, computed.DomainFragmentSuffix)
+		} else {
+			computedDomain.Fqdn = fmt.Sprintf("%s.%s", allocatedName, env.Name)
+		}
 	}
+
+	computedDomain.Fqdn += "." + computed.BaseDomain
 
 	domains := []*schema.Domain{computedDomain}
 
@@ -285,7 +325,7 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 
 	for _, d := range naming.GetAdditionalTlsManaged() {
 		d := d // Capture d.
-		if d.AllocatedName == allocatedName {
+		if d.AllocatedName == allocatedName.Key {
 			domains = append(domains, &schema.Domain{
 				Fqdn:                    d.Fqdn,
 				Managed:                 schema.Domain_USER_SPECIFIED_TLS_MANAGED,
@@ -296,7 +336,7 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 	}
 
 	for _, d := range naming.GetAdditionalUserSpecified() {
-		if d.AllocatedName == allocatedName {
+		if d.AllocatedName == allocatedName.Key {
 			domains = append(domains, &schema.Domain{
 				Fqdn:                    d.Fqdn,
 				Managed:                 schema.Domain_USER_SPECIFIED,

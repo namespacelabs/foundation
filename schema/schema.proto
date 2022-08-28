@@ -399,4 +399,6 @@ message ComputedNaming {
     bool               tls_frontend              = 4;  // If true, these addresses will be TLS terminated.
     bool               tls_incluster_termination = 5;  // If set to true, we manage the TLS termination in cluster.
     string             domain_fragment_suffix    = 6;  // If set, domain name generation will use this suffix rather than creating a new sub-domain.
+    bool               use_short_alias           = 7;  // Enable new endpoint alias generation.
+    string             main_module_name          = 8;
 }

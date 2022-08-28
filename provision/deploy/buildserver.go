@@ -14,6 +14,7 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
@@ -58,18 +59,23 @@ func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (bu
 }
 
 type prepareServerConfig struct {
-	serverPackage   schema.PackageName
-	env             *schema.Environment
-	stack           *schema.Stack
-	moduleSrcs      []moduleAndFiles
-	computedConfigs compute.Computable[*schema.ComputedConfigurations]
+	workspaceModuleName string
+	serverPackage       schema.PackageName
+	env                 *schema.Environment
+	stack               *schema.Stack
+	moduleSrcs          []moduleAndFiles
+	computedConfigs     compute.Computable[*schema.ComputedConfigurations]
 
 	compute.LocalScoped[fs.FS]
 }
 
 func (c *prepareServerConfig) Inputs() *compute.In {
-	in := compute.Inputs().JSON("serverPackage", c.serverPackage).Proto("env", c.env).
-		Proto("stack", c.stack).Computable("computedConfigs", c.computedConfigs)
+	in := compute.Inputs().
+		Str("workspaceModuleName", c.workspaceModuleName).
+		JSON("serverPackage", c.serverPackage).
+		Proto("env", c.env).
+		Proto("stack", c.stack).
+		Computable("computedConfigs", c.computedConfigs)
 
 	return in.Marshal("moduleSrcs", func(ctx context.Context, w io.Writer) error {
 		for _, m := range c.moduleSrcs {
@@ -93,7 +99,7 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 	var fragment []*schema.IngressFragment
 	for _, entry := range c.stack.Entry {
 		var err error
-		fragment, err = runtime.ComputeIngress(ctx, c.env, entry, c.stack.Endpoint)
+		fragment, err = runtime.ComputeIngress(ctx, c.workspaceModuleName, c.env, entry, c.stack.Endpoint)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +124,7 @@ type moduleAndFiles struct {
 	files      fs.FS
 }
 
-func prepareConfigImage(ctx context.Context, server provision.Server, stack *stack.Stack,
+func prepareConfigImage(ctx context.Context, env ops.Environment, server provision.Server, stack *stack.Stack,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) oci.NamedImage {
 	var modulesSrcs []moduleAndFiles
 	for _, srcs := range server.Env().Sources() {
@@ -135,10 +141,11 @@ func prepareConfigImage(ctx context.Context, server provision.Server, stack *sta
 	return oci.MakeImageFromScratch(fmt.Sprintf("config %s", server.PackageName()),
 		oci.MakeLayer(fmt.Sprintf("config %s", server.PackageName()),
 			&prepareServerConfig{
-				serverPackage:   server.PackageName(),
-				env:             server.Env().Proto(),
-				stack:           stack.Proto(),
-				computedConfigs: computedConfigs,
-				moduleSrcs:      modulesSrcs,
+				workspaceModuleName: env.Workspace().ModuleName,
+				serverPackage:       server.PackageName(),
+				env:                 server.Env().Proto(),
+				stack:               stack.Proto(),
+				computedConfigs:     computedConfigs,
+				moduleSrcs:          modulesSrcs,
 			}))
 }

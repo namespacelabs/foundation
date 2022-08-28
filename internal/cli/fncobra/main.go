@@ -28,6 +28,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -190,8 +191,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		})
 
 		// Runtime
-		tool.RegisterInjection("schema.ComputedNaming", func(ctx context.Context, env *schema.Environment, s *schema.Stack_Entry) (*schema.ComputedNaming, error) {
-			return runtime.ComputeNaming(ctx, env, s.ServerNaming)
+		tool.RegisterInjection("schema.ComputedNaming", func(ctx context.Context, env ops.Environment, s *schema.Stack_Entry) (*schema.ComputedNaming, error) {
+			return runtime.ComputeNaming(ctx, env.Workspace().ModuleName, env.Proto(), s.ServerNaming)
 		})
 
 		// Compute cacheables.
@@ -288,6 +289,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, tool invocations will use buildkit whenever possible.")
 	rootCmd.PersistentFlags().BoolVar(&testing.UseNamespaceCloud, "testing_use_namespace_cloud", testing.UseNamespaceCloud,
 		"If set to true, allocate cluster for tests on demand.")
+	rootCmd.PersistentFlags().BoolVar(&runtime.WorkInProgressUseShortAlias, "runtime_wip_use_short_alias", runtime.WorkInProgressUseShortAlias,
+		"If set to true, uses the new ingress name allocator.")
 
 	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
@@ -320,6 +323,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"tools_invocation_can_use_buildkit",
 		"deploy_push_prebuilts_to_registry",
 		"oci_convert_images_to_estargz",
+		"runtime_wip_use_short_alias",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
