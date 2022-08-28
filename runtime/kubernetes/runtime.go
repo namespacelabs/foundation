@@ -218,6 +218,11 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 	return state, nil
 }
 
+func (r K8sRuntime) ComputeBaseNaming(context.Context, *schema.Naming) (*schema.ComputedNaming, error) {
+	// The default kubernetes integration has no assumptions regarding how ingress names are allocated.
+	return nil, nil
+}
+
 func (r K8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
 	cmd := append([]string{command}, rest...)
 

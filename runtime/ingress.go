@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	anypb "google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
@@ -42,7 +43,7 @@ func RegisterSupport(fmwk schema.Framework, f LanguageRuntimeSupport) {
 	supportByFramework[fmwk.String()] = f
 }
 
-func ComputeIngress(ctx context.Context, ws string, env *schema.Environment, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]*schema.IngressFragment, error) {
+func ComputeIngress(ctx context.Context, env ops.Environment, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]*schema.IngressFragment, error) {
 	var ingresses []*schema.IngressFragment
 
 	var serverEndpoints []*schema.Endpoint
@@ -138,7 +139,7 @@ func ComputeIngress(ctx context.Context, ws string, env *schema.Environment, sch
 			}
 		}
 
-		attached, err := AttachComputedDomains(ctx, ws, env, sch, &schema.IngressFragment{
+		attached, err := AttachComputedDomains(ctx, env.Workspace().ModuleName, env, sch, &schema.IngressFragment{
 			Name:        endpoint.ServiceName,
 			Owner:       endpoint.ServerOwner,
 			Endpoint:    endpoint,
@@ -209,7 +210,7 @@ func ComputeIngress(ctx context.Context, ws string, env *schema.Environment, sch
 				})
 			}
 
-			attached, err := AttachComputedDomains(ctx, ws, env, sch, &schema.IngressFragment{
+			attached, err := AttachComputedDomains(ctx, env.Workspace().ModuleName, env, sch, &schema.IngressFragment{
 				Name:     serverScoped(sch.Server, name),
 				Owner:    sch.GetPackageName().String(),
 				HttpPath: paths,
@@ -229,7 +230,7 @@ func ComputeIngress(ctx context.Context, ws string, env *schema.Environment, sch
 	return ingresses, nil
 }
 
-func AttachComputedDomains(ctx context.Context, ws string, env *schema.Environment, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName DomainsRequest) ([]*schema.IngressFragment, error) {
+func AttachComputedDomains(ctx context.Context, ws string, env ops.Environment, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName DomainsRequest) ([]*schema.IngressFragment, error) {
 	domains, err := computeDomains(ctx, ws, env, sch.ServerNaming, allocatedName)
 	if err != nil {
 		return nil, err
@@ -264,13 +265,13 @@ func MaybeAllocateDomainCertificate(ctx context.Context, entry *schema.Stack_Ent
 	return domain, nil
 }
 
-func computeDomains(ctx context.Context, ws string, env *schema.Environment, naming *schema.Naming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
+func computeDomains(ctx context.Context, ws string, env ops.Environment, naming *schema.Naming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
 	computed, err := ComputeNaming(ctx, ws, env, naming)
 	if err != nil {
 		return nil, err
 	}
 
-	return CalculateDomains(env, computed, allocatedName)
+	return CalculateDomains(env.Proto(), computed, allocatedName)
 }
 
 type DomainsRequest struct {

@@ -15,6 +15,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/certificates"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -37,8 +38,8 @@ var (
 var errLogin = fnerrors.UsageError("Please run `ns login` to login.",
 	"Namespace automatically manages nscloud.dev-based sub-domains and issues SSL certificates on your behalf. To use these features, you'll need to login to Namespace using your Github account.")
 
-func ComputeNaming(ctx context.Context, ws string, env *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
-	result, err := computeNaming(ws, env, source)
+func ComputeNaming(ctx context.Context, ws string, env ops.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
+	result, err := computeNaming(ctx, ws, env, source)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +49,8 @@ func ComputeNaming(ctx context.Context, ws string, env *schema.Environment, sour
 	return result, nil
 }
 
-func computeNaming(workspace string, env *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
-	naming, err := computeInnerNaming(env, source)
+func computeNaming(ctx context.Context, workspace string, env ops.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
+	naming, err := computeInnerNaming(ctx, env, source)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +61,18 @@ func computeNaming(workspace string, env *schema.Environment, source *schema.Nam
 	return naming, nil
 }
 
-func computeInnerNaming(env *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
+func computeInnerNaming(ctx context.Context, rootenv ops.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
+	base, err := For(ctx, rootenv).ComputeBaseNaming(ctx, source)
+	if err != nil {
+		return nil, err
+	}
+
+	if base != nil {
+		return base, nil
+	}
+
+	env := rootenv.Proto()
+
 	if WorkInProgressComputedDomainSuffixBasedNames {
 		return &schema.ComputedNaming{
 			// XXX get information from cluster.

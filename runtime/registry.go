@@ -116,6 +116,9 @@ func (r runtimeFwdErr) PlanDeployment(context.Context, Deployment) (DeploymentSt
 func (r runtimeFwdErr) PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error) {
 	return nil, r.err
 }
+func (r runtimeFwdErr) ComputeBaseNaming(context.Context, *schema.Naming) (*schema.ComputedNaming, error) {
+	return nil, r.err
+}
 func (r runtimeFwdErr) FetchLogsTo(context.Context, io.Writer, ContainerReference, FetchLogsOpts) error {
 	return r.err
 }

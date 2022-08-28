@@ -59,21 +59,19 @@ func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (bu
 }
 
 type prepareServerConfig struct {
-	workspaceModuleName string
-	serverPackage       schema.PackageName
-	env                 *schema.Environment
-	stack               *schema.Stack
-	moduleSrcs          []moduleAndFiles
-	computedConfigs     compute.Computable[*schema.ComputedConfigurations]
+	serverPackage   schema.PackageName
+	env             ops.Environment
+	stack           *schema.Stack
+	moduleSrcs      []moduleAndFiles
+	computedConfigs compute.Computable[*schema.ComputedConfigurations]
 
 	compute.LocalScoped[fs.FS]
 }
 
 func (c *prepareServerConfig) Inputs() *compute.In {
 	in := compute.Inputs().
-		Str("workspaceModuleName", c.workspaceModuleName).
 		JSON("serverPackage", c.serverPackage).
-		Proto("env", c.env).
+		Indigestible("env", c.env).
 		Proto("stack", c.stack).
 		Computable("computedConfigs", c.computedConfigs)
 
@@ -92,21 +90,21 @@ func (c *prepareServerConfig) Inputs() *compute.In {
 }
 
 func (c *prepareServerConfig) Action() *tasks.ActionEvent {
-	return tasks.Action("deploy.prepare-server-config").Arg("env", c.env.Name).Scope(c.serverPackage)
+	return tasks.Action("deploy.prepare-server-config").Arg("env", c.env.Proto().Name).Scope(c.serverPackage)
 }
 
 func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
 	var fragment []*schema.IngressFragment
 	for _, entry := range c.stack.Entry {
 		var err error
-		fragment, err = runtime.ComputeIngress(ctx, c.workspaceModuleName, c.env, entry, c.stack.Endpoint)
+		fragment, err = runtime.ComputeIngress(ctx, c.env, entry, c.stack.Endpoint)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	files := &memfs.FS{}
-	if err := (config.DehydrateOpts{IncludeTextProto: true}).DehydrateTo(ctx, files, c.env, c.stack, fragment, compute.MustGetDepValue(deps, c.computedConfigs, "computedConfigs")); err != nil {
+	if err := (config.DehydrateOpts{IncludeTextProto: true}).DehydrateTo(ctx, files, c.env.Proto(), c.stack, fragment, compute.MustGetDepValue(deps, c.computedConfigs, "computedConfigs")); err != nil {
 		return nil, err
 	}
 
@@ -141,11 +139,10 @@ func prepareConfigImage(ctx context.Context, env ops.Environment, server provisi
 	return oci.MakeImageFromScratch(fmt.Sprintf("config %s", server.PackageName()),
 		oci.MakeLayer(fmt.Sprintf("config %s", server.PackageName()),
 			&prepareServerConfig{
-				workspaceModuleName: env.Workspace().ModuleName,
-				serverPackage:       server.PackageName(),
-				env:                 server.Env().Proto(),
-				stack:               stack.Proto(),
-				computedConfigs:     computedConfigs,
-				moduleSrcs:          modulesSrcs,
+				serverPackage:   server.PackageName(),
+				env:             env,
+				stack:           stack.Proto(),
+				computedConfigs: computedConfigs,
+				moduleSrcs:      modulesSrcs,
 			}))
 }

@@ -43,6 +43,10 @@ type Runtime interface {
 	// applied when the generated plan is applied.
 	PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error)
 
+	// ComputeBaseNaming returns a base naming configuration that is specific
+	// to the target runtime (e.g. kubernetes cluster).
+	ComputeBaseNaming(context.Context, *schema.Naming) (*schema.ComputedNaming, error)
+
 	// Returns a list of containers that the server has deployed.
 	ResolveContainers(context.Context, *schema.Server) ([]ContainerReference, error)
 

@@ -116,7 +116,7 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 
 		h.resultOut.Stack = stack.Proto()
 		for _, entry := range stack.Proto().Entry {
-			deferred, err := runtime.ComputeIngress(ctx, h.env.Workspace().ModuleName, h.env.Proto(), entry, stack.Endpoints)
+			deferred, err := runtime.ComputeIngress(ctx, h.env, entry, stack.Endpoints)
 			if err != nil {
 				return err
 			}
