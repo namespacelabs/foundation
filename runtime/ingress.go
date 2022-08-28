@@ -312,9 +312,9 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 		}
 	} else {
 		if computed.DomainFragmentSuffix != "" {
-			computedDomain.Fqdn = fmt.Sprintf("%s-%s-%s", allocatedName, env.Name, computed.DomainFragmentSuffix)
+			computedDomain.Fqdn = fmt.Sprintf("%s-%s-%s", allocatedName.Key, env.Name, computed.DomainFragmentSuffix)
 		} else {
-			computedDomain.Fqdn = fmt.Sprintf("%s.%s", allocatedName, env.Name)
+			computedDomain.Fqdn = fmt.Sprintf("%s.%s", allocatedName.Key, env.Name)
 		}
 	}
 
