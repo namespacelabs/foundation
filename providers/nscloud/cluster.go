@@ -392,7 +392,7 @@ type clusterRuntime struct {
 func (cr clusterRuntime) ComputeBaseNaming(ctx context.Context, source *schema.Naming) (*schema.ComputedNaming, error) {
 	return &schema.ComputedNaming{
 		Source:                  source,
-		BaseDomain:              "a.nscluster.cloud", // XXX
+		BaseDomain:              cr.Cluster.IngressDomain,
 		Managed:                 schema.Domain_CLOUD_MANAGED,
 		TlsFrontend:             true,
 		TlsInclusterTermination: false,
@@ -478,6 +478,8 @@ type KubernetesCluster struct {
 
 	KubernetesDistribution string   `json:"kubernetes_distribution,omitempty"`
 	Platform               []string `json:"platform,omitempty"`
+
+	IngressDomain string `json:"ingress_domain,omitempty"`
 }
 
 type ImageRegistry struct {
