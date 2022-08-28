@@ -31,8 +31,7 @@ var (
 	NamingNoTLS             = false // Set to true in CI.
 	ReuseStoredCertificates = true
 
-	WorkInProgressUseShortAlias                  = false
-	WorkInProgressComputedDomainSuffixBasedNames = false
+	WorkInProgressUseShortAlias = false
 )
 
 var errLogin = fnerrors.UsageError("Please run `ns login` to login.",
@@ -72,19 +71,6 @@ func computeInnerNaming(ctx context.Context, rootenv ops.Environment, source *sc
 	}
 
 	env := rootenv.Proto()
-
-	if WorkInProgressComputedDomainSuffixBasedNames {
-		return &schema.ComputedNaming{
-			// XXX get information from cluster.
-			Source:                  source,
-			BaseDomain:              "a.nscluster.cloud",
-			Managed:                 schema.Domain_CLOUD_MANAGED,
-			TlsFrontend:             true,
-			TlsInclusterTermination: false,
-			DomainFragmentSuffix:    "880g-674g3ttig51ajfl6l343b5jcuo",
-			UseShortAlias:           true,
-		}, nil
-	}
 
 	if env.Purpose != schema.Environment_PRODUCTION {
 		return &schema.ComputedNaming{

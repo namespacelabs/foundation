@@ -6,7 +6,6 @@ package prepare
 
 import (
 	"context"
-	"encoding/json"
 
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/engine/ops"
@@ -29,11 +28,6 @@ func PrepareNewNamespaceCluster(env ops.Environment) compute.Computable[[]*schem
 				return nil, err
 			}
 
-			serializedConfig, err := json.Marshal(cfg.KubeConfig)
-			if err != nil {
-				return nil, err
-			}
-
 			k8sHostEnv := &client.HostEnv{
 				Provider: "nscloud",
 			}
@@ -43,8 +37,7 @@ func PrepareNewNamespaceCluster(env ops.Environment) compute.Computable[[]*schem
 			}
 
 			prebuilt := &nscloud.PrebuiltCluster{
-				ClusterId:        cfg.ClusterId,
-				SerializedConfig: serializedConfig,
+				ClusterId: cfg.ClusterId,
 			}
 
 			c, err := devhost.MakeConfiguration(k8sHostEnv, prebuilt, registryProvider)

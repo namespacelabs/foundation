@@ -95,11 +95,14 @@ func provideCluster(ctx context.Context, env *schema.Environment, key *devhost.C
 	conf := &PrebuiltCluster{}
 
 	if key.Selector.Select(key.DevHost).Get(conf) {
-		var p client.Provider
-		p.ProviderSpecific = conf.ClusterId
-		if err := json.Unmarshal(conf.SerializedConfig, &p.Config); err != nil {
-			return p, err
+		cluster, err := GetCluster(ctx, conf.ClusterId)
+		if err != nil {
+			return client.Provider{}, err
 		}
+
+		var p client.Provider
+		p.ProviderSpecific = cluster
+		p.Config = *makeConfig(cluster)
 		return p, nil
 	}
 
@@ -108,15 +111,14 @@ func provideCluster(ctx context.Context, env *schema.Environment, key *devhost.C
 		return client.Provider{}, err
 	}
 
-	return client.Provider{Config: *cfg.KubeConfig, ProviderSpecific: cfg.ClusterId}, nil
+	return client.Provider{Config: *makeConfig(cfg.Cluster), ProviderSpecific: cfg.Cluster}, nil
 }
 
 type CreateClusterResult struct {
-	ClusterId  string
-	Cluster    *KubernetesCluster
-	Registry   *ImageRegistry
-	KubeConfig *api.Config
-	Deadline   *time.Time
+	ClusterId string
+	Cluster   *KubernetesCluster
+	Registry  *ImageRegistry
+	Deadline  *time.Time
 }
 
 func CreateClusterForEnv(ctx context.Context, env *schema.Environment, ephemeral bool) (*CreateClusterResult, error) {
@@ -236,13 +238,30 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 		})
 	}
 
+	result := &CreateClusterResult{
+		ClusterId: cr.ClusterId,
+		Cluster:   cr.Cluster,
+		Registry:  cr.Registry,
+	}
+
+	if cr.Deadline != "" {
+		t, err := time.Parse(time.RFC3339, cr.Deadline)
+		if err == nil {
+			result.Deadline = &t
+		}
+	}
+
+	return result, nil
+}
+
+func makeConfig(cr *KubernetesCluster) *api.Config {
 	cfg := api.NewConfig()
 	cluster := api.NewCluster()
-	cluster.CertificateAuthorityData = cr.Cluster.CertificateAuthorityData
-	cluster.Server = cr.Cluster.EndpointAddress
+	cluster.CertificateAuthorityData = cr.CertificateAuthorityData
+	cluster.Server = cr.EndpointAddress
 	auth := api.NewAuthInfo()
-	auth.ClientCertificateData = cr.Cluster.ClientCertificateData
-	auth.ClientKeyData = cr.Cluster.ClientKeyData
+	auth.ClientCertificateData = cr.ClientCertificateData
+	auth.ClientKeyData = cr.ClientKeyData
 	c := api.NewContext()
 	c.Cluster = "default"
 	c.AuthInfo = "default"
@@ -255,21 +274,7 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 	cfg.APIVersion = "v1"
 	cfg.CurrentContext = "default"
 
-	result := &CreateClusterResult{
-		ClusterId:  cr.ClusterId,
-		Cluster:    cr.Cluster,
-		Registry:   cr.Registry,
-		KubeConfig: cfg,
-	}
-
-	if cr.Deadline != "" {
-		t, err := time.Parse(time.RFC3339, cr.Deadline)
-		if err == nil {
-			result.Deadline = &t
-		}
-	}
-
-	return result, nil
+	return cfg
 }
 
 func DestroyCluster(ctx context.Context, clusterId string) error {
@@ -359,7 +364,7 @@ func (d deferred) New(ctx context.Context) (runtime.Runtime, error) {
 
 	bound := unbound.Bind(d.ws, d.cfg.Environment)
 
-	return clusterRuntime{Runtime: bound, ClusterId: p.ProviderSpecific.(string)}, nil
+	return clusterRuntime{Runtime: bound, Cluster: p.ProviderSpecific.(*KubernetesCluster)}, nil
 }
 
 func (d deferred) PrepareProvision(context.Context) (*rtypes.ProvisionProps, error) {
@@ -381,7 +386,19 @@ func (d deferred) TargetPlatforms(context.Context) ([]specs.Platform, error) {
 
 type clusterRuntime struct {
 	runtime.Runtime
-	ClusterId string
+	Cluster *KubernetesCluster
+}
+
+func (cr clusterRuntime) ComputeBaseNaming(ctx context.Context, source *schema.Naming) (*schema.ComputedNaming, error) {
+	return &schema.ComputedNaming{
+		Source:                  source,
+		BaseDomain:              "a.nscluster.cloud", // XXX
+		Managed:                 schema.Domain_CLOUD_MANAGED,
+		TlsFrontend:             true,
+		TlsInclusterTermination: false,
+		DomainFragmentSuffix:    "880g-" + cr.Cluster.ClusterId, // XXX fetch ingress external IP to calculate domain.
+		UseShortAlias:           true,
+	}, nil
 }
 
 func (cr clusterRuntime) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
@@ -393,7 +410,7 @@ func (cr clusterRuntime) DeleteAllRecursively(ctx context.Context, wait bool, pr
 }
 
 func (cr clusterRuntime) deleteCluster(ctx context.Context) (bool, error) {
-	if err := DestroyCluster(ctx, cr.ClusterId); err != nil {
+	if err := DestroyCluster(ctx, cr.Cluster.ClusterId); err != nil {
 		if status.Code(err) == codes.NotFound {
 			return false, nil
 		}
