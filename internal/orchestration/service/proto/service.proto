@@ -28,5 +28,5 @@ message DeploymentStatusResponse {
 
 service OrchestrationService {
     rpc Deploy(DeployRequest) returns (DeployResponse);
-    rpc DeploymentStatus(DeploymentStatusRequest) returns (DeploymentStatusResponse);
+    rpc DeploymentStatus(DeploymentStatusRequest) returns (stream DeploymentStatusResponse);
 }

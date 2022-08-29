@@ -23,9 +23,14 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 
 	return nil, rpcerrors.Errorf(codes.Unimplemented, "Deploy is not implemented yet")
 }
-func (svc *Service) DeploymentStatus(ctx context.Context, req *proto.DeploymentStatusRequest) (*proto.DeploymentStatusResponse, error) {
+func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream proto.OrchestrationService_DeploymentStatusServer) error {
 	log.Printf("new DeploymentStatus request for deployment %s\n", req.Id)
-	return nil, rpcerrors.Errorf(codes.Unimplemented, "DeploymentStatus is not implemented yet")
+
+	stream.Send(&proto.DeploymentStatusResponse{
+		Description: "Demo message",
+	})
+
+	return rpcerrors.Errorf(codes.Unimplemented, "DeploymentStatus is not implemented yet")
 }
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
