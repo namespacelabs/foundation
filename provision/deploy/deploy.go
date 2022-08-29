@@ -48,6 +48,12 @@ type ResolvedServerImages struct {
 	Binary         oci.ImageID
 	PrebuiltBinary bool
 	Config         oci.ImageID
+	Sidecars       []ResolvedSidecarImage
+}
+
+type ResolvedSidecarImage struct {
+	Package schema.PackageName
+	Binary  oci.ImageID
 }
 
 func PrepareDeployServers(ctx context.Context, env ops.Environment, focus []provision.Server, onStack func(*stack.Stack)) (compute.Computable[*Plan], error) {
@@ -445,8 +451,9 @@ func prepareServerImages(ctx context.Context, env ops.Environment,
 }
 
 type containerImage struct {
-	Image   compute.Computable[oci.ImageID]
-	Command []string
+	OwnerServer schema.PackageName
+	Image       compute.Computable[oci.ImageID]
+	Command     []string
 }
 
 func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) (map[schema.PackageName]containerImage, error) {
@@ -487,8 +494,9 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) (map[s
 			}
 
 			res[pkgname] = containerImage{
-				Image:   oci.PublishResolvable(tag, image),
-				Command: prepared.Command,
+				OwnerServer: srv.PackageName(),
+				Image:       oci.PublishResolvable(tag, image),
+				Command:     prepared.Command,
 			}
 		}
 	}
@@ -517,12 +525,25 @@ func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []p
 		return nil, nil, err
 	}
 
+	sidecarImages, err := prepareSidecarAndInitImages(ctx, stack)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	var images []compute.Computable[ResolvedServerImages]
 	for _, r := range imageMap {
 		r := r // Close r.
 		in := compute.Inputs().Stringer("package", r.Package).Computable("binary", r.Binary)
 		if r.Config != nil {
 			in = in.Computable("config", r.Config)
+		}
+
+		sidecarIndex := 0
+		for _, sidecar := range sidecarImages {
+			if sidecar.OwnerServer == r.Package {
+				in = in.Computable(fmt.Sprintf("sidecar%d", sidecarIndex), sidecar.Image)
+				sidecarIndex++
+			}
 		}
 
 		images = append(images, compute.Map(tasks.Action("server.compute-images").Scope(r.Package), in, compute.Output{},
@@ -537,6 +558,19 @@ func ComputeStackAndImages(ctx context.Context, env ops.Environment, servers []p
 
 				if v, ok := compute.GetDep(deps, r.Config, "config"); ok {
 					result.Config = v.Value
+				}
+
+				sidecarIndex := 0
+				for pkg, sidecar := range sidecarImages {
+					if sidecar.OwnerServer == r.Package {
+						if v, ok := compute.GetDep(deps, sidecar.Image, fmt.Sprintf("sidecar%d", sidecarIndex)); ok {
+							result.Sidecars = append(result.Sidecars, ResolvedSidecarImage{
+								Package: pkg,
+								Binary:  v.Value,
+							})
+						}
+						sidecarIndex++
+					}
 				}
 
 				return result, nil

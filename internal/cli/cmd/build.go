@@ -101,6 +101,10 @@ func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[de
 		if resolved.Config.String() != "" {
 			fmt.Fprintf(out, "    %s %s\n", style.Header.Apply("Config:"), resolved.Config)
 		}
+
+		for _, sidecar := range resolved.Sidecars {
+			fmt.Fprintf(out, "    %s %s %s\n", style.Header.Apply("Sidecar:"), sidecar.Package, sidecar.Binary)
+		}
 	}
 }
 
