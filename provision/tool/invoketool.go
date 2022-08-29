@@ -72,7 +72,9 @@ func (inv *cacheableInvocation) Inputs() *compute.In {
 
 	in := compute.Inputs().
 		JSON("handler", Definition{TargetServer: inv.handler.TargetServer, Source: inv.handler.Source, Invocation: &invocation}). // Without image and PackageAbsPath.
-		Proto("stack", inv.stack).Stringer("focus", inv.focus).Proto("env", inv.env.Proto()).
+		Proto("stack", inv.stack).
+		Stringer("focus", inv.focus).
+		Proto("env", inv.env.Proto()).
 		JSON("props", inv.props)
 
 	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages()) && inv.handler.Invocation.PublicImageID != nil {

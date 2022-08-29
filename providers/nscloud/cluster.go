@@ -396,7 +396,7 @@ func (cr clusterRuntime) ComputeBaseNaming(ctx context.Context, source *schema.N
 		Managed:                 schema.Domain_CLOUD_MANAGED,
 		TlsFrontend:             true,
 		TlsInclusterTermination: false,
-		DomainFragmentSuffix:    "880g-" + cr.Cluster.ClusterId, // XXX fetch ingress external IP to calculate domain.
+		DomainFragmentSuffix:    cr.Cluster.ClusterId, // XXX fetch ingress external IP to calculate domain.
 		UseShortAlias:           true,
 	}, nil
 }
