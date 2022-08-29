@@ -13,7 +13,6 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/orchestration/service/proto"
-	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
@@ -54,20 +53,10 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 	}
 	servers = append(servers, focus)
 
-	stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+	plan, err := deploy.PrepareDeployServers(ctx, c.env, servers, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	plan, err := deploy.PrepareDeployStack(ctx, c.env, stack, servers)
-	if err != nil {
-		return nil, err
-	}
-
-	// plan, err := deploy.PrepareDeployServers(ctx, c.env, servers, nil)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	computed, err := compute.GetValue(ctx, plan)
 	if err != nil {
