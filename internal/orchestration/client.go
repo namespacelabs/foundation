@@ -7,7 +7,7 @@ package orchestration
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/fnapi"
+	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/internal/orchestration/service/proto"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -19,9 +19,17 @@ func Deploy(ctx context.Context, plan *schema.DeployPlan) (string, error) {
 
 	// TODO!
 	endpointAddress := "TODO"
+	conn, err := grpc.DialContext(ctx, endpointAddress)
+	if err != nil {
+		return "", err
+	}
 
-	resp := &proto.DeployResponse{}
-	err := fnapi.AnonymousCall(ctx, endpointAddress, "nsl.orchestration.service.proto.OrchestrationService/Deploy", req, fnapi.DecodeJSONResponse(resp))
+	cli := proto.NewOrchestrationServiceClient(conn)
 
-	return resp.Id, err
+	resp, err := cli.Deploy(ctx, req)
+	if err != nil {
+		return "", err
+	}
+
+	return resp.Id, nil
 }
