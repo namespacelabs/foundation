@@ -26,9 +26,11 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream proto.OrchestrationService_DeploymentStatusServer) error {
 	log.Printf("new DeploymentStatus request for deployment %s\n", req.Id)
 
-	stream.Send(&proto.DeploymentStatusResponse{
+	if err := stream.Send(&proto.DeploymentStatusResponse{
 		Description: "Demo message",
-	})
+	}); err != nil {
+		return err
+	}
 
 	return rpcerrors.Errorf(codes.Unimplemented, "DeploymentStatus is not implemented yet")
 }
