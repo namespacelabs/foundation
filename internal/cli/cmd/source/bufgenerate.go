@@ -28,6 +28,7 @@ func newBufGenerateCmd() *cobra.Command {
 			Use:     "proto-generate [--lang go|typescript] <path>...",
 			Short:   "Run buf.build generate on your codebase.",
 			Aliases: []string{"proto-gen", "protogen"},
+			Args:    cobra.MinimumNArgs(1),
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.StringVar(&lang, "lang", "go", "Language for proto generation. Supported values: go, typescript.")
