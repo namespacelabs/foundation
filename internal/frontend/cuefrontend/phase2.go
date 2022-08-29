@@ -25,7 +25,7 @@ type phase2plan struct {
 }
 
 type cueStartupPlan struct {
-	Args *argsListOrMap    `json:"args"`
+	Args *ArgsListOrMap    `json:"args"`
 	Env  map[string]string `json:"env"`
 }
 

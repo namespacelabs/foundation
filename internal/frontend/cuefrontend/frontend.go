@@ -17,14 +17,20 @@ import (
 )
 
 type impl struct {
-	loader  workspace.EarlyPackageLoader
-	evalctx *fncue.EvalCtx
+	loader       workspace.EarlyPackageLoader
+	evalctx      *fncue.EvalCtx
+	opaqueParser opaqueParser
 }
 
-func NewFrontend(pl workspace.EarlyPackageLoader) workspace.Frontend {
+type opaqueParser interface {
+	ParsePackage(ctx context.Context, partial *fncue.Partial, loc workspace.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error)
+}
+
+func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser opaqueParser) workspace.Frontend {
 	return impl{
-		loader:  pl,
-		evalctx: fncue.NewEvalCtx(WorkspaceLoader{pl}),
+		loader:       pl,
+		evalctx:      fncue.NewEvalCtx(WorkspaceLoader{pl}),
+		opaqueParser: opaqueParser,
 	}
 }
 
@@ -35,6 +41,13 @@ func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts wo
 	}
 
 	v := &partial.CueV
+
+	// Detecting the simplified syntax to define opaquer servers.
+	server := v.LookupPath("server")
+	// There is at least one import: the file itself.
+	if len(partial.CueImports) <= 1 && server.Exists() {
+		return ft.opaqueParser.ParsePackage(ctx, partial, loc, opts)
+	}
 
 	parsed := &workspace.Package{
 		Location: loc,
