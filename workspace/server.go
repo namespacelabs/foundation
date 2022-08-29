@@ -125,6 +125,35 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 	return sealed.Proto.Server, nil
 }
 
+// Transform an opaqaue server defined with the simplified, import-less syntax.
+func TransformOpaqueServer(ctx context.Context, pl Packages, loc Location, srv *schema.Server, pp *Package, opts LoadPackageOpts) (*schema.Server, error) {
+	srv.PackageName = loc.PackageName.String()
+	srv.ModuleName = loc.Module.ModuleName()
+	srv.UserImports = srv.Import
+
+	// Used by `ns tidy`.
+	if !opts.LoadPackageReferences {
+		return srv, nil
+	}
+
+	s := newSealer(ctx, pl, loc.PackageName, nil)
+	if err := s.DoServer(loc, srv, pp); err != nil {
+		_ = s.g.Wait() // Make sure cancel is triggered.
+		return nil, err
+	}
+
+	sealed, err := s.finishSealing(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var sorted schema.PackageList
+	likeTopoSort(sealed.Proto, s.serverIncludes, &sorted)
+	sealed.Proto.Server.Import = sorted.PackageNamesAsString()
+
+	return sealed.Proto.Server, nil
+}
+
 type depVisitor struct{ alloc int }
 
 func (depv *depVisitor) allocName(p string) string {

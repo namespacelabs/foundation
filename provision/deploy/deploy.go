@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/multiplatform"
+	"namespacelabs.dev/foundation/integrations"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/console"
@@ -398,7 +399,13 @@ func prepareServerImages(ctx context.Context, env ops.Environment,
 	for _, srv := range stack.Servers {
 		images := ServerImages{Package: srv.PackageName()}
 
-		spec, err := languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, buildAssets, srv, focus.Includes(srv.PackageName()))
+		var err error
+		var spec build.Spec
+		if srv.Integration() != nil {
+			spec, err = integrations.BuildIntegrationFor(srv.Integration().Kind).PrepareBuild(ctx, srv)
+		} else {
+			spec, err = languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, buildAssets, srv, focus.Includes(srv.PackageName()))
+		}
 		if err != nil {
 			return nil, err
 		}

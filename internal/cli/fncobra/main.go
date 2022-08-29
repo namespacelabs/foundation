@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/binary/genbinary"
 	"namespacelabs.dev/foundation/build/buildkit"
+	"namespacelabs.dev/foundation/integrations/docker"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -35,6 +36,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
@@ -136,7 +138,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		devhost.HasRuntime = runtime.HasRuntime
 
 		workspace.ModuleLoader = cuefrontend.ModuleLoader
-		workspace.MakeFrontend = cuefrontend.NewFrontend
+		workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader) workspace.Frontend {
+			return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(pl))
+		}
 
 		filewatcher.SetupFileWatcher()
 
@@ -206,6 +210,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		web.Register()
 		nodeintegration.Register()
 		opaque.Register()
+
+		// Opaque integrations
+		docker.Register()
 
 		// Codegen
 		codegen.Register()

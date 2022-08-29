@@ -15,6 +15,7 @@ import (
 	workspaceCmd "namespacelabs.dev/foundation/cmd/nspipelines/cmd/workspace"
 	"namespacelabs.dev/foundation/internal/cli/cmd"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/providers/aws/ecr"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -39,7 +40,9 @@ func main() {
 
 	ecr.Register()
 	workspace.ModuleLoader = cuefrontend.ModuleLoader
-	workspace.MakeFrontend = cuefrontend.NewFrontend
+	workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader) workspace.Frontend {
+		return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(pl))
+	}
 
 	tasks.SetupFlags(root.PersistentFlags())
 

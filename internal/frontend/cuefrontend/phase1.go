@@ -42,7 +42,7 @@ type cueInvocationSnapshot struct {
 
 type cueInvokeBinary struct {
 	Binary       string                           `json:"binary"`
-	Args         *argsListOrMap                   `json:"args"`
+	Args         *ArgsListOrMap                   `json:"args"`
 	WorkingDir   string                           `json:"workingDir"`
 	Snapshots    map[string]cueInvocationSnapshot `json:"snapshot"`
 	NoCache      bool                             `json:"noCache"`
@@ -88,7 +88,7 @@ type cueNaming struct {
 type cueContainer struct {
 	Name   string         `json:"name"`
 	Binary string         `json:"binary"`
-	Args   *argsListOrMap `json:"args"`
+	Args   *ArgsListOrMap `json:"args"`
 }
 
 func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
@@ -224,20 +224,20 @@ func sortAdditional(a, b *schema.Naming_AdditionalDomainName) bool {
 	return strings.Compare(a.AllocatedName, b.AllocatedName) < 0
 }
 
-type argsListOrMap struct {
+type ArgsListOrMap struct {
 	args []string
 }
 
-var _ json.Unmarshaler = &argsListOrMap{}
+var _ json.Unmarshaler = &ArgsListOrMap{}
 
-func (args *argsListOrMap) Parsed() []string {
+func (args *ArgsListOrMap) Parsed() []string {
 	if args == nil {
 		return nil
 	}
 	return args.args
 }
 
-func (args *argsListOrMap) UnmarshalJSON(contents []byte) error {
+func (args *ArgsListOrMap) UnmarshalJSON(contents []byte) error {
 	var list []string
 	if json.Unmarshal(contents, &list) == nil {
 		args.args = list

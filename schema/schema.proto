@@ -211,7 +211,7 @@ message Reference {
     }
 }
 
-// Next ID: 25
+// Next ID: 26
 message Server {
     reserved 17, 19;
 
@@ -304,6 +304,17 @@ message Server {
         string   package                                           = 1;
         repeated Environment.Label environment_has_label           = 2;
         repeated Environment.Label environment_does_not_have_label = 3;
+    }
+
+    // Fields specific to opaque servers.
+
+    Integration integration = 25;
+
+    message Integration {
+        string kind = 1;
+
+        // TODO: define kind-specific fields in a generic way.
+        string dockerfile = 2;
     }
 }
 

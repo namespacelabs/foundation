@@ -73,6 +73,10 @@ func NewTidyCmd() *cobra.Command {
 		for _, pkg := range packages {
 			switch {
 			case pkg.Server != nil:
+				if pkg.Server.Integration != nil {
+					// TODO: support tidy for opaque servers.
+					continue
+				}
 				lang := languages.IntegrationFor(pkg.Server.Framework)
 				if err := lang.TidyServer(ctx, env, pl, pkg.Location, pkg.Server); err != nil {
 					errs = append(errs, err)
