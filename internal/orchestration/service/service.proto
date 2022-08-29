@@ -1,0 +1,32 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package nsl.orchestration.service;
+
+option go_package = "namespacelabs.dev/foundation/internal/orchestration/service";
+
+import "schema/serialized.proto";
+
+message DeployRequest {
+    foundation.schema.DeployPlan plan = 1;
+}
+
+message DeployResponse {
+    string id = 1; // Deployment to follow
+}
+
+message DeploymentStatusRequest {
+    string id = 1; // Deployment to follow
+}
+
+message DeploymentStatusResponse {
+    string description = 1;
+}
+
+service OrchestrationService {
+    rpc Deploy(DeployRequest) returns (DeployResponse);
+    rpc DeploymentStatus(DeploymentStatusRequest) returns (DeploymentStatusResponse);
+}
