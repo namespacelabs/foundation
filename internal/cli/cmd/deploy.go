@@ -108,7 +108,7 @@ type Ingress struct {
 }
 
 func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
-	if _, err := orchestration.Deploy(ctx, plan); err != nil {
+	if _, err := orchestration.Deploy(ctx, env, plan); err != nil {
 		return err
 	}
 
