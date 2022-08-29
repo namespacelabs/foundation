@@ -595,16 +595,27 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 		out.ConfigImage = &imgs.Config
 	}
 
-	if err := languages.IntegrationFor(s.Framework()).PrepareRun(ctx, s, &out.ServerRunOpts); err != nil {
+	var err error
+	if s.Integration() != nil {
+		err = integrations.BuildIntegrationFor(s.Integration().Kind).PrepareRun(ctx, s, &out.ServerRunOpts)
+	} else {
+		err = languages.IntegrationFor(s.Framework()).PrepareRun(ctx, s, &out.ServerRunOpts)
+	}
+	if err != nil {
 		return err
 	}
 
-	merged, err := startup.ComputeConfig(ctx, s.Env(), stack.GetParsed(s.PackageName()), frontend.StartupInputs{
+	inputs := frontend.StartupInputs{
 		Stack:         stack.Proto(),
 		Server:        s.Proto(),
 		ServerImage:   imgs.Binary.RepoAndDigest(),
 		ServerRootAbs: s.Location.Abs(),
-	})
+	}
+	serverStartupPlan, err := s.Startup.EvalStartup(ctx, s.Env(), inputs, nil)
+	if err != nil {
+		return err
+	}
+	merged, err := startup.ComputeConfig(ctx, s.Env(), serverStartupPlan, stack.GetParsed(s.PackageName()), inputs)
 	if err != nil {
 		return err
 	}

@@ -21,6 +21,7 @@ type Server struct {
 	Package  *workspace.Package
 
 	Provisioning frontend.PreparedProvisionPlan // A provisioning plan that is attached to the server itself.
+	Startup      frontend.PreStartup
 
 	env   ServerEnv            // The environment this server instance is bound to.
 	entry *schema.Stack_Entry  // The stack entry, i.e. all of the server's dependencies.
@@ -92,6 +93,7 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 		return Server{}, fnerrors.UserError(t.Location, "servers can't add servers to the stack")
 	}
 
+	t.Startup = pdata.Startup
 	t.Provisioning = pdata.PreparedProvisionPlan
 	t.entry.ServerNaming = pdata.Naming
 
