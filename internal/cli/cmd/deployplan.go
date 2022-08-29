@@ -52,6 +52,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return fnerrors.New("failed to prepare plan: %w", err)
 		}
 
+		// TODO add orchestration.Deploy
 		return completeDeployment(ctx, serializedEnvironment{root, plan.Environment}, p, plan, opts)
 	})
 

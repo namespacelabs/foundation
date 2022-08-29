@@ -88,6 +88,10 @@ func NewDeployCmd() *cobra.Command {
 				return protos.WriteFile(serializePath, deployPlan)
 			}
 
+			if _, err := orchestration.Deploy(ctx, env, deployPlan); err != nil {
+				return err
+			}
+
 			return completeDeployment(ctx, env.BindWith(servers.SealedPackages), computed.Deployer, deployPlan, deployOpts)
 		})
 }
@@ -108,10 +112,6 @@ type Ingress struct {
 }
 
 func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
-	if _, err := orchestration.Deploy(ctx, env, plan); err != nil {
-		return err
-	}
-
 	waiters, err := p.Execute(ctx, runtime.TaskServerDeploy, env)
 	if err != nil {
 		return err

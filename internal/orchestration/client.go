@@ -6,9 +6,12 @@ package orchestration
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/orchestration/service/proto"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
@@ -19,13 +22,18 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type clientInstance struct {
-	env ops.Environment
+const (
+	serverPkg  = "namespacelabs.dev/foundation/internal/orchestration/server"
+	servicePkg = "namespacelabs.dev/foundation/internal/orchestration/service"
+)
 
-	compute.DoScoped[*proto.OrchestrationServiceClient] // Only connect once per configuration.
+type clientInstance struct {
+	env provision.Env
+
+	compute.DoScoped[proto.OrchestrationServiceClient] // Only connect once per configuration.
 }
 
-func ConnectToClient(env ops.Environment) compute.Computable[proto.OrchestrationServiceClient] {
+func ConnectToClient(env provision.Env) compute.Computable[proto.OrchestrationServiceClient] {
 	return &clientInstance{env: env}
 }
 
@@ -38,7 +46,13 @@ func (c *clientInstance) Inputs() *compute.In {
 }
 
 func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto.OrchestrationServiceClient, error) {
-	var servers []provision.Server // TODO
+	var servers []provision.Server
+
+	focus, err := c.env.RequireServer(ctx, schema.PackageName(serverPkg))
+	if err != nil {
+		return nil, err
+	}
+	servers = append(servers, focus)
 
 	stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 	if err != nil {
@@ -49,6 +63,11 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 	if err != nil {
 		return nil, err
 	}
+
+	// plan, err := deploy.PrepareDeployServers(ctx, c.env, servers, nil)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	computed, err := compute.GetValue(ctx, plan)
 	if err != nil {
@@ -65,9 +84,36 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 		return nil, err
 	}
 
-	// TODO: port forwarding!
-	endpointAddress := "TODO"
-	conn, err := grpc.DialContext(ctx, endpointAddress)
+	endpoint := &schema.Endpoint{}
+	for _, e := range computed.ComputedStack.Endpoints {
+		if e.EndpointOwner != servicePkg {
+			continue
+		}
+		for _, meta := range e.ServiceMetadata {
+			if meta.Kind == proto.OrchestrationService_ServiceDesc.ServiceName {
+				endpoint = e
+			}
+		}
+	}
+
+	rt := runtime.For(ctx, c.env)
+
+	portch := make(chan runtime.ForwardedPort)
+
+	defer close(portch)
+	if _, err := rt.ForwardPort(ctx, focus.Proto(), endpoint.Port.ContainerPort, []string{"127.0.0.1"}, func(fp runtime.ForwardedPort) {
+		portch <- fp
+	}); err != nil {
+		return nil, err
+	}
+
+	port, ok := <-portch
+	if !ok {
+		return nil, fnerrors.InternalError("unexpected error")
+	}
+
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("127.0.0.1:%d", port.LocalPort),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +123,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 	return cli, nil
 }
 
-func Deploy(ctx context.Context, env ops.Environment, plan *schema.DeployPlan) (string, error) {
+func Deploy(ctx context.Context, env provision.Env, plan *schema.DeployPlan) (string, error) {
 	req := &proto.DeployRequest{
 		Plan: plan,
 	}
