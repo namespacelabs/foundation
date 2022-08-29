@@ -523,7 +523,7 @@ func Get[V any](ctx context.Context, c Computable[V]) (ResultWithTimestamp[V], e
 
 	typed, ok := r.Value.(V)
 	if !ok {
-		panic("how did a Computable produce the wrong type?")
+		panic(fmt.Sprintf("Computable of type %s produced wrong type %s", reflect.TypeOf(c), reflect.TypeOf(r.Value)))
 	}
 
 	var rwt ResultWithTimestamp[V]
