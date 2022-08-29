@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             (unknown)
-// source: internal/orchestration/service/service.proto
+// source: internal/orchestration/service/proto/service.proto
 
-package service
+package proto
 
 import (
 	context "context"
@@ -36,7 +36,7 @@ func NewOrchestrationServiceClient(cc grpc.ClientConnInterface) OrchestrationSer
 
 func (c *orchestrationServiceClient) Deploy(ctx context.Context, in *DeployRequest, opts ...grpc.CallOption) (*DeployResponse, error) {
 	out := new(DeployResponse)
-	err := c.cc.Invoke(ctx, "/nsl.orchestration.service.OrchestrationService/Deploy", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/nsl.orchestration.service.proto.OrchestrationService/Deploy", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (c *orchestrationServiceClient) Deploy(ctx context.Context, in *DeployReque
 
 func (c *orchestrationServiceClient) DeploymentStatus(ctx context.Context, in *DeploymentStatusRequest, opts ...grpc.CallOption) (*DeploymentStatusResponse, error) {
 	out := new(DeploymentStatusResponse)
-	err := c.cc.Invoke(ctx, "/nsl.orchestration.service.OrchestrationService/DeploymentStatus", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/nsl.orchestration.service.proto.OrchestrationService/DeploymentStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func _OrchestrationService_Deploy_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/nsl.orchestration.service.OrchestrationService/Deploy",
+		FullMethod: "/nsl.orchestration.service.proto.OrchestrationService/Deploy",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OrchestrationServiceServer).Deploy(ctx, req.(*DeployRequest))
@@ -110,7 +110,7 @@ func _OrchestrationService_DeploymentStatus_Handler(srv interface{}, ctx context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/nsl.orchestration.service.OrchestrationService/DeploymentStatus",
+		FullMethod: "/nsl.orchestration.service.proto.OrchestrationService/DeploymentStatus",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OrchestrationServiceServer).DeploymentStatus(ctx, req.(*DeploymentStatusRequest))
@@ -122,7 +122,7 @@ func _OrchestrationService_DeploymentStatus_Handler(srv interface{}, ctx context
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var OrchestrationService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "nsl.orchestration.service.OrchestrationService",
+	ServiceName: "nsl.orchestration.service.proto.OrchestrationService",
 	HandlerType: (*OrchestrationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -135,5 +135,5 @@ var OrchestrationService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "internal/orchestration/service/service.proto",
+	Metadata: "internal/orchestration/service/proto/service.proto",
 }

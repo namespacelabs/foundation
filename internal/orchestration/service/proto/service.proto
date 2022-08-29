@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package nsl.orchestration.service;
+package nsl.orchestration.service.proto;
 
-option go_package = "namespacelabs.dev/foundation/internal/orchestration/service";
+option go_package = "namespacelabs.dev/foundation/internal/orchestration/service/proto";
 
 import "schema/serialized.proto";
 

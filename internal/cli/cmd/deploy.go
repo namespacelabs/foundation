@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/orchestration"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
@@ -107,6 +108,10 @@ type Ingress struct {
 }
 
 func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
+	if _, err := orchestration.Deploy(ctx, plan); err != nil {
+		return err
+	}
+
 	waiters, err := p.Execute(ctx, runtime.TaskServerDeploy, env)
 	if err != nil {
 		return err
