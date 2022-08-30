@@ -99,7 +99,7 @@ func NetworkPlanToSummary(plan *storage.NetworkPlan) *NetworkPlanSummary {
 					for _, svc := range p.ServiceMetadata {
 						if svc.Kind == grpcService.GrpcService {
 							grpcAccessCmds = append(grpcAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
-								Cmd:       grpcAccessCmd(ingress.Domain.TlsFrontend, 443, ingress.Domain.Fqdn, svc.Kind),
+								Cmd:       grpcAccessCmd(ingress.Domain.TlsFrontend, true, 443, ingress.Domain.Fqdn, svc.Kind),
 								IsManaged: isManaged,
 							})
 						}
@@ -108,17 +108,27 @@ func NetworkPlanToSummary(plan *storage.NetworkPlan) *NetworkPlanSummary {
 			}
 		}
 
-		if kind, ok := protocolToKind["grpc"]; ok && len(grpcAccessCmds) == 0 {
+		if kind, ok := protocolToKind[schema.ClearTextGrpcProtocol]; ok && len(grpcAccessCmds) == 0 {
 			if p.LocalPort == 0 {
 				grpcAccessCmds = append(grpcAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
-					Cmd: fmt.Sprintf("private: container port %d gprc", p.Port.ContainerPort), IsManaged: true})
+					Cmd: fmt.Sprintf("private: container port %d grpc", p.Port.ContainerPort), IsManaged: true})
 			} else {
 				grpcAccessCmds = append(grpcAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
-					Cmd: grpcAccessCmd(false, p.LocalPort, plan.LocalHostname, kind), IsManaged: true})
+					Cmd: grpcAccessCmd(false, false, p.LocalPort, plan.LocalHostname, kind), IsManaged: true})
 			}
 		}
 
-		if _, ok := protocolToKind["http"]; ok && len(httpAccessCmds) == 0 {
+		if kind, ok := protocolToKind[schema.GrpcProtocol]; ok && len(grpcAccessCmds) == 0 {
+			if p.LocalPort == 0 {
+				grpcAccessCmds = append(grpcAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
+					Cmd: fmt.Sprintf("private: container port %d grpcs", p.Port.ContainerPort), IsManaged: true})
+			} else {
+				grpcAccessCmds = append(grpcAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
+					Cmd: grpcAccessCmd(true, false, p.LocalPort, plan.LocalHostname, kind), IsManaged: true})
+			}
+		}
+
+		if _, ok := protocolToKind[schema.HttpProtocol]; ok && len(httpAccessCmds) == 0 {
 			if p.LocalPort == 0 {
 				httpAccessCmds = append(httpAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
 					Cmd: fmt.Sprintf("private: container port %d http", p.Port.ContainerPort), IsManaged: true})
@@ -150,10 +160,12 @@ func NetworkPlanToSummary(plan *storage.NetworkPlan) *NetworkPlanSummary {
 	return s
 }
 
-func grpcAccessCmd(tls bool, port uint32, hostname string, serviceName string) string {
+func grpcAccessCmd(tls, trusted bool, port uint32, hostname string, serviceName string) string {
 	extraArg := ""
 	if !tls {
 		extraArg = " -plaintext"
+	} else if !trusted {
+		extraArg = " -insecure"
 	}
 	return fmt.Sprintf("ns tools grpcurl%s -d '{}' %s:%d %s/<METHOD>",
 		extraArg, hostname, port, serviceName)

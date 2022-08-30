@@ -16,7 +16,7 @@
       },
       "access_cmd": [
         {
-          "cmd": "private: container port 1235 gprc",
+          "cmd": "private: container port 1235 grpc",
           "is_managed": true
         }
       ]
