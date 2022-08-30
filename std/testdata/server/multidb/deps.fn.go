@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/go/grpc"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
@@ -15,7 +14,6 @@ import (
 
 func RegisterInitializers(di *core.DependencyGraph) {
 	di.AddInitializers(metrics.Initializers__so2f3v...)
-	di.AddInitializers(grpc.Initializers__9aqa7n...)
 	di.AddInitializers(tracing.Initializers__70o2mm...)
 }
 
