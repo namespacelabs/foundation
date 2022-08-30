@@ -89,12 +89,6 @@ func NewDeployCmd() *cobra.Command {
 				return protos.WriteFile(serializePath, deployPlan)
 			}
 
-			if orchestration.UseOrchestrator {
-				if _, err := orchestration.Deploy(ctx, env, deployPlan); err != nil {
-					return err
-				}
-			}
-
 			return completeDeployment(ctx, env.Root(), env.BindWith(servers.SealedPackages), computed.Deployer, deployPlan, deployOpts)
 		})
 }
