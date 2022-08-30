@@ -6,6 +6,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net"
@@ -19,10 +20,12 @@ import (
 	"github.com/soheilhy/cmux"
 	"go.uber.org/automaxprocs/maxprocs"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"namespacelabs.dev/foundation/std/go/core"
+	gogrpc "namespacelabs.dev/foundation/std/go/grpc"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/http/middleware"
 	"namespacelabs.dev/foundation/std/grpc/requestid"
@@ -51,6 +54,22 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 	anyL := m.Match(cmux.Any())
 
 	opts := interceptorsAsOpts()
+
+	if gogrpc.ServerCert != nil {
+		cert, err := tls.X509KeyPair(gogrpc.ServerCert.Bundle, gogrpc.ServerCert.PrivateKey)
+		if err != nil {
+			return err
+		}
+
+		config := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			ClientAuth:   tls.NoClientCert,
+		}
+
+		transportCreds := credentials.NewTLS(config)
+
+		opts = append(opts, grpc.Creds(transportCreds))
+	}
 
 	// XXX serving keys.
 	grpcServer := grpc.NewServer(opts...)

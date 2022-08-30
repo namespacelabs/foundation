@@ -8,14 +8,17 @@ package foundation.std.types;
 
 option go_package = "namespacelabs.dev/foundation/std/types";
 
-import "std/types/invocation.proto";
-
-message Resource {
-    string path     = 1;
-    bytes  contents = 2;
+message TLSCertificateSpec {
+    repeated string organization       = 1;
+    string          common_name_prefix = 2;
 }
 
-message DeferredResource {
-    reserved 1;
-    DeferredInvocationSource from_invocation = 2;
+message CertificateChain {
+    Certificate CA     = 1;
+    Certificate Server = 2;
+}
+
+message Certificate {
+    bytes bundle      = 1;
+    bytes private_key = 2;
 }

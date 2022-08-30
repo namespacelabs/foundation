@@ -6,12 +6,14 @@ package kubeops
 
 import (
 	"context"
+	"encoding/json"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/tools/maketlscert"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
@@ -28,15 +30,6 @@ func RegisterCreateSecret() {
 			return nil, fnerrors.InternalError("%s: create.Namespace is required", d.Description)
 		}
 
-		resource, err := ops.Value[*types.Resource](d, "value")
-		if err != nil {
-			return nil, fnerrors.New("%s: failed to retrieve value: %w", d.Description, err)
-		}
-
-		if resource.GetContents() == nil {
-			return nil, fnerrors.BadInputError("%s: resource is missing a value", d.Description)
-		}
-
 		restcfg, err := client.ResolveConfig(ctx, env)
 		if err != nil {
 			return nil, fnerrors.New("resolve config failed: %w", err)
@@ -51,20 +44,46 @@ func RegisterCreateSecret() {
 			return nil, nil // Nothing to do.
 		}
 
-		cli, err := k8s.NewForConfig(restcfg)
-		if err != nil {
-			return nil, err
-		}
-
 		newSecret := &v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      create.Name,
 				Namespace: create.Namespace,
 				Labels:    kubedef.MakeLabels(env.Proto(), nil),
 			},
-			Data: map[string][]byte{
+		}
+
+		if create.SelfSignedCertificate != nil {
+			bundle, err := maketlscert.CreateCertificateChain(ctx, create.SelfSignedCertificate)
+			if err != nil {
+				return nil, err
+			}
+
+			bundleBytes, err := json.Marshal(bundle)
+			if err != nil {
+				return nil, err
+			}
+
+			newSecret.Data = map[string][]byte{
+				create.UserSpecifiedName: bundleBytes,
+			}
+		} else {
+			resource, err := ops.Value[*types.Resource](d, "value")
+			if err != nil {
+				return nil, fnerrors.New("%s: failed to retrieve value: %w", d.Description, err)
+			}
+
+			if resource.GetContents() == nil {
+				return nil, fnerrors.BadInputError("%s: resource is missing a value", d.Description)
+			}
+
+			newSecret.Data = map[string][]byte{
 				create.UserSpecifiedName: resource.GetContents(),
-			},
+			}
+		}
+
+		cli, err := k8s.NewForConfig(restcfg)
+		if err != nil {
+			return nil, err
 		}
 
 		if _, err := cli.CoreV1().Secrets(create.Namespace).Create(ctx, newSecret, metav1.CreateOptions{

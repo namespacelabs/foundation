@@ -20,6 +20,10 @@ import (
 			cacheable?:            bool
 			withInput?:            types.#Any
 		}
+		selfSignedTlsCertificate?: {
+			organization?: [...string]
+			commonNamePrefix?: string
+		}
 		optional?:                  bool
 		experimentalMountAsEnvVar?: string
 

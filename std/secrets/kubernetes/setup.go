@@ -171,33 +171,8 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				}},
 			}})
 
-		if gen.Secret.InitializeWith == nil {
-			data := map[string][]byte{}
-			switch gen.Secret.Generate.Format {
-			case secrets.GenerateSpecification_FORMAT_BASE32:
-				data[gen.Secret.Name] = []byte(ids.NewRandomBase32ID(int(gen.Secret.Generate.RandomByteCount)))
-			default: // Including BASE64
-				raw := make([]byte, gen.Secret.Generate.RandomByteCount)
-				_, _ = rand.Reader.Read(raw)
-				data[gen.Secret.Name] = []byte(base64.RawStdEncoding.EncodeToString(raw))
-			}
-
-			newSecret := &v1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      generatedName,
-					Namespace: namespace,
-					Labels:    kubedef.MakeLabels(r.Env, nil),
-				},
-				Data: data,
-			}
-
-			out.Invocations = append(out.Invocations, kubedef.Create{
-				Description:         "Generated server secrets",
-				SkipIfAlreadyExists: true,
-				Resource:            "secrets",
-				Body:                newSecret,
-			})
-		} else {
+		switch {
+		case gen.Secret.InitializeWith != nil:
 			src := &schema.SerializedInvocationSource{
 				Description: "Generated server secrets",
 			}
@@ -225,6 +200,53 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 			})
 
 			out.InvocationSources = append(out.InvocationSources, src)
+
+		case gen.Secret.SelfSignedTlsCertificate != nil:
+			src := &schema.SerializedInvocationSource{
+				Description: "Generated self-signed certificate bundle",
+			}
+
+			create := &kubedef.OpCreateSecretConditionally{
+				Namespace:             namespace,
+				Name:                  generatedName,
+				UserSpecifiedName:     gen.Secret.Name,
+				SelfSignedCertificate: gen.Secret.SelfSignedTlsCertificate,
+			}
+
+			var err error
+			src.Impl, err = anypb.New(create)
+			if err != nil {
+				return err
+			}
+
+			out.InvocationSources = append(out.InvocationSources, src)
+
+		default:
+			data := map[string][]byte{}
+			switch gen.Secret.Generate.Format {
+			case secrets.GenerateSpecification_FORMAT_BASE32:
+				data[gen.Secret.Name] = []byte(ids.NewRandomBase32ID(int(gen.Secret.Generate.RandomByteCount)))
+			default: // Including BASE64
+				raw := make([]byte, gen.Secret.Generate.RandomByteCount)
+				_, _ = rand.Reader.Read(raw)
+				data[gen.Secret.Name] = []byte(base64.RawStdEncoding.EncodeToString(raw))
+			}
+
+			newSecret := &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatedName,
+					Namespace: namespace,
+					Labels:    kubedef.MakeLabels(r.Env, nil),
+				},
+				Data: data,
+			}
+
+			out.Invocations = append(out.Invocations, kubedef.Create{
+				Description:         "Generated server secrets",
+				SkipIfAlreadyExists: true,
+				Resource:            "secrets",
+				Body:                newSecret,
+			})
 		}
 	}
 

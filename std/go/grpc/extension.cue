@@ -1,6 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
+	"namespacelabs.dev/foundation/std/secrets"
 )
 
 extension: fn.#Extension & {
@@ -8,6 +9,21 @@ extension: fn.#Extension & {
 		"namespacelabs.dev/foundation/std/core",
 		"namespacelabs.dev/foundation/std/go/grpc/metrics",
 	]
+
+	hasInitializerIn: "GO"
+
+	instantiate: {
+		tlsCert: secrets.#Exports.Secret & {
+			name: "grpc-tls-cert"
+			generate: {
+				uniqueId: "jvkrj3pn" // Without a unique ID, one is generated for us that depends on the allocation tree.
+			}
+			selfSignedTlsCertificate: {
+				organization: ["Namespace Labs, Inc"]
+				commonNamePrefix: "Namespace"
+			}
+		}
+	}
 }
 
 $inputs: {
