@@ -26,6 +26,8 @@ const (
 	servicePkg = "namespacelabs.dev/foundation/internal/orchestration/service"
 )
 
+var UseOrchestrator = false
+
 type clientInstance struct {
 	env provision.Env
 
@@ -42,6 +44,10 @@ func (c *clientInstance) Action() *tasks.ActionEvent {
 
 func (c *clientInstance) Inputs() *compute.In {
 	return compute.Inputs()
+}
+
+func (c *clientInstance) Output() compute.Output {
+	return compute.Output{NotCacheable: true}
 }
 
 func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto.OrchestrationServiceClient, error) {
