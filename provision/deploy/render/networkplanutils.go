@@ -71,19 +71,17 @@ func NetworkPlanToSummary(plan *storage.NetworkPlan) *NetworkPlanSummary {
 			for _, httpPath := range ingress.HttpPath {
 				url := httpUrl(ingress.Domain, localIngressPort, httpPath.Path)
 
-				// http service
 				if ingress.Owner == p.EndpointOwner &&
 					httpPath.Port.ContainerPort == p.Port.ContainerPort {
+					// http service
 					httpAccessCmds = append(httpAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
 						Cmd:       url,
 						IsManaged: isManaged,
 					})
-				}
-
-				// grpc<->http transcoding
-				if ingress.Endpoint != nil &&
+				} else if ingress.Endpoint != nil &&
 					ingress.Endpoint.ServiceName == p.ServiceName &&
 					httpPath.Owner == p.EndpointOwner {
+					// grpc<->http transcoding
 					endpoint.AccessCmd = append(endpoint.AccessCmd, &NetworkPlanSummary_Service_AccessCmd{
 						Cmd:       fmt.Sprintf("curl -X POST %s<METHOD>", url),
 						IsManaged: isManaged,
