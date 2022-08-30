@@ -8,17 +8,16 @@ package foundation.std.types;
 
 option go_package = "namespacelabs.dev/foundation/std/types";
 
+import "schema/networking.proto";
+
 message TLSCertificateSpec {
-    repeated string organization       = 1;
-    string          common_name_prefix = 2;
+    repeated string organization = 1;
+    string          description  = 2;
+    string          common_name  = 3;
+    repeated string dns_name     = 4;
 }
 
 message CertificateChain {
-    Certificate CA     = 1;
-    Certificate Server = 2;
-}
-
-message Certificate {
-    bytes bundle      = 1;
-    bytes private_key = 2;
+    foundation.schema.Certificate CA     = 1;
+    foundation.schema.Certificate Server = 2;
 }

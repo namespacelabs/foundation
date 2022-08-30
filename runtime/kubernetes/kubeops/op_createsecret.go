@@ -53,7 +53,7 @@ func RegisterCreateSecret() {
 		}
 
 		if create.SelfSignedCertificate != nil {
-			bundle, err := maketlscert.CreateCertificateChain(ctx, env.Proto(), create.SelfSignedCertificate)
+			bundle, err := maketlscert.CreateSelfSignedCertificateChain(ctx, env.Proto(), create.SelfSignedCertificate)
 			if err != nil {
 				return nil, err
 			}

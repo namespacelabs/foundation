@@ -11,16 +11,16 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision/deploy/render"
-	"namespacelabs.dev/foundation/schema"
+	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
 type PortFwd struct {
-	Endpoint  *schema.Endpoint
+	Endpoint  *fnschema.Endpoint
 	LocalPort uint32
 }
 
-func ToStorageNetworkPlan(localHostname string, stack *schema.Stack, focus []*schema.Server, portFwds []*PortFwd, ingressFragments []*schema.IngressFragment) (*storage.NetworkPlan, error) {
+func ToStorageNetworkPlan(localHostname string, stack *fnschema.Stack, focus []*fnschema.Server, portFwds []*PortFwd, ingressFragments []*fnschema.IngressFragment) (*storage.NetworkPlan, error) {
 	r := &storage.NetworkPlan{
 		LocalHostname: localHostname,
 	}
@@ -68,7 +68,7 @@ func ToStorageNetworkPlan(localHostname string, stack *schema.Stack, focus []*sc
 	return r, nil
 }
 
-func convertDomain(d *schema.Domain) (*storage.Domain, error) {
+func convertDomain(d *fnschema.Domain) (*storage.Domain, error) {
 	if d == nil {
 		return nil, nil
 	}
@@ -86,7 +86,7 @@ func convertDomain(d *schema.Domain) (*storage.Domain, error) {
 	}, nil
 }
 
-func convertGrpcService(s *schema.IngressFragment_IngressGrpcService) *storage.IngressGrpcService {
+func convertGrpcService(s *fnschema.IngressFragment_IngressGrpcService) *storage.IngressGrpcService {
 	return &storage.IngressGrpcService{
 		GrpcService: s.GrpcService,
 		Owner:       s.Owner,
@@ -97,12 +97,12 @@ func convertGrpcService(s *schema.IngressFragment_IngressGrpcService) *storage.I
 	}
 }
 
-func convertEndpoint(endpoint *schema.Endpoint, localPort uint32, stack *schema.Stack) (*storage.Endpoint, error) {
+func convertEndpoint(endpoint *fnschema.Endpoint, localPort uint32, stack *fnschema.Stack) (*storage.Endpoint, error) {
 	if endpoint == nil {
 		return nil, nil
 	}
 
-	entry := stack.GetServer(schema.PackageName(endpoint.EndpointOwner))
+	entry := stack.GetServer(fnschema.PackageName(endpoint.EndpointOwner))
 	serverName := ""
 	if entry != nil {
 		serverName = entry.Server.Name
@@ -133,7 +133,7 @@ func convertEndpoint(endpoint *schema.Endpoint, localPort uint32, stack *schema.
 	return result, nil
 }
 
-func convertPort(port *schema.Endpoint_Port) *storage.Endpoint_Port {
+func convertPort(port *fnschema.Endpoint_Port) *storage.Endpoint_Port {
 	if port == nil {
 		return nil
 	} else {
@@ -141,20 +141,20 @@ func convertPort(port *schema.Endpoint_Port) *storage.Endpoint_Port {
 	}
 }
 
-func convertEndpointType(t schema.Endpoint_Type) (storage.Endpoint_Type, error) {
+func convertEndpointType(t fnschema.Endpoint_Type) (storage.Endpoint_Type, error) {
 	switch t {
-	case schema.Endpoint_INGRESS_UNSPECIFIED:
+	case fnschema.Endpoint_INGRESS_UNSPECIFIED:
 		return storage.Endpoint_INGRESS_UNSPECIFIED, nil
-	case schema.Endpoint_PRIVATE:
+	case fnschema.Endpoint_PRIVATE:
 		return storage.Endpoint_PRIVATE, nil
-	case schema.Endpoint_INTERNET_FACING:
+	case fnschema.Endpoint_INTERNET_FACING:
 		return storage.Endpoint_INTERNET_FACING, nil
 	default:
 		return storage.Endpoint_INGRESS_UNSPECIFIED, fnerrors.InternalError("unknown endpoint type: %s", t)
 	}
 }
 
-func convertHttpPath(httpPath *schema.IngressFragment_IngressHttpPath) *storage.IngressHttpPath {
+func convertHttpPath(httpPath *fnschema.IngressFragment_IngressHttpPath) *storage.IngressHttpPath {
 	return &storage.IngressHttpPath{
 		Path:    httpPath.Path,
 		Kind:    httpPath.Kind,
@@ -164,17 +164,17 @@ func convertHttpPath(httpPath *schema.IngressFragment_IngressHttpPath) *storage.
 	}
 }
 
-func convertManagedType(managed schema.Domain_ManagedType) (storage.Domain_ManagedType, error) {
+func convertManagedType(managed fnschema.Domain_ManagedType) (storage.Domain_ManagedType, error) {
 	switch managed {
-	case schema.Domain_MANAGED_UNKNOWN:
+	case fnschema.Domain_MANAGED_UNKNOWN:
 		return storage.Domain_MANAGED_UNKNOWN, nil
-	case schema.Domain_LOCAL_MANAGED:
+	case fnschema.Domain_LOCAL_MANAGED:
 		return storage.Domain_LOCAL_MANAGED, nil
-	case schema.Domain_CLOUD_MANAGED:
+	case fnschema.Domain_CLOUD_MANAGED:
 		return storage.Domain_CLOUD_MANAGED, nil
-	case schema.Domain_USER_SPECIFIED:
+	case fnschema.Domain_USER_SPECIFIED:
 		return storage.Domain_USER_SPECIFIED, nil
-	case schema.Domain_USER_SPECIFIED_TLS_MANAGED:
+	case fnschema.Domain_USER_SPECIFIED_TLS_MANAGED:
 		return storage.Domain_USER_SPECIFIED_TLS_MANAGED, nil
 	default:
 		return storage.Domain_MANAGED_UNKNOWN, fnerrors.InternalError("unknown domain managed type: %s", managed)
@@ -298,7 +298,7 @@ func domainSchema(domain *storage.Domain, localPort uint, endpoints ...*storage.
 	case 0:
 		schema, portLabel = httpSchema(domain, localPort)
 	case 1:
-		if protocols.Strings()[0] == "grpc" {
+		if protocols.Strings()[0] == fnschema.ClearTextGrpcProtocol {
 			schema, portLabel, cmd = grpcSchema(domain.TlsFrontend, localPort)
 			if !domain.TlsFrontend {
 				suffix = "not currently working, see #26"

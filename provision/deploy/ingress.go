@@ -72,7 +72,7 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 			}
 
 			if ci.allocate {
-				fragment.Domain, err = runtime.MaybeAllocateDomainCertificate(ctx, sch, fragment.Domain)
+				fragment.Domain, err = runtime.MaybeAllocateDomainCertificate(ctx, ci.rootenv.Proto(), sch, fragment.Domain)
 				if err != nil {
 					return err
 				}

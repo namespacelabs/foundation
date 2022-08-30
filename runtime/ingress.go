@@ -15,8 +15,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/tools/maketlscert"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -82,16 +84,16 @@ func ComputeIngress(ctx context.Context, env ops.Environment, sch *schema.Stack_
 			continue
 		}
 
-		var kind string
-		if *protocol != schema.HttpProtocol {
-			kind = *protocol
-		}
-
 		var paths []*schema.IngressFragment_IngressHttpPath
 		var grpc []*schema.IngressFragment_IngressGrpcService
 
 		switch *protocol {
 		case schema.HttpProtocol:
+			var kind string
+			if *protocol != schema.HttpProtocol {
+				kind = *protocol
+			}
+
 			for _, details := range protocolDetails {
 				p := &schema.HttpUrlMap{}
 				if err := details.UnmarshalTo(p); err != nil {
@@ -141,6 +143,10 @@ func ComputeIngress(ctx context.Context, env ops.Environment, sch *schema.Stack_
 			}
 		}
 
+		if len(paths) > 0 && len(grpc) > 0 {
+			return nil, fnerrors.BadInputError("can't mix grpc and http paths within a single endpoint")
+		}
+
 		attached, err := AttachComputedDomains(ctx, env.Workspace().ModuleName, env, sch, &schema.IngressFragment{
 			Name:        endpoint.ServiceName,
 			Owner:       endpoint.ServerOwner,
@@ -149,10 +155,11 @@ func ComputeIngress(ctx context.Context, env ops.Environment, sch *schema.Stack_
 			HttpPath:    paths,
 			GrpcService: grpc,
 		}, DomainsRequest{
-			ServerID:    sch.Server.Id,
-			ServiceName: endpoint.ServiceName,
-			Key:         endpoint.AllocatedName,
-			Alias:       endpoint.ServiceName,
+			ServerID:                sch.Server.Id,
+			ServiceName:             endpoint.ServiceName,
+			Key:                     endpoint.AllocatedName,
+			Alias:                   endpoint.ServiceName,
+			TlsInclusterTermination: len(grpc) > 0,
 		})
 		if err != nil {
 			return nil, err
@@ -217,9 +224,10 @@ func ComputeIngress(ctx context.Context, env ops.Environment, sch *schema.Stack_
 				Owner:    sch.GetPackageName().String(),
 				HttpPath: paths,
 			}, DomainsRequest{
-				ServerID: sch.GetServer().GetId(),
-				Key:      name,
-				Alias:    perIngressAlias[name],
+				ServerID:                sch.GetServer().GetId(),
+				Key:                     name,
+				Alias:                   perIngressAlias[name],
+				TlsInclusterTermination: env.Proto().GetPurpose() == schema.Environment_PRODUCTION,
 			})
 			if err != nil {
 				return nil, err
@@ -249,19 +257,30 @@ func AttachComputedDomains(ctx context.Context, ws string, env ops.Environment, 
 	return ingresses, nil
 }
 
-func MaybeAllocateDomainCertificate(ctx context.Context, entry *schema.Stack_Entry, template *schema.Domain) (*schema.Domain, error) {
+func MaybeAllocateDomainCertificate(ctx context.Context, env *schema.Environment, entry *schema.Stack_Entry, template *schema.Domain) (*schema.Domain, error) {
 	domain := protos.Clone(template)
 
 	if domain.TlsInclusterTermination {
-		cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
-			FQDN: domain.Fqdn,
-			// XXX remove org -- it should be parsed from fqdn.
-			Org: entry.ServerNaming.GetWithOrg(),
-		})
-		if err != nil {
-			return nil, err
+		if env.Purpose == schema.Environment_PRODUCTION {
+			cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
+				FQDN: domain.Fqdn,
+				// XXX remove org -- it should be parsed from fqdn.
+				Org: entry.ServerNaming.GetWithOrg(),
+			})
+			if err != nil {
+				return nil, err
+			}
+			domain.Certificate = cert
+		} else {
+			bundle, err := maketlscert.CreateSelfSignedCertificateChain(ctx, env, &types.TLSCertificateSpec{
+				Description: entry.Server.PackageName,
+				DnsName:     []string{domain.Fqdn},
+			})
+			if err != nil {
+				return nil, err
+			}
+			domain.Certificate = bundle.Server
 		}
-		domain.Certificate = cert
 	}
 
 	return domain, nil
@@ -281,13 +300,15 @@ type DomainsRequest struct {
 	ServiceName string
 	Key         string // Usually `{ServiceName}-{ServerID}`
 	Alias       string
+
+	TlsInclusterTermination bool
 }
 
 func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
 	computedDomain := &schema.Domain{
 		Managed:                 computed.Managed,
-		TlsFrontend:             computed.TlsFrontend,
-		TlsInclusterTermination: computed.TlsInclusterTermination,
+		TlsFrontend:             computed.UpstreamTlsTermination || allocatedName.TlsInclusterTermination,
+		TlsInclusterTermination: allocatedName.TlsInclusterTermination,
 	}
 
 	if computed.UseShortAlias {

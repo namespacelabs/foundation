@@ -56,7 +56,7 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 	opts := interceptorsAsOpts()
 
 	if gogrpc.ServerCert != nil {
-		cert, err := tls.X509KeyPair(gogrpc.ServerCert.Bundle, gogrpc.ServerCert.PrivateKey)
+		cert, err := tls.X509KeyPair(gogrpc.ServerCert.CertificateBundle, gogrpc.ServerCert.PrivateKey)
 		if err != nil {
 			return err
 		}

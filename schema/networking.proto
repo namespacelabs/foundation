@@ -93,11 +93,6 @@ message Domain {
     bool        tls_frontend              = 4;  // If set to true, this domain's ingress is TLS terminated.
     bool        tls_incluster_termination = 5;  // If set to true, we manage the TLS termination in cluster.
 
-    message Certificate {
-        bytes private_key        = 1;
-        bytes certificate_bundle = 2;
-    }
-
     enum ManagedType {
         MANAGED_UNKNOWN            = 0;
         LOCAL_MANAGED              = 1;
@@ -105,6 +100,11 @@ message Domain {
         USER_SPECIFIED             = 3;
         USER_SPECIFIED_TLS_MANAGED = 4;
     }
+}
+
+message Certificate {
+    bytes private_key        = 1;
+    bytes certificate_bundle = 2;
 }
 
 message ServiceMetadata {

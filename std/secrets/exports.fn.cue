@@ -22,7 +22,9 @@ import (
 		}
 		selfSignedTlsCertificate?: {
 			organization?: [...string]
-			commonNamePrefix?: string
+			description?: string
+			commonName?:  string
+			dnsName?: [...string]
 		}
 		optional?:                  bool
 		experimentalMountAsEnvVar?: string

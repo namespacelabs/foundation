@@ -74,11 +74,9 @@ func computeInnerNaming(ctx context.Context, rootenv ops.Environment, source *sc
 
 	if env.Purpose != schema.Environment_PRODUCTION {
 		return &schema.ComputedNaming{
-			Source:                  source,
-			BaseDomain:              LocalBaseDomain,
-			Managed:                 schema.Domain_LOCAL_MANAGED,
-			TlsFrontend:             false,
-			TlsInclusterTermination: false,
+			Source:     source,
+			BaseDomain: LocalBaseDomain,
+			Managed:    schema.Domain_LOCAL_MANAGED,
 		}, nil
 	}
 
@@ -103,15 +101,13 @@ func computeInnerNaming(ctx context.Context, rootenv ops.Environment, source *sc
 	}
 
 	return &schema.ComputedNaming{
-		Source:                  source,
-		BaseDomain:              fmt.Sprintf("%s.%s", org, CloudBaseDomain),
-		Managed:                 schema.Domain_CLOUD_MANAGED,
-		TlsFrontend:             true,
-		TlsInclusterTermination: true,
+		Source:     source,
+		BaseDomain: fmt.Sprintf("%s.%s", org, CloudBaseDomain),
+		Managed:    schema.Domain_CLOUD_MANAGED,
 	}, nil
 }
 
-func allocateName(ctx context.Context, srv *schema.Server, opts fnapi.AllocateOpts) (*schema.Domain_Certificate, error) {
+func allocateName(ctx context.Context, srv *schema.Server, opts fnapi.AllocateOpts) (*schema.Certificate, error) {
 	var cacheKey string
 
 	if opts.Subdomain != "" {
@@ -149,9 +145,9 @@ func allocateName(ctx context.Context, srv *schema.Server, opts fnapi.AllocateOp
 	return certFromResource(nr), nil
 }
 
-func certFromResource(res *fnapi.NameResource) *schema.Domain_Certificate {
+func certFromResource(res *fnapi.NameResource) *schema.Certificate {
 	if res.Certificate.PrivateKey != nil && res.Certificate.CertificateBundle != nil {
-		return &schema.Domain_Certificate{
+		return &schema.Certificate{
 			PrivateKey:        res.Certificate.PrivateKey,
 			CertificateBundle: res.Certificate.CertificateBundle,
 		}

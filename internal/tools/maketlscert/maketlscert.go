@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func CreateCertificateChain(ctx context.Context, env *schema.Environment, r *types.TLSCertificateSpec) (*types.CertificateChain, error) {
+func CreateSelfSignedCertificateChain(ctx context.Context, env *schema.Environment, r *types.TLSCertificateSpec) (*types.CertificateChain, error) {
 	return tasks.Return(ctx, tasks.Action("certificate.create-bundle").Arg("key_size", keySize(env)), func(ctx context.Context) (*types.CertificateChain, error) {
 		return createCertificateChain(env, r)
 	})
@@ -44,7 +44,7 @@ func createCertificateChain(env *schema.Environment, r *types.TLSCertificateSpec
 		SerialNumber: caSerial,
 		Subject: pkix.Name{
 			Organization: r.Organization,
-			CommonName:   r.CommonNamePrefix + ", self-signed CA",
+			CommonName:   r.Description + ", self-signed CA",
 		},
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
@@ -73,8 +73,9 @@ func createCertificateChain(env *schema.Environment, r *types.TLSCertificateSpec
 		SerialNumber: serverSerial,
 		Subject: pkix.Name{
 			Organization: r.Organization,
-			CommonName:   r.CommonNamePrefix + ", Server",
+			CommonName:   r.CommonName,
 		},
+		DNSNames:    r.DnsName,
 		NotBefore:   notBefore,
 		NotAfter:    notAfter,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
@@ -99,7 +100,7 @@ func createCertificateChain(env *schema.Environment, r *types.TLSCertificateSpec
 	return &types.CertificateChain{CA: ca, Server: server}, nil
 }
 
-func pemEncode(bundle []byte, privKey *rsa.PrivateKey) (*types.Certificate, error) {
+func pemEncode(bundle []byte, privKey *rsa.PrivateKey) (*schema.Certificate, error) {
 	// pem encode
 	var caPEM bytes.Buffer
 	if err := pem.Encode(&caPEM, &pem.Block{
@@ -117,7 +118,7 @@ func pemEncode(bundle []byte, privKey *rsa.PrivateKey) (*types.Certificate, erro
 		return nil, err
 	}
 
-	return &types.Certificate{PrivateKey: caPrivKeyPEM.Bytes(), Bundle: caPEM.Bytes()}, nil
+	return &schema.Certificate{PrivateKey: caPrivKeyPEM.Bytes(), CertificateBundle: caPEM.Bytes()}, nil
 }
 
 func newSerialNumber() (*big.Int, error) {

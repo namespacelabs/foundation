@@ -4,11 +4,9 @@
 
 package grpc
 
-import (
-	"namespacelabs.dev/foundation/std/types"
-)
+import "namespacelabs.dev/foundation/schema"
 
-var ServerCert *types.Certificate
+var ServerCert *schema.Certificate
 
 // chain := &types.CertificateChain{}
 
