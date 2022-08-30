@@ -6,6 +6,8 @@ package cuefrontendopaque
 
 import (
 	"context"
+	"sort"
+	"strings"
 
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -68,6 +70,12 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 
 		out.Service = append(out.Service, parsed)
 	}
+	sort.Slice(out.Service, func(i, j int) bool {
+		if out.Service[i].GetPort().GetContainerPort() == out.Service[j].GetPort().GetContainerPort() {
+			return strings.Compare(out.Service[i].Name, out.Service[j].Name) < 0
+		}
+		return out.Service[i].GetPort().GetContainerPort() < out.Service[j].GetPort().GetContainerPort()
+	})
 
 	startupPlan := &schema.StartupPlan{
 		Env:  bits.Env,
