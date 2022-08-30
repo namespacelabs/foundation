@@ -93,6 +93,7 @@ func convertGrpcService(s *schema.IngressFragment_IngressGrpcService) *storage.I
 		Service:     s.Service,
 		Method:      s.Method,
 		Port:        convertPort(s.Port),
+		BackendTls:  s.BackendTls,
 	}
 }
 

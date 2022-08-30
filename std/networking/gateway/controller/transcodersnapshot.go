@@ -28,6 +28,7 @@ import (
 	grpcjsontranscoder "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/grpc_json_transcoder/v3"
 	routerfilter "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+	tlstransport "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	httpv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/upstreams/http/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
@@ -127,13 +128,13 @@ func NewTranscoderSnapshot(args ...SnapshotOption) (*TranscoderSnapshot, error) 
 
 	var errs []error
 
-	if xdsCluster, err := makeCluster(opts.xdsClusterName, opts.xdsClusterAddr.addr, opts.xdsClusterAddr.port); err != nil {
+	if xdsCluster, err := makeCluster(opts.xdsClusterName, opts.xdsClusterAddr.addr, opts.xdsClusterAddr.port, false); err != nil {
 		errs = append(errs, err)
 	} else {
 		defaultClusters = append(defaultClusters, xdsCluster)
 	}
 
-	if alsCluster, err := makeCluster(opts.alsClusterName, opts.alsClusterAddr.addr, opts.alsClusterAddr.port); err != nil {
+	if alsCluster, err := makeCluster(opts.alsClusterName, opts.alsClusterAddr.addr, opts.alsClusterAddr.port, false); err != nil {
 		errs = append(errs, err)
 	} else {
 		defaultClusters = append(defaultClusters, alsCluster)
@@ -200,7 +201,7 @@ func (t *TranscoderSnapshot) GenerateSnapshot(ctx context.Context) error {
 	for _, transcoder := range t.transcoders {
 		clusterName := fmt.Sprintf("cluster-%s", strings.ReplaceAll(transcoder.Spec.FullyQualifiedProtoServiceName, ".", "-"))
 		transcoders = append(transcoders, transcoderWithCluster{transcoder, clusterName})
-		if cluster, err := makeCluster(clusterName, transcoder.Spec.ServiceAddress, transcoder.Spec.ServicePort); err != nil {
+		if cluster, err := makeCluster(clusterName, transcoder.Spec.ServiceAddress, transcoder.Spec.ServicePort, transcoder.Spec.BackendTLS); err != nil {
 			errs = append(errs, err)
 		} else {
 			clusters = append(clusters, cluster)
@@ -239,7 +240,7 @@ func (t *TranscoderSnapshot) GenerateSnapshot(ctx context.Context) error {
 	return nil
 }
 
-func makeCluster(clusterName string, socketAddress string, port uint32) (*cluster.Cluster, error) {
+func makeCluster(clusterName string, socketAddress string, port uint32, backendTLS bool) (*cluster.Cluster, error) {
 	httpopts := &httpv3.HttpProtocolOptions{
 		UpstreamProtocolOptions: &httpv3.HttpProtocolOptions_ExplicitHttpConfig_{
 			ExplicitHttpConfig: &httpv3.HttpProtocolOptions_ExplicitHttpConfig{
@@ -252,7 +253,7 @@ func makeCluster(clusterName string, socketAddress string, port uint32) (*cluste
 		return nil, fnerrors.InternalError("failed to serialize http options: %w", err)
 	}
 
-	return &cluster.Cluster{
+	cluster := &cluster.Cluster{
 		Name:                 clusterName,
 		ConnectTimeout:       durationpb.New(60 * time.Second),
 		ClusterDiscoveryType: &cluster.Cluster_Type{Type: cluster.Cluster_LOGICAL_DNS},
@@ -262,7 +263,26 @@ func makeCluster(clusterName string, socketAddress string, port uint32) (*cluste
 		TypedExtensionProtocolOptions: map[string]*any.Any{
 			"envoy.extensions.upstreams.http.v3.HttpProtocolOptions": httpoptsanypb,
 		},
-	}, nil
+	}
+
+	if backendTLS {
+		// XXX security add server cert validation.
+		tlsSocket := &tlstransport.UpstreamTlsContext{}
+
+		tlsSocketAny, err := anypb.New(tlsSocket)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to serialize tls socket options: %w", err)
+		}
+
+		cluster.TransportSocket = &core.TransportSocket{
+			Name: "envoy.transport_sockets.tls",
+			ConfigType: &core.TransportSocket_TypedConfig{
+				TypedConfig: tlsSocketAny,
+			},
+		}
+	}
+
+	return cluster, nil
 }
 
 func makeEndpoint(clusterName string, socketAddress string, port uint32) *endpoint.ClusterLoadAssignment {

@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	GrpcProtocol = "grpc"
-	HttpProtocol = "http"
+	ClearTextGrpcProtocol = "grpc"
+	GrpcProtocol          = "grpcs"
+	HttpProtocol          = "http"
 )
 
 func (sc *Schema) ExtsAndServices() []*Node {

@@ -83,7 +83,7 @@ func ComputeIngress(ctx context.Context, env ops.Environment, sch *schema.Stack_
 		}
 
 		var kind string
-		if *protocol != "http" {
+		if *protocol != schema.HttpProtocol {
 			kind = *protocol
 		}
 
@@ -91,7 +91,7 @@ func ComputeIngress(ctx context.Context, env ops.Environment, sch *schema.Stack_
 		var grpc []*schema.IngressFragment_IngressGrpcService
 
 		switch *protocol {
-		case "http":
+		case schema.HttpProtocol:
 			for _, details := range protocolDetails {
 				p := &schema.HttpUrlMap{}
 				if err := details.UnmarshalTo(p); err != nil {
@@ -115,7 +115,7 @@ func ComputeIngress(ctx context.Context, env ops.Environment, sch *schema.Stack_
 				}
 			}
 
-		case "grpc":
+		case schema.GrpcProtocol, schema.ClearTextGrpcProtocol:
 			for _, details := range protocolDetails {
 				p := &schema.GrpcExportService{}
 				if err := details.UnmarshalTo(p); err != nil {
@@ -127,6 +127,7 @@ func ComputeIngress(ctx context.Context, env ops.Environment, sch *schema.Stack_
 					Service:     endpoint.AllocatedName,
 					Port:        endpoint.Port,
 					Method:      p.Method,
+					BackendTls:  *protocol == schema.GrpcProtocol,
 				})
 
 				// XXX security rethink this.
@@ -135,6 +136,7 @@ func ComputeIngress(ctx context.Context, env ops.Environment, sch *schema.Stack_
 					Owner:       endpoint.EndpointOwner,
 					Service:     endpoint.AllocatedName,
 					Port:        endpoint.Port,
+					BackendTls:  *protocol == schema.GrpcProtocol,
 				})
 			}
 		}

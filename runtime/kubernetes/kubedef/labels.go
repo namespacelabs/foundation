@@ -118,7 +118,7 @@ func MakeServiceAnnotations(srv *schema.Server, endpoint *schema.Endpoint) (map[
 
 	var grpcServices []string
 	for _, p := range endpoint.ServiceMetadata {
-		if p.Protocol == schema.GrpcProtocol {
+		if p.Protocol == schema.ClearTextGrpcProtocol || p.Protocol == schema.GrpcProtocol {
 			if p.Details == nil {
 				continue
 			}

@@ -133,9 +133,15 @@ func computeServiceEndpoint(server *schema.Server, pkg *workspace.Package, n *sc
 			return nil, err
 		}
 
+		// XXX move this to the language integration.
+		protocol := schema.ClearTextGrpcProtocol
+		if server.Framework == schema.Framework_GO {
+			protocol = schema.GrpcProtocol
+		}
+
 		endpoint.ServiceMetadata = append(endpoint.ServiceMetadata, &schema.ServiceMetadata{
 			Kind:     exported.ProtoTypename,
-			Protocol: schema.GrpcProtocol,
+			Protocol: protocol,
 			Details:  details,
 		})
 

@@ -207,7 +207,7 @@ func MakeServiceLabel(endpoint *storage.Endpoint) *Label {
 	}
 
 	for _, md := range endpoint.ServiceMetadata {
-		if md.Protocol == schema.GrpcProtocol {
+		if md.Protocol == schema.ClearTextGrpcProtocol || md.Protocol == schema.GrpcProtocol {
 			return &Label{ServiceProto: md.Kind}
 		}
 	}

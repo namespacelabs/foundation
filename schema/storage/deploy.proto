@@ -128,6 +128,7 @@ message IngressGrpcService {
     string                service      = 3;  // Backing service.
     repeated string       method       = 5;  // If not set, forward all methods.
     storage.Endpoint.Port port         = 4;
+    bool                  backend_tls  = 6;
 }
 
 message Domain {

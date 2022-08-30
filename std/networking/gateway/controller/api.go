@@ -16,6 +16,7 @@ type HttpGrpcTranscoderSpec struct {
 	FullyQualifiedProtoServiceName string `json:"fullyQualifiedProtoServiceName,omitempty"`
 	ServiceAddress                 string `json:"serviceAddress,omitempty"`
 	ServicePort                    uint32 `json:"servicePort,omitempty"`
+	BackendTLS                     bool   `json:"backendTls,omitempty"`
 	EncodedProtoDescriptor         string `json:"encodedProtoDescriptor,omitempty"`
 }
 
@@ -29,6 +30,7 @@ func (in *HttpGrpcTranscoderSpec) DeepCopyInto(out *HttpGrpcTranscoderSpec) {
 	out.FullyQualifiedProtoServiceName = in.FullyQualifiedProtoServiceName
 	out.ServiceAddress = in.ServiceAddress
 	out.ServicePort = in.ServicePort
+	out.BackendTLS = in.BackendTLS
 	out.EncodedProtoDescriptor = in.EncodedProtoDescriptor
 }
 

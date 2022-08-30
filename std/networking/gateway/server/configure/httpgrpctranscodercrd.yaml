@@ -43,6 +43,9 @@ spec:
                 servicePort:
                   description: Upstream port that the HTTP listener routes to for paths matching `/serviceName`.
                   type: integer
+                backendTls:
+                  description: Whether the backend uses TLS.
+                  type: boolean
                 encodedProtoDescriptor:
                   description: Base64 encoded `descriptorpb.FileDescriptorSet` of the gRPC service .proto file and it's transitive .proto dependencies.
                   type: string
@@ -50,14 +53,14 @@ spec:
               description: Holds the applied state of the Configuration (from the server).
               type: object
               properties:
-                conditions: 
+                conditions:
                   type: array
                   items:
                     type: object
                     properties:
                       type:
                         description: Type of condition in CamelCase or in foo.example.com/CamelCase.
-                        type: string 
+                        type: string
                       status:
                         description: Status of the condition, one of `True`, `False`, or `Unknown`.
                         type: string

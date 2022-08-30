@@ -61,14 +61,16 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		Server       *schema.Stack_Entry
 		Endpoint     *schema.Endpoint
 		Transcoding  *schema.GrpcHttpTranscoding
+		GrpcProtocol string
 	}
 
 	var endpoints []service
 	for _, endpoint := range req.Stack.Endpoint {
-		var protoService string
+		var protoService, grpcProtocol string
 		for _, md := range endpoint.ServiceMetadata {
-			if md.Protocol == schema.GrpcProtocol {
+			if md.Protocol == schema.ClearTextGrpcProtocol || md.Protocol == schema.GrpcProtocol {
 				protoService = md.Kind
+				grpcProtocol = md.Protocol
 				break
 			}
 		}
@@ -96,6 +98,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				Server:       req.Focus,
 				Endpoint:     endpoint,
 				Transcoding:  t,
+				GrpcProtocol: grpcProtocol,
 			})
 
 			break
@@ -167,6 +170,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 					FullyQualifiedProtoServiceName: x.ProtoService,
 					ServiceAddress:                 x.Endpoint.AllocatedName,
 					ServicePort:                    int(x.Endpoint.Port.ContainerPort),
+					BackendTLS:                     x.GrpcProtocol == schema.GrpcProtocol,
 					EncodedProtoDescriptor:         base64.StdEncoding.EncodeToString(fds),
 				},
 			},
@@ -235,5 +239,6 @@ type httpGrpcTranscoderSpec struct {
 	FullyQualifiedProtoServiceName string `json:"fullyQualifiedProtoServiceName"`
 	ServiceAddress                 string `json:"serviceAddress"`
 	ServicePort                    int    `json:"servicePort"`
+	BackendTLS                     bool   `json:"backendTls"`
 	EncodedProtoDescriptor         string `json:"encodedProtoDescriptor"`
 }

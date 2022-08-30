@@ -194,7 +194,7 @@ func (m *MapAddressList) Sorted() []MapAddress {
 }
 
 func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv *schema.Server, name string, fragments []*schema.IngressFragment, certSecrets map[string]string) (*applynetworkingv1.IngressApplyConfiguration, *MapAddressList, error) {
-	var grpcCount, nonGrpcCount int
+	var clearTextGrpcCount, grpcCount, nonGrpcCount int
 
 	spec := applynetworkingv1.IngressSpec()
 
@@ -223,7 +223,11 @@ func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv
 		}
 
 		for _, p := range ng.GrpcService {
-			grpcCount++
+			if p.BackendTls {
+				grpcCount++
+			} else {
+				clearTextGrpcCount++
+			}
 
 			if p.Port == nil {
 				return nil, nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.GrpcService, p.Service))
@@ -272,10 +276,16 @@ func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv
 		return nil, nil, fnerrors.InternalError("can't mix grpc and non-grpc backends in the same ingress")
 	}
 
+	if grpcCount > 0 && clearTextGrpcCount > 0 {
+		return nil, nil, fnerrors.InternalError("can't mix grpc and cleartext-grpc backends in the same ingress")
+	}
+
 	backendProtocol := "http"
-	if grpcCount > 0 {
-		// XXX grpc vs grpcs
+	if clearTextGrpcCount > 0 {
 		backendProtocol = "grpc"
+	}
+	if grpcCount > 0 {
+		backendProtocol = "grpcs"
 	}
 
 	// XXX make nginx configurable.
