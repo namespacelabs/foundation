@@ -45,15 +45,12 @@ func (c *clientInstance) Inputs() *compute.In {
 }
 
 func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto.OrchestrationServiceClient, error) {
-	var servers []provision.Server
-
 	focus, err := c.env.RequireServer(ctx, schema.PackageName(serverPkg))
 	if err != nil {
 		return nil, err
 	}
-	servers = append(servers, focus)
 
-	plan, err := deploy.PrepareDeployServers(ctx, c.env, servers, nil)
+	plan, err := deploy.PrepareDeployServers(ctx, c.env, []provision.Server{focus}, nil)
 	if err != nil {
 		return nil, err
 	}
