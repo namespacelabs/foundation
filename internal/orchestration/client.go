@@ -95,13 +95,13 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 
 	port, ok := <-portch
 	if !ok {
-		return nil, fnerrors.InternalError("unexpected error")
+		return nil, fnerrors.InternalError("didn't receive forwarded port from orchestration server")
 	}
 
 	conn, err := grpc.DialContext(ctx, fmt.Sprintf("127.0.0.1:%d", port.LocalPort),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, fnerrors.Wrap(focus.Location, err)
+		return nil, fnerrors.InternalError("unable to connect to orchestration server: %w", err)
 	}
 
 	cli := proto.NewOrchestrationServiceClient(conn)
