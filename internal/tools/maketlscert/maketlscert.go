@@ -15,17 +15,18 @@ import (
 	"math/big"
 	"time"
 
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func CreateCertificateChain(ctx context.Context, r *types.TLSCertificateSpec) (*types.CertificateChain, error) {
-	return tasks.Return(ctx, tasks.Action("certificate.create-bundle"), func(ctx context.Context) (*types.CertificateChain, error) {
-		return createCertificateChain(r)
+func CreateCertificateChain(ctx context.Context, env *schema.Environment, r *types.TLSCertificateSpec) (*types.CertificateChain, error) {
+	return tasks.Return(ctx, tasks.Action("certificate.create-bundle").Arg("key_size", keySize(env)), func(ctx context.Context) (*types.CertificateChain, error) {
+		return createCertificateChain(env, r)
 	})
 }
 
-func createCertificateChain(r *types.TLSCertificateSpec) (*types.CertificateChain, error) {
+func createCertificateChain(env *schema.Environment, r *types.TLSCertificateSpec) (*types.CertificateChain, error) {
 	notBefore := time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 	notAfter := time.Date(2031, time.December, 31, 23, 59, 59, 59, time.UTC)
 
@@ -53,7 +54,7 @@ func createCertificateChain(r *types.TLSCertificateSpec) (*types.CertificateChai
 		BasicConstraintsValid: true,
 	}
 
-	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	caPrivKey, err := rsa.GenerateKey(rand.Reader, keySize(env))
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +81,7 @@ func createCertificateChain(r *types.TLSCertificateSpec) (*types.CertificateChai
 		KeyUsage:    x509.KeyUsageDigitalSignature,
 	}
 
-	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	certPrivKey, err := rsa.GenerateKey(rand.Reader, keySize(env))
 	if err != nil {
 		return nil, err
 	}
@@ -122,4 +123,17 @@ func pemEncode(bundle []byte, privKey *rsa.PrivateKey) (*types.Certificate, erro
 func newSerialNumber() (*big.Int, error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	return rand.Int(rand.Reader, serialNumberLimit)
+}
+
+func keySize(env *schema.Environment) int {
+	if env.Purpose == schema.Environment_TESTING {
+		// Speed up tests with cheaper keys.
+		return 512
+	}
+
+	if env.Purpose == schema.Environment_PRODUCTION {
+		return 4096
+	}
+
+	return 2048
 }
