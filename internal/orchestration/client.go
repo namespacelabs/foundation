@@ -104,7 +104,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 	conn, err := grpc.DialContext(ctx, fmt.Sprintf("127.0.0.1:%d", port.LocalPort),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, err
+		return nil, fnerrors.Wrap(focus.Location, err)
 	}
 
 	cli := proto.NewOrchestrationServiceClient(conn)
