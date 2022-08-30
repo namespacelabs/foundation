@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"cuelang.org/go/cue"
@@ -253,6 +254,8 @@ func (args *ArgsListOrMap) UnmarshalJSON(contents []byte) error {
 				args.args = append(args.args, fmt.Sprintf("--%s", k))
 			}
 		}
+		// Ensure deterministic arg order
+		sort.Strings(args.args)
 		return nil
 	}
 
