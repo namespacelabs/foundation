@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func ComputeConfig(ctx context.Context, env ops.Environment, deps []*stack.ParsedNode, info frontend.StartupInputs) (*schema.BinaryConfig, error) {
+func ComputeConfig(ctx context.Context, env ops.Environment, serverStartupPlan *schema.StartupPlan, deps []*stack.ParsedNode, info frontend.StartupInputs) (*schema.BinaryConfig, error) {
 	computed := &schema.BinaryConfig{}
 
 	// For each already loaded configuration, unify the startup args to produce the final startup configuration.
@@ -23,6 +23,8 @@ func ComputeConfig(ctx context.Context, env ops.Environment, deps []*stack.Parse
 			return nil, fnerrors.Wrapf(dep.Package.Location, err, "computing startup config")
 		}
 	}
+
+	mergePlan(serverStartupPlan, computed)
 
 	return computed, nil
 }
@@ -33,15 +35,14 @@ func loadStartupPlan(ctx context.Context, env ops.Environment, dep *stack.Parsed
 		return fnerrors.Wrap(dep.Package.Location, err)
 	}
 
-	return mergePlan(plan, merged)
+	mergePlan(plan, merged)
+	return nil
 }
 
-func mergePlan(plan *schema.StartupPlan, merged *schema.BinaryConfig) error {
+func mergePlan(plan *schema.StartupPlan, merged *schema.BinaryConfig) {
 	merged.Args = append(merged.Args, plan.Args...)
 
 	for k, v := range plan.Env {
 		merged.Env = append(merged.Env, &schema.BinaryConfig_EnvEntry{Name: k, Value: v})
 	}
-
-	return nil
 }

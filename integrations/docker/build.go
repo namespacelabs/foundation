@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/integrations"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
@@ -45,4 +46,8 @@ func (buildImpl) PrepareBuild(ctx context.Context, server provision.Server) (bui
 	}
 
 	return spec, nil
+}
+
+func (buildImpl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ServerRunOpts) error {
+	return nil
 }

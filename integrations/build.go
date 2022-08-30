@@ -9,10 +9,12 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/runtime"
 )
 
 type BuildIntegration interface {
 	PrepareBuild(context.Context, provision.Server) (build.Spec, error)
+	PrepareRun(context.Context, provision.Server, *runtime.ServerRunOpts) error
 }
 
 var (
