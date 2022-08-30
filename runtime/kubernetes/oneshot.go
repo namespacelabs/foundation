@@ -133,7 +133,7 @@ func (r Unbound) RunAttachedOpts(ctx context.Context, ns, name string, runOpts r
 		onStart()
 	}
 
-	return r.attachTerminal(ctx, r.cli, kubedef.ContainerPodReference{Namespace: ns, PodName: name}, io)
+	return r.attachTerminal(ctx, r.cli, &kubedef.ContainerPodReference{Namespace: ns, PodName: name}, io)
 }
 
 func makePodSpec(name string, runOpts runtime.ServerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {

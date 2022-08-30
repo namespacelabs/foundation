@@ -229,11 +229,11 @@ func (r K8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, ri
 	return r.startTerminal(ctx, r.cli, server, rio, cmd)
 }
 
-func (r K8sRuntime) AttachTerminal(ctx context.Context, reference runtime.ContainerReference, rio runtime.TerminalIO) error {
-	opaque, ok := reference.(kubedef.ContainerPodReference)
-	if !ok {
-		return fnerrors.InternalError("invalid reference")
+func (r K8sRuntime) AttachTerminal(ctx context.Context, reference *runtime.ContainerReference, rio runtime.TerminalIO) error {
+	cpr := &kubedef.ContainerPodReference{}
+	if err := reference.Opaque.UnmarshalTo(cpr); err != nil {
+		return fnerrors.InternalError("invalid reference: %w", err)
 	}
 
-	return r.attachTerminal(ctx, r.cli, opaque, rio)
+	return r.attachTerminal(ctx, r.cli, cpr, rio)
 }

@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/renderwait"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/schema/orchestration"
 )
 
 const (
@@ -40,8 +41,8 @@ func Wait(ctx context.Context, env ops.Environment, waiters []ops.Waiter) error 
 
 // observeContainers observes the deploy events (received from the returned channel) and updates the
 // console through the `parent` channel.
-func observeContainers(ctx context.Context, env ops.Environment, parent chan ops.Event) chan ops.Event {
-	ch := make(chan ops.Event)
+func observeContainers(ctx context.Context, env ops.Environment, parent chan *orchestration.Event) chan *orchestration.Event {
+	ch := make(chan *orchestration.Event)
 	t := time.NewTicker(maxDeployWait)
 	startedDiagnosis := true // After the first tick, we tick twice as fast.
 
@@ -50,7 +51,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 		defer t.Stop()
 
 		// Keep track of the pending ContainerWaitStatus per resource type.
-		pending := map[string][]runtime.ContainerWaitStatus{}
+		pending := map[string][]*runtime.ContainerWaitStatus{}
 		helps := map[string]string{}
 
 		runDiagnosis := func() {
@@ -61,7 +62,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 
 			rt := runtime.For(ctx, env)
 			for resourceID, wslist := range pending {
-				all := []runtime.ContainerUnitWaitStatus{}
+				all := []*runtime.ContainerUnitWaitStatus{}
 				for _, w := range wslist {
 					all = append(all, w.Containers...)
 					all = append(all, w.Initializers...)
@@ -84,11 +85,11 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 				for _, ws := range all {
 					diagnostics, err := rt.FetchDiagnostics(ctx, ws.Reference)
 					if err != nil {
-						fmt.Fprintf(out, "Failed to retrieve diagnostics for %s: %v\n", ws.Reference.HumanReference(), err)
+						fmt.Fprintf(out, "Failed to retrieve diagnostics for %s: %v\n", ws.Reference.HumanReference, err)
 						continue
 					}
 
-					fmt.Fprintf(out, "%s", ws.Reference.HumanReference())
+					fmt.Fprintf(out, "%s", ws.Reference.HumanReference)
 					if diagnostics.RestartCount > 0 {
 						fmt.Fprintf(out, " (restarted %d times)", diagnostics.RestartCount)
 					}
@@ -98,7 +99,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 					case diagnostics.Running:
 						fmt.Fprintf(out, "  Running, logs (last %d lines):\n", tailLinesOnFailure)
 						if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure}); err != nil {
-							fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference(), err)
+							fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 						}
 
 					case diagnostics.Waiting:
@@ -106,7 +107,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 						if diagnostics.Crashed {
 							fmt.Fprintf(out, "  Crashed, logs (last %d lines):\n", tailLinesOnFailure)
 							if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
-								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference(), err)
+								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 							}
 						}
 
@@ -114,14 +115,14 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 						if diagnostics.ExitCode > 0 {
 							fmt.Fprintf(out, "  Failed: %s (exit code %d), logs (last %d lines):\n", diagnostics.TerminatedReason, diagnostics.ExitCode, tailLinesOnFailure)
 							if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
-								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference(), err)
+								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 							}
 						}
 					}
 				}
 
-				parent <- ops.Event{
-					ResourceID:  resourceID,
+				parent <- &orchestration.Event{
+					ResourceId:  resourceID,
 					WaitDetails: buf.String(),
 				}
 			}
@@ -139,23 +140,25 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 
 				parent <- ev
 
-				if ev.Ready != ops.Ready {
-					pending[ev.ResourceID] = nil
-					helps[ev.ResourceID] = ev.RuntimeSpecificHelp
+				if ev.Ready != orchestration.Event_READY {
+					pending[ev.ResourceId] = nil
+					helps[ev.ResourceId] = ev.RuntimeSpecificHelp
 
 					failed := false
 					for _, w := range ev.WaitStatus {
-						if cws, ok := w.(runtime.ContainerWaitStatus); ok {
-							pending[ev.ResourceID] = append(pending[ev.ResourceID], cws)
+						cws := &runtime.ContainerWaitStatus{}
+						if err := w.Opaque.UnmarshalTo(cws); err != nil {
+							continue
+						}
+						pending[ev.ResourceId] = append(pending[ev.ResourceId], cws)
 
-							var ctrs []runtime.ContainerUnitWaitStatus
-							ctrs = append(ctrs, cws.Containers...)
-							ctrs = append(ctrs, cws.Initializers...)
+						var ctrs []*runtime.ContainerUnitWaitStatus
+						ctrs = append(ctrs, cws.Containers...)
+						ctrs = append(ctrs, cws.Initializers...)
 
-							for _, ctr := range ctrs {
-								if ctr.Status.Crashed || ctr.Status.Failed() {
-									failed = true
-								}
+						for _, ctr := range ctrs {
+							if ctr.Status.Crashed || ctr.Status.Failed() {
+								failed = true
 							}
 						}
 					}
@@ -164,7 +167,7 @@ func observeContainers(ctx context.Context, env ops.Environment, parent chan ops
 						runDiagnosis()
 					}
 				} else {
-					delete(pending, ev.ResourceID)
+					delete(pending, ev.ResourceId)
 				}
 
 			case <-t.C:

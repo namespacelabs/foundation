@@ -14,11 +14,11 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -30,7 +30,7 @@ type WaitOnGenerationCondition struct {
 	ResourceClass      *kubedef.ResourceClass
 }
 
-func (w WaitOnGenerationCondition) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
+func (w WaitOnGenerationCondition) WaitUntilReady(ctx context.Context, ch chan *orchestration.Event) error {
 	if ch != nil {
 		defer close(ch)
 	}

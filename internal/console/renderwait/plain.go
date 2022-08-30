@@ -9,15 +9,15 @@ import (
 	"fmt"
 
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/schema/orchestration"
 )
 
 type logRenderer struct {
-	ch   chan ops.Event
+	ch   chan *orchestration.Event
 	done chan struct{}
 }
 
-func (rwb logRenderer) Ch() chan ops.Event { return rwb.ch }
+func (rwb logRenderer) Ch() chan *orchestration.Event { return rwb.ch }
 func (rwb logRenderer) Wait(ctx context.Context) error {
 	select {
 	case <-rwb.done:
@@ -42,12 +42,12 @@ func (rwb logRenderer) Loop(ctx context.Context) {
 				return
 			}
 
-			if ev.Ready == ops.Unknown {
+			if ev.Ready == orchestration.Event_UNKNOWN {
 				continue
 			}
 
 			fmt.Fprintf(l, "waiting (ready=%v alreadyExisted=%v) for id %s category %s scope %s impl %v\n",
-				ev.Ready == ops.Ready, ev.AlreadyExisted, ev.ResourceID, ev.Category, ev.Scope, ev.ImplMetadata)
+				ev.Ready == orchestration.Event_READY, ev.AlreadyExisted, ev.ResourceId, ev.Category, ev.Scope, string(ev.ImplMetadata))
 		}
 	}
 }

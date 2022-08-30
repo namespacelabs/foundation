@@ -1,0 +1,50 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema.orchestration;
+
+option go_package = "namespacelabs.dev/foundation/schema/orchestration";
+
+import "google/protobuf/any.proto";
+
+message Event {
+    // Opaque value that uniquely identifies the resource.
+    string resource_id = 1;
+
+    // A resource identifier that is implementation specified.
+    string kind = 2;
+
+    // A human-readable label that describes the resource.
+    string category = 3;
+
+    string scope = 4;
+
+    // READY after the resource is ready.
+    ReadyTriState ready = 5;
+
+    enum ReadyTriState {
+        UNKNOWN   = 0;
+        NOT_READY = 1;
+        READY     = 2;
+    }
+
+    bool already_existed = 6;
+
+    // JSON-serialized implementation-specific metadata.
+    bytes               impl_metadata = 7;
+    repeated WaitStatus wait_status   = 8;
+
+    message WaitStatus {
+        string              description = 1;
+        google.protobuf.Any opaque      = 2;
+    }
+
+    string wait_details = 9;
+
+    // Something like `kubectl -n foobar describe pod quux`
+    // XXX move to a runtime/ specific type.
+    string runtime_specific_help = 10;
+}

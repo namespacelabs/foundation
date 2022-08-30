@@ -256,7 +256,7 @@ func collectLogs(ctx context.Context, env ops.Environment, testPkg schema.Packag
 				if printLogs && slices.Contains(focus, srv.PackageName) {
 					name := srv.Name
 					if len(containers) > 0 {
-						name = ctr.HumanReference()
+						name = ctr.HumanReference
 					}
 					extraOutput = append(extraOutput, console.Output(ctx, name))
 				}
@@ -266,8 +266,8 @@ func collectLogs(ctx context.Context, env ops.Environment, testPkg schema.Packag
 				mu.Lock()
 				serverLogs = append(serverLogs, serverLog{
 					PackageName:   srv.PackageName,
-					ContainerName: ctr.HumanReference(),
-					ContainerKind: ctr.Kind(),
+					ContainerName: ctr.HumanReference,
+					ContainerKind: ctr.Kind,
 					Buffer:        log,
 				})
 				mu.Unlock()

@@ -31,7 +31,7 @@ func serveLogs(s *Session, w http.ResponseWriter, r *http.Request, serverID stri
 		}
 
 		for _, ref := range refs {
-			if ref.Kind() == schema.ContainerKind_PRIMARY {
+			if ref.Kind == schema.ContainerKind_PRIMARY {
 				return runtime.For(ctx, env).FetchLogsTo(ctx, wsWriter, ref, runtime.FetchLogsOpts{Follow: true})
 			}
 		}

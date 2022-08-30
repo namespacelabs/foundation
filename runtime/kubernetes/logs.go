@@ -15,13 +15,13 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 )
 
-func (r K8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
-	opaque, ok := reference.(kubedef.ContainerPodReference)
-	if !ok {
-		return fnerrors.InternalError("invalid reference")
+func (r K8sRuntime) FetchLogsTo(ctx context.Context, w io.Writer, reference *runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
+	cpr := &kubedef.ContainerPodReference{}
+	if err := reference.Opaque.UnmarshalTo(cpr); err != nil {
+		return fnerrors.InternalError("invalid reference: %w", err)
 	}
 
-	return fetchPodLogs(ctx, r.cli, w, opaque.Namespace, opaque.PodName, opaque.Container, opts)
+	return fetchPodLogs(ctx, r.cli, w, cpr.Namespace, cpr.PodName, cpr.Container, opts)
 }
 
 func fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, namespace, podName, containerName string, opts runtime.FetchLogsOpts) error {

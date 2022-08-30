@@ -7,6 +7,7 @@ server: fn.#Server & {
 	name:         "orchestration-api-server"
 	framework:    "GO"
 	clusterAdmin: true
+	isStateful:   true
 
 	import: [
 		"namespacelabs.dev/foundation/internal/orchestration/service",

@@ -120,11 +120,11 @@ func (r runtimeFwdErr) PlanIngress(context.Context, *schema.Stack, []*schema.Ing
 func (r runtimeFwdErr) ComputeBaseNaming(context.Context, *schema.Naming) (*schema.ComputedNaming, error) {
 	return nil, r.err
 }
-func (r runtimeFwdErr) FetchLogsTo(context.Context, io.Writer, ContainerReference, FetchLogsOpts) error {
+func (r runtimeFwdErr) FetchLogsTo(context.Context, io.Writer, *ContainerReference, FetchLogsOpts) error {
 	return r.err
 }
-func (r runtimeFwdErr) FetchDiagnostics(context.Context, ContainerReference) (Diagnostics, error) {
-	return Diagnostics{}, r.err
+func (r runtimeFwdErr) FetchDiagnostics(context.Context, *ContainerReference) (*Diagnostics, error) {
+	return &Diagnostics{}, r.err
 }
 func (r runtimeFwdErr) FetchEnvironmentDiagnostics(context.Context) (*storage.EnvironmentDiagnostics, error) {
 	return nil, r.err
@@ -132,7 +132,7 @@ func (r runtimeFwdErr) FetchEnvironmentDiagnostics(context.Context) (*storage.En
 func (r runtimeFwdErr) StartTerminal(ctx context.Context, server *schema.Server, io TerminalIO, command string, rest ...string) error {
 	return r.err
 }
-func (r runtimeFwdErr) AttachTerminal(ctx context.Context, _ ContainerReference, io TerminalIO) error {
+func (r runtimeFwdErr) AttachTerminal(ctx context.Context, _ *ContainerReference, io TerminalIO) error {
 	return r.err
 }
 func (r runtimeFwdErr) ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error) {
@@ -162,6 +162,6 @@ func (r runtimeFwdErr) DeleteAllRecursively(context.Context, bool, io.Writer) (b
 func (r runtimeFwdErr) TargetPlatforms(context.Context) ([]specs.Platform, error) {
 	return nil, r.err
 }
-func (r runtimeFwdErr) ResolveContainers(context.Context, *schema.Server) ([]ContainerReference, error) {
+func (r runtimeFwdErr) ResolveContainers(context.Context, *schema.Server) ([]*ContainerReference, error) {
 	return nil, r.err
 }

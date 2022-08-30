@@ -142,9 +142,9 @@ func Listen(ctx context.Context, env runtime.Selector, server *schema.Server) er
 	streams := map[string]*logStream{}
 	return rt.Observe(ctx, server, runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) error {
 		mu.Lock()
-		existing := streams[ev.ContainerReference.UniqueID()]
+		existing := streams[ev.ContainerReference.UniqueId]
 		if ev.Removed {
-			delete(streams, ev.ContainerReference.UniqueID())
+			delete(streams, ev.ContainerReference.UniqueId)
 		}
 		mu.Unlock()
 
@@ -161,7 +161,7 @@ func Listen(ctx context.Context, env runtime.Selector, server *schema.Server) er
 
 		newS := &logStream{}
 		mu.Lock()
-		streams[ev.ContainerReference.UniqueID()] = newS
+		streams[ev.ContainerReference.UniqueId] = newS
 		mu.Unlock()
 
 		compute.On(ctx).Detach(tasks.Action("stream-log").Indefinite(), func(ctx context.Context) error {

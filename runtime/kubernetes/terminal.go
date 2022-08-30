@@ -38,7 +38,7 @@ func (r K8sRuntime) startTerminal(ctx context.Context, cli *kubernetes.Clientset
 	})
 }
 
-func (r Unbound) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque kubedef.ContainerPodReference, rio runtime.TerminalIO) error {
+func (r Unbound) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque *kubedef.ContainerPodReference, rio runtime.TerminalIO) error {
 	return r.lowLevelAttachTerm(ctx, cli, opaque.Namespace, opaque.PodName, rio, "attach", &corev1.PodAttachOptions{
 		Container: opaque.Container,
 		Stdin:     true,

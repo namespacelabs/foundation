@@ -27,6 +27,7 @@ import (
 	kobs "namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -223,7 +224,7 @@ func registerApply() {
 			var waiters []ops.Waiter
 			for _, sc := range scope {
 				sc := sc // Close sc.
-				waiters = append(waiters, func(ctx context.Context, ch chan ops.Event) error {
+				waiters = append(waiters, func(ctx context.Context, ch chan *orchestration.Event) error {
 					if ch != nil {
 						defer close(ch)
 					}
@@ -236,13 +237,18 @@ func registerApply() {
 					return kobs.WaitForCondition(ctx, cli, tasks.Action(runtime.TaskServerStart).Scope(sc),
 						kobs.WaitForPodConditition(kobs.PickPod(header.Namespace, header.Name),
 							func(ps v1.PodStatus) (bool, error) {
-								ev := ops.Event{
-									ResourceID:          fmt.Sprintf("%s/%s", header.Namespace, header.Name),
+								meta, err := json.Marshal(ps)
+								if err != nil {
+									return false, fnerrors.InternalError("failed to marshal pod status: %w", err)
+								}
+
+								ev := &orchestration.Event{
+									ResourceId:          fmt.Sprintf("%s/%s", header.Namespace, header.Name),
 									Kind:                header.Kind,
 									Category:            "Servers deployed",
-									Scope:               sc,
-									Ready:               ops.NotReady,
-									ImplMetadata:        ps,
+									Scope:               sc.String(),
+									Ready:               orchestration.Event_NOT_READY,
+									ImplMetadata:        meta,
 									RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", header.Namespace, header.Name),
 								}
 
@@ -250,7 +256,7 @@ func registerApply() {
 
 								ready, _ := kobs.MatchPodCondition(v1.PodReady)(ps)
 								if ready {
-									ev.Ready = ops.Ready
+									ev.Ready = orchestration.Event_READY
 								}
 								if ch != nil {
 									ch <- ev

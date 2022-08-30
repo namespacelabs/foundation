@@ -8,38 +8,30 @@ import (
 	"fmt"
 	"strings"
 
+	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
 
-type ContainerPodReference struct {
-	Namespace string
-	PodName   string
-	Container string
-
-	kind schema.ContainerKind
-}
-
-func (cpr ContainerPodReference) UniqueID() string {
+func (cpr *ContainerPodReference) UniqueID() string {
 	if cpr.Container == "" {
 		return fmt.Sprintf("%s/%s", cpr.Namespace, cpr.PodName)
 	}
 	return fmt.Sprintf("%s/%s/%s", cpr.Namespace, cpr.PodName, cpr.Container)
 }
 
-func (cpr ContainerPodReference) HumanReference() string {
-	return cpr.Container
-}
-
-func (cpr ContainerPodReference) Kind() schema.ContainerKind {
-	return cpr.kind
-}
-
-func MakePodRef(ns, name, containerName string, srv *schema.Server) ContainerPodReference {
-	return ContainerPodReference{
+func MakePodRef(ns, name, containerName string, srv *schema.Server) *runtime.ContainerReference {
+	cpr := &ContainerPodReference{
 		Namespace: ns,
 		PodName:   name,
 		Container: containerName,
-		kind:      decideKind(srv, containerName),
+	}
+
+	return &runtime.ContainerReference{
+		UniqueId:       cpr.UniqueID(),
+		HumanReference: cpr.Container,
+		Kind:           decideKind(srv, containerName),
+		Opaque:         protos.WrapAnyOrDie(cpr),
 	}
 }
 

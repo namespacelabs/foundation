@@ -21,7 +21,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func (r K8sRuntime) ResolveContainers(ctx context.Context, srv *schema.Server) ([]runtime.ContainerReference, error) {
+func (r K8sRuntime) ResolveContainers(ctx context.Context, srv *schema.Server) ([]*runtime.ContainerReference, error) {
 	pod, err := r.resolvePod(ctx, r.cli, io.Discard, srv)
 	if err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func (r K8sRuntime) ResolveContainers(ctx context.Context, srv *schema.Server) (
 
 	ps := pod.Status
 
-	var refs []runtime.ContainerReference
+	var refs []*runtime.ContainerReference
 
 	for _, init := range ps.InitContainerStatuses {
 		refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, srv))

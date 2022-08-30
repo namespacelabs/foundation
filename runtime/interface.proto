@@ -1,0 +1,44 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.runtime;
+
+option go_package = "namespacelabs.dev/foundation/runtime";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+import "schema/runtime.proto";
+
+message ContainerWaitStatus {
+    repeated ContainerUnitWaitStatus containers   = 1;
+    repeated ContainerUnitWaitStatus initializers = 2;
+}
+
+message ContainerUnitWaitStatus {
+    ContainerReference reference    = 1;
+    string             Name         = 2;
+    string             status_label = 3;
+    Diagnostics        status       = 4;
+}
+
+message ContainerReference {
+    string               unique_id      = 1;
+    string               HumanReference = 2;
+    schema.ContainerKind Kind           = 3;
+    google.protobuf.Any  opaque         = 4;
+}
+
+message Diagnostics {
+    bool                      running           = 1;
+    google.protobuf.Timestamp started           = 2;
+    bool                      waiting           = 3;
+    string                    waiting_reason    = 4;
+    bool                      crashed           = 5;
+    bool                      terminated        = 6;
+    string                    terminated_reason = 7;
+    int32                     exit_code         = 8;
+    int32                     restart_count     = 9;
+}

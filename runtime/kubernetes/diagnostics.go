@@ -17,15 +17,15 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
-func (r Unbound) FetchDiagnostics(ctx context.Context, reference runtime.ContainerReference) (runtime.Diagnostics, error) {
-	opaque, ok := reference.(kubedef.ContainerPodReference)
-	if !ok {
-		return runtime.Diagnostics{}, fnerrors.InternalError("invalid reference")
+func (r Unbound) FetchDiagnostics(ctx context.Context, reference *runtime.ContainerReference) (*runtime.Diagnostics, error) {
+	opaque := &kubedef.ContainerPodReference{}
+	if err := reference.Opaque.UnmarshalTo(opaque); err != nil {
+		return &runtime.Diagnostics{}, fnerrors.InternalError("invalid reference: %w", err)
 	}
 
 	pod, err := r.cli.CoreV1().Pods(opaque.Namespace).Get(ctx, opaque.PodName, metav1.GetOptions{})
 	if err != nil {
-		return runtime.Diagnostics{}, err
+		return &runtime.Diagnostics{}, err
 	}
 
 	for _, init := range pod.Status.InitContainerStatuses {
@@ -40,7 +40,7 @@ func (r Unbound) FetchDiagnostics(ctx context.Context, reference runtime.Contain
 		}
 	}
 
-	return runtime.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.PodName, opaque.Container)
+	return &runtime.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.PodName, opaque.Container)
 }
 
 func (r K8sRuntime) FetchEnvironmentDiagnostics(ctx context.Context) (*storage.EnvironmentDiagnostics, error) {

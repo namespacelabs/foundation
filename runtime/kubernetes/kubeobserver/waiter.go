@@ -6,6 +6,7 @@ package kubeobserver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -16,12 +17,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -53,7 +54,7 @@ type WaitOnResource struct {
 	PreviousGen, ExpectedGen int64
 }
 
-func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) error {
+func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestration.Event) error {
 	if ch != nil {
 		defer close(ch)
 	}
@@ -71,10 +72,10 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 	}
 
 	return ev.Run(ctx, func(ctx context.Context) error {
-		ev := ops.Event{
-			ResourceID:          fmt.Sprintf("%s/%s", w.Namespace, w.Name),
+		ev := &orchestration.Event{
+			ResourceId:          fmt.Sprintf("%s/%s", w.Namespace, w.Name),
 			Kind:                w.ResourceKind,
-			Scope:               w.Scope,
+			Scope:               w.Scope.String(),
 			RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.Namespace, strings.ToLower(w.ResourceKind), w.Name),
 		}
 
@@ -114,7 +115,12 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 				observedGeneration = res.Status.ObservedGeneration
 				replicas = res.Status.Replicas
 				readyReplicas = res.Status.ReadyReplicas
-				ev.ImplMetadata = res.Status
+
+				meta, err := json.Marshal(res.Status)
+				if err != nil {
+					return false, fnerrors.InternalError("failed to marshal deployment status: %w", err)
+				}
+				ev.ImplMetadata = meta
 
 			case "StatefulSet":
 				res, err := cli.AppsV1().StatefulSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
@@ -132,7 +138,12 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 				observedGeneration = res.Status.ObservedGeneration
 				replicas = res.Status.Replicas
 				readyReplicas = res.Status.ReadyReplicas
-				ev.ImplMetadata = res.Status
+
+				meta, err := json.Marshal(res.Status)
+				if err != nil {
+					return false, fnerrors.InternalError("failed to marshal stateful set status: %w", err)
+				}
+				ev.ImplMetadata = meta
 
 			default:
 				return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.ResourceKind)
@@ -144,12 +155,12 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 				}
 			}
 
-			ev.Ready = ops.NotReady
+			ev.Ready = orchestration.Event_NOT_READY
 			if observedGeneration > w.ExpectedGen {
-				ev.Ready = ops.Ready
+				ev.Ready = orchestration.Event_READY
 			} else if observedGeneration == w.ExpectedGen {
 				if readyReplicas == replicas && replicas > 0 {
-					ev.Ready = ops.Ready
+					ev.Ready = orchestration.Event_READY
 				}
 			}
 
@@ -157,7 +168,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan ops.Event) e
 				ch <- ev
 			}
 
-			return ev.Ready == ops.Ready, nil
+			return ev.Ready == orchestration.Event_READY, nil
 		})
 	})
 }
@@ -217,15 +228,11 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 			}
 
 			if len(terminated) > 0 {
-				var failed []runtime.ContainerReference
+				var failed []*runtime.ContainerReference
 				var labels []string
 				for _, t := range terminated {
 					labels = append(labels, fmt.Sprintf("%s: %s", t[0], t[1]))
-					failed = append(failed, kubedef.ContainerPodReference{
-						Namespace: pod.Namespace,
-						PodName:   pod.Name,
-						Container: t[0],
-					})
+					failed = append(failed, kubedef.MakePodRef(pod.Namespace, pod.Name, t[0], nil))
 				}
 
 				return false, runtime.ErrContainerFailed{

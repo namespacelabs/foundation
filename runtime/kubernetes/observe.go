@@ -20,7 +20,7 @@ import (
 
 func (r K8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
 	// XXX use a watch
-	announced := map[string]runtime.ContainerReference{}
+	announced := map[string]*runtime.ContainerReference{}
 
 	ns := serverNamespace(r, srv)
 
@@ -40,7 +40,7 @@ func (r K8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 		}
 
 		type Key struct {
-			Instance  runtime.ContainerReference
+			Instance  *runtime.ContainerReference
 			CreatedAt time.Time // used for sorting
 		}
 		keys := []Key{}
@@ -53,15 +53,15 @@ func (r K8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 					Instance:  instance,
 					CreatedAt: pod.CreationTimestamp.Time,
 				})
-				newM[instance.UniqueID()] = struct{}{}
-				labels[instance.UniqueID()] = fmt.Sprintf("%s (%s)", srv.Name, pod.ResourceVersion)
+				newM[instance.UniqueId] = struct{}{}
+				labels[instance.UniqueId] = fmt.Sprintf("%s (%s)", srv.Name, pod.ResourceVersion)
 
 				if ObserveInitContainerLogs {
 					for _, container := range pod.Spec.InitContainers {
 						instance := kubedef.MakePodRef(ns, pod.Name, container.Name, srv)
 						keys = append(keys, Key{Instance: instance, CreatedAt: pod.CreationTimestamp.Time})
-						newM[instance.UniqueID()] = struct{}{}
-						labels[instance.UniqueID()] = fmt.Sprintf("%s:%s (%s)", srv.Name, container.Name, pod.ResourceVersion)
+						newM[instance.UniqueId] = struct{}{}
+						labels[instance.UniqueId] = fmt.Sprintf("%s:%s (%s)", srv.Name, container.Name, pod.ResourceVersion)
 					}
 				}
 			}
@@ -84,18 +84,18 @@ func (r K8sRuntime) Observe(ctx context.Context, srv *schema.Server, opts runtim
 
 		for _, key := range keys {
 			instance := key.Instance
-			if _, ok := newM[instance.UniqueID()]; !ok {
+			if _, ok := newM[instance.UniqueId]; !ok {
 				continue
 			}
-			human := labels[instance.UniqueID()]
+			human := labels[instance.UniqueId]
 			if human == "" {
-				human = instance.HumanReference()
+				human = instance.HumanReference
 			}
 
 			if err := onInstance(runtime.ObserveEvent{ContainerReference: instance, HumanReadableID: human, Added: true}); err != nil {
 				return err
 			}
-			announced[instance.UniqueID()] = instance
+			announced[instance.UniqueId] = instance
 		}
 
 		if opts.OneShot {

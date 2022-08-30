@@ -15,13 +15,13 @@ import (
 
 	"github.com/kr/text"
 	"github.com/morikuni/aec"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
+	"namespacelabs.dev/foundation/schema/orchestration"
 )
 
 type consRenderer struct {
-	ch        chan ops.Event
+	ch        chan *orchestration.Event
 	done      chan struct{}
 	flushLog  io.Writer
 	setSticky func(string)
@@ -33,11 +33,11 @@ type blockState struct {
 	Ready          bool
 	AlreadyExisted bool
 	Start, End     time.Time
-	WaitStatus     []ops.WaitStatus
+	WaitStatus     []*orchestration.Event_WaitStatus
 	WaitDetails    string
 }
 
-func (rwb consRenderer) Ch() chan ops.Event { return rwb.ch }
+func (rwb consRenderer) Ch() chan *orchestration.Event { return rwb.ch }
 func (rwb consRenderer) Wait(ctx context.Context) error {
 	select {
 	case <-rwb.done:
@@ -65,26 +65,26 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 				return
 			}
 
-			if _, has := m[ev.ResourceID]; !has {
-				ids = append(ids, ev.ResourceID)
+			if _, has := m[ev.ResourceId]; !has {
+				ids = append(ids, ev.ResourceId)
 				sort.Strings(ids)
 
-				m[ev.ResourceID] = &blockState{
+				m[ev.ResourceId] = &blockState{
 					Category: ev.Category,
-					Scope:    ev.Scope.String(),
-					Ready:    ev.Ready == ops.Ready,
+					Scope:    ev.Scope,
+					Ready:    ev.Ready == orchestration.Event_READY,
 					Start:    time.Now(),
 				}
 			}
 
-			m[ev.ResourceID].AlreadyExisted = ev.AlreadyExisted
-			m[ev.ResourceID].Ready = ev.Ready == ops.Ready
-			m[ev.ResourceID].WaitStatus = ev.WaitStatus
-			if m[ev.ResourceID].Ready {
-				m[ev.ResourceID].End = time.Now()
+			m[ev.ResourceId].AlreadyExisted = ev.AlreadyExisted
+			m[ev.ResourceId].Ready = ev.Ready == orchestration.Event_READY
+			m[ev.ResourceId].WaitStatus = ev.WaitStatus
+			if m[ev.ResourceId].Ready {
+				m[ev.ResourceId].End = time.Now()
 			} else {
 				if ev.WaitDetails != "" {
-					m[ev.ResourceID].WaitDetails = ev.WaitDetails
+					m[ev.ResourceId].WaitDetails = ev.WaitDetails
 				}
 			}
 
@@ -161,10 +161,10 @@ func icon(ready bool) string {
 	return "[ ]"
 }
 
-func mergeWaitStatus(status []ops.WaitStatus) string {
+func mergeWaitStatus(status []*orchestration.Event_WaitStatus) string {
 	var st []string
 	for _, s := range status {
-		st = append(st, s.WaitStatus())
+		st = append(st, s.Description)
 	}
 	return strings.Join(st, "; ")
 }

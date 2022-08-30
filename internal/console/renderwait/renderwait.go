@@ -8,18 +8,18 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/schema/orchestration"
 )
 
 type Consumer interface {
-	Ch() chan ops.Event
+	Ch() chan *orchestration.Event
 	Wait(context.Context) error
 }
 
 func NewBlock(ctx context.Context, name string) Consumer {
 	if !console.IsConsoleLike(ctx) {
 		rwb := logRenderer{
-			ch:   make(chan ops.Event),
+			ch:   make(chan *orchestration.Event),
 			done: make(chan struct{}),
 		}
 		go rwb.Loop(ctx)
@@ -27,7 +27,7 @@ func NewBlock(ctx context.Context, name string) Consumer {
 	}
 
 	rwb := consRenderer{
-		ch:   make(chan ops.Event),
+		ch:   make(chan *orchestration.Event),
 		done: make(chan struct{}),
 		setSticky: func(b string) {
 			console.SetStickyContent(ctx, name, b)

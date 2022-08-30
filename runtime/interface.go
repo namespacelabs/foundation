@@ -10,7 +10,6 @@ import (
 	"io"
 	"net"
 	"strings"
-	"time"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -49,13 +48,13 @@ type Runtime interface {
 	ComputeBaseNaming(context.Context, *schema.Naming) (*schema.ComputedNaming, error)
 
 	// Returns a list of containers that the server has deployed.
-	ResolveContainers(context.Context, *schema.Server) ([]ContainerReference, error)
+	ResolveContainers(context.Context, *schema.Server) ([]*ContainerReference, error)
 
 	// Fetch logs of a specific container reference.
-	FetchLogsTo(context.Context, io.Writer, ContainerReference, FetchLogsOpts) error
+	FetchLogsTo(context.Context, io.Writer, *ContainerReference, FetchLogsOpts) error
 
 	// Fetch diagnostics of a particular container reference.
-	FetchDiagnostics(context.Context, ContainerReference) (Diagnostics, error)
+	FetchDiagnostics(context.Context, *ContainerReference) (*Diagnostics, error)
 
 	// Fetch environment diagnostics, e.g. event list.
 	FetchEnvironmentDiagnostics(context.Context) (*storage.EnvironmentDiagnostics, error)
@@ -66,7 +65,7 @@ type Runtime interface {
 	StartTerminal(ctx context.Context, server *schema.Server, io TerminalIO, command string, rest ...string) error
 
 	// Attaches to a previously running container.
-	AttachTerminal(ctx context.Context, container ContainerReference, io TerminalIO) error
+	AttachTerminal(ctx context.Context, container *ContainerReference, io TerminalIO) error
 
 	// Forwards a single port.
 	ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error)
@@ -170,7 +169,7 @@ type ObserveOpts struct {
 }
 
 type ObserveEvent struct {
-	ContainerReference ContainerReference
+	ContainerReference *ContainerReference
 	HumanReadableID    string
 	Added              bool
 	Removed            bool
@@ -225,30 +224,11 @@ type ErrContainerFailed struct {
 	Name   string
 	Reason string
 
-	FailedContainers []ContainerReference // A pointer that can be passed to the runtime to fetch logs.
+	FailedContainers []*ContainerReference // A pointer that can be passed to the runtime to fetch logs.
 }
 
 func (e ErrContainerFailed) Error() string {
 	return fmt.Sprintf("%s: container failed with: %s", e.Name, e.Reason)
-}
-
-type ContainerWaitStatus struct {
-	Containers   []ContainerUnitWaitStatus
-	Initializers []ContainerUnitWaitStatus
-}
-
-type ContainerUnitWaitStatus struct {
-	Reference   ContainerReference
-	Name        string
-	StatusLabel string
-
-	Status Diagnostics
-}
-
-type ContainerReference interface {
-	UniqueID() string
-	HumanReference() string
-	Kind() schema.ContainerKind
 }
 
 type PortRange struct {
@@ -257,7 +237,7 @@ type PortRange struct {
 
 func DefaultPortRange() PortRange { return PortRange{40000, 41000} }
 
-func (cw ContainerWaitStatus) WaitStatus() string {
+func (cw *ContainerWaitStatus) WaitStatus() string {
 	var inits []string
 	for _, init := range cw.Initializers {
 		inits = append(inits, fmt.Sprintf("%s: %s", init.Name, init.StatusLabel))
@@ -288,21 +268,6 @@ func box(a, b string) string {
 	return fmt.Sprintf("%s [%s]", a, b)
 }
 
-type Diagnostics struct {
-	Running bool
-	Started time.Time
-
-	Waiting       bool
-	WaitingReason string
-	Crashed       bool
-
-	Terminated       bool
-	TerminatedReason string
-	ExitCode         int32
-
-	RestartCount int32
-}
-
-func (d Diagnostics) Failed() bool {
+func (d *Diagnostics) Failed() bool {
 	return d.Terminated && d.ExitCode > 0
 }

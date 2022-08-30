@@ -15,12 +15,16 @@ func WrapAnysOrDie(srcs ...protoreflect.ProtoMessage) []*anypb.Any {
 	var out []*anypb.Any
 
 	for _, src := range srcs {
-		any, err := anypb.New(src)
-		if err != nil {
-			log.Fatalf("Failed to wrap %s proto in an Any proto: %s", src.ProtoReflect().Descriptor().FullName(), err)
-		}
-		out = append(out, any)
+		out = append(out, WrapAnyOrDie(src))
 	}
 
 	return out
+}
+
+func WrapAnyOrDie(src protoreflect.ProtoMessage) *anypb.Any {
+	any, err := anypb.New(src)
+	if err != nil {
+		log.Fatalf("Failed to wrap %s proto in an Any proto: %s", src.ProtoReflect().Descriptor().FullName(), err)
+	}
+	return any
 }
