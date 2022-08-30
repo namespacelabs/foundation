@@ -13,7 +13,7 @@ import (
 )
 
 type BuildIntegration interface {
-	PrepareBuild(context.Context, provision.Server) (build.Spec, error)
+	PrepareBuild(context.Context, provision.Server, bool /*observeChanges*/) (build.Spec, error)
 	PrepareRun(context.Context, provision.Server, *runtime.ServerRunOpts) error
 }
 

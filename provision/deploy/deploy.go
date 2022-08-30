@@ -403,7 +403,7 @@ func prepareServerImages(ctx context.Context, env ops.Environment,
 		var err error
 		var spec build.Spec
 		if srv.Integration() != nil {
-			spec, err = integrations.BuildIntegrationFor(srv.Integration().Kind).PrepareBuild(ctx, srv)
+			spec, err = integrations.BuildIntegrationFor(srv.Integration().Kind).PrepareBuild(ctx, srv, focus.Includes(srv.PackageName()))
 		} else {
 			spec, err = languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, buildAssets, srv, focus.Includes(srv.PackageName()))
 		}

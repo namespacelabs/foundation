@@ -24,8 +24,9 @@ func Register() {
 type buildImpl struct {
 }
 
-func (buildImpl) PrepareBuild(ctx context.Context, server provision.Server) (build.Spec, error) {
+func (buildImpl) PrepareBuild(ctx context.Context, server provision.Server, observeChanges bool) (build.Spec, error) {
 	loc := server.Location
+	// Setting observeChanges to true here doesn't seem to do anything.
 	fsys, err := compute.GetValue(ctx, loc.Module.VersionedFS(loc.Rel(), false))
 	if err != nil {
 		return nil, fnerrors.Wrap(loc, err)
@@ -40,6 +41,7 @@ func (buildImpl) PrepareBuild(ctx context.Context, server provision.Server) (bui
 	// XXX consistency: we've already loaded the workspace contents, ideally we'd use those.
 	spec, err := buildkit.DockerfileBuild(buildkit.LocalContents{
 		Module: loc.Module, Path: loc.Rel(),
+		ObserveChanges: observeChanges,
 	}, contents)
 	if err != nil {
 		return nil, fnerrors.Wrap(loc, err)
