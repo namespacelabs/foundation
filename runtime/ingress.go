@@ -224,10 +224,9 @@ func ComputeIngress(ctx context.Context, env ops.Environment, sch *schema.Stack_
 				Owner:    sch.GetPackageName().String(),
 				HttpPath: paths,
 			}, DomainsRequest{
-				ServerID:                sch.GetServer().GetId(),
-				Key:                     name,
-				Alias:                   perIngressAlias[name],
-				TlsInclusterTermination: env.Proto().GetPurpose() == schema.Environment_PRODUCTION,
+				ServerID: sch.GetServer().GetId(),
+				Key:      name,
+				Alias:    perIngressAlias[name],
 			})
 			if err != nil {
 				return nil, err
@@ -305,10 +304,12 @@ type DomainsRequest struct {
 }
 
 func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
+	inclusterTls := allocatedName.TlsInclusterTermination || env.Purpose == schema.Environment_PRODUCTION
+
 	computedDomain := &schema.Domain{
 		Managed:                 computed.Managed,
-		TlsFrontend:             computed.UpstreamTlsTermination || allocatedName.TlsInclusterTermination,
-		TlsInclusterTermination: allocatedName.TlsInclusterTermination,
+		TlsFrontend:             computed.UpstreamTlsTermination || inclusterTls,
+		TlsInclusterTermination: inclusterTls,
 	}
 
 	if computed.UseShortAlias {
@@ -341,7 +342,13 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 		}
 	}
 
-	computedDomain.Fqdn += "." + computed.BaseDomain
+	baseDomain := computed.BaseDomain
+	// XXX make these runtime calls?
+	if allocatedName.TlsInclusterTermination && computed.TlsPassthroughBaseDomain != "" {
+		baseDomain = computed.TlsPassthroughBaseDomain
+	}
+
+	computedDomain.Fqdn += "." + baseDomain
 
 	domains := []*schema.Domain{computedDomain}
 

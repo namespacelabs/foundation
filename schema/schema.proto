@@ -404,11 +404,12 @@ message Naming {
 }
 
 message ComputedNaming {
-    Naming             source                   = 1;
-    string             base_domain              = 2;  // E.g. {org}.nscloud.dev
-    Domain.ManagedType managed                  = 3;
-    bool               upstream_tls_termination = 4;  // If true, these addresses will be TLS terminated.
-    string             domain_fragment_suffix   = 5;  // If set, domain name generation will use this suffix rather than creating a new sub-domain.
-    bool               use_short_alias          = 6;  // Enable new endpoint alias generation.
-    string             main_module_name         = 7;
+    Naming             source                      = 1;
+    string             base_domain                 = 2;  // E.g. {org}.nscloud.dev
+    string             tls_passthrough_base_domain = 3;  // E.g. int-a.nscluster.cloud
+    Domain.ManagedType managed                     = 4;
+    bool               upstream_tls_termination    = 5;  // If true, these addresses will be TLS terminated.
+    string             domain_fragment_suffix      = 6;  // If set, domain name generation will use this suffix rather than creating a new sub-domain.
+    bool               use_short_alias             = 7;  // Enable new endpoint alias generation.
+    string             main_module_name            = 8;
 }

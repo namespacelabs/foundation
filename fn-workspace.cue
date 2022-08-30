@@ -11,7 +11,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/internal/sdk/buf/image/prebuilt":                                "sha256:f2cf5502f9b6afc27f73386fbbfd31954434968b048723f37e22996228972ee3"
 		"namespacelabs.dev/foundation/std/dev/controller":                                             "sha256:bff9b0ed48a0cd129ad9015882fd130ae268b51b3dadf211467b0f84bea430cb"
 		"namespacelabs.dev/foundation/std/development/filesync/controller":                            "sha256:0bdc9f7dff58db8626c8cbb5cbac1d7aee3c93c4f1268d48ac667041ddb3c85b"
-		"namespacelabs.dev/foundation/std/grpc/httptranscoding/configure":                             "sha256:95fce45391921d1270d2e6fffdbc748b1b102e20eaac9b508d6a3f96fd2bda2e"
+		"namespacelabs.dev/foundation/std/grpc/httptranscoding/configure":                             "sha256:eae106958cb4886d5ffab9f661f758a242d31c8c02358dd96fc301a247a7328a"
 		"namespacelabs.dev/foundation/std/monitoring/grafana/tool":                                    "sha256:346a38e8301ba8366659280249a16ec287a14559f2855f5e7f2d07e5e4c190f9"
 		"namespacelabs.dev/foundation/std/monitoring/prometheus/tool":                                 "sha256:067f86f8231c4787fa49d70251dba1c3b25d98bcfa020d21529994896786b5eb"
 		"namespacelabs.dev/foundation/std/networking/gateway/controller":                              "sha256:11ff24b7079bd83001568570ccfac7b6118baa84f585901d54419bb7f08727a5"

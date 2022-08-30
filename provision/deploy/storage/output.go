@@ -172,6 +172,8 @@ func convertManagedType(managed fnschema.Domain_ManagedType) (storage.Domain_Man
 		return storage.Domain_LOCAL_MANAGED, nil
 	case fnschema.Domain_CLOUD_MANAGED:
 		return storage.Domain_CLOUD_MANAGED, nil
+	case fnschema.Domain_CLOUD_TERMINATION:
+		return storage.Domain_CLOUD_TERMINATION, nil
 	case fnschema.Domain_USER_SPECIFIED:
 		return storage.Domain_USER_SPECIFIED, nil
 	case fnschema.Domain_USER_SPECIFIED_TLS_MANAGED:

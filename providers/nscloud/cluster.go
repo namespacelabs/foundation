@@ -391,12 +391,13 @@ type clusterRuntime struct {
 
 func (cr clusterRuntime) ComputeBaseNaming(ctx context.Context, source *schema.Naming) (*schema.ComputedNaming, error) {
 	return &schema.ComputedNaming{
-		Source:                 source,
-		BaseDomain:             cr.Cluster.IngressDomain,
-		Managed:                schema.Domain_CLOUD_MANAGED,
-		UpstreamTlsTermination: true,
-		DomainFragmentSuffix:   cr.Cluster.ClusterId, // XXX fetch ingress external IP to calculate domain.
-		UseShortAlias:          true,
+		Source:                   source,
+		BaseDomain:               cr.Cluster.IngressDomain,
+		TlsPassthroughBaseDomain: "int-" + cr.Cluster.IngressDomain, // XXX receive this value.
+		Managed:                  schema.Domain_CLOUD_TERMINATION,
+		UpstreamTlsTermination:   true,
+		DomainFragmentSuffix:     cr.Cluster.ClusterId, // XXX fetch ingress external IP to calculate domain.
+		UseShortAlias:            true,
 	}, nil
 }
 

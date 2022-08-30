@@ -64,7 +64,11 @@ func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack
 			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", r.TargetServer)
 		}
 
-		invocations = append(invocations, tool.MakeInvocation(ctx, env, r, stack.Proto(), focus.PackageName(), propsPerServer[focus.PackageName()]))
+		inv, err := tool.MakeInvocation(ctx, env, r, stack.Proto(), focus.PackageName(), propsPerServer[focus.PackageName()])
+		if err != nil {
+			return nil, err
+		}
+		invocations = append(invocations, inv)
 	}
 
 	return &finishInvokeHandlers{

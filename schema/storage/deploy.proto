@@ -145,5 +145,6 @@ message Domain {
         CLOUD_MANAGED              = 2;
         USER_SPECIFIED             = 3;
         USER_SPECIFIED_TLS_MANAGED = 4;
+        CLOUD_TERMINATION          = 5;
     }
 }
