@@ -106,12 +106,14 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 
 				// Must be invoked before building to make sure stack computation and building
 				// uses the updated context.
-				ctx, observer, err = languages.IntegrationFor(f.Framework()).PrepareDev(ctx, f)
-				if err != nil {
-					return err
-				}
-				if observer != nil {
-					observers = append(observers, observer)
+				if f.Integration() == nil {
+					ctx, observer, err = languages.IntegrationFor(f.Framework()).PrepareDev(ctx, f)
+					if err != nil {
+						return err
+					}
+					if observer != nil {
+						observers = append(observers, observer)
+					}
 				}
 			}
 		}
