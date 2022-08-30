@@ -40,6 +40,7 @@ import (
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/internal/orchestration"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
@@ -298,6 +299,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, allocate cluster for tests on demand.")
 	rootCmd.PersistentFlags().BoolVar(&runtime.WorkInProgressUseShortAlias, "runtime_wip_use_short_alias", runtime.WorkInProgressUseShortAlias,
 		"If set to true, uses the new ingress name allocator.")
+	rootCmd.PersistentFlags().BoolVar(&orchestration.UseOrchestrator, "use_orchestrator", orchestration.UseOrchestrator,
+		"If set to true, enables the new incluster deployment orchestrator.")
 
 	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
@@ -331,6 +334,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"deploy_push_prebuilts_to_registry",
 		"oci_convert_images_to_estargz",
 		"runtime_wip_use_short_alias",
+		"use_orchestrator",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

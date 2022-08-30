@@ -160,6 +160,7 @@ func (m *makeDeployGraph) Action() *tasks.ActionEvent {
 
 func (m *makeDeployGraph) Inputs() *compute.In {
 	in := compute.Inputs().Computable("prepare", m.prepare).Indigestible("stack", m.stack)
+	// TODO predeploy orchestration server already from here?
 	if m.ingressFragments != nil {
 		in = in.Computable("ingress", m.ingressFragments).Computable("ingressPlan", m.ingressPlan)
 	}
