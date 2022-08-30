@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnnet"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -50,7 +51,17 @@ func (r K8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, cont
 
 	ns := serverNamespace(r, server)
 
-	return r.RawForwardPort(ctx, server.PackageName, ns, map[string]string{kubedef.K8sServerId: server.Id}, int(containerPort), localAddrs, callback)
+	return r.RawForwardPort(ctx, server.PackageName, ns, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
+}
+
+func (r K8sRuntime) DialServer(ctx context.Context, server *schema.Server, containerPort int32) (net.Conn, error) {
+	if containerPort <= 0 {
+		return nil, fnerrors.UserError(server, "invalid port number: %d", containerPort)
+	}
+
+	ns := serverNamespace(r, server)
+
+	return r.RawDialServer(ctx, ns, kubedef.SelectById(server), int(containerPort))
 }
 
 func (u Unbound) RawForwardPort(ctx context.Context, desc, ns string, podLabels map[string]string, containerPort int, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
@@ -72,6 +83,33 @@ func (u Unbound) RawForwardPort(ctx context.Context, desc, ns string, podLabels 
 	}()
 
 	return closerCallback(cancel), nil
+}
+
+func (u Unbound) RawDialServer(ctx context.Context, ns string, podLabels map[string]string, containerPort int) (net.Conn, error) {
+	pod, err := kubeobserver.ResolvePod(ctx, u.cli, ns, podLabels)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := resolveConfig(ctx, u.host)
+	if err != nil {
+		return nil, err
+	}
+
+	restClient, err := rest.RESTClientFor(config)
+	if err != nil {
+		return nil, err
+	}
+
+	debug := console.Debug(ctx)
+
+	streamConn, err := dialPod(ctx, restClient, config, pod.Namespace, pod.Name)
+	if err != nil {
+		fmt.Fprintf(debug, "kube/dial: %s/%s: %d: stream connect failed: %v\n", pod.Namespace, pod.Name, containerPort, err)
+		return nil, err
+	}
+
+	return createConnection(ctx, streamConn, pod, 0, containerPort)
 }
 
 func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPortFwdArgs) error {
@@ -163,6 +201,104 @@ func dialPod(ctx context.Context, restClient *rest.RESTClient, config *rest.Conf
 
 	return streamConn, err
 }
+
+func createConnection(ctx context.Context, streamConn httpstream.Connection, pod v1.Pod, requestID int, containerPort int) (net.Conn, error) {
+	headers := http.Header{}
+	headers.Set(v1.StreamType, v1.StreamTypeError)
+	headers.Set(v1.PortHeader, fmt.Sprintf("%d", containerPort))
+	headers.Set(v1.PortForwardRequestIDHeader, fmt.Sprintf("%d", requestID))
+
+	makeErr := func(msg string, err error) error {
+		return fmt.Errorf("kube/dial: %s/%s: %d: %s: %w", pod.Namespace, pod.Name, containerPort, msg, err)
+	}
+
+	errorStream, err := streamConn.CreateStream(headers)
+	if err != nil {
+		return nil, makeErr("failed to create error stream", err)
+	}
+
+	// we're not writing to this stream
+	errorStream.Close()
+
+	// create data stream
+	headers.Set(v1.StreamType, v1.StreamTypeData)
+	dataStream, err := streamConn.CreateStream(headers)
+	if err != nil {
+		return nil, makeErr("failed to create data stream", err)
+	}
+
+	// The assumption is that if an error is received, the dataStream will also fail.
+	go func() {
+		defer streamConn.Close()
+
+		message, err := io.ReadAll(errorStream)
+		switch {
+		case err != nil:
+			fmt.Fprintf(console.Errors(ctx), "%v\n", makeErr("error reading from error stream", err))
+		case len(message) > 0:
+			fmt.Fprintf(console.Errors(ctx), "%v\n", makeErr("error ocurred during forwarding", fnerrors.New(string(message))))
+		}
+	}()
+
+	return &podConn{Stream: dataStream, parent: streamConn, ns: pod.Namespace, name: pod.Namespace, containerPort: containerPort}, nil
+}
+
+type podConn struct {
+	httpstream.Stream
+	parent        httpstream.Connection
+	ns, name      string
+	containerPort int
+}
+
+var _ net.Conn = &podConn{}
+
+func (pc *podConn) Close() error {
+	var errs []error
+
+	if err := pc.Stream.Close(); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := pc.parent.Close(); err != nil {
+		errs = append(errs, err)
+	}
+
+	return multierr.New(errs...)
+}
+
+func (pc *podConn) LocalAddr() net.Addr {
+	return podAddr{"local"}
+}
+
+func (pc *podConn) RemoteAddr() net.Addr {
+	return podAddr{fmt.Sprintf("%s/%s:%d", pc.ns, pc.name, pc.containerPort)}
+}
+
+func (pc *podConn) SetDeadline(t time.Time) error {
+	if t.IsZero() {
+		return nil
+	}
+	return fnerrors.InternalError("SetDeadline: not implemented")
+}
+
+func (pc *podConn) SetReadDeadline(t time.Time) error {
+	if t.IsZero() {
+		return nil
+	}
+	return fnerrors.InternalError("SetReadDeadline: not implemented")
+}
+
+func (pc *podConn) SetWriteDeadline(t time.Time) error {
+	if t.IsZero() {
+		return nil
+	}
+	return fnerrors.InternalError("SetWriteDeadline: not implemented")
+}
+
+type podAddr struct{ desc string }
+
+func (p podAddr) Network() string { return "kubernetes-pod" }
+func (p podAddr) String() string  { return p.desc }
 
 func handleConnection(ctx context.Context, streamConn httpstream.Connection, conn net.Conn, requestID int, debugid string, containerPort int) error {
 	defer conn.Close()

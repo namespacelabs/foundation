@@ -12,7 +12,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 )
 
-func ResolvePod(ns, name string) func(ctx context.Context, c *k8s.Clientset) ([]corev1.Pod, error) {
+func PickPod(ns, name string) func(ctx context.Context, c *k8s.Clientset) ([]corev1.Pod, error) {
 	return func(ctx context.Context, c *k8s.Clientset) ([]corev1.Pod, error) {
 		pod, err := c.CoreV1().Pods(ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {

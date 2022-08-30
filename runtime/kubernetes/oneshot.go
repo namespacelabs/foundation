@@ -86,7 +86,7 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, name string, runOpts runtime
 		if err := kubeobserver.WaitForCondition(ctx, r.cli,
 			tasks.Action("kubernetes.pod.wait").Arg("namespace", r.moduleNamespace).Arg("name", name).Arg("condition", "terminated"),
 			kubeobserver.WaitForPodConditition(
-				kubeobserver.ResolvePod(r.moduleNamespace, name),
+				kubeobserver.PickPod(r.moduleNamespace, name),
 				func(status corev1.PodStatus) (bool, error) {
 					return (status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 				})); err != nil {
@@ -169,7 +169,7 @@ func spawnAndWaitPod(ctx context.Context, cli *k8s.Clientset, ns, name string, c
 	}
 
 	if err := kubeobserver.WaitForCondition(ctx, cli, tasks.Action("kubernetes.pod.deploy").Arg("namespace", ns).Arg("name", name),
-		kubeobserver.WaitForPodConditition(kubeobserver.ResolvePod(ns, name), func(status corev1.PodStatus) (bool, error) {
+		kubeobserver.WaitForPodConditition(kubeobserver.PickPod(ns, name), func(status corev1.PodStatus) (bool, error) {
 			return (status.Phase == corev1.PodRunning || status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 		})); err != nil {
 		if allErrors {

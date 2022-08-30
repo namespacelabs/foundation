@@ -7,6 +7,7 @@ package runtime
 import (
 	"context"
 	"io"
+	"net"
 	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
@@ -135,6 +136,9 @@ func (r runtimeFwdErr) AttachTerminal(ctx context.Context, _ ContainerReference,
 	return r.err
 }
 func (r runtimeFwdErr) ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error) {
+	return nil, r.err
+}
+func (r runtimeFwdErr) DialServer(ctx context.Context, server *schema.Server, containerPort int32) (net.Conn, error) {
 	return nil, r.err
 }
 func (r runtimeFwdErr) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f PortForwardedFunc) (io.Closer, error) {

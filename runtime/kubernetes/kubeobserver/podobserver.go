@@ -215,6 +215,15 @@ func (p *PodObserver) Resolve(ctx context.Context) (v1.Pod, error) {
 	})
 }
 
+func ResolvePod(ctx context.Context, client *k8s.Clientset, namespace string, labels map[string]string) (v1.Pod, error) {
+	// Refactor to be cheaper.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	p := NewPodObserver(ctx, client, namespace, labels)
+	return p.Resolve(ctx)
+}
+
 func cancelableWait[V any](ctx context.Context, cond *sync.Cond, resolve func() (V, bool, error)) (V, error) {
 	cond.L.Lock()
 	defer cond.L.Unlock()

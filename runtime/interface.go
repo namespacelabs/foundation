@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 	"time"
 
@@ -69,6 +70,10 @@ type Runtime interface {
 
 	// Forwards a single port.
 	ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error)
+
+	// Dials a TCP port to one of the replicas of the target server. The
+	// lifecycle of the connection is bound to the specified context.
+	DialServer(ctx context.Context, server *schema.Server, containerPort int32) (net.Conn, error)
 
 	// Exposes the cluster's ingress, in the specified local address and port.
 	// This is used to create stable localhost-bound ingress addresses (for e.g.

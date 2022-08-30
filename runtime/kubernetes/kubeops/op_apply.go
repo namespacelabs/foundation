@@ -234,7 +234,7 @@ func registerApply() {
 					}
 
 					return kobs.WaitForCondition(ctx, cli, tasks.Action(runtime.TaskServerStart).Scope(sc),
-						kobs.WaitForPodConditition(kobs.ResolvePod(header.Namespace, header.Name),
+						kobs.WaitForPodConditition(kobs.PickPod(header.Namespace, header.Name),
 							func(ps v1.PodStatus) (bool, error) {
 								ev := ops.Event{
 									ResourceID:          fmt.Sprintf("%s/%s", header.Namespace, header.Name),
