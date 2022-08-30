@@ -13,8 +13,6 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/orchestration"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -54,23 +52,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return fnerrors.New("failed to prepare plan: %w", err)
 		}
 
-		if orchestration.UseOrchestrator {
-			root, err := module.FindRoot(ctx, ".")
-			if err != nil {
-				return err
-			}
-
-			env, err := provision.RequireEnv(root, plan.Environment.Name)
-			if err != nil {
-				return err
-			}
-
-			if _, err := orchestration.Deploy(ctx, env, plan); err != nil {
-				return err
-			}
-		}
-
-		return completeDeployment(ctx, serializedEnvironment{root, plan.Environment}, p, plan, opts)
+		return completeDeployment(ctx, root, serializedEnvironment{root, plan.Environment}, p, plan, opts)
 	})
 
 	return cmd
