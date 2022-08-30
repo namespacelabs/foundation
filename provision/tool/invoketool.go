@@ -39,22 +39,40 @@ type InvokeProps struct {
 	ProvisionInput []*anypb.Any
 }
 
-func MakeInvocation(ctx context.Context, env ops.Environment, r *Definition, stack *schema.Stack, focus schema.PackageName, props InvokeProps) compute.Computable[*protocol.ToolResponse] {
-	return &cacheableInvocation{
-		handler: *r,
-		stack:   stack,
-		focus:   focus,
-		env:     env,
-		props:   props,
+func MakeInvocation(ctx context.Context, env ops.Environment, r *Definition, stack *schema.Stack, focus schema.PackageName, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
+	// Calculate injections early on to make sure that they're part of the cache key.
+	var injections []*anypb.Any
+	for _, inject := range r.Invocation.Inject {
+		provider, ok := registrations[inject.Type]
+		if !ok {
+			return nil, fnerrors.BadInputError("%s: no such provider", inject)
+		}
+
+		input, err := provider(ctx, env, stack.GetServer(focus))
+		if err != nil {
+			return nil, err
+		}
+
+		injections = append(injections, input)
 	}
+
+	return &cacheableInvocation{
+		handler:    *r,
+		stack:      stack,
+		focus:      focus,
+		env:        env,
+		props:      props,
+		injections: injections,
+	}, nil
 }
 
 type cacheableInvocation struct {
-	env     ops.Environment // env.Proto() is used as cache key.
-	handler Definition
-	stack   *schema.Stack
-	focus   schema.PackageName
-	props   InvokeProps
+	env        ops.Environment // env.Proto() is used as cache key.
+	handler    Definition
+	stack      *schema.Stack
+	focus      schema.PackageName
+	props      InvokeProps
+	injections []*anypb.Any
 
 	compute.LocalScoped[*protocol.ToolResponse]
 }
@@ -75,7 +93,8 @@ func (inv *cacheableInvocation) Inputs() *compute.In {
 		Proto("stack", inv.stack).
 		Stringer("focus", inv.focus).
 		Proto("env", inv.env.Proto()).
-		JSON("props", inv.props)
+		JSON("props", inv.props).
+		JSON("injections", inv.injections)
 
 	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages()) && inv.handler.Invocation.PublicImageID != nil {
 		return in.JSON("publicImageID", *inv.handler.Invocation.PublicImageID)
@@ -173,20 +192,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	}
 
 	req.Input = append(req.Input, inv.props.ProvisionInput...)
-
-	for _, inject := range r.Invocation.Inject {
-		provider, ok := registrations[inject.Type]
-		if !ok {
-			return nil, fnerrors.BadInputError("%s: no such provider", inject)
-		}
-
-		input, err := provider(ctx, inv.env, inv.stack.GetServer(inv.focus))
-		if err != nil {
-			return nil, err
-		}
-
-		req.Input = append(req.Input, input)
-	}
+	req.Input = append(req.Input, inv.injections...)
 
 	invocation := tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{RedactRequest: redactMessage}
 
