@@ -21,12 +21,11 @@ type GoBinary struct {
 	PackageName schema.PackageName `json:"packageName"`
 	ModuleName  string             `json:"moduleName"`
 
-	GoModulePath string   `json:"modulePath"` // Relative to workspace root.
-	GoModule     string   `json:"module"`     // Go module name.
-	GoVersion    string   `json:"goVersion"`
-	SourcePath   string   `json:"sourcePath"` // Relative to workspace root.
-	BinaryName   string   `json:"binaryName"`
-	Capabilities []string `json:"capabilities"`
+	GoModulePath string `json:"modulePath"` // Relative to workspace root.
+	GoModule     string `json:"module"`     // Go module name.
+	GoVersion    string `json:"goVersion"`
+	SourcePath   string `json:"sourcePath"` // Relative to workspace root.
+	BinaryName   string `json:"binaryName"`
 
 	BinaryOnly      bool
 	UnsafeCacheable bool // Unsafe because we can't guarantee that the sources used for compilation are consistent with the workspace contents.

@@ -86,7 +86,6 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 		GoVersion:    ext.GoVersion,
 		SourcePath:   server.Location.Rel(),
 		BinaryName:   "server",
-		Capabilities: []string{"grpc", "server"},
 		isFocus:      isFocus,
 	}
 
