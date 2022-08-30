@@ -11,3 +11,7 @@ service: fn.#Service & {
 	framework:     "GO"
 	exportService: $proto.services.OrchestrationService
 }
+
+configure: fn.#Configure & {
+	with: binary: "namespacelabs.dev/foundation/internal/orchestration/service/tool"
+}
