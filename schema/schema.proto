@@ -211,7 +211,7 @@ message Reference {
     }
 }
 
-// Next ID: 26
+// Next ID: 28
 message Server {
     reserved 17, 19;
 
@@ -310,11 +310,62 @@ message Server {
 
     Integration integration = 25;
 
+    // Includes file-level and inlined volumes.
+    repeated Volume volumes = 26;
+
+    repeated Mount mounts = 27;
+
     message Integration {
         string kind = 1;
 
         // TODO: define kind-specific fields in a generic way.
         string dockerfile = 2;
+    }
+
+    message Mount {
+        string path        = 1;
+        string volume_name = 2;
+    }
+}
+
+message Volume {
+    Kind kind = 1;
+    // Explicit if defined at the file level, auto-generated from the mount point if inlined.
+    // Volumes then referenced by the name from "mounts".
+    string name = 2;
+
+    // At most one of these is set by the parser.
+    Persistent            persistent   = 101;
+    repeated Configurable configurable = 102;
+    Fileset               package_sync = 103;
+
+    enum Kind {
+        KIND_UNSPECIFIED = 0;
+        EPHEMERAL        = 1;
+        PERSISTENT       = 2;
+        CONFIGURABLE     = 3;
+        PACKAGE_SYNC     = 4;
+    }
+
+    message Persistent {
+        string id         = 1;
+        int64  size_bytes = 2;
+    }
+
+    message Configurable {
+        // A single file or a directory, relative to the mount path.
+        string target_path = 1;
+
+        // One of these
+        string source_content          = 2;  // Inlined content
+        string source_file_path        = 3;
+        string source_secret_file_path = 4;
+        string source_dir              = 5;
+    }
+
+    message Fileset {
+        repeated string include_file_patterns = 1;
+        repeated string exclude_file_patterns = 2;
     }
 }
 
