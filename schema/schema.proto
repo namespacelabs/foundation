@@ -329,22 +329,22 @@ message Server {
 }
 
 message Volume {
-    Kind kind = 1;
+    string kind = 1;
     // Explicit if defined at the file level, auto-generated from the mount point if inlined.
     // Volumes then referenced by the name from "mounts".
     string name = 2;
 
     // At most one of these is set by the parser.
-    Persistent            persistent   = 101;
-    repeated Configurable configurable = 102;
-    Fileset               package_sync = 103;
 
-    enum Kind {
-        KIND_UNSPECIFIED = 0;
-        EPHEMERAL        = 1;
-        PERSISTENT       = 2;
-        CONFIGURABLE     = 3;
-        PACKAGE_SYNC     = 4;
+    // Custom volume kind, arguments are serialized as JSON.
+    string custom = 100;
+    // Built-in types, for convenience parsed to separate fields.
+    Ephemeral    ephemeral    = 101;
+    Persistent   persistent   = 102;
+    Configurable configurable = 103;
+    Fileset      package_sync = 104;
+
+    message Ephemeral {
     }
 
     message Persistent {
@@ -353,14 +353,18 @@ message Volume {
     }
 
     message Configurable {
-        // A single file or a directory, relative to the mount path.
-        string target_path = 1;
+        repeated Entry entries = 1;
 
-        // One of these
-        string source_content          = 2;  // Inlined content
-        string source_file_path        = 3;
-        string source_secret_file_path = 4;
-        string source_dir              = 5;
+        message Entry {
+            // A single file or a directory, relative to the mount path.
+            string target_path = 1;
+
+            // One of these
+            string source_content          = 2;  // Inlined content
+            string source_file_path        = 3;
+            string source_secret_file_path = 4;
+            string source_dir              = 5;
+        }
     }
 
     message Fileset {
