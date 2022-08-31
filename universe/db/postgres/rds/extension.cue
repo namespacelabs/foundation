@@ -5,7 +5,7 @@ import (
 	"namespacelabs.dev/foundation/universe/aws/client"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/base"
 	"namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds"
-	"namespacelabs.dev/foundation/std/core"
+	"namespacelabs.dev/foundation/std/core/info"
 )
 
 $providerProto: inputs.#Proto & {
@@ -19,7 +19,7 @@ extension: fn.#Extension & {
 		// TODO: Move creds instantiation into provides when incluster server supports multiple creds
 		creds:      gencreds.#Exports.Creds
 		wire:       base.#Exports.WireDatabase
-		serverInfo: core.#Exports.ServerInfo
+		serverInfo: info.#Exports.ServerInfo
 	}
 
 	provides: {

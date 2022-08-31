@@ -53,8 +53,11 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 		Log.Fatal("failed to parse environment", err)
 	}
 
-	if err := json.Unmarshal([]byte(*serializedVCS), &vcs); err != nil {
-		Log.Fatal("failed to parse VCS information", err)
+	if *serializedVCS != "" {
+		// We treat VcsInfo as optional for now, as it is propagated via container args (and causes redeploy).
+		if err := json.Unmarshal([]byte(*serializedVCS), &vcs); err != nil {
+			Log.Fatal("failed to parse VCS information", err)
+		}
 	}
 
 	serverName = specifiedServerName

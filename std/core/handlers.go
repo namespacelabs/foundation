@@ -23,7 +23,3 @@ func ProvideLivenessCheck(ctx context.Context, args *LivenessCheckArgs) (core.Ch
 func ProvideReadinessCheck(ctx context.Context, args *ReadinessCheckArgs) (core.Check, error) {
 	return core.ProvideReadinessCheck(ctx, args)
 }
-
-func ProvideServerInfo(ctx context.Context, args *ServerInfoArgs) (*ServerInfo, error) {
-	return core.ProvideServerInfo(ctx, args)
-}

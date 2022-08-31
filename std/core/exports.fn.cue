@@ -38,16 +38,4 @@ package core
 			}
 		}
 	}
-	ServerInfo: {
-		#Definition: {
-			packageName: "namespacelabs.dev/foundation/std/core"
-			type:        "ServerInfo"
-			typeDefinition: {
-				"typename": "foundation.std.core.types.ServerInfoArgs"
-				"source": [
-					"types/coretypes.proto",
-				]
-			}
-		}
-	}
 }

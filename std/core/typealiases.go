@@ -11,5 +11,3 @@ import (
 type LivenessCheckArgs = types.LivenessCheckArgs
 type ReadinessCheckArgs = types.ReadinessCheckArgs
 type DebugHandlerArgs = types.DebugHandlerArgs
-type ServerInfoArgs = types.ServerInfoArgs
-type ServerInfo = types.ServerInfo

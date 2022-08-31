@@ -39,22 +39,11 @@ extension: fn.#Extension & {
 				}
 			}
 		}
-
-		ServerInfo: {
-			input: $coreTypesProto.types.ServerInfoArgs
-			availableIn: {
-				go: {
-					package: "namespacelabs.dev/foundation/std/core/types"
-					type:    "*ServerInfo"
-				}
-			}
-		}
 	}
 }
 
 $inputs: {
 	env:   inputs.#Environment
-	vcs:   inputs.#VCS
 	focus: inputs.#FocusServer
 }
 
@@ -62,7 +51,6 @@ configure: fn.#Configure & {
 	startup: {
 		args: {
 			env_json:      json.Marshal($inputs.env)
-			vcs_json:      json.Marshal($inputs.vcs)
 			image_version: $inputs.focus.image
 		}
 	}

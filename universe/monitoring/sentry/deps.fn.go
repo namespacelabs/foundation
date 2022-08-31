@@ -5,7 +5,7 @@ package sentry
 
 import (
 	"context"
-	fncore "namespacelabs.dev/foundation/std/core"
+	"namespacelabs.dev/foundation/std/core/info"
 	"namespacelabs.dev/foundation/std/core/types"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
@@ -59,7 +59,7 @@ func makeDeps__efmlf2(ctx context.Context, di core.Dependencies) (_ interface{},
 		return nil, err
 	}
 
-	if deps.ServerInfo, err = fncore.ProvideServerInfo(ctx, nil); err != nil {
+	if deps.ServerInfo, err = info.ProvideServerInfo(ctx, nil); err != nil {
 		return nil, err
 	}
 
