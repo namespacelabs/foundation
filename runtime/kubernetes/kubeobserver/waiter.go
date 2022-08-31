@@ -96,7 +96,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 
 		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(c context.Context) (done bool, err error) {
 			var observedGeneration int64
-			var readyReplicas, replicas int32
+			var readyReplicas, replicas, updatedReplicas int32
 
 			switch w.ResourceKind {
 			case "Deployment":
@@ -115,6 +115,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 				observedGeneration = res.Status.ObservedGeneration
 				replicas = res.Status.Replicas
 				readyReplicas = res.Status.ReadyReplicas
+				updatedReplicas = res.Status.UpdatedReplicas
 
 				meta, err := json.Marshal(res.Status)
 				if err != nil {
@@ -138,6 +139,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 				observedGeneration = res.Status.ObservedGeneration
 				replicas = res.Status.Replicas
 				readyReplicas = res.Status.ReadyReplicas
+				updatedReplicas = res.Status.UpdatedReplicas
 
 				meta, err := json.Marshal(res.Status)
 				if err != nil {
@@ -159,7 +161,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 			if observedGeneration > w.ExpectedGen {
 				ev.Ready = orchestration.Event_READY
 			} else if observedGeneration == w.ExpectedGen {
-				if readyReplicas == replicas && replicas > 0 {
+				if readyReplicas == replicas && updatedReplicas == replicas && replicas > 0 {
 					ev.Ready = orchestration.Event_READY
 				}
 			}
