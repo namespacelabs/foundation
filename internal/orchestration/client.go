@@ -7,6 +7,7 @@ package orchestration
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -17,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -131,4 +133,37 @@ func Deploy(ctx context.Context, env provision.Env, plan *schema.DeployPlan) (st
 	}
 
 	return resp.Id, nil
+}
+
+func DeploymentStatus(ctx context.Context, env provision.Env, id string, ch chan *orchestration.Event) error {
+	if ch != nil {
+		defer close(ch)
+	}
+
+	req := &proto.DeploymentStatusRequest{
+		Id: id,
+	}
+
+	cli, err := compute.GetValue(ctx, ConnectToClient(env))
+	if err != nil {
+		return err
+	}
+
+	stream, err := cli.DeploymentStatus(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	for {
+		in, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if ch != nil && in.Event != nil {
+			ch <- in.Event
+		}
+	}
 }

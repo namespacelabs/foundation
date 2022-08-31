@@ -30,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -111,8 +112,18 @@ type Ingress struct {
 func completeDeployment(ctx context.Context, root *workspace.Root, env ops.Environment, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
 	if orchestration.UseOrchestrator {
 		env := provision.MakeEnv(root, plan.Environment)
-		if _, err := orchestration.Deploy(ctx, env, plan); err != nil {
+		id, err := orchestration.Deploy(ctx, env, plan)
+		if err != nil {
 			return err
+		}
+
+		if opts.alsoWait {
+			fn := func(ch chan *orchpb.Event) error {
+				return orchestration.DeploymentStatus(ctx, env, id, ch)
+			}
+			if err := deploy.WaitFn(ctx, env, fn); err != nil {
+				return err
+			}
 		}
 	} else {
 		waiters, err := p.Execute(ctx, runtime.TaskServerDeploy, env)

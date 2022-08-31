@@ -43,10 +43,10 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		// TODO just grant * permissions?
 		Resource: applyrbacv1.ClusterRole(role).WithRules(
 			applyrbacv1.PolicyRule().WithAPIGroups("").
-				WithResources("configmaps", "events", "namespaces", "pods", "secrets", "serviceaccounts", "services").
+				WithResources("configmaps", "events", "namespaces", "persistentvolumeclaims", "pods", "secrets", "serviceaccounts", "services").
 				WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
 			applyrbacv1.PolicyRule().WithAPIGroups("apps").
-				WithResources("deployments").
+				WithResources("deployments", "statefulsets").
 				WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
 			applyrbacv1.PolicyRule().WithAPIGroups("networking.k8s.io").
 				WithResources("ingresses").
