@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/types"
 )
 
 const (
@@ -129,11 +130,12 @@ type Deployment struct {
 
 type ServerConfig struct {
 	ServerRunOpts
-	Server      provision.Server
-	ConfigImage *oci.ImageID
-	Extensions  []*schema.DefExtension
-	Sidecars    []SidecarRunOpts
-	Inits       []SidecarRunOpts
+	Server        provision.Server
+	ConfigImage   *oci.ImageID
+	Extensions    []*schema.DefExtension
+	Sidecars      []SidecarRunOpts
+	Inits         []SidecarRunOpts
+	RuntimeConfig *types.ServerRuntimeConfig
 }
 
 type ServerRunOpts struct {

@@ -1,0 +1,20 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.std.types;
+
+option go_package = "namespacelabs.dev/foundation/std/types";
+
+// Config generated from the server definition. Available to the user code at runtime.
+message ServerRuntimeConfig {
+    repeated ServiceRuntimeConfig services = 1;
+    // TODO: add "require"d servers and embed env_json and vcs_json.
+}
+
+message ServiceRuntimeConfig {
+    string name = 1;
+    int32  port = 2;
+}
