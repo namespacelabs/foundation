@@ -13,6 +13,7 @@ import (
 
 const (
 	K8sServerId           = "k8s.namespacelabs.dev/server-id"
+	K8sServerFocus        = "k8s.namespacelabs.dev/server-focus"
 	K8sServerPackageName  = "k8s.namespacelabs.dev/server-package-name"
 	K8sServicePackageName = "k8s.namespacelabs.dev/service-package-name"
 	K8sServiceGrpcType    = "k8s.namespacelabs.dev/service-grpc-type"
@@ -76,6 +77,20 @@ func MakeLabels(env *schema.Environment, srv *schema.Server) map[string]string {
 		}
 	}
 	return m
+}
+
+func WithFocusMark(labels map[string]string) map[string]string {
+	labels[K8sServerFocus] = "true"
+	return labels
+}
+
+func HasFocusMark(labels map[string]string) bool {
+	label, ok := labels[K8sServerFocus]
+	if !ok {
+		return false
+	}
+
+	return label == "true"
 }
 
 func MakeAnnotations(env *schema.Environment, entry *schema.Stack_Entry) map[string]string {
