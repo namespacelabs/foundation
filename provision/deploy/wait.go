@@ -25,17 +25,15 @@ const (
 )
 
 func Wait(ctx context.Context, env ops.Environment, waiters []ops.Waiter) error {
-	fn := func(ch chan *orchestration.Event) error {
+	return RenderAndWait(ctx, env, func(ch chan *orchestration.Event) error {
 		return ops.WaitMultiple(ctx, waiters, ch)
-	}
-
-	return WaitFn(ctx, env, fn)
+	})
 }
 
-func WaitFn(ctx context.Context, env ops.Environment, fn func(chan *orchestration.Event) error) error {
+func RenderAndWait(ctx context.Context, env ops.Environment, handle func(chan *orchestration.Event) error) error {
 	rwb := renderwait.NewBlock(ctx, "deploy")
 
-	waitErr := fn(observeContainers(ctx, env, rwb.Ch()))
+	waitErr := handle(observeContainers(ctx, env, rwb.Ch()))
 
 	// Make sure that rwb completes before further output below (for ordering purposes).
 	if err := rwb.Wait(ctx); err != nil {

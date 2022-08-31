@@ -135,7 +135,7 @@ func Deploy(ctx context.Context, env provision.Env, plan *schema.DeployPlan) (st
 	return resp.Id, nil
 }
 
-func DeploymentStatus(ctx context.Context, env provision.Env, id string, ch chan *orchestration.Event) error {
+func WireDeploymentStatus(ctx context.Context, env provision.Env, id string, ch chan *orchestration.Event) error {
 	if ch != nil {
 		defer close(ch)
 	}
