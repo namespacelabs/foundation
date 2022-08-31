@@ -14,7 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/schema"
 )
 
 func main() {
@@ -38,11 +37,12 @@ func main() {
 		),
 	})
 
-	w.Add(controlDev, metav1.ListOptions{
-		LabelSelector: kubedef.SerializeSelector(
-			kubedef.SelectByPurpose(schema.Environment_DEVELOPMENT),
-		),
-	})
+	// TODO remodel dev controller (removal of unused deps) with incluster-NS
+	// w.Add(controlDev, metav1.ListOptions{
+	// 	LabelSelector: kubedef.SerializeSelector(
+	// 		kubedef.SelectByPurpose(schema.Environment_DEVELOPMENT),
+	// 	),
+	// })
 
 	w.Run(context.Background())
 }

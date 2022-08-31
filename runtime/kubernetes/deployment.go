@@ -183,11 +183,6 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 	annotations := kubedef.MakeAnnotations(r.env, srv.StackEntry())
 
-	if opts.focus.Includes(srv.PackageName()) {
-		labels = kubedef.WithFocusMark(labels)
-		annotations = kubedef.WithFocusStack(annotations, opts.stackIds)
-	}
-
 	deploymentId := kubedef.MakeDeploymentId(srv.Proto())
 
 	tmpl := applycorev1.PodTemplateSpec().

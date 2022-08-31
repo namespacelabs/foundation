@@ -13,9 +13,7 @@ import (
 
 const (
 	K8sServerId           = "k8s.namespacelabs.dev/server-id"
-	K8sServerFocus        = "k8s.namespacelabs.dev/server-focus"
 	K8sServerPackageName  = "k8s.namespacelabs.dev/server-package-name"
-	K8sFocusStack         = "k8s.namespacelabs.dev/focus-stack" // all focus servers and all their deps.
 	K8sServicePackageName = "k8s.namespacelabs.dev/service-package-name"
 	K8sServiceGrpcType    = "k8s.namespacelabs.dev/service-grpc-type"
 	K8sEnvName            = "k8s.namespacelabs.dev/env"
@@ -41,12 +39,6 @@ func SelectById(srv *schema.Server) map[string]string {
 func SelectEphemeral() map[string]string {
 	return map[string]string{
 		K8sEnvEphemeral: "true",
-	}
-}
-
-func SelectFocusServer() map[string]string {
-	return map[string]string{
-		K8sServerFocus: "true",
 	}
 }
 
@@ -86,11 +78,6 @@ func MakeLabels(env *schema.Environment, srv *schema.Server) map[string]string {
 	return m
 }
 
-func WithFocusMark(labels map[string]string) map[string]string {
-	labels[K8sServerFocus] = "true"
-	return labels
-}
-
 func MakeAnnotations(env *schema.Environment, entry *schema.Stack_Entry) map[string]string {
 	m := map[string]string{}
 
@@ -104,11 +91,6 @@ func MakeAnnotations(env *schema.Environment, entry *schema.Stack_Entry) map[str
 
 	// XXX add annotations with pointers to tools, team owners, etc.
 	return m
-}
-
-func WithFocusStack(annotations map[string]string, stack []string) map[string]string {
-	annotations[K8sFocusStack] = strings.Join(stack, ",")
-	return annotations
 }
 
 func MakeServiceAnnotations(srv *schema.Server, endpoint *schema.Endpoint) (map[string]string, error) {
