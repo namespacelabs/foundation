@@ -10,7 +10,7 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
-	"namespacelabs.dev/foundation/integrations"
+	"namespacelabs.dev/foundation/integrations/shared"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -18,7 +18,7 @@ import (
 )
 
 func Register() {
-	integrations.RegisterBuildIntegration(integrationKind, buildImpl{})
+	shared.RegisterBuildIntegration(integrationKind, buildImpl{})
 }
 
 type buildImpl struct {
