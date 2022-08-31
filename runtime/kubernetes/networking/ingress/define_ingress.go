@@ -72,18 +72,22 @@ func Ensure(ctx context.Context, ns string, env *schema.Environment, srv *schema
 func MakeCertificateSecrets(ns string, fragments []*schema.IngressFragment) (map[string]string, []kubedef.Apply) {
 	var applies []kubedef.Apply
 
-	domainCerts := map[string]*schema.Domain{}
+	domains := map[string]*schema.Domain{}
+	domainCerts := map[string]*schema.Certificate{}
+
 	for _, frag := range fragments {
-		if frag.Domain != nil && frag.Domain.Fqdn != "" && frag.Domain.Certificate != nil {
+		if frag.Domain != nil && frag.Domain.Fqdn != "" && frag.DomainCertificate != nil {
 			// XXX check they're consistent.
-			domainCerts[frag.Domain.Fqdn] = frag.Domain
+			domains[frag.Domain.Fqdn] = frag.Domain
+			domainCerts[frag.Domain.Fqdn] = frag.DomainCertificate
 		}
 	}
 
 	certSecrets := map[string]string{} // Map fqdn->secret name.
-	for _, domain := range domainCerts {
+	for _, domain := range domains {
 		name := fmt.Sprintf("tls-%s", strings.ReplaceAll(domain.Fqdn, ".", "-"))
 		certSecrets[domain.Fqdn] = name
+		cert := domainCerts[domain.Fqdn]
 		applies = append(applies, kubedef.Apply{
 			Description: fmt.Sprintf("Certificate for %s", domain.Fqdn),
 			Resource: applycorev1.
@@ -91,8 +95,8 @@ func MakeCertificateSecrets(ns string, fragments []*schema.IngressFragment) (map
 				WithType(corev1.SecretTypeTLS).
 				WithLabels(kubedef.ManagedBy()).
 				WithData(map[string][]byte{
-					"tls.key": domain.Certificate.PrivateKey,
-					"tls.crt": domain.Certificate.CertificateBundle,
+					"tls.key": cert.PrivateKey,
+					"tls.crt": cert.CertificateBundle,
 				}),
 		})
 	}

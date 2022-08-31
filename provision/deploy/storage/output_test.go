@@ -63,12 +63,12 @@ func TestToStorageNetworkPlan(t *testing.T) {
 				Name:  "fragment1",
 				Owner: "owner1",
 				Domain: &schema.Domain{
-					Fqdn:        "domain1.example.com",
-					Managed:     schema.Domain_CLOUD_MANAGED,
-					Certificate: &schema.Certificate{PrivateKey: []byte("__private__")},
+					Fqdn:    "domain1.example.com",
+					Managed: schema.Domain_CLOUD_MANAGED,
 				},
-				Endpoint: endpoint1,
-				Manager:  "manager1",
+				DomainCertificate: &schema.Certificate{PrivateKey: []byte("__private__")},
+				Endpoint:          endpoint1,
+				Manager:           "manager1",
 				HttpPath: []*schema.IngressFragment_IngressHttpPath{
 					{},
 					{Path: "/path1", Kind: "kind1", Owner: "owner1", Service: "service1",

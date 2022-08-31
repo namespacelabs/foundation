@@ -118,7 +118,7 @@ func pemEncode(bundle []byte, privKey *rsa.PrivateKey) (*schema.Certificate, err
 		return nil, err
 	}
 
-	return &schema.Certificate{PrivateKey: caPrivKeyPEM.Bytes(), CertificateBundle: caPEM.Bytes()}, nil
+	return &schema.Certificate{PrivateKey: caPrivKeyPEM.Bytes(), CertificateBundle: caPEM.Bytes(), PrivateCa: true}, nil
 }
 
 func newSerialNumber() (*big.Int, error) {

@@ -256,33 +256,27 @@ func AttachComputedDomains(ctx context.Context, ws string, env ops.Environment, 
 	return ingresses, nil
 }
 
-func MaybeAllocateDomainCertificate(ctx context.Context, env *schema.Environment, entry *schema.Stack_Entry, template *schema.Domain) (*schema.Domain, error) {
-	domain := protos.Clone(template)
-
-	if domain.TlsInclusterTermination {
+func MaybeAllocateDomainCertificate(ctx context.Context, env *schema.Environment, entry *schema.Stack_Entry, template *schema.Domain) (*schema.Certificate, error) {
+	if template.TlsInclusterTermination {
 		if env.Purpose == schema.Environment_PRODUCTION {
-			cert, err := allocateName(ctx, entry.Server, fnapi.AllocateOpts{
-				FQDN: domain.Fqdn,
+			return allocateName(ctx, entry.Server, fnapi.AllocateOpts{
+				FQDN: template.Fqdn,
 				// XXX remove org -- it should be parsed from fqdn.
 				Org: entry.ServerNaming.GetWithOrg(),
 			})
-			if err != nil {
-				return nil, err
-			}
-			domain.Certificate = cert
 		} else {
 			bundle, err := maketlscert.CreateSelfSignedCertificateChain(ctx, env, &types.TLSCertificateSpec{
 				Description: entry.Server.PackageName,
-				DnsName:     []string{domain.Fqdn},
+				DnsName:     []string{template.Fqdn},
 			})
 			if err != nil {
 				return nil, err
 			}
-			domain.Certificate = bundle.Server
+			return bundle.Server, nil
 		}
 	}
 
-	return domain, nil
+	return nil, nil
 }
 
 func computeDomains(ctx context.Context, ws string, env ops.Environment, naming *schema.Naming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
@@ -300,6 +294,9 @@ type DomainsRequest struct {
 	Key         string // Usually `{ServiceName}-{ServerID}`
 	Alias       string
 
+	// Set to true if the service we're allocating a domain for should be TLS
+	// terminated, regardless of whether we can emit a public-CA rooted
+	// certificate or not. E.g. for gRPC.
 	TlsInclusterTermination bool
 }
 
@@ -307,7 +304,10 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 	inclusterTls := allocatedName.TlsInclusterTermination || env.Purpose == schema.Environment_PRODUCTION
 
 	computedDomain := &schema.Domain{
-		Managed:                 computed.Managed,
+		Managed: computed.Managed,
+		// If we have TLS termination at an upstream ingress (e.g. in nscloud's
+		// ingress), then still emit https (etc) addresses regardless of whether
+		// the in-cluster ingress has TLS termination or not.
 		TlsFrontend:             computed.UpstreamTlsTermination || inclusterTls,
 		TlsInclusterTermination: inclusterTls,
 	}
@@ -318,7 +318,7 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 		// grpc-abcdef.hugosantos.nscloud.dev
 		//
 		// grpc-abcdef-9d5h25dto9nkm.a.nscluster.cloud
-		// -> abcdef = hash(dev, workspace.module_name)
+		// -> abcdef = sha256(env.name, workspace.module_name)[6:]
 
 		if computed.MainModuleName == "" {
 			return nil, fnerrors.DoesNotMeetVersionRequirements("domain allocation", 0, 0)
