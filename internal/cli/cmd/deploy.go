@@ -118,10 +118,9 @@ func completeDeployment(ctx context.Context, root *workspace.Root, env ops.Envir
 		}
 
 		if opts.alsoWait {
-			fn := func(ch chan *orchpb.Event) error {
-				return orchestration.DeploymentStatus(ctx, env, id, ch)
-			}
-			if err := deploy.WaitFn(ctx, env, fn); err != nil {
+			if err := deploy.RenderAndWait(ctx, env, func(ch chan *orchpb.Event) error {
+				return orchestration.WireDeploymentStatus(ctx, env, id, ch)
+			}); err != nil {
 				return err
 			}
 		}
