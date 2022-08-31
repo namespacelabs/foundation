@@ -135,12 +135,11 @@ func parseMounts(ctx context.Context, loc workspace.Location, volumes []*schema.
 				return nil, nil, fnerrors.UserError(loc, "volume %q already exists", volumeName)
 			}
 
-			parsedVolume, err := parseVolume(ctx, loc, it.Value())
+			parsedVolume, err := parseVolume(ctx, loc, volumeName, true /* isInlined */, it.Value())
 			if err != nil {
 				return nil, nil, err
 			}
 
-			parsedVolume.Name = volumeName
 			inlinedVolumes = append(inlinedVolumes, parsedVolume)
 		}
 

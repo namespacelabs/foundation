@@ -360,10 +360,10 @@ message Volume {
             string target_path = 1;
 
             // One of these
-            string source_content          = 2;  // Inlined content
-            string source_file_path        = 3;
-            string source_secret_file_path = 4;
-            string source_dir              = 5;
+            string source_inlined_content = 2;
+            string source_file_path       = 3;
+            string source_secret          = 4;
+            string source_dir             = 5;
         }
     }
 

@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	volumeKindEphemeral  = "namespace.so/volume/ephemeral"
-	volumeKindPersistent = "namespace.so/volume/persistent"
-	// volumeKindConfigurable = "namespace.so/volume/configurable"
-	volumeKindPackageSync = "namespace.so/volume/package-sync"
+	volumeKindEphemeral    = "namespace.so/volume/ephemeral"
+	volumeKindPersistent   = "namespace.so/volume/persistent"
+	volumeKindConfigurable = "namespace.so/volume/configurable"
+	volumeKindPackageSync  = "namespace.so/volume/package-sync"
 )
 
 func parseVolumes(ctx context.Context, loc workspace.Location, v *fncue.CueV) ([]*schema.Volume, error) {
@@ -37,12 +37,10 @@ func parseVolumes(ctx context.Context, loc workspace.Location, v *fncue.CueV) ([
 	out := []*schema.Volume{}
 
 	for it.Next() {
-		parsedVolume, err := parseVolume(ctx, loc, it.Value())
+		parsedVolume, err := parseVolume(ctx, loc, it.Label(), false /* isInlined */, it.Value())
 		if err != nil {
 			return nil, err
 		}
-
-		parsedVolume.Name = it.Label()
 
 		out = append(out, parsedVolume)
 	}
@@ -57,9 +55,10 @@ type cueVolume struct {
 	Kind string `json:"kind"`
 
 	// Shortcuts
-	Ephemeral   map[string]interface{} `json:"ephemeral"`
-	Persistent  *cuePersistentVolume   `json:"persistent"`
-	PackageSync *cueFilesetVolume      `json:"packageSync"`
+	Ephemeral    interface{}          `json:"ephemeral"`
+	Persistent   *cuePersistentVolume `json:"persistent"`
+	PackageSync  *cueFilesetVolume    `json:"packageSync"`
+	Configurable interface{}          `json:"configurable"`
 }
 
 type cuePersistentVolume struct {
@@ -72,7 +71,13 @@ type cueFilesetVolume struct {
 	Exclude []string `json:"exclude"`
 }
 
-func parseVolume(ctx context.Context, loc workspace.Location, value cue.Value) (*schema.Volume, error) {
+type cueConfigurableEntry struct {
+	FromDir    string `json:"fromDir"`
+	FromFile   string `json:"fromFile"`
+	FromSecret string `json:"fromSecret"`
+}
+
+func parseVolume(ctx context.Context, loc workspace.Location, name string, isInlined bool, value cue.Value) (*schema.Volume, error) {
 	var bits cueVolume
 	if err := value.Decode(&bits); err != nil {
 		return nil, err
@@ -91,10 +96,15 @@ func parseVolume(ctx context.Context, loc workspace.Location, value cue.Value) (
 			bits.cueFilesetVolume = *bits.PackageSync
 			bits.Kind = volumeKindPackageSync
 		}
+		if bits.Configurable != nil {
+			// Parsing can't be done via JSON unmarshalling, so doing it manually below.
+			bits.Kind = volumeKindConfigurable
+		}
 	}
 
 	out := &schema.Volume{
 		Kind: bits.Kind,
+		Name: name,
 	}
 
 	switch bits.Kind {
@@ -114,6 +124,41 @@ func parseVolume(ctx context.Context, loc workspace.Location, value cue.Value) (
 			IncludeFilePatterns: bits.Include,
 			ExcludeFilePatterns: bits.Exclude,
 		}
+	case volumeKindConfigurable:
+		val := &fncue.CueV{Val: value}
+		if bits.Configurable != nil {
+			cueV := fncue.CueV{Val: value}
+			val = cueV.LookupPath("configurable")
+		}
+
+		entries := []*schema.Volume_Configurable_Entry{}
+		contents := val.LookupPath("contents")
+		if contents.Exists() {
+			it, err := contents.Val.Fields()
+			if err != nil {
+				return nil, err
+			}
+
+			for it.Next() {
+				parsedEntry, err := parseConfigurableEntry(ctx, loc, it.Label(), isInlined, it.Value())
+				if err != nil {
+					return nil, err
+				}
+				entries = append(entries, parsedEntry)
+			}
+		} else {
+			// Entry name is the volume/mount name.
+			entry, err := parseConfigurableEntry(ctx, loc, name, isInlined, val.Val)
+			if err != nil {
+				return nil, err
+			}
+			entries = append(entries, entry)
+		}
+
+		out.Configurable = &schema.Volume_Configurable{
+			Entries: entries,
+		}
+
 	default:
 		var jsn map[string]interface{}
 		if err := value.Decode(&jsn); err != nil {
@@ -126,6 +171,41 @@ func parseVolume(ctx context.Context, loc workspace.Location, value cue.Value) (
 		out.Custom = string(jsonStr)
 	}
 	return out, nil
+}
+
+func parseConfigurableEntry(ctx context.Context, loc workspace.Location, name string, isVolumeInlined bool, v cue.Value) (*schema.Volume_Configurable_Entry, error) {
+	if v.Kind() == cue.StringKind {
+		// Inlined content
+		strVal, _ := v.String()
+		if !isVolumeInlined {
+			return nil, fnerrors.UserError(loc, "Configurable content %q without target path must be inlined", strVal)
+		}
+		return &schema.Volume_Configurable_Entry{
+			SourceInlinedContent: strVal,
+		}, nil
+	} else {
+		var bits cueConfigurableEntry
+		if err := v.Decode(&bits); err != nil {
+			return nil, err
+		}
+
+		if bits.FromDir != "" {
+			return &schema.Volume_Configurable_Entry{
+				SourceDir: bits.FromDir,
+			}, nil
+		} else if bits.FromFile != "" {
+			return &schema.Volume_Configurable_Entry{
+				SourceFilePath: bits.FromFile,
+			}, nil
+		} else if bits.FromSecret != "" {
+			// TODO: verify that a secret exists with the given name
+			return &schema.Volume_Configurable_Entry{
+				SourceSecret: bits.FromSecret,
+			}, nil
+		} else {
+			return nil, fnerrors.UserError(loc, "Configurable entry %q must have a source", name)
+		}
+	}
 }
 
 func findVolume(name string, volumes []*schema.Volume) *schema.Volume {
