@@ -28,7 +28,10 @@ const (
 	servicePkg = "namespacelabs.dev/foundation/internal/orchestration/service"
 )
 
-var UseOrchestrator = false
+var (
+	UseOrchestrator              = false
+	RenderOrchestratorDeployment = false
+)
 
 type clientInstance struct {
 	env provision.Env
@@ -73,9 +76,14 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 		return nil, err
 	}
 
-	// Don't render a wait block here.
-	if err := ops.WaitMultiple(ctx, waiters, nil); err != nil {
-		return nil, err
+	if RenderOrchestratorDeployment {
+		if err := deploy.Wait(ctx, c.env, waiters); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := ops.WaitMultiple(ctx, waiters, nil); err != nil {
+			return nil, err
+		}
 	}
 
 	endpoint := &schema.Endpoint{}

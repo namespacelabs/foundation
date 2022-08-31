@@ -301,6 +301,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, uses the new ingress name allocator.")
 	rootCmd.PersistentFlags().BoolVar(&orchestration.UseOrchestrator, "use_orchestrator", orchestration.UseOrchestrator,
 		"If set to true, enables the new incluster deployment orchestrator.")
+	rootCmd.PersistentFlags().BoolVar(&orchestration.RenderOrchestratorDeployment, "render_orchestrator_deployment", orchestration.RenderOrchestratorDeployment,
+		"If set to true, we print a render wait block while deploying the orchestrator itself.")
 
 	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
@@ -335,6 +337,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"oci_convert_images_to_estargz",
 		"runtime_wip_use_short_alias",
 		"use_orchestrator",
+		"render_orchestrator_deployment",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
