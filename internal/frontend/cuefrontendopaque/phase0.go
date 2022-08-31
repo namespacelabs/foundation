@@ -10,6 +10,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -29,19 +30,31 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	v := &partial.CueV
 
 	phase1plan := &phase1plan{}
-	parsed := &workspace.Package{
+	parsedPkg := &workspace.Package{
 		Location: loc,
 		Parsed:   phase1plan,
 	}
 
-	if server := v.LookupPath("server"); server.Exists() {
-		parsedSrv, startupPlan, err := parseCueServer(ctx, ft.loader, loc, v, server, parsed, opts)
-		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing server")
-		}
-		parsed.Server = parsedSrv
-		phase1plan.startupPlan = startupPlan
+	server := v.LookupPath("server")
+	if !server.Exists() {
+		return nil, fnerrors.UserError(loc, "Missing server field")
 	}
 
-	return parsed, nil
+	var parsedVolumes []*schema.Volume
+	if volumes := v.LookupPath("volumes"); volumes.Exists() {
+		var err error
+		parsedVolumes, err = parseVolumes(ctx, loc, volumes)
+		if err != nil {
+			return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
+		}
+	}
+
+	parsedSrv, startupPlan, err := parseCueServer(ctx, ft.loader, loc, v, server, parsedPkg, parsedVolumes, opts)
+	if err != nil {
+		return nil, fnerrors.Wrapf(loc, err, "parsing server")
+	}
+	parsedPkg.Server = parsedSrv
+	phase1plan.startupPlan = startupPlan
+
+	return parsedPkg, nil
 }

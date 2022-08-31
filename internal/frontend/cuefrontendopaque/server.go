@@ -18,6 +18,10 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
+const (
+	serverKindDockerfile = "namespace.so/from-dockerfile"
+)
+
 type cueServer struct {
 	Name        string         `json:"name"`
 	Integration cueIntegration `json:"integration"`
@@ -44,7 +48,7 @@ type cueIngress struct {
 	HttpRoutes     map[string][]string `json:"httpRoutes"`
 }
 
-func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, parent, v *fncue.CueV, pp *workspace.Package, opts workspace.LoadPackageOpts) (*schema.Server, *schema.StartupPlan, error) {
+func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, parent, v *fncue.CueV, pp *workspace.Package, volumes []*schema.Volume, opts workspace.LoadPackageOpts) (*schema.Server, *schema.StartupPlan, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, nil, err
@@ -58,9 +62,10 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	out := &schema.Server{}
 	out.Id = bits.Name
 	out.Name = bits.Name
+	out.Volumes = volumes
 
 	switch bits.Integration.Kind {
-	case "namespace.so/from-dockerfile":
+	case serverKindDockerfile:
 		out.Integration = &schema.Server_Integration{
 			Kind:       bits.Integration.Kind,
 			Dockerfile: bits.Integration.Dockerfile,
@@ -93,8 +98,59 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 		Args: bits.Args.Parsed(),
 	}
 
+	if mounts := v.LookupPath("mounts"); mounts.Exists() {
+		parsedMounts, inlinedVolumes, err := parseMounts(ctx, loc, volumes, mounts)
+		if err != nil {
+			return nil, nil, fnerrors.Wrapf(loc, err, "parsing volumes")
+		}
+
+		out.Volumes = append(out.Volumes, inlinedVolumes...)
+		out.Mounts = parsedMounts
+	}
+
 	server, err := workspace.TransformOpaqueServer(ctx, pl, loc, out, pp, opts)
 	return server, startupPlan, err
+}
+
+func parseMounts(ctx context.Context, loc workspace.Location, volumes []*schema.Volume, v *fncue.CueV) ([]*schema.Server_Mount, []*schema.Volume, error) {
+	it, err := v.Val.Fields()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	inlinedVolumes := []*schema.Volume{}
+	out := []*schema.Server_Mount{}
+
+	for it.Next() {
+		volumeName, err := it.Value().String()
+		if err == nil {
+			// Volume reference.
+			if findVolume(volumeName, volumes) == nil {
+				return nil, nil, fnerrors.UserError(loc, "volume %q does not exist", volumeName)
+			}
+		} else {
+			// Inline volume definition.
+			volumeName = it.Label()
+			if findVolume(volumeName, volumes) != nil {
+				return nil, nil, fnerrors.UserError(loc, "volume %q already exists", volumeName)
+			}
+
+			parsedVolume, err := parseVolume(ctx, loc, it.Value())
+			if err != nil {
+				return nil, nil, err
+			}
+
+			parsedVolume.Name = volumeName
+			inlinedVolumes = append(inlinedVolumes, parsedVolume)
+		}
+
+		out = append(out, &schema.Server_Mount{
+			Path:       it.Label(),
+			VolumeName: volumeName,
+		})
+	}
+
+	return out, inlinedVolumes, nil
 }
 
 func sortServices(services []*schema.Server_ServiceSpec) {
