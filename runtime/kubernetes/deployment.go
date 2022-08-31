@@ -185,7 +185,6 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 	if opts.focus.Includes(srv.PackageName()) {
 		labels = kubedef.WithFocusMark(labels)
-		annotations = kubedef.WithFocusStack(annotations, opts.stackIds)
 	}
 
 	deploymentId := kubedef.MakeDeploymentId(srv.Proto())

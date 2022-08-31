@@ -164,8 +164,8 @@ func registerApply() {
 			return nil, fnerrors.InvocationError("%s: failed to apply: %w", d.Description, err)
 		}
 
-		if header.Namespace == kubedef.AdminNamespace {
-			// don't wait for changes to admin namespace
+		if header.Namespace == kubedef.AdminNamespace && !kubedef.HasFocusMark(header.Labels) {
+			// don't wait for changes to admin namespace, unless they are in focus
 			return &ops.HandleResult{}, nil
 		}
 
