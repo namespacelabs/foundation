@@ -13,8 +13,10 @@ import "schema/orchestration/event.proto";
 import "schema/serialized.proto";
 
 message DeployRequest {
-    foundation.schema.DeployPlan         plan      = 1;
-    foundation.providers.aws.Credentials aws_creds = 2;
+    foundation.schema.DeployPlan  plan = 1;
+    foundation.providers.aws.Conf aws  = 4;
+
+    reserved 2, 3;
 }
 
 message DeployResponse {

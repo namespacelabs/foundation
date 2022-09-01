@@ -52,10 +52,10 @@ func makeDeployer(ctx context.Context) deployer {
 	}
 }
 
-func (d *deployer) Schedule(plan *schema.DeployPlan, awsCreds *aws.Credentials) (string, error) {
+func (d *deployer) Schedule(plan *schema.DeployPlan, awsConf *aws.Conf) (string, error) {
 	id := ids.NewRandomBase32ID(16)
 
-	env := makeEnv(plan, awsCreds)
+	env := makeEnv(plan, awsConf)
 	p := ops.NewPlan()
 	if err := p.Add(plan.GetProgram().GetInvocation()...); err != nil {
 		log.Printf("id %s: failed to prepare plan: %v\n", id, err)

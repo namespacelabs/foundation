@@ -90,11 +90,15 @@ func innerSession(ctx context.Context, devHost *schema.DevHost, selector devhost
 
 	if conf.Static != nil {
 		return func(opts ...func(*config.LoadOptions) error) (aws.Config, error) {
-			return aws.Config{Credentials: credentials.NewStaticCredentialsProvider(
+			opts = append(opts, config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 				conf.Static.AccessKeyId,
 				conf.Static.SecretAccessKey,
 				conf.Static.SessionToken,
-			)}, nil
+			)))
+			if conf.Region != "" {
+				opts = append(opts, config.WithRegion(conf.Region))
+			}
+			return config.LoadDefaultConfig(ctx, opts...)
 		}, conf, nil
 	}
 

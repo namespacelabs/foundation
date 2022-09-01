@@ -17,7 +17,7 @@ type env struct {
 	env       *schema.Environment
 }
 
-func makeEnv(plan *schema.DeployPlan, awsCreds *aws.Credentials) *env {
+func makeEnv(plan *schema.DeployPlan, awsConf *aws.Conf) *env {
 	env := &env{
 		workspace: plan.Workspace,
 		env:       plan.Environment,
@@ -32,11 +32,10 @@ func makeEnv(plan *schema.DeployPlan, awsCreds *aws.Credentials) *env {
 		},
 	}
 
-	if awsCreds != nil {
+	if awsConf != nil {
 		env.devHost.Configure = append(env.devHost.Configure, &schema.DevHost_ConfigureEnvironment{
-			Purpose: plan.Environment.Purpose,
-			Configuration: protos.WrapAnysOrDie(
-				&aws.Conf{Static: awsCreds}),
+			Purpose:       plan.Environment.Purpose,
+			Configuration: protos.WrapAnysOrDie(awsConf),
 		})
 	}
 
