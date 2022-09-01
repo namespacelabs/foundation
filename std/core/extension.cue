@@ -41,15 +41,3 @@ extension: fn.#Extension & {
 		}
 	}
 }
-
-$inputs: {
-	focus: inputs.#FocusServer
-}
-
-configure: fn.#Configure & {
-	startup: {
-		args: {
-			image_version: $inputs.focus.image
-		}
-	}
-}

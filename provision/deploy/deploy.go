@@ -353,7 +353,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 
 				var run runtime.ServerConfig
 
-				run.RuntimeConfig, err = serverToRuntimeConfig(stack, srv)
+				run.RuntimeConfig, err = serverToRuntimeConfig(stack, srv, imgs.Binary)
 				if err != nil {
 					return prepareAndBuildResult{}, err
 				}

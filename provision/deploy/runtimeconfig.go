@@ -7,6 +7,7 @@ package deploy
 import (
 	"fmt"
 
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
@@ -20,7 +21,7 @@ func init() {
 	privateEntries.Add("namespacelabs.dev/foundation/std/runtime/kubernetes/controller") // Don't include the kube controller as a dep.
 }
 
-func serverToRuntimeConfig(stack *stack.Stack, server provision.Server) (*runtime.RuntimeConfig, error) {
+func serverToRuntimeConfig(stack *stack.Stack, server provision.Server, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
 	config := &runtime.RuntimeConfig{
 		Environment: &runtime.ServerEnvironment{
 			Name:    server.Env().Proto().Name,
@@ -28,6 +29,8 @@ func serverToRuntimeConfig(stack *stack.Stack, server provision.Server) (*runtim
 		},
 		Current: makeServer(stack, server),
 	}
+
+	config.Current.ImageRef = serverImage.String()
 
 	for _, pkg := range stack.GetParsed(server.PackageName()).DeclaredStack.PackageNames() {
 		if pkg == server.PackageName() || privateEntries.Includes(pkg) {

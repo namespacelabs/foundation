@@ -28,6 +28,8 @@ message Server {
     repeated Port    port    = 3;
     repeated Service service = 4;
 
+    string image_ref = 5;  // Only set for current.
+
     message Port {
         string name = 1;
         int32  port = 2;

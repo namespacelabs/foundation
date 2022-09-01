@@ -26,10 +26,9 @@ import (
 
 var (
 	serializedVCS = flag.String("vcs_json", "", "VCS information, serialized as JSON.")
-	imageVer      = flag.String("image_version", "", "The version being run.")
 	debug         = flag.Bool("debug_init", false, "If set to true, emits additional initialization information.")
 
-	rtEnv       *runtime.ServerEnvironment
+	rt          *runtime.RuntimeConfig
 	rtVcs       vcsInfo
 	serverName  string
 	initialized uint32
@@ -64,12 +63,11 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 
 	Log.Println("Initializing server...")
 
-	rt, err := LoadRuntimeConfig()
+	var err error
+	rt, err = LoadRuntimeConfig()
 	if err != nil {
 		Log.Fatal(err)
 	}
-
-	rtEnv = rt.Environment
 
 	if *serializedVCS != "" {
 		// We treat VcsInfo as optional for now, as it is propagated via container args (and causes redeploy).
@@ -86,7 +84,7 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 func ProvideServerInfo(ctx context.Context, _ *types.ServerInfoArgs) (*types.ServerInfo, error) {
 	return &types.ServerInfo{
 		ServerName: serverName,
-		EnvName:    rtEnv.Name,
+		EnvName:    rt.Environment.Name,
 		Vcs: &types.ServerInfo_VCS{
 			Revision:    rtVcs.Revision,
 			CommitTime:  rtVcs.CommitTime.String(),
@@ -96,7 +94,7 @@ func ProvideServerInfo(ctx context.Context, _ *types.ServerInfoArgs) (*types.Ser
 }
 
 func EnvIs(purpose schema.Environment_Purpose) bool {
-	return rtEnv.Purpose == purpose.String()
+	return rt.Environment.Purpose == purpose.String()
 }
 
 type frameworkKey string
@@ -123,7 +121,7 @@ func StatusHandler(registered []string) http.Handler {
 		vcsStr, _ := json.Marshal(rtVcs)
 
 		fmt.Fprintf(w, "<!doctype html><html><body><pre>%s\nimage_version=%s\n%s\n%s</pre>",
-			serverName, *imageVer, prototext.Format(rtEnv), vcsStr)
+			serverName, rt.Current.ImageRef, prototext.Format(rt.Environment), vcsStr)
 
 		fmt.Fprintf(w, "<b>Registered endpoints</b></br><ul>")
 		for _, endpoint := range registered {
