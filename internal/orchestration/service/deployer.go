@@ -34,7 +34,7 @@ type deployer struct {
 	eventDir  string
 
 	// TODO write to PVC, too?
-	errors map[string][]error // protected by mu
+	errors map[string]error // protected by mu
 	mu     sync.RWMutex
 }
 
@@ -47,7 +47,7 @@ func makeDeployer(ctx context.Context) deployer {
 	return deployer{
 		serverCtx: ctx,
 		eventDir:  eventDir,
-		errors:    make(map[string][]error),
+		errors:    make(map[string]error),
 	}
 }
 
@@ -61,30 +61,27 @@ func (d *deployer) Schedule(plan *schema.DeployPlan) (string, error) {
 		return "", err
 	}
 
-	ch := make(chan *orchestration.Event)
-	go func() {
-		// Use server context to not propagate context cancellation
-		if err := execute(d.serverCtx, p, env, ch); err != nil {
-			d.mu.Lock()
-			defer d.mu.Unlock()
-			d.errors[id] = append(d.errors[id], err)
-		}
-	}()
-
 	// Ensure event log exists
-	filename := d.eventPath(id)
-	if f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err != nil {
+	filepath := d.eventPath(id)
+	if f, err := os.OpenFile(filepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err != nil {
 		return "", err
 	} else {
 		f.Close()
 	}
 
 	go func() {
-		if err := logEvents(filename, ch); err != nil {
-			// Only write errors, execute is resposible for writing nil in case of success.
+		defer func() {
+			// Indicate end of event stream
+			if err := appendLine(filepath, eof); err != nil {
+				log.Printf("Unable to append to file %s: %v", filepath, err)
+			}
+		}()
+
+		// Use server context to not propagate context cancellation
+		if err := d.execute(d.serverCtx, id, p, env); err != nil {
 			d.mu.Lock()
 			defer d.mu.Unlock()
-			d.errors[id] = append(d.errors[id], err)
+			d.errors[id] = err
 		}
 	}()
 
@@ -95,7 +92,7 @@ func (d *deployer) eventPath(id string) string {
 	return filepath.Join(d.eventDir, fmt.Sprintf("%s.json", id))
 }
 
-func execute(ctx context.Context, p *ops.Plan, env ops.Environment, ch chan *orchestration.Event) error {
+func (d *deployer) execute(ctx context.Context, id string, p *ops.Plan, env ops.Environment) error {
 	// TODO persist logs?
 	sink := simplelog.NewSink(os.Stderr, maxLogLevel)
 	ctx = tasks.WithSink(ctx, sink)
@@ -105,15 +102,24 @@ func execute(ctx context.Context, p *ops.Plan, env ops.Environment, ch chan *orc
 		return err
 	}
 
-	return ops.WaitMultiple(ctx, waiters, ch)
+	errch := make(chan error, 1)
+	ch := make(chan *orchestration.Event)
+	go func() {
+		defer close(errch)
+		errch <- logEvents(d.eventPath(id), ch)
+	}()
+
+	waitErr := ops.WaitMultiple(ctx, waiters, ch)
+	logErr := <-errch
+
+	return multierr.New(waitErr, logErr)
 }
 
 func logEvents(filename string, ch chan *orchestration.Event) error {
 	for {
 		ev, ok := <-ch
 		if !ok {
-			// Indicate end of event stream
-			return appendLine(filename, eof)
+			return nil
 		}
 
 		data, err := json.Marshal(ev)
@@ -164,8 +170,8 @@ func (d *deployer) Status(id string, ch chan *orchestration.Event) error {
 			d.mu.RLock()
 			defer d.mu.RUnlock()
 
-			if errs, ok := d.errors[id]; ok {
-				return multierr.New(errs...)
+			if err, ok := d.errors[id]; ok {
+				return err
 			}
 			return nil
 		}
