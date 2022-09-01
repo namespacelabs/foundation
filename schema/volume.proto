@@ -52,5 +52,6 @@ message ConfigurableVolume {
 // TODO reconcile with std.types.Resource.
 message Resource {
     string path     = 1;
+    bool   utf8     = 3;  // Is the content text?
     bytes  contents = 2;
 }

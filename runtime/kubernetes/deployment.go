@@ -27,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/go-ids"
 	"sigs.k8s.io/yaml"
 )
 
@@ -402,6 +403,10 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				return fnerrors.InternalError("%s: failed to unmarshal persistent volume definition: %w", volume.Name, err)
 			}
 
+			if pv.Id == "" {
+				return fnerrors.BadInputError("%s: persistent ID is missing", volume.Name)
+			}
+
 			v, operations, err := makePersistentVolume(ns, r.env, srv, volume.Owner, name, pv.Id, pv.SizeBytes)
 			if err != nil {
 				return err
@@ -409,6 +414,58 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 			spec = spec.WithVolumes(v)
 			s.operations = append(s.operations, operations...)
+
+		case runtime.VolumeKindConfigurable:
+			cv := &schema.ConfigurableVolume{}
+			if err := volume.Definition.UnmarshalTo(cv); err != nil {
+				return fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", volume.Name, err)
+			}
+
+			data := map[string]string{}
+			binaryData := map[string][]byte{}
+
+			h := sha256.New()
+
+			for _, entry := range cv.Entries {
+				key := entry.Path
+
+				switch {
+				case entry.Inline != nil:
+					fmt.Fprintf(h, "%s:", key)
+					_, _ = h.Write(entry.Inline.Contents)
+					fmt.Fprintln(h)
+					if entry.Inline.Utf8 {
+						data[key] = string(entry.Inline.Contents)
+					} else {
+						binaryData[key] = entry.Inline.Contents
+					}
+
+				case entry.SecretRef != "":
+					return fnerrors.InternalError("secret ref is still not implemented")
+				}
+			}
+
+			if len(data) > 0 || len(binaryData) > 0 {
+				configId := "static-" + ids.EncodeToBase32String(h.Sum(nil))[6:]
+
+				// Needs to be declared before it's used.
+				s.operations = append(s.operations, kubedef.Apply{
+					Description: "Static configuration",
+					Resource: applycorev1.ConfigMap(configId, ns).
+						WithAnnotations(annotations).
+						WithLabels(labels).
+						WithLabels(map[string]string{
+							kubedef.K8sKind: kubedef.K8sStaticConfigKind,
+						}).
+						WithImmutable(true).
+						WithData(data).
+						WithBinaryData(binaryData),
+				})
+
+				spec = spec.WithVolumes(applycorev1.Volume().
+					WithName(name).
+					WithConfigMap(applycorev1.ConfigMapVolumeSource().WithName(configId)))
+			}
 
 		default:
 			return fnerrors.InternalError("%s: unsupported volume type", volume.Kind)

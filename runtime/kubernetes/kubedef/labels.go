@@ -26,6 +26,7 @@ const (
 	K8sKind               = "k8s.namespacelabs.dev/kind"
 	K8sRuntimeConfig      = "k8s.namespacelabs.dev/runtime-config"
 
+	K8sStaticConfigKind  = "static-config"
 	K8sRuntimeConfigKind = "runtime-config"
 
 	AppKubernetesIoManagedBy = "app.kubernetes.io/managed-by"
