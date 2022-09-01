@@ -9,17 +9,22 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/orchestration/service/proto"
+	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -48,7 +53,7 @@ func (c *clientInstance) Action() *tasks.ActionEvent {
 }
 
 func (c *clientInstance) Inputs() *compute.In {
-	return compute.Inputs()
+	return compute.Inputs().Str("env", c.env.Name())
 }
 
 func (c *clientInstance) Output() compute.Output {
@@ -125,10 +130,57 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 	return cli, nil
 }
 
+func getAwsCreds(ctx context.Context, env provision.Env) (*awsprovider.Credentials, error) {
+	sesh, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	if err != nil {
+		return nil, err
+	}
+	if sesh == nil {
+		return nil, nil
+	}
+
+	// Attach short term AWS credentials if configured for the current env.
+	creds, err := sesh.Config().Credentials.Retrieve(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if creds.CanExpire {
+		if creds.Expired() {
+			return nil, fmt.Errorf("aws credentials expired")
+		}
+		return &awsprovider.Credentials{
+			AccessKeyId:     creds.AccessKeyID,
+			Expiration:      timestamppb.New(creds.Expires),
+			SecretAccessKey: creds.SecretAccessKey,
+			SessionToken:    creds.SessionToken,
+		}, nil
+	}
+
+	// TODO do we need to configure MFA here?
+	result, err := sts.NewFromConfig(sesh.Config()).GetSessionToken(ctx, &sts.GetSessionTokenInput{})
+	if err != nil {
+		return nil, err
+	}
+
+	return &awsprovider.Credentials{
+		AccessKeyId:     aws.ToString(result.Credentials.AccessKeyId),
+		Expiration:      timestamppb.New(aws.ToTime(result.Credentials.Expiration)),
+		SecretAccessKey: aws.ToString(result.Credentials.SecretAccessKey),
+		SessionToken:    aws.ToString(result.Credentials.SessionToken),
+	}, nil
+}
+
 func Deploy(ctx context.Context, env provision.Env, plan *schema.DeployPlan) (string, error) {
 	req := &proto.DeployRequest{
 		Plan: plan,
 	}
+
+	creds, err := getAwsCreds(ctx, env)
+	if err != nil {
+		return "", err
+	}
+
+	req.AwsCreds = creds
 
 	cli, err := compute.GetValue(ctx, ConnectToClient(env))
 	if err != nil {

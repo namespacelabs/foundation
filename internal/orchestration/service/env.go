@@ -6,6 +6,7 @@ package service
 
 import (
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -16,8 +17,8 @@ type env struct {
 	env       *schema.Environment
 }
 
-func makeEnv(plan *schema.DeployPlan) *env {
-	return &env{
+func makeEnv(plan *schema.DeployPlan, awsCreds *aws.Credentials) *env {
+	env := &env{
 		workspace: plan.Workspace,
 		env:       plan.Environment,
 		devHost: &schema.DevHost{
@@ -30,6 +31,16 @@ func makeEnv(plan *schema.DeployPlan) *env {
 			}},
 		},
 	}
+
+	if awsCreds != nil {
+		env.devHost.Configure = append(env.devHost.Configure, &schema.DevHost_ConfigureEnvironment{
+			Purpose: plan.Environment.Purpose,
+			Configuration: protos.WrapAnysOrDie(
+				&aws.Conf{Static: awsCreds}),
+		})
+	}
+
+	return env
 }
 
 func (e env) ErrorLocation() string        { return e.workspace.ModuleName }

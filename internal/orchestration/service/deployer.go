@@ -16,6 +16,7 @@ import (
 	"github.com/hpcloud/tail"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
@@ -51,10 +52,10 @@ func makeDeployer(ctx context.Context) deployer {
 	}
 }
 
-func (d *deployer) Schedule(plan *schema.DeployPlan) (string, error) {
+func (d *deployer) Schedule(plan *schema.DeployPlan, awsCreds *aws.Credentials) (string, error) {
 	id := ids.NewRandomBase32ID(16)
 
-	env := makeEnv(plan)
+	env := makeEnv(plan, awsCreds)
 	p := ops.NewPlan()
 	if err := p.Add(plan.GetProgram().GetInvocation()...); err != nil {
 		log.Printf("id %s: failed to prepare plan: %v\n", id, err)

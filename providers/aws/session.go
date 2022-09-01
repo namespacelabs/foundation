@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -84,6 +85,16 @@ func innerSession(ctx context.Context, devHost *schema.DevHost, selector devhost
 
 		return func(opts ...func(*config.LoadOptions) error) (aws.Config, error) {
 			return config.LoadDefaultConfig(ctx, opts...)
+		}, conf, nil
+	}
+
+	if conf.Static != nil {
+		return func(opts ...func(*config.LoadOptions) error) (aws.Config, error) {
+			return aws.Config{Credentials: credentials.NewStaticCredentialsProvider(
+				conf.Static.AccessKeyId,
+				conf.Static.SecretAccessKey,
+				conf.Static.SessionToken,
+			)}, nil
 		}, conf, nil
 	}
 

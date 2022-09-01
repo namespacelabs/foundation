@@ -27,7 +27,7 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 	log.Printf("new Deploy request for %d focus servers: %s\n", len(req.Plan.FocusServer), strings.Join(req.Plan.FocusServer, ","))
 
 	// TODO store target state (req.Plan + merged with history) ?
-	id, err := svc.d.Schedule(req.Plan)
+	id, err := svc.d.Schedule(req.Plan, req.AwsCreds)
 	if err != nil {
 		return nil, rpcerrors.Errorf(codes.Internal, "failed to deploy plan: %w", err)
 	}
