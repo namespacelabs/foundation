@@ -41,34 +41,9 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Cluster Role",
 		Resource: applyrbacv1.ClusterRole(role).WithRules(
-			applyrbacv1.PolicyRule().WithAPIGroups(
-				"",
-				"apps",
-				"rbac.authorization.k8s.io",
-				"apiextensions.k8s.io",
-				"networking.k8s.io",
-				"k8s.namespacelabs.dev",
-			).WithResources("*").WithVerbs("*"),
-			// TODO restrict permissions?
-			//
-			// applyrbacv1.PolicyRule().WithAPIGroups("").
-			// 	WithResources("configmaps", "events", "namespaces", "persistentvolumeclaims", "pods", "secrets", "serviceaccounts", "services").
-			// 	WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
-			// applyrbacv1.PolicyRule().WithAPIGroups("apps").
-			// 	WithResources("deployments", "statefulsets").
-			// 	WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
-			// applyrbacv1.PolicyRule().WithAPIGroups("networking.k8s.io").
-			// 	WithResources("ingresses").
-			// 	WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
-			// applyrbacv1.PolicyRule().WithAPIGroups("rbac.authorization.k8s.io").
-			// 	WithResources("clusterrolebindings", "clusterroles", "rolebindings", "roles").
-			// 	WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
-			// applyrbacv1.PolicyRule().WithAPIGroups("apiextensions.k8s.io").
-			// 	WithResources("customresourcedefinitions").
-			// 	WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
-			// applyrbacv1.PolicyRule().WithAPIGroups("k8s.namespacelabs.dev").
-			// 	WithResources("httpgrpctranscoders", "httpgrpctranscoders/status").
-			// 	WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
+			// CRDs have their own API groups.
+			applyrbacv1.PolicyRule().WithAPIGroups("*").WithResources("*").WithVerbs("*"),
+			// TODO permissions should be declarative (each node should tell which setup permissions it needs)
 		),
 	})
 
