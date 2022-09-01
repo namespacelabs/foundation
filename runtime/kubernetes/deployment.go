@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -22,6 +23,7 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
@@ -367,10 +369,6 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			return fnerrors.UserError(server.Server.Location, "requiredstorage owner is not set")
 		}
 
-		if rs.ByteCount >= math.MaxInt64 {
-			return fnerrors.UserError(server.Server.Location, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
-		}
-
 		name := makeStorageVolumeName(rs)
 
 		container = container.WithVolumeMounts(
@@ -378,32 +376,13 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				WithName(name).
 				WithMountPath(rs.MountPath))
 
-		quantity := resource.NewScaledQuantity(int64(rs.ByteCount), resource.Scale(1))
-
-		// Ephemeral environments are short lived, so there is no need for persistent volume claims.
-		// Admin servers are excluded here as they run as singletons in a global namespace.
-		if r.env.Ephemeral && !srv.Proto().ClusterAdmin {
-			spec = spec.WithVolumes(applycorev1.Volume().
-				WithName(name).
-				WithEmptyDir(applycorev1.EmptyDirVolumeSource().
-					WithSizeLimit(*quantity)))
-		} else {
-			spec = spec.WithVolumes(applycorev1.Volume().
-				WithName(name).
-				WithPersistentVolumeClaim(
-					applycorev1.PersistentVolumeClaimVolumeSource().
-						WithClaimName(rs.PersistentId)))
-
-			s.operations = append(s.operations, kubedef.Apply{
-				Description: fmt.Sprintf("Persistent storage for %s", rs.Owner),
-				Resource: applycorev1.PersistentVolumeClaim(rs.PersistentId, ns).
-					WithSpec(applycorev1.PersistentVolumeClaimSpec().
-						WithAccessModes(corev1.ReadWriteOnce).
-						WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
-							corev1.ResourceStorage: *quantity,
-						}))),
-			})
+		v, operations, err := makePersistentVolume(ns, r.env, srv, rs.Owner, name, rs.PersistentId, rs.ByteCount)
+		if err != nil {
+			return err
 		}
+
+		spec = spec.WithVolumes(v)
+		s.operations = append(s.operations, operations...)
 	}
 
 	for k, volume := range srv.Proto().Volumes {
@@ -416,6 +395,20 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		switch volume.Kind {
 		case runtime.VolumeKindEphemeral:
 			spec = spec.WithVolumes(applycorev1.Volume().WithName(name).WithEmptyDir(applycorev1.EmptyDirVolumeSource()))
+
+		case runtime.VolumeKindPersistent:
+			pv := &schema.PersistentVolume{}
+			if err := volume.Definition.UnmarshalTo(pv); err != nil {
+				return fnerrors.InternalError("%s: failed to unmarshal persistent volume definition: %w", volume.Name, err)
+			}
+
+			v, operations, err := makePersistentVolume(ns, r.env, srv, volume.Owner, name, pv.Id, pv.SizeBytes)
+			if err != nil {
+				return err
+			}
+
+			spec = spec.WithVolumes(v)
+			s.operations = append(s.operations, operations...)
 
 		default:
 			return fnerrors.InternalError("%s: unsupported volume type", volume.Kind)
@@ -634,6 +627,44 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	return nil
+}
+
+func makePersistentVolume(ns string, env *schema.Environment, srv provision.Server, owner, name, persistentId string, sizeBytes uint64) (*applycorev1.VolumeApplyConfiguration, []kubedef.Apply, error) {
+	if sizeBytes >= math.MaxInt64 {
+		return nil, nil, fnerrors.UserError(srv.Location, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
+	}
+
+	quantity := resource.NewScaledQuantity(int64(sizeBytes), resource.Scale(1))
+
+	// Ephemeral environments are short lived, so there is no need for persistent volume claims.
+	// Admin servers are excluded here as they run as singletons in a global namespace.
+	var operations []kubedef.Apply
+	var v *applycorev1.VolumeApplyConfiguration
+
+	if env.Ephemeral && !srv.Proto().ClusterAdmin {
+		v = applycorev1.Volume().
+			WithName(name).
+			WithEmptyDir(applycorev1.EmptyDirVolumeSource().
+				WithSizeLimit(*quantity))
+	} else {
+		v = applycorev1.Volume().
+			WithName(name).
+			WithPersistentVolumeClaim(
+				applycorev1.PersistentVolumeClaimVolumeSource().
+					WithClaimName(persistentId))
+
+		operations = append(operations, kubedef.Apply{
+			Description: fmt.Sprintf("Persistent storage for %s (%s)", owner, humanize.Bytes(sizeBytes)),
+			Resource: applycorev1.PersistentVolumeClaim(persistentId, ns).
+				WithSpec(applycorev1.PersistentVolumeClaimSpec().
+					WithAccessModes(corev1.ReadWriteOnce).
+					WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
+						corev1.ResourceStorage: *quantity,
+					}))),
+		})
+	}
+
+	return v, operations, nil
 }
 
 func sidecarName(o runtime.SidecarRunOpts, prefix string) string {
