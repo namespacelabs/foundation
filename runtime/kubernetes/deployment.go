@@ -457,7 +457,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		}
 
 		if mount.VolumeName == "" {
-			return fnerrors.InternalError("mount #%d is missing a target volume", k)
+			return fnerrors.InternalError("mount %q is missing a target volume", mount.Path)
 		}
 
 		volumeName := fmt.Sprintf("v-%s", mount.VolumeName)
