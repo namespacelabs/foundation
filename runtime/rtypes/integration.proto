@@ -11,6 +11,7 @@ option go_package = "namespacelabs.dev/foundation/runtime/rtypes";
 import "google/protobuf/any.proto";
 import "schema/definition.proto";
 import "schema/defextension.proto";
+import "schema/server.proto";
 
 // Map a local directory to a container. Used for development purposes.
 message LocalMapping {
@@ -30,7 +31,8 @@ message Port {
 
 message ProvisionProps {
     reserved 1;
-    repeated google.protobuf.Any provision_input    = 2;
-    repeated schema.SerializedInvocation invocation = 3;
-    repeated schema.DefExtension extension          = 4;
+    repeated google.protobuf.Any provision_input     = 2;
+    repeated schema.SerializedInvocation invocation  = 3;
+    repeated schema.DefExtension extension           = 4;
+    repeated schema.ServerExtension server_extension = 5;
 }

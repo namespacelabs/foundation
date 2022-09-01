@@ -521,6 +521,78 @@ func (x *RequiredStorage) GetMountPath() string {
 	return ""
 }
 
+// Server extensions which are dynamically provided by tools.
+type ServerExtension struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Owner        string    `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`                                   // Package name.
+	TargetServer string    `protobuf:"bytes,2,opt,name=target_server,json=targetServer,proto3" json:"target_server,omitempty"` // Package name.
+	Volume       []*Volume `protobuf:"bytes,3,rep,name=volume,proto3" json:"volume,omitempty"`
+	Mount        []*Mount  `protobuf:"bytes,4,rep,name=mount,proto3" json:"mount,omitempty"`
+}
+
+func (x *ServerExtension) Reset() {
+	*x = ServerExtension{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_schema_server_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ServerExtension) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServerExtension) ProtoMessage() {}
+
+func (x *ServerExtension) ProtoReflect() protoreflect.Message {
+	mi := &file_schema_server_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServerExtension.ProtoReflect.Descriptor instead.
+func (*ServerExtension) Descriptor() ([]byte, []int) {
+	return file_schema_server_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ServerExtension) GetOwner() string {
+	if x != nil {
+		return x.Owner
+	}
+	return ""
+}
+
+func (x *ServerExtension) GetTargetServer() string {
+	if x != nil {
+		return x.TargetServer
+	}
+	return ""
+}
+
+func (x *ServerExtension) GetVolume() []*Volume {
+	if x != nil {
+		return x.Volume
+	}
+	return nil
+}
+
+func (x *ServerExtension) GetMount() []*Mount {
+	if x != nil {
+		return x.Mount
+	}
+	return nil
+}
+
 type Server_Binary struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -533,7 +605,7 @@ type Server_Binary struct {
 func (x *Server_Binary) Reset() {
 	*x = Server_Binary{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[4]
+		mi := &file_schema_server_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -546,7 +618,7 @@ func (x *Server_Binary) String() string {
 func (*Server_Binary) ProtoMessage() {}
 
 func (x *Server_Binary) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[4]
+	mi := &file_schema_server_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -591,7 +663,7 @@ type Server_ServiceSpec struct {
 func (x *Server_ServiceSpec) Reset() {
 	*x = Server_ServiceSpec{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[5]
+		mi := &file_schema_server_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -604,7 +676,7 @@ func (x *Server_ServiceSpec) String() string {
 func (*Server_ServiceSpec) ProtoMessage() {}
 
 func (x *Server_ServiceSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[5]
+	mi := &file_schema_server_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -669,7 +741,7 @@ type Server_URLMapEntry struct {
 func (x *Server_URLMapEntry) Reset() {
 	*x = Server_URLMapEntry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[6]
+		mi := &file_schema_server_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -682,7 +754,7 @@ func (x *Server_URLMapEntry) String() string {
 func (*Server_URLMapEntry) ProtoMessage() {}
 
 func (x *Server_URLMapEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[6]
+	mi := &file_schema_server_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -739,7 +811,7 @@ type Server_Description struct {
 func (x *Server_Description) Reset() {
 	*x = Server_Description{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[7]
+		mi := &file_schema_server_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -752,7 +824,7 @@ func (x *Server_Description) String() string {
 func (*Server_Description) ProtoMessage() {}
 
 func (x *Server_Description) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[7]
+	mi := &file_schema_server_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -802,7 +874,7 @@ type Server_EnvironmentRequirement struct {
 func (x *Server_EnvironmentRequirement) Reset() {
 	*x = Server_EnvironmentRequirement{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[8]
+		mi := &file_schema_server_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -815,7 +887,7 @@ func (x *Server_EnvironmentRequirement) String() string {
 func (*Server_EnvironmentRequirement) ProtoMessage() {}
 
 func (x *Server_EnvironmentRequirement) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[8]
+	mi := &file_schema_server_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -865,7 +937,7 @@ type Server_Integration struct {
 func (x *Server_Integration) Reset() {
 	*x = Server_Integration{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[9]
+		mi := &file_schema_server_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -878,7 +950,7 @@ func (x *Server_Integration) String() string {
 func (*Server_Integration) ProtoMessage() {}
 
 func (x *Server_Integration) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[9]
+	mi := &file_schema_server_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -928,7 +1000,7 @@ type Allocation_Instance struct {
 func (x *Allocation_Instance) Reset() {
 	*x = Allocation_Instance{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[10]
+		mi := &file_schema_server_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -941,7 +1013,7 @@ func (x *Allocation_Instance) String() string {
 func (*Allocation_Instance) ProtoMessage() {}
 
 func (x *Allocation_Instance) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[10]
+	mi := &file_schema_server_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1176,15 +1248,26 @@ var file_schema_server_proto_rawDesc = []byte{
 	0x0a, 0x0a, 0x62, 0x79, 0x74, 0x65, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01,
 	0x28, 0x04, 0x52, 0x09, 0x62, 0x79, 0x74, 0x65, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x1d, 0x0a,
 	0x0a, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x70, 0x61, 0x74, 0x68, 0x18, 0x04, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x09, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x50, 0x61, 0x74, 0x68, 0x2a, 0x4f, 0x0a, 0x09,
-	0x46, 0x72, 0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72, 0x6b, 0x12, 0x19, 0x0a, 0x15, 0x46, 0x52, 0x41,
-	0x4d, 0x45, 0x57, 0x4f, 0x52, 0x4b, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49,
-	0x45, 0x44, 0x10, 0x00, 0x12, 0x06, 0x0a, 0x02, 0x47, 0x4f, 0x10, 0x01, 0x12, 0x07, 0x0a, 0x03,
-	0x57, 0x45, 0x42, 0x10, 0x02, 0x12, 0x0a, 0x0a, 0x06, 0x4e, 0x4f, 0x44, 0x45, 0x4a, 0x53, 0x10,
-	0x03, 0x12, 0x0a, 0x0a, 0x06, 0x4f, 0x50, 0x41, 0x51, 0x55, 0x45, 0x10, 0x04, 0x42, 0x25, 0x5a,
-	0x23, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64,
-	0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x63,
-	0x68, 0x65, 0x6d, 0x61, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x09, 0x52, 0x09, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x50, 0x61, 0x74, 0x68, 0x22, 0xaf, 0x01, 0x0a,
+	0x0f, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e,
+	0x12, 0x14, 0x0a, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x12, 0x23, 0x0a, 0x0d, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74,
+	0x5f, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x74,
+	0x61, 0x72, 0x67, 0x65, 0x74, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x12, 0x31, 0x0a, 0x06, 0x76,
+	0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x66, 0x6f,
+	0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e,
+	0x56, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x52, 0x06, 0x76, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x12, 0x2e,
+	0x0a, 0x05, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x18, 0x2e,
+	0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d,
+	0x61, 0x2e, 0x4d, 0x6f, 0x75, 0x6e, 0x74, 0x52, 0x05, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x2a, 0x4f,
+	0x0a, 0x09, 0x46, 0x72, 0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72, 0x6b, 0x12, 0x19, 0x0a, 0x15, 0x46,
+	0x52, 0x41, 0x4d, 0x45, 0x57, 0x4f, 0x52, 0x4b, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49,
+	0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x06, 0x0a, 0x02, 0x47, 0x4f, 0x10, 0x01, 0x12, 0x07,
+	0x0a, 0x03, 0x57, 0x45, 0x42, 0x10, 0x02, 0x12, 0x0a, 0x0a, 0x06, 0x4e, 0x4f, 0x44, 0x45, 0x4a,
+	0x53, 0x10, 0x03, 0x12, 0x0a, 0x0a, 0x06, 0x4f, 0x50, 0x41, 0x51, 0x55, 0x45, 0x10, 0x04, 0x42,
+	0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73,
+	0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f,
+	0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1200,58 +1283,61 @@ func file_schema_server_proto_rawDescGZIP() []byte {
 }
 
 var file_schema_server_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_schema_server_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_schema_server_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_schema_server_proto_goTypes = []interface{}{
 	(Framework)(0),                        // 0: foundation.schema.Framework
 	(*Server)(nil),                        // 1: foundation.schema.Server
 	(*Allocation)(nil),                    // 2: foundation.schema.Allocation
 	(*Instantiate)(nil),                   // 3: foundation.schema.Instantiate
 	(*RequiredStorage)(nil),               // 4: foundation.schema.RequiredStorage
-	(*Server_Binary)(nil),                 // 5: foundation.schema.Server.Binary
-	(*Server_ServiceSpec)(nil),            // 6: foundation.schema.Server.ServiceSpec
-	(*Server_URLMapEntry)(nil),            // 7: foundation.schema.Server.URLMapEntry
-	(*Server_Description)(nil),            // 8: foundation.schema.Server.Description
-	(*Server_EnvironmentRequirement)(nil), // 9: foundation.schema.Server.EnvironmentRequirement
-	(*Server_Integration)(nil),            // 10: foundation.schema.Server.Integration
-	(*Allocation_Instance)(nil),           // 11: foundation.schema.Allocation.Instance
-	(*anypb.Any)(nil),                     // 12: google.protobuf.Any
-	(*Reference)(nil),                     // 13: foundation.schema.Reference
-	(*BinaryConfig_EnvEntry)(nil),         // 14: foundation.schema.BinaryConfig.EnvEntry
-	(*Endpoint_Port)(nil),                 // 15: foundation.schema.Endpoint.Port
-	(*Volume)(nil),                        // 16: foundation.schema.Volume
-	(*Mount)(nil),                         // 17: foundation.schema.Mount
-	(*ServiceMetadata)(nil),               // 18: foundation.schema.ServiceMetadata
-	(*Environment_Label)(nil),             // 19: foundation.schema.Environment.Label
+	(*ServerExtension)(nil),               // 5: foundation.schema.ServerExtension
+	(*Server_Binary)(nil),                 // 6: foundation.schema.Server.Binary
+	(*Server_ServiceSpec)(nil),            // 7: foundation.schema.Server.ServiceSpec
+	(*Server_URLMapEntry)(nil),            // 8: foundation.schema.Server.URLMapEntry
+	(*Server_Description)(nil),            // 9: foundation.schema.Server.Description
+	(*Server_EnvironmentRequirement)(nil), // 10: foundation.schema.Server.EnvironmentRequirement
+	(*Server_Integration)(nil),            // 11: foundation.schema.Server.Integration
+	(*Allocation_Instance)(nil),           // 12: foundation.schema.Allocation.Instance
+	(*anypb.Any)(nil),                     // 13: google.protobuf.Any
+	(*Reference)(nil),                     // 14: foundation.schema.Reference
+	(*BinaryConfig_EnvEntry)(nil),         // 15: foundation.schema.BinaryConfig.EnvEntry
+	(*Endpoint_Port)(nil),                 // 16: foundation.schema.Endpoint.Port
+	(*Volume)(nil),                        // 17: foundation.schema.Volume
+	(*Mount)(nil),                         // 18: foundation.schema.Mount
+	(*ServiceMetadata)(nil),               // 19: foundation.schema.ServiceMetadata
+	(*Environment_Label)(nil),             // 20: foundation.schema.Environment.Label
 }
 var file_schema_server_proto_depIdxs = []int32{
-	8,  // 0: foundation.schema.Server.description:type_name -> foundation.schema.Server.Description
-	12, // 1: foundation.schema.Server.ext:type_name -> google.protobuf.Any
+	9,  // 0: foundation.schema.Server.description:type_name -> foundation.schema.Server.Description
+	13, // 1: foundation.schema.Server.ext:type_name -> google.protobuf.Any
 	2,  // 2: foundation.schema.Server.allocation:type_name -> foundation.schema.Allocation
 	0,  // 3: foundation.schema.Server.framework:type_name -> foundation.schema.Framework
-	5,  // 4: foundation.schema.Server.binary:type_name -> foundation.schema.Server.Binary
-	6,  // 5: foundation.schema.Server.service:type_name -> foundation.schema.Server.ServiceSpec
-	6,  // 6: foundation.schema.Server.ingress:type_name -> foundation.schema.Server.ServiceSpec
-	13, // 7: foundation.schema.Server.reference:type_name -> foundation.schema.Reference
-	14, // 8: foundation.schema.Server.static_env:type_name -> foundation.schema.BinaryConfig.EnvEntry
-	7,  // 9: foundation.schema.Server.url_map:type_name -> foundation.schema.Server.URLMapEntry
-	15, // 10: foundation.schema.Server.static_port:type_name -> foundation.schema.Endpoint.Port
-	9,  // 11: foundation.schema.Server.environment_requirement:type_name -> foundation.schema.Server.EnvironmentRequirement
-	10, // 12: foundation.schema.Server.integration:type_name -> foundation.schema.Server.Integration
-	16, // 13: foundation.schema.Server.volumes:type_name -> foundation.schema.Volume
-	17, // 14: foundation.schema.Server.mounts:type_name -> foundation.schema.Mount
-	11, // 15: foundation.schema.Allocation.instance:type_name -> foundation.schema.Allocation.Instance
-	12, // 16: foundation.schema.Instantiate.constructor:type_name -> google.protobuf.Any
-	18, // 17: foundation.schema.Server.ServiceSpec.metadata:type_name -> foundation.schema.ServiceMetadata
-	15, // 18: foundation.schema.Server.ServiceSpec.port:type_name -> foundation.schema.Endpoint.Port
-	19, // 19: foundation.schema.Server.EnvironmentRequirement.environment_has_label:type_name -> foundation.schema.Environment.Label
-	19, // 20: foundation.schema.Server.EnvironmentRequirement.environment_does_not_have_label:type_name -> foundation.schema.Environment.Label
-	3,  // 21: foundation.schema.Allocation.Instance.instantiated:type_name -> foundation.schema.Instantiate
-	2,  // 22: foundation.schema.Allocation.Instance.downstream_allocation:type_name -> foundation.schema.Allocation
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	6,  // 4: foundation.schema.Server.binary:type_name -> foundation.schema.Server.Binary
+	7,  // 5: foundation.schema.Server.service:type_name -> foundation.schema.Server.ServiceSpec
+	7,  // 6: foundation.schema.Server.ingress:type_name -> foundation.schema.Server.ServiceSpec
+	14, // 7: foundation.schema.Server.reference:type_name -> foundation.schema.Reference
+	15, // 8: foundation.schema.Server.static_env:type_name -> foundation.schema.BinaryConfig.EnvEntry
+	8,  // 9: foundation.schema.Server.url_map:type_name -> foundation.schema.Server.URLMapEntry
+	16, // 10: foundation.schema.Server.static_port:type_name -> foundation.schema.Endpoint.Port
+	10, // 11: foundation.schema.Server.environment_requirement:type_name -> foundation.schema.Server.EnvironmentRequirement
+	11, // 12: foundation.schema.Server.integration:type_name -> foundation.schema.Server.Integration
+	17, // 13: foundation.schema.Server.volumes:type_name -> foundation.schema.Volume
+	18, // 14: foundation.schema.Server.mounts:type_name -> foundation.schema.Mount
+	12, // 15: foundation.schema.Allocation.instance:type_name -> foundation.schema.Allocation.Instance
+	13, // 16: foundation.schema.Instantiate.constructor:type_name -> google.protobuf.Any
+	17, // 17: foundation.schema.ServerExtension.volume:type_name -> foundation.schema.Volume
+	18, // 18: foundation.schema.ServerExtension.mount:type_name -> foundation.schema.Mount
+	19, // 19: foundation.schema.Server.ServiceSpec.metadata:type_name -> foundation.schema.ServiceMetadata
+	16, // 20: foundation.schema.Server.ServiceSpec.port:type_name -> foundation.schema.Endpoint.Port
+	20, // 21: foundation.schema.Server.EnvironmentRequirement.environment_has_label:type_name -> foundation.schema.Environment.Label
+	20, // 22: foundation.schema.Server.EnvironmentRequirement.environment_does_not_have_label:type_name -> foundation.schema.Environment.Label
+	3,  // 23: foundation.schema.Allocation.Instance.instantiated:type_name -> foundation.schema.Instantiate
+	2,  // 24: foundation.schema.Allocation.Instance.downstream_allocation:type_name -> foundation.schema.Allocation
+	25, // [25:25] is the sub-list for method output_type
+	25, // [25:25] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_schema_server_proto_init() }
@@ -1314,7 +1400,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Binary); i {
+			switch v := v.(*ServerExtension); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1326,7 +1412,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_ServiceSpec); i {
+			switch v := v.(*Server_Binary); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1338,7 +1424,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_URLMapEntry); i {
+			switch v := v.(*Server_ServiceSpec); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1350,7 +1436,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Description); i {
+			switch v := v.(*Server_URLMapEntry); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1362,7 +1448,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_EnvironmentRequirement); i {
+			switch v := v.(*Server_Description); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1374,7 +1460,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Integration); i {
+			switch v := v.(*Server_EnvironmentRequirement); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1386,6 +1472,18 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Server_Integration); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_schema_server_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Allocation_Instance); i {
 			case 0:
 				return &v.state
@@ -1404,7 +1502,7 @@ func file_schema_server_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_server_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

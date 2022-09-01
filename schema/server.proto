@@ -170,3 +170,12 @@ message RequiredStorage {
     uint64 byte_count    = 3;
     string mount_path    = 4;
 }
+
+// Server extensions which are dynamically provided by tools.
+message ServerExtension {
+    string owner         = 1;  // Package name.
+    string target_server = 2;  // Package name.
+
+    repeated Volume volume = 3;
+    repeated Mount  mount  = 4;
+}

@@ -130,12 +130,13 @@ type Deployment struct {
 
 type ServerConfig struct {
 	ServerRunOpts
-	Server        provision.Server
-	ConfigImage   *oci.ImageID
-	Extensions    []*schema.DefExtension
-	Sidecars      []SidecarRunOpts
-	Inits         []SidecarRunOpts
-	RuntimeConfig *runtime.RuntimeConfig
+	Server           provision.Server
+	ConfigImage      *oci.ImageID
+	ServerExtensions []*schema.ServerExtension
+	Extensions       []*schema.DefExtension
+	Sidecars         []SidecarRunOpts
+	Inits            []SidecarRunOpts
+	RuntimeConfig    *runtime.RuntimeConfig
 }
 
 type ServerRunOpts struct {

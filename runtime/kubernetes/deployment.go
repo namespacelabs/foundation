@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -365,7 +366,15 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		return err
 	}
 
-	for k, volume := range srv.Proto().Volumes {
+	volumes := slices.Clone(srv.Proto().Volumes)
+	mounts := slices.Clone(srv.Proto().Mounts)
+
+	for _, ext := range server.ServerExtensions {
+		volumes = append(volumes, ext.Volume...)
+		mounts = append(mounts, ext.Mount...)
+	}
+
+	for k, volume := range volumes {
 		if volume.Name == "" {
 			return fnerrors.InternalError("volume #%d is missing a name", k)
 		}
@@ -451,7 +460,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		}
 	}
 
-	for k, mount := range srv.Proto().Mounts {
+	for k, mount := range mounts {
 		if mount.Path == "" {
 			return fnerrors.InternalError("mount #%d is missing a path", k)
 		}

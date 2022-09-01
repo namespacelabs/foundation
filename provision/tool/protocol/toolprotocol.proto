@@ -13,6 +13,7 @@ import "schema/defextension.proto";
 import "schema/definition.proto";
 import "schema/environment.proto";
 import "schema/stack.proto";
+import "schema/server.proto";
 import "std/types/resource.proto";
 
 message ToolRequest {
@@ -55,6 +56,7 @@ message ApplyResponse {
     repeated schema.SerializedInvocation invocation              = 2;
     repeated schema.SerializedInvocationSource invocation_source = 5;
     repeated schema.ComputedConfiguration computed               = 4;
+    repeated schema.ServerExtension server_extension             = 6;
 
     // The outcome of this tool computation is valid for as long as these
     // inputs don't change.

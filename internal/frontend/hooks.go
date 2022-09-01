@@ -27,9 +27,10 @@ type PrepareHook struct {
 
 type PrepareProps struct {
 	PreparedProvisionPlan
-	ProvisionInput []*anypb.Any
-	Invocations    []*schema.SerializedInvocation
-	Extension      []*schema.DefExtension
+	ProvisionInput  []*anypb.Any
+	Invocations     []*schema.SerializedInvocation
+	Extension       []*schema.DefExtension
+	ServerExtension []*schema.ServerExtension
 }
 
 func (p *PrepareProps) AppendWith(rhs PrepareProps) {
@@ -37,6 +38,7 @@ func (p *PrepareProps) AppendWith(rhs PrepareProps) {
 	p.ProvisionInput = append(p.ProvisionInput, rhs.ProvisionInput...)
 	p.Invocations = append(p.Invocations, rhs.Invocations...)
 	p.Extension = append(p.Extension, rhs.Extension...)
+	p.ServerExtension = append(p.ServerExtension, rhs.ServerExtension...)
 }
 
 func (p *PrepareProps) AppendInputs(msgs ...proto.Message) error {
