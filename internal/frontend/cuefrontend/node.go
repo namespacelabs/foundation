@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
+	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace"
@@ -324,10 +325,25 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			return fnerrors.Wrapf(loc, err, "failed to parse value")
 		}
 
-		node.RequiredStorage = append(node.RequiredStorage, &schema.RequiredStorage{
-			PersistentId: d.PersistentID,
-			ByteCount:    uint64(v),
-			MountPath:    d.MountPath,
+		pv, err := anypb.New(&schema.PersistentVolume{
+			Id:        d.PersistentID,
+			SizeBytes: uint64(v),
+		})
+		if err != nil {
+			return fnerrors.Wrapf(loc, err, "failed to marshal persistent volume")
+		}
+
+		node.Volumes = append(node.Volumes, &schema.Volume{
+			Owner:      node.PackageName,
+			Name:       d.PersistentID,
+			Kind:       storage.VolumeKindPersistent,
+			Definition: pv,
+		})
+
+		node.Mounts = append(node.Mounts, &schema.Mount{
+			Owner:      node.PackageName,
+			Path:       d.MountPath,
+			VolumeName: d.PersistentID,
 		})
 	}
 

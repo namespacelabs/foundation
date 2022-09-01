@@ -75,8 +75,7 @@ message Node {
     // Framework-specific extensions.
     repeated google.protobuf.Any ext = 15;
 
-    // Storage claims.
-    repeated RequiredStorage required_storage = 18;
+    reserved 18;
 
     repeated Volume volumes = 22;
 

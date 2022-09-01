@@ -80,8 +80,7 @@ message Server {
     // A set of ports that this server exports and require no configuration.
     repeated Endpoint.Port static_port = 16;
 
-    // Aggregated from all nodes.
-    repeated RequiredStorage required_storage = 18;
+    reserved 18;
 
     repeated EnvironmentRequirement environment_requirement = 24;
 

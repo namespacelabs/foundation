@@ -7,7 +7,6 @@ package kubernetes
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -26,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/go-ids"
 	"sigs.k8s.io/yaml"
@@ -365,27 +365,6 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		return err
 	}
 
-	for _, rs := range srv.Proto().RequiredStorage {
-		if rs.Owner == "" {
-			return fnerrors.UserError(server.Server.Location, "requiredstorage owner is not set")
-		}
-
-		name := makeStorageVolumeName(rs)
-
-		container = container.WithVolumeMounts(
-			applycorev1.VolumeMount().
-				WithName(name).
-				WithMountPath(rs.MountPath))
-
-		v, operations, err := makePersistentVolume(ns, r.env, srv, rs.Owner, name, rs.PersistentId, rs.ByteCount)
-		if err != nil {
-			return err
-		}
-
-		spec = spec.WithVolumes(v)
-		s.operations = append(s.operations, operations...)
-	}
-
 	for k, volume := range srv.Proto().Volumes {
 		if volume.Name == "" {
 			return fnerrors.InternalError("volume #%d is missing a name", k)
@@ -394,10 +373,10 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		name := fmt.Sprintf("v-%s", volume.Name)
 
 		switch volume.Kind {
-		case runtime.VolumeKindEphemeral:
+		case storage.VolumeKindEphemeral:
 			spec = spec.WithVolumes(applycorev1.Volume().WithName(name).WithEmptyDir(applycorev1.EmptyDirVolumeSource()))
 
-		case runtime.VolumeKindPersistent:
+		case storage.VolumeKindPersistent:
 			pv := &schema.PersistentVolume{}
 			if err := volume.Definition.UnmarshalTo(pv); err != nil {
 				return fnerrors.InternalError("%s: failed to unmarshal persistent volume definition: %w", volume.Name, err)
@@ -415,7 +394,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			spec = spec.WithVolumes(v)
 			s.operations = append(s.operations, operations...)
 
-		case runtime.VolumeKindConfigurable:
+		case storage.VolumeKindConfigurable:
 			cv := &schema.ConfigurableVolume{}
 			if err := volume.Definition.UnmarshalTo(cv); err != nil {
 				return fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", volume.Name, err)
@@ -730,12 +709,6 @@ func sidecarName(o runtime.SidecarRunOpts, prefix string) string {
 	}
 
 	return fmt.Sprintf("%s-%s", prefix, shortPackageName(o.PackageName))
-}
-
-func makeStorageVolumeName(rs *schema.RequiredStorage) string {
-	h := sha256.New()
-	fmt.Fprint(h, rs.Owner)
-	return "rs-" + hex.EncodeToString(h.Sum(nil))[:8]
 }
 
 func runAsToPodSecCtx(name string, podSecCtx *applycorev1.PodSecurityContextApplyConfiguration, runAs *runtime.RunAs) (*applycorev1.PodSecurityContextApplyConfiguration, error) {

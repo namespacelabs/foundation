@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
@@ -81,19 +81,19 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc works
 	// Parsing shortcuts
 	if bits.Kind == "" {
 		if bits.Ephemeral != nil {
-			bits.Kind = runtime.VolumeKindEphemeral
+			bits.Kind = storage.VolumeKindEphemeral
 		}
 		if bits.Persistent != nil {
 			bits.cuePersistentVolume = *bits.Persistent
-			bits.Kind = runtime.VolumeKindPersistent
+			bits.Kind = storage.VolumeKindPersistent
 		}
 		if bits.PackageSync != nil {
 			bits.cueFilesetVolume = *bits.PackageSync
-			bits.Kind = runtime.VolumeKindPackageSync
+			bits.Kind = storage.VolumeKindPackageSync
 		}
 		if bits.Configurable != nil {
 			// Parsing can't be done via JSON unmarshalling, so doing it manually below.
-			bits.Kind = runtime.VolumeKindConfigurable
+			bits.Kind = storage.VolumeKindConfigurable
 		}
 	}
 
@@ -106,10 +106,10 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc works
 	var definition proto.Message
 
 	switch bits.Kind {
-	case runtime.VolumeKindEphemeral:
+	case storage.VolumeKindEphemeral:
 		definition = &schema.EphemeralVolume{}
 
-	case runtime.VolumeKindPersistent:
+	case storage.VolumeKindPersistent:
 		sizeBytes, err := units.FromHumanSize(bits.Size)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "failed to parse value")
@@ -119,7 +119,7 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc works
 			SizeBytes: uint64(sizeBytes),
 		}
 
-	case runtime.VolumeKindConfigurable:
+	case storage.VolumeKindConfigurable:
 		val := &fncue.CueV{Val: value}
 		if bits.Configurable != nil {
 			cueV := fncue.CueV{Val: value}

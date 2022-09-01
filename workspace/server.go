@@ -10,6 +10,7 @@ import (
 	"regexp"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
@@ -90,17 +91,9 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 		}
 	}
 
+	persistentVolumeCount := 0
 	for _, dep := range sealed.Deps {
 		if node := dep.Node(); node != nil {
-			for _, rs := range node.RequiredStorage {
-				sealed.Proto.Server.RequiredStorage = append(sealed.Proto.Server.RequiredStorage, &schema.RequiredStorage{
-					Owner:        node.PackageName,
-					PersistentId: rs.PersistentId,
-					ByteCount:    rs.ByteCount,
-					MountPath:    rs.MountPath,
-				})
-			}
-
 			for _, rs := range node.Volumes {
 				sealed.Proto.Server.Volumes = append(sealed.Proto.Server.Volumes, &schema.Volume{
 					Owner:      node.PackageName,
@@ -108,6 +101,10 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 					Name:       rs.Name,
 					Definition: rs.Definition,
 				})
+
+				if rs.Kind == storage.VolumeKindPersistent {
+					persistentVolumeCount++
+				}
 			}
 
 			for _, rs := range node.Mounts {
@@ -128,9 +125,9 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 		}
 	}
 
-	if len(sealed.Proto.Server.RequiredStorage) > 0 && !sealed.Proto.Server.IsStateful {
-		return nil, fmt.Errorf("%s: persistent storage %q requires IsStateful=true",
-			sealed.Proto.Server.Name, sealed.Proto.Server.RequiredStorage[0].Owner)
+	if persistentVolumeCount > 0 && !sealed.Proto.Server.IsStateful {
+		return nil, fnerrors.BadInputError("%s: servers that use persistent storage are required to set IsStateful=true",
+			sealed.Proto.Server.Name)
 	}
 
 	if handler, ok := FrameworkHandlers[srv.Framework]; ok {
