@@ -25,7 +25,7 @@ import (
 )
 
 // Represents an Fn workspace with its partially-parsed Cue files.
-// An Fn workspace is rooted in a directory with a `workspace.ns.textpb`` file.
+// An Fn workspace is rooted in a directory with a `workspace.ns.textpb“ file.
 // There may be multiple [FnWorkspace]'s in an editor workspace.
 // Roughly corresponds to a [workspace.Root], [schema.Workspace] and [loader.PackageLoader].
 type FnWorkspace struct {

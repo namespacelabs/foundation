@@ -10,8 +10,8 @@ import (
 	"flag"
 	"log"
 
-	devs3 "namespacelabs.dev/foundation/universe/development/localstack/s3"
 	"namespacelabs.dev/foundation/universe/aws/s3"
+	devs3 "namespacelabs.dev/foundation/universe/development/localstack/s3"
 )
 
 var (
