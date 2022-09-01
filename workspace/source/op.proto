@@ -9,7 +9,7 @@ package foundation.workspace.source;
 option go_package = "namespacelabs.dev/foundation/workspace/source";
 
 import "workspace/source/protos/filedescset.proto";
-import "schema/schema.proto";
+import "schema/server.proto";
 
 message OpProtoGen {
     string                          package_name = 1;

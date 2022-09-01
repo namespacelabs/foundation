@@ -10,32 +10,9 @@ option go_package = "namespacelabs.dev/foundation/schema";
 
 import "google/protobuf/any.proto";
 import "schema/networking.proto";
-import "schema/binary.proto";
 import "schema/environment.proto";
-import "schema/naming.proto";
 import "schema/reference.proto";
 import "schema/server.proto";
-
-// A schema file may include services and server; but initially we constraint
-// files to include exclusively one. That constraint is applied at `lint` time,
-// i.e. when the schema file is loaded.
-message Schema {
-    repeated Node   service   = 1;
-    repeated Node   extension = 2;
-    repeated Server server    = 3;
-}
-
-message Stack {
-    repeated Entry            entry             = 1;
-    repeated Endpoint         endpoint          = 2;
-    repeated InternalEndpoint internal_endpoint = 3;
-
-    message Entry {
-        Server        server        = 1;
-        Naming        server_naming = 3;
-        repeated Node node          = 2;
-    }
-}
 
 // This is temporary; without extensions protos are pretty monolithic.
 // And we don't want to be in a situation where all possible integrations

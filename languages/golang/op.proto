@@ -8,14 +8,15 @@ package foundation.languages.golang;
 
 option go_package = "namespacelabs.dev/foundation/languages/golang";
 
-import "schema/schema.proto";
+import "schema/node.proto";
+import "schema/server.proto";
 
 message OpGenNode {
-    foundation.schema.Node node = 1;
+    foundation.schema.Node node                 = 1;
     repeated foundation.schema.Node loaded_node = 2;
 }
 
 message OpGenServer {
-    foundation.schema.Server server = 1;
+    foundation.schema.Server server             = 1;
     repeated foundation.schema.Node loaded_node = 2;
 }

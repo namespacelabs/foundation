@@ -8,7 +8,7 @@ package foundation.languages.web;
 
 option go_package = "namespacelabs.dev/foundation/languages/web";
 
-import "schema/schema.proto";
+import "schema/node.proto";
 
 message OpGenHttpBackend {
     foundation.schema.Node node    = 1;

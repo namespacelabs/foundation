@@ -10,7 +10,7 @@ option go_package = "namespacelabs.dev/foundation/schema";
 
 import "schema/definition.proto";
 import "schema/environment.proto";
-import "schema/schema.proto";
+import "schema/stack.proto";
 import "schema/networking.proto";
 import "schema/workspace.proto";
 

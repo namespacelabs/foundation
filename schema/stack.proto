@@ -1,0 +1,35 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "schema/networking.proto";
+import "schema/naming.proto";
+import "schema/server.proto";
+import "schema/node.proto";
+
+// A schema file may include services and server; but initially we constraint
+// files to include exclusively one. That constraint is applied at `lint` time,
+// i.e. when the schema file is loaded.
+message Schema {
+    repeated Node   service   = 1;
+    repeated Node   extension = 2;
+    repeated Server server    = 3;
+}
+
+message Stack {
+    repeated Entry            entry             = 1;
+    repeated Endpoint         endpoint          = 2;
+    repeated InternalEndpoint internal_endpoint = 3;
+
+    message Entry {
+        Server        server        = 1;
+        Naming        server_naming = 3;
+        repeated Node node          = 2;
+    }
+}

@@ -8,7 +8,8 @@ package foundation.devworkflow;
 
 option go_package = "namespacelabs.dev/foundation/devworkflow";
 
-import "schema/schema.proto";
+import "schema/stack.proto";
+import "schema/environment.proto";
 import "schema/networking.proto";
 import "schema/storage/deploy.proto";
 import "schema/workspace.proto";

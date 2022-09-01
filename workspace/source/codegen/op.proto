@@ -8,10 +8,10 @@ package foundation.workspace.source.codegen;
 
 option go_package = "namespacelabs.dev/foundation/workspace/source/codegen";
 
-import "schema/schema.proto";
+import "schema/node.proto";
 import "workspace/source/protos/filedescset.proto";
 
 message OpGenNode {
-    foundation.schema.Node node = 1;
+    foundation.schema.Node                                      node   = 1;
     foundation.workspace.source.protos.FileDescriptorSetAndDeps protos = 2;
 }

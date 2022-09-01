@@ -12,7 +12,8 @@ import "google/protobuf/any.proto";
 import "schema/defextension.proto";
 import "schema/definition.proto";
 import "schema/provision.proto";
-import "schema/schema.proto";
+import "schema/environment.proto";
+import "schema/server.proto";
 
 message PrepareRequest {
     foundation.schema.Environment env    = 1;

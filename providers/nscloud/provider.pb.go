@@ -30,7 +30,7 @@ type PrebuiltCluster struct {
 	unknownFields protoimpl.UnknownFields
 
 	ClusterId        string `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
-	SerializedConfig []byte `protobuf:"bytes,2,opt,name=serialized_config,json=serializedConfig,proto3" json:"serialized_config,omitempty"`
+	SerializedConfig []byte `protobuf:"bytes,2,opt,name=serialized_config,json=serializedConfig,proto3" json:"serialized_config,omitempty"` // Deprecated, always fetched now.
 }
 
 func (x *PrebuiltCluster) Reset() {

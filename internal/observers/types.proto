@@ -8,7 +8,8 @@ package foundation.internal.observers;
 
 option go_package = "namespacelabs.dev/foundation/internal/observers";
 
-import "schema/schema.proto";
+import "schema/environment.proto";
+import "schema/stack.proto";
 import "schema/storage/deploy.proto";
 
 message StackUpdateEvent {

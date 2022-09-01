@@ -8,7 +8,7 @@ package foundation.providers.aws.iam;
 
 option go_package = "namespacelabs.dev/foundation/providers/aws/iam";
 
-import "schema/schema.proto";
+import "schema/server.proto";
 
 message OpEnsureRole {
     string                   role_name               = 1;

@@ -8,7 +8,8 @@ package foundation.languages.nodejs.integration;
 
 option go_package = "namespacelabs.dev/foundation/languages/nodejs/integration";
 
-import "schema/schema.proto";
+import "schema/node.proto";
+import "schema/server.proto";
 import "workspace/source/protos/filedescset.proto";
 
 message OpGenServer {
