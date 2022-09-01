@@ -380,7 +380,7 @@ func (pl *PackageLoader) resolveExternal(ctx context.Context, moduleName string,
 		return nil, err
 	}
 
-	data, err := ModuleAt(ctx, downloaded.LocalPath)
+	data, err := ModuleAt(ctx, downloaded.LocalPath, ModuleAtArgs{})
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fnerrors.UserError(nil, "%s: is not a workspace, %q missing.", moduleName, data.DefinitionFile())

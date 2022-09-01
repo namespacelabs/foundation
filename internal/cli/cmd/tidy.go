@@ -43,7 +43,7 @@ func NewTidyCmd() *cobra.Command {
 			return err
 		}
 
-		root, err := module.FindRoot(ctx, ".")
+		root, err := module.FindRootWithArgs(ctx, ".", workspace.ModuleAtArgs{SkipAPIRequirements: true})
 		if err != nil {
 			return err
 		}

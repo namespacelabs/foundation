@@ -36,7 +36,7 @@ func newModDownloadCmd() *cobra.Command {
 		Short: "Downloads all referenced modules.",
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, err := module.FindRoot(ctx, ".")
+			root, err := module.FindRootWithArgs(ctx, ".", workspace.ModuleAtArgs{SkipAPIRequirements: true})
 			if err != nil {
 				return err
 			}
@@ -66,7 +66,7 @@ func newModGetCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, err := module.FindRoot(ctx, ".")
+			root, err := module.FindRootWithArgs(ctx, ".", workspace.ModuleAtArgs{SkipAPIRequirements: true})
 			if err != nil {
 				return err
 			}

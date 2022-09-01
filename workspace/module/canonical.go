@@ -18,7 +18,7 @@ func PackageAt(ctx context.Context, dir string) (*workspace.Root, fnfs.Location,
 		return nil, fnfs.Location{}, err
 	}
 
-	root, err := findWorkspaceRoot(ctx, abs)
+	root, err := findWorkspaceRoot(ctx, abs, workspace.ModuleAtArgs{})
 	if err != nil {
 		return nil, fnfs.Location{}, err
 	}

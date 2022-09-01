@@ -50,15 +50,23 @@ func FindModuleRoot(dir string) (string, error) {
 	return ModuleLoader.FindModuleRoot(dir)
 }
 
+type ModuleAtArgs struct {
+	SkipAPIRequirements bool
+}
+
 // Loads and validates a module at a given path.
-func ModuleAt(ctx context.Context, path string) (WorkspaceData, error) {
+func ModuleAt(ctx context.Context, path string, args ModuleAtArgs) (WorkspaceData, error) {
 	ws, err := ModuleLoader.ModuleAt(ctx, path)
 	if err != nil {
 		return ws, err
 	}
-	if err := validateAPIRequirements(ws.Parsed().ModuleName, ws.Parsed().Foundation); err != nil {
-		return ws, err
+
+	if !args.SkipAPIRequirements {
+		if err := validateAPIRequirements(ws.Parsed().ModuleName, ws.Parsed().Foundation); err != nil {
+			return ws, err
+		}
 	}
+
 	return ws, nil
 }
 
