@@ -49,29 +49,44 @@ func registerCleanup() {
 
 			usedConfigs := map[string]struct{}{}
 
-			deployments, err := cli.AppsV1().Deployments(cleanup.Namespace).List(ctx, v1.ListOptions{
-				LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			for _, d := range deployments.Items {
-				if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
-					usedConfigs[v] = struct{}{}
+			if cleanup.CheckPods {
+				pods, err := cli.CoreV1().Pods(cleanup.Namespace).List(ctx, v1.ListOptions{
+					LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+				})
+				if err != nil {
+					return nil, err
 				}
-			}
 
-			statefulSets, err := cli.AppsV1().StatefulSets(cleanup.Namespace).List(ctx, v1.ListOptions{
-				LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
-			})
-			if err != nil {
-				return nil, err
-			}
+				for _, d := range pods.Items {
+					if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
+						usedConfigs[v] = struct{}{}
+					}
+				}
+			} else {
+				deployments, err := cli.AppsV1().Deployments(cleanup.Namespace).List(ctx, v1.ListOptions{
+					LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+				})
+				if err != nil {
+					return nil, err
+				}
 
-			for _, d := range statefulSets.Items {
-				if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
-					usedConfigs[v] = struct{}{}
+				for _, d := range deployments.Items {
+					if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
+						usedConfigs[v] = struct{}{}
+					}
+				}
+
+				statefulSets, err := cli.AppsV1().StatefulSets(cleanup.Namespace).List(ctx, v1.ListOptions{
+					LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+				})
+				if err != nil {
+					return nil, err
+				}
+
+				for _, d := range statefulSets.Items {
+					if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
+						usedConfigs[v] = struct{}{}
+					}
 				}
 			}
 
