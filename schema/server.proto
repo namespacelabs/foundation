@@ -141,48 +141,39 @@ message Server {
 }
 
 message Volume {
+    // The type of volume.
     string kind = 1;
     // Explicit if defined at the file level, auto-generated from the mount point if inlined.
     // Volumes then referenced by the name from "mounts".
     string name = 2;
 
-    // At most one of these is set by the parser.
+    google.protobuf.Any definition = 3;
+}
 
-    // Custom volume kind, arguments are serialized as JSON.
-    string custom = 100;
-    // Built-in types, for convenience parsed to separate fields.
-    Ephemeral    ephemeral    = 101;
-    Persistent   persistent   = 102;
-    Configurable configurable = 103;
-    Fileset      package_sync = 104;
+message EphemeralVolume {}
 
-    message Ephemeral {
+message PersistentVolume {
+    string id         = 1;
+    uint64 size_bytes = 2;
+}
+
+message ConfigurableVolume {
+    repeated Entry entries = 1;
+
+    message Entry {
+        // A single file or a directory, relative to the mount path.
+        string path = 1;
+
+        // One of.
+        Resource inline   = 2;
+        string secret_ref = 3;
     }
+}
 
-    message Persistent {
-        string id         = 1;
-        int64  size_bytes = 2;
-    }
-
-    message Configurable {
-        repeated Entry entries = 1;
-
-        message Entry {
-            // A single file or a directory, relative to the mount path.
-            string target_path = 1;
-
-            // One of these
-            string source_inlined_content = 2;
-            string source_file_path       = 3;
-            string source_secret          = 4;
-            string source_dir             = 5;
-        }
-    }
-
-    message Fileset {
-        repeated string include_file_patterns = 1;
-        repeated string exclude_file_patterns = 2;
-    }
+// TODO reconcile with std.types.Resource.
+message Resource {
+    string path     = 1;
+    bytes  contents = 2;
 }
 
 // Allocations for a tree of instanced values.

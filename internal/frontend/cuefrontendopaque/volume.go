@@ -6,11 +6,13 @@ package cuefrontendopaque
 
 import (
 	"context"
-	"encoding/json"
 
 	"cuelang.org/go/cue"
 	"github.com/docker/go-units"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -23,7 +25,7 @@ const (
 	volumeKindPackageSync  = "namespace.so/volume/package-sync"
 )
 
-func parseVolumes(ctx context.Context, loc workspace.Location, v *fncue.CueV) ([]*schema.Volume, error) {
+func parseVolumes(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, v *fncue.CueV) ([]*schema.Volume, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
@@ -37,7 +39,7 @@ func parseVolumes(ctx context.Context, loc workspace.Location, v *fncue.CueV) ([
 	out := []*schema.Volume{}
 
 	for it.Next() {
-		parsedVolume, err := parseVolume(ctx, loc, it.Label(), false /* isInlined */, it.Value())
+		parsedVolume, err := parseVolume(ctx, pl, loc, it.Label(), false /* isInlined */, it.Value())
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +79,7 @@ type cueConfigurableEntry struct {
 	FromSecret string `json:"fromSecret"`
 }
 
-func parseVolume(ctx context.Context, loc workspace.Location, name string, isInlined bool, value cue.Value) (*schema.Volume, error) {
+func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, name string, isInlined bool, value cue.Value) (*schema.Volume, error) {
 	var bits cueVolume
 	if err := value.Decode(&bits); err != nil {
 		return nil, err
@@ -107,23 +109,22 @@ func parseVolume(ctx context.Context, loc workspace.Location, name string, isInl
 		Name: name,
 	}
 
+	var definition proto.Message
+
 	switch bits.Kind {
 	case volumeKindEphemeral:
-		out.Ephemeral = &schema.Volume_Ephemeral{}
+		definition = &schema.EphemeralVolume{}
+
 	case volumeKindPersistent:
-		sizeBytes, err := units.RAMInBytes(bits.Size)
+		sizeBytes, err := units.FromHumanSize(bits.Size)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "failed to parse value")
 		}
-		out.Persistent = &schema.Volume_Persistent{
+		definition = &schema.PersistentVolume{
 			Id:        bits.Id,
-			SizeBytes: sizeBytes,
+			SizeBytes: uint64(sizeBytes),
 		}
-	case volumeKindPackageSync:
-		out.PackageSync = &schema.Volume_Fileset{
-			IncludeFilePatterns: bits.Include,
-			ExcludeFilePatterns: bits.Exclude,
-		}
+
 	case volumeKindConfigurable:
 		val := &fncue.CueV{Val: value}
 		if bits.Configurable != nil {
@@ -131,7 +132,7 @@ func parseVolume(ctx context.Context, loc workspace.Location, name string, isInl
 			val = cueV.LookupPath("configurable")
 		}
 
-		entries := []*schema.Volume_Configurable_Entry{}
+		entries := []*schema.ConfigurableVolume_Entry{}
 		contents := val.LookupPath("contents")
 		if contents.Exists() {
 			it, err := contents.Val.Fields()
@@ -140,7 +141,7 @@ func parseVolume(ctx context.Context, loc workspace.Location, name string, isInl
 			}
 
 			for it.Next() {
-				parsedEntry, err := parseConfigurableEntry(ctx, loc, it.Label(), isInlined, it.Value())
+				parsedEntry, err := parseConfigurableEntry(ctx, pl, loc, it.Label(), isInlined, it.Value())
 				if err != nil {
 					return nil, err
 				}
@@ -148,40 +149,46 @@ func parseVolume(ctx context.Context, loc workspace.Location, name string, isInl
 			}
 		} else {
 			// Entry name is the volume/mount name.
-			entry, err := parseConfigurableEntry(ctx, loc, name, isInlined, val.Val)
+			entry, err := parseConfigurableEntry(ctx, pl, loc, name, isInlined, val.Val)
 			if err != nil {
 				return nil, err
 			}
 			entries = append(entries, entry)
 		}
 
-		out.Configurable = &schema.Volume_Configurable{
+		definition = &schema.ConfigurableVolume{
 			Entries: entries,
 		}
 
 	default:
-		var jsn map[string]interface{}
-		if err := value.Decode(&jsn); err != nil {
-			return nil, err
-		}
-		jsonStr, err := json.Marshal(jsn)
-		if err != nil {
-			return nil, err
-		}
-		out.Custom = string(jsonStr)
+		return nil, fnerrors.BadInputError("%s: unsupported volume type", bits.Kind)
 	}
+
+	var err error
+	out.Definition, err = anypb.New(definition)
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to serialize definition: %w", err)
+	}
+
 	return out, nil
 }
 
-func parseConfigurableEntry(ctx context.Context, loc workspace.Location, name string, isVolumeInlined bool, v cue.Value) (*schema.Volume_Configurable_Entry, error) {
+func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, name string, isVolumeInlined bool, v cue.Value) (*schema.ConfigurableVolume_Entry, error) {
+	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
+	if err != nil {
+		return nil, err
+	}
+
 	if v.Kind() == cue.StringKind {
-		// Inlined content
-		strVal, _ := v.String()
+		// Inlined content.
+		str, _ := v.String()
 		if !isVolumeInlined {
-			return nil, fnerrors.UserError(loc, "Configurable content %q without target path must be inlined", strVal)
+			return nil, fnerrors.UserError(loc, "Configurable content %q without target path must be inlined", str)
 		}
-		return &schema.Volume_Configurable_Entry{
-			SourceInlinedContent: strVal,
+		return &schema.ConfigurableVolume_Entry{
+			Inline: &schema.Resource{
+				Contents: []byte(str),
+			},
 		}, nil
 	} else {
 		var bits cueConfigurableEntry
@@ -189,21 +196,28 @@ func parseConfigurableEntry(ctx context.Context, loc workspace.Location, name st
 			return nil, err
 		}
 
-		if bits.FromDir != "" {
-			return &schema.Volume_Configurable_Entry{
-				SourceDir: bits.FromDir,
+		switch {
+		case bits.FromDir != "":
+			return nil, fnerrors.InternalError("loading directory not implemented yet")
+
+		case bits.FromFile != "":
+			rsc, err := cuefrontend.LoadResource(fsys, loc, bits.FromFile)
+			if err != nil {
+				return nil, err
+			}
+
+			return &schema.ConfigurableVolume_Entry{
+				Inline: rsc,
 			}, nil
-		} else if bits.FromFile != "" {
-			return &schema.Volume_Configurable_Entry{
-				SourceFilePath: bits.FromFile,
-			}, nil
-		} else if bits.FromSecret != "" {
+
+		case bits.FromSecret != "":
 			// TODO: verify that a secret exists with the given name
-			return &schema.Volume_Configurable_Entry{
-				SourceSecret: bits.FromSecret,
+			return &schema.ConfigurableVolume_Entry{
+				SecretRef: bits.FromSecret,
 			}, nil
-		} else {
-			return nil, fnerrors.UserError(loc, "Configurable entry %q must have a source", name)
+
+		default:
+			return nil, fnerrors.UserError(loc, "configurable entry %q must have a source", name)
 		}
 	}
 }

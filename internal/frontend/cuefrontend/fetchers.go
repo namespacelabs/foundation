@@ -186,18 +186,30 @@ func FetchResource(fsys fs.FS, loc workspace.Location) FetcherFunc {
 			return nil, fnerrors.UserError(loc, "#FromPath needs to have a path specified")
 		}
 
-		if strings.HasPrefix(load.Path, "../") {
-			return nil, fnerrors.UserError(loc, "#FromPath path must be relative to the node")
-		}
-
-		contents, err := fs.ReadFile(fsys, loc.Rel(load.Path))
+		rsc, err := LoadResource(fsys, loc, load.Path)
 		if err != nil {
 			return nil, err
 		}
 
-		load.Contents = contents
+		load.Contents = rsc.Contents
 		return load, nil
 	}
+}
+
+func LoadResource(fsys fs.FS, loc workspace.Location, path string) (*schema.Resource, error) {
+	if strings.HasPrefix(path, "../") {
+		return nil, fnerrors.UserError(loc, "resources must be loaded from within the package")
+	}
+
+	contents, err := fs.ReadFile(fsys, loc.Rel(path))
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema.Resource{
+		Path:     loc.Rel(path),
+		Contents: contents,
+	}, nil
 }
 
 func FetchPackage(pl workspace.Packages) FetcherFunc {

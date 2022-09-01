@@ -43,7 +43,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	var parsedVolumes []*schema.Volume
 	if volumes := v.LookupPath("volumes"); volumes.Exists() {
 		var err error
-		parsedVolumes, err = parseVolumes(ctx, loc, volumes)
+		parsedVolumes, err = parseVolumes(ctx, ft.loader, loc, volumes)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 		}
