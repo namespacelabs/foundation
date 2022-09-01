@@ -14,7 +14,7 @@ service: fn.#Service & {
 	requirePersistentStorage: {
 		persistentId: "ns-orchestration-data"
 		byteCount:    "10GiB"
-		mountPath:    "/ns/orchestration/data"
+		mountPath:    "/namespace/orchestration/data"
 	}
 }
 
@@ -23,7 +23,7 @@ configure: fn.#Configure & {
 
 	startup: {
 		env: {
-			"NSDATA": "/ns/orchestration/data"
+			"NSDATA": "/namespace/orchestration/data"
 		}
 	}
 }

@@ -11,6 +11,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/internal/orchestration/service/proto"
+	"namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/go/rpcerrors"
@@ -64,4 +65,5 @@ func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	proto.RegisterOrchestrationServiceServer(srv, &Service{d: makeDeployer(ctx)})
 
 	kubeops.Register()
+	iam.RegisterGraphHandlers()
 }
