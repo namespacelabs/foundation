@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/go/rpcerrors"
 	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type Service struct {
@@ -31,9 +32,9 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 		return nil, rpcerrors.Errorf(codes.Internal, "failed to deploy plan: %w", err)
 	}
 
-	return &proto.DeployResponse{
-		Id: id,
-	}, nil
+	res := &proto.DeployResponse{Id: id}
+	log.Printf("Will respond with %+v", res)
+	return res, nil
 }
 
 func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream proto.OrchestrationService_DeploymentStatusServer) error {
@@ -66,4 +67,6 @@ func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 
 	kubeops.Register()
 	iam.RegisterGraphHandlers()
+
+	tasks.LogActions = true
 }
