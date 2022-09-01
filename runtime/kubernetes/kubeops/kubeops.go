@@ -14,6 +14,7 @@ func Register() {
 	RegisterCreateSecret()
 	registerDelete()
 	registerDeleteList()
+	registerCleanup()
 
 	ingress.RegisterGraphHandlers()
 }

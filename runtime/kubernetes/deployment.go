@@ -501,7 +501,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithLabels(map[string]string{
-					kubedef.K8sKind: kubedef.K8sRuntimeConfig,
+					kubedef.K8sKind: kubedef.K8sRuntimeConfigKind,
 				}).
 				WithImmutable(true).
 				WithData(map[string]string{
@@ -514,6 +514,9 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			WithConfigMap(applycorev1.ConfigMapVolumeSource().WithName(configId)))
 
 		container = container.WithVolumeMounts(applycorev1.VolumeMount().WithMountPath("/namespace").WithName(configId).WithReadOnly(true))
+
+		// We do manual cleanup of unused configs. In the future they'll be owned by a deployment intent.
+		annotations[kubedef.K8sRuntimeConfig] = configId
 	}
 
 	spec = spec.

@@ -213,6 +213,16 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 		}
 	}
 
+	cleanup, err := anypb.New(&kubedef.OpCleanupRuntimeConfig{Namespace: r.moduleNamespace})
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to serialize cleanup: %w", err)
+	}
+
+	state.definitions = append(state.definitions, &schema.SerializedInvocation{
+		Description: "Kubernetes: cleanup unused resources",
+		Impl:        cleanup,
+	})
+
 	state.hints = append(state.hints, fmt.Sprintf("Inspecting your deployment: %s", colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("kubectl -n %s get pods", r.moduleNamespace))))
 
 	return state, nil

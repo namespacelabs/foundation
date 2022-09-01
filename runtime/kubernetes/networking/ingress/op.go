@@ -55,7 +55,7 @@ func RegisterGraphHandlers() {
 
 		return nil, tasks.Action("kubernetes.ingress.cleanup-migration").Run(ctx, func(ctx context.Context) error {
 			ingresses, err := cli.NetworkingV1().Ingresses(op.Namespace).List(ctx, metav1.ListOptions{
-				LabelSelector: kubedef.SerializeSelector(kubedef.ManagedBy()),
+				LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 			})
 			if err != nil {
 				return fnerrors.Wrapf(nil, err, "unable to list ingresses")

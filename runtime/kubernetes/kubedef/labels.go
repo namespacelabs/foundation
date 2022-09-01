@@ -24,13 +24,14 @@ const (
 	K8sNamespaceDriver    = "k8s.namespacelabs.dev/namespace-driver"
 	K8sConfigImage        = "k8s.namespacelabs.dev/config-image"
 	K8sKind               = "k8s.namespacelabs.dev/kind"
+	K8sRuntimeConfig      = "k8s.namespacelabs.dev/runtime-config"
 
-	K8sRuntimeConfig = "runtime-config"
+	K8sRuntimeConfigKind = "runtime-config"
 
 	AppKubernetesIoManagedBy = "app.kubernetes.io/managed-by"
 
-	id                      = "foundation.namespace.so" // #220 Update when product name is final
-	K8sFieldManager         = id
+	ManagerId               = "foundation.namespace.so" // #220 Update when product name is final
+	K8sFieldManager         = ManagerId
 	defaultEphemeralTimeout = time.Hour
 )
 
@@ -58,15 +59,15 @@ func SelectByPurpose(p schema.Environment_Purpose) map[string]string {
 	}
 }
 
-func ManagedBy() map[string]string {
+func ManagedByUs() map[string]string {
 	return map[string]string{
-		AppKubernetesIoManagedBy: id,
+		AppKubernetesIoManagedBy: ManagerId,
 	}
 }
 
 func MakeLabels(env *schema.Environment, srv *schema.Server) map[string]string {
 	// XXX add recommended labels https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
-	m := ManagedBy()
+	m := ManagedByUs()
 	if srv != nil {
 		m[K8sServerId] = srv.Id
 	}

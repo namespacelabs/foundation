@@ -27,7 +27,7 @@ func (r K8sRuntime) DeleteRecursively(ctx context.Context, wait bool) (bool, err
 
 func (r Unbound) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
 	namespaces, err := r.cli.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-		LabelSelector: kubedef.SerializeSelector(kubedef.ManagedBy()),
+		LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 	})
 	if err != nil {
 		return false, fnerrors.Wrapf(nil, err, "unable to list namespaces")
