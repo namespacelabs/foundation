@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/providers/aws/ecr"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
@@ -40,8 +41,16 @@ func main() {
 
 	ecr.Register()
 	workspace.ModuleLoader = cuefrontend.ModuleLoader
+
+	// nspipelines shouldn't need environment, filling it just in case.
+	env := &schema.Environment{
+		Name:      "nspipelines",
+		Purpose:   schema.Environment_TESTING,
+		Runtime:   "kubernetes",
+		Ephemeral: true,
+	}
 	workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader) workspace.Frontend {
-		return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(pl))
+		return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(pl, env), env)
 	}
 
 	tasks.SetupFlags(root.PersistentFlags())

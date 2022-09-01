@@ -46,7 +46,9 @@ func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWo
 		root:      root,
 		openFiles: s.openFiles,
 	}
-	ws.evalCtx = fncue.NewEvalCtx(ws)
+	ws.evalCtx = fncue.NewEvalCtx(ws, &schema.Environment{
+		Purpose: schema.Environment_DEVELOPMENT,
+	})
 	return
 }
 

@@ -33,6 +33,17 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
+var (
+	// Providing the import-less CUE files access to $env.
+	builtinInCueDefs = []byte(`
+$env: {
+	name:      string
+	runtime:   string
+	purpose:   "DEVELOPMENT" | "TESTING" | "PRODUCTION"
+	ephemeral: bool
+}`)
+)
+
 type KeyAndPath struct {
 	Key    string
 	Target cue.Path
@@ -152,6 +163,14 @@ func loadPackageContents(ctx context.Context, loader WorkspaceLoader, pkgName st
 type EvalCtx struct {
 	cache  *snapshotCache
 	loader WorkspaceLoader
+	env    cueEnv
+}
+
+type cueEnv struct {
+	Name      string `json:"name"`
+	Runtime   string `json:"runtime"`
+	Purpose   string `json:"purpose"`
+	Ephemeral bool   `json:"ephemeral"`
 }
 
 type snapshotCache struct {
@@ -162,8 +181,11 @@ type snapshotCache struct {
 	built  map[string]*Partial
 }
 
-func NewEvalCtx(loader WorkspaceLoader) *EvalCtx {
-	return &EvalCtx{cache: newSnapshotCache(), loader: loader}
+func NewEvalCtx(loader WorkspaceLoader, env *schema.Environment) *EvalCtx {
+	return &EvalCtx{
+		cache:  newSnapshotCache(),
+		loader: loader,
+		env:    cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String(), Ephemeral: env.Ephemeral}}
 }
 
 func newSnapshotCache() *snapshotCache {
@@ -192,7 +214,7 @@ func (ev *EvalCtx) EvalPackage(ctx context.Context, pkgname string) (*Partial, e
 
 	// A foundation package definition has no package statement, which we refer to as the "_"
 	// import here.
-	return ev.cache.Eval(ctx, *pkg, pkgname+":_", collectedImports)
+	return ev.cache.Eval(ctx, *pkg, pkgname+":_", collectedImports, &ev.env)
 }
 
 func EvalWorkspace(ctx context.Context, fsys fs.FS, dir string, files []string) (*Partial, error) {
@@ -214,14 +236,14 @@ func EvalWorkspace(ctx context.Context, fsys fs.FS, dir string, files []string) 
 		Sources: fsys,
 	}
 
-	if err := parseSources(ctx, p, "_", pkg); err != nil {
+	if err := parseSources(ctx, p, "_", pkg, nil); err != nil {
 		return nil, err
 	}
 
-	return finishInstance(nil, cuecontext.New(), p, pkg, nil)
+	return finishInstance(nil, cuecontext.New(), p, pkg, nil, nil)
 }
 
-func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage) (*Partial, error) {
+func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage, env *cueEnv) (*Partial, error) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 
@@ -232,7 +254,7 @@ func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 			return nil, multierr.New(p.DepsErrors...)
 		}
 
-		partial, err := finishInstance(sc, sc.cuectx, p, pkg, collectedImports)
+		partial, err := finishInstance(sc, sc.cuectx, p, pkg, collectedImports, env)
 		if err != nil {
 			return partial, err
 		}
@@ -243,8 +265,13 @@ func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 	return sc.built[pkgname], nil
 }
 
-func finishInstance(sc *snapshotCache, cuectx *cue.Context, p *build.Instance, pkg CuePackage, collectedImports map[string]*CuePackage) (*Partial, error) {
+func finishInstance(sc *snapshotCache, cuectx *cue.Context, p *build.Instance, pkg CuePackage, collectedImports map[string]*CuePackage, env *cueEnv) (*Partial, error) {
 	vv := cuectx.BuildInstance(p)
+
+	// Injecting $env if the file has no imports (new opaque style).
+	if env != nil && len(collectedImports) <= 1 {
+		vv = vv.FillPath(cue.ParsePath("$"+EnvIKw), &env)
+	}
 
 	partial := &Partial{Ctx: sc}
 	partial.Package = pkg
@@ -305,19 +332,23 @@ func (sc *snapshotCache) parseInstance(ctx context.Context, collectedImports map
 		return nil
 	})
 
-	if err := parseSources(ctx, p, info.PkgName, pkg); err != nil {
+	if err := parseSources(ctx, p, info.PkgName, pkg, builtinInCueDefs); err != nil {
 		fmt.Fprintln(console.Errors(ctx), "internal error: ", err)
 	}
 
 	return p
 }
 
-func parseSources(ctx context.Context, p *build.Instance, expectedPkg string, pkg CuePackage) error {
+func parseSources(ctx context.Context, p *build.Instance, expectedPkg string, pkg CuePackage, contentsSuffix []byte) error {
 	for _, f := range pkg.Files {
 		contents, err := fs.ReadFile(pkg.Sources, filepath.Join(pkg.RelPath, f))
 		if err != nil {
 			p.Err = errors.Append(p.Err, errors.Promote(err, "ReadFile"))
 			continue
+		}
+
+		if contentsSuffix != nil {
+			contents = append(contents, contentsSuffix...)
 		}
 
 		// Filename recorded is "example.com/module/package/file.cue".

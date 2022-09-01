@@ -26,10 +26,10 @@ type opaqueParser interface {
 	ParsePackage(ctx context.Context, partial *fncue.Partial, loc workspace.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error)
 }
 
-func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser opaqueParser) workspace.Frontend {
+func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser opaqueParser, env *schema.Environment) workspace.Frontend {
 	return impl{
 		loader:       pl,
-		evalctx:      fncue.NewEvalCtx(WorkspaceLoader{pl}),
+		evalctx:      fncue.NewEvalCtx(WorkspaceLoader{pl}, env),
 		opaqueParser: opaqueParser,
 	}
 }

@@ -20,10 +20,10 @@ type Frontend struct {
 	evalctx *fncue.EvalCtx
 }
 
-func NewFrontend(pl workspace.EarlyPackageLoader) *Frontend {
+func NewFrontend(pl workspace.EarlyPackageLoader, env *schema.Environment) *Frontend {
 	return &Frontend{
 		loader:  pl,
-		evalctx: fncue.NewEvalCtx(cuefrontend.WorkspaceLoader{PackageLoader: pl}),
+		evalctx: fncue.NewEvalCtx(cuefrontend.WorkspaceLoader{PackageLoader: pl}, env),
 	}
 }
 
