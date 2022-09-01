@@ -406,6 +406,38 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		}
 	}
 
+	for k, volume := range srv.Proto().Volumes {
+		if volume.Name == "" {
+			return fnerrors.InternalError("volume #%d is missing a name", k)
+		}
+
+		name := fmt.Sprintf("v-%s", volume.Name)
+
+		switch volume.Kind {
+		case runtime.VolumeKindEphemeral:
+			spec = spec.WithVolumes(applycorev1.Volume().WithName(name).WithEmptyDir(applycorev1.EmptyDirVolumeSource()))
+
+		default:
+			return fnerrors.InternalError("%s: unsupported volume type", volume.Kind)
+		}
+	}
+
+	for k, mount := range srv.Proto().Mounts {
+		if mount.Path == "" {
+			return fnerrors.InternalError("mount #%d is missing a path", k)
+		}
+
+		if mount.VolumeName == "" {
+			return fnerrors.InternalError("mount #%d is missing a target volume", k)
+		}
+
+		volumeName := fmt.Sprintf("v-%s", mount.VolumeName)
+		container = container.WithVolumeMounts(applycorev1.VolumeMount().
+			WithMountPath(mount.Path).
+			WithName(volumeName).
+			WithReadOnly(mount.Readonly))
+	}
+
 	for _, sidecar := range server.Sidecars {
 		name := sidecarName(sidecar, "sidecar")
 		for _, c := range containers {

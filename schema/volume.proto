@@ -14,6 +14,7 @@ message Mount {
     string owner       = 1;  // Package that declared the mount.
     string path        = 2;
     string volume_name = 3;
+    bool   readonly    = 4;
 }
 
 message Volume {

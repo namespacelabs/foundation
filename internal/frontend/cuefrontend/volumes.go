@@ -13,15 +13,9 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
-)
-
-const (
-	volumeKindEphemeral    = "namespace.so/volume/ephemeral"
-	volumeKindPersistent   = "namespace.so/volume/persistent"
-	volumeKindConfigurable = "namespace.so/volume/configurable"
-	volumeKindPackageSync  = "namespace.so/volume/package-sync"
 )
 
 func ParseVolumes(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, v *fncue.CueV) ([]*schema.Volume, error) {
@@ -87,19 +81,19 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc works
 	// Parsing shortcuts
 	if bits.Kind == "" {
 		if bits.Ephemeral != nil {
-			bits.Kind = volumeKindEphemeral
+			bits.Kind = runtime.VolumeKindEphemeral
 		}
 		if bits.Persistent != nil {
 			bits.cuePersistentVolume = *bits.Persistent
-			bits.Kind = volumeKindPersistent
+			bits.Kind = runtime.VolumeKindPersistent
 		}
 		if bits.PackageSync != nil {
 			bits.cueFilesetVolume = *bits.PackageSync
-			bits.Kind = volumeKindPackageSync
+			bits.Kind = runtime.VolumeKindPackageSync
 		}
 		if bits.Configurable != nil {
 			// Parsing can't be done via JSON unmarshalling, so doing it manually below.
-			bits.Kind = volumeKindConfigurable
+			bits.Kind = runtime.VolumeKindConfigurable
 		}
 	}
 
@@ -112,10 +106,10 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc works
 	var definition proto.Message
 
 	switch bits.Kind {
-	case volumeKindEphemeral:
+	case runtime.VolumeKindEphemeral:
 		definition = &schema.EphemeralVolume{}
 
-	case volumeKindPersistent:
+	case runtime.VolumeKindPersistent:
 		sizeBytes, err := units.FromHumanSize(bits.Size)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "failed to parse value")
@@ -125,7 +119,7 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc works
 			SizeBytes: uint64(sizeBytes),
 		}
 
-	case volumeKindConfigurable:
+	case runtime.VolumeKindConfigurable:
 		val := &fncue.CueV{Val: value}
 		if bits.Configurable != nil {
 			cueV := fncue.CueV{Val: value}
