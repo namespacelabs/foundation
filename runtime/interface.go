@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/std/types"
+	"namespacelabs.dev/foundation/std/runtime"
 )
 
 const (
@@ -135,7 +135,7 @@ type ServerConfig struct {
 	Extensions    []*schema.DefExtension
 	Sidecars      []SidecarRunOpts
 	Inits         []SidecarRunOpts
-	RuntimeConfig *types.ServerRuntimeConfig
+	RuntimeConfig *runtime.RuntimeConfig
 }
 
 type ServerRunOpts struct {

@@ -345,20 +345,20 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
 			var serverRuns []runtime.ServerConfig
-			for k, s := range stack.Servers {
-				imgs, ok := imageIDs.get(s.PackageName())
+			for k, srv := range stack.Servers {
+				imgs, ok := imageIDs.get(srv.PackageName())
 				if !ok {
-					return prepareAndBuildResult{}, fnerrors.InternalError("%s: missing an image to run", s.PackageName())
+					return prepareAndBuildResult{}, fnerrors.InternalError("%s: missing an image to run", srv.PackageName())
 				}
 
 				var run runtime.ServerConfig
 
-				run.RuntimeConfig, err = serverToRuntimeConfig(s)
+				run.RuntimeConfig, err = serverToRuntimeConfig(stack, srv)
 				if err != nil {
 					return prepareAndBuildResult{}, err
 				}
 
-				if err := prepareRunOpts(ctx, stack, s, imgs, &run); err != nil {
+				if err := prepareRunOpts(ctx, stack, srv, imgs, &run); err != nil {
 					return prepareAndBuildResult{}, err
 				}
 
@@ -372,7 +372,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 					return prepareAndBuildResult{}, err
 				}
 
-				if sr := handlerR.ServerDefs[s.PackageName()]; sr != nil {
+				if sr := handlerR.ServerDefs[srv.PackageName()]; sr != nil {
 					run.Extensions = sr.Extensions
 				}
 
@@ -621,7 +621,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 	if err != nil {
 		return err
 	}
-	merged, err := startup.ComputeConfig(ctx, s.Env(), serverStartupPlan, stack.GetParsed(s.PackageName()), inputs)
+	merged, err := startup.ComputeConfig(ctx, s.Env(), serverStartupPlan, stack.GetParsed(s.PackageName()).Deps, inputs)
 	if err != nil {
 		return err
 	}

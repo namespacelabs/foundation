@@ -112,7 +112,7 @@ func PrepareProvisionWith(env *schema.Environment, moduleNamespace string, syste
 }
 
 type serverRunState struct {
-	declarations []kubedef.Apply
+	operations []kubedef.Apply
 }
 
 type deploymentState struct {
@@ -189,7 +189,7 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 
 		if at := tasks.Attachments(ctx); at.IsStoring() {
 			output := &bytes.Buffer{}
-			for k, decl := range singleState.declarations {
+			for k, decl := range singleState.operations {
 				if k > 0 {
 					fmt.Fprintln(output, "---")
 				}
@@ -204,7 +204,7 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 			at.Attach(tasks.Output(fmt.Sprintf("%s.k8s-decl.yaml", server.Server.PackageName()), "application/yaml"), output.Bytes())
 		}
 
-		for _, apply := range singleState.declarations {
+		for _, apply := range singleState.operations {
 			def, err := apply.ToDefinition(server.Server.PackageName())
 			if err != nil {
 				return nil, err

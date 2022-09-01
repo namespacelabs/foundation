@@ -23,6 +23,9 @@ const (
 	K8sEnvTimeout         = "k8s.namespacelabs.dev/env-timeout"
 	K8sNamespaceDriver    = "k8s.namespacelabs.dev/namespace-driver"
 	K8sConfigImage        = "k8s.namespacelabs.dev/config-image"
+	K8sKind               = "k8s.namespacelabs.dev/kind"
+
+	K8sRuntimeConfig = "runtime-config"
 
 	AppKubernetesIoManagedBy = "app.kubernetes.io/managed-by"
 

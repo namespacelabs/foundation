@@ -1,0 +1,44 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.std.runtime;
+
+option go_package = "namespacelabs.dev/foundation/std/runtime";
+
+// The runtime configuration is generated from the deployment plan. It is
+// injected into the server at runtime.
+message RuntimeConfig {
+    ServerEnvironment environment = 1;
+
+    Server current = 2;
+
+    // References to other servers that this server depends on.
+    repeated Server stack_entry = 3;
+}
+
+message Server {
+    string package_name = 1;
+    string module_name  = 2;
+
+    repeated Port    port    = 3;
+    repeated Service service = 4;
+
+    message Port {
+        string name = 1;
+        int32  port = 2;
+    }
+}
+
+message ServerEnvironment {
+    string name    = 1;
+    string purpose = 2;
+}
+
+message Service {
+    string owner    = 1;  // Package name.
+    string name     = 2;  // Scoped to package name.
+    string endpoint = 3;  // E.g. hostname:port.
+}

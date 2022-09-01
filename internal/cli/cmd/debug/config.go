@@ -67,7 +67,7 @@ func newComputeConfigCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			c, err := startup.ComputeConfig(ctx, s.Env(), serverStartupPlan, evald, sargs)
+			c, err := startup.ComputeConfig(ctx, s.Env(), serverStartupPlan, evald.Deps, sargs)
 			if err != nil {
 				return err
 			}

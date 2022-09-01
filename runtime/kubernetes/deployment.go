@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
@@ -29,7 +30,11 @@ import (
 
 var DeployAsPodsInTests = true
 
-const kubeNode schema.PackageName = "namespacelabs.dev/foundation/std/runtime/kubernetes"
+const (
+	kubeNode schema.PackageName = "namespacelabs.dev/foundation/std/runtime/kubernetes"
+
+	runtimeConfigVersion = 0
+)
 
 type perEnvConf struct {
 	dashnessPeriod        int32
@@ -385,7 +390,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 					applycorev1.PersistentVolumeClaimVolumeSource().
 						WithClaimName(rs.PersistentId)))
 
-			s.declarations = append(s.declarations, kubedef.Apply{
+			s.operations = append(s.operations, kubedef.Apply{
 				Description: fmt.Sprintf("Persistent storage for %s", rs.Owner),
 				Resource: applycorev1.PersistentVolumeClaim(rs.PersistentId, ns).
 					WithSpec(applycorev1.PersistentVolumeClaimSpec().
@@ -473,6 +478,44 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		return err
 	}
 
+	if server.RuntimeConfig != nil {
+		serializedConfig, err := json.Marshal(server.RuntimeConfig)
+		if err != nil {
+			return fnerrors.InternalError("failed to serialize runtime configuration: %w", err)
+		}
+
+		configDigest, err := schema.DigestOf(map[string]any{
+			"version": runtimeConfigVersion,
+			"config":  serializedConfig,
+		})
+		if err != nil {
+			return fnerrors.InternalError("failed to digest runtime configuration: %w", err)
+		}
+
+		configId := deploymentId + "-rtconfig-" + configDigest.Hex[:8]
+
+		// Needs to be declared before it's used.
+		s.operations = append(s.operations, kubedef.Apply{
+			Description: "Runtime configuration",
+			Resource: applycorev1.ConfigMap(configId, ns).
+				WithAnnotations(annotations).
+				WithLabels(labels).
+				WithLabels(map[string]string{
+					kubedef.K8sKind: kubedef.K8sRuntimeConfig,
+				}).
+				WithImmutable(true).
+				WithData(map[string]string{
+					"runtime.json": string(serializedConfig),
+				}),
+		})
+
+		spec = spec.WithVolumes(applycorev1.Volume().
+			WithName(configId).
+			WithConfigMap(applycorev1.ConfigMapVolumeSource().WithName(configId)))
+
+		container = container.WithVolumeMounts(applycorev1.VolumeMount().WithMountPath("/namespace").WithName(configId).WithReadOnly(true))
+	}
+
 	spec = spec.
 		WithSecurityContext(podSecCtx).
 		WithContainers(container).
@@ -495,7 +538,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			annotations[ann.Key] = ann.Value
 		}
 
-		s.declarations = append(s.declarations, kubedef.Apply{
+		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Service Account",
 			Resource: applycorev1.ServiceAccount(serviceAccount, ns).
 				WithLabels(labels).
@@ -513,7 +556,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	// deployments.
 	// Admin servers are excluded here as they run as singletons in a global namespace.
 	if r.env.Purpose == schema.Environment_TESTING && DeployAsPodsInTests && !srv.Proto().ClusterAdmin {
-		s.declarations = append(s.declarations, kubedef.Apply{
+		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server",
 			Resource: applycorev1.Pod(deploymentId, ns).
 				WithAnnotations(annotations).
@@ -526,7 +569,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	if server.Server.IsStateful() {
-		s.declarations = append(s.declarations, kubedef.Apply{
+		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server StatefulSet",
 			Resource: appsv1.
 				StatefulSet(deploymentId, ns).
@@ -538,7 +581,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(srv.Proto())))),
 		})
 	} else {
-		s.declarations = append(s.declarations, kubedef.Apply{
+		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server Deployment",
 			Resource: appsv1.
 				Deployment(deploymentId, ns).
@@ -637,7 +680,7 @@ func (r K8sRuntime) deployEndpoint(ctx context.Context, server runtime.ServerCon
 			return err
 		}
 
-		s.declarations = append(s.declarations, kubedef.Apply{
+		s.operations = append(s.operations, kubedef.Apply{
 			Description: fmt.Sprintf("Service %s", endpoint.ServiceName),
 			Resource: applycorev1.
 				Service(endpoint.AllocatedName, ns).

@@ -40,6 +40,7 @@ type ProvisionOpts struct {
 }
 
 type ParsedServer struct {
+	DeclaredStack               schema.PackageList
 	Deps                        []*ParsedNode
 	ServerSidecars, ServerInits []*schema.SidecarContainer
 }
@@ -91,10 +92,10 @@ func (stack *Stack) Get(pkg schema.PackageName) *provision.Server {
 	return nil
 }
 
-func (stack *Stack) GetParsed(srv schema.PackageName) []*ParsedNode {
+func (stack *Stack) GetParsed(srv schema.PackageName) *ParsedServer {
 	for k, s := range stack.Servers {
 		if s.PackageName() == srv {
-			return stack.ParsedServers[k].Deps
+			return stack.ParsedServers[k]
 		}
 	}
 
@@ -229,6 +230,7 @@ func (cs *computeState) computeStackContents(ctx context.Context, server provisi
 		ps.Deps = parsedDeps
 		ps.ServerSidecars = server.Provisioning.Sidecars
 		ps.ServerInits = server.Provisioning.Inits
+		ps.DeclaredStack = declaredStack
 
 		// Fill in env-bound data now, post ports allocation.
 		endpoints, internal, err := runtime.ComputeEndpoints(server, allocatedPorts.Ports)

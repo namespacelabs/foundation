@@ -4,6 +4,11 @@
 
 package uniquestrings
 
+import (
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
+)
+
 // Not thread safe.
 type List struct {
 	index   map[string]bool
@@ -34,4 +39,8 @@ func (dl *List) Has(v string) bool {
 		return dl.index[v]
 	}
 	return false
+}
+
+func (dl *List) Clone() List {
+	return List{index: maps.Clone(dl.index), ordered: slices.Clone(dl.ordered)}
 }
