@@ -99,7 +99,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
-		parsedMounts, inlinedVolumes, err := parseMounts(ctx, loc, volumes, mounts)
+		parsedMounts, inlinedVolumes, err := parseMounts(ctx, pl, loc, volumes, mounts)
 		if err != nil {
 			return nil, nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 		}
@@ -112,7 +112,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	return server, startupPlan, err
 }
 
-func parseMounts(ctx context.Context, loc workspace.Location, volumes []*schema.Volume, v *fncue.CueV) ([]*schema.Server_Mount, []*schema.Volume, error) {
+func parseMounts(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, volumes []*schema.Volume, v *fncue.CueV) ([]*schema.Server_Mount, []*schema.Volume, error) {
 	it, err := v.Val.Fields()
 	if err != nil {
 		return nil, nil, err
@@ -135,7 +135,7 @@ func parseMounts(ctx context.Context, loc workspace.Location, volumes []*schema.
 				return nil, nil, fnerrors.UserError(loc, "volume %q already exists", volumeName)
 			}
 
-			parsedVolume, err := parseVolume(ctx, loc, volumeName, true /* isInlined */, it.Value())
+			parsedVolume, err := parseVolume(ctx, pl, loc, volumeName, true /* isInlined */, it.Value())
 			if err != nil {
 				return nil, nil, err
 			}
