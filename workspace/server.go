@@ -101,6 +101,23 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 				})
 			}
 
+			for _, rs := range node.Volumes {
+				sealed.Proto.Server.Volumes = append(sealed.Proto.Server.Volumes, &schema.Volume{
+					Owner:      node.PackageName,
+					Kind:       rs.Kind,
+					Name:       rs.Name,
+					Definition: rs.Definition,
+				})
+			}
+
+			for _, rs := range node.Mounts {
+				sealed.Proto.Server.Mounts = append(sealed.Proto.Server.Mounts, &schema.Mount{
+					Owner:      node.PackageName,
+					Path:       rs.Path,
+					VolumeName: rs.VolumeName,
+				})
+			}
+
 			if node.EnvironmentRequirement != nil {
 				sealed.Proto.Server.EnvironmentRequirement = append(sealed.Proto.Server.EnvironmentRequirement, &schema.Server_EnvironmentRequirement{
 					Package:                     node.PackageName,

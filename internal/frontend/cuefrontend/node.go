@@ -331,6 +331,16 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 		})
 	}
 
+	if mounts := v.LookupPath("mounts"); mounts.Exists() {
+		parsedMounts, inlinedVolumes, err := ParseMounts(ctx, pl, loc, nil, mounts)
+		if err != nil {
+			return fnerrors.Wrapf(loc, err, "parsing mounts")
+		}
+
+		node.Volumes = append(node.Volumes, inlinedVolumes...)
+		node.Mounts = parsedMounts
+	}
+
 	if environment := v.LookupPath("environment"); environment.Exists() {
 		var er cueEnvironmentRequirements
 		if err := environment.Val.Decode(&er); err != nil {

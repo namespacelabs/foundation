@@ -1,0 +1,55 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+
+message Mount {
+    string owner       = 1;  // Package that declared the mount.
+    string path        = 2;
+    string volume_name = 3;
+}
+
+message Volume {
+    string owner = 1;  // Package that declared the volume.
+
+    // The type of volume.
+    string kind = 2;
+    // Explicit if defined at the file level, auto-generated from the mount point if inlined.
+    // Volumes then referenced by the name from "mounts".
+    string name = 3;
+
+    google.protobuf.Any definition = 4;
+}
+
+message EphemeralVolume {}
+
+message PersistentVolume {
+    string id         = 1;
+    uint64 size_bytes = 2;
+}
+
+message ConfigurableVolume {
+    repeated Entry entries = 1;
+
+    message Entry {
+        // A single file or a directory, relative to the mount path.
+        string path = 1;
+
+        // One of.
+        Resource inline   = 2;
+        string secret_ref = 3;
+    }
+}
+
+// TODO reconcile with std.types.Resource.
+message Resource {
+    string path     = 1;
+    bytes  contents = 2;
+}

@@ -90,6 +90,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 			return nil, nil, fnerrors.UserError(loc, "http routes are not supported for a private service %q", name)
 		}
 	}
+
 	sortServices(out.Service)
 	sortServices(out.Ingress)
 
@@ -99,7 +100,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
-		parsedMounts, inlinedVolumes, err := parseMounts(ctx, pl, loc, volumes, mounts)
+		parsedMounts, inlinedVolumes, err := cuefrontend.ParseMounts(ctx, pl, loc, volumes, mounts)
 		if err != nil {
 			return nil, nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 		}
@@ -110,46 +111,6 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 
 	server, err := workspace.TransformOpaqueServer(ctx, pl, loc, out, pp, opts)
 	return server, startupPlan, err
-}
-
-func parseMounts(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, volumes []*schema.Volume, v *fncue.CueV) ([]*schema.Server_Mount, []*schema.Volume, error) {
-	it, err := v.Val.Fields()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	inlinedVolumes := []*schema.Volume{}
-	out := []*schema.Server_Mount{}
-
-	for it.Next() {
-		volumeName, err := it.Value().String()
-		if err == nil {
-			// Volume reference.
-			if findVolume(volumeName, volumes) == nil {
-				return nil, nil, fnerrors.UserError(loc, "volume %q does not exist", volumeName)
-			}
-		} else {
-			// Inline volume definition.
-			volumeName = it.Label()
-			if findVolume(volumeName, volumes) != nil {
-				return nil, nil, fnerrors.UserError(loc, "volume %q already exists", volumeName)
-			}
-
-			parsedVolume, err := parseVolume(ctx, pl, loc, volumeName, true /* isInlined */, it.Value())
-			if err != nil {
-				return nil, nil, err
-			}
-
-			inlinedVolumes = append(inlinedVolumes, parsedVolume)
-		}
-
-		out = append(out, &schema.Server_Mount{
-			Path:       it.Label(),
-			VolumeName: volumeName,
-		})
-	}
-
-	return out, inlinedVolumes, nil
 }
 
 func sortServices(services []*schema.Server_ServiceSpec) {

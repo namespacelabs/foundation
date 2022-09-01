@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package cuefrontendopaque
+package cuefrontend
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -25,7 +24,7 @@ const (
 	volumeKindPackageSync  = "namespace.so/volume/package-sync"
 )
 
-func parseVolumes(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, v *fncue.CueV) ([]*schema.Volume, error) {
+func ParseVolumes(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, v *fncue.CueV) ([]*schema.Volume, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
@@ -105,8 +104,9 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc works
 	}
 
 	out := &schema.Volume{
-		Kind: bits.Kind,
-		Name: name,
+		Owner: loc.PackageName.String(),
+		Kind:  bits.Kind,
+		Name:  name,
 	}
 
 	var definition proto.Message
@@ -201,7 +201,7 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 			return nil, fnerrors.InternalError("loading directory not implemented yet")
 
 		case bits.FromFile != "":
-			rsc, err := cuefrontend.LoadResource(fsys, loc, bits.FromFile)
+			rsc, err := LoadResource(fsys, loc, bits.FromFile)
 			if err != nil {
 				return nil, err
 			}
@@ -222,7 +222,7 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 	}
 }
 
-func findVolume(name string, volumes []*schema.Volume) *schema.Volume {
+func findVolume(volumes []*schema.Volume, name string) *schema.Volume {
 	for _, v := range volumes {
 		if v.Name == name {
 			return v

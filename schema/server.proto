@@ -13,6 +13,7 @@ import "schema/networking.proto";
 import "schema/binary.proto";
 import "schema/environment.proto";
 import "schema/reference.proto";
+import "schema/volume.proto";
 
 enum Framework {
     FRAMEWORK_UNSPECIFIED = 0;
@@ -84,6 +85,14 @@ message Server {
 
     repeated EnvironmentRequirement environment_requirement = 24;
 
+    // Fields specific to opaque servers.
+    Integration integration = 25;
+
+    // Includes file-level and inlined volumes.
+    repeated Volume volumes = 26;
+
+    repeated Mount mounts = 27;
+
     message Binary {
         string prebuilt     = 1;
         string package_name = 2;
@@ -118,62 +127,12 @@ message Server {
         repeated Environment.Label environment_does_not_have_label = 3;
     }
 
-    // Fields specific to opaque servers.
-
-    Integration integration = 25;
-
-    // Includes file-level and inlined volumes.
-    repeated Volume volumes = 26;
-
-    repeated Mount mounts = 27;
-
     message Integration {
         string kind = 1;
 
         // TODO: define kind-specific fields in a generic way.
         string dockerfile = 2;
     }
-
-    message Mount {
-        string path        = 1;
-        string volume_name = 2;
-    }
-}
-
-message Volume {
-    // The type of volume.
-    string kind = 1;
-    // Explicit if defined at the file level, auto-generated from the mount point if inlined.
-    // Volumes then referenced by the name from "mounts".
-    string name = 2;
-
-    google.protobuf.Any definition = 3;
-}
-
-message EphemeralVolume {}
-
-message PersistentVolume {
-    string id         = 1;
-    uint64 size_bytes = 2;
-}
-
-message ConfigurableVolume {
-    repeated Entry entries = 1;
-
-    message Entry {
-        // A single file or a directory, relative to the mount path.
-        string path = 1;
-
-        // One of.
-        Resource inline   = 2;
-        string secret_ref = 3;
-    }
-}
-
-// TODO reconcile with std.types.Resource.
-message Resource {
-    string path     = 1;
-    bytes  contents = 2;
 }
 
 // Allocations for a tree of instanced values.
