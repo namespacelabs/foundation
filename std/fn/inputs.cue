@@ -54,12 +54,6 @@ import fntypes "namespacelabs.dev/foundation/std/fn:types"
 	services: [string]: fntypes.#Proto
 }
 
-#FocusServer: {
-	@fn(input=focus_server)
-	image?:    string
-	framework: string
-}
-
 #Workspace: {
 	@fn(input=workspace)
 	moduleName: string

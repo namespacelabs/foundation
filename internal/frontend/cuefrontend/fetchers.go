@@ -211,17 +211,6 @@ func FetchPackage(pl workspace.Packages) FetcherFunc {
 	}
 }
 
-type cueServerResult struct {
-	Image     string `json:"image"`
-	Framework string `json:"framework"`
-}
-
-func FetchFocusServer(serverImageRef string, srv *schema.Server) FetcherFunc {
-	return func(c context.Context, v cue.Value) (interface{}, error) {
-		return cueServerResult{Image: serverImageRef, Framework: srv.Framework.String()}, nil
-	}
-}
-
 func FetchEnv(env *schema.Environment, workspace *schema.Workspace) FetcherFunc {
 	return func(context.Context, cue.Value) (interface{}, error) {
 		return cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String(), Ephemeral: env.Ephemeral}, nil
