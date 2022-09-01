@@ -8,6 +8,7 @@ import (
 	"context"
 	"io/fs"
 	"io/ioutil"
+	"strings"
 
 	"cuelang.org/go/cue"
 	"github.com/docker/go-units"
@@ -72,9 +73,10 @@ type cueFilesetVolume struct {
 }
 
 type cueConfigurableEntry struct {
-	FromDir    string `json:"fromDir"`
-	FromFile   string `json:"fromFile"`
-	FromSecret string `json:"fromSecret"`
+	FromDir              string `json:"fromDir"`
+	FromFile             string `json:"fromFile"`
+	FromSecret           string `json:"fromSecret"`
+	FromKubernetesSecret string `json:"fromKubernetesSecret"`
 }
 
 func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, name string, isInlined bool, value cue.Value) (*schema.Volume, error) {
@@ -241,6 +243,17 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 
 	case bits.FromSecret != "":
 		return &schema.ConfigurableVolume_Entry{SecretRef: bits.FromSecret}, nil
+
+	case bits.FromKubernetesSecret != "":
+		parts := strings.SplitN(bits.FromKubernetesSecret, ":", 2)
+		if len(parts) != 2 {
+			return nil, fnerrors.BadInputError("kubernetes secrets are specified as {name}:{key}")
+		}
+
+		return &schema.ConfigurableVolume_Entry{KubernetesSecretRef: &schema.ConfigurableVolume_Entry_KubernetesSecret{
+			SecretName: parts[0],
+			SecretKey:  parts[1],
+		}}, nil
 
 	default:
 		return nil, fnerrors.UserError(loc, "must have a source")

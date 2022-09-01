@@ -44,9 +44,15 @@ message ConfigurableVolume {
         string path = 1;
 
         // One of.
-        Resource inline        = 2;
-        ResourceSet inline_set = 4;
-        string      secret_ref = 3;
+        Resource inline                        = 2;
+        ResourceSet      inline_set            = 4;
+        string           secret_ref            = 3;
+        KubernetesSecret kubernetes_secret_ref = 5;
+
+        message KubernetesSecret {
+            string secret_name = 1;
+            string secret_key  = 2;
+        }
     }
 }
 
