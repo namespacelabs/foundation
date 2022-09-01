@@ -12,11 +12,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/internal/orchestration/service/proto"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
+	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/go/rpcerrors"
 	"namespacelabs.dev/foundation/std/go/server"
 )
-
-const maxLogLevel = 0
 
 type Service struct {
 	d deployer
@@ -26,7 +25,7 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 	log.Printf("new Deploy request for %d focus servers: %s\n", len(req.Plan.FocusServer), strings.Join(req.Plan.FocusServer, ","))
 
 	// TODO store target state (req.Plan + merged with history) ?
-	id, err := svc.d.Deploy(req.Plan)
+	id, err := svc.d.Schedule(req.Plan)
 	if err != nil {
 		return nil, rpcerrors.Errorf(codes.Internal, "failed to deploy plan: %w", err)
 	}
@@ -39,34 +38,30 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream proto.OrchestrationService_DeploymentStatusServer) error {
 	log.Printf("new DeploymentStatus request for deployment %s\n", req.Id)
 
-	s, err := svc.d.Status(req.Id)
-	if err != nil {
-		return err
-	}
+	errch := make(chan error, 1)
+	ch := make(chan *orchestration.Event)
+
+	go func() {
+		defer close(errch)
+		errch <- svc.d.Status(req.Id, ch)
+	}()
 
 	for {
-		ev, ok := <-s.events
+		ev, ok := <-ch
 		if !ok {
-			// Event channel closed, check if there is an error
-			err, ok := <-s.errch
-			if ok {
-				return err
-			}
-			return nil
+			return <-errch
 		}
 
 		if err := stream.Send(&proto.DeploymentStatusResponse{
 			Event: ev,
 		}); err != nil {
-			return err
+			log.Printf("failed to send status response: %v", err)
 		}
 	}
 }
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
-	proto.RegisterOrchestrationServiceServer(srv, &Service{
-		d: deployer{serverCtx: ctx, m: make(map[string]*streams)},
-	})
+	proto.RegisterOrchestrationServiceServer(srv, &Service{d: makeDeployer(ctx)})
 
 	kubeops.Register()
 }
