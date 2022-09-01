@@ -13,13 +13,16 @@ import (
 )
 
 type phase1plan struct {
-	startupPlan *schema.StartupPlan
+	startupPlan   *schema.StartupPlan
+	declaredStack []schema.PackageName
 }
 
 func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
 	var pdata frontend.ProvisionPlan
 
-	pdata.Startup = phase2plan(p1)
+	pdata.Startup = phase2plan{startupPlan: p1.startupPlan}
+
+	pdata.DeclaredStack = p1.declaredStack
 
 	return pdata, nil
 }

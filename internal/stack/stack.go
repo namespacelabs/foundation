@@ -192,6 +192,7 @@ func (cs *computeState) computeStackContents(ctx context.Context, server provisi
 		}
 
 		var declaredStack schema.PackageList
+		declaredStack.AddMultiple(server.Provisioning.DeclaredStack...)
 		for _, p := range parsedDeps {
 			declaredStack.AddMultiple(p.ProvisionPlan.DeclaredStack...)
 		}

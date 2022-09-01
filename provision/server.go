@@ -89,10 +89,6 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 		return Server{}, fnerrors.Wrap(t.Location, err)
 	}
 
-	if len(pdata.DeclaredStack) > 0 {
-		return Server{}, fnerrors.UserError(t.Location, "servers can't add servers to the stack")
-	}
-
 	t.Startup = pdata.Startup
 	t.Provisioning = pdata.PreparedProvisionPlan
 	t.entry.ServerNaming = pdata.Naming

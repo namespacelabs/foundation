@@ -54,6 +54,23 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		return nil, fnerrors.Wrapf(loc, err, "parsing server")
 	}
 	parsedPkg.Server = parsedSrv
+
+	if requires := v.LookupPath("requires"); requires.Exists() {
+		var bits []schema.PackageName
+		if err := requires.Val.Decode(&bits); err != nil {
+			return nil, err
+		}
+
+		phase1plan.declaredStack = bits
+
+		for _, p := range phase1plan.declaredStack {
+			err := ft.loader.Ensure(ctx, p)
+			if err != nil {
+				return nil, fnerrors.Wrapf(loc, err, "loading package %s", p)
+			}
+		}
+	}
+
 	phase1plan.startupPlan = startupPlan
 
 	return parsedPkg, nil
