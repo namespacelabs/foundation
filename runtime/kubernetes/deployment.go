@@ -9,7 +9,9 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -418,20 +420,14 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 			var configmapItems []*applycorev1.KeyToPathApplyConfiguration
 			for _, entry := range cv.Entries {
-				key := entry.Path
-
 				switch {
 				case entry.Inline != nil:
-					fmt.Fprintf(h, "%s:", key)
-					_, _ = h.Write(entry.Inline.Contents)
-					fmt.Fprintln(h)
-					if entry.Inline.Utf8 {
-						data[key] = string(entry.Inline.Contents)
-					} else {
-						binaryData[key] = entry.Inline.Contents
-					}
+					configmapItems = append(configmapItems, makeConfigMapEntry(h, entry, entry.Inline, entry.Path, data, binaryData))
 
-					configmapItems = append(configmapItems, applycorev1.KeyToPath().WithKey(key).WithPath(entry.Path))
+				case entry.InlineSet != nil:
+					for _, rsc := range entry.InlineSet.Resource {
+						configmapItems = append(configmapItems, makeConfigMapEntry(h, entry, rsc, filepath.Join(entry.Path, rsc.Path), data, binaryData))
+					}
 
 				case entry.SecretRef != "":
 					parts := strings.SplitN(entry.SecretRef, ":", 3)
@@ -689,6 +685,21 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	return nil
+}
+
+func makeConfigMapEntry(h io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.Resource, targetPath string, data map[string]string, binaryData map[string][]byte) *applycorev1.KeyToPathApplyConfiguration {
+	key := fmt.Sprintf("%s:%s", entry.Path, rsc.Path)
+
+	fmt.Fprintf(h, "%s:", key)
+	_, _ = h.Write(rsc.Contents)
+	fmt.Fprintln(h)
+	if entry.Inline.Utf8 {
+		data[key] = string(rsc.Contents)
+	} else {
+		binaryData[key] = rsc.Contents
+	}
+
+	return applycorev1.KeyToPath().WithKey(key).WithPath(targetPath)
 }
 
 func makePersistentVolume(ns string, env *schema.Environment, srv provision.Server, owner, name, persistentId string, sizeBytes uint64) (*applycorev1.VolumeApplyConfiguration, []kubedef.Apply, error) {

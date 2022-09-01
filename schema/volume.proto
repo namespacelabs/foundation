@@ -44,9 +44,14 @@ message ConfigurableVolume {
         string path = 1;
 
         // One of.
-        Resource inline   = 2;
-        string secret_ref = 3;
+        Resource inline        = 2;
+        ResourceSet inline_set = 4;
+        string      secret_ref = 3;
     }
+}
+
+message ResourceSet {
+    repeated Resource resource = 1;
 }
 
 // TODO reconcile with std.types.Resource.

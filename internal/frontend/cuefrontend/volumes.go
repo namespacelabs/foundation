@@ -6,12 +6,17 @@ package cuefrontend
 
 import (
 	"context"
+	"io/fs"
+	"io/ioutil"
 
 	"cuelang.org/go/cue"
 	"github.com/docker/go-units"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
@@ -135,18 +140,20 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc works
 			}
 
 			for it.Next() {
-				parsedEntry, err := parseConfigurableEntry(ctx, pl, loc, it.Label(), isInlined, it.Value())
+				parsedEntry, err := parseConfigurableEntry(ctx, pl, loc, isInlined, it.Value())
 				if err != nil {
-					return nil, err
+					return nil, fnerrors.Wrapf(loc, err, it.Label())
 				}
+				parsedEntry.Path = it.Label()
 				entries = append(entries, parsedEntry)
 			}
 		} else {
 			// Entry name is the volume/mount name.
-			entry, err := parseConfigurableEntry(ctx, pl, loc, name, isInlined, val.Val)
+			entry, err := parseConfigurableEntry(ctx, pl, loc, isInlined, val.Val)
 			if err != nil {
-				return nil, err
+				return nil, fnerrors.Wrapf(loc, err, name)
 			}
+			entry.Path = name
 			entries = append(entries, entry)
 		}
 
@@ -167,7 +174,7 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc works
 	return out, nil
 }
 
-func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, name string, isVolumeInlined bool, v cue.Value) (*schema.ConfigurableVolume_Entry, error) {
+func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, isVolumeInlined bool, v cue.Value) (*schema.ConfigurableVolume_Entry, error) {
 	if v.Kind() == cue.StringKind {
 		// Inlined content.
 		str, _ := v.String()
@@ -178,6 +185,7 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 		return &schema.ConfigurableVolume_Entry{
 			Inline: &schema.Resource{
 				Contents: []byte(str),
+				Utf8:     true,
 			},
 		}, nil
 	}
@@ -194,7 +202,34 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 
 	switch {
 	case bits.FromDir != "":
-		return nil, fnerrors.InternalError("loading directory not implemented yet")
+		snapshot, err := memfs.SnapshotDir(fsys, bits.FromDir, memfs.SnapshotOpts{})
+		if err != nil {
+			return nil, fnerrors.InternalError("%s: failed to snapshot: %w", bits.FromDir, err)
+		}
+
+		set := &schema.ResourceSet{}
+		if err := fnfs.VisitFiles(ctx, snapshot, func(path string, bs bytestream.ByteStream, de fs.DirEntry) error {
+			r, err := bs.Reader()
+			if err != nil {
+				return err
+			}
+
+			contents, err := ioutil.ReadAll(r)
+			if err != nil {
+				return fnerrors.InternalError("%s: failed to read contents: %w", path, err)
+			}
+
+			set.Resource = append(set.Resource, &schema.Resource{
+				Path:     loc.Rel(path),
+				Contents: contents,
+			})
+
+			return nil
+		}); err != nil {
+			return nil, fnerrors.InternalError("%s: failed to consume snapshot: %w", bits.FromDir, err)
+		}
+
+		return &schema.ConfigurableVolume_Entry{InlineSet: set}, nil
 
 	case bits.FromFile != "":
 		rsc, err := LoadResource(fsys, loc, bits.FromFile)
@@ -202,17 +237,13 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 			return nil, err
 		}
 
-		return &schema.ConfigurableVolume_Entry{
-			Inline: rsc,
-		}, nil
+		return &schema.ConfigurableVolume_Entry{Inline: rsc}, nil
 
 	case bits.FromSecret != "":
-		return &schema.ConfigurableVolume_Entry{
-			SecretRef: bits.FromSecret,
-		}, nil
+		return &schema.ConfigurableVolume_Entry{SecretRef: bits.FromSecret}, nil
 
 	default:
-		return nil, fnerrors.UserError(loc, "configurable entry %q must have a source", name)
+		return nil, fnerrors.UserError(loc, "must have a source")
 	}
 }
 
