@@ -168,51 +168,51 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc works
 }
 
 func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, name string, isVolumeInlined bool, v cue.Value) (*schema.ConfigurableVolume_Entry, error) {
-	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
-	if err != nil {
-		return nil, err
-	}
-
 	if v.Kind() == cue.StringKind {
 		// Inlined content.
 		str, _ := v.String()
 		if !isVolumeInlined {
 			return nil, fnerrors.UserError(loc, "Configurable content %q without target path must be inlined", str)
 		}
+
 		return &schema.ConfigurableVolume_Entry{
 			Inline: &schema.Resource{
 				Contents: []byte(str),
 			},
 		}, nil
-	} else {
-		var bits cueConfigurableEntry
-		if err := v.Decode(&bits); err != nil {
+	}
+
+	var bits cueConfigurableEntry
+	if err := v.Decode(&bits); err != nil {
+		return nil, err
+	}
+
+	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
+	if err != nil {
+		return nil, err
+	}
+
+	switch {
+	case bits.FromDir != "":
+		return nil, fnerrors.InternalError("loading directory not implemented yet")
+
+	case bits.FromFile != "":
+		rsc, err := LoadResource(fsys, loc, bits.FromFile)
+		if err != nil {
 			return nil, err
 		}
 
-		switch {
-		case bits.FromDir != "":
-			return nil, fnerrors.InternalError("loading directory not implemented yet")
+		return &schema.ConfigurableVolume_Entry{
+			Inline: rsc,
+		}, nil
 
-		case bits.FromFile != "":
-			rsc, err := LoadResource(fsys, loc, bits.FromFile)
-			if err != nil {
-				return nil, err
-			}
+	case bits.FromSecret != "":
+		return &schema.ConfigurableVolume_Entry{
+			SecretRef: bits.FromSecret,
+		}, nil
 
-			return &schema.ConfigurableVolume_Entry{
-				Inline: rsc,
-			}, nil
-
-		case bits.FromSecret != "":
-			// TODO: verify that a secret exists with the given name
-			return &schema.ConfigurableVolume_Entry{
-				SecretRef: bits.FromSecret,
-			}, nil
-
-		default:
-			return nil, fnerrors.UserError(loc, "configurable entry %q must have a source", name)
-		}
+	default:
+		return nil, fnerrors.UserError(loc, "configurable entry %q must have a source", name)
 	}
 }
 

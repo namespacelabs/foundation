@@ -434,13 +434,17 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 					configmapItems = append(configmapItems, applycorev1.KeyToPath().WithKey(key).WithPath(entry.Path))
 
 				case entry.SecretRef != "":
-					parts := strings.SplitN(entry.SecretRef, ":", 2)
-					if len(parts) != 2 {
-						return fnerrors.BadInputError("invalid secret ref %q (needs two parts)", entry.SecretRef)
+					parts := strings.SplitN(entry.SecretRef, ":", 3)
+					if len(parts) != 3 {
+						return fnerrors.BadInputError("invalid secret ref %q (needs three parts)", entry.SecretRef)
+					}
+
+					if parts[0] != "kubernetes" {
+						return fnerrors.BadInputError("invalid secret ref %q, only support kubernetes", entry.SecretRef)
 					}
 
 					projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
-						applycorev1.SecretProjection().WithName(parts[0]).WithItems(applycorev1.KeyToPath().WithKey(parts[1]).WithPath(entry.Path)),
+						applycorev1.SecretProjection().WithName(parts[1]).WithItems(applycorev1.KeyToPath().WithKey(parts[2]).WithPath(entry.Path)),
 					))
 				}
 			}
