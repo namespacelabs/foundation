@@ -20,7 +20,6 @@ extension: fn.#Extension & {
 
 $env:       inputs.#Environment
 $workspace: inputs.#Workspace
-$focus:     inputs.#FocusServer
 $tool:      inputs.#Package & "namespacelabs.dev/foundation/std/secrets/kubernetes"
 
 configure: fn.#Configure & {
@@ -39,17 +38,6 @@ configure: fn.#Configure & {
 			}
 			noCache:      true // We don't want secret values to end up in the cache.
 			requiresKeys: true // This is temporary while we don't pipe a keys service to tools.
-		}
-	}
-
-	// The required secrets are then mounted to /secrets, where this extension can
-	// pick them up. A map.textpb is also synthesized.
-	startup: {
-		// Only Go servers embed our library.
-		if $focus.framework == "GO" {
-			args: {
-				server_secrets_basepath: "/secrets/server"
-			}
 		}
 	}
 }

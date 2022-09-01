@@ -250,6 +250,18 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		}
 	}
 
+	// The required secrets are then mounted to /secrets, where this extension can
+	// pick them up. A map.textpb is also synthesized.
+	if r.Focus.Server.Framework == schema.Framework_GO {
+		out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
+			With: &kubedef.ContainerExtension{
+				Args: []string{
+					"--server_secrets_basepath=/secrets/server",
+				},
+			},
+		})
+	}
+
 	return nil
 }
 
