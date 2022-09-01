@@ -414,6 +414,9 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 			h := sha256.New()
 
+			projected := applycorev1.ProjectedVolumeSource()
+
+			var configmapItems []*applycorev1.KeyToPathApplyConfiguration
 			for _, entry := range cv.Entries {
 				key := entry.Path
 
@@ -428,13 +431,25 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 						binaryData[key] = entry.Inline.Contents
 					}
 
+					configmapItems = append(configmapItems, applycorev1.KeyToPath().WithKey(key).WithPath(entry.Path))
+
 				case entry.SecretRef != "":
-					return fnerrors.InternalError("secret ref is still not implemented")
+					parts := strings.SplitN(entry.SecretRef, ":", 2)
+					if len(parts) != 2 {
+						return fnerrors.BadInputError("invalid secret ref %q (needs two parts)", entry.SecretRef)
+					}
+
+					projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
+						applycorev1.SecretProjection().WithName(parts[0]).WithItems(applycorev1.KeyToPath().WithKey(parts[1]).WithPath(entry.Path)),
+					))
 				}
 			}
 
-			if len(data) > 0 || len(binaryData) > 0 {
+			if len(configmapItems) > 0 {
 				configId := "static-" + ids.EncodeToBase32String(h.Sum(nil))[6:]
+
+				projected = projected.WithSources(applycorev1.VolumeProjection().WithConfigMap(
+					applycorev1.ConfigMapProjection().WithName(configId).WithItems(configmapItems...)))
 
 				// Needs to be declared before it's used.
 				s.operations = append(s.operations, kubedef.Apply{
@@ -449,11 +464,9 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 						WithData(data).
 						WithBinaryData(binaryData),
 				})
-
-				spec = spec.WithVolumes(applycorev1.Volume().
-					WithName(name).
-					WithConfigMap(applycorev1.ConfigMapVolumeSource().WithName(configId)))
 			}
+
+			spec = spec.WithVolumes(applycorev1.Volume().WithName(name).WithProjected(projected))
 
 		default:
 			return fnerrors.InternalError("%s: unsupported volume type", volume.Kind)
