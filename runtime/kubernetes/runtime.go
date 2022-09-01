@@ -216,7 +216,7 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 	if !r.env.Ephemeral {
 		cleanup, err := anypb.New(&kubedef.OpCleanupRuntimeConfig{
 			Namespace: r.moduleNamespace,
-			CheckPods: r.env.Purpose == schema.Environment_TESTING && DeployAsPodsInTests,
+			CheckPods: deployAsPods(r.env),
 		})
 		if err != nil {
 			return nil, fnerrors.InternalError("failed to serialize cleanup: %w", err)

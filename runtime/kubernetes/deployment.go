@@ -120,6 +120,10 @@ type deployOpts struct {
 	stackIds []string
 }
 
+func deployAsPods(env *schema.Environment) bool {
+	return env.Purpose == schema.Environment_TESTING && DeployAsPodsInTests
+}
+
 func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
 	srv := server.Server
 	ns := serverNamespace(r, srv.Proto())
@@ -558,7 +562,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
 	// Admin servers are excluded here as they run as singletons in a global namespace.
-	if r.env.Purpose == schema.Environment_TESTING && DeployAsPodsInTests && !srv.Proto().ClusterAdmin {
+	if deployAsPods(r.env) && !srv.Proto().ClusterAdmin {
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server",
 			Resource: applycorev1.Pod(deploymentId, ns).

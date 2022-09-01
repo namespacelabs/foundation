@@ -27,7 +27,7 @@ func newInfoCmd() *cobra.Command {
 	depVersion := flag.String("dep_version", "", "Print the version of a given dependency only.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		data, err := workspace.ModuleAt(ctx, *workspaceDir)
+		data, err := workspace.ModuleAt(ctx, *workspaceDir, workspace.ModuleAtArgs{SkipAPIRequirements: true})
 		if err != nil {
 			return err
 		}
