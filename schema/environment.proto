@@ -1,0 +1,42 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+message Environment {
+    string  name    = 1;
+    string  runtime = 2;  // E.g. kubernetes
+    Purpose purpose = 3;
+    // Typically only set for tests. Signals that this environment is single-use and not meant to be user serviceable.
+    bool ephemeral = 4;
+
+    repeated Label labels = 5;
+
+    enum Purpose {
+        PURPOSE_UNKNOWN = 0;
+        DEVELOPMENT     = 1;
+        TESTING         = 2;
+        PRODUCTION      = 3;
+    }
+
+    message Label {
+        string name  = 1;
+        string value = 2;
+    }
+}
+
+message Platform {
+    // Architecture field specifies the CPU architecture, for example
+    // `amd64` or `ppc64`.
+    string architecture = 1;
+
+    // OS specifies the operating system, for example `linux` or `windows`.
+    string os = 2;
+
+    string variant = 3;
+}

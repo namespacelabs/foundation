@@ -1,0 +1,33 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "schema/domain.proto";
+
+message Naming {
+    string                        with_org                  = 1;  // Allocate with the following organization.
+    repeated AdditionalDomainName additional_user_specified = 2;  // If set, also configures the ingress with these domains.
+    repeated AdditionalDomainName additional_tls_managed    = 3;  // If set, both configures an ingress with these domains, and requests TLS certificate from Foundation.
+
+    message AdditionalDomainName {
+        string allocated_name = 1;
+        string fqdn           = 2;
+    }
+}
+
+message ComputedNaming {
+    Naming             source                      = 1;
+    string             base_domain                 = 2;  // E.g. {org}.nscloud.dev
+    string             tls_passthrough_base_domain = 3;  // E.g. int-a.nscluster.cloud
+    Domain.ManagedType managed                     = 4;
+    bool               upstream_tls_termination    = 5;  // If true, these addresses will be TLS terminated.
+    string             domain_fragment_suffix      = 6;  // If set, domain name generation will use this suffix rather than creating a new sub-domain.
+    bool               use_short_alias             = 7;  // Enable new endpoint alias generation.
+    string             main_module_name            = 8;
+}

@@ -12,7 +12,7 @@ import "google/protobuf/timestamp.proto";
 import "schema/runtime.proto";
 import "schema/definition.proto";
 import "schema/serialized.proto";
-import "schema/schema.proto";
+import "schema/environment.proto";
 import "schema/storage/logs.proto";
 import "schema/storage/diagnostics.proto";
 

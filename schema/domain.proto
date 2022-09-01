@@ -1,0 +1,33 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+message Domain {
+    reserved 2;
+
+    string      fqdn                      = 1;
+    ManagedType managed                   = 3;
+    bool        tls_frontend              = 4;  // If set to true, this domain's ingress is TLS terminated.
+    bool        tls_incluster_termination = 5;  // If set to true, we manage the TLS termination in cluster.
+
+    enum ManagedType {
+        MANAGED_UNKNOWN            = 0;
+        LOCAL_MANAGED              = 1;
+        CLOUD_MANAGED              = 2;
+        USER_SPECIFIED             = 3;
+        USER_SPECIFIED_TLS_MANAGED = 4;
+        CLOUD_TERMINATION          = 5;
+    }
+}
+
+message Certificate {
+    bytes private_key        = 1;
+    bytes certificate_bundle = 2;
+    bool  private_ca         = 3;  // If true, the certificate was emitted from a private CA, i.e. will be untrusted.
+}

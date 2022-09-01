@@ -1,0 +1,223 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+import "schema/networking.proto";
+import "schema/binary.proto";
+import "schema/environment.proto";
+import "schema/reference.proto";
+
+enum Framework {
+    FRAMEWORK_UNSPECIFIED = 0;
+    GO                    = 1;
+    WEB                   = 2;
+    NODEJS                = 3;
+    // Only for servers
+    OPAQUE = 4;
+}
+
+// Next ID: 28
+message Server {
+    reserved 17, 19;
+
+    // The package name (computed).
+    string package_name = 1;
+    // The module name (computed).
+    string module_name = 5;
+
+    // In order to decouple code location and production resources, we refer
+    // to the service through it's ID; which must remain constant during the
+    // life of the service.
+    string id = 2;
+
+    // A name for a person-user to read and refer to.
+    string name = 3;
+
+    Description description = 23;
+
+    // The computed list of dependency URLs of this server (direct and indirect).
+    repeated string import = 4;
+
+    // Framework-specific extensions.
+    repeated google.protobuf.Any ext = 6;
+
+    // All of the allocations performed in this server's dependency tree.
+    repeated Allocation allocation = 7;
+
+    Framework framework = 8;
+
+    bool is_stateful = 20;
+
+    // This server is meant to be used for tests, and should not be deployed by default.
+    bool testonly = 21;
+    // This server acts as an admin to the cluster.
+    bool cluster_admin = 22;
+
+    Binary binary = 9;
+
+    repeated ServiceSpec service = 10;
+    repeated ServiceSpec ingress = 11;
+
+    repeated Reference reference = 12;
+
+    // XXX temporary.
+    repeated BinaryConfig.EnvEntry static_env = 13;
+
+    // Set of dependencies specified explicitly by the user.
+    repeated string user_imports = 14;
+
+    // Set of URL prefixes this server declares supporting.
+    repeated URLMapEntry url_map = 15;
+
+    // A set of ports that this server exports and require no configuration.
+    repeated Endpoint.Port static_port = 16;
+
+    // Aggregated from all nodes.
+    repeated RequiredStorage required_storage = 18;
+
+    repeated EnvironmentRequirement environment_requirement = 24;
+
+    message Binary {
+        string prebuilt     = 1;
+        string package_name = 2;
+    }
+
+    message ServiceSpec {
+        string                   name     = 1;
+        string                   label    = 5;
+        repeated ServiceMetadata metadata = 6;
+        Endpoint.Port            port     = 3;
+        bool                     internal = 4;  // This service is of no relevance for development.
+
+        reserved 2;
+    }
+
+    message URLMapEntry {
+        string path_prefix  = 1;
+        string package_name = 2;
+        string ingress_name = 3;
+        string kind         = 4;
+    }
+
+    message Description {
+        string label    = 1;
+        string url      = 2;
+        string icon_url = 3;
+    }
+
+    message EnvironmentRequirement {
+        string   package                                           = 1;
+        repeated Environment.Label environment_has_label           = 2;
+        repeated Environment.Label environment_does_not_have_label = 3;
+    }
+
+    // Fields specific to opaque servers.
+
+    Integration integration = 25;
+
+    // Includes file-level and inlined volumes.
+    repeated Volume volumes = 26;
+
+    repeated Mount mounts = 27;
+
+    message Integration {
+        string kind = 1;
+
+        // TODO: define kind-specific fields in a generic way.
+        string dockerfile = 2;
+    }
+
+    message Mount {
+        string path        = 1;
+        string volume_name = 2;
+    }
+}
+
+message Volume {
+    string kind = 1;
+    // Explicit if defined at the file level, auto-generated from the mount point if inlined.
+    // Volumes then referenced by the name from "mounts".
+    string name = 2;
+
+    // At most one of these is set by the parser.
+
+    // Custom volume kind, arguments are serialized as JSON.
+    string custom = 100;
+    // Built-in types, for convenience parsed to separate fields.
+    Ephemeral    ephemeral    = 101;
+    Persistent   persistent   = 102;
+    Configurable configurable = 103;
+    Fileset      package_sync = 104;
+
+    message Ephemeral {
+    }
+
+    message Persistent {
+        string id         = 1;
+        int64  size_bytes = 2;
+    }
+
+    message Configurable {
+        repeated Entry entries = 1;
+
+        message Entry {
+            // A single file or a directory, relative to the mount path.
+            string target_path = 1;
+
+            // One of these
+            string source_inlined_content = 2;
+            string source_file_path       = 3;
+            string source_secret          = 4;
+            string source_dir             = 5;
+        }
+    }
+
+    message Fileset {
+        repeated string include_file_patterns = 1;
+        repeated string exclude_file_patterns = 2;
+    }
+}
+
+// Allocations for a tree of instanced values.
+message Allocation {
+    repeated Instance instance = 1;
+
+    message Instance {
+        // The source of the allocation.
+        string instance_owner = 1;
+        // The owning package of the fields being instantiated.
+        string package_name = 2;
+        // An unique name within the server for this allocation path.
+        string alloc_name = 3;
+
+        repeated Instantiate instantiated = 4;
+
+        // Allocations that happen as a result of this allocation (e.g. an instance
+        // of a dependency).
+        repeated Allocation downstream_allocation = 5;
+    }
+}
+
+message Instantiate {
+    string package_name = 3;
+    string type         = 4;
+
+    // A unique name used to refer and configure this dependency.
+    string name = 1;
+
+    google.protobuf.Any constructor = 2;
+}
+
+message RequiredStorage {
+    string owner         = 1;  // Package name.
+    string persistent_id = 2;
+    uint64 byte_count    = 3;
+    string mount_path    = 4;
+}

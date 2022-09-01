@@ -1,0 +1,26 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+message Reference {
+    Kind   kind     = 1;
+    string cue_path = 2;
+
+    string          image        = 3;
+    string          package_name = 4;
+    repeated string file_path    = 5;  // Relative to the module's path.
+
+    enum Kind {
+        KIND_UNSPECIFIED = 0;
+        IMAGE            = 1;  // Uses `image`.
+        SERVER           = 2;  // Uses `package_name`.
+        SERVICE          = 3;  // Uses `package_name`.
+        PROTO_DEPS       = 4;  // Uses `file_path`.
+    }
+}
