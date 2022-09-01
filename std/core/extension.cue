@@ -43,14 +43,12 @@ extension: fn.#Extension & {
 }
 
 $inputs: {
-	env:   inputs.#Environment
 	focus: inputs.#FocusServer
 }
 
 configure: fn.#Configure & {
 	startup: {
 		args: {
-			env_json:      json.Marshal($inputs.env)
 			image_version: $inputs.focus.image
 		}
 	}

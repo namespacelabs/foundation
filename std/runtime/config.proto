@@ -9,7 +9,9 @@ package foundation.std.runtime;
 option go_package = "namespacelabs.dev/foundation/std/runtime";
 
 // The runtime configuration is generated from the deployment plan. It is
-// injected into the server at runtime.
+// injected into the server at runtime. Because RuntimeConfig is serialized
+// as JSON, the field names have great significance and should be changed
+// with care.
 message RuntimeConfig {
     ServerEnvironment environment = 1;
 

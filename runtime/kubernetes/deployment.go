@@ -513,7 +513,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			WithName(configId).
 			WithConfigMap(applycorev1.ConfigMapVolumeSource().WithName(configId)))
 
-		container = container.WithVolumeMounts(applycorev1.VolumeMount().WithMountPath("/namespace").WithName(configId).WithReadOnly(true))
+		container = container.WithVolumeMounts(applycorev1.VolumeMount().WithMountPath("/namespace/config").WithName(configId).WithReadOnly(true))
 
 		// We do manual cleanup of unused configs. In the future they'll be owned by a deployment intent.
 		annotations[kubedef.K8sRuntimeConfig] = configId

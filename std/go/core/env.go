@@ -9,26 +9,28 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"sync/atomic"
 	"time"
 
-	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/core/types"
+	"namespacelabs.dev/foundation/std/go/rpcerrors"
+	"namespacelabs.dev/foundation/std/runtime"
 )
 
 var (
-	serializedEnv = flag.String("env_json", "", "The environment definition, serialized as JSON.")
 	serializedVCS = flag.String("vcs_json", "", "VCS information, serialized as JSON.")
 	imageVer      = flag.String("image_version", "", "The version being run.")
 	debug         = flag.Bool("debug_init", false, "If set to true, emits additional initialization information.")
 
-	env         *schema.Environment
-	vcs         vcsInfo
+	rtEnv       *runtime.ServerEnvironment
+	rtVcs       vcsInfo
 	serverName  string
 	initialized uint32
 )
@@ -41,6 +43,20 @@ type vcsInfo struct {
 	Uncommitted bool      `json:"uncommitted"`
 }
 
+func LoadRuntimeConfig() (*runtime.RuntimeConfig, error) {
+	configBytes, err := ioutil.ReadFile("/namespace/config/runtime.json")
+	if err != nil {
+		return nil, rpcerrors.Errorf(codes.Internal, "failed to unwrap runtime configuration: %w", err)
+	}
+
+	rt := &runtime.RuntimeConfig{}
+	if err := json.Unmarshal(configBytes, rt); err != nil {
+		return nil, rpcerrors.Errorf(codes.Internal, "failed to unmarshal runtime configuration: %w", err)
+	}
+
+	return rt, nil
+}
+
 func PrepareEnv(specifiedServerName string) *ServerResources {
 	if !atomic.CompareAndSwapUint32(&initialized, 0, 1) {
 		Log.Fatal("already initialized")
@@ -48,14 +64,16 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 
 	Log.Println("Initializing server...")
 
-	env = &schema.Environment{}
-	if err := protojson.Unmarshal([]byte(*serializedEnv), env); err != nil {
-		Log.Fatal("failed to parse environment", err)
+	rt, err := LoadRuntimeConfig()
+	if err != nil {
+		Log.Fatal(err)
 	}
+
+	rtEnv = rt.Environment
 
 	if *serializedVCS != "" {
 		// We treat VcsInfo as optional for now, as it is propagated via container args (and causes redeploy).
-		if err := json.Unmarshal([]byte(*serializedVCS), &vcs); err != nil {
+		if err := json.Unmarshal([]byte(*serializedVCS), &rtVcs); err != nil {
 			Log.Fatal("failed to parse VCS information", err)
 		}
 	}
@@ -68,17 +86,17 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 func ProvideServerInfo(ctx context.Context, _ *types.ServerInfoArgs) (*types.ServerInfo, error) {
 	return &types.ServerInfo{
 		ServerName: serverName,
-		EnvName:    env.Name,
+		EnvName:    rtEnv.Name,
 		Vcs: &types.ServerInfo_VCS{
-			Revision:    vcs.Revision,
-			CommitTime:  vcs.CommitTime.String(),
-			Uncommitted: vcs.Uncommitted,
+			Revision:    rtVcs.Revision,
+			CommitTime:  rtVcs.CommitTime.String(),
+			Uncommitted: rtVcs.Uncommitted,
 		},
 	}, nil
 }
 
 func EnvIs(purpose schema.Environment_Purpose) bool {
-	return env.Purpose == purpose
+	return rtEnv.Purpose == purpose.String()
 }
 
 type frameworkKey string
@@ -102,10 +120,10 @@ func StatusHandler(registered []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
-		vcsStr, _ := json.Marshal(vcs)
+		vcsStr, _ := json.Marshal(rtVcs)
 
 		fmt.Fprintf(w, "<!doctype html><html><body><pre>%s\nimage_version=%s\n%s\n%s</pre>",
-			serverName, *imageVer, prototext.Format(env), vcsStr)
+			serverName, *imageVer, prototext.Format(rtEnv), vcsStr)
 
 		fmt.Fprintf(w, "<b>Registered endpoints</b></br><ul>")
 		for _, endpoint := range registered {
