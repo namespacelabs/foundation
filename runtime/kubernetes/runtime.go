@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
@@ -37,6 +38,8 @@ func Register() {
 		if err != nil {
 			return nil, err
 		}
+
+		fmt.Fprintf(console.Debug(ctx), "kubernetes: selected %+v for %q\n", hostConfig.HostEnv, env.Name)
 
 		p, err := client.MakeDeferredRuntime(ctx, ws, hostConfig)
 		if err != nil {
