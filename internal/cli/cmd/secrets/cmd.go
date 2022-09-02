@@ -77,10 +77,10 @@ func loadBundleFromArgs(ctx context.Context, loc fnfs.Location, createIfMissing 
 	return &location{root, pkg.Location}, bundle, err
 }
 
-func parseKey(v string) (*secrets.ValueKey, error) {
+func parseKey(v string, defaultPkgName string) (*secrets.ValueKey, error) {
 	parts := strings.SplitN(v, ":", 2)
 	if len(parts) < 2 {
-		return nil, fnerrors.BadInputError("invalid secret key definition, expected {package_name}:{name}")
+		parts = []string{defaultPkgName, parts[0]}
 	}
 
 	return &secrets.ValueKey{PackageName: parts[0], Key: parts[1]}, nil

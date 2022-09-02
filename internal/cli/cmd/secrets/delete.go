@@ -36,7 +36,7 @@ func newDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			key, err := parseKey(secretKey)
+			key, err := parseKey(secretKey, string(loc.loc.PackageName))
 			if err != nil {
 				return err
 			}

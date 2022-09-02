@@ -34,12 +34,12 @@ func newRevealCmd() *cobra.Command {
 		}).
 		With(fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
-			_, bundle, err := loadBundleFromArgs(ctx, locs.Locs[0], nil)
+			loc, bundle, err := loadBundleFromArgs(ctx, locs.Locs[0], nil)
 			if err != nil {
 				return err
 			}
 
-			key, err := parseKey(secretKey)
+			key, err := parseKey(secretKey, string(loc.loc.PackageName))
 			if err != nil {
 				return err
 			}
