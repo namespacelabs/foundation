@@ -27,6 +27,8 @@ type opaqueParser interface {
 }
 
 type cueInjectedScope struct {
+	// Injecting schema.Environment as $env so the user can use it without importing.
+	// It is temporarily optional since not all commands (that should) accept the --env flag.
 	Env *cueEnv `json:"$env"`
 }
 
@@ -38,7 +40,8 @@ func InjectedScope(env *schema.Environment) interface{} {
 			Name:      env.Name,
 			Runtime:   env.Runtime,
 			Purpose:   env.Purpose.String(),
-			Ephemeral: env.Ephemeral}
+			Ephemeral: env.Ephemeral,
+		}
 	}
 	return scope
 }

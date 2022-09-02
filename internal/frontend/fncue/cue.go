@@ -152,7 +152,7 @@ func loadPackageContents(ctx context.Context, loader WorkspaceLoader, pkgName st
 type EvalCtx struct {
 	cache  *snapshotCache
 	loader WorkspaceLoader
-	scope  interface{}
+	scope  any
 }
 
 type snapshotCache struct {
@@ -164,11 +164,12 @@ type snapshotCache struct {
 }
 
 // If set, "scope" are passed as a "Scope" BuildOption to "BuildInstance".
-func NewEvalCtx(loader WorkspaceLoader, scope interface{}) *EvalCtx {
+func NewEvalCtx(loader WorkspaceLoader, scope any) *EvalCtx {
 	return &EvalCtx{
 		cache:  newSnapshotCache(),
 		loader: loader,
-		scope:  scope}
+		scope:  scope,
+	}
 }
 
 func newSnapshotCache() *snapshotCache {
@@ -223,10 +224,11 @@ func EvalWorkspace(ctx context.Context, fsys fs.FS, dir string, files []string) 
 		return nil, err
 	}
 
-	return finishInstance(nil, cuecontext.New(), p, pkg, nil, nil)
+	// The user shouldn't be able to reference the injected scope in the workspace file, e.g. $env.
+	return finishInstance(nil, cuecontext.New(), p, pkg, nil /* collectedImports */, nil /* scope */)
 }
 
-func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage, scope interface{}) (*Partial, error) {
+func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage, scope any) (*Partial, error) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 
@@ -248,7 +250,7 @@ func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 	return sc.built[pkgname], nil
 }
 
-func finishInstance(sc *snapshotCache, cuectx *cue.Context, p *build.Instance, pkg CuePackage, collectedImports map[string]*CuePackage, scope interface{}) (*Partial, error) {
+func finishInstance(sc *snapshotCache, cuectx *cue.Context, p *build.Instance, pkg CuePackage, collectedImports map[string]*CuePackage, scope any) (*Partial, error) {
 	buildOptions := []cue.BuildOption{}
 
 	if scope != nil {

@@ -47,9 +47,9 @@ func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWo
 		root:      root,
 		openFiles: s.openFiles,
 	}
-	env := &schema.Environment{
-		Purpose: schema.Environment_DEVELOPMENT,
-	}
+	// For LSP we need to parse fully parse the CUE sources to highlight errors, so $env needs to be injected.
+	// The actual value doesn't matter.
+	env := &schema.Environment{}
 	ws.evalCtx = fncue.NewEvalCtx(ws, cuefrontend.InjectedScope(env))
 	return
 }
