@@ -12,26 +12,28 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	golangsdk "namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/languages/golang"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func newGoCmd(goVersion string) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:                "go -- ...",
-		Short:              "Run Go.",
-		DisableFlagParsing: true,
+	var (
+		env provision.Env
+	)
 
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, err := module.FindRoot(ctx, ".")
-			if err != nil {
-				return err
-			}
-
-			pl := workspace.NewPackageLoader(root, nil /* env */)
-			loc, err := pl.Resolve(ctx, schema.Name(root.Workspace().ModuleName))
+	return fncobra.Cmd(
+		&cobra.Command{
+			Use:                "go -- ...",
+			Short:              "Run Go.",
+			DisableFlagParsing: true,
+		}).
+		With(
+			fncobra.FixedEnv(&env, "dev")).
+		DoWithArgs(func(ctx context.Context, args []string) error {
+			pl := workspace.NewPackageLoader(env, env.Proto())
+			loc, err := pl.Resolve(ctx, schema.Name(env.Workspace().ModuleName))
 			if err != nil {
 				return err
 			}
@@ -47,8 +49,5 @@ func newGoCmd(goVersion string) *cobra.Command {
 			}
 
 			return golang.RunGo(ctx, loc, localSDK, args...)
-		}),
-	}
-
-	return cmd
+		})
 }
