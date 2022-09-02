@@ -28,6 +28,7 @@ import (
 
 const (
 	originalWorkspaceFilename = "workspace.ns.textpb"
+	foundationModule          = "namespacelabs.dev/foundation"
 )
 
 type WorkspaceData interface {
@@ -109,15 +110,16 @@ func validateAPIRequirements(moduleName string, w *schema.Workspace_FoundationRe
 		return fnerrors.DoesNotMeetVersionRequirements(moduleName, w.GetMinimumApi(), versions.APIVersion)
 	}
 
-	if w.GetMinimumApi() > 0 && w.GetMinimumApi() < versions.MinimumAPIVersion {
-		return fnerrors.UserError(nil, `Unfortunately, this version of Foundation is too recent to be used with the
+	// Check that the foundation repo dep uses an API compatible with the current CLI.
+	if moduleName == foundationModule && w.GetMinimumApi() > 0 && w.GetMinimumApi() < versions.MinimumAPIVersion {
+		return fnerrors.UserError(nil, fmt.Sprintf(`Unfortunately, this version of Foundation is too recent to be used with the
 current repository. If you're testing out an existing repository that uses
 Foundation, try fetching a newer version of the repository. If this is your
 own codebase, then you'll need to either revert to a previous version of
-"ns", or update your dependency versions with "ns mod tidy".
+"ns", or update your dependency versions with "ns mod get %s".
 
 This version check will be removed in future non-alpha versions of
-Foundation, which establish a stable longer term supported API surface.`)
+Foundation, which establish a stable longer term supported API surface.`, foundationModule))
 	}
 
 	return nil
