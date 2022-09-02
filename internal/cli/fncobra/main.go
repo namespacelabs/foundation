@@ -141,7 +141,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = runtime.HasRuntime
 
-		// Runtimes. Before "devhost.Prepare" inside "envParser.Parse".
+		// Runtimes. Need to be initialized before a "devhost.Prepare" call
+		// that happen inside "envParser.Parse".
 		kubernetes.Register()
 		kubeops.Register()
 
