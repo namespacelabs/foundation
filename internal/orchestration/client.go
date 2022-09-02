@@ -52,7 +52,7 @@ func ConnectToClient(env provision.Env) compute.Computable[proto.OrchestrationSe
 }
 
 func (c *clientInstance) Action() *tasks.ActionEvent {
-	return tasks.Action("orchestrator.connect")
+	return tasks.Action("orchestrator.connect").Arg("env", c.env.Name())
 }
 
 func (c *clientInstance) Inputs() *compute.In {
