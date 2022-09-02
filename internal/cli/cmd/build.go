@@ -45,7 +45,7 @@ func NewBuildCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.ParseEnv(&env),
-			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true}),
+			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true}),
 			fncobra.ParseServers(&servers, &env, &locs)).
 		DoWithArgs(func(ctx context.Context, args []string) error {
 			_, images, err := deploy.ComputeStackAndImages(ctx, env, servers.Servers)

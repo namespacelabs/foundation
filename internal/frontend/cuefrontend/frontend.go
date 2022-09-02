@@ -34,16 +34,14 @@ type cueInjectedScope struct {
 
 // Variables that always available for the user in CUE files, without explicit importing.
 func InjectedScope(env *schema.Environment) interface{} {
-	scope := &cueInjectedScope{}
-	if env != nil {
-		scope.Env = &cueEnv{
+	return &cueInjectedScope{
+		Env: &cueEnv{
 			Name:      env.Name,
 			Runtime:   env.Runtime,
 			Purpose:   env.Purpose.String(),
 			Ephemeral: env.Ephemeral,
-		}
+		},
 	}
-	return scope
 }
 
 func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser opaqueParser, env *schema.Environment) workspace.Frontend {

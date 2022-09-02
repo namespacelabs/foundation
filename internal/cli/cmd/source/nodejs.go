@@ -42,7 +42,7 @@ func newNodejsCmd() *cobra.Command {
 			}
 		}
 
-		loc, err := workspace.NewPackageLoaderFromEnv(env).Resolve(ctx, root.RelPackage(relPath).AsPackageName())
+		loc, err := workspace.NewPackageLoader(env).Resolve(ctx, root.RelPackage(relPath).AsPackageName())
 		if err != nil {
 			return err
 		}

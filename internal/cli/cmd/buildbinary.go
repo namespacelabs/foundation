@@ -57,7 +57,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.ParseEnv(&env),
-			fncobra.ParseLocations(&cmdLocs, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
+			fncobra.ParseLocations(&cmdLocs, &env, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
 		Do(func(ctx context.Context) error {
 			return buildLocations(ctx, env, cmdLocs.Locs, baseRepository, buildOpts)
 		})
@@ -70,7 +70,7 @@ type buildOpts struct {
 }
 
 func buildLocations(ctx context.Context, env provision.Env, list []fnfs.Location, baseRepository string, opts buildOpts) error {
-	pl := workspace.NewPackageLoaderFromEnv(env)
+	pl := workspace.NewPackageLoader(env)
 
 	var pkgs []*workspace.Package
 	for _, loc := range list {

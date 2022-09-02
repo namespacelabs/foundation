@@ -62,7 +62,7 @@ func parseHydrationWithDeps(resultOut *hydrateResult, locationsOpts *fncobra.Par
 
 	return []fncobra.ArgParser{
 		fncobra.ParseEnv(&env),
-		fncobra.ParseLocations(&locs, locationsOpts),
+		fncobra.ParseLocations(&locs, &env, locationsOpts),
 		fncobra.ParseServers(&servers, &env, &locs),
 		parseHydration(resultOut, &env, &servers, opts),
 	}

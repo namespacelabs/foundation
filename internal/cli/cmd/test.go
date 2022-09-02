@@ -68,7 +68,7 @@ func NewTestCmd() *cobra.Command {
 		With(
 			// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
 			fncobra.FixedEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
+			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
 		Do(func(ctx context.Context) error {
 			ctx = prepareContext(ctx, parallelWork, rocketShip)
 
@@ -81,7 +81,7 @@ func NewTestCmd() *cobra.Command {
 			if locs.AreSpecified {
 				testLocs = locs.Locs
 			} else {
-				pl := workspace.NewPackageLoader(locs.Root, env.Proto())
+				pl := workspace.NewPackageLoader(env)
 				for _, l := range locs.Locs {
 					pp, err := pl.LoadByName(ctx, l.AsPackageName())
 					if err != nil {
@@ -112,7 +112,7 @@ func NewTestCmd() *cobra.Command {
 					loc := loc // Capture loc.
 
 					eg.Go(func(ctx context.Context) error {
-						pl := workspace.NewPackageLoaderFromEnv(env)
+						pl := workspace.NewPackageLoader(env)
 
 						buildEnv := testing.PrepareEnv(ctx, env, ephemeral)
 

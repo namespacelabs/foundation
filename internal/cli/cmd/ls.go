@@ -11,24 +11,31 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewLsCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "ls",
-		Short:   "List all known packages in the current workspace.",
-		Args:    cobra.NoArgs,
-		Aliases: []string{"list"},
+	var (
+		env provision.Env
+	)
 
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+	return fncobra.Cmd(
+		&cobra.Command{
+			Use:     "ls",
+			Short:   "List all known packages in the current workspace.",
+			Args:    cobra.NoArgs,
+			Aliases: []string{"list"},
+		}).
+		With(fncobra.FixedEnv(&env, "dev")).
+		Do(func(ctx context.Context) error {
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
 				return err
 			}
 
-			list, err := workspace.ListSchemas(ctx, root)
+			list, err := workspace.ListSchemas(ctx, env, root)
 			if err != nil {
 				return err
 			}
@@ -39,8 +46,5 @@ func NewLsCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
-	}
-
-	return cmd
+		})
 }

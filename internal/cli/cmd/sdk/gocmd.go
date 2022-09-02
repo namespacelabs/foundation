@@ -32,7 +32,7 @@ func newGoCmd(goVersion string) *cobra.Command {
 		With(
 			fncobra.FixedEnv(&env, "dev")).
 		DoWithArgs(func(ctx context.Context, args []string) error {
-			pl := workspace.NewPackageLoader(env, env.Proto())
+			pl := workspace.NewPackageLoader(env)
 			loc, err := pl.Resolve(ctx, schema.Name(env.Workspace().ModuleName))
 			if err != nil {
 				return err
