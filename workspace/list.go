@@ -26,7 +26,7 @@ type SchemaList struct {
 func ListSchemas(ctx context.Context, root *Root) (SchemaList, error) {
 	sl := SchemaList{Root: root}
 
-	pl := NewPackageLoader(root)
+	pl := NewPackageLoader(root, nil /* env*/)
 
 	visited := map[string]struct{}{} // Map of directory name to presence.
 

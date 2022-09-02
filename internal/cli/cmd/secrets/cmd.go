@@ -49,7 +49,7 @@ func loadBundleFromArgs(ctx context.Context, loc fnfs.Location, createIfMissing 
 		return nil, nil, err
 	}
 
-	pkg, err := workspace.NewPackageLoader(root).LoadByName(ctx, loc.AsPackageName())
+	pkg, err := workspace.NewPackageLoader(root, nil /* env */).LoadByName(ctx, loc.AsPackageName())
 	if err != nil {
 		return nil, nil, err
 	}

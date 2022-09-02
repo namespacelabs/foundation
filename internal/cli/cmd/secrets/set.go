@@ -62,7 +62,7 @@ func newSetCmd() *cobra.Command {
 				key.EnvironmentName = specificEnv
 			}
 
-			if _, err := workspace.NewPackageLoader(loc.root).LoadByName(ctx, schema.PackageName(key.PackageName)); err != nil {
+			if _, err := workspace.NewPackageLoader(loc.root, nil /* env */).LoadByName(ctx, schema.PackageName(key.PackageName)); err != nil {
 				return err
 			}
 

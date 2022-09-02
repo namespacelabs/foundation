@@ -81,7 +81,7 @@ func NewTestCmd() *cobra.Command {
 			if locs.AreSpecified {
 				testLocs = locs.Locs
 			} else {
-				pl := workspace.NewPackageLoader(locs.Root)
+				pl := workspace.NewPackageLoader(locs.Root, env.Proto())
 				for _, l := range locs.Locs {
 					pp, err := pl.LoadByName(ctx, l.AsPackageName())
 					if err != nil {
@@ -112,7 +112,7 @@ func NewTestCmd() *cobra.Command {
 					loc := loc // Capture loc.
 
 					eg.Go(func(ctx context.Context) error {
-						pl := workspace.NewPackageLoader(env)
+						pl := workspace.NewPackageLoader(env, env.Proto())
 
 						buildEnv := testing.PrepareEnv(ctx, env, ephemeral)
 

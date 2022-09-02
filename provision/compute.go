@@ -64,7 +64,7 @@ func (rs *requiredServers) Compute(ctx context.Context, _ compute.Resolved) (*Se
 }
 
 func computeSnapshot(ctx context.Context, env Env, packages []schema.PackageName) (*ServerSnapshot, error) {
-	pl := workspace.NewPackageLoader(env)
+	pl := workspace.NewPackageLoader(env, env.Proto())
 
 	var servers []Server
 	for _, pkg := range packages {

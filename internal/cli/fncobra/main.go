@@ -55,7 +55,6 @@ import (
 	"namespacelabs.dev/foundation/providers/aws/iam"
 	artifactregistry "namespacelabs.dev/foundation/providers/gcp/registry"
 	"namespacelabs.dev/foundation/providers/nscloud"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/runtime"
@@ -118,8 +117,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	var run *storedrun.Run
 	var useTelemetry bool
 
-	envParser := ParseEnv(&provision.Env{})
-
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
 		// Now that "useTelemetry" flag is parsed, we can conditionally enable telemetry.
 		if useTelemetry {
@@ -141,19 +138,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = runtime.HasRuntime
 
-		// Runtimes. Need to be initialized before a "devhost.Prepare" call
-		// that happen inside "envParser.Parse".
-		kubernetes.Register()
-		kubeops.Register()
-
 		workspace.ModuleLoader = cuefrontend.ModuleLoader
-
-		err := envParser.Parse(cmd.Context(), args)
-		if err != nil {
-			return err
-		}
-		workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader) workspace.Frontend {
-			return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(pl, envParser.envOut.Proto()), envParser.envOut.Proto())
+		workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader, env *schema.Environment) workspace.Frontend {
+			return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(pl), env)
 		}
 
 		filewatcher.SetupFileWatcher()
@@ -240,6 +227,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		nscloud.RegisterRegistry()
 		nscloud.RegisterClusterProvider()
 
+		// Runtimes.
+		kubernetes.Register()
+		kubeops.Register()
+
 		// Telemetry.
 		tel.RecordInvocation(ctxWithSink, cmd, args)
 		return nil
@@ -312,7 +303,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, enables the new incluster deployment orchestrator.")
 	rootCmd.PersistentFlags().BoolVar(&orchestration.RenderOrchestratorDeployment, "render_orchestrator_deployment", orchestration.RenderOrchestratorDeployment,
 		"If set to true, we print a render wait block while deploying the orchestrator itself.")
-	rootCmd.PersistentFlags().StringVar(&envParser.envRef, "env", "dev", "The environment to access (as defined in the workspace).")
 
 	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())

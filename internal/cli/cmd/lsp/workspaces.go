@@ -67,7 +67,7 @@ func (ws *FnWorkspace) PkgNameInMainModule(relPath string) string {
 // Real filesystem path for the package name (example.com/module/package/file.cue).
 // Supports external modules and may download them on-demand (hence [ctx]).
 func (ws *FnWorkspace) AbsPathForPkgName(ctx context.Context, pkgName string) (string, error) {
-	packageLoader := workspace.NewPackageLoader(ws.root)
+	packageLoader := workspace.NewPackageLoader(ws.root, nil /* env */)
 	loc, err := packageLoader.Resolve(ctx, schema.PackageName(pkgName))
 	if err != nil {
 		return "", err
@@ -94,7 +94,7 @@ func (ws *FnWorkspace) FS() fs.ReadDirFS {
 }
 
 func (ws *FnWorkspace) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, string, error) {
-	packageLoader := workspace.NewPackageLoader(ws.root)
+	packageLoader := workspace.NewPackageLoader(ws.root, nil /* env */)
 
 	loc, err := packageLoader.Resolve(ctx, pkgname) // This may download external modules.
 	if err != nil {

@@ -39,7 +39,7 @@ func NewTidyCmd() *cobra.Command {
 		// their dependencies locally. If we don't do this here, package parsing below
 		// will fail.
 
-		if err := maybeUpdateWorkspace(ctx); err != nil {
+		if err := maybeUpdateWorkspace(ctx, env.Proto()); err != nil {
 			return err
 		}
 
@@ -48,7 +48,7 @@ func NewTidyCmd() *cobra.Command {
 			return err
 		}
 
-		pl := workspace.NewPackageLoader(root)
+		pl := workspace.NewPackageLoader(root, env.Proto())
 
 		list, err := workspace.ListSchemas(ctx, root)
 		if err != nil {
@@ -105,22 +105,22 @@ func NewTidyCmd() *cobra.Command {
 	})
 }
 
-func maybeUpdateWorkspace(ctx context.Context) error {
+func maybeUpdateWorkspace(ctx context.Context, env *schema.Environment) error {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return err
 	}
 
-	pl := workspace.NewPackageLoader(root)
+	pl := workspace.NewPackageLoader(root, env)
 
-	if err := fillDependencies(ctx, root, pl); err != nil {
+	if err := fillDependencies(ctx, root, pl, env); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.PackageLoader) error {
+func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.PackageLoader, env *schema.Environment) error {
 	locs, err := listLocations(ctx, root)
 	if err != nil {
 		return err
@@ -133,6 +133,7 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 		resolved: map[string]*schema.Workspace_Dependency{},
 		modules:  map[string]*schema.Workspace_Dependency{},
 		left:     locs,
+		env:      env,
 	}
 
 	for _, dep := range root.Workspace().Dep {
@@ -216,6 +217,7 @@ type allocator struct {
 	modules  map[string]*schema.Workspace_Dependency // Previously loaded modules (i.e. already part of the workspace definition.)
 	resolved map[string]*schema.Workspace_Dependency // Newly resolved modules.
 	left     []fnfs.Location
+	env      *schema.Environment
 }
 
 func (alloc *allocator) checkResolves(ctx context.Context, pkgs []string, refs []*schema.Reference) error {
@@ -281,7 +283,7 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 
 			// Add dep and reload package loader for new deps
 			alloc.ws.Dep = append(alloc.ws.Dep, dep)
-			alloc.loader = workspace.NewPackageLoader(fixedWorkspace{alloc.ws, alloc.root.WorkspaceLoadedFrom(), alloc.root.DevHost()})
+			alloc.loader = workspace.NewPackageLoader(fixedWorkspace{alloc.ws, alloc.root.WorkspaceLoadedFrom(), alloc.root.DevHost()}, alloc.env)
 		}
 
 		didResolve = true

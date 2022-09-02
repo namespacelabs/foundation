@@ -64,7 +64,7 @@ func generateProtos(ctx context.Context, root *workspace.Root, handleGenErr func
 		return err
 	}
 
-	pl := workspace.NewPackageLoader(root)
+	pl := workspace.NewPackageLoader(root, nil /* env */)
 	wl := cuefrontend.WorkspaceLoader{PackageLoader: pl}
 
 	cuePackages := map[string]*fncue.CuePackage{} // Cue packages by PackageName.

@@ -19,7 +19,7 @@ type Frontend struct {
 	loader workspace.EarlyPackageLoader
 }
 
-func NewFrontend(pl workspace.EarlyPackageLoader, env *schema.Environment) *Frontend {
+func NewFrontend(pl workspace.EarlyPackageLoader) *Frontend {
 	return &Frontend{loader: pl}
 }
 

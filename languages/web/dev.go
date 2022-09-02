@@ -10,15 +10,16 @@ import (
 
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
 
-func StartDevServer(ctx context.Context, root workspace.PackageLoaderRoot, pkg schema.PackageName, mainPort, webPort int) (string, error) {
+func StartDevServer(ctx context.Context, env provision.Env, pkg schema.PackageName, mainPort, webPort int) (string, error) {
 	host := "127.0.0.1"
 	hostPort := fmt.Sprintf("%s:%d", host, webPort)
 
-	loc, err := workspace.NewPackageLoader(root).Resolve(ctx, pkg)
+	loc, err := workspace.NewPackageLoader(env, env.Proto()).Resolve(ctx, pkg)
 	if err != nil {
 		return "", err
 	}

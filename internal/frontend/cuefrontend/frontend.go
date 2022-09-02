@@ -27,18 +27,20 @@ type opaqueParser interface {
 }
 
 type cueInjectedScope struct {
-	Env cueEnv `json:"$env"`
+	Env *cueEnv `json:"$env"`
 }
 
 // Variables that always available for the user in CUE files, without explicit importing.
 func InjectedScope(env *schema.Environment) interface{} {
-	return &cueInjectedScope{
-		Env: cueEnv{
+	scope := &cueInjectedScope{}
+	if env != nil {
+		scope.Env = &cueEnv{
 			Name:      env.Name,
 			Runtime:   env.Runtime,
 			Purpose:   env.Purpose.String(),
-			Ephemeral: env.Ephemeral},
+			Ephemeral: env.Ephemeral}
 	}
+	return scope
 }
 
 func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser opaqueParser, env *schema.Environment) workspace.Frontend {
