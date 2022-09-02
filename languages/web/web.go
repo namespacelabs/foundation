@@ -280,7 +280,11 @@ func (i impl) TidyNode(ctx context.Context, env provision.Env, pkgs workspace.Pa
 		devPackages = append(devPackages, "vite@2.7.13")
 	}
 
-	if err := nodejs.RunYarnForLocation(ctx, env, p.Location, append([]string{"add", "-D", "--mode=skip-build"}, devPackages...), p.Location.Module.WorkspaceData); err != nil {
+	if p.Location.Module.IsExternal() {
+		return fnerrors.BadInputError("%s: can't run tidy on external module", p.Location.Module)
+	}
+
+	if err := nodejs.RunYarn(ctx, env, p.Location, append([]string{"add", "-D", "--mode=skip-build"}, devPackages...)); err != nil {
 		return err
 	}
 

@@ -38,7 +38,7 @@ func newNewClusterCmd() *cobra.Command {
 			configs = append(configs, prepare.PrepareNewNamespaceCluster(env))
 			prepares = append(prepares, configs...)
 			prepares = append(prepares, prepare.PrepareIngress(env, instantiateKube(env, configs)))
-			return collectPreparesAndUpdateDevhost(ctx, env, prepares)
+			return collectPreparesAndUpdateDevhost(ctx, root, prepares)
 		}),
 	}
 

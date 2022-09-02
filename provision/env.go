@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/schema"
@@ -15,33 +16,37 @@ import (
 )
 
 type Env struct {
-	root *workspace.Root
-	env  *schema.Environment
+	errorLocation string
+	workspace     *schema.Workspace
+	loadedFrom    *schema.Workspace_LoadedFrom
+	devHost       *schema.DevHost
+	env           *schema.Environment
 }
 
 type boundEnv struct {
-	root *workspace.Root
-	env  *schema.Environment
-	sp   workspace.SealedPackages
+	parent Env
+	env    *schema.Environment
+	sp     workspace.SealedPackages
 }
 
 var _ ServerEnv = boundEnv{}
 
-func (e Env) ErrorLocation() string               { return e.root.Workspace.ModuleName }
-func (e Env) Root() *workspace.Root               { return e.root }
-func (e Env) Workspace() *schema.Workspace        { return e.root.Workspace }
-func (e Env) DevHost() *schema.DevHost            { return e.root.DevHost }
-func (e Env) Proto() *schema.Environment          { return e.env }
-func (e Env) Name() string                        { return e.env.Name }
-func (e Env) Runtime() string                     { return e.env.Runtime }
-func (e Env) Purpose() schema.Environment_Purpose { return e.env.Purpose }
+func (e Env) ErrorLocation() string                             { return e.errorLocation }
+func (e Env) WorkspaceAbsPath() string                          { return e.loadedFrom.AbsPath }
+func (e Env) Workspace() *schema.Workspace                      { return e.workspace }
+func (e Env) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return e.loadedFrom }
+func (e Env) DevHost() *schema.DevHost                          { return e.devHost }
+func (e Env) Proto() *schema.Environment                        { return e.env }
+func (e Env) Name() string                                      { return e.env.Name }
+func (e Env) Runtime() string                                   { return e.env.Runtime }
+func (e Env) Purpose() schema.Environment_Purpose               { return e.env.Purpose }
 
 func (e Env) RequireServerAtLoc(ctx context.Context, loc fnfs.Location) (Server, error) {
 	return e.RequireServer(ctx, loc.AsPackageName())
 }
 
 func (e Env) RequireServer(ctx context.Context, pkgname schema.PackageName) (Server, error) {
-	return e.RequireServerWith(ctx, workspace.NewPackageLoader(e.root), pkgname)
+	return e.RequireServerWith(ctx, workspace.NewPackageLoader(e), pkgname)
 }
 
 func (e Env) RequireServerWith(ctx context.Context, pl *workspace.PackageLoader, pkgname schema.PackageName) (Server, error) {
@@ -51,7 +56,7 @@ func (e Env) RequireServerWith(ctx context.Context, pl *workspace.PackageLoader,
 }
 
 func (e Env) BindWith(pr workspace.SealedPackages) boundEnv {
-	return boundEnv{e.root, e.env, pr}
+	return boundEnv{e, e.env, pr}
 }
 
 func RequireServer(ctx context.Context, e ServerEnv, pkgname schema.PackageName) (Server, error) {
@@ -60,10 +65,13 @@ func RequireServer(ctx context.Context, e ServerEnv, pkgname schema.PackageName)
 	})
 }
 
-func (e boundEnv) ErrorLocation() string        { return e.root.Workspace.ModuleName }
-func (e boundEnv) Workspace() *schema.Workspace { return e.root.Workspace }
-func (e boundEnv) DevHost() *schema.DevHost     { return e.root.DevHost }
-func (e boundEnv) Proto() *schema.Environment   { return e.env }
+func (e boundEnv) ErrorLocation() string        { return e.parent.ErrorLocation() }
+func (e boundEnv) Workspace() *schema.Workspace { return e.parent.Workspace() }
+func (e boundEnv) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
+	return e.parent.WorkspaceLoadedFrom()
+}
+func (e boundEnv) DevHost() *schema.DevHost   { return e.parent.DevHost() }
+func (e boundEnv) Proto() *schema.Environment { return e.env }
 
 func (e boundEnv) Resolve(ctx context.Context, packageName schema.PackageName) (workspace.Location, error) {
 	return e.sp.Resolve(ctx, packageName)
@@ -105,7 +113,7 @@ func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*sche
 }
 
 func RequireEnv(root *workspace.Root, name string) (Env, error) {
-	for _, env := range EnvsOrDefault(root.DevHost, root.Workspace) {
+	for _, env := range EnvsOrDefault(root.DevHost(), root.Workspace()) {
 		if env.Name == name {
 			return MakeEnv(root, env), nil
 		}
@@ -114,6 +122,24 @@ func RequireEnv(root *workspace.Root, name string) (Env, error) {
 	return Env{}, fnerrors.UserError(nil, "no such environment: %s", name)
 }
 
+func RequireEnvWith(parent ops.Environment, name string) (Env, error) {
+	for _, env := range EnvsOrDefault(parent.DevHost(), parent.Workspace()) {
+		if env.Name == name {
+			return MakeEnvWith(parent.Workspace(), parent.WorkspaceLoadedFrom(), parent.DevHost(), env), nil
+		}
+	}
+
+	return Env{}, fnerrors.UserError(nil, "no such environment: %s", name)
+}
+
 func MakeEnv(root *workspace.Root, env *schema.Environment) Env {
-	return Env{root: root, env: env}
+	return Env{errorLocation: root.ErrorLocation(), workspace: root.Workspace(), loadedFrom: root.WorkspaceLoadedFrom(), devHost: root.DevHost(), env: env}
+}
+
+func MakeEnvWith(ws *schema.Workspace, lf *schema.Workspace_LoadedFrom, devhost *schema.DevHost, env *schema.Environment) Env {
+	return Env{errorLocation: ws.ModuleName, workspace: ws, loadedFrom: lf, devHost: devhost, env: env}
+}
+
+func MakeEnvFromEnv(env ops.Environment) Env {
+	return Env{errorLocation: env.ErrorLocation(), workspace: env.Workspace(), loadedFrom: env.WorkspaceLoadedFrom(), devHost: env.DevHost(), env: env.Proto()}
 }

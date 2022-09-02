@@ -67,8 +67,6 @@ func NewDevCmd() *cobra.Command {
 
 				defer lis.Close()
 
-				root := env.Root()
-
 				var serverPackages []string
 				for _, s := range servers.Servers {
 					serverPackages = append(serverPackages, s.PackageName().String())
@@ -89,7 +87,7 @@ func NewDevCmd() *cobra.Command {
 				sesh.DeferRequest(&devworkflow.DevWorkflowRequest{
 					Type: &devworkflow.DevWorkflowRequest_SetWorkspace_{
 						SetWorkspace: &devworkflow.DevWorkflowRequest_SetWorkspace{
-							AbsRoot:           root.Abs(),
+							AbsRoot:           env.WorkspaceAbsPath(),
 							PackageName:       serverPackages[0],
 							AdditionalServers: serverPackages[1:],
 							EnvName:           env.Name(),
@@ -101,8 +99,8 @@ func NewDevCmd() *cobra.Command {
 					Provider: sesh,
 					Keybindings: []keyboard.Handler{
 						logtail.Keybinding{
-							LoadEnvironment: func(env string) (runtime.Selector, error) {
-								return provision.RequireEnv(root, env)
+							LoadEnvironment: func(envName string) (runtime.Selector, error) {
+								return provision.RequireEnvWith(env, envName)
 							},
 						},
 						view.NewNetworkPlanKeybinding("stack"),
@@ -115,7 +113,7 @@ func NewDevCmd() *cobra.Command {
 						if devWebServer {
 							localPort := lis.Addr().(*net.TCPAddr).Port
 							webPort := localPort + 1
-							proxyTarget, err := web.StartDevServer(ctx, root, devworkflow.WebPackage, localPort, webPort)
+							proxyTarget, err := web.StartDevServer(ctx, env, devworkflow.WebPackage, localPort, webPort)
 							if err != nil {
 								return err
 							}

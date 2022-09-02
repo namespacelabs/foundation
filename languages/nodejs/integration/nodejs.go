@@ -157,7 +157,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 			Module: server.Location.Module,
 			// "ModuleName" is empty because we have only one module in the image and
 			// we can put everything under the root "/app" directory.
-			Sink: r.For(&wsremote.Signature{ModuleName: "", Rel: yarnRoot}),
+			Sink: r.For(&wsremote.Signature{ModuleName: "", Rel: yarnRoot.Rel()}),
 		}
 	} else {
 		module = server.Location.Module
@@ -216,51 +216,39 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 }
 
 type yarnRootData struct {
-	module         *workspace.Module
-	workspacePaths []string
-	workspace      *schema.Workspace
+	module    *workspace.Module
+	workspace *schema.Workspace
 }
 
 func (impl) TidyWorkspace(ctx context.Context, env provision.Env, packages []*workspace.Package) error {
-	yarnRootsMap := map[string]*yarnRootData{}
-	yarnRoots := []string{}
+	yarnRoots := []workspace.Location{}
+	yarnRootsMap := map[string]struct{}{} // Abs path -> presence.
 	for _, pkg := range packages {
 		if pkgSupportsNodejs(pkg) {
 			yarnRoot, err := findYarnRoot(pkg.Location)
 			if err != nil {
 				// If we can't find yarn root, using the workspace root.
-				yarnRoot = ""
+				yarnRoot = pkg.Location.Module.RootLocation()
 			}
-			if yarnRootsMap[yarnRoot] == nil {
-				yarnRootsMap[yarnRoot] = &yarnRootData{
-					module:         pkg.Location.Module,
-					workspacePaths: []string{},
-					workspace:      pkg.Location.Module.Workspace,
-				}
-				yarnRoots = append(yarnRoots, yarnRoot)
-			}
-			yarnRootData := yarnRootsMap[yarnRoot]
 
-			relpath, err := filepath.Rel(yarnRoot, pkg.Location.Rel())
-			if err != nil {
-				return err
+			if _, has := yarnRootsMap[yarnRoot.Abs()]; has {
+				continue
 			}
-			yarnRootData.workspacePaths = append(yarnRootData.workspacePaths, relpath)
+
+			yarnRootsMap[yarnRoot.Abs()] = struct{}{}
+			yarnRoots = append(yarnRoots, yarnRoot)
 		}
 	}
 
 	// Iterating over a list for the stable order.
 	for _, yarnRoot := range yarnRoots {
-		// Can't fail
-		yarnRootData := yarnRootsMap[yarnRoot]
-
-		if err := updateYarnRootPackageJson(ctx, yarnRootData, yarnRoot); err != nil {
+		if err := updateYarnRootPackageJson(ctx, yarnRoot); err != nil {
 			return err
 		}
 
 		// `ns tidy` could update dependencies of some nodes/servers, running `yarn install` to update
 		// `node_modules`.
-		if err := nodejs.RunYarn(ctx, env, yarnRoot, []string{"install", "--mode=skip-build"}, yarnRootData.module.WorkspaceData); err != nil {
+		if err := nodejs.RunYarn(ctx, env, yarnRoot, []string{"install", "--mode=skip-build"}); err != nil {
 			return err
 		}
 	}
@@ -268,18 +256,19 @@ func (impl) TidyWorkspace(ctx context.Context, env provision.Env, packages []*wo
 	return nil
 }
 
-func updateYarnRootPackageJson(ctx context.Context, yarnRootData *yarnRootData, path string) error {
+func updateYarnRootPackageJson(ctx context.Context, loc workspace.Location) error {
 	dependencies := map[string]string{}
 	for k, v := range builtin().Dependencies {
 		dependencies[k] = v
 	}
-	for _, moduleName := range yarnRootData.workspace.AllReferencedModules() {
+
+	for _, moduleName := range loc.Module.Workspace.AllReferencedModules() {
 		dependencies[toNpmNamespace(moduleName)] = "fn:" + moduleName
 	}
 
-	_, err := updatePackageJson(ctx, path, yarnRootData.module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
+	_, err := updatePackageJson(ctx, loc.Rel(), loc.Module.ReadWriteFS(), func(packageJson map[string]interface{}, fileExisted bool) {
 		packageJson["private"] = true
-		packageJson["name"] = toNpmNamespace(yarnRootData.workspace.ModuleName)
+		packageJson["name"] = toNpmNamespace(loc.Module.ModuleName())
 
 		packageJson["dependencies"] = mergeJsonMap(packageJson["dependencies"], dependencies)
 		packageJson["devDependencies"] = mergeJsonMap(packageJson["devDependencies"], builtin().DevDependencies)
@@ -412,8 +401,9 @@ func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*sch
 	if err != nil {
 		return nil, err
 	}
+
 	dl.Add("Generate Nodejs Yarn root", &OpGenYarnRoot{
-		YarnRootPkgName: yarnRoot,
+		YarnRootPkgName: yarnRoot.Rel(),
 		RelLocation:     pkg.Location.Rel(),
 	}, pkg.Location.PackageName)
 
@@ -497,8 +487,9 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 	if err != nil {
 		return nil, err
 	}
+
 	dl.Add("Generate Nodejs Yarn root", &OpGenYarnRoot{
-		YarnRootPkgName: yarnRoot,
+		YarnRootPkgName: yarnRoot.Rel(),
 		RelLocation:     pkg.Location.Rel(),
 	}, pkg.Location.PackageName)
 

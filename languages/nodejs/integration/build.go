@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/pins"
@@ -39,7 +40,7 @@ type buildNodeJS struct {
 	module          build.Workspace
 	workspace       *schema.Workspace
 	externalModules []build.Workspace
-	yarnRoot        string
+	yarnRoot        workspace.Location
 	serverEnv       provision.ServerEnv
 	isDevBuild      bool
 	isFocus         bool
@@ -124,7 +125,7 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	}
 	locals = append(locals, local)
 
-	yarnRoot := filepath.Join(appRootPath, bnj.yarnRoot)
+	yarnRoot := filepath.Join(appRootPath, bnj.yarnRoot.Rel())
 
 	buildBase, err = generateTsConfig(ctx, buildBase, bnj.externalModules, bnj.workspace.ModuleName, yarnRoot)
 	if err != nil {
@@ -138,7 +139,7 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 
 	src := buildkit.MakeLocalState(local)
 	buildBase = buildBase.With(
-		llbutil.CopyFrom(src, bnj.yarnRoot, yarnRoot),
+		llbutil.CopyFrom(src, bnj.yarnRoot.Rel(), yarnRoot),
 		yarnInstallAndBuild(*conf.TargetPlatform(), yarnRoot, bnj.isDevBuild))
 
 	var out llb.State

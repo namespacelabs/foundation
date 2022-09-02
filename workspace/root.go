@@ -12,29 +12,31 @@ import (
 )
 
 type Root struct {
-	Workspace     *schema.Workspace
-	WorkspaceData WorkspaceData
-	DevHost       *schema.DevHost
-	DevHostFile   string // Relative path where the devhost definition was loaded from.
+	workspace  *schema.Workspace
+	loadedFrom *schema.Workspace_LoadedFrom
+	editable   EditableWorkspaceData
 
-	absPath string
+	LoadedDevHost *schema.DevHost
 }
 
-func NewRoot(absPath string) *Root {
+func NewRoot(w *schema.Workspace, lf *schema.Workspace_LoadedFrom, editable EditableWorkspaceData) *Root {
 	return &Root{
-		absPath: absPath,
+		workspace:  w,
+		loadedFrom: lf,
+		editable:   editable,
 	}
 }
 
-func (root *Root) Abs() string { return root.absPath }
-
-func (root *Root) FS() fnfs.LocalFS {
-	return fnfs.ReadWriteLocalFS(root.absPath)
-}
+func (root *Root) Abs() string                                       { return root.loadedFrom.AbsPath }
+func (root *Root) DevHost() *schema.DevHost                          { return root.LoadedDevHost }
+func (root *Root) Workspace() *schema.Workspace                      { return root.workspace }
+func (root *Root) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return root.loadedFrom }
+func (root *Root) EditableWorkspace() EditableWorkspaceData          { return root.editable }
+func (root *Root) FS() fnfs.LocalFS                                  { return fnfs.ReadWriteLocalFS(root.Abs()) }
 
 func (root *Root) RelPackage(rel string) fnfs.Location {
 	return fnfs.Location{
-		ModuleName: root.Workspace.ModuleName,
+		ModuleName: root.workspace.ModuleName,
 		FS:         root.FS(),
 		RelPath:    filepath.Clean(rel),
 	}
@@ -42,5 +44,5 @@ func (root *Root) RelPackage(rel string) fnfs.Location {
 
 // Implements fnerrors.Location.
 func (root *Root) ErrorLocation() string {
-	return root.absPath
+	return root.Abs()
 }

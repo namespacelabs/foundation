@@ -91,7 +91,7 @@ var MakeFrontend func(EarlyPackageLoader) Frontend
 type PackageLoader struct {
 	absPath       string
 	workspace     *schema.Workspace
-	workspaceData WorkspaceData
+	loadedFrom    *schema.Workspace_LoadedFrom
 	devHost       *schema.DevHost
 	frontend      Frontend
 	rootmodule    *Module
@@ -124,18 +124,24 @@ type loadingPackage struct {
 	result  resultPair
 }
 
-func NewPackageLoader(root *Root) *PackageLoader {
+type PackageLoaderRoot interface {
+	Workspace() *schema.Workspace
+	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
+	DevHost() *schema.DevHost
+}
+
+func NewPackageLoader(root PackageLoaderRoot) *PackageLoader {
 	pl := &PackageLoader{}
-	pl.absPath = root.absPath
-	pl.workspace = root.Workspace
-	pl.workspaceData = root.WorkspaceData
-	pl.devHost = root.DevHost
+	pl.absPath = root.WorkspaceLoadedFrom().AbsPath
+	pl.workspace = root.Workspace()
+	pl.loadedFrom = root.WorkspaceLoadedFrom()
+	pl.devHost = root.DevHost()
 	pl.loaded = map[schema.PackageName]*Package{}
 	pl.loading = map[schema.PackageName]*loadingPackage{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
 	pl.loadedModules = map[string]*Module{}
 	pl.frontend = MakeFrontend(pl)
-	pl.rootmodule = pl.inject(root.absPath, root.WorkspaceData, "" /* version */)
+	pl.rootmodule = pl.inject(root.WorkspaceLoadedFrom(), root.Workspace(), "" /* version */)
 	return pl
 }
 
@@ -206,7 +212,7 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 		}
 	}
 
-	return Location{}, fnerrors.UsageError("Run `ns tidy`.", "%s: missing entry in %s: run:\n  ns tidy", packageName, pl.workspaceData.DefinitionFile())
+	return Location{}, fnerrors.UsageError("Run `ns tidy`.", "%s: missing entry in %s: run:\n  ns tidy", packageName, pl.loadedFrom.DefinitionFile)
 }
 
 func (pl *PackageLoader) MatchModuleReplace(ctx context.Context, packageName schema.PackageName) (*Location, error) {
@@ -350,23 +356,22 @@ func (pl *PackageLoader) ExternalLocation(ctx context.Context, mod *schema.Works
 	}, nil
 }
 
-func (pl *PackageLoader) inject(absPath string, w WorkspaceData, version string) *Module {
+func (pl *PackageLoader) inject(lf *schema.Workspace_LoadedFrom, w *schema.Workspace, version string) *Module {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
 	m := &Module{
-		Workspace:     w.Parsed(),
-		WorkspaceData: w,
-		DevHost:       pl.devHost,
+		Workspace: w,
+		DevHost:   pl.devHost,
 
-		absPath: absPath,
+		absPath: lf.AbsPath,
 		version: version,
 	}
 
 	pl.loadedModules[m.ModuleName()] = m
-	pl.fsys[m.ModuleName()] = memfs.IncrementalSnapshot(fnfs.Local(w.AbsPath()))
+	pl.fsys[m.ModuleName()] = memfs.IncrementalSnapshot(fnfs.Local(lf.AbsPath))
 
-	pl.fsys[m.ModuleName()].Direct().Add(w.DefinitionFile(), w.RawData())
+	pl.fsys[m.ModuleName()].Direct().Add(lf.DefinitionFile, lf.Contents)
 
 	return m
 }
@@ -396,7 +401,7 @@ func (pl *PackageLoader) resolveExternal(ctx context.Context, moduleName string,
 		return nil, fnerrors.InternalError("%s: inconsistent definition, module specified %q", moduleName, data.Parsed().ModuleName)
 	}
 
-	return pl.inject(downloaded.LocalPath, data, downloaded.Version), nil
+	return pl.inject(data.WorkspaceLoadedFrom(), data.Parsed(), downloaded.Version), nil
 }
 
 type PackageLoaderStats struct {

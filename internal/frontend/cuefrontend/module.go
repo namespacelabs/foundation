@@ -200,6 +200,14 @@ func (r workspaceData) RawData() []byte           { return r.data }
 func (r workspaceData) Parsed() *schema.Workspace { return r.parsed }
 func (r workspaceData) structLit() *ast.StructLit { return r.source.Syntax().(*ast.StructLit) }
 
+func (r workspaceData) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
+	return &schema.Workspace_LoadedFrom{
+		AbsPath:        r.absPath,
+		DefinitionFile: r.definitionFile,
+		Contents:       r.data,
+	}
+}
+
 func (r workspaceData) FormatTo(w io.Writer) error {
 	formatted, err := format.Node(&ast.File{Decls: r.structLit().Elts})
 	if err != nil {
@@ -210,7 +218,7 @@ func (r workspaceData) FormatTo(w io.Writer) error {
 	return err
 }
 
-func (r workspaceData) SetDependency(deps ...*schema.Workspace_Dependency) workspace.WorkspaceData {
+func (r workspaceData) WithSetDependency(deps ...*schema.Workspace_Dependency) workspace.WorkspaceData {
 	var add, update []*schema.Workspace_Dependency
 
 	for _, dep := range deps {
@@ -229,7 +237,7 @@ func (r workspaceData) SetDependency(deps ...*schema.Workspace_Dependency) works
 	return r.updateDependencies(add, update, nil)
 }
 
-func (r workspaceData) ReplaceDependencies(deps []*schema.Workspace_Dependency) workspace.WorkspaceData {
+func (r workspaceData) WithReplacedDependencies(deps []*schema.Workspace_Dependency) workspace.WorkspaceData {
 	var add, update []*schema.Workspace_Dependency
 	var toremove []string
 

@@ -57,7 +57,7 @@ func (ws *FnWorkspace) AbsRoot() string {
 // Take a relative path (package/file.cue) and returns a fully-qualified package name
 // (example.com/module/package/file.cue) within the main workspace module.
 func (ws *FnWorkspace) PkgNameInMainModule(relPath string) string {
-	return path.Join(ws.root.Workspace.ModuleName, relPath)
+	return path.Join(ws.root.Workspace().ModuleName, relPath)
 }
 
 // Real filesystem path for the package name (example.com/module/package/file.cue).
@@ -99,7 +99,7 @@ func (ws *FnWorkspace) SnapshotDir(ctx context.Context, pkgname schema.PackageNa
 	}
 
 	var fsys fs.FS
-	if loc.Module.ModuleName() == ws.root.Workspace.ModuleName {
+	if loc.Module.ModuleName() == ws.root.Workspace().ModuleName {
 		// Module corresponding to the current Fn workspace.
 		fsys = ws.FS()
 	} else {

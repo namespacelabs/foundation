@@ -52,7 +52,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return fnerrors.New("failed to prepare plan: %w", err)
 		}
 
-		return completeDeployment(ctx, root, serializedEnvironment{root, plan.Environment}, p, plan, opts)
+		return completeDeployment(ctx, serializedEnvironment{root, plan.Environment}, p, plan, opts)
 	})
 
 	return cmd
@@ -63,7 +63,10 @@ type serializedEnvironment struct {
 	env  *schema.Environment
 }
 
-func (se serializedEnvironment) Workspace() *schema.Workspace { return se.root.Workspace }
-func (se serializedEnvironment) DevHost() *schema.DevHost     { return se.root.DevHost }
-func (se serializedEnvironment) Proto() *schema.Environment   { return se.env }
-func (se serializedEnvironment) ErrorLocation() string        { return se.root.Abs() }
+func (se serializedEnvironment) Workspace() *schema.Workspace { return se.root.Workspace() }
+func (se serializedEnvironment) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
+	return se.root.WorkspaceLoadedFrom()
+}
+func (se serializedEnvironment) DevHost() *schema.DevHost   { return se.root.DevHost() }
+func (se serializedEnvironment) Proto() *schema.Environment { return se.env }
+func (se serializedEnvironment) ErrorLocation() string      { return se.root.Abs() }

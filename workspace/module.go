@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -53,34 +54,51 @@ type ResolvedPackage struct {
 }
 
 // Implements fnerrors.Location.
-func (root *Module) ErrorLocation() string {
-	if root.IsExternal() {
-		return root.Workspace.ModuleName
+func (mod *Module) ErrorLocation() string {
+	if mod.IsExternal() {
+		return mod.Workspace.ModuleName
 	}
 
-	return root.absPath
+	return mod.absPath
 }
 
-func (root *Module) Abs() string        { return root.absPath }
-func (root *Module) ModuleName() string { return root.Workspace.ModuleName }
+func (mod *Module) Abs() string        { return mod.absPath }
+func (mod *Module) ModuleName() string { return mod.Workspace.ModuleName }
 
 // An external module is downloaded from a remote location and stored in the cache. It always has a version.
-func (root *Module) IsExternal() bool { return root.version != "" }
+func (mod *Module) IsExternal() bool { return mod.version != "" }
 
-func (root *Module) Version() string { return root.version }
-func (root *Module) VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
-	return wscontents.Observe(root.absPath, rel, observeChanges && !root.IsExternal())
+func (mod *Module) Version() string { return mod.version }
+func (mod *Module) VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
+	return wscontents.Observe(mod.absPath, rel, observeChanges && !mod.IsExternal())
 }
 
-func (root *Module) ReadOnlyFS() fs.FS {
-	return fnfs.Local(root.absPath)
+func (mod *Module) ReadOnlyFS() fs.FS {
+	return fnfs.Local(mod.absPath)
 }
 
-func (root *Module) ReadWriteFS() fnfs.ReadWriteFS {
-	if root.IsExternal() {
-		return fnfs.Local(root.absPath).(fnfs.ReadWriteFS) // LocalFS has a Write, which fails Writes.
+func (mod *Module) ReadWriteFS() fnfs.ReadWriteFS {
+	if mod.IsExternal() {
+		return fnfs.Local(mod.absPath).(fnfs.ReadWriteFS) // LocalFS has a Write, which fails Writes.
 	}
-	return fnfs.ReadWriteLocalFS(root.absPath)
+	return fnfs.ReadWriteLocalFS(mod.absPath)
+}
+
+func (mod *Module) MakeLocation(relPath string) Location {
+	cl := filepath.Clean(relPath)
+	pkg := mod.Workspace.ModuleName
+	if cl != "." {
+		pkg += "/" + cl
+	}
+	return Location{
+		Module:      mod,
+		PackageName: schema.PackageName(pkg),
+		relPath:     cl,
+	}
+}
+
+func (mod *Module) RootLocation() Location {
+	return mod.MakeLocation(".")
 }
 
 func ResolveModuleVersion(ctx context.Context, packageName string) (*schema.Workspace_Dependency, error) {

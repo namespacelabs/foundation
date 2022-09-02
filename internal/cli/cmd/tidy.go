@@ -129,13 +129,13 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 	alloc := &allocator{
 		loader:   pl,
 		root:     root,
-		ws:       protos.Clone(root.Workspace),
+		ws:       protos.Clone(root.Workspace()),
 		resolved: map[string]*schema.Workspace_Dependency{},
 		modules:  map[string]*schema.Workspace_Dependency{},
 		left:     locs,
 	}
 
-	for _, dep := range root.Workspace.Dep {
+	for _, dep := range root.Workspace().Dep {
 		alloc.modules[dep.ModuleName] = dep
 	}
 
@@ -177,7 +177,7 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 		}
 	}
 
-	if root.Workspace.ModuleName != foundationModule {
+	if root.Workspace().ModuleName != foundationModule {
 		// Always add a dep on the foundation module.
 		if _, err := alloc.checkResolve(ctx, schema.PackageName(foundationModule)); err != nil {
 			return err
@@ -196,7 +196,7 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 		deps = append(deps, dep)
 	}
 
-	return rewriteWorkspace(ctx, root, root.WorkspaceData.ReplaceDependencies(deps))
+	return rewriteWorkspace(ctx, root, root.EditableWorkspace().WithReplacedDependencies(deps))
 }
 
 func rewriteWorkspace(ctx context.Context, root *workspace.Root, data workspace.WorkspaceData) error {
@@ -238,7 +238,7 @@ func (alloc *allocator) checkResolves(ctx context.Context, pkgs []string, refs [
 }
 
 func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName) (workspace.Location, error) {
-	if _, ok := schema.IsParent(alloc.root.Workspace.ModuleName, sch); ok {
+	if _, ok := schema.IsParent(alloc.root.Workspace().ModuleName, sch); ok {
 		return alloc.loader.Resolve(ctx, sch)
 	}
 
@@ -281,9 +281,7 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 
 			// Add dep and reload package loader for new deps
 			alloc.ws.Dep = append(alloc.ws.Dep, dep)
-			root := alloc.root
-			root.Workspace = alloc.ws
-			alloc.loader = workspace.NewPackageLoader(root)
+			alloc.loader = workspace.NewPackageLoader(fixedWorkspace{alloc.ws, alloc.root.WorkspaceLoadedFrom(), alloc.root.DevHost()})
 		}
 
 		didResolve = true
@@ -305,6 +303,17 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 
 	return loc, err
 }
+
+type fixedWorkspace struct {
+	ws      *schema.Workspace
+	lf      *schema.Workspace_LoadedFrom
+	devhost *schema.DevHost
+}
+
+func (fw fixedWorkspace) ErrorLocation() string                             { return fw.ws.ModuleName }
+func (fw fixedWorkspace) Workspace() *schema.Workspace                      { return fw.ws }
+func (fw fixedWorkspace) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return fw.lf }
+func (fw fixedWorkspace) DevHost() *schema.DevHost                          { return fw.devhost }
 
 type workspaceLoader struct {
 	alloc *allocator

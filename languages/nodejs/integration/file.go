@@ -40,16 +40,16 @@ func writeSource(w io.Writer, t *template.Template, templateName string, data in
 	return err
 }
 
-func findYarnRoot(loc workspace.Location) (string, error) {
+func findYarnRoot(loc workspace.Location) (workspace.Location, error) {
 	path, err := findroot.Find(yarnLockFn, loc.Abs(), findroot.LookForFile(yarnLockFn))
 	if err != nil {
-		return "", nil
+		return workspace.Location{}, nil
 	}
 
 	relPath, err := filepath.Rel(loc.Module.Abs(), path)
 	if err != nil {
-		return "", err
+		return workspace.Location{}, nil
 	}
 
-	return relPath, nil
+	return loc.Module.MakeLocation(relPath), nil
 }

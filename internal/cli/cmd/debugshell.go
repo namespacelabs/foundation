@@ -51,7 +51,7 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 
 		case binaryPackage != "":
-			pkg, err := workspace.NewPackageLoader(env.Root()).LoadByName(ctx, schema.PackageName(binaryPackage))
+			pkg, err := workspace.NewPackageLoader(env).LoadByName(ctx, schema.PackageName(binaryPackage))
 			if err != nil {
 				return err
 			}

@@ -11,12 +11,12 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
@@ -38,11 +38,6 @@ func newPrepareCmd() *cobra.Command {
 	buildkitAddr := flag.String("buildkit_address", "tcp://buildkitd:1234", "The buildkit address to configure.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		r := workspace.NewRoot(*workspaceDir)
-		if err := devhost.Prepare(ctx, r); err != nil {
-			return err
-		}
-
 		cidevhost := &schema.DevHost{
 			Configure: []*schema.DevHost_ConfigureEnvironment{
 				{
@@ -87,7 +82,7 @@ func newPrepareCmd() *cobra.Command {
 			}},
 		}
 
-		return devhost.RewriteWith(ctx, r, cidevhost)
+		return devhost.RewriteWith(ctx, fnfs.ReadWriteLocalFS(*workspaceDir), devhost.DevHostFilename, cidevhost)
 	})
 
 	return cmd

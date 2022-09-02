@@ -28,17 +28,8 @@ const (
 
 var UseNativeNode = false
 
-// Runs a configured Yarn.
-func RunYarn(ctx context.Context, env provision.Env, relPath string, args []string, workspaceData workspace.WorkspaceData) error {
-	return RunYarnForScope(ctx, env, "", relPath, args, workspaceData)
-}
-
-func RunYarnForLocation(ctx context.Context, env provision.Env, loc workspace.Location, args []string, workspaceData workspace.WorkspaceData) error {
-	return RunYarnForScope(ctx, env, loc.PackageName, loc.Rel(), args, workspaceData)
-}
-
-func RunYarnForScope(ctx context.Context, env provision.Env, scope schema.PackageName, relPath string, args []string, workspaceData workspace.WorkspaceData) error {
-	lockFileStruct, err := generateLockFileStruct(workspaceData.Parsed(), workspaceData.AbsPath(), relPath)
+func RunYarn(ctx context.Context, env provision.Env, loc workspace.Location, args []string) error {
+	lockFileStruct, err := generateLockFileStruct(loc.Module.Workspace, loc.Module.Abs(), loc.Rel())
 	if err != nil {
 		return err
 	}
@@ -81,14 +72,14 @@ func RunYarnForScope(ctx context.Context, env provision.Env, scope schema.Packag
 			cmd.AdditionalEnv = append(cmd.AdditionalEnv, fmt.Sprintf("%s=%s", kv.Name, kv.Value))
 		}
 		cmd.Args = append([]string{string(yarnBin)}, args...)
-		cmd.Dir = filepath.Join(env.Root().Abs(), relPath)
+		cmd.Dir = filepath.Join(env.WorkspaceAbsPath(), loc.Rel())
 		return cmd.Run(ctx)
 	}
 
 	mounts := []*rtypes.LocalMapping{{HostPath: dir, ContainerPath: targetLockDirFn}}
 	for moduleName, module := range lockFileStruct.Modules {
-		if moduleName != workspaceData.Parsed().ModuleName {
-			path := filepath.Join(workspaceData.AbsPath(), relPath, module.Path)
+		if moduleName != loc.Module.ModuleName() {
+			path := filepath.Join(loc.Module.Abs(), loc.Rel(), module.Path)
 			mounts = append(mounts, &rtypes.LocalMapping{
 				HostPath:      path,
 				ContainerPath: filepath.Join(workspaceContainerDir, path),
@@ -96,8 +87,8 @@ func RunYarnForScope(ctx context.Context, env provision.Env, scope schema.Packag
 		}
 	}
 
-	return RunNodejs(ctx, env, relPath, "node", &RunNodejsOpts{
-		Scope:   scope,
+	return RunNodejs(ctx, env, loc.Rel(), "node", &RunNodejsOpts{
+		Scope:   loc.PackageName,
 		Args:    append([]string{string(yarnBinaryPath)}, args...),
 		EnvVars: envArgs,
 		Mounts:  mounts,

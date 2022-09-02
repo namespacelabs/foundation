@@ -204,14 +204,14 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 }
 
 func resetStack(out *Stack, env provision.Env, focus []provision.Server) {
-	workspace := protos.Clone(env.Root().Workspace)
+	workspace := protos.Clone(env.Workspace())
 
 	// XXX handling broken web ui builds.
 	if workspace.Env == nil {
 		workspace.Env = provision.EnvsOrDefault(env.DevHost(), workspace)
 	}
 
-	out.AbsRoot = env.Root().Abs()
+	out.AbsRoot = env.WorkspaceAbsPath()
 	out.Env = env.Proto()
 	out.Workspace = workspace
 	out.AvailableEnv = workspace.Env

@@ -103,11 +103,14 @@ var _ workspace.WorkspaceEnvironment = genEnv{}
 
 func (g genEnv) ErrorLocation() string        { return g.root.ErrorLocation() }
 func (g genEnv) OutputFS() fnfs.ReadWriteFS   { return g.root.FS() }
-func (g genEnv) ModuleName() string           { return g.root.Workspace.ModuleName }
+func (g genEnv) ModuleName() string           { return g.root.Workspace().ModuleName }
 func (g genEnv) Proto() *schema.Environment   { return nil }
 func (g genEnv) Root() *workspace.Root        { return g.root }
-func (g genEnv) Workspace() *schema.Workspace { return g.root.Workspace }
-func (g genEnv) DevHost() *schema.DevHost     { return g.root.DevHost }
+func (g genEnv) Workspace() *schema.Workspace { return g.root.Workspace() }
+func (g genEnv) DevHost() *schema.DevHost     { return g.root.DevHost() }
+func (g genEnv) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
+	return g.root.WorkspaceLoadedFrom()
+}
 
 func (g genEnv) Resolve(ctx context.Context, pkg schema.PackageName) (workspace.Location, error) {
 	return g.r.Resolve(ctx, pkg)

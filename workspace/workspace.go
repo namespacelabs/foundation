@@ -31,15 +31,21 @@ const (
 	foundationModule          = "namespacelabs.dev/foundation"
 )
 
+type EditableWorkspaceData interface {
+	FormatTo(io.Writer) error
+
+	WithSetDependency(...*schema.Workspace_Dependency) WorkspaceData
+	WithReplacedDependencies([]*schema.Workspace_Dependency) WorkspaceData
+}
+
 type WorkspaceData interface {
 	AbsPath() string
 	DefinitionFile() string
 	RawData() []byte
+	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
 	Parsed() *schema.Workspace
-	FormatTo(io.Writer) error
 
-	SetDependency(...*schema.Workspace_Dependency) WorkspaceData
-	ReplaceDependencies([]*schema.Workspace_Dependency) WorkspaceData
+	EditableWorkspaceData
 }
 
 var ModuleLoader interface {
@@ -188,7 +194,7 @@ func (r rawWorkspaceData) FormatTo(w io.Writer) error {
 	return nil
 }
 
-func (r rawWorkspaceData) SetDependency(deps ...*schema.Workspace_Dependency) WorkspaceData {
+func (r rawWorkspaceData) WithSetDependency(deps ...*schema.Workspace_Dependency) WorkspaceData {
 	cloned := protos.Clone(r.parsed)
 
 	var mods, changes int
@@ -216,10 +222,18 @@ func (r rawWorkspaceData) SetDependency(deps ...*schema.Workspace_Dependency) Wo
 	return nil
 }
 
-func (r rawWorkspaceData) ReplaceDependencies(deps []*schema.Workspace_Dependency) WorkspaceData {
+func (r rawWorkspaceData) WithReplacedDependencies(deps []*schema.Workspace_Dependency) WorkspaceData {
 	cloned := protos.Clone(r.parsed)
 	cloned.Dep = deps
 	copy := r
 	copy.parsed = cloned
 	return copy
+}
+
+func (r rawWorkspaceData) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
+	return &schema.Workspace_LoadedFrom{
+		AbsPath:        r.AbsPath(),
+		DefinitionFile: r.DefinitionFile(),
+		Contents:       r.RawData(),
+	}
 }

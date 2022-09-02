@@ -23,33 +23,31 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const devHostFilename = "devhost.textpb"
+const DevHostFilename = "devhost.textpb"
 
 var HasRuntime func(string) bool
 
-func HostOnlyFiles() []string { return []string{devHostFilename} }
+func HostOnlyFiles() []string { return []string{DevHostFilename} }
 
 func Prepare(ctx context.Context, root *workspace.Root) error {
-	root.DevHost = &schema.DevHost{} // Make sure we always have an instance of DevHost, even if empty.
+	root.LoadedDevHost = &schema.DevHost{} // Make sure we always have an instance of DevHost, even if empty.
 
-	devHostBytes, err := fs.ReadFile(root.FS(), devHostFilename)
+	devHostBytes, err := fs.ReadFile(root.FS(), DevHostFilename)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
 	} else {
-		if err := prototext.Unmarshal(devHostBytes, root.DevHost); err != nil {
-			return fnerrors.BadInputError("Failed to parse %q. If you changed it manually, try to undo your changes.", devHostFilename)
+		if err := prototext.Unmarshal(devHostBytes, root.LoadedDevHost); err != nil {
+			return fnerrors.BadInputError("Failed to parse %q. If you changed it manually, try to undo your changes.", DevHostFilename)
 		}
 	}
 
-	for _, env := range root.Workspace.GetEnv() {
+	for _, env := range root.Workspace().GetEnv() {
 		if !HasRuntime(env.Runtime) {
 			return fnerrors.InternalError("%s is not a supported runtime type", env.Runtime)
 		}
 	}
-
-	root.DevHostFile = devHostFilename
 
 	return nil
 }
@@ -99,8 +97,8 @@ func MakeConfiguration(messages ...proto.Message) (*schema.DevHost_ConfigureEnvi
 	return c, nil
 }
 
-func Update(root *workspace.Root, confs ...*schema.DevHost_ConfigureEnvironment) (*schema.DevHost, bool) {
-	copy := protos.Clone(root.DevHost)
+func Update(devHost *schema.DevHost, confs ...*schema.DevHost_ConfigureEnvironment) (*schema.DevHost, bool) {
+	copy := protos.Clone(devHost)
 
 	var totalChangeCount int
 	for _, conf := range confs {
@@ -147,13 +145,13 @@ func Update(root *workspace.Root, confs ...*schema.DevHost_ConfigureEnvironment)
 	return copy, totalChangeCount > 0
 }
 
-func RewriteWith(ctx context.Context, root *workspace.Root, devhost *schema.DevHost) error {
+func RewriteWith(ctx context.Context, fsys fnfs.ReadWriteFS, filename string, devhost *schema.DevHost) error {
 	serialized, err := (prototext.MarshalOptions{Multiline: true}).Marshal(devhost)
 	if err != nil {
 		return err
 	}
 
-	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), root.DevHostFile, func(w io.Writer) error {
+	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsys, filename, func(w io.Writer) error {
 		_, err := w.Write(serialized)
 		return err
 	}); err != nil {

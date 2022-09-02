@@ -41,7 +41,7 @@ func newModDownloadCmd() *cobra.Command {
 				return err
 			}
 
-			for _, dep := range root.Workspace.Dep {
+			for _, dep := range root.Workspace().Dep {
 				mod, err := workspace.DownloadModule(ctx, dep, force)
 				if err != nil {
 					return err
@@ -80,7 +80,7 @@ func newModGetCmd() *cobra.Command {
 				return err
 			}
 
-			newData := root.WorkspaceData.SetDependency(dep)
+			newData := root.EditableWorkspace().WithSetDependency(dep)
 			if newData != nil {
 				return rewriteWorkspace(ctx, root, newData)
 			}

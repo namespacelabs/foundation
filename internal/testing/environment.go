@@ -48,13 +48,10 @@ func PrepareEnv(ctx context.Context, sourceEnv provision.Env, ephemeral bool) pr
 		}
 	}
 
-	env := provision.MakeEnv(&workspace.Root{
-		Workspace:     sourceEnv.Root().Workspace,
-		WorkspaceData: sourceEnv.Root().WorkspaceData,
-		DevHost:       devHost,
-	}, testEnv)
+	testRoot := workspace.NewRoot(sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), nil)
+	testRoot.LoadedDevHost = devHost
 
-	return env
+	return provision.MakeEnv(testRoot, testEnv)
 }
 
 func makeDeleteEnv(env runtime.Selector) func(context.Context) error {
@@ -87,12 +84,9 @@ func envWithVCluster(ctx context.Context, sourceEnv ops.Environment, vcluster *v
 	configure := []*schema.DevHost_ConfigureEnvironment{c}
 	configure = append(configure, devHost.Configure...)
 
-	env := provision.MakeEnv(&workspace.Root{
-		Workspace: sourceEnv.Workspace(),
-		DevHost: &schema.DevHost{
-			Configure:         configure,
-			ConfigurePlatform: devHost.ConfigurePlatform,
-		},
+	env := provision.MakeEnvWith(sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), &schema.DevHost{
+		Configure:         configure,
+		ConfigurePlatform: devHost.ConfigurePlatform,
 	}, testEnv)
 
 	deleteEnv := makeDeleteEnv(sourceEnv)

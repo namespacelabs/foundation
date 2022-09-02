@@ -28,13 +28,13 @@ func newDenoCmd() *cobra.Command {
 			return err
 		}
 
-		if err := d.CacheImports(ctx, env.Root().Abs()); err != nil {
+		if err := d.CacheImports(ctx, env.WorkspaceAbsPath()); err != nil {
 			return err
 		}
 
 		x := console.EnterInputMode(ctx)
 		defer x()
 
-		return d.Run(ctx, env.Root().Abs(), rtypes.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr}, "repl", "--cached-only")
+		return d.Run(ctx, env.WorkspaceAbsPath(), rtypes.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr}, "repl", "--cached-only")
 	})
 }

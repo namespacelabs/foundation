@@ -22,13 +22,13 @@ func Delete(ctx context.Context, root *workspace.Root) error {
 	fsys := root.FS()
 
 	// Ignore if the devhost file is not found.
-	_, err := fsys.Open(devHostFilename)
+	_, err := fsys.Open(DevHostFilename)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
 
 	if rmfs, ok := fsys.(fnfs.WriteFS); ok {
-		return rmfs.Remove(devHostFilename)
+		return rmfs.Remove(DevHostFilename)
 	}
 
 	return fnerrors.BadInputError("workspace root is a non-writable filesystem of type %q", reflect.TypeOf(fsys))

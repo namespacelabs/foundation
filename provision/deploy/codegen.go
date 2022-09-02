@@ -66,6 +66,9 @@ func (ce codegenEnv) Proto() *schema.Environment   { return ce.env }
 func (ce codegenEnv) ModuleName() string           { return ce.root.ModuleName() }
 func (ce codegenEnv) OutputFS() fnfs.ReadWriteFS   { return ce.fs }
 func (ce codegenEnv) Workspace() *schema.Workspace { return ce.root.Workspace }
+func (ce codegenEnv) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
+	return ce.root.WorkspaceData.WorkspaceLoadedFrom()
+}
 
 func (ce codegenEnv) Resolve(ctx context.Context, pkg schema.PackageName) (workspace.Location, error) {
 	return ce.packages.Resolve(ctx, pkg)

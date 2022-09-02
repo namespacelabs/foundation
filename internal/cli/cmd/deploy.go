@@ -31,7 +31,6 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
@@ -90,7 +89,7 @@ func NewDeployCmd() *cobra.Command {
 				return protos.WriteFile(serializePath, deployPlan)
 			}
 
-			return completeDeployment(ctx, env.Root(), env.BindWith(servers.SealedPackages), computed.Deployer, deployPlan, deployOpts)
+			return completeDeployment(ctx, env.BindWith(servers.SealedPackages), computed.Deployer, deployPlan, deployOpts)
 		})
 }
 
@@ -109,9 +108,9 @@ type Ingress struct {
 	Protocol []string `json:"protocol"`
 }
 
-func completeDeployment(ctx context.Context, root *workspace.Root, env ops.Environment, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
+func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
 	if orchestration.UseOrchestrator {
-		env := provision.MakeEnv(root, plan.Environment)
+		env := provision.MakeEnvFromEnv(env)
 		id, err := orchestration.Deploy(ctx, env, plan)
 		if err != nil {
 			return err

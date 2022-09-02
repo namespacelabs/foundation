@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
@@ -41,7 +42,12 @@ func newNodejsCmd() *cobra.Command {
 			}
 		}
 
-		return nodejs.RunYarn(ctx, env, relPath, args, root.WorkspaceData)
+		loc, err := workspace.NewPackageLoader(root).Resolve(ctx, root.RelPackage(relPath).AsPackageName())
+		if err != nil {
+			return err
+		}
+
+		return nodejs.RunYarn(ctx, env, loc, args)
 	})
 
 	yarn.Flags().StringVar(&relPath, "rel_path", "", "If not set, will be computed.")

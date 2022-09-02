@@ -52,7 +52,7 @@ func newPruneCmd() *cobra.Command {
 			if slices.Contains(what, "buildkit") {
 				eg.Go(func(ctx context.Context) error {
 					// XXX make platform configurable.
-					return buildkit.Prune(ctx, root.DevHost, buildkit.HostPlatform())
+					return buildkit.Prune(ctx, root.DevHost(), buildkit.HostPlatform())
 				})
 			}
 

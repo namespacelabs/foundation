@@ -49,7 +49,7 @@ func newLocalCmd() *cobra.Command {
 			prepares = append(prepares, localK8sConfiguration(env, k8sconfig))
 			prepares = append(prepares, prepare.PrepareIngressFromHostConfig(env, k8sconfig))
 
-			return collectPreparesAndUpdateDevhost(ctx, env, prepares)
+			return collectPreparesAndUpdateDevhost(ctx, root, prepares)
 		}),
 	}
 

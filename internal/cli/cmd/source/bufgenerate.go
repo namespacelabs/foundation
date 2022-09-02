@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/source"
@@ -37,8 +39,12 @@ func newBufGenerateCmd() *cobra.Command {
 			fncobra.FixedEnv(&env, "dev"),
 			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{})).
 		Do(func(ctx context.Context) error {
-			paths := []string{}
+			var paths []string
 			for _, loc := range locs.Locs {
+				if loc.ModuleName != env.Workspace().ModuleName {
+					return fnerrors.InternalError("%s: can't run codegen on files outside of the current workspace", loc.ModuleName)
+				}
+
 				paths = append(paths, loc.RelPath)
 			}
 
@@ -52,6 +58,11 @@ func newBufGenerateCmd() *cobra.Command {
 				return fmt.Errorf("unsupported language: %s", lang)
 			}
 
-			return source.GenProtosAtPaths(ctx, env, env.Root(), fmwk, paths, env.Root().FS())
+			fsys := fnfs.ReadWriteLocalFS(env.WorkspaceAbsPath())
+			if err := source.GenProtosAtPaths(ctx, env, fmwk, fsys, paths, fsys); err != nil {
+				return err
+			}
+
+			return nil
 		})
 }

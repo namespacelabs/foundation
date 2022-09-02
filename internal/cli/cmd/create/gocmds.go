@@ -17,5 +17,5 @@ func runGoInitCmdIfNeeded(ctx context.Context, root *workspace.Root, runCommand 
 		return nil
 	}
 
-	return runCommand(ctx, []string{"sdk", "go", "mod", "init", root.Workspace.ModuleName})
+	return runCommand(ctx, []string{"sdk", "go", "mod", "init", root.Workspace().ModuleName})
 }

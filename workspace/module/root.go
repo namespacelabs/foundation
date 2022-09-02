@@ -37,9 +37,7 @@ func findWorkspaceRoot(ctx context.Context, dir string, args workspace.ModuleAtA
 		return nil, err
 	}
 
-	r := workspace.NewRoot(path)
-	r.Workspace = data.Parsed()
-	r.WorkspaceData = data
+	r := workspace.NewRoot(data.Parsed(), data.WorkspaceLoadedFrom(), data)
 
 	if err := devhost.Prepare(ctx, r); err != nil {
 		return r, err

@@ -82,7 +82,7 @@ func baseline(env provision.Env) []compute.Computable[[]*schema.DevHost_Configur
 	return prepares
 }
 
-func prebuilts(env provision.Env) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func prebuilts(env ops.Environment) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	var prebuilts = []schema.PackageName{
 		"namespacelabs.dev/foundation/devworkflow/web",
 		"namespacelabs.dev/foundation/std/dev/controller",
@@ -91,7 +91,7 @@ func prebuilts(env provision.Env) []compute.Computable[[]*schema.DevHost_Configu
 		"namespacelabs.dev/foundation/std/secrets/kubernetes",
 	}
 
-	preparedPrebuilts := prepare.DownloadPrebuilts(env, workspace.NewPackageLoader(env.Root()), prebuilts)
+	preparedPrebuilts := prepare.DownloadPrebuilts(env, workspace.NewPackageLoader(env), prebuilts)
 
 	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
 	prepares = append(prepares, compute.Map(
@@ -104,7 +104,7 @@ func prebuilts(env provision.Env) []compute.Computable[[]*schema.DevHost_Configu
 	return prepares
 }
 
-func collectPreparesAndUpdateDevhost(ctx context.Context, env provision.Env, prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) error {
+func collectPreparesAndUpdateDevhost(ctx context.Context, root *workspace.Root, prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) error {
 	prepareAll := compute.Collect(tasks.Action("prepare.collect-all"), prepares...)
 	results, err := compute.GetValue(ctx, prepareAll)
 	if err != nil {
@@ -118,7 +118,7 @@ func collectPreparesAndUpdateDevhost(ctx context.Context, env provision.Env, pre
 
 	stdout := console.Stdout(ctx)
 
-	updateCount, err := devHostUpdates(ctx, env.Root(), confs)
+	updateCount, err := devHostUpdates(ctx, root, confs)
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func collectPreparesAndUpdateDevhost(ctx context.Context, env provision.Env, pre
 		return nil
 	}
 
-	return devhost.RewriteWith(ctx, env.Root(), env.DevHost())
+	return devhost.RewriteWith(ctx, root.FS(), devhost.DevHostFilename, root.LoadedDevHost)
 }
 
 func devHostUpdates(ctx context.Context, root *workspace.Root, confs [][]*schema.DevHost_ConfigureEnvironment) (int, error) {
@@ -138,18 +138,18 @@ func devHostUpdates(ctx context.Context, root *workspace.Root, confs [][]*schema
 			continue
 		}
 
-		updated, was := devhost.Update(root, conf...)
+		updated, was := devhost.Update(root.LoadedDevHost, conf...)
 		if was {
 			updateCount++
 		}
 
 		// Make sure that the subsequent calls observe an up to date configuration.
 		// XXX this is not right, Root() should be immutable.
-		root.DevHost = updated
+		root.LoadedDevHost = updated
 	}
 
 	// Remove deprecated bits.
-	for k, u := range root.DevHost.Configure {
+	for k, u := range root.LoadedDevHost.Configure {
 		var without []*anypb.Any
 
 		for _, cfg := range u.Configuration {
@@ -161,7 +161,7 @@ func devHostUpdates(ctx context.Context, root *workspace.Root, confs [][]*schema
 		}
 
 		if len(without) == 0 {
-			root.DevHost.Configure[k] = nil // Mark for removal.
+			root.LoadedDevHost.Configure[k] = nil // Mark for removal.
 		} else {
 			u.Configuration = without
 		}
@@ -169,12 +169,12 @@ func devHostUpdates(ctx context.Context, root *workspace.Root, confs [][]*schema
 
 	k := 0
 	for {
-		if k >= len(root.DevHost.Configure) {
+		if k >= len(root.LoadedDevHost.Configure) {
 			break
 		}
 
-		if root.DevHost.Configure[k] == nil {
-			root.DevHost.Configure = append(root.DevHost.Configure[:k], root.DevHost.Configure[k+1:]...)
+		if root.LoadedDevHost.Configure[k] == nil {
+			root.LoadedDevHost.Configure = append(root.LoadedDevHost.Configure[:k], root.LoadedDevHost.Configure[k+1:]...)
 			updateCount++
 		} else {
 			k++
