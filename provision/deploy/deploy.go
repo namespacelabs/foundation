@@ -207,15 +207,18 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 }
 
 func prepareHandlerInvocations(ctx context.Context, env ops.Environment, stack *stack.Stack) (compute.Computable[*handlerResult], error) {
-	return tasks.Return(ctx, tasks.Action(runtime.TaskServerProvision).Scope(provision.ServerPackages(stack.Servers).PackageNames()...), func(ctx context.Context) (compute.Computable[*handlerResult], error) {
-		handlers, err := computeHandlers(ctx, stack)
-		if err != nil {
-			return nil, err
-		}
+	return tasks.Return(ctx, tasks.Action("server.invoke-handlers").
+		Arg("env", env.Proto().Name).
+		Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
+		func(ctx context.Context) (compute.Computable[*handlerResult], error) {
+			handlers, err := computeHandlers(ctx, stack)
+			if err != nil {
+				return nil, err
+			}
 
-		// After we've computed the startup plans, issue the necessary provisioning calls.
-		return invokeHandlers(ctx, env, stack, handlers, protocol.Lifecycle_PROVISION)
-	})
+			// After we've computed the startup plans, issue the necessary provisioning calls.
+			return invokeHandlers(ctx, env, stack, handlers, protocol.Lifecycle_PROVISION)
+		})
 }
 
 type prepareAndBuildResult struct {
