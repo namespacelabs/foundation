@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -46,9 +47,10 @@ func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWo
 		root:      root,
 		openFiles: s.openFiles,
 	}
-	ws.evalCtx = fncue.NewEvalCtx(ws, &schema.Environment{
+	env := &schema.Environment{
 		Purpose: schema.Environment_DEVELOPMENT,
-	})
+	}
+	ws.evalCtx = fncue.NewEvalCtx(ws, cuefrontend.InjectedScope(env))
 	return
 }
 

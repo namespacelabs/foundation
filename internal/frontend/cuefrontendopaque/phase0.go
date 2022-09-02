@@ -16,15 +16,11 @@ import (
 )
 
 type Frontend struct {
-	loader  workspace.EarlyPackageLoader
-	evalctx *fncue.EvalCtx
+	loader workspace.EarlyPackageLoader
 }
 
 func NewFrontend(pl workspace.EarlyPackageLoader, env *schema.Environment) *Frontend {
-	return &Frontend{
-		loader:  pl,
-		evalctx: fncue.NewEvalCtx(cuefrontend.WorkspaceLoader{PackageLoader: pl}, env),
-	}
+	return &Frontend{loader: pl}
 }
 
 func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc workspace.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error) {
