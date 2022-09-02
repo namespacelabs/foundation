@@ -7,6 +7,8 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"os"
 	"sort"
 	"strings"
 
@@ -22,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
@@ -29,6 +32,7 @@ import (
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -290,9 +294,9 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 
 	binaryInputs := compute.Inputs()
 
-	keys := maps.Keys(imgs)
-	slices.Sort(keys)
-	for _, pkg := range keys {
+	imageKeys := maps.Keys(imgs)
+	slices.Sort(imageKeys)
+	for _, pkg := range imageKeys {
 		img := imgs[pkg]
 		if img.Binary != nil {
 			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:binary", pkg), img.Binary)
@@ -332,14 +336,32 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 			return built, nil
 		})
 
+	secretData := compute.Map(
+		tasks.Action("server.collect-secret-data").
+			Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
+		compute.Inputs().
+			Proto("env", env.Proto()).
+			Computable("stackAndDefs", stackDef),
+		compute.Output{NotCacheable: true},
+		func(ctx context.Context, deps compute.Resolved) (*runtime.GroundedSecrets, error) {
+			handlerR := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
+
+			return loadSecrets(ctx, env.Proto(), handlerR.Stack)
+		})
+
 	c1 := compute.Map(
 		tasks.Action(runtime.TaskServerProvision).
 			Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
-		finalInputs.Computable("images", imageIDs).Computable("stackAndDefs", stackDef),
+		finalInputs.
+			Computable("images", imageIDs).
+			Computable("stackAndDefs", stackDef).
+			Computable("secretData", secretData),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (prepareAndBuildResult, error) {
 			imageIDs := compute.MustGetDepValue(deps, imageIDs, "images")
 			handlerR := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
+			secrets := compute.MustGetDepValue(deps, secretData, "secretData")
+
 			stack := handlerR.Stack
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
@@ -384,6 +406,7 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 				Focus:   focus,
 				Stack:   stack.Proto(),
 				Servers: serverRuns,
+				Secrets: *secrets,
 			})
 			if err != nil {
 				return prepareAndBuildResult{}, err
@@ -396,6 +419,18 @@ func prepareBuildAndDeployment(ctx context.Context, env ops.Environment, servers
 		})
 
 	return c1, nil
+}
+
+func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *workspace.Module) (*secrets.Bundle, error) {
+	contents, err := fs.ReadFile(module.ReadOnlyFS(), secrets.WorkspaceBundleName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fnerrors.InternalError("%s: failed to read %q: %w", module.Workspace.ModuleName, secrets.ServerBundleName, err)
+	}
+
+	return secrets.LoadBundle(ctx, keyDir, contents)
 }
 
 func prepareServerImages(ctx context.Context, env ops.Environment,

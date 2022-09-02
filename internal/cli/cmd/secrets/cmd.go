@@ -21,8 +21,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
-const bundleName = "server.secrets"
-
 func NewSecretsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "secrets",
@@ -60,7 +58,7 @@ func loadBundleFromArgs(ctx context.Context, loc fnfs.Location, createIfMissing 
 		return nil, nil, fnerrors.BadInputError("%s: expected a server", loc.AsPackageName())
 	}
 
-	contents, err := fs.ReadFile(pkg.Location.Module.ReadWriteFS(), pkg.Location.Rel(bundleName))
+	contents, err := fs.ReadFile(pkg.Location.Module.ReadWriteFS(), pkg.Location.Rel(secrets.ServerBundleName))
 	if err != nil {
 		if os.IsNotExist(err) && createIfMissing != nil {
 			bundle, err := createIfMissing(ctx)
@@ -89,7 +87,7 @@ func parseKey(v string) (*secrets.ValueKey, error) {
 }
 
 func writeBundle(ctx context.Context, loc *location, bundle *secrets.Bundle, encrypt bool) error {
-	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), loc.root.FS(), loc.loc.Rel(bundleName), func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), loc.root.FS(), loc.loc.Rel(secrets.ServerBundleName), func(w io.Writer) error {
 		return bundle.SerializeTo(ctx, w, encrypt)
 	})
 }

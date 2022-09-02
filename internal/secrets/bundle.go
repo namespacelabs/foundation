@@ -27,6 +27,9 @@ import (
 )
 
 const (
+	WorkspaceBundleName = "workspace.secrets"
+	ServerBundleName    = "server.secrets"
+
 	guardBegin = "BEGIN FOUNDATION SECRET BUNDLE"
 	guardEnd   = "END FOUNDATION SECRET BUNDLE"
 )
