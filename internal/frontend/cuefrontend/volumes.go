@@ -262,12 +262,3 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 		return nil, fnerrors.UserError(loc, "must have a source")
 	}
 }
-
-func findVolume(volumes []*schema.Volume, name string) *schema.Volume {
-	for _, v := range volumes {
-		if v.Name == name {
-			return v
-		}
-	}
-	return nil
-}

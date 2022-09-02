@@ -348,7 +348,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
-		parsedMounts, inlinedVolumes, err := ParseMounts(ctx, pl, loc, nil, mounts)
+		parsedMounts, inlinedVolumes, err := ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
 			return fnerrors.Wrapf(loc, err, "parsing mounts")
 		}

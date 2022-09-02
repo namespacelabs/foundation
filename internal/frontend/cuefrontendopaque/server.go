@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"cuelang.org/go/cue"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
@@ -48,12 +47,7 @@ type cueIngress struct {
 	HttpRoutes     map[string][]string `json:"httpRoutes"`
 }
 
-func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, parent, v *fncue.CueV, pp *workspace.Package, volumes []*schema.Volume, opts workspace.LoadPackageOpts) (*schema.Server, *schema.StartupPlan, error) {
-	// Ensure all fields are bound.
-	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
-		return nil, nil, err
-	}
-
+func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, v *fncue.CueV) (*schema.Server, *schema.StartupPlan, error) {
 	var bits cueServer
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, nil, err
@@ -62,7 +56,6 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	out := &schema.Server{}
 	out.Id = bits.Name
 	out.Name = bits.Name
-	out.Volumes = volumes
 
 	switch bits.Integration.Kind {
 	case serverKindDockerfile:
@@ -100,7 +93,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
-		parsedMounts, inlinedVolumes, err := cuefrontend.ParseMounts(ctx, pl, loc, volumes, mounts)
+		parsedMounts, inlinedVolumes, err := cuefrontend.ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
 			return nil, nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 		}
@@ -109,8 +102,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 		out.Mounts = parsedMounts
 	}
 
-	server, err := workspace.TransformOpaqueServer(ctx, pl, loc, out, pp, opts)
-	return server, startupPlan, err
+	return out, startupPlan, nil
 }
 
 func sortServices(services []*schema.Server_ServiceSpec) {

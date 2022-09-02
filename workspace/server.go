@@ -148,6 +148,11 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 
 // Transform an opaqaue server defined with the simplified, import-less syntax.
 func TransformOpaqueServer(ctx context.Context, pl Packages, loc Location, srv *schema.Server, pp *Package, opts LoadPackageOpts) (*schema.Server, error) {
+	err := validateServer(ctx, loc, srv)
+	if err != nil {
+		return nil, err
+	}
+
 	srv.PackageName = loc.PackageName.String()
 	srv.ModuleName = loc.Module.ModuleName()
 	srv.UserImports = srv.Import
@@ -173,6 +178,56 @@ func TransformOpaqueServer(ctx context.Context, pl Packages, loc Location, srv *
 	sealed.Proto.Server.Import = sorted.PackageNamesAsString()
 
 	return sealed.Proto.Server, nil
+}
+
+func validateServer(ctx context.Context, loc Location, srv *schema.Server) error {
+	for _, m := range srv.Mounts {
+		if findVolume(srv.Volumes, m.VolumeName) == nil {
+			return fnerrors.UserError(loc, "volume %q does not exist", m.VolumeName)
+		}
+	}
+
+	volumeNames := map[string]bool{}
+	for _, v := range srv.Volumes {
+		if volumeNames[v.Name] {
+			return fnerrors.UserError(loc, "volume %q is defined multiple times", v.Name)
+		}
+		volumeNames[v.Name] = true
+
+		if v.Kind == storage.VolumeKindConfigurable {
+			cv := &schema.ConfigurableVolume{}
+			if err := v.Definition.UnmarshalTo(cv); err != nil {
+				return fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", v.Name, err)
+			}
+
+			for _, e := range cv.Entries {
+				if e.SecretRef != nil && e.SecretRef.Name != "" &&
+					findSecret(srv.Secret, e.SecretRef.Name) == nil {
+					return fnerrors.UserError(loc, "secret %q does not exist", e.SecretRef.Name)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func findSecret(secrets []*schema.SecretSpec, name string) *schema.SecretSpec {
+	for _, s := range secrets {
+		if s.Name == name {
+			return s
+		}
+	}
+	return nil
+}
+
+func findVolume(volumes []*schema.Volume, name string) *schema.Volume {
+	for _, v := range volumes {
+		if v.Name == name {
+			return v
+		}
+	}
+	return nil
 }
 
 type depVisitor struct{ alloc int }
