@@ -152,6 +152,7 @@ func loadPackageContents(ctx context.Context, loader WorkspaceLoader, pkgName st
 type EvalCtx struct {
 	cache  *snapshotCache
 	loader WorkspaceLoader
+	scope  any
 }
 
 type snapshotCache struct {
@@ -162,8 +163,13 @@ type snapshotCache struct {
 	built  map[string]*Partial
 }
 
-func NewEvalCtx(loader WorkspaceLoader) *EvalCtx {
-	return &EvalCtx{cache: newSnapshotCache(), loader: loader}
+// If set, "scope" are passed as a "Scope" BuildOption to "BuildInstance".
+func NewEvalCtx(loader WorkspaceLoader, scope any) *EvalCtx {
+	return &EvalCtx{
+		cache:  newSnapshotCache(),
+		loader: loader,
+		scope:  scope,
+	}
 }
 
 func newSnapshotCache() *snapshotCache {
@@ -192,7 +198,7 @@ func (ev *EvalCtx) EvalPackage(ctx context.Context, pkgname string) (*Partial, e
 
 	// A foundation package definition has no package statement, which we refer to as the "_"
 	// import here.
-	return ev.cache.Eval(ctx, *pkg, pkgname+":_", collectedImports)
+	return ev.cache.Eval(ctx, *pkg, pkgname+":_", collectedImports, ev.scope)
 }
 
 func EvalWorkspace(ctx context.Context, fsys fs.FS, dir string, files []string) (*Partial, error) {
@@ -218,10 +224,11 @@ func EvalWorkspace(ctx context.Context, fsys fs.FS, dir string, files []string) 
 		return nil, err
 	}
 
-	return finishInstance(nil, cuecontext.New(), p, pkg, nil)
+	// The user shouldn't be able to reference the injected scope in the workspace file, e.g. $env.
+	return finishInstance(nil, cuecontext.New(), p, pkg, nil /* collectedImports */, nil /* scope */)
 }
 
-func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage) (*Partial, error) {
+func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage, scope any) (*Partial, error) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 
@@ -232,7 +239,7 @@ func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 			return nil, multierr.New(p.DepsErrors...)
 		}
 
-		partial, err := finishInstance(sc, sc.cuectx, p, pkg, collectedImports)
+		partial, err := finishInstance(sc, sc.cuectx, p, pkg, collectedImports, scope)
 		if err != nil {
 			return partial, err
 		}
@@ -243,8 +250,14 @@ func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname strin
 	return sc.built[pkgname], nil
 }
 
-func finishInstance(sc *snapshotCache, cuectx *cue.Context, p *build.Instance, pkg CuePackage, collectedImports map[string]*CuePackage) (*Partial, error) {
-	vv := cuectx.BuildInstance(p)
+func finishInstance(sc *snapshotCache, cuectx *cue.Context, p *build.Instance, pkg CuePackage, collectedImports map[string]*CuePackage, scope any) (*Partial, error) {
+	buildOptions := []cue.BuildOption{}
+
+	if scope != nil {
+		buildOptions = append(buildOptions, cue.Scope(cuectx.Encode(scope)))
+	}
+
+	vv := cuectx.BuildInstance(p, buildOptions...)
 
 	partial := &Partial{Ctx: sc}
 	partial.Package = pkg

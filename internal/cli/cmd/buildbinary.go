@@ -76,7 +76,7 @@ type buildOpts struct {
 }
 
 func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Location, env provision.Env, baseRepository string, opts buildOpts) error {
-	pl := workspace.NewPackageLoader(root)
+	pl := workspace.NewPackageLoader(root, env.Proto())
 
 	var pkgs []*workspace.Package
 	for _, loc := range list {

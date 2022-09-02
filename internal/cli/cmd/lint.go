@@ -34,7 +34,7 @@ func NewLintCmd() *cobra.Command {
 		Do(func(ctx context.Context) error {
 			for _, loc := range locs.Locs {
 				fmt.Fprintln(console.Stderr(ctx), "Checking", loc.AsPackageName())
-				if _, err := workspace.LoadPackageByName(ctx, locs.Root, loc.AsPackageName()); err != nil {
+				if _, err := workspace.LoadPackageByName(ctx, locs.Root, env.Proto(), loc.AsPackageName()); err != nil {
 					fmt.Fprintln(console.Stderr(ctx))
 					fnerrors.Format(console.Stderr(ctx), err, fnerrors.WithStyle(colors.WithColors))
 					fmt.Fprintln(console.Stderr(ctx))

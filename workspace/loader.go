@@ -37,8 +37,8 @@ type SealedPackages interface {
 	Sources() []ModuleSources
 }
 
-func LoadPackageByName(ctx context.Context, root *Root, name schema.PackageName, opts ...LoadPackageOpt) (*Package, error) {
-	pl := NewPackageLoader(root)
+func LoadPackageByName(ctx context.Context, root *Root, env *schema.Environment, name schema.PackageName, opts ...LoadPackageOpt) (*Package, error) {
+	pl := NewPackageLoader(root, env)
 	parsed, err := pl.LoadByNameWithOpts(ctx, name, opts...)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ type Frontend interface {
 	GuessPackageType(context.Context, schema.PackageName) (PackageType, error)
 }
 
-var MakeFrontend func(EarlyPackageLoader) Frontend
+var MakeFrontend func(EarlyPackageLoader, *schema.Environment) Frontend
 
 // Parsing packages often as an exponential factor because nodes tend to depend on
 // complete whole sub-trees. During a single root load, we maintain a cache of
@@ -130,7 +130,7 @@ type PackageLoaderRoot interface {
 	DevHost() *schema.DevHost
 }
 
-func NewPackageLoader(root PackageLoaderRoot) *PackageLoader {
+func NewPackageLoader(root PackageLoaderRoot, env *schema.Environment) *PackageLoader {
 	pl := &PackageLoader{}
 	pl.absPath = root.WorkspaceLoadedFrom().AbsPath
 	pl.workspace = root.Workspace()
@@ -140,7 +140,7 @@ func NewPackageLoader(root PackageLoaderRoot) *PackageLoader {
 	pl.loading = map[schema.PackageName]*loadingPackage{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
 	pl.loadedModules = map[string]*Module{}
-	pl.frontend = MakeFrontend(pl)
+	pl.frontend = MakeFrontend(pl, env)
 	pl.rootmodule = pl.inject(root.WorkspaceLoadedFrom(), root.Workspace(), "" /* version */)
 	return pl
 }

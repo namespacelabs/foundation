@@ -30,7 +30,7 @@ func newGoCmd(goVersion string) *cobra.Command {
 				return err
 			}
 
-			pl := workspace.NewPackageLoader(root)
+			pl := workspace.NewPackageLoader(root, nil /* env */)
 			loc, err := pl.Resolve(ctx, schema.Name(root.Workspace().ModuleName))
 			if err != nil {
 				return err

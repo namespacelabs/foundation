@@ -139,8 +139,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		devhost.HasRuntime = runtime.HasRuntime
 
 		workspace.ModuleLoader = cuefrontend.ModuleLoader
-		workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader) workspace.Frontend {
-			return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(pl))
+		workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader, env *schema.Environment) workspace.Frontend {
+			return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(pl), env)
 		}
 
 		filewatcher.SetupFileWatcher()

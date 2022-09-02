@@ -26,10 +26,30 @@ type opaqueParser interface {
 	ParsePackage(ctx context.Context, partial *fncue.Partial, loc workspace.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error)
 }
 
-func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser opaqueParser) workspace.Frontend {
+type cueInjectedScope struct {
+	// Injecting schema.Environment as $env so the user can use it without importing.
+	// It is temporarily optional since not all commands (that should) accept the --env flag.
+	Env *cueEnv `json:"$env"`
+}
+
+// Variables that always available for the user in CUE files, without explicit importing.
+func InjectedScope(env *schema.Environment) interface{} {
+	scope := &cueInjectedScope{}
+	if env != nil {
+		scope.Env = &cueEnv{
+			Name:      env.Name,
+			Runtime:   env.Runtime,
+			Purpose:   env.Purpose.String(),
+			Ephemeral: env.Ephemeral,
+		}
+	}
+	return scope
+}
+
+func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser opaqueParser, env *schema.Environment) workspace.Frontend {
 	return impl{
 		loader:       pl,
-		evalctx:      fncue.NewEvalCtx(WorkspaceLoader{pl}),
+		evalctx:      fncue.NewEvalCtx(WorkspaceLoader{pl}, InjectedScope(env)),
 		opaqueParser: opaqueParser,
 	}
 }

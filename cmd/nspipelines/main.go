@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/providers/aws/ecr"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
@@ -40,8 +41,9 @@ func main() {
 
 	ecr.Register()
 	workspace.ModuleLoader = cuefrontend.ModuleLoader
-	workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader) workspace.Frontend {
-		return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(pl))
+
+	workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader, env *schema.Environment) workspace.Frontend {
+		return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(pl), env)
 	}
 
 	tasks.SetupFlags(root.PersistentFlags())
