@@ -6,6 +6,7 @@ package cuefrontend
 
 import (
 	"context"
+	"unicode"
 
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
@@ -24,8 +25,15 @@ func ParseMounts(ctx context.Context, pl workspace.EarlyPackageLoader, loc works
 	for it.Next() {
 		volumeName, err := it.Value().String()
 		if err != nil {
-			// Inline volume definition.
-			volumeName = it.Label()
+			// Inline volume definition. Generating a k8s-compatible volume name.
+			volumeName = ""
+			for _, c := range it.Label() {
+				if unicode.IsLetter(c) || unicode.IsDigit(c) || c == '-' {
+					volumeName += string(c)
+				} else {
+					volumeName += "-"
+				}
+			}
 
 			parsedVolume, err := parseVolume(ctx, pl, loc, volumeName, true /* isInlined */, it.Value())
 			if err != nil {
