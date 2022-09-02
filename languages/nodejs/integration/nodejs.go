@@ -215,11 +215,6 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 	return nil
 }
 
-type yarnRootData struct {
-	module    *workspace.Module
-	workspace *schema.Workspace
-}
-
 func (impl) TidyWorkspace(ctx context.Context, env provision.Env, packages []*workspace.Package) error {
 	yarnRoots := []workspace.Location{}
 	yarnRootsMap := map[string]struct{}{} // Abs path -> presence.
