@@ -412,10 +412,10 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				return fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", volume.Name, err)
 			}
 
-			configs := newCollector()
-			secrets := newCollector()
+			configs := newDataItemCollector()
+			secrets := newDataItemCollector()
 
-			h := sha256.New()
+			configHash := sha256.New()
 
 			projected := applycorev1.ProjectedVolumeSource()
 
@@ -424,11 +424,11 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			for _, entry := range cv.Entries {
 				switch {
 				case entry.Inline != nil:
-					configmapItems = append(configmapItems, makeConfigEntry(h, entry, entry.Inline, configs).WithPath(entry.Path))
+					configmapItems = append(configmapItems, makeConfigEntry(configHash, entry, entry.Inline, configs).WithPath(entry.Path))
 
 				case entry.InlineSet != nil:
 					for _, rsc := range entry.InlineSet.Resource {
-						configmapItems = append(configmapItems, makeConfigEntry(h, entry, rsc, configs).WithPath(filepath.Join(entry.Path, rsc.Path)))
+						configmapItems = append(configmapItems, makeConfigEntry(configHash, entry, rsc, configs).WithPath(filepath.Join(entry.Path, rsc.Path)))
 					}
 
 				case entry.SecretRef != nil:
@@ -437,7 +437,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 						return fnerrors.BadInputError("%s/%s: missing secret value", entry.SecretRef.Owner, entry.SecretRef.Name)
 					}
 
-					secretItems = append(secretItems, makeConfigEntry(h, entry, resource, secrets).WithPath(entry.Path))
+					secretItems = append(secretItems, makeConfigEntry(configHash, entry, resource, secrets).WithPath(entry.Path))
 
 				case entry.KubernetesSecretRef != nil:
 					projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
@@ -448,7 +448,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			}
 
 			if len(configmapItems) > 0 {
-				configId := "ns-static-" + ids.EncodeToBase32String(h.Sum(nil))[6:]
+				configId := "ns-static-" + ids.EncodeToBase32String(configHash.Sum(nil))[6:]
 
 				projected = projected.WithSources(applycorev1.VolumeProjection().WithConfigMap(
 					applycorev1.ConfigMapProjection().WithName(configId).WithItems(configmapItems...)))
@@ -462,12 +462,14 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 						WithLabels(map[string]string{
 							kubedef.K8sKind: kubedef.K8sStaticConfigKind,
 						}).
+						WithImmutable(true).
 						WithData(configs.data).
 						WithBinaryData(configs.binaryData),
 				})
 			}
 
 			if len(secretItems) > 0 {
+				// XXX Think through this, should it also be hashed + immutable?
 				secretId := fmt.Sprintf("ns-managed-%s-%s", srv.Name(), srv.Proto().Id)
 
 				projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
@@ -713,7 +715,7 @@ type collector struct {
 	binaryData map[string][]byte
 }
 
-func newCollector() *collector {
+func newDataItemCollector() *collector {
 	return &collector{data: map[string]string{}, binaryData: map[string][]byte{}}
 }
 
@@ -726,7 +728,7 @@ func (cm *collector) set(key string, rsc *schema.Resource) {
 }
 
 func makeConfigEntry(h io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.Resource, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
-	key := fmt.Sprintf("%s:%s", entry.Path, rsc.Path)
+	key := fmt.Sprintf("%s.%s", ids.EncodeToBase62String([]byte(entry.Path)), ids.EncodeToBase62String([]byte(rsc.Path)))
 
 	fmt.Fprintf(h, "%s:", key)
 	_, _ = h.Write(rsc.Contents)
