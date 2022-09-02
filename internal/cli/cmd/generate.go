@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -22,14 +23,20 @@ import (
 )
 
 func NewGenerateCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "generate",
-		Short:   "Generate service and server glue code, for each of the known schemas.",
-		Long:    "Generate service and server glue code, for each of the known schemas.\nAutomatically invoked with `build` and `deploy`.",
-		Aliases: []string{"gen"},
-		Args:    cobra.NoArgs,
+	var (
+		env provision.Env
+	)
 
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+	return fncobra.
+		Cmd(&cobra.Command{
+			Use:     "generate",
+			Short:   "Generate service and server glue code, for each of the known schemas.",
+			Long:    "Generate service and server glue code, for each of the known schemas.\nAutomatically invoked with `build` and `deploy`.",
+			Aliases: []string{"gen"},
+			Args:    cobra.NoArgs,
+		}).
+		With(fncobra.FixedEnv(&env, "dev")).
+		Do(func(ctx context.Context) error {
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
 				return err
@@ -37,7 +44,7 @@ func NewGenerateCmd() *cobra.Command {
 
 			errorCollector := fnerrors.ErrorCollector{}
 
-			if err := generateProtos(ctx, root, errorCollector.Append); err != nil {
+			if err := generateProtos(ctx, env, root, errorCollector.Append); err != nil {
 				return err
 			}
 
@@ -47,24 +54,21 @@ func NewGenerateCmd() *cobra.Command {
 			}
 
 			// Generate code.
-			if err := codegen.ForLocationsGenCode(ctx, root, list.Locations, errorCollector.Append); err != nil {
+			if err := codegen.ForLocationsGenCode(ctx, env, root, list.Locations, errorCollector.Append); err != nil {
 				return err
 			}
 
 			return errorCollector.Error()
-		}),
-	}
-
-	return cmd
+		})
 }
 
-func generateProtos(ctx context.Context, root *workspace.Root, handleGenErr func(fnerrors.CodegenError)) error {
+func generateProtos(ctx context.Context, env provision.Env, root *workspace.Root, handleGenErr func(fnerrors.CodegenError)) error {
 	list, err := workspace.ListSchemas(ctx, root)
 	if err != nil {
 		return err
 	}
 
-	pl := workspace.NewPackageLoader(root, nil /* env */)
+	pl := workspace.NewPackageLoader(env, env.Proto())
 	wl := cuefrontend.WorkspaceLoader{PackageLoader: pl}
 
 	cuePackages := map[string]*fncue.CuePackage{} // Cue packages by PackageName.
@@ -97,7 +101,7 @@ func generateProtos(ctx context.Context, root *workspace.Root, handleGenErr func
 		return err
 	}
 
-	return codegen.ForLocationsGenProto(ctx, root, topoSorted, handleGenErr)
+	return codegen.ForLocationsGenProto(ctx, env, root, topoSorted, handleGenErr)
 }
 
 func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniquestrings.List) ([]fnfs.Location, error) {

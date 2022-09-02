@@ -10,22 +10,27 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/frontend/cue"
+	"namespacelabs.dev/foundation/provision"
 )
 
 func newExtensionCmd() *cobra.Command {
-	var targetPkg targetPkg
+	var (
+		targetPkg targetPkg
+		env       provision.Env
+	)
 
 	return fncobra.
 		Cmd(&cobra.Command{
 			Use:   "extension [path/to/package]",
 			Short: "Creates an extension.",
 		}).
+		With(fncobra.FixedEnv(&env, "dev")).
 		With(parseTargetPkgWithDeps(&targetPkg, "extension")...).
 		Do(func(ctx context.Context) error {
 			if err := cue.CreateExtensionScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc); err != nil {
 				return err
 			}
 
-			return codegenNode(ctx, targetPkg.Root, targetPkg.Loc)
+			return codegenNode(ctx, env, targetPkg.Root, targetPkg.Loc)
 		})
 }

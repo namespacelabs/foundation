@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/golang"
 	"namespacelabs.dev/foundation/internal/frontend/proto"
 	"namespacelabs.dev/foundation/internal/frontend/web"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -27,6 +28,7 @@ const serviceSuffix = "service"
 func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	var (
 		targetPkg      targetPkg
+		env            provision.Env
 		fmwkFlag       string
 		name           string
 		httpBackendPkg string
@@ -42,7 +44,9 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 			flags.StringVar(&httpBackendPkg, "with_http_backend", "", "Package name of the API backend server.")
 		}).
 		With(parseTargetPkgWithDeps(&targetPkg, "service")...).
-		With(withFramework(&fmwkFlag)).
+		With(
+			fncobra.FixedEnv(&env, "dev"),
+			withFramework(&fmwkFlag)).
 		Do(func(ctx context.Context) error {
 
 			fmwk, err := selectFramework(ctx, "Which framework would you like to use?", fmwkFlag)
@@ -108,7 +112,7 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 				}
 			}
 
-			return codegenNode(ctx, targetPkg.Root, targetPkg.Loc)
+			return codegenNode(ctx, env, targetPkg.Root, targetPkg.Loc)
 		})
 }
 

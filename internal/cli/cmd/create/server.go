@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cue"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
@@ -25,6 +26,7 @@ const serverSuffix = "server"
 func newServerCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	var (
 		targetPkg targetPkg
+		env       provision.Env
 		fmwkFlag  string
 		name      string
 	)
@@ -43,7 +45,9 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			flags.StringArrayVar(&httpServices, "with_http_service", nil, "An HTTP service to wire to the server. Format: 'path:package'.")
 		}).
 		With(parseTargetPkgWithDeps(&targetPkg, "service")...).
-		With(withFramework(&fmwkFlag)).
+		With(
+			fncobra.FixedEnv(&env, "dev"),
+			withFramework(&fmwkFlag)).
 		Do(func(ctx context.Context) error {
 			parsedHttpServices := []cue.HttpService{}
 			for _, httpService := range httpServices {
@@ -98,7 +102,7 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			// Aggregates and prints all accumulated codegen errors on return.
 			var errorCollector fnerrors.ErrorCollector
 
-			if err := codegen.ForLocationsGenCode(ctx, targetPkg.Root, []fnfs.Location{targetPkg.Loc}, errorCollector.Append); err != nil {
+			if err := codegen.ForLocationsGenCode(ctx, env, targetPkg.Root, []fnfs.Location{targetPkg.Loc}, errorCollector.Append); err != nil {
 				return err
 			}
 
