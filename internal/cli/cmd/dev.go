@@ -87,7 +87,7 @@ func NewDevCmd() *cobra.Command {
 				sesh.DeferRequest(&devworkflow.DevWorkflowRequest{
 					Type: &devworkflow.DevWorkflowRequest_SetWorkspace_{
 						SetWorkspace: &devworkflow.DevWorkflowRequest_SetWorkspace{
-							AbsRoot:           env.WorkspaceAbsPath(),
+							AbsRoot:           env.WorkspaceLoadedFrom().AbsPath,
 							PackageName:       serverPackages[0],
 							AdditionalServers: serverPackages[1:],
 							EnvName:           env.Name(),

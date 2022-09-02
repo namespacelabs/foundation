@@ -31,7 +31,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -60,12 +59,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&cmdLocs, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
 		Do(func(ctx context.Context) error {
-			root, err := module.FindRoot(ctx, ".")
-			if err != nil {
-				return err
-			}
-
-			return buildLocations(ctx, root, cmdLocs.Locs, env, baseRepository, buildOpts)
+			return buildLocations(ctx, env, cmdLocs.Locs, baseRepository, buildOpts)
 		})
 }
 
@@ -75,8 +69,8 @@ type buildOpts struct {
 	outputPath      string
 }
 
-func buildLocations(ctx context.Context, root *workspace.Root, list []fnfs.Location, env provision.Env, baseRepository string, opts buildOpts) error {
-	pl := workspace.NewPackageLoader(root, env.Proto())
+func buildLocations(ctx context.Context, env provision.Env, list []fnfs.Location, baseRepository string, opts buildOpts) error {
+	pl := workspace.NewPackageLoaderFromEnv(env)
 
 	var pkgs []*workspace.Package
 	for _, loc := range list {

@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -128,6 +129,10 @@ type PackageLoaderRoot interface {
 	Workspace() *schema.Workspace
 	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
 	DevHost() *schema.DevHost
+}
+
+func NewPackageLoaderFromEnv(env planning.Environment) *PackageLoader {
+	return NewPackageLoader(env, env.Proto())
 }
 
 func NewPackageLoader(root PackageLoaderRoot, env *schema.Environment) *PackageLoader {

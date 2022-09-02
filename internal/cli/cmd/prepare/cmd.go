@@ -91,7 +91,7 @@ func prebuilts(env ops.Environment) []compute.Computable[[]*schema.DevHost_Confi
 		"namespacelabs.dev/foundation/std/secrets/kubernetes",
 	}
 
-	preparedPrebuilts := prepare.DownloadPrebuilts(env, workspace.NewPackageLoader(env, env.Proto()), prebuilts)
+	preparedPrebuilts := prepare.DownloadPrebuilts(env, workspace.NewPackageLoaderFromEnv(env), prebuilts)
 
 	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
 	prepares = append(prepares, compute.Map(

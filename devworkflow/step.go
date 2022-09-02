@@ -211,7 +211,7 @@ func resetStack(out *Stack, env provision.Env, focus []provision.Server) {
 		workspace.Env = provision.EnvsOrDefault(env.DevHost(), workspace)
 	}
 
-	out.AbsRoot = env.WorkspaceAbsPath()
+	out.AbsRoot = env.WorkspaceLoadedFrom().AbsPath
 	out.Env = env.Proto()
 	out.Workspace = workspace
 	out.AvailableEnv = workspace.Env

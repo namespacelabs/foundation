@@ -112,7 +112,7 @@ func NewTestCmd() *cobra.Command {
 					loc := loc // Capture loc.
 
 					eg.Go(func(ctx context.Context) error {
-						pl := workspace.NewPackageLoader(env, env.Proto())
+						pl := workspace.NewPackageLoaderFromEnv(env)
 
 						buildEnv := testing.PrepareEnv(ctx, env, ephemeral)
 

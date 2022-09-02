@@ -16,20 +16,13 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-// Environment represents an execution environment: it puts together a root
-// workspace, a workspace configuration (devhost) and then finally the
-// schema-level environment we're running for.
-type Environment interface {
-	fnerrors.Location
-	Workspace() *schema.Workspace
-	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
-	DevHost() *schema.DevHost
-	Proto() *schema.Environment // Will be nil if not in a build or deployment phase.
-}
+// XXX Replace references with target type.
+type Environment planning.Environment
 
 // A dispatcher provides the implementation for a particular type, i.e. it
 // handles the execution of a particular serialized invocation.
