@@ -42,7 +42,17 @@ func newSetCmd() *cobra.Command {
 		}).
 		With(fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
-			loc, bundle, err := loadBundleFromArgs(ctx, locs.Locs[0], func(ctx context.Context) (*secrets.Bundle, error) {
+			envStr := specificEnv
+			if envStr == "" {
+				// Need some env for package loading.
+				envStr = "dev"
+			}
+			env, err := provision.RequireEnv(locs.Root, envStr)
+			if err != nil {
+				return err
+			}
+
+			loc, bundle, err := loadBundleFromArgs(ctx, env, locs.Locs[0], func(ctx context.Context) (*secrets.Bundle, error) {
 				return secrets.NewBundle(ctx, keyID)
 			})
 			if err != nil {
@@ -54,15 +64,9 @@ func newSetCmd() *cobra.Command {
 				return err
 			}
 
-			if specificEnv != "" {
-				if _, err := provision.RequireEnv(loc.root, specificEnv); err != nil {
-					return err
-				}
+			key.EnvironmentName = specificEnv
 
-				key.EnvironmentName = specificEnv
-			}
-
-			if _, err := workspace.NewPackageLoader(loc.root, nil /* env */).LoadByName(ctx, schema.PackageName(key.PackageName)); err != nil {
+			if _, err := workspace.NewPackageLoader(env, env.Proto()).LoadByName(ctx, schema.PackageName(key.PackageName)); err != nil {
 				return err
 			}
 

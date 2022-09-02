@@ -11,12 +11,16 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/provision"
 )
 
 func newDeleteCmd() *cobra.Command {
-	var secretKey string
-	var rawtext bool
-	var locs fncobra.Locations
+	var (
+		secretKey string
+		rawtext   bool
+		locs      fncobra.Locations
+		env       provision.Env
+	)
 
 	return fncobra.
 		Cmd(&cobra.Command{
@@ -29,9 +33,11 @@ func newDeleteCmd() *cobra.Command {
 			flags.BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
 			_ = cobra.MarkFlagRequired(flags, "secret")
 		}).
-		With(fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
+		With(
+			fncobra.FixedEnv(&env, "dev"),
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
-			loc, bundle, err := loadBundleFromArgs(ctx, locs.Locs[0], nil)
+			loc, bundle, err := loadBundleFromArgs(ctx, env, locs.Locs[0], nil)
 			if err != nil {
 				return err
 			}

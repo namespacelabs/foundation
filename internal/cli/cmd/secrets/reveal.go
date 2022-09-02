@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/provision"
 )
 
 func newRevealCmd() *cobra.Command {
@@ -34,7 +35,17 @@ func newRevealCmd() *cobra.Command {
 		}).
 		With(fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
-			loc, bundle, err := loadBundleFromArgs(ctx, locs.Locs[0], nil)
+			envStr := specificEnv
+			if envStr == "" {
+				// Need some env for package loading.
+				envStr = "dev"
+			}
+			env, err := provision.RequireEnv(locs.Root, envStr)
+			if err != nil {
+				return err
+			}
+
+			loc, bundle, err := loadBundleFromArgs(ctx, env, locs.Locs[0], nil)
 			if err != nil {
 				return err
 			}

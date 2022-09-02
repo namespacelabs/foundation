@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -43,13 +44,13 @@ type location struct {
 	loc  workspace.Location
 }
 
-func loadBundleFromArgs(ctx context.Context, loc fnfs.Location, createIfMissing createFunc) (*location, *secrets.Bundle, error) {
+func loadBundleFromArgs(ctx context.Context, env provision.Env, loc fnfs.Location, createIfMissing createFunc) (*location, *secrets.Bundle, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	pkg, err := workspace.NewPackageLoader(root, nil /* env */).LoadByName(ctx, loc.AsPackageName())
+	pkg, err := workspace.NewPackageLoader(env, env.Proto()).LoadByName(ctx, loc.AsPackageName())
 	if err != nil {
 		return nil, nil, err
 	}

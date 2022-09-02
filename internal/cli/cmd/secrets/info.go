@@ -10,10 +10,14 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/provision"
 )
 
 func newInfoCmd() *cobra.Command {
-	var locs fncobra.Locations
+	var (
+		locs fncobra.Locations
+		env  provision.Env
+	)
 
 	return fncobra.Cmd(
 		&cobra.Command{
@@ -21,9 +25,11 @@ func newInfoCmd() *cobra.Command {
 			Short: "Describes the contents of the specified server's secrets archive.",
 			Args:  cobra.MaximumNArgs(1),
 		}).
-		With(fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
+		With(
+			fncobra.FixedEnv(&env, "dev"),
+			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
-			_, bundle, err := loadBundleFromArgs(ctx, locs.Locs[0], nil)
+			_, bundle, err := loadBundleFromArgs(ctx, env, locs.Locs[0], nil)
 			if err != nil {
 				return err
 			}
