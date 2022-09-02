@@ -11,9 +11,9 @@ import (
 )
 
 type MapRequest struct {
-	UserAuth UserAuth `json:"userAuth"`
-	FQDN     string   `json:"fqdn"`
-	Target   string   `json:"target"`
+	UserAuth *UserAuth `json:"userAuth"`
+	FQDN     string    `json:"fqdn"`
+	Target   string    `json:"target"`
 }
 
 type MapResponse struct {
@@ -32,7 +32,7 @@ func doMap(ctx context.Context, fqdn, target string) error {
 		Endpoint: EndpointAddress,
 		Method:   "nsl.naming.NamingService/Map",
 		PreAuthenticateRequest: func(ua *UserAuth, rt *MapRequest) error {
-			rt.UserAuth = *ua
+			rt.UserAuth = ua
 			return nil
 		},
 	}.Do(ctx, MapRequest{

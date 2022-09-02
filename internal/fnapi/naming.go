@@ -15,7 +15,7 @@ import (
 var NamingForceStored = false
 
 type IssueRequest struct {
-	UserAuth    UserAuth     `json:"user_auth"`
+	UserAuth    *UserAuth    `json:"user_auth"`
 	NameRequest NameRequest  `json:"name_request"`
 	Resource    NameResource `json:"previous"`
 }
@@ -88,7 +88,7 @@ func AllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error)
 			Endpoint: EndpointAddress,
 			Method:   "nsl.naming.NamingService/Issue",
 			PreAuthenticateRequest: func(ua *UserAuth, rt *IssueRequest) error {
-				rt.UserAuth = *ua
+				rt.UserAuth = ua
 				return nil
 			},
 		}).Do(ctx, req, DecodeJSONResponse(&nr)); err != nil {
