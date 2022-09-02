@@ -45,7 +45,7 @@ func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream 
 
 	go func() {
 		defer close(errch)
-		errch <- svc.d.Status(req.Id, ch)
+		errch <- svc.d.Status(stream.Context(), req.Id, ch)
 	}()
 
 	for {

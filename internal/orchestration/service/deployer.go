@@ -148,7 +148,7 @@ func appendLine(filename, line string) error {
 	return nil
 }
 
-func (d *deployer) Status(id string, ch chan *orchestration.Event) error {
+func (d *deployer) Status(ctx context.Context, id string, ch chan *orchestration.Event) error {
 	defer close(ch)
 
 	filename := d.eventPath(id)
@@ -165,23 +165,26 @@ func (d *deployer) Status(id string, ch chan *orchestration.Event) error {
 	}
 
 	for {
-		line := <-t.Lines
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case line := <-t.Lines:
+			if line.Text == eof {
+				d.mu.RLock()
+				defer d.mu.RUnlock()
 
-		if line.Text == eof {
-			d.mu.RLock()
-			defer d.mu.RUnlock()
+				if err, ok := d.errors[id]; ok {
+					return err
+				}
+				return nil
+			}
 
-			if err, ok := d.errors[id]; ok {
+			ev := &orchestration.Event{}
+			if err := json.Unmarshal([]byte(line.Text), ev); err != nil {
 				return err
 			}
-			return nil
-		}
 
-		ev := &orchestration.Event{}
-		if err := json.Unmarshal([]byte(line.Text), ev); err != nil {
-			return err
+			ch <- ev
 		}
-
-		ch <- ev
 	}
 }
