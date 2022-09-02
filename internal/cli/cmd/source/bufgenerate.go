@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source"
 )
 
@@ -48,6 +48,11 @@ func newBufGenerateCmd() *cobra.Command {
 				paths = append(paths, loc.RelPath)
 			}
 
+			loc, err := workspace.NewPackageLoader(env).Resolve(ctx, schema.PackageName(env.Workspace().ModuleName))
+			if err != nil {
+				return err
+			}
+
 			var fmwk schema.Framework
 			switch lang {
 			case "go":
@@ -58,8 +63,7 @@ func newBufGenerateCmd() *cobra.Command {
 				return fmt.Errorf("unsupported language: %s", lang)
 			}
 
-			fsys := fnfs.ReadWriteLocalFS(env.WorkspaceAbsPath())
-			if err := source.GenProtosAtPaths(ctx, env, fmwk, fsys, paths, fsys); err != nil {
+			if err := source.GenProtosAtPaths(ctx, env, fmwk, loc.Module.ReadOnlyFS(), paths, loc.Module.ReadWriteFS()); err != nil {
 				return err
 			}
 
