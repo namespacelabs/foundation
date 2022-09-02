@@ -95,12 +95,11 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 	for _, dep := range sealed.Deps {
 		if node := dep.Node(); node != nil {
 			for _, rs := range node.Volumes {
-				sealed.Proto.Server.Volumes = append(sealed.Proto.Server.Volumes, &schema.Volume{
-					Owner:      node.PackageName,
-					Kind:       rs.Kind,
-					Name:       rs.Name,
-					Definition: rs.Definition,
-				})
+				if rs.Owner != node.PackageName {
+					return nil, fnerrors.BadInputError("%s: volume: didn't expect owner to be %q", node.PackageName, rs.Owner)
+				}
+
+				sealed.Proto.Server.Volumes = append(sealed.Proto.Server.Volumes, rs)
 
 				if rs.Kind == storage.VolumeKindPersistent {
 					persistentVolumeCount++
@@ -108,11 +107,19 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 			}
 
 			for _, rs := range node.Mounts {
-				sealed.Proto.Server.Mounts = append(sealed.Proto.Server.Mounts, &schema.Mount{
-					Owner:      node.PackageName,
-					Path:       rs.Path,
-					VolumeName: rs.VolumeName,
-				})
+				if rs.Owner != node.PackageName {
+					return nil, fnerrors.BadInputError("%s: mount: didn't expect owner to be %q", node.PackageName, rs.Owner)
+				}
+
+				sealed.Proto.Server.Mounts = append(sealed.Proto.Server.Mounts, rs)
+			}
+
+			for _, secret := range node.Secret {
+				if secret.Owner != node.PackageName {
+					return nil, fnerrors.BadInputError("%s: secret: didn't expect owner to be %q", node.PackageName, secret.Owner)
+				}
+
+				sealed.Proto.Server.Secret = append(sealed.Proto.Server.Secret, secret)
 			}
 
 			if node.EnvironmentRequirement != nil {

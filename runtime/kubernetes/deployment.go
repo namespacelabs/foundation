@@ -124,6 +124,7 @@ func toK8sProbe(p *applycorev1.ProbeApplyConfiguration, probevalues perEnvConf, 
 type deployOpts struct {
 	focus    schema.PackageList
 	stackIds []string
+	secrets  runtime.GroundedSecrets
 }
 
 func deployAsPods(env *schema.Environment) bool {
@@ -411,25 +412,32 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				return fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", volume.Name, err)
 			}
 
-			data := map[string]string{}
-			binaryData := map[string][]byte{}
+			configs := newCollector()
+			secrets := newCollector()
 
 			h := sha256.New()
 
 			projected := applycorev1.ProjectedVolumeSource()
 
 			var configmapItems []*applycorev1.KeyToPathApplyConfiguration
+			var secretItems []*applycorev1.KeyToPathApplyConfiguration
 			for _, entry := range cv.Entries {
 				switch {
 				case entry.Inline != nil:
-					configmapItems = append(configmapItems, makeConfigMapEntry(h, entry, entry.Inline, entry.Path, data, binaryData))
+					configmapItems = append(configmapItems, makeConfigEntry(h, entry, entry.Inline, configs).WithPath(entry.Path))
 
 				case entry.InlineSet != nil:
 					for _, rsc := range entry.InlineSet.Resource {
-						configmapItems = append(configmapItems, makeConfigMapEntry(h, entry, rsc, filepath.Join(entry.Path, rsc.Path), data, binaryData))
+						configmapItems = append(configmapItems, makeConfigEntry(h, entry, rsc, configs).WithPath(filepath.Join(entry.Path, rsc.Path)))
 					}
 
-				case entry.SecretRef != "":
+				case entry.SecretRef != nil:
+					resource := opts.secrets.Get(entry.SecretRef.Owner, entry.SecretRef.Name)
+					if resource == nil {
+						return fnerrors.BadInputError("%s/%s: missing secret value", entry.SecretRef.Owner, entry.SecretRef.Name)
+					}
+
+					secretItems = append(secretItems, makeConfigEntry(h, entry, resource, secrets).WithPath(entry.Path))
 
 				case entry.KubernetesSecretRef != nil:
 					projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
@@ -440,7 +448,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			}
 
 			if len(configmapItems) > 0 {
-				configId := "static-" + ids.EncodeToBase32String(h.Sum(nil))[6:]
+				configId := "ns-static-" + ids.EncodeToBase32String(h.Sum(nil))[6:]
 
 				projected = projected.WithSources(applycorev1.VolumeProjection().WithConfigMap(
 					applycorev1.ConfigMapProjection().WithName(configId).WithItems(configmapItems...)))
@@ -454,9 +462,28 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 						WithLabels(map[string]string{
 							kubedef.K8sKind: kubedef.K8sStaticConfigKind,
 						}).
-						WithImmutable(true).
-						WithData(data).
-						WithBinaryData(binaryData),
+						WithData(configs.data).
+						WithBinaryData(configs.binaryData),
+				})
+			}
+
+			if len(secretItems) > 0 {
+				secretId := fmt.Sprintf("ns-managed-%s-%s", srv.Name(), srv.Proto().Id)
+
+				projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
+					applycorev1.SecretProjection().WithName(secretId).WithItems(secretItems...)))
+
+				// Needs to be declared before it's used.
+				s.operations = append(s.operations, kubedef.Apply{
+					Description: "Server secrets",
+					Resource: applycorev1.Secret(secretId, ns).
+						WithAnnotations(annotations).
+						WithLabels(labels).
+						WithLabels(map[string]string{
+							kubedef.K8sKind: kubedef.K8sStaticConfigKind,
+						}).
+						WithStringData(configs.data).
+						WithData(configs.binaryData),
 				})
 			}
 
@@ -681,19 +708,32 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	return nil
 }
 
-func makeConfigMapEntry(h io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.Resource, targetPath string, data map[string]string, binaryData map[string][]byte) *applycorev1.KeyToPathApplyConfiguration {
+type collector struct {
+	data       map[string]string
+	binaryData map[string][]byte
+}
+
+func newCollector() *collector {
+	return &collector{data: map[string]string{}, binaryData: map[string][]byte{}}
+}
+
+func (cm *collector) set(key string, rsc *schema.Resource) {
+	if rsc.Utf8 {
+		cm.data[key] = string(rsc.Contents)
+	} else {
+		cm.binaryData[key] = rsc.Contents
+	}
+}
+
+func makeConfigEntry(h io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.Resource, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
 	key := fmt.Sprintf("%s:%s", entry.Path, rsc.Path)
 
 	fmt.Fprintf(h, "%s:", key)
 	_, _ = h.Write(rsc.Contents)
 	fmt.Fprintln(h)
-	if entry.Inline.Utf8 {
-		data[key] = string(rsc.Contents)
-	} else {
-		binaryData[key] = rsc.Contents
-	}
+	cm.set(key, rsc)
 
-	return applycorev1.KeyToPath().WithKey(key).WithPath(targetPath)
+	return applycorev1.KeyToPath().WithKey(key)
 }
 
 func makePersistentVolume(ns string, env *schema.Environment, srv provision.Server, owner, name, persistentId string, sizeBytes uint64) (*applycorev1.VolumeApplyConfiguration, []kubedef.Apply, error) {

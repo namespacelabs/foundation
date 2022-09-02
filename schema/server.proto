@@ -14,6 +14,7 @@ import "schema/binary.proto";
 import "schema/environment.proto";
 import "schema/reference.proto";
 import "schema/volume.proto";
+import "schema/secret.proto";
 
 enum Framework {
     FRAMEWORK_UNSPECIFIED = 0;
@@ -24,7 +25,7 @@ enum Framework {
     OPAQUE = 4;
 }
 
-// Next ID: 28
+// Next ID: 29
 message Server {
     reserved 17, 19;
 
@@ -91,6 +92,8 @@ message Server {
     repeated Volume volumes = 26;
 
     repeated Mount mounts = 27;
+
+    repeated SecretSpec secret = 28;
 
     message Binary {
         string prebuilt     = 1;

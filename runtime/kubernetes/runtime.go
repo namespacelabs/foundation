@@ -158,7 +158,8 @@ func (r K8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Se
 func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
 	var state deploymentState
 	deployOpts := deployOpts{
-		focus: d.Focus,
+		focus:   d.Focus,
+		secrets: d.Secrets,
 	}
 
 	// Collect all required servers before planning deployment as they are referenced in annotations.

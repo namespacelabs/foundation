@@ -58,6 +58,10 @@ type LoadPackageOpts struct {
 	LoadPackageReferences bool
 }
 
+// EarlyPackageLoader is available during package graph construction, and has
+// the ability to load workspace contents as well. All of the contents that are
+// loaded through WorkspaceOf are retained, and stored as part of the config
+// image, so that package loading is fully reproducible.
 type EarlyPackageLoader interface {
 	Packages
 	WorkspaceOf(context.Context, *Module) (*memfs.IncrementalFS, error)

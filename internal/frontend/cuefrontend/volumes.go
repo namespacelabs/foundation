@@ -242,7 +242,10 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 		return &schema.ConfigurableVolume_Entry{Inline: rsc}, nil
 
 	case bits.FromSecret != "":
-		return &schema.ConfigurableVolume_Entry{SecretRef: bits.FromSecret}, nil
+		return &schema.ConfigurableVolume_Entry{SecretRef: &schema.ConfigurableVolume_Entry_SecretRef{
+			Owner: loc.PackageName.String(),
+			Name:  bits.FromSecret,
+		}}, nil
 
 	case bits.FromKubernetesSecret != "":
 		parts := strings.SplitN(bits.FromKubernetesSecret, ":", 2)
@@ -250,7 +253,7 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 			return nil, fnerrors.BadInputError("kubernetes secrets are specified as {name}:{key}")
 		}
 
-		return &schema.ConfigurableVolume_Entry{KubernetesSecretRef: &schema.ConfigurableVolume_Entry_KubernetesSecret{
+		return &schema.ConfigurableVolume_Entry{KubernetesSecretRef: &schema.ConfigurableVolume_Entry_KubernetesSecretRef{
 			SecretName: parts[0],
 			SecretKey:  parts[1],
 		}}, nil

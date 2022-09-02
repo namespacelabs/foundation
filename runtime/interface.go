@@ -126,6 +126,7 @@ type Deployment struct {
 	Focus   schema.PackageList
 	Stack   *schema.Stack
 	Servers []ServerConfig
+	Secrets GroundedSecrets
 }
 
 type ServerConfig struct {
@@ -137,6 +138,16 @@ type ServerConfig struct {
 	Sidecars         []SidecarRunOpts
 	Inits            []SidecarRunOpts
 	RuntimeConfig    *runtime.RuntimeConfig
+}
+
+type GroundedSecrets struct {
+	Secrets []GroundedSecret
+}
+
+type GroundedSecret struct {
+	Owner schema.PackageName
+	Name  string
+	Value *schema.Resource
 }
 
 type ServerRunOpts struct {
@@ -273,4 +284,14 @@ func box(a, b string) string {
 
 func (d *Diagnostics) Failed() bool {
 	return d.Terminated && d.ExitCode > 0
+}
+
+func (g GroundedSecrets) Get(owner, name string) *schema.Resource {
+	for _, secret := range g.Secrets {
+		if secret.Owner.Equals(owner) && secret.Name == name {
+			return secret.Value
+		}
+	}
+
+	return nil
 }
