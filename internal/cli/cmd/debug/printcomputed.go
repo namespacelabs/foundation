@@ -37,9 +37,9 @@ func newPrintComputedCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.ParseEnv(&env),
-			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
+			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
-			pl := workspace.NewPackageLoaderFromEnv(env)
+			pl := workspace.NewPackageLoader(env)
 
 			sealed, err := workspace.Seal(ctx, pl, locs.Locs[0].AsPackageName(), nil)
 			if err != nil {

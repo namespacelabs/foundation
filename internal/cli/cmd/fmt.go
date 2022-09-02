@@ -12,25 +12,36 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewFmtCmd() *cobra.Command {
+	var (
+		env provision.Env
+	)
+
 	all := false
 	check := false
 
-	cmd := &cobra.Command{
+	return fncobra.Cmd(&cobra.Command{
 		Use:   "fmt",
 		Short: "Format foundation configurations of all packages in the workspace.",
 		Args:  cobra.NoArgs,
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+	}).
+		With(fncobra.FixedEnv(&env, "dev")).
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.BoolVar(&all, "all", all, "If set to true, walks through all directories to look for .cue files to format, instead of all packages.")
+			flags.BoolVar(&check, "check", check, "If set to true, fails if a file would have to be updated.")
+		}).
+		Do(func(ctx context.Context) error {
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
 				return err
@@ -43,7 +54,7 @@ func NewFmtCmd() *cobra.Command {
 
 			var errs []error
 			if !all {
-				if err := walkSchemas(ctx, root, func(loc fnfs.Location, name string) {
+				if err := walkSchemas(ctx, env, root, func(loc fnfs.Location, name string) {
 					if err := fncue.Format(ctx, root.FS(), loc, name, opts); err != nil {
 						errs = append(errs, err)
 					}
@@ -78,17 +89,11 @@ func NewFmtCmd() *cobra.Command {
 			}
 
 			return multierr.New(errs...)
-		}),
-	}
-
-	cmd.Flags().BoolVar(&all, "all", all, "If set to true, walks through all directories to look for .cue files to format, instead of all packages.")
-	cmd.Flags().BoolVar(&check, "check", check, "If set to true, fails if a file would have to be updated.")
-
-	return cmd
+		})
 }
 
-func walkSchemas(ctx context.Context, root *workspace.Root, f func(fnfs.Location, string)) error {
-	list, err := workspace.ListSchemas(ctx, root)
+func walkSchemas(ctx context.Context, env provision.Env, root *workspace.Root, f func(fnfs.Location, string)) error {
+	list, err := workspace.ListSchemas(ctx, env, root)
 	if err != nil {
 		return err
 	}

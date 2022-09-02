@@ -48,7 +48,7 @@ func NewGenerateCmd() *cobra.Command {
 				return err
 			}
 
-			list, err := workspace.ListSchemas(ctx, root)
+			list, err := workspace.ListSchemas(ctx, env, root)
 			if err != nil {
 				return err
 			}
@@ -63,12 +63,12 @@ func NewGenerateCmd() *cobra.Command {
 }
 
 func generateProtos(ctx context.Context, env provision.Env, root *workspace.Root, handleGenErr func(fnerrors.CodegenError)) error {
-	list, err := workspace.ListSchemas(ctx, root)
+	list, err := workspace.ListSchemas(ctx, env, root)
 	if err != nil {
 		return err
 	}
 
-	pl := workspace.NewPackageLoader(env, env.Proto())
+	pl := workspace.NewPackageLoader(env)
 	wl := cuefrontend.WorkspaceLoader{PackageLoader: pl}
 
 	cuePackages := map[string]*fncue.CuePackage{} // Cue packages by PackageName.

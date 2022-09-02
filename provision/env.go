@@ -46,7 +46,7 @@ func (e Env) RequireServerAtLoc(ctx context.Context, loc fnfs.Location) (Server,
 }
 
 func (e Env) RequireServer(ctx context.Context, pkgname schema.PackageName) (Server, error) {
-	return e.RequireServerWith(ctx, workspace.NewPackageLoader(e, e.Proto()), pkgname)
+	return e.RequireServerWith(ctx, workspace.NewPackageLoader(e), pkgname)
 }
 
 func (e Env) RequireServerWith(ctx context.Context, pl *workspace.PackageLoader, pkgname schema.PackageName) (Server, error) {

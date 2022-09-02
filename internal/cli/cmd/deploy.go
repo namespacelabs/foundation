@@ -61,7 +61,7 @@ func NewDeployCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.ParseEnv(&env),
-			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true}),
+			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true}),
 			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
 			stack, err := stack.Compute(ctx, servers.Servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})

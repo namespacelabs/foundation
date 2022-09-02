@@ -35,7 +35,7 @@ func newDeleteCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.FixedEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
+			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
 			loc, bundle, err := loadBundleFromArgs(ctx, env, locs.Locs[0], nil)
 			if err != nil {
