@@ -16,7 +16,7 @@ const IntroducedGrpcTranscodeNode = 35
 // of foundation supports. If a module requests, e.g. a minimum version of 28,
 // which is below the version here specified, then Namespace will fail with a
 // error that says our version of Namespace is too recent. This is used during
-// development when maintaining backwards compatibility is too expensive.ß
+// development when maintaining backwards compatibility is too expensive.
 const MinimumAPIVersion = 40
 
 // Embedded into provisioning tools.

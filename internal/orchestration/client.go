@@ -186,7 +186,6 @@ func Deploy(ctx context.Context, env provision.Env, plan *schema.DeployPlan) (st
 	if err != nil {
 		return "", err
 	}
-
 	req.Aws = awscfg
 
 	cli, err := compute.GetValue(ctx, ConnectToClient(env))
