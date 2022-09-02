@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"golang.org/x/exp/slices"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -45,6 +47,10 @@ func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*kub
 
 	nodes, err := f.cli.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
+		// This typically the first calls to k8s. So if it fails, it can be helpful to see the effective host config.
+		if data, err := json.MarshalIndent(f.cfg, "", " "); err == nil {
+			fmt.Fprintf(console.Debug(ctx), "failing host config:\n%s\n", string(data))
+		}
 		return nil, fnerrors.Wrapf(nil, err, "unable to list nodes")
 	}
 
