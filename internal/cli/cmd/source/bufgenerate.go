@@ -48,7 +48,7 @@ func newBufGenerateCmd() *cobra.Command {
 				paths = append(paths, loc.RelPath)
 			}
 
-			loc, err := workspace.NewPackageLoader(env).Resolve(ctx, schema.PackageName(env.Workspace().ModuleName))
+			loc, err := workspace.NewPackageLoader(env, env.Proto()).Resolve(ctx, schema.PackageName(env.Workspace().ModuleName))
 			if err != nil {
 				return err
 			}
