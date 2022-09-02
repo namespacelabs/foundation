@@ -24,6 +24,7 @@ configure: fn.#Configure & {
 	startup: {
 		env: {
 			"NSDATA": "/namespace/orchestration/data"
+			"HOME":   "/namespace/orchestration/data/tmphome" // TODO Move to empty dir.
 		}
 	}
 }

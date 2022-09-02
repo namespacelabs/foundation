@@ -6,6 +6,7 @@ package fnapi
 
 import (
 	"context"
+	"time"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
@@ -28,6 +29,16 @@ type CheckRequest struct {
 type RobotLoginRequest struct {
 	Repository  string `json:"repository"`
 	AccessToken string `json:"accessToken"`
+}
+
+type GetSessionTokenRequest struct {
+	UserData        string `json:"user_data"`
+	DurationSeconds uint32 `json:"duration_seconds"`
+}
+
+type GetSessionTokenResponse struct {
+	Token      string    `json:"token"`
+	Expiration time.Time `json:"expiration"`
 }
 
 func StartLogin(ctx context.Context) (string, error) {
@@ -79,4 +90,16 @@ func RobotLogin(ctx context.Context, repository, accessToken string) (*UserAuth,
 	userAuth := &UserAuth{}
 	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/RobotLogin", req, DecodeJSONResponse(userAuth))
 	return userAuth, err
+}
+
+func GetSessionToken(ctx context.Context, userData string, duration time.Duration) (*GetSessionTokenResponse, error) {
+	req := GetSessionTokenRequest{
+		UserData:        userData,
+		DurationSeconds: uint32(duration.Seconds()),
+	}
+
+	resp := &GetSessionTokenResponse{}
+	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/GetSessionToken", req, DecodeJSONResponse(resp))
+
+	return resp, err
 }

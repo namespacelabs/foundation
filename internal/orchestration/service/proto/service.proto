@@ -9,12 +9,14 @@ package nsl.orchestration.service.proto;
 option go_package = "namespacelabs.dev/foundation/internal/orchestration/service/proto";
 
 import "providers/aws/aws.proto";
+import "internal/fnapi/userauth.proto";
 import "schema/orchestration/event.proto";
 import "schema/serialized.proto";
 
 message DeployRequest {
     foundation.schema.DeployPlan  plan = 1;
     foundation.providers.aws.Conf aws  = 4;
+    nsl.internal.fnapi.UserAuth   auth = 5;  // Time-limited Namespace session.
 
     reserved 2, 3;
 }

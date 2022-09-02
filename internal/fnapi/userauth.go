@@ -17,12 +17,6 @@ import (
 
 var ErrRelogin = errors.New("not logged in, please run `ns login`")
 
-type UserAuth struct {
-	Username string `json:"username"`
-	Org      string `json:"org"` // The organization this user is acting as. Only really relevant for robot accounts which authenticate against a repository.
-	Opaque   []byte `json:"opaque"`
-}
-
 const userAuthJson = "auth.json"
 
 func LoginAsRobotAndStore(ctx context.Context, repository, accessToken string) (string, error) {

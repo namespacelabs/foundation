@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"google.golang.org/grpc/codes"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/orchestration/service/proto"
 	"namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
@@ -26,8 +27,15 @@ type Service struct {
 func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*proto.DeployResponse, error) {
 	log.Printf("new Deploy request for %d focus servers: %s\n", len(req.Plan.FocusServer), strings.Join(req.Plan.FocusServer, ","))
 
+	if req.Auth != nil {
+		if _, err := fnapi.StoreUser(ctx, req.Auth); err != nil {
+			return nil, err
+		}
+	}
+
+	env := makeEnv(req.Plan, req.Aws)
 	// TODO store target state (req.Plan + merged with history) ?
-	id, err := svc.d.Schedule(req.Plan, req.Aws)
+	id, err := svc.d.Schedule(req.Plan, env)
 	if err != nil {
 		return nil, rpcerrors.Errorf(codes.Internal, "failed to deploy plan: %w", err)
 	}

@@ -6,8 +6,10 @@ package orchestration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -15,6 +17,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/orchestration/service/proto"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
@@ -177,19 +180,41 @@ func getAwsConf(ctx context.Context, env provision.Env) (*awsprovider.Conf, erro
 	}, nil
 }
 
+func getUserAuth(ctx context.Context) (*fnapi.UserAuth, error) {
+	auth, err := fnapi.LoadUser()
+	if err != nil {
+		if errors.Is(err, fnapi.ErrRelogin) {
+			// Don't require login yet. The orchestrator will fail with the appropriate error if required.
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	res, err := fnapi.GetSessionToken(ctx, string(auth.Opaque), time.Hour)
+	if err != nil {
+		return nil, err
+	}
+
+	auth.Opaque = []byte(res.Token)
+
+	return auth, nil
+}
+
 func Deploy(ctx context.Context, env provision.Env, plan *schema.DeployPlan) (string, error) {
+	cli, err := compute.GetValue(ctx, ConnectToClient(env))
+	if err != nil {
+		return "", err
+	}
+
 	req := &proto.DeployRequest{
 		Plan: plan,
 	}
 
-	awscfg, err := getAwsConf(ctx, env)
-	if err != nil {
+	if req.Aws, err = getAwsConf(ctx, env); err != nil {
 		return "", err
 	}
-	req.Aws = awscfg
 
-	cli, err := compute.GetValue(ctx, ConnectToClient(env))
-	if err != nil {
+	if req.Auth, err = getUserAuth(ctx); err != nil {
 		return "", err
 	}
 
