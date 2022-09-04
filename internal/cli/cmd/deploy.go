@@ -90,7 +90,7 @@ func NewDeployCmd() *cobra.Command {
 				return protos.WriteFile(serializePath, deployPlan)
 			}
 
-			return completeDeployment(ctx, env.BindWith(servers.SealedPackages), computed.Deployer, deployPlan, deployOpts)
+			return completeDeployment(ctx, provision.BindPlanWithPackages(env, servers.SealedPackages), computed.Deployer, deployPlan, deployOpts)
 		})
 }
 

@@ -63,7 +63,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 				return nil
 			}
 
-			server, err := p.env.RequireServerWith(ctx, pl, loc.AsPackageName())
+			server, err := provision.RequireServerWith(ctx, p.env, pl, loc.AsPackageName())
 			if err != nil {
 				return err
 			}

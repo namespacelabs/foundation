@@ -152,7 +152,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 
 	var results compute.Computable[*storage.TestResultBundle] = &testRun{
 		TestName:         testDef.Name,
-		Env:              env.BindWith(packages),
+		Env:              provision.BindPlanWithPackages(env, packages),
 		Plan:             deployPlan,
 		ServersUnderTest: sutServers,
 		EnvProto:         env.Environment(),

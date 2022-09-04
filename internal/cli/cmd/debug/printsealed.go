@@ -48,7 +48,7 @@ func newPrintSealedCmd() *cobra.Command {
 
 				return output(ctx, pl, sealed.Proto, outputType)
 			} else {
-				t, err := env.RequireServer(ctx, loc.AsPackageName())
+				t, err := provision.RequireServer(ctx, env, loc.AsPackageName())
 				if err != nil {
 					return err
 				}

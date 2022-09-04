@@ -11,6 +11,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/internal/stack"
@@ -208,7 +209,7 @@ func resetStack(out *Stack, env provision.Env, focus []provision.Server) {
 
 	// XXX handling broken web ui builds.
 	if workspace.Env == nil {
-		workspace.Env = provision.EnvsOrDefault(env.DevHost(), workspace)
+		workspace.Env = planning.EnvsOrDefault(env.DevHost(), workspace)
 	}
 
 	out.AbsRoot = env.WorkspaceLoadedFrom().AbsPath

@@ -68,7 +68,7 @@ func computeSnapshot(ctx context.Context, env Env, packages []schema.PackageName
 
 	var servers []Server
 	for _, pkg := range packages {
-		server, err := env.RequireServerWith(ctx, pl, schema.PackageName(pkg))
+		server, err := RequireServerWith(ctx, env, pl, schema.PackageName(pkg))
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +97,7 @@ start:
 }
 
 func (snap *ServerSnapshot) Env() workspace.WorkspaceEnvironment {
-	return snap.env.BindWith(snap.sealed)
+	return BindPlanWithPackages(snap.env, snap.sealed)
 }
 
 func (snap *ServerSnapshot) Equals(rhs *ServerSnapshot) bool {

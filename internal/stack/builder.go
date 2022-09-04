@@ -56,7 +56,7 @@ func (stack *stackBuilder) checkAdd(ctx context.Context, env provision.ServerEnv
 	stack.known[pkgname] = struct{}{}
 	stack.mu.Unlock()
 
-	childT, err := provision.RequireServer(ctx, env, pkgname)
+	childT, err := provision.RequireLoadedServer(ctx, env, pkgname)
 	if err != nil {
 		return nil, nil, err
 	}

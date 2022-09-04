@@ -123,7 +123,7 @@ func NewTestCmd() *cobra.Command {
 							var suts []provision.Server
 
 							for _, pkg := range test.ServersUnderTest {
-								sut, err := buildEnv.RequireServerWith(ctx, pl, schema.PackageName(pkg))
+								sut, err := provision.RequireServerWith(ctx, buildEnv, pl, schema.PackageName(pkg))
 								if err != nil {
 									return nil, nil, err
 								}
