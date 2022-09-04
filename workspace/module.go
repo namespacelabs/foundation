@@ -120,7 +120,7 @@ func moduleHeadTo(ctx context.Context, resolved *ResolvedPackage, dep *schema.Wo
 	return tasks.Action("workspace.module.resolve-head").Arg("name", resolved.ModuleName).Run(ctx, func(ctx context.Context) error {
 		var out bytes.Buffer
 		cmd := exec.CommandContext(ctx, "git", "ls-remote", "-q", resolved.Repository, "HEAD")
-		cmd.Env = append(os.Environ(), git.NoPromptEnv()...)
+		cmd.Env = append(os.Environ(), git.NoPromptEnv().Serialize()...)
 		cmd.Stdout = &out
 		cmd.Stderr = console.Output(ctx, "git")
 
@@ -286,7 +286,7 @@ func downloadModuleTo(ctx context.Context, dep *schema.Workspace_Dependency, for
 		var cmd localexec.Command
 		cmd.Command = "git"
 		cmd.Args = []string{"clone", "-q", mod.Repository, tmpModDir}
-		cmd.AdditionalEnv = git.NoPromptEnv()
+		cmd.AdditionalEnv = git.NoPromptEnv().Serialize()
 		cmd.Label = "git clone"
 		if err := cmd.Run(ctx); err != nil {
 			return err

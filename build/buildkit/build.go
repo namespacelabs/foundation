@@ -6,20 +6,27 @@ package buildkit
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/session"
+	"github.com/moby/buildkit/session/auth"
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/moby/buildkit/session/secrets/secretsprovider"
 	"github.com/moby/buildkit/session/sshforward/sshprovider"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/go/rpcerrors"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -28,7 +35,12 @@ import (
 	_ "github.com/moby/buildkit/client/connhelper/dockercontainer"
 )
 
-var BuildkitSecrets string
+var (
+	BuildkitSecrets string
+	ForwardKeychain = false
+)
+
+const SSHAgentProviderID = "default"
 
 type clientInstance struct {
 	conf *Overrides
@@ -122,7 +134,7 @@ func formatPlatforms(ps []specs.Platform) string {
 	return strings.Join(strs, ",")
 }
 
-func prepareSession(ctx context.Context) ([]session.Attachable, error) {
+func prepareSession(ctx context.Context, keychain oci.Keychain) ([]session.Attachable, error) {
 	var fs []secretsprovider.Source
 
 	for _, def := range strings.Split(BuildkitSecrets, ";") {
@@ -157,13 +169,20 @@ func prepareSession(ctx context.Context) ([]session.Attachable, error) {
 	}
 
 	attachables := []session.Attachable{
-		authprovider.NewDockerAuthProvider(console.Stderr(ctx)),
 		secretsprovider.NewSecretProvider(store),
+	}
+
+	if ForwardKeychain {
+		if keychain != nil {
+			attachables = append(attachables, keychainWrapper{ctx: ctx, errorLogger: console.Output(ctx, "buildkit-auth"), keychain: keychain})
+		}
+	} else {
+		attachables = append(attachables, authprovider.NewDockerAuthProvider(console.Stderr(ctx)))
 	}
 
 	// XXX make this configurable; eg at the devhost side.
 	if os.Getenv("SSH_AUTH_SOCK") != "" {
-		ssh, err := sshprovider.NewSSHAgentProvider([]sshprovider.AgentConfig{{ID: "default"}})
+		ssh, err := sshprovider.NewSSHAgentProvider([]sshprovider.AgentConfig{{ID: SSHAgentProviderID}})
 		if err != nil {
 			return nil, err
 		}
@@ -172,4 +191,80 @@ func prepareSession(ctx context.Context) ([]session.Attachable, error) {
 	}
 
 	return attachables, nil
+}
+
+type keychainWrapper struct {
+	ctx         context.Context // Solve's parent context.
+	errorLogger io.Writer
+	keychain    oci.Keychain
+}
+
+func (kw keychainWrapper) Register(server *grpc.Server) {
+	auth.RegisterAuthServer(server, kw)
+}
+
+func (kw keychainWrapper) Credentials(ctx context.Context, req *auth.CredentialsRequest) (*auth.CredentialsResponse, error) {
+	response, err := kw.credentials(ctx, req.Host)
+
+	if err == nil {
+		fmt.Fprintf(console.Debug(kw.ctx), "[buildkit] AuthServer.Credentials %q --> %q\n", req.Host, response.Username)
+	} else {
+		fmt.Fprintf(console.Debug(kw.ctx), "[buildkit] AuthServer.Credentials %q: failed: %v\n", req.Host, err)
+
+	}
+
+	return response, err
+}
+
+func (kw keychainWrapper) credentials(ctx context.Context, host string) (*auth.CredentialsResponse, error) {
+	// The parent context, not the incoming context is used, as the parent
+	// context has an ActionSink attached (etc) while the incoming context is
+	// managed by buildkit.
+	authn, err := kw.keychain.Resolve(kw.ctx, resourceWrapper{host})
+	if err != nil {
+		return nil, err
+	}
+
+	if authn == nil {
+		return &auth.CredentialsResponse{}, nil
+	}
+
+	authz, err := authn.Authorization()
+	if err != nil {
+		return nil, err
+	}
+
+	if authz.IdentityToken != "" || authz.RegistryToken != "" {
+		fmt.Fprintf(kw.errorLogger, "%s: authentication type mismatch, got token expected username/secret", host)
+		return nil, rpcerrors.Errorf(codes.InvalidArgument, "expected username/secret got token")
+	}
+
+	return &auth.CredentialsResponse{Username: authz.Username, Secret: authz.Password}, nil
+}
+
+func (kw keychainWrapper) FetchToken(ctx context.Context, req *auth.FetchTokenRequest) (*auth.FetchTokenResponse, error) {
+	fmt.Fprintf(kw.errorLogger, "AuthServer.FetchToken %s\n", asJson(req))
+	return nil, rpcerrors.Errorf(codes.Unimplemented, "unimplemented")
+}
+
+func (kw keychainWrapper) GetTokenAuthority(ctx context.Context, req *auth.GetTokenAuthorityRequest) (*auth.GetTokenAuthorityResponse, error) {
+	fmt.Fprintf(kw.errorLogger, "AuthServer.GetTokenAuthority %s\n", asJson(req))
+	return nil, rpcerrors.Errorf(codes.Unimplemented, "unimplemented")
+}
+
+func (kw keychainWrapper) VerifyTokenAuthority(ctx context.Context, req *auth.VerifyTokenAuthorityRequest) (*auth.VerifyTokenAuthorityResponse, error) {
+	fmt.Fprintf(kw.errorLogger, "AuthServer.VerifyTokenAuthority %s\n", asJson(req))
+	return nil, rpcerrors.Errorf(codes.Unimplemented, "unimplemented")
+}
+
+type resourceWrapper struct {
+	host string
+}
+
+func (rw resourceWrapper) String() string      { return rw.host }
+func (rw resourceWrapper) RegistryStr() string { return rw.host }
+
+func asJson(msg any) string {
+	str, _ := json.Marshal(msg)
+	return string(str)
 }

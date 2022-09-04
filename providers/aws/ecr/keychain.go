@@ -43,7 +43,8 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 		}), nil
 	}
 
-	return nil, fnerrors.New("ecr: no credentials available for %q, know %q", r.RegistryStr(), config.ServerAddress)
+	// Nothing available.
+	return authn.FromConfig(authn.AuthConfig{}), nil
 }
 
 type keychainSession struct {

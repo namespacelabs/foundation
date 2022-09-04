@@ -17,5 +17,4 @@ func CurrentBranch(ctx context.Context, path string) (string, error) {
 
 	branch := strings.TrimSuffix(string(out), "\n")
 	return branch, nil
-
 }

@@ -15,7 +15,7 @@ func RunGit(ctx context.Context, dir string, args ...string) ([]byte, []byte, er
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	cmd := exec.CommandContext(ctx, "git", args...)
-	cmd.Env = append(os.Environ(), NoPromptEnv()...)
+	cmd.Env = append(os.Environ(), NoPromptEnv().Serialize()...)
 	cmd.Stdout = &out
 	cmd.Stderr = &errOut
 	cmd.Dir = dir

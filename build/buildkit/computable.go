@@ -297,18 +297,21 @@ func (l *reqToImage) Output() compute.Output {
 func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
 	// TargetName is not added as a dependency of the `reqToImage` compute node, or
 	// our inputs are not stable.
+
 	if l.targetName != nil {
 		v, err := compute.GetValue(ctx, l.targetName)
 		if err != nil {
 			return nil, err
 		}
 
-		// If the target needs permissions, we don't do the direct push
-		// optimization as we don't yet wire the keychain into buildkit.
-		if v.Keychain == nil {
+		if ForwardKeychain {
+			return solve(ctx, deps, l.reqBase, v.Keychain, exportToRegistry(v.Repository, v.InsecureRegistry))
+		} else if v.Keychain == nil {
+			// If the target needs permissions, we don't do the direct push
+			// optimization as we don't yet wire the keychain into buildkit.
 			tasks.Attachments(ctx).AddResult("push", v.Repository)
 
-			img, err := solve(ctx, deps, l.reqBase, exportToRegistry(v.Repository, v.InsecureRegistry))
+			img, err := solve(ctx, deps, l.reqBase, nil, exportToRegistry(v.Repository, v.InsecureRegistry))
 			if err != nil {
 				return nil, console.WithLogs(ctx, err)
 			}
@@ -316,7 +319,7 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 		}
 	}
 
-	return solve(ctx, deps, l.reqBase, exportToImage())
+	return solve(ctx, deps, l.reqBase, nil, exportToImage())
 }
 
 type reqToFS struct {
@@ -343,10 +346,10 @@ func (l *reqToFS) Output() compute.Output {
 }
 
 func (l *reqToFS) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-	return solve(ctx, deps, l.reqBase, exportToFS())
+	return solve(ctx, deps, l.reqBase, nil, exportToFS())
 }
 
-func solve[V any](ctx context.Context, deps compute.Resolved, l reqBase, e exporter[V]) (V, error) {
+func solve[V any](ctx context.Context, deps compute.Resolved, l reqBase, keychain oci.Keychain, e exporter[V]) (V, error) {
 	var res V
 
 	c, err := compute.GetValue(ctx, connectToClient(l.devHost, l.targetPlatform))
@@ -356,7 +359,7 @@ func solve[V any](ctx context.Context, deps compute.Resolved, l reqBase, e expor
 
 	sid := ids.NewRandomBase62ID(8)
 
-	attachables, err := prepareSession(ctx)
+	attachables, err := prepareSession(ctx, keychain)
 	if err != nil {
 		return res, err
 	}

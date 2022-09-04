@@ -7,33 +7,37 @@ package git
 import (
 	"fmt"
 	"os"
+	"strings"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/gitpod"
 )
 
 var AssumeSSHAuth = false
 
-func NoPromptEnv() []string {
+type EnvVars map[string]string
+
+func NoPromptEnv() TupleList {
 	if gitpod.IsGitpod() {
 		// TODO understand better why this breaks in gitpod.
-		return []string{}
+		return nil
 	}
 
-	// Disable password promts as we don't handle them properly, yet.
-	env := []string{"GIT_TERMINAL_PROMPT=0"}
+	// Disable password prompts as we don't handle them properly, yet.
+	env := EnvVars{"GIT_TERMINAL_PROMPT": "0"}
 
 	// Also disable prompting for passwords by the 'ssh' subprocess spawned by Git.
 	//
 	// See https://github.com/golang/go/blob/fad67f8a5342f4bc309f26f0ae021ce9d21724e6/src/cmd/go/internal/get/get.go#L129
 	if os.Getenv("GIT_SSH") == "" && os.Getenv("GIT_SSH_COMMAND") == "" {
-		env = append(env, "GIT_SSH_COMMAND=ssh -o ControlMaster=no -o BatchMode=yes")
+		env["GIT_SSH_COMMAND"] = "ssh -o ControlMaster=no -o BatchMode=yes"
 	}
 
 	// And one more source of Git prompts: the Git Credential Manager Core for Windows.
 	//
 	// See https://github.com/microsoft/Git-Credential-Manager-Core/blob/master/docs/environment.md#gcm_interactive.
 	if os.Getenv("GCM_INTERACTIVE") == "" {
-		env = append(env, "GCM_INTERACTIVE=never")
+		env["GCM_INTERACTIVE"] = "never"
 	}
 
 	var overrides [][2]string
@@ -44,11 +48,32 @@ func NoPromptEnv() []string {
 		)
 	}
 
-	env = append(env, fmt.Sprintf("GIT_CONFIG_COUNT=%d", len(overrides)))
+	env["GIT_CONFIG_COUNT"] = fmt.Sprintf("%d", len(overrides))
 	for k, override := range overrides {
-		env = append(env, fmt.Sprintf("GIT_CONFIG_KEY_%d=%s", k, override[0]))
-		env = append(env, fmt.Sprintf("GIT_CONFIG_VALUE_%d=%s", k, override[1]))
+		env[fmt.Sprintf("GIT_CONFIG_KEY_%d", k)] = override[0]
+		env[fmt.Sprintf("GIT_CONFIG_VALUE_%d", k)] = override[1]
 	}
 
-	return env
+	return env.Deterministic()
+}
+
+type TupleList [][2]string
+
+func (vars EnvVars) Deterministic() TupleList {
+	var t TupleList
+	for k, v := range vars {
+		t = append(t, [2]string{k, v})
+	}
+	slices.SortFunc(t, func(a, b [2]string) bool {
+		return strings.Compare(a[0], b[0]) < 0
+	})
+	return t
+}
+
+func (tl TupleList) Serialize() []string {
+	var t []string
+	for _, ent := range tl {
+		t = append(t, fmt.Sprintf("%s=%s", ent[0], ent[1]))
+	}
+	return t
 }

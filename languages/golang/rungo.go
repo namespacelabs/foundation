@@ -28,5 +28,5 @@ func RunGo(ctx context.Context, loc workspace.Location, sdk golang.LocalSDK, arg
 }
 
 func makeGoEnv(sdk golang.LocalSDK) []string {
-	return append([]string{sdk.GoRootEnv(), goPrivate()}, git.NoPromptEnv()...)
+	return append([]string{sdk.GoRootEnv(), goPrivate()}, git.NoPromptEnv().Serialize()...)
 }

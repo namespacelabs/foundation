@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -91,6 +92,12 @@ func prepareGoMod(base, src llb.State, platform *specs.Platform) llb.ExecState {
 	}
 
 	ro := llbutil.PrefixSh("updating deps", platform, "go mod download -x")
+
+	if git.AssumeSSHAuth {
+		ro = append(ro, llb.AddSSHSocket(llb.SSHID(buildkit.SSHAgentProviderID), llb.SSHSocketTarget("/root/ssh-agent.sock")))
+		ro = append(ro, llb.AddEnv("SSH_AUTH_SOCK", "/root/ssh-agent.sock"))
+	}
+
 	if !useSeparateGoModPhase {
 		return r.With(ro...)
 	}
@@ -119,8 +126,16 @@ func makeGoBuildBase(ctx context.Context, version string, platform specs.Platfor
 		AddEnv("CGO_ENABLED", "0").
 		AddEnv("PATH", "/usr/local/go/bin:"+system.DefaultPathEnvUnix).
 		AddEnv("GOPATH", "/go").
-		Run(llb.Shlex("apk add --no-cache git"),
-			llb.WithCustomName("[prepare build image] apk add --no-cache git")).Root()
+		Run(llb.Shlex("apk add --no-cache git openssh"),
+			llb.WithCustomName("[prepare build image] apk add --no-cache git openssh")).Root()
+
+	for _, ent := range git.NoPromptEnv() {
+		st = st.AddEnv(ent[0], ent[1])
+	}
+
+	// Don't block builds on checking the pubkey of the target ssh host.
+	// XXX security
+	st = st.AddEnv("GIT_SSH_COMMAND", "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no")
 
 	if llbutil.GitCredentialsBuildkitSecret != "" {
 		st = st.Run(llb.Shlex("git config --global credential.helper store")).Root()
