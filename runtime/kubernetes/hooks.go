@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/frontend"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
+	"namespacelabs.dev/foundation/std/planning"
 	kubenode "namespacelabs.dev/foundation/std/runtime/kubernetes"
 )
 

@@ -12,7 +12,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
@@ -31,7 +31,7 @@ func ListSchemas(ctx context.Context, env planning.Context, root *Root) (SchemaL
 
 	visited := map[string]struct{}{} // Map of directory name to presence.
 
-	if err := fs.WalkDir(root.FS(), ".", func(path string, d fs.DirEntry, err error) error {
+	if err := fs.WalkDir(root.ReadOnlyFS(), ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

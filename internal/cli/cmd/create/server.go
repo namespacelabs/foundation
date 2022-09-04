@@ -16,8 +16,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cue"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
@@ -95,14 +95,14 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			}
 
 			opts := cue.GenServerOpts{Name: name, Framework: *fmwk, GrpcServices: grpcServices, Dependencies: dependencies, HttpServices: parsedHttpServices}
-			if err := cue.CreateServerScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, opts); err != nil {
+			if err := cue.CreateServerScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, opts); err != nil {
 				return err
 			}
 
 			// Aggregates and prints all accumulated codegen errors on return.
 			var errorCollector fnerrors.ErrorCollector
 
-			if err := codegen.ForLocationsGenCode(ctx, targetPkg.Root.FS(), env, []fnfs.Location{targetPkg.Location}, errorCollector.Append); err != nil {
+			if err := codegen.ForLocationsGenCode(ctx, targetPkg.Root, env, []fnfs.Location{targetPkg.Location}, errorCollector.Append); err != nil {
 				return err
 			}
 

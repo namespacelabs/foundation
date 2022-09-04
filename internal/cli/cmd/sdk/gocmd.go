@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning"
 	golangsdk "namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/languages/golang"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 )

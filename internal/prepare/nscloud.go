@@ -8,10 +8,10 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/build/registry"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/providers/nscloud"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"

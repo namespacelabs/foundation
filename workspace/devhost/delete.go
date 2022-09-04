@@ -19,7 +19,7 @@ import (
 // the case where the file does not exist and return errors
 // only if we fail to remove a valid file.
 func Delete(ctx context.Context, root *workspace.Root) error {
-	fsys := root.FS()
+	fsys := root.ReadWriteFS()
 
 	// Ignore if the devhost file is not found.
 	_, err := fsys.Open(DevHostFilename)

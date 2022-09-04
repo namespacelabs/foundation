@@ -13,11 +13,11 @@ import (
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/tools/maketlscert"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/go-ids"
 )

@@ -27,12 +27,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/nodejs"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -530,7 +530,7 @@ func (s *yarnRootGenSession) Commit() error {
 	sort.Strings(roots)
 
 	for _, yarnRoot := range roots {
-		if err := generateYarnRoot(s.yarnRoots[yarnRoot], yarnRoot, s.wenv.OutputFS()); err != nil {
+		if err := generateYarnRoot(s.yarnRoots[yarnRoot], yarnRoot, s.wenv.ReadWriteFS()); err != nil {
 			return err
 		}
 	}

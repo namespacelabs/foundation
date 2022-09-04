@@ -6,8 +6,8 @@ package client
 
 import (
 	"namespacelabs.dev/foundation/build/registry"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )

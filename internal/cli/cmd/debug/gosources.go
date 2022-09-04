@@ -14,9 +14,9 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/languages/golang"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 func newGoSourcesCmd() *cobra.Command {

@@ -8,8 +8,8 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/frontend"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 type phase2plan struct {

@@ -14,10 +14,10 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -127,7 +127,7 @@ func collectPreparesAndUpdateDevhost(ctx context.Context, root *workspace.Root, 
 		return nil
 	}
 
-	return devhost.RewriteWith(ctx, root.FS(), devhost.DevHostFilename, root.LoadedDevHost)
+	return devhost.RewriteWith(ctx, root.ReadWriteFS(), devhost.DevHostFilename, root.LoadedDevHost)
 }
 
 func devHostUpdates(ctx context.Context, root *workspace.Root, confs [][]*schema.DevHost_ConfigureEnvironment) (int, error) {

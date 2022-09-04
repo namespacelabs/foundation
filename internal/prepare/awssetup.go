@@ -7,9 +7,9 @@ package prepare
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"

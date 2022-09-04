@@ -41,14 +41,14 @@ func newTestCmd() *cobra.Command {
 			cueOpts := cue.GenTestOpts{
 				ServerPkg: serverPkg,
 			}
-			if err := cue.CreateTestScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, cueOpts); err != nil {
+			if err := cue.CreateTestScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, cueOpts); err != nil {
 				return err
 			}
 
 			switch fmwk {
 			case schema.Framework_GO:
 				goOpts := golang.GenTestOpts{ServicePkg: servicePkg}
-				if err := golang.CreateTestScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, goOpts); err != nil {
+				if err := golang.CreateTestScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, goOpts); err != nil {
 					return err
 				}
 			}

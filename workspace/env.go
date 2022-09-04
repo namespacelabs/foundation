@@ -5,8 +5,8 @@
 package workspace
 
 import (
-	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 type WorkspaceEnvironment interface {
@@ -16,7 +16,5 @@ type WorkspaceEnvironment interface {
 
 type MutableWorkspaceEnvironment interface {
 	WorkspaceEnvironment
-
-	ModuleName() string // The module that this workspace corresponds to.
-	OutputFS() fnfs.ReadWriteFS
+	pkggraph.MutableModule
 }

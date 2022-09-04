@@ -20,8 +20,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -92,7 +92,7 @@ func (ws *FnWorkspace) EvalPackage(ctx context.Context, pkgName string) (cue.Val
 
 func (ws *FnWorkspace) FS() fs.ReadDirFS {
 	return &workspaceFS{
-		ReadDirFS: ws.root.FS(),
+		ReadDirFS: ws.root.ReadOnlyFS(),
 		rootPath:  ws.root.Abs(),
 		openFiles: ws.openFiles,
 	}

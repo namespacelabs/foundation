@@ -7,8 +7,8 @@ package frontend
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 type PreProvision interface {

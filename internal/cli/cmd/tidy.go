@@ -18,11 +18,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -208,7 +208,7 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 
 func rewriteWorkspace(ctx context.Context, root *workspace.Root, data pkggraph.WorkspaceData) error {
 	// Write an updated workspace.ns.textpb before continuing.
-	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), data.DefinitionFile(), func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.ReadWriteFS(), data.DefinitionFile(), func(w io.Writer) error {
 		return data.FormatTo(w)
 	})
 }
@@ -352,7 +352,7 @@ func listLocations(ctx context.Context, root *workspace.Root) ([]fnfs.Location, 
 
 	visited := map[string]struct{}{} // Map of directory name to presence.
 
-	if err := fs.WalkDir(root.FS(), ".", func(path string, d fs.DirEntry, err error) error {
+	if err := fs.WalkDir(root.ReadOnlyFS(), ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/sdk/deno"
 	"namespacelabs.dev/foundation/runtime/rtypes"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 func newDenoCmd() *cobra.Command {

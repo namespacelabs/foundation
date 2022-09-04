@@ -19,8 +19,8 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/golang"
 	"namespacelabs.dev/foundation/internal/frontend/proto"
 	"namespacelabs.dev/foundation/internal/frontend/web"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 const serviceSuffix = "service"
@@ -85,7 +85,7 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 
 			if *fmwk == schema.Framework_GO || *fmwk == schema.Framework_NODEJS {
 				protoOpts := proto.GenServiceOpts{Name: name, Framework: *fmwk}
-				if err := proto.CreateProtoScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, protoOpts); err != nil {
+				if err := proto.CreateProtoScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, protoOpts); err != nil {
 					return err
 				}
 			}
@@ -95,24 +95,24 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 				Framework:           *fmwk,
 				HttpBackendPkg:      httpBackendPkg,
 			}
-			if err := cue.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, cueOpts); err != nil {
+			if err := cue.CreateServiceScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, cueOpts); err != nil {
 				return err
 			}
 
 			switch *fmwk {
 			case schema.Framework_GO:
 				goOpts := golang.GenServiceOpts{Name: name}
-				if err := golang.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, goOpts); err != nil {
+				if err := golang.CreateServiceScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, goOpts); err != nil {
 					return err
 				}
 			case schema.Framework_WEB:
 				webOpts := web.GenServiceOpts{}
-				if err := web.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, webOpts); err != nil {
+				if err := web.CreateServiceScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, webOpts); err != nil {
 					return err
 				}
 			}
 
-			return codegenNode(ctx, targetPkg.Root.FS(), env, targetPkg.Location)
+			return codegenNode(ctx, targetPkg.Root, env, targetPkg.Location)
 		})
 }
 

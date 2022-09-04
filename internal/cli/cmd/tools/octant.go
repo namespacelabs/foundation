@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/sdk/octant"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 func newOctantCmd() *cobra.Command {

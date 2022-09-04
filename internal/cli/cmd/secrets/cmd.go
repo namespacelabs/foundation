@@ -16,8 +16,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -88,7 +88,7 @@ func parseKey(v string, defaultPkgName string) (*secrets.ValueKey, error) {
 }
 
 func writeBundle(ctx context.Context, loc *location, bundle *secrets.Bundle, encrypt bool) error {
-	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), loc.root.FS(), loc.loc.Rel(secrets.ServerBundleName), func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), loc.root.ReadWriteFS(), loc.loc.Rel(secrets.ServerBundleName), func(w io.Writer) error {
 		return bundle.SerializeTo(ctx, w, encrypt)
 	})
 }

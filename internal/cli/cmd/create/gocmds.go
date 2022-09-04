@@ -11,7 +11,7 @@ import (
 )
 
 func runGoInitCmdIfNeeded(ctx context.Context, root *workspace.Root, runCommand func(ctx context.Context, args []string) error) error {
-	f, err := root.FS().Open("go.mod")
+	f, err := root.ReadWriteFS().Open("go.mod")
 	if err == nil {
 		f.Close()
 		return nil

@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -55,7 +55,7 @@ func NewFmtCmd() *cobra.Command {
 			var errs []error
 			if !all {
 				if err := walkSchemas(ctx, env, root, func(loc fnfs.Location, name string) {
-					if err := fncue.Format(ctx, root.FS(), loc, name, opts); err != nil {
+					if err := fncue.Format(ctx, root.ReadWriteFS(), loc, name, opts); err != nil {
 						errs = append(errs, err)
 					}
 				}); err != nil {
@@ -77,7 +77,7 @@ func NewFmtCmd() *cobra.Command {
 							return err
 						}
 
-						if err := fncue.Format(ctx, root.FS(), root.RelPackage(rel), filepath.Base(path), opts); err != nil {
+						if err := fncue.Format(ctx, root.ReadWriteFS(), root.RelPackage(rel), filepath.Base(path), opts); err != nil {
 							errs = append(errs, err)
 						}
 					}

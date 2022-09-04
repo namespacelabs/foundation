@@ -13,8 +13,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 func NewDeploymentCmd() *cobra.Command {

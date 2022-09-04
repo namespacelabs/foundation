@@ -16,9 +16,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/sdk/buf"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -40,7 +40,7 @@ func (statefulGen) Handle(ctx context.Context, env planning.Context, _ *schema.S
 
 	return nil, generateProtoSrcs(ctx, env, map[schema.Framework]*protos.FileDescriptorSetAndDeps{
 		msg.Framework: msg.Protos,
-	}, wenv.OutputFS())
+	}, wenv.ReadWriteFS())
 }
 
 func (statefulGen) StartSession(ctx context.Context, env planning.Context) ops.Session[*OpProtoGen] {
@@ -98,7 +98,7 @@ func (m *multiGen) Commit() error {
 		return mergeErr
 	}
 
-	return generateProtoSrcs(m.ctx, m.wenv, request, m.wenv.OutputFS())
+	return generateProtoSrcs(m.ctx, m.wenv, request, m.wenv.ReadWriteFS())
 }
 
 func generateProtoSrcs(ctx context.Context, env planning.Context, request map[schema.Framework]*protos.FileDescriptorSetAndDeps, out fnfs.ReadWriteFS) error {

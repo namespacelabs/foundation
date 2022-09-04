@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/frontend/cue"
-	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 func newExtensionCmd() *cobra.Command {
@@ -27,10 +27,10 @@ func newExtensionCmd() *cobra.Command {
 		With(fncobra.FixedEnv(&env, "dev")).
 		With(parseTargetPkgWithDeps(&targetPkg, "extension")...).
 		Do(func(ctx context.Context) error {
-			if err := cue.CreateExtensionScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location); err != nil {
+			if err := cue.CreateExtensionScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location); err != nil {
 				return err
 			}
 
-			return codegenNode(ctx, targetPkg.Root.FS(), env, targetPkg.Location)
+			return codegenNode(ctx, targetPkg.Root, env, targetPkg.Location)
 		})
 }

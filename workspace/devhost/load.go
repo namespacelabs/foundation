@@ -17,9 +17,9 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -32,7 +32,7 @@ func HostOnlyFiles() []string { return []string{DevHostFilename} }
 func Prepare(ctx context.Context, root *workspace.Root) error {
 	root.LoadedDevHost = &schema.DevHost{} // Make sure we always have an instance of DevHost, even if empty.
 
-	devHostBytes, err := fs.ReadFile(root.FS(), DevHostFilename)
+	devHostBytes, err := fs.ReadFile(root.ReadWriteFS(), DevHostFilename)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err

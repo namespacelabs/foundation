@@ -24,6 +24,11 @@ type Module struct {
 	version string
 }
 
+type MutableModule interface {
+	ModuleName() string // The module that this workspace corresponds to.
+	ReadWriteFS() fnfs.ReadWriteFS
+}
+
 func NewModule(w *schema.Workspace, devHost *schema.DevHost, lf *schema.Workspace_LoadedFrom, version string) *Module {
 	return &Module{
 		Workspace: w,

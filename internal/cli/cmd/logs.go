@@ -12,8 +12,8 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 func NewLogsCmd() *cobra.Command {
