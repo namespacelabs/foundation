@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -200,7 +201,7 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 	return rewriteWorkspace(ctx, root, root.EditableWorkspace().WithReplacedDependencies(deps))
 }
 
-func rewriteWorkspace(ctx context.Context, root *workspace.Root, data workspace.WorkspaceData) error {
+func rewriteWorkspace(ctx context.Context, root *workspace.Root, data pkggraph.WorkspaceData) error {
 	// Write an updated workspace.ns.textpb before continuing.
 	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.FS(), data.DefinitionFile(), func(w io.Writer) error {
 		return data.FormatTo(w)

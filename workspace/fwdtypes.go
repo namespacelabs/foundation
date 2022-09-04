@@ -6,4 +6,5 @@ package workspace
 
 import "namespacelabs.dev/foundation/std/pkggraph"
 
-type Package = pkggraph.Package
+type Location = pkggraph.Location
+type Module = pkggraph.Module

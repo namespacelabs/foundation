@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -31,26 +32,9 @@ const (
 	foundationModule          = "namespacelabs.dev/foundation"
 )
 
-type EditableWorkspaceData interface {
-	FormatTo(io.Writer) error
-
-	WithSetDependency(...*schema.Workspace_Dependency) WorkspaceData
-	WithReplacedDependencies([]*schema.Workspace_Dependency) WorkspaceData
-}
-
-type WorkspaceData interface {
-	AbsPath() string
-	DefinitionFile() string
-	RawData() []byte
-	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
-	Parsed() *schema.Workspace
-
-	EditableWorkspaceData
-}
-
 var ModuleLoader interface {
 	FindModuleRoot(string) (string, error)
-	ModuleAt(context.Context, string) (WorkspaceData, error)
+	ModuleAt(context.Context, string) (pkggraph.WorkspaceData, error)
 }
 
 func FindModuleRoot(dir string) (string, error) {
@@ -62,7 +46,7 @@ type ModuleAtArgs struct {
 }
 
 // Loads and validates a module at a given path.
-func ModuleAt(ctx context.Context, path string, args ModuleAtArgs) (WorkspaceData, error) {
+func ModuleAt(ctx context.Context, path string, args ModuleAtArgs) (pkggraph.WorkspaceData, error) {
 	ws, err := ModuleLoader.ModuleAt(ctx, path)
 	if err != nil {
 		return ws, err
@@ -82,8 +66,8 @@ func RawFindModuleRoot(dir string, names ...string) (string, error) {
 }
 
 // RawModuleAt returns a schema.WorkspaceData with a reference to the workspace filename tried, even when errors are returned.
-func RawModuleAt(ctx context.Context, path string) (WorkspaceData, error) {
-	return tasks.Return(ctx, tasks.Action("workspace.load-workspace-textpb").Arg("dir", path), func(ctx context.Context) (WorkspaceData, error) {
+func RawModuleAt(ctx context.Context, path string) (pkggraph.WorkspaceData, error) {
+	return tasks.Return(ctx, tasks.Action("workspace.load-workspace-textpb").Arg("dir", path), func(ctx context.Context) (pkggraph.WorkspaceData, error) {
 		data := rawWorkspaceData{absPath: path, definitionFile: originalWorkspaceFilename}
 
 		file := filepath.Join(path, originalWorkspaceFilename)
@@ -194,7 +178,7 @@ func (r rawWorkspaceData) FormatTo(w io.Writer) error {
 	return nil
 }
 
-func (r rawWorkspaceData) WithSetDependency(deps ...*schema.Workspace_Dependency) WorkspaceData {
+func (r rawWorkspaceData) WithSetDependency(deps ...*schema.Workspace_Dependency) pkggraph.WorkspaceData {
 	cloned := protos.Clone(r.parsed)
 
 	var mods, changes int
@@ -222,7 +206,7 @@ func (r rawWorkspaceData) WithSetDependency(deps ...*schema.Workspace_Dependency
 	return nil
 }
 
-func (r rawWorkspaceData) WithReplacedDependencies(deps []*schema.Workspace_Dependency) WorkspaceData {
+func (r rawWorkspaceData) WithReplacedDependencies(deps []*schema.Workspace_Dependency) pkggraph.WorkspaceData {
 	cloned := protos.Clone(r.parsed)
 	cloned.Dep = deps
 	copy := r

@@ -8,36 +8,21 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"golang.org/x/net/html"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
 )
-
-type Module struct {
-	Workspace     *schema.Workspace
-	WorkspaceData WorkspaceData
-	DevHost       *schema.DevHost
-
-	absPath string
-	// If not empty, this is an external module.
-	version string
-}
 
 // LocalModule represents a module that is present in the specified LocalPath.
 type LocalModule struct {
@@ -51,54 +36,6 @@ type ResolvedPackage struct {
 	Type       string
 	Repository string
 	RelPath    string
-}
-
-// Implements fnerrors.Location.
-func (mod *Module) ErrorLocation() string {
-	if mod.IsExternal() {
-		return mod.Workspace.ModuleName
-	}
-
-	return mod.absPath
-}
-
-func (mod *Module) Abs() string        { return mod.absPath }
-func (mod *Module) ModuleName() string { return mod.Workspace.ModuleName }
-
-// An external module is downloaded from a remote location and stored in the cache. It always has a version.
-func (mod *Module) IsExternal() bool { return mod.version != "" }
-
-func (mod *Module) Version() string { return mod.version }
-func (mod *Module) VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
-	return wscontents.Observe(mod.absPath, rel, observeChanges && !mod.IsExternal())
-}
-
-func (mod *Module) ReadOnlyFS() fs.FS {
-	return fnfs.Local(mod.absPath)
-}
-
-func (mod *Module) ReadWriteFS() fnfs.ReadWriteFS {
-	if mod.IsExternal() {
-		return fnfs.Local(mod.absPath).(fnfs.ReadWriteFS) // LocalFS has a Write, which fails Writes.
-	}
-	return fnfs.ReadWriteLocalFS(mod.absPath)
-}
-
-func (mod *Module) MakeLocation(relPath string) Location {
-	cl := filepath.Clean(relPath)
-	pkg := mod.Workspace.ModuleName
-	if cl != "." {
-		pkg += "/" + cl
-	}
-	return Location{
-		Module:      mod,
-		PackageName: schema.PackageName(pkg),
-		relPath:     cl,
-	}
-}
-
-func (mod *Module) RootLocation() Location {
-	return mod.MakeLocation(".")
 }
 
 func ResolveModuleVersion(ctx context.Context, packageName string) (*schema.Workspace_Dependency, error) {

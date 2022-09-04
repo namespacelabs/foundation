@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -186,17 +187,9 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 	pkg := string(packageName)
 
 	if packageName.Equals(pl.workspace.ModuleName) {
-		return Location{
-			Module:      pl.rootmodule,
-			PackageName: packageName,
-			relPath:     ".",
-		}, nil
+		return pl.rootmodule.MakeLocation("."), nil
 	} else if rel := strings.TrimPrefix(pkg, pl.workspace.ModuleName+"/"); rel != pkg {
-		return Location{
-			Module:      pl.rootmodule,
-			PackageName: packageName,
-			relPath:     rel,
-		}, nil
+		return pl.rootmodule.MakeLocation(rel), nil
 	}
 
 	replaced, err := pl.MatchModuleReplace(ctx, packageName)
@@ -234,11 +227,8 @@ func (pl *PackageLoader) MatchModuleReplace(ctx context.Context, packageName sch
 				return nil, err
 			}
 
-			return &Location{
-				Module:      module,
-				PackageName: packageName,
-				relPath:     rel,
-			}, nil
+			loc := module.MakeLocation(rel)
+			return &loc, nil
 		}
 	}
 
@@ -342,11 +332,7 @@ func (pl *PackageLoader) ExternalLocation(ctx context.Context, mod *schema.Works
 	}
 
 	if string(packageName) == module.ModuleName() {
-		return Location{
-			Module:      module,
-			PackageName: packageName,
-			relPath:     ".",
-		}, nil
+		return module.MakeLocation("."), nil
 	}
 
 	rel := strings.TrimPrefix(string(packageName), module.ModuleName()+"/")
@@ -354,24 +340,14 @@ func (pl *PackageLoader) ExternalLocation(ctx context.Context, mod *schema.Works
 		return Location{}, fnerrors.InternalError("%s: inconsistent module, got %q", packageName, module.ModuleName())
 	}
 
-	return Location{
-		Module:      module,
-		PackageName: packageName,
-		relPath:     rel,
-	}, nil
+	return module.MakeLocation(rel), nil
 }
 
 func (pl *PackageLoader) inject(lf *schema.Workspace_LoadedFrom, w *schema.Workspace, version string) *Module {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	m := &Module{
-		Workspace: w,
-		DevHost:   pl.devHost,
-
-		absPath: lf.AbsPath,
-		version: version,
-	}
+	m := pkggraph.NewModule(w, pl.devHost, lf, version)
 
 	pl.loadedModules[m.ModuleName()] = m
 	pl.fsys[m.ModuleName()] = memfs.IncrementalSnapshot(fnfs.Local(lf.AbsPath))
@@ -513,7 +489,7 @@ func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.Pac
 	}
 
 	if mod, ok := sealed.modules[packageName.String()]; ok {
-		return Location{Module: mod, PackageName: packageName, relPath: "."}, nil
+		return mod.MakeLocation("."), nil
 	}
 
 	return Location{}, fnerrors.InternalError("%s: package not loaded while resolving!", packageName)

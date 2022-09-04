@@ -9,17 +9,18 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type Root struct {
 	workspace  *schema.Workspace
 	loadedFrom *schema.Workspace_LoadedFrom
-	editable   EditableWorkspaceData
+	editable   pkggraph.EditableWorkspaceData
 
 	LoadedDevHost *schema.DevHost
 }
 
-func NewRoot(w *schema.Workspace, lf *schema.Workspace_LoadedFrom, editable EditableWorkspaceData) *Root {
+func NewRoot(w *schema.Workspace, lf *schema.Workspace_LoadedFrom, editable pkggraph.EditableWorkspaceData) *Root {
 	return &Root{
 		workspace:  w,
 		loadedFrom: lf,
@@ -31,7 +32,7 @@ func (root *Root) Abs() string                                       { return ro
 func (root *Root) DevHost() *schema.DevHost                          { return root.LoadedDevHost }
 func (root *Root) Workspace() *schema.Workspace                      { return root.workspace }
 func (root *Root) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return root.loadedFrom }
-func (root *Root) EditableWorkspace() EditableWorkspaceData          { return root.editable }
+func (root *Root) EditableWorkspace() pkggraph.EditableWorkspaceData { return root.editable }
 func (root *Root) FS() fnfs.LocalFS                                  { return fnfs.ReadWriteLocalFS(root.Abs()) }
 
 func (root *Root) RelPackage(rel string) fnfs.Location {

@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -37,8 +38,8 @@ func (moduleLoader) FindModuleRoot(dir string) (string, error) {
 	return workspace.RawFindModuleRoot(dir, WorkspaceFile, LegacyWorkspaceFile)
 }
 
-func (moduleLoader) ModuleAt(ctx context.Context, dir string) (workspace.WorkspaceData, error) {
-	return tasks.Return(ctx, tasks.Action("workspace.load-workspace").Arg("dir", dir), func(ctx context.Context) (workspace.WorkspaceData, error) {
+func (moduleLoader) ModuleAt(ctx context.Context, dir string) (pkggraph.WorkspaceData, error) {
+	return tasks.Return(ctx, tasks.Action("workspace.load-workspace").Arg("dir", dir), func(ctx context.Context) (pkggraph.WorkspaceData, error) {
 		wfile := WorkspaceFile
 		data, err := ioutil.ReadFile(filepath.Join(dir, WorkspaceFile))
 		if err != nil {
@@ -66,7 +67,7 @@ func (moduleLoader) ModuleAt(ctx context.Context, dir string) (workspace.Workspa
 	})
 }
 
-func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (workspace.WorkspaceData, error) {
+func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (pkggraph.WorkspaceData, error) {
 	var memfs memfs.FS
 	memfs.Add(workspaceFile, data)
 
@@ -218,7 +219,7 @@ func (r workspaceData) FormatTo(w io.Writer) error {
 	return err
 }
 
-func (r workspaceData) WithSetDependency(deps ...*schema.Workspace_Dependency) workspace.WorkspaceData {
+func (r workspaceData) WithSetDependency(deps ...*schema.Workspace_Dependency) pkggraph.WorkspaceData {
 	var add, update []*schema.Workspace_Dependency
 
 	for _, dep := range deps {
@@ -237,7 +238,7 @@ func (r workspaceData) WithSetDependency(deps ...*schema.Workspace_Dependency) w
 	return r.updateDependencies(add, update, nil)
 }
 
-func (r workspaceData) WithReplacedDependencies(deps []*schema.Workspace_Dependency) workspace.WorkspaceData {
+func (r workspaceData) WithReplacedDependencies(deps []*schema.Workspace_Dependency) pkggraph.WorkspaceData {
 	var add, update []*schema.Workspace_Dependency
 	var toremove []string
 
