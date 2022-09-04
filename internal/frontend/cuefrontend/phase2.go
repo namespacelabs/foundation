@@ -10,12 +10,10 @@ import (
 
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type phase2plan struct {
@@ -29,9 +27,9 @@ type cueStartupPlan struct {
 	Env  map[string]string `json:"env"`
 }
 
-var _ frontend.PreStartup = phase2plan{}
+var _ pkggraph.PreStartup = phase2plan{}
 
-func (s phase2plan) EvalStartup(ctx context.Context, env planning.Context, info frontend.StartupInputs, allocs []frontend.ValueWithPath) (*schema.StartupPlan, error) {
+func (s phase2plan) EvalStartup(ctx context.Context, env pkggraph.Context, info pkggraph.StartupInputs, allocs []pkggraph.ValueWithPath) (*schema.StartupPlan, error) {
 	plan := &schema.StartupPlan{}
 
 	res, err := fncue.SerializedEval(s.partial, func() (*fncue.CueV, error) {
@@ -68,12 +66,7 @@ func (s phase2plan) EvalStartup(ctx context.Context, env planning.Context, info 
 	return plan, nil
 }
 
-func (s phase2plan) evalStartupStage(ctx context.Context, env planning.Context, info frontend.StartupInputs) (*fncue.CueV, []fncue.KeyAndPath, error) {
-	wenv, ok := env.(workspace.WorkspaceEnvironment)
-	if !ok {
-		return nil, nil, fnerrors.InternalError("expected a WorkspaceEnvironment")
-	}
-
+func (s phase2plan) evalStartupStage(ctx context.Context, wenv pkggraph.Context, info pkggraph.StartupInputs) (*fncue.CueV, []fncue.KeyAndPath, error) {
 	inputs := newFuncs().
 		WithFetcher(fncue.ServerDepIKw, FetchServer(wenv, info.Stack)).
 		WithFetcher(fncue.VCSIKw, FetchVCS(info.ServerRootAbs))

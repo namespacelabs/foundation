@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -61,8 +62,8 @@ func (p ParsedServer) SidecarsAndInits() ([]*schema.SidecarContainer, []*schema.
 
 type ParsedNode struct {
 	Package       *workspace.Package
-	ProvisionPlan frontend.ProvisionPlan
-	Allocations   []frontend.ValueWithPath
+	ProvisionPlan pkggraph.ProvisionPlan
+	Allocations   []pkggraph.ValueWithPath
 	PrepareProps  struct {
 		ProvisionInput  []*anypb.Any
 		Invocations     []*schema.SerializedInvocation
@@ -330,8 +331,8 @@ func evalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 			}
 
 			combinedProps.AppendWith(frontend.PrepareProps{
-				PreparedProvisionPlan: frontend.PreparedProvisionPlan{
-					ProvisionStack: frontend.ProvisionStack{
+				PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
+					ProvisionStack: pkggraph.ProvisionStack{
 						DeclaredStack: pl.PackageNames(),
 					},
 					Provisioning: resp.GetPreparedProvisionPlan().GetProvisioning(),
@@ -348,7 +349,7 @@ func evalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 
 	// We need to make sure that `env` is available before we read extend.stack, as env is often used
 	// for branching.
-	pdata, err := n.Parsed.EvalProvision(ctx, server.Env(), frontend.ProvisionInputs{
+	pdata, err := n.Parsed.EvalProvision(ctx, server.Env(), pkggraph.ProvisionInputs{
 		Workspace:      server.Module().Workspace,
 		ServerLocation: server.Location,
 	})
@@ -371,8 +372,8 @@ func evalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 	return node, nil
 }
 
-func fillNeeds(ctx context.Context, server *schema.Server, s *eval.AllocState, allocators []eval.AllocatorFunc, n *schema.Node) ([]frontend.ValueWithPath, error) {
-	var values []frontend.ValueWithPath
+func fillNeeds(ctx context.Context, server *schema.Server, s *eval.AllocState, allocators []eval.AllocatorFunc, n *schema.Node) ([]pkggraph.ValueWithPath, error) {
+	var values []pkggraph.ValueWithPath
 	for k := 0; k < len(n.GetNeed()); k++ {
 		vwp, err := s.Alloc(ctx, server, allocators, n, k)
 		if err != nil {

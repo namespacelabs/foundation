@@ -90,7 +90,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		phase1plan.declaredStack = bits
 
 		for _, p := range phase1plan.declaredStack {
-			err := ft.loader.Ensure(ctx, p)
+			err := workspace.Ensure(ctx, ft.loader, p)
 			if err != nil {
 				return nil, fnerrors.Wrapf(loc, err, "loading package %s", p)
 			}

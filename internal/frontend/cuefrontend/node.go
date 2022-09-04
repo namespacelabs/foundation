@@ -21,11 +21,11 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -395,7 +395,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 			}
 		}
 
-		out.PrepareHooks = append(out.PrepareHooks, frontend.PrepareHook{
+		out.PrepareHooks = append(out.PrepareHooks, pkggraph.PrepareHook{
 			InvokeInternal: callback.InvokeInternal,
 			InvokeBinary:   callback.InvokeBinary.toFrontend(),
 		})

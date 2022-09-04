@@ -5,7 +5,6 @@
 package pkggraph
 
 import (
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -14,7 +13,7 @@ import (
 type Package struct {
 	Location Location
 
-	Parsed frontend.PreProvision
+	Parsed PreProvision
 
 	// One of.
 	Extension            *schema.Node
@@ -30,7 +29,12 @@ type Package struct {
 	PackageData []*types.Resource
 
 	// Hooks
-	PrepareHooks []frontend.PrepareHook
+	PrepareHooks []PrepareHook
+}
+
+type PrepareHook struct {
+	InvokeInternal string
+	InvokeBinary   *schema.Invocation
 }
 
 func (pr *Package) PackageName() schema.PackageName { return pr.Location.PackageName }

@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -97,7 +98,7 @@ start:
 	return servers, nil
 }
 
-func (snap *ServerSnapshot) Env() workspace.WorkspaceEnvironment {
+func (snap *ServerSnapshot) Env() pkggraph.Context {
 	return BindPlanWithPackages(snap.env, snap.sealed)
 }
 

@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/languages"
@@ -32,6 +31,7 @@ import (
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -651,7 +651,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 		return err
 	}
 
-	inputs := frontend.StartupInputs{
+	inputs := pkggraph.StartupInputs{
 		Stack:         stack.Proto(),
 		Server:        s.Proto(),
 		ServerImage:   imgs.Binary.RepoAndDigest(),

@@ -9,18 +9,18 @@ import (
 	"sort"
 	"strings"
 
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/invocation"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type handlerSource struct {
 	Server  provision.Server
 	Package schema.PackageName
-	Plan    frontend.PreparedProvisionPlan
+	Plan    pkggraph.PreparedProvisionPlan
 }
 
 func computeHandlers(ctx context.Context, in *stack.Stack) ([]*tool.Definition, error) {
@@ -54,7 +54,7 @@ func computeHandlers(ctx context.Context, in *stack.Stack) ([]*tool.Definition, 
 	return handlers, nil
 }
 
-func parseHandlers(ctx context.Context, server provision.Server, pkg schema.PackageName, pr frontend.PreparedProvisionPlan) ([]*tool.Definition, error) {
+func parseHandlers(ctx context.Context, server provision.Server, pkg schema.PackageName, pr pkggraph.PreparedProvisionPlan) ([]*tool.Definition, error) {
 	source := tool.Source{
 		PackageName: pkg,
 		// The server in context is always implicitly declared.

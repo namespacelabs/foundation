@@ -36,7 +36,7 @@ func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env p
 				}
 			}
 		}
-		if _, err := g.Execute(ctx, "workspace.generate.phase.node", genEnv{Context: env, Packages: pl.Seal(), MutableModule: out}); err != nil {
+		if _, err := g.Execute(ctx, "workspace.generate.phase.node", genEnv{Context: env, PackageLoader: pl.Seal(), MutableModule: out}); err != nil {
 			return err
 		}
 	}
@@ -91,14 +91,14 @@ func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env pl
 			}
 		}
 	}
-	_, err := g.Execute(ctx, "workspace.generate.phase.code", genEnv{Context: env, Packages: pl.Seal(), MutableModule: out})
+	_, err := g.Execute(ctx, "workspace.generate.phase.code", genEnv{Context: env, PackageLoader: pl.Seal(), MutableModule: out})
 	return err
 }
 
 type genEnv struct {
 	planning.Context
-	workspace.Packages
+	pkggraph.PackageLoader
 	pkggraph.MutableModule
 }
 
-var _ workspace.MutableWorkspaceEnvironment = genEnv{}
+var _ pkggraph.ContextWithMutableModule = genEnv{}

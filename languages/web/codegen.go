@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 )
@@ -77,7 +78,7 @@ func generatePlaceholder(loader workspace.Packages) genFunc {
 	}
 }
 
-func resolveBackend(wenv workspace.WorkspaceEnvironment, fragments []*schema.IngressFragment) genFunc {
+func resolveBackend(wenv pkggraph.Context, fragments []*schema.IngressFragment) genFunc {
 	return func(ctx context.Context, loc workspace.Location, backend *OpGenHttpBackend_Backend) (*backendDefinition, error) {
 		var matching []*schema.IngressFragment
 

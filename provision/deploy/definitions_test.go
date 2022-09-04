@@ -10,10 +10,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/testing/protocmp"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -34,9 +34,9 @@ func TestEnsureInvocationOrder(t *testing.T) {
 		}},
 		ParsedServers: []*stack.ParsedServer{{
 			Deps: []*stack.ParsedNode{{
-				ProvisionPlan: frontend.ProvisionPlan{
-					PreparedProvisionPlan: frontend.PreparedProvisionPlan{
-						ProvisionStack: frontend.ProvisionStack{
+				ProvisionPlan: pkggraph.ProvisionPlan{
+					PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
+						ProvisionStack: pkggraph.ProvisionStack{
 							DeclaredStack: []schema.PackageName{"b", "c"},
 						},
 					},
@@ -44,9 +44,9 @@ func TestEnsureInvocationOrder(t *testing.T) {
 			}},
 		}, {
 			Deps: []*stack.ParsedNode{{
-				ProvisionPlan: frontend.ProvisionPlan{
-					PreparedProvisionPlan: frontend.PreparedProvisionPlan{
-						ProvisionStack: frontend.ProvisionStack{
+				ProvisionPlan: pkggraph.ProvisionPlan{
+					PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
+						ProvisionStack: pkggraph.ProvisionStack{
 							DeclaredStack: []schema.PackageName{"c"},
 						},
 					},
@@ -54,9 +54,9 @@ func TestEnsureInvocationOrder(t *testing.T) {
 			}},
 		}, {
 			Deps: []*stack.ParsedNode{{
-				ProvisionPlan: frontend.ProvisionPlan{
-					PreparedProvisionPlan: frontend.PreparedProvisionPlan{
-						ProvisionStack: frontend.ProvisionStack{
+				ProvisionPlan: pkggraph.ProvisionPlan{
+					PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
+						ProvisionStack: pkggraph.ProvisionStack{
 							DeclaredStack: []schema.PackageName{},
 						},
 					},

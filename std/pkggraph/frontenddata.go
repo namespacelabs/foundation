@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package frontend
+package pkggraph
 
 import (
 	"context"
@@ -16,11 +16,7 @@ type PreProvision interface {
 }
 
 type PreStartup interface {
-	EvalStartup(context.Context, planning.Context, StartupInputs, []ValueWithPath) (*schema.StartupPlan, error)
-}
-
-type Location interface {
-	Rel(...string) string
+	EvalStartup(context.Context, Context, StartupInputs, []ValueWithPath) (*schema.StartupPlan, error)
 }
 
 type ProvisionInputs struct {
@@ -37,7 +33,7 @@ type StartupInputs struct {
 
 type ValueWithPath struct {
 	Need  *schema.Need
-	Value interface{}
+	Value any
 }
 
 type ProvisionStack struct {

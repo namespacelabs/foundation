@@ -14,9 +14,9 @@ import (
 	"cuelang.org/go/cue"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
@@ -92,19 +92,19 @@ type cueContainer struct {
 	Args   *ArgsListOrMap `json:"args"`
 }
 
-func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
+func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, inputs pkggraph.ProvisionInputs) (pkggraph.ProvisionPlan, error) {
 	if env.Environment() == nil {
-		return frontend.ProvisionPlan{}, fnerrors.InternalError("env is missing .. env")
+		return pkggraph.ProvisionPlan{}, fnerrors.InternalError("env is missing .. env")
 	}
 
 	vv, left, err := fncue.SerializedEval3(p1.partial, func() (*fncue.CueV, []fncue.KeyAndPath, error) {
 		return applyInputs(ctx, provisionFuncs(env.Environment(), inputs), p1.Value, p1.Left)
 	})
 	if err != nil {
-		return frontend.ProvisionPlan{}, err
+		return pkggraph.ProvisionPlan{}, err
 	}
 
-	var pdata frontend.ProvisionPlan
+	var pdata pkggraph.ProvisionPlan
 
 	pdata.Startup = phase2plan{partial: p1.partial, Value: vv, Left: left}
 
@@ -271,7 +271,7 @@ func lookupTransition(vv *fncue.CueV, name string) *fncue.CueV {
 	return vv.LookupPath("extend." + name)
 }
 
-func provisionFuncs(env *schema.Environment, inputs frontend.ProvisionInputs) *EvalFuncs {
+func provisionFuncs(env *schema.Environment, inputs pkggraph.ProvisionInputs) *EvalFuncs {
 	return newFuncs().
 		WithFetcher(fncue.WorkspaceIKw, FetchServerWorkspace(inputs.Workspace, inputs.ServerLocation)).
 		WithFetcher(fncue.EnvIKw, FetchEnv(env, inputs.Workspace))

@@ -32,6 +32,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source"
@@ -500,7 +501,7 @@ func (yarnRootStatefulGen) Handle(ctx context.Context, env planning.Context, _ *
 }
 
 func (yarnRootStatefulGen) StartSession(ctx context.Context, env planning.Context) ops.Session[*OpGenYarnRoot] {
-	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
+	wenv, ok := env.(pkggraph.ContextWithMutableModule)
 	if !ok {
 		// An error will then be returned in Close().
 		wenv = nil
@@ -510,7 +511,7 @@ func (yarnRootStatefulGen) StartSession(ctx context.Context, env planning.Contex
 }
 
 type yarnRootGenSession struct {
-	wenv      workspace.MutableWorkspaceEnvironment
+	wenv      pkggraph.ContextWithMutableModule
 	yarnRoots map[string]context.Context
 }
 

@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/provision/startup"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
@@ -54,7 +54,7 @@ func newComputeConfigCmd() *cobra.Command {
 				return fnerrors.InternalError("expected to find %s in the stack, but didn't", server.PackageName())
 			}
 
-			sargs := frontend.StartupInputs{
+			sargs := pkggraph.StartupInputs{
 				Stack:         stack.Proto(),
 				Server:        server.Proto(),
 				ServerImage:   "imageversion",
@@ -63,10 +63,11 @@ func newComputeConfigCmd() *cobra.Command {
 
 			evald := stack.GetParsed(s.PackageName())
 
-			serverStartupPlan, err := s.Startup.EvalStartup(ctx, env, sargs, nil)
+			serverStartupPlan, err := s.Startup.EvalStartup(ctx, s.Env(), sargs, nil)
 			if err != nil {
 				return err
 			}
+
 			c, err := startup.ComputeConfig(ctx, s.Env(), serverStartupPlan, evald.Deps, sargs)
 			if err != nil {
 				return err

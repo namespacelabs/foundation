@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -20,13 +21,8 @@ var registrations struct {
 	prepare map[string]PrepareHookFunc
 }
 
-type PrepareHook struct {
-	InvokeInternal string
-	InvokeBinary   *schema.Invocation
-}
-
 type PrepareProps struct {
-	PreparedProvisionPlan
+	pkggraph.PreparedProvisionPlan
 	ProvisionInput  []*anypb.Any
 	Invocations     []*schema.SerializedInvocation
 	Extension       []*schema.DefExtension

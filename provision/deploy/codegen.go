@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
@@ -60,11 +61,13 @@ type codegenEnv struct {
 	fs       fnfs.ReadWriteFS
 }
 
+var _ pkggraph.ContextWithMutableModule = codegenEnv{}
+
 func (ce codegenEnv) ErrorLocation() string            { return ce.root.ErrorLocation() }
 func (ce codegenEnv) DevHost() *schema.DevHost         { return ce.root.DevHost }
 func (ce codegenEnv) Environment() *schema.Environment { return ce.env }
 func (ce codegenEnv) ModuleName() string               { return ce.root.ModuleName() }
-func (ce codegenEnv) OutputFS() fnfs.ReadWriteFS       { return ce.fs }
+func (ce codegenEnv) ReadWriteFS() fnfs.ReadWriteFS    { return ce.fs }
 func (ce codegenEnv) Workspace() *schema.Workspace     { return ce.root.Workspace }
 func (ce codegenEnv) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
 	return ce.root.WorkspaceData.WorkspaceLoadedFrom()
@@ -76,10 +79,6 @@ func (ce codegenEnv) Resolve(ctx context.Context, pkg schema.PackageName) (works
 
 func (ce codegenEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*workspace.Package, error) {
 	return ce.packages.LoadByName(ctx, packageName)
-}
-
-func (ce codegenEnv) Ensure(ctx context.Context, packageName schema.PackageName) error {
-	return ce.packages.Ensure(ctx, packageName)
 }
 
 func codegenServer(ctx context.Context, srv provision.Server) error {

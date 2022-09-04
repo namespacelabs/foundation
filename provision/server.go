@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -20,18 +20,15 @@ type Server struct {
 	Location workspace.Location
 	Package  *workspace.Package
 
-	Provisioning frontend.PreparedProvisionPlan // A provisioning plan that is attached to the server itself.
-	Startup      frontend.PreStartup
+	Provisioning pkggraph.PreparedProvisionPlan // A provisioning plan that is attached to the server itself.
+	Startup      pkggraph.PreStartup
 
 	env   ServerEnv            // The environment this server instance is bound to.
 	entry *schema.Stack_Entry  // The stack entry, i.e. all of the server's dependencies.
 	deps  []*workspace.Package // List of parsed deps.
 }
 
-type ServerEnv interface {
-	workspace.WorkspaceEnvironment
-	workspace.SealedPackages
-}
+type ServerEnv = pkggraph.SealedContext
 
 func (t Server) Module() *workspace.Module               { return t.Location.Module }
 func (t Server) Env() ServerEnv                          { return t.env }
@@ -81,7 +78,7 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 	t.entry = sealed.Proto
 	t.deps = sealed.Deps
 
-	pdata, err := t.Package.Parsed.EvalProvision(ctx, t.Env(), frontend.ProvisionInputs{
+	pdata, err := t.Package.Parsed.EvalProvision(ctx, t.Env(), pkggraph.ProvisionInputs{
 		Workspace:      t.Module().Workspace,
 		ServerLocation: t.Location,
 	})

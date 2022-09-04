@@ -8,3 +8,6 @@ import "namespacelabs.dev/foundation/std/pkggraph"
 
 type Location = pkggraph.Location
 type Module = pkggraph.Module
+type Packages = pkggraph.PackageLoader
+type ModuleSources = pkggraph.ModuleSources
+type SealedPackages = pkggraph.SealedPackageLoader

@@ -8,19 +8,20 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 )
 
 type boundEnv struct {
 	planning.Context
-	workspace.SealedPackages
+	pkggraph.SealedPackageLoader
 }
 
 var _ ServerEnv = boundEnv{}
 
 func BindPlanWithPackages(env planning.Context, pr workspace.SealedPackages) boundEnv {
-	return boundEnv{Context: env, SealedPackages: pr}
+	return boundEnv{Context: env, SealedPackageLoader: pr}
 }
 
 func RequireServer(ctx context.Context, env planning.Context, pkgname schema.PackageName) (Server, error) {

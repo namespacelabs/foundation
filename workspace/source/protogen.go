@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/sdk/buf"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -33,9 +34,9 @@ type statefulGen struct{}
 var _ ops.BatchedDispatcher[*OpProtoGen] = statefulGen{}
 
 func (statefulGen) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
-	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
+	wenv, ok := env.(pkggraph.ContextWithMutableModule)
 	if !ok {
-		return nil, fnerrors.New("WorkspaceEnvironment required")
+		return nil, fnerrors.New("pkggraph.ContextWithMutableModule required")
 	}
 
 	return nil, generateProtoSrcs(ctx, env, map[schema.Framework]*protos.FileDescriptorSetAndDeps{
@@ -44,7 +45,7 @@ func (statefulGen) Handle(ctx context.Context, env planning.Context, _ *schema.S
 }
 
 func (statefulGen) StartSession(ctx context.Context, env planning.Context) ops.Session[*OpProtoGen] {
-	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
+	wenv, ok := env.(pkggraph.ContextWithMutableModule)
 	if !ok {
 		// An error will then be returned in Close().
 		wenv = nil
@@ -55,13 +56,17 @@ func (statefulGen) StartSession(ctx context.Context, env planning.Context) ops.S
 
 type multiGen struct {
 	ctx  context.Context
-	wenv workspace.MutableWorkspaceEnvironment
+	wenv pkggraph.ContextWithMutableModule
 
 	mu      sync.Mutex
 	request map[schema.Framework][]*protos.FileDescriptorSetAndDeps
 }
 
 func (m *multiGen) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
+	if m.wenv == nil {
+		return nil, fnerrors.InternalError("expected a pkggraph.ContextWithMutableModule")
+	}
+
 	loc, err := m.wenv.Resolve(ctx, schema.PackageName(msg.PackageName))
 	if err != nil {
 		return nil, err
@@ -81,7 +86,7 @@ func (m *multiGen) Handle(ctx context.Context, env planning.Context, _ *schema.S
 
 func (m *multiGen) Commit() error {
 	if m.wenv == nil {
-		return fnerrors.New("WorkspaceEnvironment required")
+		return fnerrors.New("pkggraph.ContextWithMutableModule required")
 	}
 
 	m.mu.Lock()

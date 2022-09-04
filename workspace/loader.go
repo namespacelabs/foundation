@@ -23,22 +23,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type Packages interface {
-	Resolve(ctx context.Context, packageName schema.PackageName) (Location, error)
-	LoadByName(ctx context.Context, packageName schema.PackageName) (*Package, error)
-	Ensure(ctx context.Context, packageName schema.PackageName) error
-}
-
-type ModuleSources struct {
-	Module   *Module
-	Snapshot fs.FS
-}
-
-type SealedPackages interface {
-	Packages
-	Sources() []ModuleSources
-}
-
 func LoadPackageByName(ctx context.Context, env planning.Context, name schema.PackageName, opts ...LoadPackageOpt) (*Package, error) {
 	pl := NewPackageLoader(env)
 	parsed, err := pl.LoadByNameWithOpts(ctx, name, opts...)
@@ -252,31 +236,6 @@ func (pl *PackageLoader) LoadByNameWithOpts(ctx context.Context, packageName sch
 	return pl.loadPackage(ctx, loc, opt...)
 }
 
-func (pl *PackageLoader) Ensure(ctx context.Context, packageName schema.PackageName) error {
-	loc, err := pl.Resolve(ctx, packageName)
-	if err != nil {
-		return err
-	}
-
-	pl.mu.Lock()
-	loading := pl.loading[packageName]
-	if loading != nil {
-		// Someone is already loading the package
-		pl.mu.Unlock()
-		return nil
-	}
-	loading = &loadingPackage{
-		pl:   pl,
-		loc:  loc,
-		opts: LoadPackageOpts{LoadPackageReferences: true},
-	}
-
-	pl.loading[packageName] = loading
-	pl.mu.Unlock()
-
-	return loading.Ensure(ctx)
-}
-
 func (pl *PackageLoader) loadPackage(ctx context.Context, loc Location, opt ...LoadPackageOpt) (*Package, error) {
 	opts := LoadPackageOpts{LoadPackageReferences: true}
 	for _, o := range opt {
@@ -485,11 +444,6 @@ func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.Pac
 	return Location{}, fnerrors.InternalError("%s: package not loaded while resolving!", packageName)
 }
 
-func (sealed sealedPackages) Ensure(ctx context.Context, packageName schema.PackageName) error {
-	_, err := sealed.LoadByName(ctx, packageName)
-	return err
-}
-
 func (sealed sealedPackages) LoadByName(ctx context.Context, packageName schema.PackageName) (*Package, error) {
 	if pkg, ok := sealed.packages[packageName]; ok {
 		return pkg, nil
@@ -500,4 +454,9 @@ func (sealed sealedPackages) LoadByName(ctx context.Context, packageName schema.
 
 func (sealed sealedPackages) Sources() []ModuleSources {
 	return sealed.sources
+}
+
+func Ensure(ctx context.Context, packages pkggraph.PackageLoader, packageName schema.PackageName) error {
+	_, err := packages.LoadByName(ctx, packageName)
+	return err
 }
