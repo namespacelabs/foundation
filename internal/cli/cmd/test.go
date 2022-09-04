@@ -104,7 +104,7 @@ func NewTestCmd() *cobra.Command {
 
 			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(testLocs))
 			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(testLocs))}
-			incompatible := make([]*provision.IncompatibleEnvironmentErr, len(testLocs))
+			incompatible := make([]*fnerrors.IncompatibleEnvironmentErr, len(testLocs))
 
 			if err := tasks.Action("test.prepare").Run(ctx, func(ctx context.Context) error {
 				eg := executor.New(ctx, "test")
@@ -139,7 +139,7 @@ func NewTestCmd() *cobra.Command {
 							return suts, stack, nil
 						})
 						if err != nil {
-							var inc provision.IncompatibleEnvironmentErr
+							var inc fnerrors.IncompatibleEnvironmentErr
 							if errors.As(err, &inc) {
 								incompatible[k] = &inc
 								if !parallel && !parallelWork {

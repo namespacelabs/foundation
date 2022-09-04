@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -46,6 +47,22 @@ func (t Server) GetDep(pkg schema.PackageName) *workspace.Package {
 		}
 	}
 	return nil
+}
+
+func RequireServer(ctx context.Context, env planning.Context, pkgname schema.PackageName) (Server, error) {
+	return RequireServerWith(ctx, env, workspace.NewPackageLoader(env), pkgname)
+}
+
+func RequireServerWith(ctx context.Context, env planning.Context, pl *workspace.PackageLoader, pkgname schema.PackageName) (Server, error) {
+	return makeServer(ctx, pl, env.Environment(), pkgname, func() pkggraph.SealedContext {
+		return pkggraph.MakeSealedContext(env, pl.Seal())
+	})
+}
+
+func RequireLoadedServer(ctx context.Context, e pkggraph.SealedContext, pkgname schema.PackageName) (Server, error) {
+	return makeServer(ctx, e, e.Environment(), pkgname, func() pkggraph.SealedContext {
+		return e
+	})
 }
 
 func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Environment, pkgname schema.PackageName, bind func() pkggraph.SealedContext) (Server, error) {
@@ -95,7 +112,7 @@ func CheckCompatible(t Server) error {
 	for _, req := range t.Proto().GetEnvironmentRequirement() {
 		for _, r := range req.GetEnvironmentHasLabel() {
 			if !t.SealedContext().Environment().HasLabel(r) {
-				return IncompatibleEnvironmentErr{
+				return fnerrors.IncompatibleEnvironmentErr{
 					Env:              t.env.Environment(),
 					Server:           t.Proto(),
 					RequirementOwner: schema.PackageName(req.Package),
@@ -106,7 +123,7 @@ func CheckCompatible(t Server) error {
 
 		for _, r := range req.GetEnvironmentDoesNotHaveLabel() {
 			if t.SealedContext().Environment().HasLabel(r) {
-				return IncompatibleEnvironmentErr{
+				return fnerrors.IncompatibleEnvironmentErr{
 					Env:               t.env.Environment(),
 					Server:            t.Proto(),
 					RequirementOwner:  schema.PackageName(req.Package),
@@ -117,4 +134,12 @@ func CheckCompatible(t Server) error {
 	}
 
 	return nil
+}
+
+func ServerPackages(stack []Server) schema.PackageList {
+	var pl schema.PackageList
+	for _, s := range stack {
+		pl.Add(s.PackageName())
+	}
+	return pl
 }

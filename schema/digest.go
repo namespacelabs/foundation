@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 type Digest struct {
@@ -56,7 +55,7 @@ func ParseDigest(str string) (Digest, error) {
 func parseDigest(d *Digest, str string) error {
 	parts := strings.SplitN(str, ":", 2)
 	if len(parts) != 2 {
-		return fnerrors.UserError(nil, "%s: invalid digest", str)
+		return fmt.Errorf("%s: invalid digest", str)
 	}
 
 	// XXX validate format.
