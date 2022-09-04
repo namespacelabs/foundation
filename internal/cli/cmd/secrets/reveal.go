@@ -19,8 +19,11 @@ import (
 )
 
 func newRevealCmd() *cobra.Command {
-	var secretKey, specificEnv string
-	var locs fncobra.Locations
+	var (
+		locLoadingEnv          provision.Env
+		secretKey, specificEnv string
+		locs                   fncobra.Locations
+	)
 
 	return fncobra.
 		Cmd(&cobra.Command{
@@ -33,7 +36,9 @@ func newRevealCmd() *cobra.Command {
 			flags.StringVar(&specificEnv, "env", "", "If set, matches specified secret with the named environment (e.g. dev, or prod).")
 			_ = cobra.MarkFlagRequired(flags, "secret")
 		}).
-		With(fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
+		With(
+			fncobra.FixedEnv(&locLoadingEnv, "dev"),
+			fncobra.ParseLocations(&locs, &locLoadingEnv, &fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
 			envStr := specificEnv
 			if envStr == "" {

@@ -29,90 +29,95 @@ import (
 )
 
 func NewTidyCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "tidy",
-		Short: "Ensures that each server has the appropriate dependencies configured.",
-		Args:  cobra.NoArgs,
-	}
+	var (
+		env provision.Env
+	)
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
-		// First of all, we work through all packages to make sure we have captured
-		// their dependencies locally. If we don't do this here, package parsing below
-		// will fail.
+	return fncobra.Cmd(
+		&cobra.Command{
+			Use:   "tidy",
+			Short: "Ensures that each server has the appropriate dependencies configured.",
+			Args:  cobra.NoArgs,
+		}).
+		With(fncobra.FixedEnv(&env, "dev")).
+		DoWithArgs(func(ctx context.Context, args []string) error {
+			// First of all, we work through all packages to make sure we have captured
+			// their dependencies locally. If we don't do this here, package parsing below
+			// will fail.
 
-		if err := maybeUpdateWorkspace(ctx, env.Proto()); err != nil {
-			return err
-		}
+			if err := maybeUpdateWorkspace(ctx, env); err != nil {
+				return err
+			}
 
-		root, err := module.FindRootWithArgs(ctx, ".", workspace.ModuleAtArgs{SkipAPIRequirements: true})
-		if err != nil {
-			return err
-		}
-
-		pl := workspace.NewPackageLoader(root, env.Proto())
-
-		list, err := workspace.ListSchemas(ctx, root)
-		if err != nil {
-			return err
-		}
-
-		packages := []*workspace.Package{}
-		for _, loc := range list.Locations {
-			pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
+			root, err := module.FindRootWithArgs(ctx, ".", workspace.ModuleAtArgs{SkipAPIRequirements: true})
 			if err != nil {
 				return err
 			}
 
-			if pkg.Binary != nil {
-				continue
+			pl := workspace.NewPackageLoader(env)
+
+			list, err := workspace.ListSchemas(ctx, env, root)
+			if err != nil {
+				return err
 			}
 
-			packages = append(packages, pkg)
-		}
+			packages := []*workspace.Package{}
+			for _, loc := range list.Locations {
+				pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
+				if err != nil {
+					return err
+				}
 
-		var errs []error
-		for _, pkg := range packages {
-			switch {
-			case pkg.Server != nil:
-				if pkg.Server.Integration != nil {
-					// TODO: support tidy for opaque servers.
+				if pkg.Binary != nil {
 					continue
 				}
-				lang := languages.IntegrationFor(pkg.Server.Framework)
-				if err := lang.TidyServer(ctx, env, pl, pkg.Location, pkg.Server); err != nil {
-					errs = append(errs, err)
-				}
 
-			case pkg.Node() != nil:
-				for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
-					lang := languages.IntegrationFor(fmwk)
-					if err := lang.TidyNode(ctx, env, pl, pkg); err != nil {
+				packages = append(packages, pkg)
+			}
+
+			var errs []error
+			for _, pkg := range packages {
+				switch {
+				case pkg.Server != nil:
+					if pkg.Server.Integration != nil {
+						// TODO: support tidy for opaque servers.
+						continue
+					}
+					lang := languages.IntegrationFor(pkg.Server.Framework)
+					if err := lang.TidyServer(ctx, env, pl, pkg.Location, pkg.Server); err != nil {
 						errs = append(errs, err)
+					}
+
+				case pkg.Node() != nil:
+					for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
+						lang := languages.IntegrationFor(fmwk)
+						if err := lang.TidyNode(ctx, env, pl, pkg); err != nil {
+							errs = append(errs, err)
+						}
 					}
 				}
 			}
-		}
-		for _, fmwk := range schema.Framework_value {
-			lang := languages.IntegrationFor(schema.Framework(fmwk))
-			if lang == nil {
-				continue
+			for _, fmwk := range schema.Framework_value {
+				lang := languages.IntegrationFor(schema.Framework(fmwk))
+				if lang == nil {
+					continue
+				}
+				if err := lang.TidyWorkspace(ctx, env, packages); err != nil {
+					errs = append(errs, err)
+				}
 			}
-			if err := lang.TidyWorkspace(ctx, env, packages); err != nil {
-				errs = append(errs, err)
-			}
-		}
 
-		return multierr.New(errs...)
-	})
+			return multierr.New(errs...)
+		})
 }
 
-func maybeUpdateWorkspace(ctx context.Context, env *schema.Environment) error {
+func maybeUpdateWorkspace(ctx context.Context, env provision.Env) error {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return err
 	}
 
-	pl := workspace.NewPackageLoader(root, env)
+	pl := workspace.NewPackageLoader(env)
 
 	if err := fillDependencies(ctx, root, pl, env); err != nil {
 		return err
@@ -121,7 +126,7 @@ func maybeUpdateWorkspace(ctx context.Context, env *schema.Environment) error {
 	return nil
 }
 
-func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.PackageLoader, env *schema.Environment) error {
+func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.PackageLoader, env provision.Env) error {
 	locs, err := listLocations(ctx, root)
 	if err != nil {
 		return err
@@ -218,7 +223,7 @@ type allocator struct {
 	modules  map[string]*schema.Workspace_Dependency // Previously loaded modules (i.e. already part of the workspace definition.)
 	resolved map[string]*schema.Workspace_Dependency // Newly resolved modules.
 	left     []fnfs.Location
-	env      *schema.Environment
+	env      provision.Env
 }
 
 func (alloc *allocator) checkResolves(ctx context.Context, pkgs []string, refs []*schema.Reference) error {
@@ -284,7 +289,7 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 
 			// Add dep and reload package loader for new deps
 			alloc.ws.Dep = append(alloc.ws.Dep, dep)
-			alloc.loader = workspace.NewPackageLoader(fixedWorkspace{alloc.ws, alloc.root.WorkspaceLoadedFrom(), alloc.root.DevHost()}, alloc.env)
+			alloc.loader = workspace.NewPackageLoader(fixedWorkspace{alloc.ws, alloc.root.WorkspaceLoadedFrom(), alloc.root.DevHost(), alloc.env.Proto()})
 		}
 
 		didResolve = true
@@ -311,12 +316,14 @@ type fixedWorkspace struct {
 	ws      *schema.Workspace
 	lf      *schema.Workspace_LoadedFrom
 	devhost *schema.DevHost
+	env     *schema.Environment
 }
 
 func (fw fixedWorkspace) ErrorLocation() string                             { return fw.ws.ModuleName }
 func (fw fixedWorkspace) Workspace() *schema.Workspace                      { return fw.ws }
 func (fw fixedWorkspace) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return fw.lf }
 func (fw fixedWorkspace) DevHost() *schema.DevHost                          { return fw.devhost }
+func (fw fixedWorkspace) Proto() *schema.Environment                        { return fw.env }
 
 type workspaceLoader struct {
 	alloc *allocator

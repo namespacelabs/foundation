@@ -19,7 +19,7 @@ func StartDevServer(ctx context.Context, env provision.Env, pkg schema.PackageNa
 	host := "127.0.0.1"
 	hostPort := fmt.Sprintf("%s:%d", host, webPort)
 
-	loc, err := workspace.NewPackageLoader(env, env.Proto()).Resolve(ctx, pkg)
+	loc, err := workspace.NewPackageLoader(env).Resolve(ctx, pkg)
 	if err != nil {
 		return "", err
 	}

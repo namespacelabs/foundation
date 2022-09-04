@@ -28,7 +28,7 @@ func parseTargetPkgWithDeps(targetPkgOut *targetPkg, typ string) []fncobra.ArgPa
 	)
 	return []fncobra.ArgParser{
 		fncobra.ParseEnv(&env),
-		fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true}),
+		fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{RequireSingle: true}),
 		&targetPkgParser{targetPkgOut, &locs, typ},
 	}
 }

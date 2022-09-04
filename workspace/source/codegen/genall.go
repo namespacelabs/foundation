@@ -17,7 +17,7 @@ import (
 
 // ForNodeLocations generates protos for Extensions and Services. Locations in `locs` are sorted in a topological order.
 func ForLocationsGenProto(ctx context.Context, out fnfs.ReadWriteFS, env provision.Env, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
-	pl := workspace.NewPackageLoader(env, env.Proto())
+	pl := workspace.NewPackageLoader(env)
 	g := ops.Plan{}
 	for _, loc := range locs {
 		pkg, err := pl.LoadByNameWithOpts(ctx, loc.AsPackageName(), workspace.DontLoadDependencies())
@@ -44,7 +44,7 @@ func ForLocationsGenProto(ctx context.Context, out fnfs.ReadWriteFS, env provisi
 
 // ForLocationsGenCode generates code for all packages in `locs`. At this stage we assume protos are already generated.
 func ForLocationsGenCode(ctx context.Context, out fnfs.ReadWriteFS, env provision.Env, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
-	pl := workspace.NewPackageLoader(env, env.Proto())
+	pl := workspace.NewPackageLoader(env)
 	g := ops.Plan{}
 	for _, loc := range locs {
 		sealed, err := workspace.Seal(ctx, pl, loc.AsPackageName(), nil)

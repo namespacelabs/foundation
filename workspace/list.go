@@ -23,10 +23,10 @@ type SchemaList struct {
 }
 
 // Returns a list of all of the schema definitions found under root.
-func ListSchemas(ctx context.Context, root *Root) (SchemaList, error) {
+func ListSchemas(ctx context.Context, plEnv PackageLoaderEnv, root *Root) (SchemaList, error) {
 	sl := SchemaList{Root: root}
 
-	pl := NewPackageLoader(root, nil /* env*/)
+	pl := NewPackageLoader(plEnv)
 
 	visited := map[string]struct{}{} // Map of directory name to presence.
 

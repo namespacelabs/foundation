@@ -22,9 +22,12 @@ import (
 )
 
 func newSetCmd() *cobra.Command {
-	var secretKey, keyID, fromFile, specificEnv string
-	var rawtext bool
-	var locs fncobra.Locations
+	var (
+		locLoadingEnv                           provision.Env
+		secretKey, keyID, fromFile, specificEnv string
+		rawtext                                 bool
+		locs                                    fncobra.Locations
+	)
 
 	return fncobra.
 		Cmd(&cobra.Command{
@@ -40,7 +43,9 @@ func newSetCmd() *cobra.Command {
 			flags.StringVar(&specificEnv, "env", "", "If set, only sets the specified secret for the named environment (e.g. dev, or prod).")
 			_ = cobra.MarkFlagRequired(flags, "secret")
 		}).
-		With(fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{RequireSingle: true})).
+		With(
+			fncobra.FixedEnv(&locLoadingEnv, "dev"),
+			fncobra.ParseLocations(&locs, &locLoadingEnv, &fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
 			envStr := specificEnv
 			if envStr == "" {
@@ -66,7 +71,7 @@ func newSetCmd() *cobra.Command {
 
 			key.EnvironmentName = specificEnv
 
-			if _, err := workspace.NewPackageLoader(env, env.Proto()).LoadByName(ctx, schema.PackageName(key.PackageName)); err != nil {
+			if _, err := workspace.NewPackageLoader(env).LoadByName(ctx, schema.PackageName(key.PackageName)); err != nil {
 				return err
 			}
 

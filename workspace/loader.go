@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -39,8 +38,8 @@ type SealedPackages interface {
 	Sources() []ModuleSources
 }
 
-func LoadPackageByName(ctx context.Context, root *Root, env *schema.Environment, name schema.PackageName, opts ...LoadPackageOpt) (*Package, error) {
-	pl := NewPackageLoader(root, env)
+func LoadPackageByName(ctx context.Context, plEnv PackageLoaderEnv, name schema.PackageName, opts ...LoadPackageOpt) (*Package, error) {
+	pl := NewPackageLoader(plEnv)
 	parsed, err := pl.LoadByNameWithOpts(ctx, name, opts...)
 	if err != nil {
 		return nil, err
@@ -126,28 +125,25 @@ type loadingPackage struct {
 	result  resultPair
 }
 
-type PackageLoaderRoot interface {
+type PackageLoaderEnv interface {
 	Workspace() *schema.Workspace
 	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
 	DevHost() *schema.DevHost
+	Proto() *schema.Environment
 }
 
-func NewPackageLoaderFromEnv(env planning.Environment) *PackageLoader {
-	return NewPackageLoader(env, env.Proto())
-}
-
-func NewPackageLoader(root PackageLoaderRoot, env *schema.Environment) *PackageLoader {
+func NewPackageLoader(env PackageLoaderEnv) *PackageLoader {
 	pl := &PackageLoader{}
-	pl.absPath = root.WorkspaceLoadedFrom().AbsPath
-	pl.workspace = root.Workspace()
-	pl.loadedFrom = root.WorkspaceLoadedFrom()
-	pl.devHost = root.DevHost()
+	pl.absPath = env.WorkspaceLoadedFrom().AbsPath
+	pl.workspace = env.Workspace()
+	pl.loadedFrom = env.WorkspaceLoadedFrom()
+	pl.devHost = env.DevHost()
 	pl.loaded = map[schema.PackageName]*Package{}
 	pl.loading = map[schema.PackageName]*loadingPackage{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
 	pl.loadedModules = map[string]*Module{}
-	pl.frontend = MakeFrontend(pl, env)
-	pl.rootmodule = pl.inject(root.WorkspaceLoadedFrom(), root.Workspace(), "" /* version */)
+	pl.frontend = MakeFrontend(pl, env.Proto())
+	pl.rootmodule = pl.inject(env.WorkspaceLoadedFrom(), env.Workspace(), "" /* version */)
 	return pl
 }
 

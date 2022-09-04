@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -33,6 +34,7 @@ type FnWorkspace struct {
 	root      *workspace.Root
 	openFiles *OpenFiles // Paths (in URIs) are absolute!
 	evalCtx   *fncue.EvalCtx
+	env       provision.Env
 }
 
 func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWorkspace, wsPath string, err error) {
@@ -43,14 +45,17 @@ func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWo
 	}
 	wsPath = loc.RelPath
 
+	env, err := provision.RequireEnv(root, "dev")
+	if err != nil {
+		return nil, "", err
+	}
+
 	ws = &FnWorkspace{
 		root:      root,
 		openFiles: s.openFiles,
+		env:       env,
 	}
-	// For LSP we need to parse fully parse the CUE sources to highlight errors, so $env needs to be injected.
-	// The actual value doesn't matter.
-	env := &schema.Environment{}
-	ws.evalCtx = fncue.NewEvalCtx(ws, cuefrontend.InjectedScope(env))
+	ws.evalCtx = fncue.NewEvalCtx(ws, cuefrontend.InjectedScope(env.Proto()))
 	return
 }
 
@@ -67,7 +72,7 @@ func (ws *FnWorkspace) PkgNameInMainModule(relPath string) string {
 // Real filesystem path for the package name (example.com/module/package/file.cue).
 // Supports external modules and may download them on-demand (hence [ctx]).
 func (ws *FnWorkspace) AbsPathForPkgName(ctx context.Context, pkgName string) (string, error) {
-	packageLoader := workspace.NewPackageLoader(ws.root, nil /* env */)
+	packageLoader := workspace.NewPackageLoader(ws.env)
 	loc, err := packageLoader.Resolve(ctx, schema.PackageName(pkgName))
 	if err != nil {
 		return "", err
@@ -94,7 +99,7 @@ func (ws *FnWorkspace) FS() fs.ReadDirFS {
 }
 
 func (ws *FnWorkspace) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, string, error) {
-	packageLoader := workspace.NewPackageLoader(ws.root, nil /* env */)
+	packageLoader := workspace.NewPackageLoader(ws.env)
 
 	loc, err := packageLoader.Resolve(ctx, pkgname) // This may download external modules.
 	if err != nil {

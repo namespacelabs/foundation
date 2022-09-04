@@ -37,7 +37,7 @@ func newBufGenerateCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.FixedEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &fncobra.ParseLocationsOpts{})).
+			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{})).
 		Do(func(ctx context.Context) error {
 			var paths []string
 			for _, loc := range locs.Locs {
@@ -48,7 +48,7 @@ func newBufGenerateCmd() *cobra.Command {
 				paths = append(paths, loc.RelPath)
 			}
 
-			loc, err := workspace.NewPackageLoaderFromEnv(env).Resolve(ctx, schema.PackageName(env.Workspace().ModuleName))
+			loc, err := workspace.NewPackageLoader(env).Resolve(ctx, schema.PackageName(env.Workspace().ModuleName))
 			if err != nil {
 				return err
 			}
