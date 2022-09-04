@@ -6,7 +6,7 @@ package client
 
 import (
 	"namespacelabs.dev/foundation/build/registry"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -21,7 +21,7 @@ type HostConfig struct {
 	registry *registry.Registry
 }
 
-func NewHostConfig(contextName string, env ops.Environment, options ...func(*HostConfig)) (*HostConfig, error) {
+func NewHostConfig(contextName string, env planning.Context, options ...func(*HostConfig)) (*HostConfig, error) {
 	kubeconfig, err := dirs.ExpandHome("~/.kube/config")
 	if err != nil {
 		return nil, err

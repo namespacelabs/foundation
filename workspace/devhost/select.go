@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -18,7 +18,7 @@ type ConfigKey struct {
 	Selector Selector
 }
 
-func ConfigKeyFromEnvironment(env ops.Environment) *ConfigKey {
+func ConfigKeyFromEnvironment(env planning.Context) *ConfigKey {
 	return &ConfigKey{
 		DevHost:  env.DevHost(),
 		Selector: ByEnvironment(env.Proto()),

@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/languages"
 	nodejsintegration "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/provision"
@@ -138,7 +139,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 	return builds, nil
 }
 
-func prepareBuild(ctx context.Context, loc workspace.Location, env ops.Environment, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (oci.NamedImage, error) {
+func prepareBuild(ctx context.Context, loc workspace.Location, env planning.Context, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (oci.NamedImage, error) {
 	if !useDevBuild(env.Proto()) {
 
 		extra = append(extra, generateProdViteConfig())
@@ -339,7 +340,7 @@ type buildDevServer struct {
 	ingressFragments compute.Computable[[]*schema.IngressFragment]
 }
 
-func (bws buildDevServer) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (bws buildDevServer) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	builds, err := buildWebApps(ctx, conf, bws.ingressFragments, bws.srv, bws.isFocus)
 	if err != nil {
 		return nil, err
@@ -368,7 +369,7 @@ type buildProdWebServer struct {
 	ingressFragments compute.Computable[[]*schema.IngressFragment]
 }
 
-func (bws buildProdWebServer) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (bws buildProdWebServer) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	builds, err := buildWebApps(ctx, conf, bws.ingressFragments, bws.srv, bws.isFocus)
 	if err != nil {
 		return nil, err

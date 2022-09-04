@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
@@ -23,7 +24,7 @@ import (
 )
 
 func registerCreate() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.SerializedInvocation, create *kubedef.OpCreate) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, d *schema.SerializedInvocation, create *kubedef.OpCreate) (*ops.HandleResult, error) {
 		if create.BodyJson == "" {
 			return nil, fnerrors.InternalError("%s: apply.Body is required", d.Description)
 		}

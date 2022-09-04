@@ -22,8 +22,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	fnschema "namespacelabs.dev/foundation/schema"
@@ -322,7 +322,7 @@ func CopyAndSetDefaults(config rest.Config, gv schema.GroupVersion) *rest.Config
 	return &config
 }
 
-func ResolveConfig(ctx context.Context, env ops.Environment) (*rest.Config, error) {
+func ResolveConfig(ctx context.Context, env planning.Context) (*rest.Config, error) {
 	if x, ok := env.(interface {
 		KubeconfigProvider() (*HostConfig, error)
 	}); ok {

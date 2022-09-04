@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -27,7 +28,7 @@ import (
 
 type generator struct{}
 
-func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, msg *OpGenHttpBackend) (*ops.HandleResult, error) {
+func (generator) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, msg *OpGenHttpBackend) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, errors.New("workspace.Packages required")

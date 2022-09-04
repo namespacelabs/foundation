@@ -9,10 +9,10 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-// Environment represents an execution environment: it puts together a root
+// Context represents an execution environment: it puts together a root
 // workspace, a workspace configuration (devhost) and then finally the
 // schema-level environment we're running for.
-type Environment interface {
+type Context interface {
 	fnerrors.Location
 	Workspace() *schema.Workspace
 	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom

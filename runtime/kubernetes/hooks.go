@@ -8,15 +8,15 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/types/known/anypb"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/frontend"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
 	kubenode "namespacelabs.dev/foundation/std/runtime/kubernetes"
 )
 
-func prepareApplyServerExtensions(_ context.Context, _ ops.Environment, srv *schema.Stack_Entry) (*frontend.PrepareProps, error) {
+func prepareApplyServerExtensions(_ context.Context, _ planning.Context, srv *schema.Stack_Entry) (*frontend.PrepareProps, error) {
 	var ensureServiceAccount bool
 
 	if err := allocations.Visit(srv.Server.Allocation, kubeNode, &kubenode.ServerExtensionArgs{},

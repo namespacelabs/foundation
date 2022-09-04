@@ -15,11 +15,11 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -29,7 +29,7 @@ import (
 )
 
 // Returns a Computable[v1.Image] with the results of the compilation.
-func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.Environment, description, baseOutput, basePath string, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
+func ViteProductionBuild(ctx context.Context, loc workspace.Location, env planning.Context, description, baseOutput, basePath string, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
 	hostPlatform := buildkit.HostPlatform()
 	conf := build.NewBuildTarget(&hostPlatform).WithSourceLabel(description)
 
@@ -56,7 +56,7 @@ func ViteProductionBuild(ctx context.Context, loc workspace.Location, env ops.En
 		compute.Named(tasks.Action("web.vite.build").Arg("builder", "buildkit"), image)), nil
 }
 
-func viteDevBuild(ctx context.Context, env ops.Environment, targetDir string, loc workspace.Location, isFocus bool, conf build.BuildTarget, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
+func viteDevBuild(ctx context.Context, env planning.Context, targetDir string, loc workspace.Location, isFocus bool, conf build.BuildTarget, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
 	var module build.Workspace
 
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {

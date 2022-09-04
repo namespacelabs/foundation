@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/build/registry"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/providers/nscloud"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareNewNamespaceCluster(env ops.Environment) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareNewNamespaceCluster(env planning.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.nscloud.new-cluster"),
 		compute.Inputs().Proto("env", env.Proto()).Indigestible("foobar", "foobar"),

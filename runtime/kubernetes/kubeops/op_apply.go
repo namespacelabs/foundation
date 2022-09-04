@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -32,7 +33,7 @@ import (
 )
 
 func registerApply() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.SerializedInvocation, apply *kubedef.OpApply) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, d *schema.SerializedInvocation, apply *kubedef.OpApply) (*ops.HandleResult, error) {
 		if apply.BodyJson == "" {
 			return nil, fnerrors.InternalError("%s: apply.Body is required", d.Description)
 		}

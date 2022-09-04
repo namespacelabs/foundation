@@ -14,10 +14,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/eks/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/providers/aws/auth"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -83,7 +83,7 @@ func provideEKS(ctx context.Context, env *schema.Environment, ck *devhost.Config
 	}, nil
 }
 
-func prepareDescribeCluster(ctx context.Context, env ops.Environment, se *schema.Stack_Entry) (*frontend.PrepareProps, error) {
+func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schema.Stack_Entry) (*frontend.PrepareProps, error) {
 	// XXX this breaks test/production similarity, but for the moment hide EKS
 	// from tests. This removes the ability for tests to allocate IAM resources.
 	if env.Proto().Ephemeral {

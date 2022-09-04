@@ -16,9 +16,9 @@ import (
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
@@ -46,7 +46,7 @@ type buildNodeJS struct {
 	isFocus         bool
 }
 
-func (bnj buildNodeJS) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (bnj buildNodeJS) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	nodeImage, err := pins.CheckDefault("node")
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env ops.Environment, conf
 	return nodejsImage, nil
 }
 
-func nodeEnv(env ops.Environment) string {
+func nodeEnv(env planning.Context) string {
 	if env.Proto().GetPurpose() == schema.Environment_PRODUCTION {
 		return "production"
 	} else {

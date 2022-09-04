@@ -22,12 +22,12 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/grpcstdio"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
@@ -153,7 +153,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 	return resp, nil
 }
 
-func (oo LowLevelInvokeOptions[Req, Resp]) BuildkitInvocation(ctx context.Context, env ops.Environment, method string, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req Req) (Resp, error) {
+func (oo LowLevelInvokeOptions[Req, Resp]) BuildkitInvocation(ctx context.Context, env planning.Context, method string, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req Req) (Resp, error) {
 	return tasks.Return(ctx, tasks.Action("buildkit.invocation").Scope(pkg).Arg("ref", imageID.ImageRef()).Arg("method", method).LogLevel(1), func(ctx context.Context) (Resp, error) {
 		attachToAction(ctx, "request", req, oo.RedactRequest)
 

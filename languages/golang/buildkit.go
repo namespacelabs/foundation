@@ -16,9 +16,9 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/pins"
@@ -34,7 +34,7 @@ type buildConf interface {
 	build.BuildWorkspace
 }
 
-func buildUsingBuildkit(ctx context.Context, env ops.Environment, bin GoBinary, conf buildConf) (compute.Computable[oci.Image], error) {
+func buildUsingBuildkit(ctx context.Context, env planning.Context, bin GoBinary, conf buildConf) (compute.Computable[oci.Image], error) {
 	local := buildkit.LocalContents{
 		Module:         conf.Workspace(),
 		Path:           bin.GoModulePath,

@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
@@ -36,7 +37,7 @@ const TestRunAction = "test.run"
 var errTestFailed = errors.New("test failed")
 
 type testRun struct {
-	Env ops.Environment // Doesn't affect the output.
+	Env planning.Context // Doesn't affect the output.
 
 	TestName       string
 	TestBinPkg     schema.PackageName
@@ -82,7 +83,7 @@ func (test *testRun) Inputs() *compute.In {
 	return in
 }
 
-func (test *testRun) prepareDeployEnv(ctx context.Context, r compute.Resolved) (ops.Environment, func(context.Context) error, error) {
+func (test *testRun) prepareDeployEnv(ctx context.Context, r compute.Resolved) (planning.Context, func(context.Context) error, error) {
 	if test.VCluster != nil {
 		return envWithVCluster(ctx, test.Env, compute.MustGetDepValue(r, test.VCluster, "vcluster"))
 	}
@@ -216,7 +217,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	return bundle, nil
 }
 
-func collectLogs(ctx context.Context, env ops.Environment, testPkg schema.PackageName, stack *schema.Stack, focus []string, printLogs bool) (*storage.TestResultBundle, error) {
+func collectLogs(ctx context.Context, env planning.Context, testPkg schema.PackageName, stack *schema.Stack, focus []string, printLogs bool) (*storage.TestResultBundle, error) {
 	ex := executor.New(ctx, "test.collect-logs")
 
 	type serverLog struct {

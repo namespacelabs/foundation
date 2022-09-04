@@ -13,8 +13,8 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
@@ -41,7 +41,7 @@ func makeDockerfileState(sourceLabel string, df dockerfileBuild) llb.State {
 			llb.WithCustomName(fmt.Sprintf("Dockerfile (%s)", sourceLabel)))
 }
 
-func (df dockerfileBuild) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (df dockerfileBuild) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	req := &frontendReq{
 		Frontend: "dockerfile.v0",
 		FrontendInputs: map[string]llb.State{

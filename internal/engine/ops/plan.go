@@ -21,19 +21,16 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-// XXX Replace references with target type.
-type Environment planning.Environment
-
 // A dispatcher provides the implementation for a particular type, i.e. it
 // handles the execution of a particular serialized invocation.
 type Dispatcher[M proto.Message] interface {
-	Handle(context.Context, Environment, *schema.SerializedInvocation, M) (*HandleResult, error)
+	Handle(context.Context, planning.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
 }
 
 // A BatchedDispatcher represents an implementation which batches the execution
 // of multiple invocations.
 type BatchedDispatcher[M proto.Message] interface {
-	StartSession(context.Context, Environment) Session[M]
+	StartSession(context.Context, planning.Context) Session[M]
 }
 
 // A session represents a single batched invocation.
@@ -80,7 +77,7 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) error {
 	return nil
 }
 
-func (g *Plan) Execute(ctx context.Context, actionName string, env Environment) (waiters []Waiter, err error) {
+func (g *Plan) Execute(ctx context.Context, actionName string, env planning.Context) (waiters []Waiter, err error) {
 	err = tasks.Action(actionName).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, false)
@@ -89,7 +86,7 @@ func (g *Plan) Execute(ctx context.Context, actionName string, env Environment) 
 	return
 }
 
-func (g *Plan) ExecuteParallel(ctx context.Context, name string, env Environment) (waiters []Waiter, err error) {
+func (g *Plan) ExecuteParallel(ctx context.Context, name string, env planning.Context) (waiters []Waiter, err error) {
 	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, true)
@@ -102,7 +99,7 @@ func (g *Plan) Serialize() *schema.SerializedProgram {
 	return &schema.SerializedProgram{Invocation: g.definitions}
 }
 
-func (g *Plan) apply(ctx context.Context, env Environment, parallel bool) ([]Waiter, error) {
+func (g *Plan) apply(ctx context.Context, env planning.Context, parallel bool) ([]Waiter, error) {
 	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)

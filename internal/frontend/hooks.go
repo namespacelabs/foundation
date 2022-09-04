@@ -10,8 +10,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -52,7 +52,7 @@ func (p *PrepareProps) AppendInputs(msgs ...proto.Message) error {
 	return nil
 }
 
-type PrepareHookFunc func(context.Context, ops.Environment, *schema.Stack_Entry) (*PrepareProps, error)
+type PrepareHookFunc func(context.Context, planning.Context, *schema.Stack_Entry) (*PrepareProps, error)
 
 func RegisterPrepareHook(name string, f PrepareHookFunc) {
 	if registrations.prepare == nil {
@@ -62,7 +62,7 @@ func RegisterPrepareHook(name string, f PrepareHookFunc) {
 	registrations.prepare[name] = f
 }
 
-func InvokeInternalPrepareHook(ctx context.Context, name string, env ops.Environment, srv *schema.Stack_Entry) (*PrepareProps, error) {
+func InvokeInternalPrepareHook(ctx context.Context, name string, env planning.Context, srv *schema.Stack_Entry) (*PrepareProps, error) {
 	if f, ok := registrations.prepare[name]; ok {
 		return tasks.Return(ctx, tasks.Action("prepare.invoke-hook").Scope(srv.GetPackageName()).Arg("name", name), func(ctx context.Context) (*PrepareProps, error) {
 			return f(ctx, env, srv)

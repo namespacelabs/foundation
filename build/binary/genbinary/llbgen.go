@@ -15,8 +15,8 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
@@ -36,7 +36,7 @@ type llbBinary struct {
 	bin         build.Spec
 }
 
-func (l llbBinary) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (l llbBinary) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	hostPlatform, err := tools.HostPlatform(ctx)
 	if err != nil {
 		return nil, err

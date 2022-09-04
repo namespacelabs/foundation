@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
@@ -37,7 +38,7 @@ var (
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, g *schema.SerializedInvocation, op *OpGenerateWebhookCert) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, g *schema.SerializedInvocation, op *OpGenerateWebhookCert) (*ops.HandleResult, error) {
 		restcfg, err := client.ResolveConfig(ctx, env)
 		if err != nil {
 			return nil, err

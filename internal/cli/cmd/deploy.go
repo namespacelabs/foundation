@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/orchestration"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
@@ -108,7 +109,7 @@ type Ingress struct {
 	Protocol []string `json:"protocol"`
 }
 
-func completeDeployment(ctx context.Context, env ops.Environment, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
+func completeDeployment(ctx context.Context, env planning.Context, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
 	if orchestration.UseOrchestrator {
 		env := provision.MakeEnvFromEnv(env)
 		id, err := orchestration.Deploy(ctx, env, plan)

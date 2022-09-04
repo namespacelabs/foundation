@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -23,7 +24,7 @@ import (
 
 type noPackageEnv struct {
 	hostConfig *client.HostConfig
-	ops.Environment
+	planning.Context
 }
 
 var _ workspace.Packages = noPackageEnv{}
@@ -42,13 +43,13 @@ func (p noPackageEnv) KubeconfigProvider() (*client.HostConfig, error) {
 	return p.hostConfig, nil
 }
 
-func PrepareIngressFromHostConfig(env ops.Environment, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareIngressFromHostConfig(env planning.Context, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return PrepareIngress(env, compute.Transform(k8sconfig, func(ctx context.Context, cfg *client.HostConfig) (kubernetes.Unbound, error) {
 		return kubernetes.NewFromConfig(ctx, cfg)
 	}))
 }
 
-func PrepareIngress(env ops.Environment, kube compute.Computable[kubernetes.Unbound]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareIngress(env planning.Context, kube compute.Computable[kubernetes.Unbound]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.ingress").HumanReadablef("Deploying the Kubernetes ingress controller (may take up to 30 seconds)"),
 		compute.Inputs().Computable("runtime", kube).Proto("env", env.Proto()).Proto("workspace", env.Workspace()),
@@ -65,7 +66,7 @@ func PrepareIngress(env ops.Environment, kube compute.Computable[kubernetes.Unbo
 		})
 }
 
-func PrepareIngressInKube(ctx context.Context, env ops.Environment, kube kubernetes.Unbound) error {
+func PrepareIngressInKube(ctx context.Context, env planning.Context, kube kubernetes.Unbound) error {
 	state, err := kube.PrepareCluster(ctx)
 	if err != nil {
 		return err

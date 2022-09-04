@@ -12,9 +12,9 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -31,7 +31,7 @@ type nixImage struct {
 	sources     fs.FS
 }
 
-func (l nixImage) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (l nixImage) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	if conf.TargetPlatform() == nil {
 		return nil, fnerrors.BadInputError("nix: target platform is missing")
 	}

@@ -15,9 +15,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -81,7 +81,7 @@ func (conf ConfSlice) WithoutConstraints() []*schema.DevHost_ConfigureEnvironmen
 	return parsed
 }
 
-func ConfigurationForEnv(env ops.Environment) ConfSlice {
+func ConfigurationForEnv(env planning.Context) ConfSlice {
 	return Select(env.DevHost(), ByEnvironment(env.Proto()))
 }
 

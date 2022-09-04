@@ -12,13 +12,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, def *schema.SerializedInvocation, m *OpEnsureRole) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, def *schema.SerializedInvocation, m *OpEnsureRole) (*ops.HandleResult, error) {
 		if m.AssumeRolePolicyJson == "" || m.RoleName == "" {
 			return nil, fnerrors.BadInputError("both role_name and assume_role_policy_json are required")
 		}
@@ -62,7 +63,7 @@ func RegisterGraphHandlers() {
 		return nil, nil
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, def *schema.SerializedInvocation, m *OpAssociatePolicy) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, def *schema.SerializedInvocation, m *OpAssociatePolicy) (*ops.HandleResult, error) {
 		if m.PolicyJson == "" || m.PolicyName == "" || m.RoleName == "" {
 			return nil, fnerrors.BadInputError("all of `role_name` and `policy_name` and `policy_json` are required")
 		}

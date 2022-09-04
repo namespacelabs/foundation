@@ -27,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
@@ -53,7 +54,7 @@ var ()
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
 		workspacePackages, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, errors.New("workspace.Packages required")
@@ -71,7 +72,7 @@ func Register() {
 		return nil, nil
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, fnerrors.New("workspace.Packages required")
@@ -85,7 +86,7 @@ func Register() {
 		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenNodeStub) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenNodeStub) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, fnerrors.New("workspace.Packages required")
@@ -99,7 +100,7 @@ func Register() {
 		return nil, generateNodeImplStub(ctx, pkg, x.Filename, x.Node)
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenGrpc) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenGrpc) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, fnerrors.New("workspace.Packages required")
@@ -494,11 +495,11 @@ func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*
 type yarnRootStatefulGen struct{}
 
 // This is never called but ops.Register requires the Dispatcher.
-func (yarnRootStatefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
+func (yarnRootStatefulGen) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
 	return nil, fnerrors.UserError(nil, "yarnRootStatefulGen.Handle is not supposed to be called")
 }
 
-func (yarnRootStatefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Session[*OpGenYarnRoot] {
+func (yarnRootStatefulGen) StartSession(ctx context.Context, env planning.Context) ops.Session[*OpGenYarnRoot] {
 	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
 	if !ok {
 		// An error will then be returned in Close().
@@ -513,7 +514,7 @@ type yarnRootGenSession struct {
 	yarnRoots map[string]context.Context
 }
 
-func (s *yarnRootGenSession) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
+func (s *yarnRootGenSession) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
 	if s.yarnRoots[x.YarnRootPkgName] == nil {
 		s.yarnRoots[x.YarnRootPkgName] = ctx
 	}

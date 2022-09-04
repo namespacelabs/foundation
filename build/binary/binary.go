@@ -16,8 +16,8 @@ import (
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace"
@@ -98,11 +98,11 @@ func Command(pkg *workspace.Package) []string {
 	return pkg.Binary.GetConfig().GetCommand()
 }
 
-func (p Prepared) Image(ctx context.Context, env ops.Environment) (compute.Computable[oci.ResolvableImage], error) {
+func (p Prepared) Image(ctx context.Context, env planning.Context) (compute.Computable[oci.ResolvableImage], error) {
 	return multiplatform.PrepareMultiPlatformImage(ctx, env, p.Plan)
 }
 
-func PlanImage(ctx context.Context, pkg *workspace.Package, env ops.Environment, usePrebuilts bool, platform *specs.Platform) (*PreparedImage, error) {
+func PlanImage(ctx context.Context, pkg *workspace.Package, env planning.Context, usePrebuilts bool, platform *specs.Platform) (*PreparedImage, error) {
 	if pkg.Binary == nil {
 		return nil, fnerrors.UserError(pkg.Location, "expected a binary")
 	}
@@ -273,7 +273,7 @@ func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 	return nil, fnerrors.UserError(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
 }
 
-func EnsureImage(ctx context.Context, env ops.Environment, prepared *Prepared) (oci.ImageID, error) {
+func EnsureImage(ctx context.Context, env planning.Context, prepared *Prepared) (oci.ImageID, error) {
 	img, err := prepared.Image(ctx, env)
 	if err != nil {
 		return oci.ImageID{}, err

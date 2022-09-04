@@ -5,12 +5,12 @@
 package workspace
 
 import (
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/planning"
 )
 
 type WorkspaceEnvironment interface {
-	ops.Environment
+	planning.Context
 	Packages
 }
 

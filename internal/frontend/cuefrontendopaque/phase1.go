@@ -7,8 +7,8 @@ package cuefrontendopaque
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/frontend"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -17,7 +17,7 @@ type phase1plan struct {
 	declaredStack []schema.PackageName
 }
 
-func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
+func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
 	var pdata frontend.ProvisionPlan
 
 	pdata.Startup = phase2plan{startupPlan: p1.startupPlan}

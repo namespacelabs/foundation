@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/renderwait"
 	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema/orchestration"
 )
@@ -24,13 +25,13 @@ const (
 	tailLinesOnFailure = 10
 )
 
-func Wait(ctx context.Context, env ops.Environment, waiters []ops.Waiter) error {
+func Wait(ctx context.Context, env planning.Context, waiters []ops.Waiter) error {
 	return RenderAndWait(ctx, env, func(ch chan *orchestration.Event) error {
 		return ops.WaitMultiple(ctx, waiters, ch)
 	})
 }
 
-func RenderAndWait(ctx context.Context, env ops.Environment, handle func(chan *orchestration.Event) error) error {
+func RenderAndWait(ctx context.Context, env planning.Context, handle func(chan *orchestration.Event) error) error {
 	rwb := renderwait.NewBlock(ctx, "deploy")
 
 	waitErr := handle(observeContainers(ctx, env, rwb.Ch()))
@@ -47,7 +48,7 @@ func RenderAndWait(ctx context.Context, env ops.Environment, handle func(chan *o
 
 // observeContainers observes the deploy events (received from the returned channel) and updates the
 // console through the `parent` channel.
-func observeContainers(ctx context.Context, env ops.Environment, parent chan *orchestration.Event) chan *orchestration.Event {
+func observeContainers(ctx context.Context, env planning.Context, parent chan *orchestration.Event) chan *orchestration.Event {
 	ch := make(chan *orchestration.Event)
 	t := time.NewTicker(maxDeployWait)
 	startedDiagnosis := true // After the first tick, we tick twice as fast.

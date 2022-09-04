@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/sdk/buf"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -31,7 +32,7 @@ type statefulGen struct{}
 
 var _ ops.BatchedDispatcher[*OpProtoGen] = statefulGen{}
 
-func (statefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
+func (statefulGen) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
 	if !ok {
 		return nil, fnerrors.New("WorkspaceEnvironment required")
@@ -42,7 +43,7 @@ func (statefulGen) Handle(ctx context.Context, env ops.Environment, _ *schema.Se
 	}, wenv.OutputFS())
 }
 
-func (statefulGen) StartSession(ctx context.Context, env ops.Environment) ops.Session[*OpProtoGen] {
+func (statefulGen) StartSession(ctx context.Context, env planning.Context) ops.Session[*OpProtoGen] {
 	wenv, ok := env.(workspace.MutableWorkspaceEnvironment)
 	if !ok {
 		// An error will then be returned in Close().
@@ -60,7 +61,7 @@ type multiGen struct {
 	request map[schema.Framework][]*protos.FileDescriptorSetAndDeps
 }
 
-func (m *multiGen) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
+func (m *multiGen) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
 	loc, err := m.wenv.Resolve(ctx, schema.PackageName(msg.PackageName))
 	if err != nil {
 		return nil, err
@@ -100,7 +101,7 @@ func (m *multiGen) Commit() error {
 	return generateProtoSrcs(m.ctx, m.wenv, request, m.wenv.OutputFS())
 }
 
-func generateProtoSrcs(ctx context.Context, env ops.Environment, request map[schema.Framework]*protos.FileDescriptorSetAndDeps, out fnfs.ReadWriteFS) error {
+func generateProtoSrcs(ctx context.Context, env planning.Context, request map[schema.Framework]*protos.FileDescriptorSetAndDeps, out fnfs.ReadWriteFS) error {
 	protogen, err := buf.MakeProtoSrcs(ctx, env, request)
 	if err != nil {
 		return err
@@ -128,7 +129,7 @@ func generateProtoSrcs(ctx context.Context, env ops.Environment, request map[sch
 	return nil
 }
 
-func GenProtosAtPaths(ctx context.Context, env ops.Environment, fmwk schema.Framework, fsys fs.FS, paths []string, out fnfs.ReadWriteFS) error {
+func GenProtosAtPaths(ctx context.Context, env planning.Context, fmwk schema.Framework, fsys fs.FS, paths []string, out fnfs.ReadWriteFS) error {
 	opts, err := workspace.MakeProtoParseOpts(ctx, workspace.NewPackageLoader(env), env.Workspace())
 	if err != nil {
 		return err

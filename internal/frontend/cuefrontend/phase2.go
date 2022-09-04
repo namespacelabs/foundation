@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"cuelang.org/go/cue"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -31,7 +31,7 @@ type cueStartupPlan struct {
 
 var _ frontend.PreStartup = phase2plan{}
 
-func (s phase2plan) EvalStartup(ctx context.Context, env ops.Environment, info frontend.StartupInputs, allocs []frontend.ValueWithPath) (*schema.StartupPlan, error) {
+func (s phase2plan) EvalStartup(ctx context.Context, env planning.Context, info frontend.StartupInputs, allocs []frontend.ValueWithPath) (*schema.StartupPlan, error) {
 	plan := &schema.StartupPlan{}
 
 	res, err := fncue.SerializedEval(s.partial, func() (*fncue.CueV, error) {
@@ -68,7 +68,7 @@ func (s phase2plan) EvalStartup(ctx context.Context, env ops.Environment, info f
 	return plan, nil
 }
 
-func (s phase2plan) evalStartupStage(ctx context.Context, env ops.Environment, info frontend.StartupInputs) (*fncue.CueV, []fncue.KeyAndPath, error) {
+func (s phase2plan) evalStartupStage(ctx context.Context, env planning.Context, info frontend.StartupInputs) (*fncue.CueV, []fncue.KeyAndPath, error) {
 	wenv, ok := env.(workspace.WorkspaceEnvironment)
 	if !ok {
 		return nil, nil, fnerrors.InternalError("expected a WorkspaceEnvironment")

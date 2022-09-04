@@ -14,14 +14,14 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 func BuildSpec() build.Spec { return debugShellBuild{} }
 
-func Image(ctx context.Context, env ops.Environment, platforms []specs.Platform, tag compute.Computable[oci.AllocatedName]) (compute.Computable[oci.ImageID], error) {
+func Image(ctx context.Context, env planning.Context, platforms []specs.Platform, tag compute.Computable[oci.AllocatedName]) (compute.Computable[oci.ImageID], error) {
 	prepared, err := multiplatform.PrepareMultiPlatformImage(ctx, env, build.Plan{
 		SourceLabel: "debugshell.image",
 		Spec:        BuildSpec(),
@@ -39,7 +39,7 @@ type debugShellBuild struct{}
 
 var _ build.Spec = debugShellBuild{}
 
-func (debugShellBuild) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (debugShellBuild) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	image := llbutil.Image("ubuntu:20.04@sha256:8ae9bafbb64f63a50caab98fd3a5e37b3eb837a3e0780b78e5218e63193961f9", *conf.TargetPlatform())
 
 	base := image.

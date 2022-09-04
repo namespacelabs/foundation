@@ -10,7 +10,7 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
@@ -19,7 +19,7 @@ type mergeSpecs struct {
 	platformIndependent bool
 }
 
-func (m mergeSpecs) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (m mergeSpecs) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	images := make([]oci.NamedImage, len(m.specs))
 
 	for k, spec := range m.specs {

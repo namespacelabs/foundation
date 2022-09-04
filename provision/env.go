@@ -8,9 +8,9 @@ import (
 	"context"
 
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
@@ -122,7 +122,7 @@ func RequireEnv(root *workspace.Root, name string) (Env, error) {
 	return Env{}, fnerrors.UserError(nil, "no such environment: %s", name)
 }
 
-func RequireEnvWith(parent ops.Environment, name string) (Env, error) {
+func RequireEnvWith(parent planning.Context, name string) (Env, error) {
 	for _, env := range EnvsOrDefault(parent.DevHost(), parent.Workspace()) {
 		if env.Name == name {
 			return MakeEnvWith(parent.Workspace(), parent.WorkspaceLoadedFrom(), parent.DevHost(), env), nil
@@ -140,6 +140,6 @@ func MakeEnvWith(ws *schema.Workspace, lf *schema.Workspace_LoadedFrom, devhost 
 	return Env{errorLocation: ws.ModuleName, workspace: ws, loadedFrom: lf, devHost: devhost, env: env}
 }
 
-func MakeEnvFromEnv(env ops.Environment) Env {
+func MakeEnvFromEnv(env planning.Context) Env {
 	return Env{errorLocation: env.ErrorLocation(), workspace: env.Workspace(), loadedFrom: env.WorkspaceLoadedFrom(), devHost: env.DevHost(), env: env.Proto()}
 }

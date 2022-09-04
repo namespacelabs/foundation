@@ -9,7 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
@@ -18,7 +18,7 @@ type StaticBuild struct {
 	Location workspace.Location
 }
 
-func (w StaticBuild) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (w StaticBuild) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	img, err := ViteProductionBuild(ctx, w.Location, env, conf.SourceLabel(), ".", "/", nil, generateProdViteConfig())
 	if err != nil {
 		return nil, err

@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/schema"
@@ -40,7 +41,7 @@ func Register() {
 
 type generator struct{}
 
-func (generator) Handle(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, msg *OpGenNode) (*ops.HandleResult, error) {
+func (generator) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, msg *OpGenNode) (*ops.HandleResult, error) {
 	wenv, ok := env.(workspace.Packages)
 	if !ok {
 		return nil, fnerrors.New("workspace.Packages required")

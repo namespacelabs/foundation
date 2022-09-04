@@ -13,8 +13,8 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
@@ -57,7 +57,7 @@ func NewPrepareCmd() *cobra.Command {
 	return rootCmd
 }
 
-func instantiateKube(env ops.Environment, confs []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) compute.Computable[kubernetes.Unbound] {
+func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) compute.Computable[kubernetes.Unbound] {
 	return compute.Map(tasks.Action("prepare.kubernetes"),
 		compute.Inputs().Computable("conf", compute.Transform(compute.Collect(tasks.Action("prepare.kubernetes.configs"), confs...),
 			func(ctx context.Context, computed []compute.ResultWithTimestamp[[]*schema.DevHost_ConfigureEnvironment]) ([]*schema.DevHost_ConfigureEnvironment, error) {
@@ -82,7 +82,7 @@ func baseline(env provision.Env) []compute.Computable[[]*schema.DevHost_Configur
 	return prepares
 }
 
-func prebuilts(env ops.Environment) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func prebuilts(env planning.Context) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	var prebuilts = []schema.PackageName{
 		"namespacelabs.dev/foundation/devworkflow/web",
 		"namespacelabs.dev/foundation/std/dev/controller",

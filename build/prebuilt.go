@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -31,7 +31,7 @@ type prebuilt struct {
 	opts                oci.ResolveOpts
 }
 
-func (p prebuilt) BuildImage(ctx context.Context, _ ops.Environment, conf Configuration) (compute.Computable[oci.Image], error) {
+func (p prebuilt) BuildImage(ctx context.Context, _ planning.Context, conf Configuration) (compute.Computable[oci.Image], error) {
 	return oci.ImageP(p.imgid.ImageRef(), conf.TargetPlatform(), p.opts), nil
 }
 

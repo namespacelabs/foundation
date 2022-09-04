@@ -11,12 +11,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, def *schema.SerializedInvocation, a *OpEnsureAwsAuth) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, def *schema.SerializedInvocation, a *OpEnsureAwsAuth) (*ops.HandleResult, error) {
 		restcfg, err := client.ResolveConfig(ctx, env)
 		if err != nil {
 			return nil, err

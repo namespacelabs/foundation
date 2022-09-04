@@ -17,9 +17,9 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
@@ -39,7 +39,7 @@ type InvokeProps struct {
 	ProvisionInput []*anypb.Any
 }
 
-func MakeInvocation(ctx context.Context, env ops.Environment, r *Definition, stack *schema.Stack, focus schema.PackageName, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
+func MakeInvocation(ctx context.Context, env planning.Context, r *Definition, stack *schema.Stack, focus schema.PackageName, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
 	// Calculate injections early on to make sure that they're part of the cache key.
 	var injections []*anypb.Any
 	for _, inject := range r.Invocation.Inject {
@@ -67,7 +67,7 @@ func MakeInvocation(ctx context.Context, env ops.Environment, r *Definition, sta
 }
 
 type cacheableInvocation struct {
-	env        ops.Environment // env.Proto() is used as cache key.
+	env        planning.Context // env.Proto() is used as cache key.
 	handler    Definition
 	stack      *schema.Stack
 	focus      schema.PackageName

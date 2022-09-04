@@ -12,8 +12,8 @@ import (
 
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -39,7 +39,7 @@ type Manager interface {
 	AuthRepository(oci.ImageID) (oci.AllocatedName, error)
 }
 
-func GetRegistry(ctx context.Context, env ops.Environment) (Manager, error) {
+func GetRegistry(ctx context.Context, env planning.Context) (Manager, error) {
 	return GetRegistryFromConfig(ctx, &devhost.ConfigKey{
 		DevHost:  env.DevHost(),
 		Selector: devhost.ByEnvironment(env.Proto()),
@@ -88,7 +88,7 @@ func StaticName(registry *registry.Registry, imageID oci.ImageID, keychain oci.K
 		})
 }
 
-func AllocateName(ctx context.Context, env ops.Environment, pkg schema.PackageName) (compute.Computable[oci.AllocatedName], error) {
+func AllocateName(ctx context.Context, env planning.Context, pkg schema.PackageName) (compute.Computable[oci.AllocatedName], error) {
 	allocated, err := RawAllocateName(ctx, devhost.ConfigKeyFromEnvironment(env), pkg.String())
 	if err != nil {
 		if errors.Is(err, ErrNoRegistry) {

@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -19,7 +19,7 @@ import (
 )
 
 type updateCluster struct {
-	env       ops.Environment
+	env       planning.Context
 	observers []languages.DevObserver
 
 	plan  compute.Computable[*deploy.Plan]
@@ -29,7 +29,7 @@ type updateCluster struct {
 	pfw *endpointfwd.PortForward
 }
 
-func newUpdateCluster(env ops.Environment, stack *schema.Stack, focus []schema.PackageName, observers []languages.DevObserver, plan compute.Computable[*deploy.Plan], pfw *endpointfwd.PortForward) *updateCluster {
+func newUpdateCluster(env planning.Context, stack *schema.Stack, focus []schema.PackageName, observers []languages.DevObserver, plan compute.Computable[*deploy.Plan], pfw *endpointfwd.PortForward) *updateCluster {
 	return &updateCluster{
 		env:       env,
 		observers: observers,

@@ -7,9 +7,9 @@ package deploy
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -19,11 +19,11 @@ import (
 type ComputeIngressResult struct {
 	Fragments []*schema.IngressFragment
 
-	rootenv ops.Environment
+	rootenv planning.Context
 	stack   *schema.Stack
 }
 
-func ComputeIngress(rootenv ops.Environment, stack *schema.Stack, plans compute.Computable[[]*schema.IngressFragment], allocate bool) compute.Computable[*ComputeIngressResult] {
+func ComputeIngress(rootenv planning.Context, stack *schema.Stack, plans compute.Computable[[]*schema.IngressFragment], allocate bool) compute.Computable[*ComputeIngressResult] {
 	return &computeIngress{rootenv: rootenv, stack: stack, fragments: plans, allocate: allocate}
 }
 
@@ -34,7 +34,7 @@ func PlanIngressDeployment(c compute.Computable[*ComputeIngressResult]) compute.
 }
 
 type computeIngress struct {
-	rootenv   ops.Environment
+	rootenv   planning.Context
 	stack     *schema.Stack
 	fragments compute.Computable[[]*schema.IngressFragment]
 	allocate  bool // Actually fetch SSL certificates etc.
@@ -93,7 +93,7 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 	}, nil
 }
 
-func computeDeferredIngresses(ctx context.Context, env ops.Environment, stack *schema.Stack) ([]*schema.IngressFragment, error) {
+func computeDeferredIngresses(ctx context.Context, env planning.Context, stack *schema.Stack) ([]*schema.IngressFragment, error) {
 	var fragments []*schema.IngressFragment
 
 	// XXX parallelism.

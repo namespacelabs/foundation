@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/languages"
@@ -38,7 +39,7 @@ func Register() {
 	languages.Register(schema.Framework_GO, impl{})
 	runtime.RegisterSupport(schema.Framework_GO, impl{})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, fnerrors.New("workspace.Packages required")
@@ -52,7 +53,7 @@ func Register() {
 		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
 		wenv, ok := env.(workspace.Packages)
 		if !ok {
 			return nil, fnerrors.New("workspace.Packages required")

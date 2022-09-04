@@ -15,9 +15,9 @@ import (
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
@@ -277,7 +277,7 @@ type buildAndAttachDataLayer struct {
 	dataLayer oci.NamedLayer
 }
 
-func (b buildAndAttachDataLayer) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (b buildAndAttachDataLayer) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	base, err := b.spec.BuildImage(ctx, env, conf)
 	if err != nil {
 		return nil, err

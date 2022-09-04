@@ -33,11 +33,11 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -66,11 +66,11 @@ func (l LocalContents) Name() string {
 	return filepath.Join(l.Module.ModuleName(), l.Path)
 }
 
-func DefinitionToImage(env ops.Environment, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {
+func DefinitionToImage(env planning.Context, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {
 	return makeImage(env, conf, &frontendReq{Def: def}, nil, nil)
 }
 
-func LLBToImage(ctx context.Context, env ops.Environment, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
+func LLBToImage(ctx context.Context, env planning.Context, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
 	serialized, err := state.Marshal(ctx)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func LLBToImage(ctx context.Context, env ops.Environment, conf build.BuildTarget
 	return makeImage(env, conf, &frontendReq{Def: serialized}, localDirs, conf.PublishName()), nil
 }
 
-func LLBToFS(ctx context.Context, env ops.Environment, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
+func LLBToFS(ctx context.Context, env planning.Context, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
 	serialized, err := state.Marshal(ctx)
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ type reqBase struct {
 	localDirs      []LocalContents // If set, the output is not cachable by us.
 }
 
-func makeImage(env ops.Environment, conf build.BuildTarget, req *frontendReq, localDirs []LocalContents, targetName compute.Computable[oci.AllocatedName]) compute.Computable[oci.Image] {
+func makeImage(env planning.Context, conf build.BuildTarget, req *frontendReq, localDirs []LocalContents, targetName compute.Computable[oci.AllocatedName]) compute.Computable[oci.Image] {
 	base := reqBase{
 		sourceLabel:    conf.SourceLabel(),
 		sourcePackage:  conf.SourcePackage(),

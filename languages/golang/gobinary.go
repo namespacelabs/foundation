@@ -10,8 +10,8 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/gosupport"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -35,7 +35,7 @@ type GoBinary struct {
 
 var UseBuildKitForBuilding = false
 
-func (gb GoBinary) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (gb GoBinary) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	if UseBuildKitForBuilding {
 		return buildUsingBuildkit(ctx, env, gb, conf)
 	}

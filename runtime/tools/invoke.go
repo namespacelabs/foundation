@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
@@ -21,7 +21,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func InvokeWithBinary(ctx context.Context, env ops.Environment, inv *types.DeferredInvocation, prepared *binary.Prepared) (compute.Computable[*protocol.InvokeResponse], error) {
+func InvokeWithBinary(ctx context.Context, env planning.Context, inv *types.DeferredInvocation, prepared *binary.Prepared) (compute.Computable[*protocol.InvokeResponse], error) {
 	it := &invokeTool{
 		env:        env,
 		invocation: inv,
@@ -43,7 +43,7 @@ func InvokeWithBinary(ctx context.Context, env ops.Environment, inv *types.Defer
 }
 
 type invokeTool struct {
-	env        ops.Environment // Does not affect the output.
+	env        planning.Context // Does not affect the output.
 	invocation *types.DeferredInvocation
 	imageID    oci.ImageID // Use buildkit to invoke instead of the tools runtime.
 	image      compute.Computable[oci.Image]

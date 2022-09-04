@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -38,8 +39,8 @@ type SealedPackages interface {
 	Sources() []ModuleSources
 }
 
-func LoadPackageByName(ctx context.Context, plEnv PackageLoaderEnv, name schema.PackageName, opts ...LoadPackageOpt) (*Package, error) {
-	pl := NewPackageLoader(plEnv)
+func LoadPackageByName(ctx context.Context, env planning.Context, name schema.PackageName, opts ...LoadPackageOpt) (*Package, error) {
+	pl := NewPackageLoader(env)
 	parsed, err := pl.LoadByNameWithOpts(ctx, name, opts...)
 	if err != nil {
 		return nil, err
@@ -125,14 +126,7 @@ type loadingPackage struct {
 	result  resultPair
 }
 
-type PackageLoaderEnv interface {
-	Workspace() *schema.Workspace
-	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
-	DevHost() *schema.DevHost
-	Proto() *schema.Environment
-}
-
-func NewPackageLoader(env PackageLoaderEnv) *PackageLoader {
+func NewPackageLoader(env planning.Context) *PackageLoader {
 	pl := &PackageLoader{}
 	pl.absPath = env.WorkspaceLoadedFrom().AbsPath
 	pl.workspace = env.Workspace()

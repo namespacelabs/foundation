@@ -14,10 +14,10 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/config"
@@ -60,7 +60,7 @@ func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (bu
 
 type prepareServerConfig struct {
 	serverPackage   schema.PackageName
-	env             ops.Environment
+	env             planning.Context
 	stack           *schema.Stack
 	moduleSrcs      []moduleAndFiles
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]
@@ -122,7 +122,7 @@ type moduleAndFiles struct {
 	files      fs.FS
 }
 
-func prepareConfigImage(ctx context.Context, env ops.Environment, server provision.Server, stack *stack.Stack,
+func prepareConfigImage(ctx context.Context, env planning.Context, server provision.Server, stack *stack.Stack,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) oci.NamedImage {
 	var modulesSrcs []moduleAndFiles
 	for _, srcs := range server.Env().Sources() {

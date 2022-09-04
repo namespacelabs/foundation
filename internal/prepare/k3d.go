@@ -12,10 +12,10 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"namespacelabs.dev/foundation/build/registry"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
@@ -24,7 +24,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareK3d(clusterName string, env ops.Environment) compute.Computable[*kubeclient.HostConfig] {
+func PrepareK3d(clusterName string, env planning.Context) compute.Computable[*kubeclient.HostConfig] {
 	return compute.Map(
 		tasks.Action("prepare.k3d").HumanReadablef("Prepare the local k3d environment"),
 		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Proto()),

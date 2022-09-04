@@ -13,10 +13,10 @@ import (
 
 	"cuelang.org/go/cue"
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -92,7 +92,7 @@ type cueContainer struct {
 	Args   *ArgsListOrMap `json:"args"`
 }
 
-func (p1 phase1plan) EvalProvision(ctx context.Context, env ops.Environment, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
+func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
 	if env.Proto() == nil {
 		return frontend.ProvisionPlan{}, fnerrors.InternalError("env is missing .. env")
 	}

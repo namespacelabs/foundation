@@ -19,16 +19,16 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-func MakeProtoSrcs(ctx context.Context, env ops.Environment, request map[schema.Framework]*protos.FileDescriptorSetAndDeps) (compute.Computable[fs.FS], error) {
+func MakeProtoSrcs(ctx context.Context, env planning.Context, request map[schema.Framework]*protos.FileDescriptorSetAndDeps) (compute.Computable[fs.FS], error) {
 	platform, err := tools.HostPlatform(ctx)
 	if err != nil {
 		return nil, err

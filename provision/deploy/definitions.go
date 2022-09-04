@@ -16,8 +16,8 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/tool"
@@ -30,7 +30,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func invokeHandlers(ctx context.Context, env ops.Environment, stack *stack.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
+func invokeHandlers(ctx context.Context, env planning.Context, stack *stack.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
 	props, err := runtime.PrepareProvision(ctx, env)
 	if err != nil {
 		return nil, err

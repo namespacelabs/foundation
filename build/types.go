@@ -11,7 +11,7 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -25,7 +25,7 @@ var (
 )
 
 type Spec interface {
-	BuildImage(context.Context, ops.Environment, Configuration) (compute.Computable[oci.Image], error)
+	BuildImage(context.Context, planning.Context, Configuration) (compute.Computable[oci.Image], error)
 	PlatformIndependent() bool
 }
 

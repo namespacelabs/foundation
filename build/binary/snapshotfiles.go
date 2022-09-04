@@ -11,8 +11,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -22,7 +22,7 @@ type snapshotFiles struct {
 	globs []string
 }
 
-func (m snapshotFiles) BuildImage(ctx context.Context, env ops.Environment, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (m snapshotFiles) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	w := conf.Workspace().VersionedFS(m.rel, false)
 	return compute.Map(tasks.Action("binary.snapshot-files"),
 		compute.Inputs().Computable("fsys", w),

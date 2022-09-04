@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/build/registry"
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -65,7 +65,7 @@ func makeDeleteEnv(env runtime.Selector) func(context.Context) error {
 	}
 }
 
-func envWithVCluster(ctx context.Context, sourceEnv ops.Environment, vcluster *vcluster.VCluster) (provision.Env, func(context.Context) error, error) {
+func envWithVCluster(ctx context.Context, sourceEnv planning.Context, vcluster *vcluster.VCluster) (provision.Env, func(context.Context) error, error) {
 	testEnv := sourceEnv.Proto()
 	devHost := sourceEnv.DevHost()
 

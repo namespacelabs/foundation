@@ -15,9 +15,9 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/wscontents"
@@ -28,7 +28,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Build(ctx context.Context, env ops.Environment, bin GoBinary, conf buildConf) (compute.Computable[oci.Image], error) {
+func Build(ctx context.Context, env planning.Context, bin GoBinary, conf buildConf) (compute.Computable[oci.Image], error) {
 	if conf.Workspace() == nil {
 		panic(conf)
 	}
@@ -36,7 +36,7 @@ func Build(ctx context.Context, env ops.Environment, bin GoBinary, conf buildCon
 	return buildLocalImage(ctx, env, conf.Workspace(), bin, conf)
 }
 
-func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.Workspace, bin GoBinary, target build.BuildTarget) (compute.Computable[oci.Image], error) {
+func buildLocalImage(ctx context.Context, env planning.Context, workspace build.Workspace, bin GoBinary, target build.BuildTarget) (compute.Computable[oci.Image], error) {
 	sdk, err := golang.MatchSDK(bin.GoVersion, golang.HostPlatform())
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func buildLocalImage(ctx context.Context, env ops.Environment, workspace build.W
 		oci.MakeImage(fmt.Sprintf("Go binary %s", bin.PackageName), base, layers...).Image()), nil
 }
 
-func baseImage(ctx context.Context, env ops.Environment, target build.BuildTarget) (oci.NamedImage, error) {
+func baseImage(ctx context.Context, env planning.Context, target build.BuildTarget) (oci.NamedImage, error) {
 	// We use a different base for development because most Kubernetes installations don't
 	// yet support ephemeral containers, which would allow us to side-load into the same
 	// namespace as the running server, for debugging. So we instead add a base with some

@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -28,8 +29,8 @@ type registration struct {
 	after        []string
 }
 
-type dispatcherFunc func(context.Context, Environment, *schema.SerializedInvocation, proto.Message) (*HandleResult, error)
-type startSessionFunc func(context.Context, Environment) (dispatcherFunc, commitSessionFunc)
+type dispatcherFunc func(context.Context, planning.Context, *schema.SerializedInvocation, proto.Message) (*HandleResult, error)
+type startSessionFunc func(context.Context, planning.Context) (dispatcherFunc, commitSessionFunc)
 type commitSessionFunc func() error
 
 var handlers = map[string]*registration{}
@@ -37,9 +38,9 @@ var handlers = map[string]*registration{}
 func Register[M proto.Message](mr Dispatcher[M]) {
 	var startSession startSessionFunc
 	if stateful, ok := mr.(BatchedDispatcher[M]); ok {
-		startSession = func(ctx context.Context, env Environment) (dispatcherFunc, commitSessionFunc) {
+		startSession = func(ctx context.Context, env planning.Context) (dispatcherFunc, commitSessionFunc) {
 			st := stateful.StartSession(ctx, env)
-			return func(ctx context.Context, env Environment, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
+			return func(ctx context.Context, env planning.Context, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
 					return st.Handle(ctx, env, def, msg.(M))
 				}, func() error {
 					return st.Commit()
@@ -47,13 +48,13 @@ func Register[M proto.Message](mr Dispatcher[M]) {
 		}
 	}
 
-	register[M](func(ctx context.Context, env Environment, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
+	register[M](func(ctx context.Context, env planning.Context, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
 		return mr.Handle(ctx, env, def, msg.(M))
 	}, startSession)
 }
 
-func RegisterFunc[M proto.Message](mr func(ctx context.Context, env Environment, def *schema.SerializedInvocation, m M) (*HandleResult, error)) {
-	register[M](func(ctx context.Context, env Environment, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
+func RegisterFunc[M proto.Message](mr func(ctx context.Context, env planning.Context, def *schema.SerializedInvocation, m M) (*HandleResult, error)) {
+	register[M](func(ctx context.Context, env planning.Context, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
 		return mr(ctx, env, def, msg.(M))
 	}, nil)
 }

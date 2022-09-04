@@ -7,7 +7,7 @@ package prepare
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -26,7 +26,7 @@ func WithK8sContextName(contextName string) PrepareK8sOption {
 	}
 }
 
-func PrepareExistingK8s(env ops.Environment, args ...PrepareK8sOption) compute.Computable[*client.HostConfig] {
+func PrepareExistingK8s(env planning.Context, args ...PrepareK8sOption) compute.Computable[*client.HostConfig] {
 	return compute.Map(
 		tasks.Action("prepare.existing-k8s").HumanReadablef("Prepare a host-configured Kubernetes instance"),
 		compute.Inputs().Proto("env", env.Proto()),

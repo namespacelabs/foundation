@@ -13,6 +13,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/tools/maketlscert"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -21,7 +22,7 @@ import (
 )
 
 func RegisterCreateSecret() {
-	ops.RegisterFunc(func(ctx context.Context, env ops.Environment, d *schema.SerializedInvocation, create *kubedef.OpCreateSecretConditionally) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, env planning.Context, d *schema.SerializedInvocation, create *kubedef.OpCreateSecretConditionally) (*ops.HandleResult, error) {
 		if create.Name == "" {
 			return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
 		}

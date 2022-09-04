@@ -16,6 +16,7 @@ import (
 	"github.com/hpcloud/tail"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
@@ -91,7 +92,7 @@ func (d *deployer) eventPath(id string) string {
 	return filepath.Join(d.eventDir, fmt.Sprintf("%s.json", id))
 }
 
-func (d *deployer) execute(ctx context.Context, id string, p *ops.Plan, env ops.Environment) error {
+func (d *deployer) execute(ctx context.Context, id string, p *ops.Plan, env planning.Context) error {
 	// TODO persist logs?
 	sink := simplelog.NewSink(os.Stderr, maxLogLevel)
 	ctx = tasks.WithSink(ctx, sink)

@@ -29,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -41,6 +40,7 @@ import (
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/orchestration"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
@@ -196,7 +196,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		})
 
 		// Runtime
-		tool.RegisterInjection("schema.ComputedNaming", func(ctx context.Context, env ops.Environment, s *schema.Stack_Entry) (*schema.ComputedNaming, error) {
+		tool.RegisterInjection("schema.ComputedNaming", func(ctx context.Context, env planning.Context, s *schema.Stack_Entry) (*schema.ComputedNaming, error) {
 			return runtime.ComputeNaming(ctx, env.Workspace().ModuleName, env, s.ServerNaming)
 		})
 
