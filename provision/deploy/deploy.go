@@ -209,7 +209,7 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 
 func prepareHandlerInvocations(ctx context.Context, env planning.Context, stack *stack.Stack) (compute.Computable[*handlerResult], error) {
 	return tasks.Return(ctx, tasks.Action("server.invoke-handlers").
-		Arg("env", env.Proto().Name).
+		Arg("env", env.Environment().Name).
 		Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
 		func(ctx context.Context) (compute.Computable[*handlerResult], error) {
 			handlers, err := computeHandlers(ctx, stack)
@@ -344,13 +344,13 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, server
 		tasks.Action("server.collect-secret-data").
 			Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
 		compute.Inputs().
-			Proto("env", env.Proto()).
+			Proto("env", env.Environment()).
 			Computable("stackAndDefs", stackDef),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) (*runtime.GroundedSecrets, error) {
 			handlerR := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
 
-			return loadSecrets(ctx, env.Proto(), handlerR.Stack)
+			return loadSecrets(ctx, env.Environment(), handlerR.Stack)
 		})
 
 	c1 := compute.Map(
@@ -487,7 +487,7 @@ func prepareServerImages(ctx context.Context, env planning.Context,
 		// stack at the time of evaluation of the target image and deployment, but also the
 		// source configuration files used to compute a startup configuration, so it can be re-
 		// evaluated on a need basis.
-		if focus.Includes(srv.PackageName()) && !srv.Env().Proto().Ephemeral && computedConfigs != nil {
+		if focus.Includes(srv.PackageName()) && !srv.Env().Environment().Ephemeral && computedConfigs != nil {
 			configImage := prepareConfigImage(ctx, env, srv, stack, computedConfigs)
 
 			cfgtag, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName())

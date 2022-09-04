@@ -60,12 +60,12 @@ type codegenEnv struct {
 	fs       fnfs.ReadWriteFS
 }
 
-func (ce codegenEnv) ErrorLocation() string        { return ce.root.ErrorLocation() }
-func (ce codegenEnv) DevHost() *schema.DevHost     { return ce.root.DevHost }
-func (ce codegenEnv) Proto() *schema.Environment   { return ce.env }
-func (ce codegenEnv) ModuleName() string           { return ce.root.ModuleName() }
-func (ce codegenEnv) OutputFS() fnfs.ReadWriteFS   { return ce.fs }
-func (ce codegenEnv) Workspace() *schema.Workspace { return ce.root.Workspace }
+func (ce codegenEnv) ErrorLocation() string            { return ce.root.ErrorLocation() }
+func (ce codegenEnv) DevHost() *schema.DevHost         { return ce.root.DevHost }
+func (ce codegenEnv) Environment() *schema.Environment { return ce.env }
+func (ce codegenEnv) ModuleName() string               { return ce.root.ModuleName() }
+func (ce codegenEnv) OutputFS() fnfs.ReadWriteFS       { return ce.fs }
+func (ce codegenEnv) Workspace() *schema.Workspace     { return ce.root.Workspace }
 func (ce codegenEnv) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
 	return ce.root.WorkspaceData.WorkspaceLoadedFrom()
 }
@@ -101,7 +101,7 @@ func codegenServer(ctx context.Context, srv provision.Server) error {
 	waiters, err := r.ExecuteParallel(ctx, "workspace.codegen", codegenEnv{
 		root:     srv.Module(),
 		packages: srv.Env(),
-		env:      srv.Env().Proto(),
+		env:      srv.Env().Environment(),
 		fs:       srv.Module().ReadWriteFS(),
 	})
 	if err != nil {

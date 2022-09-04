@@ -305,7 +305,7 @@ func evalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 			var invoke tools.LowLevelInvokeOptions[*protocol.PrepareRequest, *protocol.PrepareResponse]
 
 			req := &protocol.PrepareRequest{
-				Env:    server.Env().Proto(),
+				Env:    server.Env().Environment(),
 				Server: server.Proto(),
 			}
 

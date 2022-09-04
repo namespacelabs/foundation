@@ -33,9 +33,9 @@ func NewHostConfig(contextName string, env planning.Context, options ...func(*Ho
 	}
 
 	config := &HostConfig{
-		Environment: env.Proto(),
+		Environment: env.Environment(),
 		DevHost:     env.DevHost(),
-		Selector:    devhost.ByEnvironment(env.Proto()),
+		Selector:    devhost.ByEnvironment(env.Environment()),
 		HostEnv:     hostEnv,
 	}
 

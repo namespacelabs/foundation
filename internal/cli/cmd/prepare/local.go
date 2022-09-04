@@ -38,7 +38,7 @@ func newLocalCmd() *cobra.Command {
 				return err
 			}
 
-			if env.Purpose() == schema.Environment_PRODUCTION && contextName == "" {
+			if env.Environment().Purpose == schema.Environment_PRODUCTION && contextName == "" {
 				return fnerrors.UsageError("Please also specify `--context`.",
 					"Kubernetes context is required for preparing a production environment.")
 			}
@@ -84,7 +84,7 @@ func localK8sConfiguration(env provision.Env, hostConfig compute.Computable[*cli
 		if err != nil {
 			return nil, err
 		}
-		c.Name = env.Proto().GetName()
+		c.Name = env.Environment().GetName()
 		c.Runtime = "kubernetes"
 
 		var confs []*schema.DevHost_ConfigureEnvironment

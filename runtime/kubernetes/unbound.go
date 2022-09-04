@@ -31,7 +31,7 @@ func NewFromConfig(ctx context.Context, config *client.HostConfig) (Unbound, err
 }
 
 func NewFromEnv(ctx context.Context, env runtime.Selector) (Unbound, error) {
-	return New(ctx, env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	return New(ctx, env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
 }
 
 func New(ctx context.Context, env *schema.Environment, devHost *schema.DevHost, selector devhost.Selector) (Unbound, error) {

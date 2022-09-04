@@ -289,7 +289,7 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 
 			// Add dep and reload package loader for new deps
 			alloc.ws.Dep = append(alloc.ws.Dep, dep)
-			alloc.loader = workspace.NewPackageLoader(fixedWorkspace{alloc.ws, alloc.root.WorkspaceLoadedFrom(), alloc.root.DevHost(), alloc.env.Proto()})
+			alloc.loader = workspace.NewPackageLoader(fixedWorkspace{alloc.ws, alloc.root.WorkspaceLoadedFrom(), alloc.root.DevHost(), alloc.env.Environment()})
 		}
 
 		didResolve = true
@@ -323,7 +323,7 @@ func (fw fixedWorkspace) ErrorLocation() string                             { re
 func (fw fixedWorkspace) Workspace() *schema.Workspace                      { return fw.ws }
 func (fw fixedWorkspace) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return fw.lf }
 func (fw fixedWorkspace) DevHost() *schema.DevHost                          { return fw.devhost }
-func (fw fixedWorkspace) Proto() *schema.Environment                        { return fw.env }
+func (fw fixedWorkspace) Environment() *schema.Environment                  { return fw.env }
 
 type workspaceLoader struct {
 	alloc *allocator

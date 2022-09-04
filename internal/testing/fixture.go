@@ -155,7 +155,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision
 		Env:              env.BindWith(packages),
 		Plan:             deployPlan,
 		ServersUnderTest: sutServers,
-		EnvProto:         env.Proto(),
+		EnvProto:         env.Environment(),
 		Workspace:        env.Workspace(),
 		Stack:            stack.Proto(),
 		TestBinPkg:       testBinary.PackageName(),
@@ -294,12 +294,12 @@ func maybeCreateVCluster(env provision.Env) compute.Computable[*vcluster.VCluste
 		return nil
 	}
 
-	hostConfig, err := client.ComputeHostConfig(env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	hostConfig, err := client.ComputeHostConfig(env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
 	if err != nil {
 		return compute.Error[*vcluster.VCluster](err)
 	}
 
-	ns := kubernetes.ModuleNamespace(env.Workspace(), env.Proto())
+	ns := kubernetes.ModuleNamespace(env.Workspace(), env.Environment())
 
-	return vcluster.Create(env.Proto(), hostConfig, ns)
+	return vcluster.Create(env.Environment(), hostConfig, ns)
 }

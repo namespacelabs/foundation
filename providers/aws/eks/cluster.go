@@ -86,11 +86,11 @@ func provideEKS(ctx context.Context, env *schema.Environment, ck *devhost.Config
 func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schema.Stack_Entry) (*frontend.PrepareProps, error) {
 	// XXX this breaks test/production similarity, but for the moment hide EKS
 	// from tests. This removes the ability for tests to allocate IAM resources.
-	if env.Proto().Ephemeral {
+	if env.Environment().Ephemeral {
 		return nil, nil
 	}
 
-	s, err := NewOptionalSession(ctx, env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	s, err := NewOptionalSession(ctx, env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schem
 
 	srv := se.Server
 	eksServerDetails := &EKSServerDetails{
-		ComputedIamRoleName: fmt.Sprintf("fn-%s-%s-%s", eksCluster.Name, env.Proto().Name, srv.Id),
+		ComputedIamRoleName: fmt.Sprintf("fn-%s-%s-%s", eksCluster.Name, env.Environment().Name, srv.Id),
 	}
 
 	if len(eksServerDetails.ComputedIamRoleName) > 64 {

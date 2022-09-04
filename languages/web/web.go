@@ -70,7 +70,7 @@ func (impl) DevelopmentPackages() []schema.PackageName {
 }
 
 func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBuildAssets, srv provision.Server, isFocus bool) (build.Spec, error) {
-	if useDevBuild(srv.Env().Proto()) {
+	if useDevBuild(srv.Env().Environment()) {
 		pkg, err := srv.Env().LoadByName(ctx, controllerPkg)
 		if err != nil {
 			return nil, err
@@ -140,7 +140,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 }
 
 func prepareBuild(ctx context.Context, loc workspace.Location, env planning.Context, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (oci.NamedImage, error) {
-	if !useDevBuild(env.Proto()) {
+	if !useDevBuild(env.Environment()) {
 
 		extra = append(extra, generateProdViteConfig())
 
@@ -213,7 +213,7 @@ func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Conte
 }
 
 func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.ServerRunOpts) error {
-	if useDevBuild(srv.Env().Proto()) {
+	if useDevBuild(srv.Env().Environment()) {
 		configuration := &admin.Configuration{
 			PackageBase:  "/packages",
 			RevproxyPort: httpPort,

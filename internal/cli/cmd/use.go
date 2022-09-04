@@ -286,6 +286,6 @@ func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, ru
 		ReadOnlyFilesystem: true,
 	}
 
-	return run(ctx, k8s.Bind(res.Env.Workspace(), res.Env.Proto()), bind, runOpts)
+	return run(ctx, k8s.Bind(res.Env.Workspace(), res.Env.Environment()), bind, runOpts)
 
 }

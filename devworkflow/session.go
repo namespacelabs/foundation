@@ -240,7 +240,7 @@ func (s *Session) TaskLogByName(taskID, name string) io.ReadCloser {
 }
 
 func (s *Session) setEnvironment(parentCtx context.Context, env runtime.Selector) *endpointfwd.PortForward {
-	if s.pfw != nil && proto.Equal(s.currentEnv.Proto(), env.Proto()) {
+	if s.pfw != nil && proto.Equal(s.currentEnv.Environment(), env.Environment()) {
 		// Nothing to do.
 		return s.pfw
 	}

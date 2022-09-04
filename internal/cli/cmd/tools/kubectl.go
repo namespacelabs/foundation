@@ -40,7 +40,7 @@ func newKubeCtlCmd() *cobra.Command {
 			return fnerrors.Wrapf(nil, err, "failed to download Kubernetes SDK")
 		}
 
-		runtime := k8s.Bind(env.Workspace(), env.Proto())
+		runtime := k8s.Bind(env.Workspace(), env.Environment())
 		k8sconfig := runtime.KubeConfig()
 		clientConfig := client.NewClientConfig(ctx, runtime.HostConfig())
 		rawConfig, err := clientConfig.RawConfig()

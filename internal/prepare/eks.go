@@ -20,7 +20,7 @@ import (
 func PrepareEksCluster(env planning.Context, clusterName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.eks-cluster-config").HumanReadablef("Prepare the EKS cluster configuration"),
-		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Proto()),
+		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Environment()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			k8sHostEnv := &client.HostEnv{
@@ -37,7 +37,7 @@ func PrepareEksCluster(env planning.Context, clusterName string) compute.Computa
 			if err != nil {
 				return nil, err
 			}
-			c.Name = env.Proto().Name
+			c.Name = env.Environment().Name
 			return []*schema.DevHost_ConfigureEnvironment{c}, nil
 		})
 }

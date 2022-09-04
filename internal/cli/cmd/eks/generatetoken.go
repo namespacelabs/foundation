@@ -26,7 +26,7 @@ func newGenerateTokenCmd() *cobra.Command {
 		Short: "Generates a EKS session token.",
 		Args:  cobra.ExactArgs(1),
 	}, func(ctx context.Context, env provision.Env, args []string) error {
-		s, err := eks.NewSession(ctx, env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		s, err := eks.NewSession(ctx, env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
 		if err != nil {
 			return err
 		}

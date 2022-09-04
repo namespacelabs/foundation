@@ -136,7 +136,7 @@ func NewPackageLoader(env planning.Context) *PackageLoader {
 	pl.loading = map[schema.PackageName]*loadingPackage{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
 	pl.loadedModules = map[string]*Module{}
-	pl.frontend = MakeFrontend(pl, env.Proto())
+	pl.frontend = MakeFrontend(pl, env.Environment())
 	pl.rootmodule = pl.inject(env.WorkspaceLoadedFrom(), env.Workspace(), "" /* version */)
 	return pl
 }

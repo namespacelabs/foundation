@@ -24,8 +24,8 @@ func init() {
 func serverToRuntimeConfig(stack *stack.Stack, server provision.Server, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
 	config := &runtime.RuntimeConfig{
 		Environment: &runtime.ServerEnvironment{
-			Name:    server.Env().Proto().Name,
-			Purpose: server.Env().Proto().Purpose.String(),
+			Name:    server.Env().Environment().Name,
+			Purpose: server.Env().Environment().Purpose.String(),
 		},
 		Current: makeServer(stack, server),
 	}

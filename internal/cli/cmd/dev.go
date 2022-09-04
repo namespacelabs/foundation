@@ -90,7 +90,7 @@ func NewDevCmd() *cobra.Command {
 							AbsRoot:           env.WorkspaceLoadedFrom().AbsPath,
 							PackageName:       serverPackages[0],
 							AdditionalServers: serverPackages[1:],
-							EnvName:           env.Name(),
+							EnvName:           env.Environment().Name,
 						},
 					},
 				})

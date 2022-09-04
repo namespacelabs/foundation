@@ -281,7 +281,7 @@ func EnsureImage(ctx context.Context, env planning.Context, prepared *Prepared) 
 
 	name, err := registry.RawAllocateName(ctx, &devhost.ConfigKey{
 		DevHost:  env.DevHost(),
-		Selector: devhost.ByEnvironment(env.Proto()),
+		Selector: devhost.ByEnvironment(env.Environment()),
 	}, prepared.Name)
 	if err != nil {
 		return oci.ImageID{}, err

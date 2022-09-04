@@ -32,7 +32,7 @@ func NewDeploymentCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env provision.Env, args []string) error {
 		if !defaultYes {
-			if err := checkDelete(ctx, env.Name(), true); err != nil {
+			if err := checkDelete(ctx, env.Environment().Name, true); err != nil {
 				return err
 			}
 		}
@@ -56,7 +56,7 @@ func NewDeploymentCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env provision.Env, args []string) error {
 		if !defaultYes {
-			if err := checkDelete(ctx, env.Name(), false); err != nil {
+			if err := checkDelete(ctx, env.Environment().Name, false); err != nil {
 				return err
 			}
 		}

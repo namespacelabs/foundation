@@ -27,7 +27,7 @@ import (
 func PrepareK3d(clusterName string, env planning.Context) compute.Computable[*kubeclient.HostConfig] {
 	return compute.Map(
 		tasks.Action("prepare.k3d").HumanReadablef("Prepare the local k3d environment"),
-		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Proto()),
+		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Environment()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) (*kubeclient.HostConfig, error) {
 			// download k3d

@@ -55,7 +55,7 @@ func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWo
 		openFiles: s.openFiles,
 		env:       env,
 	}
-	ws.evalCtx = fncue.NewEvalCtx(ws, cuefrontend.InjectedScope(env.Proto()))
+	ws.evalCtx = fncue.NewEvalCtx(ws, cuefrontend.InjectedScope(env.Environment()))
 	return
 }
 

@@ -93,12 +93,12 @@ type cueContainer struct {
 }
 
 func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, inputs frontend.ProvisionInputs) (frontend.ProvisionPlan, error) {
-	if env.Proto() == nil {
+	if env.Environment() == nil {
 		return frontend.ProvisionPlan{}, fnerrors.InternalError("env is missing .. env")
 	}
 
 	vv, left, err := fncue.SerializedEval3(p1.partial, func() (*fncue.CueV, []fncue.KeyAndPath, error) {
-		return applyInputs(ctx, provisionFuncs(env.Proto(), inputs), p1.Value, p1.Left)
+		return applyInputs(ctx, provisionFuncs(env.Environment(), inputs), p1.Value, p1.Left)
 	})
 	if err != nil {
 		return frontend.ProvisionPlan{}, err

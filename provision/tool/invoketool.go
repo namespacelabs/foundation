@@ -92,7 +92,7 @@ func (inv *cacheableInvocation) Inputs() *compute.In {
 		JSON("handler", Definition{TargetServer: inv.handler.TargetServer, Source: inv.handler.Source, Invocation: &invocation}). // Without image and PackageAbsPath.
 		Proto("stack", inv.stack).
 		Stringer("focus", inv.focus).
-		Proto("env", inv.env.Proto()).
+		Proto("env", inv.env.Environment()).
 		JSON("props", inv.props).
 		JSON("injections", inv.injections)
 
@@ -117,13 +117,13 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		// XXX temporary.
 		Stack:         inv.stack,
 		FocusedServer: inv.focus.String(),
-		Env:           inv.env.Proto(),
+		Env:           inv.env.Environment(),
 	}
 
 	header := &protocol.StackRelated{
 		Stack:         inv.stack,
 		FocusedServer: inv.focus.String(),
-		Env:           inv.env.Proto(),
+		Env:           inv.env.Environment(),
 	}
 
 	switch inv.props.Event {

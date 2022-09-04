@@ -82,7 +82,7 @@ func (conf ConfSlice) WithoutConstraints() []*schema.DevHost_ConfigureEnvironmen
 }
 
 func ConfigurationForEnv(env planning.Context) ConfSlice {
-	return Select(env.DevHost(), ByEnvironment(env.Proto()))
+	return Select(env.DevHost(), ByEnvironment(env.Environment()))
 }
 
 func MakeConfiguration(messages ...proto.Message) (*schema.DevHost_ConfigureEnvironment, error) {

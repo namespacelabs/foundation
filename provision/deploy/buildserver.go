@@ -90,7 +90,7 @@ func (c *prepareServerConfig) Inputs() *compute.In {
 }
 
 func (c *prepareServerConfig) Action() *tasks.ActionEvent {
-	return tasks.Action("deploy.prepare-server-config").Arg("env", c.env.Proto().Name).Scope(c.serverPackage)
+	return tasks.Action("deploy.prepare-server-config").Arg("env", c.env.Environment().Name).Scope(c.serverPackage)
 }
 
 func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
@@ -104,7 +104,7 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 	}
 
 	files := &memfs.FS{}
-	if err := (config.DehydrateOpts{IncludeTextProto: true}).DehydrateTo(ctx, files, c.env.Proto(), c.stack, fragment, compute.MustGetDepValue(deps, c.computedConfigs, "computedConfigs")); err != nil {
+	if err := (config.DehydrateOpts{IncludeTextProto: true}).DehydrateTo(ctx, files, c.env.Environment(), c.stack, fragment, compute.MustGetDepValue(deps, c.computedConfigs, "computedConfigs")); err != nil {
 		return nil, err
 	}
 

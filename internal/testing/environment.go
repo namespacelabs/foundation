@@ -66,7 +66,7 @@ func makeDeleteEnv(env runtime.Selector) func(context.Context) error {
 }
 
 func envWithVCluster(ctx context.Context, sourceEnv planning.Context, vcluster *vcluster.VCluster) (provision.Env, func(context.Context) error, error) {
-	testEnv := sourceEnv.Proto()
+	testEnv := sourceEnv.Environment()
 	devHost := sourceEnv.DevHost()
 
 	conn, err := vcluster.Access(ctx)

@@ -82,7 +82,7 @@ func observeContainers(ctx context.Context, env planning.Context, parent chan *o
 				buf := bytes.NewBuffer(nil)
 				out := io.MultiWriter(buf, console.Debug(ctx))
 
-				if help, ok := helps[resourceID]; ok && !env.Proto().GetEphemeral() {
+				if help, ok := helps[resourceID]; ok && !env.Environment().GetEphemeral() {
 					fmt.Fprintf(out, "For more information, run:\n  %s\n", help)
 				}
 

@@ -46,4 +46,4 @@ func (e env) ErrorLocation() string                             { return e.works
 func (e env) Workspace() *schema.Workspace                      { return e.workspace }
 func (e env) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return nil } // Not needed in orchestrator
 func (e env) DevHost() *schema.DevHost                          { return e.devHost }
-func (e env) Proto() *schema.Environment                        { return e.env }
+func (e env) Environment() *schema.Environment                  { return e.env }

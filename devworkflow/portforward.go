@@ -17,7 +17,7 @@ import (
 
 func NewPortFwd(ctx context.Context, obs *Session, selector runtime.Selector, localaddr string) *endpointfwd.PortForward {
 	pfw := &endpointfwd.PortForward{
-		Env:       selector.Proto(),
+		Env:       selector.Environment(),
 		LocalAddr: localaddr,
 		Debug:     console.Debug(ctx),
 		Warnings:  console.Warnings(ctx),

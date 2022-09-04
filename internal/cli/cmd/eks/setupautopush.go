@@ -40,7 +40,7 @@ func newSetupAutopushCmd() *cobra.Command {
 		}
 		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", acc, iamRole)
 
-		s, err := eks.NewSession(ctx, env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
+		s, err := eks.NewSession(ctx, env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
 		if err != nil {
 			return err
 		}
@@ -98,7 +98,7 @@ func newSetupAutopushCmd() *cobra.Command {
 }
 
 func getAwsAccount(ctx context.Context, env provision.Env) (string, error) {
-	cfg, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	cfg, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Environment()))
 	if err != nil {
 		return "", err
 	}

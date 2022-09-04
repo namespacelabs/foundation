@@ -30,7 +30,7 @@ func NewAttachCmd() *cobra.Command {
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true}, &hydrateOpts{rehydrate: true})...).
 		Do(func(ctx context.Context) error {
 			event := &observers.StackUpdateEvent{
-				Env:   res.Env.Proto(),
+				Env:   res.Env.Environment(),
 				Stack: res.Stack,
 				Focus: schema.Strs(res.Focus...),
 			}
@@ -42,7 +42,7 @@ func NewAttachCmd() *cobra.Command {
 				Keybindings: []keyboard.Handler{
 					logtail.Keybinding{
 						LoadEnvironment: func(name string) (runtime.Selector, error) {
-							if name == res.Env.Proto().Name {
+							if name == res.Env.Environment().Name {
 								return res.Env, nil
 							}
 

@@ -20,7 +20,7 @@ import (
 func DownloadPrebuilts(env planning.Context, pl *workspace.PackageLoader, packages []schema.PackageName) compute.Computable[[]oci.Image] {
 	return compute.Map(
 		tasks.Action("prepare.download-prebuilts").HumanReadablef("Download prebuilt package images"),
-		compute.Inputs().Proto("env", env.Proto()).Strs("packages", schema.Strs(packages...)),
+		compute.Inputs().Proto("env", env.Environment()).Strs("packages", schema.Strs(packages...)),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]oci.Image, error) {
 			hostPlatform, err := tools.HostPlatform(ctx)

@@ -334,7 +334,7 @@ func ResolveConfig(ctx context.Context, env planning.Context) (*rest.Config, err
 		return NewRestConfigFromHostEnv(ctx, cfg)
 	}
 
-	cfg, err := ComputeHostConfig(env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	cfg, err := ComputeHostConfig(env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
 	if err != nil {
 		return nil, err
 	}

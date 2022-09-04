@@ -42,7 +42,7 @@ type Manager interface {
 func GetRegistry(ctx context.Context, env planning.Context) (Manager, error) {
 	return GetRegistryFromConfig(ctx, &devhost.ConfigKey{
 		DevHost:  env.DevHost(),
-		Selector: devhost.ByEnvironment(env.Proto()),
+		Selector: devhost.ByEnvironment(env.Environment()),
 	})
 }
 
@@ -93,8 +93,8 @@ func AllocateName(ctx context.Context, env planning.Context, pkg schema.PackageN
 	if err != nil {
 		if errors.Is(err, ErrNoRegistry) {
 			return nil, fnerrors.UsageError(
-				fmt.Sprintf("Run `ns prepare local --env=%s` to set it up.", env.Proto().GetName()),
-				"No registry configured in the environment %q.", env.Proto().GetName())
+				fmt.Sprintf("Run `ns prepare local --env=%s` to set it up.", env.Environment().GetName()),
+				"No registry configured in the environment %q.", env.Environment().GetName())
 		}
 		return nil, err
 	}

@@ -84,7 +84,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			deployPlan := deploy.Serialize(env.Workspace(), env.Proto(), stack.Proto(), computed, provision.ServerPackages(servers.Servers).PackageNamesAsString())
+			deployPlan := deploy.Serialize(env.Workspace(), env.Environment(), stack.Proto(), computed, provision.ServerPackages(servers.Servers).PackageNamesAsString())
 
 			if serializePath != "" {
 				return protos.WriteFile(serializePath, deployPlan)
@@ -194,7 +194,7 @@ func completeDeployment(ctx context.Context, env planning.Context, p *ops.Plan, 
 		}
 	}
 
-	envLabel := fmt.Sprintf("--env=%s", env.Proto().Name)
+	envLabel := fmt.Sprintf("--env=%s", env.Environment().Name)
 
 	fmt.Fprintf(out, "\n Next steps:\n\n")
 
@@ -221,7 +221,7 @@ func completeDeployment(ctx context.Context, env planning.Context, p *ops.Plan, 
 		hints = append(hints, fmt.Sprintf("Tail server logs: %s", highlight.Apply(fmt.Sprintf("ns logs %s %s", envLabel, loc))))
 		hints = append(hints, fmt.Sprintf("Attach to the deployment (port forward to workstation): %s", highlight.Apply(fmt.Sprintf("ns attach %s %s", envLabel, loc))))
 
-		if env.Proto().Purpose == schema.Environment_DEVELOPMENT {
+		if env.Environment().Purpose == schema.Environment_DEVELOPMENT {
 			hints = append(hints, fmt.Sprintf("Try out a stateful development session with %s.",
 				highlight.Apply(fmt.Sprintf("ns dev %s %s", envLabel, loc))))
 		}

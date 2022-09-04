@@ -67,6 +67,6 @@ func (se serializedEnvironment) Workspace() *schema.Workspace { return se.root.W
 func (se serializedEnvironment) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
 	return se.root.WorkspaceLoadedFrom()
 }
-func (se serializedEnvironment) DevHost() *schema.DevHost   { return se.root.DevHost() }
-func (se serializedEnvironment) Proto() *schema.Environment { return se.env }
-func (se serializedEnvironment) ErrorLocation() string      { return se.root.Abs() }
+func (se serializedEnvironment) DevHost() *schema.DevHost         { return se.root.DevHost() }
+func (se serializedEnvironment) Environment() *schema.Environment { return se.env }
+func (se serializedEnvironment) ErrorLocation() string            { return se.root.Abs() }

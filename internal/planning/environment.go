@@ -17,5 +17,5 @@ type Context interface {
 	Workspace() *schema.Workspace
 	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
 	DevHost() *schema.DevHost
-	Proto() *schema.Environment
+	Environment() *schema.Environment
 }

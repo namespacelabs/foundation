@@ -97,7 +97,7 @@ func ComputeEndpoints(srv provision.Server, allocatedPorts []*schema.Endpoint_Po
 
 	if f, ok := supportByFramework[server.Framework.String()]; ok {
 		var err error
-		internal, err = f.InternalEndpoints(srv.Env().Proto(), server, allocatedPorts)
+		internal, err = f.InternalEndpoints(srv.Env().Environment(), server, allocatedPorts)
 		if err != nil {
 			return nil, nil, err
 		}

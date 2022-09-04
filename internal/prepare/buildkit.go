@@ -20,7 +20,7 @@ import (
 func PrepareBuildkit(env planning.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.buildkit").HumanReadablef("Preparing the buildkit daemon"),
-		compute.Inputs().Proto("env", env.Proto()),
+		compute.Inputs().Proto("env", env.Environment()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			containerName := buildkit.DefaultContainerName

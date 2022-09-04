@@ -49,12 +49,12 @@ func RegisterCreateSecret() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      create.Name,
 				Namespace: create.Namespace,
-				Labels:    kubedef.MakeLabels(env.Proto(), nil),
+				Labels:    kubedef.MakeLabels(env.Environment(), nil),
 			},
 		}
 
 		if create.SelfSignedCertificate != nil {
-			bundle, err := maketlscert.CreateSelfSignedCertificateChain(ctx, env.Proto(), create.SelfSignedCertificate)
+			bundle, err := maketlscert.CreateSelfSignedCertificateChain(ctx, env.Environment(), create.SelfSignedCertificate)
 			if err != nil {
 				return nil, err
 			}

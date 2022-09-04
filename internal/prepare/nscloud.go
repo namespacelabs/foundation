@@ -20,10 +20,10 @@ import (
 func PrepareNewNamespaceCluster(env planning.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.nscloud.new-cluster"),
-		compute.Inputs().Proto("env", env.Proto()).Indigestible("foobar", "foobar"),
+		compute.Inputs().Proto("env", env.Environment()).Indigestible("foobar", "foobar"),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			cfg, err := nscloud.CreateClusterForEnv(ctx, env.Proto(), false)
+			cfg, err := nscloud.CreateClusterForEnv(ctx, env.Environment(), false)
 			if err != nil {
 				return nil, err
 			}
@@ -45,7 +45,7 @@ func PrepareNewNamespaceCluster(env planning.Context) compute.Computable[[]*sche
 				return nil, err
 			}
 
-			c.Name = env.Proto().Name
+			c.Name = env.Environment().Name
 			return []*schema.DevHost_ConfigureEnvironment{c}, nil
 		})
 }

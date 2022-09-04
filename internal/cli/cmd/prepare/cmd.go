@@ -71,7 +71,7 @@ func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.
 		func(ctx context.Context, r compute.Resolved) (kubernetes.Unbound, error) {
 			computed, _ := compute.GetDepWithType[[]*schema.DevHost_ConfigureEnvironment](r, "conf")
 
-			return kubernetes.New(ctx, env.Proto(), &schema.DevHost{Configure: computed.Value}, devhost.ByEnvironment(env.Proto()))
+			return kubernetes.New(ctx, env.Environment(), &schema.DevHost{Configure: computed.Value}, devhost.ByEnvironment(env.Environment()))
 		})
 }
 

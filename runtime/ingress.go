@@ -285,7 +285,7 @@ func computeDomains(ctx context.Context, ws string, env planning.Context, naming
 		return nil, err
 	}
 
-	return CalculateDomains(env.Proto(), computed, allocatedName)
+	return CalculateDomains(env.Environment(), computed, allocatedName)
 }
 
 type DomainsRequest struct {

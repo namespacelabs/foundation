@@ -90,7 +90,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		resetStack(stack, do.env, focus)
 	})
 
-	switch do.env.Purpose() {
+	switch do.env.Environment().Purpose {
 	case schema.Environment_DEVELOPMENT, schema.Environment_TESTING:
 		var observers []languages.DevObserver
 
@@ -100,7 +100,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			}
 		}()
 
-		if do.env.Purpose() == schema.Environment_DEVELOPMENT {
+		if do.env.Environment().Purpose == schema.Environment_DEVELOPMENT {
 			for _, f := range focus {
 				var observer languages.DevObserver
 
@@ -212,7 +212,7 @@ func resetStack(out *Stack, env provision.Env, focus []provision.Server) {
 	}
 
 	out.AbsRoot = env.WorkspaceLoadedFrom().AbsPath
-	out.Env = env.Proto()
+	out.Env = env.Environment()
 	out.Workspace = workspace
 	out.AvailableEnv = workspace.Env
 

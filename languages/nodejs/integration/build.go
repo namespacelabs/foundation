@@ -97,7 +97,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env planning.Context, con
 }
 
 func nodeEnv(env planning.Context) string {
-	if env.Proto().GetPurpose() == schema.Environment_PRODUCTION {
+	if env.Environment().GetPurpose() == schema.Environment_PRODUCTION {
 		return "production"
 	} else {
 		return "development"

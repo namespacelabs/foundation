@@ -36,12 +36,12 @@ func HasRuntime(name string) bool {
 type Selector interface {
 	Workspace() *schema.Workspace
 	DevHost() *schema.DevHost
-	Proto() *schema.Environment
+	Environment() *schema.Environment
 }
 
 func For(ctx context.Context, env Selector) Runtime {
-	if obtain, ok := mapping[strings.ToLower(env.Proto().Runtime)]; ok {
-		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Proto())
+	if obtain, ok := mapping[strings.ToLower(env.Environment().Runtime)]; ok {
+		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Environment())
 		if err != nil {
 			return runtimeFwdErr{err}
 		}
@@ -58,9 +58,9 @@ func For(ctx context.Context, env Selector) Runtime {
 }
 
 func TargetPlatforms(ctx context.Context, env Selector) ([]specs.Platform, error) {
-	rt := strings.ToLower(env.Proto().Runtime)
+	rt := strings.ToLower(env.Environment().Runtime)
 	if obtain, ok := mapping[rt]; ok {
-		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Proto())
+		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Environment())
 		if err != nil {
 			return nil, err
 		}
@@ -81,9 +81,9 @@ func TargetPlatforms(ctx context.Context, env Selector) ([]specs.Platform, error
 }
 
 func PrepareProvision(ctx context.Context, env Selector) (*rtypes.ProvisionProps, error) {
-	rt := strings.ToLower(env.Proto().Runtime)
+	rt := strings.ToLower(env.Environment().Runtime)
 	if obtain, ok := mapping[rt]; ok {
-		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Proto())
+		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Environment())
 		if err != nil {
 			return nil, err
 		}

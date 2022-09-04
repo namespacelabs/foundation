@@ -99,9 +99,9 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 func CheckCompatible(t Server) error {
 	for _, req := range t.Proto().GetEnvironmentRequirement() {
 		for _, r := range req.GetEnvironmentHasLabel() {
-			if !t.Env().Proto().HasLabel(r) {
+			if !t.Env().Environment().HasLabel(r) {
 				return IncompatibleEnvironmentErr{
-					Env:              t.env.Proto(),
+					Env:              t.env.Environment(),
 					Server:           t.Proto(),
 					RequirementOwner: schema.PackageName(req.Package),
 					RequiredLabel:    r,
@@ -110,9 +110,9 @@ func CheckCompatible(t Server) error {
 		}
 
 		for _, r := range req.GetEnvironmentDoesNotHaveLabel() {
-			if t.Env().Proto().HasLabel(r) {
+			if t.Env().Environment().HasLabel(r) {
 				return IncompatibleEnvironmentErr{
-					Env:               t.env.Proto(),
+					Env:               t.env.Environment(),
 					Server:            t.Proto(),
 					RequirementOwner:  schema.PackageName(req.Package),
 					IncompatibleLabel: r,

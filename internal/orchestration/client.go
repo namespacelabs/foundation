@@ -52,11 +52,11 @@ func ConnectToClient(env provision.Env) compute.Computable[proto.OrchestrationSe
 }
 
 func (c *clientInstance) Action() *tasks.ActionEvent {
-	return tasks.Action("orchestrator.connect").Arg("env", c.env.Name())
+	return tasks.Action("orchestrator.connect").Arg("env", c.env.Environment().Name)
 }
 
 func (c *clientInstance) Inputs() *compute.In {
-	return compute.Inputs().Str("env", c.env.Name())
+	return compute.Inputs().Str("env", c.env.Environment().Name)
 }
 
 func (c *clientInstance) Output() compute.Output {
@@ -134,7 +134,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 }
 
 func getAwsConf(ctx context.Context, env provision.Env) (*awsprovider.Conf, error) {
-	sesh, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Proto()))
+	sesh, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Environment()))
 	if err != nil {
 		return nil, err
 	}

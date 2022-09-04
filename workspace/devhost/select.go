@@ -21,7 +21,7 @@ type ConfigKey struct {
 func ConfigKeyFromEnvironment(env planning.Context) *ConfigKey {
 	return &ConfigKey{
 		DevHost:  env.DevHost(),
-		Selector: ByEnvironment(env.Proto()),
+		Selector: ByEnvironment(env.Environment()),
 	}
 }
 

@@ -33,7 +33,7 @@ func newOctantCmd() *cobra.Command {
 			return err
 		}
 
-		cfg := k8s.Bind(env.Workspace(), env.Proto()).KubeConfig()
+		cfg := k8s.Bind(env.Workspace(), env.Environment()).KubeConfig()
 
 		return localexec.RunInteractive(ctx, exec.CommandContext(ctx, string(bin), "--context="+cfg.Context, "--kubeconfig="+cfg.Config, "-n", cfg.Namespace))
 	})

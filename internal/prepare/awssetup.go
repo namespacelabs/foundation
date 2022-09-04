@@ -18,7 +18,7 @@ import (
 func PrepareAWSProfile(env planning.Context, profileName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.aws-profile").HumanReadablef("Prepare the AWS profile configuration"),
-		compute.Inputs().Str("profileName", profileName).Proto("env", env.Proto()),
+		compute.Inputs().Str("profileName", profileName).Proto("env", env.Environment()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			hostEnv := &aws.Conf{
@@ -28,7 +28,7 @@ func PrepareAWSProfile(env planning.Context, profileName string) compute.Computa
 			if err != nil {
 				return nil, err
 			}
-			c.Name = env.Proto().GetName()
+			c.Name = env.Environment().GetName()
 			return []*schema.DevHost_ConfigureEnvironment{c}, nil
 		})
 }

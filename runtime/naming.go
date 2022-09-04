@@ -70,7 +70,7 @@ func computeInnerNaming(ctx context.Context, rootenv planning.Context, source *s
 		return base, nil
 	}
 
-	env := rootenv.Proto()
+	env := rootenv.Environment()
 
 	if env.Purpose != schema.Environment_PRODUCTION {
 		return &schema.ComputedNaming{

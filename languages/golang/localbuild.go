@@ -73,7 +73,7 @@ func baseImage(ctx context.Context, env planning.Context, target build.BuildTarg
 	// utilities so we can exec into the server. There's a tension here on reproducibility,
 	// as the server could inadvertidely depend on these utilities. But we only do this for
 	// DEVELOPMENT, not for TESTING.
-	if env.Proto().Purpose == schema.Environment_DEVELOPMENT {
+	if env.Environment().Purpose == schema.Environment_DEVELOPMENT {
 		return production.DevelopmentImage(ctx, production.Alpine, env, target)
 	}
 

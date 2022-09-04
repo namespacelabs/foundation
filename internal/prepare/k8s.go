@@ -29,7 +29,7 @@ func WithK8sContextName(contextName string) PrepareK8sOption {
 func PrepareExistingK8s(env planning.Context, args ...PrepareK8sOption) compute.Computable[*client.HostConfig] {
 	return compute.Map(
 		tasks.Action("prepare.existing-k8s").HumanReadablef("Prepare a host-configured Kubernetes instance"),
-		compute.Inputs().Proto("env", env.Proto()),
+		compute.Inputs().Proto("env", env.Environment()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) (*client.HostConfig, error) {
 			opts := &PrepareK8sOptions{}
@@ -39,7 +39,7 @@ func PrepareExistingK8s(env planning.Context, args ...PrepareK8sOption) compute.
 			if opts.contextName != "" {
 				return client.NewHostConfig(opts.contextName, env)
 			} else {
-				return client.ComputeHostConfig(env.Proto(), env.DevHost(), devhost.ByEnvironment(env.Proto()))
+				return client.ComputeHostConfig(env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
 			}
 		})
 }
