@@ -151,7 +151,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 		return nil, err
 	}
 
-	isDevBuild := useDevBuild(server.Env().Environment())
+	isDevBuild := useDevBuild(server.SealedContext().Environment())
 
 	var module build.Workspace
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !server.Location.Module.IsExternal() && isDevBuild {
@@ -170,7 +170,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 		workspace:       server.Location.Module.Workspace,
 		externalModules: GetExternalModuleForDeps(server),
 		yarnRoot:        yarnRoot,
-		serverEnv:       server.Env(),
+		serverEnv:       server.SealedContext(),
 		isDevBuild:      isDevBuild,
 		isFocus:         isFocus,
 	}, nil
@@ -182,7 +182,7 @@ func pkgSupportsNodejs(pkg *workspace.Package) bool {
 }
 
 func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
-	if useDevBuild(srv.Env().Environment()) {
+	if useDevBuild(srv.SealedContext().Environment()) {
 		if wsremote.Ctx(ctx) != nil {
 			return nil, nil, fnerrors.UserError(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
 		}
@@ -198,7 +198,7 @@ func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Conte
 }
 
 func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.ServerRunOpts) error {
-	if useDevBuild(srv.Env().Environment()) {
+	if useDevBuild(srv.SealedContext().Environment()) {
 		// For dev builds we use runtime complication of Typescript.
 		run.ReadOnlyFilesystem = false
 

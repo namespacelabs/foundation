@@ -33,7 +33,7 @@ var RunCodegen = true
 func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (build.Plan, error) {
 	return tasks.Return(ctx, tasks.Action("fn.deploy.prepare-server-image").Scope(server.PackageName()),
 		func(ctx context.Context) (build.Plan, error) {
-			platforms, err := runtime.TargetPlatforms(ctx, server.Env())
+			platforms, err := runtime.TargetPlatforms(ctx, server.SealedContext())
 			if err != nil {
 				return build.Plan{}, err
 			}
@@ -125,7 +125,7 @@ type moduleAndFiles struct {
 func prepareConfigImage(ctx context.Context, env planning.Context, server provision.Server, stack *stack.Stack,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) oci.NamedImage {
 	var modulesSrcs []moduleAndFiles
-	for _, srcs := range server.Env().Sources() {
+	for _, srcs := range server.SealedContext().Sources() {
 		modulesSrcs = append(modulesSrcs, moduleAndFiles{
 			moduleName: srcs.Module.ModuleName(),
 			files:      srcs.Snapshot,

@@ -41,7 +41,7 @@ func NewFileSyncDevObserver(ctx context.Context, srv provision.Server, fileSyncP
 		ctx:          ctx,
 		log:          console.TypedOutput(ctx, "hot reload", console.CatOutputUs),
 		server:       srv.Proto(),
-		rt:           runtime.For(ctx, srv.Env()),
+		rt:           runtime.For(ctx, srv.SealedContext()),
 		fileSyncPort: fileSyncPort,
 	}
 }

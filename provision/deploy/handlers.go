@@ -68,7 +68,7 @@ func parseHandlers(ctx context.Context, server provision.Server, pkg schema.Pack
 
 	var handlers []*tool.Definition
 	for _, dec := range pr.Provisioning {
-		invocation, err := invocation.Make(ctx, server.Env(), &server.Location, dec)
+		invocation, err := invocation.Make(ctx, server.SealedContext(), &server.Location, dec)
 		if err != nil {
 			return nil, err
 		}

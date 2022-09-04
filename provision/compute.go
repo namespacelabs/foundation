@@ -99,7 +99,7 @@ start:
 }
 
 func (snap *ServerSnapshot) Env() pkggraph.Context {
-	return BindPlanWithPackages(snap.env, snap.sealed)
+	return pkggraph.MakeSealedContext(snap.env, snap.sealed)
 }
 
 func (snap *ServerSnapshot) Equals(rhs *ServerSnapshot) bool {

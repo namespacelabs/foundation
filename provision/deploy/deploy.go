@@ -465,7 +465,7 @@ func prepareServerImages(ctx context.Context, env planning.Context,
 				return nil, err
 			}
 
-			name, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName())
+			name, err := registry.AllocateName(ctx, srv.SealedContext(), srv.PackageName())
 			if err != nil {
 				return nil, err
 			}
@@ -475,7 +475,7 @@ func prepareServerImages(ctx context.Context, env planning.Context,
 			// replaced with a graph optimization pass in the future.
 			p.PublishName = name
 
-			bin, err := multiplatform.PrepareMultiPlatformImage(ctx, srv.Env(), p)
+			bin, err := multiplatform.PrepareMultiPlatformImage(ctx, srv.SealedContext(), p)
 			if err != nil {
 				return nil, err
 			}
@@ -487,10 +487,10 @@ func prepareServerImages(ctx context.Context, env planning.Context,
 		// stack at the time of evaluation of the target image and deployment, but also the
 		// source configuration files used to compute a startup configuration, so it can be re-
 		// evaluated on a need basis.
-		if focus.Includes(srv.PackageName()) && !srv.Env().Environment().Ephemeral && computedConfigs != nil {
+		if focus.Includes(srv.PackageName()) && !srv.SealedContext().Environment().Ephemeral && computedConfigs != nil {
 			configImage := prepareConfigImage(ctx, env, srv, stack, computedConfigs)
 
-			cfgtag, err := registry.AllocateName(ctx, srv.Env(), srv.PackageName())
+			cfgtag, err := registry.AllocateName(ctx, srv.SealedContext(), srv.PackageName())
 			if err != nil {
 				return nil, err
 			}
@@ -513,7 +513,7 @@ type containerImage struct {
 func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) (map[schema.PackageName]containerImage, error) {
 	res := map[schema.PackageName]containerImage{}
 	for k, srv := range stack.Servers {
-		platforms, err := runtime.TargetPlatforms(ctx, srv.Env())
+		platforms, err := runtime.TargetPlatforms(ctx, srv.SealedContext())
 		if err != nil {
 			return nil, err
 		}
@@ -523,7 +523,7 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) (map[s
 
 		for _, container := range sidecars {
 			pkgname := schema.PackageName(container.Binary)
-			bin, err := srv.Env().LoadByName(ctx, pkgname)
+			bin, err := srv.SealedContext().LoadByName(ctx, pkgname)
 			if err != nil {
 				return nil, err
 			}
@@ -537,12 +537,12 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) (map[s
 				return nil, err
 			}
 
-			image, err := prepared.Image(ctx, srv.Env())
+			image, err := prepared.Image(ctx, srv.SealedContext())
 			if err != nil {
 				return nil, err
 			}
 
-			tag, err := registry.AllocateName(ctx, srv.Env(), bin.PackageName())
+			tag, err := registry.AllocateName(ctx, srv.SealedContext(), bin.PackageName())
 			if err != nil {
 				return nil, err
 			}
@@ -657,11 +657,11 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 		ServerImage:   imgs.Binary.RepoAndDigest(),
 		ServerRootAbs: s.Location.Abs(),
 	}
-	serverStartupPlan, err := s.Startup.EvalStartup(ctx, s.Env(), inputs, nil)
+	serverStartupPlan, err := s.Startup.EvalStartup(ctx, s.SealedContext(), inputs, nil)
 	if err != nil {
 		return err
 	}
-	merged, err := startup.ComputeConfig(ctx, s.Env(), serverStartupPlan, stack.GetParsed(s.PackageName()).Deps, inputs)
+	merged, err := startup.ComputeConfig(ctx, s.SealedContext(), serverStartupPlan, stack.GetParsed(s.PackageName()).Deps, inputs)
 	if err != nil {
 		return err
 	}

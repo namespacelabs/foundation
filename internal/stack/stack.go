@@ -151,7 +151,7 @@ type computeState struct {
 	opts ProvisionOpts
 }
 
-func (cs *computeState) checkAdd(env provision.ServerEnv, pkg schema.PackageName) {
+func (cs *computeState) checkAdd(env pkggraph.SealedContext, pkg schema.PackageName) {
 	cs.exec.Go(func(ctx context.Context) error {
 		server, ps, err := cs.out.checkAdd(ctx, env, pkg)
 		if err != nil {
@@ -200,7 +200,7 @@ func (cs *computeState) computeStackContents(ctx context.Context, server provisi
 		}
 
 		for _, p := range declaredStack.PackageNames() {
-			cs.checkAdd(server.Env(), p)
+			cs.checkAdd(server.SealedContext(), p)
 		}
 
 		var allocatedPorts eval.PortAllocations
@@ -261,7 +261,7 @@ func evalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 	var combinedProps frontend.PrepareProps
 	for _, hook := range n.PrepareHooks {
 		if hook.InvokeInternal != "" {
-			props, err := frontend.InvokeInternalPrepareHook(ctx, hook.InvokeInternal, server.Env(), server.StackEntry())
+			props, err := frontend.InvokeInternalPrepareHook(ctx, hook.InvokeInternal, server.SealedContext(), server.StackEntry())
 			if err != nil {
 				return nil, fnerrors.Wrap(n.Location, err)
 			}
@@ -273,7 +273,7 @@ func evalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 			combinedProps.AppendWith(*props)
 		} else if hook.InvokeBinary != nil {
 			// XXX combine all builds beforehand.
-			inv, err := invocation.Make(ctx, server.Env(), nil, hook.InvokeBinary)
+			inv, err := invocation.Make(ctx, server.SealedContext(), nil, hook.InvokeBinary)
 			if err != nil {
 				return nil, err
 			}
@@ -306,14 +306,14 @@ func evalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 			var invoke tools.LowLevelInvokeOptions[*protocol.PrepareRequest, *protocol.PrepareResponse]
 
 			req := &protocol.PrepareRequest{
-				Env:    server.Env().Environment(),
+				Env:    server.SealedContext().Environment(),
 				Server: server.Proto(),
 			}
 
 			var resp *protocol.PrepareResponse
 
 			if tools.InvocationCanUseBuildkit && opts.PublicImageID != nil {
-				resp, err = invoke.BuildkitInvocation(ctx, server.Env(), "foundation.provision.tool.protocol.PrepareService/Prepare",
+				resp, err = invoke.BuildkitInvocation(ctx, server.SealedContext(), "foundation.provision.tool.protocol.PrepareService/Prepare",
 					schema.PackageName(hook.InvokeBinary.Binary), *opts.PublicImageID, opts, req)
 			} else {
 				resp, err = invoke.Invoke(ctx, n.PackageName(), opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.PrepareRequest, ...grpc.CallOption) (*protocol.PrepareResponse, error) {
@@ -349,7 +349,7 @@ func evalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 
 	// We need to make sure that `env` is available before we read extend.stack, as env is often used
 	// for branching.
-	pdata, err := n.Parsed.EvalProvision(ctx, server.Env(), pkggraph.ProvisionInputs{
+	pdata, err := n.Parsed.EvalProvision(ctx, server.SealedContext(), pkggraph.ProvisionInputs{
 		Workspace:      server.Module().Workspace,
 		ServerLocation: server.Location,
 	})

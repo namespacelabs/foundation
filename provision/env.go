@@ -13,29 +13,18 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-type boundEnv struct {
-	planning.Context
-	pkggraph.SealedPackageLoader
-}
-
-var _ ServerEnv = boundEnv{}
-
-func BindPlanWithPackages(env planning.Context, pr workspace.SealedPackages) boundEnv {
-	return boundEnv{Context: env, SealedPackageLoader: pr}
-}
-
 func RequireServer(ctx context.Context, env planning.Context, pkgname schema.PackageName) (Server, error) {
 	return RequireServerWith(ctx, env, workspace.NewPackageLoader(env), pkgname)
 }
 
 func RequireServerWith(ctx context.Context, env planning.Context, pl *workspace.PackageLoader, pkgname schema.PackageName) (Server, error) {
-	return makeServer(ctx, pl, env.Environment(), pkgname, func() ServerEnv {
-		return BindPlanWithPackages(env, pl.Seal())
+	return makeServer(ctx, pl, env.Environment(), pkgname, func() pkggraph.SealedContext {
+		return pkggraph.MakeSealedContext(env, pl.Seal())
 	})
 }
 
-func RequireLoadedServer(ctx context.Context, e ServerEnv, pkgname schema.PackageName) (Server, error) {
-	return makeServer(ctx, e, e.Environment(), pkgname, func() ServerEnv {
+func RequireLoadedServer(ctx context.Context, e pkggraph.SealedContext, pkgname schema.PackageName) (Server, error) {
+	return makeServer(ctx, e, e.Environment(), pkgname, func() pkggraph.SealedContext {
 		return e
 	})
 }

@@ -29,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -152,7 +153,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 
 	var results compute.Computable[*storage.TestResultBundle] = &testRun{
 		TestName:         testDef.Name,
-		Env:              provision.BindPlanWithPackages(env, packages),
+		SealedContext:    pkggraph.MakeSealedContext(env, packages),
 		Plan:             deployPlan,
 		ServersUnderTest: sutServers,
 		EnvProto:         env.Environment(),

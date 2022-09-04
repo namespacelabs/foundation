@@ -99,8 +99,8 @@ func codegenServer(ctx context.Context, srv provision.Server) error {
 
 	waiters, err := r.ExecuteParallel(ctx, "workspace.codegen", codegenEnv{
 		root:     srv.Module(),
-		packages: srv.Env(),
-		env:      srv.Env().Environment(),
+		packages: srv.SealedContext(),
+		env:      srv.SealedContext().Environment(),
 		fs:       srv.Module().ReadWriteFS(),
 	})
 	if err != nil {

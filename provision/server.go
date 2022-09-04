@@ -23,15 +23,13 @@ type Server struct {
 	Provisioning pkggraph.PreparedProvisionPlan // A provisioning plan that is attached to the server itself.
 	Startup      pkggraph.PreStartup
 
-	env   ServerEnv            // The environment this server instance is bound to.
-	entry *schema.Stack_Entry  // The stack entry, i.e. all of the server's dependencies.
-	deps  []*workspace.Package // List of parsed deps.
+	env   pkggraph.SealedContext // The environment this server instance is bound to.
+	entry *schema.Stack_Entry    // The stack entry, i.e. all of the server's dependencies.
+	deps  []*workspace.Package   // List of parsed deps.
 }
 
-type ServerEnv = pkggraph.SealedContext
-
 func (t Server) Module() *workspace.Module               { return t.Location.Module }
-func (t Server) Env() ServerEnv                          { return t.env }
+func (t Server) SealedContext() pkggraph.SealedContext   { return t.env }
 func (t Server) PackageName() schema.PackageName         { return t.Location.PackageName }
 func (t Server) StackEntry() *schema.Stack_Entry         { return t.entry }
 func (t Server) Proto() *schema.Server                   { return t.entry.Server }
@@ -50,7 +48,7 @@ func (t Server) GetDep(pkg schema.PackageName) *workspace.Package {
 	return nil
 }
 
-func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Environment, pkgname schema.PackageName, bind func() ServerEnv) (Server, error) {
+func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Environment, pkgname schema.PackageName, bind func() pkggraph.SealedContext) (Server, error) {
 	sealed, err := workspace.Seal(ctx, loader, pkgname, &workspace.SealHelper{
 		AdditionalServerDeps: func(fmwk schema.Framework) ([]schema.PackageName, error) {
 			var pkgs schema.PackageList
@@ -78,7 +76,7 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 	t.entry = sealed.Proto
 	t.deps = sealed.Deps
 
-	pdata, err := t.Package.Parsed.EvalProvision(ctx, t.Env(), pkggraph.ProvisionInputs{
+	pdata, err := t.Package.Parsed.EvalProvision(ctx, t.SealedContext(), pkggraph.ProvisionInputs{
 		Workspace:      t.Module().Workspace,
 		ServerLocation: t.Location,
 	})
@@ -96,7 +94,7 @@ func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Envi
 func CheckCompatible(t Server) error {
 	for _, req := range t.Proto().GetEnvironmentRequirement() {
 		for _, r := range req.GetEnvironmentHasLabel() {
-			if !t.Env().Environment().HasLabel(r) {
+			if !t.SealedContext().Environment().HasLabel(r) {
 				return IncompatibleEnvironmentErr{
 					Env:              t.env.Environment(),
 					Server:           t.Proto(),
@@ -107,7 +105,7 @@ func CheckCompatible(t Server) error {
 		}
 
 		for _, r := range req.GetEnvironmentDoesNotHaveLabel() {
-			if t.Env().Environment().HasLabel(r) {
+			if t.SealedContext().Environment().HasLabel(r) {
 				return IncompatibleEnvironmentErr{
 					Env:               t.env.Environment(),
 					Server:            t.Proto(),

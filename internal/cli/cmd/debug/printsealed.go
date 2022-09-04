@@ -67,25 +67,25 @@ func newPrintSealedCmd() *cobra.Command {
 				stack := computedPlan.ComputedStack.Proto()
 
 				for _, s := range stack.Entry {
-					if err := output(ctx, t.Env(), s, outputType); err != nil {
+					if err := output(ctx, t.SealedContext(), s, outputType); err != nil {
 						return err
 					}
 				}
 
 				for _, endpoint := range stack.Endpoint {
-					if err := output(ctx, t.Env(), endpoint, outputType); err != nil {
+					if err := output(ctx, t.SealedContext(), endpoint, outputType); err != nil {
 						return err
 					}
 				}
 
 				for _, endpoint := range stack.InternalEndpoint {
-					if err := output(ctx, t.Env(), endpoint, outputType); err != nil {
+					if err := output(ctx, t.SealedContext(), endpoint, outputType); err != nil {
 						return err
 					}
 				}
 
 				for _, ingress := range computedPlan.IngressFragments {
-					if err := output(ctx, t.Env(), ingress, outputType); err != nil {
+					if err := output(ctx, t.SealedContext(), ingress, outputType); err != nil {
 						return err
 					}
 				}

@@ -70,8 +70,8 @@ func (impl) DevelopmentPackages() []schema.PackageName {
 }
 
 func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBuildAssets, srv provision.Server, isFocus bool) (build.Spec, error) {
-	if useDevBuild(srv.Env().Environment()) {
-		pkg, err := srv.Env().LoadByName(ctx, controllerPkg)
+	if useDevBuild(srv.SealedContext().Environment()) {
+		pkg, err := srv.SealedContext().LoadByName(ctx, controllerPkg)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +110,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 				return nil, fnerrors.InternalError("failed to build web app while waiting on ingress computation: %w", err)
 			}
 
-			resolveFunc := resolveBackend(srv.Env(), fragments)
+			resolveFunc := resolveBackend(srv.SealedContext(), fragments)
 			backend := &OpGenHttpBackend{Backend: backends}
 			fsys, err := generateBackendConf(ctx, dep.Location, backend, resolveFunc, false)
 			if err != nil {
@@ -119,7 +119,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 			extra = append(extra, fsys)
 		}
 
-		loc, err := srv.Env().Resolve(ctx, dep.PackageName())
+		loc, err := srv.SealedContext().Resolve(ctx, dep.PackageName())
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +128,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 
 		externalModules := nodejsintegration.GetExternalModuleForDeps(srv)
 
-		b, err := prepareBuild(ctx, loc, srv.Env(), targetConf, entry, isFocus, externalModules, extra)
+		b, err := prepareBuild(ctx, loc, srv.SealedContext(), targetConf, entry, isFocus, externalModules, extra)
 		if err != nil {
 			return nil, err
 		}
@@ -213,7 +213,7 @@ func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Conte
 }
 
 func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.ServerRunOpts) error {
-	if useDevBuild(srv.Env().Environment()) {
+	if useDevBuild(srv.SealedContext().Environment()) {
 		configuration := &admin.Configuration{
 			PackageBase:  "/packages",
 			RevproxyPort: httpPort,

@@ -144,7 +144,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		return fnerrors.InternalError("%s: no constants configured", r.env.Name)
 	}
 
-	kubepkg, err := srv.Env().LoadByName(ctx, kubeNode)
+	kubepkg, err := srv.SealedContext().LoadByName(ctx, kubeNode)
 	if err != nil {
 		return err
 	}

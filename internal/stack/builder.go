@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type stackBuilder struct {
@@ -45,7 +46,7 @@ func (stack *stackBuilder) Add(srv provision.Server) *ParsedServer {
 	return ps
 }
 
-func (stack *stackBuilder) checkAdd(ctx context.Context, env provision.ServerEnv, pkgname schema.PackageName) (*provision.Server, *ParsedServer, error) {
+func (stack *stackBuilder) checkAdd(ctx context.Context, env pkggraph.SealedContext, pkgname schema.PackageName) (*provision.Server, *ParsedServer, error) {
 	stack.mu.Lock()
 
 	if _, ok := stack.known[pkgname]; ok {

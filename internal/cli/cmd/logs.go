@@ -39,6 +39,6 @@ func NewLogsCmd() *cobra.Command {
 			console.SetIdleLabel(ctx, "listening for deployment changes")
 			server := servers.Servers[0]
 
-			return logtail.Listen(ctx, server.Env(), server.Proto())
+			return logtail.Listen(ctx, server.SealedContext(), server.Proto())
 		})
 }

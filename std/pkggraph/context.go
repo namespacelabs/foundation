@@ -20,3 +20,14 @@ type ContextWithMutableModule interface {
 	Context
 	MutableModule
 }
+
+type sealedCtx struct {
+	planning.Context
+	SealedPackageLoader
+}
+
+var _ SealedContext = sealedCtx{}
+
+func MakeSealedContext(env planning.Context, pr SealedPackageLoader) SealedContext {
+	return sealedCtx{Context: env, SealedPackageLoader: pr}
+}

@@ -37,7 +37,7 @@ const TestRunAction = "test.run"
 var errTestFailed = errors.New("test failed")
 
 type testRun struct {
-	Env planning.Context // Doesn't affect the output.
+	SealedContext planning.Context // Doesn't affect the output.
 
 	TestName       string
 	TestBinPkg     schema.PackageName
@@ -85,10 +85,10 @@ func (test *testRun) Inputs() *compute.In {
 
 func (test *testRun) prepareDeployEnv(ctx context.Context, r compute.Resolved) (planning.Context, func(context.Context) error, error) {
 	if test.VCluster != nil {
-		return envWithVCluster(ctx, test.Env, compute.MustGetDepValue(r, test.VCluster, "vcluster"))
+		return envWithVCluster(ctx, test.SealedContext, compute.MustGetDepValue(r, test.VCluster, "vcluster"))
 	}
 
-	return test.Env, makeDeleteEnv(test.Env), nil
+	return test.SealedContext, makeDeleteEnv(test.SealedContext), nil
 }
 
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {

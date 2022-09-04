@@ -31,6 +31,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -90,7 +91,7 @@ func NewDeployCmd() *cobra.Command {
 				return protos.WriteFile(serializePath, deployPlan)
 			}
 
-			return completeDeployment(ctx, provision.BindPlanWithPackages(env, servers.SealedPackages), computed.Deployer, deployPlan, deployOpts)
+			return completeDeployment(ctx, pkggraph.MakeSealedContext(env, servers.SealedPackages), computed.Deployer, deployPlan, deployOpts)
 		})
 }
 

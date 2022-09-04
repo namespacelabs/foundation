@@ -18,12 +18,12 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/stack"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -209,7 +209,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 				// XXX make this extensible.
 
 				for _, computable := range src.Computable {
-					compiled, err := compileComputable(ctx, s.Env(), computable)
+					compiled, err := compileComputable(ctx, s.SealedContext(), computable)
 					if err != nil {
 						return nil, err
 					}
@@ -321,7 +321,7 @@ func ensureInvocationOrder(ctx context.Context, stack *stack.Stack, perServer ma
 	return allOps, nil
 }
 
-func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema.SerializedInvocationSource_ComputableValue) (proto.Message, error) {
+func compileComputable(ctx context.Context, env pkggraph.SealedContext, src *schema.SerializedInvocationSource_ComputableValue) (proto.Message, error) {
 	m, err := src.Value.UnmarshalNew()
 	if err != nil {
 		return nil, fnerrors.New("%s: failed to unmarshal: %w", src.Value.TypeUrl, err)
@@ -382,7 +382,7 @@ func compileComputable(ctx context.Context, env provision.ServerEnv, src *schema
 	}
 }
 
-func makeInvocation(ctx context.Context, env provision.ServerEnv, inv *types.DeferredInvocationSource) (*types.DeferredInvocation, *binary.Prepared, error) {
+func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.DeferredInvocationSource) (*types.DeferredInvocation, *binary.Prepared, error) {
 	if inv.ExperimentalFunction != "" {
 		if inv.Binary != "" {
 			return nil, nil, fnerrors.New("binary and experimentalFunction are exclusive (%q vs %q)", inv.Binary, inv.ExperimentalFunction)

@@ -19,8 +19,8 @@ import (
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/production"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -41,7 +41,7 @@ type buildNodeJS struct {
 	workspace       *schema.Workspace
 	externalModules []build.Workspace
 	yarnRoot        workspace.Location
-	serverEnv       provision.ServerEnv
+	serverEnv       pkggraph.SealedContext
 	isDevBuild      bool
 	isFocus         bool
 }
