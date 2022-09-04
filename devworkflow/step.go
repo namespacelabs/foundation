@@ -25,7 +25,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func setWorkspace(ctx context.Context, env provision.Env, packageName string, additional []string, obs *Session, pfw *endpointfwd.PortForward) error {
+func setWorkspace(ctx context.Context, env planning.Context, packageName string, additional []string, obs *Session, pfw *endpointfwd.PortForward) error {
 	return compute.Do(ctx, func(ctx context.Context) error {
 		serverPackages := []schema.PackageName{schema.Name(packageName)}
 		for _, pkg := range additional {
@@ -56,7 +56,7 @@ func setWorkspace(ctx context.Context, env provision.Env, packageName string, ad
 type buildAndDeploy struct {
 	obs            *Session
 	pfw            *endpointfwd.PortForward
-	env            provision.Env
+	env            planning.Context
 	serverPackages []schema.PackageName
 	focusServers   compute.Computable[*provision.ServerSnapshot]
 
@@ -204,7 +204,7 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-func resetStack(out *Stack, env provision.Env, focus []provision.Server) {
+func resetStack(out *Stack, env planning.Context, focus []provision.Server) {
 	workspace := protos.Clone(env.Workspace())
 
 	// XXX handling broken web ui builds.

@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -19,7 +20,7 @@ type Servers struct {
 	SealedPackages workspace.SealedPackages
 }
 
-func ParseServers(serversOut *Servers, env *provision.Env, locs *Locations) *ServersParser {
+func ParseServers(serversOut *Servers, env *planning.Context, locs *Locations) *ServersParser {
 	return &ServersParser{
 		serversOut: serversOut,
 		locs:       locs,
@@ -30,7 +31,7 @@ func ParseServers(serversOut *Servers, env *provision.Env, locs *Locations) *Ser
 type ServersParser struct {
 	serversOut *Servers
 	locs       *Locations
-	env        *provision.Env
+	env        *planning.Context
 }
 
 func (p *ServersParser) AddFlags(cmd *cobra.Command) {}
@@ -47,7 +48,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 	}
 
 	var servers []provision.Server
-	pl := workspace.NewPackageLoader(p.env)
+	pl := workspace.NewPackageLoader(*p.env)
 	for _, loc := range p.locs.Locs {
 		if err := tasks.Action("package.load-server").Scope(loc.AsPackageName()).Run(ctx, func(ctx context.Context) error {
 			pp, err := pl.LoadByName(ctx, loc.AsPackageName())
@@ -63,7 +64,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 				return nil
 			}
 
-			server, err := provision.RequireServerWith(ctx, p.env, pl, loc.AsPackageName())
+			server, err := provision.RequireServerWith(ctx, *p.env, pl, loc.AsPackageName())
 			if err != nil {
 				return err
 			}

@@ -24,9 +24,9 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -37,7 +37,7 @@ func NewDevCmd() *cobra.Command {
 	var (
 		servingAddr  string
 		devWebServer = false
-		env          provision.Env
+		env          planning.Context
 		locs         fncobra.Locations
 		servers      fncobra.Servers
 	)
@@ -100,7 +100,7 @@ func NewDevCmd() *cobra.Command {
 					Keybindings: []keyboard.Handler{
 						logtail.Keybinding{
 							LoadEnvironment: func(envName string) (runtime.Selector, error) {
-								return provision.RequireEnvWith(env, envName)
+								return planning.LoadContext(env, envName)
 							},
 						},
 						view.NewNetworkPlanKeybinding("stack"),

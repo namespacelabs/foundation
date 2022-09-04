@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/golang"
 	"namespacelabs.dev/foundation/internal/frontend/proto"
 	"namespacelabs.dev/foundation/internal/frontend/web"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -28,7 +28,7 @@ const serviceSuffix = "service"
 func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	var (
 		targetPkg      targetPkg
-		env            provision.Env
+		env            planning.Context
 		fmwkFlag       string
 		name           string
 		httpBackendPkg string

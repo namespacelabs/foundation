@@ -14,14 +14,14 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/languages/golang"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 )
 
 func newGoSourcesCmd() *cobra.Command {
 	var (
-		env     provision.Env
+		env     planning.Context
 		locs    fncobra.Locations
 		servers fncobra.Servers
 	)

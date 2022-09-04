@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/stack"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -20,7 +20,7 @@ import (
 type hydrateParser struct {
 	resultOut *hydrateResult
 
-	env     *provision.Env
+	env     *planning.Context
 	servers *fncobra.Servers
 
 	rehydrateOnly bool
@@ -42,7 +42,7 @@ type hydrateResult struct {
 	Rehydrated *config.Rehydrated
 }
 
-func parseHydration(resultOut *hydrateResult, env *provision.Env, servers *fncobra.Servers, opts *hydrateOpts) *hydrateParser {
+func parseHydration(resultOut *hydrateResult, env *planning.Context, servers *fncobra.Servers, opts *hydrateOpts) *hydrateParser {
 	return &hydrateParser{
 		resultOut:     resultOut,
 		env:           env,
@@ -55,7 +55,7 @@ func parseHydration(resultOut *hydrateResult, env *provision.Env, servers *fncob
 // Initializes parseHydration() with its dependencies.
 func parseHydrationWithDeps(resultOut *hydrateResult, locationsOpts *fncobra.ParseLocationsOpts, opts *hydrateOpts) []fncobra.ArgParser {
 	var (
-		env     provision.Env
+		env     planning.Context
 		locs    fncobra.Locations
 		servers fncobra.Servers
 	)
@@ -88,14 +88,14 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 		h.resultOut.Focus = append(h.resultOut.Focus, srv.PackageName())
 	}
 
-	h.resultOut.Env = h.env
+	h.resultOut.Env = *h.env
 
 	if h.rehydrate || h.rehydrateOnly {
 		if len(servers) != 1 {
 			return fnerrors.UserError(nil, "--rehydrate only supports a single server")
 		}
 
-		buildID, err := runtime.For(ctx, h.env).DeployedConfigImageID(ctx, servers[0].Proto())
+		buildID, err := runtime.For(ctx, *h.env).DeployedConfigImageID(ctx, servers[0].Proto())
 		if err != nil {
 			return err
 		}
@@ -116,7 +116,7 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 
 		h.resultOut.Stack = stack.Proto()
 		for _, entry := range stack.Proto().Entry {
-			deferred, err := runtime.ComputeIngress(ctx, h.env, entry, stack.Endpoints)
+			deferred, err := runtime.ComputeIngress(ctx, *h.env, entry, stack.Endpoints)
 			if err != nil {
 				return err
 			}

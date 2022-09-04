@@ -18,14 +18,14 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewFmtCmd() *cobra.Command {
 	var (
-		env provision.Env
+		env planning.Context
 	)
 
 	all := false
@@ -92,7 +92,7 @@ func NewFmtCmd() *cobra.Command {
 		})
 }
 
-func walkSchemas(ctx context.Context, env provision.Env, root *workspace.Root, f func(fnfs.Location, string)) error {
+func walkSchemas(ctx context.Context, env planning.Context, root *workspace.Root, f func(fnfs.Location, string)) error {
 	list, err := workspace.ListSchemas(ctx, env, root)
 	if err != nil {
 		return err

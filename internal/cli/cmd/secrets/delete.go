@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 )
 
 func newDeleteCmd() *cobra.Command {
@@ -19,7 +19,7 @@ func newDeleteCmd() *cobra.Command {
 		secretKey string
 		rawtext   bool
 		locs      fncobra.Locations
-		env       provision.Env
+		env       planning.Context
 	)
 
 	return fncobra.

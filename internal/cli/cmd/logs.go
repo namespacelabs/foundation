@@ -12,13 +12,13 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 )
 
 func NewLogsCmd() *cobra.Command {
 	var (
-		env     provision.Env
+		env     planning.Context
 		locs    fncobra.Locations
 		servers fncobra.Servers
 	)

@@ -10,13 +10,13 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/frontend/cue"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 )
 
 func newExtensionCmd() *cobra.Command {
 	var (
 		targetPkg targetPkg
-		env       provision.Env
+		env       planning.Context
 	)
 
 	return fncobra.

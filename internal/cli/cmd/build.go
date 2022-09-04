@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -26,7 +26,7 @@ func NewBuildCmd() *cobra.Command {
 	var (
 		explain      = false
 		continuously = false
-		env          provision.Env
+		env          planning.Context
 		locs         fncobra.Locations
 		servers      fncobra.Servers
 	)

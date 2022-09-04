@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -34,7 +34,7 @@ type FnWorkspace struct {
 	root      *workspace.Root
 	openFiles *OpenFiles // Paths (in URIs) are absolute!
 	evalCtx   *fncue.EvalCtx
-	env       provision.Env
+	env       planning.Context
 }
 
 func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWorkspace, wsPath string, err error) {
@@ -45,7 +45,7 @@ func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWo
 	}
 	wsPath = loc.RelPath
 
-	env, err := provision.RequireEnv(root, "dev")
+	env, err := planning.LoadContext(root, "dev")
 	if err != nil {
 		return nil, "", err
 	}

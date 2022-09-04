@@ -11,8 +11,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/prepare"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -33,7 +33,7 @@ func newLocalCmd() *cobra.Command {
 				return err
 			}
 
-			env, err := provision.RequireEnv(root, envRef)
+			env, err := planning.LoadContext(root, envRef)
 			if err != nil {
 				return err
 			}
@@ -58,7 +58,7 @@ func newLocalCmd() *cobra.Command {
 	return localCmd
 }
 
-func prepareK8s(ctx context.Context, env provision.Env, contextName string) compute.Computable[*client.HostConfig] {
+func prepareK8s(ctx context.Context, env planning.Context, contextName string) compute.Computable[*client.HostConfig] {
 	if contextName != "" {
 		return prepare.PrepareExistingK8s(env, prepare.WithK8sContextName(contextName))
 	}
@@ -66,7 +66,7 @@ func prepareK8s(ctx context.Context, env provision.Env, contextName string) comp
 	return prepare.PrepareK3d("fn", env)
 }
 
-func localK8sConfiguration(env provision.Env, hostConfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func localK8sConfiguration(env planning.Context, hostConfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Transform(hostConfig, func(ctx context.Context, k8sconfigval *client.HostConfig) ([]*schema.DevHost_ConfigureEnvironment, error) {
 		var messages []proto.Message
 

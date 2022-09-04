@@ -55,7 +55,7 @@ type TestOpts struct {
 
 type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) ([]provision.Server, *stack.Stack, error)
 
-func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env provision.Env, pkgname schema.PackageName, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[StoredTestResults], error) {
+func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.Context, pkgname schema.PackageName, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[StoredTestResults], error) {
 	testPkg, err := pl.LoadByName(ctx, pkgname)
 	if err != nil {
 		return nil, err
@@ -289,7 +289,7 @@ func (b buildAndAttachDataLayer) PlatformIndependent() bool {
 	return b.spec.PlatformIndependent()
 }
 
-func maybeCreateVCluster(env provision.Env) compute.Computable[*vcluster.VCluster] {
+func maybeCreateVCluster(env planning.Context) compute.Computable[*vcluster.VCluster] {
 	if !UseVClusters {
 		return nil
 	}

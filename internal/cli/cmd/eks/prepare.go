@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/prepare"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 )
 
@@ -19,7 +19,7 @@ func newPrepareCmd() *cobra.Command {
 		Use:   "prepare-ingress",
 		Short: "Runs ingress preparation.",
 		Args:  cobra.NoArgs,
-	}, func(ctx context.Context, env provision.Env, args []string) error {
+	}, func(ctx context.Context, env planning.Context, args []string) error {
 		rt, err := kubernetes.NewFromEnv(ctx, env)
 		if err != nil {
 			return err

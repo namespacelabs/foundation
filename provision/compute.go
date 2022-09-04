@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -26,12 +27,12 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func RequireServers(env Env, servers ...schema.PackageName) compute.Computable[*ServerSnapshot] {
+func RequireServers(env planning.Context, servers ...schema.PackageName) compute.Computable[*ServerSnapshot] {
 	return &requiredServers{env: env, packages: servers}
 }
 
 type requiredServers struct {
-	env      Env
+	env      planning.Context
 	packages []schema.PackageName
 
 	compute.LocalScoped[*ServerSnapshot]
@@ -41,7 +42,7 @@ type ServerSnapshot struct {
 	servers []Server
 	sealed  workspace.SealedPackages
 	// Used in Observe()
-	env      Env
+	env      planning.Context
 	packages []schema.PackageName
 }
 
@@ -63,7 +64,7 @@ func (rs *requiredServers) Compute(ctx context.Context, _ compute.Resolved) (*Se
 	return computeSnapshot(ctx, rs.env, rs.packages)
 }
 
-func computeSnapshot(ctx context.Context, env Env, packages []schema.PackageName) (*ServerSnapshot, error) {
+func computeSnapshot(ctx context.Context, env planning.Context, packages []schema.PackageName) (*ServerSnapshot, error) {
 	pl := workspace.NewPackageLoader(env)
 
 	var servers []Server

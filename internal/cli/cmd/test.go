@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
@@ -36,7 +37,7 @@ const exitCode = 3
 
 func NewTestCmd() *cobra.Command {
 	var (
-		env            provision.Env
+		env            planning.Context
 		locs           fncobra.Locations
 		testOpts       testing.TestOpts
 		includeServers bool

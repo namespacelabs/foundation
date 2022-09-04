@@ -11,14 +11,14 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewLsCmd() *cobra.Command {
 	var (
-		env provision.Env
+		env planning.Context
 	)
 
 	return fncobra.Cmd(

@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
@@ -33,7 +33,7 @@ type RunNodejsOpts struct {
 	IsInteractive bool
 }
 
-func RunNodejs(ctx context.Context, env provision.Env, relPath string, command string, opts *RunNodejsOpts) error {
+func RunNodejs(ctx context.Context, env planning.Context, relPath string, command string, opts *RunNodejsOpts) error {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return err

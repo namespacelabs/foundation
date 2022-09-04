@@ -9,12 +9,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
 // Deprecated, use "ParseEnv"/"FixedEnv" instead.
-func CmdWithEnv(cmd *cobra.Command, f func(context.Context, provision.Env, []string) error) *cobra.Command {
+func CmdWithEnv(cmd *cobra.Command, f func(context.Context, planning.Context, []string) error) *cobra.Command {
 	var envRef string
 
 	cmd.Flags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")
@@ -25,7 +25,7 @@ func CmdWithEnv(cmd *cobra.Command, f func(context.Context, provision.Env, []str
 			return err
 		}
 
-		env, err := provision.RequireEnv(root, envRef)
+		env, err := planning.LoadContext(root, envRef)
 		if err != nil {
 			return err
 		}
@@ -37,15 +37,15 @@ func CmdWithEnv(cmd *cobra.Command, f func(context.Context, provision.Env, []str
 }
 
 type EnvParser struct {
-	envOut *provision.Env
+	envOut *planning.Context
 	envRef string
 }
 
-func ParseEnv(envOut *provision.Env) *EnvParser {
+func ParseEnv(envOut *planning.Context) *EnvParser {
 	return &EnvParser{envOut: envOut}
 }
 
-func FixedEnv(envOut *provision.Env, env string) *EnvParser {
+func FixedEnv(envOut *planning.Context, env string) *EnvParser {
 	return &EnvParser{envOut: envOut, envRef: env}
 }
 
@@ -65,7 +65,7 @@ func (p *EnvParser) Parse(ctx context.Context, args []string) error {
 		return err
 	}
 
-	env, err := provision.RequireEnv(root, p.envRef)
+	env, err := planning.LoadContext(root, p.envRef)
 	if err != nil {
 		return err
 	}

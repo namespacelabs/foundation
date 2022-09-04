@@ -18,9 +18,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
@@ -30,7 +30,7 @@ import (
 
 func NewTidyCmd() *cobra.Command {
 	var (
-		env provision.Env
+		env planning.Context
 	)
 
 	return fncobra.Cmd(
@@ -111,7 +111,7 @@ func NewTidyCmd() *cobra.Command {
 		})
 }
 
-func maybeUpdateWorkspace(ctx context.Context, env provision.Env) error {
+func maybeUpdateWorkspace(ctx context.Context, env planning.Context) error {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return err
@@ -126,7 +126,7 @@ func maybeUpdateWorkspace(ctx context.Context, env provision.Env) error {
 	return nil
 }
 
-func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.PackageLoader, env provision.Env) error {
+func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.PackageLoader, env planning.Context) error {
 	locs, err := listLocations(ctx, root)
 	if err != nil {
 		return err
@@ -223,7 +223,7 @@ type allocator struct {
 	modules  map[string]*schema.Workspace_Dependency // Previously loaded modules (i.e. already part of the workspace definition.)
 	resolved map[string]*schema.Workspace_Dependency // Newly resolved modules.
 	left     []fnfs.Location
-	env      provision.Env
+	env      planning.Context
 }
 
 func (alloc *allocator) checkResolves(ctx context.Context, pkgs []string, refs []*schema.Reference) error {

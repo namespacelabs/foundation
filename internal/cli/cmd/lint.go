@@ -13,13 +13,13 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/workspace"
 )
 
 func NewLintCmd() *cobra.Command {
 	var (
-		env  provision.Env
+		env  planning.Context
 		locs fncobra.Locations
 	)
 

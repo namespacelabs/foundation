@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/workspace"
@@ -20,7 +21,7 @@ func newPrintSealedCmd() *cobra.Command {
 	var (
 		outputType  string = "json"
 		printDeploy bool
-		env         provision.Env
+		env         planning.Context
 		locs        fncobra.Locations
 	)
 

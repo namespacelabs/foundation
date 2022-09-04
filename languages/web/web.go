@@ -272,7 +272,7 @@ func useDevBuild(env *schema.Environment) bool {
 	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
-func (i impl) TidyNode(ctx context.Context, env provision.Env, pkgs workspace.Packages, p *workspace.Package) error {
+func (i impl) TidyNode(ctx context.Context, env planning.Context, pkgs workspace.Packages, p *workspace.Package) error {
 	devPackages := []string{
 		"typescript@4.5.4",
 	}

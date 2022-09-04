@@ -15,10 +15,10 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/providers/aws/auth"
 	"namespacelabs.dev/foundation/providers/aws/eks"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
@@ -33,7 +33,7 @@ func newSetupAutopushCmd() *cobra.Command {
 		Use:   "setup-autopush",
 		Short: "Sets up production cluster for automatic deployments to a staging environment.",
 		Args:  cobra.NoArgs,
-	}, func(ctx context.Context, env provision.Env, args []string) error {
+	}, func(ctx context.Context, env planning.Context, args []string) error {
 		acc, err := getAwsAccount(ctx, env)
 		if err != nil {
 			return err
@@ -97,7 +97,7 @@ func newSetupAutopushCmd() *cobra.Command {
 	return cmd
 }
 
-func getAwsAccount(ctx context.Context, env provision.Env) (string, error) {
+func getAwsAccount(ctx context.Context, env planning.Context) (string, error) {
 	cfg, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Environment()))
 	if err != nil {
 		return "", err

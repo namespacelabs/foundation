@@ -15,14 +15,14 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos/resolver"
 )
 
 func newPrintComputedCmd() *cobra.Command {
 	var (
-		env        provision.Env
+		env        planning.Context
 		locs       fncobra.Locations
 		outputType string
 	)

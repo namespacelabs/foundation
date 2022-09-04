@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/prepare"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -75,7 +74,7 @@ func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.
 		})
 }
 
-func baseline(env provision.Env) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func baseline(env planning.Context) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
 	prepares = append(prepares, prepare.PrepareBuildkit(env))
 	prepares = append(prepares, prebuilts(env)...)

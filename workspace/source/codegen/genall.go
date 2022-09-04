@@ -10,13 +10,13 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace"
 )
 
 // ForNodeLocations generates protos for Extensions and Services. Locations in `locs` are sorted in a topological order.
-func ForLocationsGenProto(ctx context.Context, out fnfs.ReadWriteFS, env provision.Env, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
+func ForLocationsGenProto(ctx context.Context, out fnfs.ReadWriteFS, env planning.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
 	pl := workspace.NewPackageLoader(env)
 	g := ops.Plan{}
 	for _, loc := range locs {
@@ -35,7 +35,7 @@ func ForLocationsGenProto(ctx context.Context, out fnfs.ReadWriteFS, env provisi
 				}
 			}
 		}
-		if _, err := g.Execute(ctx, "workspace.generate.phase.node", genEnv{Env: env, Packages: pl.Seal(), out: out}); err != nil {
+		if _, err := g.Execute(ctx, "workspace.generate.phase.node", genEnv{Context: env, Packages: pl.Seal(), out: out}); err != nil {
 			return err
 		}
 	}
@@ -43,7 +43,7 @@ func ForLocationsGenProto(ctx context.Context, out fnfs.ReadWriteFS, env provisi
 }
 
 // ForLocationsGenCode generates code for all packages in `locs`. At this stage we assume protos are already generated.
-func ForLocationsGenCode(ctx context.Context, out fnfs.ReadWriteFS, env provision.Env, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
+func ForLocationsGenCode(ctx context.Context, out fnfs.ReadWriteFS, env planning.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
 	pl := workspace.NewPackageLoader(env)
 	g := ops.Plan{}
 	for _, loc := range locs {
@@ -90,12 +90,12 @@ func ForLocationsGenCode(ctx context.Context, out fnfs.ReadWriteFS, env provisio
 			}
 		}
 	}
-	_, err := g.Execute(ctx, "workspace.generate.phase.code", genEnv{Env: env, Packages: pl.Seal(), out: out})
+	_, err := g.Execute(ctx, "workspace.generate.phase.code", genEnv{Context: env, Packages: pl.Seal(), out: out})
 	return err
 }
 
 type genEnv struct {
-	provision.Env
+	planning.Context
 	workspace.Packages
 	out fnfs.ReadWriteFS
 }

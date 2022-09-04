@@ -14,8 +14,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -24,7 +24,7 @@ import (
 
 func NewGenerateCmd() *cobra.Command {
 	var (
-		env provision.Env
+		env planning.Context
 	)
 
 	return fncobra.
@@ -62,7 +62,7 @@ func NewGenerateCmd() *cobra.Command {
 		})
 }
 
-func generateProtos(ctx context.Context, env provision.Env, root *workspace.Root, handleGenErr func(fnerrors.CodegenError)) error {
+func generateProtos(ctx context.Context, env planning.Context, root *workspace.Root, handleGenErr func(fnerrors.CodegenError)) error {
 	list, err := workspace.ListSchemas(ctx, env, root)
 	if err != nil {
 		return err

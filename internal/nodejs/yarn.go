@@ -12,8 +12,8 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/sdk/yarn"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
@@ -28,7 +28,7 @@ const (
 
 var UseNativeNode = false
 
-func RunYarn(ctx context.Context, env provision.Env, loc workspace.Location, args []string) error {
+func RunYarn(ctx context.Context, env planning.Context, loc workspace.Location, args []string) error {
 	lockFileStruct, err := generateLockFileStruct(loc.Module.Workspace, loc.Module.Abs(), loc.Rel())
 	if err != nil {
 		return err

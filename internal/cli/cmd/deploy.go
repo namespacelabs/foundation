@@ -41,7 +41,7 @@ func NewDeployCmd() *cobra.Command {
 		explain       bool
 		serializePath string
 		deployOpts    deployOpts
-		env           provision.Env
+		env           planning.Context
 		locs          fncobra.Locations
 		servers       fncobra.Servers
 	)
@@ -111,7 +111,6 @@ type Ingress struct {
 
 func completeDeployment(ctx context.Context, env planning.Context, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
 	if orchestration.UseOrchestrator {
-		env := provision.MakeEnvFromEnv(env)
 		id, err := orchestration.Deploy(ctx, env, plan)
 		if err != nil {
 			return err

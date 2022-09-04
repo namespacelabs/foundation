@@ -216,7 +216,7 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 	return nil
 }
 
-func (impl) TidyWorkspace(ctx context.Context, env provision.Env, packages []*workspace.Package) error {
+func (impl) TidyWorkspace(ctx context.Context, env planning.Context, packages []*workspace.Package) error {
 	yarnRoots := []workspace.Location{}
 	yarnRootsMap := map[string]struct{}{} // Abs path -> presence.
 	for _, pkg := range packages {

@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source"
@@ -21,7 +21,7 @@ import (
 func newBufGenerateCmd() *cobra.Command {
 	var (
 		lang string
-		env  provision.Env
+		env  planning.Context
 		locs fncobra.Locations
 	)
 

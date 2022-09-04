@@ -14,8 +14,8 @@ import (
 	clientauthenticationv1 "k8s.io/client-go/pkg/apis/clientauthentication/v1"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/providers/aws/eks"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
@@ -25,7 +25,7 @@ func newGenerateTokenCmd() *cobra.Command {
 		Use:   "generate-token",
 		Short: "Generates a EKS session token.",
 		Args:  cobra.ExactArgs(1),
-	}, func(ctx context.Context, env provision.Env, args []string) error {
+	}, func(ctx context.Context, env planning.Context, args []string) error {
 		s, err := eks.NewSession(ctx, env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
 		if err != nil {
 			return err

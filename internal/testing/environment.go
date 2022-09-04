@@ -10,12 +10,10 @@ import (
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/go-ids"
 )
@@ -25,7 +23,7 @@ var (
 	UseNamespaceCloud = false
 )
 
-func PrepareEnv(ctx context.Context, sourceEnv provision.Env, ephemeral bool) provision.Env {
+func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool) planning.Context {
 	testInv := ids.NewRandomBase32ID(8)
 	testEnv := &schema.Environment{
 		Name:      "test-" + testInv,
@@ -48,10 +46,7 @@ func PrepareEnv(ctx context.Context, sourceEnv provision.Env, ephemeral bool) pr
 		}
 	}
 
-	testRoot := workspace.NewRoot(sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), nil)
-	testRoot.LoadedDevHost = devHost
-
-	return provision.MakeEnv(testRoot, testEnv)
+	return planning.MakeUnverifiedContext(sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), devHost, testEnv, sourceEnv.ErrorLocation())
 }
 
 func makeDeleteEnv(env runtime.Selector) func(context.Context) error {
@@ -65,29 +60,29 @@ func makeDeleteEnv(env runtime.Selector) func(context.Context) error {
 	}
 }
 
-func envWithVCluster(ctx context.Context, sourceEnv planning.Context, vcluster *vcluster.VCluster) (provision.Env, func(context.Context) error, error) {
+func envWithVCluster(ctx context.Context, sourceEnv planning.Context, vcluster *vcluster.VCluster) (planning.Context, func(context.Context) error, error) {
 	testEnv := sourceEnv.Environment()
 	devHost := sourceEnv.DevHost()
 
 	conn, err := vcluster.Access(ctx)
 	if err != nil {
-		return provision.Env{}, nil, err
+		return nil, nil, err
 	}
 
 	c, err := devhost.MakeConfiguration(conn.HostEnv())
 	if err != nil {
 		conn.Close()
-		return provision.Env{}, nil, err
+		return nil, nil, err
 	}
 
 	// Make sure we look up the new configuration first.
 	configure := []*schema.DevHost_ConfigureEnvironment{c}
 	configure = append(configure, devHost.Configure...)
 
-	env := provision.MakeEnvWith(sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), &schema.DevHost{
+	env := planning.MakeUnverifiedContext(sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), &schema.DevHost{
 		Configure:         configure,
 		ConfigurePlatform: devHost.ConfigurePlatform,
-	}, testEnv)
+	}, testEnv, sourceEnv.ErrorLocation())
 
 	deleteEnv := makeDeleteEnv(sourceEnv)
 	return env, func(ctx context.Context) error {

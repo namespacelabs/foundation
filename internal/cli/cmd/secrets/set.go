@@ -15,15 +15,15 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/secrets"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
 
 func newSetCmd() *cobra.Command {
 	var (
-		locLoadingEnv                           provision.Env
+		locLoadingEnv                           planning.Context
 		secretKey, keyID, fromFile, specificEnv string
 		rawtext                                 bool
 		locs                                    fncobra.Locations
@@ -52,7 +52,7 @@ func newSetCmd() *cobra.Command {
 				// Need some env for package loading.
 				envStr = "dev"
 			}
-			env, err := provision.RequireEnv(locs.Root, envStr)
+			env, err := planning.LoadContext(locs.Root, envStr)
 			if err != nil {
 				return err
 			}

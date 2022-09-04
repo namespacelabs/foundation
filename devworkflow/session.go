@@ -18,9 +18,9 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/observers"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy/render"
 	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
@@ -156,14 +156,14 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, eg *executor.Exe
 	return nil
 }
 
-func loadWorkspace(ctx context.Context, absRoot, envName string) (provision.Env, error) {
+func loadWorkspace(ctx context.Context, absRoot, envName string) (planning.Context, error) {
 	// Re-create loc/root here, to dump the cache.
 	root, err := module.FindRoot(ctx, absRoot)
 	if err != nil {
-		return provision.Env{}, err
+		return nil, err
 	}
 
-	return provision.RequireEnv(root, envName)
+	return planning.LoadContext(root, envName)
 }
 
 type sinkObserver struct{ s *Session }

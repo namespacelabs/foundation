@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/orchestration/service/proto"
+	"namespacelabs.dev/foundation/internal/planning"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -42,12 +43,12 @@ var (
 )
 
 type clientInstance struct {
-	env provision.Env
+	env planning.Context
 
 	compute.DoScoped[proto.OrchestrationServiceClient] // Only connect once per configuration.
 }
 
-func ConnectToClient(env provision.Env) compute.Computable[proto.OrchestrationServiceClient] {
+func ConnectToClient(env planning.Context) compute.Computable[proto.OrchestrationServiceClient] {
 	return &clientInstance{env: env}
 }
 
@@ -133,7 +134,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 	return cli, nil
 }
 
-func getAwsConf(ctx context.Context, env provision.Env) (*awsprovider.Conf, error) {
+func getAwsConf(ctx context.Context, env planning.Context) (*awsprovider.Conf, error) {
 	sesh, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Environment()))
 	if err != nil {
 		return nil, err
@@ -200,7 +201,7 @@ func getUserAuth(ctx context.Context) (*fnapi.UserAuth, error) {
 	return auth, nil
 }
 
-func Deploy(ctx context.Context, env provision.Env, plan *schema.DeployPlan) (string, error) {
+func Deploy(ctx context.Context, env planning.Context, plan *schema.DeployPlan) (string, error) {
 	cli, err := compute.GetValue(ctx, ConnectToClient(env))
 	if err != nil {
 		return "", err
@@ -226,7 +227,7 @@ func Deploy(ctx context.Context, env provision.Env, plan *schema.DeployPlan) (st
 	return resp.Id, nil
 }
 
-func WireDeploymentStatus(ctx context.Context, env provision.Env, id string, ch chan *orchestration.Event) error {
+func WireDeploymentStatus(ctx context.Context, env planning.Context, id string, ch chan *orchestration.Event) error {
 	if ch != nil {
 		defer close(ch)
 	}

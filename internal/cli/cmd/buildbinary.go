@@ -27,7 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -38,7 +38,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 	var (
 		baseRepository string
 		buildOpts      buildOpts
-		env            provision.Env
+		env            planning.Context
 		cmdLocs        fncobra.Locations
 	)
 
@@ -69,7 +69,7 @@ type buildOpts struct {
 	outputPath      string
 }
 
-func buildLocations(ctx context.Context, env provision.Env, list []fnfs.Location, baseRepository string, opts buildOpts) error {
+func buildLocations(ctx context.Context, env planning.Context, list []fnfs.Location, baseRepository string, opts buildOpts) error {
 	pl := workspace.NewPackageLoader(env)
 
 	var pkgs []*workspace.Package

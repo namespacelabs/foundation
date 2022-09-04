@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/prepare"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -32,7 +32,7 @@ func newEksCmd() *cobra.Command {
 				return err
 			}
 
-			env, err := provision.RequireEnv(root, envRef)
+			env, err := planning.LoadContext(root, envRef)
 			if err != nil {
 				return err
 			}

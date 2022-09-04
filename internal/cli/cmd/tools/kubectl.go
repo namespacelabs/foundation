@@ -16,8 +16,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -29,7 +29,7 @@ func newKubeCtlCmd() *cobra.Command {
 		Short: "Run kubectl, configured for the specified environment.",
 	}
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
 		k8s, err := kubernetes.NewFromEnv(ctx, env)
 		if err != nil {
 			return err

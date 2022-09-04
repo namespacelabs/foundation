@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -29,7 +29,7 @@ type Locations struct {
 type LocationsParser struct {
 	locsOut *Locations
 	opts    *ParseLocationsOpts
-	env     *provision.Env
+	env     *planning.Context
 }
 
 type ParseLocationsOpts struct {
@@ -39,7 +39,7 @@ type ParseLocationsOpts struct {
 	DefaultToAllWhenEmpty bool
 }
 
-func ParseLocations(locsOut *Locations, env *provision.Env, opts *ParseLocationsOpts) *LocationsParser {
+func ParseLocations(locsOut *Locations, env *planning.Context, opts *ParseLocationsOpts) *LocationsParser {
 	return &LocationsParser{
 		locsOut: locsOut,
 		opts:    opts,
@@ -79,7 +79,7 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 	}
 
 	if p.opts.DefaultToAllWhenEmpty && len(locs) == 0 {
-		schemaList, err := workspace.ListSchemas(ctx, p.env, root)
+		schemaList, err := workspace.ListSchemas(ctx, *p.env, root)
 		if err != nil {
 			return err
 		}

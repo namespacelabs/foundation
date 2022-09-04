@@ -14,13 +14,13 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/secrets"
-	"namespacelabs.dev/foundation/provision"
 )
 
 func newRevealCmd() *cobra.Command {
 	var (
-		locLoadingEnv          provision.Env
+		locLoadingEnv          planning.Context
 		secretKey, specificEnv string
 		locs                   fncobra.Locations
 	)
@@ -45,7 +45,7 @@ func newRevealCmd() *cobra.Command {
 				// Need some env for package loading.
 				envStr = "dev"
 			}
-			env, err := provision.RequireEnv(locs.Root, envStr)
+			env, err := planning.LoadContext(locs.Root, envStr)
 			if err != nil {
 				return err
 			}

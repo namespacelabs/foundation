@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/sdk/octant"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 )
 
@@ -22,7 +22,7 @@ func newOctantCmd() *cobra.Command {
 		Short: "[Experimental] Run Octant, configured for the specified environment.",
 	}
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env provision.Env, args []string) error {
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
 		k8s, err := kubernetes.NewFromEnv(ctx, env)
 		if err != nil {
 			return err
