@@ -27,10 +27,10 @@ func newExtensionCmd() *cobra.Command {
 		With(fncobra.FixedEnv(&env, "dev")).
 		With(parseTargetPkgWithDeps(&targetPkg, "extension")...).
 		Do(func(ctx context.Context) error {
-			if err := cue.CreateExtensionScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc); err != nil {
+			if err := cue.CreateExtensionScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location); err != nil {
 				return err
 			}
 
-			return codegenNode(ctx, env, targetPkg.Root, targetPkg.Loc)
+			return codegenNode(ctx, targetPkg.Root.FS(), env, targetPkg.Location)
 		})
 }

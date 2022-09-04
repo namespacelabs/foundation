@@ -26,7 +26,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
@@ -37,7 +36,7 @@ const TestRunAction = "test.run"
 var errTestFailed = errors.New("test failed")
 
 type testRun struct {
-	Env workspace.WorkspaceEnvironment // Doesn't affect the output.
+	Env ops.Environment // Doesn't affect the output.
 
 	TestName       string
 	TestBinPkg     schema.PackageName

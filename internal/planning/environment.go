@@ -17,5 +17,5 @@ type Environment interface {
 	Workspace() *schema.Workspace
 	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
 	DevHost() *schema.DevHost
-	Proto() *schema.Environment // Will be nil if not in a build or deployment phase.
+	Proto() *schema.Environment
 }

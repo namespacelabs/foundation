@@ -54,7 +54,7 @@ func NewGenerateCmd() *cobra.Command {
 			}
 
 			// Generate code.
-			if err := codegen.ForLocationsGenCode(ctx, env, root, list.Locations, errorCollector.Append); err != nil {
+			if err := codegen.ForLocationsGenCode(ctx, root.FS(), env, list.Locations, errorCollector.Append); err != nil {
 				return err
 			}
 
@@ -101,7 +101,7 @@ func generateProtos(ctx context.Context, env provision.Env, root *workspace.Root
 		return err
 	}
 
-	return codegen.ForLocationsGenProto(ctx, env, root, topoSorted, handleGenErr)
+	return codegen.ForLocationsGenProto(ctx, root.FS(), env, topoSorted, handleGenErr)
 }
 
 func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniquestrings.List) ([]fnfs.Location, error) {

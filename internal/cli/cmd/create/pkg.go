@@ -17,8 +17,8 @@ import (
 )
 
 type targetPkg struct {
-	Loc  fnfs.Location
-	Root *workspace.Root
+	Location fnfs.Location
+	Root     *workspace.Root
 }
 
 func parseTargetPkgWithDeps(targetPkgOut *targetPkg, typ string) []fncobra.ArgParser {
@@ -50,7 +50,7 @@ func (p *targetPkgParser) Parse(ctx context.Context, args []string) error {
 			p.typ, p.typ, colors.Ctx(ctx).Highlight.Apply(cmd))
 	}
 
-	p.targetPkgOut.Loc = loc
+	p.targetPkgOut.Location = loc
 	p.targetPkgOut.Root = p.locs.Root
 
 	return nil

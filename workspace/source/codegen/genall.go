@@ -12,12 +12,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 )
 
 // ForNodeLocations generates protos for Extensions and Services. Locations in `locs` are sorted in a topological order.
-func ForLocationsGenProto(ctx context.Context, env provision.Env, root *workspace.Root, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
+func ForLocationsGenProto(ctx context.Context, out fnfs.ReadWriteFS, env provision.Env, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
 	pl := workspace.NewPackageLoader(env, env.Proto())
 	g := ops.Plan{}
 	for _, loc := range locs {
@@ -36,7 +35,7 @@ func ForLocationsGenProto(ctx context.Context, env provision.Env, root *workspac
 				}
 			}
 		}
-		if _, err := g.Execute(ctx, "workspace.generate.phase.node", genEnv{root, pl.Seal()}); err != nil {
+		if _, err := g.Execute(ctx, "workspace.generate.phase.node", genEnv{Env: env, Packages: pl.Seal(), out: out}); err != nil {
 			return err
 		}
 	}
@@ -44,7 +43,7 @@ func ForLocationsGenProto(ctx context.Context, env provision.Env, root *workspac
 }
 
 // ForLocationsGenCode generates code for all packages in `locs`. At this stage we assume protos are already generated.
-func ForLocationsGenCode(ctx context.Context, env provision.Env, root *workspace.Root, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
+func ForLocationsGenCode(ctx context.Context, out fnfs.ReadWriteFS, env provision.Env, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
 	pl := workspace.NewPackageLoader(env, env.Proto())
 	g := ops.Plan{}
 	for _, loc := range locs {
@@ -91,36 +90,16 @@ func ForLocationsGenCode(ctx context.Context, env provision.Env, root *workspace
 			}
 		}
 	}
-	_, err := g.Execute(ctx, "workspace.generate.phase.code", genEnv{root, pl.Seal()})
+	_, err := g.Execute(ctx, "workspace.generate.phase.code", genEnv{Env: env, Packages: pl.Seal(), out: out})
 	return err
 }
 
 type genEnv struct {
-	root *workspace.Root
-	r    workspace.Packages
+	provision.Env
+	workspace.Packages
+	out fnfs.ReadWriteFS
 }
 
 var _ workspace.WorkspaceEnvironment = genEnv{}
 
-func (g genEnv) ErrorLocation() string        { return g.root.ErrorLocation() }
-func (g genEnv) OutputFS() fnfs.ReadWriteFS   { return g.root.FS() }
-func (g genEnv) ModuleName() string           { return g.root.Workspace().ModuleName }
-func (g genEnv) Proto() *schema.Environment   { return nil }
-func (g genEnv) Root() *workspace.Root        { return g.root }
-func (g genEnv) Workspace() *schema.Workspace { return g.root.Workspace() }
-func (g genEnv) DevHost() *schema.DevHost     { return g.root.DevHost() }
-func (g genEnv) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
-	return g.root.WorkspaceLoadedFrom()
-}
-
-func (g genEnv) Resolve(ctx context.Context, pkg schema.PackageName) (workspace.Location, error) {
-	return g.r.Resolve(ctx, pkg)
-}
-
-func (g genEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*workspace.Package, error) {
-	return g.r.LoadByName(ctx, packageName)
-}
-
-func (g genEnv) Ensure(ctx context.Context, packageName schema.PackageName) error {
-	return g.r.Ensure(ctx, packageName)
-}
+func (g genEnv) OutputFS() fnfs.ReadWriteFS { return g.out }

@@ -84,7 +84,7 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			if name == "" {
 				name, err = tui.Ask(ctx, "How would you like to name your server?",
 					"A server's name is used to generate various production resource names and thus should not contain private information.",
-					serverName(targetPkg.Loc))
+					serverName(targetPkg.Location))
 				if err != nil {
 					return err
 				}
@@ -95,14 +95,14 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			}
 
 			opts := cue.GenServerOpts{Name: name, Framework: *fmwk, GrpcServices: grpcServices, Dependencies: dependencies, HttpServices: parsedHttpServices}
-			if err := cue.CreateServerScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc, opts); err != nil {
+			if err := cue.CreateServerScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, opts); err != nil {
 				return err
 			}
 
 			// Aggregates and prints all accumulated codegen errors on return.
 			var errorCollector fnerrors.ErrorCollector
 
-			if err := codegen.ForLocationsGenCode(ctx, env, targetPkg.Root, []fnfs.Location{targetPkg.Loc}, errorCollector.Append); err != nil {
+			if err := codegen.ForLocationsGenCode(ctx, targetPkg.Root.FS(), env, []fnfs.Location{targetPkg.Location}, errorCollector.Append); err != nil {
 				return err
 			}
 

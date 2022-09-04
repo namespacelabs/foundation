@@ -70,7 +70,7 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 				if name == "" {
 					name, err = tui.Ask(ctx, "How would you like to name your service?",
 						"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
-						serviceName(targetPkg.Loc))
+						serviceName(targetPkg.Location))
 					if err != nil {
 						return err
 					}
@@ -85,7 +85,7 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 
 			if *fmwk == schema.Framework_GO || *fmwk == schema.Framework_NODEJS {
 				protoOpts := proto.GenServiceOpts{Name: name, Framework: *fmwk}
-				if err := proto.CreateProtoScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc, protoOpts); err != nil {
+				if err := proto.CreateProtoScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, protoOpts); err != nil {
 					return err
 				}
 			}
@@ -95,24 +95,24 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 				Framework:           *fmwk,
 				HttpBackendPkg:      httpBackendPkg,
 			}
-			if err := cue.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc, cueOpts); err != nil {
+			if err := cue.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, cueOpts); err != nil {
 				return err
 			}
 
 			switch *fmwk {
 			case schema.Framework_GO:
 				goOpts := golang.GenServiceOpts{Name: name}
-				if err := golang.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc, goOpts); err != nil {
+				if err := golang.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, goOpts); err != nil {
 					return err
 				}
 			case schema.Framework_WEB:
 				webOpts := web.GenServiceOpts{}
-				if err := web.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Loc, webOpts); err != nil {
+				if err := web.CreateServiceScaffold(ctx, targetPkg.Root.FS(), targetPkg.Location, webOpts); err != nil {
 					return err
 				}
 			}
 
-			return codegenNode(ctx, env, targetPkg.Root, targetPkg.Loc)
+			return codegenNode(ctx, targetPkg.Root.FS(), env, targetPkg.Location)
 		})
 }
 
