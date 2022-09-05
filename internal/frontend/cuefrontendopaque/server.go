@@ -18,10 +18,6 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const (
-	serverKindDockerfile = "namespace.so/from-dockerfile"
-)
-
 type cueServer struct {
 	Name        string         `json:"name"`
 	Integration cueIntegration `json:"integration"`
@@ -30,11 +26,6 @@ type cueServer struct {
 	Env  map[string]string          `json:"env"`
 
 	Services map[string]cueService `json:"services"`
-}
-
-type cueIntegration struct {
-	Kind       string `json:"kind"`
-	Dockerfile string `json:"dockerfile"`
 }
 
 type cueService struct {
@@ -48,6 +39,7 @@ type cueIngress struct {
 	HttpRoutes     map[string][]string `json:"httpRoutes"`
 }
 
+// TODO: converge the relevant parts with parseCueContainer.
 func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (*schema.Server, *schema.StartupPlan, error) {
 	var bits cueServer
 	if err := v.Val.Decode(&bits); err != nil {

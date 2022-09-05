@@ -69,6 +69,32 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 	}
 
+	var parsedSidecars []*schema.SidecarContainer
+	var parsedInitContainers []*schema.SidecarContainer
+	if sidecars := v.LookupPath("sidecars"); sidecars.Exists() {
+		it, err := sidecars.Val.Fields()
+		if err != nil {
+			return nil, err
+		}
+
+		for it.Next() {
+			val := &fncue.CueV{Val: it.Value()}
+			parsedContainer, err := parseCueContainer(ctx, ft.loader, it.Label(), loc, val)
+			if err != nil {
+				return nil, err
+			}
+
+			parsedVolumes = append(parsedVolumes, parsedContainer.inlineVolumes...)
+			parsedPkg.Binaries = append(parsedPkg.Binaries, parsedContainer.inlineBinaries...)
+
+			if v, _ := val.LookupPath("init").Val.Bool(); v {
+				parsedInitContainers = append(parsedInitContainers, parsedContainer.container)
+			} else {
+				parsedSidecars = append(parsedSidecars, parsedContainer.container)
+			}
+		}
+	}
+
 	parsedSrv, startupPlan, err := parseCueServer(ctx, ft.loader, loc, server)
 	if err != nil {
 		return nil, fnerrors.Wrapf(loc, err, "parsing server")
@@ -99,6 +125,8 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	}
 
 	phase1plan.startupPlan = startupPlan
+	phase1plan.sidecars = parsedSidecars
+	phase1plan.initContainers = parsedInitContainers
 
 	return parsedPkg, nil
 }

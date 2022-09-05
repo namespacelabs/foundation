@@ -13,8 +13,10 @@ import (
 )
 
 type phase1plan struct {
-	startupPlan   *schema.StartupPlan
-	declaredStack []schema.PackageName
+	startupPlan    *schema.StartupPlan
+	declaredStack  []schema.PackageName
+	sidecars       []*schema.SidecarContainer
+	initContainers []*schema.SidecarContainer
 }
 
 func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, inputs pkggraph.ProvisionInputs) (pkggraph.ProvisionPlan, error) {
@@ -23,6 +25,8 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, in
 	pdata.Startup = phase2plan{startupPlan: p1.startupPlan}
 
 	pdata.DeclaredStack = p1.declaredStack
+	pdata.Sidecars = p1.sidecars
+	pdata.Inits = p1.initContainers
 
 	return pdata, nil
 }
