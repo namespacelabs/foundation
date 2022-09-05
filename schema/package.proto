@@ -1,0 +1,19 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+// Reference to an entity inside a package, e.g. a binary, a test, a main/sidecar container, etc.
+message PackageRef {
+    // Computed package name. Use PackageName() in the code.
+    string package_name_str = 1;
+
+    // The user-defined name.
+    // Can be empty if parsed from the user code, e.g. a legacy reference to a binary.
+    string name = 2;
+}

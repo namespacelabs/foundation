@@ -143,7 +143,7 @@ func loadDep(ctx context.Context, pl pkggraph.PackageLoader, pkg schema.PackageN
 		return nil, fnerrors.New("dependencies can't include servers")
 	}
 
-	if p.Binary != nil {
+	if len(p.Binaries) > 0 {
 		return nil, fnerrors.New("dependencies can't be binaries")
 	}
 

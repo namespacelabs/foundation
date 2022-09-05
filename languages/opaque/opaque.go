@@ -32,13 +32,13 @@ type impl struct {
 func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
 	bin := server.Proto().GetBinary()
 
-	if bin.GetPackageName() != "" {
-		pkg, err := server.SealedContext().LoadByName(ctx, schema.PackageName(bin.GetPackageName()))
+	if bin.GetPackageRef() != nil {
+		pkg, err := server.SealedContext().LoadByName(ctx, bin.GetPackageRef().PackageName())
 		if err != nil {
 			return nil, err
 		}
 
-		prep, err := binary.Plan(ctx, pkg, binary.BuildImageOpts{UsePrebuilts: true})
+		prep, err := binary.Plan(ctx, pkg, bin.GetPackageRef().GetName(), binary.BuildImageOpts{UsePrebuilts: true})
 		if err != nil {
 			return nil, err
 		}
@@ -61,17 +61,18 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 
 func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ServerRunOpts) error {
 	bin := server.Proto().GetBinary()
-	if bin.GetPackageName() != "" {
-		pkg, err := server.SealedContext().LoadByName(ctx, schema.PackageName(bin.GetPackageName()))
+	if bin.GetPackageRef() != nil {
+		pkg, err := server.SealedContext().LoadByName(ctx, bin.GetPackageRef().PackageName())
 		if err != nil {
 			return err
 		}
 
-		if err := binary.ValidateIsBinary(pkg); err != nil {
+		binary, err := binary.GetBinary(pkg, bin.GetPackageRef().GetName())
+		if err != nil {
 			return err
 		}
 
-		config := pkg.Binary.Config
+		config := binary.Config
 		if config != nil {
 			run.Command = config.Command
 			run.Args = config.Args

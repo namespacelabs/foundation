@@ -101,7 +101,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing binary")
 		}
-		parsed.Binary = parsedBinary
+		parsed.Binaries = append(parsed.Binaries, parsedBinary)
 		count++
 	}
 	if test := v.LookupPath("test"); test.Exists() {

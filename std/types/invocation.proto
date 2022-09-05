@@ -12,16 +12,22 @@ import "google/protobuf/any.proto";
 import "std/proto/options.proto";
 import "schema/binary.proto";
 import "schema/function.proto";
+import "schema/package.proto";
 
 message DeferredInvocationSource {
-    string              binary                = 1 [(foundation.std.proto.is_package) = true];
+    // Deprecated, use binary_ref instead
+    string            binary     = 1 [(foundation.std.proto.is_package) = true];
+    schema.PackageRef binary_ref = 5;
+
     string              experimental_function = 4 [(foundation.std.proto.is_package) = true];
     bool                cacheable             = 2;
     google.protobuf.Any with_input            = 3;
 }
 
 message DeferredInvocation {
-    string                                 binary_package        = 1;
+    reserved 1;
+
+    schema.PackageRef                      binary_ref            = 7;
     string                                 image                 = 2;
     foundation.schema.BinaryConfig         binary_config         = 3;
     foundation.schema.ExperimentalFunction experimental_function = 6;

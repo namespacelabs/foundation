@@ -8,9 +8,15 @@ package foundation.schema;
 
 option go_package = "namespacelabs.dev/foundation/schema";
 
+import "schema/package.proto";
+
 message Invocation {
     reserved 3;
-    string                          binary        = 1;
+
+    // Deprecated, use binary_ref
+    string     binary     = 1;
+    PackageRef binary_ref = 9;
+
     repeated string                 args          = 2;
     string                          working_dir   = 4;
     map<string, InvocationSnapshot> snapshots     = 5;
@@ -30,9 +36,12 @@ message InvocationSnapshot {
 }
 
 message SidecarContainer {
-    string          name   = 3;  // Optional.
-    string          binary = 1;
-    repeated string args   = 2;
+    // Deprecated, use binary_ref
+    string     binary     = 1;
+    PackageRef binary_ref = 4;
+
+    string          name = 3;  // Optional.
+    repeated string args = 2;
 }
 
 message StartupPlan {

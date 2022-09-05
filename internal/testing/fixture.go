@@ -62,7 +62,8 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 	}
 
 	var testDef *schema.Test
-	var testBinary *pkggraph.Package
+	var testBinaryPkg *pkggraph.Package
+	var testBinaryName string
 
 	if testPkg.Server != nil {
 		startupTest, err := pl.LoadByName(ctx, startupTestBinary)
@@ -70,9 +71,10 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 			return nil, err
 		}
 
-		if startupTest.Binary == nil {
-			return nil, fnerrors.InternalError("expected %q to be a binary", startupTestBinary)
+		if len(startupTest.Binaries) != 1 {
+			return nil, fnerrors.InternalError("expected %q to be a single binary", startupTestBinary)
 		}
+		testBinaryName = startupTest.Binaries[0].Name
 
 		testDef = &schema.Test{
 			PackageName: testPkg.PackageName().String(),
@@ -82,13 +84,14 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 			},
 		}
 
-		testBinary = startupTest
+		testBinaryPkg = startupTest
 	} else if testPkg.Test != nil {
 		testDef = testPkg.Test
-		testBinary = &pkggraph.Package{
-			Binary:   testPkg.Test.Driver,
+		testBinaryPkg = &pkggraph.Package{
+			Binaries: []*schema.Binary{testPkg.Test.Driver},
 			Location: testPkg.Location,
 		}
+		testBinaryName = testPkg.Test.Driver.Name
 
 	} else {
 		return nil, fnerrors.UserError(pkgname, "expected a test definition")
@@ -99,14 +102,14 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, err
 	}
 
-	testBin, err := binary.Plan(ctx, testBinary, binary.BuildImageOpts{
+	testBin, err := binary.Plan(ctx, testBinaryPkg, testBinaryName, binary.BuildImageOpts{
 		Platforms: platforms,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	testBinTag, err := registry.AllocateName(ctx, env, testBinary.PackageName())
+	testBinTag, err := registry.AllocateName(ctx, env, testBinaryPkg.PackageName())
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +161,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		EnvProto:         env.Environment(),
 		Workspace:        env.Workspace(),
 		Stack:            stack.Proto(),
-		TestBinPkg:       testBinary.PackageName(),
+		TestBinPkg:       testBinaryPkg.PackageName(),
 		TestBinCommand:   testBin.Command,
 		TestBinImageID:   fixtureImage,
 		Debug:            opts.Debug,

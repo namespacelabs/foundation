@@ -15,7 +15,11 @@ import (
 			format?:          ("FORMAT_UNKNOWN" | "FORMAT_BASE64" | "FORMAT_BASE32")
 		}
 		initializeWith?: {
-			binary?:               inputs.#Package
+			binary?: inputs.#Package
+			binaryRef?: {
+				packageNameStr?: string
+				name?:           string
+			}
 			experimentalFunction?: inputs.#Package
 			cacheable?:            bool
 			withInput?:            types.#Any

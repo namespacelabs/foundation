@@ -80,7 +80,7 @@ func buildLocations(ctx context.Context, env planning.Context, list []fnfs.Locat
 			return err
 		}
 
-		if pkg.Binary == nil {
+		if len(pkg.Binaries) == 0 {
 			continue
 		}
 
@@ -97,32 +97,35 @@ func buildLocations(ctx context.Context, env planning.Context, list []fnfs.Locat
 
 	var images []compute.Computable[oci.ImageID]
 	for _, pkg := range pkgs {
-		bin, err := binary.Plan(ctx, pkg, imgOpts)
-		if err != nil {
-			return err
-		}
-
-		image, err := bin.Image(ctx, env)
-		if err != nil {
-			return err
-		}
-
-		var tag compute.Computable[oci.AllocatedName]
-		if baseRepository != "" {
-			tag = registry.StaticName(nil, oci.ImageID{
-				Repository: filepath.Join(baseRepository, pkg.PackageName().String()),
-			}, nil)
-		} else {
-			tag, err = registry.AllocateName(ctx, env, pkg.PackageName())
+		// TODO: allow to choose what binary to build within a package.
+		for _, b := range pkg.Binaries {
+			bin, err := binary.Plan(ctx, pkg, b.Name, imgOpts)
 			if err != nil {
 				return err
 			}
-		}
 
-		if opts.publishToDocker {
-			images = append(images, docker.PublishImage(tag, image))
-		} else {
-			images = append(images, oci.PublishResolvable(tag, image))
+			image, err := bin.Image(ctx, env)
+			if err != nil {
+				return err
+			}
+
+			var tag compute.Computable[oci.AllocatedName]
+			if baseRepository != "" {
+				tag = registry.StaticName(nil, oci.ImageID{
+					Repository: filepath.Join(baseRepository, pkg.PackageName().String()),
+				}, nil)
+			} else {
+				tag, err = registry.AllocateName(ctx, env, pkg.PackageName())
+				if err != nil {
+					return err
+				}
+			}
+
+			if opts.publishToDocker {
+				images = append(images, docker.PublishImage(tag, image))
+			} else {
+				images = append(images, oci.PublishResolvable(tag, image))
+			}
 		}
 	}
 

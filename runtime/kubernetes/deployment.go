@@ -210,7 +210,8 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		WithLabels(labels)
 
 	var initVolumeMounts []*applycorev1.VolumeMountApplyConfiguration
-	initArgs := map[schema.PackageName][]string{}
+	// Key: PackageRef.CanonicalString().
+	initArgs := map[string][]string{}
 
 	var serviceAccount string // May be specified by a SpecExtension.
 	var createServiceAccount bool
@@ -316,8 +317,8 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 			// Deprecated path.
 			for _, initContainer := range containerExt.InitContainer {
-				pkg := schema.PackageName(initContainer.PackageName)
-				initArgs[pkg] = append(initArgs[pkg], initContainer.Arg...)
+				key := initContainer.PackageName
+				initArgs[key] = append(initArgs[key], initContainer.Arg...)
 			}
 
 		case input.Impl.MessageIs(initContainerExt):
@@ -325,8 +326,13 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				return fnerrors.InternalError("failed to unmarshal InitContainerExtension: %w", err)
 			}
 
-			pkg := schema.PackageName(initContainerExt.PackageName)
-			initArgs[pkg] = append(initArgs[pkg], initContainerExt.Args...)
+			var key string
+			if initContainerExt.PackageRef != nil {
+				key = initContainerExt.PackageRef.CanonicalString()
+			} else {
+				key = initContainerExt.PackageName
+			}
+			initArgs[key] = append(initArgs[key], initContainerExt.Args...)
 
 		default:
 			return fnerrors.InternalError("unused startup input: %s", input.Impl.GetTypeUrl())
@@ -595,7 +601,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			applycorev1.Container().
 				WithName(name).
 				WithImage(init.Image.RepoAndDigest()).
-				WithArgs(append(init.Args, initArgs[init.PackageName]...)...).
+				WithArgs(append(init.Args, initArgs[init.PackageRef.CanonicalString()]...)...).
 				WithCommand(init.Command...).
 				WithVolumeMounts(initVolumeMounts...))
 	}
@@ -782,7 +788,7 @@ func sidecarName(o runtime.SidecarRunOpts, prefix string) string {
 		return fmt.Sprintf("%s-%s", prefix, o.Name)
 	}
 
-	return fmt.Sprintf("%s-%s", prefix, shortPackageName(o.PackageName))
+	return fmt.Sprintf("%s-%s", prefix, shortPackageRefName(o.PackageRef))
 }
 
 func runAsToPodSecCtx(name string, podSecCtx *applycorev1.PodSecurityContextApplyConfiguration, runAs *runtime.RunAs) (*applycorev1.PodSecurityContextApplyConfiguration, error) {

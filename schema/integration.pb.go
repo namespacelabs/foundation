@@ -24,6 +24,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Defines an way how a specific server is built and run.
+// Integrations may also set up file syncs, generate code, do lint, etc.
 type Integration struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

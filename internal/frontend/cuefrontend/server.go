@@ -93,8 +93,13 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 
 		switch x := bits.Binary.(type) {
 		case string:
+			pkgRef, err := schema.ParsePackageRef(x)
+			if err != nil {
+				return nil, fnerrors.UserError(loc, "invalid package reference: %s", x)
+			}
+
 			out.Binary = &schema.Server_Binary{
-				PackageName: x,
+				PackageRef: pkgRef,
 			}
 		case map[string]interface{}:
 			if image, ok := x["image"]; ok {

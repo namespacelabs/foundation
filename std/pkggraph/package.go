@@ -19,9 +19,11 @@ type Package struct {
 	Extension            *schema.Node
 	Service              *schema.Node
 	Server               *schema.Server
-	Binary               *schema.Binary
 	Test                 *schema.Test
 	ExperimentalFunction *schema.ExperimentalFunction
+
+	// Inlined or explicitly defined binaries.
+	Binaries []*schema.Binary
 
 	// Resources associated with node types.
 	Provides    map[string]*protos.FileDescriptorSetAndDeps // key: `Provides.Name`

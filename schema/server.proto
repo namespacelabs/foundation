@@ -13,6 +13,7 @@ import "schema/binary.proto";
 import "schema/environment.proto";
 import "schema/integration.proto";
 import "schema/networking.proto";
+import "schema/package.proto";
 import "schema/reference.proto";
 import "schema/secret.proto";
 import "schema/volume.proto";
@@ -97,8 +98,11 @@ message Server {
     repeated SecretSpec secret = 28;
 
     message Binary {
-        string prebuilt     = 1;
-        string package_name = 2;
+        reserved 2;
+
+        // One of
+        string     prebuilt    = 1;
+        PackageRef package_ref = 3;
     }
 
     message ServiceSpec {

@@ -42,11 +42,16 @@ type Snapshot struct {
 }
 
 func Make(ctx context.Context, env pkggraph.SealedContext, serverLocRef *pkggraph.Location, with *schema.Invocation) (*Invocation, error) {
-	if with.Binary == "" {
+	var binRef *schema.PackageRef
+	if with.BinaryRef != nil {
+		binRef = with.BinaryRef
+	} else if with.Binary != "" {
+		binRef = schema.NewPackageRef(schema.Name(with.Binary), "")
+	} else {
 		return nil, fnerrors.UserError(nil, "`binary` is required to point to a binary package")
 	}
 
-	binPkg, err := env.LoadByName(ctx, schema.PackageName(with.Binary))
+	binPkg, err := env.LoadByName(ctx, binRef.PackageName())
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +61,7 @@ func Make(ctx context.Context, env pkggraph.SealedContext, serverLocRef *pkggrap
 		return nil, err
 	}
 
-	bin, err := binary.PlanImage(ctx, binPkg, env, true, &p)
+	bin, err := binary.PlanImage(ctx, binPkg, binRef.Name, env, true, &p)
 	if err != nil {
 		return nil, err
 	}

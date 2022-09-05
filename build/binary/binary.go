@@ -50,23 +50,30 @@ type BuildImageOpts struct {
 	Platforms    []specs.Platform
 }
 
-func ValidateIsBinary(pkg *pkggraph.Package) error {
-	if pkg.Binary == nil {
-		return fnerrors.UserError(pkg.Location, "expected a binary")
+func GetBinary(pkg *pkggraph.Package, binName string) (*schema.Binary, error) {
+	for _, bin := range pkg.Binaries {
+		if bin.Name == binName {
+			return bin, nil
+		}
 	}
 
-	return nil
+	if binName == "" && len(pkg.Binaries) == 1 {
+		return pkg.Binaries[0], nil
+	}
+
+	return nil, fnerrors.UserError(pkg.Location, "no such binary %q", binName)
 }
 
 // Returns a Prepared.
-func Plan(ctx context.Context, pkg *pkggraph.Package, opts BuildImageOpts) (*Prepared, error) {
-	if err := ValidateIsBinary(pkg); err != nil {
+func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, opts BuildImageOpts) (*Prepared, error) {
+	binary, err := GetBinary(pkg, binName)
+	if err != nil {
 		return nil, err
 	}
 
 	loc := pkg.Location
 
-	spec, err := planImage(ctx, loc, pkg.Binary, opts)
+	spec, err := planImage(ctx, loc, binary, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -88,27 +95,24 @@ func Plan(ctx context.Context, pkg *pkggraph.Package, opts BuildImageOpts) (*Pre
 	return &Prepared{
 		Name:    loc.PackageName.String(),
 		Plan:    plan,
-		Command: Command(pkg),
+		Command: binary.Config.GetCommand(),
 		// XXX pass args, and env.
 	}, nil
-}
-
-func Command(pkg *pkggraph.Package) []string {
-	return pkg.Binary.GetConfig().GetCommand()
 }
 
 func (p Prepared) Image(ctx context.Context, env planning.Context) (compute.Computable[oci.ResolvableImage], error) {
 	return multiplatform.PrepareMultiPlatformImage(ctx, env, p.Plan)
 }
 
-func PlanImage(ctx context.Context, pkg *pkggraph.Package, env planning.Context, usePrebuilts bool, platform *specs.Platform) (*PreparedImage, error) {
-	if pkg.Binary == nil {
-		return nil, fnerrors.UserError(pkg.Location, "expected a binary")
+func PlanImage(ctx context.Context, pkg *pkggraph.Package, binName string, env planning.Context, usePrebuilts bool, platform *specs.Platform) (*PreparedImage, error) {
+	binary, err := GetBinary(pkg, binName)
+	if err != nil {
+		return nil, err
 	}
 
 	loc := pkg.Location
 
-	spec, err := planImage(ctx, loc, pkg.Binary, BuildImageOpts{UsePrebuilts: usePrebuilts})
+	spec, err := planImage(ctx, loc, binary, BuildImageOpts{UsePrebuilts: usePrebuilts})
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +128,7 @@ func PlanImage(ctx context.Context, pkg *pkggraph.Package, env planning.Context,
 	return &PreparedImage{
 		Name:    loc.PackageName.String(),
 		Image:   img,
-		Command: Command(pkg),
+		Command: binary.Config.GetCommand(),
 		// XXX pass args, and env.
 	}, nil
 }
