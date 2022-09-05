@@ -305,6 +305,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, enables the new incluster deployment orchestrator.")
 	rootCmd.PersistentFlags().BoolVar(&orchestration.RenderOrchestratorDeployment, "render_orchestrator_deployment", orchestration.RenderOrchestratorDeployment,
 		"If set to true, we print a render wait block while deploying the orchestrator itself.")
+	rootCmd.PersistentFlags().StringVar(&binary.PrebuiltOverwrites, "prebuilt_overwrites", binary.PrebuiltOverwrites,
+		"Comma separated list of prebuilt overwrites. Format pkg:repo@digest,pkg:repo@digest")
 
 	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
@@ -340,6 +342,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"runtime_wip_use_short_alias",
 		"use_orchestrator",
 		"render_orchestrator_deployment",
+		"prebuilt_overwrites",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build"
@@ -24,7 +25,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
-var UsePrebuilts = true // XXX make these a scoped configuration instead.
+var (
+	UsePrebuilts       = true // XXX make these a scoped configuration instead.
+	PrebuiltOverwrites = ""
+)
 
 var BuildGo func(loc pkggraph.Location, _ *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error)
 var BuildWeb func(pkggraph.Location) build.Spec
@@ -132,6 +136,23 @@ func PlanImage(ctx context.Context, pkg *pkggraph.Package, env planning.Context,
 func PrebuiltImageID(loc pkggraph.Location) *oci.ImageID {
 	if !UsePrebuilts {
 		return nil
+	}
+
+	for _, overwrite := range strings.Split(PrebuiltOverwrites, ",") {
+		parts := strings.SplitN(overwrite, ":", 2)
+		if len(parts) != 2 {
+			break // Silently fail.
+		}
+		if parts[0] != loc.PackageName.String() {
+			continue
+		}
+
+		parts = strings.SplitN(parts[1], "@", 2)
+		if len(parts) != 2 {
+			break // Silently fail.
+		}
+
+		return &oci.ImageID{Repository: parts[0], Digest: parts[1]}
 	}
 
 	for _, prebuilt := range loc.Module.Workspace.PrebuiltBinary {
