@@ -44,11 +44,11 @@ const (
 
 // Bundle is a fs with an associated timestamp.
 type Bundle struct {
-	fsys      fnfs.ReadWriteFS
 	Timestamp time.Time
 
-	// Guards writes to the bundle.
-	mu sync.Mutex
+	// Guards access to fsys.
+	mu   sync.Mutex
+	fsys fnfs.ReadWriteFS
 }
 
 // Invocation information associated with a bundle.
@@ -153,6 +153,8 @@ func (b *Bundle) WriteFile(ctx context.Context, path string, contents []byte, mo
 }
 
 func (b *Bundle) ReadInvocationInfo(ctx context.Context) (*InvocationInfo, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	f, err := b.fsys.Open(InvocationInfoFile)
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to open %q: %w", InvocationInfoFile, err)
@@ -189,6 +191,7 @@ func (b *Bundle) unmarshalStoredTaskFromActionLogs(path string) (*storage.Stored
 }
 
 func (b *Bundle) unmarshalAttachment(path string) (*storage.Command_Log, error) {
+	// b.mu must be locked.
 	f, err := b.fsys.Open(path)
 	if err != nil {
 		return nil, err
@@ -206,6 +209,9 @@ func (b *Bundle) unmarshalAttachment(path string) (*storage.Command_Log, error) 
 }
 
 func (b *Bundle) ActionLogs(ctx context.Context) (*storage.Command, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	cmd := &storage.Command{}
 
 	var errs []error
@@ -254,6 +260,9 @@ func (b *Bundle) EncryptTo(ctx context.Context, dst io.Writer) error {
 
 	gzWriter := gzip.NewWriter(encWriter)
 	defer gzWriter.Close()
+
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
 	if err := maketarfs.TarFS(ctx, gzWriter, b.fsys, nil, nil); err != nil {
 		return fnerrors.InternalError("failed to archive bundle: %w", err)
