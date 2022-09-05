@@ -70,9 +70,10 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 				return err
 			}
 
-			// If the user doesn't explicitly specify this server should be loaded, don't load it, if it's tagged as being testonly.
-			if !p.locs.AreSpecified && server.Package.Server.Testonly {
-				return nil
+			if !p.locs.AreSpecified {
+				if server.Package.Server.Testonly || server.Package.Server.ClusterAdmin {
+					return nil
+				}
 			}
 
 			servers = append(servers, server)
