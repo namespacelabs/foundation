@@ -1,0 +1,16 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.std.planning.knobs.config;
+
+option go_package = "namespacelabs.dev/foundation/std/planning/knobs/config";
+
+import "google/protobuf/any.proto";
+
+message Knob {
+    string              name  = 1;
+    google.protobuf.Any value = 2;
+}

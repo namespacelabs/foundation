@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 type Configuration interface {
@@ -27,6 +28,23 @@ type Configuration interface {
 	// When the configuration is loaded pinned to an environment, returns the
 	// environment name. Else, the return value is undefined.
 	EnvKey() string
+
+	getMultiple(string) []*anypb.Any
+}
+
+func GetMultiple[V proto.Message](config Configuration) ([]V, error) {
+	msgs := config.getMultiple(protos.TypeUrl(protos.NewFromType[V]()))
+
+	var result []V
+	for _, msg := range msgs {
+		v, err := msg.UnmarshalNew()
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, v.(V))
+	}
+
+	return result, nil
 }
 
 func MakeConfigurationCompat(errorloc fnerrors.Location, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
@@ -82,6 +100,16 @@ type config struct {
 
 func (cfg config) Get(msg proto.Message) bool {
 	return checkGet(cfg.merged, msg)
+}
+
+func (cfg config) getMultiple(typeUrl string) []*anypb.Any {
+	var response []*anypb.Any
+	for _, m := range cfg.merged {
+		if m.TypeUrl == typeUrl {
+			response = append(response, m)
+		}
+	}
+	return response
 }
 
 func checkGet(merged []*anypb.Any, msg proto.Message) bool {

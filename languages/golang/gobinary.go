@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/planning/knobs"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
@@ -33,10 +34,10 @@ type GoBinary struct {
 	isFocus bool
 }
 
-var UseBuildKitForBuilding = false
+var UseBuildKitForBuilding = knobs.Define[bool]("golang_use_buildkit", "If set to true, buildkit is used for building, instead of a ko-style builder.", knobs.Bool(false))
 
 func (gb GoBinary) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	if UseBuildKitForBuilding {
+	if UseBuildKitForBuilding.Get(env.Configuration()) {
 		return buildUsingBuildkit(ctx, env, gb, conf)
 	}
 

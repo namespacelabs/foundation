@@ -6,12 +6,11 @@ package ops
 
 import (
 	"context"
-	"reflect"
 
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 type rnode struct {
@@ -60,28 +59,18 @@ func RegisterFunc[M proto.Message](mr func(ctx context.Context, env planning.Con
 }
 
 func RunAfter(base, after proto.Message) {
-	h := handlers[messageKey(after)]
-	h.after = append(h.after, messageKey(base))
+	h := handlers[protos.TypeUrl(after)]
+	h.after = append(h.after, protos.TypeUrl(base))
 }
 
 func register[M proto.Message](dispatcher dispatcherFunc, startSession startSessionFunc) {
-	var m M
-
-	tmpl := reflect.New(reflect.TypeOf(m).Elem()).Interface().(proto.Message)
+	tmpl := protos.NewFromType[M]()
 	reg := registration{
-		key:          messageKey(tmpl),
+		key:          protos.TypeUrl(tmpl),
 		tmpl:         tmpl,
 		dispatcher:   dispatcher,
 		startSession: startSession,
 	}
 
-	handlers[messageKey(tmpl)] = &reg
-}
-
-func messageKey(msg proto.Message) string {
-	packed, err := anypb.New(msg)
-	if err != nil {
-		panic(err)
-	}
-	return packed.GetTypeUrl()
+	handlers[protos.TypeUrl(tmpl)] = &reg
 }

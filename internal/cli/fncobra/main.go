@@ -63,6 +63,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/planning/knobs"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -257,8 +258,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&buildkit.ForwardKeychain, "buildkit_forward_keychain", buildkit.ForwardKeychain, "If set to true, proxy buildkit auth through namespace orchestration.")
 	rootCmd.PersistentFlags().BoolVar(&compute.VerifyCaching, "verify_compute_caching", compute.VerifyCaching,
 		"Internal, do not use cached contents of compute graph, verify that the cached content matches instead.")
-	rootCmd.PersistentFlags().BoolVar(&golang.UseBuildKitForBuilding, "golang_use_buildkit", golang.UseBuildKitForBuilding,
-		"If set to true, buildkit is used for building, instead of a ko-style builder.")
 	rootCmd.PersistentFlags().StringVar(&llbutil.GitCredentialsBuildkitSecret, "golang_buildkit_git_credentials_secret", "",
 		"If set, go invocations in buildkit get the specified secret mounted as ~/.git-credentials")
 	rootCmd.PersistentFlags().BoolVar(&deploy.AlsoDeployIngress, "also_compute_ingress", deploy.AlsoDeployIngress,
@@ -311,6 +310,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
 
+	knobs.SetupFlags(rootCmd.PersistentFlags())
+
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
 		"buildkit_import_cache",
@@ -321,7 +322,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"filewatcher_use_polling",
 		"verify_compute_caching",
 		"also_compute_ingress",
-		"golang_use_buildkit",
 		"golang_buildkit_git_credentials_secret",
 		"send_usage_data",
 		"skip_buildkit_workspace_size_check",
