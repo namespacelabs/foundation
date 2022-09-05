@@ -88,7 +88,7 @@ func LLBToFS(ctx context.Context, env planning.Context, conf build.BuildTarget, 
 	base := reqBase{
 		sourceLabel:    conf.SourceLabel(),
 		sourcePackage:  conf.SourcePackage(),
-		devHost:        env.DevHost(),
+		config:         env.Configuration(),
 		targetPlatform: platformOrDefault(conf.TargetPlatform()),
 		req:            &frontendReq{Def: serialized},
 		localDirs:      localDirs,
@@ -97,9 +97,9 @@ func LLBToFS(ctx context.Context, env planning.Context, conf build.BuildTarget, 
 }
 
 type reqBase struct {
-	sourceLabel    string             // For description purposes only, does not affect output.
-	sourcePackage  schema.PackageName // For description purposes only, does not affect output.
-	devHost        *schema.DevHost    // Doesn't affect the output.
+	sourceLabel    string                 // For description purposes only, does not affect output.
+	sourcePackage  schema.PackageName     // For description purposes only, does not affect output.
+	config         planning.Configuration // Doesn't affect the output.
 	targetPlatform specs.Platform
 	req            *frontendReq
 	localDirs      []LocalContents // If set, the output is not cachable by us.
@@ -109,7 +109,7 @@ func makeImage(env planning.Context, conf build.BuildTarget, req *frontendReq, l
 	base := reqBase{
 		sourceLabel:    conf.SourceLabel(),
 		sourcePackage:  conf.SourcePackage(),
-		devHost:        env.DevHost(),
+		config:         env.Configuration(),
 		targetPlatform: platformOrDefault(conf.TargetPlatform()),
 		req:            req,
 		localDirs:      localDirs,
@@ -352,7 +352,7 @@ func (l *reqToFS) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, er
 func solve[V any](ctx context.Context, deps compute.Resolved, l reqBase, keychain oci.Keychain, e exporter[V]) (V, error) {
 	var res V
 
-	c, err := compute.GetValue(ctx, connectToClient(l.devHost, l.targetPlatform))
+	c, err := compute.GetValue(ctx, connectToClient(l.config, l.targetPlatform))
 	if err != nil {
 		return res, err
 	}

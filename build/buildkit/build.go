@@ -25,8 +25,8 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/rpcerrors"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
@@ -48,10 +48,10 @@ type clientInstance struct {
 	compute.DoScoped[*client.Client] // Only connect once per configuration.
 }
 
-func connectToClient(devHost *schema.DevHost, targetPlatform specs.Platform) compute.Computable[*client.Client] {
+func connectToClient(config planning.Configuration, targetPlatform specs.Platform) compute.Computable[*client.Client] {
 	conf := &Overrides{}
 
-	devhost.ByBuildPlatform(targetPlatform).Select(devHost).Get(conf)
+	_ = config.GetForPlatform(targetPlatform, conf)
 
 	if conf.BuildkitAddr == "" && conf.ContainerName == "" {
 		conf.ContainerName = DefaultContainerName

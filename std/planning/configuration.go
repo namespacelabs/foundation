@@ -5,6 +5,7 @@
 package planning
 
 import (
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/schema"
@@ -12,6 +13,7 @@ import (
 
 type Configuration interface {
 	Get(proto.Message) bool
+	GetForPlatform(specs.Platform, proto.Message) bool
 	HashKey() string
 	IsEmpty() bool
 	EnvKey() string
@@ -23,20 +25,25 @@ type ConfigurationCompat interface {
 }
 
 func MakeConfigurationCompat(compat ConfigurationCompat) Configuration {
-	return config{compat.Environment().Name, selectByEnv(compat.DevHost(), compat.Environment())}
+	return MakeConfigurationWith(compat.Environment().Name, selectByEnv(compat.DevHost(), compat.Environment()), compat.DevHost().ConfigurePlatform)
 }
 
-func MakeConfigurationWith(description string, merged []*anypb.Any) Configuration {
-	return config{description, merged}
+func MakeConfigurationWith(description string, merged []*anypb.Any, platconfig []*schema.DevHost_ConfigurePlatform) Configuration {
+	return config{description, merged, platconfig}
 }
 
 type config struct {
-	key    string
-	merged []*anypb.Any
+	key        string
+	merged     []*anypb.Any
+	platconfig []*schema.DevHost_ConfigurePlatform
 }
 
 func (cfg config) Get(msg proto.Message) bool {
-	for _, conf := range cfg.merged {
+	return checkGet(cfg.merged, msg)
+}
+
+func checkGet(merged []*anypb.Any, msg proto.Message) bool {
+	for _, conf := range merged {
 		if conf.MessageIs(msg) {
 			// XXX we're swallowing errors here.
 			if conf.UnmarshalTo(msg) == nil {
@@ -48,6 +55,20 @@ func (cfg config) Get(msg proto.Message) bool {
 	return false
 }
 
+func (cfg config) GetForPlatform(target specs.Platform, msg proto.Message) bool {
+	for _, p := range cfg.platconfig {
+		if platformMatches(p, target) {
+			if checkGet(p.Configuration, msg) {
+				return true
+			}
+
+			break
+		}
+	}
+
+	return cfg.Get(msg)
+}
+
 func (cfg config) HashKey() string {
 	d, err := schema.DigestOf(cfg.merged)
 	if err != nil {
@@ -57,7 +78,7 @@ func (cfg config) HashKey() string {
 }
 
 func (cfg config) IsEmpty() bool {
-	return len(cfg.merged) == 0
+	return len(cfg.merged) == 0 && len(cfg.platconfig) == 0
 }
 
 func (cfg config) EnvKey() string {
@@ -82,4 +103,18 @@ func selectByEnv(devHost *schema.DevHost, env *schema.Environment) []*anypb.Any 
 	}
 
 	return slice
+}
+
+func platformMatches(a *schema.DevHost_ConfigurePlatform, b specs.Platform) bool {
+	if a.Architecture != "" && a.Architecture != b.Architecture {
+		return false
+	}
+	if a.Os != "" && a.Os != b.OS {
+		return false
+	}
+	if a.Variant != "" && a.Variant != b.Variant {
+		return false
+	}
+
+	return true
 }

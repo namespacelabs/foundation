@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/cache"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -52,7 +53,7 @@ func newPruneCmd() *cobra.Command {
 			if slices.Contains(what, "buildkit") {
 				eg.Go(func(ctx context.Context) error {
 					// XXX make platform configurable.
-					return buildkit.Prune(ctx, root.DevHost(), buildkit.HostPlatform())
+					return buildkit.Prune(ctx, planning.MakeConfigurationWith("prune", nil, root.DevHost().ConfigurePlatform), buildkit.HostPlatform())
 				})
 			}
 

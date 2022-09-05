@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
@@ -29,7 +28,7 @@ const toolNamespace = "fn-pipeline-tools"
 func (k k8stools) CanConsumePublicImages() bool { return true }
 
 func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
-	k8s, ck, err := k.k8s(ctx)
+	k8s, ck, err := k.makeRuntime(ctx)
 	if err != nil {
 		return err
 	}
@@ -89,7 +88,7 @@ func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSt
 }
 
 func (k k8stools) HostPlatform(ctx context.Context) (specs.Platform, error) {
-	k8s, _, err := k.k8s(ctx)
+	k8s, _, err := k.makeRuntime(ctx)
 	if err != nil {
 		return specs.Platform{}, err
 	}
@@ -106,13 +105,13 @@ func (k k8stools) HostPlatform(ctx context.Context) (specs.Platform, error) {
 	return platforms[0], nil
 }
 
-func (k8stools) k8s(ctx context.Context) (kubernetes.Unbound, planning.Configuration, error) {
+func (k8stools) makeRuntime(ctx context.Context) (kubernetes.Unbound, planning.Configuration, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return kubernetes.Unbound{}, nil, err
 	}
 
-	ck := planning.MakeConfigurationWith("tools", devhost.ForToolsRuntime().Select(root.DevHost()).Merged())
+	ck := planning.MakeConfigurationWith("tools", root.DevHost().ConfigureTools, root.DevHost().ConfigurePlatform)
 
 	k, err := kubernetes.New(ctx, ck)
 	if err != nil {

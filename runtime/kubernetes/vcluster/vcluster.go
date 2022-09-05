@@ -221,7 +221,7 @@ func (c *Connection) HostEnv() *client.HostEnv {
 
 func (c *Connection) Runtime(ctx context.Context) (kubernetes.Unbound, error) {
 	return kubernetes.NewFromConfig(ctx, &client.HostConfig{
-		Config:  planning.MakeConfigurationWith("vcluster", nil),
+		Config:  planning.MakeConfigurationWith("vcluster", nil, nil),
 		HostEnv: c.HostEnv(),
 	})
 }
