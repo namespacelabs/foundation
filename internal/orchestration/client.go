@@ -126,6 +126,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 	}
 
 	conn, err := grpc.DialContext(ctx, fmt.Sprintf("127.0.0.1:%d", port.LocalPort),
+		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fnerrors.InternalError("unable to connect to orchestration server: %w", err)
