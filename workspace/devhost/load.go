@@ -51,43 +51,6 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 	return nil
 }
 
-type ConfSlice struct {
-	merged [][]*anypb.Any
-}
-
-func (conf ConfSlice) Get(msg proto.Message) bool {
-	for _, m := range conf.merged {
-		for _, conf := range m {
-			if conf.MessageIs(msg) {
-				// XXX we're swallowing errors here.
-				if conf.UnmarshalTo(msg) == nil {
-					return true
-				}
-			}
-		}
-	}
-
-	return false
-}
-
-func (conf ConfSlice) WithoutConstraints() []*schema.DevHost_ConfigureEnvironment {
-	var parsed []*schema.DevHost_ConfigureEnvironment
-	for _, p := range conf.merged {
-		parsed = append(parsed, &schema.DevHost_ConfigureEnvironment{
-			Configuration: p,
-		})
-	}
-	return parsed
-}
-
-func (conf ConfSlice) Merged() []*anypb.Any {
-	var merged []*anypb.Any
-	for _, p := range conf.merged {
-		merged = append(merged, p...)
-	}
-	return merged
-}
-
 func MakeConfiguration(messages ...proto.Message) (*schema.DevHost_ConfigureEnvironment, error) {
 	c := &schema.DevHost_ConfigureEnvironment{}
 	for _, msg := range messages {
@@ -159,14 +122,6 @@ func RewriteWith(ctx context.Context, fsys fnfs.ReadWriteFS, filename string, de
 		return err
 	}); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func CheckEmptyErr(h *schema.DevHost) error {
-	if len(h.Configure) == 0 && len(h.ConfigurePlatform) == 0 && len(h.ConfigureTools) == 0 {
-		return fnerrors.UsageError("Try running `ns prepare local`.", "The workspace hasn't been configured for development yet.")
 	}
 
 	return nil
