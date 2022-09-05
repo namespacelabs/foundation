@@ -42,21 +42,21 @@ var (
 )
 
 type clientInstance struct {
-	env orchEnv
+	ctx planning.Context
 
 	compute.DoScoped[proto.OrchestrationServiceClient] // Only connect once per configuration.
 }
 
 func ConnectToClient(env planning.Context) compute.Computable[proto.OrchestrationServiceClient] {
-	return &clientInstance{env: orchEnv{ctx: env}}
+	return &clientInstance{ctx: env}
 }
 
 func (c *clientInstance) Action() *tasks.ActionEvent {
-	return tasks.Action("orchestrator.connect").Arg("env", c.env.Environment().Name)
+	return tasks.Action("orchestrator.connect").Arg("env", c.ctx.Environment().Name)
 }
 
 func (c *clientInstance) Inputs() *compute.In {
-	return compute.Inputs().Str("env", c.env.Environment().Name)
+	return compute.Inputs().Str("env", c.ctx.Environment().Name)
 }
 
 func (c *clientInstance) Output() compute.Output {
@@ -64,12 +64,14 @@ func (c *clientInstance) Output() compute.Output {
 }
 
 func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto.OrchestrationServiceClient, error) {
-	focus, err := provision.RequireServer(ctx, c.env, schema.PackageName(serverPkg))
+	env := orchEnv{ctx: c.ctx}
+
+	focus, err := provision.RequireServer(ctx, env, schema.PackageName(serverPkg))
 	if err != nil {
 		return nil, err
 	}
 
-	plan, err := deploy.PrepareDeployServers(ctx, c.env, []provision.Server{focus}, nil)
+	plan, err := deploy.PrepareDeployServers(ctx, env, []provision.Server{focus}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -79,13 +81,13 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 		return nil, err
 	}
 
-	waiters, err := computed.Deployer.Execute(ctx, runtime.TaskServerDeploy, c.env)
+	waiters, err := computed.Deployer.Execute(ctx, runtime.TaskServerDeploy, env)
 	if err != nil {
 		return nil, err
 	}
 
 	if RenderOrchestratorDeployment {
-		if err := deploy.Wait(ctx, c.env, waiters); err != nil {
+		if err := deploy.Wait(ctx, env, waiters); err != nil {
 			return nil, err
 		}
 	} else {
@@ -107,7 +109,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 		return nil, fnerrors.InternalError("orchestration service not found: %+v", computed.ComputedStack.Endpoints)
 	}
 
-	rt := runtime.For(ctx, c.env)
+	rt := runtime.For(ctx, env)
 
 	portch := make(chan runtime.ForwardedPort)
 
