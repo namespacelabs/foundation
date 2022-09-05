@@ -9,12 +9,13 @@ package foundation.schema;
 option go_package = "namespacelabs.dev/foundation/schema";
 
 import "google/protobuf/any.proto";
-import "schema/networking.proto";
 import "schema/binary.proto";
 import "schema/environment.proto";
+import "schema/integration.proto";
+import "schema/networking.proto";
 import "schema/reference.proto";
-import "schema/volume.proto";
 import "schema/secret.proto";
+import "schema/volume.proto";
 
 enum Framework {
     FRAMEWORK_UNSPECIFIED = 0;
@@ -127,13 +128,6 @@ message Server {
         string   package                                           = 1;
         repeated Environment.Label environment_has_label           = 2;
         repeated Environment.Label environment_does_not_have_label = 3;
-    }
-
-    message Integration {
-        string kind = 1;
-
-        // TODO: define kind-specific fields in a generic way.
-        string dockerfile = 2;
     }
 }
 

@@ -60,7 +60,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 
 	switch bits.Integration.Kind {
 	case serverKindDockerfile:
-		out.Integration = &schema.Server_Integration{
+		out.Integration = &schema.Integration{
 			Kind:       bits.Integration.Kind,
 			Dockerfile: bits.Integration.Dockerfile,
 		}
