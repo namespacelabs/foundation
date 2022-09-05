@@ -68,12 +68,12 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env planning.Context, con
 
 	if bnj.isDevBuild {
 		// Adding dev controller
-		pkg, err := bnj.serverEnv.LoadByName(ctx, controllerPkg)
+		pkg, err := bnj.serverEnv.LoadByName(ctx, controllerPkg.PackageName())
 		if err != nil {
 			return nil, err
 		}
 
-		p, err := binary.Plan(ctx, pkg, binary.BuildImageOpts{UsePrebuilts: true})
+		p, err := binary.Plan(ctx, pkg, controllerPkg.Name, binary.BuildImageOpts{UsePrebuilts: true})
 		if err != nil {
 			return nil, err
 		}

@@ -40,6 +40,10 @@ func (t Server) Integration() *schema.Integration      { return t.entry.Server.I
 func (t Server) IsStateful() bool                      { return t.entry.Server.IsStateful }
 func (t Server) Deps() []*pkggraph.Package             { return t.deps }
 
+func (t Server) PackageRef() *schema.PackageRef {
+	return schema.NewPackageRef(t.PackageName(), t.Name())
+}
+
 func (t Server) GetDep(pkg schema.PackageName) *pkggraph.Package {
 	for _, d := range t.deps {
 		if d.PackageName() == pkg {

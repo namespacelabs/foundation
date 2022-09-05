@@ -39,8 +39,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
+var (
+	controllerPkg = schema.NewPackageRef("namespacelabs.dev/foundation/std/development/filesync/controller", "")
+)
+
 const (
-	controllerPkg schema.PackageName = "namespacelabs.dev/foundation/std/development/filesync/controller"
 	grpcNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/grpc"
 	httpNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/http"
 	runtimeNode   schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/runtime"
@@ -442,7 +445,7 @@ func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error
 }
 
 func (impl) DevelopmentPackages() []schema.PackageName {
-	return []schema.PackageName{controllerPkg}
+	return []schema.PackageName{controllerPkg.PackageName()}
 }
 
 func (impl impl) GenerateNode(pkg *pkggraph.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {

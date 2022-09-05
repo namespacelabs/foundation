@@ -68,7 +68,7 @@ func NewTidyCmd() *cobra.Command {
 					return err
 				}
 
-				if pkg.Binary != nil {
+				if len(pkg.Binaries) > 0 {
 					continue
 				}
 

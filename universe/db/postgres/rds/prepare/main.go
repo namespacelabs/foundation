@@ -30,12 +30,15 @@ import (
 	"namespacelabs.dev/foundation/universe/db/postgres/rds/internal"
 )
 
+var (
+	self = schema.NewPackageRef("namespacelabs.dev/foundation/universe/db/postgres/rds/prepare", "")
+)
+
 const (
 	postgresType = "rds"
 
 	creds = "namespacelabs.dev/foundation/universe/db/postgres/internal/gencreds"
 
-	self    = "namespacelabs.dev/foundation/universe/db/postgres/rds/prepare"
 	rdsInit = "namespacelabs.dev/foundation/universe/db/postgres/rds/init"
 	rdsNode = "namespacelabs.dev/foundation/universe/db/postgres/rds"
 
@@ -65,7 +68,7 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 	resp := &protocol.PrepareResponse{
 		PreparedProvisionPlan: &protocol.PreparedProvisionPlan{
 			Provisioning: []*schema.Invocation{
-				{Binary: self}, // Call me back.
+				{BinaryRef: self}, // Call me back.
 			},
 		},
 	}

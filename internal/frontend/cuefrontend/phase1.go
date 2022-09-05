@@ -51,9 +51,14 @@ type cueInvokeBinary struct {
 	Inject       []string                         `json:"inject"`
 }
 
-func (cib cueInvokeBinary) toFrontend() *schema.Invocation {
+func (cib cueInvokeBinary) toFrontend() (*schema.Invocation, error) {
+	binRef, err := schema.ParsePackageRef(cib.Binary)
+	if err != nil {
+		return nil, err
+	}
+
 	inv := &schema.Invocation{
-		Binary:       cib.Binary,
+		BinaryRef:    binRef,
 		Args:         cib.Args.Parsed(),
 		WorkingDir:   cib.WorkingDir,
 		NoCache:      cib.NoCache,
@@ -77,7 +82,7 @@ func (cib cueInvokeBinary) toFrontend() *schema.Invocation {
 		}
 	}
 
-	return inv
+	return inv, nil
 }
 
 type cueNaming struct {
@@ -125,7 +130,12 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, in
 			return pdata, err
 		}
 
-		pdata.Provisioning = append(pdata.Provisioning, dec.toFrontend())
+		inv, err := dec.toFrontend()
+		if err != nil {
+			return pdata, err
+		}
+
+		pdata.Provisioning = append(pdata.Provisioning, inv)
 	}
 
 	if sidecar := lookupTransition(vv, "sidecar"); sidecar.Exists() {
@@ -187,10 +197,15 @@ func parseContainers(v cue.Value) ([]*schema.SidecarContainer, error) {
 
 		var parsed []*schema.SidecarContainer
 		for _, data := range containers {
+			binRef, err := schema.ParsePackageRef(data.Binary)
+			if err != nil {
+				return nil, err
+			}
+
 			parsed = append(parsed, &schema.SidecarContainer{
-				Name:   data.Name,
-				Binary: data.Binary,
-				Args:   data.Args.Parsed(),
+				Name:      data.Name,
+				BinaryRef: binRef,
+				Args:      data.Args.Parsed(),
 			})
 		}
 
@@ -208,10 +223,15 @@ func parseContainers(v cue.Value) ([]*schema.SidecarContainer, error) {
 			return nil, fnerrors.UserError(nil, "%s: inconsistent container name %q", name, data.Name)
 		}
 
+		binRef, err := schema.ParsePackageRef(data.Binary)
+		if err != nil {
+			return nil, err
+		}
+
 		parsed = append(parsed, &schema.SidecarContainer{
-			Name:   name,
-			Binary: data.Binary,
-			Args:   data.Args.Parsed(),
+			Name:      name,
+			BinaryRef: binRef,
+			Args:      data.Args.Parsed(),
 		})
 	}
 

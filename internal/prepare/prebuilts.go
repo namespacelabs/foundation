@@ -35,7 +35,10 @@ func DownloadPrebuilts(env planning.Context, pl pkggraph.PackageLoader, packages
 					return nil, err
 				}
 
-				prepared, err := binary.PlanImage(ctx, p, env, true, &hostPlatform)
+				// TODO: support defining multiple prebuilt binaries per package
+				prebuiltName := ""
+
+				prepared, err := binary.PlanImage(ctx, p, prebuiltName, env, true, &hostPlatform)
 				if err != nil {
 					return nil, err
 				}

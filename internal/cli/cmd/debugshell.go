@@ -51,12 +51,17 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 
 		case binaryPackage != "":
-			pkg, err := workspace.NewPackageLoader(env).LoadByName(ctx, schema.PackageName(binaryPackage))
+			binaryRef, err := schema.ParsePackageRef(binaryPackage)
 			if err != nil {
 				return err
 			}
 
-			prepared, err := binary.Plan(ctx, pkg, binary.BuildImageOpts{Platforms: platforms, UsePrebuilts: true})
+			pkg, err := workspace.NewPackageLoader(env).LoadByName(ctx, binaryRef.PackageName())
+			if err != nil {
+				return err
+			}
+
+			prepared, err := binary.Plan(ctx, pkg, binaryRef.Name, binary.BuildImageOpts{Platforms: platforms, UsePrebuilts: true})
 			if err != nil {
 				return err
 			}

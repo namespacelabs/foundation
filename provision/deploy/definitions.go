@@ -356,7 +356,7 @@ func compileComputable(ctx context.Context, env pkggraph.SealedContext, src *sch
 				return nil, err
 			}
 
-		case compiledInvocation.BinaryPackage != "":
+		case compiledInvocation.BinaryRef != nil:
 			invocation, err = tools.InvokeWithBinary(ctx, env, compiledInvocation, prepared)
 			if err != nil {
 				return nil, err
@@ -384,7 +384,7 @@ func compileComputable(ctx context.Context, env pkggraph.SealedContext, src *sch
 
 func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.DeferredInvocationSource) (*types.DeferredInvocation, *binary.Prepared, error) {
 	if inv.ExperimentalFunction != "" {
-		if inv.Binary != "" {
+		if inv.Binary != "" || inv.BinaryRef != nil {
 			return nil, nil, fnerrors.New("binary and experimentalFunction are exclusive (%q vs %q)", inv.Binary, inv.ExperimentalFunction)
 		}
 
@@ -404,11 +404,20 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 		}, nil, nil
 	}
 
-	if inv.Binary == "" {
+	var binaryRef *schema.PackageRef
+	if inv.Binary != "" {
+		var err error
+		binaryRef, err = schema.ParsePackageRef(inv.Binary)
+		if err != nil {
+			return nil, nil, fnerrors.New("%s: failed to parse package ref: %w", inv.Binary, err)
+		}
+	} else if inv.BinaryRef != nil {
+		binaryRef = inv.BinaryRef
+	} else {
 		return nil, nil, fnerrors.New("binary package definition is missing")
 	}
 
-	pkg, err := env.LoadByName(ctx, schema.PackageName(inv.Binary))
+	pkg, err := env.LoadByName(ctx, binaryRef.PackageName())
 	if err != nil {
 		return nil, nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)
 	}
@@ -418,13 +427,13 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 		return nil, nil, err
 	}
 
-	prepared, err := binary.Plan(ctx, pkg, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
+	prepared, err := binary.Plan(ctx, pkg, binaryRef.Name, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return &types.DeferredInvocation{
-		BinaryPackage: inv.Binary,
+		BinaryRef: binaryRef,
 		BinaryConfig: &schema.BinaryConfig{
 			Command: prepared.Command,
 		},

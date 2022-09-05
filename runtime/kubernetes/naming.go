@@ -46,6 +46,14 @@ func shortPackageName(pkg schema.PackageName) string {
 	return fmt.Sprintf("%s-%s", parts[len(parts)-1], packageId(pkg))
 }
 
+func shortPackageRefName(pkgRef *schema.PackageRef) string {
+	if pkgRef.Name == "" {
+		return shortPackageName(pkgRef.PackageName())
+	}
+
+	return fmt.Sprintf("%s:%s", shortPackageName(pkgRef.PackageName()), pkgRef.Name)
+}
+
 func packageId(pkg schema.PackageName) string {
 	h := sha256.New()
 	fmt.Fprintf(h, "%s", pkg) // Write to a sha256 hash never fails.

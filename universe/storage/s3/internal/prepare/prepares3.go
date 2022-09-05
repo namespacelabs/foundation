@@ -28,9 +28,12 @@ import (
 	"namespacelabs.dev/foundation/universe/storage/s3"
 )
 
+var (
+	self          = schema.NewPackageRef("namespacelabs.dev/foundation/universe/storage/s3/internal/prepare", "")
+	initContainer = schema.NewPackageRef("namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets", "")
+)
+
 const (
-	self             = "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
-	initContainer    = "namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets"
 	localstackServer = "namespacelabs.dev/foundation/universe/development/localstack"
 	minioServer      = "namespacelabs.dev/foundation/universe/storage/minio/server"
 	s3node           = "namespacelabs.dev/foundation/universe/storage/s3"
@@ -61,10 +64,10 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 	resp := &protocol.PrepareResponse{
 		PreparedProvisionPlan: &protocol.PreparedProvisionPlan{
 			Provisioning: []*schema.Invocation{
-				{Binary: self}, // Call me back.
+				{BinaryRef: self}, // Call me back.
 			},
 			Init: []*schema.SidecarContainer{
-				{Binary: initContainer},
+				{BinaryRef: initContainer},
 			},
 		},
 	}
@@ -245,8 +248,8 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendInitContainer{
 		With: &kubedef.InitContainerExtension{
-			PackageName: initContainer,
-			Args:        initArgs,
+			PackageRef: initContainer,
+			Args:       initArgs,
 		},
 	})
 

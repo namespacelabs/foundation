@@ -36,14 +36,17 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 )
 
+var (
+	controllerPkg = schema.NewPackageRef("namespacelabs.dev/foundation/std/dev/controller", "")
+)
+
 const (
-	controllerPkg schema.PackageName = "namespacelabs.dev/foundation/std/dev/controller"
-	webPkg        schema.PackageName = "namespacelabs.dev/foundation/std/web/http"
-	httpPort                         = 40000
-	fileSyncPort                     = 50000
-	httpPortName                     = "http-port"
-	compiledPath                     = "static"
-	ForceProd                        = false
+	webPkg       schema.PackageName = "namespacelabs.dev/foundation/std/web/http"
+	httpPort                        = 40000
+	fileSyncPort                    = 50000
+	httpPortName                    = "http-port"
+	compiledPath                    = "static"
+	ForceProd                       = false
 )
 
 func Register() {
@@ -67,17 +70,17 @@ func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error
 }
 
 func (impl) DevelopmentPackages() []schema.PackageName {
-	return []schema.PackageName{controllerPkg}
+	return []schema.PackageName{controllerPkg.PackageName()}
 }
 
 func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBuildAssets, srv provision.Server, isFocus bool) (build.Spec, error) {
 	if useDevBuild(srv.SealedContext().Environment()) {
-		pkg, err := srv.SealedContext().LoadByName(ctx, controllerPkg)
+		pkg, err := srv.SealedContext().LoadByName(ctx, controllerPkg.PackageName())
 		if err != nil {
 			return nil, err
 		}
 
-		p, err := binary.Plan(ctx, pkg, binary.BuildImageOpts{UsePrebuilts: false})
+		p, err := binary.Plan(ctx, pkg, controllerPkg.Name, binary.BuildImageOpts{UsePrebuilts: false})
 		if err != nil {
 			return nil, err
 		}

@@ -167,8 +167,8 @@ type RunAs struct {
 }
 
 type SidecarRunOpts struct {
-	Name        string
-	PackageName schema.PackageName
+	Name       string
+	PackageRef *schema.PackageRef
 	ServerRunOpts
 }
 

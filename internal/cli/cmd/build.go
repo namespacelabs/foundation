@@ -78,7 +78,7 @@ func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[de
 	out := console.TypedOutput(ctx, "build", console.CatOutputUs)
 
 	slices.SortFunc(results, func(a, b compute.ResultWithTimestamp[deploy.ResolvedServerImages]) bool {
-		return strings.Compare(a.Value.Package.String(), b.Value.Package.String()) < 0
+		return strings.Compare(a.Value.PackageRef.String(), b.Value.PackageRef.String()) < 0
 	})
 
 	style := colors.Ctx(ctx)
@@ -89,7 +89,7 @@ func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[de
 
 		resolved := it.Value
 
-		fmt.Fprintf(out, "  %s\n", resolved.Package)
+		fmt.Fprintf(out, "  %s\n", resolved.PackageRef)
 
 		fmt.Fprintf(out, "    %s ", style.Header.Apply("Binary:"))
 		if resolved.PrebuiltBinary {
@@ -103,7 +103,7 @@ func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[de
 		}
 
 		for _, sidecar := range resolved.Sidecars {
-			fmt.Fprintf(out, "    %s %s %s\n", style.Header.Apply("Sidecar:"), sidecar.Package, sidecar.Binary)
+			fmt.Fprintf(out, "    %s %s %s\n", style.Header.Apply("Sidecar:"), sidecar.PackageRef, sidecar.Binary)
 		}
 	}
 }

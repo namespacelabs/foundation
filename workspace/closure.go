@@ -159,7 +159,7 @@ func (g *sealer) Do(pkgs ...schema.PackageName) {
 				return g.DoServer(p.Location, p.Server, p)
 			} else if n := p.Node(); n != nil {
 				return g.DoNode(p.Location, n, p)
-			} else if p.Binary != nil || p.Test != nil {
+			} else if len(p.Binaries) > 0 || p.Test != nil {
 				return nil // Nothing to do.
 			} else {
 				return fnerrors.UserError(pkg, "no server, and no node?")
