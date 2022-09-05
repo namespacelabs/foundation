@@ -12,10 +12,12 @@ import "google/protobuf/any.proto";
 import "schema/environment.proto";
 
 // Workspace definition.
-// Next ID: 10
+// Next ID: 11
 message Workspace {
-    string               module_name = 1;
-    repeated Environment env         = 2;
+    reserved 2;
+
+    string                   module_name = 1;
+    repeated EnvironmentSpec env_spec    = 10;
 
     // Package manager.
     repeated Dependency dep = 3;
@@ -57,6 +59,14 @@ message Workspace {
         string module_name = 1;
     }
 
+    message EnvironmentSpec {
+        string              name                   = 1;
+        string              runtime                = 2;  // E.g. kubernetes
+        Environment.Purpose purpose                = 3;
+        repeated Environment.Label labels          = 4;
+        repeated google.protobuf.Any configuration = 5;
+    }
+
     message LoadedFrom {
         string abs_path        = 1;
         string definition_file = 2;
@@ -69,7 +79,7 @@ message DevHost {
     repeated ConfigureEnvironment configure          = 1;
     repeated ConfigurePlatform    configure_platform = 2;
     repeated google.protobuf.Any configure_tools     = 3;
-    repeated Environment         local_env           = 4;  // Allows specifying environments for local use alone.
+    repeated Workspace.EnvironmentSpec local_env     = 4;  // Allows specifying environments for local use alone.
 
     message ConfigureEnvironment {
         string              name                   = 1;

@@ -159,7 +159,7 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 			return nil, fnerrors.UserError(nil, "%s: no such environment purpose %q", name, env.Purpose)
 		}
 
-		out := &schema.Environment{
+		out := &schema.Workspace_EnvironmentSpec{
 			Name:    name,
 			Runtime: env.Runtime,
 			Purpose: schema.Environment_Purpose(purpose),
@@ -176,10 +176,10 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 			return strings.Compare(a.GetName(), b.GetName()) < 0
 		})
 
-		w.Env = append(w.Env, out)
+		w.EnvSpec = append(w.EnvSpec, out)
 	}
 
-	slices.SortFunc(w.Env, func(a, b *schema.Environment) bool {
+	slices.SortFunc(w.EnvSpec, func(a, b *schema.Workspace_EnvironmentSpec) bool {
 		return strings.Compare(a.Name, b.Name) < 0
 	})
 

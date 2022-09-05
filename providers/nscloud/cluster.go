@@ -358,7 +358,7 @@ func (d deferred) New(ctx context.Context, env planning.Context) (runtime.Runtim
 		return nil, fnerrors.InternalError("cluster creation state is missing")
 	}
 
-	bound := unbound.Bind(env.Workspace(), env.Environment())
+	bound := unbound.Bind(env)
 
 	return clusterRuntime{Runtime: bound, Cluster: p.ProviderSpecific.(*KubernetesCluster)}, nil
 }

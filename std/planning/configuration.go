@@ -16,12 +16,19 @@ type Configuration interface {
 	GetForPlatform(specs.Platform, proto.Message) bool
 	Derive(func([]*anypb.Any) []*anypb.Any) Configuration
 
+	// HashKey returns a digest of the configuration that is being used.
 	HashKey() string
+
+	// Returns true if there's no configuration backing this Configuration
+	// instance (i.e. no configuration was set).
 	IsEmpty() bool
+
+	// When the configuration is loaded pinned to an environment, returns the
+	// environment name. Else, the return value is undefined.
 	EnvKey() string
 }
 
-func MakeConfigurationCompat(devHost *schema.DevHost, env *schema.Environment) Configuration {
+func MakeConfigurationCompat(ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) Configuration {
 	return MakeConfigurationWith(env.Name, selectByEnv(devHost, env), devHost.ConfigurePlatform)
 }
 

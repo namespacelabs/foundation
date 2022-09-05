@@ -42,7 +42,7 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 		}
 	}
 
-	for _, env := range root.Workspace().GetEnv() {
+	for _, env := range root.Workspace().EnvSpec {
 		if !HasRuntime(env.Runtime) {
 			return fnerrors.InternalError("%s is not a supported runtime type", env.Runtime)
 		}

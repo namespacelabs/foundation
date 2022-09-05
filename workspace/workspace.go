@@ -152,8 +152,8 @@ func (r rawWorkspaceData) FormatTo(w io.Writer) error {
 		writeTextMessage(&buf, &schema.Workspace{Replace: ws.Replace})
 	}
 
-	if len(ws.Env) > 0 {
-		writeTextMessage(&buf, &schema.Workspace{Env: ws.Env})
+	if len(ws.EnvSpec) > 0 {
+		writeTextMessage(&buf, &schema.Workspace{EnvSpec: ws.EnvSpec})
 	}
 
 	if len(ws.PrebuiltBinary) > 0 {

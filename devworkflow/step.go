@@ -210,8 +210,7 @@ func resetStack(out *Stack, env planning.Context, availableEnvs []*schema.Enviro
 	out.AbsRoot = env.WorkspaceLoadedFrom().AbsPath
 	out.Env = env.Environment()
 	out.Workspace = workspace
-	out.Workspace.Env = availableEnvs
-	out.AvailableEnv = workspace.Env
+	out.AvailableEnv = availableEnvs
 
 	out.Focus = nil
 	out.Current = nil

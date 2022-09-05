@@ -22,7 +22,7 @@ type Root struct {
 	LoadedDevHost *schema.DevHost
 }
 
-var _ planning.UnboundContext = &Root{}
+var _ planning.RootContext = &Root{}
 
 func NewRoot(w *schema.Workspace, lf *schema.Workspace_LoadedFrom, editable pkggraph.EditableWorkspaceData) *Root {
 	return &Root{

@@ -55,11 +55,11 @@ func (u Unbound) HostConfig() *client.HostConfig {
 	return u.host
 }
 
-func (u Unbound) Bind(ws *schema.Workspace, env *schema.Environment) K8sRuntime {
-	return u.BindToNamespace(env, ModuleNamespace(ws, env))
+func (u Unbound) Bind(env planning.Context) K8sRuntime {
+	return u.bindToNamespace(env.Environment(), ModuleNamespace(env.Workspace(), env.Environment()))
 }
 
-func (u Unbound) BindToNamespace(env *schema.Environment, ns string) K8sRuntime {
+func (u Unbound) bindToNamespace(env *schema.Environment, ns string) K8sRuntime {
 	return K8sRuntime{Unbound: u, env: env, moduleNamespace: ns}
 }
 

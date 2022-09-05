@@ -64,7 +64,7 @@ func (d deferredRuntime) New(ctx context.Context, env planning.Context) (runtime
 		return nil, err
 	}
 
-	return unbound.Bind(env.Workspace(), env.Environment()), nil
+	return unbound.Bind(env), nil
 }
 
 func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApplyConfiguration {

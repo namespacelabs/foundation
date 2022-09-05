@@ -5,12 +5,11 @@
 package planning
 
 import (
-	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )
 
-type UnboundContext interface {
+type RootContext interface {
 	fnerrors.Location
 	DevHost() *schema.DevHost
 	Workspace() *schema.Workspace
@@ -29,10 +28,11 @@ func MakeUnverifiedContext(config Configuration, ws *schema.Workspace, lf *schem
 	return ctx{config: config, errorLocation: errorLocation, workspace: ws, loadedFrom: lf, env: env}
 }
 
-func LoadContext(parent UnboundContext, name string) (Context, error) {
+func LoadContext(parent RootContext, name string) (Context, error) {
 	for _, env := range EnvsOrDefault(parent.DevHost(), parent.Workspace()) {
 		if env.Name == name {
-			return MakeUnverifiedContext(MakeConfigurationCompat(parent.DevHost(), env), parent.Workspace(), parent.WorkspaceLoadedFrom(), env, parent.ErrorLocation()), nil
+			cfg := MakeConfigurationCompat(parent.Workspace(), parent.DevHost(), env)
+			return MakeUnverifiedContext(cfg, parent.Workspace(), parent.WorkspaceLoadedFrom(), env, parent.ErrorLocation()), nil
 		}
 	}
 
@@ -40,13 +40,11 @@ func LoadContext(parent UnboundContext, name string) (Context, error) {
 }
 
 func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*schema.Environment {
-	baseEnvs := slices.Clone(devHost.LocalEnv)
-
-	if workspace.Env != nil {
-		return append(baseEnvs, workspace.Env...)
+	if workspace.EnvSpec != nil {
+		return specToEnv(workspace.EnvSpec...)
 	}
 
-	return append(baseEnvs, []*schema.Environment{
+	return append(specToEnv(devHost.LocalEnv...), []*schema.Environment{
 		{
 			Name:    "dev",
 			Runtime: "kubernetes", // XXX
@@ -63,6 +61,19 @@ func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*sche
 			Purpose: schema.Environment_PRODUCTION,
 		},
 	}...)
+}
+
+func specToEnv(spec ...*schema.Workspace_EnvironmentSpec) []*schema.Environment {
+	var envs []*schema.Environment
+	for _, env := range spec {
+		envs = append(envs, &schema.Environment{
+			Name:    env.Name,
+			Runtime: env.Runtime,
+			Purpose: env.Purpose,
+			Labels:  env.Labels,
+		})
+	}
+	return envs
 }
 
 type ctx struct {

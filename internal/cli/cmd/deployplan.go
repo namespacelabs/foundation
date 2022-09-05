@@ -71,5 +71,5 @@ func (se serializedEnvironment) WorkspaceLoadedFrom() *schema.Workspace_LoadedFr
 func (se serializedEnvironment) Environment() *schema.Environment { return se.env }
 func (se serializedEnvironment) ErrorLocation() string            { return se.root.Abs() }
 func (se serializedEnvironment) Configuration() planning.Configuration {
-	return planning.MakeConfigurationCompat(se.root.DevHost(), se.env)
+	return planning.MakeConfigurationCompat(se.Workspace(), se.root.DevHost(), se.env)
 }

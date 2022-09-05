@@ -324,7 +324,7 @@ func (fw fixedWorkspace) Workspace() *schema.Workspace                      { re
 func (fw fixedWorkspace) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return fw.lf }
 func (fw fixedWorkspace) Environment() *schema.Environment                  { return fw.env }
 func (fw fixedWorkspace) Configuration() planning.Configuration {
-	return planning.MakeConfigurationCompat(fw.devhost, fw.env)
+	return planning.MakeConfigurationCompat(fw.ws, fw.devhost, fw.env)
 }
 
 type workspaceLoader struct {
