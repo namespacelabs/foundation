@@ -8,6 +8,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -28,7 +29,7 @@ type Configuration interface {
 	EnvKey() string
 }
 
-func MakeConfigurationCompat(ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) Configuration {
+func MakeConfigurationCompat(errorloc fnerrors.Location, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
 	var base []*anypb.Any
 	for _, spec := range ws.EnvSpec {
 		if spec.Name == env.Name {
@@ -36,17 +37,46 @@ func MakeConfigurationCompat(ws *schema.Workspace, devHost *schema.DevHost, env 
 		}
 	}
 
+	return makeConfigurationCompat(errorloc, base, devHost, env)
+}
+
+func makeConfigurationCompat(errorloc fnerrors.Location, base []*anypb.Any, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
 	rest := selectByEnv(devHost, env)
-	return MakeConfigurationWith(env.Name, append(base, rest...), devHost.ConfigurePlatform)
+	merged := append(base, rest...)
+
+	var parsed []*anypb.Any
+	for _, m := range merged {
+		if p, ok := configProviders[m.TypeUrl]; ok {
+			messages, err := p(m)
+			if err != nil {
+				return nil, fnerrors.Wrapf(errorloc, err, "%s", m.TypeUrl)
+			}
+
+			for _, msg := range messages {
+				any, err := anypb.New(msg)
+				if err != nil {
+					return nil, fnerrors.InternalError("%s: failed to serialize message: %w", m.TypeUrl, err)
+				}
+
+				parsed = append(parsed, any)
+			}
+		} else {
+			parsed = append(parsed, m)
+		}
+	}
+
+	return MakeConfigurationWith(env.Name, parsed, devHost.ConfigurePlatform), nil
 }
 
 func MakeConfigurationWith(description string, merged []*anypb.Any, platconfig []*schema.DevHost_ConfigurePlatform) Configuration {
 	return config{description, merged, platconfig}
 }
 
+type ConfigurationSlice []*anypb.Any
+
 type config struct {
 	key        string
-	merged     []*anypb.Any
+	merged     ConfigurationSlice
 	platconfig []*schema.DevHost_ConfigurePlatform
 }
 
@@ -105,8 +135,8 @@ func (cfg config) Derive(f func([]*anypb.Any) []*anypb.Any) Configuration {
 	}
 }
 
-func selectByEnv(devHost *schema.DevHost, env *schema.Environment) []*anypb.Any {
-	var slice []*anypb.Any
+func selectByEnv(devHost *schema.DevHost, env *schema.Environment) ConfigurationSlice {
+	var slice ConfigurationSlice
 
 	for _, cfg := range devHost.GetConfigure() {
 		if cfg.Purpose != 0 && cfg.Purpose != env.GetPurpose() {

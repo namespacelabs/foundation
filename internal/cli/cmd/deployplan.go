@@ -53,23 +53,27 @@ func NewDeployPlanCmd() *cobra.Command {
 			return fnerrors.New("failed to prepare plan: %w", err)
 		}
 
-		return completeDeployment(ctx, serializedEnvironment{root, plan.Environment}, p, plan, opts)
+		config, err := planning.MakeConfigurationCompat(root, root.Workspace(), root.DevHost(), plan.Environment)
+		if err != nil {
+			return err
+		}
+
+		return completeDeployment(ctx, serializedEnvironment{root, config, plan.Environment}, p, plan, opts)
 	})
 
 	return cmd
 }
 
 type serializedEnvironment struct {
-	root *workspace.Root
-	env  *schema.Environment
+	root   *workspace.Root
+	config planning.Configuration
+	env    *schema.Environment
 }
 
 func (se serializedEnvironment) Workspace() *schema.Workspace { return se.root.Workspace() }
 func (se serializedEnvironment) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
 	return se.root.WorkspaceLoadedFrom()
 }
-func (se serializedEnvironment) Environment() *schema.Environment { return se.env }
-func (se serializedEnvironment) ErrorLocation() string            { return se.root.Abs() }
-func (se serializedEnvironment) Configuration() planning.Configuration {
-	return planning.MakeConfigurationCompat(se.Workspace(), se.root.DevHost(), se.env)
-}
+func (se serializedEnvironment) Environment() *schema.Environment      { return se.env }
+func (se serializedEnvironment) ErrorLocation() string                 { return se.root.ErrorLocation() }
+func (se serializedEnvironment) Configuration() planning.Configuration { return se.config }

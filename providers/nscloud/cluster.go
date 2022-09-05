@@ -16,7 +16,10 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/client-go/tools/clientcmd/api"
+	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -91,6 +94,23 @@ var (
 func RegisterClusterProvider() {
 	client.RegisterProvider("nscloud", provideCluster)
 	client.RegisterDeferredProvider("nscloud", provideDeferred)
+
+	planning.RegisterConfigProvider(&Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
+		cluster := &Cluster{}
+		if err := input.UnmarshalTo(cluster); err != nil {
+			return nil, err
+		}
+
+		if cluster.ClusterId == "" {
+			return nil, fnerrors.BadInputError("cluster_id must be specified")
+		}
+
+		return []proto.Message{
+			&client.HostEnv{Provider: "nscloud"},
+			&registry.Provider{Provider: "nscloud"},
+			&PrebuiltCluster{ClusterId: cluster.ClusterId},
+		}, nil
+	})
 }
 
 func provideCluster(ctx context.Context, cfg planning.Configuration) (client.Provider, error) {

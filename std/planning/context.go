@@ -33,8 +33,12 @@ func LoadContext(parent RootContext, name string) (Context, error) {
 	for _, env := range EnvsOrDefault(parent.DevHost(), parent.Workspace()) {
 		if env.Name == name {
 			schemaEnv := schema.SpecToEnv(env)[0]
-			merged := append(slices.Clone(env.Configuration), selectByEnv(parent.DevHost(), schemaEnv)...)
-			cfg := MakeConfigurationWith(env.Name, merged, parent.DevHost().ConfigurePlatform)
+
+			cfg, err := makeConfigurationCompat(parent, env.Configuration, parent.DevHost(), schemaEnv)
+			if err != nil {
+				return nil, err
+			}
+
 			return MakeUnverifiedContext(cfg, parent.Workspace(), parent.WorkspaceLoadedFrom(), schemaEnv, parent.ErrorLocation()), nil
 		}
 	}

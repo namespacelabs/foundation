@@ -289,7 +289,13 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 
 			// Add dep and reload package loader for new deps
 			alloc.ws.Dep = append(alloc.ws.Dep, dep)
-			alloc.loader = workspace.NewPackageLoader(fixedWorkspace{alloc.ws, alloc.root.WorkspaceLoadedFrom(), alloc.root.DevHost(), alloc.env.Environment()})
+
+			config, err := planning.MakeConfigurationCompat(alloc.root, alloc.root.Workspace(), alloc.root.DevHost(), alloc.env.Environment())
+			if err != nil {
+				return pkggraph.Location{}, err
+			}
+
+			alloc.loader = workspace.NewPackageLoader(fixedWorkspace{alloc.ws, alloc.root.WorkspaceLoadedFrom(), config, alloc.env.Environment()})
 		}
 
 		didResolve = true
@@ -313,19 +319,17 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 }
 
 type fixedWorkspace struct {
-	ws      *schema.Workspace
-	lf      *schema.Workspace_LoadedFrom
-	devhost *schema.DevHost
-	env     *schema.Environment
+	ws     *schema.Workspace
+	lf     *schema.Workspace_LoadedFrom
+	config planning.Configuration
+	env    *schema.Environment
 }
 
 func (fw fixedWorkspace) ErrorLocation() string                             { return fw.ws.ModuleName }
 func (fw fixedWorkspace) Workspace() *schema.Workspace                      { return fw.ws }
 func (fw fixedWorkspace) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return fw.lf }
 func (fw fixedWorkspace) Environment() *schema.Environment                  { return fw.env }
-func (fw fixedWorkspace) Configuration() planning.Configuration {
-	return planning.MakeConfigurationCompat(fw.ws, fw.devhost, fw.env)
-}
+func (fw fixedWorkspace) Configuration() planning.Configuration             { return fw.config }
 
 type workspaceLoader struct {
 	alloc *allocator
