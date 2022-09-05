@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             (unknown)
-// source: internal/orchestration/service/proto/service.proto
+// source: internal/orchestration/server/proto/service.proto
 
 package proto
 
@@ -36,7 +36,7 @@ func NewOrchestrationServiceClient(cc grpc.ClientConnInterface) OrchestrationSer
 
 func (c *orchestrationServiceClient) Deploy(ctx context.Context, in *DeployRequest, opts ...grpc.CallOption) (*DeployResponse, error) {
 	out := new(DeployResponse)
-	err := c.cc.Invoke(ctx, "/nsl.orchestration.service.proto.OrchestrationService/Deploy", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/nsl.orchestration.OrchestrationService/Deploy", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (c *orchestrationServiceClient) Deploy(ctx context.Context, in *DeployReque
 }
 
 func (c *orchestrationServiceClient) DeploymentStatus(ctx context.Context, in *DeploymentStatusRequest, opts ...grpc.CallOption) (OrchestrationService_DeploymentStatusClient, error) {
-	stream, err := c.cc.NewStream(ctx, &OrchestrationService_ServiceDesc.Streams[0], "/nsl.orchestration.service.proto.OrchestrationService/DeploymentStatus", opts...)
+	stream, err := c.cc.NewStream(ctx, &OrchestrationService_ServiceDesc.Streams[0], "/nsl.orchestration.OrchestrationService/DeploymentStatus", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func _OrchestrationService_Deploy_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/nsl.orchestration.service.proto.OrchestrationService/Deploy",
+		FullMethod: "/nsl.orchestration.OrchestrationService/Deploy",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OrchestrationServiceServer).Deploy(ctx, req.(*DeployRequest))
@@ -148,7 +148,7 @@ func (x *orchestrationServiceDeploymentStatusServer) Send(m *DeploymentStatusRes
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var OrchestrationService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "nsl.orchestration.service.proto.OrchestrationService",
+	ServiceName: "nsl.orchestration.OrchestrationService",
 	HandlerType: (*OrchestrationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -163,5 +163,5 @@ var OrchestrationService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "internal/orchestration/service/proto/service.proto",
+	Metadata: "internal/orchestration/server/proto/service.proto",
 }

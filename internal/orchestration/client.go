@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/orchestration/service/proto"
+	"namespacelabs.dev/foundation/internal/orchestration/server/proto"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	serverPkg  = "namespacelabs.dev/foundation/internal/orchestration/server"
-	servicePkg = "namespacelabs.dev/foundation/internal/orchestration/service"
+	serverPkg   = "namespacelabs.dev/foundation/internal/orchestration/server"
+	serviceName = "orchestration-service"
 )
 
 var (
@@ -94,16 +94,17 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 		}
 	}
 
-	endpoint := &schema.Endpoint{}
+	var endpoint *schema.Endpoint
 	for _, e := range computed.ComputedStack.Endpoints {
-		if e.EndpointOwner != servicePkg {
-			continue
+		if e.EndpointOwner == serverPkg && e.ServiceName == serviceName {
+			endpoint = e
+			break
+
 		}
-		for _, meta := range e.ServiceMetadata {
-			if meta.Kind == proto.OrchestrationService_ServiceDesc.ServiceName {
-				endpoint = e
-			}
-		}
+	}
+
+	if endpoint == nil {
+		return nil, fnerrors.InternalError("orchestration service not found: %+v", computed.ComputedStack.Endpoints)
 	}
 
 	rt := runtime.For(ctx, c.env)

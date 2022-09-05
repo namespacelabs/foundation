@@ -11,7 +11,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/internal/fnapi"
-	"namespacelabs.dev/foundation/internal/orchestration/service/proto"
+	"namespacelabs.dev/foundation/internal/orchestration/server/proto"
 	"namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/schema/orchestration"

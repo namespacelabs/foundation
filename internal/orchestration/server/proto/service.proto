@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package nsl.orchestration.service.proto;
+package nsl.orchestration;
 
-option go_package = "namespacelabs.dev/foundation/internal/orchestration/service/proto";
+option go_package = "namespacelabs.dev/foundation/internal/orchestration/proto";
 
 import "providers/aws/aws.proto";
 import "internal/fnapi/userauth.proto";
