@@ -15,7 +15,7 @@ import (
 
 type env struct {
 	config    planning.Configuration
-	workspace *schema.Workspace
+	workspace planning.Workspace
 	env       *schema.Environment
 }
 
@@ -29,13 +29,12 @@ func makeEnv(plan *schema.DeployPlan, awsConf *aws.Conf) *env {
 
 	return &env{
 		config:    planning.MakeConfigurationWith(plan.Environment.Name, config, nil),
-		workspace: plan.Workspace,
+		workspace: planning.MakeWorkspace(plan.Workspace, nil),
 		env:       plan.Environment,
 	}
 }
 
-func (e env) Configuration() planning.Configuration             { return e.config }
-func (e env) ErrorLocation() string                             { return e.workspace.ModuleName }
-func (e env) Workspace() *schema.Workspace                      { return e.workspace }
-func (e env) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return nil } // Not needed in orchestrator
-func (e env) Environment() *schema.Environment                  { return e.env }
+func (e env) Configuration() planning.Configuration { return e.config }
+func (e env) ErrorLocation() string                 { return e.workspace.ModuleName() }
+func (e env) Workspace() planning.Workspace         { return e.workspace }
+func (e env) Environment() *schema.Environment      { return e.env }

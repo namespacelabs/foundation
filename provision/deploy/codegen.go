@@ -69,10 +69,7 @@ func (ce codegenEnv) Environment() *schema.Environment      { return ce.env }
 func (ce codegenEnv) ModuleName() string                    { return ce.root.ModuleName() }
 func (ce codegenEnv) ReadWriteFS() fnfs.ReadWriteFS         { return ce.fs }
 func (ce codegenEnv) Configuration() planning.Configuration { return ce.config }
-func (ce codegenEnv) Workspace() *schema.Workspace          { return ce.root.Workspace }
-func (ce codegenEnv) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
-	return ce.root.WorkspaceData.WorkspaceLoadedFrom()
-}
+func (ce codegenEnv) Workspace() planning.Workspace         { return ce.root.WorkspaceData }
 
 func (ce codegenEnv) Resolve(ctx context.Context, pkg schema.PackageName) (pkggraph.Location, error) {
 	return ce.packages.Resolve(ctx, pkg)

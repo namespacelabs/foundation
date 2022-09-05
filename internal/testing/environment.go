@@ -45,7 +45,7 @@ func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool)
 		return previous
 	})
 
-	return planning.MakeUnverifiedContext(newCfg, sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), testEnv, sourceEnv.ErrorLocation())
+	return planning.MakeUnverifiedContext(newCfg, sourceEnv.Workspace(), testEnv, sourceEnv.ErrorLocation())
 }
 
 func makeDeleteEnv(env planning.Context) func(context.Context) error {
@@ -78,7 +78,7 @@ func envWithVCluster(ctx context.Context, sourceEnv planning.Context, vcluster *
 		return append(c.Configuration, previous...)
 	})
 
-	env := planning.MakeUnverifiedContext(cfg, sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), testEnv, sourceEnv.ErrorLocation())
+	env := planning.MakeUnverifiedContext(cfg, sourceEnv.Workspace(), testEnv, sourceEnv.ErrorLocation())
 
 	deleteEnv := makeDeleteEnv(sourceEnv)
 	return env, func(ctx context.Context) error {

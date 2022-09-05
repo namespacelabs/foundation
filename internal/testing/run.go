@@ -118,7 +118,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 
 	var waitErr error
 	if orchestration.UseOrchestrator {
-		deployPlan := deploy.Serialize(env.Workspace(), env.Environment(), test.Stack, p, test.ServersUnderTest)
+		deployPlan := deploy.Serialize(env.Workspace().Proto(), env.Environment(), test.Stack, p, test.ServersUnderTest)
 		id, err := orchestration.Deploy(ctx, env, deployPlan)
 		if err != nil {
 			return nil, err

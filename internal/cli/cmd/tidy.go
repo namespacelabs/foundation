@@ -135,14 +135,14 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 	alloc := &allocator{
 		loader:   pl,
 		root:     root,
-		ws:       protos.Clone(root.Workspace()),
+		ws:       protos.Clone(root.Workspace().Proto()),
 		resolved: map[string]*schema.Workspace_Dependency{},
 		modules:  map[string]*schema.Workspace_Dependency{},
 		left:     locs,
 		env:      env,
 	}
 
-	for _, dep := range root.Workspace().Dep {
+	for _, dep := range alloc.ws.Dep {
 		alloc.modules[dep.ModuleName] = dep
 	}
 
@@ -184,7 +184,7 @@ func fillDependencies(ctx context.Context, root *workspace.Root, pl *workspace.P
 		}
 	}
 
-	if root.Workspace().ModuleName != foundationModule {
+	if root.Workspace().ModuleName() != foundationModule {
 		// Always add a dep on the foundation module.
 		if _, err := alloc.checkResolve(ctx, schema.PackageName(foundationModule)); err != nil {
 			return err
@@ -246,7 +246,7 @@ func (alloc *allocator) checkResolves(ctx context.Context, pkgs []string, refs [
 }
 
 func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName) (pkggraph.Location, error) {
-	if _, ok := schema.IsParent(alloc.root.Workspace().ModuleName, sch); ok {
+	if _, ok := schema.IsParent(alloc.root.Workspace().ModuleName(), sch); ok {
 		return alloc.loader.Resolve(ctx, sch)
 	}
 
@@ -290,12 +290,12 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 			// Add dep and reload package loader for new deps
 			alloc.ws.Dep = append(alloc.ws.Dep, dep)
 
-			config, err := planning.MakeConfigurationCompat(alloc.root, alloc.root.Workspace(), alloc.root.DevHost(), alloc.env.Environment())
+			config, err := planning.MakeConfigurationCompat(alloc.root, alloc.root.Workspace().Proto(), alloc.root.DevHost(), alloc.env.Environment())
 			if err != nil {
 				return pkggraph.Location{}, err
 			}
 
-			alloc.loader = workspace.NewPackageLoader(fixedWorkspace{alloc.ws, alloc.root.WorkspaceLoadedFrom(), config, alloc.env.Environment()})
+			alloc.loader = workspace.NewPackageLoader(fixedWorkspace{planning.MakeWorkspace(alloc.ws, alloc.root.Workspace().LoadedFrom()), config, alloc.env.Environment()})
 		}
 
 		didResolve = true
@@ -319,17 +319,15 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 }
 
 type fixedWorkspace struct {
-	ws     *schema.Workspace
-	lf     *schema.Workspace_LoadedFrom
+	ws     planning.Workspace
 	config planning.Configuration
 	env    *schema.Environment
 }
 
-func (fw fixedWorkspace) ErrorLocation() string                             { return fw.ws.ModuleName }
-func (fw fixedWorkspace) Workspace() *schema.Workspace                      { return fw.ws }
-func (fw fixedWorkspace) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return fw.lf }
-func (fw fixedWorkspace) Environment() *schema.Environment                  { return fw.env }
-func (fw fixedWorkspace) Configuration() planning.Configuration             { return fw.config }
+func (fw fixedWorkspace) ErrorLocation() string                 { return fw.ws.ModuleName() }
+func (fw fixedWorkspace) Workspace() planning.Workspace         { return fw.ws }
+func (fw fixedWorkspace) Environment() *schema.Environment      { return fw.env }
+func (fw fixedWorkspace) Configuration() planning.Configuration { return fw.config }
 
 type workspaceLoader struct {
 	alloc *allocator

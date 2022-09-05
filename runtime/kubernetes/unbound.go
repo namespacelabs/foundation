@@ -56,7 +56,7 @@ func (u Unbound) HostConfig() *client.HostConfig {
 }
 
 func (u Unbound) Bind(env planning.Context) K8sRuntime {
-	return u.bindToNamespace(env.Environment(), ModuleNamespace(env.Workspace(), env.Environment()))
+	return u.bindToNamespace(env.Environment(), ModuleNamespace(env.Workspace().Proto(), env.Environment()))
 }
 
 func (u Unbound) bindToNamespace(env *schema.Environment, ns string) K8sRuntime {

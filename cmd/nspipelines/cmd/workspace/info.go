@@ -32,7 +32,7 @@ func newInfoCmd() *cobra.Command {
 			return err
 		}
 
-		w := data.Parsed()
+		w := data.Proto()
 
 		output := infoOutput{
 			ModuleName: w.ModuleName,

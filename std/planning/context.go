@@ -13,24 +13,22 @@ import (
 type RootContext interface {
 	fnerrors.Location
 	DevHost() *schema.DevHost
-	Workspace() *schema.Workspace
-	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
+	Workspace() Workspace
 }
 
 type Context interface {
 	fnerrors.Location
-	Workspace() *schema.Workspace
-	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
+	Workspace() Workspace
 	Configuration() Configuration
 	Environment() *schema.Environment
 }
 
-func MakeUnverifiedContext(config Configuration, ws *schema.Workspace, lf *schema.Workspace_LoadedFrom, env *schema.Environment, errorLocation string) Context {
-	return ctx{config: config, errorLocation: errorLocation, workspace: ws, loadedFrom: lf, env: env}
+func MakeUnverifiedContext(config Configuration, ws Workspace, env *schema.Environment, errorLocation string) Context {
+	return ctx{config: config, errorLocation: errorLocation, workspace: ws, env: env}
 }
 
 func LoadContext(parent RootContext, name string) (Context, error) {
-	for _, env := range EnvsOrDefault(parent.DevHost(), parent.Workspace()) {
+	for _, env := range EnvsOrDefault(parent.DevHost(), parent.Workspace().Proto()) {
 		if env.Name == name {
 			schemaEnv := schema.SpecToEnv(env)[0]
 
@@ -39,7 +37,7 @@ func LoadContext(parent RootContext, name string) (Context, error) {
 				return nil, err
 			}
 
-			return MakeUnverifiedContext(cfg, parent.Workspace(), parent.WorkspaceLoadedFrom(), schemaEnv, parent.ErrorLocation()), nil
+			return MakeUnverifiedContext(cfg, parent.Workspace(), schemaEnv, parent.ErrorLocation()), nil
 		}
 	}
 
@@ -74,13 +72,11 @@ func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*sche
 type ctx struct {
 	config        Configuration
 	errorLocation string
-	workspace     *schema.Workspace
-	loadedFrom    *schema.Workspace_LoadedFrom
+	workspace     Workspace
 	env           *schema.Environment
 }
 
-func (e ctx) ErrorLocation() string                             { return e.errorLocation }
-func (e ctx) Workspace() *schema.Workspace                      { return e.workspace }
-func (e ctx) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return e.loadedFrom }
-func (e ctx) Environment() *schema.Environment                  { return e.env }
-func (e ctx) Configuration() Configuration                      { return e.config }
+func (e ctx) ErrorLocation() string            { return e.errorLocation }
+func (e ctx) Workspace() Workspace             { return e.workspace }
+func (e ctx) Environment() *schema.Environment { return e.env }
+func (e ctx) Configuration() Configuration     { return e.config }

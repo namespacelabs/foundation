@@ -135,7 +135,7 @@ func generateProtoSrcs(ctx context.Context, env planning.Context, request map[sc
 }
 
 func GenProtosAtPaths(ctx context.Context, env planning.Context, fmwk schema.Framework, fsys fs.FS, paths []string, out fnfs.ReadWriteFS) error {
-	opts, err := workspace.MakeProtoParseOpts(ctx, workspace.NewPackageLoader(env), env.Workspace())
+	opts, err := workspace.MakeProtoParseOpts(ctx, workspace.NewPackageLoader(env), env.Workspace().Proto())
 	if err != nil {
 		return err
 	}

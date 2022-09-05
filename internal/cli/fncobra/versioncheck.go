@@ -77,5 +77,5 @@ func getWorkspaceRequirements(ctx context.Context) *schema.Workspace_FoundationR
 		return nil
 	}
 
-	return wsData.Parsed().Foundation
+	return wsData.Proto().Foundation
 }

@@ -147,7 +147,7 @@ func ComputeIngress(ctx context.Context, env planning.Context, sch *schema.Stack
 			return nil, fnerrors.BadInputError("can't mix grpc and http paths within a single endpoint")
 		}
 
-		attached, err := AttachComputedDomains(ctx, env.Workspace().ModuleName, env, sch, &schema.IngressFragment{
+		attached, err := AttachComputedDomains(ctx, env.Workspace().ModuleName(), env, sch, &schema.IngressFragment{
 			Name:        endpoint.ServiceName,
 			Owner:       endpoint.ServerOwner,
 			Endpoint:    endpoint,
@@ -219,7 +219,7 @@ func ComputeIngress(ctx context.Context, env planning.Context, sch *schema.Stack
 				})
 			}
 
-			attached, err := AttachComputedDomains(ctx, env.Workspace().ModuleName, env, sch, &schema.IngressFragment{
+			attached, err := AttachComputedDomains(ctx, env.Workspace().ModuleName(), env, sch, &schema.IngressFragment{
 				Name:     serverScoped(sch.Server, name),
 				Owner:    sch.GetPackageName().String(),
 				HttpPath: paths,

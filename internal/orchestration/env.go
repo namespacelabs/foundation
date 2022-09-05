@@ -13,11 +13,8 @@ type orchEnv struct {
 	ctx planning.Context
 }
 
-func (e orchEnv) ErrorLocation() string        { return e.ctx.ErrorLocation() }
-func (e orchEnv) Workspace() *schema.Workspace { return e.ctx.Workspace() }
-func (e orchEnv) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
-	return e.ctx.WorkspaceLoadedFrom()
-}
+func (e orchEnv) ErrorLocation() string                 { return e.ctx.ErrorLocation() }
+func (e orchEnv) Workspace() planning.Workspace         { return e.ctx.Workspace() }
 func (e orchEnv) Configuration() planning.Configuration { return e.ctx.Configuration() }
 
 // We use a static environment here, since the orchestrator has global scope.

@@ -109,7 +109,7 @@ func newNewCmd() *cobra.Command {
 				Repository:         "github.com/" + ev.Repository.FullName,
 				CommitId:           ev.HeadCommit.ID,
 				AuthorLogin:        ev.Sender.Login,
-				ModuleName:         []string{workspaceData.Parsed().ModuleName},
+				ModuleName:         []string{workspaceData.ModuleName()},
 				PipelineName:       *pipelineName,
 				NspipelinesVersion: *nspipelinesVersion,
 			})
@@ -121,7 +121,7 @@ func newNewCmd() *cobra.Command {
 			var moduleName string
 			// The workspace may be not initialized yet, for example before running `ns starter`.
 			if err == nil {
-				moduleName = workspaceData.Parsed().ModuleName
+				moduleName = workspaceData.ModuleName()
 			}
 
 			remoteUrl, err := git.RemoteUrl(ctx, *workspaceDir)

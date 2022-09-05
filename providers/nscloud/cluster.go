@@ -387,7 +387,7 @@ func (d deferred) New(ctx context.Context, env planning.Context) (runtime.Runtim
 
 func (d deferred) PrepareProvision(_ context.Context, env planning.Context) (*rtypes.ProvisionProps, error) {
 	// XXX fetch SystemInfo in the future.
-	return kubernetes.PrepareProvisionWith(env.Environment(), kubernetes.ModuleNamespace(env.Workspace(), env.Environment()), &kubedef.SystemInfo{
+	return kubernetes.PrepareProvisionWith(env.Environment(), kubernetes.ModuleNamespace(env.Workspace().Proto(), env.Environment()), &kubedef.SystemInfo{
 		NodePlatform:         []string{"linux/amd64"},
 		DetectedDistribution: "k3s",
 	})

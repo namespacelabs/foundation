@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 type EditableWorkspaceData interface {
@@ -18,11 +19,11 @@ type EditableWorkspaceData interface {
 }
 
 type WorkspaceData interface {
+	planning.Workspace
+
 	AbsPath() string
 	DefinitionFile() string
 	RawData() []byte
-	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
-	Parsed() *schema.Workspace
 
 	EditableWorkspaceData
 }

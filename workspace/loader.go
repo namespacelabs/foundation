@@ -76,8 +76,7 @@ var MakeFrontend func(EarlyPackageLoader, *schema.Environment) Frontend
 // already loaded packages to minimize this fan-out cost.
 type PackageLoader struct {
 	absPath       string
-	workspace     *schema.Workspace
-	loadedFrom    *schema.Workspace_LoadedFrom
+	workspace     planning.Workspace
 	frontend      Frontend
 	rootmodule    *pkggraph.Module
 	mu            sync.RWMutex
@@ -111,15 +110,14 @@ type loadingPackage struct {
 
 func NewPackageLoader(env planning.Context) *PackageLoader {
 	pl := &PackageLoader{}
-	pl.absPath = env.WorkspaceLoadedFrom().AbsPath
+	pl.absPath = env.Workspace().LoadedFrom().AbsPath
 	pl.workspace = env.Workspace()
-	pl.loadedFrom = env.WorkspaceLoadedFrom()
 	pl.loaded = map[schema.PackageName]*Package{}
 	pl.loading = map[schema.PackageName]*loadingPackage{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
 	pl.loadedModules = map[string]*pkggraph.Module{}
 	pl.frontend = MakeFrontend(pl, env.Environment())
-	pl.rootmodule = pl.inject(env.WorkspaceLoadedFrom(), env.Workspace(), "" /* version */)
+	pl.rootmodule = pl.inject(env.Workspace().LoadedFrom(), env.Workspace().Proto(), "" /* version */)
 	return pl
 }
 
@@ -158,9 +156,9 @@ func (pl *PackageLoader) Seal() pkggraph.SealedPackageLoader {
 func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.PackageName) (pkggraph.Location, error) {
 	pkg := string(packageName)
 
-	if packageName.Equals(pl.workspace.ModuleName) {
+	if packageName.Equals(pl.workspace.ModuleName()) {
 		return pl.rootmodule.MakeLocation("."), nil
-	} else if rel := strings.TrimPrefix(pkg, pl.workspace.ModuleName+"/"); rel != pkg {
+	} else if rel := strings.TrimPrefix(pkg, pl.workspace.ModuleName()+"/"); rel != pkg {
 		return pl.rootmodule.MakeLocation(rel), nil
 	}
 
@@ -173,7 +171,7 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 		return *replaced, nil
 	}
 
-	mods := pl.workspace.Dep
+	mods := pl.workspace.Proto().Dep
 
 	// XXX longest prefix match?
 	for _, mod := range mods {
@@ -182,11 +180,11 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 		}
 	}
 
-	return pkggraph.Location{}, fnerrors.UsageError("Run `ns tidy`.", "%s: missing entry in %s: run:\n  ns tidy", packageName, pl.loadedFrom.DefinitionFile)
+	return pkggraph.Location{}, fnerrors.UsageError("Run `ns tidy`.", "%s: missing entry in %s: run:\n  ns tidy", packageName, pl.workspace.LoadedFrom().DefinitionFile)
 }
 
 func (pl *PackageLoader) MatchModuleReplace(ctx context.Context, packageName schema.PackageName) (*pkggraph.Location, error) {
-	for _, replace := range pl.workspace.Replace {
+	for _, replace := range pl.workspace.Proto().Replace {
 		rel, ok := schema.IsParent(replace.ModuleName, packageName)
 		if ok {
 			module, err := pl.resolveExternal(ctx, replace.ModuleName, func() (*LocalModule, error) {
@@ -325,11 +323,11 @@ func (pl *PackageLoader) resolveExternal(ctx context.Context, moduleName string,
 		return nil, err
 	}
 
-	if data.Parsed().ModuleName != moduleName {
-		return nil, fnerrors.InternalError("%s: inconsistent definition, module specified %q", moduleName, data.Parsed().ModuleName)
+	if data.ModuleName() != moduleName {
+		return nil, fnerrors.InternalError("%s: inconsistent definition, module specified %q", moduleName, data.ModuleName())
 	}
 
-	return pl.inject(data.WorkspaceLoadedFrom(), data.Parsed(), downloaded.Version), nil
+	return pl.inject(data.LoadedFrom(), data.Proto(), downloaded.Version), nil
 }
 
 type PackageLoaderStats struct {

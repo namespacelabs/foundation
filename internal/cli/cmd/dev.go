@@ -77,7 +77,7 @@ func NewDevCmd() *cobra.Command {
 				updateWebUISticky(ctx, "preparing")
 
 				sesh, err := devworkflow.NewSession(console.Errors(ctx), sink, localHost,
-					schema.SpecToEnv(planning.EnvsOrDefault(locs.Root.DevHost(), locs.Root.Workspace())...))
+					schema.SpecToEnv(planning.EnvsOrDefault(locs.Root.DevHost(), locs.Root.Workspace().Proto())...))
 				if err != nil {
 					return err
 				}
@@ -88,7 +88,7 @@ func NewDevCmd() *cobra.Command {
 				sesh.DeferRequest(&devworkflow.DevWorkflowRequest{
 					Type: &devworkflow.DevWorkflowRequest_SetWorkspace_{
 						SetWorkspace: &devworkflow.DevWorkflowRequest_SetWorkspace{
-							AbsRoot:           env.WorkspaceLoadedFrom().AbsPath,
+							AbsRoot:           env.Workspace().LoadedFrom().AbsPath,
 							PackageName:       serverPackages[0],
 							AdditionalServers: serverPackages[1:],
 							EnvName:           env.Environment().Name,

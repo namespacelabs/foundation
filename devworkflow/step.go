@@ -205,9 +205,9 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 }
 
 func resetStack(out *Stack, env planning.Context, availableEnvs []*schema.Environment, focus []provision.Server) {
-	workspace := protos.Clone(env.Workspace())
+	workspace := protos.Clone(env.Workspace().Proto())
 
-	out.AbsRoot = env.WorkspaceLoadedFrom().AbsPath
+	out.AbsRoot = env.Workspace().LoadedFrom().AbsPath
 	out.Env = env.Environment()
 	out.Workspace = workspace
 	out.AvailableEnv = availableEnvs

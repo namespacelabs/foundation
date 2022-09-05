@@ -53,7 +53,7 @@ func ModuleAt(ctx context.Context, path string, args ModuleAtArgs) (pkggraph.Wor
 	}
 
 	if !args.SkipAPIRequirements {
-		if err := validateAPIRequirements(ws.Parsed().ModuleName, ws.Parsed().Foundation); err != nil {
+		if err := validateAPIRequirements(ws.ModuleName(), ws.Proto().Foundation); err != nil {
 			return ws, err
 		}
 	}
@@ -125,10 +125,12 @@ type rawWorkspaceData struct {
 	parsed                  *schema.Workspace
 }
 
-func (r rawWorkspaceData) AbsPath() string           { return r.absPath }
-func (r rawWorkspaceData) DefinitionFile() string    { return r.definitionFile }
-func (r rawWorkspaceData) RawData() []byte           { return r.data }
-func (r rawWorkspaceData) Parsed() *schema.Workspace { return r.parsed }
+func (r rawWorkspaceData) ModuleName() string       { return r.parsed.ModuleName }
+func (r rawWorkspaceData) Proto() *schema.Workspace { return r.parsed }
+
+func (r rawWorkspaceData) AbsPath() string        { return r.absPath }
+func (r rawWorkspaceData) DefinitionFile() string { return r.definitionFile }
+func (r rawWorkspaceData) RawData() []byte        { return r.data }
 
 func (r rawWorkspaceData) FormatTo(w io.Writer) error {
 	// We force a particular structure by controlling which messages are emited when.
@@ -214,7 +216,7 @@ func (r rawWorkspaceData) WithReplacedDependencies(deps []*schema.Workspace_Depe
 	return copy
 }
 
-func (r rawWorkspaceData) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
+func (r rawWorkspaceData) LoadedFrom() *schema.Workspace_LoadedFrom {
 	return &schema.Workspace_LoadedFrom{
 		AbsPath:        r.AbsPath(),
 		DefinitionFile: r.DefinitionFile(),

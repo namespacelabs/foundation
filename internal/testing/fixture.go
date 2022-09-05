@@ -159,7 +159,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		Plan:             deployPlan,
 		ServersUnderTest: sutServers,
 		EnvProto:         env.Environment(),
-		Workspace:        env.Workspace(),
+		Workspace:        env.Workspace().Proto(),
 		Stack:            stack.Proto(),
 		TestBinPkg:       testBinaryPkg.PackageName(),
 		TestBinCommand:   testBin.Command,
@@ -302,7 +302,7 @@ func maybeCreateVCluster(env planning.Context) compute.Computable[*vcluster.VClu
 		return compute.Error[*vcluster.VCluster](err)
 	}
 
-	ns := kubernetes.ModuleNamespace(env.Workspace(), env.Environment())
+	ns := kubernetes.ModuleNamespace(env.Workspace().Proto(), env.Environment())
 
 	return vcluster.Create(env.Environment(), hostConfig, ns)
 }

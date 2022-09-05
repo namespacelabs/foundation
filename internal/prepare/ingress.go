@@ -52,7 +52,7 @@ func PrepareIngressFromHostConfig(env planning.Context, k8sconfig compute.Comput
 func PrepareIngress(env planning.Context, kube compute.Computable[kubernetes.Unbound]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.ingress").HumanReadablef("Deploying the Kubernetes ingress controller (may take up to 30 seconds)"),
-		compute.Inputs().Computable("runtime", kube).Proto("env", env.Environment()).Proto("workspace", env.Workspace()),
+		compute.Inputs().Computable("runtime", kube).Proto("env", env.Environment()).Proto("workspace", env.Workspace().Proto()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			kube := compute.MustGetDepValue(deps, kube, "runtime")

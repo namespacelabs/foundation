@@ -41,7 +41,7 @@ func newModDownloadCmd() *cobra.Command {
 				return err
 			}
 
-			for _, dep := range root.Workspace().Dep {
+			for _, dep := range root.Workspace().Proto().Dep {
 				mod, err := workspace.DownloadModule(ctx, dep, force)
 				if err != nil {
 					return err

@@ -41,14 +41,14 @@ func newBufGenerateCmd() *cobra.Command {
 		Do(func(ctx context.Context) error {
 			var paths []string
 			for _, loc := range locs.Locs {
-				if loc.ModuleName != env.Workspace().ModuleName {
+				if loc.ModuleName != env.Workspace().ModuleName() {
 					return fnerrors.InternalError("%s: can't run codegen on files outside of the current workspace", loc.ModuleName)
 				}
 
 				paths = append(paths, loc.RelPath)
 			}
 
-			loc, err := workspace.NewPackageLoader(env).Resolve(ctx, schema.PackageName(env.Workspace().ModuleName))
+			loc, err := workspace.NewPackageLoader(env).Resolve(ctx, schema.PackageName(env.Workspace().ModuleName()))
 			if err != nil {
 				return err
 			}

@@ -69,7 +69,7 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 		return err
 	}
 
-	locs, err := locationsFromArgs(root.Workspace().ModuleName, root.Workspace().AllReferencedModules(), relCwd, args)
+	locs, err := locationsFromArgs(root.Workspace().ModuleName(), root.Workspace().Proto().AllReferencedModules(), relCwd, args)
 	if err != nil {
 		return err
 	}

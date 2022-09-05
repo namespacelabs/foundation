@@ -72,7 +72,7 @@ func RunYarn(ctx context.Context, env planning.Context, loc pkggraph.Location, a
 			cmd.AdditionalEnv = append(cmd.AdditionalEnv, fmt.Sprintf("%s=%s", kv.Name, kv.Value))
 		}
 		cmd.Args = append([]string{string(yarnBin)}, args...)
-		cmd.Dir = filepath.Join(env.WorkspaceLoadedFrom().AbsPath, loc.Rel())
+		cmd.Dir = filepath.Join(env.Workspace().LoadedFrom().AbsPath, loc.Rel())
 		return cmd.Run(ctx)
 	}
 
