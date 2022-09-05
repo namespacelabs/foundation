@@ -7,6 +7,7 @@ package tools
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -29,15 +30,12 @@ func newKubeCtlCmd() *cobra.Command {
 		Short: "Run kubectl, configured for the specified environment.",
 	}
 
+	keepConfig := cmd.Flags().Bool("keep_config", false, "If set to true, does not delete the generated configuration.")
+
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
 		k8s, err := kubernetes.NewFromEnv(ctx, env)
 		if err != nil {
 			return err
-		}
-
-		kubectlBin, err := kubectl.EnsureSDK(ctx)
-		if err != nil {
-			return fnerrors.Wrapf(nil, err, "failed to download Kubernetes SDK")
 		}
 
 		runtime := k8s.Bind(env)
@@ -47,19 +45,26 @@ func newKubeCtlCmd() *cobra.Command {
 		if err != nil {
 			return fnerrors.Wrapf(nil, err, "failed to generate kubeconfig")
 		}
+
 		configBytes, err := clientcmd.Write(rawConfig)
 		if err != nil {
 			return fnerrors.Wrapf(nil, err, "failed to serialize kubeconfig")
 		}
+
 		tmpFile, err := dirs.CreateUserTemp("kubeconfig", "*.yaml")
 		if err != nil {
 			return fnerrors.Wrapf(nil, err, "failed to create temp file")
 		}
+
 		// Keep the file so that the user may inspect and copy-paste the config.
-		// defer os.Remove(tmpFile.Name())
+		if !*keepConfig {
+			defer os.Remove(tmpFile.Name())
+		}
+
 		if _, err := tmpFile.Write(configBytes); err != nil {
 			return fnerrors.Wrapf(nil, err, "failed to write kubeconfig")
 		}
+
 		if err := tmpFile.Close(); err != nil {
 			return fnerrors.Wrapf(nil, err, "failed to close kubeconfig")
 		}
@@ -68,7 +73,16 @@ func newKubeCtlCmd() *cobra.Command {
 			"--kubeconfig=" + tmpFile.Name(),
 			"-n", k8sconfig.Namespace,
 		}, args...)
-		fmt.Fprintf(console.Stderr(ctx), "Running kubectl %s\n", strings.Join(cmdLine, " "))
+
+		if *keepConfig {
+			fmt.Fprintf(console.Stderr(ctx), "Running kubectl %s\n", strings.Join(cmdLine, " "))
+		}
+
+		kubectlBin, err := kubectl.EnsureSDK(ctx)
+		if err != nil {
+			return fnerrors.Wrapf(nil, err, "failed to download Kubernetes SDK")
+		}
+
 		kubectl := exec.CommandContext(ctx, string(kubectlBin), cmdLine...)
 		return localexec.RunInteractive(ctx, kubectl)
 	})
