@@ -5,7 +5,7 @@ import (
 extension: fn.#Extension
 
 configure: fn.#Configure & {
-	init: [{
+	init: "init-maria": {
 		binary: "namespacelabs.dev/foundation/universe/db/maria/internal/init"
-	}]
+	}
 }

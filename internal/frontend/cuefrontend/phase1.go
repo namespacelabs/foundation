@@ -139,14 +139,14 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, in
 	}
 
 	if sidecar := lookupTransition(vv, "sidecar"); sidecar.Exists() {
-		pdata.Sidecars, err = parseContainers(sidecar.Val)
+		pdata.Sidecars, err = parseContainers("sidecar", sidecar.Val)
 		if err != nil {
 			return pdata, err
 		}
 	}
 
 	if init := lookupTransition(vv, "init"); init.Exists() {
-		pdata.Inits, err = parseContainers(init.Val)
+		pdata.Inits, err = parseContainers("init", init.Val)
 		if err != nil {
 			return pdata, err
 		}
@@ -187,7 +187,8 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, in
 	return pdata, nil
 }
 
-func parseContainers(v cue.Value) ([]*schema.SidecarContainer, error) {
+func parseContainers(kind string, v cue.Value) ([]*schema.SidecarContainer, error) {
+	// XXX remove ListKind version.
 	if v.Kind() == cue.ListKind {
 		var containers []cueContainer
 
@@ -196,10 +197,14 @@ func parseContainers(v cue.Value) ([]*schema.SidecarContainer, error) {
 		}
 
 		var parsed []*schema.SidecarContainer
-		for _, data := range containers {
+		for k, data := range containers {
 			binRef, err := schema.ParsePackageRef(data.Binary)
 			if err != nil {
 				return nil, err
+			}
+
+			if data.Name == "" {
+				return nil, fnerrors.UserError(nil, "%s #%d: name is required", kind, k)
 			}
 
 			parsed = append(parsed, &schema.SidecarContainer{

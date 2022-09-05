@@ -11,7 +11,7 @@ option go_package = "namespacelabs.dev/foundation/schema";
 // Reference to an entity inside a package, e.g. a binary, a test, a main/sidecar container, etc.
 message PackageRef {
     // Computed package name. Use PackageName() in the code.
-    string package_name_str = 1;
+    string package_name = 1;
 
     // The user-defined name.
     // Can be empty if parsed from the user code, e.g. a legacy reference to a binary.

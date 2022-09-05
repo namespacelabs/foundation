@@ -34,7 +34,7 @@ configure: fn.#Configure & {
 	with: binary: "namespacelabs.dev/foundation/universe/aws/s3/internal/configure"
 
 	// Make sure the provided S3 bucket exists.
-	init: [{
+	init: managebuckets: {
 		binary: "namespacelabs.dev/foundation/universe/aws/s3/internal/managebuckets/init"
-	}]
+	}
 }

@@ -46,12 +46,12 @@ func Make(ctx context.Context, env pkggraph.SealedContext, serverLocRef *pkggrap
 	if with.BinaryRef != nil {
 		binRef = with.BinaryRef
 	} else if with.Binary != "" {
-		binRef = schema.NewPackageRef(schema.Name(with.Binary), "")
+		binRef = schema.MakePackageSingleRef(schema.MakePackageName(with.Binary))
 	} else {
 		return nil, fnerrors.UserError(nil, "`binary` is required to point to a binary package")
 	}
 
-	binPkg, err := env.LoadByName(ctx, binRef.PackageName())
+	binPkg, err := env.LoadByName(ctx, binRef.AsPackageName())
 	if err != nil {
 		return nil, err
 	}

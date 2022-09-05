@@ -37,7 +37,7 @@ import (
 )
 
 var (
-	controllerPkg = schema.NewPackageRef("namespacelabs.dev/foundation/std/dev/controller", "")
+	controllerPkg = schema.MakePackageSingleRef("namespacelabs.dev/foundation/std/dev/controller")
 )
 
 const (
@@ -70,12 +70,12 @@ func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error
 }
 
 func (impl) DevelopmentPackages() []schema.PackageName {
-	return []schema.PackageName{controllerPkg.PackageName()}
+	return []schema.PackageName{controllerPkg.AsPackageName()}
 }
 
 func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBuildAssets, srv provision.Server, isFocus bool) (build.Spec, error) {
 	if useDevBuild(srv.SealedContext().Environment()) {
-		pkg, err := srv.SealedContext().LoadByName(ctx, controllerPkg.PackageName())
+		pkg, err := srv.SealedContext().LoadByName(ctx, controllerPkg.AsPackageName())
 		if err != nil {
 			return nil, err
 		}

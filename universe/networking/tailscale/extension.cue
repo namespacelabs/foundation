@@ -12,7 +12,7 @@ extension: fn.#Extension & {
 }
 
 configure: fn.#Configure & {
-	sidecar: [{
+	sidecar: tailscaled: {
 		binary: "namespacelabs.dev/foundation/universe/networking/tailscale/image"
-	}]
+	}
 }

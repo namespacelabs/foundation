@@ -31,7 +31,7 @@ import (
 )
 
 var (
-	self = schema.NewPackageRef("namespacelabs.dev/foundation/universe/db/postgres/rds/prepare", "")
+	self = schema.MakePackageSingleRef("namespacelabs.dev/foundation/universe/db/postgres/rds/prepare")
 )
 
 const (

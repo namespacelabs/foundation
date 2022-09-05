@@ -39,9 +39,9 @@ configure: fn.#Configure & {
 	with: binary: "namespacelabs.dev/foundation/universe/development/localstack/s3/internal/configure"
 
 	// Make sure the provided S3 bucket exists.
-	init: [{
+	init: managebuckets: {
 		binary: "namespacelabs.dev/foundation/universe/development/localstack/s3/internal/managebuckets/init"
-	}]
+	}
 
 	stack: {
 		if $env.purpose == "DEVELOPMENT" || $env.purpose == "TESTING" {

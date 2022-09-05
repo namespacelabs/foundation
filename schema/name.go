@@ -19,7 +19,7 @@ func (p PackageName) Equals(s string) bool { return string(p) == s }
 // Implements fnerrors.Location.
 func (p PackageName) ErrorLocation() string { return string(p) }
 
-func Name(str string) PackageName {
+func MakePackageName(str string) PackageName {
 	return PackageName(filepath.Clean(str))
 }
 

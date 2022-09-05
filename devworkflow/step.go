@@ -27,9 +27,9 @@ import (
 
 func setWorkspace(ctx context.Context, env planning.Context, packageName string, additional []string, obs *Session, pfw *endpointfwd.PortForward) error {
 	return compute.Do(ctx, func(ctx context.Context) error {
-		serverPackages := []schema.PackageName{schema.Name(packageName)}
+		serverPackages := []schema.PackageName{schema.MakePackageName(packageName)}
 		for _, pkg := range additional {
-			serverPackages = append(serverPackages, schema.Name(pkg))
+			serverPackages = append(serverPackages, schema.MakePackageName(pkg))
 		}
 
 		focusServers := provision.RequireServers(env, serverPackages...)

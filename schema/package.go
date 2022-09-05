@@ -6,19 +6,25 @@ package schema
 
 import "strings"
 
-func NewPackageRef(pkg PackageName, name string) *PackageRef {
+func MakePackageSingleRef(pkg PackageName) *PackageRef {
 	return &PackageRef{
-		PackageNameStr: pkg.String(),
-		Name:           name,
+		PackageName: pkg.String(),
+	}
+}
+
+func MakePackageRef(pkg PackageName, name string) *PackageRef {
+	return &PackageRef{
+		PackageName: pkg.String(),
+		Name:        name,
 	}
 }
 
 // Parses from a canonical string representation.
 func ParsePackageRef(str string) (*PackageRef, error) {
-	parts := strings.Split(str, ":")
+	parts := strings.SplitN(str, ":", 2)
 
 	pr := &PackageRef{}
-	pr.PackageNameStr = parts[0]
+	pr.PackageName = parts[0]
 	if len(parts) > 1 {
 		pr.Name = parts[1]
 	}
@@ -26,8 +32,8 @@ func ParsePackageRef(str string) (*PackageRef, error) {
 	return pr, nil
 }
 
-func (n *PackageRef) PackageName() PackageName {
-	return Name(n.PackageNameStr)
+func (n *PackageRef) AsPackageName() PackageName {
+	return MakePackageName(n.PackageName)
 }
 
 func (n *PackageRef) Equals(other *PackageRef) bool {
@@ -35,15 +41,16 @@ func (n *PackageRef) Equals(other *PackageRef) bool {
 }
 
 func (n *PackageRef) Compare(other *PackageRef) int {
-	if n.PackageNameStr != other.PackageNameStr {
-		return strings.Compare(n.PackageNameStr, other.PackageNameStr)
+	if n.PackageName != other.PackageName {
+		return strings.Compare(n.PackageName, other.PackageName)
 	}
 	return strings.Compare(n.Name, other.Name)
 }
 
-func (n *PackageRef) CanonicalString() string {
+func (n *PackageRef) Canonical() string {
 	if n.Name == "" {
-		return n.PackageNameStr
+		return n.PackageName
 	}
-	return n.PackageNameStr + ":" + n.Name
+
+	return n.PackageName + ":" + n.Name
 }

@@ -53,7 +53,7 @@ type invokeTool struct {
 
 func (inv *invokeTool) Action() *tasks.ActionEvent {
 	// TODO: support specifying the binary name within the package.
-	return tasks.Action("tool.invoke").Arg("package_name", inv.invocation.BinaryRef.PackageName())
+	return tasks.Action("tool.invoke").Arg("package_ref", inv.invocation.BinaryRef.Canonical())
 }
 
 func (inv *invokeTool) Inputs() *compute.In {
@@ -71,7 +71,7 @@ func (inv *invokeTool) Output() compute.Output {
 
 func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protocol.InvokeResponse, error) {
 	req := &protocol.ToolRequest{
-		ToolPackage: inv.invocation.BinaryRef.PackageName().String(),
+		ToolPackage: inv.invocation.BinaryRef.AsPackageName().String(),
 		RequestType: &protocol.ToolRequest_InvokeRequest{
 			InvokeRequest: &protocol.InvokeRequest{},
 		},
@@ -82,7 +82,7 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 	}
 
 	run := rtypes.RunToolOpts{
-		ImageName: inv.invocation.BinaryRef.CanonicalString(),
+		ImageName: inv.invocation.BinaryRef.Canonical(),
 		// NoNetworking: true, // XXX security
 
 		RunBinaryOpts: rtypes.RunBinaryOpts{
@@ -99,11 +99,11 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 	if inv.image != nil {
 		run.Image = compute.MustGetDepValue(r, inv.image, "image")
 
-		resp, err = invoke.Invoke(ctx, inv.invocation.BinaryRef.PackageName(), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
+		resp, err = invoke.Invoke(ctx, inv.invocation.BinaryRef.AsPackageName(), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
 			return protocol.NewInvocationServiceClient(conn).Invoke
 		})
 	} else {
-		resp, err = invoke.BuildkitInvocation(ctx, inv.env, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.PackageName(), inv.imageID, run, req)
+		resp, err = invoke.BuildkitInvocation(ctx, inv.env, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), inv.imageID, run, req)
 	}
 
 	if err != nil {

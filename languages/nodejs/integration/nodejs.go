@@ -40,7 +40,7 @@ import (
 )
 
 var (
-	controllerPkg = schema.NewPackageRef("namespacelabs.dev/foundation/std/development/filesync/controller", "")
+	controllerPkg = schema.MakePackageSingleRef("namespacelabs.dev/foundation/std/development/filesync/controller")
 )
 
 const (
@@ -445,7 +445,7 @@ func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error
 }
 
 func (impl) DevelopmentPackages() []schema.PackageName {
-	return []schema.PackageName{controllerPkg.PackageName()}
+	return []schema.PackageName{controllerPkg.AsPackageName()}
 }
 
 func (impl impl) GenerateNode(pkg *pkggraph.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {

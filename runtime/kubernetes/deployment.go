@@ -328,7 +328,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 			var key string
 			if initContainerExt.PackageRef != nil {
-				key = initContainerExt.PackageRef.CanonicalString()
+				key = initContainerExt.PackageRef.Canonical()
 			} else {
 				key = initContainerExt.PackageName
 			}
@@ -561,6 +561,10 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	for _, sidecar := range server.Sidecars {
+		if sidecar.Name == "" {
+			return fnerrors.InternalError("sidecar name is missing")
+		}
+
 		name := sidecarName(sidecar, "sidecar")
 		for _, c := range containers {
 			if name == c {
@@ -589,6 +593,10 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	}
 
 	for _, init := range server.Inits {
+		if init.Name == "" {
+			return fnerrors.InternalError("sidecar name is missing")
+		}
+
 		name := sidecarName(init, "init")
 		for _, c := range containers {
 			if name == c {
@@ -601,7 +609,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			applycorev1.Container().
 				WithName(name).
 				WithImage(init.Image.RepoAndDigest()).
-				WithArgs(append(init.Args, initArgs[init.PackageRef.CanonicalString()]...)...).
+				WithArgs(append(init.Args, initArgs[init.PackageRef.Canonical()]...)...).
 				WithCommand(init.Command...).
 				WithVolumeMounts(initVolumeMounts...))
 	}
@@ -784,11 +792,7 @@ func makePersistentVolume(ns string, env *schema.Environment, srv provision.Serv
 }
 
 func sidecarName(o runtime.SidecarRunOpts, prefix string) string {
-	if o.Name != "" {
-		return fmt.Sprintf("%s-%s", prefix, o.Name)
-	}
-
-	return fmt.Sprintf("%s-%s", prefix, shortPackageRefName(o.PackageRef))
+	return fmt.Sprintf("%s-%s", prefix, o.Name)
 }
 
 func runAsToPodSecCtx(name string, podSecCtx *applycorev1.PodSecurityContextApplyConfiguration, runAs *runtime.RunAs) (*applycorev1.PodSecurityContextApplyConfiguration, error) {

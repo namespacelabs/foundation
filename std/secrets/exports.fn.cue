@@ -17,8 +17,8 @@ import (
 		initializeWith?: {
 			binary?: inputs.#Package
 			binaryRef?: {
-				packageNameStr?: string
-				name?:           string
+				packageName?: string
+				name?:        string
 			}
 			experimentalFunction?: inputs.#Package
 			cacheable?:            bool

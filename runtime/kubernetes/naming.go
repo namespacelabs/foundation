@@ -7,7 +7,6 @@ package kubernetes
 import (
 	"crypto/sha256"
 	"encoding/base32"
-	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -39,26 +38,6 @@ func ModuleNamespace(ws *schema.Workspace, env *schema.Environment) string {
 	// A SHA256 is 32 bytes long, we're guarantee to always have at least 5 characters.
 	parts = append(parts, base32encoding.EncodeToString(digest)[:5])
 	return strings.Join(parts, "-")
-}
-
-func shortPackageName(pkg schema.PackageName) string {
-	parts := strings.Split(pkg.String(), "/")
-	return fmt.Sprintf("%s-%s", parts[len(parts)-1], packageId(pkg))
-}
-
-func shortPackageRefName(pkgRef *schema.PackageRef) string {
-	if pkgRef.Name == "" {
-		return shortPackageName(pkgRef.PackageName())
-	}
-
-	return fmt.Sprintf("%s:%s", shortPackageName(pkgRef.PackageName()), pkgRef.Name)
-}
-
-func packageId(pkg schema.PackageName) string {
-	h := sha256.New()
-	fmt.Fprintf(h, "%s", pkg) // Write to a sha256 hash never fails.
-	digest := h.Sum(nil)
-	return base32encoding.EncodeToString(digest[:8])
 }
 
 func serverNamespace(r K8sRuntime, srv *schema.Server) string {

@@ -404,20 +404,20 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 		}, nil, nil
 	}
 
-	var binaryRef *schema.PackageRef
+	var ref *schema.PackageRef
 	if inv.Binary != "" {
 		var err error
-		binaryRef, err = schema.ParsePackageRef(inv.Binary)
+		ref, err = schema.ParsePackageRef(inv.Binary)
 		if err != nil {
 			return nil, nil, fnerrors.New("%s: failed to parse package ref: %w", inv.Binary, err)
 		}
 	} else if inv.BinaryRef != nil {
-		binaryRef = inv.BinaryRef
+		ref = inv.BinaryRef
 	} else {
 		return nil, nil, fnerrors.New("binary package definition is missing")
 	}
 
-	pkg, err := env.LoadByName(ctx, binaryRef.PackageName())
+	pkg, err := env.LoadByName(ctx, ref.AsPackageName())
 	if err != nil {
 		return nil, nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)
 	}
@@ -427,13 +427,13 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 		return nil, nil, err
 	}
 
-	prepared, err := binary.Plan(ctx, pkg, binaryRef.Name, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
+	prepared, err := binary.Plan(ctx, pkg, ref.Name, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return &types.DeferredInvocation{
-		BinaryRef: binaryRef,
+		BinaryRef: ref,
 		BinaryConfig: &schema.BinaryConfig{
 			Command: prepared.Command,
 		},

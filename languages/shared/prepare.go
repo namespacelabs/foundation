@@ -27,7 +27,7 @@ func PrepareServerData(ctx context.Context, loader pkggraph.PackageLoader, loc p
 
 	userImports := make(map[schema.PackageName]bool)
 	for _, i := range srv.GetUserImports() {
-		userImports[schema.Name(i)] = true
+		userImports[schema.MakePackageName(i)] = true
 	}
 
 	for _, ref := range srv.GetImportedPackages() {

@@ -33,7 +33,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 	bin := server.Proto().GetBinary()
 
 	if bin.GetPackageRef() != nil {
-		pkg, err := server.SealedContext().LoadByName(ctx, bin.GetPackageRef().PackageName())
+		pkg, err := server.SealedContext().LoadByName(ctx, bin.GetPackageRef().AsPackageName())
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +62,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ServerRunOpts) error {
 	bin := server.Proto().GetBinary()
 	if bin.GetPackageRef() != nil {
-		pkg, err := server.SealedContext().LoadByName(ctx, bin.GetPackageRef().PackageName())
+		pkg, err := server.SealedContext().LoadByName(ctx, bin.GetPackageRef().AsPackageName())
 		if err != nil {
 			return err
 		}

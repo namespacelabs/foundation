@@ -68,7 +68,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env planning.Context, con
 
 	if bnj.isDevBuild {
 		// Adding dev controller
-		pkg, err := bnj.serverEnv.LoadByName(ctx, controllerPkg.PackageName())
+		pkg, err := bnj.serverEnv.LoadByName(ctx, controllerPkg.AsPackageName())
 		if err != nil {
 			return nil, err
 		}

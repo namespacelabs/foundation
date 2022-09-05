@@ -29,8 +29,8 @@ import (
 )
 
 var (
-	self          = schema.NewPackageRef("namespacelabs.dev/foundation/universe/storage/s3/internal/prepare", "")
-	initContainer = schema.NewPackageRef("namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets", "")
+	self          = schema.MakePackageSingleRef("namespacelabs.dev/foundation/universe/storage/s3/internal/prepare")
+	initContainer = schema.MakePackageSingleRef("namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets")
 )
 
 const (

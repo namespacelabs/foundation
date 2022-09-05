@@ -301,10 +301,10 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, server
 	})
 	for _, img := range imgs {
 		if img.Binary != nil {
-			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:binary", img.PackageRef.CanonicalString()), img.Binary)
+			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:binary", img.PackageRef.Canonical()), img.Binary)
 		}
 		if img.Config != nil {
-			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:config", img.PackageRef.CanonicalString()), img.Config)
+			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:config", img.PackageRef.Canonical()), img.Config)
 		}
 	}
 
@@ -314,7 +314,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, server
 			var built builtImages
 
 			for _, img := range imgs {
-				imgResult, ok := compute.GetDepWithType[oci.ImageID](deps, fmt.Sprintf("%s:binary", img.PackageRef.CanonicalString()))
+				imgResult, ok := compute.GetDepWithType[oci.ImageID](deps, fmt.Sprintf("%s:binary", img.PackageRef.Canonical()))
 				if !ok {
 					return nil, fnerrors.InternalError("server image missing")
 				}
@@ -324,7 +324,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, server
 					Binary:     imgResult.Value,
 				}
 
-				if v, ok := compute.GetDepWithType[oci.ImageID](deps, fmt.Sprintf("%s:config", img.PackageRef.CanonicalString())); ok {
+				if v, ok := compute.GetDepWithType[oci.ImageID](deps, fmt.Sprintf("%s:config", img.PackageRef.Canonical())); ok {
 					b.Config = v.Value
 				}
 
@@ -523,12 +523,10 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) ([]con
 		for _, container := range sidecars {
 			binRef := container.BinaryRef
 			if binRef == nil {
-				binRef = schema.NewPackageRef(schema.Name(container.Binary), "")
+				binRef = schema.MakePackageSingleRef(schema.MakePackageName(container.Binary))
 			}
 
-			pkgname := binRef.PackageName()
-
-			bin, err := srv.SealedContext().LoadByName(ctx, pkgname)
+			bin, err := srv.SealedContext().LoadByName(ctx, binRef.AsPackageName())
 			if err != nil {
 				return nil, err
 			}
@@ -606,7 +604,7 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, servers []
 			}
 		}
 
-		images = append(images, compute.Map(tasks.Action("server.compute-images").Scope(r.PackageRef.PackageName()), in, compute.Output{},
+		images = append(images, compute.Map(tasks.Action("server.compute-images").Scope(r.PackageRef.AsPackageName()), in, compute.Output{},
 			func(ctx context.Context, deps compute.Resolved) (ResolvedServerImages, error) {
 				binary, _ := compute.GetDep(deps, r.Binary, "binary")
 
@@ -681,9 +679,13 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 
 func prepareContainerRunOpts(containers []*schema.SidecarContainer, imageIDs builtImages, sidecarCommands []sidecarPackage, out *[]runtime.SidecarRunOpts) error {
 	for _, container := range containers {
+		if container.Name == "" {
+			return fnerrors.InternalError("sidecar name is required")
+		}
+
 		binRef := container.BinaryRef
 		if binRef == nil {
-			binRef = schema.NewPackageRef(schema.Name(container.Binary), "")
+			binRef = schema.MakePackageSingleRef(schema.MakePackageName(container.Binary))
 		}
 
 		var sidecarPkg *sidecarPackage
