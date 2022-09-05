@@ -42,13 +42,13 @@ var (
 )
 
 type clientInstance struct {
-	env planning.Context
+	env orchEnv
 
 	compute.DoScoped[proto.OrchestrationServiceClient] // Only connect once per configuration.
 }
 
 func ConnectToClient(env planning.Context) compute.Computable[proto.OrchestrationServiceClient] {
-	return &clientInstance{env: env}
+	return &clientInstance{env: orchEnv{ctx: env}}
 }
 
 func (c *clientInstance) Action() *tasks.ActionEvent {

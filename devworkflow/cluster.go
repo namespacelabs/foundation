@@ -9,11 +9,13 @@ import (
 	"fmt"
 
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/orchestration"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
@@ -49,13 +51,30 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 
 	plan := compute.MustGetDepValue(deps, pi.plan, "plan")
 
-	waiters, err := plan.Deployer.Execute(ctx, runtime.TaskServerDeploy, pi.env)
-	if err != nil {
-		return err
-	}
+	if orchestration.UseOrchestrator {
+		var focus schema.PackageList
+		focus.AddMultiple(pi.focus...)
+		deployPlan := deploy.Serialize(pi.env.Workspace(), pi.env.Environment(), pi.stack, plan, focus.PackageNamesAsString())
 
-	if err := deploy.Wait(ctx, pi.env, waiters); err != nil {
-		return err
+		id, err := orchestration.Deploy(ctx, pi.env, deployPlan)
+		if err != nil {
+			return err
+		}
+
+		if err := deploy.RenderAndWait(ctx, pi.env, func(ch chan *orchpb.Event) error {
+			return orchestration.WireDeploymentStatus(ctx, pi.env, id, ch)
+		}); err != nil {
+			return err
+		}
+	} else {
+		waiters, err := plan.Deployer.Execute(ctx, runtime.TaskServerDeploy, pi.env)
+		if err != nil {
+			return err
+		}
+
+		if err := deploy.Wait(ctx, pi.env, waiters); err != nil {
+			return err
+		}
 	}
 
 	for _, obs := range pi.observers {
