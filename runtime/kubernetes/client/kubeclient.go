@@ -365,7 +365,9 @@ func (t *cachedProviderConfig) Action() *tasks.ActionEvent {
 	return tasks.Action("kubernetes.compute-config").Arg("provider", t.providerName)
 }
 func (t *cachedProviderConfig) Inputs() *compute.In {
-	return compute.Inputs().Str("provider", t.providerName).Indigestible("devhost", t.config).Str("config", t.config.EnvKey())
+	return compute.Inputs().Str("provider", t.providerName).
+		Str("configHash", t.config.HashKey()). // We depend on the configuration cache keys being stable.
+		Str("config", t.config.EnvKey())
 }
 func (t *cachedProviderConfig) Output() compute.Output { return compute.Output{NotCacheable: true} }
 func (t *cachedProviderConfig) Compute(ctx context.Context, _ compute.Resolved) (Provider, error) {

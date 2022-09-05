@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/tcache"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -39,7 +40,7 @@ const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal.namespacelabs.nsc
 // const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal-c.namespacelabs.nscloud.dev"
 
 var (
-	clusterCache = NewCache[*CreateClusterResult]()
+	clusterCache = tcache.NewCache[*CreateClusterResult]()
 
 	startCreateKubernetesCluster = fnapi.Call[CreateKubernetesClusterRequest]{
 		Endpoint: machineEndpoint,
