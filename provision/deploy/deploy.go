@@ -712,6 +712,7 @@ func prepareContainerRunOpts(containers []*schema.SidecarContainer, imageIDs bui
 				Image:   img.Binary,
 				Args:    container.Args,
 				Command: sidecarPkg.Command,
+				// TODO: env
 			},
 		})
 	}

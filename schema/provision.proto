@@ -9,6 +9,7 @@ package foundation.schema;
 option go_package = "namespacelabs.dev/foundation/schema";
 
 import "schema/package.proto";
+import "schema/volume.proto";
 
 message Invocation {
     reserved 3;
@@ -42,8 +43,11 @@ message SidecarContainer {
     string     binary     = 1;
     PackageRef binary_ref = 4;
 
-    string          name = 3;  // Optional.
+    string          name = 3;
     repeated string args = 2;
+
+    map<string, string> env    = 6;
+    repeated Mount      mounts = 7;
 }
 
 message StartupPlan {
