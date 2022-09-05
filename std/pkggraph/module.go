@@ -17,7 +17,6 @@ import (
 type Module struct {
 	Workspace     *schema.Workspace
 	WorkspaceData WorkspaceData
-	DevHost       *schema.DevHost
 
 	absPath string
 	// If not empty, this is an external module.
@@ -29,13 +28,11 @@ type MutableModule interface {
 	ReadWriteFS() fnfs.ReadWriteFS
 }
 
-func NewModule(w *schema.Workspace, devHost *schema.DevHost, lf *schema.Workspace_LoadedFrom, version string) *Module {
+func NewModule(w *schema.Workspace, lf *schema.Workspace_LoadedFrom, version string) *Module {
 	return &Module{
 		Workspace: w,
-		DevHost:   devHost,
-
-		absPath: lf.AbsPath,
-		version: version,
+		absPath:   lf.AbsPath,
+		version:   version,
 	}
 }
 

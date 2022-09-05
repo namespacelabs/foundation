@@ -78,7 +78,6 @@ type PackageLoader struct {
 	absPath       string
 	workspace     *schema.Workspace
 	loadedFrom    *schema.Workspace_LoadedFrom
-	devHost       *schema.DevHost
 	frontend      Frontend
 	rootmodule    *pkggraph.Module
 	mu            sync.RWMutex
@@ -115,7 +114,6 @@ func NewPackageLoader(env planning.Context) *PackageLoader {
 	pl.absPath = env.WorkspaceLoadedFrom().AbsPath
 	pl.workspace = env.Workspace()
 	pl.loadedFrom = env.WorkspaceLoadedFrom()
-	pl.devHost = env.DevHost()
 	pl.loaded = map[schema.PackageName]*Package{}
 	pl.loading = map[schema.PackageName]*loadingPackage{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
@@ -296,7 +294,7 @@ func (pl *PackageLoader) inject(lf *schema.Workspace_LoadedFrom, w *schema.Works
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	m := pkggraph.NewModule(w, pl.devHost, lf, version)
+	m := pkggraph.NewModule(w, lf, version)
 
 	pl.loadedModules[m.ModuleName()] = m
 	pl.fsys[m.ModuleName()] = memfs.IncrementalSnapshot(fnfs.Local(lf.AbsPath))

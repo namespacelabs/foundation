@@ -13,20 +13,19 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func PrepareBuildkit(env planning.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.buildkit").HumanReadablef("Preparing the buildkit daemon"),
-		compute.Inputs().Proto("env", env.Environment()),
+		compute.Inputs().Indigestible("env", env),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			containerName := buildkit.DefaultContainerName
 
 			conf := &buildkit.Overrides{}
-			if !devhost.ConfigurationForEnv(env).Get(conf) {
+			if !env.Configuration().Get(conf) {
 				if conf.BuildkitAddr != "" {
 					fmt.Fprintln(console.Stderr(ctx), "Buildkit has been manually configured, skipping setup.")
 					return nil, nil

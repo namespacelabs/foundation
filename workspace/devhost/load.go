@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -87,10 +86,6 @@ func (conf ConfSlice) Merged() []*anypb.Any {
 		merged = append(merged, p...)
 	}
 	return merged
-}
-
-func ConfigurationForEnv(env planning.Context) ConfSlice {
-	return Select(env.DevHost(), ByEnvironment(env.Environment()))
 }
 
 func MakeConfiguration(messages ...proto.Message) (*schema.DevHost_ConfigureEnvironment, error) {

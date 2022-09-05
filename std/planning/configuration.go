@@ -14,18 +14,15 @@ import (
 type Configuration interface {
 	Get(proto.Message) bool
 	GetForPlatform(specs.Platform, proto.Message) bool
+	Derive(func([]*anypb.Any) []*anypb.Any) Configuration
+
 	HashKey() string
 	IsEmpty() bool
 	EnvKey() string
 }
 
-type ConfigurationCompat interface {
-	DevHost() *schema.DevHost
-	Environment() *schema.Environment
-}
-
-func MakeConfigurationCompat(compat ConfigurationCompat) Configuration {
-	return MakeConfigurationWith(compat.Environment().Name, selectByEnv(compat.DevHost(), compat.Environment()), compat.DevHost().ConfigurePlatform)
+func MakeConfigurationCompat(devHost *schema.DevHost, env *schema.Environment) Configuration {
+	return MakeConfigurationWith(env.Name, selectByEnv(devHost, env), devHost.ConfigurePlatform)
 }
 
 func MakeConfigurationWith(description string, merged []*anypb.Any, platconfig []*schema.DevHost_ConfigurePlatform) Configuration {
@@ -83,6 +80,14 @@ func (cfg config) IsEmpty() bool {
 
 func (cfg config) EnvKey() string {
 	return cfg.key
+}
+
+func (cfg config) Derive(f func([]*anypb.Any) []*anypb.Any) Configuration {
+	return config{
+		key:        cfg.key,
+		merged:     f(cfg.merged),
+		platconfig: cfg.platconfig,
+	}
 }
 
 func selectByEnv(devHost *schema.DevHost, env *schema.Environment) []*anypb.Any {

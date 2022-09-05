@@ -37,6 +37,7 @@ type Session struct {
 	localHostname string
 	obs           *Observers
 	sink          *tasks.StatefulSink
+	availableEnvs []*schema.Environment
 
 	mu        sync.Mutex // Protect below.
 	requested struct {
@@ -50,13 +51,14 @@ type Session struct {
 	pfw             *endpointfwd.PortForward
 }
 
-func NewSession(errorLog io.Writer, sink *tasks.StatefulSink, localHostname string) (*Session, error) {
+func NewSession(errorLog io.Writer, sink *tasks.StatefulSink, localHostname string, envs []*schema.Environment) (*Session, error) {
 	return &Session{
 		requestCh:     make(chan *DevWorkflowRequest, 1),
 		Errors:        errorLog,
 		localHostname: localHostname,
 		obs:           NewObservers(),
 		sink:          sink,
+		availableEnvs: envs,
 	}, nil
 }
 
@@ -138,7 +140,7 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, eg *executor.Exe
 			return err
 		}
 
-		resetStack(s.currentStack, env, nil)
+		resetStack(s.currentStack, env, s.availableEnvs, nil)
 		pfw := s.setEnvironment(parentCtx, env)
 
 		eg.Go(func(ctx context.Context) error {

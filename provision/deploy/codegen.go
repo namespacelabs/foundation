@@ -55,6 +55,7 @@ func (cd *codegenThenSnapshot) Compute(ctx context.Context, _ compute.Resolved) 
 }
 
 type codegenEnv struct {
+	config   planning.Configuration
 	root     *pkggraph.Module
 	packages pkggraph.PackageLoader
 	env      *schema.Environment
@@ -63,17 +64,14 @@ type codegenEnv struct {
 
 var _ pkggraph.ContextWithMutableModule = codegenEnv{}
 
-func (ce codegenEnv) ErrorLocation() string            { return ce.root.ErrorLocation() }
-func (ce codegenEnv) DevHost() *schema.DevHost         { return ce.root.DevHost }
-func (ce codegenEnv) Environment() *schema.Environment { return ce.env }
-func (ce codegenEnv) ModuleName() string               { return ce.root.ModuleName() }
-func (ce codegenEnv) ReadWriteFS() fnfs.ReadWriteFS    { return ce.fs }
-func (ce codegenEnv) Workspace() *schema.Workspace     { return ce.root.Workspace }
+func (ce codegenEnv) ErrorLocation() string                 { return ce.root.ErrorLocation() }
+func (ce codegenEnv) Environment() *schema.Environment      { return ce.env }
+func (ce codegenEnv) ModuleName() string                    { return ce.root.ModuleName() }
+func (ce codegenEnv) ReadWriteFS() fnfs.ReadWriteFS         { return ce.fs }
+func (ce codegenEnv) Configuration() planning.Configuration { return ce.config }
+func (ce codegenEnv) Workspace() *schema.Workspace          { return ce.root.Workspace }
 func (ce codegenEnv) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
 	return ce.root.WorkspaceData.WorkspaceLoadedFrom()
-}
-func (ce codegenEnv) Configuration() planning.Configuration {
-	return planning.MakeConfigurationCompat(ce)
 }
 
 func (ce codegenEnv) Resolve(ctx context.Context, pkg schema.PackageName) (pkggraph.Location, error) {
@@ -101,9 +99,9 @@ func codegenServer(ctx context.Context, srv provision.Server) error {
 	}
 
 	waiters, err := r.ExecuteParallel(ctx, "workspace.codegen", codegenEnv{
+		config:   srv.SealedContext().Configuration(),
 		root:     srv.Module(),
 		packages: srv.SealedContext(),
-		env:      srv.SealedContext().Environment(),
 		fs:       srv.Module().ReadWriteFS(),
 	})
 	if err != nil {

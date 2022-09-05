@@ -68,9 +68,8 @@ func (se serializedEnvironment) Workspace() *schema.Workspace { return se.root.W
 func (se serializedEnvironment) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
 	return se.root.WorkspaceLoadedFrom()
 }
-func (se serializedEnvironment) DevHost() *schema.DevHost         { return se.root.DevHost() }
 func (se serializedEnvironment) Environment() *schema.Environment { return se.env }
 func (se serializedEnvironment) ErrorLocation() string            { return se.root.Abs() }
 func (se serializedEnvironment) Configuration() planning.Configuration {
-	return planning.MakeConfigurationCompat(se)
+	return planning.MakeConfigurationCompat(se.root.DevHost(), se.env)
 }

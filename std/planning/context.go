@@ -12,26 +12,27 @@ import (
 
 type UnboundContext interface {
 	fnerrors.Location
+	DevHost() *schema.DevHost
 	Workspace() *schema.Workspace
 	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
-	DevHost() *schema.DevHost
 }
 
 type Context interface {
-	UnboundContext
-
+	fnerrors.Location
+	Workspace() *schema.Workspace
+	WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom
 	Configuration() Configuration
 	Environment() *schema.Environment
 }
 
-func MakeUnverifiedContext(ws *schema.Workspace, lf *schema.Workspace_LoadedFrom, devhost *schema.DevHost, env *schema.Environment, errorLocation string) Context {
-	return ctx{errorLocation: errorLocation, workspace: ws, loadedFrom: lf, devHost: devhost, env: env}
+func MakeUnverifiedContext(config Configuration, ws *schema.Workspace, lf *schema.Workspace_LoadedFrom, env *schema.Environment, errorLocation string) Context {
+	return ctx{config: config, errorLocation: errorLocation, workspace: ws, loadedFrom: lf, env: env}
 }
 
 func LoadContext(parent UnboundContext, name string) (Context, error) {
 	for _, env := range EnvsOrDefault(parent.DevHost(), parent.Workspace()) {
 		if env.Name == name {
-			return MakeUnverifiedContext(parent.Workspace(), parent.WorkspaceLoadedFrom(), parent.DevHost(), env, parent.ErrorLocation()), nil
+			return MakeUnverifiedContext(MakeConfigurationCompat(parent.DevHost(), env), parent.Workspace(), parent.WorkspaceLoadedFrom(), env, parent.ErrorLocation()), nil
 		}
 	}
 
@@ -65,16 +66,15 @@ func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*sche
 }
 
 type ctx struct {
+	config        Configuration
 	errorLocation string
 	workspace     *schema.Workspace
 	loadedFrom    *schema.Workspace_LoadedFrom
-	devHost       *schema.DevHost
 	env           *schema.Environment
 }
 
 func (e ctx) ErrorLocation() string                             { return e.errorLocation }
 func (e ctx) Workspace() *schema.Workspace                      { return e.workspace }
 func (e ctx) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return e.loadedFrom }
-func (e ctx) DevHost() *schema.DevHost                          { return e.devHost }
 func (e ctx) Environment() *schema.Environment                  { return e.env }
-func (e ctx) Configuration() Configuration                      { return MakeConfigurationCompat(e) }
+func (e ctx) Configuration() Configuration                      { return e.config }

@@ -10,20 +10,7 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
 )
-
-type ConfigKey struct {
-	DevHost  *schema.DevHost
-	Selector Selector
-}
-
-func ConfigKeyFromEnvironment(env planning.Context) *ConfigKey {
-	return &ConfigKey{
-		DevHost:  env.DevHost(),
-		Selector: ByEnvironment(env.Environment()),
-	}
-}
 
 type Selector interface {
 	Description() string

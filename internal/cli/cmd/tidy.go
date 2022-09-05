@@ -322,10 +322,9 @@ type fixedWorkspace struct {
 func (fw fixedWorkspace) ErrorLocation() string                             { return fw.ws.ModuleName }
 func (fw fixedWorkspace) Workspace() *schema.Workspace                      { return fw.ws }
 func (fw fixedWorkspace) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return fw.lf }
-func (fw fixedWorkspace) DevHost() *schema.DevHost                          { return fw.devhost }
 func (fw fixedWorkspace) Environment() *schema.Environment                  { return fw.env }
 func (fw fixedWorkspace) Configuration() planning.Configuration {
-	return planning.MakeConfigurationCompat(fw)
+	return planning.MakeConfigurationCompat(fw.devhost, fw.env)
 }
 
 type workspaceLoader struct {

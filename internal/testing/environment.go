@@ -7,6 +7,7 @@ package testing
 import (
 	"context"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/runtime"
@@ -32,21 +33,19 @@ func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool)
 		Ephemeral: ephemeral,
 	}
 
-	devHost := &schema.DevHost{
-		Configure:         devhost.ConfigurationForEnv(sourceEnv).WithoutConstraints(),
-		ConfigurePlatform: sourceEnv.DevHost().ConfigurePlatform,
-	}
-
-	if UseNamespaceCloud {
-		devHost.Configure = []*schema.DevHost_ConfigureEnvironment{
-			{Configuration: protos.WrapAnysOrDie(
+	// XXX update configuration envkey.
+	newCfg := sourceEnv.Configuration().Derive(func(previous []*anypb.Any) []*anypb.Any {
+		if UseNamespaceCloud {
+			return protos.WrapAnysOrDie(
 				&registry.Provider{Provider: "nscloud"},
 				&client.HostEnv{Provider: "nscloud"},
-			)},
+			)
 		}
-	}
 
-	return planning.MakeUnverifiedContext(sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), devHost, testEnv, sourceEnv.ErrorLocation())
+		return previous
+	})
+
+	return planning.MakeUnverifiedContext(newCfg, sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), testEnv, sourceEnv.ErrorLocation())
 }
 
 func makeDeleteEnv(env planning.Context) func(context.Context) error {
@@ -62,7 +61,6 @@ func makeDeleteEnv(env planning.Context) func(context.Context) error {
 
 func envWithVCluster(ctx context.Context, sourceEnv planning.Context, vcluster *vcluster.VCluster) (planning.Context, func(context.Context) error, error) {
 	testEnv := sourceEnv.Environment()
-	devHost := sourceEnv.DevHost()
 
 	conn, err := vcluster.Access(ctx)
 	if err != nil {
@@ -76,13 +74,11 @@ func envWithVCluster(ctx context.Context, sourceEnv planning.Context, vcluster *
 	}
 
 	// Make sure we look up the new configuration first.
-	configure := []*schema.DevHost_ConfigureEnvironment{c}
-	configure = append(configure, devHost.Configure...)
+	cfg := sourceEnv.Configuration().Derive(func(previous []*anypb.Any) []*anypb.Any {
+		return append(c.Configuration, previous...)
+	})
 
-	env := planning.MakeUnverifiedContext(sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), &schema.DevHost{
-		Configure:         configure,
-		ConfigurePlatform: devHost.ConfigurePlatform,
-	}, testEnv, sourceEnv.ErrorLocation())
+	env := planning.MakeUnverifiedContext(cfg, sourceEnv.Workspace(), sourceEnv.WorkspaceLoadedFrom(), testEnv, sourceEnv.ErrorLocation())
 
 	deleteEnv := makeDeleteEnv(sourceEnv)
 	return env, func(ctx context.Context) error {

@@ -75,7 +75,7 @@ func NewDevCmd() *cobra.Command {
 
 				updateWebUISticky(ctx, "preparing")
 
-				sesh, err := devworkflow.NewSession(console.Errors(ctx), sink, localHost)
+				sesh, err := devworkflow.NewSession(console.Errors(ctx), sink, localHost, planning.EnvsOrDefault(locs.Root.DevHost(), locs.Root.Workspace()))
 				if err != nil {
 					return err
 				}
@@ -99,7 +99,7 @@ func NewDevCmd() *cobra.Command {
 					Keybindings: []keyboard.Handler{
 						logtail.Keybinding{
 							LoadEnvironment: func(envName string) (planning.Context, error) {
-								return planning.LoadContext(env, envName)
+								return planning.LoadContext(locs.Root, envName)
 							},
 						},
 						view.NewNetworkPlanKeybinding("stack"),
