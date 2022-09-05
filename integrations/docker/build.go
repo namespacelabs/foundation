@@ -14,6 +14,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
@@ -24,16 +26,14 @@ func Register() {
 type buildImpl struct {
 }
 
-func (buildImpl) PrepareBuild(ctx context.Context, server provision.Server, observeChanges bool) (build.Spec, error) {
-	loc := server.Location
+func (buildImpl) PrepareBuild(ctx context.Context, loc pkggraph.Location, integration *schema.Integration, observeChanges bool) (build.Spec, error) {
 	// Setting observeChanges to true here doesn't seem to do anything.
 	fsys, err := compute.GetValue(ctx, loc.Module.VersionedFS(loc.Rel(), false))
 	if err != nil {
 		return nil, fnerrors.Wrap(loc, err)
 	}
 
-	config := server.Package.Server.Integration
-	contents, err := fs.ReadFile(fsys.FS(), config.Dockerfile)
+	contents, err := fs.ReadFile(fsys.FS(), integration.Dockerfile)
 	if err != nil {
 		return nil, fnerrors.Wrapf(loc, err, "failed to load Dockerfile")
 	}
