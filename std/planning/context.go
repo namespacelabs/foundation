@@ -5,6 +5,7 @@
 package planning
 
 import (
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -31,49 +32,39 @@ func MakeUnverifiedContext(config Configuration, ws *schema.Workspace, lf *schem
 func LoadContext(parent RootContext, name string) (Context, error) {
 	for _, env := range EnvsOrDefault(parent.DevHost(), parent.Workspace()) {
 		if env.Name == name {
-			cfg := MakeConfigurationCompat(parent.Workspace(), parent.DevHost(), env)
-			return MakeUnverifiedContext(cfg, parent.Workspace(), parent.WorkspaceLoadedFrom(), env, parent.ErrorLocation()), nil
+			schemaEnv := schema.SpecToEnv(env)[0]
+			merged := append(slices.Clone(env.Configuration), selectByEnv(parent.DevHost(), schemaEnv)...)
+			cfg := MakeConfigurationWith(env.Name, merged, parent.DevHost().ConfigurePlatform)
+			return MakeUnverifiedContext(cfg, parent.Workspace(), parent.WorkspaceLoadedFrom(), schemaEnv, parent.ErrorLocation()), nil
 		}
 	}
 
-	return nil, fnerrors.UserError(nil, "no such environment: %s", name)
+	return nil, fnerrors.UserError(parent, "no such environment: %s", name)
 }
 
-func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*schema.Environment {
-	if workspace.EnvSpec != nil {
-		return specToEnv(workspace.EnvSpec...)
+func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*schema.Workspace_EnvironmentSpec {
+	base := workspace.EnvSpec
+	if base == nil {
+		base = []*schema.Workspace_EnvironmentSpec{
+			{
+				Name:    "dev",
+				Runtime: "kubernetes", // XXX
+				Purpose: schema.Environment_DEVELOPMENT,
+			},
+			{
+				Name:    "staging",
+				Runtime: "kubernetes",
+				Purpose: schema.Environment_PRODUCTION,
+			},
+			{
+				Name:    "prod",
+				Runtime: "kubernetes",
+				Purpose: schema.Environment_PRODUCTION,
+			},
+		}
 	}
 
-	return append(specToEnv(devHost.LocalEnv...), []*schema.Environment{
-		{
-			Name:    "dev",
-			Runtime: "kubernetes", // XXX
-			Purpose: schema.Environment_DEVELOPMENT,
-		},
-		{
-			Name:    "staging",
-			Runtime: "kubernetes",
-			Purpose: schema.Environment_PRODUCTION,
-		},
-		{
-			Name:    "prod",
-			Runtime: "kubernetes",
-			Purpose: schema.Environment_PRODUCTION,
-		},
-	}...)
-}
-
-func specToEnv(spec ...*schema.Workspace_EnvironmentSpec) []*schema.Environment {
-	var envs []*schema.Environment
-	for _, env := range spec {
-		envs = append(envs, &schema.Environment{
-			Name:    env.Name,
-			Runtime: env.Runtime,
-			Purpose: env.Purpose,
-			Labels:  env.Labels,
-		})
-	}
-	return envs
+	return append(slices.Clone(devHost.LocalEnv), base...)
 }
 
 type ctx struct {

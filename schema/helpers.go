@@ -206,3 +206,16 @@ func (ws *Workspace) AllReferencedModules() []string {
 
 	return modules
 }
+
+func SpecToEnv(spec ...*Workspace_EnvironmentSpec) []*Environment {
+	var envs []*Environment
+	for _, env := range spec {
+		envs = append(envs, &Environment{
+			Name:    env.Name,
+			Runtime: env.Runtime,
+			Purpose: env.Purpose,
+			Labels:  env.Labels,
+		})
+	}
+	return envs
+}

@@ -27,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
 	"namespacelabs.dev/foundation/provision/deploy/view"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -75,7 +76,8 @@ func NewDevCmd() *cobra.Command {
 
 				updateWebUISticky(ctx, "preparing")
 
-				sesh, err := devworkflow.NewSession(console.Errors(ctx), sink, localHost, planning.EnvsOrDefault(locs.Root.DevHost(), locs.Root.Workspace()))
+				sesh, err := devworkflow.NewSession(console.Errors(ctx), sink, localHost,
+					schema.SpecToEnv(planning.EnvsOrDefault(locs.Root.DevHost(), locs.Root.Workspace())...))
 				if err != nil {
 					return err
 				}

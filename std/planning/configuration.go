@@ -29,7 +29,15 @@ type Configuration interface {
 }
 
 func MakeConfigurationCompat(ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) Configuration {
-	return MakeConfigurationWith(env.Name, selectByEnv(devHost, env), devHost.ConfigurePlatform)
+	var base []*anypb.Any
+	for _, spec := range ws.EnvSpec {
+		if spec.Name == env.Name {
+			base = spec.Configuration
+		}
+	}
+
+	rest := selectByEnv(devHost, env)
+	return MakeConfigurationWith(env.Name, append(base, rest...), devHost.ConfigurePlatform)
 }
 
 func MakeConfigurationWith(description string, merged []*anypb.Any, platconfig []*schema.DevHost_ConfigurePlatform) Configuration {
