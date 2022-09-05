@@ -14,10 +14,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/eks/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/providers/aws/auth"
+	"namespacelabs.dev/foundation/providers/aws/eks/config"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
@@ -33,6 +37,23 @@ func Register() {
 
 	client.RegisterProvider("eks", provideEKS)
 	client.RegisterProvider("aws/eks", provideEKS)
+
+	planning.RegisterConfigProvider(&config.Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
+		cluster := &config.Cluster{}
+		if err := input.UnmarshalTo(cluster); err != nil {
+			return nil, err
+		}
+
+		if cluster.Name == "" {
+			return nil, fnerrors.BadInputError("cluster name must be specified")
+		}
+
+		return []proto.Message{
+			&client.HostEnv{Provider: "aws/eks"},
+			&registry.Provider{Provider: "aws/ecr"},
+			&EKSCluster{Name: cluster.Name},
+		}, nil
+	})
 
 	RegisterGraphHandlers()
 }

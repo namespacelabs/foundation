@@ -7,9 +7,7 @@ package prepare
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/build/registry"
-	"namespacelabs.dev/foundation/providers/aws/eks"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/providers/aws/eks/config"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -23,17 +21,7 @@ func PrepareEksCluster(env planning.Context, clusterName string) compute.Computa
 		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Environment()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			k8sHostEnv := &client.HostEnv{
-				Provider: "aws/eks",
-			}
-			eksCluster := &eks.EKSCluster{
-				Name: clusterName,
-			}
-			registryProvider := &registry.Provider{
-				Provider: "aws/ecr",
-			}
-
-			c, err := devhost.MakeConfiguration(k8sHostEnv, eksCluster, registryProvider)
+			c, err := devhost.MakeConfiguration(&config.Cluster{Name: clusterName})
 			if err != nil {
 				return nil, err
 			}

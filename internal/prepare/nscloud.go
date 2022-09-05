@@ -7,9 +7,8 @@ package prepare
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/providers/nscloud"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/providers/nscloud/config"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -28,19 +27,7 @@ func PrepareNewNamespaceCluster(env planning.Context) compute.Computable[[]*sche
 				return nil, err
 			}
 
-			k8sHostEnv := &client.HostEnv{
-				Provider: "nscloud",
-			}
-
-			registryProvider := &registry.Provider{
-				Provider: "nscloud",
-			}
-
-			prebuilt := &nscloud.PrebuiltCluster{
-				ClusterId: cfg.ClusterId,
-			}
-
-			c, err := devhost.MakeConfiguration(k8sHostEnv, prebuilt, registryProvider)
+			c, err := devhost.MakeConfiguration(&config.Cluster{ClusterId: cfg.ClusterId})
 			if err != nil {
 				return nil, err
 			}

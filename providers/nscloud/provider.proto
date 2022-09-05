@@ -12,8 +12,3 @@ message PrebuiltCluster {
     string cluster_id        = 1;
     bytes  serialized_config = 2;  // Deprecated, always fetched now.
 }
-
-// Used as a configuration provider in an environment.
-message Cluster {
-    string cluster_id = 1;
-}

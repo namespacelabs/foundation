@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/tcache"
+	"namespacelabs.dev/foundation/providers/nscloud/config"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -94,9 +95,9 @@ var (
 func RegisterClusterProvider() {
 	client.RegisterProvider("nscloud", provideCluster)
 	client.RegisterDeferredProvider("nscloud", provideDeferred)
+	planning.RegisterConfigProvider(&config.Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
 
-	planning.RegisterConfigProvider(&Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
-		cluster := &Cluster{}
+		cluster := &config.Cluster{}
 		if err := input.UnmarshalTo(cluster); err != nil {
 			return nil, err
 		}
