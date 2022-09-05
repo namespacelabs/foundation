@@ -6,20 +6,14 @@ package debug
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/prototext"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
@@ -61,44 +55,7 @@ func newKubernetesCmd() *cobra.Command {
 
 	systemInfo.Flags().StringVar(&envBound, "env", envBound, "If specified, produce a env-bound sealed schema.")
 
-	createVCluster := fncobra.CmdWithEnv(&cobra.Command{
-		Use:  "create-vcluster",
-		Args: cobra.ExactArgs(1),
-	}, func(ctx context.Context, env planning.Context, args []string) error {
-		hostConfig, err := client.ComputeHostConfig(env.Configuration())
-		if err != nil {
-			return err
-		}
-
-		vc, err := compute.GetValue(ctx, vcluster.Create(nil, hostConfig, args[0]))
-		if err != nil {
-			return err
-		}
-
-		conn, err := vc.Access(ctx)
-		if err != nil {
-			return err
-		}
-
-		defer conn.Close()
-
-		r, err := conn.Runtime(ctx)
-		if err != nil {
-			return err
-		}
-
-		pods, err := r.Client().CoreV1().Pods("kube-admin").List(ctx, v1.ListOptions{})
-		if err != nil {
-			return fnerrors.Wrapf(nil, err, "unable to list pods")
-		}
-
-		w := json.NewEncoder(console.Stderr(ctx))
-		w.SetIndent("", "  ")
-		return w.Encode(pods)
-	})
-
 	cmd.AddCommand(systemInfo)
-	cmd.AddCommand(createVCluster)
 
 	return cmd
 }

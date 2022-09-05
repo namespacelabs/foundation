@@ -60,7 +60,6 @@ func NewTestCmd() *cobra.Command {
 			flags.BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
 			flags.BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
 			flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
-			flags.BoolVar(&testing.UseVClusters, "vcluster", testing.UseVClusters, "If true, creates a separate vcluster per test invocation.")
 			flags.BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 			flags.BoolVar(&rocketShip, "rocket_ship", false, "If set, go full parallel without constraints.")
 

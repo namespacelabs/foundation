@@ -24,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -54,9 +53,6 @@ type testRun struct {
 	Debug            bool
 	OutputProgress   bool
 
-	// If VClusters are enabled.
-	VCluster compute.Computable[*vcluster.VCluster]
-
 	compute.LocalScoped[*storage.TestResultBundle]
 }
 
@@ -78,18 +74,11 @@ func (test *testRun) Inputs() *compute.In {
 		Strs("focus", test.ServersUnderTest).
 		Computable("plan", test.Plan).
 		Bool("debug", test.Debug)
-	if test.VCluster != nil {
-		return in.Computable("vcluster", test.VCluster)
-	}
 
 	return in
 }
 
 func (test *testRun) prepareDeployEnv(ctx context.Context, r compute.Resolved) (planning.Context, func(context.Context) error, error) {
-	if test.VCluster != nil {
-		return envWithVCluster(ctx, test.SealedContext, compute.MustGetDepValue(r, test.VCluster, "vcluster"))
-	}
-
 	return test.SealedContext, makeDeleteEnv(test.SealedContext), nil
 }
 

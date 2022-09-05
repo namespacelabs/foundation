@@ -24,9 +24,6 @@ import (
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -166,7 +163,6 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		TestBinImageID:   fixtureImage,
 		Debug:            opts.Debug,
 		OutputProgress:   opts.OutputProgress,
-		VCluster:         maybeCreateVCluster(env),
 	}
 
 	createdTs := timestamppb.Now()
@@ -290,19 +286,4 @@ func (b buildAndAttachDataLayer) BuildImage(ctx context.Context, env planning.Co
 
 func (b buildAndAttachDataLayer) PlatformIndependent() bool {
 	return b.spec.PlatformIndependent()
-}
-
-func maybeCreateVCluster(env planning.Context) compute.Computable[*vcluster.VCluster] {
-	if !UseVClusters {
-		return nil
-	}
-
-	hostConfig, err := client.ComputeHostConfig(env.Configuration())
-	if err != nil {
-		return compute.Error[*vcluster.VCluster](err)
-	}
-
-	ns := kubernetes.ModuleNamespace(env.Workspace().Proto(), env.Environment())
-
-	return vcluster.Create(env.Environment(), hostConfig, ns)
 }
