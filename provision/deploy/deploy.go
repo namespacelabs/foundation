@@ -33,7 +33,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -425,7 +424,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, server
 	return c1, nil
 }
 
-func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *workspace.Module) (*secrets.Bundle, error) {
+func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Module) (*secrets.Bundle, error) {
 	contents, err := fs.ReadFile(module.ReadOnlyFS(), secrets.WorkspaceBundleName)
 	if err != nil {
 		if os.IsNotExist(err) {

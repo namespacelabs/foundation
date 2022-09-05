@@ -19,18 +19,18 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 var UsePrebuilts = true // XXX make these a scoped configuration instead.
 
-var BuildGo func(loc workspace.Location, _ *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error)
-var BuildWeb func(workspace.Location) build.Spec
-var BuildLLBGen func(schema.PackageName, *workspace.Module, build.Spec) build.Spec
-var BuildNix func(schema.PackageName, *workspace.Module, fs.FS) build.Spec
+var BuildGo func(loc pkggraph.Location, _ *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error)
+var BuildWeb func(pkggraph.Location) build.Spec
+var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spec
+var BuildNix func(schema.PackageName, *pkggraph.Module, fs.FS) build.Spec
 
 const LLBGenBinaryName = "llbgen"
 
@@ -51,7 +51,7 @@ type BuildImageOpts struct {
 	Platforms    []specs.Platform
 }
 
-func ValidateIsBinary(pkg *workspace.Package) error {
+func ValidateIsBinary(pkg *pkggraph.Package) error {
 	if pkg.Binary == nil {
 		return fnerrors.UserError(pkg.Location, "expected a binary")
 	}
@@ -60,7 +60,7 @@ func ValidateIsBinary(pkg *workspace.Package) error {
 }
 
 // Returns a Prepared.
-func Plan(ctx context.Context, pkg *workspace.Package, opts BuildImageOpts) (*Prepared, error) {
+func Plan(ctx context.Context, pkg *pkggraph.Package, opts BuildImageOpts) (*Prepared, error) {
 	if err := ValidateIsBinary(pkg); err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func Plan(ctx context.Context, pkg *workspace.Package, opts BuildImageOpts) (*Pr
 	}, nil
 }
 
-func Command(pkg *workspace.Package) []string {
+func Command(pkg *pkggraph.Package) []string {
 	return pkg.Binary.GetConfig().GetCommand()
 }
 
@@ -102,7 +102,7 @@ func (p Prepared) Image(ctx context.Context, env planning.Context) (compute.Comp
 	return multiplatform.PrepareMultiPlatformImage(ctx, env, p.Plan)
 }
 
-func PlanImage(ctx context.Context, pkg *workspace.Package, env planning.Context, usePrebuilts bool, platform *specs.Platform) (*PreparedImage, error) {
+func PlanImage(ctx context.Context, pkg *pkggraph.Package, env planning.Context, usePrebuilts bool, platform *specs.Platform) (*PreparedImage, error) {
 	if pkg.Binary == nil {
 		return nil, fnerrors.UserError(pkg.Location, "expected a binary")
 	}
@@ -130,7 +130,7 @@ func PlanImage(ctx context.Context, pkg *workspace.Package, env planning.Context
 	}, nil
 }
 
-func PrebuiltImageID(loc workspace.Location) *oci.ImageID {
+func PrebuiltImageID(loc pkggraph.Location) *oci.ImageID {
 	if !UsePrebuilts {
 		return nil
 	}
@@ -152,7 +152,7 @@ func PrebuiltImageID(loc workspace.Location) *oci.ImageID {
 	return nil
 }
 
-func planImage(ctx context.Context, loc workspace.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
+func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
 	// We prepare the build spec, as we need information, e.g. whether it's platform independent,
 	// if a prebuilt is specified.
 	spec, err := buildLayeredSpec(ctx, loc, bin)
@@ -171,7 +171,7 @@ func planImage(ctx context.Context, loc workspace.Location, bin *schema.Binary, 
 	return spec, nil
 }
 
-func buildLayeredSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary) (build.Spec, error) {
+func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary) (build.Spec, error) {
 	src := bin.BuildPlan
 
 	if src == nil || len(src.LayerBuildPlan) == 0 {
@@ -202,7 +202,7 @@ func buildLayeredSpec(ctx context.Context, loc workspace.Location, bin *schema.B
 	return mergeSpecs{specs, platformIndependent}, nil
 }
 
-func buildSpec(ctx context.Context, loc workspace.Location, bin *schema.Binary, src *schema.ImageBuildPlan) (build.Spec, error) {
+func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan) (build.Spec, error) {
 	if src == nil {
 		return nil, fnerrors.UserError(loc, "don't know how to build %q: no plan", bin.Name)
 	}

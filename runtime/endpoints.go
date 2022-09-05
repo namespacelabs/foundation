@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 func ComputeEndpoints(srv provision.Server, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
@@ -36,7 +36,7 @@ func ComputeEndpoints(srv provision.Server, allocatedPorts []*schema.Endpoint_Po
 	}
 
 	for _, service := range sch.Services() {
-		var pkg *workspace.Package
+		var pkg *pkggraph.Package
 		for _, p := range srv.Deps() {
 			if p.PackageName().Equals(service.PackageName) {
 				pkg = p
@@ -107,7 +107,7 @@ func ComputeEndpoints(srv provision.Server, allocatedPorts []*schema.Endpoint_Po
 }
 
 // XXX this should be somewhere else.
-func computeServiceEndpoint(server *schema.Server, pkg *workspace.Package, n *schema.Node, t schema.Endpoint_Type, serverPort *schema.Endpoint_Port) ([]*schema.Endpoint, error) {
+func computeServiceEndpoint(server *schema.Server, pkg *pkggraph.Package, n *schema.Node, t schema.Endpoint_Type, serverPort *schema.Endpoint_Port) ([]*schema.Endpoint, error) {
 	if len(n.ExportService) == 0 {
 		return nil, nil
 	}

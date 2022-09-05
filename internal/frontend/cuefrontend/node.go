@@ -84,7 +84,7 @@ type cueEnvironmentRequirements struct {
 	RequiredLabels map[string]string `json:"required"`
 }
 
-func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *workspace.Package, opts workspace.LoadPackageOpts) error {
+func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *pkggraph.Package, opts workspace.LoadPackageOpts) error {
 	node := &schema.Node{
 		PackageName: loc.PackageName.String(),
 		ModuleName:  loc.Module.ModuleName(),
@@ -440,7 +440,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc work
 	return workspace.TransformNode(ctx, pl, loc, node, kind, opts)
 }
 
-func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, export cueExportMethods, node *schema.Node, out *workspace.Package) error {
+func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, export cueExportMethods, node *schema.Node, out *pkggraph.Package) error {
 	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
 		return err
@@ -502,7 +502,7 @@ func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc wor
 	return nil
 }
 
-func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, provides *fncue.CueV, pkg *workspace.Package, opts workspace.LoadPackageOpts, out *schema.Node) error {
+func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, provides *fncue.CueV, pkg *pkggraph.Package, opts workspace.LoadPackageOpts, out *schema.Node) error {
 	it, err := provides.Val.Fields()
 	if err != nil {
 		return err
@@ -650,7 +650,7 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc wo
 	return nil
 }
 
-func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAPI bool, pl workspace.EarlyPackageLoader, loc workspace.Location) (*anypb.Any, error) {
+func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAPI bool, pl workspace.EarlyPackageLoader, loc pkggraph.Location) (*anypb.Any, error) {
 	if inst.PackageName == "" {
 		if len(inst.TypeDef.Sources) > 0 {
 			return nil, fnerrors.UserError(loc, "source can't be provided when package is unspecified")
@@ -712,7 +712,7 @@ func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAP
 	return fnany.Marshal(resolved.PackageName, msg)
 }
 
-func handleRef(loc workspace.Location, v cue.Value, value string, out *[]*schema.Reference) error {
+func handleRef(loc pkggraph.Location, v cue.Value, value string, out *[]*schema.Reference) error {
 	switch value {
 	case fncue.ProtoloadIKw:
 		var ref cueProtoload

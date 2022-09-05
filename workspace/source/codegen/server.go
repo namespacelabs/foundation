@@ -8,10 +8,10 @@ import (
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func ForServer(pkg *workspace.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
+func ForServer(pkg *pkggraph.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	defs, err := languages.IntegrationFor(pkg.Server.Framework).GenerateServer(pkg, available)
 	if err != nil {
 		return nil, err

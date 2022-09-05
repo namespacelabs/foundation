@@ -7,9 +7,10 @@ package workspace
 import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func TransformBinary(loc Location, bin *schema.Binary) error {
+func TransformBinary(loc pkggraph.Location, bin *schema.Binary) error {
 	if bin.PackageName != "" {
 		return fnerrors.UserError(loc, "package_name can not be set")
 	}
@@ -34,7 +35,7 @@ func TransformBinary(loc Location, bin *schema.Binary) error {
 	return nil
 }
 
-func TransformFunction(loc Location, function *schema.ExperimentalFunction) error {
+func TransformFunction(loc pkggraph.Location, function *schema.ExperimentalFunction) error {
 	if function.PackageName != "" {
 		return fnerrors.UserError(loc, "package_name can not be set")
 	}

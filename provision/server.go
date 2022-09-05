@@ -18,18 +18,18 @@ import (
 
 // Represents a server bound to an environment.
 type Server struct {
-	Location workspace.Location
-	Package  *workspace.Package
+	Location pkggraph.Location
+	Package  *pkggraph.Package
 
 	Provisioning pkggraph.PreparedProvisionPlan // A provisioning plan that is attached to the server itself.
 	Startup      pkggraph.PreStartup
 
 	env   pkggraph.SealedContext // The environment this server instance is bound to.
 	entry *schema.Stack_Entry    // The stack entry, i.e. all of the server's dependencies.
-	deps  []*workspace.Package   // List of parsed deps.
+	deps  []*pkggraph.Package    // List of parsed deps.
 }
 
-func (t Server) Module() *workspace.Module               { return t.Location.Module }
+func (t Server) Module() *pkggraph.Module                { return t.Location.Module }
 func (t Server) SealedContext() pkggraph.SealedContext   { return t.env }
 func (t Server) PackageName() schema.PackageName         { return t.Location.PackageName }
 func (t Server) StackEntry() *schema.Stack_Entry         { return t.entry }
@@ -38,9 +38,9 @@ func (t Server) Name() string                            { return t.entry.Server
 func (t Server) Framework() schema.Framework             { return t.entry.Server.Framework }
 func (t Server) Integration() *schema.Server_Integration { return t.entry.Server.Integration }
 func (t Server) IsStateful() bool                        { return t.entry.Server.IsStateful }
-func (t Server) Deps() []*workspace.Package              { return t.deps }
+func (t Server) Deps() []*pkggraph.Package               { return t.deps }
 
-func (t Server) GetDep(pkg schema.PackageName) *workspace.Package {
+func (t Server) GetDep(pkg schema.PackageName) *pkggraph.Package {
 	for _, d := range t.deps {
 		if d.PackageName() == pkg {
 			return d
@@ -65,7 +65,7 @@ func RequireLoadedServer(ctx context.Context, e pkggraph.SealedContext, pkgname 
 	})
 }
 
-func makeServer(ctx context.Context, loader workspace.Packages, env *schema.Environment, pkgname schema.PackageName, bind func() pkggraph.SealedContext) (Server, error) {
+func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.Environment, pkgname schema.PackageName, bind func() pkggraph.SealedContext) (Server, error) {
 	sealed, err := workspace.Seal(ctx, loader, pkgname, &workspace.SealHelper{
 		AdditionalServerDeps: func(fmwk schema.Framework) ([]schema.PackageName, error) {
 			var pkgs schema.PackageList

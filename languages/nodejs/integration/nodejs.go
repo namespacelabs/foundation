@@ -56,9 +56,9 @@ func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
 
 	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
-		workspacePackages, ok := env.(workspace.Packages)
+		workspacePackages, ok := env.(pkggraph.PackageLoader)
 		if !ok {
-			return nil, errors.New("workspace.Packages required")
+			return nil, errors.New("pkggraph.PackageLoader required")
 		}
 
 		loc, err := workspacePackages.Resolve(ctx, schema.PackageName(x.Server.PackageName))
@@ -74,9 +74,9 @@ func Register() {
 	})
 
 	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
-		wenv, ok := env.(workspace.Packages)
+		wenv, ok := env.(pkggraph.PackageLoader)
 		if !ok {
-			return nil, fnerrors.New("workspace.Packages required")
+			return nil, fnerrors.New("pkggraph.PackageLoader required")
 		}
 
 		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Node.PackageName))
@@ -88,9 +88,9 @@ func Register() {
 	})
 
 	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenNodeStub) (*ops.HandleResult, error) {
-		wenv, ok := env.(workspace.Packages)
+		wenv, ok := env.(pkggraph.PackageLoader)
 		if !ok {
-			return nil, fnerrors.New("workspace.Packages required")
+			return nil, fnerrors.New("pkggraph.PackageLoader required")
 		}
 
 		pkg, err := wenv.LoadByName(ctx, schema.PackageName(x.Node.PackageName))
@@ -102,9 +102,9 @@ func Register() {
 	})
 
 	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenGrpc) (*ops.HandleResult, error) {
-		wenv, ok := env.(workspace.Packages)
+		wenv, ok := env.(pkggraph.PackageLoader)
 		if !ok {
-			return nil, fnerrors.New("workspace.Packages required")
+			return nil, fnerrors.New("pkggraph.PackageLoader required")
 		}
 
 		loc, err := wenv.Resolve(ctx, schema.PackageName(x.PackageName))
@@ -129,7 +129,7 @@ type impl struct {
 }
 
 func GetExternalModuleForDeps(server provision.Server) []build.Workspace {
-	moduleMap := map[string]*workspace.Module{}
+	moduleMap := map[string]*pkggraph.Module{}
 	for _, dep := range server.Deps() {
 		if dep.Location.Module.ModuleName() != server.Module().ModuleName() &&
 			(dep.Node() != nil && (slices.Contains(dep.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS) ||
@@ -176,7 +176,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 	}, nil
 }
 
-func pkgSupportsNodejs(pkg *workspace.Package) bool {
+func pkgSupportsNodejs(pkg *pkggraph.Package) bool {
 	return (pkg.Server != nil && pkg.Server.Framework == schema.Framework_NODEJS) ||
 		(pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS))
 }
@@ -217,8 +217,8 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.S
 	return nil
 }
 
-func (impl) TidyWorkspace(ctx context.Context, env planning.Context, packages []*workspace.Package) error {
-	yarnRoots := []workspace.Location{}
+func (impl) TidyWorkspace(ctx context.Context, env planning.Context, packages []*pkggraph.Package) error {
+	yarnRoots := []pkggraph.Location{}
 	yarnRootsMap := map[string]struct{}{} // Abs path -> presence.
 	for _, pkg := range packages {
 		if pkgSupportsNodejs(pkg) {
@@ -253,7 +253,7 @@ func (impl) TidyWorkspace(ctx context.Context, env planning.Context, packages []
 	return nil
 }
 
-func updateYarnRootPackageJson(ctx context.Context, loc workspace.Location) error {
+func updateYarnRootPackageJson(ctx context.Context, loc pkggraph.Location) error {
 	dependencies := map[string]string{}
 	for k, v := range builtin().Dependencies {
 		dependencies[k] = v
@@ -274,7 +274,7 @@ func updateYarnRootPackageJson(ctx context.Context, loc workspace.Location) erro
 	return err
 }
 
-func maybeGenerateNodeImplStub(pkg *workspace.Package, dl *defs.DefList) {
+func maybeGenerateNodeImplStub(pkg *pkggraph.Package, dl *defs.DefList) {
 	if len(pkg.Services) == 0 {
 		// This is not an error, the user might have not added anything yet.
 		return
@@ -294,7 +294,7 @@ func maybeGenerateNodeImplStub(pkg *workspace.Package, dl *defs.DefList) {
 	}, pkg.PackageName())
 }
 
-func generateNodeImplStub(ctx context.Context, pkg *workspace.Package, filename string, n *schema.Node) error {
+func generateNodeImplStub(ctx context.Context, pkg *pkggraph.Package, filename string, n *schema.Node) error {
 	tmplOptions := nodeImplTmplOptions{}
 	for key, srv := range pkg.Services {
 		srvNameParts := strings.Split(key, ".")
@@ -389,7 +389,7 @@ func updateJson(ctx context.Context, filepath string, fsys fnfs.ReadWriteFS, cal
 	return parsedJson, nil
 }
 
-func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
+func (impl) GenerateServer(pkg *pkggraph.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var dl defs.DefList
 
 	dl.Add("Generate Typescript server dependencies", &OpGenServer{Server: pkg.Server, LoadedNode: nodes}, pkg.PackageName())
@@ -407,7 +407,7 @@ func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*sch
 	return dl.Serialize()
 }
 
-func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.ServerFrameworkExt) error {
+func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *workspace.ServerFrameworkExt) error {
 	// Adding extra nodes here:
 	// - grpcNode sets up correct flags for the server startup.
 	// - runtimeNode allows to treat the Namespace Node.js runtime as a regular node that has a Location,
@@ -445,7 +445,7 @@ func (impl) DevelopmentPackages() []schema.PackageName {
 	return []schema.PackageName{controllerPkg}
 }
 
-func (impl impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
+func (impl impl) GenerateNode(pkg *pkggraph.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var dl defs.DefList
 
 	maybeGenerateNodeImplStub(pkg, &dl)

@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos/resolver"
@@ -50,7 +51,7 @@ func newPrintComputedCmd() *cobra.Command {
 		})
 }
 
-func output(ctx context.Context, pl workspace.Packages, msg proto.Message, outputType string) error {
+func output(ctx context.Context, pl pkggraph.PackageLoader, msg proto.Message, outputType string) error {
 	switch outputType {
 	case "json":
 		body, err := (protojson.MarshalOptions{

@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 const (
@@ -23,7 +23,7 @@ const (
 	serviceDepsType   = "ServiceDeps"
 )
 
-func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
+func generateNode(ctx context.Context, loader pkggraph.PackageLoader, loc pkggraph.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
 	gopkg, err := packageFrom(loc)
 	if err != nil {
 		return err
@@ -151,7 +151,7 @@ func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.
 	})
 }
 
-func goPackageOr(loc workspace.Location, goPackage string) (string, error) {
+func goPackageOr(loc pkggraph.Location, goPackage string) (string, error) {
 	if goPackage != "" {
 		return goPackage, nil
 	}

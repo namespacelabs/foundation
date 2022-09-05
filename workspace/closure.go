@@ -15,10 +15,11 @@ import (
 	"golang.org/x/sync/errgroup"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-var ExtendServerHook []func(Location, *schema.Server) ExtendServerHookResult
-var ExtendNodeHook []func(context.Context, Packages, Location, *schema.Node) (*ExtendNodeHookResult, error)
+var ExtendServerHook []func(pkggraph.Location, *schema.Server) ExtendServerHookResult
+var ExtendNodeHook []func(context.Context, pkggraph.PackageLoader, pkggraph.Location, *schema.Node) (*ExtendNodeHookResult, error)
 
 type ExtendServerHookResult struct {
 	Import []schema.PackageName
@@ -30,7 +31,7 @@ type ExtendNodeHookResult struct {
 }
 
 type Sealed struct {
-	Location      Location
+	Location      pkggraph.Location
 	Proto         *schema.Stack_Entry
 	FileDeps      []string
 	Deps          []*Package
@@ -41,7 +42,7 @@ type SealHelper struct {
 	AdditionalServerDeps func(schema.Framework) ([]schema.PackageName, error)
 }
 
-func Seal(ctx context.Context, loader Packages, focus schema.PackageName, helper *SealHelper) (Sealed, error) {
+func Seal(ctx context.Context, loader pkggraph.PackageLoader, focus schema.PackageName, helper *SealHelper) (Sealed, error) {
 	sealer := newSealer(ctx, loader, focus, helper)
 
 	sealer.Do(focus)
@@ -63,7 +64,7 @@ type sealer struct {
 	g      *errgroup.Group
 	gctx   context.Context
 	focus  schema.PackageName
-	loader Packages
+	loader pkggraph.PackageLoader
 	helper *SealHelper
 
 	mu             sync.Mutex
@@ -74,7 +75,7 @@ type sealer struct {
 	serverIncludes []schema.PackageName
 }
 
-func (g *sealer) DoServer(loc Location, srv *schema.Server, pp *Package) error {
+func (g *sealer) DoServer(loc pkggraph.Location, srv *schema.Server, pp *Package) error {
 	var include []schema.PackageName
 
 	if handler, ok := FrameworkHandlers[srv.Framework]; ok {
@@ -118,7 +119,7 @@ func (g *sealer) DoServer(loc Location, srv *schema.Server, pp *Package) error {
 	return nil
 }
 
-func (g *sealer) DoNode(loc Location, n *schema.Node, parsed *Package) error {
+func (g *sealer) DoNode(loc pkggraph.Location, n *schema.Node, parsed *Package) error {
 	g.Do(n.GetImportedPackages()...)
 
 	g.mu.Lock()
@@ -167,7 +168,7 @@ func (g *sealer) Do(pkgs ...schema.PackageName) {
 	}
 }
 
-func newSealer(ctx context.Context, loader Packages, focus schema.PackageName, helper *SealHelper) *sealer {
+func newSealer(ctx context.Context, loader pkggraph.PackageLoader, focus schema.PackageName, helper *SealHelper) *sealer {
 	g, gctx := errgroup.WithContext(ctx)
 
 	return &sealer{

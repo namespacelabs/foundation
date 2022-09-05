@@ -19,20 +19,20 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func LLBBinary(packageName schema.PackageName, module *workspace.Module, bin build.Spec) build.Spec {
+func LLBBinary(packageName schema.PackageName, module *pkggraph.Module, bin build.Spec) build.Spec {
 	return llbBinary{packageName, module, bin}
 }
 
 type llbBinary struct {
 	packageName schema.PackageName
-	module      *workspace.Module
+	module      *pkggraph.Module
 	bin         build.Spec
 }
 

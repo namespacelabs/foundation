@@ -28,6 +28,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/dev/controller/admin"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/web/http"
 	"namespacelabs.dev/foundation/workspace"
@@ -56,7 +57,7 @@ type impl struct {
 	languages.MaybeTidy
 }
 
-func (impl) PreParseServer(_ context.Context, _ workspace.Location, ext *workspace.ServerFrameworkExt) error {
+func (impl) PreParseServer(_ context.Context, _ pkggraph.Location, ext *workspace.ServerFrameworkExt) error {
 	return nil
 }
 
@@ -139,7 +140,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 	return builds, nil
 }
 
-func prepareBuild(ctx context.Context, loc workspace.Location, env planning.Context, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (oci.NamedImage, error) {
+func prepareBuild(ctx context.Context, loc pkggraph.Location, env planning.Context, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (oci.NamedImage, error) {
 	if !useDevBuild(env.Environment()) {
 
 		extra = append(extra, generateProdViteConfig())
@@ -272,7 +273,7 @@ func useDevBuild(env *schema.Environment) bool {
 	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
-func (i impl) TidyNode(ctx context.Context, env planning.Context, pkgs workspace.Packages, p *workspace.Package) error {
+func (i impl) TidyNode(ctx context.Context, env planning.Context, pkgs pkggraph.PackageLoader, p *pkggraph.Package) error {
 	devPackages := []string{
 		"typescript@4.5.4",
 	}
@@ -315,7 +316,7 @@ func parseBackends(n *schema.Node) ([]*OpGenHttpBackend_Backend, error) {
 	return backends, nil
 }
 
-func (i impl) GenerateNode(pkg *workspace.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
+func (i impl) GenerateNode(pkg *pkggraph.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var dl defs.DefList
 
 	backends, err := parseBackends(pkg.Node())

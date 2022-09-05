@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -17,7 +18,7 @@ import (
 
 type Servers struct {
 	Servers        []provision.Server
-	SealedPackages workspace.SealedPackages
+	SealedPackages pkggraph.SealedPackageLoader
 }
 
 func ParseServers(serversOut *Servers, env *planning.Context, locs *Locations) *ServersParser {

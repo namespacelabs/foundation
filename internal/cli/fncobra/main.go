@@ -61,6 +61,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -152,11 +153,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			// Remote status check may linger until after we flush the main sink.
 			// So here we just suppress any messages from the background version check.
 			ctxWithNullSink := tasks.WithSink(ctx, tasks.NullSink())
-			// NB: Requires workspace.ModuleLoader.
+			// NB: Requires pkggraph.ModuleLoader.
 			go checkRemoteStatus(ctxWithNullSink, remoteStatusChan)
 		}
 
-		binary.BuildGo = func(loc workspace.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
+		binary.BuildGo = func(loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
 			gobin, err := golang.FromLocation(loc, plan.RelPath)
 			if err != nil {
 				return nil, fnerrors.Wrap(loc, err)
@@ -166,7 +167,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			gobin.UnsafeCacheable = unsafeCacheable
 			return gobin, nil
 		}
-		binary.BuildWeb = func(loc workspace.Location) build.Spec {
+		binary.BuildWeb = func(loc pkggraph.Location) build.Spec {
 			return web.StaticBuild{Location: loc}
 		}
 		binary.BuildLLBGen = genbinary.LLBBinary
@@ -175,7 +176,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Setting up container registry logging, which is unfortunately global.
 		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
 
-		workspace.ExtendNodeHook = append(workspace.ExtendNodeHook, func(ctx context.Context, packages workspace.Packages, l workspace.Location, n *schema.Node) (*workspace.ExtendNodeHookResult, error) {
+		workspace.ExtendNodeHook = append(workspace.ExtendNodeHook, func(ctx context.Context, packages pkggraph.PackageLoader, l pkggraph.Location, n *schema.Node) (*workspace.ExtendNodeHookResult, error) {
 			// Resolve doesn't require that the package actually exists. It just forces loading the module.
 			nodeloc, err := packages.Resolve(ctx, runtime.GrpcHttpTranscodeNode)
 			if err != nil {

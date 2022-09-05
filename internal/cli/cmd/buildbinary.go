@@ -28,6 +28,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/runtime/docker"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -72,7 +73,7 @@ type buildOpts struct {
 func buildLocations(ctx context.Context, env planning.Context, list []fnfs.Location, baseRepository string, opts buildOpts) error {
 	pl := workspace.NewPackageLoader(env)
 
-	var pkgs []*workspace.Package
+	var pkgs []*pkggraph.Package
 	for _, loc := range list {
 		pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
 		if err != nil {

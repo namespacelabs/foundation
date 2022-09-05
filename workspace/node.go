@@ -10,10 +10,11 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.Node, kind schema.Node_Kind, opts LoadPackageOpts) error {
+func TransformNode(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, node *schema.Node, kind schema.Node_Kind, opts LoadPackageOpts) error {
 	if kind == schema.Node_EXTENSION {
 		if node.Ingress != schema.Endpoint_INGRESS_UNSPECIFIED {
 			return fnerrors.New("ingress can only be specified for services")
@@ -120,7 +121,7 @@ func TransformNode(ctx context.Context, pl Packages, loc Location, node *schema.
 	return nil
 }
 
-func validateDependencies(ctx context.Context, pl Packages, loc Location, includes []schema.PackageName, dl *schema.PackageList) error {
+func validateDependencies(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, includes []schema.PackageName, dl *schema.PackageList) error {
 	for _, include := range includes {
 		if _, err := loadDep(ctx, pl, include); err != nil {
 			return fnerrors.Wrapf(loc, err, "loading dependency: %s", include)
@@ -132,7 +133,7 @@ func validateDependencies(ctx context.Context, pl Packages, loc Location, includ
 	return nil
 }
 
-func loadDep(ctx context.Context, pl Packages, pkg schema.PackageName) (*Package, error) {
+func loadDep(ctx context.Context, pl pkggraph.PackageLoader, pkg schema.PackageName) (*Package, error) {
 	p, err := pl.LoadByName(ctx, pkg)
 	if err != nil {
 		return nil, err

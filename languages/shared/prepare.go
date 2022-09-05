@@ -16,12 +16,13 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	grpcprotos "namespacelabs.dev/foundation/std/grpc/protos"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 // Prepare codegen data for a server.
-func PrepareServerData(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, fmwk schema.Framework) (ServerData, error) {
+func PrepareServerData(ctx context.Context, loader pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server, fmwk schema.Framework) (ServerData, error) {
 	var serverData ServerData
 
 	userImports := make(map[schema.PackageName]bool)
@@ -56,7 +57,7 @@ func PrepareServerData(ctx context.Context, loader workspace.Packages, loc works
 	return serverData, nil
 }
 
-func PrepareNodeData(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, fmwk schema.Framework) (NodeData, error) {
+func PrepareNodeData(ctx context.Context, loader pkggraph.PackageLoader, loc pkggraph.Location, n *schema.Node, fmwk schema.Framework) (NodeData, error) {
 	nodeData := NodeData{
 		Kind:        n.Kind,
 		PackageName: n.PackageName,
@@ -115,7 +116,7 @@ func IsStdGrpcExtension(pkgName string, providerName string) bool {
 	return pkgName == "namespacelabs.dev/foundation/std/grpc" && providerName == "Backend"
 }
 
-func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Framework, instantiates []*schema.Instantiate) ([]DependencyData, error) {
+func prepareDeps(ctx context.Context, loader pkggraph.PackageLoader, fmwk schema.Framework, instantiates []*schema.Instantiate) ([]DependencyData, error) {
 	if len(instantiates) == 0 {
 		return nil, nil
 	}
@@ -136,7 +137,7 @@ func prepareDeps(ctx context.Context, loader workspace.Packages, fmwk schema.Fra
 }
 
 // Returns nil if the provider is not available in the current framework.
-func prepareDep(ctx context.Context, loader workspace.Packages, fmwk schema.Framework, dep *schema.Instantiate) (*DependencyData, error) {
+func prepareDep(ctx context.Context, loader pkggraph.PackageLoader, fmwk schema.Framework, dep *schema.Instantiate) (*DependencyData, error) {
 	pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
 	if err != nil {
 		return nil, fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
@@ -192,7 +193,7 @@ func prepareDep(ctx context.Context, loader workspace.Packages, fmwk schema.Fram
 }
 
 // TODO: make private once Go is fully migrate to the "shared" API.
-func PrepareGrpcBackendDep(ctx context.Context, loader workspace.Packages, dep *schema.Instantiate) (*ProtoTypeData, error) {
+func PrepareGrpcBackendDep(ctx context.Context, loader pkggraph.PackageLoader, dep *schema.Instantiate) (*ProtoTypeData, error) {
 	backend := &grpcprotos.Backend{}
 	if err := proto.Unmarshal(dep.Constructor.Value, backend); err != nil {
 		return nil, err
@@ -244,7 +245,7 @@ func simpleServiceName(typename string) string {
 	return parts[len(parts)-1]
 }
 
-func convertProtoMessageType(t *schema.TypeDef, loc workspace.Location) ProtoTypeData {
+func convertProtoMessageType(t *schema.TypeDef, loc pkggraph.Location) ProtoTypeData {
 	nameParts := strings.Split(string(t.Typename), ".")
 	// TODO: check that the sources contain at least one file.
 	return ProtoTypeData{
@@ -256,7 +257,7 @@ func convertProtoMessageType(t *schema.TypeDef, loc workspace.Location) ProtoTyp
 }
 
 // Copied from "languages/golang/dependency.go#serializeProto"
-func serializeProto(ctx context.Context, pkg *workspace.Package, provides *schema.Provides, instance *schema.Instantiate) (*SerializedProto, error) {
+func serializeProto(ctx context.Context, pkg *pkggraph.Package, provides *schema.Provides, instance *schema.Instantiate) (*SerializedProto, error) {
 	serializedProto := SerializedProto{
 		Comments: []string{},
 	}
@@ -302,9 +303,9 @@ func serializeProto(ctx context.Context, pkg *workspace.Package, provides *schem
 	return &serializedProto, nil
 }
 
-func removeDuplicates(list []workspace.Location) []workspace.Location {
+func removeDuplicates(list []pkggraph.Location) []pkggraph.Location {
 	seen := make(map[schema.PackageName]bool)
-	result := []workspace.Location{}
+	result := []pkggraph.Location{}
 
 	for _, item := range list {
 		if !seen[item.PackageName] {

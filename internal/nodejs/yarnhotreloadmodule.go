@@ -11,14 +11,14 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/wscontents"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 const yarnLockFn = "yarn.lock"
 
 type YarnHotReloadModule struct {
-	Module *workspace.Module
+	Module *pkggraph.Module
 	Sink   wsremote.Sink
 }
 

@@ -20,12 +20,13 @@ import (
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 type nodeLoc struct {
-	Location workspace.Location
+	Location pkggraph.Location
 	Node     *schema.Node
 }
 
@@ -42,7 +43,7 @@ type instancedDepList struct {
 }
 
 type instancedDep struct {
-	Location    workspace.Location
+	Location    pkggraph.Location
 	Parent      *schema.Node
 	Scope       *schema.Provides // Parent provider - nil for singleton dependencies.
 	Instance    *schema.Instantiate
@@ -64,7 +65,7 @@ type typeProvider struct {
 	Dependencies []*typeProvider
 }
 
-func expandInstancedDeps(ctx context.Context, loader workspace.Packages, includes []schema.PackageName) (instancedDepList, error) {
+func expandInstancedDeps(ctx context.Context, loader pkggraph.PackageLoader, includes []schema.PackageName) (instancedDepList, error) {
 	var e instancedDepList
 
 	for _, ref := range includes {
@@ -98,7 +99,7 @@ func expandInstancedDeps(ctx context.Context, loader workspace.Packages, include
 	return e, nil
 }
 
-func expandNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, produceSerialized bool, e *instancedDepList) error {
+func expandNode(ctx context.Context, loader pkggraph.PackageLoader, loc pkggraph.Location, n *schema.Node, produceSerialized bool, e *instancedDepList) error {
 	if !isGoNode(n) {
 		return nil
 	}
@@ -162,7 +163,7 @@ func isGoNode(n *schema.Node) bool {
 	return false
 }
 
-func makeDep(ctx context.Context, loader workspace.Packages, dep *schema.Instantiate, produceSerialized bool, prov *typeProvider) error {
+func makeDep(ctx context.Context, loader pkggraph.PackageLoader, dep *schema.Instantiate, produceSerialized bool, prov *typeProvider) error {
 	pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
 	if err != nil {
 		return fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
@@ -246,7 +247,7 @@ func makeProvidesDepsType(p *schema.Provides) string {
 	return gosupport.MakeGoPubVar(p.Name) + "Deps"
 }
 
-func serializeContents(ctx context.Context, loader workspace.Packages, provides *schema.Provides, instance *schema.Instantiate, prov *typeProvider) error {
+func serializeContents(ctx context.Context, loader pkggraph.PackageLoader, provides *schema.Provides, instance *schema.Instantiate, prov *typeProvider) error {
 	pkg, err := loader.LoadByName(ctx, schema.PackageName(instance.PackageName))
 	if err != nil {
 		return err

@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
@@ -39,7 +40,7 @@ type cueEndpoint struct {
 	ContainerPort int32  `json:"containerPort"`
 }
 
-func FetchServer(packages workspace.Packages, stack *schema.Stack) FetcherFunc {
+func FetchServer(packages pkggraph.PackageLoader, stack *schema.Stack) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		var server cueServerReference
 		if err := v.Decode(&server); err != nil {
@@ -91,7 +92,7 @@ type cueProtoload struct {
 	Services map[string]cueProto `json:"services"`
 }
 
-func FetchProto(pl workspace.Packages, fsys fs.FS, loc workspace.Location) FetcherFunc {
+func FetchProto(pl pkggraph.PackageLoader, fsys fs.FS, loc pkggraph.Location) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		var load cueProtoload
 		if err := v.Decode(&load); err != nil {
@@ -175,7 +176,7 @@ type cueResource struct {
 	Contents []byte `json:"contents"`
 }
 
-func FetchResource(fsys fs.FS, loc workspace.Location) FetcherFunc {
+func FetchResource(fsys fs.FS, loc pkggraph.Location) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		var load cueResource
 		if err := v.Decode(&load); err != nil {
@@ -196,7 +197,7 @@ func FetchResource(fsys fs.FS, loc workspace.Location) FetcherFunc {
 	}
 }
 
-func LoadResource(fsys fs.FS, loc workspace.Location, path string) (*schema.Resource, error) {
+func LoadResource(fsys fs.FS, loc pkggraph.Location, path string) (*schema.Resource, error) {
 	if strings.HasPrefix(path, "../") {
 		return nil, fnerrors.UserError(loc, "resources must be loaded from within the package")
 	}
@@ -212,7 +213,7 @@ func LoadResource(fsys fs.FS, loc workspace.Location, path string) (*schema.Reso
 	}, nil
 }
 
-func FetchPackage(pl workspace.Packages) FetcherFunc {
+func FetchPackage(pl pkggraph.PackageLoader) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		packageName, err := v.String()
 		if err != nil {

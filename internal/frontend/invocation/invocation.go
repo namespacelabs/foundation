@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
@@ -42,7 +41,7 @@ type Snapshot struct {
 	Contents fs.FS
 }
 
-func Make(ctx context.Context, env pkggraph.SealedContext, serverLocRef *workspace.Location, with *schema.Invocation) (*Invocation, error) {
+func Make(ctx context.Context, env pkggraph.SealedContext, serverLocRef *pkggraph.Location, with *schema.Invocation) (*Invocation, error) {
 	if with.Binary == "" {
 		return nil, fnerrors.UserError(nil, "`binary` is required to point to a binary package")
 	}

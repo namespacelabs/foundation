@@ -7,9 +7,10 @@ package workspace
 import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func TransformTest(loc Location, test *schema.Test) error {
+func TransformTest(loc pkggraph.Location, test *schema.Test) error {
 	if test.PackageName != "" {
 		return fnerrors.UserError(loc, "package_name can not be set")
 	}

@@ -11,11 +11,11 @@ import (
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func RunGo(ctx context.Context, loc workspace.Location, sdk golang.LocalSDK, args ...string) error {
+func RunGo(ctx context.Context, loc pkggraph.Location, sdk golang.LocalSDK, args ...string) error {
 	return tasks.Action("go.run").Arg("dir", loc.Rel()).HumanReadablef("go "+strings.Join(args, " ")).Run(ctx, func(ctx context.Context) error {
 		var cmd localexec.Command
 		cmd.Command = sdk.GoBin()

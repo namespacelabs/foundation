@@ -10,10 +10,11 @@ import (
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 )
 
-func parseCueBinary(ctx context.Context, loc workspace.Location, parent, v *fncue.CueV) (*schema.Binary, error) {
+func parseCueBinary(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Binary, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
@@ -31,7 +32,7 @@ func parseCueBinary(ctx context.Context, loc workspace.Location, parent, v *fncu
 	return bin, nil
 }
 
-func parseCueFunction(ctx context.Context, loc workspace.Location, parent, v *fncue.CueV) (*schema.ExperimentalFunction, error) {
+func parseCueFunction(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.ExperimentalFunction, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, err

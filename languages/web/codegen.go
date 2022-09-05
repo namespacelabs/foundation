@@ -24,15 +24,14 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type generator struct{}
 
 func (generator) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, msg *OpGenHttpBackend) (*ops.HandleResult, error) {
-	wenv, ok := env.(workspace.Packages)
+	wenv, ok := env.(pkggraph.PackageLoader)
 	if !ok {
-		return nil, errors.New("workspace.Packages required")
+		return nil, errors.New("pkggraph.PackageLoader required")
 	}
 
 	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.Node.PackageName))
@@ -61,10 +60,10 @@ func (generator) Handle(ctx context.Context, env planning.Context, _ *schema.Ser
 	})
 }
 
-type genFunc func(context.Context, workspace.Location, *OpGenHttpBackend_Backend) (*backendDefinition, error)
+type genFunc func(context.Context, pkggraph.Location, *OpGenHttpBackend_Backend) (*backendDefinition, error)
 
-func generatePlaceholder(loader workspace.Packages) genFunc {
-	return func(ctx context.Context, loc workspace.Location, backend *OpGenHttpBackend_Backend) (*backendDefinition, error) {
+func generatePlaceholder(loader pkggraph.PackageLoader) genFunc {
+	return func(ctx context.Context, loc pkggraph.Location, backend *OpGenHttpBackend_Backend) (*backendDefinition, error) {
 		parsed, err := loader.LoadByName(ctx, schema.PackageName(backend.EndpointOwner))
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "failed to load referenced endpoint %q", backend.EndpointOwner)
@@ -79,7 +78,7 @@ func generatePlaceholder(loader workspace.Packages) genFunc {
 }
 
 func resolveBackend(wenv pkggraph.Context, fragments []*schema.IngressFragment) genFunc {
-	return func(ctx context.Context, loc workspace.Location, backend *OpGenHttpBackend_Backend) (*backendDefinition, error) {
+	return func(ctx context.Context, loc pkggraph.Location, backend *OpGenHttpBackend_Backend) (*backendDefinition, error) {
 		var matching []*schema.IngressFragment
 
 		for _, fragment := range fragments {
@@ -149,7 +148,7 @@ type backendDefinition struct {
 	Unmanaged []string `json:"unmanaged,omitempty"`
 }
 
-func generateBackendConf(ctx context.Context, loc workspace.Location, backend *OpGenHttpBackend, gen genFunc, placeholder bool) (*memfs.FS, error) {
+func generateBackendConf(ctx context.Context, loc pkggraph.Location, backend *OpGenHttpBackend, gen genFunc, placeholder bool) (*memfs.FS, error) {
 	backends := map[string]*backendDefinition{}
 
 	for _, b := range backend.Backend {

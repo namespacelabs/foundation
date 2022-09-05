@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
@@ -28,7 +29,7 @@ func ValidateServerID(n *schema.Server) error {
 	return nil
 }
 
-func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema.Server, pp *Package, opts LoadPackageOpts) (*schema.Server, error) {
+func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server, pp *Package, opts LoadPackageOpts) (*schema.Server, error) {
 	if err := ValidateServerID(srv); err != nil {
 		return nil, err
 	}
@@ -147,7 +148,7 @@ func TransformServer(ctx context.Context, pl Packages, loc Location, srv *schema
 }
 
 // Transform an opaqaue server defined with the simplified, import-less syntax.
-func TransformOpaqueServer(ctx context.Context, pl Packages, loc Location, srv *schema.Server, pp *Package, opts LoadPackageOpts) (*schema.Server, error) {
+func TransformOpaqueServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server, pp *Package, opts LoadPackageOpts) (*schema.Server, error) {
 	err := validateServer(ctx, loc, srv)
 	if err != nil {
 		return nil, err
@@ -180,7 +181,7 @@ func TransformOpaqueServer(ctx context.Context, pl Packages, loc Location, srv *
 	return sealed.Proto.Server, nil
 }
 
-func validateServer(ctx context.Context, loc Location, srv *schema.Server) error {
+func validateServer(ctx context.Context, loc pkggraph.Location, srv *schema.Server) error {
 	for _, m := range srv.Mounts {
 		if findVolume(srv.Volumes, m.VolumeName) == nil {
 			return fnerrors.UserError(loc, "volume %q does not exist", m.VolumeName)
@@ -241,7 +242,7 @@ func (depv *depVisitor) allocName(p string) string {
 	return fmt.Sprintf("%d", n)
 }
 
-func (depv *depVisitor) visit(ctx context.Context, pl Packages, allocs *[]*schema.Allocation, n *schema.Node, p string) error {
+func (depv *depVisitor) visit(ctx context.Context, pl pkggraph.PackageLoader, allocs *[]*schema.Allocation, n *schema.Node, p string) error {
 	// XXX this is not quite right as one of the downstream dependencies may
 	// end up performing an allocation, but keeping it simple for now.
 	if len(n.Instantiate) == 0 {

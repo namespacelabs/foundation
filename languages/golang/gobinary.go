@@ -12,8 +12,8 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
@@ -45,7 +45,7 @@ func (gb GoBinary) BuildImage(ctx context.Context, env planning.Context, conf bu
 
 func (gb GoBinary) PlatformIndependent() bool { return false }
 
-func FromLocation(loc workspace.Location, pkgName string) (*GoBinary, error) {
+func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 	absSrc := loc.Abs(pkgName)
 	mod, modFile, err := gosupport.LookupGoModule(absSrc)
 	if err != nil {

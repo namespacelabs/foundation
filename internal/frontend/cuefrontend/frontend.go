@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -23,7 +24,7 @@ type impl struct {
 }
 
 type opaqueParser interface {
-	ParsePackage(ctx context.Context, partial *fncue.Partial, loc workspace.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error)
+	ParsePackage(ctx context.Context, partial *fncue.Partial, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error)
 }
 
 type cueInjectedScope struct {
@@ -52,7 +53,7 @@ func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser opaqueParser, env
 	}
 }
 
-func (ft impl) ParsePackage(ctx context.Context, loc workspace.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error) {
+func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error) {
 	partial, err := parsePackage(ctx, ft.evalctx, ft.loader, loc)
 	if err != nil {
 		return nil, err

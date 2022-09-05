@@ -68,7 +68,7 @@ func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env pl
 				}
 			}
 		} else {
-			var pkg *workspace.Package
+			var pkg *pkggraph.Package
 			for _, dep := range sealed.Deps {
 				if dep.PackageName() == loc.AsPackageName() {
 					pkg = dep

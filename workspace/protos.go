@@ -9,10 +9,11 @@ import (
 	"io/fs"
 
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-func MakeProtoParseOpts(ctx context.Context, p Packages, workspace *schema.Workspace) (protos.ParseOpts, error) {
+func MakeProtoParseOpts(ctx context.Context, p pkggraph.PackageLoader, workspace *schema.Workspace) (protos.ParseOpts, error) {
 	opts := protos.ParseOpts{}
 
 	for _, w := range workspace.ExperimentalProtoModuleImports {

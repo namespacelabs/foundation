@@ -15,19 +15,19 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/pins"
 )
 
-func NixImage(packageName schema.PackageName, module *workspace.Module, sources fs.FS) build.Spec {
+func NixImage(packageName schema.PackageName, module *pkggraph.Module, sources fs.FS) build.Spec {
 	return nixImage{packageName, module, sources}
 }
 
 type nixImage struct {
 	packageName schema.PackageName
-	module      *workspace.Module
+	module      *pkggraph.Module
 	sources     fs.FS
 }
 

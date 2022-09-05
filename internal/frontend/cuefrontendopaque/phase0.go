@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -23,7 +24,7 @@ func NewFrontend(pl workspace.EarlyPackageLoader) *Frontend {
 	return &Frontend{loader: pl}
 }
 
-func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc workspace.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error) {
+func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*pkggraph.Package, error) {
 	v := &partial.CueV
 
 	// Ensure all fields are bound.
@@ -32,7 +33,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	}
 
 	phase1plan := &phase1plan{}
-	parsedPkg := &workspace.Package{
+	parsedPkg := &pkggraph.Package{
 		Location: loc,
 		Parsed:   phase1plan,
 	}
@@ -106,7 +107,7 @@ type cueSecret struct {
 	Description string `json:"description,omitempty"`
 }
 
-func parseSecret(ctx context.Context, loc workspace.Location, name string, v cue.Value) (*schema.SecretSpec, error) {
+func parseSecret(ctx context.Context, loc pkggraph.Location, name string, v cue.Value) (*schema.SecretSpec, error) {
 	var bits cueSecret
 	if err := v.Decode(&bits); err != nil {
 		return nil, err

@@ -27,9 +27,9 @@ import (
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	p "namespacelabs.dev/foundation/std/proto"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
@@ -42,9 +42,9 @@ func Register() {
 type generator struct{}
 
 func (generator) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, msg *OpGenNode) (*ops.HandleResult, error) {
-	wenv, ok := env.(workspace.Packages)
+	wenv, ok := env.(pkggraph.PackageLoader)
 	if !ok {
-		return nil, fnerrors.New("workspace.Packages required")
+		return nil, fnerrors.New("pkggraph.PackageLoader required")
 	}
 
 	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.Node.PackageName))
@@ -55,7 +55,7 @@ func (generator) Handle(ctx context.Context, env planning.Context, _ *schema.Ser
 	return nil, generateNode(ctx, loc, msg.Node, msg.Protos, loc.Module.ReadWriteFS())
 }
 
-func ProtosForNode(pkg *workspace.Package) ([]*schema.SerializedInvocation, error) {
+func ProtosForNode(pkg *pkggraph.Package) ([]*schema.SerializedInvocation, error) {
 	var allDefs []*schema.SerializedInvocation
 
 	if len(pkg.Provides) > 0 {
@@ -85,7 +85,7 @@ func ProtosForNode(pkg *workspace.Package) ([]*schema.SerializedInvocation, erro
 	return allDefs, nil
 }
 
-func ForNodeForLanguage(pkg *workspace.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
+func ForNodeForLanguage(pkg *pkggraph.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var allDefs []*schema.SerializedInvocation
 	for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
 		defs, err := languages.IntegrationFor(fmwk).GenerateNode(pkg, available)
@@ -99,7 +99,7 @@ func ForNodeForLanguage(pkg *workspace.Package, available []*schema.Node) ([]*sc
 	return allDefs, nil
 }
 
-func generateNode(ctx context.Context, loc workspace.Location, n *schema.Node, parsed *protos.FileDescriptorSetAndDeps, fs fnfs.ReadWriteFS) error {
+func generateNode(ctx context.Context, loc pkggraph.Location, n *schema.Node, parsed *protos.FileDescriptorSetAndDeps, fs fnfs.ReadWriteFS) error {
 	var imports uniquestrings.List
 
 	pd, err := protodesc.NewFiles(parsed.AsFileDescriptorSet())
@@ -255,7 +255,7 @@ func generateProto(out io.Writer, parsed protos.AnyResolver, msg protoreflect.Me
 	return nil
 }
 
-func packageName(loc workspace.Location) string {
+func packageName(loc pkggraph.Location) string {
 	if loc.Rel() == "." {
 		return filepath.Base(loc.Module.ModuleName())
 	}

@@ -41,7 +41,7 @@ type requiredServers struct {
 
 type ServerSnapshot struct {
 	servers []Server
-	sealed  workspace.SealedPackages
+	sealed  pkggraph.SealedPackageLoader
 	// Used in Observe()
 	env      planning.Context
 	packages []schema.PackageName

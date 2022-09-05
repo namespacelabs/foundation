@@ -10,6 +10,7 @@ import (
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -24,7 +25,7 @@ type cueFixture struct {
 	ServersUnderTest []string `json:"serversUnderTest"`
 }
 
-func parseCueTest(ctx context.Context, loc workspace.Location, parent, v *fncue.CueV) (*schema.Test, error) {
+func parseCueTest(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Test, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, err

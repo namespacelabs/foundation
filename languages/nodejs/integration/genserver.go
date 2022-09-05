@@ -12,12 +12,12 @@ import (
 	"namespacelabs.dev/foundation/languages/nodejs/imports"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 const ServerFilename = "main.fn.ts"
 
-func generateServer(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
+func generateServer(ctx context.Context, loader pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
 	serverData, err := shared.PrepareServerData(ctx, loader, loc, srv, schema.Framework_NODEJS)
 	if err != nil {
 		return err

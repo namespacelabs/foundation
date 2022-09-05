@@ -15,8 +15,8 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/yarn"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 const (
@@ -28,7 +28,7 @@ const (
 
 var UseNativeNode = false
 
-func RunYarn(ctx context.Context, env planning.Context, loc workspace.Location, args []string) error {
+func RunYarn(ctx context.Context, env planning.Context, loc pkggraph.Location, args []string) error {
 	lockFileStruct, err := generateLockFileStruct(loc.Module.Workspace, loc.Module.Abs(), loc.Rel())
 	if err != nil {
 		return err

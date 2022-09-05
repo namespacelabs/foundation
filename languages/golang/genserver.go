@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 const (
@@ -23,7 +23,7 @@ const (
 	ServerMainFilename    = "main.fn.go"
 )
 
-func generateServer(ctx context.Context, loader workspace.Packages, loc workspace.Location, srv *schema.Server, fs fnfs.ReadWriteFS) error {
+func generateServer(ctx context.Context, loader pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server, fs fnfs.ReadWriteFS) error {
 	var opts genTmplOptions
 
 	opts.Imports = gosupport.NewGoImports("main")
@@ -46,7 +46,7 @@ func generateServer(ctx context.Context, loader workspace.Packages, loc workspac
 	return nil
 }
 
-func prepareGenerate(ctx context.Context, loader workspace.Packages, importList []schema.PackageName, opts *genTmplOptions) error {
+func prepareGenerate(ctx context.Context, loader pkggraph.PackageLoader, importList []schema.PackageName, opts *genTmplOptions) error {
 	allDeps, err := expandInstancedDeps(ctx, loader, importList)
 	if err != nil {
 		return err

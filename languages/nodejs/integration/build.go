@@ -22,7 +22,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/pins"
@@ -40,7 +39,7 @@ type buildNodeJS struct {
 	module          build.Workspace
 	workspace       *schema.Workspace
 	externalModules []build.Workspace
-	yarnRoot        workspace.Location
+	yarnRoot        pkggraph.Location
 	serverEnv       pkggraph.SealedContext
 	isDevBuild      bool
 	isFocus         bool

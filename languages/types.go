@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -29,13 +30,13 @@ type Integration interface {
 	PrepareRun(context.Context, provision.Server, *runtime.ServerRunOpts) error
 
 	// Called on `ns tidy`
-	TidyWorkspace(context.Context, planning.Context, []*workspace.Package) error
-	TidyNode(context.Context, planning.Context, workspace.Packages, *workspace.Package) error
-	TidyServer(context.Context, planning.Context, workspace.Packages, workspace.Location, *schema.Server) error
+	TidyWorkspace(context.Context, planning.Context, []*pkggraph.Package) error
+	TidyNode(context.Context, planning.Context, pkggraph.PackageLoader, *pkggraph.Package) error
+	TidyServer(context.Context, planning.Context, pkggraph.PackageLoader, pkggraph.Location, *schema.Server) error
 
 	// Called on `ns generate`.
-	GenerateNode(*workspace.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
-	GenerateServer(*workspace.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
+	GenerateNode(*pkggraph.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
+	GenerateServer(*pkggraph.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
 
 	// Called on `ns dev`.
 	PrepareDev(context.Context, provision.Server) (context.Context, DevObserver, error)
@@ -70,24 +71,24 @@ func (MaybePrepare) PrepareRun(context.Context, provision.Server, *runtime.Serve
 
 type MaybeGenerate struct{}
 
-func (MaybeGenerate) GenerateNode(*workspace.Package, []*schema.Node) ([]*schema.SerializedInvocation, error) {
+func (MaybeGenerate) GenerateNode(*pkggraph.Package, []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	return nil, nil
 }
-func (MaybeGenerate) GenerateServer(*workspace.Package, []*schema.Node) ([]*schema.SerializedInvocation, error) {
+func (MaybeGenerate) GenerateServer(*pkggraph.Package, []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	return nil, nil
 }
 
 type MaybeTidy struct{}
 
-func (MaybeTidy) TidyWorkspace(context.Context, planning.Context, []*workspace.Package) error {
+func (MaybeTidy) TidyWorkspace(context.Context, planning.Context, []*pkggraph.Package) error {
 	return nil
 }
 
-func (MaybeTidy) TidyNode(context.Context, planning.Context, workspace.Packages, *workspace.Package) error {
+func (MaybeTidy) TidyNode(context.Context, planning.Context, pkggraph.PackageLoader, *pkggraph.Package) error {
 	return nil
 }
 
-func (MaybeTidy) TidyServer(context.Context, planning.Context, workspace.Packages, workspace.Location, *schema.Server) error {
+func (MaybeTidy) TidyServer(context.Context, planning.Context, pkggraph.PackageLoader, pkggraph.Location, *schema.Server) error {
 	return nil
 }
 

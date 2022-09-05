@@ -16,8 +16,8 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -27,12 +27,12 @@ type noPackageEnv struct {
 	planning.Context
 }
 
-var _ workspace.Packages = noPackageEnv{}
+var _ pkggraph.PackageLoader = noPackageEnv{}
 
-func (noPackageEnv) Resolve(ctx context.Context, packageName schema.PackageName) (workspace.Location, error) {
-	return workspace.Location{}, fnerrors.New("not supported")
+func (noPackageEnv) Resolve(ctx context.Context, packageName schema.PackageName) (pkggraph.Location, error) {
+	return pkggraph.Location{}, fnerrors.New("not supported")
 }
-func (noPackageEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*workspace.Package, error) {
+func (noPackageEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*pkggraph.Package, error) {
 	return nil, fnerrors.New("not supported")
 }
 func (noPackageEnv) Ensure(ctx context.Context, packageName schema.PackageName) error {

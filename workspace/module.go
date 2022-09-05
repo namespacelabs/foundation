@@ -54,7 +54,7 @@ func ModuleHead(ctx context.Context, resolved *ResolvedPackage) (*schema.Workspa
 }
 
 func moduleHeadTo(ctx context.Context, resolved *ResolvedPackage, dep *schema.Workspace_Dependency) error {
-	return tasks.Action("workspace.module.resolve-head").Arg("name", resolved.ModuleName).Run(ctx, func(ctx context.Context) error {
+	return tasks.Action("pkggraph.Module.resolve-head").Arg("name", resolved.ModuleName).Run(ctx, func(ctx context.Context) error {
 		var out bytes.Buffer
 		cmd := exec.CommandContext(ctx, "git", "ls-remote", "-q", resolved.Repository, "HEAD")
 		cmd.Env = append(os.Environ(), git.NoPromptEnv().Serialize()...)
@@ -91,7 +91,7 @@ func ResolveModule(ctx context.Context, packageName string) (*ResolvedPackage, e
 }
 
 func resolvePackageTo(ctx context.Context, packageName string, resolved *ResolvedPackage) error {
-	return tasks.Action("workspace.module.resolve").Arg("name", packageName).Run(ctx, func(ctx context.Context) error {
+	return tasks.Action("pkggraph.Module.resolve").Arg("name", packageName).Run(ctx, func(ctx context.Context) error {
 		contents, err := http.Get(fmt.Sprintf("https://%s?foundation-get=1", packageName))
 		if err != nil {
 			return err
@@ -189,7 +189,7 @@ func DownloadModule(ctx context.Context, dep *schema.Workspace_Dependency, force
 }
 
 func downloadModuleTo(ctx context.Context, dep *schema.Workspace_Dependency, force bool, downloaded *LocalModule) error {
-	return tasks.Action("workspace.module.download").Arg("name", dep.ModuleName).Arg("version", dep.Version).Run(ctx, func(ctx context.Context) error {
+	return tasks.Action("pkggraph.Module.download").Arg("name", dep.ModuleName).Arg("version", dep.Version).Run(ctx, func(ctx context.Context) error {
 		modDir, err := dirs.ModuleCache(dep.ModuleName, dep.Version)
 		if err != nil {
 			return err

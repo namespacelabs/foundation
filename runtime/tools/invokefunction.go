@@ -14,8 +14,8 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/deno"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/types"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -25,7 +25,7 @@ const (
 	denoRuntime        = "namespacelabs.dev/foundation/std/experimental/deno"
 )
 
-func InvokeFunction(ctx context.Context, loc workspace.Location, rootDir string, inv *types.DeferredInvocation) (compute.Computable[*protocol.InvokeResponse], error) {
+func InvokeFunction(ctx context.Context, loc pkggraph.Location, rootDir string, inv *types.DeferredInvocation) (compute.Computable[*protocol.InvokeResponse], error) {
 	if inv.ExperimentalFunction.Kind != invocationProtocol {
 		return nil, fnerrors.BadInputError("unsupported protocol, expected %q got %q", invocationProtocol, inv.ExperimentalFunction.Kind)
 	}

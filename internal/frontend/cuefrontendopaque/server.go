@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -47,7 +48,7 @@ type cueIngress struct {
 	HttpRoutes     map[string][]string `json:"httpRoutes"`
 }
 
-func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, v *fncue.CueV) (*schema.Server, *schema.StartupPlan, error) {
+func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (*schema.Server, *schema.StartupPlan, error) {
 	var bits cueServer
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, nil, err
@@ -114,7 +115,7 @@ func sortServices(services []*schema.Server_ServiceSpec) {
 	})
 }
 
-func parseService(loc workspace.Location, name string, svc cueService) (*schema.Server_ServiceSpec, schema.Endpoint_Type, error) {
+func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.Server_ServiceSpec, schema.Endpoint_Type, error) {
 	if svc.Kind != "http" {
 		return nil, schema.Endpoint_INGRESS_UNSPECIFIED, fnerrors.UserError(loc, "service kind is not supported: %s", svc.Kind)
 	}

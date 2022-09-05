@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 const yarnLockFn = "yarn.lock"
@@ -40,15 +40,15 @@ func writeSource(w io.Writer, t *template.Template, templateName string, data in
 	return err
 }
 
-func findYarnRoot(loc workspace.Location) (workspace.Location, error) {
+func findYarnRoot(loc pkggraph.Location) (pkggraph.Location, error) {
 	path, err := findroot.Find(yarnLockFn, loc.Abs(), findroot.LookForFile(yarnLockFn))
 	if err != nil {
-		return workspace.Location{}, nil
+		return pkggraph.Location{}, nil
 	}
 
 	relPath, err := filepath.Rel(loc.Module.Abs(), path)
 	if err != nil {
-		return workspace.Location{}, nil
+		return pkggraph.Location{}, nil
 	}
 
 	return loc.Module.MakeLocation(relPath), nil

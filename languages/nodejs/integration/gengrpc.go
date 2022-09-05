@@ -12,11 +12,11 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/languages/nodejs/grpcgen"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-func generateGrpcApi(ctx context.Context, protos *protos.FileDescriptorSetAndDeps, loc workspace.Location) error {
+func generateGrpcApi(ctx context.Context, protos *protos.FileDescriptorSetAndDeps, loc pkggraph.Location) error {
 	for _, file := range protos.GetFile() {
 		generatedCode, err := grpcgen.Generate(file, protos, grpcgen.GenOpts{
 			GenClients: true,

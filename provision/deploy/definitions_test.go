@@ -14,21 +14,20 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func TestEnsureInvocationOrder(t *testing.T) {
 	stack := &stack.Stack{
 		Servers: []provision.Server{{
-			Location: workspace.Location{
+			Location: pkggraph.Location{
 				PackageName: "a",
 			},
 		}, {
-			Location: workspace.Location{
+			Location: pkggraph.Location{
 				PackageName: "b",
 			},
 		}, {
-			Location: workspace.Location{
+			Location: pkggraph.Location{
 				PackageName: "c",
 			},
 		}},

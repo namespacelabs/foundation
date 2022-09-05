@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -61,7 +60,7 @@ func (p ParsedServer) SidecarsAndInits() ([]*schema.SidecarContainer, []*schema.
 }
 
 type ParsedNode struct {
-	Package       *workspace.Package
+	Package       *pkggraph.Package
 	ProvisionPlan pkggraph.ProvisionPlan
 	Allocations   []pkggraph.ValueWithPath
 	PrepareProps  struct {
@@ -246,7 +245,7 @@ func (cs *computeState) computeStackContents(ctx context.Context, server provisi
 	})
 }
 
-func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Package) (*ParsedNode, error) {
+func EvalProvision(ctx context.Context, server provision.Server, n *pkggraph.Package) (*ParsedNode, error) {
 	return tasks.Return(ctx, tasks.Action("package.eval.provisioning").Scope(n.PackageName()).Arg("server", server.PackageName()), func(ctx context.Context) (*ParsedNode, error) {
 		pn, err := evalProvision(ctx, server, n)
 		if err != nil {
@@ -257,7 +256,7 @@ func EvalProvision(ctx context.Context, server provision.Server, n *workspace.Pa
 	})
 }
 
-func evalProvision(ctx context.Context, server provision.Server, n *workspace.Package) (*ParsedNode, error) {
+func evalProvision(ctx context.Context, server provision.Server, n *pkggraph.Package) (*ParsedNode, error) {
 	var combinedProps frontend.PrepareProps
 	for _, hook := range n.PrepareHooks {
 		if hook.InvokeInternal != "" {

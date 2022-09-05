@@ -11,13 +11,13 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func DownloadPrebuilts(env planning.Context, pl *workspace.PackageLoader, packages []schema.PackageName) compute.Computable[[]oci.Image] {
+func DownloadPrebuilts(env planning.Context, pl pkggraph.PackageLoader, packages []schema.PackageName) compute.Computable[[]oci.Image] {
 	return compute.Map(
 		tasks.Action("prepare.download-prebuilts").HumanReadablef("Download prebuilt package images"),
 		compute.Inputs().Proto("env", env.Environment()).Strs("packages", schema.Strs(packages...)),

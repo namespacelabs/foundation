@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -41,7 +42,7 @@ type createFunc func(context.Context) (*secrets.Bundle, error)
 
 type location struct {
 	root *workspace.Root
-	loc  workspace.Location
+	loc  pkggraph.Location
 }
 
 func loadBundleFromArgs(ctx context.Context, env planning.Context, loc fnfs.Location, createIfMissing createFunc) (*location, *secrets.Bundle, error) {

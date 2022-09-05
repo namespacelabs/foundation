@@ -61,7 +61,7 @@ func NewTidyCmd() *cobra.Command {
 				return err
 			}
 
-			packages := []*workspace.Package{}
+			packages := []*pkggraph.Package{}
 			for _, loc := range list.Locations {
 				pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
 				if err != nil {
@@ -245,7 +245,7 @@ func (alloc *allocator) checkResolves(ctx context.Context, pkgs []string, refs [
 	return nil
 }
 
-func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName) (workspace.Location, error) {
+func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName) (pkggraph.Location, error) {
 	if _, ok := schema.IsParent(alloc.root.Workspace().ModuleName, sch); ok {
 		return alloc.loader.Resolve(ctx, sch)
 	}
@@ -260,7 +260,7 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 		// First, is there a replace statement that applies to this package?
 		replaced, err := alloc.loader.MatchModuleReplace(ctx, sch)
 		if err != nil {
-			return workspace.Location{}, err
+			return pkggraph.Location{}, err
 		}
 
 		// If so, there's nothing for us to do here.
@@ -271,7 +271,7 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 		// Then, resolve the package to a module name + relative path.
 		mod, err := workspace.ResolveModule(ctx, sch.String())
 		if err != nil {
-			return workspace.Location{}, err
+			return pkggraph.Location{}, err
 		}
 
 		// Check if we already parsed this module.
@@ -283,7 +283,7 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 		if resolved == nil {
 			dep, err := workspace.ModuleHead(ctx, mod)
 			if err != nil {
-				return workspace.Location{}, err
+				return pkggraph.Location{}, err
 			}
 			resolved = dep
 

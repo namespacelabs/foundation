@@ -14,21 +14,21 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 type providerProtoResolver struct {
 	// proto resolver interface passes no context, so we retain the caller's.
 	ctx  context.Context
-	root workspace.Packages
+	root pkggraph.PackageLoader
 }
 
-func NewResolver(ctx context.Context, root workspace.Packages) *providerProtoResolver {
+func NewResolver(ctx context.Context, root pkggraph.PackageLoader) *providerProtoResolver {
 	return &providerProtoResolver{ctx, root}
 }
 
-func (pr *providerProtoResolver) resolvePackage(name schema.PackageName) (*workspace.Package, error) {
+func (pr *providerProtoResolver) resolvePackage(name schema.PackageName) (*pkggraph.Package, error) {
 	return pr.root.LoadByName(pr.ctx, name)
 }
 

@@ -6,16 +6,16 @@ package shared
 
 import (
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type ServerData struct {
 	Services             []EmbeddedServiceData
-	ImportedInitializers []workspace.Location
+	ImportedInitializers []pkggraph.Location
 }
 
 type EmbeddedServiceData struct {
-	Location workspace.Location
+	Location pkggraph.Location
 	HasDeps  bool
 }
 
@@ -24,7 +24,7 @@ type NodeData struct {
 	PackageName          string
 	Deps                 []DependencyData
 	Providers            []ProviderData
-	ImportedInitializers []workspace.Location
+	ImportedInitializers []pkggraph.Location
 	Initializer          *PackageInitializerData
 }
 
@@ -44,14 +44,14 @@ const (
 type ProtoTypeData struct {
 	Name           string
 	SourceFileName string
-	Location       workspace.Location
+	Location       pkggraph.Location
 	// Distinguishing between message and service types because they need to be imported from different files in node.js
 	Kind ProtoTypeKind
 }
 
 type ProviderData struct {
 	Name         string
-	Location     workspace.Location
+	Location     pkggraph.Location
 	InputType    ProtoTypeData
 	ProviderType ProviderTypeData
 	ScopedDeps   []DependencyData
@@ -74,7 +74,7 @@ type DependencyData struct {
 	ProviderName      string
 	ProviderInputType ProtoTypeData
 	ProviderType      ProviderTypeData
-	ProviderLocation  workspace.Location
+	ProviderLocation  pkggraph.Location
 	ProviderInput     SerializedProto
 }
 

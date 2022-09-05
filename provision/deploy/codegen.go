@@ -14,7 +14,6 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -55,8 +54,8 @@ func (cd *codegenThenSnapshot) Compute(ctx context.Context, _ compute.Resolved) 
 }
 
 type codegenEnv struct {
-	root     *workspace.Module
-	packages workspace.Packages
+	root     *pkggraph.Module
+	packages pkggraph.PackageLoader
 	env      *schema.Environment
 	fs       fnfs.ReadWriteFS
 }
@@ -73,11 +72,11 @@ func (ce codegenEnv) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
 	return ce.root.WorkspaceData.WorkspaceLoadedFrom()
 }
 
-func (ce codegenEnv) Resolve(ctx context.Context, pkg schema.PackageName) (workspace.Location, error) {
+func (ce codegenEnv) Resolve(ctx context.Context, pkg schema.PackageName) (pkggraph.Location, error) {
 	return ce.packages.Resolve(ctx, pkg)
 }
 
-func (ce codegenEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*workspace.Package, error) {
+func (ce codegenEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*pkggraph.Package, error) {
 	return ce.packages.LoadByName(ctx, packageName)
 }
 

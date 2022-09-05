@@ -7,10 +7,10 @@ package cuefrontend
 import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func parseFramework(loc workspace.Location, str string) (schema.Framework, error) {
+func parseFramework(loc pkggraph.Location, str string) (schema.Framework, error) {
 	switch str {
 	case "GO", "GO_GRPC":
 		return schema.Framework_GO, nil

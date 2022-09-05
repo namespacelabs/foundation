@@ -11,7 +11,7 @@ import (
 	"namespacelabs.dev/foundation/languages/nodejs/imports"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type NpmPackage string
@@ -25,7 +25,7 @@ func toNpmNamespace(moduleName string) string {
 	}
 }
 
-func toNpmPackage(loc workspace.Location) (NpmPackage, error) {
+func toNpmPackage(loc pkggraph.Location) (NpmPackage, error) {
 	return NpmPackage(fmt.Sprintf("%s/%s", toNpmNamespace(loc.Module.ModuleName()), loc.Rel())), nil
 }
 
@@ -75,7 +75,7 @@ func convertProtoType(ic *imports.ImportCollector, t shared.ProtoTypeData) (*tmp
 	}, nil
 }
 
-func convertAvailableIn(ic *imports.ImportCollector, a *schema.Provides_AvailableIn_NodeJs, loc workspace.Location) (*tmplImportedType, error) {
+func convertAvailableIn(ic *imports.ImportCollector, a *schema.Provides_AvailableIn_NodeJs, loc pkggraph.Location) (*tmplImportedType, error) {
 	// Empty import means that the type is generated at runtime when the provider is used as a dependency,
 	// and here were are generating the provider definition. In this case this type is not used from the templates.
 	if a.Import == "" {
@@ -116,7 +116,7 @@ func convertAvailableIn(ic *imports.ImportCollector, a *schema.Provides_Availabl
 	}
 }
 
-func convertImportedInitializers(ic *imports.ImportCollector, locations []workspace.Location) ([]string, error) {
+func convertImportedInitializers(ic *imports.ImportCollector, locations []pkggraph.Location) ([]string, error) {
 	result := []string{}
 	for _, loc := range locations {
 		npmPackage, err := toNpmPackage(loc)

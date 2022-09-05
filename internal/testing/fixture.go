@@ -63,7 +63,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 	}
 
 	var testDef *schema.Test
-	var testBinary *workspace.Package
+	var testBinary *pkggraph.Package
 
 	if testPkg.Server != nil {
 		startupTest, err := pl.LoadByName(ctx, startupTestBinary)
@@ -86,7 +86,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		testBinary = startupTest
 	} else if testPkg.Test != nil {
 		testDef = testPkg.Test
-		testBinary = &workspace.Package{
+		testBinary = &pkggraph.Package{
 			Binary:   testPkg.Test.Driver,
 			Location: testPkg.Location,
 		}

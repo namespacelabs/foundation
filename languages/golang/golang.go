@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -40,9 +41,9 @@ func Register() {
 	runtime.RegisterSupport(schema.Framework_GO, impl{})
 
 	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
-		wenv, ok := env.(workspace.Packages)
+		wenv, ok := env.(pkggraph.PackageLoader)
 		if !ok {
-			return nil, fnerrors.New("workspace.Packages required")
+			return nil, fnerrors.New("pkggraph.PackageLoader required")
 		}
 
 		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Node.PackageName))
@@ -54,9 +55,9 @@ func Register() {
 	})
 
 	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
-		wenv, ok := env.(workspace.Packages)
+		wenv, ok := env.(pkggraph.PackageLoader)
 		if !ok {
-			return nil, fnerrors.New("workspace.Packages required")
+			return nil, fnerrors.New("pkggraph.PackageLoader required")
 		}
 
 		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Server.PackageName))
@@ -100,7 +101,7 @@ func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.Ser
 	return nil
 }
 
-func (impl) TidyServer(ctx context.Context, env planning.Context, pkgs workspace.Packages, loc workspace.Location, server *schema.Server) error {
+func (impl) TidyServer(ctx context.Context, env planning.Context, pkgs pkggraph.PackageLoader, loc pkggraph.Location, server *schema.Server) error {
 	ext := &FrameworkExt{}
 	if err := workspace.MustExtension(server.Ext, ext); err != nil {
 		return fnerrors.Wrap(loc, err)
@@ -160,7 +161,7 @@ func (impl) TidyServer(ctx context.Context, env planning.Context, pkgs workspace
 	return nil
 }
 
-func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
+func (impl) GenerateNode(pkg *pkggraph.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var dl defs.DefList
 
 	dl.Add("Generate Go node dependencies", &OpGenNode{
@@ -192,13 +193,13 @@ func (impl) GenerateNode(pkg *workspace.Package, nodes []*schema.Node) ([]*schem
 	return dl.Serialize()
 }
 
-func (impl) GenerateServer(pkg *workspace.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
+func (impl) GenerateServer(pkg *pkggraph.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var dl defs.DefList
 	dl.Add("Generate Go server dependencies", &OpGenServer{Server: pkg.Server, LoadedNode: nodes}, pkg.PackageName())
 	return dl.Serialize()
 }
 
-func (impl) PreParseServer(ctx context.Context, loc workspace.Location, ext *workspace.ServerFrameworkExt) error {
+func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *workspace.ServerFrameworkExt) error {
 	f, gomodFile, err := gosupport.LookupGoModule(loc.Abs())
 	if err != nil {
 		return err
@@ -261,7 +262,7 @@ func (impl) DevelopmentPackages() []schema.PackageName {
 	return nil
 }
 
-func packageFrom(loc workspace.Location) (string, error) {
+func packageFrom(loc pkggraph.Location) (string, error) {
 	return gosupport.ComputeGoPackage(loc.Abs())
 }
 

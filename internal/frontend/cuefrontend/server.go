@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -63,7 +64,7 @@ type inlineAnyJson struct {
 	Body    string `json:"body"`
 }
 
-func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc workspace.Location, parent, v *fncue.CueV, pp *workspace.Package, opts workspace.LoadPackageOpts) (*schema.Server, error) {
+func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, parent, v *fncue.CueV, pp *pkggraph.Package, opts workspace.LoadPackageOpts) (*schema.Server, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
@@ -211,7 +212,7 @@ func parseDetails(detail inlineAnyJson) (*anypb.Any, error) {
 	return anypb.New(msg)
 }
 
-func parseService(loc workspace.Location, kind, name string, svc cueServiceSpec) (*schema.Server_ServiceSpec, error) {
+func parseService(loc pkggraph.Location, kind, name string, svc cueServiceSpec) (*schema.Server_ServiceSpec, error) {
 	if svc.Metadata.ExperimentalDetails.TypeUrl != "" {
 		return nil, fnerrors.UserError(loc, "%s[%s]: only additional metadata support details", kind, name)
 	}

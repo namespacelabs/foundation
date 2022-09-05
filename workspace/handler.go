@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type ServerFrameworkExt struct {
@@ -25,7 +26,7 @@ type ServerInputs struct {
 // XXX we're injection Location in these, which allows for loading arbitrary files for the workspace;
 // Ideally we'd pass a PackageLoader instead.
 type FrameworkHandler interface {
-	PreParseServer(context.Context, Location, *ServerFrameworkExt) error
+	PreParseServer(context.Context, pkggraph.Location, *ServerFrameworkExt) error
 	PostParseServer(context.Context, *Sealed) error
 	// List of packages that should be added as server dependencies, when the target environment's purpose is DEVELOPMENT.
 	DevelopmentPackages() []schema.PackageName

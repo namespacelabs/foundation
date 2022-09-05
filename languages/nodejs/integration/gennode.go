@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/languages/nodejs/imports"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 const (
@@ -23,7 +23,7 @@ const (
 	packageExtensionBaseName = "Extension"
 )
 
-func generateNode(ctx context.Context, loader workspace.Packages, loc workspace.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
+func generateNode(ctx context.Context, loader pkggraph.PackageLoader, loc pkggraph.Location, n *schema.Node, nodes []*schema.Node, fs fnfs.ReadWriteFS) error {
 	nodeData, err := shared.PrepareNodeData(ctx, loader, loc, n, schema.Framework_NODEJS)
 	if err != nil {
 		return err
@@ -118,7 +118,7 @@ func convertNodeDataToTmplOptions(nodeData shared.NodeData) (nodeTmplOptions, er
 	}, nil
 }
 
-func convertProviderType(ic *imports.ImportCollector, providerTypeData shared.ProviderTypeData, loc workspace.Location) (*tmplImportedType, error) {
+func convertProviderType(ic *imports.ImportCollector, providerTypeData shared.ProviderTypeData, loc pkggraph.Location) (*tmplImportedType, error) {
 	if providerTypeData.ParsedType != nil {
 		return convertAvailableIn(ic, providerTypeData.ParsedType.Nodejs, loc)
 	} else {

@@ -318,7 +318,7 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 		// grpc-abcdef.hugosantos.nscloud.dev
 		//
 		// grpc-abcdef-9d5h25dto9nkm.a.nscluster.cloud
-		// -> abcdef = sha256(env.name, workspace.module_name)[6:]
+		// -> abcdef = sha256(env.name, pkggraph.Module_name)[6:]
 
 		if computed.MainModuleName == "" {
 			return nil, fnerrors.DoesNotMeetVersionRequirements("domain allocation", 0, 0)
