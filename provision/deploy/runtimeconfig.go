@@ -23,11 +23,15 @@ func init() {
 
 func serverToRuntimeConfig(stack *stack.Stack, server provision.Server, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
 	config := &runtime.RuntimeConfig{
-		Environment: &runtime.ServerEnvironment{
+		Current: makeServer(stack, server),
+	}
+
+	// Admin servers run in a global namespace and are not bound to an environment.
+	if !server.Proto().ClusterAdmin {
+		config.Environment = &runtime.ServerEnvironment{
 			Name:    server.SealedContext().Environment().Name,
 			Purpose: server.SealedContext().Environment().Purpose.String(),
-		},
-		Current: makeServer(stack, server),
+		}
 	}
 
 	config.Current.ImageRef = serverImage.String()

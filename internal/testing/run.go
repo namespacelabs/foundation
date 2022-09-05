@@ -20,11 +20,13 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/orchestration"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/schema"
+	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -112,19 +114,35 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		}
 	}()
 
-	waiters, err := p.Deployer.Execute(ctx, runtime.TaskServerDeploy, env)
-	if err != nil {
-		return nil, fnerrors.New("%s: failed to deploy: %w", test.TestBinPkg, err)
-	}
-
 	rt := runtime.For(ctx, env)
 
 	var waitErr error
-	if test.OutputProgress {
-		fmt.Fprintf(console.Stderr(ctx), "%s: Test %s\n", test.TestBinPkg, aec.LightBlackF.Apply("RUNNING"))
-		waitErr = deploy.Wait(ctx, env, waiters)
+	if orchestration.UseOrchestrator {
+		deployPlan := deploy.Serialize(env.Workspace(), env.Environment(), test.Stack, p, test.ServersUnderTest)
+		id, err := orchestration.Deploy(ctx, env, deployPlan)
+		if err != nil {
+			return nil, err
+		}
+
+		if test.OutputProgress {
+			waitErr = deploy.RenderAndWait(ctx, env, func(ch chan *orchpb.Event) error {
+				return orchestration.WireDeploymentStatus(ctx, env, id, ch)
+			})
+		} else {
+			waitErr = orchestration.WireDeploymentStatus(ctx, env, id, nil)
+		}
 	} else {
-		waitErr = ops.WaitMultiple(ctx, waiters, nil)
+		waiters, err := p.Deployer.Execute(ctx, runtime.TaskServerDeploy, env)
+		if err != nil {
+			return nil, fnerrors.New("%s: failed to deploy: %w", test.TestBinPkg, err)
+		}
+
+		if test.OutputProgress {
+			fmt.Fprintf(console.Stderr(ctx), "%s: Test %s\n", test.TestBinPkg, aec.LightBlackF.Apply("RUNNING"))
+			waitErr = deploy.Wait(ctx, env, waiters)
+		} else {
+			waitErr = ops.WaitMultiple(ctx, waiters, nil)
+		}
 	}
 
 	var testLogBuf *syncbuffer.ByteBuffer
