@@ -26,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -91,10 +92,10 @@ func RegisterClusterProvider() {
 	client.RegisterDeferredProvider("nscloud", provideDeferred)
 }
 
-func provideCluster(ctx context.Context, env *schema.Environment, key *devhost.ConfigKey) (client.Provider, error) {
+func provideCluster(ctx context.Context, cfg planning.Configuration) (client.Provider, error) {
 	conf := &PrebuiltCluster{}
 
-	if key.Selector.Select(key.DevHost).Get(conf) {
+	if cfg.Get(conf) {
 		cluster, err := GetCluster(ctx, conf.ClusterId)
 		if err != nil {
 			return client.Provider{}, err
@@ -106,12 +107,12 @@ func provideCluster(ctx context.Context, env *schema.Environment, key *devhost.C
 		return p, nil
 	}
 
-	cfg, err := CreateClusterForEnv(ctx, env, true)
+	result, err := CreateClusterForEnv(ctx, cfg, true)
 	if err != nil {
 		return client.Provider{}, err
 	}
 
-	return client.Provider{Config: *makeConfig(cfg.Cluster), ProviderSpecific: cfg.Cluster}, nil
+	return client.Provider{Config: *makeConfig(result.Cluster), ProviderSpecific: result.Cluster}, nil
 }
 
 type CreateClusterResult struct {
@@ -121,13 +122,9 @@ type CreateClusterResult struct {
 	Deadline  *time.Time
 }
 
-func CreateClusterForEnv(ctx context.Context, env *schema.Environment, ephemeral bool) (*CreateClusterResult, error) {
-	if env == nil {
-		return nil, fnerrors.InternalError("env is missing")
-	}
-
-	return clusterCache.Compute(env.Name, func() (*CreateClusterResult, error) {
-		return CreateCluster(ctx, ephemeral, env.Name) // The environment name is the best we can do right now as a documented purpose.
+func CreateClusterForEnv(ctx context.Context, cfg planning.Configuration, ephemeral bool) (*CreateClusterResult, error) {
+	return clusterCache.Compute(cfg.EnvKey(), func() (*CreateClusterResult, error) {
+		return CreateCluster(ctx, ephemeral, cfg.EnvKey()) // The environment name is the best we can do right now as a documented purpose.
 	})
 }
 
@@ -321,25 +318,24 @@ func reparse(obj interface{}, target interface{}) error {
 	return json.Unmarshal(b, target)
 }
 
-func provideDeferred(ctx context.Context, ws *schema.Workspace, cfg *client.HostConfig) (runtime.DeferredRuntime, error) {
+func provideDeferred(ctx context.Context, cfg *client.HostConfig) (runtime.DeferredRuntime, error) {
 	conf := &PrebuiltCluster{}
-	if !cfg.Selector.Select(cfg.DevHost).Get(conf) {
+	if !cfg.Config.Get(conf) {
 		compute.On(ctx).DetachWith(compute.Detach{
 			Action: tasks.Action("nscloud.cluster-prepare").LogLevel(1),
 			Do: func(ctx context.Context) error {
 				// Kick off the cluster provisioning as soon as we can.
-				_, _ = CreateClusterForEnv(ctx, cfg.Environment, true)
+				_, _ = CreateClusterForEnv(ctx, cfg.Config, true)
 				return nil
 			},
 			BestEffort: true,
 		})
 	}
 
-	return deferred{ws, cfg}, nil
+	return deferred{cfg}, nil
 }
 
 type deferred struct {
-	ws  *schema.Workspace
 	cfg *client.HostConfig
 }
 
@@ -347,8 +343,8 @@ var _ runtime.DeferredRuntime = deferred{}
 var _ runtime.HasPrepareProvision = deferred{}
 var _ runtime.HasTargetPlatforms = deferred{}
 
-func (d deferred) New(ctx context.Context) (runtime.Runtime, error) {
-	unbound, err := kubernetes.New(ctx, d.cfg.Environment, d.cfg.DevHost, devhost.ByEnvironment(d.cfg.Environment))
+func (d deferred) New(ctx context.Context, env planning.Context) (runtime.Runtime, error) {
+	unbound, err := kubernetes.New(ctx, d.cfg.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -362,14 +358,14 @@ func (d deferred) New(ctx context.Context) (runtime.Runtime, error) {
 		return nil, fnerrors.InternalError("cluster creation state is missing")
 	}
 
-	bound := unbound.Bind(d.ws, d.cfg.Environment)
+	bound := unbound.Bind(env.Workspace(), env.Environment())
 
 	return clusterRuntime{Runtime: bound, Cluster: p.ProviderSpecific.(*KubernetesCluster)}, nil
 }
 
-func (d deferred) PrepareProvision(context.Context) (*rtypes.ProvisionProps, error) {
+func (d deferred) PrepareProvision(_ context.Context, env planning.Context) (*rtypes.ProvisionProps, error) {
 	// XXX fetch SystemInfo in the future.
-	return kubernetes.PrepareProvisionWith(d.cfg.Environment, kubernetes.ModuleNamespace(d.ws, d.cfg.Environment), &kubedef.SystemInfo{
+	return kubernetes.PrepareProvisionWith(env.Environment(), kubernetes.ModuleNamespace(env.Workspace(), env.Environment()), &kubedef.SystemInfo{
 		NodePlatform:         []string{"linux/amd64"},
 		DetectedDistribution: "k3s",
 	})

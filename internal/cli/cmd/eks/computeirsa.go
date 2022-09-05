@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 func newComputeIrsaCmd() *cobra.Command {
@@ -28,7 +27,7 @@ func newComputeIrsaCmd() *cobra.Command {
 		Short: "Sets up IRSA for the specified IAM role and Service Account.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env planning.Context, args []string) error {
-		s, err := eks.NewSession(ctx, env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
+		s, err := eks.NewSession(ctx, env.Configuration())
 		if err != nil {
 			return err
 		}

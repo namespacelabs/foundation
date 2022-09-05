@@ -10,37 +10,32 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
-	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/devhost"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 type Session struct {
-	env      *schema.Environment
-	devHost  *schema.DevHost
-	selector devhost.Selector
-	sesh     *awsprovider.Session
-	eks      *eks.Client
-	iam      *iam.Client
+	cfg  planning.Configuration
+	sesh *awsprovider.Session
+	eks  *eks.Client
+	iam  *iam.Client
 }
 
-func NewSession(ctx context.Context, env *schema.Environment, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
-	sesh, err := awsprovider.MustConfiguredSession(ctx, devHost, selector)
+func NewSession(ctx context.Context, cfg planning.Configuration) (*Session, error) {
+	sesh, err := awsprovider.MustConfiguredSession(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Session{
-		env:      env,
-		devHost:  devHost,
-		selector: selector,
-		sesh:     sesh,
-		eks:      eks.NewFromConfig(sesh.Config()),
-		iam:      iam.NewFromConfig(sesh.Config()),
+		cfg:  cfg,
+		sesh: sesh,
+		eks:  eks.NewFromConfig(sesh.Config()),
+		iam:  iam.NewFromConfig(sesh.Config()),
 	}, nil
 }
 
-func NewOptionalSession(ctx context.Context, env *schema.Environment, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
-	sesh, err := awsprovider.ConfiguredSession(ctx, devHost, selector)
+func NewOptionalSession(ctx context.Context, cfg planning.Configuration) (*Session, error) {
+	sesh, err := awsprovider.ConfiguredSession(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -50,11 +45,9 @@ func NewOptionalSession(ctx context.Context, env *schema.Environment, devHost *s
 	}
 
 	return &Session{
-		env:      env,
-		devHost:  devHost,
-		selector: selector,
-		sesh:     sesh,
-		eks:      eks.NewFromConfig(sesh.Config()),
-		iam:      iam.NewFromConfig(sesh.Config()),
+		cfg:  cfg,
+		sesh: sesh,
+		eks:  eks.NewFromConfig(sesh.Config()),
+		iam:  iam.NewFromConfig(sesh.Config()),
 	}, nil
 }

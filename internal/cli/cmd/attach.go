@@ -15,8 +15,8 @@ import (
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/provision/deploy/view"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 func NewAttachCmd() *cobra.Command {
@@ -41,7 +41,7 @@ func NewAttachCmd() *cobra.Command {
 				Provider: observer,
 				Keybindings: []keyboard.Handler{
 					logtail.Keybinding{
-						LoadEnvironment: func(name string) (runtime.Selector, error) {
+						LoadEnvironment: func(name string) (planning.Context, error) {
 							if name == res.Env.Environment().Name {
 								return res.Env, nil
 							}

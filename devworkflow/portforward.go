@@ -13,9 +13,10 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
-func NewPortFwd(ctx context.Context, obs *Session, selector runtime.Selector, localaddr string) *endpointfwd.PortForward {
+func NewPortFwd(ctx context.Context, obs *Session, selector planning.Context, localaddr string) *endpointfwd.PortForward {
 	pfw := &endpointfwd.PortForward{
 		Env:       selector.Environment(),
 		LocalAddr: localaddr,

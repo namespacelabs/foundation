@@ -22,7 +22,6 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 var UsePrebuilts = true // XXX make these a scoped configuration instead.
@@ -279,10 +278,7 @@ func EnsureImage(ctx context.Context, env planning.Context, prepared *Prepared) 
 		return oci.ImageID{}, err
 	}
 
-	name, err := registry.RawAllocateName(ctx, &devhost.ConfigKey{
-		DevHost:  env.DevHost(),
-		Selector: devhost.ByEnvironment(env.Environment()),
-	}, prepared.Name)
+	name, err := registry.RawAllocateName(ctx, env.Configuration(), prepared.Name)
 	if err != nil {
 		return oci.ImageID{}, err
 	}

@@ -15,7 +15,6 @@ import (
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 func RegisterGraphHandlers() {
@@ -24,7 +23,7 @@ func RegisterGraphHandlers() {
 			return nil, fnerrors.BadInputError("both role_name and assume_role_policy_json are required")
 		}
 
-		sesh, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Environment()))
+		sesh, err := awsprovider.MustConfiguredSession(ctx, env.Configuration())
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +67,7 @@ func RegisterGraphHandlers() {
 			return nil, fnerrors.BadInputError("all of `role_name` and `policy_name` and `policy_json` are required")
 		}
 
-		sesh, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Environment()))
+		sesh, err := awsprovider.MustConfiguredSession(ctx, env.Configuration())
 		if err != nil {
 			return nil, err
 		}

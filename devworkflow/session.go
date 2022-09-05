@@ -22,7 +22,6 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/provision/deploy/render"
 	"namespacelabs.dev/foundation/provision/deploy/view"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -47,7 +46,7 @@ type Session struct {
 	}
 	cancelWorkspace func()
 	currentStack    *Stack
-	currentEnv      runtime.Selector
+	currentEnv      planning.Context
 	pfw             *endpointfwd.PortForward
 }
 
@@ -99,7 +98,7 @@ func (s *Session) CommandOutput() io.ReadCloser   { return io.NopCloser(bytes.Ne
 func (s *Session) BuildOutput() io.ReadCloser     { return io.NopCloser(bytes.NewReader(nil)) }
 func (s *Session) BuildJSONOutput() io.ReadCloser { return io.NopCloser(bytes.NewReader(nil)) }
 
-func (s *Session) ResolveServer(ctx context.Context, serverID string) (runtime.Selector, *schema.Server, error) {
+func (s *Session) ResolveServer(ctx context.Context, serverID string) (planning.Context, *schema.Server, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -239,7 +238,7 @@ func (s *Session) TaskLogByName(taskID, name string) io.ReadCloser {
 	return s.sink.HistoricReaderByName(tasks.ActionID(taskID), name)
 }
 
-func (s *Session) setEnvironment(parentCtx context.Context, env runtime.Selector) *endpointfwd.PortForward {
+func (s *Session) setEnvironment(parentCtx context.Context, env planning.Context) *endpointfwd.PortForward {
 	if s.pfw != nil && proto.Equal(s.currentEnv.Environment(), env.Environment()) {
 		// Nothing to do.
 		return s.pfw

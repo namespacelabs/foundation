@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -220,9 +221,8 @@ func (c *Connection) HostEnv() *client.HostEnv {
 
 func (c *Connection) Runtime(ctx context.Context) (kubernetes.Unbound, error) {
 	return kubernetes.NewFromConfig(ctx, &client.HostConfig{
-		DevHost:  nil,
-		Selector: nil,
-		HostEnv:  c.HostEnv(),
+		Config:  planning.MakeConfigurationWith("vcluster", nil),
+		HostEnv: c.HostEnv(),
 	})
 }
 

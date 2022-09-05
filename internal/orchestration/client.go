@@ -28,7 +28,6 @@ import (
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -135,7 +134,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 }
 
 func getAwsConf(ctx context.Context, env planning.Context) (*awsprovider.Conf, error) {
-	sesh, err := awsprovider.ConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Environment()))
+	sesh, err := awsprovider.ConfiguredSession(ctx, env.Configuration())
 	if err != nil {
 		return nil, err
 	}

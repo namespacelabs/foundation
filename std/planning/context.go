@@ -19,6 +19,8 @@ type UnboundContext interface {
 
 type Context interface {
 	UnboundContext
+
+	Configuration() Configuration
 	Environment() *schema.Environment
 }
 
@@ -75,3 +77,4 @@ func (e ctx) Workspace() *schema.Workspace                      { return e.works
 func (e ctx) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom { return e.loadedFrom }
 func (e ctx) DevHost() *schema.DevHost                          { return e.devHost }
 func (e ctx) Environment() *schema.Environment                  { return e.env }
+func (e ctx) Configuration() Configuration                      { return MakeConfigurationCompat(e) }

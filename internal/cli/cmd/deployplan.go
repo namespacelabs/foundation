@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -70,3 +71,6 @@ func (se serializedEnvironment) WorkspaceLoadedFrom() *schema.Workspace_LoadedFr
 func (se serializedEnvironment) DevHost() *schema.DevHost         { return se.root.DevHost() }
 func (se serializedEnvironment) Environment() *schema.Environment { return se.env }
 func (se serializedEnvironment) ErrorLocation() string            { return se.root.Abs() }
+func (se serializedEnvironment) Configuration() planning.Configuration {
+	return planning.MakeConfigurationCompat(se)
+}

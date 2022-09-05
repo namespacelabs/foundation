@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -70,6 +71,9 @@ func (ce codegenEnv) ReadWriteFS() fnfs.ReadWriteFS    { return ce.fs }
 func (ce codegenEnv) Workspace() *schema.Workspace     { return ce.root.Workspace }
 func (ce codegenEnv) WorkspaceLoadedFrom() *schema.Workspace_LoadedFrom {
 	return ce.root.WorkspaceData.WorkspaceLoadedFrom()
+}
+func (ce codegenEnv) Configuration() planning.Configuration {
+	return planning.MakeConfigurationCompat(ce)
 }
 
 func (ce codegenEnv) Resolve(ctx context.Context, pkg schema.PackageName) (pkggraph.Location, error) {

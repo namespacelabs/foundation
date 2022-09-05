@@ -16,13 +16,14 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 var (
 	mapping = map[string]MakeRuntimeFunc{}
 )
 
-type MakeRuntimeFunc func(context.Context, *schema.Workspace, *schema.DevHost, *schema.Environment) (DeferredRuntime, error)
+type MakeRuntimeFunc func(context.Context, planning.Context) (DeferredRuntime, error)
 
 func Register(name string, r MakeRuntimeFunc) {
 	mapping[strings.ToLower(name)] = r
@@ -33,20 +34,14 @@ func HasRuntime(name string) bool {
 	return ok
 }
 
-type Selector interface {
-	Workspace() *schema.Workspace
-	DevHost() *schema.DevHost
-	Environment() *schema.Environment
-}
-
-func For(ctx context.Context, env Selector) Runtime {
+func For(ctx context.Context, env planning.Context) Runtime {
 	if obtain, ok := mapping[strings.ToLower(env.Environment().Runtime)]; ok {
-		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Environment())
+		r, err := obtain(ctx, env)
 		if err != nil {
 			return runtimeFwdErr{err}
 		}
 
-		rt, err := r.New(ctx)
+		rt, err := r.New(ctx, env)
 		if err != nil {
 			return runtimeFwdErr{err}
 		}
@@ -57,10 +52,10 @@ func For(ctx context.Context, env Selector) Runtime {
 	return nil
 }
 
-func TargetPlatforms(ctx context.Context, env Selector) ([]specs.Platform, error) {
+func TargetPlatforms(ctx context.Context, env planning.Context) ([]specs.Platform, error) {
 	rt := strings.ToLower(env.Environment().Runtime)
 	if obtain, ok := mapping[rt]; ok {
-		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Environment())
+		r, err := obtain(ctx, env)
 		if err != nil {
 			return nil, err
 		}
@@ -69,7 +64,7 @@ func TargetPlatforms(ctx context.Context, env Selector) ([]specs.Platform, error
 			return h.TargetPlatforms(ctx)
 		}
 
-		runtime, err := r.New(ctx)
+		runtime, err := r.New(ctx, env)
 		if err != nil {
 			return nil, err
 		}
@@ -80,24 +75,24 @@ func TargetPlatforms(ctx context.Context, env Selector) ([]specs.Platform, error
 	return nil, fnerrors.InternalError("%s: no such runtime", rt)
 }
 
-func PrepareProvision(ctx context.Context, env Selector) (*rtypes.ProvisionProps, error) {
+func PrepareProvision(ctx context.Context, env planning.Context) (*rtypes.ProvisionProps, error) {
 	rt := strings.ToLower(env.Environment().Runtime)
 	if obtain, ok := mapping[rt]; ok {
-		r, err := obtain(ctx, env.Workspace(), env.DevHost(), env.Environment())
+		r, err := obtain(ctx, env)
 		if err != nil {
 			return nil, err
 		}
 
 		if h, ok := r.(HasPrepareProvision); ok {
-			return h.PrepareProvision(ctx)
+			return h.PrepareProvision(ctx, env)
 		}
 
-		runtime, err := r.New(ctx)
+		runtime, err := r.New(ctx, env)
 		if err != nil {
 			return nil, err
 		}
 
-		return runtime.PrepareProvision(ctx)
+		return runtime.PrepareProvision(ctx, env)
 	}
 
 	return nil, fnerrors.InternalError("%s: no such runtime", rt)
@@ -105,7 +100,7 @@ func PrepareProvision(ctx context.Context, env Selector) (*rtypes.ProvisionProps
 
 type runtimeFwdErr struct{ err error }
 
-func (r runtimeFwdErr) PrepareProvision(context.Context) (*rtypes.ProvisionProps, error) {
+func (r runtimeFwdErr) PrepareProvision(context.Context, planning.Context) (*rtypes.ProvisionProps, error) {
 	return nil, r.err
 }
 func (r runtimeFwdErr) DeployedConfigImageID(context.Context, *schema.Server) (oci.ImageID, error) {

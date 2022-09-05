@@ -11,10 +11,9 @@ import (
 
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/schema"
 )
 
-func Kubeconfig(awsCluster *AwsCluster, env *schema.Environment) (*clientcmdapi.Config, error) {
+func Kubeconfig(awsCluster *AwsCluster, envName string) (*clientcmdapi.Config, error) {
 	cluster := awsCluster.Cluster
 	if cluster.Name == nil {
 		return nil, fnerrors.BadInputError("cluster name is missing")
@@ -55,7 +54,7 @@ func Kubeconfig(awsCluster *AwsCluster, env *schema.Environment) (*clientcmdapi.
 					APIVersion: "client.authentication.k8s.io/v1",
 					Command:    os.Args[0],
 					Args: []string{"eks", "generate-token", "--exec_credential",
-						"--env", env.Name, clusterName},
+						"--env", envName, clusterName},
 					Env:             []clientcmdapi.ExecEnvVar{},
 					InteractiveMode: clientcmdapi.NeverExecInteractiveMode,
 				},
@@ -70,5 +69,5 @@ func KubeconfigFromCluster(ctx context.Context, s *Session, clusterName string) 
 		return nil, err
 	}
 
-	return Kubeconfig(cluster, s.env)
+	return Kubeconfig(cluster, s.cfg.EnvKey())
 }

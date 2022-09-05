@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/devhost"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"sigs.k8s.io/yaml"
 )
@@ -33,15 +33,15 @@ var (
 )
 
 func Register() {
-	runtime.Register("kubernetes", func(ctx context.Context, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (runtime.DeferredRuntime, error) {
-		hostConfig, err := client.ComputeHostConfig(env, devHost, devhost.ByEnvironment(env))
+	runtime.Register("kubernetes", func(ctx context.Context, env planning.Context) (runtime.DeferredRuntime, error) {
+		hostConfig, err := client.ComputeHostConfig(env.Configuration())
 		if err != nil {
 			return nil, err
 		}
 
-		fmt.Fprintf(console.Debug(ctx), "kubernetes: selected %+v for %q\n", hostConfig.HostEnv, env.Name)
+		fmt.Fprintf(console.Debug(ctx), "kubernetes: selected %+v for %q\n", hostConfig.HostEnv, env.Environment().Name)
 
-		p, err := client.MakeDeferredRuntime(ctx, ws, hostConfig)
+		p, err := client.MakeDeferredRuntime(ctx, hostConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -50,25 +50,21 @@ func Register() {
 			return p, nil
 		}
 
-		return deferredRuntime{ws, devHost, env}, nil
+		return deferredRuntime{}, nil
 	})
 
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
 }
 
-type deferredRuntime struct {
-	ws      *schema.Workspace
-	devHost *schema.DevHost
-	env     *schema.Environment
-}
+type deferredRuntime struct{}
 
-func (d deferredRuntime) New(ctx context.Context) (runtime.Runtime, error) {
-	unbound, err := New(ctx, d.env, d.devHost, devhost.ByEnvironment(d.env))
+func (d deferredRuntime) New(ctx context.Context, env planning.Context) (runtime.Runtime, error) {
+	unbound, err := New(ctx, env.Configuration())
 	if err != nil {
 		return nil, err
 	}
 
-	return unbound.Bind(d.ws, d.env), nil
+	return unbound.Bind(env.Workspace(), env.Environment()), nil
 }
 
 func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApplyConfiguration {
@@ -77,7 +73,7 @@ func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApp
 		WithAnnotations(kubedef.MakeAnnotations(env, nil))
 }
 
-func (r K8sRuntime) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, error) {
+func (r K8sRuntime) PrepareProvision(ctx context.Context, _ planning.Context) (*rtypes.ProvisionProps, error) {
 	systemInfo, err := r.SystemInfo(ctx)
 	if err != nil {
 		return nil, err

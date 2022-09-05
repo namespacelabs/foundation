@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/rtypes"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -105,16 +106,15 @@ func (k k8stools) HostPlatform(ctx context.Context) (specs.Platform, error) {
 	return platforms[0], nil
 }
 
-func (k8stools) k8s(ctx context.Context) (kubernetes.Unbound, *devhost.ConfigKey, error) {
+func (k8stools) k8s(ctx context.Context) (kubernetes.Unbound, planning.Configuration, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return kubernetes.Unbound{}, nil, err
 	}
 
-	ck := &devhost.ConfigKey{DevHost: root.DevHost(), Selector: devhost.ForToolsRuntime()}
+	ck := planning.MakeConfigurationWith("tools", devhost.ForToolsRuntime().Select(root.DevHost()).Merged())
 
-	// Passing no environment here.
-	k, err := kubernetes.New(ctx, nil, ck.DevHost, ck.Selector)
+	k, err := kubernetes.New(ctx, ck)
 	if err != nil {
 		return kubernetes.Unbound{}, nil, err
 	}

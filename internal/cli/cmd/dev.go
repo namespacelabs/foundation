@@ -27,7 +27,6 @@ import (
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
 	"namespacelabs.dev/foundation/provision/deploy/view"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -99,7 +98,7 @@ func NewDevCmd() *cobra.Command {
 					Provider: sesh,
 					Keybindings: []keyboard.Handler{
 						logtail.Keybinding{
-							LoadEnvironment: func(envName string) (runtime.Selector, error) {
+							LoadEnvironment: func(envName string) (planning.Context, error) {
 								return planning.LoadContext(env, envName)
 							},
 						},

@@ -23,7 +23,7 @@ func PrepareNewNamespaceCluster(env planning.Context) compute.Computable[[]*sche
 		compute.Inputs().Proto("env", env.Environment()).Indigestible("foobar", "foobar"),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			cfg, err := nscloud.CreateClusterForEnv(ctx, env.Environment(), false)
+			cfg, err := nscloud.CreateClusterForEnv(ctx, env.Configuration(), false)
 			if err != nil {
 				return nil, err
 			}

@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -38,19 +37,19 @@ func Register() {
 	RegisterGraphHandlers()
 }
 
-func provideEKS(ctx context.Context, env *schema.Environment, ck *devhost.ConfigKey) (client.Provider, error) {
+func provideEKS(ctx context.Context, config planning.Configuration) (client.Provider, error) {
 	conf := &EKSCluster{}
 
-	if !ck.Selector.Select(ck.DevHost).Get(conf) {
+	if !config.Get(conf) {
 		return client.Provider{}, fnerrors.BadInputError("eks provider configured, but missing EKSCluster")
 	}
 
-	s, err := NewSession(ctx, env, ck.DevHost, ck.Selector)
+	s, err := NewSession(ctx, config)
 	if err != nil {
 		return client.Provider{}, fnerrors.InternalError("failed to create session: %w", err)
 	}
 
-	cfg, err := KubeconfigFromCluster(ctx, s, conf.Name)
+	kubecfg, err := KubeconfigFromCluster(ctx, s, conf.Name)
 	if err != nil {
 		return client.Provider{}, err
 	}
@@ -59,7 +58,7 @@ func provideEKS(ctx context.Context, env *schema.Environment, ck *devhost.Config
 	var lastToken *Token
 
 	return client.Provider{
-		Config: *cfg,
+		Config: *kubecfg,
 		TokenProvider: func(ctx context.Context) (string, error) {
 			mu.Lock()
 			l := lastToken
@@ -90,7 +89,7 @@ func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schem
 		return nil, nil
 	}
 
-	s, err := NewOptionalSession(ctx, env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
+	s, err := NewOptionalSession(ctx, env.Configuration())
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +127,7 @@ func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schem
 }
 
 func PrepareClusterInfo(ctx context.Context, s *Session) (*EKSCluster, error) {
-	rt, err := kubernetes.New(ctx, s.env, s.devHost, s.selector)
+	rt, err := kubernetes.New(ctx, s.cfg)
 	if err != nil {
 		return nil, err
 	}

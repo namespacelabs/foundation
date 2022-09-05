@@ -17,12 +17,13 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type Keybinding struct {
-	LoadEnvironment func(name string) (runtime.Selector, error)
+	LoadEnvironment func(name string) (planning.Context, error)
 }
 
 type logState struct {
@@ -135,7 +136,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 }
 
 // Listen blocks fetching logs from a container.
-func Listen(ctx context.Context, env runtime.Selector, server *schema.Server) error {
+func Listen(ctx context.Context, env planning.Context, server *schema.Server) error {
 	// TODO simplify runtime creation.
 	rt := runtime.For(ctx, env)
 	var mu sync.Mutex

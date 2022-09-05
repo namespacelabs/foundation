@@ -25,10 +25,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -43,8 +41,8 @@ type DeferredProvider struct{}
 
 type TokenProviderFunc func(context.Context) (string, error)
 
-type DeferredProviderFunc func(context.Context, *fnschema.Workspace, *HostConfig) (runtime.DeferredRuntime, error)
-type ProviderFunc func(context.Context, *fnschema.Environment, *devhost.ConfigKey) (Provider, error)
+type DeferredProviderFunc func(context.Context, *HostConfig) (runtime.DeferredRuntime, error)
+type ProviderFunc func(context.Context, planning.Configuration) (Provider, error)
 
 var (
 	clientCache struct {
@@ -125,8 +123,7 @@ func (cfg *computedConfig) computeConfig() (*configResult, error) {
 
 		cached := &cachedProviderConfig{
 			providerName: c.Provider,
-			env:          cfg.host.Environment,
-			configKey:    &devhost.ConfigKey{DevHost: cfg.host.DevHost, Selector: cfg.host.Selector},
+			config:       cfg.host.Config,
 			provider:     p,
 		}
 
@@ -206,25 +203,10 @@ func (cfg *computedConfig) ConfigAccess() clientcmd.ConfigAccess {
 }
 
 func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
-	// Tools path, i.e. no environment to select on.
-	if host.Selector == nil {
-		config, err := NewRestConfigFromHostEnv(ctx, host)
-		if err != nil {
-			return nil, err
-		}
-
-		client, err := k8s.NewForConfig(config)
-		if err != nil {
-			return nil, err
-		}
-
-		return &ComputedClient{Clientset: client}, nil
-	}
-
 	keyBytes, err := json.Marshal(struct {
 		C *HostEnv
 		S string
-	}{host.HostEnv, host.Selector.HashKey()})
+	}{host.HostEnv, host.Config.HashKey()})
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to serialize config/env key: %w", err)
 	}
@@ -334,7 +316,7 @@ func ResolveConfig(ctx context.Context, env planning.Context) (*rest.Config, err
 		return NewRestConfigFromHostEnv(ctx, cfg)
 	}
 
-	cfg, err := ComputeHostConfig(env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
+	cfg, err := ComputeHostConfig(env.Configuration())
 	if err != nil {
 		return nil, err
 	}
@@ -342,16 +324,10 @@ func ResolveConfig(ctx context.Context, env planning.Context) (*rest.Config, err
 	return NewRestConfigFromHostEnv(ctx, cfg)
 }
 
-func ComputeHostConfig(env *fnschema.Environment, devHost *fnschema.DevHost, selector devhost.Selector) (*HostConfig, error) {
-	cfg := devhost.Select(devHost, selector)
-
+func ComputeHostConfig(cfg planning.Configuration) (*HostConfig, error) {
 	hostEnv := &HostEnv{}
 	if !cfg.Get(hostEnv) {
-		if err := devhost.CheckEmptyErr(devHost); err != nil {
-			return nil, err
-		}
-
-		return nil, fnerrors.UsageError("Try running one `ns prepare local` or `ns prepare eks`", "%s: no kubernetes configuration available", selector.Description())
+		return nil, fnerrors.UsageError("Try running one `ns prepare local` or `ns prepare eks`", "%s: no kubernetes configuration available", cfg.EnvKey())
 	}
 
 	var err error
@@ -360,13 +336,13 @@ func ComputeHostConfig(env *fnschema.Environment, devHost *fnschema.DevHost, sel
 		return nil, fnerrors.InternalError("failed to expand %q", hostEnv.Kubeconfig)
 	}
 
-	return &HostConfig{Environment: env, DevHost: devHost, Selector: selector, HostEnv: hostEnv}, nil
+	return &HostConfig{Config: cfg, HostEnv: hostEnv}, nil
 }
 
-func MakeDeferredRuntime(ctx context.Context, ws *fnschema.Workspace, cfg *HostConfig) (runtime.DeferredRuntime, error) {
+func MakeDeferredRuntime(ctx context.Context, cfg *HostConfig) (runtime.DeferredRuntime, error) {
 	if cfg.HostEnv.Provider != "" {
 		if p := deferredProviders[cfg.HostEnv.Provider]; p != nil {
-			return p(ctx, ws, cfg)
+			return p(ctx, cfg)
 		}
 	}
 
@@ -376,8 +352,7 @@ func MakeDeferredRuntime(ctx context.Context, ws *fnschema.Workspace, cfg *HostC
 // Only compute configurations once per `ns` invocation.
 type cachedProviderConfig struct {
 	providerName string
-	env          *fnschema.Environment
-	configKey    *devhost.ConfigKey
+	config       planning.Configuration
 
 	provider ProviderFunc
 
@@ -390,9 +365,9 @@ func (t *cachedProviderConfig) Action() *tasks.ActionEvent {
 	return tasks.Action("kubernetes.compute-config").Arg("provider", t.providerName)
 }
 func (t *cachedProviderConfig) Inputs() *compute.In {
-	return compute.Inputs().Str("provider", t.providerName).Proto("devhost", t.configKey.DevHost).Proto("env", t.env)
+	return compute.Inputs().Str("provider", t.providerName).Indigestible("devhost", t.config).Str("config", t.config.EnvKey())
 }
 func (t *cachedProviderConfig) Output() compute.Output { return compute.Output{NotCacheable: true} }
 func (t *cachedProviderConfig) Compute(ctx context.Context, _ compute.Resolved) (Provider, error) {
-	return t.provider(ctx, t.env, t.configKey)
+	return t.provider(ctx, t.config)
 }

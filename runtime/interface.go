@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/runtime"
 )
 
@@ -107,14 +108,14 @@ type Runtime interface {
 }
 
 type DeferredRuntime interface {
-	New(context.Context) (Runtime, error)
+	New(context.Context, planning.Context) (Runtime, error)
 }
 
 type HasPrepareProvision interface {
 	// PrepareProvision is called before invoking a provisioning tool, to offer
 	// the runtime implementation a way to pass runtime-specific information to
 	// the tool. E.g. what's the Kubernetes namespace we're working with.
-	PrepareProvision(context.Context) (*rtypes.ProvisionProps, error)
+	PrepareProvision(context.Context, planning.Context) (*rtypes.ProvisionProps, error)
 }
 
 type HasTargetPlatforms interface {

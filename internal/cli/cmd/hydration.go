@@ -35,7 +35,7 @@ type hydrateOpts struct {
 }
 
 type hydrateResult struct {
-	Env        runtime.Selector
+	Env        planning.Context
 	Stack      *schema.Stack
 	Focus      []schema.PackageName
 	Ingress    []*schema.IngressFragment

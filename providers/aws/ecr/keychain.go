@@ -26,7 +26,7 @@ type defaultKeychain struct{}
 
 func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
 	// XXX rethink this; we need more context in order to pick the right credentials.
-	session, err := awsprovider.ConfiguredSession(ctx, nil, nil)
+	session, err := awsprovider.ConfiguredSession(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

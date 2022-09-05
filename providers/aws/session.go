@@ -16,8 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/devhost"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 const identityTokenEnv = "AWS_WEB_IDENTITY_TOKEN_FILE"
@@ -28,12 +27,12 @@ func hasWebIdentityEnvVar() bool {
 	return token != ""
 }
 
-func ConfiguredSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
-	return configuredSession(ctx, devHost, selector)
+func ConfiguredSession(ctx context.Context, cfg planning.Configuration) (*Session, error) {
+	return configuredSession(ctx, cfg)
 }
 
-func configuredSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
-	makeSession, conf, err := innerSession(ctx, devHost, selector)
+func configuredSession(ctx context.Context, cfg planning.Configuration) (*Session, error) {
+	makeSession, conf, err := innerSession(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -60,9 +59,9 @@ func configuredSession(ctx context.Context, devHost *schema.DevHost, selector de
 	return &Session{aws: session, conf: conf}, nil
 }
 
-func configuration(devHost *schema.DevHost, selector devhost.Selector) *Conf {
+func configuration(cfg planning.Configuration) *Conf {
 	conf := &Conf{}
-	if selector == nil || !selector.Select(devHost).Get(conf) {
+	if cfg == nil || !cfg.Get(conf) {
 		if hasWebIdentityEnvVar() {
 			return &Conf{UseInjectedWebIdentity: true}
 		}
@@ -72,8 +71,8 @@ func configuration(devHost *schema.DevHost, selector devhost.Selector) *Conf {
 	return conf
 }
 
-func innerSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (func(...func(*config.LoadOptions) error) (aws.Config, error), *Conf, error) {
-	conf := configuration(devHost, selector)
+func innerSession(ctx context.Context, cfg planning.Configuration) (func(...func(*config.LoadOptions) error) (aws.Config, error), *Conf, error) {
+	conf := configuration(cfg)
 	if conf == nil {
 		return nil, nil, nil
 	}
@@ -131,8 +130,8 @@ func (s *Session) RefreshUsage() string {
 }
 
 // MustConfiguredSession also returns a cache key.
-func MustConfiguredSession(ctx context.Context, devHost *schema.DevHost, selector devhost.Selector) (*Session, error) {
-	session, err := configuredSession(ctx, devHost, selector)
+func MustConfiguredSession(ctx context.Context, cfg planning.Configuration) (*Session, error) {
+	session, err := configuredSession(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}

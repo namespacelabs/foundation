@@ -33,7 +33,6 @@ import (
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/source/protos/resolver"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -295,7 +294,7 @@ func maybeCreateVCluster(env planning.Context) compute.Computable[*vcluster.VClu
 		return nil
 	}
 
-	hostConfig, err := client.ComputeHostConfig(env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
+	hostConfig, err := client.ComputeHostConfig(env.Configuration())
 	if err != nil {
 		return compute.Error[*vcluster.VCluster](err)
 	}

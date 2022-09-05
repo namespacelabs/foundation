@@ -10,7 +10,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -39,7 +38,7 @@ func PrepareExistingK8s(env planning.Context, args ...PrepareK8sOption) compute.
 			if opts.contextName != "" {
 				return client.NewHostConfig(opts.contextName, env)
 			} else {
-				return client.ComputeHostConfig(env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
+				return client.ComputeHostConfig(env.Configuration())
 			}
 		})
 }

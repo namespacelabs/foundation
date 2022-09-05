@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/devhost"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 type Unbound struct {
@@ -30,12 +30,12 @@ func NewFromConfig(ctx context.Context, config *client.HostConfig) (Unbound, err
 	return Unbound{cli.Clientset, cli, config}, nil
 }
 
-func NewFromEnv(ctx context.Context, env runtime.Selector) (Unbound, error) {
-	return New(ctx, env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
+func NewFromEnv(ctx context.Context, env planning.Context) (Unbound, error) {
+	return New(ctx, env.Configuration())
 }
 
-func New(ctx context.Context, env *schema.Environment, devHost *schema.DevHost, selector devhost.Selector) (Unbound, error) {
-	hostConfig, err := client.ComputeHostConfig(env, devHost, selector)
+func New(ctx context.Context, cfg planning.Configuration) (Unbound, error) {
+	hostConfig, err := client.ComputeHostConfig(cfg)
 	if err != nil {
 		return Unbound{}, err
 	}

@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/vcluster"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
@@ -66,7 +65,7 @@ func newKubernetesCmd() *cobra.Command {
 		Use:  "create-vcluster",
 		Args: cobra.ExactArgs(1),
 	}, func(ctx context.Context, env planning.Context, args []string) error {
-		hostConfig, err := client.ComputeHostConfig(env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
+		hostConfig, err := client.ComputeHostConfig(env.Configuration())
 		if err != nil {
 			return err
 		}

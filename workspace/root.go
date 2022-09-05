@@ -11,6 +11,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 type Root struct {
@@ -20,6 +21,8 @@ type Root struct {
 
 	LoadedDevHost *schema.DevHost
 }
+
+var _ planning.UnboundContext = &Root{}
 
 func NewRoot(w *schema.Workspace, lf *schema.Workspace_LoadedFrom, editable pkggraph.EditableWorkspaceData) *Root {
 	return &Root{

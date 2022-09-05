@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 const appURL = "https://github.com/apps/namespace-continuous-integration/installations/new"
@@ -40,7 +39,7 @@ func newSetupAutopushCmd() *cobra.Command {
 		}
 		roleArn := fmt.Sprintf("arn:aws:iam::%s:role/%s", acc, iamRole)
 
-		s, err := eks.NewSession(ctx, env.Environment(), env.DevHost(), devhost.ByEnvironment(env.Environment()))
+		s, err := eks.NewSession(ctx, env.Configuration())
 		if err != nil {
 			return err
 		}
@@ -98,7 +97,7 @@ func newSetupAutopushCmd() *cobra.Command {
 }
 
 func getAwsAccount(ctx context.Context, env planning.Context) (string, error) {
-	cfg, err := awsprovider.MustConfiguredSession(ctx, env.DevHost(), devhost.ByEnvironment(env.Environment()))
+	cfg, err := awsprovider.MustConfiguredSession(ctx, env.Configuration())
 	if err != nil {
 		return "", err
 	}

@@ -6,17 +6,13 @@ package client
 
 import (
 	"namespacelabs.dev/foundation/build/registry"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 type HostConfig struct {
-	Environment *schema.Environment
-	DevHost     *schema.DevHost
-	Selector    devhost.Selector
-	HostEnv     *HostEnv
+	Config  planning.Configuration
+	HostEnv *HostEnv
 
 	registry *registry.Registry
 }
@@ -33,10 +29,8 @@ func NewHostConfig(contextName string, env planning.Context, options ...func(*Ho
 	}
 
 	config := &HostConfig{
-		Environment: env.Environment(),
-		DevHost:     env.DevHost(),
-		Selector:    devhost.ByEnvironment(env.Environment()),
-		HostEnv:     hostEnv,
+		Config:  env.Configuration(),
+		HostEnv: hostEnv,
 	}
 
 	for _, option := range options {

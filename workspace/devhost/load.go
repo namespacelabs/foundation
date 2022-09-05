@@ -81,6 +81,14 @@ func (conf ConfSlice) WithoutConstraints() []*schema.DevHost_ConfigureEnvironmen
 	return parsed
 }
 
+func (conf ConfSlice) Merged() []*anypb.Any {
+	var merged []*anypb.Any
+	for _, p := range conf.merged {
+		merged = append(merged, p...)
+	}
+	return merged
+}
+
 func ConfigurationForEnv(env planning.Context) ConfSlice {
 	return Select(env.DevHost(), ByEnvironment(env.Environment()))
 }
