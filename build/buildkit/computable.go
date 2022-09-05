@@ -279,6 +279,10 @@ func (l *reqToImage) Action() *tasks.ActionEvent {
 	ev := tasks.Action("buildkit.build-image").
 		Arg("platform", devhost.FormatPlatform(l.targetPlatform))
 
+	if l.sourceLabel != "" {
+		ev = ev.HumanReadablef(fmt.Sprintf("Build: %s", l.sourceLabel))
+	}
+
 	if l.sourcePackage != "" {
 		return ev.Scope(l.sourcePackage)
 	}

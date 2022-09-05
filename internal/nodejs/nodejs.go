@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/module"
 	"namespacelabs.dev/foundation/workspace/pins"
 )
 
@@ -34,11 +33,6 @@ type RunNodejsOpts struct {
 }
 
 func RunNodejs(ctx context.Context, env planning.Context, relPath string, command string, opts *RunNodejsOpts) error {
-	root, err := module.FindRoot(ctx, ".")
-	if err != nil {
-		return err
-	}
-
 	p, err := tools.HostPlatform(ctx)
 	if err != nil {
 		return err
@@ -55,7 +49,7 @@ func RunNodejs(ctx context.Context, env planning.Context, relPath string, comman
 		return err
 	}
 
-	nodejsImage, err := buildkit.LLBToImage(ctx, env, build.NewBuildTarget(&p).WithSourceLabel("nodejs-with-yarn"), nodeImageState)
+	nodejsImage, err := buildkit.LLBToImage(ctx, env, build.NewBuildTarget(&p).WithSourceLabel("nodejs+yarn: %s", nodeImageName), nodeImageState)
 	if err != nil {
 		return err
 	}
@@ -78,17 +72,19 @@ func RunNodejs(ctx context.Context, env planning.Context, relPath string, comman
 		io = rtypes.IO{Stdout: stdout, Stderr: stdout}
 	}
 
+	abs := env.Workspace().LoadedFrom().AbsPath
+
 	return tools.Run(ctx, rtypes.RunToolOpts{
 		IO:          io,
 		AllocateTTY: opts.IsInteractive,
 		Mounts: append(opts.Mounts, &rtypes.LocalMapping{
-			HostPath: root.Abs(),
+			HostPath: abs,
 			// The user's filesystem structure is replicated within the container.
-			ContainerPath: filepath.Join(workspaceContainerDir, root.Abs()),
+			ContainerPath: filepath.Join(workspaceContainerDir, abs),
 		}),
 		RunBinaryOpts: rtypes.RunBinaryOpts{
 			Image:      image,
-			WorkingDir: filepath.Join(workspaceContainerDir, root.Abs(), relPath),
+			WorkingDir: filepath.Join(workspaceContainerDir, abs, relPath),
 			Command:    []string{command},
 			Args:       opts.Args,
 			Env:        opts.EnvVars,
