@@ -23,7 +23,7 @@ func Chart(repo, name, version string, digest schema.Digest) compute.Computable[
 		Digest: digest,
 	})
 
-	return compute.Transform(d, func(ctx context.Context, b bytestream.ByteStream) (*chart.Chart, error) {
+	return compute.Transform("load chart", d, func(ctx context.Context, b bytestream.ByteStream) (*chart.Chart, error) {
 		reader, err := b.Reader()
 		if err != nil {
 			return nil, err
