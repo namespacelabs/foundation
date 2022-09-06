@@ -20,7 +20,7 @@ type PortFwd struct {
 	LocalPort uint32
 }
 
-func ToStorageNetworkPlan(localHostname string, stack *fnschema.Stack, focus []*fnschema.Server, portFwds []*PortFwd, ingressFragments []*fnschema.IngressFragment) (*storage.NetworkPlan, error) {
+func ToStorageNetworkPlan(localHostname string, stack *fnschema.Stack, focus []*fnschema.Server, portFwds []*PortFwd, ingressFragments []*fnschema.IngressFragment) *storage.NetworkPlan {
 	r := &storage.NetworkPlan{
 		LocalHostname: localHostname,
 	}
@@ -30,14 +30,8 @@ func ToStorageNetworkPlan(localHostname string, stack *fnschema.Stack, focus []*
 	}
 
 	for _, i := range ingressFragments {
-		domain, err := convertDomain(i.Domain)
-		if err != nil {
-			return nil, err
-		}
-		endpoint, err := convertEndpoint(i.Endpoint, 0 /* localPort */, stack)
-		if err != nil {
-			return nil, err
-		}
+		domain := convertDomain(i.Domain)
+		endpoint := convertEndpoint(i.Endpoint, 0 /* localPort */, stack)
 		fragment := &storage.IngressFragment{
 			Name:     i.Name,
 			Owner:    i.Owner,
@@ -55,35 +49,28 @@ func ToStorageNetworkPlan(localHostname string, stack *fnschema.Stack, focus []*
 	}
 
 	for _, pfwd := range portFwds {
-		endpoint, err := convertEndpoint(pfwd.Endpoint, pfwd.LocalPort, stack)
-		if err != nil {
-			return nil, err
-		}
+		endpoint := convertEndpoint(pfwd.Endpoint, pfwd.LocalPort, stack)
 		r.Endpoints = append(r.Endpoints, endpoint)
 	}
 
 	// TODO: remove once "internal" is migrated to "networkplanutils"
 	addDeprecatedFields(r)
 
-	return r, nil
+	return r
 }
 
-func convertDomain(d *fnschema.Domain) (*storage.Domain, error) {
+func convertDomain(d *fnschema.Domain) *storage.Domain {
 	if d == nil {
-		return nil, nil
+		return nil
 	}
 
-	managedType, err := convertManagedType(d.Managed)
-	if err != nil {
-		return nil, err
-	}
-
+	managedType, _ := convertManagedType(d.Managed)
 	return &storage.Domain{
 		Fqdn:                    d.Fqdn,
 		Managed:                 managedType,
 		TlsFrontend:             d.TlsFrontend,
 		TlsInclusterTermination: d.TlsInclusterTermination,
-	}, nil
+	}
 }
 
 func convertGrpcService(s *fnschema.IngressFragment_IngressGrpcService) *storage.IngressGrpcService {
@@ -97,9 +84,9 @@ func convertGrpcService(s *fnschema.IngressFragment_IngressGrpcService) *storage
 	}
 }
 
-func convertEndpoint(endpoint *fnschema.Endpoint, localPort uint32, stack *fnschema.Stack) (*storage.Endpoint, error) {
+func convertEndpoint(endpoint *fnschema.Endpoint, localPort uint32, stack *fnschema.Stack) *storage.Endpoint {
 	if endpoint == nil {
-		return nil, nil
+		return nil
 	}
 
 	entry := stack.GetServer(fnschema.PackageName(endpoint.EndpointOwner))
@@ -108,10 +95,7 @@ func convertEndpoint(endpoint *fnschema.Endpoint, localPort uint32, stack *fnsch
 		serverName = entry.Server.Name
 	}
 
-	endpointType, err := convertEndpointType(endpoint.Type)
-	if err != nil {
-		return nil, err
-	}
+	endpointType, _ := convertEndpointType(endpoint.Type)
 	result := &storage.Endpoint{
 		Type:          endpointType,
 		ServiceName:   endpoint.ServiceName,
@@ -130,7 +114,7 @@ func convertEndpoint(endpoint *fnschema.Endpoint, localPort uint32, stack *fnsch
 		})
 	}
 
-	return result, nil
+	return result
 }
 
 func convertPort(port *fnschema.Endpoint_Port) *storage.Endpoint_Port {

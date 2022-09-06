@@ -14,8 +14,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/observers"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
@@ -53,8 +55,9 @@ func NewAttachCmd() *cobra.Command {
 				},
 				Handler: func(ctx context.Context) error {
 					pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, "localhost")
-					pfwd.OnUpdate = func() {
-						event.NetworkPlan, _ = pfwd.ToNetworkPlan()
+					pfwd.OnUpdate = func(plan *storage.NetworkPlan) {
+						event := protos.Clone(event)
+						event.NetworkPlan = plan
 						observer.PushUpdate(event)
 					}
 

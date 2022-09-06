@@ -266,15 +266,16 @@ func (s *Session) updateStackInPlace(f func(stack *Stack)) {
 	s.mu.Lock()
 	f(s.currentStack)
 
-	s.currentStack.NetworkPlan, _ = s.pfw.ToNetworkPlan()
-	summary := render.NetworkPlanToSummary(s.currentStack.NetworkPlan)
-	var out bytes.Buffer
-	view.NetworkPlanToText(&out, summary, &view.NetworkPlanToTextOpts{
-		Style:                 colors.WithColors,
-		Checkmark:             true,
-		IncludeSupportServers: true,
-	})
-	s.currentStack.RenderedPortForwarding = out.String()
+	if s.currentStack.NetworkPlan != nil {
+		summary := render.NetworkPlanToSummary(s.currentStack.NetworkPlan)
+		var out bytes.Buffer
+		view.NetworkPlanToText(&out, summary, &view.NetworkPlanToTextOpts{
+			Style:                 colors.WithColors,
+			Checkmark:             true,
+			IncludeSupportServers: true,
+		})
+		s.currentStack.RenderedPortForwarding = out.String()
+	}
 
 	s.currentStack.Revision++
 	copy := protos.Clone(s.currentStack)

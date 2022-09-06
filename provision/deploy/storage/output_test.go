@@ -97,8 +97,7 @@ func TestToStorageNetworkPlan(t *testing.T) {
 }
 
 func assertNetworkPlan(t *testing.T, snapshotName string, localHostname string, stack *schema.Stack, focus []*schema.Server, portFwds []*PortFwd, ingressFragments []*schema.IngressFragment) {
-	plan, err := ToStorageNetworkPlan(localHostname, stack, focus, portFwds, ingressFragments)
-	assert.NilError(t, err)
+	plan := ToStorageNetworkPlan(localHostname, stack, focus, portFwds, ingressFragments)
 
 	json := jsontesting.StableProtoToJson(t, plan)
 

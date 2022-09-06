@@ -67,7 +67,8 @@ func (k NetworkPlanKeybinding) renderStickyNetworkPlan(ctx context.Context, plan
 		NetworkPlanToText(&out, summary, &NetworkPlanToTextOpts{
 			Style:                 colors.WithColors,
 			Checkmark:             true,
-			IncludeSupportServers: showSupportServers})
+			IncludeSupportServers: showSupportServers,
+		})
 		content = out.String()
 	}
 	console.SetStickyContent(ctx, k.name, content)

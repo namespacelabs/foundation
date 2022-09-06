@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
@@ -68,8 +69,8 @@ func NewPortFwd(ctx context.Context, obs *Session, selector planning.Context, lo
 			})
 		}
 
-		pfw.OnUpdate = func() {
-			obs.updateStackInPlace(func(stack *Stack) { stack.NetworkPlan, _ = pfw.ToNetworkPlan() })
+		pfw.OnUpdate = func(plan *storage.NetworkPlan) {
+			obs.updateStackInPlace(func(stack *Stack) { stack.NetworkPlan = plan })
 		}
 	}
 

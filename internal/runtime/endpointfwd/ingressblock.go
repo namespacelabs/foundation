@@ -28,7 +28,7 @@ type PortForward struct {
 
 	OnAdd    func(*schema.Endpoint, uint)
 	OnDelete func([]*schema.Endpoint)
-	OnUpdate func()
+	OnUpdate func(*storage.NetworkPlan)
 
 	mu            sync.Mutex
 	stack         *schema.Stack
@@ -138,7 +138,7 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 					}
 				}
 
-				pi.OnUpdate()
+				pi.OnUpdate(pi.toNetworkPlan())
 			}
 		})
 
@@ -191,7 +191,7 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 				}
 
 				if !pi.done {
-					pi.OnUpdate()
+					pi.OnUpdate(pi.toNetworkPlan())
 				}
 			})
 			if pi.ingressState.err != nil {
@@ -203,10 +203,15 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 		pi.ingressState.closer = nil
 	}
 
-	pi.OnUpdate()
+	pi.OnUpdate(pi.toNetworkPlan())
 }
 
-func (pi *PortForward) ToNetworkPlan() (*storage.NetworkPlan, error) {
+func (pi *PortForward) toNetworkPlan() *storage.NetworkPlan {
+	// No update yet.
+	if pi.revision == 0 {
+		return nil
+	}
+
 	var portFwds []*deploystorage.PortFwd
 	for _, fwd := range pi.endpointState {
 		portFwds = append(portFwds, &deploystorage.PortFwd{

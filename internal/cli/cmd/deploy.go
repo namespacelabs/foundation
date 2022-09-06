@@ -153,18 +153,17 @@ func completeDeployment(ctx context.Context, env planning.Context, p *ops.Plan, 
 		}
 	}
 
-	r, err := deploystorage.ToStorageNetworkPlan("", plan.Stack, focusServer, ports, plan.IngressFragment)
-	if err != nil {
-		return err
-	}
-	summary := render.NetworkPlanToSummary(r)
-	view.NetworkPlanToText(out, summary, &view.NetworkPlanToTextOpts{
-		Style:                 colors.Ctx(ctx),
-		Checkmark:             false,
-		IncludeSupportServers: true,
-	})
+	r := deploystorage.ToStorageNetworkPlan("", plan.Stack, focusServer, ports, plan.IngressFragment)
+	if r != nil {
+		summary := render.NetworkPlanToSummary(r)
+		view.NetworkPlanToText(out, summary, &view.NetworkPlanToTextOpts{
+			Style:                 colors.Ctx(ctx),
+			Checkmark:             false,
+			IncludeSupportServers: true,
+		})
 
-	storedrun.Attach(r)
+		storedrun.Attach(r)
+	}
 
 	if opts.outputPath != "" {
 		var out Output
