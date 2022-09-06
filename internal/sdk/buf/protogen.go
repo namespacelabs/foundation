@@ -7,20 +7,16 @@ package buf
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"io/fs"
 	"path/filepath"
 
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/moby/buildkit/client/llb"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
@@ -108,18 +104,5 @@ func MakeProtoSrcs(ctx context.Context, env planning.Context, request map[schema
 		out = out.File(llb.Copy(result, ".", "."), llb.WithCustomNamef("copying %s generated sources", fmwk))
 	}
 
-	img, err := buildkit.LLBToImage(ctx, env, build.NewBuildTarget(&platform).WithSourceLabel("protobuf-codegen"), out)
-	if err != nil {
-		return nil, err
-	}
-
-	return compute.Transform("extract image as filesystem", img, func(ctx context.Context, img oci.Image) (fs.FS, error) {
-		fsys := tarfs.FS{
-			TarStream: func() (io.ReadCloser, error) {
-				return mutate.Extract(img), nil
-			},
-		}
-
-		return fsys, nil
-	}), nil
+	return buildkit.LLBToFS(ctx, env, build.NewBuildTarget(&platform).WithSourceLabel("protobuf-codegen"), out)
 }
