@@ -30,8 +30,7 @@ func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool)
 		Ephemeral: ephemeral,
 	}
 
-	// XXX update configuration envkey.
-	newCfg := sourceEnv.Configuration().Derive(func(previous []*anypb.Any) []*anypb.Any {
+	newCfg := sourceEnv.Configuration().Derive(testEnv.Name, func(previous []*anypb.Any) []*anypb.Any {
 		if UseNamespaceCloud {
 			return protos.WrapAnysOrDie(
 				&registry.Provider{Provider: "nscloud"},

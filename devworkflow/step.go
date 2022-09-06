@@ -87,7 +87,6 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 	}
 
 	do.obs.updateStackInPlace(func(stack *Stack) {
-		// XXX We pass focus[0] as the focus as that's the model the web ui supports right now.
 		resetStack(stack, do.env, do.obs.availableEnvs, focus)
 	})
 

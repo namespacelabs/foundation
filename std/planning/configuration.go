@@ -16,7 +16,7 @@ import (
 type Configuration interface {
 	Get(proto.Message) bool
 	GetForPlatform(specs.Platform, proto.Message) bool
-	Derive(func([]*anypb.Any) []*anypb.Any) Configuration
+	Derive(string, func([]*anypb.Any) []*anypb.Any) Configuration
 
 	// HashKey returns a digest of the configuration that is being used.
 	HashKey() string
@@ -93,7 +93,7 @@ func MakeConfigurationWith(description string, merged []*anypb.Any, platconfig [
 type ConfigurationSlice []*anypb.Any
 
 type config struct {
-	key        string
+	envKey     string
 	merged     ConfigurationSlice
 	platconfig []*schema.DevHost_ConfigurePlatform
 }
@@ -152,12 +152,12 @@ func (cfg config) IsEmpty() bool {
 }
 
 func (cfg config) EnvKey() string {
-	return cfg.key
+	return cfg.envKey
 }
 
-func (cfg config) Derive(f func([]*anypb.Any) []*anypb.Any) Configuration {
+func (cfg config) Derive(envKey string, f func([]*anypb.Any) []*anypb.Any) Configuration {
 	return config{
-		key:        cfg.key,
+		envKey:     envKey,
 		merged:     f(cfg.merged),
 		platconfig: cfg.platconfig,
 	}
