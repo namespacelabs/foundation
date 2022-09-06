@@ -27,7 +27,7 @@ func newLeaser() *leaser {
 	return l
 }
 
-var errDeploymentTooOld = fmt.Errorf("incoming deployment is too old")
+var errDeployPlanTooOld = fmt.Errorf("incoming deployment is too old")
 
 func (l *leaser) acquireLease(id string, new time.Time) (func(), error) {
 	if l == nil {
@@ -38,7 +38,7 @@ func (l *leaser) acquireLease(id string, new time.Time) (func(), error) {
 	defer l.mu.Unlock()
 	for {
 		if last, ok := l.last[id]; ok && last.After(new) {
-			return nil, errDeploymentTooOld
+			return nil, errDeployPlanTooOld
 		}
 
 		if _, ok := l.active[id]; !ok {

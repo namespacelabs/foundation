@@ -111,7 +111,7 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 
 	releaseLease, err := d.leaser.acquireLease(nsId.UniqueId, arrival)
 	if err != nil {
-		if err == errDeploymentTooOld {
+		if err == errDeployPlanTooOld {
 			// We already finished a later deployment -> skip this one.
 			return nil
 		}
