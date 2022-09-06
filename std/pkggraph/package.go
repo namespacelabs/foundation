@@ -19,8 +19,10 @@ type Package struct {
 	Extension            *schema.Node
 	Service              *schema.Node
 	Server               *schema.Server
-	Test                 *schema.Test
 	ExperimentalFunction *schema.ExperimentalFunction
+
+	// Includes auto-generated (e.g. server startup) tests.
+	Tests []*schema.Test
 
 	// Inlined or explicitly defined binaries.
 	Binaries []*schema.Binary

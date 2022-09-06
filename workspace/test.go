@@ -5,10 +5,14 @@
 package workspace
 
 import (
+	"context"
+
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
+
+const StartupTestBinary = "namespacelabs.dev/foundation/std/startup/testdriver"
 
 func TransformTest(loc pkggraph.Location, test *schema.Test) error {
 	if test.PackageName != "" {
@@ -40,4 +44,24 @@ func TransformTest(loc pkggraph.Location, test *schema.Test) error {
 	test.PackageName = loc.PackageName.String()
 
 	return nil
+}
+
+func CreateServerStartupTest(ctx context.Context, pl EarlyPackageLoader, pkgName schema.PackageName) (*schema.Test, error) {
+	startupTest, err := pl.LoadByName(ctx, StartupTestBinary)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(startupTest.Binaries) != 1 {
+		return nil, fnerrors.InternalError("expected %q to be a single binary", StartupTestBinary)
+	}
+
+	return &schema.Test{
+		PackageName: pkgName.String(),
+		Name:        "startup-test",
+		ServersUnderTest: []string{
+			pkgName.String(),
+		},
+		Driver: startupTest.Binaries[0],
+	}, nil
 }

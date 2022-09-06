@@ -75,8 +75,10 @@ func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, opts Build
 		return nil, err
 	}
 
-	loc := pkg.Location
+	return PlanBinary(ctx, pkg.Location, binary, opts)
+}
 
+func PlanBinary(ctx context.Context, loc pkggraph.Location, binary *schema.Binary, opts BuildImageOpts) (*Prepared, error) {
 	spec, err := planImage(ctx, loc, binary, opts)
 	if err != nil {
 		return nil, err

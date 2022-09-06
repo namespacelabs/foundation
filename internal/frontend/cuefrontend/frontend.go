@@ -94,6 +94,15 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 			return nil, fnerrors.Wrapf(loc, err, "parsing server")
 		}
 		parsed.Server = parsedSrv
+
+		if parsed.Server.RunByDefault() {
+			test, err := workspace.CreateServerStartupTest(ctx, ft.loader, loc.PackageName)
+			if err != nil {
+				return nil, fnerrors.Wrapf(loc, err, "creating server startup test")
+			}
+			parsed.Tests = append(parsed.Tests, test)
+		}
+
 		count++
 	}
 	if binary := v.LookupPath("binary"); binary.Exists() {
@@ -109,7 +118,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing test")
 		}
-		parsed.Test = parsedTest
+		parsed.Tests = append(parsed.Tests, parsedTest)
 		count++
 	}
 	if function := v.LookupPath("function"); function.Exists() {
