@@ -6,6 +6,8 @@ package runtime
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"net"
 	"strings"
@@ -159,4 +161,14 @@ func (r runtimeFwdErr) TargetPlatforms(context.Context) ([]specs.Platform, error
 }
 func (r runtimeFwdErr) ResolveContainers(context.Context, *schema.Server) ([]*ContainerReference, error) {
 	return nil, r.err
+}
+func (r runtimeFwdErr) NamespaceId() *NamespaceId {
+	id := &NamespaceId{
+		HumanReference: "runtimeFwdErr:<nil>",
+	}
+
+	hash := sha256.Sum256([]byte(id.HumanReference))
+	id.UniqueId = hex.EncodeToString(hash[:])
+
+	return id
 }

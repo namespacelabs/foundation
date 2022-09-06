@@ -103,6 +103,10 @@ type Runtime interface {
 	// removed. Returns true if resources were deleted.
 	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
 
+	// Returns a human readable ID of the deployment namespace.
+	// Different IDs signify that deployments are independent and can be executed in parallel.
+	NamespaceId() *NamespaceId
+
 	HasPrepareProvision
 	HasTargetPlatforms
 }

@@ -42,3 +42,8 @@ message Diagnostics {
     int32                     exit_code         = 8;
     int32                     restart_count     = 9;
 }
+
+message NamespaceId {
+    string unique_id       = 1;  // Different IDs signify that deployments are independent and can be executed in parallel.
+    string human_reference = 2;
+}

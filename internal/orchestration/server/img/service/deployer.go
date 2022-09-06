@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/hpcloud/tail"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
@@ -36,6 +37,7 @@ const (
 type deployer struct {
 	serverCtx context.Context
 	statusDir string
+	leaser    *leaser
 }
 
 func makeDeployer(ctx context.Context) deployer {
@@ -47,10 +49,11 @@ func makeDeployer(ctx context.Context) deployer {
 	return deployer{
 		serverCtx: ctx,
 		statusDir: statusDir,
+		leaser:    newLeaser(),
 	}
 }
 
-func (d *deployer) Schedule(plan *schema.DeployPlan, env *env) (string, error) {
+func (d *deployer) Schedule(plan *schema.DeployPlan, env *env, arrival time.Time) (string, error) {
 	id := ids.NewRandomBase32ID(16)
 
 	p := ops.NewPlan()
@@ -81,7 +84,7 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env *env) (string, error) {
 		}()
 
 		// Use server context to not propagate context cancellation
-		if err := execute(d.serverCtx, eventPath, p, env); err != nil {
+		if err := d.execute(d.serverCtx, eventPath, p, env, arrival); err != nil {
 			status := status.Convert(err)
 			data, jsonErr := json.Marshal(status.Proto())
 			if jsonErr != nil {
@@ -98,10 +101,23 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env *env) (string, error) {
 	return id, nil
 }
 
-func execute(ctx context.Context, eventPath string, p *ops.Plan, env planning.Context) error {
+func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, env planning.Context, arrival time.Time) error {
 	// TODO persist logs?
 	sink := simplelog.NewSink(os.Stderr, maxLogLevel)
 	ctx = tasks.WithSink(ctx, sink)
+
+	rt := runtime.For(ctx, env)
+	nsId := rt.NamespaceId()
+
+	releaseLease, err := d.leaser.acquireLease(nsId.UniqueId, arrival)
+	if err != nil {
+		if err == errDeploymentTooOld {
+			// We already finished a later deployment -> skip this one.
+			return nil
+		}
+		return err
+	}
+	defer releaseLease()
 
 	waiters, err := p.Execute(ctx, runtime.TaskServerDeploy, env)
 	if err != nil {

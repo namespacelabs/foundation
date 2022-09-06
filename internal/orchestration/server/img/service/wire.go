@@ -8,6 +8,7 @@ import (
 	"context"
 	"log"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -26,6 +27,7 @@ type Service struct {
 
 func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*proto.DeployResponse, error) {
 	log.Printf("new Deploy request for %d focus servers: %s\n", len(req.Plan.FocusServer), strings.Join(req.Plan.FocusServer, ","))
+	now := time.Now()
 
 	if req.Auth != nil {
 		if _, err := fnapi.StoreUser(ctx, req.Auth); err != nil {
@@ -35,7 +37,7 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 
 	env := makeEnv(req.Plan, req.Aws)
 	// TODO store target state (req.Plan + merged with history) ?
-	id, err := svc.d.Schedule(req.Plan, env)
+	id, err := svc.d.Schedule(req.Plan, env, now)
 	if err != nil {
 		return nil, rpcerrors.Errorf(codes.Internal, "failed to deploy plan: %w", err)
 	}
