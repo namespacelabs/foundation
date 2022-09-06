@@ -8,6 +8,7 @@ package foundation.schema;
 
 option go_package = "namespacelabs.dev/foundation/schema";
 
+import "schema/binary.proto";
 import "schema/package.proto";
 import "schema/volume.proto";
 
@@ -46,8 +47,8 @@ message SidecarContainer {
     string          name = 3;
     repeated string args = 2;
 
-    map<string, string> env    = 6;
-    repeated Mount      mounts = 7;
+    repeated BinaryConfig.EnvEntry env    = 6;
+    repeated Mount                 mounts = 7;
 }
 
 message StartupPlan {

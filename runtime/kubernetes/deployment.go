@@ -586,6 +586,10 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(srv.Proto().Name),
 		)
 
+		if _, err := fillEnv(scntr, sidecar.Env); err != nil {
+			return err
+		}
+
 		// Share all mounts with sidecards for now.
 		// XXX security review this.
 		scntr.VolumeMounts = container.VolumeMounts

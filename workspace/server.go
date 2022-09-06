@@ -148,14 +148,17 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggrap
 }
 
 // Transform an opaqaue server defined with the simplified, import-less syntax.
-func TransformOpaqueServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server, pp *Package, opts LoadPackageOpts) (*schema.Server, error) {
-	err := validateServer(ctx, loc, srv)
-	if err != nil {
+func TransformOpaqueServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema.Server, pp *Package, opts LoadPackageOpts) (*schema.Server, error) {
+	if err := validateServer(ctx, pp.Location, srv); err != nil {
 		return nil, err
 	}
 
-	srv.PackageName = loc.PackageName.String()
-	srv.ModuleName = loc.Module.ModuleName()
+	if err := validatePackage(ctx, pp); err != nil {
+		return nil, err
+	}
+
+	srv.PackageName = pp.Location.PackageName.String()
+	srv.ModuleName = pp.Location.Module.ModuleName()
 	srv.UserImports = srv.Import
 
 	// Used by `ns tidy`.
@@ -163,8 +166,8 @@ func TransformOpaqueServer(ctx context.Context, pl pkggraph.PackageLoader, loc p
 		return srv, nil
 	}
 
-	s := newSealer(ctx, pl, loc.PackageName, nil)
-	if err := s.DoServer(loc, srv, pp); err != nil {
+	s := newSealer(ctx, pl, pp.Location.PackageName, nil)
+	if err := s.DoServer(pp.Location, srv, pp); err != nil {
 		_ = s.g.Wait() // Make sure cancel is triggered.
 		return nil, err
 	}
@@ -179,6 +182,18 @@ func TransformOpaqueServer(ctx context.Context, pl pkggraph.PackageLoader, loc p
 	sealed.Proto.Server.Import = sorted.PackageNamesAsString()
 
 	return sealed.Proto.Server, nil
+}
+
+func validatePackage(ctx context.Context, pp *pkggraph.Package) error {
+	binaryNames := map[string]bool{}
+	for _, binary := range pp.Binaries {
+		if binaryNames[binary.Name] {
+			return fnerrors.UserError(pp.Location, "duplicate binary name %q", binary.Name)
+		}
+		binaryNames[binary.Name] = true
+	}
+
+	return nil
 }
 
 func validateServer(ctx context.Context, loc pkggraph.Location, srv *schema.Server) error {

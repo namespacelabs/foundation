@@ -24,8 +24,6 @@ type cueContainer struct {
 
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
 	Env  map[string]string          `json:"env"`
-
-	Services map[string]cueService `json:"services"`
 }
 
 type cueIntegration struct {
@@ -49,9 +47,14 @@ func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, nam
 	out := &parsedCueContainer{
 		container: &schema.SidecarContainer{
 			Name: name,
-			Env:  bits.Env,
 			Args: bits.Args.Parsed(),
 		},
+	}
+
+	for k, v := range bits.Env {
+		out.container.Env = append(out.container.Env, &schema.BinaryConfig_EnvEntry{
+			Name: k, Value: v,
+		})
 	}
 
 	switch bits.Integration.Kind {

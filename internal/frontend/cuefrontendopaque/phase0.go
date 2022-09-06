@@ -103,7 +103,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	parsedSrv.Volumes = append(parsedSrv.Volumes, parsedVolumes...)
 	parsedSrv.Secret = parsedSecrets
 
-	parsedPkg.Server, err = workspace.TransformOpaqueServer(ctx, ft.loader, loc, parsedSrv, parsedPkg, opts)
+	parsedPkg.Server, err = workspace.TransformOpaqueServer(ctx, ft.loader, parsedSrv, parsedPkg, opts)
 	if err != nil {
 		return nil, err
 	}
