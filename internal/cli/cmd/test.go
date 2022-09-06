@@ -38,7 +38,6 @@ func NewTestCmd() *cobra.Command {
 	var (
 		env            planning.Context
 		locs           fncobra.Locations
-		servers        fncobra.Servers
 		testOpts       testing.TestOpts
 		includeServers bool
 		parallel       bool
@@ -68,8 +67,7 @@ func NewTestCmd() *cobra.Command {
 		With(
 			// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
 			fncobra.FixedEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true}),
-			fncobra.ParseServers(&servers, &env, &locs)).
+			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
 		Do(func(ctx context.Context) error {
 			ctx = prepareContext(ctx, parallelWork, rocketShip)
 
@@ -93,13 +91,9 @@ func NewTestCmd() *cobra.Command {
 
 					if pp.Test != nil {
 						list.Add(l.AsPackageName())
-					}
-				}
-
-				if includeServers {
-					// We also automatically generate a startup-test for each server.
-					for _, s := range servers.Servers {
-						list.Add(s.PackageName())
+					} else if includeServers && pp.Server.RunByDefault() {
+						// We also automatically generate a startup-test for each server.
+						list.Add(l.AsPackageName())
 					}
 				}
 			}

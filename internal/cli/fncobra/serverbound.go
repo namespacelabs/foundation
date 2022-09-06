@@ -70,10 +70,8 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 				return err
 			}
 
-			if !p.locs.AreSpecified {
-				if server.Package.Server.Testonly || server.Package.Server.ClusterAdmin {
-					return nil
-				}
+			if !p.locs.AreSpecified && !server.Package.Server.RunByDefault() {
+				return nil
 			}
 
 			servers = append(servers, server)
