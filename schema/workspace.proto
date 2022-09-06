@@ -60,11 +60,12 @@ message Workspace {
     }
 
     message EnvironmentSpec {
-        string              name                   = 1;
-        string              runtime                = 2;  // E.g. kubernetes
-        Environment.Purpose purpose                = 3;
-        repeated Environment.Label labels          = 4;
-        repeated google.protobuf.Any configuration = 5;
+        string              name                                  = 1;
+        string              runtime                               = 2;  // E.g. kubernetes
+        Environment.Purpose purpose                               = 3;
+        repeated Environment.Label labels                         = 4;
+        repeated google.protobuf.Any configuration                = 5;
+        repeated DevHost.ConfigurePlatform platform_configuration = 6;
     }
 
     message LoadedFrom {
@@ -82,10 +83,11 @@ message DevHost {
     repeated Workspace.EnvironmentSpec local_env     = 4;  // Allows specifying environments for local use alone.
 
     message ConfigureEnvironment {
-        string              name                   = 1;
-        string              runtime                = 2;
-        Environment.Purpose purpose                = 3;
-        repeated google.protobuf.Any configuration = 4;
+        string              name                            = 1;
+        string              runtime                         = 2;
+        Environment.Purpose purpose                         = 3;
+        repeated google.protobuf.Any configuration          = 4;
+        repeated ConfigurePlatform   platform_configuration = 5;
     }
 
     message ConfigurePlatform {

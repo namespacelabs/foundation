@@ -111,7 +111,10 @@ func (k8stools) makeRuntime(ctx context.Context) (kubernetes.Unbound, planning.C
 		return kubernetes.Unbound{}, nil, err
 	}
 
-	ck := planning.MakeConfigurationWith("tools", root.DevHost().ConfigureTools, root.DevHost().ConfigurePlatform)
+	ck := planning.MakeConfigurationWith("tools", planning.ConfigurationSlice{
+		Configuration:         root.DevHost().ConfigureTools,
+		PlatformConfiguration: root.DevHost().ConfigurePlatform,
+	})
 
 	k, err := kubernetes.New(ctx, ck)
 	if err != nil {

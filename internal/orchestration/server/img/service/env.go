@@ -5,7 +5,7 @@
 package service
 
 import (
-	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -20,15 +20,16 @@ type env struct {
 }
 
 func makeEnv(plan *schema.DeployPlan, awsConf *aws.Conf) *env {
-	var config []*anypb.Any
-	config = append(config, protos.WrapAnysOrDie(&client.HostEnv{Incluster: true})...)
+	messages := []proto.Message{&client.HostEnv{Incluster: true}}
 
 	if awsConf != nil {
-		config = append(config, protos.WrapAnysOrDie(awsConf)...)
+		messages = append(messages, awsConf)
 	}
 
 	return &env{
-		config:    planning.MakeConfigurationWith(plan.Environment.Name, config, nil),
+		config: planning.MakeConfigurationWith(plan.Environment.Name, planning.ConfigurationSlice{
+			Configuration: protos.WrapAnysOrDie(messages...),
+		}),
 		workspace: planning.MakeWorkspace(plan.Workspace, nil),
 		env:       plan.Environment,
 	}

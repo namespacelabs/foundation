@@ -32,7 +32,10 @@ func LoadContext(parent RootContext, name string) (Context, error) {
 		if env.Name == name {
 			schemaEnv := schema.SpecToEnv(env)[0]
 
-			cfg, err := makeConfigurationCompat(parent, env.Configuration, parent.DevHost(), schemaEnv)
+			cfg, err := makeConfigurationCompat(parent, ConfigurationSlice{
+				Configuration:         env.Configuration,
+				PlatformConfiguration: env.PlatformConfiguration,
+			}, parent.DevHost(), schemaEnv)
 			if err != nil {
 				return nil, err
 			}

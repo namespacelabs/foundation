@@ -7,7 +7,6 @@ package testing
 import (
 	"context"
 
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/runtime"
@@ -30,12 +29,14 @@ func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool)
 		Ephemeral: ephemeral,
 	}
 
-	newCfg := sourceEnv.Configuration().Derive(testEnv.Name, func(previous []*anypb.Any) []*anypb.Any {
+	newCfg := sourceEnv.Configuration().Derive(testEnv.Name, func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
 		if UseNamespaceCloud {
-			return protos.WrapAnysOrDie(
-				&registry.Provider{Provider: "nscloud"},
-				&client.HostEnv{Provider: "nscloud"},
-			)
+			return planning.ConfigurationSlice{
+				Configuration: protos.WrapAnysOrDie(
+					&registry.Provider{Provider: "nscloud"},
+					&client.HostEnv{Provider: "nscloud"},
+				),
+			}
 		}
 
 		return previous

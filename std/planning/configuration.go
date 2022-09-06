@@ -6,6 +6,7 @@ package planning
 
 import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -16,14 +17,10 @@ import (
 type Configuration interface {
 	Get(proto.Message) bool
 	GetForPlatform(specs.Platform, proto.Message) bool
-	Derive(string, func([]*anypb.Any) []*anypb.Any) Configuration
+	Derive(string, func(ConfigurationSlice) ConfigurationSlice) Configuration
 
 	// HashKey returns a digest of the configuration that is being used.
 	HashKey() string
-
-	// Returns true if there's no configuration backing this Configuration
-	// instance (i.e. no configuration was set).
-	IsEmpty() bool
 
 	// When the configuration is loaded pinned to an environment, returns the
 	// environment name. Else, the return value is undefined.
@@ -48,20 +45,44 @@ func GetMultiple[V proto.Message](config Configuration) ([]V, error) {
 }
 
 func MakeConfigurationCompat(errorloc fnerrors.Location, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
-	var base []*anypb.Any
+	var base ConfigurationSlice
 	for _, spec := range ws.EnvSpec {
 		if spec.Name == env.Name {
-			base = spec.Configuration
+			base.Configuration = spec.Configuration
+			base.PlatformConfiguration = spec.PlatformConfiguration
 		}
 	}
 
 	return makeConfigurationCompat(errorloc, base, devHost, env)
 }
 
-func makeConfigurationCompat(errorloc fnerrors.Location, base []*anypb.Any, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
+func makeConfigurationCompat(errorloc fnerrors.Location, base ConfigurationSlice, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
 	rest := selectByEnv(devHost, env)
-	merged := append(base, rest...)
+	rest.PlatformConfiguration = append(rest.PlatformConfiguration, devHost.ConfigurePlatform...)
 
+	merged := ConfigurationSlice{
+		Configuration:         append(slices.Clone(base.Configuration), rest.Configuration...),
+		PlatformConfiguration: append(slices.Clone(base.PlatformConfiguration), rest.PlatformConfiguration...),
+	}
+
+	if p, err := applyProvider(errorloc, merged.Configuration); err == nil {
+		merged.Configuration = p
+	} else {
+		return nil, err
+	}
+
+	for _, plat := range merged.PlatformConfiguration {
+		if p, err := applyProvider(errorloc, plat.Configuration); err == nil {
+			plat.Configuration = p
+		} else {
+			return nil, err
+		}
+	}
+
+	return MakeConfigurationWith(env.Name, merged), nil
+}
+
+func applyProvider(errorloc fnerrors.Location, merged []*anypb.Any) ([]*anypb.Any, error) {
 	var parsed []*anypb.Any
 	for _, m := range merged {
 		if p, ok := configProviders[m.TypeUrl]; ok {
@@ -82,29 +103,30 @@ func makeConfigurationCompat(errorloc fnerrors.Location, base []*anypb.Any, devH
 			parsed = append(parsed, m)
 		}
 	}
-
-	return MakeConfigurationWith(env.Name, parsed, devHost.ConfigurePlatform), nil
+	return parsed, nil
 }
 
-func MakeConfigurationWith(description string, merged []*anypb.Any, platconfig []*schema.DevHost_ConfigurePlatform) Configuration {
-	return config{description, merged, platconfig}
+func MakeConfigurationWith(description string, merged ConfigurationSlice) Configuration {
+	return config{description, merged}
 }
 
-type ConfigurationSlice []*anypb.Any
+type ConfigurationSlice struct {
+	Configuration         []*anypb.Any
+	PlatformConfiguration []*schema.DevHost_ConfigurePlatform
+}
 
 type config struct {
-	envKey     string
-	merged     ConfigurationSlice
-	platconfig []*schema.DevHost_ConfigurePlatform
+	envKey string
+	atoms  ConfigurationSlice
 }
 
 func (cfg config) Get(msg proto.Message) bool {
-	return checkGet(cfg.merged, msg)
+	return checkGet(cfg.atoms.Configuration, msg)
 }
 
 func (cfg config) getMultiple(typeUrl string) []*anypb.Any {
 	var response []*anypb.Any
-	for _, m := range cfg.merged {
+	for _, m := range cfg.atoms.Configuration {
 		if m.TypeUrl == typeUrl {
 			response = append(response, m)
 		}
@@ -126,7 +148,7 @@ func checkGet(merged []*anypb.Any, msg proto.Message) bool {
 }
 
 func (cfg config) GetForPlatform(target specs.Platform, msg proto.Message) bool {
-	for _, p := range cfg.platconfig {
+	for _, p := range cfg.atoms.PlatformConfiguration {
 		if platformMatches(p, target) {
 			if checkGet(p.Configuration, msg) {
 				return true
@@ -140,26 +162,21 @@ func (cfg config) GetForPlatform(target specs.Platform, msg proto.Message) bool 
 }
 
 func (cfg config) HashKey() string {
-	d, err := schema.DigestOf(cfg.merged)
+	d, err := schema.DigestOf(cfg.atoms)
 	if err != nil {
 		panic(err)
 	}
 	return d.String()
 }
 
-func (cfg config) IsEmpty() bool {
-	return len(cfg.merged) == 0 && len(cfg.platconfig) == 0
-}
-
 func (cfg config) EnvKey() string {
 	return cfg.envKey
 }
 
-func (cfg config) Derive(envKey string, f func([]*anypb.Any) []*anypb.Any) Configuration {
+func (cfg config) Derive(envKey string, f func(ConfigurationSlice) ConfigurationSlice) Configuration {
 	return config{
-		envKey:     envKey,
-		merged:     f(cfg.merged),
-		platconfig: cfg.platconfig,
+		envKey: envKey,
+		atoms:  f(cfg.atoms),
 	}
 }
 
@@ -177,7 +194,8 @@ func selectByEnv(devHost *schema.DevHost, env *schema.Environment) Configuration
 			continue
 		}
 
-		slice = append(slice, cfg.Configuration...)
+		slice.Configuration = append(slice.Configuration, cfg.Configuration...)
+		slice.PlatformConfiguration = append(slice.PlatformConfiguration, cfg.PlatformConfiguration...)
 	}
 
 	return slice
