@@ -163,7 +163,7 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 
 	// Collect all required servers before planning deployment as they are referenced in annotations.
 	for _, server := range d.Servers {
-		deployOpts.stackIds = append(deployOpts.stackIds, server.Server.Proto().Id)
+		deployOpts.stackIds = append(deployOpts.stackIds, server.Server.Id)
 	}
 
 	for _, server := range d.Servers {
@@ -171,7 +171,7 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 
 		var serverInternalEndpoints []*schema.InternalEndpoint
 		for _, ie := range d.Stack.InternalEndpoint {
-			if server.Server.PackageName().Equals(ie.ServerOwner) {
+			if server.Server.PackageName == ie.ServerOwner {
 				serverInternalEndpoints = append(serverInternalEndpoints, ie)
 			}
 		}
@@ -181,8 +181,8 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 		}
 
 		// XXX verify we've consumed all endpoints.
-		for _, endpoint := range d.Stack.EndpointsBy(server.Server.PackageName()) {
-			if err := r.deployEndpoint(ctx, server, endpoint, &singleState); err != nil {
+		for _, endpoint := range d.Stack.EndpointsBy(schema.PackageName(server.Server.PackageName)) {
+			if err := r.deployEndpoint(ctx, server.Server, endpoint, &singleState); err != nil {
 				return nil, err
 			}
 		}
@@ -201,11 +201,11 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 				}
 			}
 
-			at.Attach(tasks.Output(fmt.Sprintf("%s.k8s-decl.yaml", server.Server.PackageName()), "application/yaml"), output.Bytes())
+			at.Attach(tasks.Output(fmt.Sprintf("%s.k8s-decl.yaml", server.Server.PackageName), "application/yaml"), output.Bytes())
 		}
 
 		for _, apply := range singleState.operations {
-			def, err := apply.ToDefinition(server.Server.PackageName())
+			def, err := apply.ToDefinition(schema.PackageName(server.Server.PackageName))
 			if err != nil {
 				return nil, err
 			}

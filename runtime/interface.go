@@ -14,7 +14,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console/termios"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -132,7 +132,8 @@ type Deployment struct {
 
 type ServerConfig struct {
 	ServerRunOpts
-	Server           provision.Server
+	ServerLocation   fnerrors.Location
+	Server           *schema.Server
 	ConfigImage      *oci.ImageID
 	ServerExtensions []*schema.ServerExtension
 	Extensions       []*schema.DefExtension

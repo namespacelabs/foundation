@@ -19,11 +19,6 @@ extension: fn.#Extension & {
 			invokeInternal: "namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions"
 		}
 	}
-
-	packageData: [
-		"defaults/container.securitycontext.yaml",
-		"defaults/pod.podsecuritycontext.yaml",
-	]
 }
 
 $env:  inputs.#Environment

@@ -34,6 +34,7 @@ func InvokeWithBinary(ctx context.Context, env planning.Context, inv *types.Defe
 		if err != nil {
 			return nil, err
 		}
+
 		it.image = compute.Transform("return image", image, func(ctx context.Context, r oci.ResolvableImage) (oci.Image, error) {
 			return r.Image()
 		})

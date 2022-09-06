@@ -639,7 +639,8 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, servers []
 }
 
 func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server, imgs builtImage, out *runtime.ServerConfig) error {
-	out.Server = s
+	out.Server = s.Proto()
+	out.ServerLocation = s.Location
 	out.Image = imgs.Binary
 	if imgs.Config.Repository != "" {
 		out.ConfigImage = &imgs.Config

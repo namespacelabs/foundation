@@ -98,11 +98,11 @@ func HasFocusMark(labels map[string]string) bool {
 	return label == "true"
 }
 
-func MakeAnnotations(env *schema.Environment, entry *schema.Stack_Entry) map[string]string {
+func MakeAnnotations(env *schema.Environment, entry *schema.Server) map[string]string {
 	m := map[string]string{}
 
 	if entry != nil {
-		m[K8sServerPackageName] = entry.GetPackageName().String()
+		m[K8sServerPackageName] = entry.GetPackageName()
 	}
 
 	if env.GetEphemeral() {

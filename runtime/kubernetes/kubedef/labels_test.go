@@ -39,7 +39,7 @@ func TestMakeAnnotations(t *testing.T) {
 		PackageName: "namespacelabs.dev/foundation/test",
 	}
 
-	got := MakeAnnotations(env, &schema.Stack_Entry{Server: srv})
+	got := MakeAnnotations(env, srv)
 
 	if d := cmp.Diff(map[string]string{
 		"k8s.namespacelabs.dev/server-package-name": "namespacelabs.dev/foundation/test",
