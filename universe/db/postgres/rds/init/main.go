@@ -35,9 +35,9 @@ var (
 	ipRange = "0.0.0.0/0" // TODO lock down
 
 	// TODO configurable?!
-	storage       = int32(100) // min GB
-	class         = "db.m5d.xlarge"
-	iops          = 3000
+	storage       = int32(100)     // min GB
+	class         = "db.m5d.large" // https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html
+	iops          = 1000           // min iops
 	engineVersion = "13.4"
 )
 
