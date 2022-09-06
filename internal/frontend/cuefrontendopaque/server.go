@@ -28,6 +28,11 @@ type cueServer struct {
 	Services map[string]cueService `json:"services"`
 }
 
+type cueIntegration struct {
+	Kind       string `json:"kind"`
+	Dockerfile string `json:"dockerfile"`
+}
+
 type cueService struct {
 	Kind    string     `json:"kind"`
 	Port    int        `json:"port"`
