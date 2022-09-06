@@ -88,7 +88,10 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env *env) (string, error) {
 				log.Printf("Unable to marshal error %v:\n%v", err, jsonErr)
 				return
 			}
-			appendLine(filepath.Join(dir, errFile), string(data))
+			errPath := filepath.Join(dir, errFile)
+			if err := appendLine(errPath, string(data)); err != nil {
+				log.Printf("Unable to append to file %s: %v", errPath, err)
+			}
 		}
 	}()
 
