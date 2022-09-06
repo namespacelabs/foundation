@@ -194,7 +194,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		testResults.Success = false
 	} else {
 		testResults.Success = false
-		st, _ := status.FromError(err)
+		st := status.Convert(waitErr)
 		testResults.ErrorCode = int32(st.Code())
 		testResults.ErrorMessage = st.Message()
 	}
