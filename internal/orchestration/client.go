@@ -34,6 +34,7 @@ import (
 const (
 	serverPkg   = "namespacelabs.dev/foundation/internal/orchestration/server"
 	serviceName = "orchestration-service"
+	connTimeout = time.Minute // TODO reduce - we've seen slow connections in CI
 )
 
 var (
@@ -85,6 +86,9 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 	if err != nil {
 		return nil, err
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, connTimeout)
+	defer cancel()
 
 	if RenderOrchestratorDeployment {
 		if err := deploy.Wait(ctx, env, waiters); err != nil {
@@ -221,6 +225,9 @@ func Deploy(ctx context.Context, env planning.Context, plan *schema.DeployPlan) 
 	if req.Auth, err = getUserAuth(ctx); err != nil {
 		return "", err
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, connTimeout)
+	defer cancel()
 
 	resp, err := cli.Deploy(ctx, req)
 	if err != nil {
