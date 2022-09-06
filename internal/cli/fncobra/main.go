@@ -306,6 +306,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, we print a render wait block while deploying the orchestrator itself.")
 	rootCmd.PersistentFlags().StringVar(&binary.PrebuiltOverwrites, "prebuilt_overwrites", binary.PrebuiltOverwrites,
 		"Comma separated list of prebuilt overwrites. Format pkg:repo@digest,pkg:repo@digest")
+	rootCmd.PersistentFlags().BoolVar(&simplelog.AlsoReportStartEvents, "also_report_start_events", simplelog.AlsoReportStartEvents,
+		"If set to true, we log a start event for each action, if --log_actions is also set.")
 
 	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
@@ -343,6 +345,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"use_orchestrator",
 		"render_orchestrator_deployment",
 		"prebuilt_overwrites",
+		"also_report_start_events",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
