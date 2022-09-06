@@ -20,14 +20,14 @@ const (
 )
 
 type cueContainer struct {
-	Integration cueIntegration `json:"integration"`
+	Build cueBuild `json:"build"`
 
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
 	Env  map[string]string          `json:"env"`
 }
 
-type cueIntegration struct {
-	Kind       string `json:"kind"`
+type cueBuild struct {
+	With       string `json:"with"`
 	Dockerfile string `json:"dockerfile"`
 }
 
@@ -57,17 +57,17 @@ func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, nam
 		})
 	}
 
-	switch bits.Integration.Kind {
+	switch bits.Build.With {
 	case serverKindDockerfile:
 		out.inlineBinaries = append(out.inlineBinaries, &schema.Binary{
 			Name: name,
 			From: &schema.ImageBuildPlan{
-				Dockerfile: bits.Integration.Dockerfile,
+				Dockerfile: bits.Build.Dockerfile,
 			},
 		})
 		out.container.BinaryRef = schema.MakePackageRef(loc.PackageName, name)
 	default:
-		return nil, fnerrors.UserError(loc, "unsupported integration kind %q", bits.Integration.Kind)
+		return nil, fnerrors.UserError(loc, "unsupported builder %q", bits.Build.With)
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
