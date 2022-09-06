@@ -21,6 +21,7 @@ import (
 )
 
 type phase1plan struct {
+	owner   schema.PackageName
 	partial *fncue.Partial
 
 	Value *fncue.CueV
@@ -139,14 +140,14 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, in
 	}
 
 	if sidecar := lookupTransition(vv, "sidecar"); sidecar.Exists() {
-		pdata.Sidecars, err = parseContainers("sidecar", sidecar.Val)
+		pdata.Sidecars, err = parseContainers(p1.owner, "sidecar", sidecar.Val)
 		if err != nil {
 			return pdata, err
 		}
 	}
 
 	if init := lookupTransition(vv, "init"); init.Exists() {
-		pdata.Inits, err = parseContainers("init", init.Val)
+		pdata.Inits, err = parseContainers(p1.owner, "init", init.Val)
 		if err != nil {
 			return pdata, err
 		}
@@ -187,7 +188,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, in
 	return pdata, nil
 }
 
-func parseContainers(kind string, v cue.Value) ([]*schema.SidecarContainer, error) {
+func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*schema.SidecarContainer, error) {
 	// XXX remove ListKind version.
 	if v.Kind() == cue.ListKind {
 		var containers []cueContainer
@@ -208,6 +209,7 @@ func parseContainers(kind string, v cue.Value) ([]*schema.SidecarContainer, erro
 			}
 
 			parsed = append(parsed, &schema.SidecarContainer{
+				Owner:     owner.String(),
 				Name:      data.Name,
 				BinaryRef: binRef,
 				Args:      data.Args.Parsed(),
@@ -234,6 +236,7 @@ func parseContainers(kind string, v cue.Value) ([]*schema.SidecarContainer, erro
 		}
 
 		parsed = append(parsed, &schema.SidecarContainer{
+			Owner:     owner.String(),
 			Name:      name,
 			BinaryRef: binRef,
 			Args:      data.Args.Parsed(),

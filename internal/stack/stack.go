@@ -256,13 +256,13 @@ func EvalProvision(ctx context.Context, server provision.Server, n *pkggraph.Pac
 	})
 }
 
-func evalProvision(ctx context.Context, server provision.Server, n *pkggraph.Package) (*ParsedNode, error) {
+func evalProvision(ctx context.Context, server provision.Server, node *pkggraph.Package) (*ParsedNode, error) {
 	var combinedProps frontend.PrepareProps
-	for _, hook := range n.PrepareHooks {
+	for _, hook := range node.PrepareHooks {
 		if hook.InvokeInternal != "" {
 			props, err := frontend.InvokeInternalPrepareHook(ctx, hook.InvokeInternal, server.SealedContext(), server.StackEntry())
 			if err != nil {
-				return nil, fnerrors.Wrap(n.Location, err)
+				return nil, fnerrors.Wrap(node.Location, err)
 			}
 
 			if props == nil {
@@ -315,7 +315,7 @@ func evalProvision(ctx context.Context, server provision.Server, n *pkggraph.Pac
 				resp, err = invoke.BuildkitInvocation(ctx, server.SealedContext(), "foundation.provision.tool.protocol.PrepareService/Prepare",
 					schema.PackageName(hook.InvokeBinary.Binary), *opts.PublicImageID, opts, req)
 			} else {
-				resp, err = invoke.Invoke(ctx, n.PackageName(), opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.PrepareRequest, ...grpc.CallOption) (*protocol.PrepareResponse, error) {
+				resp, err = invoke.Invoke(ctx, node.PackageName(), opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.PrepareRequest, ...grpc.CallOption) (*protocol.PrepareResponse, error) {
 					return protocol.NewPrepareServiceClient(conn).Prepare
 				})
 			}
@@ -348,27 +348,35 @@ func evalProvision(ctx context.Context, server provision.Server, n *pkggraph.Pac
 
 	// We need to make sure that `env` is available before we read extend.stack, as env is often used
 	// for branching.
-	pdata, err := n.Parsed.EvalProvision(ctx, server.SealedContext(), pkggraph.ProvisionInputs{
+	pdata, err := node.Parsed.EvalProvision(ctx, server.SealedContext(), pkggraph.ProvisionInputs{
 		Workspace:      server.Module().Workspace,
 		ServerLocation: server.Location,
 	})
 	if err != nil {
-		return nil, fnerrors.Wrap(n.Location, err)
+		return nil, fnerrors.Wrap(node.Location, err)
 	}
 
 	if pdata.Naming != nil {
-		return nil, fnerrors.UserError(n.Location, "nodes can't provide naming specifications")
+		return nil, fnerrors.UserError(node.Location, "nodes can't provide naming specifications")
+	}
+
+	for _, sidecar := range combinedProps.PreparedProvisionPlan.Sidecars {
+		sidecar.Owner = node.PackageName().String()
+	}
+
+	for _, sidecar := range combinedProps.PreparedProvisionPlan.Inits {
+		sidecar.Owner = node.PackageName().String()
 	}
 
 	pdata.AppendWith(combinedProps.PreparedProvisionPlan)
 
-	node := &ParsedNode{Package: n, ProvisionPlan: pdata}
-	node.PrepareProps.ProvisionInput = combinedProps.ProvisionInput
-	node.PrepareProps.Invocations = combinedProps.Invocations
-	node.PrepareProps.Extension = combinedProps.Extension
-	node.PrepareProps.ServerExtension = combinedProps.ServerExtension
+	parsed := &ParsedNode{Package: node, ProvisionPlan: pdata}
+	parsed.PrepareProps.ProvisionInput = combinedProps.ProvisionInput
+	parsed.PrepareProps.Invocations = combinedProps.Invocations
+	parsed.PrepareProps.Extension = combinedProps.Extension
+	parsed.PrepareProps.ServerExtension = combinedProps.ServerExtension
 
-	return node, nil
+	return parsed, nil
 }
 
 func fillNeeds(ctx context.Context, server *schema.Server, s *eval.AllocState, allocators []eval.AllocatorFunc, n *schema.Node) ([]pkggraph.ValueWithPath, error) {

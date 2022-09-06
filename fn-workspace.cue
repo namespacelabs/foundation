@@ -37,7 +37,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/universe/db/postgres/internal/init":                             "sha256:d4b1e34b623bcb4e0ff535bab3725ff951f026b62b9f6a2016a78f279a195fed"
 		"namespacelabs.dev/foundation/universe/db/postgres/opaque/tool":                               "sha256:42d380b51576ea211b7e9744dae5f0a960e20879a2da170cf7af538f15a24ede"
 		"namespacelabs.dev/foundation/universe/db/postgres/rds/init":                                  "sha256:a3d4e0f1632d686bd0df6f573d1606a98ad324d2d2d1a217d155a117157bcbb2"
-		"namespacelabs.dev/foundation/universe/db/postgres/rds/prepare":                               "sha256:c17dcc8bc865dab15484363bed8a0dfa772179aff1700a94706dff504af21450"
+		"namespacelabs.dev/foundation/universe/db/postgres/rds/prepare":                               "sha256:52d9dccc910ded20216594218797a85b9810a4ca625087ac6071520b34d7a544"
 		"namespacelabs.dev/foundation/universe/db/postgres/server/creds/tool":                         "sha256:205d7b5200e5f606ac5654951a5f2db0e1b6ca4ec55dc795cb9d780c29474ba9"
 		"namespacelabs.dev/foundation/universe/db/postgres/server/img":                                "sha256:73b5e1ad8011ac702d6232ac5d3e10cb05a5baccc6ea3e87bbd79008f140eca0"
 		"namespacelabs.dev/foundation/universe/development/localstack/s3/internal/configure":          "sha256:b72a8f03cb49e98c0d7c105086502e193a039b61dd5b7d30b8a06fc5bec9e71f"
@@ -45,7 +45,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/universe/networking/k8s-event-exporter/configure":               "sha256:44409819476881e3ed2e962fb3a3214500250495fc41ddb286a9503613dc091a"
 		"namespacelabs.dev/foundation/universe/networking/tailscale/image":                            "sha256:444639fe064c0be98ddf66671d93db47ba973ab17636254906b228d69d5b06a4"
 		"namespacelabs.dev/foundation/universe/storage/s3/internal/managebuckets":                     "sha256:595779e09f0b3f614b9b022489f6a6d4b6c6ceec894e5273cfe69bb9aadbe347"
-		"namespacelabs.dev/foundation/universe/storage/s3/internal/prepare":                           "sha256:56d14c7d02317dc9a1be83e97f29986e9a3dc738c674aa13208f41f4fdec567f"
+		"namespacelabs.dev/foundation/universe/storage/s3/internal/prepare":                           "sha256:eead2b98bd0ff36c110c94441c61d7112c03432baf2ff5d51ddae1caa4d93db2"
 	}
 	baseRepository: "us-docker.pkg.dev/foundation-344819/prebuilts/"
 }

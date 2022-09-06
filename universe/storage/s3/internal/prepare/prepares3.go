@@ -67,7 +67,7 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 				{BinaryRef: self}, // Call me back.
 			},
 			Init: []*schema.SidecarContainer{
-				{BinaryRef: initContainer},
+				{Name: "managebuckets", BinaryRef: initContainer},
 			},
 		},
 	}

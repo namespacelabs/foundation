@@ -75,10 +75,17 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 
 	// In development or testing, use incluster Postgres.
 	if useIncluster(req.Env) {
-		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{Binary: inclusterInit}) // If a server also depends on incluster postgres, this init will be added twice. This is ok for now, since the init is idempotent.
+		// If a server also depends on incluster postgres, this init will be added twice. This is ok for now, since the init is idempotent.
+		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{
+			Name:   "prepare-incluster",
+			Binary: inclusterInit,
+		})
 		resp.PreparedProvisionPlan.DeclaredStack = append(resp.PreparedProvisionPlan.DeclaredStack, inclusterServer)
 	} else {
-		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{Binary: rdsInit})
+		resp.PreparedProvisionPlan.Init = append(resp.PreparedProvisionPlan.Init, &schema.SidecarContainer{
+			Name:   "prepare-rds",
+			Binary: rdsInit,
+		})
 	}
 
 	return resp, nil

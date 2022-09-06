@@ -107,14 +107,14 @@ func PrepareDeployStack(ctx context.Context, env planning.Context, stack *stack.
 
 func makeBuildAssets(ingressFragments compute.Computable[*ComputeIngressResult]) languages.AvailableBuildAssets {
 	return languages.AvailableBuildAssets{
-		IngressFragments: compute.Transform(ingressFragments, func(_ context.Context, res *ComputeIngressResult) ([]*schema.IngressFragment, error) {
+		IngressFragments: compute.Transform("return fragments", ingressFragments, func(_ context.Context, res *ComputeIngressResult) ([]*schema.IngressFragment, error) {
 			return res.Fragments, nil
 		}),
 	}
 }
 
 func computeIngressWithHandlerResult(env planning.Context, stack *stack.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
-	computedIngressFragments := compute.Transform(def, func(ctx context.Context, h *handlerResult) ([]*schema.IngressFragment, error) {
+	computedIngressFragments := compute.Transform("parse computed ingress", def, func(ctx context.Context, h *handlerResult) ([]*schema.IngressFragment, error) {
 		var fragments []*schema.IngressFragment
 
 		for _, computed := range h.Computed.GetEntry() {
@@ -253,7 +253,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, server
 		focus.Add(server.PackageName())
 	}
 
-	computedOnly := compute.Transform(stackDef, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
+	computedOnly := compute.Transform("return computed", stackDef, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
 		return h.Computed, nil
 	})
 
@@ -574,7 +574,7 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, servers []
 
 	ingressFragments := computeIngressWithHandlerResult(env, stack, def)
 
-	computedOnly := compute.Transform(def, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
+	computedOnly := compute.Transform("return computed", def, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
 		return h.Computed, nil
 	})
 
@@ -680,7 +680,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 func prepareContainerRunOpts(containers []*schema.SidecarContainer, imageIDs builtImages, sidecarCommands []sidecarPackage, out *[]runtime.SidecarRunOpts) error {
 	for _, container := range containers {
 		if container.Name == "" {
-			return fnerrors.InternalError("sidecar name is required")
+			return fnerrors.InternalError("%s: sidecar name is required", container.Owner)
 		}
 
 		binRef := container.BinaryRef

@@ -44,7 +44,7 @@ func (p noPackageEnv) KubeconfigProvider() (*client.HostConfig, error) {
 }
 
 func PrepareIngressFromHostConfig(env planning.Context, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
-	return PrepareIngress(env, compute.Transform(k8sconfig, func(ctx context.Context, cfg *client.HostConfig) (kubernetes.Unbound, error) {
+	return PrepareIngress(env, compute.Transform("create k8s runtime", k8sconfig, func(ctx context.Context, cfg *client.HostConfig) (kubernetes.Unbound, error) {
 		return kubernetes.NewFromConfig(ctx, cfg)
 	}))
 }

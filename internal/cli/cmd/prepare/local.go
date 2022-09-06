@@ -67,7 +67,7 @@ func prepareK8s(ctx context.Context, env planning.Context, contextName string) c
 }
 
 func localK8sConfiguration(env planning.Context, hostConfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
-	return compute.Transform(hostConfig, func(ctx context.Context, k8sconfigval *client.HostConfig) ([]*schema.DevHost_ConfigureEnvironment, error) {
+	return compute.Transform("create local config", hostConfig, func(ctx context.Context, k8sconfigval *client.HostConfig) ([]*schema.DevHost_ConfigureEnvironment, error) {
 		var messages []proto.Message
 
 		registry := k8sconfigval.Registry()

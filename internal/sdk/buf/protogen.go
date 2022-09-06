@@ -113,7 +113,7 @@ func MakeProtoSrcs(ctx context.Context, env planning.Context, request map[schema
 		return nil, err
 	}
 
-	return compute.Transform(img, func(ctx context.Context, img oci.Image) (fs.FS, error) {
+	return compute.Transform("extract image as filesystem", img, func(ctx context.Context, img oci.Image) (fs.FS, error) {
 		fsys := tarfs.FS{
 			TarStream: func() (io.ReadCloser, error) {
 				return mutate.Extract(img), nil

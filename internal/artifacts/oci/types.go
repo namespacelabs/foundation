@@ -37,7 +37,7 @@ type ResolvableImage interface {
 type imageFetchFunc func(v1.Hash) (Image, error)
 
 func AsResolvable(c compute.Computable[Image]) compute.Computable[ResolvableImage] {
-	return compute.Transform(c, func(ctx context.Context, img Image) (ResolvableImage, error) {
+	return compute.Transform("typecast", c, func(ctx context.Context, img Image) (ResolvableImage, error) {
 		return RawAsResolvable(img), nil
 	})
 }

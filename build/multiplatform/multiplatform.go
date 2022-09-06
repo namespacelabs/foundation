@@ -30,7 +30,7 @@ func PrepareMultiPlatformImage(ctx context.Context, env planning.Context, p buil
 	}
 
 	if p.BuildKind != storage.Build_KIND_UNKNOWN && p.SourcePackage != "" {
-		img = compute.TransformResult(img, func(ctx context.Context, v compute.ResultWithTimestamp[oci.ResolvableImage]) (oci.ResolvableImage, error) {
+		img = compute.TransformResult("attach build to results", img, func(ctx context.Context, v compute.ResultWithTimestamp[oci.ResolvableImage]) (oci.ResolvableImage, error) {
 			var platforms []string
 			for _, plat := range p.Platforms {
 				platforms = append(platforms, devhost.FormatPlatform(plat))

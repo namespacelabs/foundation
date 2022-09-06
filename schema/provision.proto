@@ -36,6 +36,8 @@ message InvocationSnapshot {
 }
 
 message SidecarContainer {
+    string owner = 5;  // Package name.
+
     // Deprecated, use binary_ref
     string     binary     = 1;
     PackageRef binary_ref = 4;

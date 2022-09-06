@@ -18,9 +18,9 @@ func Map[V any](action *tasks.ActionEvent, inputs *In, output Output,
 	return &inline[V]{action: action, inputs: inputs, output: output, compute: compute}
 }
 
-func Transform[From, To any](from Computable[From], compute func(context.Context, From) (To, error)) Computable[To] {
+func Transform[From, To any](desc string, from Computable[From], compute func(context.Context, From) (To, error)) Computable[To] {
 	newAction := from.Action().Clone(func(original string) string {
-		return fmt.Sprintf("transform (%s)", original)
+		return fmt.Sprintf("%s: %s", original, desc)
 	})
 	return Map(newAction, Inputs().Computable("from", from), Output{
 		NotCacheable: true, // There's no value in retaining these intermediary artifacts.
@@ -29,9 +29,9 @@ func Transform[From, To any](from Computable[From], compute func(context.Context
 	})
 }
 
-func TransformResult[From, To any](from Computable[From], compute func(context.Context, ResultWithTimestamp[From]) (To, error)) Computable[To] {
+func TransformResult[From, To any](desc string, from Computable[From], compute func(context.Context, ResultWithTimestamp[From]) (To, error)) Computable[To] {
 	newAction := from.Action().Clone(func(original string) string {
-		return fmt.Sprintf("transform (%s)", original)
+		return fmt.Sprintf("%s: %s", original, desc)
 	})
 	return Map(newAction, Inputs().Computable("from", from), Output{
 		NotCacheable: true, // There's no value in retaining these intermediary artifacts.

@@ -58,7 +58,7 @@ func NewPrepareCmd() *cobra.Command {
 
 func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) compute.Computable[kubernetes.Unbound] {
 	return compute.Map(tasks.Action("prepare.kubernetes"),
-		compute.Inputs().Computable("conf", compute.Transform(compute.Collect(tasks.Action("prepare.kubernetes.configs"), confs...),
+		compute.Inputs().Computable("conf", compute.Transform("parse results", compute.Collect(tasks.Action("prepare.kubernetes.configs"), confs...),
 			func(ctx context.Context, computed []compute.ResultWithTimestamp[[]*schema.DevHost_ConfigureEnvironment]) ([]*schema.DevHost_ConfigureEnvironment, error) {
 				var result []*schema.DevHost_ConfigureEnvironment
 				for _, conf := range computed {
