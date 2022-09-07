@@ -64,7 +64,7 @@ type inlineAnyJson struct {
 	Body    string `json:"body"`
 }
 
-func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, parent, v *fncue.CueV, pp *pkggraph.Package, opts workspace.LoadPackageOpts) (*schema.Server, error) {
+func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, parent, v *fncue.CueV, opts workspace.LoadPackageOpts) (*schema.Server, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
@@ -198,7 +198,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 		return nil, err
 	}
 
-	return workspace.TransformServer(ctx, pl, out, pp, opts)
+	return out, nil
 }
 
 func parseDetails(detail inlineAnyJson) (*anypb.Any, error) {

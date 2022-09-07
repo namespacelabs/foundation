@@ -111,10 +111,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	parsedSrv.Volumes = append(parsedSrv.Volumes, parsedVolumes...)
 	parsedSrv.Secret = parsedSecrets
 
-	parsedPkg.Server, err = workspace.TransformServer(ctx, ft.loader, parsedSrv, parsedPkg, opts)
-	if err != nil {
-		return nil, err
-	}
+	parsedPkg.Server = parsedSrv
 
 	if requires := v.LookupPath("requires"); requires.Exists() {
 		var bits []schema.PackageName

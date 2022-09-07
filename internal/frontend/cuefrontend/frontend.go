@@ -88,7 +88,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 	}
 
 	if server := v.LookupPath("server"); server.Exists() {
-		parsedSrv, err := parseCueServer(ctx, ft.loader, loc, v, server, parsed, opts)
+		parsedSrv, err := parseCueServer(ctx, ft.loader, loc, v, server, opts)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing server")
 		}

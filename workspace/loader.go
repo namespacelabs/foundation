@@ -380,7 +380,12 @@ func (l *loadingPackage) Ensure(ctx context.Context) error {
 	l.mu.Unlock()
 	var res resultPair
 	res.value, res.err = tasks.Return(ctx, tasks.Action("package.load").Scope(l.loc.PackageName), func(ctx context.Context) (*pkggraph.Package, error) {
-		return l.pl.frontend.ParsePackage(ctx, l.loc, l.opts)
+		pp, err := l.pl.frontend.ParsePackage(ctx, l.loc, l.opts)
+		if err != nil {
+			return nil, err
+		}
+
+		return SealPackage(ctx, l.pl, pp, l.opts)
 	})
 
 	l.mu.Lock()
