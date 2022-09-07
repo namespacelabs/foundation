@@ -18,12 +18,12 @@ import (
 )
 
 type impl struct {
-	loader       workspace.EarlyPackageLoader
-	evalctx      *fncue.EvalCtx
-	opaqueParser opaqueParser
+	loader          workspace.EarlyPackageLoader
+	evalctx         *fncue.EvalCtx
+	newSyntaxParser NewSyntaxParser
 }
 
-type opaqueParser interface {
+type NewSyntaxParser interface {
 	ParsePackage(ctx context.Context, partial *fncue.Partial, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error)
 }
 
@@ -45,11 +45,11 @@ func InjectedScope(env *schema.Environment) interface{} {
 	}
 }
 
-func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser opaqueParser, env *schema.Environment) workspace.Frontend {
+func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser NewSyntaxParser, env *schema.Environment) workspace.Frontend {
 	return impl{
-		loader:       pl,
-		evalctx:      fncue.NewEvalCtx(WorkspaceLoader{pl}, InjectedScope(env)),
-		opaqueParser: opaqueParser,
+		loader:          pl,
+		evalctx:         fncue.NewEvalCtx(WorkspaceLoader{pl}, InjectedScope(env)),
+		newSyntaxParser: opaqueParser,
 	}
 }
 
@@ -59,14 +59,13 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 		return nil, err
 	}
 
-	v := &partial.CueV
-
-	// Detecting the simplified syntax to define opaquer servers.
-	server := v.LookupPath("server")
-	// There is at least one import: the file itself.
-	if len(partial.CueImports) <= 1 && server.Exists() {
-		return ft.opaqueParser.ParsePackage(ctx, partial, loc, opts)
+	// Packages in the new syntax don't rely as much on cue features. They're
+	// streamlined data definitions without the constraints of json.
+	if isNewSyntax(partial) {
+		return ft.newSyntaxParser.ParsePackage(ctx, partial, loc, opts)
 	}
+
+	v := &partial.CueV
 
 	parsed := &workspace.Package{
 		Location: loc,
@@ -126,6 +125,14 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 	}
 
 	return parsed, nil
+}
+
+func isNewSyntax(partial *fncue.Partial) bool {
+	// Detecting the simplified syntax to define opaquer servers.
+	server := partial.CueV.LookupPath("server")
+
+	// There is at least one import: the file itself.
+	return len(partial.CueImports) <= 1 && server.Exists()
 }
 
 func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (workspace.PackageType, error) {
