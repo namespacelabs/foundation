@@ -79,7 +79,7 @@ filter-syscalls = false
 	}
 
 	return compute.Transform("ingest filesystem as image", fsys, func(ctx context.Context, fsys fs.FS) (oci.Image, error) {
-		return buildkit.IngestFromFS(ctx, fsys, outputImageFile, true)
+		return oci.IngestFromFS(ctx, fsys, outputImageFile, true)
 	}), nil
 }
 

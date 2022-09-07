@@ -37,3 +37,23 @@ func WithCanonicalManifest(ctx context.Context, img Image) (Image, error) {
 		return mutate.ConfigFile(img, cfg)
 	})
 }
+
+func Canonical(ctx context.Context, original Image) (Image, error) {
+	img, err := WithCanonicalManifest(ctx, original)
+	if err != nil {
+		return nil, err
+	}
+
+	digest, err := img.Digest()
+	if err != nil {
+		return nil, err
+	}
+
+	cfgName, err := img.ConfigName()
+	if err != nil {
+		return nil, err
+	}
+
+	tasks.Attachments(ctx).AddResult("digest", digest).AddResult("config", cfgName)
+	return img, nil
+}

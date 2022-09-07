@@ -5,7 +5,6 @@
 package buildkit
 
 import (
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -19,7 +18,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/exporter/containerimage/exptypes"
@@ -29,7 +27,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/build"
-	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
@@ -514,55 +511,7 @@ func (e *exportImage) Exports() []client.ExportEntry {
 }
 
 func (e *exportImage) Provide(ctx context.Context, _ *client.SolveResponse) (oci.Image, error) {
-	return IngestFromFS(ctx, fnfs.Local(filepath.Dir(e.output.Name())), filepath.Base(e.output.Name()), false)
-}
-
-func IngestFromFS(ctx context.Context, fsys fs.FS, path string, compressed bool) (oci.Image, error) {
-	img, err := tarball.Image(func() (io.ReadCloser, error) {
-		f, err := fsys.Open(path)
-		if err != nil {
-			return nil, err
-		}
-
-		fi, err := f.Stat()
-		if err != nil {
-			return nil, fnerrors.InternalError("failed to stat intermediate image: %w", err)
-		}
-
-		progress := artifacts.NewProgressReader(f, uint64(fi.Size()))
-		tasks.Attachments(ctx).SetProgress(progress)
-
-		if !compressed {
-			return progress, nil
-		}
-
-		gr, err := gzip.NewReader(progress)
-		if err != nil {
-			return nil, err
-		}
-
-		return andClose{gr, progress}, nil
-	}, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return canonical(ctx, img)
-}
-
-type andClose struct {
-	actual io.ReadCloser
-	closer io.Closer
-}
-
-func (a andClose) Read(p []byte) (int, error) { return a.actual.Read(p) }
-func (a andClose) Close() error {
-	err := a.actual.Close()
-	ioerr := a.closer.Close()
-	if err != nil {
-		return err
-	}
-	return ioerr
+	return oci.IngestFromFS(ctx, fnfs.Local(filepath.Dir(e.output.Name())), filepath.Base(e.output.Name()), false)
 }
 
 func exportToFS() exporter[fs.FS] { return &exportFS{} }
