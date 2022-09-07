@@ -444,9 +444,16 @@ func prepareServerImages(ctx context.Context, env planning.Context,
 	for _, srv := range stack.Servers {
 		images := serverImages{PackageRef: srv.PackageRef()}
 
-		var err error
+		prebuilt, err := binary.PrebuiltImageID(srv.Location)
+		if err != nil {
+			return nil, err
+		}
+
 		var spec build.Spec
-		if srv.Integration() != nil {
+
+		if prebuilt != nil {
+			spec = build.PrebuiltPlan(*prebuilt, false, build.PrebuiltResolveOpts())
+		} else if srv.Integration() != nil {
 			spec, err = shared.PrepareBuild(ctx, srv.Location, srv.Integration(), focus.Includes(srv.PackageName()))
 		} else {
 			spec, err = languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, buildAssets, srv, focus.Includes(srv.PackageName()))

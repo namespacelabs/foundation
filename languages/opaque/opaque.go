@@ -56,7 +56,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 		return nil, fnerrors.Wrapf(server.Location, err, "unable to parse image")
 	}
 
-	return build.PrebuiltPlan(imgid, false, oci.ResolveOpts{}), nil
+	return build.PrebuiltPlan(imgid, false, build.PrebuiltResolveOpts()), nil
 }
 
 func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ServerRunOpts) error {

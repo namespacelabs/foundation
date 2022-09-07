@@ -206,8 +206,7 @@ func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, o
 			return nil, err
 		}
 		if imgid != nil {
-			public := true // We assume all prebuilts are public, unless noted otherwise.
-			return build.PrebuiltPlan(*imgid, spec.PlatformIndependent(), oci.ResolveOpts{PublicImage: public}), nil
+			return build.PrebuiltPlan(*imgid, spec.PlatformIndependent(), build.PrebuiltResolveOpts()), nil
 		}
 	}
 

@@ -14,6 +14,13 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+func PrebuiltResolveOpts() oci.ResolveOpts {
+	// We assume all prebuilts are public, unless noted otherwise.
+	return oci.ResolveOpts{
+		PublicImage: true,
+	}
+}
+
 func PrebuiltPlan(imgid oci.ImageID, platformIndependent bool, opts oci.ResolveOpts) Spec {
 	return prebuilt{imgid, platformIndependent, opts}
 }
