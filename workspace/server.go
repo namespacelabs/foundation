@@ -10,6 +10,7 @@ import (
 	"regexp"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -29,10 +30,16 @@ func ValidateServerID(n *schema.Server) error {
 	return nil
 }
 
-func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server, pp *pkggraph.Package, opts LoadPackageOpts) (*schema.Server, error) {
+func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema.Server, pp *pkggraph.Package, opts LoadPackageOpts) (*schema.Server, error) {
+	if srv.Id == "" {
+		srv.Id = naming.StableID(pp.Location.PackageName.String(), 16)
+	}
+
 	if err := ValidateServerID(srv); err != nil {
 		return nil, err
 	}
+
+	loc := pp.Location
 
 	srv.PackageName = loc.PackageName.String()
 	srv.ModuleName = loc.Module.ModuleName()
@@ -62,6 +69,14 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggrap
 
 	sealed, err := s.finishSealing(ctx)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := validateServer(ctx, pp.Location, srv); err != nil {
+		return nil, err
+	}
+
+	if err := validatePackage(ctx, pp); err != nil {
 		return nil, err
 	}
 
@@ -143,43 +158,6 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggrap
 			return nil, err
 		}
 	}
-
-	return sealed.Proto.Server, nil
-}
-
-// Transform an opaqaue server defined with the simplified, import-less syntax.
-func TransformOpaqueServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema.Server, pp *pkggraph.Package, opts LoadPackageOpts) (*schema.Server, error) {
-	if err := validateServer(ctx, pp.Location, srv); err != nil {
-		return nil, err
-	}
-
-	if err := validatePackage(ctx, pp); err != nil {
-		return nil, err
-	}
-
-	srv.PackageName = pp.Location.PackageName.String()
-	srv.ModuleName = pp.Location.Module.ModuleName()
-	srv.UserImports = srv.Import
-
-	// Used by `ns tidy`.
-	if !opts.LoadPackageReferences {
-		return srv, nil
-	}
-
-	s := newSealer(ctx, pl, pp.Location.PackageName, nil)
-	if err := s.DoServer(pp.Location, srv, pp); err != nil {
-		_ = s.g.Wait() // Make sure cancel is triggered.
-		return nil, err
-	}
-
-	sealed, err := s.finishSealing(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var sorted schema.PackageList
-	likeTopoSort(sealed.Proto, s.serverIncludes, &sorted)
-	sealed.Proto.Server.Import = sorted.PackageNamesAsString()
 
 	return sealed.Proto.Server, nil
 }

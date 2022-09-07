@@ -52,7 +52,6 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	}
 
 	out := &schema.Server{}
-	out.Id = bits.Name
 	out.Name = bits.Name
 
 	switch bits.Integration.Kind {

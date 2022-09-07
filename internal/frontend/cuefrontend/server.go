@@ -198,7 +198,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 		return nil, err
 	}
 
-	return workspace.TransformServer(ctx, pl, loc, out, pp, opts)
+	return workspace.TransformServer(ctx, pl, out, pp, opts)
 }
 
 func parseDetails(detail inlineAnyJson) (*anypb.Any, error) {
