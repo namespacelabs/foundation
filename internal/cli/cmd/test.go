@@ -71,33 +71,26 @@ func NewTestCmd() *cobra.Command {
 		Do(func(ctx context.Context) error {
 			ctx = prepareContext(ctx, parallelWork, rocketShip)
 
-			var list schema.PackageList
-
 			if rocketShip {
 				parallel = true
 			}
 
-			if locs.AreSpecified {
-				for _, l := range locs.Locs {
-					list.Add(l.AsPackageName())
-				}
-			} else {
-				pl := workspace.NewPackageLoader(env)
-				for _, l := range locs.Locs {
-					pp, err := pl.LoadByName(ctx, l.AsPackageName())
-					if err != nil {
-						return err
-					}
+			pl := workspace.NewPackageLoader(env)
 
-					if pp.Test != nil {
-						list.Add(l.AsPackageName())
-					} else if includeServers && pp.Server.RunByDefault() {
-						// We also automatically generate a startup-test for each server.
-						list.Add(l.AsPackageName())
+			includeStartupTests := includeServers || locs.AreSpecified
+			testRefs := []*schema.PackageRef{}
+			for _, l := range locs.Locs {
+				pp, err := pl.LoadByName(ctx, l.AsPackageName())
+				if err != nil {
+					return err
+				}
+
+				for _, t := range pp.Tests {
+					if includeStartupTests || t.Driver.PackageName != workspace.StartupTestBinary {
+						testRefs = append(testRefs, schema.MakePackageRef(l.AsPackageName(), t.Name))
 					}
 				}
 			}
-			pkgs := list.PackageNames()
 
 			stderr := console.Stderr(ctx)
 			style := colors.Ctx(ctx)
@@ -105,25 +98,24 @@ func NewTestCmd() *cobra.Command {
 			testOpts.ParentRunID = storedrun.ParentID
 			testOpts.OutputProgress = !parallel
 
-			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(pkgs))
-			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(pkgs))}
-			incompatible := make([]*fnerrors.IncompatibleEnvironmentErr, len(pkgs))
+			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(testRefs))
+			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(testRefs))}
+			incompatible := make([]*fnerrors.IncompatibleEnvironmentErr, len(testRefs))
 
 			if err := tasks.Action("test.prepare").Run(ctx, func(ctx context.Context) error {
 				eg := executor.New(ctx, "test")
-				for k, pkg := range pkgs {
-					k := k     // Capture k.
-					pkg := pkg // Capture pkg.
+
+				for k, testRef := range testRefs {
+					k := k             // Capture k.
+					testRef := testRef // Capture testRef.
 
 					eg.Go(func(ctx context.Context) error {
-						pl := workspace.NewPackageLoader(env)
-
 						buildEnv := testing.PrepareEnv(ctx, env, ephemeral)
 
 						status := style.Header.Apply("BUILDING")
-						fmt.Fprintf(stderr, "%s: Test %s\n", pkg, status)
+						fmt.Fprintf(stderr, "%s: Test %s\n", testRef.Canonical(), status)
 
-						test, err := testing.PrepareTest(ctx, pl, buildEnv, pkg, testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
+						testComp, err := testing.PrepareTest(ctx, pl, buildEnv, testRef, testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
 							var suts []provision.Server
 
 							for _, pkg := range test.ServersUnderTest {
@@ -147,28 +139,28 @@ func NewTestCmd() *cobra.Command {
 								incompatible[k] = &inc
 								if !parallel && !parallelWork {
 									var noResults compute.ResultWithTimestamp[testing.StoredTestResults]
-									printResult(stderr, style, pkg, noResults, false)
+									printResult(stderr, style, testRef, noResults, false)
 								}
 
 								return nil
 							}
 
-							return fnerrors.UserError(pkg, "failed to prepare test: %w", err)
+							return fnerrors.UserError(testRef.AsPackageName(), "failed to prepare test: %w", err)
 						}
 
 						if parallel || parallelWork {
-							parallelTests[k] = test
+							parallelTests[k] = testComp
 						} else {
 							if explain {
-								return compute.Explain(ctx, console.Stdout(ctx), test)
+								return compute.Explain(ctx, console.Stdout(ctx), testComp)
 							}
 
-							testResults, err := compute.Get(ctx, test)
+							testResults, err := compute.Get(ctx, testComp)
 							if err != nil {
 								return err
 							}
 
-							printResult(stderr, style, pkg, testResults, false)
+							printResult(stderr, style, testRef, testResults, false)
 
 							runs.Run[k] = &storage.TestRuns_Run{
 								TestBundleId: testResults.Value.ImageRef.ImageRef(),
@@ -199,7 +191,7 @@ func NewTestCmd() *cobra.Command {
 				}
 
 				for k, res := range results {
-					printResult(stderr, style, pkgs[k], res, true)
+					printResult(stderr, style, testRefs[k], res, true)
 
 					if res.Set {
 						runs.Run[k] = &storage.TestRuns_Run{
@@ -209,7 +201,7 @@ func NewTestCmd() *cobra.Command {
 						}
 					} else {
 						runs.IncompatibleTest = append(runs.IncompatibleTest, &storage.TestRuns_IncompatibleTest{
-							TestPackage:       pkgs[k].String(),
+							TestPackage:       testRefs[k].AsPackageName().String(),
 							ServerPackage:     incompatible[k].Server.PackageName,
 							RequirementOwner:  incompatible[k].RequirementOwner.String(),
 							RequiredLabel:     incompatible[k].RequiredLabel,
@@ -263,7 +255,7 @@ func prepareContext(ctx context.Context, parallelWork, rocketShip bool) context.
 	return ctx
 }
 
-func printResult(out io.Writer, style colors.Style, pkg schema.PackageName, res compute.ResultWithTimestamp[testing.StoredTestResults], printResults bool) {
+func printResult(out io.Writer, style colors.Style, testRef *schema.PackageRef, res compute.ResultWithTimestamp[testing.StoredTestResults], printResults bool) {
 	status := style.TestSuccess.Apply("PASSED")
 	cached := ""
 
@@ -292,7 +284,7 @@ func printResult(out io.Writer, style colors.Style, pkg schema.PackageName, res 
 		status = style.LogCachedName.Apply("INCOMPATIBLE")
 	}
 
-	fmt.Fprintf(out, "%s: Test %s%s %s\n", pkg, status, cached, style.Comment.Apply(res.Value.ImageRef.ImageRef()))
+	fmt.Fprintf(out, "%s: Test %s%s %s\n", testRef.Canonical(), status, cached, style.Comment.Apply(res.Value.ImageRef.ImageRef()))
 }
 
 func printLog(out io.Writer, log *storage.TestResultBundle_InlineLog) {

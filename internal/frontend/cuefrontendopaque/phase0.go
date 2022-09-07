@@ -100,6 +100,14 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		return nil, fnerrors.Wrapf(loc, err, "parsing server")
 	}
 
+	if parsedSrv.RunByDefault() {
+		test, err := workspace.CreateServerStartupTest(ctx, ft.loader, loc.PackageName)
+		if err != nil {
+			return nil, fnerrors.Wrapf(loc, err, "creating server startup test")
+		}
+		parsedPkg.Tests = append(parsedPkg.Tests, test)
+	}
+
 	parsedSrv.Volumes = append(parsedSrv.Volumes, parsedVolumes...)
 	parsedSrv.Secret = parsedSecrets
 

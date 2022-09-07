@@ -40,8 +40,8 @@ var errTestFailed = errors.New("test failed")
 type testRun struct {
 	SealedContext planning.Context // Doesn't affect the output.
 
-	TestName       string
-	TestBinPkg     schema.PackageName
+	TestRef *schema.PackageRef
+
 	TestBinCommand []string
 	TestBinImageID compute.Computable[oci.ImageID]
 
@@ -59,13 +59,13 @@ type testRun struct {
 var _ compute.Computable[*storage.TestResultBundle] = &testRun{}
 
 func (test *testRun) Action() *tasks.ActionEvent {
-	return tasks.Action("test").Arg("name", test.TestName).Arg("package_name", test.TestBinPkg)
+	return tasks.Action("test").Arg("name", test.TestRef.Name).Arg("package_name", test.TestRef.AsPackageName())
 }
 
 func (test *testRun) Inputs() *compute.In {
 	in := compute.Inputs().
-		Str("testName", test.TestName).
-		Stringer("testBinPkg", test.TestBinPkg).
+		Str("testName", test.TestRef.Name).
+		Stringer("testPkg", test.TestRef.AsPackageName()).
 		Strs("testBinCommand", test.TestBinCommand).
 		Computable("testBin", test.TestBinImageID).
 		Proto("workspace", test.Workspace).
@@ -123,11 +123,11 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	} else {
 		waiters, err := p.Deployer.Execute(ctx, runtime.TaskServerDeploy, env)
 		if err != nil {
-			return nil, fnerrors.New("%s: failed to deploy: %w", test.TestBinPkg, err)
+			return nil, fnerrors.New("%s: failed to deploy: %w", test.TestRef.Canonical(), err)
 		}
 
 		if test.OutputProgress {
-			fmt.Fprintf(console.Stderr(ctx), "%s: Test %s\n", test.TestBinPkg, aec.LightBlackF.Apply("RUNNING"))
+			fmt.Fprintf(console.Stderr(ctx), "%s: Test %s\n", test.TestRef.Canonical(), aec.LightBlackF.Apply("RUNNING"))
 			waitErr = deploy.Wait(ctx, env, waiters)
 		} else {
 			waitErr = ops.WaitMultiple(ctx, waiters, nil)
@@ -152,7 +152,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		localCtx, cancelAll := context.WithCancel(ctx)
 		defer cancelAll()
 
-		ex := executor.Newf(localCtx, "testing.run(%s)", test.TestName)
+		ex := executor.Newf(localCtx, "testing.run(%s)", test.TestRef.Canonical())
 
 		var extraOutput []io.Writer
 		if test.OutputProgress {
@@ -165,8 +165,8 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		ex.Go(func(ctx context.Context) error {
 			defer cancelAll() // When the test is done, cancel logging.
 
-			parts := strings.Split(test.TestBinPkg.String(), "/")
-			name := strings.ToLower(parts[len(parts)-1]) + "-" + ids.NewRandomBase32ID(8)
+			parts := strings.Split(test.TestRef.PackageName, "/")
+			name := strings.ToLower(parts[len(parts)-1]) + "-" + test.TestRef.Name + "-" + ids.NewRandomBase32ID(8)
 
 			if err := rt.RunOneShot(ctx, name, testRun, testLog, true); err != nil {
 				// XXX consolidate these two.
@@ -203,7 +203,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
 	}
 
-	bundle, err := collectLogs(ctx, env, test.TestBinPkg, test.Stack, test.ServersUnderTest, test.OutputProgress)
+	bundle, err := collectLogs(ctx, env, test.TestRef, test.Stack, test.ServersUnderTest, test.OutputProgress)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	bundle.Result = testResults
 	if testLogBuf != nil {
 		bundle.TestLog = &storage.TestResultBundle_InlineLog{
-			PackageName: test.TestBinPkg.String(),
+			PackageName: test.TestRef.PackageName,
 			Output:      testLogBuf.Seal().Bytes(),
 		}
 	}
@@ -224,7 +224,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	return bundle, nil
 }
 
-func collectLogs(ctx context.Context, env planning.Context, testPkg schema.PackageName, stack *schema.Stack, focus []string, printLogs bool) (*storage.TestResultBundle, error) {
+func collectLogs(ctx context.Context, env planning.Context, testRef *schema.PackageRef, stack *schema.Stack, focus []string, printLogs bool) (*storage.TestResultBundle, error) {
 	ex := executor.New(ctx, "test.collect-logs")
 
 	type serverLog struct {
@@ -252,7 +252,7 @@ func collectLogs(ctx context.Context, env planning.Context, testPkg schema.Packa
 		ex.Go(func(ctx context.Context) error {
 			containers, err := rt.ResolveContainers(ctx, srv)
 			if err != nil {
-				fmt.Fprintf(out, "%s: failed to resolve containers: %s: %v\n", testPkg, srv.PackageName, err)
+				fmt.Fprintf(out, "%s: failed to resolve containers: %s: %v\n", testRef.Canonical(), srv.PackageName, err)
 				return nil
 			}
 
@@ -285,7 +285,7 @@ func collectLogs(ctx context.Context, env planning.Context, testPkg schema.Packa
 						return nil
 					}
 					if err != nil {
-						fmt.Fprintf(out, "%s: failed to fetch logs: %s: %v\n", testPkg, srv.PackageName, err)
+						fmt.Fprintf(out, "%s: failed to fetch logs: %s: %v\n", testRef.Canonical(), srv.PackageName, err)
 					}
 					return nil
 				})

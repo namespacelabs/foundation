@@ -34,8 +34,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const startupTestBinary = "namespacelabs.dev/foundation/std/startup/testdriver"
-
 type StoredTestResults struct {
 	Bundle            *storage.TestResultBundle
 	TestBundleSummary *storage.TestBundle
@@ -52,46 +50,20 @@ type TestOpts struct {
 
 type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) ([]provision.Server, *stack.Stack, error)
 
-func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.Context, pkgname schema.PackageName, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[StoredTestResults], error) {
-	testPkg, err := pl.LoadByName(ctx, pkgname)
+func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.Context, testRef *schema.PackageRef, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[StoredTestResults], error) {
+	testPkg, err := pl.LoadByName(ctx, testRef.AsPackageName())
 	if err != nil {
 		return nil, err
 	}
 
-	var testDef *schema.Test
-	var testBinaryPkg *pkggraph.Package
-	var testBinaryName string
+	testDef, err := findTest(testPkg.Location, testPkg.Tests, testRef.Name)
+	if err != nil {
+		return nil, err
+	}
 
-	if testPkg.Server != nil {
-		startupTest, err := pl.LoadByName(ctx, startupTestBinary)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(startupTest.Binaries) != 1 {
-			return nil, fnerrors.InternalError("expected %q to be a single binary", startupTestBinary)
-		}
-		testBinaryName = startupTest.Binaries[0].Name
-
-		testDef = &schema.Test{
-			PackageName: testPkg.PackageName().String(),
-			Name:        "startup-test",
-			ServersUnderTest: []string{
-				testPkg.Server.PackageName,
-			},
-		}
-
-		testBinaryPkg = startupTest
-	} else if testPkg.Test != nil {
-		testDef = testPkg.Test
-		testBinaryPkg = &pkggraph.Package{
-			Binaries: []*schema.Binary{testPkg.Test.Driver},
-			Location: testPkg.Location,
-		}
-		testBinaryName = testPkg.Test.Driver.Name
-
-	} else {
-		return nil, fnerrors.UserError(pkgname, "expected a test definition")
+	driverLoc, err := pl.Resolve(ctx, schema.PackageName(testDef.Driver.PackageName))
+	if err != nil {
+		return nil, err
 	}
 
 	platforms, err := runtime.TargetPlatforms(ctx, env)
@@ -99,14 +71,14 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, err
 	}
 
-	testBin, err := binary.Plan(ctx, testBinaryPkg, testBinaryName, binary.BuildImageOpts{
+	testBin, err := binary.PlanBinary(ctx, driverLoc, testDef.Driver, binary.BuildImageOpts{
 		Platforms: platforms,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	testBinTag, err := registry.AllocateName(ctx, env, testBinaryPkg.PackageName())
+	testBinTag, err := registry.AllocateName(ctx, env, driverLoc.PackageName)
 	if err != nil {
 		return nil, err
 	}
@@ -151,14 +123,13 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 	packages := pl.Seal()
 
 	var results compute.Computable[*storage.TestResultBundle] = &testRun{
-		TestName:         testDef.Name,
+		TestRef:          testRef,
 		SealedContext:    pkggraph.MakeSealedContext(env, packages),
 		Plan:             deployPlan,
 		ServersUnderTest: sutServers,
 		EnvProto:         env.Environment(),
 		Workspace:        env.Workspace().Proto(),
 		Stack:            stack.Proto(),
-		TestBinPkg:       testBinaryPkg.PackageName(),
 		TestBinCommand:   testBin.Command,
 		TestBinImageID:   fixtureImage,
 		Debug:            opts.Debug,
@@ -265,9 +236,18 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 				Bundle:            compute.MustGetDepValue(deps, results, "bundle"),
 				TestBundleSummary: compute.MustGetDepValue(deps, testBundle, "testBundle"),
 				ImageRef:          compute.MustGetDepValue(deps, imageID, "stored"),
-				Package:           pkgname,
+				Package:           testRef.AsPackageName(),
 			}, nil
 		}), nil
+}
+
+func findTest(loc pkggraph.Location, tests []*schema.Test, name string) (*schema.Test, error) {
+	for _, t := range tests {
+		if t.Name == name {
+			return t, nil
+		}
+	}
+	return nil, fnerrors.UserError(loc, "%s: test not found", name)
 }
 
 type buildAndAttachDataLayer struct {
