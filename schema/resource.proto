@@ -1,0 +1,49 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+import "schema/package.proto";
+import "schema/provision.proto";
+
+// A resource represents an instance of an entity class, i.e. a _thing_ that has been instantiated to be used by a server, or by
+message ResourceInstance {
+    string package_name = 1;  // Computed, where this resource lives.
+    string name         = 2;  // The name of the resource, scoped to the package where it lives.
+
+    PackageRef kind     = 3;  // The kind of resource being instantiated.
+    string     provider = 4;  // Package name of the provider that knows how to instantiate this resource.
+
+    // A resource is instantiated from an intent, which can be either specified inline, or be computed.
+    google.protobuf.Any intent      = 5;
+    Invocation          intent_from = 6;
+}
+
+message ResourceClass {
+    string package_name = 1;  // Computed, where this resource class lives.
+    string name         = 2;  // The name of class. A resource class' package_name and name combine to form `kind`.
+
+    Type intent_type   = 3;  // How is the resource defined.
+    Type instance_type = 4;  // And what generated configuration is attached to each instance.
+
+    message Type {
+        string proto_source = 1;
+        string proto_type   = 2;
+    }
+}
+
+message ResourceProvider {
+    string     package_name  = 1;  // Computed, where this provider lives.
+    PackageRef provides_kind = 2;  // The resource this provider supports.
+
+    repeated ResourceInstance resource_instance      = 3;  // Resources this provider depends on in order to instantiate its own resource.
+    Invocation                resource_instance_from = 4;  // Programatically specify a set of resources.
+
+    Invocation initialize_with = 5;  // Run this invocation to create the resource.
+}

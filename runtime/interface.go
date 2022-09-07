@@ -153,7 +153,7 @@ type GroundedSecrets struct {
 type GroundedSecret struct {
 	Owner schema.PackageName
 	Name  string
-	Value *schema.Resource
+	Value *schema.FileContents
 }
 
 type ServerRunOpts struct {
@@ -292,7 +292,7 @@ func (d *Diagnostics) Failed() bool {
 	return d.Terminated && d.ExitCode > 0
 }
 
-func (g GroundedSecrets) Get(owner, name string) *schema.Resource {
+func (g GroundedSecrets) Get(owner, name string) *schema.FileContents {
 	for _, secret := range g.Secrets {
 		if secret.Owner.Equals(owner) && secret.Name == name {
 			return secret.Value

@@ -740,7 +740,7 @@ func newDataItemCollector() *collector {
 	return &collector{data: map[string]string{}, binaryData: map[string][]byte{}}
 }
 
-func (cm *collector) set(key string, rsc *schema.Resource) {
+func (cm *collector) set(key string, rsc *schema.FileContents) {
 	if rsc.Utf8 {
 		cm.data[key] = string(rsc.Contents)
 	} else {
@@ -748,7 +748,7 @@ func (cm *collector) set(key string, rsc *schema.Resource) {
 	}
 }
 
-func makeConfigEntry(h io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.Resource, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
+func makeConfigEntry(h io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.FileContents, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
 	key := fmt.Sprintf("%s.%s", ids.EncodeToBase62String([]byte(entry.Path)), ids.EncodeToBase62String([]byte(rsc.Path)))
 
 	fmt.Fprintf(h, "%s:", key)

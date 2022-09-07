@@ -105,7 +105,7 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *stack.Stac
 	return g, nil
 }
 
-func lookupSecret(ctx context.Context, env *schema.Environment, secret *schema.SecretSpec, server, workspace *secrets.Bundle) (*schema.Resource, error) {
+func lookupSecret(ctx context.Context, env *schema.Environment, secret *schema.SecretSpec, server, workspace *secrets.Bundle) (*schema.FileContents, error) {
 	key := &secrets.ValueKey{PackageName: secret.Owner, Key: secret.Name, EnvironmentName: env.Name}
 
 	if server != nil {
@@ -114,7 +114,7 @@ func lookupSecret(ctx context.Context, env *schema.Environment, secret *schema.S
 			return nil, err
 		}
 
-		return &schema.Resource{Contents: value, Utf8: true}, nil
+		return &schema.FileContents{Contents: value, Utf8: true}, nil
 	}
 
 	if workspace != nil {
@@ -123,7 +123,7 @@ func lookupSecret(ctx context.Context, env *schema.Environment, secret *schema.S
 			return nil, err
 		}
 
-		return &schema.Resource{Contents: value, Utf8: true}, nil
+		return &schema.FileContents{Contents: value, Utf8: true}, nil
 	}
 
 	return nil, nil

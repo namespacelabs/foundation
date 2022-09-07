@@ -197,7 +197,7 @@ func FetchResource(fsys fs.FS, loc pkggraph.Location) FetcherFunc {
 	}
 }
 
-func LoadResource(fsys fs.FS, loc pkggraph.Location, path string) (*schema.Resource, error) {
+func LoadResource(fsys fs.FS, loc pkggraph.Location, path string) (*schema.FileContents, error) {
 	if strings.HasPrefix(path, "../") {
 		return nil, fnerrors.UserError(loc, "resources must be loaded from within the package")
 	}
@@ -207,7 +207,7 @@ func LoadResource(fsys fs.FS, loc pkggraph.Location, path string) (*schema.Resou
 		return nil, err
 	}
 
-	return &schema.Resource{
+	return &schema.FileContents{
 		Path:     loc.Rel(path),
 		Contents: contents,
 	}, nil

@@ -186,7 +186,7 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 		}
 
 		return &schema.ConfigurableVolume_Entry{
-			Inline: &schema.Resource{
+			Inline: &schema.FileContents{
 				Contents: []byte(str),
 				Utf8:     true,
 			},
@@ -222,7 +222,7 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 				return fnerrors.InternalError("%s: failed to read contents: %w", path, err)
 			}
 
-			set.Resource = append(set.Resource, &schema.Resource{
+			set.Resource = append(set.Resource, &schema.FileContents{
 				Path:     loc.Rel(path),
 				Contents: contents,
 			})

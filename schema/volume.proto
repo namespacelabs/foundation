@@ -44,7 +44,7 @@ message ConfigurableVolume {
         string path = 1;
 
         // One of.
-        Resource inline                           = 2;
+        FileContents inline                       = 2;
         ResourceSet         inline_set            = 4;
         SecretRef           secret_ref            = 3;
         KubernetesSecretRef kubernetes_secret_ref = 5;
@@ -62,11 +62,11 @@ message ConfigurableVolume {
 }
 
 message ResourceSet {
-    repeated Resource resource = 1;
+    repeated FileContents resource = 1;
 }
 
 // TODO reconcile with std.types.Resource.
-message Resource {
+message FileContents {
     string path     = 1;
     bool   utf8     = 3;  // Is the content text?
     bytes  contents = 2;
