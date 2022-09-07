@@ -15,20 +15,9 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const (
-	serverKindDockerfile = "namespace.so/from-dockerfile"
-)
-
 type cueContainer struct {
-	Build cueBuild `json:"build"`
-
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
 	Env  map[string]string          `json:"env"`
-}
-
-type cueBuild struct {
-	With       string `json:"with"`
-	Dockerfile string `json:"dockerfile"`
 }
 
 type parsedCueContainer struct {
@@ -57,27 +46,24 @@ func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, nam
 		})
 	}
 
-	switch bits.Build.With {
-	case serverKindDockerfile:
-		out.inlineBinaries = append(out.inlineBinaries, &schema.Binary{
-			Name: name,
-			BuildPlan: &schema.LayeredImageBuildPlan{
-				LayerBuildPlan: []*schema.ImageBuildPlan{
-					{Dockerfile: bits.Build.Dockerfile},
-				},
-			},
-		})
-		out.container.BinaryRef = schema.MakePackageRef(loc.PackageName, name)
-	default:
-		return nil, fnerrors.UserError(loc, "unsupported builder %q", bits.Build.With)
-	}
-
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
 		var err error
 		out.container.Mounts, out.inlineVolumes, err = cuefrontend.ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 		}
+	}
+
+	if build := v.LookupPath("build"); build.Exists() {
+		cueBuild, err := parseCueBuild(ctx, name, loc, build)
+		if err != nil {
+			return nil, err
+		}
+
+		out.container.BinaryRef = cueBuild.binaryRef
+		out.inlineBinaries = append(out.inlineBinaries, cueBuild.inlineBinaries...)
+	} else {
+		return nil, fnerrors.UserError(loc, "missing build definition")
 	}
 
 	return out, nil
