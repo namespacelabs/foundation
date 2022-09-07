@@ -160,7 +160,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		binary.BuildGo = golang.GoBuilder
 		binary.BuildWeb = web.WebBuilder
 		binary.BuildLLBGen = genbinary.LLBBinary
-		binary.BuildNix = genbinary.NixImage
+		binary.BuildNix = genbinary.NixImageBuilder
 
 		// Setting up container registry logging, which is unfortunately global.
 		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)

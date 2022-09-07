@@ -21,17 +21,23 @@ import (
 	"namespacelabs.dev/foundation/workspace/pins"
 )
 
-func NixImage(packageName schema.PackageName, module *pkggraph.Module, sources fs.FS) build.Spec {
-	return nixImage{packageName, module, sources}
+func NixImageBuilder(packageName schema.PackageName, module *pkggraph.Module, sources fs.FS) build.Spec {
+	return nixImage{packageName, sources}
 }
 
 type nixImage struct {
 	packageName schema.PackageName
-	module      *pkggraph.Module
 	sources     fs.FS
 }
 
 func (l nixImage) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
+	return NixImage(ctx, env, conf, l.sources)
+
+}
+
+func (l nixImage) PlatformIndependent() bool { return false }
+
+func NixImage(ctx context.Context, env planning.Context, conf build.BuildTarget, sources fs.FS) (compute.Computable[oci.Image], error) {
 	if conf.TargetPlatform() == nil {
 		return nil, fnerrors.BadInputError("nix: target platform is missing")
 	}
@@ -40,7 +46,7 @@ func (l nixImage) BuildImage(ctx context.Context, env planning.Context, conf bui
 	const outputImageFile = "image.tgz"
 
 	var err error
-	sourceFiles, err := llbutil.WriteFS(ctx, l.sources, llb.Scratch(), "/")
+	sourceFiles, err := llbutil.WriteFS(ctx, sources, llb.Scratch(), "/")
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +56,7 @@ func (l nixImage) BuildImage(ctx context.Context, env planning.Context, conf bui
 		return nil, err
 	}
 
+	// Filter-syscalls is necessary due to an interaction with Docker, see https://github.com/NixOS/nix/issues/5258
 	const nixconf = `# Namespace-managed nix configuration.
 build-users-group = nixbld
 sandbox = false
@@ -57,8 +64,6 @@ trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDS
 experimental-features = nix-command flakes
 filter-syscalls = false
 	`
-
-	// Filter-syscalls is necessary due to an interaction with Docker, see https://github.com/NixOS/nix/issues/5258
 
 	base := llb.Image(nixosImage, llb.Platform(*conf.TargetPlatform())).
 		File(llb.Mkfile("/etc/nix/nix.conf", 0777, []byte(nixconf))).
@@ -78,9 +83,7 @@ filter-syscalls = false
 		return nil, err
 	}
 
-	return compute.Transform("ingest filesystem as image", fsys, func(ctx context.Context, fsys fs.FS) (oci.Image, error) {
+	return compute.Transform("ingest generated image", fsys, func(ctx context.Context, fsys fs.FS) (oci.Image, error) {
 		return oci.IngestFromFS(ctx, fsys, outputImageFile, true)
 	}), nil
 }
-
-func (l nixImage) PlatformIndependent() bool { return false }
