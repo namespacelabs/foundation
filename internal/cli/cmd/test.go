@@ -36,15 +36,15 @@ const exitCode = 3
 
 func NewTestCmd() *cobra.Command {
 	var (
-		env                planning.Context
-		locs               fncobra.Locations
-		testOpts           testing.TestOpts
-		includeServersFlag bool
-		parallel           bool
-		parallelWork       bool = true
-		rocketShip         bool
-		ephemeral          bool = true
-		explain            bool
+		env            planning.Context
+		locs           fncobra.Locations
+		testOpts       testing.TestOpts
+		includeServers bool
+		parallel       bool
+		parallelWork   bool = true
+		rocketShip     bool
+		ephemeral      bool = true
+		explain        bool
 	)
 
 	return fncobra.
@@ -56,7 +56,7 @@ func NewTestCmd() *cobra.Command {
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
 			flags.BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, don't cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
-			flags.BoolVar(&includeServersFlag, "include_servers", includeServersFlag, "If true, also include generated server startup-tests.")
+			flags.BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
 			flags.BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
 			flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
 			flags.BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
@@ -77,7 +77,7 @@ func NewTestCmd() *cobra.Command {
 
 			pl := workspace.NewPackageLoader(env)
 
-			includeServers := includeServersFlag || locs.AreSpecified
+			includeStartupTests := includeServers || locs.AreSpecified
 			testRefs := []*schema.PackageRef{}
 			for _, l := range locs.Locs {
 				pp, err := pl.LoadByName(ctx, l.AsPackageName())
@@ -86,7 +86,7 @@ func NewTestCmd() *cobra.Command {
 				}
 
 				for _, t := range pp.Tests {
-					if includeServers || t.Driver.PackageName != workspace.StartupTestBinary {
+					if includeStartupTests || t.Driver.PackageName != workspace.StartupTestBinary {
 						testRefs = append(testRefs, schema.MakePackageRef(l.AsPackageName(), t.Name))
 					}
 				}

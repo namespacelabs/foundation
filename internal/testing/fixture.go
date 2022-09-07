@@ -78,8 +78,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, err
 	}
 
-	// TODO: should be "testRef" instead of "testRef.AsPackageName()"
-	testBinTag, err := registry.AllocateName(ctx, env, testRef.AsPackageName())
+	testBinTag, err := registry.AllocateName(ctx, env, driverLoc.PackageName)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +247,7 @@ func findTest(loc pkggraph.Location, tests []*schema.Test, name string) (*schema
 			return t, nil
 		}
 	}
-	return nil, fnerrors.UserError(loc, "test %q not found", name)
+	return nil, fnerrors.UserError(loc, "%s: test not found", name)
 }
 
 type buildAndAttachDataLayer struct {
