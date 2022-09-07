@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func LoadPackageByName(ctx context.Context, env planning.Context, name schema.PackageName, opts ...LoadPackageOpt) (*Package, error) {
+func LoadPackageByName(ctx context.Context, env planning.Context, name schema.PackageName, opts ...LoadPackageOpt) (*pkggraph.Package, error) {
 	pl := NewPackageLoader(env)
 	parsed, err := pl.LoadByNameWithOpts(ctx, name, opts...)
 	if err != nil {
@@ -65,7 +65,7 @@ const (
 )
 
 type Frontend interface {
-	ParsePackage(context.Context, pkggraph.Location, LoadPackageOpts) (*Package, error)
+	ParsePackage(context.Context, pkggraph.Location, LoadPackageOpts) (*pkggraph.Package, error)
 	GuessPackageType(context.Context, schema.PackageName) (PackageType, error)
 }
 
@@ -80,20 +80,20 @@ type PackageLoader struct {
 	frontend      Frontend
 	rootmodule    *pkggraph.Module
 	mu            sync.RWMutex
-	fsys          map[string]*memfs.IncrementalFS        // module name -> IncrementalFS
-	loaded        map[schema.PackageName]*Package        // package name -> Package
-	loading       map[schema.PackageName]*loadingPackage // Package name -> loadingPackage
-	loadedModules map[string]*pkggraph.Module            // module name -> Module
+	fsys          map[string]*memfs.IncrementalFS          // module name -> IncrementalFS
+	loaded        map[schema.PackageName]*pkggraph.Package // package name -> pkggraph.Package
+	loading       map[schema.PackageName]*loadingPackage   // pkggraph.Package name -> loadingPackage
+	loadedModules map[string]*pkggraph.Module              // module name -> Module
 }
 
 type sealedPackages struct {
 	sources  []pkggraph.ModuleSources
-	modules  map[string]*pkggraph.Module     // module name -> Module
-	packages map[schema.PackageName]*Package // package name -> Package
+	modules  map[string]*pkggraph.Module              // module name -> Module
+	packages map[schema.PackageName]*pkggraph.Package // package name -> pkggraph.Package
 }
 
 type resultPair struct {
-	value *Package
+	value *pkggraph.Package
 	err   error
 }
 
@@ -112,7 +112,7 @@ func NewPackageLoader(env planning.Context) *PackageLoader {
 	pl := &PackageLoader{}
 	pl.absPath = env.Workspace().LoadedFrom().AbsPath
 	pl.workspace = env.Workspace()
-	pl.loaded = map[schema.PackageName]*Package{}
+	pl.loaded = map[schema.PackageName]*pkggraph.Package{}
 	pl.loading = map[schema.PackageName]*loadingPackage{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
 	pl.loadedModules = map[string]*pkggraph.Module{}
@@ -124,7 +124,7 @@ func NewPackageLoader(env planning.Context) *PackageLoader {
 func (pl *PackageLoader) Seal() pkggraph.SealedPackageLoader {
 	sealed := sealedPackages{
 		modules:  map[string]*pkggraph.Module{},
-		packages: map[schema.PackageName]*Package{},
+		packages: map[schema.PackageName]*pkggraph.Package{},
 	}
 
 	pl.mu.Lock()
@@ -219,11 +219,11 @@ func (pl *PackageLoader) WorkspaceOf(ctx context.Context, module *pkggraph.Modul
 	return fsys, nil
 }
 
-func (pl *PackageLoader) LoadByName(ctx context.Context, packageName schema.PackageName) (*Package, error) {
+func (pl *PackageLoader) LoadByName(ctx context.Context, packageName schema.PackageName) (*pkggraph.Package, error) {
 	return pl.LoadByNameWithOpts(ctx, packageName)
 }
 
-func (pl *PackageLoader) LoadByNameWithOpts(ctx context.Context, packageName schema.PackageName, opt ...LoadPackageOpt) (*Package, error) {
+func (pl *PackageLoader) LoadByNameWithOpts(ctx context.Context, packageName schema.PackageName, opt ...LoadPackageOpt) (*pkggraph.Package, error) {
 	loc, err := pl.Resolve(ctx, packageName)
 	if err != nil {
 		return nil, err
@@ -232,7 +232,7 @@ func (pl *PackageLoader) LoadByNameWithOpts(ctx context.Context, packageName sch
 	return pl.loadPackage(ctx, loc, opt...)
 }
 
-func (pl *PackageLoader) loadPackage(ctx context.Context, loc pkggraph.Location, opt ...LoadPackageOpt) (*Package, error) {
+func (pl *PackageLoader) loadPackage(ctx context.Context, loc pkggraph.Location, opt ...LoadPackageOpt) (*pkggraph.Package, error) {
 	opts := LoadPackageOpts{LoadPackageReferences: true}
 	for _, o := range opt {
 		o(&opts)
@@ -359,7 +359,7 @@ func (pl *PackageLoader) Stats(ctx context.Context) PackageLoaderStats {
 	return stats
 }
 
-func (pl *PackageLoader) complete(pkg *Package) {
+func (pl *PackageLoader) complete(pkg *pkggraph.Package) {
 	pl.mu.Lock()
 	pl.loaded[pkg.PackageName()] = pkg
 	pl.mu.Unlock()
@@ -379,7 +379,7 @@ func (l *loadingPackage) Ensure(ctx context.Context) error {
 
 	l.mu.Unlock()
 	var res resultPair
-	res.value, res.err = tasks.Return(ctx, tasks.Action("package.load").Scope(l.loc.PackageName), func(ctx context.Context) (*Package, error) {
+	res.value, res.err = tasks.Return(ctx, tasks.Action("package.load").Scope(l.loc.PackageName), func(ctx context.Context) (*pkggraph.Package, error) {
 		return l.pl.frontend.ParsePackage(ctx, l.loc, l.opts)
 	})
 
@@ -403,7 +403,7 @@ func (l *loadingPackage) Ensure(ctx context.Context) error {
 	return nil
 }
 
-func (l *loadingPackage) Get(ctx context.Context) (*Package, error) {
+func (l *loadingPackage) Get(ctx context.Context) (*pkggraph.Package, error) {
 	l.mu.Lock()
 	if l.done {
 		defer l.mu.Unlock()
@@ -440,7 +440,7 @@ func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.Pac
 	return pkggraph.Location{}, fnerrors.InternalError("%s: package not loaded while resolving!", packageName)
 }
 
-func (sealed sealedPackages) LoadByName(ctx context.Context, packageName schema.PackageName) (*Package, error) {
+func (sealed sealedPackages) LoadByName(ctx context.Context, packageName schema.PackageName) (*pkggraph.Package, error) {
 	if pkg, ok := sealed.packages[packageName]; ok {
 		return pkg, nil
 	}

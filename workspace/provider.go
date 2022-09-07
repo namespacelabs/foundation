@@ -6,9 +6,10 @@ package workspace
 
 import (
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func FindProvider(pkg *Package, packageName schema.PackageName, typeName string) (*schema.Node, *schema.Provides) {
+func FindProvider(pkg *pkggraph.Package, packageName schema.PackageName, typeName string) (*schema.Node, *schema.Provides) {
 	// Only extensions can be providers.
 	if n := pkg.Extension; n != nil {
 		if packageName.Equals(n.GetPackageName()) {

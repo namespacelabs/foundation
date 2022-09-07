@@ -24,7 +24,7 @@ type impl struct {
 }
 
 type NewSyntaxParser interface {
-	ParsePackage(ctx context.Context, partial *fncue.Partial, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error)
+	ParsePackage(ctx context.Context, partial *fncue.Partial, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*pkggraph.Package, error)
 }
 
 type cueInjectedScope struct {
@@ -53,7 +53,7 @@ func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser NewSyntaxParser, 
 	}
 }
 
-func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*workspace.Package, error) {
+func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*pkggraph.Package, error) {
 	partial, err := parsePackage(ctx, ft.evalctx, ft.loader, loc)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 
 	v := &partial.CueV
 
-	parsed := &workspace.Package{
+	parsed := &pkggraph.Package{
 		Location: loc,
 		Parsed:   phase1plan{owner: loc.PackageName, partial: partial, Value: v, Left: partial.Left},
 	}
@@ -141,7 +141,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 }
 
 func isNewSyntax(partial *fncue.Partial) bool {
-	// Detecting the simplified syntax to define opaquer servers.
+	// Detecting the simplified syntax to define opaque servers.
 	server := partial.CueV.LookupPath("server")
 
 	// There is at least one import: the file itself.

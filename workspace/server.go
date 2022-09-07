@@ -29,7 +29,7 @@ func ValidateServerID(n *schema.Server) error {
 	return nil
 }
 
-func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server, pp *Package, opts LoadPackageOpts) (*schema.Server, error) {
+func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server, pp *pkggraph.Package, opts LoadPackageOpts) (*schema.Server, error) {
 	if err := ValidateServerID(srv); err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggrap
 }
 
 // Transform an opaqaue server defined with the simplified, import-less syntax.
-func TransformOpaqueServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema.Server, pp *Package, opts LoadPackageOpts) (*schema.Server, error) {
+func TransformOpaqueServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema.Server, pp *pkggraph.Package, opts LoadPackageOpts) (*schema.Server, error) {
 	if err := validateServer(ctx, pp.Location, srv); err != nil {
 		return nil, err
 	}

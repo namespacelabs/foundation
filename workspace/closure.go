@@ -34,8 +34,8 @@ type Sealed struct {
 	Location      pkggraph.Location
 	Proto         *schema.Stack_Entry
 	FileDeps      []string
-	Deps          []*Package
-	ParsedPackage *Package
+	Deps          []*pkggraph.Package
+	ParsedPackage *pkggraph.Package
 }
 
 type SealHelper struct {
@@ -70,12 +70,12 @@ type sealer struct {
 	mu             sync.Mutex
 	seen           schema.PackageList
 	result         *schema.Stack_Entry
-	parsed         []*Package
-	serverPackage  *Package
+	parsed         []*pkggraph.Package
+	serverPackage  *pkggraph.Package
 	serverIncludes []schema.PackageName
 }
 
-func (g *sealer) DoServer(loc pkggraph.Location, srv *schema.Server, pp *Package) error {
+func (g *sealer) DoServer(loc pkggraph.Location, srv *schema.Server, pp *pkggraph.Package) error {
 	var include []schema.PackageName
 
 	if handler, ok := FrameworkHandlers[srv.Framework]; ok {
@@ -119,7 +119,7 @@ func (g *sealer) DoServer(loc pkggraph.Location, srv *schema.Server, pp *Package
 	return nil
 }
 
-func (g *sealer) DoNode(loc pkggraph.Location, n *schema.Node, parsed *Package) error {
+func (g *sealer) DoNode(loc pkggraph.Location, n *schema.Node, parsed *pkggraph.Package) error {
 	g.Do(n.GetImportedPackages()...)
 
 	g.mu.Lock()
@@ -197,9 +197,9 @@ func (s *sealer) finishSealing(ctx context.Context) (Sealed, error) {
 		return strings.Compare(a.PackageName, b.PackageName) < 0
 	})
 
-	var nodes []*Package
+	var nodes []*pkggraph.Package
 	for _, n := range s.result.ExtsAndServices() {
-		var parsed *Package
+		var parsed *pkggraph.Package
 		for _, pp := range s.parsed {
 			if pp.Location.PackageName.Equals(n.PackageName) {
 				parsed = pp

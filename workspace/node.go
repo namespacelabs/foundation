@@ -133,7 +133,7 @@ func validateDependencies(ctx context.Context, pl pkggraph.PackageLoader, loc pk
 	return nil
 }
 
-func loadDep(ctx context.Context, pl pkggraph.PackageLoader, pkg schema.PackageName) (*Package, error) {
+func loadDep(ctx context.Context, pl pkggraph.PackageLoader, pkg schema.PackageName) (*pkggraph.Package, error) {
 	p, err := pl.LoadByName(ctx, pkg)
 	if err != nil {
 		return nil, err
