@@ -16,7 +16,7 @@ type Value interface {
 	setupFlags(flags *pflag.FlagSet, name, description string)
 }
 
-func Bool[V bool](defaultValue bool) Value {
+func BoolValue[V bool](defaultValue bool) Value {
 	return &boolv{value: defaultValue}
 }
 

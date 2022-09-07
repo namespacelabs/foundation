@@ -34,7 +34,7 @@ type GoBinary struct {
 	isFocus bool
 }
 
-var UseBuildKitForBuilding = knobs.Define[bool]("golang_use_buildkit", "If set to true, buildkit is used for building, instead of a ko-style builder.", knobs.Bool(false))
+var UseBuildKitForBuilding = knobs.Bool("golang_use_buildkit", "If set to true, buildkit is used for building, instead of a ko-style builder.", false)
 
 func (gb GoBinary) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	if UseBuildKitForBuilding.Get(env.Configuration()) {

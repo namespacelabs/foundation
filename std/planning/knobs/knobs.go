@@ -25,6 +25,10 @@ type internalKnob interface {
 	setupFlags(*pflag.FlagSet)
 }
 
+func Bool(name, description string, value bool) Knob[bool] {
+	return Define[bool](name, description, BoolValue(value))
+}
+
 func Define[V any](name, description string, value Value) Knob[V] {
 	knob := Knob[V]{name, description, value}
 	knobs = append(knobs, knob)
