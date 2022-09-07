@@ -452,7 +452,7 @@ func prepareServerImages(ctx context.Context, env planning.Context,
 		var spec build.Spec
 
 		if prebuilt != nil {
-			spec = build.PrebuiltPlan(*prebuilt, false, build.PrebuiltResolveOpts())
+			spec = build.PrebuiltPlan(*prebuilt, false /* platformIndependent */, build.PrebuiltResolveOpts())
 		} else if srv.Integration() != nil {
 			spec, err = shared.PrepareBuild(ctx, srv.Location, srv.Integration(), focus.Includes(srv.PackageName()))
 		} else {
