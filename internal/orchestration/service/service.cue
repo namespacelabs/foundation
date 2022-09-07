@@ -1,8 +1,16 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
+	"namespacelabs.dev/foundation/std/fn:inputs"
 )
 
-extension: fn.#Extension & {
+$proto: inputs.#Proto & {
+	source: "../proto/service.proto"
+}
+
+service: fn.#Service & {
+	framework:     "GO"
+	exportService: $proto.services.OrchestrationService
+
 	requirePersistentStorage: {
 		persistentId: "ns-orchestration-data"
 		byteCount:    "10GiB"

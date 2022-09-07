@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             (unknown)
-// source: internal/orchestration/server/proto/service.proto
+// source: internal/orchestration/proto/service.proto
 
 package proto
 
@@ -163,5 +163,5 @@ var OrchestrationService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "internal/orchestration/server/proto/service.proto",
+	Metadata: "internal/orchestration/proto/service.proto",
 }

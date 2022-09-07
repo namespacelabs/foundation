@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/orchestration/server/proto"
+	"namespacelabs.dev/foundation/internal/orchestration/proto"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
@@ -33,7 +33,6 @@ import (
 
 const (
 	serverPkg   = "namespacelabs.dev/foundation/internal/orchestration/server"
-	serviceName = "orchestration-service"
 	connTimeout = time.Minute // TODO reduce - we've seen slow connections in CI
 )
 
@@ -102,10 +101,14 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 
 	var endpoint *schema.Endpoint
 	for _, e := range computed.ComputedStack.Endpoints {
-		if e.EndpointOwner == serverPkg && e.ServiceName == serviceName {
-			endpoint = e
-			break
+		if e.ServerOwner != serverPkg {
+			continue
+		}
 
+		for _, m := range e.ServiceMetadata {
+			if m.Kind == proto.OrchestrationService_ServiceDesc.ServiceName {
+				endpoint = e
+			}
 		}
 	}
 

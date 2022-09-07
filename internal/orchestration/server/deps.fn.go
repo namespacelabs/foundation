@@ -5,7 +5,7 @@ package main
 
 import (
 	"context"
-	"namespacelabs.dev/foundation/internal/orchestration/server/img/service"
+	"namespacelabs.dev/foundation/internal/orchestration/service"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/server"

@@ -12,13 +12,15 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/internal/fnapi"
-	"namespacelabs.dev/foundation/internal/orchestration/server/proto"
+	"namespacelabs.dev/foundation/internal/orchestration/proto"
 	"namespacelabs.dev/foundation/providers/aws/iam"
+	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/go/rpcerrors"
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
 )
 
 type Service struct {
@@ -75,8 +77,11 @@ func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	proto.RegisterOrchestrationServiceServer(srv, &Service{d: makeDeployer(ctx)})
 
+	kubernetes.Register()
 	kubeops.Register()
 	iam.RegisterGraphHandlers()
 
+	// Debug help - maybe delete later.
 	tasks.LogActions = true
+	simplelog.AlsoReportStartEvents = true
 }
