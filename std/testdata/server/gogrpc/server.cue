@@ -11,6 +11,7 @@ server: fn.#Server & {
 	import: [
 		"namespacelabs.dev/foundation/std/testdata/service/post",
 		"namespacelabs.dev/foundation/std/grpc/logging",
+		"namespacelabs.dev/foundation/std/monitoring/prometheus",
 		"namespacelabs.dev/foundation/std/monitoring/tracing/jaeger",
 		"namespacelabs.dev/foundation/universe/go/panicparse",
 		"namespacelabs.dev/foundation/universe/aws/irsa",

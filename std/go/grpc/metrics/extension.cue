@@ -9,8 +9,4 @@ extension: fn.#Extension & {
 	instantiate: {
 		"interceptors": interceptors.#Exports.InterceptorRegistration
 	}
-
-	import: [
-		"namespacelabs.dev/foundation/std/monitoring/prometheus",
-	]
 }
