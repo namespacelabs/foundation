@@ -70,7 +70,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 
 	parsed := &workspace.Package{
 		Location: loc,
-		Parsed:   phase1plan{partial: partial, Value: v, Left: partial.Left},
+		Parsed:   phase1plan{owner: loc.PackageName, partial: partial, Value: v, Left: partial.Left},
 	}
 
 	var count int
