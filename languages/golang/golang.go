@@ -82,7 +82,6 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 
 	bin := &GoBinary{
 		PackageName:  server.Location.PackageName,
-		ModuleName:   server.Module().ModuleName(),
 		GoModulePath: ext.GoModulePath,
 		GoModule:     ext.GoModule,
 		GoVersion:    ext.GoVersion,

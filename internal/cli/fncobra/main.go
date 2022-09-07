@@ -18,7 +18,6 @@ import (
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/binary/genbinary"
 	"namespacelabs.dev/foundation/build/buildkit"
@@ -158,19 +157,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			go checkRemoteStatus(ctxWithNullSink, remoteStatusChan)
 		}
 
-		binary.BuildGo = func(loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
-			gobin, err := golang.FromLocation(loc, plan.RelPath)
-			if err != nil {
-				return nil, fnerrors.Wrap(loc, err)
-			}
-			gobin.BinaryOnly = plan.BinaryOnly
-			gobin.BinaryName = plan.BinaryName
-			gobin.UnsafeCacheable = unsafeCacheable
-			return gobin, nil
-		}
-		binary.BuildWeb = func(loc pkggraph.Location) build.Spec {
-			return web.StaticBuild{Location: loc}
-		}
+		binary.BuildGo = golang.GoBuilder
+		binary.BuildWeb = web.WebBuilder
 		binary.BuildLLBGen = genbinary.LLBBinary
 		binary.BuildNix = genbinary.NixImage
 

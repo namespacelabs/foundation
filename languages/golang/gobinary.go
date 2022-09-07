@@ -10,6 +10,7 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -20,7 +21,6 @@ import (
 
 type GoBinary struct {
 	PackageName schema.PackageName `json:"packageName"`
-	ModuleName  string             `json:"moduleName"`
 
 	GoModulePath string `json:"modulePath"` // Relative to workspace root.
 	GoModule     string `json:"module"`     // Go module name.
@@ -60,10 +60,21 @@ func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 
 	return &GoBinary{
 		PackageName:  loc.PackageName,
-		ModuleName:   loc.Module.ModuleName(),
 		GoModulePath: filepath.Dir(relMod),
 		GoModule:     mod.Module.Mod.Path,
 		SourcePath:   loc.Rel(pkgName),
 		GoVersion:    mod.Go.Version,
 	}, nil
+}
+
+func GoBuilder(loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
+	gobin, err := FromLocation(loc, plan.RelPath)
+	if err != nil {
+		return nil, fnerrors.Wrap(loc, err)
+	}
+
+	gobin.BinaryOnly = plan.BinaryOnly
+	gobin.BinaryName = plan.BinaryName
+	gobin.UnsafeCacheable = unsafeCacheable
+	return gobin, nil
 }

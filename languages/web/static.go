@@ -14,11 +14,15 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 )
 
-type StaticBuild struct {
+func WebBuilder(loc pkggraph.Location) build.Spec {
+	return staticBuild{Location: loc}
+}
+
+type staticBuild struct {
 	Location pkggraph.Location
 }
 
-func (w StaticBuild) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (w staticBuild) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	img, err := ViteProductionBuild(ctx, w.Location, env, conf.SourceLabel(), ".", "/", nil, generateProdViteConfig())
 	if err != nil {
 		return nil, err
@@ -27,4 +31,4 @@ func (w StaticBuild) BuildImage(ctx context.Context, env planning.Context, conf 
 	return img.Image(), nil
 }
 
-func (w StaticBuild) PlatformIndependent() bool { return true }
+func (w staticBuild) PlatformIndependent() bool { return true }
