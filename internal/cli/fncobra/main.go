@@ -304,8 +304,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, enables the new incluster deployment orchestrator.")
 	rootCmd.PersistentFlags().BoolVar(&orchestration.RenderOrchestratorDeployment, "render_orchestrator_deployment", orchestration.RenderOrchestratorDeployment,
 		"If set to true, we print a render wait block while deploying the orchestrator itself.")
-	rootCmd.PersistentFlags().StringVar(&binary.PrebuiltOverwrites, "prebuilt_overwrites", binary.PrebuiltOverwrites,
-		"Comma separated list of prebuilt overwrites. Format pkg:repo@digest,pkg:repo@digest")
+	rootCmd.PersistentFlags().StringVar(&binary.PrebuiltsFlag, "prebuilts", binary.PrebuiltsFlag,
+		"Comma separated list of manual prebuilts. Format pkg:repo@digest,pkg:repo@digest. May not conflict with workspace defined prebuilts.")
 	rootCmd.PersistentFlags().BoolVar(&simplelog.AlsoReportStartEvents, "also_report_start_events", simplelog.AlsoReportStartEvents,
 		"If set to true, we log a start event for each action, if --log_actions is also set.")
 

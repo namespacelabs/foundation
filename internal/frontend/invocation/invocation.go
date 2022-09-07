@@ -66,11 +66,16 @@ func Make(ctx context.Context, env pkggraph.SealedContext, serverLocRef *pkggrap
 		return nil, err
 	}
 
+	prebuilt, err := binary.PrebuiltImageID(binPkg.Location)
+	if err != nil {
+		return nil, err
+	}
+
 	invocation := &Invocation{
 		ImageName:     bin.Name,
 		Command:       bin.Command,
 		Image:         bin.Image,
-		PublicImageID: binary.PrebuiltImageID(binPkg.Location), // The assumption at the moment is that all prebuilts are public.
+		PublicImageID: prebuilt, // The assumption at the moment is that all prebuilts are public.
 		WorkingDir:    with.WorkingDir,
 		NoCache:       with.NoCache,
 		Inject:        with.Inject,

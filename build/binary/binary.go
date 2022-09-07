@@ -26,8 +26,8 @@ import (
 )
 
 var (
-	UsePrebuilts       = true // XXX make these a scoped configuration instead.
-	PrebuiltOverwrites = ""
+	UsePrebuilts  = true // XXX make these a scoped configuration instead.
+	PrebuiltsFlag = ""
 )
 
 var BuildGo func(loc pkggraph.Location, _ *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error)
@@ -137,12 +137,13 @@ func PlanImage(ctx context.Context, pkg *pkggraph.Package, binName string, env p
 	}, nil
 }
 
-func PrebuiltImageID(loc pkggraph.Location) *oci.ImageID {
+func PrebuiltImageID(loc pkggraph.Location) (*oci.ImageID, error) {
 	if !UsePrebuilts {
-		return nil
+		return nil, nil
 	}
 
-	for _, overwrite := range strings.Split(PrebuiltOverwrites, ",") {
+	var fromFlag, fromWorkspace *oci.ImageID
+	for _, overwrite := range strings.Split(PrebuiltsFlag, ",") {
 		parts := strings.SplitN(overwrite, ":", 2)
 		if len(parts) != 2 {
 			break // Silently fail.
@@ -156,7 +157,7 @@ func PrebuiltImageID(loc pkggraph.Location) *oci.ImageID {
 			break // Silently fail.
 		}
 
-		return &oci.ImageID{Repository: parts[0], Digest: parts[1]}
+		fromFlag = &oci.ImageID{Repository: parts[0], Digest: parts[1]}
 	}
 
 	for _, prebuilt := range loc.Module.Workspace.PrebuiltBinary {
@@ -169,11 +170,24 @@ func PrebuiltImageID(loc pkggraph.Location) *oci.ImageID {
 				imgid.Repository = filepath.Join(loc.Module.Workspace.PrebuiltBaseRepository, prebuilt.PackageName)
 			}
 
-			return &imgid
+			fromWorkspace = &imgid
 		}
 	}
 
-	return nil
+	if fromFlag != nil && fromWorkspace != nil {
+		if fromFlag.Repository != fromWorkspace.Repository {
+			return nil, fnerrors.UserError(loc, "conflicting repositories for prebuilt: %s vs %s", fromFlag.Repository, fromWorkspace.Repository)
+		}
+		if fromFlag.Digest != fromWorkspace.Digest {
+			return nil, fnerrors.UserError(loc, "conflicting digest for prebuilt: %s vs %s", fromFlag.Digest, fromWorkspace.Digest)
+		}
+	}
+
+	if fromFlag != nil {
+		return fromFlag, nil
+	}
+
+	return fromWorkspace, nil
 }
 
 func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
@@ -185,7 +199,10 @@ func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, o
 	}
 
 	if opts.UsePrebuilts {
-		imgid := PrebuiltImageID(loc)
+		imgid, err := PrebuiltImageID(loc)
+		if err != nil {
+			return nil, err
+		}
 		if imgid != nil {
 			public := true // We assume all prebuilts are public, unless noted otherwise.
 			return build.PrebuiltPlan(*imgid, spec.PlatformIndependent(), oci.ResolveOpts{PublicImage: public}), nil
