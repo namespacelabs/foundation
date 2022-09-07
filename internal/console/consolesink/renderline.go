@@ -17,17 +17,31 @@ import (
 
 const StampMilliTZ = "Jan _2 15:04:05.000 MST"
 
+func renderTime(w io.Writer, s colors.Style, t time.Time) {
+	// XXX using UTC() here to be consistent with zerolog.ConsoleWriter.
+	str := t.UTC().Format(StampMilliTZ)
+	fmt.Fprint(w, s.Header.Apply(str), " ")
+}
+
 func renderLine(w io.Writer, s colors.Style, li lineItem) {
 	data := li.data
 
 	if data.State.IsDone() {
-		// XXX using UTC() here to be consistent with zerolog.ConsoleWriter.
-		t := data.Completed.UTC().Format(StampMilliTZ)
-		fmt.Fprint(w, s.Header.Apply(t), " ")
+		renderTime(w, s, data.Completed)
 
 		if OutputActionID {
 			fmt.Fprint(w, s.Header.Apply("["+data.ActionID.String()[:8]+"] "))
 		}
+
+		fmt.Fprint(w, "✓ ")
+	} else {
+		renderTime(w, s, data.Started)
+
+		if OutputActionID {
+			fmt.Fprint(w, s.Header.Apply("["+data.ActionID.String()[:8]+"] "))
+		}
+
+		fmt.Fprint(w, "↦ ")
 	}
 
 	if data.Category != "" {
