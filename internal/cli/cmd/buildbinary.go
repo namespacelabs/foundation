@@ -143,6 +143,10 @@ func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Loca
 				return err
 			}
 
+			if _, ok := build.IsPrebuilt(spec); ok {
+				return fnerrors.UserError(pkg.Location, "build-binary does not support servers which already pin a prebuilt image")
+			}
+
 			p, err := deploy.MakePlan(ctx, srv, spec)
 			if err != nil {
 				return err
