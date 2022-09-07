@@ -61,8 +61,10 @@ func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, nam
 	case serverKindDockerfile:
 		out.inlineBinaries = append(out.inlineBinaries, &schema.Binary{
 			Name: name,
-			From: &schema.ImageBuildPlan{
-				Dockerfile: bits.Build.Dockerfile,
+			BuildPlan: &schema.LayeredImageBuildPlan{
+				LayerBuildPlan: []*schema.ImageBuildPlan{
+					{Dockerfile: bits.Build.Dockerfile},
+				},
 			},
 		})
 		out.container.BinaryRef = schema.MakePackageRef(loc.PackageName, name)

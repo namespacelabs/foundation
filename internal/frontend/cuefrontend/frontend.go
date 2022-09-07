@@ -95,6 +95,8 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 		parsed.Server = parsedSrv
 		count++
 	}
+
+	// Binaries should really be called "OCI Images".
 	if binary := v.LookupPath("binary"); binary.Exists() {
 		parsedBinary, err := parseCueBinary(ctx, loc, v, binary)
 		if err != nil {
@@ -103,6 +105,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 		parsed.Binaries = append(parsed.Binaries, parsedBinary)
 		count++
 	}
+
 	if test := v.LookupPath("test"); test.Exists() {
 		parsedTest, err := parseCueTest(ctx, loc, v, test)
 		if err != nil {
@@ -111,6 +114,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 		parsed.Test = parsedTest
 		count++
 	}
+
 	if function := v.LookupPath("function"); function.Exists() {
 		parsedFunction, err := parseCueFunction(ctx, loc, v, function)
 		if err != nil {

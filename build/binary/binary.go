@@ -199,11 +199,7 @@ func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Bi
 	src := bin.BuildPlan
 
 	if src == nil || len(src.LayerBuildPlan) == 0 {
-		if bin.From != nil {
-			return buildSpec(ctx, loc, bin, bin.From)
-		}
-
-		return nil, fnerrors.UserError(loc, "don't know how to build %q: no layers", bin.Name)
+		return nil, fnerrors.UserError(loc, "%s: don't know how to build, missing build plan", bin.Name)
 	}
 
 	if len(src.LayerBuildPlan) == 1 {

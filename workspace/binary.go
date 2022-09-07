@@ -19,10 +19,6 @@ func TransformBinary(loc pkggraph.Location, bin *schema.Binary) error {
 		return fnerrors.UserError(loc, "binary name can't be empty")
 	}
 
-	if bin.BuildPlan != nil && bin.From != nil {
-		return fnerrors.UserError(loc, "binary.build_plan and binary.from are exclusive and can't be both be set")
-	}
-
 	bin.PackageName = loc.PackageName.String()
 
 	if bin.Config == nil {
