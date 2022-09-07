@@ -1,7 +1,7 @@
 import "namespacelabs.dev/foundation/std/fn"
 
 test: fn.#Test & {
-	name: "test-trascoding"
+	name: "test-transcoding"
 
 	binary: {
 		from: go_package: "."
