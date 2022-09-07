@@ -11,9 +11,9 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-func NewFromType[V proto.Message]() proto.Message {
+func NewFromType[V proto.Message]() V {
 	var m V
-	return reflect.New(reflect.TypeOf(m).Elem()).Interface().(proto.Message)
+	return reflect.New(reflect.TypeOf(m).Elem()).Interface().(V)
 }
 
 func TypeUrl(msg proto.Message) string {

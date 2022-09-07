@@ -197,7 +197,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	invocation := tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{RedactRequest: redactMessage}
 
 	if tools.InvocationCanUseBuildkit && opts.PublicImageID != nil {
-		return invocation.BuildkitInvocation(ctx, inv.env, "foundation.provision.tool.protocol.InvocationService/Invoke",
+		return invocation.InvokeOnBuildkit(ctx, inv.env, "foundation.provision.tool.protocol.InvocationService/Invoke",
 			r.Source.PackageName, *r.Invocation.PublicImageID, opts, req)
 	}
 

@@ -32,6 +32,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/workspace/source/protos"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -153,7 +154,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 	return resp, nil
 }
 
-func (oo LowLevelInvokeOptions[Req, Resp]) BuildkitInvocation(ctx context.Context, env planning.Context, method string, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req Req) (Resp, error) {
+func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context, env planning.Context, method string, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req Req) (Resp, error) {
 	return tasks.Return(ctx, tasks.Action("buildkit.invocation").Scope(pkg).Arg("ref", imageID.ImageRef()).Arg("method", method).LogLevel(1), func(ctx context.Context) (Resp, error) {
 		attachToAction(ctx, "request", req, oo.RedactRequest)
 
@@ -172,7 +173,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) BuildkitInvocation(ctx context.Contex
 
 		run := base.Run(runOpts...)
 
-		var resp Resp
+		resp := protos.NewFromType[Resp]()
 
 		requestBytes, err := proto.Marshal(req)
 		if err != nil {
@@ -199,7 +200,6 @@ func (oo LowLevelInvokeOptions[Req, Resp]) BuildkitInvocation(ctx context.Contex
 			return resp, err
 		}
 
-		resp = reflect.New(reflect.TypeOf(resp).Elem()).Interface().(Resp)
 		if err := proto.Unmarshal(responseBytes, resp); err != nil {
 			return resp, err
 		}

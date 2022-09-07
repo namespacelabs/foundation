@@ -104,7 +104,7 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 			return protocol.NewInvocationServiceClient(conn).Invoke
 		})
 	} else {
-		resp, err = invoke.BuildkitInvocation(ctx, inv.env, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), inv.imageID, run, req)
+		resp, err = invoke.InvokeOnBuildkit(ctx, inv.env, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), inv.imageID, run, req)
 	}
 
 	if err != nil {
