@@ -35,6 +35,7 @@ func HasRuntime(name string) bool {
 	return ok
 }
 
+// Never returns nil
 func For(ctx context.Context, env planning.Context) Runtime {
 	if obtain, ok := mapping[strings.ToLower(env.Environment().Runtime)]; ok {
 		r, err := obtain(ctx, env)
