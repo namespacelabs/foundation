@@ -458,7 +458,7 @@ func prepareServerImages(ctx context.Context, env planning.Context,
 		if imgid, ok := build.IsPrebuilt(spec); ok && !PushPrebuiltsToRegistry {
 			images.Binary = build.Prebuilt(imgid)
 		} else {
-			p, err := makePlan(ctx, srv, spec)
+			p, err := MakePlan(ctx, srv, spec)
 			if err != nil {
 				return nil, err
 			}

@@ -30,7 +30,7 @@ import (
 
 var RunCodegen = true
 
-func makePlan(ctx context.Context, server provision.Server, spec build.Spec) (build.Plan, error) {
+func MakePlan(ctx context.Context, server provision.Server, spec build.Spec) (build.Plan, error) {
 	return tasks.Return(ctx, tasks.Action("fn.deploy.prepare-server-image").Scope(server.PackageName()),
 		func(ctx context.Context) (build.Plan, error) {
 			platforms, err := runtime.TargetPlatforms(ctx, server.SealedContext())

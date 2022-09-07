@@ -21,13 +21,18 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
+	"namespacelabs.dev/foundation/build/multiplatform"
+	"namespacelabs.dev/foundation/integrations/shared"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/languages"
+	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime/docker"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
@@ -54,13 +59,14 @@ func NewBuildBinaryCmd() *cobra.Command {
 			flags.BoolVar(&buildOpts.publishToDocker, "docker", false, "If set to true, don't push to registries, but to local docker.")
 			flags.StringVar(&baseRepository, "base_repository", baseRepository, "If set, overrides the registry we'll upload the images to.")
 			flags.BoolVar(&buildOpts.outputPrebuilts, "output_prebuilts", false, "If true, also outputs a prebuilt configuration which can be embedded in your workspace configuration.")
+			flags.BoolVar(&buildOpts.buildServers, "build_servers", false, "If true, also build server binaries.")
 			flags.StringVar(&buildOpts.outputPath, "output_to", "", "If set, a list of all binaries is emitted to the specified file.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&cmdLocs, &env, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
 		Do(func(ctx context.Context) error {
-			return buildLocations(ctx, env, cmdLocs.Locs, baseRepository, buildOpts)
+			return buildLocations(ctx, env, cmdLocs, baseRepository, buildOpts)
 		})
 }
 
@@ -68,23 +74,29 @@ type buildOpts struct {
 	publishToDocker bool
 	outputPrebuilts bool
 	outputPath      string
+	buildServers    bool
 }
 
-func buildLocations(ctx context.Context, env planning.Context, list []fnfs.Location, baseRepository string, opts buildOpts) error {
+func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
 	pl := workspace.NewPackageLoader(env)
 
 	var pkgs []*pkggraph.Package
-	for _, loc := range list {
+	for _, loc := range locs.Locs {
 		pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
 		if err != nil {
 			return err
 		}
 
-		if len(pkg.Binaries) == 0 {
-			continue
+		if len(pkg.Binaries) > 0 {
+			pkgs = append(pkgs, pkg)
+		} else if opts.buildServers && pkg.Server != nil {
+			pkgs = append(pkgs, pkg)
+		} else if locs.AreSpecified {
+			if pkg.Server != nil {
+				return fnerrors.UserError(loc, "requested to build a server but --build_servers was not set")
+			}
+			return fnerrors.UserError(loc, "no binary found in package")
 		}
-
-		pkgs = append(pkgs, pkg)
 	}
 
 	sort.Slice(pkgs, func(i, j int) bool {
@@ -95,8 +107,10 @@ func buildLocations(ctx context.Context, env planning.Context, list []fnfs.Locat
 	imgOpts.UsePrebuilts = false
 	imgOpts.Platforms = []specs.Platform{docker.HostPlatform()}
 
-	var images []compute.Computable[oci.ImageID]
+	var images []compute.Computable[Binary]
 	for _, pkg := range pkgs {
+		var resolvables []compute.Computable[oci.ResolvableImage]
+
 		// TODO: allow to choose what binary to build within a package.
 		for _, b := range pkg.Binaries {
 			bin, err := binary.Plan(ctx, pkg, b.Name, imgOpts)
@@ -109,23 +123,60 @@ func buildLocations(ctx context.Context, env planning.Context, list []fnfs.Locat
 				return err
 			}
 
+			resolvables = append(resolvables, image)
+		}
+
+		if opts.buildServers && pkg.Server != nil {
+			srv, err := provision.RequireServerWith(ctx, env, pl, pkg.PackageName())
+			if err != nil {
+				return err
+			}
+			focus := true
+			var spec build.Spec
+			if srv.Integration() != nil {
+				spec, err = shared.PrepareBuild(ctx, srv.Location, srv.Integration(), focus)
+			} else {
+				// TODO do we need languages.AvailableBuildAssets{}
+				spec, err = languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, languages.AvailableBuildAssets{}, srv, focus)
+			}
+			if err != nil {
+				return err
+			}
+
+			p, err := deploy.MakePlan(ctx, srv, spec)
+			if err != nil {
+				return err
+			}
+
+			bin, err := multiplatform.PrepareMultiPlatformImage(ctx, srv.SealedContext(), p)
+			if err != nil {
+				return err
+			}
+
+			resolvables = append(resolvables, bin)
+		}
+
+		for _, image := range resolvables {
 			var tag compute.Computable[oci.AllocatedName]
 			if baseRepository != "" {
 				tag = registry.StaticName(nil, oci.ImageID{
 					Repository: filepath.Join(baseRepository, pkg.PackageName().String()),
 				}, nil)
 			} else {
+				var err error
 				tag, err = registry.AllocateName(ctx, env, pkg.PackageName())
 				if err != nil {
 					return err
 				}
 			}
 
+			var img compute.Computable[oci.ImageID]
 			if opts.publishToDocker {
-				images = append(images, docker.PublishImage(tag, image))
+				img = docker.PublishImage(tag, image)
 			} else {
-				images = append(images, oci.PublishResolvable(tag, image))
+				img = oci.PublishResolvable(tag, image)
 			}
+			images = append(images, fromImage(pkg.PackageName(), img))
 		}
 	}
 
@@ -137,7 +188,7 @@ func buildLocations(ctx context.Context, env planning.Context, list []fnfs.Locat
 	if opts.outputPath != "" {
 		out := &bytes.Buffer{}
 		for _, r := range res.Value {
-			fmt.Fprintf(out, "%s\n", r.Value)
+			fmt.Fprintf(out, "%s\n", r.Value.img)
 		}
 		if err := os.WriteFile(opts.outputPath, out.Bytes(), 0644); err != nil {
 			return fnerrors.New("failed to write %q: %w", opts.outputPath, err)
@@ -145,20 +196,20 @@ func buildLocations(ctx context.Context, env planning.Context, list []fnfs.Locat
 	}
 
 	if len(res.Value) == 1 {
-		fmt.Fprintf(console.Stdout(ctx), "%s\n", res.Value[0].Value)
+		fmt.Fprintf(console.Stdout(ctx), "%s\n", res.Value[0].Value.img)
 	} else {
-		for k, r := range res.Value {
-			fmt.Fprintf(console.Stdout(ctx), "%s: %s\n", pkgs[k].PackageName(), r.Value)
+		for _, r := range res.Value {
+			fmt.Fprintf(console.Stdout(ctx), "%s: %s\n", r.Value.pkg, r.Value.img)
 		}
 	}
 
 	if opts.outputPrebuilts && len(res.Value) > 0 {
 		var digestFields []interface{}
 
-		for k, pkg := range pkgs {
+		for _, r := range res.Value {
 			digestFields = append(digestFields, &ast.Field{
-				Label: ast.NewString(pkg.PackageName().String()),
-				Value: ast.NewString(res.Value[k].Value.Digest),
+				Label: ast.NewString(r.Value.pkg.String()),
+				Value: ast.NewString(r.Value.img.Digest),
 			})
 		}
 
@@ -183,4 +234,38 @@ func buildLocations(ctx context.Context, env planning.Context, list []fnfs.Locat
 	}
 
 	return nil
+}
+
+type Binary struct {
+	pkg schema.PackageName // TODO sufficient key? What about multiple bins in one package?
+	img oci.ImageID
+}
+
+func fromImage(pkg schema.PackageName, img compute.Computable[oci.ImageID]) compute.Computable[Binary] {
+	return &transformImg{pkg: pkg, img: img}
+}
+
+type transformImg struct {
+	pkg schema.PackageName
+	img compute.Computable[oci.ImageID]
+
+	compute.LocalScoped[Binary]
+}
+
+func (i *transformImg) Action() *tasks.ActionEvent {
+	return tasks.Action("transform.img")
+}
+
+func (i *transformImg) Inputs() *compute.In {
+	return compute.Inputs().Stringer("pkg", i.pkg).Computable("img", i.img)
+}
+
+func (i *transformImg) Output() compute.Output {
+	return compute.Output{NotCacheable: true}
+}
+
+func (i *transformImg) Compute(ctx context.Context, deps compute.Resolved) (Binary, error) {
+	img := compute.MustGetDepValue(deps, i.img, "img")
+
+	return Binary{pkg: i.pkg, img: img}, nil
 }
