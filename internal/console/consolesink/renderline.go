@@ -26,22 +26,8 @@ func renderTime(w io.Writer, s colors.Style, t time.Time) {
 func renderLine(w io.Writer, s colors.Style, li lineItem) {
 	data := li.data
 
-	if data.State.IsDone() {
-		renderTime(w, s, data.Completed)
-
-		if OutputActionID {
-			fmt.Fprint(w, s.Header.Apply("["+data.ActionID.String()[:8]+"] "))
-		}
-
-		fmt.Fprint(w, "✓ ")
-	} else {
-		renderTime(w, s, data.Started)
-
-		if OutputActionID {
-			fmt.Fprint(w, s.Header.Apply("["+data.ActionID.String()[:8]+"] "))
-		}
-
-		fmt.Fprint(w, "↦ ")
+	if OutputActionID {
+		fmt.Fprint(w, s.Header.Apply("["+data.ActionID.String()[:8]+"] "))
 	}
 
 	if data.Category != "" {
@@ -108,6 +94,14 @@ func renderLine(w io.Writer, s colors.Style, li lineItem) {
 }
 
 func renderCompletedAction(raw io.Writer, s colors.Style, r lineItem) {
+	if r.data.State.IsDone() {
+		renderTime(raw, s, r.data.Completed)
+		fmt.Fprint(raw, "✓ ")
+	} else {
+		renderTime(raw, s, r.data.Started)
+		fmt.Fprint(raw, "↦ ")
+	}
+
 	renderLine(raw, s, r)
 	if !r.data.Started.IsZero() && !r.cached {
 		if !r.data.Started.Equal(r.data.Created) {
