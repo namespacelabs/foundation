@@ -1,11 +1,9 @@
-Services deployed:
-
- Main services:
+ Services deployed:
 
   [✓] Focused Label
       http://web.example.com/path1
     * http://web.example.com/path2
 
- (*) The ingress has been configured to support this domain name, but its DNS records are not managed by Namespace.
-     See https://docs.namespace.so/reference/managed-domains/ for more details.
+  (*) The ingress has been configured to support this domain name, but its DNS records are not managed by Namespace.
+      See https://docs.namespace.so/reference/managed-domains/ for more details.
 

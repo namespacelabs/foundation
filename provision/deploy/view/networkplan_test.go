@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/bradleyjkemp/cupaloy"
-	"gotest.tools/assert"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/provision/deploy/render"
 )
@@ -106,5 +105,8 @@ func assertNetworkPlan(t *testing.T, snapshotName string, opts *NetworkPlanToTex
 		lines[i] = strings.TrimRight(line, " ")
 	}
 
-	assert.NilError(t, cupaloy.SnapshotMulti(fmt.Sprintf("%s.txt", snapshotName), strings.Join(lines, "\n")))
+	if err := cupaloy.SnapshotMulti(fmt.Sprintf("%s.txt", snapshotName), strings.Join(lines, "\n")); err != nil {
+		// Don't use asserts, to avoid triggering t.Fatal, so we can update all screenshots in a single run.
+		t.Error(err)
+	}
 }

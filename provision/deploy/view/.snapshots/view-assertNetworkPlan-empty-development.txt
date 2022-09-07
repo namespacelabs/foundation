@@ -1,4 +1,4 @@
-Development mode, services forwarded to mylocalhost.
+ Development mode, services forwarded to mylocalhost:
 
    No services exported
 

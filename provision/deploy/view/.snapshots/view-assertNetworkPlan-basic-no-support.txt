@@ -1,6 +1,4 @@
-Services deployed:
-
- Main services:
+ Services deployed:
 
   [✓] Focused Label
       http://web.example.com/path1
