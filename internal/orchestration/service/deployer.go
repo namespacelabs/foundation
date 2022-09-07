@@ -107,7 +107,10 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 	ctx = tasks.WithSink(ctx, sink)
 
 	rt := runtime.For(ctx, env)
-	nsId := rt.NamespaceId()
+	nsId, err := rt.NamespaceId()
+	if err != nil {
+		return err
+	}
 
 	releaseLease, err := d.leaser.acquireLease(nsId.UniqueId, arrival)
 	if err != nil {

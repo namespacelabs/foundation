@@ -105,7 +105,7 @@ type Runtime interface {
 
 	// Returns a human readable ID of the deployment namespace.
 	// Different IDs signify that deployments are independent and can be executed in parallel.
-	NamespaceId() *NamespaceId
+	NamespaceId() (*NamespaceId, error)
 
 	HasPrepareProvision
 	HasTargetPlatforms

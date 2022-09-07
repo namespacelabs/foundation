@@ -255,7 +255,7 @@ func (r K8sRuntime) AttachTerminal(ctx context.Context, reference *runtime.Conta
 	return r.attachTerminal(ctx, r.cli, cpr, rio)
 }
 
-func (r K8sRuntime) NamespaceId() *runtime.NamespaceId {
+func (r K8sRuntime) NamespaceId() (*runtime.NamespaceId, error) {
 	id := &runtime.NamespaceId{
 		HumanReference: fmt.Sprintf("kubernetes:%s", r.moduleNamespace),
 	}
@@ -263,5 +263,5 @@ func (r K8sRuntime) NamespaceId() *runtime.NamespaceId {
 	hash := sha256.Sum256([]byte(id.HumanReference))
 	id.UniqueId = hex.EncodeToString(hash[:])
 
-	return id
+	return id, nil
 }

@@ -6,8 +6,7 @@ package runtime
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
+	"fmt"
 	"io"
 	"net"
 	"strings"
@@ -51,7 +50,7 @@ func For(ctx context.Context, env planning.Context) Runtime {
 		return rt
 	}
 
-	return nil
+	return runtimeFwdErr{fmt.Errorf("runtime %s is not registered", env.Environment().Runtime)}
 }
 
 func TargetPlatforms(ctx context.Context, env planning.Context) ([]specs.Platform, error) {
@@ -162,13 +161,6 @@ func (r runtimeFwdErr) TargetPlatforms(context.Context) ([]specs.Platform, error
 func (r runtimeFwdErr) ResolveContainers(context.Context, *schema.Server) ([]*ContainerReference, error) {
 	return nil, r.err
 }
-func (r runtimeFwdErr) NamespaceId() *NamespaceId {
-	id := &NamespaceId{
-		HumanReference: "runtimeFwdErr:<nil>",
-	}
-
-	hash := sha256.Sum256([]byte(id.HumanReference))
-	id.UniqueId = hex.EncodeToString(hash[:])
-
-	return id
+func (r runtimeFwdErr) NamespaceId() (*NamespaceId, error) {
+	return nil, r.err
 }
