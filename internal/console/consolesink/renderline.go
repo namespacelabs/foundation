@@ -103,8 +103,10 @@ func renderCompletedAction(raw io.Writer, s colors.Style, r lineItem) {
 			}
 		}
 
-		d := r.data.Completed.Sub(r.data.Started)
-		fmt.Fprint(raw, " ", s.Header.Apply("took="), timefmt.Format(d))
+		if r.data.State.IsDone() {
+			d := r.data.Completed.Sub(r.data.Started)
+			fmt.Fprint(raw, " ", s.Header.Apply("took="), timefmt.Format(d))
+		}
 	}
 	fmt.Fprintln(raw)
 }
