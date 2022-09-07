@@ -9,6 +9,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/kr/text"
 	"github.com/muesli/reflow/padding"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/provision/deploy/render"
@@ -22,26 +23,32 @@ type NetworkPlanToTextOpts struct {
 
 func NetworkPlanToText(out io.Writer, r *render.NetworkPlanSummary, opts *NetworkPlanToTextOpts) {
 	if r.LocalHostname == "" {
-		fmt.Fprintf(out, "Services deployed:\n")
+		fmt.Fprintf(out, " Services deployed:\n")
 	} else {
-		fmt.Fprintf(out, "Development mode, services forwarded to %s.\n", r.LocalHostname)
+		fmt.Fprintf(out, " Development mode, services forwarded to %s:\n", r.LocalHostname)
 	}
 
 	if opts.IncludeSupportServers && len(r.SupportServices) > 0 {
 		fmt.Fprintf(out, "\n %s\n\n", opts.Style.Comment.Apply("Support services:"))
 
-		renderNotFocusedEndpointsText(out, opts.Style, r.SupportServices, opts.Checkmark)
+		renderNotFocusedEndpointsText(indented(out), opts.Style, r.SupportServices, opts.Checkmark)
 	}
 
 	if len(r.FocusedServices) > 0 {
-		fmt.Fprint(out, "\n Main services:\n")
+		if opts.IncludeSupportServers {
+			fmt.Fprint(out, "\n Main services:\n")
+		}
 
-		renderFocusedEndpointsText(out, opts.Style, r.FocusedServices, opts.Checkmark)
+		renderFocusedEndpointsText(indented(out), opts.Style, r.FocusedServices, opts.Checkmark)
 	}
 
 	if len(r.FocusedServices) == 0 && len(r.SupportServices) == 0 {
 		fmt.Fprintf(out, "\n   %s\n", opts.Style.LessRelevant.Apply("No services exported"))
 	}
+}
+
+func indented(out io.Writer) io.Writer {
+	return text.NewIndentWriter(out, []byte(" "))
 }
 
 func renderNotFocusedEndpointsText(out io.Writer, style colors.Style, services []*render.NetworkPlanSummary_Service, checkmark bool) {
@@ -60,7 +67,7 @@ func renderNotFocusedEndpointsText(out io.Writer, style colors.Style, services [
 		label := style.Comment.Apply(renderLabel(entry.Label))
 		url := style.Comment.Apply(entry.AccessCmd[0].Cmd)
 
-		fmt.Fprintf(out, " %s%s  %s%s\n",
+		fmt.Fprintf(out, "%s%s  %s%s\n",
 			checkLabel(style, checkmark, false /* isFocus */, entry.LocalPort > 0),
 			padding.String(label, longestLabel),
 			padding.String(url, longestCmd+1),
@@ -72,7 +79,7 @@ func renderFocusedEndpointsText(out io.Writer, style colors.Style, services []*r
 	hasNotManagedDomains := false
 
 	for _, entry := range services {
-		fmt.Fprintf(out, "\n %s%s\n",
+		fmt.Fprintf(out, "\n%s%s\n",
 			checkLabel(style, checkmark, true /* isFocus */, entry.LocalPort > 0),
 			style.Highlight.Apply(renderLabel(entry.Label)))
 		for _, cmd := range entry.AccessCmd {
@@ -81,14 +88,14 @@ func renderFocusedEndpointsText(out io.Writer, style colors.Style, services []*r
 				notManagedHint = style.LessRelevant.Apply("* ")
 				hasNotManagedDomains = true
 			}
-			fmt.Fprintf(out, "    %s%s\n", notManagedHint, style.Comment.Apply(cmd.Cmd))
+			fmt.Fprintf(out, "   %s%s\n", notManagedHint, style.Comment.Apply(cmd.Cmd))
 		}
 	}
 
 	if hasNotManagedDomains {
 		fmt.Fprintf(out, "\n %s\n     %s\n",
-			style.LessRelevant.Apply("(*) The ingress has been configured to support this domain name, but its DNS records are not managed by Namespace."),
-			style.LessRelevant.Apply("See https://docs.namespace.so/reference/managed-domains/ for more details."))
+			style.Comment.Apply("(*) The ingress has been configured to support this domain name, but its DNS records are not managed by Namespace."),
+			style.Comment.Apply("See https://docs.namespace.so/reference/managed-domains/ for more details."))
 	}
 }
 

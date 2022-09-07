@@ -53,6 +53,8 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 	// are no longer in the stack, or as part of an environment change.
 	listening := map[string]*logState{} // `{env}/{package}` --> LogState
 
+	out := console.Output(ctx, "server-logs")
+
 	for event := range ch {
 		newStack := previousStack
 		newEnv := previousEnv
@@ -78,7 +80,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 				if previous, has := listening[key]; has {
 					previous.Revision = event.EventID
 				} else {
-					fmt.Fprintf(console.Output(ctx, "logs"), "starting log for %s\n", key)
+					fmt.Fprintf(out, "starting log for %s\n", key)
 
 					// Start logging.
 					ctxWithCancel, cancelF := context.WithCancel(ctx)
@@ -113,7 +115,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 		}
 
 		if len(keys) > 0 {
-			fmt.Fprintf(console.Stderr(ctx), "Stopped listening to logs of: %s\n", strings.Join(keys, ", "))
+			fmt.Fprintf(out, "Stopped listening to logs of: %s\n", strings.Join(keys, ", "))
 		}
 
 		previousStack = newStack

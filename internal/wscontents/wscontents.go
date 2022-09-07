@@ -220,7 +220,7 @@ func MakeVersioned(ctx context.Context, moduleAbsPath, rel string, observeChange
 		absPath:        filepath.Join(moduleAbsPath, rel),
 		fs:             fsys,
 		revision:       1,
-		errLogger:      console.Output(ctx, "observepath"),
+		errLogger:      console.Output(ctx, "file-observer"),
 		onNewSnapshot:  onNewSnapshot,
 		observeChanges: observeChanges,
 	}, nil
