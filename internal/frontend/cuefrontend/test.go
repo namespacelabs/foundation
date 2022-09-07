@@ -15,10 +15,10 @@ import (
 )
 
 type cueTest struct {
-	Name    string         `json:"name"`
-	Binary  *schema.Binary `json:"binary"`
-	Driver  *schema.Binary `json:"driver"`
-	Fixture cueFixture     `json:"fixture"`
+	Name    string     `json:"name"`
+	Binary  *cueBinary `json:"binary"`
+	Driver  *cueBinary `json:"driver"`
+	Fixture cueFixture `json:"fixture"`
 }
 
 type cueFixture struct {
@@ -41,10 +41,14 @@ func parseCueTest(ctx context.Context, loc pkggraph.Location, parent, v *fncue.C
 		ServersUnderTest: test.Fixture.ServersUnderTest,
 	}
 
+	var err error
 	if test.Driver != nil {
-		testDef.Driver = test.Driver
+		testDef.Driver, err = test.Driver.ToSchema(loc)
 	} else if test.Binary != nil {
-		testDef.Driver = test.Binary
+		testDef.Driver, err = test.Binary.ToSchema(loc)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	if err := workspace.TransformTest(loc, testDef); err != nil {
