@@ -3,10 +3,10 @@ import (
 )
 
 server: fn.#Server & {
-	id:           "0fomj22adbua2u0ug3og"
-	name:         "orchestration-api-server"
-	framework:    "GO"
-	isStateful:   true
+	id:         "0fomj22adbua2u0ug3og"
+	name:       "orchestration-api-server"
+	framework:  "GO"
+	isStateful: true
 
 	import: [
 		"namespacelabs.dev/foundation/internal/orchestration/service",
