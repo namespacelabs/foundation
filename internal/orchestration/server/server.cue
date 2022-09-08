@@ -6,7 +6,6 @@ server: fn.#Server & {
 	id:           "0fomj22adbua2u0ug3og"
 	name:         "orchestration-api-server"
 	framework:    "GO"
-	clusterAdmin: true
 	isStateful:   true
 
 	import: [

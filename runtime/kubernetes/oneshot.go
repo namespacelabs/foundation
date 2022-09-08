@@ -30,24 +30,24 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, name string, runOpts runtime
 		return err
 	}
 
-	if err := spawnAndWaitPod(ctx, r.cli, r.moduleNamespace, name, spec, false); err != nil {
+	if err := spawnAndWaitPod(ctx, r.cli, r.ns, name, spec, false); err != nil {
 		return err
 	}
 
 	defer func() {
-		if err := r.cli.CoreV1().Pods(r.moduleNamespace).Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
-			fmt.Fprintf(console.Warnings(ctx), "Failed to delete pod %s/%s: %v\n", r.moduleNamespace, name, err)
+		if err := r.cli.CoreV1().Pods(r.ns).Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to delete pod %s/%s: %v\n", r.ns, name, err)
 		}
 	}()
 
 	if follow {
-		if err := fetchPodLogs(ctx, r.cli, logOutput, r.moduleNamespace, name, "", runtime.FetchLogsOpts{Follow: true}); err != nil {
+		if err := fetchPodLogs(ctx, r.cli, logOutput, r.ns, name, "", runtime.FetchLogsOpts{Follow: true}); err != nil {
 			return err
 		}
 	}
 
 	for k := 0; ; k++ {
-		finalState, err := r.cli.CoreV1().Pods(r.moduleNamespace).Get(ctx, name, metav1.GetOptions{})
+		finalState, err := r.cli.CoreV1().Pods(r.ns).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return fnerrors.InvocationError("kubernetes: failed to fetch final pod status: %w", err)
 		}
@@ -68,7 +68,7 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, name string, runOpts runtime
 						opts.TailLines = 50
 					}
 
-					logErr = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, r.moduleNamespace, name, "", opts)
+					logErr = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, r.ns, name, "", opts)
 				}
 
 				if term.ExitCode != 0 {
@@ -84,9 +84,9 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, name string, runOpts runtime
 		}
 
 		if err := kubeobserver.WaitForCondition(ctx, r.cli,
-			tasks.Action("kubernetes.pod.wait").Arg("namespace", r.moduleNamespace).Arg("name", name).Arg("condition", "terminated"),
+			tasks.Action("kubernetes.pod.wait").Arg("namespace", r.ns).Arg("name", name).Arg("condition", "terminated"),
 			kubeobserver.WaitForPodConditition(
-				kubeobserver.PickPod(r.moduleNamespace, name),
+				kubeobserver.PickPod(r.ns, name),
 				func(status corev1.PodStatus) (bool, error) {
 					return (status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 				})); err != nil {
@@ -101,7 +101,7 @@ func (r K8sRuntime) RunOneShot(ctx context.Context, name string, runOpts runtime
 }
 
 func (r K8sRuntime) RunAttached(ctx context.Context, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO) error {
-	return r.RunAttachedOpts(ctx, r.moduleNamespace, name, runOpts, io, nil)
+	return r.RunAttachedOpts(ctx, r.ns, name, runOpts, io, nil)
 }
 
 func (r Unbound) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO, onStart func()) error {

@@ -21,7 +21,7 @@ import (
 func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
 	var state deploymentState
 
-	cleanup, err := anypb.New(&ingress.OpCleanupMigration{Namespace: r.moduleNamespace})
+	cleanup, err := anypb.New(&ingress.OpCleanupMigration{Namespace: r.ns})
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 		Impl:        cleanup,
 	})
 
-	certSecretMap, secrets := ingress.MakeCertificateSecrets(r.moduleNamespace, allFragments)
+	certSecretMap, secrets := ingress.MakeCertificateSecrets(r.ns, allFragments)
 
 	for _, apply := range secrets {
 		// XXX we could actually collect which servers refer what certs, to use as scope.
@@ -56,7 +56,7 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 			continue
 		}
 
-		defs, managed, err := ingress.Ensure(ctx, serverNamespace(r, srv.Server), r.env, srv.Server, frags, certSecretMap)
+		defs, managed, err := ingress.Ensure(ctx, r.ns, r.env, srv.Server, frags, certSecretMap)
 		if err != nil {
 			return nil, err
 		}

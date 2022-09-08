@@ -22,18 +22,17 @@ import (
 )
 
 type cueServer struct {
-	ID           string                     `json:"id"`
-	Name         string                     `json:"name"`
-	Description  *schema.Server_Description `json:"description"`
-	Framework    string                     `json:"framework"`
-	IsStateful   bool                       `json:"isStateful"`
-	TestOnly     bool                       `json:"testonly"`
-	ClusterAdmin bool                       `json:"clusterAdmin"`
-	Import       []string                   `json:"import"`
-	Services     map[string]cueServiceSpec  `json:"service"`
-	Ingress      map[string]cueServiceSpec  `json:"ingress"`
-	StaticEnv    map[string]string          `json:"env"`
-	Binary       interface{}                `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
+	ID          string                     `json:"id"`
+	Name        string                     `json:"name"`
+	Description *schema.Server_Description `json:"description"`
+	Framework   string                     `json:"framework"`
+	IsStateful  bool                       `json:"isStateful"`
+	TestOnly    bool                       `json:"testonly"`
+	Import      []string                   `json:"import"`
+	Services    map[string]cueServiceSpec  `json:"service"`
+	Ingress     map[string]cueServiceSpec  `json:"ingress"`
+	StaticEnv   map[string]string          `json:"env"`
+	Binary      interface{}                `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
 
 	// XXX this should be somewhere else.
 	URLMap []cueURLMapEntry `json:"urlmap"`
@@ -116,8 +115,8 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 
 	out.IsStateful = bits.IsStateful
 	out.Testonly = bits.TestOnly
-	out.ClusterAdmin = bits.ClusterAdmin
 	out.Import = bits.Import
+	out.RunByDefault = runByDefault(bits)
 
 	for k, v := range bits.StaticEnv {
 		out.StaticEnv = append(out.StaticEnv, &schema.BinaryConfig_EnvEntry{
@@ -246,4 +245,18 @@ func parseService(loc pkggraph.Location, kind, name string, svc cueServiceSpec) 
 	}
 
 	return parsed, nil
+}
+
+func runByDefault(bits cueServer) bool {
+	if bits.TestOnly {
+		return false
+	}
+
+	// Skip the orchestration server by default.
+	// TODO scale this if we see a need.
+	if bits.ID == "0fomj22adbua2u0ug3og" {
+		return false
+	}
+
+	return true
 }

@@ -16,8 +16,8 @@ import (
 
 type K8sRuntime struct {
 	Unbound
-	env             *fnschema.Environment
-	moduleNamespace string
+	env *fnschema.Environment
+	ns  string
 }
 
 var _ runtime.Runtime = K8sRuntime{}

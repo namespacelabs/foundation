@@ -94,7 +94,6 @@ _#Node: {
 
 	isStateful?:   bool
 	testonly?:     bool
-	clusterAdmin?: bool // Should be freely configurable?
 
 	if framework == "OPAQUE" || framework == "NODEJS" {
 		service: [string]: #ServiceSpec

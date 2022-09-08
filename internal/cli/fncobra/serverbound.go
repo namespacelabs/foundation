@@ -70,7 +70,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 				return err
 			}
 
-			if !p.locs.UserSpecified && !server.Package.Server.RunByDefault() {
+			if !p.locs.UserSpecified && !server.Package.Server.RunByDefault {
 				return nil
 			}
 

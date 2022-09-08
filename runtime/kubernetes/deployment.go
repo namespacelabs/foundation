@@ -138,7 +138,6 @@ func deployAsPods(env *schema.Environment) bool {
 
 func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
 	srv := server.Server
-	ns := serverNamespace(r, srv)
 
 	if server.Image.Repository == "" {
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", server.Image)
@@ -189,13 +188,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	spec := applycorev1.PodSpec().
 		WithEnableServiceLinks(false) // Disable service injection via environment variables.
 
-	var labels map[string]string
-	if srv.ClusterAdmin {
-		// Admin servers are environment agnostic (deployed in a single global namespace).
-		labels = kubedef.MakeLabels(nil, srv)
-	} else {
-		labels = kubedef.MakeLabels(r.env, srv)
-	}
+	labels := kubedef.MakeLabels(r.env, srv)
 
 	annotations := kubedef.MakeAnnotations(r.env, srv)
 
@@ -404,7 +397,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				return fnerrors.BadInputError("%s: persistent ID is missing", volume.Name)
 			}
 
-			v, operations, err := makePersistentVolume(ns, r.env, server.ServerLocation, srv, volume.Owner, name, pv.Id, pv.SizeBytes)
+			v, operations, err := makePersistentVolume(r.ns, r.env, server.ServerLocation, srv, volume.Owner, name, pv.Id, pv.SizeBytes)
 			if err != nil {
 				return err
 			}
@@ -462,7 +455,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				// Needs to be declared before it's used.
 				s.operations = append(s.operations, kubedef.Apply{
 					Description: "Static configuration",
-					Resource: applycorev1.ConfigMap(configId, ns).
+					Resource: applycorev1.ConfigMap(configId, r.ns).
 						WithAnnotations(annotations).
 						WithLabels(labels).
 						WithLabels(map[string]string{
@@ -484,7 +477,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				// Needs to be declared before it's used.
 				s.operations = append(s.operations, kubedef.Apply{
 					Description: "Server secrets",
-					Resource: applycorev1.Secret(secretId, ns).
+					Resource: applycorev1.Secret(secretId, r.ns).
 						WithAnnotations(annotations).
 						WithLabels(labels).
 						WithLabels(map[string]string{
@@ -538,7 +531,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		// Needs to be declared before it's used.
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Runtime configuration",
-			Resource: applycorev1.ConfigMap(configId, ns).
+			Resource: applycorev1.ConfigMap(configId, r.ns).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithLabels(map[string]string{
@@ -581,7 +574,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 		// XXX remove this
 		scntr = scntr.WithEnv(
-			applycorev1.EnvVar().WithName("FN_KUBERNETES_NAMESPACE").WithValue(ns),
+			applycorev1.EnvVar().WithName("FN_KUBERNETES_NAMESPACE").WithValue(r.ns),
 			applycorev1.EnvVar().WithName("FN_SERVER_ID").WithValue(srv.Id),
 			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(srv.Name),
 		)
@@ -675,7 +668,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Service Account",
-			Resource: applycorev1.ServiceAccount(serviceAccount, ns).
+			Resource: applycorev1.ServiceAccount(serviceAccount, r.ns).
 				WithLabels(labels).
 				WithAnnotations(annotations),
 		})
@@ -689,11 +682,10 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	// servers which we want to control a bit more carefully. For example, we want to deploy
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
-	// Admin servers are excluded here as they run as singletons in a global namespace.
-	if deployAsPods(r.env) && !srv.ClusterAdmin {
+	if deployAsPods(r.env) {
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server",
-			Resource: applycorev1.Pod(deploymentId, ns).
+			Resource: applycorev1.Pod(deploymentId, r.ns).
 				WithAnnotations(annotations).
 				WithAnnotations(tmpl.Annotations).
 				WithLabels(labels).
@@ -707,7 +699,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server StatefulSet",
 			Resource: appsv1.
-				StatefulSet(deploymentId, ns).
+				StatefulSet(deploymentId, r.ns).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.StatefulSetSpec().
@@ -719,7 +711,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server Deployment",
 			Resource: appsv1.
-				Deployment(deploymentId, ns).
+				Deployment(deploymentId, r.ns).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.DeploymentSpec().
@@ -772,7 +764,7 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 	var operations []kubedef.Apply
 	var v *applycorev1.VolumeApplyConfiguration
 
-	if env.Ephemeral && !srv.ClusterAdmin {
+	if env.Ephemeral {
 		v = applycorev1.Volume().
 			WithName(name).
 			WithEmptyDir(applycorev1.EmptyDirVolumeSource().
@@ -860,8 +852,6 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 }
 
 func (r K8sRuntime) deployEndpoint(ctx context.Context, srv *schema.Server, endpoint *schema.Endpoint, s *serverRunState) error {
-	ns := serverNamespace(r, srv)
-
 	serviceSpec := applycorev1.ServiceSpec().WithSelector(kubedef.SelectById(srv))
 
 	port := endpoint.Port
@@ -877,7 +867,7 @@ func (r K8sRuntime) deployEndpoint(ctx context.Context, srv *schema.Server, endp
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: fmt.Sprintf("Service %s", endpoint.ServiceName),
 			Resource: applycorev1.
-				Service(endpoint.AllocatedName, ns).
+				Service(endpoint.AllocatedName, r.ns).
 				WithLabels(kubedef.MakeServiceLabels(r.env, srv, endpoint)).
 				WithAnnotations(serviceAnnotations).
 				WithSpec(serviceSpec),

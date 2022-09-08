@@ -244,11 +244,6 @@ func collectLogs(ctx context.Context, env planning.Context, testRef *schema.Pack
 	for _, entry := range stack.Entry {
 		srv := entry.Server // Close on srv.
 
-		if srv.ClusterAdmin {
-			// Skip logs for admin servers.
-			continue
-		}
-
 		ex.Go(func(ctx context.Context) error {
 			containers, err := rt.ResolveContainers(ctx, srv)
 			if err != nil {

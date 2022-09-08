@@ -81,11 +81,11 @@ func (r K8sRuntime) PrepareProvision(ctx context.Context, _ planning.Context) (*
 		return nil, err
 	}
 
-	return PrepareProvisionWith(r.env, r.moduleNamespace, systemInfo)
+	return PrepareProvisionWith(r.env, r.ns, systemInfo)
 }
 
-func PrepareProvisionWith(env *schema.Environment, moduleNamespace string, systemInfo *kubedef.SystemInfo) (*rtypes.ProvisionProps, error) {
-	packedHostEnv, err := anypb.New(&kubetool.KubernetesEnv{Namespace: moduleNamespace})
+func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubedef.SystemInfo) (*rtypes.ProvisionProps, error) {
+	packedHostEnv, err := anypb.New(&kubetool.KubernetesEnv{Namespace: ns})
 	if err != nil {
 		return nil, err
 	}
@@ -95,27 +95,21 @@ func PrepareProvisionWith(env *schema.Environment, moduleNamespace string, syste
 		return nil, err
 	}
 
+	// Ensure the namespace exist, before we go and apply definitions to it. Also, deployServer
+	// assumes that a namespace already exists.
+	def, err := (kubedef.Apply{
+		Description: fmt.Sprintf("Namespace for %q", env.Name),
+		Resource:    MakeNamespace(env, ns),
+	}).ToDefinition()
+	if err != nil {
+		return nil, err
+	}
+
 	// Pass the computed namespace to the provisioning tool.
-	res := &rtypes.ProvisionProps{
+	return &rtypes.ProvisionProps{
 		ProvisionInput: []*anypb.Any{packedHostEnv, packedSystemInfo},
-	}
-
-	// Hack: TODO remodel admin
-	if env.Name != kubedef.AdminNamespace {
-		// Ensure the namespace exist, before we go and apply definitions to it. Also, deployServer
-		// assumes that a namespace already exists.
-		def, err := (kubedef.Apply{
-			Description: fmt.Sprintf("Namespace for %q", env.Name),
-			Resource:    MakeNamespace(env, moduleNamespace),
-		}).ToDefinition()
-		if err != nil {
-			return nil, err
-		}
-
-		res.Invocation = append(res.Invocation, def)
-	}
-
-	return res, nil
+		Invocation:     []*schema.SerializedInvocation{def},
+	}, nil
 }
 
 type serverRunState struct {
@@ -139,7 +133,7 @@ func (r K8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Se
 	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.PackageName)),
 		func(ctx context.Context) (oci.ImageID, error) {
 			// XXX need a StatefulSet variant.
-			d, err := r.cli.AppsV1().Deployments(serverNamespace(r, server)).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
+			d, err := r.cli.AppsV1().Deployments(r.ns).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
 			if err != nil {
 				// XXX better error messages.
 				return oci.ImageID{}, err
@@ -223,7 +217,7 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 
 	if !r.env.Ephemeral {
 		cleanup, err := anypb.New(&kubedef.OpCleanupRuntimeConfig{
-			Namespace: r.moduleNamespace,
+			Namespace: r.ns,
 			CheckPods: deployAsPods(r.env),
 		})
 		if err != nil {
@@ -236,7 +230,8 @@ func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (r
 		})
 	}
 
-	state.hints = append(state.hints, fmt.Sprintf("Inspecting your deployment: %s", colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("kubectl -n %s get pods", r.moduleNamespace))))
+	state.hints = append(state.hints, fmt.Sprintf("Inspecting your deployment: %s",
+		colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("kubectl -n %s get pods", r.ns))))
 
 	return state, nil
 }
@@ -263,7 +258,7 @@ func (r K8sRuntime) AttachTerminal(ctx context.Context, reference *runtime.Conta
 
 func (r K8sRuntime) NamespaceId() (*runtime.NamespaceId, error) {
 	id := &runtime.NamespaceId{
-		HumanReference: fmt.Sprintf("kubernetes:%s", r.moduleNamespace),
+		HumanReference: fmt.Sprintf("kubernetes:%s", r.ns),
 	}
 
 	hash := sha256.Sum256([]byte(id.HumanReference))

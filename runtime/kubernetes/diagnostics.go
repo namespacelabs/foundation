@@ -49,7 +49,7 @@ func (r K8sRuntime) FetchEnvironmentDiagnostics(ctx context.Context) (*storage.E
 		return nil, err
 	}
 
-	events, err := r.cli.CoreV1().Events(r.moduleNamespace).List(ctx, metav1.ListOptions{})
+	events, err := r.cli.CoreV1().Events(r.ns).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fnerrors.New("kubernetes: failed to obtain event list: %w", err)
 	}

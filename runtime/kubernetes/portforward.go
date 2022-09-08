@@ -49,9 +49,7 @@ func (r K8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, cont
 		return nil, fnerrors.UserError(server, "invalid port number: %d", containerPort)
 	}
 
-	ns := serverNamespace(r, server)
-
-	return r.RawForwardPort(ctx, server.PackageName, ns, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
+	return r.RawForwardPort(ctx, server.PackageName, r.ns, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
 }
 
 func (r K8sRuntime) DialServer(ctx context.Context, server *schema.Server, containerPort int32) (net.Conn, error) {
@@ -59,9 +57,7 @@ func (r K8sRuntime) DialServer(ctx context.Context, server *schema.Server, conta
 		return nil, fnerrors.UserError(server, "invalid port number: %d", containerPort)
 	}
 
-	ns := serverNamespace(r, server)
-
-	return r.RawDialServer(ctx, ns, kubedef.SelectById(server), int(containerPort))
+	return r.RawDialServer(ctx, r.ns, kubedef.SelectById(server), int(containerPort))
 }
 
 func (u Unbound) RawForwardPort(ctx context.Context, desc, ns string, podLabels map[string]string, containerPort int, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {

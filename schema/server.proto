@@ -61,8 +61,10 @@ message Server {
 
     // This server is meant to be used for tests, and should not be deployed by default.
     bool testonly = 21;
-    // This server acts as an admin to the cluster.
-    bool cluster_admin = 22;
+
+    // Indicates if a server should be considered for location-less invocations.
+    // E.g. `ns deploy` should not deploy test only servers, unless explicitly mentioned.
+    bool run_by_default = 29;
 
     Binary binary = 9;
 
@@ -83,7 +85,7 @@ message Server {
     // A set of ports that this server exports and require no configuration.
     repeated Endpoint.Port static_port = 16;
 
-    reserved 18;
+    reserved 18, 22;
 
     repeated EnvironmentRequirement environment_requirement = 24;
 

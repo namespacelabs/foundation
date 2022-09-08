@@ -10,6 +10,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
@@ -56,11 +57,18 @@ func (u Unbound) HostConfig() *client.HostConfig {
 }
 
 func (u Unbound) Bind(env planning.Context) K8sRuntime {
-	return u.bindToNamespace(env.Environment(), ModuleNamespace(env.Workspace().Proto(), env.Environment()))
+	ns := ModuleNamespace(env.Workspace().Proto(), env.Environment())
+
+	conf := &kubetool.KubernetesEnv{}
+	if env.Configuration().Get(conf) {
+		ns = conf.Namespace
+	}
+
+	return u.bindToNamespace(env.Environment(), ns)
 }
 
 func (u Unbound) bindToNamespace(env *schema.Environment, ns string) K8sRuntime {
-	return K8sRuntime{Unbound: u, env: env, moduleNamespace: ns}
+	return K8sRuntime{Unbound: u, env: env, ns: ns}
 }
 
 func (r Unbound) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {

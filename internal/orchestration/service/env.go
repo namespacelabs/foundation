@@ -13,29 +13,14 @@ import (
 	"namespacelabs.dev/foundation/std/planning"
 )
 
-type env struct {
-	config    planning.Configuration
-	workspace planning.Workspace
-	env       *schema.Environment
-}
-
-func makeEnv(plan *schema.DeployPlan, awsConf *aws.Conf) *env {
+func makeEnv(plan *schema.DeployPlan, awsConf *aws.Conf) planning.Context {
 	messages := []proto.Message{&client.HostEnv{Incluster: true}}
 
 	if awsConf != nil {
 		messages = append(messages, awsConf)
 	}
 
-	return &env{
-		config: planning.MakeConfigurationWith(plan.Environment.Name, planning.ConfigurationSlice{
-			Configuration: protos.WrapAnysOrDie(messages...),
-		}),
-		workspace: planning.MakeWorkspace(plan.Workspace, nil),
-		env:       plan.Environment,
-	}
-}
+	cfg := planning.MakeConfigurationWith(plan.Environment.Name, planning.ConfigurationSlice{Configuration: protos.WrapAnysOrDie(messages...)})
 
-func (e env) Configuration() planning.Configuration { return e.config }
-func (e env) ErrorLocation() string                 { return e.workspace.ModuleName() }
-func (e env) Workspace() planning.Workspace         { return e.workspace }
-func (e env) Environment() *schema.Environment      { return e.env }
+	return planning.MakeUnverifiedContext(cfg, planning.MakeWorkspace(plan.Workspace, nil), plan.Environment, plan.Workspace.ModuleName)
+}

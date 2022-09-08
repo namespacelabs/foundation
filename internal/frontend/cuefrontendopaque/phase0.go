@@ -100,7 +100,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		return nil, fnerrors.Wrapf(loc, err, "parsing server")
 	}
 
-	if parsedSrv.RunByDefault() {
+	if parsedSrv.RunByDefault {
 		test, err := workspace.CreateServerStartupTest(ctx, ft.loader, loc.PackageName)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "creating server startup test")

@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strings"
 
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -38,12 +37,4 @@ func ModuleNamespace(ws *schema.Workspace, env *schema.Environment) string {
 	// A SHA256 is 32 bytes long, we're guarantee to always have at least 5 characters.
 	parts = append(parts, base32encoding.EncodeToString(digest)[:5])
 	return strings.Join(parts, "-")
-}
-
-func serverNamespace(r K8sRuntime, srv *schema.Server) string {
-	if srv.ClusterAdmin {
-		return kubedef.AdminNamespace
-	}
-
-	return r.moduleNamespace
 }

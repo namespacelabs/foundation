@@ -22,7 +22,7 @@ import (
 )
 
 func (r K8sRuntime) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
-	return DeleteAllRecursively(ctx, r.cli, wait, nil, r.moduleNamespace)
+	return DeleteAllRecursively(ctx, r.cli, wait, nil, r.ns)
 }
 
 func (r Unbound) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {

@@ -53,7 +53,7 @@ func makeDeployer(ctx context.Context) deployer {
 	}
 }
 
-func (d *deployer) Schedule(plan *schema.DeployPlan, env *env, arrival time.Time) (string, error) {
+func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arrival time.Time) (string, error) {
 	id := ids.NewRandomBase32ID(16)
 
 	p := ops.NewPlan()

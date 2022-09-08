@@ -64,7 +64,7 @@ func (c *clientInstance) Output() compute.Output {
 }
 
 func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto.OrchestrationServiceClient, error) {
-	env := orchEnv{ctx: c.ctx}
+	env := makeOrchEnv(c.ctx)
 
 	focus, err := provision.RequireServer(ctx, env, schema.PackageName(serverPkg))
 	if err != nil {
