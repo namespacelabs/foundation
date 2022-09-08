@@ -6,7 +6,6 @@ package docker
 
 import (
 	"context"
-	"io/fs"
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
@@ -16,7 +15,6 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 func Register() {
@@ -27,22 +25,7 @@ type buildImpl struct {
 }
 
 func (buildImpl) PrepareBuild(ctx context.Context, loc pkggraph.Location, integration *schema.Integration, observeChanges bool) (build.Spec, error) {
-	// Setting observeChanges to true here doesn't seem to do anything.
-	fsys, err := compute.GetValue(ctx, loc.Module.VersionedFS(loc.Rel(), false))
-	if err != nil {
-		return nil, fnerrors.Wrap(loc, err)
-	}
-
-	contents, err := fs.ReadFile(fsys.FS(), integration.Dockerfile)
-	if err != nil {
-		return nil, fnerrors.Wrapf(loc, err, "failed to load Dockerfile")
-	}
-
-	// XXX consistency: we've already loaded the workspace contents, ideally we'd use those.
-	spec, err := buildkit.DockerfileBuild(buildkit.LocalContents{
-		Module: loc.Module, Path: loc.Rel(),
-		ObserveChanges: observeChanges,
-	}, contents)
+	spec, err := buildkit.DockerfileBuild(loc.Rel(), integration.Dockerfile)
 	if err != nil {
 		return nil, fnerrors.Wrap(loc, err)
 	}

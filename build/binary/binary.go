@@ -283,20 +283,7 @@ func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, s
 	}
 
 	if dockerFile := src.Dockerfile; dockerFile != "" {
-		fsys, err := compute.GetValue(ctx, loc.Module.VersionedFS(loc.Rel(), false))
-		if err != nil {
-			return nil, fnerrors.Wrap(loc, err)
-		}
-
-		contents, err := fs.ReadFile(fsys.FS(), dockerFile)
-		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "failed to load Dockerfile")
-		}
-
-		// XXX consistency: we've already loaded the workspace contents, ideally we'd use those.
-		spec, err := buildkit.DockerfileBuild(buildkit.LocalContents{
-			Module: loc.Module, Path: loc.Rel(),
-		}, contents)
+		spec, err := buildkit.DockerfileBuild(loc.Rel(), dockerFile)
 		if err != nil {
 			return nil, fnerrors.Wrap(loc, err)
 		}

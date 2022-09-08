@@ -6,6 +6,7 @@ package buildkit
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -64,7 +65,7 @@ func (l LocalContents) Name() string {
 }
 
 func DefinitionToImage(env planning.Context, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {
-	return makeImage(env, conf, &frontendReq{Def: def}, nil, nil)
+	return makeImage(env, conf, precomputedReq(&frontendReq{Def: def}), nil, nil)
 }
 
 func LLBToImage(ctx context.Context, env planning.Context, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
@@ -73,7 +74,45 @@ func LLBToImage(ctx context.Context, env planning.Context, conf build.BuildTarge
 		return nil, err
 	}
 
-	return makeImage(env, conf, &frontendReq{Def: serialized}, localDirs, conf.PublishName()), nil
+	return makeImage(env, conf, precomputedReq(&frontendReq{Def: serialized}), localDirs, conf.PublishName()), nil
+}
+
+func precomputedReq(req *frontendReq) compute.Computable[*frontendReq] {
+	return compute.Precomputed(req, digestRequest)
+}
+
+func digestRequest(ctx context.Context, req *frontendReq) (schema.Digest, error) {
+	var kvs []keyValue
+	for k, v := range req.FrontendInputs {
+		def, err := v.Marshal(ctx)
+		if err != nil {
+			return schema.Digest{}, err
+		}
+		kvs = append(kvs, keyValue{k, def})
+	}
+
+	// Make order stable.
+	sort.Slice(kvs, func(i, j int) bool {
+		return strings.Compare(kvs[i].Name, kvs[j].Name) < 0
+	})
+
+	w := sha256.New()
+	for _, kv := range kvs {
+		if _, err := fmt.Fprintf(w, "%s:", kv.Name); err != nil {
+			return schema.Digest{}, err
+		}
+		if err := llb.WriteTo(kv.Value, w); err != nil {
+			return schema.Digest{}, err
+		}
+	}
+
+	if req.Def != nil {
+		if err := llb.WriteTo(req.Def, w); err != nil {
+			return schema.Digest{}, err
+		}
+	}
+
+	return schema.FromHash("sha256", w), nil
 }
 
 func LLBToFS(ctx context.Context, env planning.Context, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
@@ -87,7 +126,7 @@ func LLBToFS(ctx context.Context, env planning.Context, conf build.BuildTarget, 
 		sourcePackage:  conf.SourcePackage(),
 		config:         env.Configuration(),
 		targetPlatform: platformOrDefault(conf.TargetPlatform()),
-		req:            &frontendReq{Def: serialized},
+		req:            precomputedReq(&frontendReq{Def: serialized}),
 		localDirs:      localDirs,
 	}
 	return &reqToFS{reqBase: base}, nil
@@ -98,11 +137,11 @@ type reqBase struct {
 	sourcePackage  schema.PackageName     // For description purposes only, does not affect output.
 	config         planning.Configuration // Doesn't affect the output.
 	targetPlatform specs.Platform
-	req            *frontendReq
+	req            compute.Computable[*frontendReq]
 	localDirs      []LocalContents // If set, the output is not cachable by us.
 }
 
-func makeImage(env planning.Context, conf build.BuildTarget, req *frontendReq, localDirs []LocalContents, targetName compute.Computable[oci.AllocatedName]) compute.Computable[oci.Image] {
+func makeImage(env planning.Context, conf build.BuildTarget, req compute.Computable[*frontendReq], localDirs []LocalContents, targetName compute.Computable[oci.AllocatedName]) compute.Computable[oci.Image] {
 	base := reqBase{
 		sourceLabel:    conf.SourceLabel(),
 		sourcePackage:  conf.SourcePackage(),
@@ -129,8 +168,7 @@ type keyValue struct {
 
 func (l reqBase) buildInputs() *compute.In {
 	in := compute.Inputs().
-		Str("frontend", l.req.Frontend).
-		StrMap("frontendOpt", l.req.FrontendOpt)
+		Computable("req", l.req)
 
 	if !PreDigestLocalInputs {
 		// Local contents are added as dependencies to trigger continuous builds.
@@ -160,36 +198,7 @@ func (l reqBase) buildInputs() *compute.In {
 		}
 	}
 
-	return in.Marshal("states", func(ctx context.Context, w io.Writer) error {
-		var kvs []keyValue
-		for k, v := range l.req.FrontendInputs {
-			def, err := v.Marshal(ctx)
-			if err != nil {
-				return err
-			}
-			kvs = append(kvs, keyValue{k, def})
-		}
-
-		// Make order stable.
-		sort.Slice(kvs, func(i, j int) bool {
-			return strings.Compare(kvs[i].Name, kvs[j].Name) < 0
-		})
-
-		for _, kv := range kvs {
-			if _, err := fmt.Fprintf(w, "%s:", kv.Name); err != nil {
-				return err
-			}
-			if err := llb.WriteTo(kv.Value, w); err != nil {
-				return err
-			}
-		}
-
-		if l.req.Def != nil {
-			return llb.WriteTo(l.req.Def, w)
-		}
-
-		return nil
-	})
+	return in
 }
 
 // Implements the explain protocol.
@@ -225,7 +234,12 @@ func (l reqBase) Explain(ctx context.Context, w io.Writer) error {
 		return ents, nil
 	}
 
-	if def := l.req.Def; def != nil {
+	req, err := compute.GetValue(ctx, l.req)
+	if err != nil {
+		return err
+	}
+
+	if def := req.Def; def != nil {
 		var err error
 		ops, err = toOp(def)
 		if err != nil {
@@ -233,7 +247,7 @@ func (l reqBase) Explain(ctx context.Context, w io.Writer) error {
 		}
 	}
 
-	for k, v := range l.req.FrontendInputs {
+	for k, v := range req.FrontendInputs {
 		def, err := v.Marshal(ctx)
 		if err != nil {
 			return err
@@ -248,8 +262,8 @@ func (l reqBase) Explain(ctx context.Context, w io.Writer) error {
 	}
 
 	return enc.Encode(map[string]interface{}{
-		"frontend":    l.req.Frontend,
-		"frontendOpt": l.req.FrontendOpt,
+		"frontend":    req.Frontend,
+		"frontendOpt": req.FrontendOpt,
 		"ops":         ops,
 		"inputs":      inputs,
 	})
@@ -353,6 +367,8 @@ func (l *reqToFS) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, er
 func solve[V any](ctx context.Context, deps compute.Resolved, l reqBase, keychain oci.Keychain, e exporter[V]) (V, error) {
 	var res V
 
+	req := compute.MustGetDepValue(deps, l.req, "req")
+
 	c, err := compute.GetValue(ctx, connectToClient(l.config, l.targetPlatform))
 	if err != nil {
 		return res, err
@@ -372,9 +388,9 @@ func solve[V any](ctx context.Context, deps compute.Resolved, l reqBase, keychai
 	solveOpt := client.SolveOpt{
 		Session:        attachables,
 		Exports:        e.Exports(),
-		Frontend:       l.req.Frontend,
-		FrontendAttrs:  l.req.FrontendOpt,
-		FrontendInputs: l.req.FrontendInputs,
+		Frontend:       req.Frontend,
+		FrontendAttrs:  req.FrontendOpt,
+		FrontendInputs: req.FrontendInputs,
 	}
 
 	if len(l.localDirs) > 0 {
@@ -410,7 +426,7 @@ func solve[V any](ctx context.Context, deps compute.Resolved, l reqBase, keychai
 		ctx = trace.ContextWithSpan(ctx, nil)
 
 		var err error
-		solveRes, err = c.Solve(ctx, l.req.Def, solveOpt, ch)
+		solveRes, err = c.Solve(ctx, req.Def, solveOpt, ch)
 		return err
 	})
 
