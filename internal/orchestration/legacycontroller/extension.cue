@@ -9,6 +9,6 @@ extension: fn.#Extension & {
 
 	// We don't really need it, but https://github.com/namespacelabs/foundation/issues/717
 	instantiate: {
-        ready: core.#Exports.ReadinessCheck
-    }
+		ready: core.#Exports.ReadinessCheck
+	}
 }
