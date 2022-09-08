@@ -96,10 +96,8 @@ func renderLine(w io.Writer, s colors.Style, li lineItem) {
 func renderCompletedAction(raw io.Writer, s colors.Style, r lineItem) {
 	if r.data.State.IsDone() {
 		renderTime(raw, s, r.data.Completed)
-		fmt.Fprint(raw, "✓ ")
 	} else {
 		renderTime(raw, s, r.data.Started)
-		fmt.Fprint(raw, "↦ ")
 	}
 
 	renderLine(raw, s, r)

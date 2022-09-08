@@ -5,6 +5,7 @@
 package simplelog
 
 import (
+	"fmt"
 	"io"
 
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -44,6 +45,7 @@ func (sl *logger) Started(ra *tasks.RunningAction) {
 		return
 	}
 
+	fmt.Fprint(sl.out, "↦ ")
 	consolesink.LogAction(sl.out, colors.NoColors, ra.Data)
 }
 
@@ -55,6 +57,9 @@ func (sl *logger) Done(ra *tasks.RunningAction) {
 		return
 	}
 
+	if AlsoReportStartEvents {
+		fmt.Fprint(sl.out, "✔ ")
+	}
 	consolesink.LogAction(sl.out, colors.NoColors, ra.Data)
 }
 
@@ -66,6 +71,9 @@ func (sl *logger) Instant(ev *tasks.EventData) {
 		return
 	}
 
+	if AlsoReportStartEvents {
+		fmt.Fprint(sl.out, "✔ ")
+	}
 	consolesink.LogAction(sl.out, colors.NoColors, *ev)
 }
 
