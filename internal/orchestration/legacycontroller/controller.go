@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package main
+package legacycontroller
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 )
 
-func main() {
+func Prepare(ctx context.Context, _ ExtensionDeps) error {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		log.Fatalf("failed to create incluster config: %v", err)
@@ -45,6 +45,8 @@ func main() {
 	// })
 
 	w.Run(context.Background())
+
+	return nil
 }
 
 type controllerFunc func(context.Context, *kubernetes.Clientset, *corev1.Namespace, chan struct{})
@@ -62,9 +64,6 @@ func (w watcher) Run(ctx context.Context) {
 	for opts, controller := range w.controllers {
 		go watchNamespaces(ctx, w.clientset, opts, controller)
 	}
-
-	// Only stop namespace watching on fatal errors
-	select {}
 }
 
 func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, opts metav1.ListOptions, f controllerFunc) {

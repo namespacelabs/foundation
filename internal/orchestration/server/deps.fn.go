@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"namespacelabs.dev/foundation/internal/orchestration/legacycontroller"
 	"namespacelabs.dev/foundation/internal/orchestration/service"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
@@ -13,6 +14,7 @@ import (
 
 func RegisterInitializers(di *core.DependencyGraph) {
 	di.AddInitializers(metrics.Initializers__so2f3v...)
+	di.AddInitializers(legacycontroller.Initializers__6uudga...)
 }
 
 func WireServices(ctx context.Context, srv server.Server, depgraph core.Dependencies) []error {

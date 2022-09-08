@@ -20,16 +20,3 @@ extension: fn.#Extension & {
 		}
 	}
 }
-
-$env:  inputs.#Environment
-$ctrl: inputs.#Server & {
-	packageName: "namespacelabs.dev/foundation/std/runtime/kubernetes/controller"
-}
-
-configure: fn.#Configure & {
-	stack: {
-		if $env.ephemeral || $env.purpose == "DEVELOPMENT" {
-			append: [$ctrl]
-		}
-	}
-}
