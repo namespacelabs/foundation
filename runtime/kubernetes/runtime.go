@@ -95,21 +95,27 @@ func PrepareProvisionWith(env *schema.Environment, moduleNamespace string, syste
 		return nil, err
 	}
 
-	// Ensure the namespace exist, before we go and apply definitions to it. Also, deployServer
-	// assumes that a namespace already exists.
-	def, err := (kubedef.Apply{
-		Description: fmt.Sprintf("Namespace for %q", env.Name),
-		Resource:    MakeNamespace(env, moduleNamespace),
-	}).ToDefinition()
-	if err != nil {
-		return nil, err
+	// Pass the computed namespace to the provisioning tool.
+	res := &rtypes.ProvisionProps{
+		ProvisionInput: []*anypb.Any{packedHostEnv, packedSystemInfo},
 	}
 
-	// Pass the computed namespace to the provisioning tool.
-	return &rtypes.ProvisionProps{
-		ProvisionInput: []*anypb.Any{packedHostEnv, packedSystemInfo},
-		Invocation:     []*schema.SerializedInvocation{def},
-	}, nil
+	// Hack: TODO remodel admin
+	if env.Name != kubedef.AdminNamespace {
+		// Ensure the namespace exist, before we go and apply definitions to it. Also, deployServer
+		// assumes that a namespace already exists.
+		def, err := (kubedef.Apply{
+			Description: fmt.Sprintf("Namespace for %q", env.Name),
+			Resource:    MakeNamespace(env, moduleNamespace),
+		}).ToDefinition()
+		if err != nil {
+			return nil, err
+		}
+
+		res.Invocation = append(res.Invocation, def)
+	}
+
+	return res, nil
 }
 
 type serverRunState struct {

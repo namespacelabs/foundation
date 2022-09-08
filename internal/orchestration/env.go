@@ -5,6 +5,7 @@
 package orchestration
 
 import (
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 )
@@ -21,7 +22,7 @@ func (e orchEnv) Configuration() planning.Configuration { return e.ctx.Configura
 // TODO remodel.
 func (e orchEnv) Environment() *schema.Environment {
 	return &schema.Environment{
-		Name:      "fn-admin",
+		Name:      kubedef.AdminNamespace,
 		Runtime:   e.ctx.Environment().Runtime,
 		Ephemeral: false,
 		Purpose:   schema.Environment_PRODUCTION, // TODO - this can't be empty, since std/runtime/kubernetes/extension.cue checks it.
