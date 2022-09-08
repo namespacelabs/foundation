@@ -42,14 +42,16 @@ var (
 )
 
 type serverImages struct {
-	PackageRef *schema.PackageRef
-	Binary     compute.Computable[oci.ImageID]
-	Config     compute.Computable[oci.ImageID]
+	PackageRef  *schema.PackageRef
+	Binary      compute.Computable[oci.ImageID]
+	BinaryImage compute.Computable[oci.ResolvableImage]
+	Config      compute.Computable[oci.ImageID]
 }
 
 type ResolvedServerImages struct {
 	PackageRef     *schema.PackageRef
 	Binary         oci.ImageID
+	BinaryImage    compute.Computable[oci.ResolvableImage]
 	PrebuiltBinary bool
 	Config         oci.ImageID
 	Sidecars       []ResolvedSidecarImage
@@ -486,6 +488,7 @@ func prepareServerImages(ctx context.Context, env planning.Context,
 			}
 
 			images.Binary = oci.PublishResolvable(name, bin)
+			images.BinaryImage = bin
 		}
 
 		// In production builds, also build a "config image" which includes both the processed
@@ -598,7 +601,8 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, servers []
 	var images []compute.Computable[ResolvedServerImages]
 	for _, r := range imageMap {
 		r := r // Close r.
-		in := compute.Inputs().Stringer("package", r.PackageRef).Computable("binary", r.Binary)
+		in := compute.Inputs().Stringer("package", r.PackageRef).
+			Computable("binary", r.Binary)
 		if r.Config != nil {
 			in = in.Computable("config", r.Config)
 		}
@@ -611,6 +615,11 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, servers []
 			}
 		}
 
+		// We make the binary image as indigestible to make it clear that it is
+		// also an input below. We just care about retaining the original
+		// compute.Computable though.
+		in = in.Indigestible("binaryImage", r.BinaryImage)
+
 		images = append(images, compute.Map(tasks.Action("server.compute-images").Scope(r.PackageRef.AsPackageName()), in, compute.Output{},
 			func(ctx context.Context, deps compute.Resolved) (ResolvedServerImages, error) {
 				binary, _ := compute.GetDep(deps, r.Binary, "binary")
@@ -618,6 +627,7 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, servers []
 				result := ResolvedServerImages{
 					PackageRef:     r.PackageRef,
 					Binary:         binary.Value,
+					BinaryImage:    r.BinaryImage,
 					PrebuiltBinary: binary.Completed.IsZero(),
 				}
 

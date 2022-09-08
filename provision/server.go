@@ -37,7 +37,6 @@ func (t Server) Proto() *schema.Server                 { return t.entry.Server }
 func (t Server) Name() string                          { return t.entry.Server.Name }
 func (t Server) Framework() schema.Framework           { return t.entry.Server.Framework }
 func (t Server) Integration() *schema.Integration      { return t.entry.Server.Integration }
-func (t Server) IsStateful() bool                      { return t.entry.Server.IsStateful }
 func (t Server) Deps() []*pkggraph.Package             { return t.deps }
 
 func (t Server) PackageRef() *schema.PackageRef {
