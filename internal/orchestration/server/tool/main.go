@@ -42,7 +42,10 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		Description: "Admin Cluster Role",
 		Resource: applyrbacv1.ClusterRole(role).WithRules(
 			// CRDs have their own API groups.
-			applyrbacv1.PolicyRule().WithAPIGroups("*").WithResources("*").WithVerbs("*"),
+			applyrbacv1.PolicyRule().WithAPIGroups("*").WithResources("*").
+				WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
+			applyrbacv1.PolicyRule().WithNonResourceURLs("*").
+				WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
 			// TODO permissions should be declarative (each node should tell which setup permissions it needs)
 		),
 	})

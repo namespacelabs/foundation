@@ -94,8 +94,10 @@ func SetupAutopush(eksCluster *EKSCluster, iamRole string, roleArn string) ([]de
 	out = append(out, kubedef.Apply{
 		Description: "Admin Cluster Role",
 		Resource: applyrbacv1.ClusterRole(clusterRole).WithRules(
-			applyrbacv1.PolicyRule().WithAPIGroups("*").WithResources("*").WithVerbs("*"),
-		),
+			applyrbacv1.PolicyRule().WithAPIGroups("*").WithResources("*").
+				WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
+			applyrbacv1.PolicyRule().WithNonResourceURLs("*").
+				WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch")),
 	})
 
 	group := fmt.Sprintf("ns:%s-group", iamRole)
