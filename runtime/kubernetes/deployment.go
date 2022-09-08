@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"math"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -836,6 +837,10 @@ func runAsToPodSecCtx(name string, podSecCtx *applycorev1.PodSecurityContextAppl
 }
 
 func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry) (*applycorev1.ContainerApplyConfiguration, error) {
+	sort.SliceStable(env, func(i, j int) bool {
+		return env[i].Name < env[j].Name
+	})
+
 	for _, kv := range env {
 		entry := applycorev1.EnvVar().WithName(kv.Name)
 		if kv.ExperimentalFromSecret != "" {
