@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	UseOrchestrator              = false
+	UseOrchestrator              = true
 	RenderOrchestratorDeployment = false
 )
 
