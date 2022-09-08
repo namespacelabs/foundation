@@ -23,11 +23,8 @@ func init() {
 
 func serverToRuntimeConfig(stack *stack.Stack, server provision.Server, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
 	config := &runtime.RuntimeConfig{
-		Environment: &runtime.ServerEnvironment{
-			Name:    server.SealedContext().Environment().Name,
-			Purpose: server.SealedContext().Environment().Purpose.String(),
-		},
-		Current: makeServer(stack, server),
+		Environment: makeEnv(server.SealedContext().Environment()),
+		Current:     makeServer(stack, server),
 	}
 
 	config.Current.ImageRef = serverImage.String()
@@ -46,6 +43,20 @@ func serverToRuntimeConfig(stack *stack.Stack, server provision.Server, serverIm
 	}
 
 	return config, nil
+}
+
+func makeEnv(env *schema.Environment) *runtime.ServerEnvironment {
+	res := &runtime.ServerEnvironment{
+		Ephemeral: env.Ephemeral,
+		Purpose:   env.Purpose.String(),
+	}
+
+	// Ephemeral environments use generated names, that should not be depended on.
+	if !env.Ephemeral {
+		res.Name = env.Name
+	}
+
+	return res
 }
 
 func makeServer(stack *stack.Stack, server provision.Server) *runtime.Server {

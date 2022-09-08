@@ -37,8 +37,11 @@ message Server {
 }
 
 message ServerEnvironment {
-    string name    = 1;
+    string name    = 1;  // Empty if ephemeral is true.
     string purpose = 2;
+
+    // Typically only set for tests. Signals that this environment is single-use and not meant to be user serviceable.
+    bool ephemeral = 3;
 }
 
 message Service {
