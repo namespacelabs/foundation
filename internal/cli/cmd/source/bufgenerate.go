@@ -36,8 +36,8 @@ func newBufGenerateCmd() *cobra.Command {
 			flags.StringVar(&lang, "lang", "go", "Language for proto generation. Supported values: go, typescript.")
 		}).
 		With(
-			fncobra.FixedEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{})).
+			fncobra.HardcodeEnv(&env, "dev"),
+			fncobra.ParseLocations(&locs, &env)).
 		Do(func(ctx context.Context) error {
 			var paths []string
 			for _, loc := range locs.Locs {

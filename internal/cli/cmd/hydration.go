@@ -53,16 +53,16 @@ func parseHydration(resultOut *hydrateResult, env *planning.Context, servers *fn
 }
 
 // Initializes parseHydration() with its dependencies.
-func parseHydrationWithDeps(resultOut *hydrateResult, locationsOpts *fncobra.ParseLocationsOpts, opts *hydrateOpts) []fncobra.ArgParser {
+func parseHydrationWithDeps(resultOut *hydrateResult, locationsOpts *fncobra.ParseLocationsOpts, opts *hydrateOpts) []fncobra.ArgsParser {
 	var (
 		env     planning.Context
 		locs    fncobra.Locations
 		servers fncobra.Servers
 	)
 
-	return []fncobra.ArgParser{
+	return []fncobra.ArgsParser{
 		fncobra.ParseEnv(&env),
-		fncobra.ParseLocations(&locs, &env, locationsOpts),
+		fncobra.ParseLocations(&locs, &env, *locationsOpts),
 		fncobra.ParseServers(&servers, &env, &locs),
 		parseHydration(resultOut, &env, &servers, opts),
 	}

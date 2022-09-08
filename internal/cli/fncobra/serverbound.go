@@ -58,7 +58,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 			}
 
 			if pp.Server == nil {
-				if p.locs.AreSpecified {
+				if p.locs.UserSpecified {
 					return fnerrors.UserError(loc, "expected a server")
 				}
 
@@ -70,7 +70,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 				return err
 			}
 
-			if !p.locs.AreSpecified && !server.Package.Server.RunByDefault() {
+			if !p.locs.UserSpecified && !server.Package.Server.RunByDefault() {
 				return nil
 			}
 

@@ -24,7 +24,7 @@ func newExtensionCmd() *cobra.Command {
 			Use:   "extension [path/to/package]",
 			Short: "Creates an extension.",
 		}).
-		With(fncobra.FixedEnv(&env, "dev")).
+		With(fncobra.HardcodeEnv(&env, "dev")).
 		With(parseTargetPkgWithDeps(&targetPkg, "extension")...).
 		Do(func(ctx context.Context) error {
 			if err := cue.CreateExtensionScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location); err != nil {

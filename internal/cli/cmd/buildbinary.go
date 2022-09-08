@@ -64,7 +64,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.ParseEnv(&env),
-			fncobra.ParseLocations(&cmdLocs, &env, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
+			fncobra.ParseLocations(&cmdLocs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true})).
 		Do(func(ctx context.Context) error {
 			return buildLocations(ctx, env, cmdLocs, baseRepository, buildOpts)
 		})
@@ -91,7 +91,7 @@ func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Loca
 			pkgs = append(pkgs, pkg)
 		} else if opts.buildServers && pkg.Server != nil {
 			pkgs = append(pkgs, pkg)
-		} else if locs.AreSpecified {
+		} else if locs.UserSpecified {
 			if pkg.Server != nil {
 				return fnerrors.UserError(loc, "requested to build a server but --build_servers was not set")
 			}

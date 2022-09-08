@@ -14,7 +14,7 @@ import (
 
 type CmdHandler func(context.Context, []string) error
 
-type ArgParser interface {
+type ArgsParser interface {
 	AddFlags(*cobra.Command)
 	Parse(ctx context.Context, args []string) error
 }
@@ -32,17 +32,17 @@ func RunE(f CmdHandler) func(*cobra.Command, []string) error {
 
 type CommandCtrl struct {
 	cmd        *cobra.Command
-	argParsers []ArgParser
+	argParsers []ArgsParser
 }
 
 func Cmd(cmd *cobra.Command) *CommandCtrl {
 	return &CommandCtrl{
 		cmd:        cmd,
-		argParsers: []ArgParser{},
+		argParsers: []ArgsParser{},
 	}
 }
 
-func (c *CommandCtrl) With(argParser ...ArgParser) *CommandCtrl {
+func (c *CommandCtrl) With(argParser ...ArgsParser) *CommandCtrl {
 	c.argParsers = append(c.argParsers, argParser...)
 	return c
 }

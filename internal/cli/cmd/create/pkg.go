@@ -21,14 +21,14 @@ type targetPkg struct {
 	Root     *workspace.Root
 }
 
-func parseTargetPkgWithDeps(targetPkgOut *targetPkg, typ string) []fncobra.ArgParser {
+func parseTargetPkgWithDeps(targetPkgOut *targetPkg, typ string) []fncobra.ArgsParser {
 	var (
 		env  planning.Context
 		locs fncobra.Locations
 	)
-	return []fncobra.ArgParser{
+	return []fncobra.ArgsParser{
 		fncobra.ParseEnv(&env),
-		fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{RequireSingle: true}),
+		fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true}),
 		&targetPkgParser{targetPkgOut, &locs, typ},
 	}
 }

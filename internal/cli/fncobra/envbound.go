@@ -36,26 +36,27 @@ func CmdWithEnv(cmd *cobra.Command, f func(context.Context, planning.Context, []
 	return cmd
 }
 
-type EnvParser struct {
+type parseEnv struct {
 	envOut *planning.Context
 	envRef string
 }
 
-func ParseEnv(envOut *planning.Context) *EnvParser {
-	return &EnvParser{envOut: envOut}
+func ParseEnv(envOut *planning.Context) ArgsParser {
+	return &parseEnv{envOut: envOut}
 }
 
-func FixedEnv(envOut *planning.Context, env string) *EnvParser {
-	return &EnvParser{envOut: envOut, envRef: env}
+// HardcodeEnv is a temporary facility to trigger context loading with a predefined environment name.
+func HardcodeEnv(envOut *planning.Context, env string) ArgsParser {
+	return &parseEnv{envOut: envOut, envRef: env}
 }
 
-func (p *EnvParser) AddFlags(cmd *cobra.Command) {
+func (p *parseEnv) AddFlags(cmd *cobra.Command) {
 	if p.envRef == "" {
 		cmd.Flags().StringVar(&p.envRef, "env", "dev", "The environment to access (as defined in the workspace).")
 	}
 }
 
-func (p *EnvParser) Parse(ctx context.Context, args []string) error {
+func (p *parseEnv) Parse(ctx context.Context, args []string) error {
 	if p.envOut == nil {
 		return fnerrors.InternalError("envOut must be set")
 	}

@@ -39,7 +39,7 @@ func NewTidyCmd() *cobra.Command {
 			Short: "Ensures that each server has the appropriate dependencies configured.",
 			Args:  cobra.NoArgs,
 		}).
-		With(fncobra.FixedEnv(&env, "dev")).
+		With(fncobra.HardcodeEnv(&env, "dev")).
 		DoWithArgs(func(ctx context.Context, args []string) error {
 			// First of all, we work through all packages to make sure we have captured
 			// their dependencies locally. If we don't do this here, package parsing below

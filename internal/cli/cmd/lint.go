@@ -18,19 +18,20 @@ import (
 )
 
 func NewLintCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "lint [path/to/package]...",
+		Short: "Verify if package definitions are correct.",
+	}
+
 	var (
 		env  planning.Context
 		locs fncobra.Locations
 	)
 
-	return fncobra.
-		Cmd(&cobra.Command{
-			Use:   "lint [path/to/package]...",
-			Short: "Verify if package definitions are correct.",
-		}).
+	return fncobra.Cmd(cmd).
 		With(
 			fncobra.ParseEnv(&env),
-			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
+			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true})).
 		Do(func(ctx context.Context) error {
 			for _, loc := range locs.Locs {
 				fmt.Fprintln(console.Stderr(ctx), "Checking", loc.AsPackageName())

@@ -54,7 +54,7 @@ func NewDevCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.ParseEnv(&env),
-			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{}),
+			fncobra.ParseLocations(&locs, &env),
 			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
 			ctx, sink := tasks.WithStatefulSink(ctx)

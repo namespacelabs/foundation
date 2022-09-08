@@ -44,8 +44,8 @@ func newSetCmd() *cobra.Command {
 			_ = cobra.MarkFlagRequired(flags, "secret")
 		}).
 		With(
-			fncobra.FixedEnv(&locLoadingEnv, "dev"),
-			fncobra.ParseLocations(&locs, &locLoadingEnv, &fncobra.ParseLocationsOpts{RequireSingle: true})).
+			fncobra.HardcodeEnv(&locLoadingEnv, "dev"),
+			fncobra.ParseLocations(&locs, &locLoadingEnv, fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
 			envStr := specificEnv
 			if envStr == "" {

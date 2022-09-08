@@ -45,7 +45,7 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 		}).
 		With(parseTargetPkgWithDeps(&targetPkg, "service")...).
 		With(
-			fncobra.FixedEnv(&env, "dev"),
+			fncobra.HardcodeEnv(&env, "dev"),
 			withFramework(&fmwkFlag)).
 		Do(func(ctx context.Context) error {
 

@@ -28,7 +28,7 @@ func NewLsCmd() *cobra.Command {
 			Args:    cobra.NoArgs,
 			Aliases: []string{"list"},
 		}).
-		With(fncobra.FixedEnv(&env, "dev")).
+		With(fncobra.HardcodeEnv(&env, "dev")).
 		Do(func(ctx context.Context) error {
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {

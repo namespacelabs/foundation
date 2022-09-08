@@ -46,7 +46,7 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 		}).
 		With(parseTargetPkgWithDeps(&targetPkg, "service")...).
 		With(
-			fncobra.FixedEnv(&env, "dev"),
+			fncobra.HardcodeEnv(&env, "dev"),
 			withFramework(&fmwkFlag)).
 		Do(func(ctx context.Context) error {
 			parsedHttpServices := []cue.HttpService{}

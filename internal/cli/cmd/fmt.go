@@ -36,7 +36,7 @@ func NewFmtCmd() *cobra.Command {
 		Short: "Format foundation configurations of all packages in the workspace.",
 		Args:  cobra.NoArgs,
 	}).
-		With(fncobra.FixedEnv(&env, "dev")).
+		With(fncobra.HardcodeEnv(&env, "dev")).
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.BoolVar(&all, "all", all, "If set to true, walks through all directories to look for .cue files to format, instead of all packages.")
 			flags.BoolVar(&check, "check", check, "If set to true, fails if a file would have to be updated.")

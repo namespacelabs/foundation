@@ -33,8 +33,8 @@ func newAddReaderCmd() *cobra.Command {
 			_ = cobra.MarkFlagRequired(flags, "key")
 		}).
 		With(
-			fncobra.FixedEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{RequireSingle: true})).
+			fncobra.HardcodeEnv(&env, "dev"),
+			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
 			loc, bundle, err := loadBundleFromArgs(ctx, env, locs.Locs[0], nil)
 			if err != nil {

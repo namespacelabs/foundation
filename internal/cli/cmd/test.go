@@ -66,8 +66,8 @@ func NewTestCmd() *cobra.Command {
 		}).
 		With(
 			// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
-			fncobra.FixedEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env, &fncobra.ParseLocationsOpts{DefaultToAllWhenEmpty: true})).
+			fncobra.HardcodeEnv(&env, "dev"),
+			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true})).
 		Do(func(ctx context.Context) error {
 			ctx = prepareContext(ctx, parallelWork, rocketShip)
 
@@ -77,7 +77,7 @@ func NewTestCmd() *cobra.Command {
 
 			pl := workspace.NewPackageLoader(env)
 
-			includeStartupTests := includeServers || locs.AreSpecified
+			includeStartupTests := includeServers || locs.UserSpecified
 			testRefs := []*schema.PackageRef{}
 			for _, l := range locs.Locs {
 				pp, err := pl.LoadByName(ctx, l.AsPackageName())

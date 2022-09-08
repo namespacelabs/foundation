@@ -30,7 +30,7 @@ func newGoCmd(goVersion string) *cobra.Command {
 			DisableFlagParsing: true,
 		}).
 		With(
-			fncobra.FixedEnv(&env, "dev")).
+			fncobra.HardcodeEnv(&env, "dev")).
 		DoWithArgs(func(ctx context.Context, args []string) error {
 			pl := workspace.NewPackageLoader(env)
 			loc, err := pl.Resolve(ctx, schema.MakePackageName(env.Workspace().ModuleName()))

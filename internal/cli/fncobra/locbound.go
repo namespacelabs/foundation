@@ -23,26 +23,36 @@ type Locations struct {
 	Root *workspace.Root
 	// Whether the user explicitly specified a list of locations.
 	// If true, "All" can be not empty if "DefaultToAllWhenEmpty" is true
-	AreSpecified bool
+	UserSpecified bool
 }
 
 type LocationsParser struct {
 	locsOut *Locations
-	opts    *ParseLocationsOpts
 	env     *planning.Context
+	opts    ParseLocationsOpts
 }
 
 type ParseLocationsOpts struct {
 	// Verify that exactly one location is specified.
 	RequireSingle bool
 	// If true, and no locations are specified, then "workspace.ListSchemas" result is used.
-	DefaultToAllWhenEmpty bool
+	ReturnAllIfNoneSpecified bool
 }
 
-func ParseLocations(locsOut *Locations, env *planning.Context, opts *ParseLocationsOpts) *LocationsParser {
+func ParseLocations(locsOut *Locations, env *planning.Context, opts ...ParseLocationsOpts) *LocationsParser {
+	var merged ParseLocationsOpts
+	for _, opt := range opts {
+		if opt.ReturnAllIfNoneSpecified {
+			merged.ReturnAllIfNoneSpecified = true
+		}
+		if opt.RequireSingle {
+			merged.RequireSingle = true
+		}
+	}
+
 	return &LocationsParser{
 		locsOut: locsOut,
-		opts:    opts,
+		opts:    merged,
 		env:     env,
 	}
 }
@@ -78,7 +88,7 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 		return fnerrors.UserError(nil, "expected exactly one package")
 	}
 
-	if p.opts.DefaultToAllWhenEmpty && len(locs) == 0 {
+	if p.opts.ReturnAllIfNoneSpecified && len(locs) == 0 {
 		schemaList, err := workspace.ListSchemas(ctx, *p.env, root)
 		if err != nil {
 			return err
@@ -88,9 +98,9 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 	}
 
 	*p.locsOut = Locations{
-		Root:         root,
-		Locs:         locs,
-		AreSpecified: len(args) > 0,
+		Root:          root,
+		Locs:          locs,
+		UserSpecified: len(args) > 0,
 	}
 
 	return nil
