@@ -6,6 +6,7 @@ package legacycontroller
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"reflect"
 
@@ -19,11 +20,11 @@ import (
 func Prepare(ctx context.Context, _ ExtensionDeps) error {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		log.Fatalf("failed to create incluster config: %v", err)
+		return fmt.Errorf("failed to create incluster config: %w", err)
 	}
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		log.Fatalf("failed to create incluster clientset: %v", err)
+		return fmt.Errorf("failed to create incluster clientset: %w", err)
 	}
 
 	w := watcher{
