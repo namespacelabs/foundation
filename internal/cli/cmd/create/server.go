@@ -78,6 +78,7 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 
 				dependencies = append(dependencies,
 					"namespacelabs.dev/foundation/std/grpc/logging",
+					"namespacelabs.dev/foundation/std/monitoring/prometheus",
 					"namespacelabs.dev/foundation/std/monitoring/tracing/jaeger")
 			}
 
