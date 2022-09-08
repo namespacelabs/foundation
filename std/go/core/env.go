@@ -85,6 +85,7 @@ func ProvideServerInfo(ctx context.Context, _ *types.ServerInfoArgs) (*types.Ser
 	return &types.ServerInfo{
 		ServerName: serverName,
 		EnvName:    rt.Environment.Name,
+		EnvPurpose: rt.Environment.Purpose,
 		Vcs: &types.ServerInfo_VCS{
 			Revision:    rtVcs.Revision,
 			CommitTime:  rtVcs.CommitTime.String(),

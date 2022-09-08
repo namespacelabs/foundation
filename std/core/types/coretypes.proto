@@ -16,6 +16,7 @@ message ServerInfoArgs {}
 message ServerInfo {
     string server_name = 1;
     string env_name    = 2;
+    string env_purpose = 4;
     VCS    vcs         = 3;
 
     message VCS {
