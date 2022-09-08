@@ -21,16 +21,11 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
-	"namespacelabs.dev/foundation/build/multiplatform"
-	"namespacelabs.dev/foundation/integrations/shared"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -59,7 +54,6 @@ func NewBuildBinaryCmd() *cobra.Command {
 			flags.BoolVar(&buildOpts.publishToDocker, "docker", false, "If set to true, don't push to registries, but to local docker.")
 			flags.StringVar(&baseRepository, "base_repository", baseRepository, "If set, overrides the registry we'll upload the images to.")
 			flags.BoolVar(&buildOpts.outputPrebuilts, "output_prebuilts", false, "If true, also outputs a prebuilt configuration which can be embedded in your workspace configuration.")
-			flags.BoolVar(&buildOpts.buildServers, "build_servers", false, "If true, also build server binaries.")
 			flags.StringVar(&buildOpts.outputPath, "output_to", "", "If set, a list of all binaries is emitted to the specified file.")
 		}).
 		With(
@@ -74,7 +68,6 @@ type buildOpts struct {
 	publishToDocker bool
 	outputPrebuilts bool
 	outputPath      string
-	buildServers    bool
 }
 
 func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
@@ -89,12 +82,7 @@ func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Loca
 
 		if len(pkg.Binaries) > 0 {
 			pkgs = append(pkgs, pkg)
-		} else if opts.buildServers && pkg.Server != nil {
-			pkgs = append(pkgs, pkg)
 		} else if locs.UserSpecified {
-			if pkg.Server != nil {
-				return fnerrors.UserError(loc, "requested to build a server but --build_servers was not set")
-			}
 			return fnerrors.UserError(loc, "no binary found in package")
 		}
 	}
@@ -124,40 +112,6 @@ func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Loca
 			}
 
 			resolvables = append(resolvables, image)
-		}
-
-		if opts.buildServers && pkg.Server != nil {
-			srv, err := provision.RequireServerWith(ctx, env, pl, pkg.PackageName())
-			if err != nil {
-				return err
-			}
-			focus := true
-			var spec build.Spec
-			if srv.Integration() != nil {
-				spec, err = shared.PrepareBuild(ctx, srv.Location, srv.Integration(), focus)
-			} else {
-				// TODO do we need languages.AvailableBuildAssets{}
-				spec, err = languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, languages.AvailableBuildAssets{}, srv, focus)
-			}
-			if err != nil {
-				return err
-			}
-
-			if _, ok := build.IsPrebuilt(spec); ok {
-				return fnerrors.UserError(pkg.Location, "build-binary does not support servers which already pin a prebuilt image")
-			}
-
-			p, err := deploy.MakePlan(ctx, srv, spec)
-			if err != nil {
-				return err
-			}
-
-			bin, err := multiplatform.PrepareMultiPlatformImage(ctx, srv.SealedContext(), p)
-			if err != nil {
-				return err
-			}
-
-			resolvables = append(resolvables, bin)
 		}
 
 		for _, image := range resolvables {
