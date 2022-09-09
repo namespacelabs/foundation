@@ -25,7 +25,7 @@ func (r ClusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (boo
 	return DeleteAllRecursively(ctx, r.cli, wait, nil, r.namespace)
 }
 
-func (r Cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
+func (r *Cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
 	namespaces, err := r.cli.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
 		LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 	})

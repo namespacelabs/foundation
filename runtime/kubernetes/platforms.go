@@ -19,14 +19,14 @@ var (
 	ProductionPlatforms           = []string{"linux/amd64", "linux/arm64"}
 )
 
-func (r Cluster) SystemInfo(ctx context.Context) (*kubedef.SystemInfo, error) {
+func (r *Cluster) SystemInfo(ctx context.Context) (*kubedef.SystemInfo, error) {
 	return compute.GetValue[*kubedef.SystemInfo](ctx, &fetchSystemInfo{
 		cli: r.cli,
 		cfg: r.host.HostEnv,
 	})
 }
 
-func (r Cluster) UnmatchedTargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
+func (r *Cluster) UnmatchedTargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
 	sysInfo, err := r.SystemInfo(ctx)
 	if err != nil {
 		return nil, err

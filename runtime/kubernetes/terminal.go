@@ -38,7 +38,7 @@ func (r ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Cli
 	})
 }
 
-func (r Cluster) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque *kubedef.ContainerPodReference, rio runtime.TerminalIO) error {
+func (r *Cluster) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque *kubedef.ContainerPodReference, rio runtime.TerminalIO) error {
 	return r.lowLevelAttachTerm(ctx, cli, opaque.Namespace, opaque.PodName, rio, "attach", &corev1.PodAttachOptions{
 		Container: opaque.Container,
 		Stdin:     true,
@@ -48,7 +48,7 @@ func (r Cluster) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, 
 	})
 }
 
-func (r Cluster) lowLevelAttachTerm(ctx context.Context, cli *kubernetes.Clientset, ns, podname string, rio runtime.TerminalIO, subresource string, params k8srt.Object) error {
+func (r *Cluster) lowLevelAttachTerm(ctx context.Context, cli *kubernetes.Clientset, ns, podname string, rio runtime.TerminalIO, subresource string, params k8srt.Object) error {
 	config, err := resolveConfig(ctx, r.host)
 	if err != nil {
 		return err

@@ -104,7 +104,7 @@ func (r ClusterNamespace) RunAttached(ctx context.Context, name string, runOpts 
 	return r.RunAttachedOpts(ctx, r.namespace, name, runOpts, io, nil)
 }
 
-func (r Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO, onStart func()) error {
+func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO, onStart func()) error {
 	spec, err := makePodSpec(name, runOpts)
 	if err != nil {
 		return err

@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
-func (r Cluster) FetchDiagnostics(ctx context.Context, reference *runtime.ContainerReference) (*runtime.Diagnostics, error) {
+func (r *Cluster) FetchDiagnostics(ctx context.Context, reference *runtime.ContainerReference) (*runtime.Diagnostics, error) {
 	opaque := &kubedef.ContainerPodReference{}
 	if err := reference.Opaque.UnmarshalTo(opaque); err != nil {
 		return &runtime.Diagnostics{}, fnerrors.InternalError("invalid reference: %w", err)

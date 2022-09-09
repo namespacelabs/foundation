@@ -94,7 +94,7 @@ func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allF
 	return state, nil
 }
 
-func (r Cluster) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
+func (r *Cluster) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
 	svc := nginx.IngressLoadBalancerService()
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)

@@ -60,7 +60,7 @@ func (r ClusterNamespace) DialServer(ctx context.Context, server *schema.Server,
 	return r.RawDialServer(ctx, r.namespace, kubedef.SelectById(server), int(containerPort))
 }
 
-func (u Cluster) RawForwardPort(ctx context.Context, desc, ns string, podLabels map[string]string, containerPort int, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
+func (u *Cluster) RawForwardPort(ctx context.Context, desc, ns string, podLabels map[string]string, containerPort int, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 	p := kubeobserver.NewPodObserver(ctxWithCancel, u.cli, ns, podLabels)
 
@@ -81,7 +81,7 @@ func (u Cluster) RawForwardPort(ctx context.Context, desc, ns string, podLabels 
 	return closerCallback(cancel), nil
 }
 
-func (u Cluster) RawDialServer(ctx context.Context, ns string, podLabels map[string]string, containerPort int) (net.Conn, error) {
+func (u *Cluster) RawDialServer(ctx context.Context, ns string, podLabels map[string]string, containerPort int) (net.Conn, error) {
 	pod, err := kubeobserver.ResolvePod(ctx, u.cli, ns, podLabels)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (u Cluster) RawDialServer(ctx context.Context, ns string, podLabels map[str
 	return createConnection(ctx, streamConn, pod, 0, containerPort)
 }
 
-func (r Cluster) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPortFwdArgs) error {
+func (r *Cluster) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPortFwdArgs) error {
 	config, err := resolveConfig(ctx, r.host)
 	if err != nil {
 		return err
