@@ -77,7 +77,7 @@ func PrepareIngressInKube(ctx context.Context, env planning.Context, kube kubern
 		return err
 	}
 
-	waiters, err := g.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{kube.HostConfig(), env})
+	waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{kube.HostConfig(), env}, g)
 	if err != nil {
 		return err
 	}

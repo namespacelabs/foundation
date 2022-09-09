@@ -126,7 +126,7 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 	}
 	defer releaseLease()
 
-	waiters, err := p.Execute(ctx, runtime.TaskServerDeploy, env)
+	waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, env, p)
 	if err != nil {
 		return err
 	}

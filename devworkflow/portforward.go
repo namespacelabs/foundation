@@ -24,10 +24,10 @@ func NewPortFwd(ctx context.Context, obs *Session, selector planning.Context, lo
 		Debug:     console.Debug(ctx),
 		Warnings:  console.Warnings(ctx),
 		ForwardPort: func(server *schema.Server, port int32, localAddr []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
-			return runtime.For(ctx, selector).ForwardPort(ctx, server, port, localAddr, callback)
+			return runtime.ClusterFor(ctx, selector).ForwardPort(ctx, server, port, localAddr, callback)
 		},
 		ForwardIngress: func(localAddr []string, port int, callback runtime.PortForwardedFunc) (io.Closer, error) {
-			return runtime.For(ctx, selector).ForwardIngress(ctx, localAddr, port, callback)
+			return runtime.ClusterFor(ctx, selector).ForwardIngress(ctx, localAddr, port, callback)
 		},
 	}
 

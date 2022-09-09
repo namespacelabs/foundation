@@ -25,16 +25,16 @@ const (
 	tailLinesOnFailure = 10
 )
 
-func Wait(ctx context.Context, env planning.Context, waiters []ops.Waiter) error {
-	return RenderAndWait(ctx, env, func(ch chan *orchestration.Event) error {
+func Wait(ctx context.Context, env planning.Context, cluster runtime.Cluster, waiters []ops.Waiter) error {
+	return RenderAndWait(ctx, env, cluster, func(ch chan *orchestration.Event) error {
 		return ops.WaitMultiple(ctx, waiters, ch)
 	})
 }
 
-func RenderAndWait(ctx context.Context, env planning.Context, handle func(chan *orchestration.Event) error) error {
+func RenderAndWait(ctx context.Context, env planning.Context, cluster runtime.Cluster, handle func(chan *orchestration.Event) error) error {
 	rwb := renderwait.NewBlock(ctx, "deploy")
 
-	waitErr := handle(observeContainers(ctx, env, rwb.Ch()))
+	waitErr := handle(observeContainers(ctx, env, cluster, rwb.Ch()))
 
 	// Make sure that rwb completes before further output below (for ordering purposes).
 	if err := rwb.Wait(ctx); err != nil {
@@ -48,7 +48,7 @@ func RenderAndWait(ctx context.Context, env planning.Context, handle func(chan *
 
 // observeContainers observes the deploy events (received from the returned channel) and updates the
 // console through the `parent` channel.
-func observeContainers(ctx context.Context, env planning.Context, parent chan *orchestration.Event) chan *orchestration.Event {
+func observeContainers(ctx context.Context, env planning.Context, cluster runtime.Cluster, parent chan *orchestration.Event) chan *orchestration.Event {
 	ch := make(chan *orchestration.Event)
 	t := time.NewTicker(maxDeployWait)
 	startedDiagnosis := true // After the first tick, we tick twice as fast.
@@ -67,7 +67,6 @@ func observeContainers(ctx context.Context, env planning.Context, parent chan *o
 				t.Reset(maxDeployWait / 2)
 			}
 
-			rt := runtime.For(ctx, env)
 			for resourceID, wslist := range pending {
 				all := []*runtime.ContainerUnitWaitStatus{}
 				for _, w := range wslist {
@@ -90,7 +89,7 @@ func observeContainers(ctx context.Context, env planning.Context, parent chan *o
 
 				// XXX fetching diagnostics should not block forwarding events (above).
 				for _, ws := range all {
-					diagnostics, err := rt.FetchDiagnostics(ctx, ws.Reference)
+					diagnostics, err := cluster.FetchDiagnostics(ctx, ws.Reference)
 					if err != nil {
 						fmt.Fprintf(out, "Failed to retrieve diagnostics for %s: %v\n", ws.Reference.HumanReference, err)
 						continue
@@ -105,7 +104,7 @@ func observeContainers(ctx context.Context, env planning.Context, parent chan *o
 					switch {
 					case diagnostics.Running:
 						fmt.Fprintf(out, "  Running, logs (last %d lines):\n", tailLinesOnFailure)
-						if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure}); err != nil {
+						if err := cluster.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure}); err != nil {
 							fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 						}
 
@@ -113,7 +112,7 @@ func observeContainers(ctx context.Context, env planning.Context, parent chan *o
 						fmt.Fprintf(out, "  Waiting: %s\n", diagnostics.WaitingReason)
 						if diagnostics.Crashed {
 							fmt.Fprintf(out, "  Crashed, logs (last %d lines):\n", tailLinesOnFailure)
-							if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
+							if err := cluster.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
 								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 							}
 						}
@@ -121,7 +120,7 @@ func observeContainers(ctx context.Context, env planning.Context, parent chan *o
 					case diagnostics.Terminated:
 						if diagnostics.ExitCode > 0 {
 							fmt.Fprintf(out, "  Failed: %s (exit code %d), logs (last %d lines):\n", diagnostics.TerminatedReason, diagnostics.ExitCode, tailLinesOnFailure)
-							if err := rt.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
+							if err := cluster.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
 								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 							}
 						}

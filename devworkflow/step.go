@@ -165,7 +165,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		cancel := compute.SpawnCancelableOnContinuously(ctx, func(ctx context.Context) error {
 			defer close(done)
 			return compute.Continuously(ctx,
-				newUpdateCluster(focusServers.Env(), stack.Proto(), do.serverPackages, observers, plan, do.pfw),
+				newUpdateCluster(focusServers.Env(), do.cluster, stack.Proto(), do.serverPackages, observers, plan, do.pfw),
 				transformError)
 		})
 

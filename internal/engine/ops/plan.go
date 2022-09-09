@@ -77,7 +77,7 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) error {
 	return nil
 }
 
-func (g *Plan) Execute(ctx context.Context, actionName string, env planning.Context) (waiters []Waiter, err error) {
+func Execute(ctx context.Context, actionName string, env planning.Context, g *Plan) (waiters []Waiter, err error) {
 	err = tasks.Action(actionName).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, false)
@@ -86,7 +86,7 @@ func (g *Plan) Execute(ctx context.Context, actionName string, env planning.Cont
 	return
 }
 
-func (g *Plan) ExecuteParallel(ctx context.Context, name string, env planning.Context) (waiters []Waiter, err error) {
+func ExecuteParallel(ctx context.Context, name string, env planning.Context, g *Plan) (waiters []Waiter, err error) {
 	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, true)
@@ -95,7 +95,7 @@ func (g *Plan) ExecuteParallel(ctx context.Context, name string, env planning.Co
 	return
 }
 
-func (g *Plan) Serialize() *schema.SerializedProgram {
+func Serialize(g *Plan) *schema.SerializedProgram {
 	return &schema.SerializedProgram{Invocation: g.definitions}
 }
 

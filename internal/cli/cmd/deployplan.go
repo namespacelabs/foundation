@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
@@ -58,7 +59,10 @@ func NewDeployPlanCmd() *cobra.Command {
 			return err
 		}
 
-		return completeDeployment(ctx, serializedEnvironment{root, config, plan.Environment}, p, plan, opts)
+		env := serializedEnvironment{root, config, plan.Environment}
+		cluster := runtime.ClusterFor(ctx, env)
+
+		return completeDeployment(ctx, env, cluster, p, plan, opts)
 	})
 
 	return cmd

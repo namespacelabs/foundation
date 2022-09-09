@@ -95,7 +95,7 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 			return fnerrors.UserError(nil, "--rehydrate only supports a single server")
 		}
 
-		buildID, err := runtime.For(ctx, *h.env).DeployedConfigImageID(ctx, servers[0].Proto())
+		buildID, err := runtime.ClusterFor(ctx, *h.env).DeployedConfigImageID(ctx, servers[0].Proto())
 		if err != nil {
 			return err
 		}

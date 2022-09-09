@@ -128,8 +128,9 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 	packages := pl.Seal()
 
 	var results compute.Computable[*storage.TestResultBundle] = &testRun{
-		TestRef:          testRef,
 		SealedContext:    pkggraph.MakeSealedContext(env, packages),
+		RuntimeClass:     deferred,
+		TestRef:          testRef,
 		Plan:             deployPlan,
 		ServersUnderTest: sutServers,
 		EnvProto:         env.Environment(),

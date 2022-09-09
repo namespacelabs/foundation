@@ -65,7 +65,7 @@ func newComputeIrsaCmd() *cobra.Command {
 		if dryRun {
 			fmt.Fprintf(console.Stdout(ctx), "Not making changes to the cluster, as --dry_run=true.\n\n")
 		} else {
-			if _, err := p.Execute(ctx, "eks.irsa.apply", env); err != nil {
+			if _, err := ops.Execute(ctx, "eks.irsa.apply", env, p); err != nil {
 				return err
 			}
 		}

@@ -90,17 +90,17 @@ func codegenServer(ctx context.Context, srv provision.Server) error {
 		return err
 	}
 
-	var r ops.Plan
+	r := ops.NewPlan()
 	if err := r.Add(codegen...); err != nil {
 		return err
 	}
 
-	waiters, err := r.ExecuteParallel(ctx, "workspace.codegen", codegenEnv{
+	waiters, err := ops.ExecuteParallel(ctx, "workspace.codegen", codegenEnv{
 		config:   srv.SealedContext().Configuration(),
 		root:     srv.Module(),
 		packages: srv.SealedContext(),
 		fs:       srv.Module().ReadWriteFS(),
-	})
+	}, r)
 	if err != nil {
 		return err
 	}

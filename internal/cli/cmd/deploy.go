@@ -30,7 +30,6 @@ import (
 	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -96,7 +95,14 @@ func NewDeployCmd() *cobra.Command {
 				return protos.WriteFile(serializePath, deployPlan)
 			}
 
-			return completeDeployment(ctx, pkggraph.MakeSealedContext(env, servers.SealedPackages), computed.Deployer, deployPlan, deployOpts)
+			sealed := pkggraph.MakeSealedContext(env, servers.SealedPackages)
+
+			cluster, err := deferred.EnsureCluster(ctx, env)
+			if err != nil {
+				return err
+			}
+
+			return completeDeployment(ctx, sealed, cluster, computed.Deployer, deployPlan, deployOpts)
 		})
 }
 
@@ -115,31 +121,9 @@ type Ingress struct {
 	Protocol []string `json:"protocol"`
 }
 
-func completeDeployment(ctx context.Context, env planning.Context, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
-	if orchestration.UseOrchestrator {
-		id, err := orchestration.Deploy(ctx, env, plan)
-		if err != nil {
-			return err
-		}
-
-		if opts.alsoWait {
-			if err := deploy.RenderAndWait(ctx, env, func(ch chan *orchpb.Event) error {
-				return orchestration.WireDeploymentStatus(ctx, env, id, ch)
-			}); err != nil {
-				return err
-			}
-		}
-	} else {
-		waiters, err := p.Execute(ctx, runtime.TaskServerDeploy, env)
-		if err != nil {
-			return err
-		}
-
-		if opts.alsoWait {
-			if err := deploy.Wait(ctx, env, waiters); err != nil {
-				return err
-			}
-		}
+func completeDeployment(ctx context.Context, env planning.Context, cluster runtime.Cluster, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
+	if err := orchestration.Deploy(ctx, env, cluster, p, plan, opts.alsoWait, true); err != nil {
+		return err
 	}
 
 	var ports []*deploystorage.PortFwd

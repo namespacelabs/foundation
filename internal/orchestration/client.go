@@ -71,6 +71,11 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 		return nil, err
 	}
 
+	cluster, err := deferred.EnsureCluster(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
 	focus, err := provision.RequireServer(ctx, env, schema.PackageName(serverPkg))
 	if err != nil {
 		return nil, err
@@ -86,7 +91,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 		return nil, err
 	}
 
-	waiters, err := computed.Deployer.Execute(ctx, runtime.TaskServerDeploy, env)
+	waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, env, computed.Deployer)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +100,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 	defer cancel()
 
 	if RenderOrchestratorDeployment {
-		if err := deploy.Wait(ctx, env, waiters); err != nil {
+		if err := deploy.Wait(ctx, env, cluster, waiters); err != nil {
 			return nil, err
 		}
 	} else {
@@ -121,7 +126,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 		return nil, fnerrors.InternalError("orchestration service not found: %+v", computed.ComputedStack.Endpoints)
 	}
 
-	rt := runtime.For(ctx, env)
+	rt := runtime.ClusterFor(ctx, env)
 
 	portch := make(chan runtime.ForwardedPort)
 
@@ -216,7 +221,7 @@ func getUserAuth(ctx context.Context) (*fnapi.UserAuth, error) {
 	return auth, nil
 }
 
-func Deploy(ctx context.Context, env planning.Context, plan *schema.DeployPlan) (string, error) {
+func CallDeploy(ctx context.Context, env planning.Context, plan *schema.DeployPlan) (string, error) {
 	cli, err := compute.GetValue(ctx, ConnectToClient(env))
 	if err != nil {
 		return "", err

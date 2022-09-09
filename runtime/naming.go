@@ -61,7 +61,7 @@ func computeNaming(ctx context.Context, workspace string, env planning.Context, 
 }
 
 func computeInnerNaming(ctx context.Context, rootenv planning.Context, source *schema.Naming) (*schema.ComputedNaming, error) {
-	base, err := For(ctx, rootenv).ComputeBaseNaming(ctx, source)
+	base, err := ClusterFor(ctx, rootenv).ComputeBaseNaming(ctx, source)
 	if err != nil {
 		return nil, err
 	}

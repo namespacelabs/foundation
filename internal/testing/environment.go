@@ -48,7 +48,7 @@ func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool)
 func makeDeleteEnv(env planning.Context) func(context.Context) error {
 	return func(ctx context.Context) error {
 		// This always works because the vcluster is also deployed to the same namespace.
-		if _, err := runtime.For(ctx, env).DeleteRecursively(ctx, false); err != nil {
+		if _, err := runtime.ClusterFor(ctx, env).DeleteRecursively(ctx, false); err != nil {
 			return err
 		}
 

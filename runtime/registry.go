@@ -35,7 +35,7 @@ func HasRuntime(name string) bool {
 }
 
 // Never returns nil. If the specified runtime kind doesn't exist, then a runtime instance that always fails is returned.
-func For(ctx context.Context, env planning.Context) Cluster {
+func ClusterFor(ctx context.Context, env planning.Context) Cluster {
 	runtime, err := obtainSpecialized[Cluster](ctx, env)
 	if err != nil {
 		return runtimeFwdErr{err}

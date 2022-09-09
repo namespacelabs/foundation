@@ -18,7 +18,6 @@ import (
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/orchestration"
@@ -26,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -40,6 +38,7 @@ var errTestFailed = errors.New("test failed")
 
 type testRun struct {
 	SealedContext planning.Context // Doesn't affect the output.
+	RuntimeClass  runtime.Class    // Target, doesn't affect the output.
 
 	TestRef *schema.PackageRef
 
@@ -93,6 +92,11 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.
 func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
 	p := compute.MustGetDepValue(r, test.Plan, "plan")
 
+	cluster, err := test.RuntimeClass.EnsureCluster(ctx, test.SealedContext)
+	if err != nil {
+		return nil, err
+	}
+
 	env, cleanup, err := test.prepareDeployEnv(ctx, r)
 	if err != nil {
 		return nil, err
@@ -104,35 +108,15 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		}
 	}()
 
-	rt := runtime.For(ctx, env)
+	rt := runtime.ClusterFor(ctx, env)
+
+	deployPlan := deploy.Serialize(env.Workspace().Proto(), env.Environment(), test.Stack, p, test.ServersUnderTest)
+
+	fmt.Fprintf(console.Stderr(ctx), "%s: Test %s\n", test.TestRef.Canonical(), aec.LightBlackF.Apply("RUNNING"))
 
 	var waitErr error
-	if orchestration.UseOrchestrator {
-		deployPlan := deploy.Serialize(env.Workspace().Proto(), env.Environment(), test.Stack, p, test.ServersUnderTest)
-		id, err := orchestration.Deploy(ctx, env, deployPlan)
-		if err != nil {
-			return nil, err
-		}
-
-		if test.OutputProgress {
-			waitErr = deploy.RenderAndWait(ctx, env, func(ch chan *orchpb.Event) error {
-				return orchestration.WireDeploymentStatus(ctx, env, id, ch)
-			})
-		} else {
-			waitErr = orchestration.WireDeploymentStatus(ctx, env, id, nil)
-		}
-	} else {
-		waiters, err := p.Deployer.Execute(ctx, runtime.TaskServerDeploy, env)
-		if err != nil {
-			return nil, fnerrors.New("%s: failed to deploy: %w", test.TestRef.Canonical(), err)
-		}
-
-		if test.OutputProgress {
-			fmt.Fprintf(console.Stderr(ctx), "%s: Test %s\n", test.TestRef.Canonical(), aec.LightBlackF.Apply("RUNNING"))
-			waitErr = deploy.Wait(ctx, env, waiters)
-		} else {
-			waitErr = ops.WaitMultiple(ctx, waiters, nil)
-		}
+	if err := orchestration.Deploy(ctx, env, cluster, p.Deployer, deployPlan, true, test.OutputProgress); err != nil {
+		waitErr = fnerrors.Wrap(test.TestRef.AsPackageName(), err)
 	}
 
 	var testLogBuf *syncbuffer.ByteBuffer
@@ -242,7 +226,7 @@ func collectLogs(ctx context.Context, env planning.Context, testRef *schema.Pack
 	var serverLogs []serverLog
 	var mu sync.Mutex // Protects concurrent access to serverLogs.
 
-	rt := runtime.For(ctx, env)
+	rt := runtime.ClusterFor(ctx, env)
 
 	out := console.Output(ctx, "test.collect-logs")
 

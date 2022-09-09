@@ -88,7 +88,7 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 		}
 
-		return runtime.For(ctx, env).RunAttached(ctx, "debug-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
+		return runtime.ClusterFor(ctx, env).RunAttached(ctx, "debug-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
 			Image:   imageID,
 			Command: []string{"bash"},
 		}, runtime.TerminalIO{
