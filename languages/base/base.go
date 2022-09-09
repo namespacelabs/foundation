@@ -35,7 +35,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 		return nil, err
 	}
 
-	prep, err := binary.Plan(ctx, binPkg, binRef.GetName(), binary.BuildImageOpts{UsePrebuilts: true})
+	prep, err := binary.Plan(ctx, binPkg, binRef.GetName(), server.SealedContext(), binary.BuildImageOpts{UsePrebuilts: true})
 	if err != nil {
 		return nil, err
 	}
