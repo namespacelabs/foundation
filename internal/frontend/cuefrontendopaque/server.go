@@ -16,8 +16,14 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
+const (
+	serverKindStateless = "namespace.so/stateless"
+	serverKindStateful  = "namespace.so/stateful"
+)
+
 type cueServer struct {
 	Name string `json:"name"`
+	Kind string `json:"kind"`
 
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
 	Env  map[string]string          `json:"env"`
@@ -47,6 +53,16 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	out.Name = bits.Name
 	out.Framework = schema.Framework_BASE
 	out.RunByDefault = true
+
+	kind := bits.Kind
+	if kind == "" {
+		kind = serverKindStateless
+	}
+
+	if kind != serverKindStateful && kind != serverKindStateless {
+		return nil, nil, fnerrors.UserError(loc, "server kind is not supported: %s", kind)
+	}
+	out.IsStateful = kind != serverKindStateless
 
 	for name, svc := range bits.Services {
 		parsed, endpointType, err := parseService(loc, name, svc)
