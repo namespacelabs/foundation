@@ -444,7 +444,7 @@ func prepareServerImages(ctx context.Context, env planning.Context, cluster runt
 	for _, srv := range stack.Servers {
 		images := serverImages{PackageRef: srv.PackageRef()}
 
-		prebuilt, err := binary.PrebuiltImageID(srv.Location)
+		prebuilt, err := binary.PrebuiltImageID(ctx, srv.Location, env)
 		if err != nil {
 			return nil, err
 		}
@@ -537,7 +537,7 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) ([]con
 				return nil, err
 			}
 
-			prepared, err := binary.Plan(ctx, bin, binRef.Name,
+			prepared, err := binary.Plan(ctx, bin, binRef.Name, srv.SealedContext(),
 				binary.BuildImageOpts{
 					UsePrebuilts: true,
 					Platforms:    platforms,

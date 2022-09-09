@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build"
@@ -17,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -26,8 +26,7 @@ import (
 )
 
 var (
-	UsePrebuilts  = true // XXX make these a scoped configuration instead.
-	PrebuiltsFlag = ""
+	UsePrebuilts = true // XXX make these a scoped configuration instead.
 )
 
 var BuildGo func(loc pkggraph.Location, _ *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error)
@@ -69,17 +68,17 @@ func GetBinary(pkg *pkggraph.Package, binName string) (*schema.Binary, error) {
 }
 
 // Returns a Prepared.
-func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, opts BuildImageOpts) (*Prepared, error) {
+func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, env planning.Context, opts BuildImageOpts) (*Prepared, error) {
 	binary, err := GetBinary(pkg, binName)
 	if err != nil {
 		return nil, err
 	}
 
-	return PlanBinary(ctx, pkg.Location, binary, opts)
+	return PlanBinary(ctx, pkg.Location, binary, env, opts)
 }
 
-func PlanBinary(ctx context.Context, loc pkggraph.Location, binary *schema.Binary, opts BuildImageOpts) (*Prepared, error) {
-	spec, err := planImage(ctx, loc, binary, opts)
+func PlanBinary(ctx context.Context, loc pkggraph.Location, binary *schema.Binary, env planning.Context, opts BuildImageOpts) (*Prepared, error) {
+	spec, err := planImage(ctx, loc, binary, env, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +117,7 @@ func PlanImage(ctx context.Context, pkg *pkggraph.Package, binName string, env p
 
 	loc := pkg.Location
 
-	spec, err := planImage(ctx, loc, binary, BuildImageOpts{UsePrebuilts: usePrebuilts})
+	spec, err := planImage(ctx, loc, binary, env, BuildImageOpts{UsePrebuilts: usePrebuilts})
 	if err != nil {
 		return nil, err
 	}
@@ -139,30 +138,21 @@ func PlanImage(ctx context.Context, pkg *pkggraph.Package, binName string, env p
 	}, nil
 }
 
-func PrebuiltImageID(loc pkggraph.Location) (*oci.ImageID, error) {
+func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, env planning.Context) (*oci.ImageID, error) {
 	if !UsePrebuilts {
 		return nil, nil
 	}
 
-	var fromFlag, fromWorkspace *oci.ImageID
-	for _, overwrite := range strings.Split(PrebuiltsFlag, ",") {
-		parts := strings.SplitN(overwrite, ":", 2)
-		if len(parts) != 2 {
-			break // Silently fail.
-		}
-		if parts[0] != loc.PackageName.String() {
-			continue
-		}
+	prebuilts := loc.Module.Workspace.PrebuiltBinary
 
-		parts = strings.SplitN(parts[1], "@", 2)
-		if len(parts) != 2 {
-			break // Silently fail.
-		}
-
-		fromFlag = &oci.ImageID{Repository: parts[0], Digest: parts[1]}
+	conf := &Prebuilts{}
+	if env.Configuration().Get(conf) {
+		prebuilts = append(prebuilts, conf.PrebuiltBinary...)
+		fmt.Fprintf(console.Debug(ctx), "Adding %d prebuilts from planning configuration.", len(conf.PrebuiltBinary))
 	}
 
-	for _, prebuilt := range loc.Module.Workspace.PrebuiltBinary {
+	var selected *oci.ImageID
+	for _, prebuilt := range prebuilts {
 		if prebuilt.PackageName == loc.PackageName.String() {
 			imgid := oci.ImageID{Repository: prebuilt.Repository, Digest: prebuilt.Digest}
 			if imgid.Repository == "" {
@@ -172,27 +162,24 @@ func PrebuiltImageID(loc pkggraph.Location) (*oci.ImageID, error) {
 				imgid.Repository = filepath.Join(loc.Module.Workspace.PrebuiltBaseRepository, prebuilt.PackageName)
 			}
 
-			fromWorkspace = &imgid
+			if selected == nil {
+				selected = &imgid
+				continue
+			}
+
+			if imgid.Repository != selected.Repository {
+				return nil, fnerrors.UserError(loc, "conflicting repositories for prebuilt: %s vs %s", imgid.Repository, selected.Repository)
+			}
+			if imgid.Digest != selected.Digest {
+				return nil, fnerrors.UserError(loc, "conflicting digest for prebuilt: %s vs %s", imgid.Digest, selected.Digest)
+			}
 		}
 	}
 
-	if fromFlag != nil && fromWorkspace != nil {
-		if fromFlag.Repository != fromWorkspace.Repository {
-			return nil, fnerrors.UserError(loc, "conflicting repositories for prebuilt: %s vs %s", fromFlag.Repository, fromWorkspace.Repository)
-		}
-		if fromFlag.Digest != fromWorkspace.Digest {
-			return nil, fnerrors.UserError(loc, "conflicting digest for prebuilt: %s vs %s", fromFlag.Digest, fromWorkspace.Digest)
-		}
-	}
-
-	if fromFlag != nil {
-		return fromFlag, nil
-	}
-
-	return fromWorkspace, nil
+	return selected, nil
 }
 
-func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
+func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, env planning.Context, opts BuildImageOpts) (build.Spec, error) {
 	// We prepare the build spec, as we need information, e.g. whether it's platform independent,
 	// if a prebuilt is specified.
 	spec, err := buildLayeredSpec(ctx, loc, bin)
@@ -201,7 +188,7 @@ func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, o
 	}
 
 	if opts.UsePrebuilts {
-		imgid, err := PrebuiltImageID(loc)
+		imgid, err := PrebuiltImageID(ctx, loc, env)
 		if err != nil {
 			return nil, err
 		}

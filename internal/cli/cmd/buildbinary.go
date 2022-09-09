@@ -101,7 +101,7 @@ func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Loca
 
 		// TODO: allow to choose what binary to build within a package.
 		for _, b := range pkg.Binaries {
-			bin, err := binary.Plan(ctx, pkg, b.Name, imgOpts)
+			bin, err := binary.Plan(ctx, pkg, b.Name, env, imgOpts)
 			if err != nil {
 				return err
 			}

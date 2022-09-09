@@ -61,7 +61,7 @@ func NewDebugShellCmd() *cobra.Command {
 				return err
 			}
 
-			prepared, err := binary.Plan(ctx, pkg, binaryRef.Name, binary.BuildImageOpts{Platforms: platforms, UsePrebuilts: true})
+			prepared, err := binary.Plan(ctx, pkg, binaryRef.Name, env, binary.BuildImageOpts{Platforms: platforms, UsePrebuilts: true})
 			if err != nil {
 				return err
 			}

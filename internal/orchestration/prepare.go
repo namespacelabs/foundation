@@ -39,7 +39,10 @@ func RegisterPrepare() {
 }
 
 func prepare(ctx context.Context, targetEnv planning.Context, target runtime.DeferredCluster) (any, error) {
-	env := makeOrchEnv(targetEnv)
+	env, err := makeOrchEnv(ctx, targetEnv)
+	if err != nil {
+		return nil, err
+	}
 
 	cluster, err := target.Bind(target.Class().Namespace(env))
 	if err != nil {

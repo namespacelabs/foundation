@@ -427,7 +427,7 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 		return nil, nil, err
 	}
 
-	prepared, err := binary.Plan(ctx, pkg, ref.Name, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
+	prepared, err := binary.Plan(ctx, pkg, ref.Name, env, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
 	if err != nil {
 		return nil, nil, err
 	}

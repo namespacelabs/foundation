@@ -73,7 +73,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env planning.Context, con
 			return nil, err
 		}
 
-		p, err := binary.Plan(ctx, pkg, controllerPkg.Name, binary.BuildImageOpts{UsePrebuilts: true})
+		p, err := binary.Plan(ctx, pkg, controllerPkg.Name, env, binary.BuildImageOpts{UsePrebuilts: true})
 		if err != nil {
 			return nil, err
 		}

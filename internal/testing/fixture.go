@@ -71,7 +71,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, err
 	}
 
-	testBin, err := binary.PlanBinary(ctx, driverLoc, testDef.Driver, binary.BuildImageOpts{
+	testBin, err := binary.PlanBinary(ctx, driverLoc, testDef.Driver, env, binary.BuildImageOpts{
 		Platforms: platforms,
 	})
 	if err != nil {

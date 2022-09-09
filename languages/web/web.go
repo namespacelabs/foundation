@@ -80,7 +80,7 @@ func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBui
 			return nil, err
 		}
 
-		p, err := binary.Plan(ctx, pkg, controllerPkg.Name, binary.BuildImageOpts{UsePrebuilts: false})
+		p, err := binary.Plan(ctx, pkg, controllerPkg.Name, srv.SealedContext(), binary.BuildImageOpts{UsePrebuilts: false})
 		if err != nil {
 			return nil, err
 		}

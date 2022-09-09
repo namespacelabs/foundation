@@ -66,7 +66,7 @@ func Make(ctx context.Context, env pkggraph.SealedContext, serverLocRef *pkggrap
 		return nil, err
 	}
 
-	prebuilt, err := binary.PrebuiltImageID(binPkg.Location)
+	prebuilt, err := binary.PrebuiltImageID(ctx, binPkg.Location, env)
 	if err != nil {
 		return nil, err
 	}

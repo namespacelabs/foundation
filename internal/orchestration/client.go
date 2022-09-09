@@ -32,7 +32,6 @@ import (
 )
 
 const (
-	serverPkg   = "namespacelabs.dev/foundation/internal/orchestration/server"
 	connTimeout = time.Minute // TODO reduce - we've seen slow connections in CI
 )
 
