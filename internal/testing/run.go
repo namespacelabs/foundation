@@ -78,8 +78,8 @@ func (test *testRun) Inputs() *compute.In {
 	return in
 }
 
-func (test *testRun) prepareDeployEnv(ctx context.Context, r compute.Resolved) (planning.Context, func(context.Context) error, error) {
-	return test.SealedContext, makeDeleteEnv(test.SealedContext), nil
+func (test *testRun) prepareDeployEnv(ctx context.Context, r compute.Resolved, cluster runtime.Cluster) (planning.Context, func(context.Context) error, error) {
+	return test.SealedContext, makeDeleteEnv(cluster), nil
 }
 
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
@@ -97,7 +97,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		return nil, err
 	}
 
-	env, cleanup, err := test.prepareDeployEnv(ctx, r)
+	env, cleanup, err := test.prepareDeployEnv(ctx, r, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +107,6 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 			fmt.Fprintln(console.Errors(ctx), "Failed to cleanup: ", err)
 		}
 	}()
-
-	rt := runtime.ClusterFor(ctx, env)
 
 	deployPlan := deploy.Serialize(env.Workspace().Proto(), env.Environment(), test.Stack, p, test.ServersUnderTest)
 
@@ -153,7 +151,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 			parts := strings.Split(test.TestRef.PackageName, "/")
 			name := strings.ToLower(parts[len(parts)-1]) + "-" + test.TestRef.Name + "-" + ids.NewRandomBase32ID(8)
 
-			if err := rt.RunOneShot(ctx, name, testRun, testLog, true); err != nil {
+			if err := cluster.RunOneShot(ctx, name, testRun, testLog, true); err != nil {
 				// XXX consolidate these two.
 				var e1 runtime.ErrContainerExitStatus
 				var e2 runtime.ErrContainerFailed
@@ -192,7 +190,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	collectionCtx, collectionDone := context.WithTimeout(ctx, 60*time.Second)
 	defer collectionDone()
 
-	bundle, err := collectLogs(collectionCtx, env, test.TestRef, test.Stack, test.ServersUnderTest, test.OutputProgress)
+	bundle, err := collectLogs(collectionCtx, env, cluster, test.TestRef, test.Stack, test.ServersUnderTest, test.OutputProgress)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +211,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	return bundle, nil
 }
 
-func collectLogs(ctx context.Context, env planning.Context, testRef *schema.PackageRef, stack *schema.Stack, focus []string, printLogs bool) (*storage.TestResultBundle, error) {
+func collectLogs(ctx context.Context, env planning.Context, rt runtime.Cluster, testRef *schema.PackageRef, stack *schema.Stack, focus []string, printLogs bool) (*storage.TestResultBundle, error) {
 	ex := executor.New(ctx, "test.collect-logs")
 
 	type serverLog struct {
@@ -225,8 +223,6 @@ func collectLogs(ctx context.Context, env planning.Context, testRef *schema.Pack
 
 	var serverLogs []serverLog
 	var mu sync.Mutex // Protects concurrent access to serverLogs.
-
-	rt := runtime.ClusterFor(ctx, env)
 
 	out := console.Output(ctx, "test.collect-logs")
 

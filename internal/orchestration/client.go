@@ -126,12 +126,10 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 		return nil, fnerrors.InternalError("orchestration service not found: %+v", computed.ComputedStack.Endpoints)
 	}
 
-	rt := runtime.ClusterFor(ctx, env)
-
 	portch := make(chan runtime.ForwardedPort)
 
 	defer close(portch)
-	if _, err := rt.ForwardPort(ctx, focus.Proto(), endpoint.Port.ContainerPort, []string{"127.0.0.1"}, func(fp runtime.ForwardedPort) {
+	if _, err := cluster.ForwardPort(ctx, focus.Proto(), endpoint.Port.ContainerPort, []string{"127.0.0.1"}, func(fp runtime.ForwardedPort) {
 		portch <- fp
 	}); err != nil {
 		return nil, err
