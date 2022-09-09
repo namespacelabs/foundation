@@ -1,0 +1,16 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.workspace.tasks.protolog;
+
+option go_package = "namespacelabs.dev/foundation/workspace/tasks/protolog";
+
+import "workspace/tasks/protocol/tasks.proto";
+
+message Log {
+    int32                                    log_level = 1;
+    foundation.workspace.tasks.protocol.Task task      = 2;
+}

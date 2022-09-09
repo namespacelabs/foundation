@@ -65,6 +65,10 @@ type EventData struct {
 	Err            error
 }
 
+func (ev *EventData) Proto() *protocol.Task {
+	return makeProto(ev, nil)
+}
+
 type ActionEvent struct {
 	data     EventData
 	progress ActionProgress

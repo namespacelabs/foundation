@@ -16,11 +16,9 @@ import (
 	"namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
-	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/go/rpcerrors"
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/workspace/tasks"
-	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
 )
 
 type Service struct {
@@ -53,22 +51,20 @@ func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream 
 	log.Printf("new DeploymentStatus request for deployment %s\n", req.Id)
 
 	errch := make(chan error, 1)
-	ch := make(chan *orchestration.Event)
+	ch := make(chan *proto.DeploymentStatusResponse)
 
 	go func() {
 		defer close(errch)
-		errch <- svc.d.Status(stream.Context(), req.Id, ch)
+		errch <- svc.d.Status(stream.Context(), req.Id, req.LogLevel, ch)
 	}()
 
 	for {
-		ev, ok := <-ch
+		res, ok := <-ch
 		if !ok {
 			return <-errch
 		}
 
-		if err := stream.Send(&proto.DeploymentStatusResponse{
-			Event: ev,
-		}); err != nil {
+		if err := stream.Send(res); err != nil {
 			log.Printf("failed to send status response: %v", err)
 		}
 	}
@@ -81,7 +77,6 @@ func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	kubeops.Register()
 	iam.RegisterGraphHandlers()
 
-	// Debug help - maybe delete later.
+	// Always log actions, we filter if we show them on the client.
 	tasks.LogActions = true
-	simplelog.AlsoReportStartEvents = true
 }

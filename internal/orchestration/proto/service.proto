@@ -12,6 +12,7 @@ import "providers/aws/aws.proto";
 import "internal/fnapi/userauth.proto";
 import "schema/orchestration/event.proto";
 import "schema/serialized.proto";
+import "workspace/tasks/protocol/tasks.proto";
 
 message DeployRequest {
     foundation.schema.DeployPlan  plan = 1;
@@ -26,11 +27,13 @@ message DeployResponse {
 }
 
 message DeploymentStatusRequest {
-    string id = 1;  // Deployment to follow
+    string id        = 1;  // Deployment to follow
+    int32  log_level = 2;
 }
 
 message DeploymentStatusResponse {
-    foundation.schema.orchestration.Event event = 2;
+    foundation.schema.orchestration.Event    event = 2;
+    foundation.workspace.tasks.protocol.Task task  = 3;
 
     reserved 1;
 }

@@ -18,20 +18,21 @@ import (
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/internal/orchestration/proto"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
-	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
+	"namespacelabs.dev/foundation/workspace/tasks/protolog"
 	"namespacelabs.dev/go-ids"
 )
 
 const (
-	maxLogLevel = 0
-	eof         = "EOF" // magic marker to signal when to stop tailing logs
-	eventFile   = "events.json"
-	errFile     = "error.txt"
+	eof       = "EOF" // magic marker to signal when to stop tailing logs
+	taskFile  = "tasks.json"
+	eventFile = "events.json"
+	errFile   = "error.txt"
 )
 
 type deployer struct {
@@ -67,24 +68,27 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arriv
 		return "", fmt.Errorf("unable to create dir %s: %w", dir, err)
 	}
 
-	// Ensure event log exists
 	eventPath := filepath.Join(dir, eventFile)
-	if f, err := os.OpenFile(eventPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err != nil {
+	if err := ensureFile(eventPath); err != nil {
 		return "", err
-	} else {
-		f.Close()
+	}
+
+	taskPath := filepath.Join(dir, taskFile)
+	if err := ensureFile(taskPath); err != nil {
+		return "", err
 	}
 
 	go func() {
+		// We only close files here to ensure
+		// 1) errors (if any) have been persisted already
+		// 2) files end with eof - no matter what
 		defer func() {
-			// Indicate end of event stream
-			if err := appendLine(eventPath, eof); err != nil {
-				log.Printf("Unable to append to file %s: %v", eventPath, err)
-			}
+			markEof(eventPath)
+			markEof(taskPath)
 		}()
 
 		// Use server context to not propagate context cancellation
-		if err := d.execute(d.serverCtx, eventPath, p, env, arrival); err != nil {
+		if err := d.executeWithLog(eventPath, taskPath, p, env, arrival); err != nil {
 			status := status.Convert(err)
 			data, jsonErr := json.Marshal(status.Proto())
 			if jsonErr != nil {
@@ -101,11 +105,25 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arriv
 	return id, nil
 }
 
-func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, env planning.Context, arrival time.Time) error {
-	// TODO persist logs?
-	sink := simplelog.NewSink(os.Stderr, maxLogLevel)
-	ctx = tasks.WithSink(ctx, sink)
+func (d *deployer) executeWithLog(eventPath, taskPath string, p *ops.Plan, env planning.Context, arrival time.Time) error {
+	ch := make(chan *protolog.Log)
 
+	errch := make(chan error, 1)
+	go func() {
+		sink := protolog.NewSink(ch)
+		defer sink.Close()
+
+		ctx := tasks.WithSink(d.serverCtx, sink)
+		errch <- d.execute(ctx, eventPath, p, env, arrival)
+	}()
+
+	logErr := logProtos(taskPath, ch)
+	execErr := <-errch
+
+	return multierr.New(execErr, logErr)
+}
+
+func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, env planning.Context, arrival time.Time) error {
 	cluster, err := runtime.ClusterFor(ctx, env)
 	if err != nil {
 		return err
@@ -132,16 +150,16 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 	ch := make(chan *orchestration.Event)
 	go func() {
 		defer close(errch)
-		errch <- logEvents(eventPath, ch)
+		errch <- ops.WaitMultiple(ctx, waiters, ch)
 	}()
 
-	waitErr := ops.WaitMultiple(ctx, waiters, ch)
-	logErr := <-errch
+	logErr := logProtos(eventPath, ch)
+	waitErr := <-errch
 
 	return multierr.New(waitErr, logErr)
 }
 
-func logEvents(filename string, ch chan *orchestration.Event) error {
+func logProtos[V any](filename string, ch chan *V) error {
 	for {
 		ev, ok := <-ch
 		if !ok {
@@ -173,50 +191,104 @@ func appendLine(filename, line string) error {
 	return nil
 }
 
-func (d *deployer) Status(ctx context.Context, id string, ch chan *orchestration.Event) error {
+func markEof(path string) {
+	if err := appendLine(path, eof); err != nil {
+		log.Printf("Unable to append to file %s: %v", path, err)
+	}
+}
+
+func ensureFile(path string) error {
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return nil
+}
+
+func (d *deployer) Status(ctx context.Context, id string, loglevel int32, ch chan *proto.DeploymentStatusResponse) error {
 	defer close(ch)
 
 	dir := filepath.Join(d.statusDir, id)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return fmt.Errorf("unknown deployment id: %s", id)
+	}
 
-	t, err := tail.TailFile(filepath.Join(dir, eventFile), tail.Config{
+	events, err := tail.TailFile(filepath.Join(dir, eventFile), tail.Config{
 		MustExist: true,
 		Follow:    true,
 	})
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("unknown deployment id: %s", id)
+			return fmt.Errorf("no events found for deployment id: %s", id)
 		}
 		return err
 	}
 
+	tasks, err := tail.TailFile(filepath.Join(dir, taskFile), tail.Config{
+		MustExist: true,
+		Follow:    true,
+	})
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("no task logs found for deployment id: %s", id)
+		}
+		return err
+	}
+
+	var tasksDone, eventsDone bool
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case line := <-t.Lines:
+		case line := <-events.Lines:
 			if line.Text == eof {
-				data, err := os.ReadFile(filepath.Join(dir, errFile))
-				if err != nil {
-					if os.IsNotExist(err) {
-						// no deployment error found
-						return nil
+				eventsDone = true
+			} else {
+				ev := &orchestration.Event{}
+				if err := json.Unmarshal([]byte(line.Text), ev); err != nil {
+					return err
+				}
+
+				ch <- &proto.DeploymentStatusResponse{
+					Event: ev,
+				}
+			}
+		case line := <-tasks.Lines:
+			if line.Text == eof {
+				tasksDone = true
+			} else {
+				log := &protolog.Log{}
+				if err := json.Unmarshal([]byte(line.Text), log); err != nil {
+					return err
+				}
+
+				if log.LogLevel <= loglevel {
+					ch <- &proto.DeploymentStatusResponse{
+						Task: log.Task,
 					}
-					return fmt.Errorf("unable to read deployment error: %w", err)
 				}
-
-				proto := &spb.Status{}
-				if err := json.Unmarshal(data, proto); err != nil {
-					return fmt.Errorf("unable to unmarshal deployment error: %w", err)
-				}
-				return status.FromProto(proto).Err()
 			}
+		}
 
-			ev := &orchestration.Event{}
-			if err := json.Unmarshal([]byte(line.Text), ev); err != nil {
-				return err
-			}
-
-			ch <- ev
+		if tasksDone && eventsDone {
+			break
 		}
 	}
+
+	data, err := os.ReadFile(filepath.Join(dir, errFile))
+	if err != nil {
+		if os.IsNotExist(err) {
+			// no deployment error found
+			return nil
+		}
+		return fmt.Errorf("unable to read deployment error: %w", err)
+	}
+
+	proto := &spb.Status{}
+	if err := json.Unmarshal(data, proto); err != nil {
+		return fmt.Errorf("unable to unmarshal deployment error: %w", err)
+	}
+	return status.FromProto(proto).Err()
 }
