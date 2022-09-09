@@ -44,6 +44,7 @@ import (
 	"namespacelabs.dev/foundation/internal/testing"
 	"namespacelabs.dev/foundation/internal/ulimit"
 	"namespacelabs.dev/foundation/internal/versions"
+	"namespacelabs.dev/foundation/languages/base"
 	"namespacelabs.dev/foundation/languages/golang"
 	nodeintegration "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/languages/opaque"
@@ -201,6 +202,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		web.Register()
 		nodeintegration.Register()
 		opaque.Register()
+		base.Register()
 
 		// Opaque integrations
 		docker.Register()

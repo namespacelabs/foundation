@@ -53,6 +53,8 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 
 	out := &schema.Server{}
 	out.Name = bits.Name
+	out.Framework = schema.Framework_BASE
+	out.RunByDefault = true
 
 	switch bits.Integration.Kind {
 	case serverKindDockerfile:

@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/multiplatform"
-	"namespacelabs.dev/foundation/integrations/shared"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/console"
@@ -454,8 +453,6 @@ func prepareServerImages(ctx context.Context, env planning.Context, cluster runt
 
 		if prebuilt != nil {
 			spec = build.PrebuiltPlan(*prebuilt, false /* platformIndependent */, build.PrebuiltResolveOpts())
-		} else if srv.Integration() != nil {
-			spec, err = shared.PrepareBuild(ctx, srv.Location, srv.Integration(), focus.Includes(srv.PackageName()))
 		} else {
 			spec, err = languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, buildAssets, srv, focus.Includes(srv.PackageName()))
 		}
@@ -662,13 +659,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 		out.ConfigImage = &imgs.Config
 	}
 
-	var err error
-	if s.Integration() != nil {
-		err = shared.PrepareRun(ctx, s, &out.ServerRunOpts)
-	} else {
-		err = languages.IntegrationFor(s.Framework()).PrepareRun(ctx, s, &out.ServerRunOpts)
-	}
-	if err != nil {
+	if err := languages.IntegrationFor(s.Framework()).PrepareRun(ctx, s, &out.ServerRunOpts); err != nil {
 		return err
 	}
 

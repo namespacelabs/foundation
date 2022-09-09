@@ -54,11 +54,6 @@ func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env pl
 			continue
 		}
 		if srv := sealed.Proto.Server; srv != nil {
-			if srv.Integration != nil {
-				// Opaque.
-				continue
-			}
-
 			defs, err := languages.IntegrationFor(srv.Framework).GenerateServer(sealed.ParsedPackage, sealed.Proto.Node)
 			if err != nil {
 				onError(fnerrors.CodegenError{PackageName: loc.AsPackageName().String(), What: "generate server", Err: err})

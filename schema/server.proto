@@ -25,6 +25,8 @@ enum Framework {
     NODEJS                = 3;
     // Only for servers
     OPAQUE = 4;
+    // Set when a server is defined using the new import-less syntax. Can't be set manually in CUE.
+    BASE = 5;
 }
 
 // Next ID: 29
