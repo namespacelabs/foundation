@@ -60,6 +60,8 @@ type Planner interface {
 }
 
 type DeferredCluster interface {
+	Class() Class
+
 	Bind(Namespace) (Cluster, error)
 }
 
@@ -133,6 +135,10 @@ type Cluster interface {
 
 	// Rebind returns a new instance of the same cluster, attached to a different namespace.
 	Rebind(planning.Context) Cluster
+
+	// Prepare ensures that a cluster-specific bit of initialization is done once per instance.
+	// XXX remove planning.Context, as it leaks environment bits.
+	Prepare(context.Context, string, planning.Context) (any, error)
 
 	HasPrepareProvision
 	HasTargetPlatforms

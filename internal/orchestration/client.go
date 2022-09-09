@@ -17,13 +17,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnapi"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/orchestration/proto"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
-	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
@@ -46,87 +42,6 @@ type RemoteOrchestrator struct {
 	cluster  runtime.Cluster
 	server   *schema.Server
 	endpoint *schema.Endpoint
-}
-
-type clientInstance struct {
-	ctx     planning.Context
-	cluster runtime.Cluster
-
-	compute.DoScoped[*RemoteOrchestrator] // Only connect once per configuration.
-}
-
-func ensureOrchestrator(env planning.Context, cluster runtime.Cluster) compute.Computable[*RemoteOrchestrator] {
-	return &clientInstance{ctx: env, cluster: cluster}
-}
-
-func (c *clientInstance) Action() *tasks.ActionEvent {
-	return tasks.Action("orchestrator.ensure").Arg("env", c.ctx.Environment().Name)
-}
-
-func (c *clientInstance) Inputs() *compute.In {
-	return compute.Inputs().Str("env", c.ctx.Environment().Name)
-}
-
-func (c *clientInstance) Output() compute.Output {
-	return compute.Output{NotCacheable: true}
-}
-
-func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*RemoteOrchestrator, error) {
-	env := makeOrchEnv(c.ctx)
-
-	cluster := c.cluster.Rebind(env)
-
-	focus, err := provision.RequireServer(ctx, env, schema.PackageName(serverPkg))
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err := deploy.PrepareDeployServers(ctx, env, cluster, []provision.Server{focus}, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	computed, err := compute.GetValue(ctx, plan)
-	if err != nil {
-		return nil, err
-	}
-
-	waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, env, computed.Deployer)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, connTimeout)
-	defer cancel()
-
-	if RenderOrchestratorDeployment {
-		if err := deploy.Wait(ctx, env, cluster, waiters); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := ops.WaitMultiple(ctx, waiters, nil); err != nil {
-			return nil, err
-		}
-	}
-
-	var endpoint *schema.Endpoint
-	for _, e := range computed.ComputedStack.Endpoints {
-		if e.ServerOwner != serverPkg {
-			continue
-		}
-
-		for _, m := range e.ServiceMetadata {
-			if m.Kind == proto.OrchestrationService_ServiceDesc.ServiceName {
-				endpoint = e
-			}
-		}
-	}
-
-	if endpoint == nil {
-		return nil, fnerrors.InternalError("orchestration service not found: %+v", computed.ComputedStack.Endpoints)
-	}
-
-	return &RemoteOrchestrator{cluster: cluster, server: focus.Proto(), endpoint: endpoint}, nil
 }
 
 func (c *RemoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, error) {

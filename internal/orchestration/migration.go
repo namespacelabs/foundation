@@ -14,17 +14,16 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, p *ops.Plan, plan *schema.DeployPlan, wait, outputProgress bool) error {
 	if UseOrchestrator {
-		remote, err := compute.GetValue(ctx, ensureOrchestrator(env, cluster))
+		raw, err := cluster.Prepare(ctx, key, env)
 		if err != nil {
 			return err
 		}
 
-		conn, err := remote.Connect(ctx)
+		conn, err := raw.(*RemoteOrchestrator).Connect(ctx)
 		if err != nil {
 			return err
 		}

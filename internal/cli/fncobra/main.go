@@ -220,6 +220,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Runtimes.
 		kubernetes.Register()
 		kubeops.Register()
+		orchestration.RegisterPrepare()
 
 		// Telemetry.
 		tel.RecordInvocation(ctxWithSink, cmd, args)

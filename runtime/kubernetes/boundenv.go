@@ -16,7 +16,7 @@ import (
 )
 
 type ClusterNamespace struct {
-	Cluster
+	*Cluster
 	clusterTarget
 }
 

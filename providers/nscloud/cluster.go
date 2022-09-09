@@ -389,7 +389,7 @@ func (d deferred) EnsureCluster(ctx context.Context) (runtime.DeferredCluster, e
 		return nil, err
 	}
 
-	return deferredCluster{unbound}, nil
+	return deferredCluster{d.cfg, unbound}, nil
 }
 
 func (d deferred) PrepareProvision(_ context.Context, env planning.Context) (*rtypes.ProvisionProps, error) {
@@ -410,7 +410,12 @@ func (d deferred) TargetPlatforms(context.Context) ([]specs.Platform, error) {
 }
 
 type deferredCluster struct {
-	cluster kubernetes.Cluster
+	cfg     *client.HostConfig
+	cluster *kubernetes.Cluster
+}
+
+func (d deferredCluster) Class() runtime.Class {
+	return deferred{d.cfg}
 }
 
 func (d deferredCluster) Bind(ns runtime.Namespace) (runtime.Cluster, error) {

@@ -105,10 +105,10 @@ func (k k8stools) HostPlatform(ctx context.Context) (specs.Platform, error) {
 	return platforms[0], nil
 }
 
-func (k8stools) makeRuntime(ctx context.Context) (kubernetes.Cluster, planning.Configuration, error) {
+func (k8stools) makeRuntime(ctx context.Context) (*kubernetes.Cluster, planning.Configuration, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
-		return kubernetes.Cluster{}, nil, err
+		return nil, nil, err
 	}
 
 	ck := planning.MakeConfigurationWith("tools", planning.ConfigurationSlice{
@@ -118,7 +118,7 @@ func (k8stools) makeRuntime(ctx context.Context) (kubernetes.Cluster, planning.C
 
 	k, err := kubernetes.NewCluster(ctx, ck)
 	if err != nil {
-		return kubernetes.Cluster{}, nil, err
+		return nil, nil, err
 	}
 
 	return k, ck, nil
