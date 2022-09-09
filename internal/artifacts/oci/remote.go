@@ -31,13 +31,13 @@ const (
 )
 
 type keychainMap struct {
-	Suffix   string
+	Domain   string
 	Keychain Keychain
 	When     KeychainWhen
 }
 
 func RegisterDomainKeychain(suffix string, keychain Keychain, purpose KeychainWhen) {
-	staticMapping = append(staticMapping, keychainMap{"." + suffix, keychain, purpose})
+	staticMapping = append(staticMapping, keychainMap{suffix, keychain, purpose})
 }
 
 func WriteRemoteOptsWithAuth(ctx context.Context, keychain Keychain) []remote.Option {
@@ -96,7 +96,7 @@ type defaultKeychain struct {
 
 func (ks defaultKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
 	for _, kc := range staticMapping {
-		if strings.HasSuffix(resource.RegistryStr(), kc.Suffix) {
+		if resource.RegistryStr() == kc.Domain || strings.HasSuffix(resource.RegistryStr(), "."+kc.Domain) {
 			if kc.When == Keychain_UseAlways || (kc.When == Keychain_UseOnWrites && ks.writing) {
 				return kc.Keychain.Resolve(ks.ctx, resource)
 			}
