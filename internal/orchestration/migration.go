@@ -19,12 +19,19 @@ import (
 
 func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, p *ops.Plan, plan *schema.DeployPlan, wait, outputProgress bool) error {
 	if UseOrchestrator {
-		cli, err := compute.GetValue(ctx, ConnectToClient(env, cluster))
+		remote, err := compute.GetValue(ctx, ensureOrchestrator(env, cluster))
 		if err != nil {
 			return err
 		}
 
-		id, err := CallDeploy(ctx, env, cli, plan)
+		conn, err := remote.Connect(ctx)
+		if err != nil {
+			return err
+		}
+
+		defer conn.Close()
+
+		id, err := CallDeploy(ctx, env, conn, plan)
 		if err != nil {
 			return err
 		}
@@ -32,10 +39,10 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, 
 		if wait {
 			if outputProgress {
 				return deploy.RenderAndWait(ctx, env, cluster, func(ch chan *orchpb.Event) error {
-					return WireDeploymentStatus(ctx, cli, id, ch)
+					return WireDeploymentStatus(ctx, conn, id, ch)
 				})
 			} else {
-				return WireDeploymentStatus(ctx, cli, id, nil)
+				return WireDeploymentStatus(ctx, conn, id, nil)
 			}
 		}
 	} else {

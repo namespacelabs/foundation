@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -41,23 +42,25 @@ var (
 	RenderOrchestratorDeployment = false
 )
 
-type Client struct {
-	proto.OrchestrationServiceClient
+type RemoteOrchestrator struct {
+	cluster  runtime.Cluster
+	server   *schema.Server
+	endpoint *schema.Endpoint
 }
 
 type clientInstance struct {
 	ctx     planning.Context
 	cluster runtime.Cluster
 
-	compute.DoScoped[*Client] // Only connect once per configuration.
+	compute.DoScoped[*RemoteOrchestrator] // Only connect once per configuration.
 }
 
-func ConnectToClient(env planning.Context, cluster runtime.Cluster) compute.Computable[*Client] {
+func ensureOrchestrator(env planning.Context, cluster runtime.Cluster) compute.Computable[*RemoteOrchestrator] {
 	return &clientInstance{ctx: env, cluster: cluster}
 }
 
 func (c *clientInstance) Action() *tasks.ActionEvent {
-	return tasks.Action("orchestrator.connect").Arg("env", c.ctx.Environment().Name)
+	return tasks.Action("orchestrator.ensure").Arg("env", c.ctx.Environment().Name)
 }
 
 func (c *clientInstance) Inputs() *compute.In {
@@ -68,7 +71,7 @@ func (c *clientInstance) Output() compute.Output {
 	return compute.Output{NotCacheable: true}
 }
 
-func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Client, error) {
+func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*RemoteOrchestrator, error) {
 	env := makeOrchEnv(c.ctx)
 
 	cluster := c.cluster.Rebind(env)
@@ -123,30 +126,17 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Clie
 		return nil, fnerrors.InternalError("orchestration service not found: %+v", computed.ComputedStack.Endpoints)
 	}
 
-	portch := make(chan runtime.ForwardedPort)
+	return &RemoteOrchestrator{cluster: cluster, server: focus.Proto(), endpoint: endpoint}, nil
+}
 
-	defer close(portch)
-	if _, err := cluster.ForwardPort(ctx, focus.Proto(), endpoint.Port.ContainerPort, []string{"127.0.0.1"}, func(fp runtime.ForwardedPort) {
-		portch <- fp
-	}); err != nil {
-		return nil, err
-	}
-
-	port, ok := <-portch
-	if !ok {
-		return nil, fnerrors.InternalError("didn't receive forwarded port from orchestration server")
-	}
-
-	conn, err := grpc.DialContext(ctx, fmt.Sprintf("127.0.0.1:%d", port.LocalPort),
+func (c *RemoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, error) {
+	return grpc.DialContext(ctx, "orchestrator",
 		grpc.WithBlock(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, fnerrors.InternalError("unable to connect to orchestration server: %w", err)
-	}
-
-	cli := proto.NewOrchestrationServiceClient(conn)
-
-	return &Client{OrchestrationServiceClient: cli}, nil
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return c.cluster.DialServer(ctx, c.server, c.endpoint.Port.ContainerPort)
+		}),
+	)
 }
 
 func getAwsConf(ctx context.Context, env planning.Context) (*awsprovider.Conf, error) {
@@ -216,7 +206,7 @@ func getUserAuth(ctx context.Context) (*fnapi.UserAuth, error) {
 	return auth, nil
 }
 
-func CallDeploy(ctx context.Context, env planning.Context, cli *Client, plan *schema.DeployPlan) (string, error) {
+func CallDeploy(ctx context.Context, env planning.Context, conn *grpc.ClientConn, plan *schema.DeployPlan) (string, error) {
 	req := &proto.DeployRequest{
 		Plan: plan,
 	}
@@ -233,7 +223,7 @@ func CallDeploy(ctx context.Context, env planning.Context, cli *Client, plan *sc
 	ctx, cancel := context.WithTimeout(ctx, connTimeout)
 	defer cancel()
 
-	resp, err := cli.Deploy(ctx, req)
+	resp, err := proto.NewOrchestrationServiceClient(conn).Deploy(ctx, req)
 	if err != nil {
 		return "", err
 	}
@@ -241,7 +231,7 @@ func CallDeploy(ctx context.Context, env planning.Context, cli *Client, plan *sc
 	return resp.Id, nil
 }
 
-func WireDeploymentStatus(ctx context.Context, cli *Client, id string, ch chan *orchestration.Event) error {
+func WireDeploymentStatus(ctx context.Context, conn *grpc.ClientConn, id string, ch chan *orchestration.Event) error {
 	if ch != nil {
 		defer close(ch)
 	}
@@ -250,7 +240,7 @@ func WireDeploymentStatus(ctx context.Context, cli *Client, id string, ch chan *
 		Id: id,
 	}
 
-	stream, err := cli.DeploymentStatus(ctx, req)
+	stream, err := proto.NewOrchestrationServiceClient(conn).DeploymentStatus(ctx, req)
 	if err != nil {
 		return err
 	}
