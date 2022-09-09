@@ -12,7 +12,6 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	fnschema "namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 type ClusterNamespace struct {
@@ -29,10 +28,6 @@ var _ runtime.Cluster = ClusterNamespace{}
 
 func (cn ClusterNamespace) Planner() runtime.Planner {
 	return planner{cn.clusterTarget}
-}
-
-func (cn ClusterNamespace) Rebind(env planning.Context) runtime.Cluster {
-	return ClusterNamespace{Cluster: cn.Cluster, clusterTarget: RuntimeClass(env).namespace}
 }
 
 func resolveConfig(ctx context.Context, host *client.HostConfig) (*rest.Config, error) {

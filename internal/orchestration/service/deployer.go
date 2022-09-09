@@ -141,6 +141,9 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 	}
 	defer releaseLease()
 
+	// Make sure that the cluster is accessible to a serialized invocation implementation.
+	ctx = runtime.ClusterInjection.With(ctx, cluster)
+
 	waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, env, p)
 	if err != nil {
 		return err

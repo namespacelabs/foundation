@@ -14,6 +14,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console/termios"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
@@ -26,6 +27,8 @@ const (
 	FnServiceLivez  = "foundation.namespacelabs.dev/livez"
 	FnServiceReadyz = "foundation.namespacelabs.dev/readyz"
 )
+
+var ClusterInjection = ops.Define[Cluster]("ns.cluster")
 
 type Class interface {
 	Namespace(planning.Context) Namespace
@@ -132,9 +135,6 @@ type Cluster interface {
 	// environment. If wait is true, waits until the target resources have been
 	// removed. Returns true if resources were deleted.
 	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
-
-	// Rebind returns a new instance of the same cluster, attached to a different namespace.
-	Rebind(planning.Context) Cluster
 
 	// Prepare ensures that a cluster-specific bit of initialization is done once per instance.
 	// XXX remove planning.Context, as it leaks environment bits.
