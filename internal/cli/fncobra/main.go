@@ -21,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/binary/genbinary"
 	"namespacelabs.dev/foundation/build/buildkit"
-	"namespacelabs.dev/foundation/integrations/docker"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -203,9 +202,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		nodeintegration.Register()
 		opaque.Register()
 		base.Register()
-
-		// Opaque integrations
-		docker.Register()
 
 		// Codegen
 		codegen.Register()

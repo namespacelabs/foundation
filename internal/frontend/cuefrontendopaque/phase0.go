@@ -129,6 +129,12 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 	}
 
+	if integration := server.LookupPath("integration"); integration.Exists() {
+		if err := parseIntegration(ctx, loc, integration, parsedPkg); err != nil {
+			return nil, err
+		}
+	}
+
 	phase1plan.startupPlan = startupPlan
 	phase1plan.sidecars = parsedSidecars
 	phase1plan.initContainers = parsedInitContainers

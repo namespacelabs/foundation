@@ -48,14 +48,6 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	out.Framework = schema.Framework_BASE
 	out.RunByDefault = true
 
-	if integration := v.LookupPath("integration"); integration.Exists() {
-		var err error
-		out.Integration, err = parseIntegration(ctx, loc, integration)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
 	for name, svc := range bits.Services {
 		parsed, endpointType, err := parseService(loc, name, svc)
 		if err != nil {

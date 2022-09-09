@@ -26,10 +26,11 @@ type cueIntegrationDocker struct {
 	Dockerfile string `json:"dockerfile"`
 }
 
-func parseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV) (*schema.Integration, error) {
+// Mutates "pkg""
+func parseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV, pkg *pkggraph.Package) error {
 	var bits cueIntegration
 	if err := v.Val.Decode(&bits); err != nil {
-		return nil, err
+		return err
 	}
 
 	// Parsing shortcuts
@@ -42,11 +43,20 @@ func parseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV)
 
 	switch bits.Kind {
 	case serverKindDockerfile:
-		return &schema.Integration{
-			Kind:       bits.Kind,
-			Dockerfile: bits.Dockerfile,
-		}, nil
+		pkg.Binaries = append(pkg.Binaries, &schema.Binary{
+			Name: pkg.Server.Name,
+			BuildPlan: &schema.LayeredImageBuildPlan{
+				LayerBuildPlan: []*schema.ImageBuildPlan{
+					{Dockerfile: bits.cueIntegrationDocker.Dockerfile},
+				},
+			},
+		})
+		pkg.Server.Binary = &schema.Server_Binary{
+			PackageRef: schema.MakePackageRef(loc.PackageName, pkg.Server.Name),
+		}
+
+		return nil
 	default:
-		return nil, fnerrors.UserError(loc, "unsupported integration kind %q", bits.Kind)
+		return fnerrors.UserError(loc, "unsupported integration kind %q", bits.Kind)
 	}
 }

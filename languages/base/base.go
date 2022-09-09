@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/build"
-	"namespacelabs.dev/foundation/integrations/shared"
+	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -28,11 +28,23 @@ type impl struct {
 }
 
 func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
-	return shared.PrepareBuild(ctx, server.Location, server.Integration(), isFocus)
+	binRef := server.Proto().GetBinary().GetPackageRef()
+
+	binPkg, err := server.SealedContext().LoadByName(ctx, binRef.AsPackageName())
+	if err != nil {
+		return nil, err
+	}
+
+	prep, err := binary.Plan(ctx, binPkg, binRef.GetName(), binary.BuildImageOpts{UsePrebuilts: true})
+	if err != nil {
+		return nil, err
+	}
+
+	return prep.Plan.Spec, nil
 }
 
 func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ServerRunOpts) error {
-	return shared.PrepareRun(ctx, server, run)
+	return nil
 }
 
 func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *workspace.ServerFrameworkExt) error {
