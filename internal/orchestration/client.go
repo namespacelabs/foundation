@@ -130,11 +130,17 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Remo
 }
 
 func (c *RemoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, error) {
+	// Make sure we dial with the parent context (as opposed to a grpc managed context).
+	conn, err := c.cluster.DialServer(ctx, c.server, c.endpoint.Port.ContainerPort)
+	if err != nil {
+		return nil, err
+	}
+
 	return grpc.DialContext(ctx, "orchestrator",
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-			return c.cluster.DialServer(ctx, c.server, c.endpoint.Port.ContainerPort)
+			return conn, nil
 		}),
 	)
 }
