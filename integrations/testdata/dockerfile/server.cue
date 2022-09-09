@@ -1,10 +1,7 @@
 server: {
 	name: "myserver"
 
-	integration: {
-		kind:       "namespace.so/from-dockerfile"
-		dockerfile: "Dockerfile"
-	}
+	integration: docker: dockerfile: "Dockerfile"
 
 	env: {
 		NAME: "\($env.name)-Bob"

@@ -17,18 +17,12 @@ import (
 )
 
 type cueServer struct {
-	Name        string         `json:"name"`
-	Integration cueIntegration `json:"integration"`
+	Name string `json:"name"`
 
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
 	Env  map[string]string          `json:"env"`
 
 	Services map[string]cueService `json:"services"`
-}
-
-type cueIntegration struct {
-	Kind       string `json:"kind"`
-	Dockerfile string `json:"dockerfile"`
 }
 
 type cueService struct {
@@ -54,14 +48,12 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	out.Framework = schema.Framework_BASE
 	out.RunByDefault = true
 
-	switch bits.Integration.Kind {
-	case serverKindDockerfile:
-		out.Integration = &schema.Integration{
-			Kind:       bits.Integration.Kind,
-			Dockerfile: bits.Integration.Dockerfile,
+	if integration := v.LookupPath("integration"); integration.Exists() {
+		var err error
+		out.Integration, err = parseIntegration(ctx, loc, integration)
+		if err != nil {
+			return nil, nil, err
 		}
-	default:
-		return nil, nil, fnerrors.UserError(loc, "unsupported integration kind %q", bits.Integration.Kind)
 	}
 
 	for name, svc := range bits.Services {
