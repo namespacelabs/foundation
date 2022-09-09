@@ -6,8 +6,6 @@ package cuefrontendopaque
 
 import (
 	"context"
-	"sort"
-	"strings"
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -83,9 +81,6 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 		}
 	}
 
-	sortServices(out.Service)
-	sortServices(out.Ingress)
-
 	startupPlan := &schema.StartupPlan{
 		Env:  bits.Env,
 		Args: bits.Args.Parsed(),
@@ -102,15 +97,6 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	}
 
 	return out, startupPlan, nil
-}
-
-func sortServices(services []*schema.Server_ServiceSpec) {
-	sort.Slice(services, func(i, j int) bool {
-		if services[i].GetPort().GetContainerPort() == services[j].GetPort().GetContainerPort() {
-			return strings.Compare(services[i].Name, services[j].Name) < 0
-		}
-		return services[i].GetPort().GetContainerPort() < services[j].GetPort().GetContainerPort()
-	})
 }
 
 func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.Server_ServiceSpec, schema.Endpoint_Type, error) {

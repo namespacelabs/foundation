@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
+	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/support/naming"
@@ -44,6 +46,10 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 	srv.PackageName = loc.PackageName.String()
 	srv.ModuleName = loc.Module.ModuleName()
 	srv.UserImports = srv.Import
+
+	// Make services and endpoints order stable.
+	sortServices(srv.Service)
+	sortServices(srv.Ingress)
 
 	if handler, ok := FrameworkHandlers[srv.Framework]; ok {
 		var ext ServerFrameworkExt
@@ -160,6 +166,15 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 	}
 
 	return sealed.Proto.Server, nil
+}
+
+func sortServices(services []*schema.Server_ServiceSpec) {
+	sort.Slice(services, func(i, j int) bool {
+		if services[i].GetPort().GetContainerPort() == services[j].GetPort().GetContainerPort() {
+			return strings.Compare(services[i].Name, services[j].Name) < 0
+		}
+		return services[i].GetPort().GetContainerPort() < services[j].GetPort().GetContainerPort()
+	})
 }
 
 func validatePackage(ctx context.Context, pp *pkggraph.Package) error {

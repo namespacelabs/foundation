@@ -166,21 +166,6 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 		out.Ingress = append(out.Ingress, parsed)
 	}
 
-	// Make services and endpoints stable.
-	sort.Slice(out.Service, func(i, j int) bool {
-		if out.Service[i].GetPort().GetContainerPort() == out.Service[j].GetPort().GetContainerPort() {
-			return strings.Compare(out.Service[i].Name, out.Service[j].Name) < 0
-		}
-		return out.Service[i].GetPort().GetContainerPort() < out.Service[j].GetPort().GetContainerPort()
-	})
-
-	sort.Slice(out.Ingress, func(i, j int) bool {
-		if out.Ingress[i].GetPort().GetContainerPort() == out.Ingress[j].GetPort().GetContainerPort() {
-			return strings.Compare(out.Ingress[i].Name, out.Ingress[j].Name) < 0
-		}
-		return out.Ingress[i].GetPort().GetContainerPort() < out.Ingress[j].GetPort().GetContainerPort()
-	})
-
 	if err := fncue.WalkAttrs(parent.Val, func(v cue.Value, key, value string) error {
 		switch key {
 		case fncue.InputKeyword:
