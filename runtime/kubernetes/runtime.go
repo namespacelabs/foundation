@@ -47,28 +47,41 @@ func Register() {
 			return p, nil
 		}
 
-		return deferredRuntime{}, nil
+		return deferredRuntime{env.Configuration()}, nil
 	})
 
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
 }
 
-type deferredRuntime struct{}
+type deferredRuntime struct {
+	cfg planning.Configuration
+}
 
-func (d deferredRuntime) PlannerFor(env planning.Context) runtime.Planner {
+var _ runtime.Class = deferredRuntime{}
+
+func (d deferredRuntime) Namespace(env planning.Context) runtime.Namespace {
 	return RuntimeClass(env)
 }
 
-func (d deferredRuntime) EnsureCluster(ctx context.Context, env planning.Context) (runtime.Cluster, error) {
-	unbound, err := New(ctx, env.Configuration())
+func (d deferredRuntime) AttachToCluster(ctx context.Context, ns runtime.Namespace) (runtime.Cluster, error) {
+	unbound, err := NewCluster(ctx, d.cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return unbound.Bind(env), nil
+	return unbound.Bind(ns)
 }
 
-func RuntimeClass(env planning.Context) runtime.Planner {
+func (d deferredRuntime) EnsureCluster(ctx context.Context) (runtime.DeferredCluster, error) {
+	unbound, err := NewCluster(ctx, d.cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return unbound, nil
+}
+
+func RuntimeClass(env planning.Context) planner {
 	ns := ModuleNamespace(env.Workspace().Proto(), env.Environment())
 
 	conf := &kubetool.KubernetesEnv{}
@@ -76,7 +89,7 @@ func RuntimeClass(env planning.Context) runtime.Planner {
 		ns = conf.Namespace
 	}
 
-	return runtimeClass{clusterTarget{env: env.Environment(), namespace: ns}}
+	return planner{clusterTarget{env: env.Environment(), namespace: ns}}
 }
 
 func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApplyConfiguration {
@@ -147,11 +160,6 @@ func (r ClusterNamespace) DeployedConfigImageID(ctx context.Context, server *sch
 
 			return imgid, nil
 		})
-}
-
-func (r ClusterNamespace) ComputeBaseNaming(context.Context, *schema.Naming) (*schema.ComputedNaming, error) {
-	// The default kubernetes integration has no assumptions regarding how ingress names are allocated.
-	return nil, nil
 }
 
 func (r ClusterNamespace) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {

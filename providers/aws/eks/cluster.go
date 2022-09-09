@@ -148,7 +148,7 @@ func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schem
 }
 
 func PrepareClusterInfo(ctx context.Context, s *Session) (*EKSCluster, error) {
-	rt, err := kubernetes.New(ctx, s.cfg)
+	rt, err := kubernetes.NewCluster(ctx, s.cfg)
 	if err != nil {
 		return nil, err
 	}

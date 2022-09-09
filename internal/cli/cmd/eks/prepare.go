@@ -20,7 +20,7 @@ func newPrepareCmd() *cobra.Command {
 		Short: "Runs ingress preparation.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env planning.Context, args []string) error {
-		rt, err := kubernetes.New(ctx, env.Configuration())
+		rt, err := kubernetes.NewCluster(ctx, env.Configuration())
 		if err != nil {
 			return err
 		}

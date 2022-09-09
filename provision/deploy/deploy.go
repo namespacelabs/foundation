@@ -62,7 +62,7 @@ type ResolvedSidecarImage struct {
 	Binary     oci.ImageID
 }
 
-func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.Planner, focus []provision.Server, onStack func(*stack.Stack)) (compute.Computable[*Plan], error) {
+func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.Cluster, focus []provision.Server, onStack func(*stack.Stack)) (compute.Computable[*Plan], error) {
 	stack, err := stack.Compute(ctx, focus, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 	if err != nil {
 		return nil, err
@@ -75,21 +75,21 @@ func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.
 	return PrepareDeployStack(ctx, env, rc, stack, focus)
 }
 
-func PrepareDeployStack(ctx context.Context, env planning.Context, rc runtime.Planner, stack *stack.Stack, focus []provision.Server) (compute.Computable[*Plan], error) {
+func PrepareDeployStack(ctx context.Context, env planning.Context, cluster runtime.Cluster, stack *stack.Stack, focus []provision.Server) (compute.Computable[*Plan], error) {
 	for _, srv := range stack.Servers {
 		if err := provision.CheckCompatible(srv); err != nil {
 			return nil, err
 		}
 	}
 
-	def, err := prepareHandlerInvocations(ctx, env, stack)
+	def, err := prepareHandlerInvocations(ctx, env, cluster, stack)
 	if err != nil {
 		return nil, err
 	}
 
-	ingressFragments := computeIngressWithHandlerResult(env, stack, def)
+	ingressFragments := computeIngressWithHandlerResult(env, cluster, stack, def)
 
-	prepare, err := prepareBuildAndDeployment(ctx, env, rc, focus, stack, def, makeBuildAssets(ingressFragments))
+	prepare, err := prepareBuildAndDeployment(ctx, env, cluster, focus, stack, def, makeBuildAssets(ingressFragments))
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func PrepareDeployStack(ctx context.Context, env planning.Context, rc runtime.Pl
 	}
 
 	if AlsoDeployIngress {
-		g.ingressPlan = PlanIngressDeployment(rc, g.ingressFragments)
+		g.ingressPlan = PlanIngressDeployment(cluster.Planner(), g.ingressFragments)
 	}
 
 	return g, nil
@@ -115,7 +115,7 @@ func makeBuildAssets(ingressFragments compute.Computable[*ComputeIngressResult])
 	}
 }
 
-func computeIngressWithHandlerResult(env planning.Context, stack *stack.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
+func computeIngressWithHandlerResult(env planning.Context, cluster runtime.Cluster, stack *stack.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
 	computedIngressFragments := compute.Transform("parse computed ingress", def, func(ctx context.Context, h *handlerResult) ([]*schema.IngressFragment, error) {
 		var fragments []*schema.IngressFragment
 
@@ -139,7 +139,7 @@ func computeIngressWithHandlerResult(env planning.Context, stack *stack.Stack, d
 		return fragments, nil
 	})
 
-	return ComputeIngress(env, stack.Proto(), computedIngressFragments, AlsoDeployIngress)
+	return ComputeIngress(env, cluster, stack.Proto(), computedIngressFragments, AlsoDeployIngress)
 }
 
 type makeDeployGraph struct {
@@ -207,7 +207,7 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 	return plan, nil
 }
 
-func prepareHandlerInvocations(ctx context.Context, env planning.Context, stack *stack.Stack) (compute.Computable[*handlerResult], error) {
+func prepareHandlerInvocations(ctx context.Context, env planning.Context, cluster runtime.Cluster, stack *stack.Stack) (compute.Computable[*handlerResult], error) {
 	return tasks.Return(ctx, tasks.Action("server.invoke-handlers").
 		Arg("env", env.Environment().Name).
 		Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
@@ -218,7 +218,7 @@ func prepareHandlerInvocations(ctx context.Context, env planning.Context, stack 
 			}
 
 			// After we've computed the startup plans, issue the necessary provisioning calls.
-			return invokeHandlers(ctx, env, stack, handlers, protocol.Lifecycle_PROVISION)
+			return invokeHandlers(ctx, env, cluster, stack, handlers, protocol.Lifecycle_PROVISION)
 		})
 }
 
@@ -249,7 +249,7 @@ func (bi builtImages) get(ref *schema.PackageRef) (builtImage, bool) {
 	return builtImage{}, false
 }
 
-func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc runtime.Planner, servers []provision.Server, stack *stack.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
+func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc runtime.Cluster, servers []provision.Server, stack *stack.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
 	var focus schema.PackageList
 	for _, server := range servers {
 		focus.Add(server.PackageName())
@@ -261,7 +261,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 
 	// computedOnly is used exclusively by config images. They include the set of
 	// computed configurations that provision tools may have emitted.
-	imgs, err := prepareServerImages(ctx, env, focus, stack, buildAssets, computedOnly)
+	imgs, err := prepareServerImages(ctx, env, rc, focus, stack, buildAssets, computedOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +406,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 				serverRuns = append(serverRuns, run)
 			}
 
-			deployment, err := rc.PlanDeployment(ctx, runtime.Deployment{
+			deployment, err := rc.Planner().PlanDeployment(ctx, runtime.Deployment{
 				Focus:   focus,
 				Stack:   stack.Proto(),
 				Servers: serverRuns,
@@ -437,9 +437,8 @@ func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Mo
 	return secrets.LoadBundle(ctx, keyDir, contents)
 }
 
-func prepareServerImages(ctx context.Context, env planning.Context,
-	focus schema.PackageList, stack *stack.Stack,
-	buildAssets languages.AvailableBuildAssets,
+func prepareServerImages(ctx context.Context, env planning.Context, cluster runtime.Cluster,
+	focus schema.PackageList, stack *stack.Stack, buildAssets languages.AvailableBuildAssets,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) ([]serverImages, error) {
 	imageList := []serverImages{}
 
@@ -496,7 +495,7 @@ func prepareServerImages(ctx context.Context, env planning.Context,
 		// source configuration files used to compute a startup configuration, so it can be re-
 		// evaluated on a need basis.
 		if focus.Includes(srv.PackageName()) && !srv.SealedContext().Environment().Ephemeral && computedConfigs != nil {
-			configImage := prepareConfigImage(ctx, env, srv, stack, computedConfigs)
+			configImage := prepareConfigImage(ctx, env, cluster, srv, stack, computedConfigs)
 
 			cfgtag, err := registry.AllocateName(ctx, srv.SealedContext(), srv.PackageName())
 			if err != nil {
@@ -571,24 +570,24 @@ func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) ([]con
 	return res, nil
 }
 
-func ComputeStackAndImages(ctx context.Context, env planning.Context, servers []provision.Server) (*stack.Stack, []compute.Computable[ResolvedServerImages], error) {
+func ComputeStackAndImages(ctx context.Context, env planning.Context, cluster runtime.Cluster, servers []provision.Server) (*stack.Stack, []compute.Computable[ResolvedServerImages], error) {
 	stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	def, err := prepareHandlerInvocations(ctx, env, stack)
+	def, err := prepareHandlerInvocations(ctx, env, cluster, stack)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	ingressFragments := computeIngressWithHandlerResult(env, stack, def)
+	ingressFragments := computeIngressWithHandlerResult(env, cluster, stack, def)
 
 	computedOnly := compute.Transform("return computed", def, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
 		return h.Computed, nil
 	})
 
-	imageMap, err := prepareServerImages(ctx, env, provision.ServerPackages(servers), stack, makeBuildAssets(ingressFragments), computedOnly)
+	imageMap, err := prepareServerImages(ctx, env, cluster, provision.ServerPackages(servers), stack, makeBuildAssets(ingressFragments), computedOnly)
 	if err != nil {
 		return nil, nil, err
 	}

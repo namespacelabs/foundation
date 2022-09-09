@@ -27,12 +27,7 @@ import (
 
 func setWorkspace(ctx context.Context, env planning.Context, packageNames []string, obs *Session, pfw *endpointfwd.PortForward) error {
 	return compute.Do(ctx, func(ctx context.Context) error {
-		deferred, err := runtime.DeferredFor(ctx, env)
-		if err != nil {
-			return err
-		}
-
-		rt, err := deferred.EnsureCluster(ctx, env)
+		rt, err := runtime.ClusterFor(ctx, env)
 		if err != nil {
 			return err
 		}
@@ -55,7 +50,6 @@ func setWorkspace(ctx context.Context, env planning.Context, packageNames []stri
 			serverPackages: serverPackages,
 			focusServers:   focusServers,
 			cluster:        rt,
-			runtimeClass:   deferred.PlannerFor(env),
 		}, nil); err != nil {
 			return err
 		}
@@ -71,7 +65,6 @@ type buildAndDeploy struct {
 	serverPackages []schema.PackageName
 	focusServers   compute.Computable[*provision.ServerSnapshot]
 	cluster        runtime.Cluster
-	runtimeClass   runtime.Planner
 
 	mu            sync.Mutex
 	cancelRunning func()
@@ -140,7 +133,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			s.Stack = stack.Proto()
 		})
 
-		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.runtimeClass, stack, focus)
+		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.cluster, stack, focus)
 		if err != nil {
 			return err
 		}

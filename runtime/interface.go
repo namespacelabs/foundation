@@ -28,9 +28,19 @@ const (
 )
 
 type Class interface {
-	PlannerFor(planning.Context) Planner
+	Namespace(planning.Context) Namespace
 
-	EnsureCluster(context.Context, planning.Context) (Cluster, error)
+	// Attaches to an existing cluster. Fails if the cluster doesn't exist or
+	// the provider used would have instantiated a new cluster.
+	AttachToCluster(context.Context, Namespace) (Cluster, error)
+
+	// Initiates the creation of a new cluster.
+	EnsureCluster(context.Context) (DeferredCluster, error)
+}
+
+type Namespace interface {
+	UniqueID() string
+	Planner() Planner
 }
 
 type Planner interface {
@@ -46,22 +56,26 @@ type Planner interface {
 	// applied when the generated plan is applied.
 	PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error)
 
-	// Returns a human readable ID of the deployment namespace.
-	// Different IDs signify that deployments are independent and can be executed in parallel.
-	NamespaceId() (*NamespaceId, error)
+	Namespace() Namespace
+}
+
+type DeferredCluster interface {
+	Bind(Namespace) (Cluster, error)
 }
 
 // Cluster represents a target deployment environment, scoped to an application
 // (usually the combination of an environment and workspace).
 type Cluster interface {
+	Planner() Planner
+
+	// ComputeBaseNaming returns a base naming configuration that is specific
+	// to the target runtime (e.g. kubernetes cluster).
+	ComputeBaseNaming(*schema.Naming) (*schema.ComputedNaming, error)
+
 	// DeployedConfigImageID retrieves the image reference of the "configuration
 	// image" used to deploy the specified server. Configuration images are only
 	// generated for production environments for now.
 	DeployedConfigImageID(context.Context, *schema.Server) (oci.ImageID, error)
-
-	// ComputeBaseNaming returns a base naming configuration that is specific
-	// to the target runtime (e.g. kubernetes cluster).
-	ComputeBaseNaming(context.Context, *schema.Naming) (*schema.ComputedNaming, error)
 
 	// Returns a list of containers that the server has deployed.
 	ResolveContainers(context.Context, *schema.Server) ([]*ContainerReference, error)

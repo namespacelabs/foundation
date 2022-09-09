@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -63,7 +64,12 @@ func NewBuildCmd() *cobra.Command {
 				}
 			}
 
-			_, images, err := deploy.ComputeStackAndImages(ctx, env, servers.Servers)
+			cluster, err := runtime.ClusterFor(ctx, env)
+			if err != nil {
+				return err
+			}
+
+			_, images, err := deploy.ComputeStackAndImages(ctx, env, cluster, servers.Servers)
 			if err != nil {
 				return err
 			}

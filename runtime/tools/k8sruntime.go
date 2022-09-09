@@ -116,7 +116,7 @@ func (k8stools) makeRuntime(ctx context.Context) (kubernetes.Cluster, planning.C
 		PlatformConfiguration: root.DevHost().ConfigurePlatform,
 	})
 
-	k, err := kubernetes.New(ctx, ck)
+	k, err := kubernetes.NewCluster(ctx, ck)
 	if err != nil {
 		return kubernetes.Cluster{}, nil, err
 	}

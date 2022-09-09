@@ -65,7 +65,7 @@ func NewDeployCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
 			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			deferred, err := runtime.DeferredFor(ctx, env)
+			cluster, err := runtime.ClusterFor(ctx, env)
 			if err != nil {
 				return err
 			}
@@ -75,7 +75,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			plan, err := deploy.PrepareDeployStack(ctx, env, deferred.PlannerFor(env), stack, servers.Servers)
+			plan, err := deploy.PrepareDeployStack(ctx, env, cluster, stack, servers.Servers)
 			if err != nil {
 				return err
 			}
@@ -96,11 +96,6 @@ func NewDeployCmd() *cobra.Command {
 			}
 
 			sealed := pkggraph.MakeSealedContext(env, servers.SealedPackages)
-
-			cluster, err := deferred.EnsureCluster(ctx, env)
-			if err != nil {
-				return err
-			}
 
 			return completeDeployment(ctx, sealed, cluster, computed.Deployer, deployPlan, deployOpts)
 		})

@@ -26,6 +26,10 @@ type clusterTarget struct {
 
 var _ runtime.Cluster = ClusterNamespace{}
 
+func (cn ClusterNamespace) Planner() runtime.Planner {
+	return planner{cn.clusterTarget}
+}
+
 func resolveConfig(ctx context.Context, host *client.HostConfig) (*rest.Config, error) {
 	config, err := client.NewRestConfigFromHostEnv(ctx, host)
 	if err != nil {

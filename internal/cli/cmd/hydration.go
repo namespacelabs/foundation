@@ -95,7 +95,12 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 			return fnerrors.UserError(nil, "--rehydrate only supports a single server")
 		}
 
-		buildID, err := runtime.ClusterFor(ctx, *h.env).DeployedConfigImageID(ctx, servers[0].Proto())
+		cluster, err := runtime.ClusterFor(ctx, *h.env)
+		if err != nil {
+			return err
+		}
+
+		buildID, err := cluster.DeployedConfigImageID(ctx, servers[0].Proto())
 		if err != nil {
 			return err
 		}
@@ -114,9 +119,14 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 			return err
 		}
 
+		cluster, err := runtime.ClusterFor(ctx, *h.env)
+		if err != nil {
+			return err
+		}
+
 		h.resultOut.Stack = stack.Proto()
 		for _, entry := range stack.Proto().Entry {
-			deferred, err := runtime.ComputeIngress(ctx, *h.env, entry, stack.Endpoints)
+			deferred, err := runtime.ComputeIngress(ctx, *h.env, cluster, entry, stack.Endpoints)
 			if err != nil {
 				return err
 			}

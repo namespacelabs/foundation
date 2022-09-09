@@ -92,7 +92,12 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.
 func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
 	p := compute.MustGetDepValue(r, test.Plan, "plan")
 
-	cluster, err := test.RuntimeClass.EnsureCluster(ctx, test.SealedContext)
+	pcluster, err := test.RuntimeClass.EnsureCluster(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cluster, err := pcluster.Bind(test.RuntimeClass.Namespace(test.SealedContext))
 	if err != nil {
 		return nil, err
 	}

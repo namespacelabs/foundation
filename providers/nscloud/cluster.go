@@ -364,28 +364,32 @@ var _ runtime.Class = deferred{}
 var _ runtime.HasPrepareProvision = deferred{}
 var _ runtime.HasTargetPlatforms = deferred{}
 
-func (d deferred) PlannerFor(env planning.Context) runtime.Planner {
+func (d deferred) Namespace(env planning.Context) runtime.Namespace {
 	return kubernetes.RuntimeClass(env)
 }
 
-func (d deferred) EnsureCluster(ctx context.Context, env planning.Context) (runtime.Cluster, error) {
-	unbound, err := kubernetes.New(ctx, d.cfg.Config)
+func (d deferred) AttachToCluster(ctx context.Context, ns runtime.Namespace) (runtime.Cluster, error) {
+	conf := &PrebuiltCluster{}
+
+	if !d.cfg.Config.Get(conf) {
+		return nil, fnerrors.BadInputError("%s: no cluster configured", d.cfg.Config.EnvKey())
+	}
+
+	deferred, err := d.EnsureCluster(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	p, err := unbound.Provider()
+	return deferred.Bind(ns)
+}
+
+func (d deferred) EnsureCluster(ctx context.Context) (runtime.DeferredCluster, error) {
+	unbound, err := kubernetes.NewCluster(ctx, d.cfg.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	if p.ProviderSpecific == nil {
-		return nil, fnerrors.InternalError("cluster creation state is missing")
-	}
-
-	bound := unbound.Bind(env)
-
-	return clusterRuntime{Cluster: bound, Config: p.ProviderSpecific.(*KubernetesCluster)}, nil
+	return deferredCluster{unbound}, nil
 }
 
 func (d deferred) PrepareProvision(_ context.Context, env planning.Context) (*rtypes.ProvisionProps, error) {
@@ -405,12 +409,34 @@ func (d deferred) TargetPlatforms(context.Context) ([]specs.Platform, error) {
 	return []specs.Platform{p}, nil
 }
 
+type deferredCluster struct {
+	cluster kubernetes.Cluster
+}
+
+func (d deferredCluster) Bind(ns runtime.Namespace) (runtime.Cluster, error) {
+	p, err := d.cluster.Provider()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.ProviderSpecific == nil {
+		return nil, fnerrors.InternalError("cluster creation state is missing")
+	}
+
+	bound, err := d.cluster.Bind(ns)
+	if err != nil {
+		return nil, err
+	}
+
+	return clusterRuntime{Cluster: bound, Config: p.ProviderSpecific.(*KubernetesCluster)}, nil
+}
+
 type clusterRuntime struct {
 	runtime.Cluster
 	Config *KubernetesCluster
 }
 
-func (cr clusterRuntime) ComputeBaseNaming(ctx context.Context, source *schema.Naming) (*schema.ComputedNaming, error) {
+func (cr clusterRuntime) ComputeBaseNaming(source *schema.Naming) (*schema.ComputedNaming, error) {
 	return &schema.ComputedNaming{
 		Source:                   source,
 		BaseDomain:               cr.Config.IngressDomain,

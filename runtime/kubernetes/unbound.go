@@ -8,10 +8,11 @@ import (
 	"context"
 
 	k8s "k8s.io/client-go/kubernetes"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
@@ -30,13 +31,21 @@ func NewFromConfig(ctx context.Context, config *client.HostConfig) (Cluster, err
 	return Cluster{cli.Clientset, cli, config}, nil
 }
 
-func New(ctx context.Context, cfg planning.Configuration) (Cluster, error) {
+func NewCluster(ctx context.Context, cfg planning.Configuration) (Cluster, error) {
 	hostConfig, err := client.ComputeHostConfig(cfg)
 	if err != nil {
 		return Cluster{}, err
 	}
 
 	return NewFromConfig(ctx, hostConfig)
+}
+
+func NewNamespacedCluster(ctx context.Context, env planning.Context) (ClusterNamespace, error) {
+	cluster, err := NewCluster(ctx, env.Configuration())
+	if err != nil {
+		return ClusterNamespace{}, err
+	}
+	return cluster.BindNamespace(env), nil
 }
 
 func (u Cluster) Provider() (client.Provider, error) {
@@ -51,15 +60,16 @@ func (u Cluster) HostConfig() *client.HostConfig {
 	return u.host
 }
 
-func (u Cluster) Bind(env planning.Context) ClusterNamespace {
-	ns := ModuleNamespace(env.Workspace().Proto(), env.Environment())
-
-	conf := &kubetool.KubernetesEnv{}
-	if env.Configuration().Get(conf) {
-		ns = conf.Namespace
+func (u Cluster) Bind(ns runtime.Namespace) (runtime.Cluster, error) {
+	if v, ok := ns.(planner); ok {
+		return ClusterNamespace{Cluster: u, clusterTarget: v.target}, nil
 	}
 
-	return ClusterNamespace{Cluster: u, clusterTarget: clusterTarget{env: env.Environment(), namespace: ns}}
+	return nil, fnerrors.InternalError("Expected a kubernetes-specific Namespace")
+}
+
+func (u Cluster) BindNamespace(env planning.Context) ClusterNamespace {
+	return ClusterNamespace{Cluster: u, clusterTarget: RuntimeClass(env).target}
 }
 
 func (r Cluster) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {
@@ -73,4 +83,9 @@ func (r Cluster) PrepareCluster(ctx context.Context) (runtime.DeploymentState, e
 	state.definitions = ingressDefs
 
 	return state, nil
+}
+
+func (r Cluster) ComputeBaseNaming(*schema.Naming) (*schema.ComputedNaming, error) {
+	// The default kubernetes integration has no assumptions regarding how ingress names are allocated.
+	return nil, nil
 }

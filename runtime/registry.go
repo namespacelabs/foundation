@@ -6,16 +6,11 @@ package runtime
 
 import (
 	"context"
-	"io"
-	"net"
 	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/rtypes"
-	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
@@ -35,12 +30,12 @@ func HasRuntime(name string) bool {
 }
 
 // Never returns nil. If the specified runtime kind doesn't exist, then a runtime instance that always fails is returned.
-func ClusterFor(ctx context.Context, env planning.Context) Cluster {
+func ClusterFor(ctx context.Context, env planning.Context) (Cluster, error) {
 	runtime, err := obtainSpecialized[Cluster](ctx, env)
 	if err != nil {
-		return runtimeFwdErr{err}
+		return nil, err
 	}
-	return runtime
+	return runtime, nil
 }
 
 func TargetPlatforms(ctx context.Context, env planning.Context) ([]specs.Platform, error) {
@@ -85,82 +80,10 @@ func obtainSpecialized[V any](ctx context.Context, env planning.Context) (V, err
 		return h, nil
 	}
 
-	runtime, err := deferred.EnsureCluster(ctx, env)
+	cluster, err := deferred.AttachToCluster(ctx, deferred.Namespace(env))
 	if err != nil {
 		return empty, err
 	}
 
-	return runtime.(V), nil
-}
-
-type runtimeFwdErr struct {
-	permanentErr error
-}
-
-func (r runtimeFwdErr) Class() Planner {
-	return r
-}
-
-func (r runtimeFwdErr) PrepareProvision(context.Context, planning.Context) (*rtypes.ProvisionProps, error) {
-	return nil, r.permanentErr
-}
-func (r runtimeFwdErr) DeployedConfigImageID(context.Context, *schema.Server) (oci.ImageID, error) {
-	return oci.ImageID{}, r.permanentErr
-}
-func (r runtimeFwdErr) PlanDeployment(context.Context, Deployment) (DeploymentState, error) {
-	return nil, r.permanentErr
-}
-func (r runtimeFwdErr) PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error) {
-	return nil, r.permanentErr
-}
-func (r runtimeFwdErr) ComputeBaseNaming(context.Context, *schema.Naming) (*schema.ComputedNaming, error) {
-	return nil, r.permanentErr
-}
-func (r runtimeFwdErr) FetchLogsTo(context.Context, io.Writer, *ContainerReference, FetchLogsOpts) error {
-	return r.permanentErr
-}
-func (r runtimeFwdErr) FetchDiagnostics(context.Context, *ContainerReference) (*Diagnostics, error) {
-	return &Diagnostics{}, r.permanentErr
-}
-func (r runtimeFwdErr) FetchEnvironmentDiagnostics(context.Context) (*storage.EnvironmentDiagnostics, error) {
-	return nil, r.permanentErr
-}
-func (r runtimeFwdErr) StartTerminal(ctx context.Context, server *schema.Server, io TerminalIO, command string, rest ...string) error {
-	return r.permanentErr
-}
-func (r runtimeFwdErr) AttachTerminal(ctx context.Context, _ *ContainerReference, io TerminalIO) error {
-	return r.permanentErr
-}
-func (r runtimeFwdErr) ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error) {
-	return nil, r.permanentErr
-}
-func (r runtimeFwdErr) DialServer(ctx context.Context, server *schema.Server, containerPort int32) (net.Conn, error) {
-	return nil, r.permanentErr
-}
-func (r runtimeFwdErr) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f PortForwardedFunc) (io.Closer, error) {
-	return nil, r.permanentErr
-}
-func (r runtimeFwdErr) Observe(context.Context, *schema.Server, ObserveOpts, func(ObserveEvent) error) error {
-	return r.permanentErr
-}
-func (r runtimeFwdErr) RunOneShot(context.Context, string, ServerRunOpts, io.Writer, bool) error {
-	return r.permanentErr
-}
-func (r runtimeFwdErr) RunAttached(context.Context, string, ServerRunOpts, TerminalIO) error {
-	return r.permanentErr
-}
-func (r runtimeFwdErr) DeleteRecursively(context.Context, bool) (bool, error) {
-	return false, r.permanentErr
-}
-func (r runtimeFwdErr) DeleteAllRecursively(context.Context, bool, io.Writer) (bool, error) {
-	return false, r.permanentErr
-}
-func (r runtimeFwdErr) TargetPlatforms(context.Context) ([]specs.Platform, error) {
-	return nil, r.permanentErr
-}
-func (r runtimeFwdErr) ResolveContainers(context.Context, *schema.Server) ([]*ContainerReference, error) {
-	return nil, r.permanentErr
-}
-func (r runtimeFwdErr) NamespaceId() (*NamespaceId, error) {
-	return nil, r.permanentErr
+	return cluster.(V), nil
 }

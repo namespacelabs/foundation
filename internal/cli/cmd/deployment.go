@@ -37,7 +37,12 @@ func NewDeploymentCmd() *cobra.Command {
 			}
 		}
 
-		removed, err := runtime.ClusterFor(ctx, env).DeleteRecursively(ctx, wait)
+		cluster, err := runtime.ClusterFor(ctx, env)
+		if err != nil {
+			return err
+		}
+
+		removed, err := cluster.DeleteRecursively(ctx, wait)
 		if removed {
 			fmt.Fprintln(console.Stdout(ctx), "Resources removed.")
 		} else if err == nil {
@@ -61,7 +66,12 @@ func NewDeploymentCmd() *cobra.Command {
 			}
 		}
 
-		if _, err := runtime.ClusterFor(ctx, env).DeleteAllRecursively(ctx, wait, console.Stdout(ctx)); err != nil {
+		cluster, err := runtime.ClusterFor(ctx, env)
+		if err != nil {
+			return err
+		}
+
+		if _, err := cluster.DeleteAllRecursively(ctx, wait, console.Stdout(ctx)); err != nil {
 			return err
 		}
 

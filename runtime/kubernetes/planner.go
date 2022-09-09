@@ -7,8 +7,6 @@ package kubernetes
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 
 	"google.golang.org/protobuf/types/known/anypb"
@@ -21,27 +19,39 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-type runtimeClass struct {
+type planner struct {
 	target clusterTarget
 }
 
-func (r runtimeClass) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
+var _ runtime.Namespace = planner{}
+var _ runtime.Planner = planner{}
+
+func (r planner) UniqueID() string {
+	return fmt.Sprintf("kubernetes:%s", r.target.namespace)
+}
+
+func (r planner) Planner() runtime.Planner {
+	return r
+}
+
+func (r planner) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
 	return planDeployment(ctx, r.target, d)
 }
 
-func (r runtimeClass) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
+func (r planner) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
 	return planIngress(ctx, r.target, stack, allFragments)
 }
 
-func (r runtimeClass) NamespaceId() (*runtime.NamespaceId, error) {
-	id := &runtime.NamespaceId{
-		HumanReference: fmt.Sprintf("kubernetes:%s", r.target.namespace),
-	}
+func (r planner) Namespace() runtime.Namespace {
+	return r
+	// id := &runtime.NamespaceId{
+	// 	HumanReference: fmt.Sprintf("kubernetes:%s", r.target.namespace),
+	// }
 
-	hash := sha256.Sum256([]byte(id.HumanReference))
-	id.UniqueId = hex.EncodeToString(hash[:])
+	// hash := sha256.Sum256([]byte(id.HumanReference))
+	// id.UniqueId = hex.EncodeToString(hash[:])
 
-	return id, nil
+	// return id, nil
 }
 
 func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) (runtime.DeploymentState, error) {

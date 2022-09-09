@@ -37,8 +37,8 @@ var (
 var errLogin = fnerrors.UsageError("Please run `ns login` to login.",
 	"Namespace automatically manages nscloud.dev-based sub-domains and issues SSL certificates on your behalf. To use these features, you'll need to login to Namespace using your Github account.")
 
-func ComputeNaming(ctx context.Context, ws string, env planning.Context, source *schema.Naming) (*schema.ComputedNaming, error) {
-	result, err := computeNaming(ctx, ws, env, source)
+func ComputeNaming(ctx context.Context, ws string, env planning.Context, cluster Cluster, source *schema.Naming) (*schema.ComputedNaming, error) {
+	result, err := computeNaming(ctx, ws, env, cluster, source)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +48,8 @@ func ComputeNaming(ctx context.Context, ws string, env planning.Context, source 
 	return result, nil
 }
 
-func computeNaming(ctx context.Context, workspace string, env planning.Context, source *schema.Naming) (*schema.ComputedNaming, error) {
-	naming, err := computeInnerNaming(ctx, env, source)
+func computeNaming(ctx context.Context, workspace string, env planning.Context, cluster Cluster, source *schema.Naming) (*schema.ComputedNaming, error) {
+	naming, err := computeInnerNaming(ctx, env, cluster, source)
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +60,8 @@ func computeNaming(ctx context.Context, workspace string, env planning.Context, 
 	return naming, nil
 }
 
-func computeInnerNaming(ctx context.Context, rootenv planning.Context, source *schema.Naming) (*schema.ComputedNaming, error) {
-	base, err := ClusterFor(ctx, rootenv).ComputeBaseNaming(ctx, source)
+func computeInnerNaming(ctx context.Context, rootenv planning.Context, cluster Cluster, source *schema.Naming) (*schema.ComputedNaming, error) {
+	base, err := cluster.ComputeBaseNaming(source)
 	if err != nil {
 		return nil, err
 	}

@@ -75,7 +75,7 @@ func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.
 				merged = append(merged, m.Configuration...)
 			}
 
-			return kubernetes.New(ctx, planning.MakeConfigurationWith(env.Environment().Name, planning.ConfigurationSlice{Configuration: merged}))
+			return kubernetes.NewCluster(ctx, planning.MakeConfigurationWith(env.Environment().Name, planning.ConfigurationSlice{Configuration: merged}))
 		})
 }
 

@@ -38,7 +38,7 @@ func newKubernetesCmd() *cobra.Command {
 				return err
 			}
 
-			k, err := kubernetes.New(ctx, env.Configuration())
+			k, err := kubernetes.NewCluster(ctx, env.Configuration())
 			if err != nil {
 				return err
 			}

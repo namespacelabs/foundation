@@ -71,7 +71,12 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 		return nil, err
 	}
 
-	cluster, err := deferred.EnsureCluster(ctx, env)
+	dcluster, err := deferred.EnsureCluster(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cluster, err := dcluster.Bind(deferred.Namespace(env))
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +86,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 		return nil, err
 	}
 
-	plan, err := deploy.PrepareDeployServers(ctx, env, deferred.PlannerFor(env), []provision.Server{focus}, nil)
+	plan, err := deploy.PrepareDeployServers(ctx, env, cluster, []provision.Server{focus}, nil)
 	if err != nil {
 		return nil, err
 	}

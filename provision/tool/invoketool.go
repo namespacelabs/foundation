@@ -39,7 +39,7 @@ type InvokeProps struct {
 	ProvisionInput []*anypb.Any
 }
 
-func MakeInvocation(ctx context.Context, env planning.Context, r *Definition, stack *schema.Stack, focus schema.PackageName, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
+func MakeInvocation(ctx context.Context, env planning.Context, cluster runtime.Cluster, r *Definition, stack *schema.Stack, focus schema.PackageName, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
 	// Calculate injections early on to make sure that they're part of the cache key.
 	var injections []*anypb.Any
 	for _, inject := range r.Invocation.Inject {
@@ -48,7 +48,7 @@ func MakeInvocation(ctx context.Context, env planning.Context, r *Definition, st
 			return nil, fnerrors.BadInputError("%s: no such provider", inject)
 		}
 
-		input, err := provider(ctx, env, stack.GetServer(focus))
+		input, err := provider(ctx, env, cluster, stack.GetServer(focus))
 		if err != nil {
 			return nil, err
 		}

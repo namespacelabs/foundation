@@ -93,7 +93,18 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, fnerrors.Wrap(testPkg.Location, err)
 	}
 
-	deployPlan, err := deploy.PrepareDeployStack(ctx, env, deferred.PlannerFor(env), stack, sut)
+	// This can block for a non-trivial amount of time.
+	cluster, err := deferred.EnsureCluster(ctx)
+	if err != nil {
+		return nil, fnerrors.Wrap(testPkg.Location, err)
+	}
+
+	bound, err := cluster.Bind(deferred.Namespace(env))
+	if err != nil {
+		return nil, fnerrors.Wrap(testPkg.Location, err)
+	}
+
+	deployPlan, err := deploy.PrepareDeployStack(ctx, env, bound, stack, sut)
 	if err != nil {
 		return nil, fnerrors.UserError(testPkg.Location, "failed to load stack: %w", err)
 	}

@@ -37,13 +37,13 @@ func newComputeConfigCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true}),
 			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			deferred, err := runtime.DeferredFor(ctx, env)
+			cluster, err := runtime.ClusterFor(ctx, env)
 			if err != nil {
 				return err
 			}
 
 			server := servers.Servers[0]
-			plan, err := deploy.PrepareDeployServers(ctx, env, deferred.PlannerFor(env), servers.Servers, nil)
+			plan, err := deploy.PrepareDeployServers(ctx, env, cluster, servers.Servers, nil)
 			if err != nil {
 				return err
 			}

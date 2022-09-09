@@ -69,8 +69,13 @@ func serveTerminal(s *Session, w http.ResponseWriter, r *http.Request, serverID 
 			})
 		}()
 
+		rt, err := runtime.ClusterFor(ctx, env)
+		if err != nil {
+			return err
+		}
+
 		// Returns when stdout is drained; which may happen when w fails to write, e.g. when ws is closed.
-		return runtime.ClusterFor(ctx, env).StartTerminal(ctx, server, runtime.TerminalIO{
+		return rt.StartTerminal(ctx, server, runtime.TerminalIO{
 			TTY:   true,
 			Stdin: inr, Stdout: w, Stderr: w,
 			ResizeQueue: resizeCh,

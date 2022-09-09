@@ -33,12 +33,11 @@ func newKubeCtlCmd() *cobra.Command {
 	keepConfig := cmd.Flags().Bool("keep_config", false, "If set to true, does not delete the generated configuration.")
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
-		k8s, err := kubernetes.New(ctx, env.Configuration())
+		runtime, err := kubernetes.NewNamespacedCluster(ctx, env)
 		if err != nil {
 			return err
 		}
 
-		runtime := k8s.Bind(env)
 		k8sconfig := runtime.KubeConfig()
 		clientConfig := client.NewClientConfig(ctx, runtime.HostConfig())
 		rawConfig, err := clientConfig.RawConfig()

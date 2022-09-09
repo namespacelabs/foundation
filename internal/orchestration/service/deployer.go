@@ -106,17 +106,14 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 	sink := simplelog.NewSink(os.Stderr, maxLogLevel)
 	ctx = tasks.WithSink(ctx, sink)
 
-	rt, err := runtime.DeferredFor(ctx, env)
+	cluster, err := runtime.ClusterFor(ctx, env)
 	if err != nil {
 		return err
 	}
 
-	nsId, err := rt.PlannerFor(env).NamespaceId()
-	if err != nil {
-		return err
-	}
+	ns := cluster.Planner().Namespace()
 
-	releaseLease, err := d.leaser.acquireLease(nsId.UniqueId, arrival)
+	releaseLease, err := d.leaser.acquireLease(ns.UniqueID(), arrival)
 	if err != nil {
 		if err == errDeployPlanTooOld {
 			// We already finished a later deployment -> skip this one.

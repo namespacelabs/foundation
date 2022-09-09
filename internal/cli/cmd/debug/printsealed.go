@@ -42,7 +42,7 @@ func newPrintSealedCmd() *cobra.Command {
 			pl := workspace.NewPackageLoader(env)
 			loc := locs.Locs[0]
 
-			deferred, err := runtime.DeferredFor(ctx, env)
+			cluster, err := runtime.ClusterFor(ctx, env)
 			if err != nil {
 				return err
 			}
@@ -60,7 +60,7 @@ func newPrintSealedCmd() *cobra.Command {
 					return err
 				}
 
-				plan, err := deploy.PrepareDeployServers(ctx, env, deferred.PlannerFor(env), []provision.Server{t}, nil)
+				plan, err := deploy.PrepareDeployServers(ctx, env, cluster, []provision.Server{t}, nil)
 				if err != nil {
 					return err
 				}
