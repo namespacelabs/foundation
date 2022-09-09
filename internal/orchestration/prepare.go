@@ -21,6 +21,11 @@ import (
 
 const key = "foundation.orchestration"
 
+var (
+	UseOrchestrator              = true
+	RenderOrchestratorDeployment = false
+)
+
 func RegisterPrepare() {
 	if !UseOrchestrator {
 		return

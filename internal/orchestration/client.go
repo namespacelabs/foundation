@@ -36,11 +36,6 @@ const (
 	connTimeout = time.Minute // TODO reduce - we've seen slow connections in CI
 )
 
-var (
-	UseOrchestrator              = true
-	RenderOrchestratorDeployment = false
-)
-
 type RemoteOrchestrator struct {
 	cluster  runtime.Cluster
 	server   *schema.Server
