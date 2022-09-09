@@ -23,7 +23,13 @@ func makeOrchEnv(ctx planning.Context) planning.Context {
 		Purpose: schema.Environment_PRODUCTION,
 	}
 
-	cfg := ctx.Configuration().Derive(env.Name, func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
+	// It is imperative that the original environment name is used as the key of
+	// the derived configuration, or else we create a completely separate set of
+	// resources for the admin environment. For example, with nscloud, we'd
+	// create a cluster for fn-admin, and another one for the actual workloads.
+	originalEnv := ctx.Environment().Name
+
+	cfg := ctx.Configuration().Derive(originalEnv, func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
 		previous.Configuration = append(previous.Configuration, protos.WrapAnyOrDie(
 			&kubetool.KubernetesEnv{Namespace: kubedef.AdminNamespace}, // pin deployments to admin namespace
 		))
