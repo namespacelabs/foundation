@@ -13,4 +13,13 @@ import "workspace/tasks/protocol/tasks.proto";
 message Log {
     int32                                    log_level = 1;
     foundation.workspace.tasks.protocol.Task task      = 2;
+    Purpose                                  purpose   = 3;
+
+    enum Purpose {
+        PURPOSE_UNKNOWN = 0;
+        PURPOSE_WAITING = 1;
+        PURPOSE_STARTED = 2;
+        PURPOSE_DONE    = 3;
+        PURPOSE_INSTANT = 4;
+    }
 }

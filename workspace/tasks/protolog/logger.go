@@ -21,13 +21,18 @@ func (l *logger) Close() {
 }
 
 func (l *logger) Waiting(ra *tasks.RunningAction) {
-	// Do nothing.
+	l.ch <- &Log{
+		LogLevel: int32(ra.Data.Level),
+		Task:     ra.Proto(),
+		Purpose:  Log_PURPOSE_WAITING,
+	}
 }
 
 func (l *logger) Started(ra *tasks.RunningAction) {
 	l.ch <- &Log{
 		LogLevel: int32(ra.Data.Level),
 		Task:     ra.Proto(),
+		Purpose:  Log_PURPOSE_STARTED,
 	}
 }
 
@@ -35,6 +40,7 @@ func (l *logger) Done(ra *tasks.RunningAction) {
 	l.ch <- &Log{
 		LogLevel: int32(ra.Data.Level),
 		Task:     ra.Proto(),
+		Purpose:  Log_PURPOSE_DONE,
 	}
 }
 
@@ -42,6 +48,7 @@ func (l *logger) Instant(ev *tasks.EventData) {
 	l.ch <- &Log{
 		LogLevel: int32(ev.Level),
 		Task:     ev.Proto(),
+		Purpose:  Log_PURPOSE_INSTANT,
 	}
 }
 

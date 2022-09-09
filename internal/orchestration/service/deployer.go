@@ -251,9 +251,7 @@ func (d *deployer) Status(ctx context.Context, id string, loglevel int32, ch cha
 					return err
 				}
 
-				ch <- &proto.DeploymentStatusResponse{
-					Event: ev,
-				}
+				ch <- &proto.DeploymentStatusResponse{Event: ev}
 			}
 		case line := <-tasks.Lines:
 			if line.Text == eof {
@@ -265,9 +263,7 @@ func (d *deployer) Status(ctx context.Context, id string, loglevel int32, ch cha
 				}
 
 				if log.LogLevel <= loglevel {
-					ch <- &proto.DeploymentStatusResponse{
-						Task: log.Task,
-					}
+					ch <- &proto.DeploymentStatusResponse{Log: log}
 				}
 			}
 		}
