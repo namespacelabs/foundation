@@ -54,7 +54,7 @@ func setWorkspace(ctx context.Context, env planning.Context, packageNames []stri
 			env:            env,
 			serverPackages: serverPackages,
 			focusServers:   focusServers,
-			runtime:        rt,
+			cluster:        rt,
 			runtimeClass:   deferred.PlannerFor(env),
 		}, nil); err != nil {
 			return err
@@ -70,7 +70,7 @@ type buildAndDeploy struct {
 	env            planning.Context
 	serverPackages []schema.PackageName
 	focusServers   compute.Computable[*provision.ServerSnapshot]
-	runtime        runtime.Runtime
+	cluster        runtime.Cluster
 	runtimeClass   runtime.Planner
 
 	mu            sync.Mutex
@@ -120,7 +120,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 				// Must be invoked before building to make sure stack computation and building
 				// uses the updated context.
 				if f.Integration() == nil {
-					ctx, observer, err = languages.IntegrationFor(f.Framework()).PrepareDev(ctx, f)
+					ctx, observer, err = languages.IntegrationFor(f.Framework()).PrepareDev(ctx, do.cluster, f)
 					if err != nil {
 						return err
 					}
@@ -182,7 +182,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		server := focus[0]
 		if err := tasks.Action(runtime.TaskStackCompute).Scope(server.PackageName()).Run(ctx,
 			func(ctx context.Context) error {
-				buildID, err := do.runtime.DeployedConfigImageID(ctx, server.Proto())
+				buildID, err := do.cluster.DeployedConfigImageID(ctx, server.Proto())
 				if err != nil {
 					return err
 				}

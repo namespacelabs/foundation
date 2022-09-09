@@ -27,6 +27,12 @@ const (
 	FnServiceReadyz = "foundation.namespacelabs.dev/readyz"
 )
 
+type Class interface {
+	PlannerFor(planning.Context) Planner
+
+	EnsureCluster(context.Context, planning.Context) (Cluster, error)
+}
+
 type Planner interface {
 	// Plans a deployment, i.e. produces a series of instructions that will
 	// instantiate the required deployment resources to run the servers in the
@@ -45,7 +51,9 @@ type Planner interface {
 	NamespaceId() (*NamespaceId, error)
 }
 
-type Runtime interface {
+// Cluster represents a target deployment environment, scoped to an application
+// (usually the combination of an environment and workspace).
+type Cluster interface {
 	// DeployedConfigImageID retrieves the image reference of the "configuration
 	// image" used to deploy the specified server. Configuration images are only
 	// generated for production environments for now.
@@ -111,12 +119,6 @@ type Runtime interface {
 
 	HasPrepareProvision
 	HasTargetPlatforms
-}
-
-type DeferredRuntime interface {
-	PlannerFor(planning.Context) Planner
-
-	EnsureCluster(context.Context, planning.Context) (Runtime, error)
 }
 
 type HasPrepareProvision interface {

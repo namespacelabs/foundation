@@ -204,12 +204,12 @@ func generateProdViteConfig() *memfs.FS {
 	return &prodwebConfig
 }
 
-func (impl) PrepareDev(ctx context.Context, srv provision.Server) (context.Context, languages.DevObserver, error) {
+func (impl) PrepareDev(ctx context.Context, cluster runtime.Cluster, srv provision.Server) (context.Context, languages.DevObserver, error) {
 	if wsremote.Ctx(ctx) != nil {
 		return nil, nil, fnerrors.UserError(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
 	}
 
-	devObserver := hotreload.NewFileSyncDevObserver(ctx, srv, fileSyncPort)
+	devObserver := hotreload.NewFileSyncDevObserver(ctx, cluster, srv, fileSyncPort)
 
 	newCtx, _ := wsremote.WithRegistrar(ctx, devObserver.Deposit)
 

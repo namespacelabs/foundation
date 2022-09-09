@@ -23,7 +23,7 @@ var (
 	registrations = map[string]MakeRuntimeFunc{}
 )
 
-type MakeRuntimeFunc func(context.Context, planning.Context) (DeferredRuntime, error)
+type MakeRuntimeFunc func(context.Context, planning.Context) (Class, error)
 
 func Register(name string, r MakeRuntimeFunc) {
 	registrations[strings.ToLower(name)] = r
@@ -35,8 +35,8 @@ func HasRuntime(name string) bool {
 }
 
 // Never returns nil. If the specified runtime kind doesn't exist, then a runtime instance that always fails is returned.
-func For(ctx context.Context, env planning.Context) Runtime {
-	runtime, err := obtainSpecialized[Runtime](ctx, env)
+func For(ctx context.Context, env planning.Context) Cluster {
+	runtime, err := obtainSpecialized[Cluster](ctx, env)
 	if err != nil {
 		return runtimeFwdErr{err}
 	}
@@ -59,7 +59,7 @@ func PrepareProvision(ctx context.Context, env planning.Context) (*rtypes.Provis
 	return runtime.PrepareProvision(ctx, env)
 }
 
-func DeferredFor(ctx context.Context, env planning.Context) (DeferredRuntime, error) {
+func DeferredFor(ctx context.Context, env planning.Context) (Class, error) {
 	rt := strings.ToLower(env.Environment().Runtime)
 	if obtain, ok := registrations[rt]; ok {
 		r, err := obtain(ctx, env)

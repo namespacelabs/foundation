@@ -30,7 +30,7 @@ var (
 )
 
 func Register() {
-	runtime.Register("kubernetes", func(ctx context.Context, env planning.Context) (runtime.DeferredRuntime, error) {
+	runtime.Register("kubernetes", func(ctx context.Context, env planning.Context) (runtime.Class, error) {
 		hostConfig, err := client.ComputeHostConfig(env.Configuration())
 		if err != nil {
 			return nil, err
@@ -59,7 +59,7 @@ func (d deferredRuntime) PlannerFor(env planning.Context) runtime.Planner {
 	return RuntimeClass(env)
 }
 
-func (d deferredRuntime) EnsureCluster(ctx context.Context, env planning.Context) (runtime.Runtime, error) {
+func (d deferredRuntime) EnsureCluster(ctx context.Context, env planning.Context) (runtime.Cluster, error) {
 	unbound, err := New(ctx, env.Configuration())
 	if err != nil {
 		return nil, err

@@ -28,7 +28,7 @@ type FileSyncDevObserver struct {
 	ctx          context.Context
 	log          io.Writer
 	server       *schema.Server
-	rt           runtime.Runtime
+	cluster      runtime.Cluster
 	fileSyncPort int32
 
 	mu   sync.Mutex
@@ -36,12 +36,12 @@ type FileSyncDevObserver struct {
 	port io.Closer
 }
 
-func NewFileSyncDevObserver(ctx context.Context, srv provision.Server, fileSyncPort int32) *FileSyncDevObserver {
+func NewFileSyncDevObserver(ctx context.Context, cluster runtime.Cluster, srv provision.Server, fileSyncPort int32) *FileSyncDevObserver {
 	return &FileSyncDevObserver{
 		ctx:          ctx,
 		log:          console.TypedOutput(ctx, "hot reload", console.CatOutputUs),
 		server:       srv.Proto(),
-		rt:           runtime.For(ctx, srv.SealedContext()),
+		cluster:      cluster,
 		fileSyncPort: fileSyncPort,
 	}
 }
@@ -82,7 +82,7 @@ func (do *FileSyncDevObserver) OnDeployment() {
 	}
 
 	// An endpoint is manufactored here, we don't actually export this in our metadata.
-	do.port, err = do.rt.ForwardPort(do.ctx, do.server, do.fileSyncPort, []string{"127.0.0.1"}, func(fp runtime.ForwardedPort) {
+	do.port, err = do.cluster.ForwardPort(do.ctx, do.server, do.fileSyncPort, []string{"127.0.0.1"}, func(fp runtime.ForwardedPort) {
 		do.onEndpoint(fp)
 	})
 	if err != nil {

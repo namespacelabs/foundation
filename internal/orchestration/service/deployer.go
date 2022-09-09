@@ -106,8 +106,12 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 	sink := simplelog.NewSink(os.Stderr, maxLogLevel)
 	ctx = tasks.WithSink(ctx, sink)
 
-	rt := runtime.For(ctx, env)
-	nsId, err := rt.NamespaceId()
+	rt, err := runtime.DeferredFor(ctx, env)
+	if err != nil {
+		return err
+	}
+
+	nsId, err := rt.PlannerFor(env).NamespaceId()
 	if err != nil {
 		return err
 	}

@@ -39,7 +39,7 @@ type Integration interface {
 	GenerateServer(*pkggraph.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
 
 	// Called on `ns dev`.
-	PrepareDev(context.Context, provision.Server) (context.Context, DevObserver, error)
+	PrepareDev(context.Context, runtime.Cluster, provision.Server) (context.Context, DevObserver, error)
 }
 
 type DevObserver interface {
@@ -94,6 +94,6 @@ func (MaybeTidy) TidyServer(context.Context, planning.Context, pkggraph.PackageL
 
 type NoDev struct{}
 
-func (NoDev) PrepareDev(ctx context.Context, _ provision.Server) (context.Context, DevObserver, error) {
+func (NoDev) PrepareDev(ctx context.Context, _ runtime.Cluster, _ provision.Server) (context.Context, DevObserver, error) {
 	return ctx, nil, nil
 }

@@ -24,7 +24,7 @@ type clusterTarget struct {
 	namespace string
 }
 
-var _ runtime.Runtime = ClusterNamespace{}
+var _ runtime.Cluster = ClusterNamespace{}
 
 func resolveConfig(ctx context.Context, host *client.HostConfig) (*rest.Config, error) {
 	config, err := client.NewRestConfigFromHostEnv(ctx, host)

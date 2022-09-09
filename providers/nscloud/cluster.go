@@ -339,7 +339,7 @@ func reparse(obj interface{}, target interface{}) error {
 	return json.Unmarshal(b, target)
 }
 
-func provideDeferred(ctx context.Context, cfg *client.HostConfig) (runtime.DeferredRuntime, error) {
+func provideDeferred(ctx context.Context, cfg *client.HostConfig) (runtime.Class, error) {
 	conf := &PrebuiltCluster{}
 	if !cfg.Config.Get(conf) {
 		compute.On(ctx).DetachWith(compute.Detach{
@@ -360,7 +360,7 @@ type deferred struct {
 	cfg *client.HostConfig
 }
 
-var _ runtime.DeferredRuntime = deferred{}
+var _ runtime.Class = deferred{}
 var _ runtime.HasPrepareProvision = deferred{}
 var _ runtime.HasTargetPlatforms = deferred{}
 
@@ -368,7 +368,7 @@ func (d deferred) PlannerFor(env planning.Context) runtime.Planner {
 	return kubernetes.RuntimeClass(env)
 }
 
-func (d deferred) EnsureCluster(ctx context.Context, env planning.Context) (runtime.Runtime, error) {
+func (d deferred) EnsureCluster(ctx context.Context, env planning.Context) (runtime.Cluster, error) {
 	unbound, err := kubernetes.New(ctx, d.cfg.Config)
 	if err != nil {
 		return nil, err
@@ -385,7 +385,7 @@ func (d deferred) EnsureCluster(ctx context.Context, env planning.Context) (runt
 
 	bound := unbound.Bind(env)
 
-	return clusterRuntime{Runtime: bound, Cluster: p.ProviderSpecific.(*KubernetesCluster)}, nil
+	return clusterRuntime{Cluster: bound, Config: p.ProviderSpecific.(*KubernetesCluster)}, nil
 }
 
 func (d deferred) PrepareProvision(_ context.Context, env planning.Context) (*rtypes.ProvisionProps, error) {
@@ -406,18 +406,18 @@ func (d deferred) TargetPlatforms(context.Context) ([]specs.Platform, error) {
 }
 
 type clusterRuntime struct {
-	runtime.Runtime
-	Cluster *KubernetesCluster
+	runtime.Cluster
+	Config *KubernetesCluster
 }
 
 func (cr clusterRuntime) ComputeBaseNaming(ctx context.Context, source *schema.Naming) (*schema.ComputedNaming, error) {
 	return &schema.ComputedNaming{
 		Source:                   source,
-		BaseDomain:               cr.Cluster.IngressDomain,
-		TlsPassthroughBaseDomain: "int-" + cr.Cluster.IngressDomain, // XXX receive this value.
+		BaseDomain:               cr.Config.IngressDomain,
+		TlsPassthroughBaseDomain: "int-" + cr.Config.IngressDomain, // XXX receive this value.
 		Managed:                  schema.Domain_CLOUD_TERMINATION,
 		UpstreamTlsTermination:   true,
-		DomainFragmentSuffix:     cr.Cluster.ClusterId, // XXX fetch ingress external IP to calculate domain.
+		DomainFragmentSuffix:     cr.Config.ClusterId, // XXX fetch ingress external IP to calculate domain.
 		UseShortAlias:            true,
 	}, nil
 }
@@ -431,7 +431,7 @@ func (cr clusterRuntime) DeleteAllRecursively(ctx context.Context, wait bool, pr
 }
 
 func (cr clusterRuntime) deleteCluster(ctx context.Context) (bool, error) {
-	if err := DestroyCluster(ctx, cr.Cluster.ClusterId); err != nil {
+	if err := DestroyCluster(ctx, cr.Config.ClusterId); err != nil {
 		if status.Code(err) == codes.NotFound {
 			return false, nil
 		}

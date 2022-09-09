@@ -41,7 +41,7 @@ type DeferredProvider struct{}
 
 type TokenProviderFunc func(context.Context) (string, error)
 
-type DeferredProviderFunc func(context.Context, *HostConfig) (runtime.DeferredRuntime, error)
+type DeferredProviderFunc func(context.Context, *HostConfig) (runtime.Class, error)
 type ProviderFunc func(context.Context, planning.Configuration) (Provider, error)
 
 var (
@@ -339,7 +339,7 @@ func ComputeHostConfig(cfg planning.Configuration) (*HostConfig, error) {
 	return &HostConfig{Config: cfg, HostEnv: hostEnv}, nil
 }
 
-func MakeDeferredRuntime(ctx context.Context, cfg *HostConfig) (runtime.DeferredRuntime, error) {
+func MakeDeferredRuntime(ctx context.Context, cfg *HostConfig) (runtime.Class, error) {
 	if cfg.HostEnv.Provider != "" {
 		if p := deferredProviders[cfg.HostEnv.Provider]; p != nil {
 			return p(ctx, cfg)
