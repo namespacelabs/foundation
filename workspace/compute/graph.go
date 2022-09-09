@@ -455,6 +455,10 @@ func Cache(ctx context.Context) cache.Cache {
 	return On(ctx).cache
 }
 
+func AttachOrch(parent context.Context, orch *Orch) context.Context {
+	return context.WithValue(parent, _graphKey, orch)
+}
+
 func Do(parent context.Context, do func(context.Context) error) error {
 	parentOrch := On(parent)
 
@@ -477,7 +481,7 @@ func Do(parent context.Context, do func(context.Context) error) error {
 		cache:    c,
 		promises: map[string]*Promise[any]{},
 	}
-	ctx := context.WithValue(parent, _graphKey, g)
+	ctx := AttachOrch(parent, g)
 	exec := executor.New(ctx, "compute.Do")
 	g.origctx = ctx
 	g.exec = exec
