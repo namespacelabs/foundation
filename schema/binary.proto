@@ -32,6 +32,7 @@ message ImageBuildPlan {
     LLBPlan         llb_plan       = 4;  // Build  binary which itself produces LLB.
     string          nix_flake      = 5;  // Build a docker image from a nix flake.
     repeated string snapshot_files = 6;  // Add all referenced files, and directories, recursively visiting their children.
+    string          image_id       = 8;  // Use an existingDocker image.
 
     message LLBPlan {
         Binary output_of = 1;

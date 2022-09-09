@@ -24,6 +24,7 @@ type cueIntegration struct {
 
 type cueIntegrationDocker struct {
 	Dockerfile string `json:"dockerfile"`
+	Image      string `json:"image"`
 }
 
 // Mutates "pkg""
@@ -43,12 +44,22 @@ func parseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV,
 
 	switch bits.Kind {
 	case serverKindDockerfile:
+		if bits.Dockerfile != "" && bits.Image != "" {
+			return fnerrors.UserError(loc, "only one of dockerfile and image can be specified")
+		}
+
+		buildPlan := &schema.ImageBuildPlan{}
+		if bits.Dockerfile != "" {
+			buildPlan.Dockerfile = bits.cueIntegrationDocker.Dockerfile
+		}
+		if bits.Image != "" {
+			buildPlan.ImageId = bits.cueIntegrationDocker.Image
+		}
+
 		pkg.Binaries = append(pkg.Binaries, &schema.Binary{
 			Name: pkg.Server.Name,
 			BuildPlan: &schema.LayeredImageBuildPlan{
-				LayerBuildPlan: []*schema.ImageBuildPlan{
-					{Dockerfile: bits.cueIntegrationDocker.Dockerfile},
-				},
+				LayerBuildPlan: []*schema.ImageBuildPlan{buildPlan},
 			},
 		})
 		pkg.Server.Binary = &schema.Server_Binary{

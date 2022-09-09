@@ -232,6 +232,15 @@ func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, s
 		return nil, fnerrors.UserError(loc, "don't know how to build %q: no plan", bin.Name)
 	}
 
+	if imageId := src.ImageId; imageId != "" {
+		imgId, err := oci.ParseImageID(imageId)
+		if err != nil {
+			return nil, err
+		}
+
+		return build.PrebuiltPlan(imgId, false /* platformIndependent */, build.PrebuiltResolveOpts()), nil
+	}
+
 	if goPackage := src.GoPackage; goPackage != "" {
 		// Note, regardless of what config.command has been set to, we always build a
 		// binary named bin.Name.
