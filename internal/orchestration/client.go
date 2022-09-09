@@ -14,9 +14,11 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/orchestration/proto"
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
@@ -26,6 +28,7 @@ import (
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/workspace/tasks/protolog"
 )
 
 const (
@@ -156,8 +159,10 @@ func WireDeploymentStatus(ctx context.Context, conn *grpc.ClientConn, id string,
 		defer close(ch)
 	}
 
+	maxLogLevel := viper.GetInt32("console_log_level")
 	req := &proto.DeploymentStatusRequest{
-		Id: id,
+		Id:       id,
+		LogLevel: maxLogLevel,
 	}
 
 	stream, err := proto.NewOrchestrationServiceClient(conn).DeploymentStatus(ctx, req)
@@ -165,6 +170,7 @@ func WireDeploymentStatus(ctx context.Context, conn *grpc.ClientConn, id string,
 		return err
 	}
 
+	sink := tasks.SinkFrom(ctx)
 	for {
 		in, err := stream.Recv()
 		if err == io.EOF {
@@ -175,6 +181,22 @@ func WireDeploymentStatus(ctx context.Context, conn *grpc.ClientConn, id string,
 		}
 		if ch != nil && in.Event != nil {
 			ch <- in.Event
+		}
+		if sink != nil && in.Log != nil && in.Log.LogLevel <= maxLogLevel {
+			ra := tasks.ActionFromProto(ctx, in.Log.Task)
+
+			switch in.Log.Purpose {
+			case protolog.Log_PURPOSE_WAITING:
+				sink.Waiting(ra)
+			case protolog.Log_PURPOSE_STARTED:
+				sink.Started(ra)
+			case protolog.Log_PURPOSE_DONE:
+				sink.Done(ra)
+			case protolog.Log_PURPOSE_INSTANT:
+				sink.Instant(&ra.Data)
+			default:
+				fmt.Fprintf(console.Warnings(ctx), "unknown log purpose %s", in.Log.Purpose)
+			}
 		}
 	}
 }

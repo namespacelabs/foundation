@@ -209,17 +209,26 @@ func (ev *ActionEvent) Clone(makeName func(string) string) *ActionEvent {
 	return copy
 }
 
+func parentID(ctx context.Context) *ActionID {
+	var parent *RunningAction
+	action := ctx.Value(_actionKey)
+	if action != nil {
+		parent = action.(*RunningAction)
+		return &parent.Data.ActionID
+	}
+
+	return nil
+}
+
 func (ev *ActionEvent) toAction(ctx context.Context, state ActionState) *RunningAction {
 	sink := SinkFrom(ctx)
 	if sink == nil {
 		panic("compute: action sink required in the context")
 	}
 
-	var parent *RunningAction
-	action := ctx.Value(_actionKey)
-	if action != nil {
-		parent = action.(*RunningAction)
-		ev.data.ParentID = parent.Data.ActionID
+	parentId := parentID(ctx)
+	if parentId != nil {
+		ev.data.ParentID = *parentId
 	}
 
 	ev.initMissing()
@@ -367,6 +376,24 @@ func makeProto(data *EventData, at *EventAttachments) *protocol.Task {
 		HumanReadableLabel: data.HumanReadable,
 		CreatedTs:          data.Created.UnixNano(),
 		Scope:              data.Scope.PackageNamesAsString(),
+		State:              string(data.State),
+	}
+
+	if !data.Started.IsZero() {
+		p.StartedTs = data.Started.UnixNano()
+	}
+
+	if !data.HasPrivateData {
+		for _, arg := range data.Arguments {
+			taskArg := &protocol.Task_Argument{
+				Name: arg.Name,
+			}
+			// The stored value is serialized in a best-effort way.
+			if be, err := json.Marshal(arg.Msg); err == nil {
+				taskArg.Msg = string(be)
+			}
+			p.Argument = append(p.Argument, taskArg)
+		}
 	}
 
 	if data.State == ActionDone {
@@ -475,6 +502,65 @@ func serialize(msg interface{}, hasPrivateData bool) string {
 func (af *RunningAction) ID() ActionID                   { return af.Data.ActionID }
 func (af *RunningAction) Proto() *protocol.Task          { return makeProto(&af.Data, af.attachments) }
 func (af *RunningAction) Attachments() *EventAttachments { return af.attachments }
+
+func ActionFromProto(ctx context.Context, in *protocol.Task) *RunningAction {
+	sink := SinkFrom(ctx)
+	if sink == nil {
+		panic("compute: action sink required in the context")
+	}
+
+	data := EventData{
+		ActionID:      ActionID(in.Id),
+		Name:          in.Name,
+		HumanReadable: in.HumanReadableLabel,
+		Created:       time.Unix(0, in.CreatedTs),
+		State:         ActionState(in.State),
+	}
+
+	scope := schema.PackageList{}
+	for _, s := range in.Scope {
+		scope.Add(schema.PackageName(s))
+	}
+	data.Scope = scope
+
+	if in.StartedTs > 0 {
+		data.Started = time.Unix(0, in.StartedTs)
+	}
+
+	for _, arg := range in.Argument {
+		newArg := ActionArgument{
+			Name: arg.Name,
+		}
+		if arg.Msg != "" {
+			var msg json.Token
+			if err := json.Unmarshal([]byte(arg.Msg), &msg); err == nil {
+				newArg.Msg = msg
+			}
+		}
+		data.Arguments = append(data.Arguments, newArg)
+	}
+
+	if in.CompletedTs > 0 {
+		data.Completed = time.Unix(0, in.CompletedTs)
+	}
+	if in.ErrorMessage != "" {
+		data.Err = fmt.Errorf(in.ErrorMessage)
+	}
+
+	parentId := parentID(ctx)
+	if parentId != nil {
+		data.ParentID = *parentId
+	}
+
+	return &RunningAction{
+		sink: sink,
+		Data: data,
+		attachments: &EventAttachments{
+			actionID: data.ActionID,
+			sink:     sink,
+		},
+	}
+}
 
 func startSpan(ctx context.Context, data EventData) trace.Span {
 	name := data.Name
