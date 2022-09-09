@@ -11,6 +11,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/morikuni/aec"
 	"golang.org/x/exp/slices"
@@ -203,7 +204,11 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
 	}
 
-	bundle, err := collectLogs(ctx, env, test.TestRef, test.Stack, test.ServersUnderTest, test.OutputProgress)
+	// Limit how much time we spend on collecting logs out of the test environment.
+	collectionCtx, collectionDone := context.WithTimeout(ctx, 60*time.Second)
+	defer collectionDone()
+
+	bundle, err := collectLogs(collectionCtx, env, test.TestRef, test.Stack, test.ServersUnderTest, test.OutputProgress)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +250,12 @@ func collectLogs(ctx context.Context, env planning.Context, testRef *schema.Pack
 		srv := entry.Server // Close on srv.
 
 		ex.Go(func(ctx context.Context) error {
-			containers, err := rt.ResolveContainers(ctx, srv)
+			// It should be possible to resolve a container fairly quickly. Make
+			// sure we don't get stuck here waiting forever.
+			resolveCtx, resolveDone := context.WithTimeout(ctx, 10*time.Second)
+			defer resolveDone()
+
+			containers, err := rt.ResolveContainers(resolveCtx, srv)
 			if err != nil {
 				fmt.Fprintf(out, "%s: failed to resolve containers: %s: %v\n", testRef.Canonical(), srv.PackageName, err)
 				return nil
