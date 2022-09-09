@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
-func (r Unbound) FetchDiagnostics(ctx context.Context, reference *runtime.ContainerReference) (*runtime.Diagnostics, error) {
+func (r Cluster) FetchDiagnostics(ctx context.Context, reference *runtime.ContainerReference) (*runtime.Diagnostics, error) {
 	opaque := &kubedef.ContainerPodReference{}
 	if err := reference.Opaque.UnmarshalTo(opaque); err != nil {
 		return &runtime.Diagnostics{}, fnerrors.InternalError("invalid reference: %w", err)
@@ -43,13 +43,13 @@ func (r Unbound) FetchDiagnostics(ctx context.Context, reference *runtime.Contai
 	return &runtime.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.PodName, opaque.Container)
 }
 
-func (r K8sRuntime) FetchEnvironmentDiagnostics(ctx context.Context) (*storage.EnvironmentDiagnostics, error) {
+func (r ClusterNamespace) FetchEnvironmentDiagnostics(ctx context.Context) (*storage.EnvironmentDiagnostics, error) {
 	systemInfo, err := r.SystemInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	events, err := r.cli.CoreV1().Events(r.ns).List(ctx, metav1.ListOptions{})
+	events, err := r.cli.CoreV1().Events(r.namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fnerrors.New("kubernetes: failed to obtain event list: %w", err)
 	}

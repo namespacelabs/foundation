@@ -25,13 +25,19 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func setWorkspace(ctx context.Context, env planning.Context, packageName string, additional []string, obs *Session, pfw *endpointfwd.PortForward) error {
+func setWorkspace(ctx context.Context, env planning.Context, packageNames []string, obs *Session, pfw *endpointfwd.PortForward) error {
 	return compute.Do(ctx, func(ctx context.Context) error {
-		serverPackages := []schema.PackageName{schema.MakePackageName(packageName)}
-		for _, pkg := range additional {
-			serverPackages = append(serverPackages, schema.MakePackageName(pkg))
+		deferred, err := runtime.DeferredFor(ctx, env)
+		if err != nil {
+			return err
 		}
 
+		rt, err := deferred.EnsureCluster(ctx, env)
+		if err != nil {
+			return err
+		}
+
+		serverPackages := schema.PackageNames(packageNames...)
 		focusServers := provision.RequireServers(env, serverPackages...)
 
 		fmt.Fprintf(console.Debug(ctx), "devworkflow: setWorkspace.Do\n")
@@ -42,14 +48,19 @@ func setWorkspace(ctx context.Context, env planning.Context, packageName string,
 		// incremental by having narrower dependencies. E.g. single server would have
 		// a single build, single deployment, etc. And changes to siblings servers
 		// would only impact themselves, not all servers. #362
-		err := compute.Continuously(ctx, &buildAndDeploy{
+		if err := compute.Continuously(ctx, &buildAndDeploy{
 			obs:            obs,
 			pfw:            pfw,
 			env:            env,
 			serverPackages: serverPackages,
 			focusServers:   focusServers,
-		}, nil)
-		return err
+			runtime:        rt,
+			runtimeClass:   deferred.PlannerFor(env),
+		}, nil); err != nil {
+			return err
+		}
+
+		return nil
 	})
 }
 
@@ -59,6 +70,8 @@ type buildAndDeploy struct {
 	env            planning.Context
 	serverPackages []schema.PackageName
 	focusServers   compute.Computable[*provision.ServerSnapshot]
+	runtime        runtime.Runtime
+	runtimeClass   runtime.Planner
 
 	mu            sync.Mutex
 	cancelRunning func()
@@ -127,7 +140,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			s.Stack = stack.Proto()
 		})
 
-		plan, err := deploy.PrepareDeployStack(ctx, do.env, stack, focus)
+		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.runtimeClass, stack, focus)
 		if err != nil {
 			return err
 		}
@@ -169,7 +182,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		server := focus[0]
 		if err := tasks.Action(runtime.TaskStackCompute).Scope(server.PackageName()).Run(ctx,
 			func(ctx context.Context) error {
-				buildID, err := runtime.For(ctx, do.env).DeployedConfigImageID(ctx, server.Proto())
+				buildID, err := do.runtime.DeployedConfigImageID(ctx, server.Proto())
 				if err != nil {
 					return err
 				}

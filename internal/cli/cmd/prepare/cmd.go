@@ -56,7 +56,7 @@ func NewPrepareCmd() *cobra.Command {
 	return rootCmd
 }
 
-func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) compute.Computable[kubernetes.Unbound] {
+func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) compute.Computable[kubernetes.Cluster] {
 	return compute.Map(tasks.Action("prepare.kubernetes"),
 		compute.Inputs().Computable("conf", compute.Transform("parse results", compute.Collect(tasks.Action("prepare.kubernetes.configs"), confs...),
 			func(ctx context.Context, computed []compute.ResultWithTimestamp[[]*schema.DevHost_ConfigureEnvironment]) ([]*schema.DevHost_ConfigureEnvironment, error) {
@@ -67,7 +67,7 @@ func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.
 				return result, nil
 			})),
 		compute.Output{},
-		func(ctx context.Context, r compute.Resolved) (kubernetes.Unbound, error) {
+		func(ctx context.Context, r compute.Resolved) (kubernetes.Cluster, error) {
 			computed, _ := compute.GetDepWithType[[]*schema.DevHost_ConfigureEnvironment](r, "conf")
 
 			var merged []*anypb.Any

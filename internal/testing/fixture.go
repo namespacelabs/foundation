@@ -88,7 +88,12 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, fnerrors.UserError(testPkg.Location, "failed to load fixture: %w", err)
 	}
 
-	deployPlan, err := deploy.PrepareDeployStack(ctx, env, stack, sut)
+	deferred, err := runtime.DeferredFor(ctx, env)
+	if err != nil {
+		return nil, fnerrors.Wrap(testPkg.Location, err)
+	}
+
+	deployPlan, err := deploy.PrepareDeployStack(ctx, env, deferred.PlannerFor(env), stack, sut)
 	if err != nil {
 		return nil, fnerrors.UserError(testPkg.Location, "failed to load stack: %w", err)
 	}

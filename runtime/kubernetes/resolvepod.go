@@ -21,7 +21,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func (r K8sRuntime) ResolveContainers(ctx context.Context, srv *schema.Server) ([]*runtime.ContainerReference, error) {
+func (r ClusterNamespace) ResolveContainers(ctx context.Context, srv *schema.Server) ([]*runtime.ContainerReference, error) {
 	pod, err := r.resolvePod(ctx, r.cli, io.Discard, srv)
 	if err != nil {
 		return nil, err
@@ -41,8 +41,8 @@ func (r K8sRuntime) ResolveContainers(ctx context.Context, srv *schema.Server) (
 	return refs, nil
 }
 
-func (r K8sRuntime) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, server *schema.Server) (corev1.Pod, error) {
-	return resolvePodByLabels(ctx, cli, w, r.ns, map[string]string{
+func (r ClusterNamespace) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, server *schema.Server) (corev1.Pod, error) {
+	return resolvePodByLabels(ctx, cli, w, r.namespace, map[string]string{
 		kubedef.K8sServerId: server.Id,
 	})
 }

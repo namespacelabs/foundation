@@ -96,7 +96,6 @@ func RegisterClusterProvider() {
 	client.RegisterProvider("nscloud", provideCluster)
 	client.RegisterDeferredProvider("nscloud", provideDeferred)
 	planning.RegisterConfigProvider(&config.Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
-
 		cluster := &config.Cluster{}
 		if err := input.UnmarshalTo(cluster); err != nil {
 			return nil, err
@@ -365,7 +364,11 @@ var _ runtime.DeferredRuntime = deferred{}
 var _ runtime.HasPrepareProvision = deferred{}
 var _ runtime.HasTargetPlatforms = deferred{}
 
-func (d deferred) New(ctx context.Context, env planning.Context) (runtime.Runtime, error) {
+func (d deferred) PlannerFor(env planning.Context) runtime.Planner {
+	return kubernetes.RuntimeClass(env)
+}
+
+func (d deferred) EnsureCluster(ctx context.Context, env planning.Context) (runtime.Runtime, error) {
 	unbound, err := kubernetes.New(ctx, d.cfg.Config)
 	if err != nil {
 		return nil, err

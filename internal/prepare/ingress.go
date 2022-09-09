@@ -44,12 +44,12 @@ func (p noPackageEnv) KubeconfigProvider() (*client.HostConfig, error) {
 }
 
 func PrepareIngressFromHostConfig(env planning.Context, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
-	return PrepareIngress(env, compute.Transform("create k8s runtime", k8sconfig, func(ctx context.Context, cfg *client.HostConfig) (kubernetes.Unbound, error) {
+	return PrepareIngress(env, compute.Transform("create k8s runtime", k8sconfig, func(ctx context.Context, cfg *client.HostConfig) (kubernetes.Cluster, error) {
 		return kubernetes.NewFromConfig(ctx, cfg)
 	}))
 }
 
-func PrepareIngress(env planning.Context, kube compute.Computable[kubernetes.Unbound]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareIngress(env planning.Context, kube compute.Computable[kubernetes.Cluster]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.ingress").HumanReadablef("Deploying the Kubernetes ingress controller (may take up to 30 seconds)"),
 		compute.Inputs().Computable("runtime", kube).Proto("env", env.Environment()).Proto("workspace", env.Workspace().Proto()),
@@ -66,7 +66,7 @@ func PrepareIngress(env planning.Context, kube compute.Computable[kubernetes.Unb
 		})
 }
 
-func PrepareIngressInKube(ctx context.Context, env planning.Context, kube kubernetes.Unbound) error {
+func PrepareIngressInKube(ctx context.Context, env planning.Context, kube kubernetes.Cluster) error {
 	state, err := kube.PrepareCluster(ctx)
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func PrepareIngressInKube(ctx context.Context, env planning.Context, kube kubern
 	return nil
 }
 
-func waitForIngress(ctx context.Context, kube kubernetes.Unbound, action *tasks.ActionEvent) error {
+func waitForIngress(ctx context.Context, kube kubernetes.Cluster, action *tasks.ActionEvent) error {
 	return kubeobserver.WaitForCondition(ctx, kube.Client(), action, kubeobserver.WaitForPodConditition(
 		kubeobserver.SelectPods(nginx.IngressLoadBalancerService().Namespace, nil, nginx.ControllerSelector()),
 		kubeobserver.MatchPodCondition(corev1.PodReady)))

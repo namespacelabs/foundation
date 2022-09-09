@@ -66,12 +66,17 @@ func NewDeployCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
 			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
+			deferred, err := runtime.DeferredFor(ctx, env)
+			if err != nil {
+				return err
+			}
+
 			stack, err := stack.Compute(ctx, servers.Servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 			if err != nil {
 				return err
 			}
 
-			plan, err := deploy.PrepareDeployStack(ctx, env, stack, servers.Servers)
+			plan, err := deploy.PrepareDeployStack(ctx, env, deferred.PlannerFor(env), stack, servers.Servers)
 			if err != nil {
 				return err
 			}

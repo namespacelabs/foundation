@@ -79,6 +79,23 @@ var constants = map[schema.Environment_Purpose]perEnvConf{
 	},
 }
 
+type serverRunState struct {
+	operations []kubedef.Apply
+}
+
+type deploymentState struct {
+	definitions []*schema.SerializedInvocation
+	hints       []string // Optional messages to pass to the user.
+}
+
+func (r deploymentState) Definitions() []*schema.SerializedInvocation {
+	return r.definitions
+}
+
+func (r deploymentState) Hints() []string {
+	return r.hints
+}
+
 func lookupByName(env []*schema.BinaryConfig_EnvEntry, name string) (*schema.BinaryConfig_EnvEntry, bool) {
 	for _, env := range env {
 		if env.Name == name {
@@ -136,7 +153,7 @@ func deployAsPods(env *schema.Environment) bool {
 	return env.Purpose == schema.Environment_TESTING && DeployAsPodsInTests
 }
 
-func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
+func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
 	srv := server.Server
 
 	if server.Image.Repository == "" {
@@ -397,7 +414,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				return fnerrors.BadInputError("%s: persistent ID is missing", volume.Name)
 			}
 
-			v, operations, err := makePersistentVolume(r.ns, r.env, server.ServerLocation, srv, volume.Owner, name, pv.Id, pv.SizeBytes)
+			v, operations, err := makePersistentVolume(r.namespace, r.env, server.ServerLocation, srv, volume.Owner, name, pv.Id, pv.SizeBytes)
 			if err != nil {
 				return err
 			}
@@ -455,7 +472,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				// Needs to be declared before it's used.
 				s.operations = append(s.operations, kubedef.Apply{
 					Description: "Static configuration",
-					Resource: applycorev1.ConfigMap(configId, r.ns).
+					Resource: applycorev1.ConfigMap(configId, r.namespace).
 						WithAnnotations(annotations).
 						WithLabels(labels).
 						WithLabels(map[string]string{
@@ -477,7 +494,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 				// Needs to be declared before it's used.
 				s.operations = append(s.operations, kubedef.Apply{
 					Description: "Server secrets",
-					Resource: applycorev1.Secret(secretId, r.ns).
+					Resource: applycorev1.Secret(secretId, r.namespace).
 						WithAnnotations(annotations).
 						WithLabels(labels).
 						WithLabels(map[string]string{
@@ -531,7 +548,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		// Needs to be declared before it's used.
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Runtime configuration",
-			Resource: applycorev1.ConfigMap(configId, r.ns).
+			Resource: applycorev1.ConfigMap(configId, r.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithLabels(map[string]string{
@@ -574,7 +591,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 		// XXX remove this
 		scntr = scntr.WithEnv(
-			applycorev1.EnvVar().WithName("FN_KUBERNETES_NAMESPACE").WithValue(r.ns),
+			applycorev1.EnvVar().WithName("FN_KUBERNETES_NAMESPACE").WithValue(r.namespace),
 			applycorev1.EnvVar().WithName("FN_SERVER_ID").WithValue(srv.Id),
 			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(srv.Name),
 		)
@@ -668,7 +685,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Service Account",
-			Resource: applycorev1.ServiceAccount(serviceAccount, r.ns).
+			Resource: applycorev1.ServiceAccount(serviceAccount, r.namespace).
 				WithLabels(labels).
 				WithAnnotations(annotations),
 		})
@@ -685,7 +702,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 	if deployAsPods(r.env) {
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server",
-			Resource: applycorev1.Pod(deploymentId, r.ns).
+			Resource: applycorev1.Pod(deploymentId, r.namespace).
 				WithAnnotations(annotations).
 				WithAnnotations(tmpl.Annotations).
 				WithLabels(labels).
@@ -699,7 +716,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server StatefulSet",
 			Resource: appsv1.
-				StatefulSet(deploymentId, r.ns).
+				StatefulSet(deploymentId, r.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.StatefulSetSpec().
@@ -711,7 +728,7 @@ func (r K8sRuntime) prepareServerDeployment(ctx context.Context, server runtime.
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server Deployment",
 			Resource: appsv1.
-				Deployment(deploymentId, r.ns).
+				Deployment(deploymentId, r.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.DeploymentSpec().
@@ -851,7 +868,7 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 	return container, nil
 }
 
-func (r K8sRuntime) deployEndpoint(ctx context.Context, srv *schema.Server, endpoint *schema.Endpoint, s *serverRunState) error {
+func deployEndpoint(ctx context.Context, r clusterTarget, srv *schema.Server, endpoint *schema.Endpoint, s *serverRunState) error {
 	serviceSpec := applycorev1.ServiceSpec().WithSelector(kubedef.SelectById(srv))
 
 	port := endpoint.Port
@@ -867,7 +884,7 @@ func (r K8sRuntime) deployEndpoint(ctx context.Context, srv *schema.Server, endp
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: fmt.Sprintf("Service %s", endpoint.ServiceName),
 			Resource: applycorev1.
-				Service(endpoint.AllocatedName, r.ns).
+				Service(endpoint.AllocatedName, r.namespace).
 				WithLabels(kubedef.MakeServiceLabels(r.env, srv, endpoint)).
 				WithAnnotations(serviceAnnotations).
 				WithSpec(serviceSpec),

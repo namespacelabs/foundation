@@ -55,7 +55,7 @@ func newPsql() *cobra.Command {
 		}).
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
 		Do(func(ctx context.Context) error {
-			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt kubernetes.K8sRuntime, bind databaseBind, opts runtime.ServerRunOpts) error {
+			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt kubernetes.ClusterNamespace, bind databaseBind, opts runtime.ServerRunOpts) error {
 				opts.Command = []string{"psql"}
 				opts.Args = []string{
 					"-h", bind.Database.HostedAt.Address,
@@ -90,7 +90,7 @@ func newPgdump() *cobra.Command {
 		}).
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
 		Do(func(ctx context.Context) error {
-			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt kubernetes.K8sRuntime, bind databaseBind, opts runtime.ServerRunOpts) error {
+			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt kubernetes.ClusterNamespace, bind databaseBind, opts runtime.ServerRunOpts) error {
 				opts.Command = []string{"/bin/bash"}
 				opts.Args = []string{}
 
@@ -140,7 +140,7 @@ func newPgrestore() *cobra.Command {
 		}).
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
 		Do(func(ctx context.Context) error {
-			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt kubernetes.K8sRuntime, bind databaseBind, opts runtime.ServerRunOpts) error {
+			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt kubernetes.ClusterNamespace, bind databaseBind, opts runtime.ServerRunOpts) error {
 				opts.Command = []string{"psql"}
 				opts.Args = []string{
 					"-h", bind.Database.HostedAt.Address,
@@ -218,7 +218,7 @@ func (d databaseItem) Title() string       { return d.bind.Database.Name }
 func (d databaseItem) Description() string { return d.bind.PackageName }
 func (d databaseItem) FilterValue() string { return d.bind.Database.Name }
 
-func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, run func(context.Context, kubernetes.K8sRuntime, databaseBind, runtime.ServerRunOpts) error) error {
+func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, run func(context.Context, kubernetes.ClusterNamespace, databaseBind, runtime.ServerRunOpts) error) error {
 	config, err := determineConfiguration(res)
 	if err != nil {
 		return err
@@ -262,7 +262,7 @@ func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, ru
 	}
 
 	// XXX generalize.
-	k8s, err := kubernetes.NewFromEnv(ctx, res.Env)
+	k8s, err := kubernetes.New(ctx, res.Env.Configuration())
 	if err != nil {
 		return err
 	}

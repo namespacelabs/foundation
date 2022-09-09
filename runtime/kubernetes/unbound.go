@@ -12,51 +12,46 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
-type Unbound struct {
+type Cluster struct {
 	cli            *k8s.Clientset
 	computedClient *client.ComputedClient
 	host           *client.HostConfig
 }
 
-func NewFromConfig(ctx context.Context, config *client.HostConfig) (Unbound, error) {
+func NewFromConfig(ctx context.Context, config *client.HostConfig) (Cluster, error) {
 	cli, err := client.NewClient(ctx, config)
 	if err != nil {
-		return Unbound{}, err
+		return Cluster{}, err
 	}
 
-	return Unbound{cli.Clientset, cli, config}, nil
+	return Cluster{cli.Clientset, cli, config}, nil
 }
 
-func NewFromEnv(ctx context.Context, env planning.Context) (Unbound, error) {
-	return New(ctx, env.Configuration())
-}
-
-func New(ctx context.Context, cfg planning.Configuration) (Unbound, error) {
+func New(ctx context.Context, cfg planning.Configuration) (Cluster, error) {
 	hostConfig, err := client.ComputeHostConfig(cfg)
 	if err != nil {
-		return Unbound{}, err
+		return Cluster{}, err
 	}
 
 	return NewFromConfig(ctx, hostConfig)
 }
 
-func (u Unbound) Provider() (client.Provider, error) {
+func (u Cluster) Provider() (client.Provider, error) {
 	return u.computedClient.Provider()
 }
 
-func (u Unbound) Client() *k8s.Clientset {
+func (u Cluster) Client() *k8s.Clientset {
 	return u.cli
 }
 
-func (u Unbound) HostConfig() *client.HostConfig {
+func (u Cluster) HostConfig() *client.HostConfig {
 	return u.host
 }
 
-func (u Unbound) Bind(env planning.Context) K8sRuntime {
+func (u Cluster) Bind(env planning.Context) ClusterNamespace {
 	ns := ModuleNamespace(env.Workspace().Proto(), env.Environment())
 
 	conf := &kubetool.KubernetesEnv{}
@@ -64,14 +59,10 @@ func (u Unbound) Bind(env planning.Context) K8sRuntime {
 		ns = conf.Namespace
 	}
 
-	return u.bindToNamespace(env.Environment(), ns)
+	return ClusterNamespace{Cluster: u, clusterTarget: clusterTarget{env: env.Environment(), namespace: ns}}
 }
 
-func (u Unbound) bindToNamespace(env *schema.Environment, ns string) K8sRuntime {
-	return K8sRuntime{Unbound: u, env: env, ns: ns}
-}
-
-func (r Unbound) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {
+func (r Cluster) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {
 	var state deploymentState
 
 	ingressDefs, err := ingress.EnsureStack(ctx)

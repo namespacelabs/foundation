@@ -144,8 +144,7 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, eg *executor.Exe
 		pfw := s.setEnvironment(parentCtx, env)
 
 		eg.Go(func(ctx context.Context) error {
-			err := setWorkspace(ctx, env, servers[0], servers[1:], s, pfw)
-
+			err := setWorkspace(ctx, env, servers, s, pfw)
 			if err != nil && !errors.Is(err, context.Canceled) {
 				fnerrors.Format(console.Stderr(parentCtx), err, fnerrors.WithStyle(colors.WithColors))
 			}

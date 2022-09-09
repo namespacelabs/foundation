@@ -62,7 +62,7 @@ type ResolvedSidecarImage struct {
 	Binary     oci.ImageID
 }
 
-func PrepareDeployServers(ctx context.Context, env planning.Context, focus []provision.Server, onStack func(*stack.Stack)) (compute.Computable[*Plan], error) {
+func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.Planner, focus []provision.Server, onStack func(*stack.Stack)) (compute.Computable[*Plan], error) {
 	stack, err := stack.Compute(ctx, focus, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 	if err != nil {
 		return nil, err
@@ -72,10 +72,10 @@ func PrepareDeployServers(ctx context.Context, env planning.Context, focus []pro
 		onStack(stack)
 	}
 
-	return PrepareDeployStack(ctx, env, stack, focus)
+	return PrepareDeployStack(ctx, env, rc, stack, focus)
 }
 
-func PrepareDeployStack(ctx context.Context, env planning.Context, stack *stack.Stack, focus []provision.Server) (compute.Computable[*Plan], error) {
+func PrepareDeployStack(ctx context.Context, env planning.Context, rc runtime.Planner, stack *stack.Stack, focus []provision.Server) (compute.Computable[*Plan], error) {
 	for _, srv := range stack.Servers {
 		if err := provision.CheckCompatible(srv); err != nil {
 			return nil, err
@@ -89,7 +89,7 @@ func PrepareDeployStack(ctx context.Context, env planning.Context, stack *stack.
 
 	ingressFragments := computeIngressWithHandlerResult(env, stack, def)
 
-	prepare, err := prepareBuildAndDeployment(ctx, env, focus, stack, def, makeBuildAssets(ingressFragments))
+	prepare, err := prepareBuildAndDeployment(ctx, env, rc, focus, stack, def, makeBuildAssets(ingressFragments))
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func PrepareDeployStack(ctx context.Context, env planning.Context, stack *stack.
 	}
 
 	if AlsoDeployIngress {
-		g.ingressPlan = PlanIngressDeployment(g.ingressFragments)
+		g.ingressPlan = PlanIngressDeployment(rc, g.ingressFragments)
 	}
 
 	return g, nil
@@ -249,7 +249,7 @@ func (bi builtImages) get(ref *schema.PackageRef) (builtImage, bool) {
 	return builtImage{}, false
 }
 
-func prepareBuildAndDeployment(ctx context.Context, env planning.Context, servers []provision.Server, stack *stack.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
+func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc runtime.Planner, servers []provision.Server, stack *stack.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
 	var focus schema.PackageList
 	for _, server := range servers {
 		focus.Add(server.PackageName())
@@ -406,7 +406,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, server
 				serverRuns = append(serverRuns, run)
 			}
 
-			deployment, err := runtime.For(ctx, env).PlanDeployment(ctx, runtime.Deployment{
+			deployment, err := rc.PlanDeployment(ctx, runtime.Deployment{
 				Focus:   focus,
 				Stack:   stack.Proto(),
 				Servers: serverRuns,

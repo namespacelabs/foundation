@@ -44,23 +44,23 @@ type StartAndBlockPortFwdArgs struct {
 
 const PortForwardProtocolV1Name = "portforward.k8s.io"
 
-func (r K8sRuntime) ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
+func (r ClusterNamespace) ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
 	if containerPort <= 0 {
 		return nil, fnerrors.UserError(server, "invalid port number: %d", containerPort)
 	}
 
-	return r.RawForwardPort(ctx, server.PackageName, r.ns, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
+	return r.RawForwardPort(ctx, server.PackageName, r.namespace, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
 }
 
-func (r K8sRuntime) DialServer(ctx context.Context, server *schema.Server, containerPort int32) (net.Conn, error) {
+func (r ClusterNamespace) DialServer(ctx context.Context, server *schema.Server, containerPort int32) (net.Conn, error) {
 	if containerPort <= 0 {
 		return nil, fnerrors.UserError(server, "invalid port number: %d", containerPort)
 	}
 
-	return r.RawDialServer(ctx, r.ns, kubedef.SelectById(server), int(containerPort))
+	return r.RawDialServer(ctx, r.namespace, kubedef.SelectById(server), int(containerPort))
 }
 
-func (u Unbound) RawForwardPort(ctx context.Context, desc, ns string, podLabels map[string]string, containerPort int, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
+func (u Cluster) RawForwardPort(ctx context.Context, desc, ns string, podLabels map[string]string, containerPort int, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 	p := kubeobserver.NewPodObserver(ctxWithCancel, u.cli, ns, podLabels)
 
@@ -81,7 +81,7 @@ func (u Unbound) RawForwardPort(ctx context.Context, desc, ns string, podLabels 
 	return closerCallback(cancel), nil
 }
 
-func (u Unbound) RawDialServer(ctx context.Context, ns string, podLabels map[string]string, containerPort int) (net.Conn, error) {
+func (u Cluster) RawDialServer(ctx context.Context, ns string, podLabels map[string]string, containerPort int) (net.Conn, error) {
 	pod, err := kubeobserver.ResolvePod(ctx, u.cli, ns, podLabels)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (u Unbound) RawDialServer(ctx context.Context, ns string, podLabels map[str
 	return createConnection(ctx, streamConn, pod, 0, containerPort)
 }
 
-func (r Unbound) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPortFwdArgs) error {
+func (r Cluster) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPortFwdArgs) error {
 	config, err := resolveConfig(ctx, r.host)
 	if err != nil {
 		return err

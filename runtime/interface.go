@@ -27,12 +27,7 @@ const (
 	FnServiceReadyz = "foundation.namespacelabs.dev/readyz"
 )
 
-type Runtime interface {
-	// DeployedConfigImageID retrieves the image reference of the "configuration
-	// image" used to deploy the specified server. Configuration images are only
-	// generated for production environments for now.
-	DeployedConfigImageID(context.Context, *schema.Server) (oci.ImageID, error)
-
+type Planner interface {
 	// Plans a deployment, i.e. produces a series of instructions that will
 	// instantiate the required deployment resources to run the servers in the
 	// specified Deployment. This method is side-effect free; mutations are
@@ -44,6 +39,17 @@ type Runtime interface {
 	// the specified Ingresses. This method is side-effect free; mutations are
 	// applied when the generated plan is applied.
 	PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error)
+
+	// Returns a human readable ID of the deployment namespace.
+	// Different IDs signify that deployments are independent and can be executed in parallel.
+	NamespaceId() (*NamespaceId, error)
+}
+
+type Runtime interface {
+	// DeployedConfigImageID retrieves the image reference of the "configuration
+	// image" used to deploy the specified server. Configuration images are only
+	// generated for production environments for now.
+	DeployedConfigImageID(context.Context, *schema.Server) (oci.ImageID, error)
 
 	// ComputeBaseNaming returns a base naming configuration that is specific
 	// to the target runtime (e.g. kubernetes cluster).
@@ -103,16 +109,14 @@ type Runtime interface {
 	// removed. Returns true if resources were deleted.
 	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
 
-	// Returns a human readable ID of the deployment namespace.
-	// Different IDs signify that deployments are independent and can be executed in parallel.
-	NamespaceId() (*NamespaceId, error)
-
 	HasPrepareProvision
 	HasTargetPlatforms
 }
 
 type DeferredRuntime interface {
-	New(context.Context, planning.Context) (Runtime, error)
+	PlannerFor(planning.Context) Planner
+
+	EnsureCluster(context.Context, planning.Context) (Runtime, error)
 }
 
 type HasPrepareProvision interface {

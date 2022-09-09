@@ -18,10 +18,10 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
+func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
 	var state deploymentState
 
-	cleanup, err := anypb.New(&ingress.OpCleanupMigration{Namespace: r.ns})
+	cleanup, err := anypb.New(&ingress.OpCleanupMigration{Namespace: r.namespace})
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 		Impl:        cleanup,
 	})
 
-	certSecretMap, secrets := ingress.MakeCertificateSecrets(r.ns, allFragments)
+	certSecretMap, secrets := ingress.MakeCertificateSecrets(r.namespace, allFragments)
 
 	for _, apply := range secrets {
 		// XXX we could actually collect which servers refer what certs, to use as scope.
@@ -56,7 +56,7 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 			continue
 		}
 
-		defs, managed, err := ingress.Ensure(ctx, r.ns, r.env, srv.Server, frags, certSecretMap)
+		defs, managed, err := ingress.Ensure(ctx, r.namespace, r.env, srv.Server, frags, certSecretMap)
 		if err != nil {
 			return nil, err
 		}
@@ -94,7 +94,7 @@ func (r K8sRuntime) PlanIngress(ctx context.Context, stack *schema.Stack, allFra
 	return state, nil
 }
 
-func (r Unbound) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
+func (r Cluster) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
 	svc := nginx.IngressLoadBalancerService()
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)

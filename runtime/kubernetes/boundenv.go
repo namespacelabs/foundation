@@ -14,13 +14,17 @@ import (
 	fnschema "namespacelabs.dev/foundation/schema"
 )
 
-type K8sRuntime struct {
-	Unbound
-	env *fnschema.Environment
-	ns  string
+type ClusterNamespace struct {
+	Cluster
+	clusterTarget
 }
 
-var _ runtime.Runtime = K8sRuntime{}
+type clusterTarget struct {
+	env       *fnschema.Environment
+	namespace string
+}
+
+var _ runtime.Runtime = ClusterNamespace{}
 
 func resolveConfig(ctx context.Context, host *client.HostConfig) (*rest.Config, error) {
 	config, err := client.NewRestConfigFromHostEnv(ctx, host)

@@ -59,32 +59,46 @@ func PrepareProvision(ctx context.Context, env planning.Context) (*rtypes.Provis
 	return runtime.PrepareProvision(ctx, env)
 }
 
-func obtainSpecialized[V any](ctx context.Context, env planning.Context) (V, error) {
-	var empty V
+func DeferredFor(ctx context.Context, env planning.Context) (DeferredRuntime, error) {
 	rt := strings.ToLower(env.Environment().Runtime)
 	if obtain, ok := registrations[rt]; ok {
 		r, err := obtain(ctx, env)
 		if err != nil {
-			return empty, err
+			return nil, err
 		}
 
-		if h, ok := r.(V); ok {
-			return h, nil
-		}
-
-		runtime, err := r.New(ctx, env)
-		if err != nil {
-			return empty, err
-		}
-
-		return runtime.(V), nil
+		return r, nil
 	}
 
-	return empty, fnerrors.InternalError("%s: no such runtime", rt)
+	return nil, fnerrors.InternalError("%s: no such runtime", rt)
+}
+
+func obtainSpecialized[V any](ctx context.Context, env planning.Context) (V, error) {
+	var empty V
+
+	deferred, err := DeferredFor(ctx, env)
+	if err != nil {
+		return empty, err
+	}
+
+	if h, ok := deferred.(V); ok {
+		return h, nil
+	}
+
+	runtime, err := deferred.EnsureCluster(ctx, env)
+	if err != nil {
+		return empty, err
+	}
+
+	return runtime.(V), nil
 }
 
 type runtimeFwdErr struct {
 	permanentErr error
+}
+
+func (r runtimeFwdErr) Class() Planner {
+	return r
 }
 
 func (r runtimeFwdErr) PrepareProvision(context.Context, planning.Context) (*rtypes.ProvisionProps, error) {

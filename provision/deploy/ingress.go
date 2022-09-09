@@ -27,9 +27,9 @@ func ComputeIngress(rootenv planning.Context, stack *schema.Stack, plans compute
 	return &computeIngress{rootenv: rootenv, stack: stack, fragments: plans, allocate: allocate}
 }
 
-func PlanIngressDeployment(c compute.Computable[*ComputeIngressResult]) compute.Computable[runtime.DeploymentState] {
+func PlanIngressDeployment(rc runtime.Planner, c compute.Computable[*ComputeIngressResult]) compute.Computable[runtime.DeploymentState] {
 	return compute.Transform("plan ingress", c, func(ctx context.Context, res *ComputeIngressResult) (runtime.DeploymentState, error) {
-		return runtime.For(ctx, res.rootenv).PlanIngress(ctx, res.stack, res.Fragments)
+		return rc.PlanIngress(ctx, res.stack, res.Fragments)
 	})
 }
 

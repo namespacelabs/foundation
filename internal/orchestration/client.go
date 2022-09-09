@@ -66,12 +66,17 @@ func (c *clientInstance) Output() compute.Output {
 func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto.OrchestrationServiceClient, error) {
 	env := makeOrchEnv(c.ctx)
 
+	deferred, err := runtime.DeferredFor(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
 	focus, err := provision.RequireServer(ctx, env, schema.PackageName(serverPkg))
 	if err != nil {
 		return nil, err
 	}
 
-	plan, err := deploy.PrepareDeployServers(ctx, env, []provision.Server{focus}, nil)
+	plan, err := deploy.PrepareDeployServers(ctx, env, deferred.PlannerFor(env), []provision.Server{focus}, nil)
 	if err != nil {
 		return nil, err
 	}

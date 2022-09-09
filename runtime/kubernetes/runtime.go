@@ -5,10 +5,7 @@
 package kubernetes
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 
 	"google.golang.org/protobuf/types/known/anypb"
@@ -16,7 +13,6 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/runtime"
@@ -27,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
-	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -60,7 +55,11 @@ func Register() {
 
 type deferredRuntime struct{}
 
-func (d deferredRuntime) New(ctx context.Context, env planning.Context) (runtime.Runtime, error) {
+func (d deferredRuntime) PlannerFor(env planning.Context) runtime.Planner {
+	return RuntimeClass(env)
+}
+
+func (d deferredRuntime) EnsureCluster(ctx context.Context, env planning.Context) (runtime.Runtime, error) {
 	unbound, err := New(ctx, env.Configuration())
 	if err != nil {
 		return nil, err
@@ -69,19 +68,30 @@ func (d deferredRuntime) New(ctx context.Context, env planning.Context) (runtime
 	return unbound.Bind(env), nil
 }
 
+func RuntimeClass(env planning.Context) runtime.Planner {
+	ns := ModuleNamespace(env.Workspace().Proto(), env.Environment())
+
+	conf := &kubetool.KubernetesEnv{}
+	if env.Configuration().Get(conf) {
+		ns = conf.Namespace
+	}
+
+	return runtimeClass{clusterTarget{env: env.Environment(), namespace: ns}}
+}
+
 func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApplyConfiguration {
 	return applycorev1.Namespace(ns).
 		WithLabels(kubedef.MakeLabels(env, nil)).
 		WithAnnotations(kubedef.MakeAnnotations(env, nil))
 }
 
-func (r K8sRuntime) PrepareProvision(ctx context.Context, _ planning.Context) (*rtypes.ProvisionProps, error) {
+func (r ClusterNamespace) PrepareProvision(ctx context.Context, _ planning.Context) (*rtypes.ProvisionProps, error) {
 	systemInfo, err := r.SystemInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return PrepareProvisionWith(r.env, r.ns, systemInfo)
+	return PrepareProvisionWith(r.env, r.namespace, systemInfo)
 }
 
 func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubedef.SystemInfo) (*rtypes.ProvisionProps, error) {
@@ -112,28 +122,11 @@ func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubede
 	}, nil
 }
 
-type serverRunState struct {
-	operations []kubedef.Apply
-}
-
-type deploymentState struct {
-	definitions []*schema.SerializedInvocation
-	hints       []string // Optional messages to pass to the user.
-}
-
-func (r deploymentState) Definitions() []*schema.SerializedInvocation {
-	return r.definitions
-}
-
-func (r deploymentState) Hints() []string {
-	return r.hints
-}
-
-func (r K8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
+func (r ClusterNamespace) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
 	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.PackageName)),
 		func(ctx context.Context) (oci.ImageID, error) {
 			// XXX need a StatefulSet variant.
-			d, err := r.cli.AppsV1().Deployments(r.ns).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
+			d, err := r.cli.AppsV1().Deployments(r.namespace).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
 			if err != nil {
 				// XXX better error messages.
 				return oci.ImageID{}, err
@@ -156,113 +149,22 @@ func (r K8sRuntime) DeployedConfigImageID(ctx context.Context, server *schema.Se
 		})
 }
 
-func (r K8sRuntime) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
-	var state deploymentState
-	deployOpts := deployOpts{
-		focus:   d.Focus,
-		secrets: d.Secrets,
-	}
-
-	// Collect all required servers before planning deployment as they are referenced in annotations.
-	for _, server := range d.Servers {
-		deployOpts.stackIds = append(deployOpts.stackIds, server.Server.Id)
-	}
-
-	for _, server := range d.Servers {
-		var singleState serverRunState
-
-		var serverInternalEndpoints []*schema.InternalEndpoint
-		for _, ie := range d.Stack.InternalEndpoint {
-			if server.Server.PackageName == ie.ServerOwner {
-				serverInternalEndpoints = append(serverInternalEndpoints, ie)
-			}
-		}
-
-		if err := r.prepareServerDeployment(ctx, server, serverInternalEndpoints, deployOpts, &singleState); err != nil {
-			return nil, err
-		}
-
-		// XXX verify we've consumed all endpoints.
-		for _, endpoint := range d.Stack.EndpointsBy(schema.PackageName(server.Server.PackageName)) {
-			if err := r.deployEndpoint(ctx, server.Server, endpoint, &singleState); err != nil {
-				return nil, err
-			}
-		}
-
-		if at := tasks.Attachments(ctx); at.IsStoring() {
-			output := &bytes.Buffer{}
-			for k, decl := range singleState.operations {
-				if k > 0 {
-					fmt.Fprintln(output, "---")
-				}
-
-				b, err := yaml.Marshal(decl.Resource)
-				if err == nil {
-					fmt.Fprintf(output, "%s\n", b)
-					// XXX ignoring errors
-				}
-			}
-
-			at.Attach(tasks.Output(fmt.Sprintf("%s.k8s-decl.yaml", server.Server.PackageName), "application/yaml"), output.Bytes())
-		}
-
-		for _, apply := range singleState.operations {
-			def, err := apply.ToDefinition(schema.PackageName(server.Server.PackageName))
-			if err != nil {
-				return nil, err
-			}
-			state.definitions = append(state.definitions, def)
-		}
-	}
-
-	if !r.env.Ephemeral {
-		cleanup, err := anypb.New(&kubedef.OpCleanupRuntimeConfig{
-			Namespace: r.ns,
-			CheckPods: deployAsPods(r.env),
-		})
-		if err != nil {
-			return nil, fnerrors.InternalError("failed to serialize cleanup: %w", err)
-		}
-
-		state.definitions = append(state.definitions, &schema.SerializedInvocation{
-			Description: "Kubernetes: cleanup unused resources",
-			Impl:        cleanup,
-		})
-	}
-
-	state.hints = append(state.hints, fmt.Sprintf("Inspecting your deployment: %s",
-		colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("kubectl -n %s get pods", r.ns))))
-
-	return state, nil
-}
-
-func (r K8sRuntime) ComputeBaseNaming(context.Context, *schema.Naming) (*schema.ComputedNaming, error) {
+func (r ClusterNamespace) ComputeBaseNaming(context.Context, *schema.Naming) (*schema.ComputedNaming, error) {
 	// The default kubernetes integration has no assumptions regarding how ingress names are allocated.
 	return nil, nil
 }
 
-func (r K8sRuntime) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
+func (r ClusterNamespace) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
 	cmd := append([]string{command}, rest...)
 
 	return r.startTerminal(ctx, r.cli, server, rio, cmd)
 }
 
-func (r K8sRuntime) AttachTerminal(ctx context.Context, reference *runtime.ContainerReference, rio runtime.TerminalIO) error {
+func (r ClusterNamespace) AttachTerminal(ctx context.Context, reference *runtime.ContainerReference, rio runtime.TerminalIO) error {
 	cpr := &kubedef.ContainerPodReference{}
 	if err := reference.Opaque.UnmarshalTo(cpr); err != nil {
 		return fnerrors.InternalError("invalid reference: %w", err)
 	}
 
 	return r.attachTerminal(ctx, r.cli, cpr, rio)
-}
-
-func (r K8sRuntime) NamespaceId() (*runtime.NamespaceId, error) {
-	id := &runtime.NamespaceId{
-		HumanReference: fmt.Sprintf("kubernetes:%s", r.ns),
-	}
-
-	hash := sha256.Sum256([]byte(id.HumanReference))
-	id.UniqueId = hex.EncodeToString(hash[:])
-
-	return id, nil
 }

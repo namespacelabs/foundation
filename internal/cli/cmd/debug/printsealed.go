@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -41,6 +42,11 @@ func newPrintSealedCmd() *cobra.Command {
 			pl := workspace.NewPackageLoader(env)
 			loc := locs.Locs[0]
 
+			deferred, err := runtime.DeferredFor(ctx, env)
+			if err != nil {
+				return err
+			}
+
 			if !printDeploy {
 				sealed, err := workspace.Seal(ctx, pl, loc.AsPackageName(), nil)
 				if err != nil {
@@ -54,7 +60,7 @@ func newPrintSealedCmd() *cobra.Command {
 					return err
 				}
 
-				plan, err := deploy.PrepareDeployServers(ctx, env, []provision.Server{t}, nil)
+				plan, err := deploy.PrepareDeployServers(ctx, env, deferred.PlannerFor(env), []provision.Server{t}, nil)
 				if err != nil {
 					return err
 				}
