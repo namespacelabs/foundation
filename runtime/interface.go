@@ -131,6 +131,9 @@ type Cluster interface {
 	// removed. Returns true if resources were deleted.
 	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
 
+	// Rebind returns a new instance of the same cluster, attached to a different namespace.
+	Rebind(planning.Context) Cluster
+
 	HasPrepareProvision
 	HasTargetPlatforms
 }

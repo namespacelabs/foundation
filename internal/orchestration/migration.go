@@ -14,11 +14,17 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, p *ops.Plan, plan *schema.DeployPlan, wait, outputProgress bool) error {
 	if UseOrchestrator {
-		id, err := CallDeploy(ctx, env, plan)
+		cli, err := compute.GetValue(ctx, ConnectToClient(env, cluster))
+		if err != nil {
+			return err
+		}
+
+		id, err := CallDeploy(ctx, env, cli, plan)
 		if err != nil {
 			return err
 		}
@@ -26,10 +32,10 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, 
 		if wait {
 			if outputProgress {
 				return deploy.RenderAndWait(ctx, env, cluster, func(ch chan *orchpb.Event) error {
-					return WireDeploymentStatus(ctx, env, id, ch)
+					return WireDeploymentStatus(ctx, cli, id, ch)
 				})
 			} else {
-				return WireDeploymentStatus(ctx, env, id, nil)
+				return WireDeploymentStatus(ctx, cli, id, nil)
 			}
 		}
 	} else {

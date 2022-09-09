@@ -62,14 +62,14 @@ func (u Cluster) HostConfig() *client.HostConfig {
 
 func (u Cluster) Bind(ns runtime.Namespace) (runtime.Cluster, error) {
 	if v, ok := ns.(planner); ok {
-		return ClusterNamespace{Cluster: u, clusterTarget: v.target}, nil
+		return ClusterNamespace{Cluster: u, clusterTarget: v.namespace}, nil
 	}
 
 	return nil, fnerrors.InternalError("Expected a kubernetes-specific Namespace")
 }
 
 func (u Cluster) BindNamespace(env planning.Context) ClusterNamespace {
-	return ClusterNamespace{Cluster: u, clusterTarget: RuntimeClass(env).target}
+	return ClusterNamespace{Cluster: u, clusterTarget: RuntimeClass(env).namespace}
 }
 
 func (r Cluster) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {

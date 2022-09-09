@@ -20,14 +20,14 @@ import (
 )
 
 type planner struct {
-	target clusterTarget
+	namespace clusterTarget
 }
 
 var _ runtime.Namespace = planner{}
 var _ runtime.Planner = planner{}
 
 func (r planner) UniqueID() string {
-	return fmt.Sprintf("kubernetes:%s", r.target.namespace)
+	return fmt.Sprintf("kubernetes:%s", r.namespace.namespace)
 }
 
 func (r planner) Planner() runtime.Planner {
@@ -35,11 +35,11 @@ func (r planner) Planner() runtime.Planner {
 }
 
 func (r planner) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
-	return planDeployment(ctx, r.target, d)
+	return planDeployment(ctx, r.namespace, d)
 }
 
 func (r planner) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
-	return planIngress(ctx, r.target, stack, allFragments)
+	return planIngress(ctx, r.namespace, stack, allFragments)
 }
 
 func (r planner) Namespace() runtime.Namespace {

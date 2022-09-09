@@ -41,14 +41,19 @@ var (
 	RenderOrchestratorDeployment = false
 )
 
-type clientInstance struct {
-	ctx planning.Context
-
-	compute.DoScoped[proto.OrchestrationServiceClient] // Only connect once per configuration.
+type Client struct {
+	proto.OrchestrationServiceClient
 }
 
-func ConnectToClient(env planning.Context) compute.Computable[proto.OrchestrationServiceClient] {
-	return &clientInstance{ctx: env}
+type clientInstance struct {
+	ctx     planning.Context
+	cluster runtime.Cluster
+
+	compute.DoScoped[*Client] // Only connect once per configuration.
+}
+
+func ConnectToClient(env planning.Context, cluster runtime.Cluster) compute.Computable[*Client] {
+	return &clientInstance{ctx: env, cluster: cluster}
 }
 
 func (c *clientInstance) Action() *tasks.ActionEvent {
@@ -63,23 +68,10 @@ func (c *clientInstance) Output() compute.Output {
 	return compute.Output{NotCacheable: true}
 }
 
-func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto.OrchestrationServiceClient, error) {
+func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Client, error) {
 	env := makeOrchEnv(c.ctx)
 
-	deferred, err := runtime.DeferredFor(ctx, env)
-	if err != nil {
-		return nil, err
-	}
-
-	dcluster, err := deferred.EnsureCluster(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	cluster, err := dcluster.Bind(deferred.Namespace(env))
-	if err != nil {
-		return nil, err
-	}
+	cluster := c.cluster.Rebind(env)
 
 	focus, err := provision.RequireServer(ctx, env, schema.PackageName(serverPkg))
 	if err != nil {
@@ -154,7 +146,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (proto
 
 	cli := proto.NewOrchestrationServiceClient(conn)
 
-	return cli, nil
+	return &Client{OrchestrationServiceClient: cli}, nil
 }
 
 func getAwsConf(ctx context.Context, env planning.Context) (*awsprovider.Conf, error) {
@@ -224,16 +216,12 @@ func getUserAuth(ctx context.Context) (*fnapi.UserAuth, error) {
 	return auth, nil
 }
 
-func CallDeploy(ctx context.Context, env planning.Context, plan *schema.DeployPlan) (string, error) {
-	cli, err := compute.GetValue(ctx, ConnectToClient(env))
-	if err != nil {
-		return "", err
-	}
-
+func CallDeploy(ctx context.Context, env planning.Context, cli *Client, plan *schema.DeployPlan) (string, error) {
 	req := &proto.DeployRequest{
 		Plan: plan,
 	}
 
+	var err error
 	if req.Aws, err = getAwsConf(ctx, env); err != nil {
 		return "", err
 	}
@@ -253,18 +241,13 @@ func CallDeploy(ctx context.Context, env planning.Context, plan *schema.DeployPl
 	return resp.Id, nil
 }
 
-func WireDeploymentStatus(ctx context.Context, env planning.Context, id string, ch chan *orchestration.Event) error {
+func WireDeploymentStatus(ctx context.Context, cli *Client, id string, ch chan *orchestration.Event) error {
 	if ch != nil {
 		defer close(ch)
 	}
 
 	req := &proto.DeploymentStatusRequest{
 		Id: id,
-	}
-
-	cli, err := compute.GetValue(ctx, ConnectToClient(env))
-	if err != nil {
-		return err
 	}
 
 	stream, err := cli.DeploymentStatus(ctx, req)
