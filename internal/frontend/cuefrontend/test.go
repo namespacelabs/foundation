@@ -11,7 +11,6 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type cueTest struct {
@@ -48,10 +47,6 @@ func parseCueTest(ctx context.Context, loc pkggraph.Location, parent, v *fncue.C
 		testDef.Driver, err = test.Binary.ToSchema(loc)
 	}
 	if err != nil {
-		return nil, err
-	}
-
-	if err := workspace.TransformTest(loc, testDef); err != nil {
 		return nil, err
 	}
 

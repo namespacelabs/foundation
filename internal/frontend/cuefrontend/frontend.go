@@ -94,14 +94,6 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 		}
 		parsed.Server = parsedSrv
 
-		if parsed.Server.RunByDefault {
-			test, err := workspace.CreateServerStartupTest(ctx, ft.loader, loc.PackageName)
-			if err != nil {
-				return nil, fnerrors.Wrapf(loc, err, "creating server startup test")
-			}
-			parsed.Tests = append(parsed.Tests, test)
-		}
-
 		count++
 	}
 
