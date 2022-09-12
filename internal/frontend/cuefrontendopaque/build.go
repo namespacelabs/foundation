@@ -18,13 +18,21 @@ const (
 )
 
 type cueBuild struct {
-	With       string `json:"with"`
+	cueBuildDocker
+
+	With string `json:"with"`
+
+	// Shortcuts
+	Docker *cueBuildDocker `json:"docker"`
+}
+
+type cueBuildDocker struct {
 	Dockerfile string `json:"dockerfile"`
 }
 
 type parsedCueBuild struct {
-	binaryRef      *schema.PackageRef
-	inlineBinaries []*schema.Binary
+	binaryRef    *schema.PackageRef
+	inlineBinary *schema.Binary
 }
 
 // Parses the "build" definition.
@@ -34,18 +42,26 @@ func parseCueBuild(ctx context.Context, name string, loc pkggraph.Location, v *f
 		return nil, err
 	}
 
+	// Parsing shortcuts
+	if bits.With == "" {
+		if bits.Docker != nil {
+			bits.cueBuildDocker = *bits.Docker
+			bits.With = serverKindDockerfile
+		}
+	}
+
 	out := &parsedCueBuild{}
 
 	switch bits.With {
 	case serverKindDockerfile:
-		out.inlineBinaries = append(out.inlineBinaries, &schema.Binary{
+		out.inlineBinary = &schema.Binary{
 			Name: name,
 			BuildPlan: &schema.LayeredImageBuildPlan{
 				LayerBuildPlan: []*schema.ImageBuildPlan{
 					{Dockerfile: bits.Dockerfile},
 				},
 			},
-		})
+		}
 		out.binaryRef = schema.MakePackageRef(loc.PackageName, name)
 	default:
 		return nil, fnerrors.UserError(loc, "unsupported builder %q", bits.With)

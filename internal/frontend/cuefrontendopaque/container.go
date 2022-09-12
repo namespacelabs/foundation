@@ -61,7 +61,7 @@ func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, nam
 		}
 
 		out.container.BinaryRef = cueBuild.binaryRef
-		out.inlineBinaries = append(out.inlineBinaries, cueBuild.inlineBinaries...)
+		out.inlineBinaries = append(out.inlineBinaries, cueBuild.inlineBinary)
 	} else {
 		return nil, fnerrors.UserError(loc, "missing build definition")
 	}
