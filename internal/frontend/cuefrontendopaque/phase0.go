@@ -121,6 +121,15 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 	}
 
+	if tests := v.LookupPath("tests"); tests.Exists() {
+		parsedTests, err := parseTests(ctx, ft.loader, loc, tests)
+		if err != nil {
+			return nil, err
+		}
+
+		parsedPkg.Tests = append(parsedPkg.Tests, parsedTests...)
+	}
+
 	if integration := server.LookupPath("integration"); integration.Exists() {
 		if err := parseIntegration(ctx, loc, integration, parsedPkg); err != nil {
 			return nil, err

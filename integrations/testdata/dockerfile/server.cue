@@ -19,3 +19,10 @@ server: {
 		}
 	}
 }
+
+tests: {
+	// TODO: fix a k8s error when a test name is too long.
+	hello: {
+		build: docker: dockerfile: "test/Dockerfile"
+	}
+}

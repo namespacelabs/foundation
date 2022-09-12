@@ -22,13 +22,28 @@ func TransformBinary(loc pkggraph.Location, bin *schema.Binary) error {
 	bin.PackageName = loc.PackageName.String()
 
 	if bin.Config == nil {
-		// By default, assume the binary is built with the same name as the package name.
-		bin.Config = &schema.BinaryConfig{
-			Command: []string{"/" + bin.Name},
+		hasGoLayers := false
+		for _, layer := range bin.BuildPlan.LayerBuildPlan {
+			if isImagePlanGo(layer) {
+				hasGoLayers = true
+				break
+			}
+		}
+
+		// For Go, by default, assume the binary is built with the same name as the package name.
+		// TODO: revisit this heuristics.
+		if hasGoLayers {
+			bin.Config = &schema.BinaryConfig{
+				Command: []string{"/" + bin.Name},
+			}
 		}
 	}
 
 	return nil
+}
+
+func isImagePlanGo(plan *schema.ImageBuildPlan) bool {
+	return plan.GoBuild != nil || plan.GoPackage != ""
 }
 
 func TransformFunction(loc pkggraph.Location, function *schema.ExperimentalFunction) error {
