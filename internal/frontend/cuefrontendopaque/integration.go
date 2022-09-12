@@ -24,10 +24,9 @@ type cueIntegration struct {
 
 type cueIntegrationDocker struct {
 	Dockerfile string `json:"dockerfile"`
-	Image      string `json:"image"`
 }
 
-// Mutates "pkg""
+// Mutates "pkg"
 func parseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV, pkg *pkggraph.Package) error {
 	var bits cueIntegration
 	if err := v.Val.Decode(&bits); err != nil {
@@ -44,22 +43,16 @@ func parseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV,
 
 	switch bits.Kind {
 	case serverKindDockerfile:
-		if bits.Dockerfile != "" && bits.Image != "" {
-			return fnerrors.UserError(loc, "only one of dockerfile and image can be specified")
-		}
-
-		buildPlan := &schema.ImageBuildPlan{}
-		if bits.Dockerfile != "" {
-			buildPlan.Dockerfile = bits.cueIntegrationDocker.Dockerfile
-		}
-		if bits.Image != "" {
-			buildPlan.ImageId = bits.cueIntegrationDocker.Image
+		if bits.Dockerfile == "" {
+			return fnerrors.UserError(loc, "docker integration requires dockerfile")
 		}
 
 		pkg.Binaries = append(pkg.Binaries, &schema.Binary{
 			Name: pkg.Server.Name,
 			BuildPlan: &schema.LayeredImageBuildPlan{
-				LayerBuildPlan: []*schema.ImageBuildPlan{buildPlan},
+				LayerBuildPlan: []*schema.ImageBuildPlan{
+					{Dockerfile: bits.cueIntegrationDocker.Dockerfile},
+				},
 			},
 		})
 		pkg.Server.Binary = &schema.Server_Binary{
@@ -70,4 +63,27 @@ func parseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV,
 	default:
 		return fnerrors.UserError(loc, "unsupported integration kind %q", bits.Kind)
 	}
+}
+
+// Mutates "pkg"
+func parseImageIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV, pkg *pkggraph.Package) error {
+	str, err := v.Val.String()
+	if err != nil {
+		return err
+	}
+
+	pkg.Binaries = append(pkg.Binaries, &schema.Binary{
+		Name: pkg.Server.Name,
+		BuildPlan: &schema.LayeredImageBuildPlan{
+			LayerBuildPlan: []*schema.ImageBuildPlan{
+				{ImageId: str},
+			},
+		},
+	})
+
+	pkg.Server.Binary = &schema.Server_Binary{
+		PackageRef: schema.MakePackageRef(loc.PackageName, pkg.Server.Name),
+	}
+
+	return nil
 }

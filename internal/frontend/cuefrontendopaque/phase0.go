@@ -135,6 +135,12 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 	}
 
+	if image := server.LookupPath("image"); image.Exists() {
+		if err := parseImageIntegration(ctx, loc, image, parsedPkg); err != nil {
+			return nil, err
+		}
+	}
+
 	phase1plan.startupPlan = startupPlan
 	phase1plan.sidecars = parsedSidecars
 	phase1plan.initContainers = parsedInitContainers
