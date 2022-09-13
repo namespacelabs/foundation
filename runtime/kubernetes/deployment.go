@@ -138,14 +138,14 @@ func deployAsPods(env *schema.Environment) bool {
 	return env.Purpose == schema.Environment_TESTING && DeployAsPodsInTests
 }
 
-func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.Deployable, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
+func prepareDeployment(ctx context.Context, target clusterTarget, deployable runtime.Deployable, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
 	if deployable.RunOpts.Image.Repository == "" {
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.RunOpts.Image)
 	}
 
-	probevalues, ok := constants[r.env.Purpose]
+	probevalues, ok := constants[target.env.Purpose]
 	if !ok {
-		return fnerrors.InternalError("%s: no constants configured", r.env.Name)
+		return fnerrors.InternalError("%s: no constants configured", target.env.Name)
 	}
 
 	secCtx := applycorev1.SecurityContext()
@@ -188,9 +188,9 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 	spec := applycorev1.PodSpec().
 		WithEnableServiceLinks(false) // Disable service injection via environment variables.
 
-	labels := kubedef.MakeLabels(r.env, deployable)
+	labels := kubedef.MakeLabels(target.env, deployable)
 
-	annotations := kubedef.MakeAnnotations(r.env, deployable.PackageName)
+	annotations := kubedef.MakeAnnotations(target.env, deployable.PackageName)
 
 	if deployable.Focused {
 		labels = kubedef.WithFocusMark(labels)
@@ -397,7 +397,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 				return fnerrors.BadInputError("%s: persistent ID is missing", volume.Name)
 			}
 
-			v, operations, err := makePersistentVolume(r.namespace, r.env, deployable.Location, volume.Owner, name, pv.Id, pv.SizeBytes)
+			v, operations, err := makePersistentVolume(target.namespace, target.env, deployable.Location, volume.Owner, name, pv.Id, pv.SizeBytes)
 			if err != nil {
 				return err
 			}
@@ -455,7 +455,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 				// Needs to be declared before it's used.
 				s.operations = append(s.operations, kubedef.Apply{
 					Description: "Static configuration",
-					Resource: applycorev1.ConfigMap(configId, r.namespace).
+					Resource: applycorev1.ConfigMap(configId, target.namespace).
 						WithAnnotations(annotations).
 						WithLabels(labels).
 						WithLabels(map[string]string{
@@ -477,7 +477,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 				// Needs to be declared before it's used.
 				s.operations = append(s.operations, kubedef.Apply{
 					Description: "Server secrets",
-					Resource: applycorev1.Secret(secretId, r.namespace).
+					Resource: applycorev1.Secret(secretId, target.namespace).
 						WithAnnotations(annotations).
 						WithLabels(labels).
 						WithLabels(map[string]string{
@@ -531,7 +531,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 		// Needs to be declared before it's used.
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Runtime configuration",
-			Resource: applycorev1.ConfigMap(configId, r.namespace).
+			Resource: applycorev1.ConfigMap(configId, target.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithLabels(map[string]string{
@@ -574,7 +574,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 
 		// XXX remove this
 		scntr = scntr.WithEnv(
-			applycorev1.EnvVar().WithName("FN_KUBERNETES_NAMESPACE").WithValue(r.namespace),
+			applycorev1.EnvVar().WithName("FN_KUBERNETES_NAMESPACE").WithValue(target.namespace),
 			applycorev1.EnvVar().WithName("FN_SERVER_ID").WithValue(deployable.GetId()),
 			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(deployable.Name),
 		)
@@ -668,7 +668,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Service Account",
-			Resource: applycorev1.ServiceAccount(serviceAccount, r.namespace).
+			Resource: applycorev1.ServiceAccount(serviceAccount, target.namespace).
 				WithLabels(labels).
 				WithAnnotations(annotations),
 		})
@@ -682,10 +682,10 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 	// servers which we want to control a bit more carefully. For example, we want to deploy
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
-	if deployAsPods(r.env) {
+	if deployAsPods(target.env) {
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server",
-			Resource: applycorev1.Pod(deploymentId, r.namespace).
+			Resource: applycorev1.Pod(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithAnnotations(tmpl.Annotations).
 				WithLabels(labels).
@@ -700,7 +700,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server Deployment",
 			Resource: appsv1.
-				Deployment(deploymentId, r.namespace).
+				Deployment(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.DeploymentSpec().
@@ -713,7 +713,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server StatefulSet",
 			Resource: appsv1.
-				StatefulSet(deploymentId, r.namespace).
+				StatefulSet(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.StatefulSetSpec().

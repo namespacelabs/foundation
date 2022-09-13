@@ -28,17 +28,9 @@ enum Framework {
     BASE = 5;
 }
 
-enum DeployableClass {
-    DEPLOYABLE_CLASS_UNSPECIFIED = 0;
-    // Represents a horizontally scalable stateless deployment.
-    STATELESS = 1;
-    // Represents a stateful deployment.
-    STATEFUL = 2;
-}
-
-// Next ID: 31
+// Next ID: 32
 message Server {
-    reserved 17, 19;
+    reserved 17, 19, 30;
 
     // The package name (computed).
     string package_name = 1;
@@ -66,8 +58,8 @@ message Server {
 
     Framework framework = 8;
 
-    bool            is_stateful      = 20;
-    DeployableClass deployable_class = 30;
+    bool   is_stateful      = 20;
+    string deployable_class = 31;
 
     // This server is meant to be used for tests, and should not be deployed by default.
     bool testonly = 21;

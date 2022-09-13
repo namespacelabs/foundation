@@ -50,15 +50,14 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	out.RunByDefault = true
 
 	switch bits.Class {
-	case "stateless", "":
-		out.DeployableClass = schema.DeployableClass_STATELESS
-	case "stateful":
-		out.DeployableClass = schema.DeployableClass_STATEFUL
+	case "stateless", "", string(schema.DeployableClass_STATELESS):
+		out.DeployableClass = string(schema.DeployableClass_STATELESS)
+	case "stateful", string(schema.DeployableClass_STATEFUL):
+		out.DeployableClass = string(schema.DeployableClass_STATEFUL)
+		out.IsStateful = true
 	default:
 		return nil, nil, fnerrors.UserError(loc, "%s: server class is not supported", bits.Class)
 	}
-
-	out.IsStateful = out.DeployableClass == schema.DeployableClass_STATEFUL
 
 	for name, svc := range bits.Services {
 		parsed, endpointType, err := parseService(loc, name, svc)

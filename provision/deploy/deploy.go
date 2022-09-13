@@ -663,7 +663,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 	srv := s.Proto()
 	out.Location = s.Location
 	out.PackageName = s.PackageName()
-	out.Class = srv.DeployableClass
+	out.Class = schema.DeployableClass(srv.DeployableClass)
 	out.Id = srv.Id
 	out.Name = srv.Name
 	out.Volumes = srv.Volumes
