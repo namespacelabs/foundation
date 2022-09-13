@@ -111,7 +111,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	if waitErr == nil {
 		// All servers deployed. Lets start the test driver.
 
-		testRun := runtime.ServerRunOpts{
+		testRun := runtime.ContainerRunOpts{
 			Image:              compute.MustGetDepValue(r, test.TestBinImageID, "testBin"),
 			Command:            test.TestBinCommand,
 			Args:               nil,

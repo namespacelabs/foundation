@@ -45,6 +45,6 @@ func decideKind(srv *schema.Server, containerName string) schema.ContainerKind {
 	return schema.ContainerKind_SUPPORT
 }
 
-func ServerCtrName(obj runtime.DeployableObject) string {
+func ServerCtrName(obj Deployable) string {
 	return strings.ToLower(obj.GetName()) // k8s doesn't accept uppercase names.
 }

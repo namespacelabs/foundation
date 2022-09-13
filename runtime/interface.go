@@ -153,10 +153,10 @@ type ClusterNamespace interface {
 	// Runs the specified container as a one-shot, streaming it's output to the
 	// specified writer. This mechanism is targeted at invoking test runners
 	// within the runtime environment.
-	RunOneShot(ctx context.Context, name string, opts ServerRunOpts, w io.Writer, follow bool) error
+	RunOneShot(ctx context.Context, name string, opts ContainerRunOpts, w io.Writer, follow bool) error
 
 	// RunAttached runs the specified container, and attaches to it.
-	RunAttached(context.Context, string, ServerRunOpts, TerminalIO) error
+	RunAttached(context.Context, string, ContainerRunOpts, TerminalIO) error
 
 	// Deletes the scoped environment, and all of its associated resources (e.g.
 	// after a test invocation). If wait is true, waits until the target
@@ -170,33 +170,34 @@ type ClusterNamespace interface {
 }
 
 type Deployment struct {
-	Focus       schema.PackageList
 	Deployables []Deployable
 	Secrets     GroundedSecrets
 }
 
 type Deployable struct {
-	ServerRunOpts
-	Location          fnerrors.Location
-	PackageName       schema.PackageName
-	Object            DeployableObject
+	Location    fnerrors.Location
+	PackageName schema.PackageName
+	Class       schema.DeployableClass
+	Id          string // Must not be empty.
+	Name        string // Can be empty.
+	Volumes     []*schema.Volume
+	Mounts      []*schema.Mount
+
+	Focused bool // Set to true if the user explicitly asked for this object to be deployed.
+	RunOpts ContainerRunOpts
+
 	ConfigImage       *oci.ImageID
 	ServerExtensions  []*schema.ServerExtension
 	Extensions        []*schema.DefExtension
 	Sidecars          []SidecarRunOpts
 	Inits             []SidecarRunOpts
 	RuntimeConfig     *runtime.RuntimeConfig
-	Endpoints         []*schema.Endpoint         // Owned by this server.
-	InternalEndpoints []*schema.InternalEndpoint // Owned by this server.
+	Endpoints         []*schema.Endpoint         // Owned by this deployable.
+	InternalEndpoints []*schema.InternalEndpoint // Owned by this deployable.
 }
 
-type DeployableObject interface {
-	GetName() string
-	GetId() string
-	GetVolumes() []*schema.Volume
-	GetMounts() []*schema.Mount
-	GetDeployableClass() schema.DeployableClass
-}
+func (d Deployable) GetId() string   { return d.Id }
+func (d Deployable) GetName() string { return d.Name }
 
 type GroundedSecrets struct {
 	Secrets []GroundedSecret
@@ -208,7 +209,7 @@ type GroundedSecret struct {
 	Value *schema.FileContents
 }
 
-type ServerRunOpts struct {
+type ContainerRunOpts struct {
 	WorkingDir         string
 	Image              oci.ImageID
 	Command            []string
@@ -226,7 +227,7 @@ type RunAs struct {
 type SidecarRunOpts struct {
 	Name       string
 	PackageRef *schema.PackageRef
-	ServerRunOpts
+	ContainerRunOpts
 }
 
 type FetchLogsOpts struct {

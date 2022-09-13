@@ -93,7 +93,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 	return bin, nil
 }
 
-func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.ServerRunOpts) error {
+func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.ContainerRunOpts) error {
 	run.Command = []string{"/server"}
 	run.ReadOnlyFilesystem = true
 	run.RunAs = production.NonRootRunAs(production.Distroless)

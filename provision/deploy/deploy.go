@@ -356,6 +356,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 		tasks.Action(runtime.TaskServerProvision).
 			Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
 		finalInputs.
+			Indigestible("focus", focus).
 			Computable("images", imageIDs).
 			Computable("stackAndDefs", stackDef).
 			Computable("secretData", secretData),
@@ -409,12 +410,12 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 				}
 
 				run.Endpoints = stack.Proto().EndpointsBy(srv.PackageName())
+				run.Focused = focus.Includes(srv.PackageName())
 
 				serverRuns = append(serverRuns, run)
 			}
 
 			deployment, err := rc.PlanDeployment(ctx, runtime.Deployment{
-				Focus:       focus,
 				Deployables: serverRuns,
 				Secrets:     *secrets,
 			})
@@ -659,14 +660,21 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 }
 
 func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server, imgs builtImage, out *runtime.Deployable) error {
-	out.Object = s.Proto()
+	srv := s.Proto()
 	out.Location = s.Location
-	out.Image = imgs.Binary
+	out.PackageName = s.PackageName()
+	out.Class = srv.DeployableClass
+	out.Id = srv.Id
+	out.Name = srv.Name
+	out.Volumes = srv.Volumes
+	out.Mounts = srv.Mounts
+
+	out.RunOpts.Image = imgs.Binary
 	if imgs.Config.Repository != "" {
 		out.ConfigImage = &imgs.Config
 	}
 
-	if err := languages.IntegrationFor(s.Framework()).PrepareRun(ctx, s, &out.ServerRunOpts); err != nil {
+	if err := languages.IntegrationFor(s.Framework()).PrepareRun(ctx, s, &out.RunOpts); err != nil {
 		return err
 	}
 
@@ -685,9 +693,9 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 		return err
 	}
 
-	out.Args = append(out.Args, merged.Args...)
-	out.Env = append(out.Env, s.Proto().StaticEnv...)
-	out.Env = append(out.Env, merged.Env...)
+	out.RunOpts.Args = append(out.RunOpts.Args, merged.Args...)
+	out.RunOpts.Env = append(out.RunOpts.Env, s.Proto().StaticEnv...)
+	out.RunOpts.Env = append(out.RunOpts.Env, merged.Env...)
 
 	return nil
 }
@@ -723,7 +731,7 @@ func prepareContainerRunOpts(containers []*schema.SidecarContainer, imageIDs bui
 		*out = append(*out, runtime.SidecarRunOpts{
 			Name:       container.Name,
 			PackageRef: binRef,
-			ServerRunOpts: runtime.ServerRunOpts{
+			ContainerRunOpts: runtime.ContainerRunOpts{
 				Image:   img.Binary,
 				Args:    container.Args,
 				Env:     container.Env,

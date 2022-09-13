@@ -93,7 +93,7 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 		}
 
-		return cluster.RunAttached(ctx, "debug-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
+		return cluster.RunAttached(ctx, "debug-"+ids.NewRandomBase32ID(8), runtime.ContainerRunOpts{
 			Image:   imageID,
 			Command: []string{"bash"},
 		}, runtime.TerminalIO{

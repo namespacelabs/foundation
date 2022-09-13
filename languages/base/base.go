@@ -43,7 +43,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 	return prep.Plan.Spec, nil
 }
 
-func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ServerRunOpts) error {
+func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ContainerRunOpts) error {
 	return nil
 }
 

@@ -144,9 +144,7 @@ func toK8sProbe(p *applycorev1.ProbeApplyConfiguration, probevalues perEnvConf, 
 }
 
 type deployOpts struct {
-	focus    schema.PackageList
-	stackIds []string
-	secrets  runtime.GroundedSecrets
+	secrets runtime.GroundedSecrets
 }
 
 func deployAsPods(env *schema.Environment) bool {
@@ -154,10 +152,8 @@ func deployAsPods(env *schema.Environment) bool {
 }
 
 func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.Deployable, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
-	obj := deployable.Object
-
-	if deployable.Image.Repository == "" {
-		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.Image)
+	if deployable.RunOpts.Image.Repository == "" {
+		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.RunOpts.Image)
 	}
 
 	probevalues, ok := constants[r.env.Purpose]
@@ -167,17 +163,17 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 
 	secCtx := applycorev1.SecurityContext()
 
-	if deployable.ReadOnlyFilesystem {
+	if deployable.RunOpts.ReadOnlyFilesystem {
 		secCtx = secCtx.WithReadOnlyRootFilesystem(true)
 	}
 
-	name := kubedef.ServerCtrName(obj)
+	name := kubedef.ServerCtrName(deployable)
 	containers := []string{name}
 	container := applycorev1.Container().
 		WithName(name).
-		WithImage(deployable.Image.RepoAndDigest()).
-		WithArgs(deployable.Args...).
-		WithCommand(deployable.Command...).
+		WithImage(deployable.RunOpts.Image.RepoAndDigest()).
+		WithArgs(deployable.RunOpts.Args...).
+		WithCommand(deployable.RunOpts.Command...).
 		WithSecurityContext(secCtx)
 
 	var probes []*kubedef.ContainerExtension_Probe
@@ -194,26 +190,26 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 		}
 	}
 
-	if _, err := fillEnv(container, deployable.Env); err != nil {
+	if _, err := fillEnv(container, deployable.RunOpts.Env); err != nil {
 		return err
 	}
 
-	if deployable.WorkingDir != "" {
-		container = container.WithWorkingDir(deployable.WorkingDir)
+	if deployable.RunOpts.WorkingDir != "" {
+		container = container.WithWorkingDir(deployable.RunOpts.WorkingDir)
 	}
 
 	spec := applycorev1.PodSpec().
 		WithEnableServiceLinks(false) // Disable service injection via environment variables.
 
-	labels := kubedef.MakeLabels(r.env, obj)
+	labels := kubedef.MakeLabels(r.env, deployable)
 
 	annotations := kubedef.MakeAnnotations(r.env, deployable.PackageName)
 
-	if opts.focus.Includes(deployable.PackageName) {
+	if deployable.Focused {
 		labels = kubedef.WithFocusMark(labels)
 	}
 
-	deploymentId := kubedef.MakeDeploymentId(obj)
+	deploymentId := kubedef.MakeDeploymentId(deployable)
 
 	tmpl := applycorev1.PodTemplateSpec().
 		WithAnnotations(annotations).
@@ -385,8 +381,8 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 		return err
 	}
 
-	volumes := slices.Clone(obj.GetVolumes())
-	mounts := slices.Clone(obj.GetMounts())
+	volumes := slices.Clone(deployable.Volumes)
+	mounts := slices.Clone(deployable.Mounts)
 
 	for _, ext := range deployable.ServerExtensions {
 		volumes = append(volumes, ext.Volume...)
@@ -486,7 +482,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 
 			if len(secretItems) > 0 {
 				// XXX Think through this, should it also be hashed + immutable?
-				secretId := fmt.Sprintf("ns-managed-%s-%s", obj.GetName(), obj.GetId())
+				secretId := fmt.Sprintf("ns-managed-%s-%s", deployable.Name, deployable.GetId())
 
 				projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
 					applycorev1.SecretProjection().WithName(secretId).WithItems(secretItems...)))
@@ -592,8 +588,8 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 		// XXX remove this
 		scntr = scntr.WithEnv(
 			applycorev1.EnvVar().WithName("FN_KUBERNETES_NAMESPACE").WithValue(r.namespace),
-			applycorev1.EnvVar().WithName("FN_SERVER_ID").WithValue(obj.GetId()),
-			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(obj.GetName()),
+			applycorev1.EnvVar().WithName("FN_SERVER_ID").WithValue(deployable.GetId()),
+			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(deployable.Name),
 		)
 
 		if _, err := fillEnv(scntr, sidecar.Env); err != nil {
@@ -657,7 +653,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 		}
 	}
 
-	if _, err := runAsToPodSecCtx(deployable.PackageName.String(), podSecCtx, deployable.RunAs); err != nil {
+	if _, err := runAsToPodSecCtx(deployable.PackageName.String(), podSecCtx, deployable.RunOpts.RunAs); err != nil {
 		return err
 	}
 
@@ -712,7 +708,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 		return nil
 	}
 
-	switch obj.GetDeployableClass() {
+	switch deployable.Class {
 	case schema.DeployableClass_STATELESS:
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server Deployment",
@@ -723,7 +719,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 				WithSpec(appsv1.DeploymentSpec().
 					WithReplicas(1).
 					WithTemplate(tmpl).
-					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(obj)))),
+					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable)))),
 		})
 
 	case schema.DeployableClass_STATEFUL:
@@ -736,11 +732,11 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 				WithSpec(appsv1.StatefulSetSpec().
 					WithReplicas(1).
 					WithTemplate(tmpl).
-					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(obj)))),
+					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable)))),
 		})
 
 	default:
-		return fnerrors.InternalError("%s: unsupported deployable class", obj.GetDeployableClass())
+		return fnerrors.InternalError("%s: unsupported deployable class", deployable.Class)
 	}
 
 	return nil
@@ -873,7 +869,7 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 	return container, nil
 }
 
-func deployEndpoint(ctx context.Context, r clusterTarget, srv kubedef.ObjectWithID, endpoint *schema.Endpoint, s *serverRunState) error {
+func deployEndpoint(ctx context.Context, r clusterTarget, srv kubedef.Deployable, endpoint *schema.Endpoint, s *serverRunState) error {
 	serviceSpec := applycorev1.ServiceSpec().WithSelector(kubedef.SelectById(srv))
 
 	port := endpoint.Port

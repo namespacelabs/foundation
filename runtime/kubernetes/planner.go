@@ -86,13 +86,7 @@ func (r Planner) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) 
 func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) (runtime.DeploymentState, error) {
 	var state deploymentState
 	deployOpts := deployOpts{
-		focus:   d.Focus,
 		secrets: d.Secrets,
-	}
-
-	// Collect all required servers before planning deployment as they are referenced in annotations.
-	for _, server := range d.Deployables {
-		deployOpts.stackIds = append(deployOpts.stackIds, server.Object.GetId())
 	}
 
 	for _, deployable := range d.Deployables {
@@ -104,7 +98,7 @@ func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) 
 
 		// XXX verify we've consumed all endpoints.
 		for _, endpoint := range deployable.Endpoints {
-			if err := deployEndpoint(ctx, r, deployable.Object, endpoint, &singleState); err != nil {
+			if err := deployEndpoint(ctx, r, deployable, endpoint, &singleState); err != nil {
 				return nil, err
 			}
 		}

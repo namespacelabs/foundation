@@ -24,11 +24,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func (r *ClusterNamespace) RunOneShot(ctx context.Context, name string, runOpts runtime.ServerRunOpts, logOutput io.Writer, follow bool) error {
+func (r *ClusterNamespace) RunOneShot(ctx context.Context, name string, runOpts runtime.ContainerRunOpts, logOutput io.Writer, follow bool) error {
 	return r.cluster.RunOneShot(ctx, r.target.namespace, name, runOpts, logOutput, follow)
 }
 
-func (r *Cluster) RunOneShot(ctx context.Context, namespace, name string, runOpts runtime.ServerRunOpts, logOutput io.Writer, follow bool) error {
+func (r *Cluster) RunOneShot(ctx context.Context, namespace, name string, runOpts runtime.ContainerRunOpts, logOutput io.Writer, follow bool) error {
 	spec, err := makePodSpec(name, runOpts)
 	if err != nil {
 		return err
@@ -104,11 +104,11 @@ func (r *Cluster) RunOneShot(ctx context.Context, namespace, name string, runOpt
 	}
 }
 
-func (r *ClusterNamespace) RunAttached(ctx context.Context, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO) error {
+func (r *ClusterNamespace) RunAttached(ctx context.Context, name string, runOpts runtime.ContainerRunOpts, io runtime.TerminalIO) error {
 	return r.cluster.RunAttachedOpts(ctx, r.target.namespace, name, runOpts, io, nil)
 }
 
-func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO, onStart func()) error {
+func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ContainerRunOpts, io runtime.TerminalIO, onStart func()) error {
 	spec, err := makePodSpec(name, runOpts)
 	if err != nil {
 		return err
@@ -140,7 +140,7 @@ func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts 
 	return r.attachTerminal(ctx, r.cli, &kubedef.ContainerPodReference{Namespace: ns, PodName: name}, io)
 }
 
-func makePodSpec(name string, runOpts runtime.ServerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {
+func makePodSpec(name string, runOpts runtime.ContainerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {
 	container := applycorev1.Container().
 		WithName(name).
 		WithImage(runOpts.Image.RepoAndDigest()).

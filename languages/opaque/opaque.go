@@ -59,7 +59,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 	return build.PrebuiltPlan(imgid, false, build.PrebuiltResolveOpts()), nil
 }
 
-func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ServerRunOpts) error {
+func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ContainerRunOpts) error {
 	bin := server.Proto().GetBinary()
 	if bin.GetPackageRef() != nil {
 		pkg, err := server.SealedContext().LoadByName(ctx, bin.GetPackageRef().AsPackageName())

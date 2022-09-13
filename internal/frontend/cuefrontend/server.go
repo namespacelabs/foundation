@@ -114,6 +114,12 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	}
 
 	out.IsStateful = bits.IsStateful
+	if out.IsStateful {
+		out.DeployableClass = schema.DeployableClass_STATEFUL
+	} else {
+		out.DeployableClass = schema.DeployableClass_STATELESS
+	}
+
 	out.Testonly = bits.TestOnly
 	out.Import = bits.Import
 	out.RunByDefault = runByDefault(bits)

@@ -73,7 +73,7 @@ func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSt
 	}
 
 	// XXX use more meaningful names.
-	return k8s.RunAttachedOpts(ctx, toolNamespace, "tool-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
+	return k8s.RunAttachedOpts(ctx, toolNamespace, "tool-"+ids.NewRandomBase32ID(8), runtime.ContainerRunOpts{
 		Image:      imgid,
 		WorkingDir: opts.WorkingDir,
 		Command:    opts.Command,

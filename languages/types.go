@@ -27,7 +27,7 @@ type Integration interface {
 
 	// Called on `ns build`, `ns deploy`.
 	PrepareBuild(context.Context, AvailableBuildAssets, provision.Server, bool /*isFocus*/) (build.Spec, error)
-	PrepareRun(context.Context, provision.Server, *runtime.ServerRunOpts) error
+	PrepareRun(context.Context, provision.Server, *runtime.ContainerRunOpts) error
 
 	// Called on `ns tidy`
 	TidyWorkspace(context.Context, planning.Context, []*pkggraph.Package) error
@@ -65,7 +65,7 @@ type MaybePrepare struct{}
 func (MaybePrepare) PrepareBuild(context.Context, AvailableBuildAssets, provision.Server, bool) (build.Spec, error) {
 	return nil, nil
 }
-func (MaybePrepare) PrepareRun(context.Context, provision.Server, *runtime.ServerRunOpts) error {
+func (MaybePrepare) PrepareRun(context.Context, provision.Server, *runtime.ContainerRunOpts) error {
 	return nil
 }
 
