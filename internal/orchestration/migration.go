@@ -18,7 +18,7 @@ import (
 
 func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, p *ops.Plan, plan *schema.DeployPlan, wait, outputProgress bool) error {
 	if UseOrchestrator {
-		raw, err := cluster.Prepare(ctx, key, env)
+		raw, err := cluster.EnsureState(ctx, key, env)
 		if err != nil {
 			return err
 		}

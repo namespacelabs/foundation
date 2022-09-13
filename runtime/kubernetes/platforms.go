@@ -9,7 +9,6 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
@@ -33,14 +32,6 @@ func (r *Cluster) UnmatchedTargetPlatforms(ctx context.Context) ([]specs.Platfor
 	}
 
 	return parsePlatforms(sysInfo.NodePlatform)
-}
-
-func (r *ClusterNamespace) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
-	if !UseNodePlatformsForProduction && r.target.env.Purpose == schema.Environment_PRODUCTION {
-		return parsePlatforms(ProductionPlatforms)
-	}
-
-	return r.cluster.UnmatchedTargetPlatforms(ctx)
 }
 
 func parsePlatforms(plats []string) ([]specs.Platform, error) {

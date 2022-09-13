@@ -79,6 +79,9 @@ type Planner interface {
 	// ComputeBaseNaming returns a base naming configuration that is specific
 	// to the target runtime (e.g. kubernetes cluster).
 	ComputeBaseNaming(*schema.Naming) (*schema.ComputedNaming, error)
+
+	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
+	TargetPlatforms(context.Context) ([]specs.Platform, error)
 }
 
 // A cluster represents a cluster where Namespace is capable of deployment one
@@ -101,9 +104,9 @@ type Cluster interface {
 	// Attaches to a running container.
 	AttachTerminal(ctx context.Context, container *ContainerReference, io TerminalIO) error
 
-	// Prepare ensures that a cluster-specific bit of initialization is done once per instance.
+	// EnsureState ensures that a cluster-specific bit of initialization is done once per instance.
 	// XXX remove planning.Context, as it leaks environment bits.
-	Prepare(context.Context, string, planning.Context) (any, error)
+	EnsureState(context.Context, string, planning.Context) (any, error)
 }
 
 // ClusterNamespace represents a target deployment environment, scoped to an application
@@ -164,13 +167,6 @@ type ClusterNamespace interface {
 	// environment. If wait is true, waits until the target resources have been
 	// removed. Returns true if resources were deleted.
 	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
-
-	HasTargetPlatforms
-}
-
-type HasTargetPlatforms interface {
-	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
-	TargetPlatforms(context.Context) ([]specs.Platform, error)
 }
 
 type Deployment struct {

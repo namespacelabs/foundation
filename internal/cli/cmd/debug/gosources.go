@@ -38,13 +38,17 @@ func newGoSourcesCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true}),
 			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			t := servers.Servers[0]
-
-			platforms, err := runtime.TargetPlatforms(ctx, env)
+			planner, err := runtime.PlannerFor(ctx, env)
 			if err != nil {
 				return err
 			}
 
+			platforms, err := planner.TargetPlatforms(ctx)
+			if err != nil {
+				return err
+			}
+
+			t := servers.Servers[0]
 			res, err := golang.ComputeSources(ctx, t.Module().Abs(), t, build.PlatformsOrOverrides(platforms))
 			if err != nil {
 				return err

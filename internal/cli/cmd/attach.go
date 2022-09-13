@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/provision/deploy/view"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
@@ -39,6 +40,11 @@ func NewAttachCmd() *cobra.Command {
 			observer := observers.Static()
 			observer.PushUpdate(event)
 
+			cluster, err := runtime.NamespaceFor(ctx, res.Env)
+			if err != nil {
+				return err
+			}
+
 			return keyboard.Handle(ctx, keyboard.HandleOpts{
 				Provider: observer,
 				Keybindings: []keyboard.Handler{
@@ -54,7 +60,7 @@ func NewAttachCmd() *cobra.Command {
 					view.NewNetworkPlanKeybinding("ingress"),
 				},
 				Handler: func(ctx context.Context) error {
-					pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, "localhost")
+					pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, cluster, "localhost")
 					pfwd.OnUpdate = func(plan *storage.NetworkPlan) {
 						event := protos.Clone(event)
 						event.NetworkPlan = plan

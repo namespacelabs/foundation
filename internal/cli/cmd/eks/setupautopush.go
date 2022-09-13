@@ -18,6 +18,7 @@ import (
 	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/providers/aws/auth"
 	"namespacelabs.dev/foundation/providers/aws/eks"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 )
@@ -33,6 +34,11 @@ func newSetupAutopushCmd() *cobra.Command {
 		Short: "Sets up production cluster for automatic deployments to a staging environment.",
 		Args:  cobra.NoArgs,
 	}, func(ctx context.Context, env planning.Context, args []string) error {
+		cluster, err := runtime.ClusterFor(ctx, env)
+		if err != nil {
+			return err
+		}
+
 		acc, err := getAwsAccount(ctx, env)
 		if err != nil {
 			return err
@@ -78,7 +84,7 @@ func newSetupAutopushCmd() *cobra.Command {
 		if dryRun {
 			fmt.Fprintf(stdout, "Not making changes to the cluster, as --dry_run=true.\n\n")
 		} else {
-			if _, err := ops.Execute(ctx, "eks.autopush.apply", env, p); err != nil {
+			if _, err := ops.Execute(ctx, "eks.autopush.apply", env, p, runtime.ClusterInjection.With(cluster)); err != nil {
 				return err
 			}
 		}

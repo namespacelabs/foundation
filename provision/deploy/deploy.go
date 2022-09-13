@@ -265,7 +265,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 		return nil, err
 	}
 
-	sidecarImages, err := prepareSidecarAndInitImages(ctx, stack)
+	sidecarImages, err := prepareSidecarAndInitImages(ctx, rc, stack)
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +463,7 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 		if imgid, ok := build.IsPrebuilt(spec); ok && !PushPrebuiltsToRegistry {
 			images.Binary = build.Prebuilt(imgid)
 		} else {
-			p, err := MakePlan(ctx, srv, spec)
+			p, err := MakePlan(ctx, planner, srv, spec)
 			if err != nil {
 				return nil, err
 			}
@@ -515,10 +515,10 @@ type containerImage struct {
 	Command     []string
 }
 
-func prepareSidecarAndInitImages(ctx context.Context, stack *stack.Stack) ([]containerImage, error) {
+func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, stack *stack.Stack) ([]containerImage, error) {
 	res := []containerImage{}
 	for k, srv := range stack.Servers {
-		platforms, err := runtime.TargetPlatforms(ctx, srv.SealedContext())
+		platforms, err := planner.TargetPlatforms(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -589,7 +589,7 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 		return nil, nil, err
 	}
 
-	sidecarImages, err := prepareSidecarAndInitImages(ctx, stack)
+	sidecarImages, err := prepareSidecarAndInitImages(ctx, planner, stack)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -66,7 +66,20 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, err
 	}
 
-	platforms, err := runtime.TargetPlatforms(ctx, env)
+	deferred, err := runtime.ClassFor(ctx, env)
+	if err != nil {
+		return nil, fnerrors.Wrap(testPkg.Location, err)
+	}
+
+	// This can block for a non-trivial amount of time.
+	cluster, err := deferred.EnsureCluster(ctx, env.Configuration())
+	if err != nil {
+		return nil, fnerrors.Wrap(testPkg.Location, err)
+	}
+
+	planner := cluster.Planner(env)
+
+	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -88,18 +101,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, fnerrors.UserError(testPkg.Location, "failed to load fixture: %w", err)
 	}
 
-	deferred, err := runtime.ClassFor(ctx, env)
-	if err != nil {
-		return nil, fnerrors.Wrap(testPkg.Location, err)
-	}
-
-	// This can block for a non-trivial amount of time.
-	cluster, err := deferred.EnsureCluster(ctx, env.Configuration())
-	if err != nil {
-		return nil, fnerrors.Wrap(testPkg.Location, err)
-	}
-
-	deployPlan, err := deploy.PrepareDeployStack(ctx, env, cluster.Planner(env), stack, sut)
+	deployPlan, err := deploy.PrepareDeployStack(ctx, env, planner, stack, sut)
 	if err != nil {
 		return nil, fnerrors.UserError(testPkg.Location, "failed to load stack: %w", err)
 	}

@@ -160,7 +160,7 @@ func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName str
 
 		// Wait for the ingress to become available if we have an unhealthy cluster.
 		if !healthyCluster {
-			kube, err := kubernetes.NewFromConfig(ctx, hostconf)
+			kube, err := kubernetes.ConnectToConfig(ctx, hostconf)
 			if err != nil {
 				return err
 			}

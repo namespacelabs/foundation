@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -45,6 +46,8 @@ func Register() {
 		}
 
 		fmt.Fprintf(console.Debug(ctx), "kubernetes: selected %+v for %q\n", hostEnv, cfg.EnvKey())
+
+		fmt.Fprintf(console.Debug(ctx), "%v\n", stacktrace.New())
 
 		if hostEnv.Provider != "" {
 			if provider := classOverrides[hostEnv.Provider]; provider != nil {

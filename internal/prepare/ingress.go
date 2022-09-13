@@ -41,7 +41,7 @@ func (noPackageEnv) Ensure(ctx context.Context, packageName schema.PackageName) 
 
 func PrepareIngressFromHostConfig(env planning.Context, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return PrepareIngress(env, compute.Transform("create k8s runtime", k8sconfig, func(ctx context.Context, cfg *client.HostConfig) (*kubernetes.Cluster, error) {
-		return kubernetes.NewFromConfig(ctx, cfg)
+		return kubernetes.ConnectToConfig(ctx, cfg)
 	}))
 }
 

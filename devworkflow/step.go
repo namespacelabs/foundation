@@ -25,13 +25,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func setWorkspace(ctx context.Context, env planning.Context, packageNames []string, obs *Session, pfw *endpointfwd.PortForward) error {
+func setWorkspace(ctx context.Context, env planning.Context, rt runtime.ClusterNamespace, packageNames []string, obs *Session, pfw *endpointfwd.PortForward) error {
 	return compute.Do(ctx, func(ctx context.Context) error {
-		rt, err := runtime.NamespaceFor(ctx, env)
-		if err != nil {
-			return err
-		}
-
 		serverPackages := schema.PackageNames(packageNames...)
 		focusServers := provision.RequireServers(env, serverPackages...)
 

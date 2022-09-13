@@ -17,26 +17,16 @@ import (
 	"namespacelabs.dev/foundation/std/planning"
 )
 
-func NewPortFwd(ctx context.Context, obs *Session, env planning.Context, localaddr string) *endpointfwd.PortForward {
+func NewPortFwd(ctx context.Context, obs *Session, env planning.Context, rt runtime.ClusterNamespace, localaddr string) *endpointfwd.PortForward {
 	pfw := &endpointfwd.PortForward{
 		Env:       env.Environment(),
 		LocalAddr: localaddr,
 		Debug:     console.Debug(ctx),
 		Warnings:  console.Warnings(ctx),
 		ForwardPort: func(server *schema.Server, port int32, localAddr []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
-			rt, err := runtime.NamespaceFor(ctx, env)
-			if err != nil {
-				return nil, err
-			}
-
 			return rt.ForwardPort(ctx, server, port, localAddr, callback)
 		},
 		ForwardIngress: func(localAddr []string, port int, callback runtime.PortForwardedFunc) (io.Closer, error) {
-			rt, err := runtime.NamespaceFor(ctx, env)
-			if err != nil {
-				return nil, err
-			}
-
 			return rt.ForwardIngress(ctx, localAddr, port, callback)
 		},
 	}

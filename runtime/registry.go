@@ -8,7 +8,6 @@ import (
 	"context"
 	"strings"
 
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/planning"
 )
@@ -53,15 +52,6 @@ func NamespaceFor(ctx context.Context, env planning.Context) (ClusterNamespace, 
 	}
 
 	return cluster.Bind(env)
-}
-
-func TargetPlatforms(ctx context.Context, env planning.Context) ([]specs.Platform, error) {
-	runtime, err := obtainSpecialized[HasTargetPlatforms](ctx, env)
-	if err != nil {
-		return nil, err
-	}
-
-	return runtime.TargetPlatforms(ctx)
 }
 
 func ClassFor(ctx context.Context, env planning.Context) (Class, error) {

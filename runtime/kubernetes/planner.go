@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -67,6 +68,19 @@ func (r Planner) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, 
 func (r Planner) ComputeBaseNaming(*schema.Naming) (*schema.ComputedNaming, error) {
 	// The default kubernetes integration has no assumptions regarding how ingress names are allocated.
 	return nil, nil
+}
+
+func (r Planner) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
+	if !UseNodePlatformsForProduction && r.target.env.Purpose == schema.Environment_PRODUCTION {
+		return parsePlatforms(ProductionPlatforms)
+	}
+
+	systemInfo, err := r.fetchSystemInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return parsePlatforms(systemInfo.NodePlatform)
 }
 
 func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) (runtime.DeploymentState, error) {

@@ -22,6 +22,10 @@ type Cluster struct {
 	computedClient *client.ComputedClient
 	host           *client.HostConfig
 
+	ClusterAttachedState
+}
+
+type ClusterAttachedState struct {
 	mu            sync.Mutex
 	attachedState map[string]*state
 }
@@ -35,7 +39,7 @@ type state struct {
 
 var _ kubedef.KubeCluster = &Cluster{}
 
-func NewFromConfig(ctx context.Context, config *client.HostConfig) (*Cluster, error) {
+func ConnectToConfig(ctx context.Context, config *client.HostConfig) (*Cluster, error) {
 	cli, err := client.NewClient(ctx, config)
 	if err != nil {
 		return nil, err
@@ -50,7 +54,7 @@ func ConnectToCluster(ctx context.Context, cfg planning.Configuration) (*Cluster
 		return nil, err
 	}
 
-	return NewFromConfig(ctx, hostConfig)
+	return ConnectToConfig(ctx, hostConfig)
 }
 
 func ConnectToNamespace(ctx context.Context, env planning.Context) (*ClusterNamespace, error) {
@@ -106,7 +110,11 @@ func (r *Cluster) PrepareCluster(ctx context.Context) (runtime.DeploymentState, 
 	return state, nil
 }
 
-func (r *Cluster) Prepare(ctx context.Context, key string, env planning.Context) (any, error) {
+func (r *Cluster) EnsureState(ctx context.Context, key string, env planning.Context) (any, error) {
+	return r.ClusterAttachedState.EnsureState(ctx, key, env, r)
+}
+
+func (r *ClusterAttachedState) EnsureState(ctx context.Context, key string, env planning.Context, cluster runtime.Cluster) (any, error) {
 	r.mu.Lock()
 	if r.attachedState == nil {
 		r.attachedState = map[string]*state{}
@@ -121,7 +129,7 @@ func (r *Cluster) Prepare(ctx context.Context, key string, env planning.Context)
 	defer state.mu.Unlock()
 
 	if !state.resolved {
-		state.value, state.err = runtime.Prepare(ctx, key, env, r)
+		state.value, state.err = runtime.Prepare(ctx, key, env, cluster)
 		state.resolved = true
 	}
 

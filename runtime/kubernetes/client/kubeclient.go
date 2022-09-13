@@ -7,6 +7,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	sync "sync"
 
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -22,6 +23,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/std/planning"
@@ -193,6 +195,8 @@ func (cfg *computedConfig) ConfigAccess() clientcmd.ConfigAccess {
 }
 
 func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
+	fmt.Fprintf(console.Debug(ctx), "kubernetes.NewClient\n")
+
 	keyBytes, err := json.Marshal(struct {
 		C *HostEnv
 		S string

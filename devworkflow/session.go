@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/provision/deploy/render"
 	"namespacelabs.dev/foundation/provision/deploy/view"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/module"
@@ -48,6 +49,7 @@ type Session struct {
 	cancelWorkspace func()
 	currentStack    *Stack
 	currentEnv      planning.Context
+	cluster         runtime.ClusterNamespace
 	pfw             *endpointfwd.PortForward
 }
 
@@ -141,10 +143,14 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, eg *executor.Exe
 		}
 
 		resetStack(s.currentStack, env, s.availableEnvs, nil)
-		pfw := s.setEnvironment(parentCtx, env)
+		cluster, pfw, err := s.setEnvironment(parentCtx, env)
+		if err != nil {
+			s.cancelPortForward()
+			return err
+		}
 
 		eg.Go(func(ctx context.Context) error {
-			err := setWorkspace(ctx, env, servers, s, pfw)
+			err := setWorkspace(ctx, env, cluster, servers, s, pfw)
 			if err != nil && !errors.Is(err, context.Canceled) {
 				fnerrors.Format(console.Stderr(parentCtx), err, fnerrors.WithStyle(colors.WithColors))
 			}
@@ -239,17 +245,24 @@ func (s *Session) TaskLogByName(taskID, name string) io.ReadCloser {
 	return s.sink.HistoricReaderByName(tasks.ActionID(taskID), name)
 }
 
-func (s *Session) setEnvironment(parentCtx context.Context, env planning.Context) *endpointfwd.PortForward {
+func (s *Session) setEnvironment(parentCtx context.Context, env planning.Context) (runtime.ClusterNamespace, *endpointfwd.PortForward, error) {
 	if s.pfw != nil && proto.Equal(s.currentEnv.Environment(), env.Environment()) {
 		// Nothing to do.
-		return s.pfw
+		return s.cluster, s.pfw, nil
 	}
 
 	s.cancelPortForward()
+	// XXX dismiss cluster.
 
-	s.pfw = NewPortFwd(parentCtx, s, env, s.localHostname)
+	cluster, err := runtime.NamespaceFor(parentCtx, env)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	s.cluster = cluster
+	s.pfw = NewPortFwd(parentCtx, s, env, cluster, s.localHostname)
 	s.currentEnv = env
-	return s.pfw
+	return cluster, s.pfw, nil
 }
 
 func (s *Session) cancelPortForward() {

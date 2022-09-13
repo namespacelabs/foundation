@@ -12,12 +12,13 @@ import (
 
 	"github.com/bcicen/jstream"
 	"github.com/dustin/go-humanize"
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/environment"
@@ -32,7 +33,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
-	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -113,27 +113,31 @@ func RegisterClusterProvider() {
 	})
 }
 
-func provideCluster(ctx context.Context, cfg planning.Configuration) (client.ClusterConfiguration, error) {
+func getOrCreate(ctx context.Context, cfg planning.Configuration) (*KubernetesCluster, error) {
 	conf := &PrebuiltCluster{}
 
 	if cfg.Get(conf) {
-		cluster, err := GetCluster(ctx, conf.ClusterId)
-		if err != nil {
-			return client.ClusterConfiguration{}, err
-		}
-
-		var p client.ClusterConfiguration
-		p.ProviderSpecific = cluster
-		p.Config = *makeConfig(cluster)
-		return p, nil
+		return GetCluster(ctx, conf.ClusterId)
 	}
 
 	result, err := CreateClusterForEnv(ctx, cfg, true)
 	if err != nil {
+		return nil, err
+	}
+
+	return result.Cluster, nil
+}
+
+func provideCluster(ctx context.Context, cfg planning.Configuration) (client.ClusterConfiguration, error) {
+	cluster, err := getOrCreate(ctx, cfg)
+	if err != nil {
 		return client.ClusterConfiguration{}, err
 	}
 
-	return client.ClusterConfiguration{Config: *makeConfig(result.Cluster), ProviderSpecific: result.Cluster}, nil
+	var p client.ClusterConfiguration
+	p.ProviderSpecific = cluster
+	p.Config = *makeConfig(cluster)
+	return p, nil
 }
 
 type CreateClusterResult struct {
@@ -309,7 +313,6 @@ func GetCluster(ctx context.Context, clusterId string) (*KubernetesCluster, erro
 		}
 		return response.Cluster, nil
 	})
-
 }
 
 func ListClusters(ctx context.Context) (*KubernetesClusterList, error) {
@@ -359,7 +362,6 @@ func provideClass(ctx context.Context, cfg planning.Configuration) (runtime.Clas
 type runtimeClass struct{}
 
 var _ runtime.Class = runtimeClass{}
-var _ runtime.HasTargetPlatforms = runtimeClass{}
 
 func (d runtimeClass) AttachToCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
 	conf := &PrebuiltCluster{}
@@ -381,33 +383,28 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configurat
 		return nil, err
 	}
 
-	return cluster{unbound}, nil
-}
-
-func (d runtimeClass) TargetPlatforms(context.Context) ([]specs.Platform, error) {
-	// XXX fetch this in the future.
-	p, err := devhost.ParsePlatform("linux/amd64")
-	if err != nil {
-		return nil, err
-	}
-	return []specs.Platform{p}, nil
+	return &cluster{cluster: unbound}, nil
 }
 
 type cluster struct {
-	*kubernetes.Cluster
+	cluster *kubernetes.Cluster
+	kubernetes.ClusterAttachedState
 }
 
-func (d cluster) Class() runtime.Class {
+var _ runtime.Cluster = &cluster{}
+var _ kubedef.KubeCluster = &cluster{}
+
+func (d *cluster) Class() runtime.Class {
 	return runtimeClass{}
 }
 
-func (d cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {
+func (d *cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {
 	config, err := d.config()
 	if err != nil {
 		return nil, err
 	}
 
-	bound, err := d.Cluster.Bind(env)
+	bound, err := d.cluster.Bind(env)
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +412,7 @@ func (d cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {
 	return clusterNamespace{ClusterNamespace: bound, Config: config}, nil
 }
 
-func (d cluster) Planner(env planning.Context) runtime.Planner {
+func (d *cluster) Planner(env planning.Context) runtime.Planner {
 	base := kubernetes.NewPlanner(env, func(ctx context.Context) (*kubedef.SystemInfo, error) {
 		return &kubedef.SystemInfo{
 			NodePlatform:         []string{"linux/amd64"},
@@ -426,8 +423,32 @@ func (d cluster) Planner(env planning.Context) runtime.Planner {
 	return planner{Planner: base, cluster: d, env: env.Environment(), workspace: env.Workspace().Proto()}
 }
 
-func (d cluster) config() (*KubernetesCluster, error) {
-	p, err := d.Cluster.Provider()
+func (d *cluster) FetchDiagnostics(ctx context.Context, cr *runtime.ContainerReference) (*runtime.Diagnostics, error) {
+	return d.cluster.FetchDiagnostics(ctx, cr)
+}
+
+func (d *cluster) FetchLogsTo(ctx context.Context, w io.Writer, cr *runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
+	return d.cluster.FetchLogsTo(ctx, w, cr, opts)
+}
+
+func (d *cluster) AttachTerminal(ctx context.Context, container *runtime.ContainerReference, io runtime.TerminalIO) error {
+	return d.cluster.AttachTerminal(ctx, container, io)
+}
+
+func (d *cluster) EnsureState(ctx context.Context, key string, env planning.Context) (any, error) {
+	return d.ClusterAttachedState.EnsureState(ctx, key, env, d)
+}
+
+func (d *cluster) Client() *k8s.Clientset {
+	return d.cluster.Client()
+}
+
+func (d *cluster) RESTConfig() *rest.Config {
+	return d.cluster.RESTConfig()
+}
+
+func (d *cluster) config() (*KubernetesCluster, error) {
+	p, err := d.cluster.Provider()
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +462,7 @@ func (d cluster) config() (*KubernetesCluster, error) {
 
 type planner struct {
 	kubernetes.Planner
-	cluster   cluster
+	cluster   *cluster
 	env       *schema.Environment
 	workspace *schema.Workspace
 }

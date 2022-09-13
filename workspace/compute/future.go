@@ -64,11 +64,11 @@ func makePromise[V any](c hasAction, id string) *Promise[V] {
 	return initializePromise(&Promise[V]{}, c, id)
 }
 
-func NewPromise[V any](g *Orch, action *tasks.ActionEvent, f func(context.Context) (ResultWithTimestamp[V], error)) *Promise[V] {
+func NewPromise[V any](g *Orch, action *tasks.ActionEvent, callback func(context.Context) (ResultWithTimestamp[V], error)) *Promise[V] {
 	p := makePromise[V](wrapHasAction{action}, tasks.NewActionID().String())
 
 	g.Detach(action, func(ctx context.Context) error {
-		result, err := f(ctx)
+		result, err := callback(ctx)
 		_ = p.resolve(result, err)
 		return nil
 	})

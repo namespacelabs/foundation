@@ -37,7 +37,12 @@ func NewDebugShellCmd() *cobra.Command {
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
 		var imageID oci.ImageID
 
-		platforms, err := runtime.TargetPlatforms(ctx, env)
+		cluster, err := runtime.NamespaceFor(ctx, env)
+		if err != nil {
+			return err
+		}
+
+		platforms, err := cluster.Planner().TargetPlatforms(ctx)
 		if err != nil {
 			return err
 		}
@@ -86,11 +91,6 @@ func NewDebugShellCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-		}
-
-		cluster, err := runtime.NamespaceFor(ctx, env)
-		if err != nil {
-			return err
 		}
 
 		return cluster.RunAttached(ctx, "debug-"+ids.NewRandomBase32ID(8), runtime.ServerRunOpts{
