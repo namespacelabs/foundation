@@ -11,4 +11,6 @@ const (
 	DeployableClass_STATELESS DeployableClass = "deployableclass.namespace.so/stateless"
 	// Represents a stateful deployment.
 	DeployableClass_STATEFUL DeployableClass = "deployableclass.namespace.so/stateful"
+	// Represents a one-shot run.
+	DeployableClass_ONESHOT DeployableClass = "deployableclass.namespace.so/one-shot"
 )

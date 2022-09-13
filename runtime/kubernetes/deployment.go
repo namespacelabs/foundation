@@ -682,9 +682,14 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	// servers which we want to control a bit more carefully. For example, we want to deploy
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
-	if deployAsPods(target.env) {
+	if deployAsPods(target.env) || deployable.Class == schema.DeployableClass_ONESHOT {
+		desc := "Server"
+		if deployable.Class == schema.DeployableClass_ONESHOT {
+			desc = "One-shot"
+		}
+
 		s.operations = append(s.operations, kubedef.Apply{
-			Description: "Server",
+			Description: desc,
 			Resource: applycorev1.Pod(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithAnnotations(tmpl.Annotations).
