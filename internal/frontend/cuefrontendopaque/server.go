@@ -17,13 +17,13 @@ import (
 )
 
 const (
-	serverKindStateless = "namespace.so/stateless"
-	serverKindStateful  = "namespace.so/stateful"
+	serverClassStateless = "stateless"
+	serverClassStateful  = "stateful"
 )
 
 type cueServer struct {
-	Name string `json:"name"`
-	Kind string `json:"kind"`
+	Name  string `json:"name"`
+	Class string `json:"class"`
 
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
 	Env  map[string]string          `json:"env"`
@@ -54,15 +54,15 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	out.Framework = schema.Framework_BASE
 	out.RunByDefault = true
 
-	kind := bits.Kind
-	if kind == "" {
-		kind = serverKindStateless
+	class := bits.Class
+	if class == "" {
+		class = serverClassStateless
 	}
 
-	if kind != serverKindStateful && kind != serverKindStateless {
-		return nil, nil, fnerrors.UserError(loc, "server kind is not supported: %s", kind)
+	if class != serverClassStateful && class != serverClassStateless {
+		return nil, nil, fnerrors.UserError(loc, "server class is not supported: %s", class)
 	}
-	out.IsStateful = kind != serverKindStateless
+	out.IsStateful = class != serverClassStateless
 
 	for name, svc := range bits.Services {
 		parsed, endpointType, err := parseService(loc, name, svc)

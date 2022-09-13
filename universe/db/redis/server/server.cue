@@ -1,21 +1,25 @@
-import (
-	"namespacelabs.dev/foundation/std/fn"
-)
-
-server: fn.#OpaqueServer & {
-	id:   "fdsq5k9jc3k5s3onhv3g"
+server: {
 	name: "redis-server"
 
-	isStateful: true
+	image: "redis:6.2.6-alpine@sha256:132337b9d7744ffee4fae83f51de53c3530935ad3ba528b7110f2d805f55cbf5"
 
-	binary: image: "redis:6.2.6-alpine@sha256:132337b9d7744ffee4fae83f51de53c3530935ad3ba528b7110f2d805f55cbf5"
+	class: "stateful"
 
-	service: "redis": {
-		containerPort: 6379
-		metadata: protocol: "tcp"
+	services: "redis": {
+		port: 6379
+		kind: "tcp"
 	}
 
-	import: [
-		"namespacelabs.dev/foundation/universe/db/redis/server/datastorage",
-	]
+	args: ["--save", "60", "1"]
+
+	mounts: {
+		"/data": "data"
+	}
+}
+
+volumes: {
+	"data": persistent: {
+		id:   "redis-data"
+		size: "10GiB"
+	}
 }
