@@ -70,11 +70,19 @@ type buildOpts struct {
 	outputPath      string
 }
 
+const orchTool = "namespacelabs.dev/foundation/internal/orchestration/server/tool"
+
 func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
 	pl := workspace.NewPackageLoader(env)
 
 	var pkgs []*pkggraph.Package
 	for _, loc := range locs.Locs {
+		if !locs.UserSpecified && loc.AsPackageName().Equals(orchTool) {
+			// Skip the orchestration server tool by default.
+			// TODO scale this if we see a need.
+			continue
+		}
+
 		pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
 		if err != nil {
 			return err
