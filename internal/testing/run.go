@@ -28,6 +28,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
+	stdruntime "namespacelabs.dev/foundation/std/runtime"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
@@ -51,6 +52,7 @@ type testRun struct {
 	Plan             compute.Computable[*deploy.Plan]
 	Debug            bool
 	OutputProgress   bool
+	RuntimeConfig    *stdruntime.RuntimeConfig
 
 	compute.LocalScoped[*storage.TestResultBundle]
 }
@@ -117,6 +119,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 			Command:            test.TestBinCommand,
 			Args:               nil,
 			ReadOnlyFilesystem: true,
+			RuntimeConfig:      test.RuntimeConfig,
 		}
 
 		if test.Debug {

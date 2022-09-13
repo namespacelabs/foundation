@@ -45,6 +45,27 @@ func serverToRuntimeConfig(stack *stack.Stack, server provision.Server, serverIm
 	return config, nil
 }
 
+func TestStackToRuntimeConfig(stack *stack.Stack, sutServers []string) (*runtime.RuntimeConfig, error) {
+	if len(sutServers) == 0 {
+		return nil, fnerrors.InternalError("no servers to test")
+	}
+
+	config := &runtime.RuntimeConfig{
+		Environment: makeEnv(stack.Servers[0].SealedContext().Environment()),
+	}
+
+	for _, pkg := range sutServers {
+		ref := stack.Get(schema.MakePackageName(pkg))
+		if ref == nil {
+			return nil, fnerrors.InternalError("%s: missing in the stack", pkg)
+		}
+
+		config.StackEntry = append(config.StackEntry, makeServer(stack, *ref))
+	}
+
+	return config, nil
+}
+
 func makeEnv(env *schema.Environment) *runtime.ServerEnvironment {
 	res := &runtime.ServerEnvironment{
 		Ephemeral: env.Ephemeral,

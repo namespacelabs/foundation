@@ -242,6 +242,7 @@ type ContainerRunOpts struct {
 	Command            []string
 	Args               []string
 	Env                []*schema.BinaryConfig_EnvEntry
+	RuntimeConfig      *runtime.RuntimeConfig
 	RunAs              *RunAs
 	ReadOnlyFilesystem bool
 	Mounts             []*schema.Mount
