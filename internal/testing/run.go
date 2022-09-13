@@ -119,7 +119,6 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 			Command:            test.TestBinCommand,
 			Args:               nil,
 			ReadOnlyFilesystem: true,
-			RuntimeConfig:      test.RuntimeConfig,
 		}
 
 		if test.Debug {
@@ -145,12 +144,13 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 			parts := strings.Split(test.TestRef.PackageName, "/")
 
 			testDriver := runtime.DeployableSpec{
-				Location:    test.TestRef.AsPackageName(),
-				PackageName: test.TestRef.AsPackageName(),
-				Class:       schema.DeployableClass_ONESHOT,
-				Id:          ids.NewRandomBase32ID(8),
-				Name:        strings.ToLower(parts[len(parts)-1]) + "-" + test.TestRef.Name,
-				RunOpts:     testRun,
+				Location:      test.TestRef.AsPackageName(),
+				PackageName:   test.TestRef.AsPackageName(),
+				Class:         schema.DeployableClass_ONESHOT,
+				Id:            ids.NewRandomBase32ID(8),
+				Name:          strings.ToLower(parts[len(parts)-1]) + "-" + test.TestRef.Name,
+				RunOpts:       testRun,
+				RuntimeConfig: test.RuntimeConfig,
 			}
 
 			plan, err := cluster.Planner().PlanDeployment(ctx, runtime.DeploymentSpec{Specs: []runtime.DeployableSpec{testDriver}})

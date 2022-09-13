@@ -525,22 +525,42 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	if deployable.RuntimeConfig != nil {
 		serializedConfig, err := json.Marshal(deployable.RuntimeConfig)
 		if err != nil {
-			return err
+			return fnerrors.InternalError("failed to serialize runtime configuration: %w", err)
 		}
+
+		configDigest, err := schema.DigestOf(map[string]any{
+			"version": runtimeConfigVersion,
+			"config":  serializedConfig,
+		})
+		if err != nil {
+			return fnerrors.InternalError("failed to digest runtime configuration: %w", err)
+		}
+
+		configId := deploymentId + "-rtconfig-" + configDigest.Hex[:8]
 
 		// Needs to be declared before it's used.
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Runtime configuration",
 			Resource: applycorev1.ConfigMap(configId, target.namespace).
 				WithAnnotations(annotations).
-				WithLabels(labels),
+				WithLabels(labels).
+				WithLabels(map[string]string{
+					kubedef.K8sKind: kubedef.K8sRuntimeConfigKind,
+				}).
+				WithImmutable(true).
+				WithData(map[string]string{
+					"runtime.json": string(serializedConfig),
+				}),
 		})
 
-		spec = spec.WithVolumes(prepared.volume)
-		container = container.WithVolumeMounts(prepared.mount)
+		spec = spec.WithVolumes(applycorev1.Volume().
+			WithName(configId).
+			WithConfigMap(applycorev1.ConfigMapVolumeSource().WithName(configId)))
+
+		container = container.WithVolumeMounts(applycorev1.VolumeMount().WithMountPath("/namespace/config").WithName(configId).WithReadOnly(true))
 
 		// We do manual cleanup of unused configs. In the future they'll be owned by a deployment intent.
-		annotations[kubedef.K8sRuntimeConfig] = *prepared.volume.Name
+		annotations[kubedef.K8sRuntimeConfig] = configId
 	}
 
 	for _, sidecar := range deployable.Sidecars {
