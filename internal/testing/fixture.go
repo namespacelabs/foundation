@@ -139,8 +139,6 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		TestRef:          testRef,
 		Plan:             deployPlan,
 		ServersUnderTest: sutServers,
-		EnvProto:         env.Environment(),
-		Workspace:        env.Workspace().Proto(),
 		Stack:            stack.Proto(),
 		TestBinCommand:   testBin.Command,
 		TestBinImageID:   fixtureImage,

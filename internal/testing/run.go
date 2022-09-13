@@ -45,8 +45,6 @@ type testRun struct {
 	TestBinCommand []string
 	TestBinImageID compute.Computable[oci.ImageID]
 
-	Workspace        *schema.Workspace
-	EnvProto         *schema.Environment
 	Stack            *schema.Stack
 	ServersUnderTest []string // Package names.
 	Plan             compute.Computable[*deploy.Plan]
@@ -68,8 +66,8 @@ func (test *testRun) Inputs() *compute.In {
 		Stringer("testPkg", test.TestRef.AsPackageName()).
 		Strs("testBinCommand", test.TestBinCommand).
 		Computable("testBin", test.TestBinImageID).
-		Proto("workspace", test.Workspace).
-		Proto("env", test.EnvProto).
+		Proto("workspace", test.SealedContext.Workspace().Proto()).
+		Proto("env", test.SealedContext.Environment()).
 		Proto("stack", test.Stack).
 		Strs("focus", test.ServersUnderTest).
 		Computable("plan", test.Plan).
@@ -187,7 +185,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		return nil, err
 	}
 
-	bundle.DeployPlan = deploy.Serialize(test.Workspace, test.EnvProto, test.Stack, p, test.ServersUnderTest)
+	bundle.DeployPlan = deployPlan
 	bundle.ComputedConfigurations = p.Computed
 	// Clear the hints, no point storing those.
 	bundle.DeployPlan.Hints = nil
