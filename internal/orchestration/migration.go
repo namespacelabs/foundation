@@ -46,9 +46,8 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, 
 		}
 	} else {
 		// Make sure that the cluster is accessible to a serialized invocation implementation.
-		ctx = runtime.ClusterInjection.With(ctx, cluster)
-
-		waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, env, p)
+		waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, env, p,
+			runtime.ClusterInjection.With(cluster))
 		if err != nil {
 			return fnerrors.New("failed to deploy: %w", err)
 		}

@@ -22,16 +22,24 @@ func Define[V any](key string) Injection[V] {
 	return Injection[V]{key}
 }
 
-func (inj Injection[V]) With(ctx context.Context, value V) context.Context {
+func (inj Injection[V]) With(value V) InjectionInstance {
+	return InjectionInstance{inj.key, value}
+}
+
+func injectValues(ctx context.Context, instances ...InjectionInstance) context.Context {
+	if len(instances) == 0 {
+		return ctx
+	}
+
 	state := ctx.Value(_injectionKey)
 
-	var existing []injectionInstance
+	var existing []InjectionInstance
 	if state != nil {
 		existing = state.(injections).instances
 	}
 
 	return context.WithValue(ctx, _injectionKey, injections{
-		instances: append([]injectionInstance{{inj.key, value}}, existing...),
+		instances: append(instances, existing...),
 	})
 }
 
@@ -54,10 +62,10 @@ func Get[V any](ctx context.Context, inj Injection[V]) (V, error) {
 }
 
 type injections struct {
-	instances []injectionInstance
+	instances []InjectionInstance
 }
 
-type injectionInstance struct {
+type InjectionInstance struct {
 	key   string
 	value any
 }

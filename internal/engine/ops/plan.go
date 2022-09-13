@@ -77,7 +77,9 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) error {
 	return nil
 }
 
-func Execute(ctx context.Context, actionName string, env planning.Context, g *Plan) (waiters []Waiter, err error) {
+func Execute(ctx context.Context, actionName string, env planning.Context, g *Plan, injected ...InjectionInstance) (waiters []Waiter, err error) {
+	ctx = injectValues(ctx, injected...)
+
 	err = tasks.Action(actionName).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, false)
@@ -86,7 +88,9 @@ func Execute(ctx context.Context, actionName string, env planning.Context, g *Pl
 	return
 }
 
-func ExecuteParallel(ctx context.Context, name string, env planning.Context, g *Plan) (waiters []Waiter, err error) {
+func ExecuteParallel(ctx context.Context, name string, env planning.Context, g *Plan, injected ...InjectionInstance) (waiters []Waiter, err error) {
+	ctx = injectValues(ctx, injected...)
+
 	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
 			waiters, err = g.apply(ctx, env, true)
