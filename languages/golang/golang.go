@@ -40,32 +40,32 @@ func Register() {
 	languages.Register(schema.Framework_GO, impl{})
 	runtime.RegisterSupport(schema.Framework_GO, impl{})
 
-	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
-		wenv, ok := env.(pkggraph.PackageLoader)
-		if !ok {
-			return nil, fnerrors.New("pkggraph.PackageLoader required")
-		}
-
-		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Node.PackageName))
+	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
+		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
 		}
 
-		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
+		loc, err := loader.Resolve(ctx, schema.PackageName(x.Node.PackageName))
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, generateNode(ctx, loader, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
-		wenv, ok := env.(pkggraph.PackageLoader)
-		if !ok {
-			return nil, fnerrors.New("pkggraph.PackageLoader required")
-		}
-
-		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Server.PackageName))
+	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
+		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
 		}
 
-		return nil, generateServer(ctx, wenv, loc, x.Server, loc.Module.ReadWriteFS())
+		loc, err := loader.Resolve(ctx, schema.PackageName(x.Server.PackageName))
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, generateServer(ctx, loader, loc, x.Server, loc.Module.ReadWriteFS())
 	})
 }
 

@@ -23,7 +23,7 @@ import (
 
 func InvokeWithBinary(ctx context.Context, env planning.Context, inv *types.DeferredInvocation, prepared *binary.Prepared) (compute.Computable[*protocol.InvokeResponse], error) {
 	it := &invokeTool{
-		env:        env,
+		conf:       env.Configuration(),
 		invocation: inv,
 	}
 
@@ -44,7 +44,7 @@ func InvokeWithBinary(ctx context.Context, env planning.Context, inv *types.Defe
 }
 
 type invokeTool struct {
-	env        planning.Context // Does not affect the output.
+	conf       planning.Configuration // Does not affect the output.
 	invocation *types.DeferredInvocation
 	imageID    oci.ImageID // Use buildkit to invoke instead of the tools runtime.
 	image      compute.Computable[oci.Image]
@@ -104,7 +104,7 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 			return protocol.NewInvocationServiceClient(conn).Invoke
 		})
 	} else {
-		resp, err = invoke.InvokeOnBuildkit(ctx, inv.env, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), inv.imageID, run, req)
+		resp, err = invoke.InvokeOnBuildkit(ctx, inv.conf, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), inv.imageID, run, req)
 	}
 
 	if err != nil {

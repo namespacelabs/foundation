@@ -17,12 +17,11 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func registerDeleteList() {
-	ops.RegisterFunc(func(ctx context.Context, env planning.Context, d *schema.SerializedInvocation, deleteList *kubedef.OpDeleteList) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, d *schema.SerializedInvocation, deleteList *kubedef.OpDeleteList) (*ops.HandleResult, error) {
 		if deleteList.Resource == "" {
 			return nil, fnerrors.InternalError("%s: deleteList.Resource is required", d.Description)
 		}

@@ -7,7 +7,6 @@ package integration
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -58,45 +57,45 @@ var ()
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
 
-	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
-		workspacePackages, ok := env.(pkggraph.PackageLoader)
-		if !ok {
-			return nil, errors.New("pkggraph.PackageLoader required")
-		}
-
-		loc, err := workspacePackages.Resolve(ctx, schema.PackageName(x.Server.PackageName))
+	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
+		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := generateServer(ctx, workspacePackages, loc, x.Server, x.LoadedNode, loc.Module.ReadWriteFS()); err != nil {
+		loc, err := loader.Resolve(ctx, schema.PackageName(x.Server.PackageName))
+		if err != nil {
+			return nil, err
+		}
+
+		if err := generateServer(ctx, loader, loc, x.Server, x.LoadedNode, loc.Module.ReadWriteFS()); err != nil {
 			return nil, fnerrors.InternalError("failed to generate server: %w", err)
 		}
 
 		return nil, nil
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
-		wenv, ok := env.(pkggraph.PackageLoader)
-		if !ok {
-			return nil, fnerrors.New("pkggraph.PackageLoader required")
-		}
-
-		loc, err := wenv.Resolve(ctx, schema.PackageName(x.Node.PackageName))
+	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
+		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
 		}
 
-		return nil, generateNode(ctx, wenv, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
-	})
-
-	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenNodeStub) (*ops.HandleResult, error) {
-		wenv, ok := env.(pkggraph.PackageLoader)
-		if !ok {
-			return nil, fnerrors.New("pkggraph.PackageLoader required")
+		loc, err := loader.Resolve(ctx, schema.PackageName(x.Node.PackageName))
+		if err != nil {
+			return nil, err
 		}
 
-		pkg, err := wenv.LoadByName(ctx, schema.PackageName(x.Node.PackageName))
+		return nil, generateNode(ctx, loader, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
+	})
+
+	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNodeStub) (*ops.HandleResult, error) {
+		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+		if err != nil {
+			return nil, err
+		}
+
+		pkg, err := loader.LoadByName(ctx, schema.PackageName(x.Node.PackageName))
 		if err != nil {
 			return nil, err
 		}
@@ -104,13 +103,13 @@ func Register() {
 		return nil, generateNodeImplStub(ctx, pkg, x.Filename, x.Node)
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenGrpc) (*ops.HandleResult, error) {
-		wenv, ok := env.(pkggraph.PackageLoader)
-		if !ok {
-			return nil, fnerrors.New("pkggraph.PackageLoader required")
+	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenGrpc) (*ops.HandleResult, error) {
+		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+		if err != nil {
+			return nil, err
 		}
 
-		loc, err := wenv.Resolve(ctx, schema.PackageName(x.PackageName))
+		loc, err := loader.Resolve(ctx, schema.PackageName(x.PackageName))
 		if err != nil {
 			return nil, err
 		}
@@ -499,26 +498,25 @@ func (impl impl) GenerateNode(pkg *pkggraph.Package, nodes []*schema.Node) ([]*s
 type yarnRootStatefulGen struct{}
 
 // This is never called but ops.Register requires the Dispatcher.
-func (yarnRootStatefulGen) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
+func (yarnRootStatefulGen) Handle(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
 	return nil, fnerrors.UserError(nil, "yarnRootStatefulGen.Handle is not supposed to be called")
 }
 
-func (yarnRootStatefulGen) StartSession(ctx context.Context, env planning.Context) ops.Session[*OpGenYarnRoot] {
-	wenv, ok := env.(pkggraph.ContextWithMutableModule)
-	if !ok {
-		// An error will then be returned in Close().
-		wenv = nil
+func (yarnRootStatefulGen) StartSession(ctx context.Context) (ops.Session[*OpGenYarnRoot], error) {
+	module, err := ops.Get(ctx, pkggraph.MutableModuleInjection)
+	if err != nil {
+		return nil, err
 	}
 
-	return &yarnRootGenSession{wenv: wenv, yarnRoots: map[string]context.Context{}}
+	return &yarnRootGenSession{module: module, yarnRoots: map[string]context.Context{}}, nil
 }
 
 type yarnRootGenSession struct {
-	wenv      pkggraph.ContextWithMutableModule
+	module    pkggraph.MutableModule
 	yarnRoots map[string]context.Context
 }
 
-func (s *yarnRootGenSession) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
+func (s *yarnRootGenSession) Handle(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
 	if s.yarnRoots[x.YarnRootPkgName] == nil {
 		s.yarnRoots[x.YarnRootPkgName] = ctx
 	}
@@ -534,7 +532,7 @@ func (s *yarnRootGenSession) Commit() error {
 	sort.Strings(roots)
 
 	for _, yarnRoot := range roots {
-		if err := generateYarnRoot(s.yarnRoots[yarnRoot], yarnRoot, s.wenv.ReadWriteFS()); err != nil {
+		if err := generateYarnRoot(s.yarnRoots[yarnRoot], yarnRoot, s.module.ReadWriteFS()); err != nil {
 			return err
 		}
 	}

@@ -154,7 +154,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 	return resp, nil
 }
 
-func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context, env planning.Context, method string, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req Req) (Resp, error) {
+func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context, conf planning.Configuration, method string, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req Req) (Resp, error) {
 	return tasks.Return(ctx, tasks.Action("buildkit.invocation").Scope(pkg).Arg("ref", imageID.ImageRef()).Arg("method", method).LogLevel(1), func(ctx context.Context) (Resp, error) {
 		attachToAction(ctx, "request", req, oo.RedactRequest)
 
@@ -185,7 +185,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context,
 		run.AddMount("/request", requestState, llb.Readonly)
 		out := run.AddMount("/out", llb.Scratch())
 
-		output, err := buildkit.LLBToFS(ctx, env, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), out)
+		output, err := buildkit.LLBToFS(ctx, conf, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), out)
 		if err != nil {
 			return resp, err
 		}

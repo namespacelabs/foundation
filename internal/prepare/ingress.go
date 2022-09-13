@@ -9,35 +9,16 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
-
-type noPackageEnv struct {
-	hostConfig *client.HostConfig
-	planning.Context
-}
-
-var _ pkggraph.PackageLoader = noPackageEnv{}
-
-func (noPackageEnv) Resolve(ctx context.Context, packageName schema.PackageName) (pkggraph.Location, error) {
-	return pkggraph.Location{}, fnerrors.New("not supported")
-}
-func (noPackageEnv) LoadByName(ctx context.Context, packageName schema.PackageName) (*pkggraph.Package, error) {
-	return nil, fnerrors.New("not supported")
-}
-func (noPackageEnv) Ensure(ctx context.Context, packageName schema.PackageName) error {
-	return fnerrors.New("not supported")
-}
 
 func PrepareIngressFromHostConfig(env planning.Context, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return PrepareIngress(env, compute.Transform("create k8s runtime", k8sconfig, func(ctx context.Context, cfg *client.HostConfig) (*kubernetes.Cluster, error) {
@@ -73,7 +54,9 @@ func PrepareIngressInKube(ctx context.Context, env planning.Context, kube *kuber
 		return err
 	}
 
-	waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{kube.HostConfig(), env}, g, runtime.ClusterInjection.With(kube))
+	waiters, err := ops.Execute(ctx, env.Configuration(), runtime.TaskServerDeploy, g,
+		runtime.ClusterInjection.With(kube),
+	)
 	if err != nil {
 		return err
 	}

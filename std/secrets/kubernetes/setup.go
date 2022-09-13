@@ -181,6 +181,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				Namespace:         namespace,
 				Name:              generatedName,
 				UserSpecifiedName: gen.Secret.Name,
+				Environment:       r.Env,
 			}
 
 			var err error
@@ -211,6 +212,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				Name:                  generatedName,
 				UserSpecifiedName:     gen.Secret.Name,
 				SelfSignedCertificate: gen.Secret.SelfSignedTlsCertificate,
+				Environment:           r.Env,
 			}
 
 			var err error

@@ -33,47 +33,65 @@ type statefulGen struct{}
 
 var _ ops.BatchedDispatcher[*OpProtoGen] = statefulGen{}
 
-func (statefulGen) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
-	wenv, ok := env.(pkggraph.ContextWithMutableModule)
-	if !ok {
-		return nil, fnerrors.New("pkggraph.ContextWithMutableModule required")
+func (statefulGen) Handle(ctx context.Context, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
+	config, err := ops.Get(ctx, ops.ConfigurationInjection)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, generateProtoSrcs(ctx, env, map[schema.Framework]*protos.FileDescriptorSetAndDeps{
+	module, err := ops.Get(ctx, pkggraph.MutableModuleInjection)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, generateProtoSrcs(ctx, config, map[schema.Framework]*protos.FileDescriptorSetAndDeps{
 		msg.Framework: msg.Protos,
-	}, wenv.ReadWriteFS())
+	}, module.ReadWriteFS())
 }
 
-func (statefulGen) StartSession(ctx context.Context, env planning.Context) ops.Session[*OpProtoGen] {
-	wenv, ok := env.(pkggraph.ContextWithMutableModule)
-	if !ok {
-		// An error will then be returned in Close().
-		wenv = nil
+func (statefulGen) StartSession(ctx context.Context) (ops.Session[*OpProtoGen], error) {
+	module, err := ops.Get(ctx, pkggraph.MutableModuleInjection)
+	if err != nil {
+		return nil, err
 	}
 
-	return &multiGen{ctx: ctx, wenv: wenv, request: map[schema.Framework][]*protos.FileDescriptorSetAndDeps{}}
+	loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := ops.Get(ctx, ops.ConfigurationInjection)
+	if err != nil {
+		return nil, err
+	}
+
+	return &multiGen{
+		ctx:     ctx,
+		loader:  loader,
+		module:  module,
+		config:  config,
+		request: map[schema.Framework][]*protos.FileDescriptorSetAndDeps{},
+	}, nil
 }
 
 type multiGen struct {
-	ctx  context.Context
-	wenv pkggraph.ContextWithMutableModule
+	ctx    context.Context
+	loader pkggraph.PackageLoader
+	module pkggraph.MutableModule
+	config planning.Configuration
 
 	mu      sync.Mutex
 	request map[schema.Framework][]*protos.FileDescriptorSetAndDeps
 }
 
-func (m *multiGen) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
-	if m.wenv == nil {
-		return nil, fnerrors.InternalError("expected a pkggraph.ContextWithMutableModule")
-	}
-
-	loc, err := m.wenv.Resolve(ctx, schema.PackageName(msg.PackageName))
+func (m *multiGen) Handle(ctx context.Context, _ *schema.SerializedInvocation, msg *OpProtoGen) (*ops.HandleResult, error) {
+	loc, err := m.loader.Resolve(ctx, schema.PackageName(msg.PackageName))
 	if err != nil {
 		return nil, err
 	}
 
-	if loc.Module.ModuleName() != m.wenv.ModuleName() {
-		return nil, fnerrors.BadInputError("%s: can't perform codegen for packages in %q", m.wenv.ModuleName(), loc.Module.ModuleName())
+	if loc.Module.ModuleName() != m.module.ModuleName() {
+		return nil, fnerrors.BadInputError("%s: can't perform codegen for packages in %q", m.module.ModuleName(), loc.Module.ModuleName())
 	}
 
 	m.mu.Lock()
@@ -85,10 +103,6 @@ func (m *multiGen) Handle(ctx context.Context, env planning.Context, _ *schema.S
 }
 
 func (m *multiGen) Commit() error {
-	if m.wenv == nil {
-		return fnerrors.New("pkggraph.ContextWithMutableModule required")
-	}
-
 	m.mu.Lock()
 	request := map[schema.Framework]*protos.FileDescriptorSetAndDeps{}
 	var errs []error
@@ -103,10 +117,10 @@ func (m *multiGen) Commit() error {
 		return mergeErr
 	}
 
-	return generateProtoSrcs(m.ctx, m.wenv, request, m.wenv.ReadWriteFS())
+	return generateProtoSrcs(m.ctx, m.config, request, m.module.ReadWriteFS())
 }
 
-func generateProtoSrcs(ctx context.Context, env planning.Context, request map[schema.Framework]*protos.FileDescriptorSetAndDeps, out fnfs.ReadWriteFS) error {
+func generateProtoSrcs(ctx context.Context, env planning.Configuration, request map[schema.Framework]*protos.FileDescriptorSetAndDeps, out fnfs.ReadWriteFS) error {
 	protogen, err := buf.MakeProtoSrcs(ctx, env, request)
 	if err != nil {
 		return err
@@ -145,7 +159,7 @@ func GenProtosAtPaths(ctx context.Context, env planning.Context, fmwk schema.Fra
 		return err
 	}
 
-	return generateProtoSrcs(ctx, env, map[schema.Framework]*protos.FileDescriptorSetAndDeps{
+	return generateProtoSrcs(ctx, env.Configuration(), map[schema.Framework]*protos.FileDescriptorSetAndDeps{
 		fmwk: parsed,
 	}, out)
 }

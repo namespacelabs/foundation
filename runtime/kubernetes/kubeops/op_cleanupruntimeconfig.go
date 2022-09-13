@@ -13,12 +13,11 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func registerCleanup() {
-	ops.RegisterFunc(func(ctx context.Context, env planning.Context, d *schema.SerializedInvocation, cleanup *kubedef.OpCleanupRuntimeConfig) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, d *schema.SerializedInvocation, cleanup *kubedef.OpCleanupRuntimeConfig) (*ops.HandleResult, error) {
 		return tasks.Return(ctx, tasks.Action("kubernetes.cleanup").HumanReadablef(d.Description), func(ctx context.Context) (*ops.HandleResult, error) {
 			// Remove configmap runtime configs no longer being used.
 

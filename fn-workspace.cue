@@ -17,7 +17,7 @@ prebuilts: {
 		"namespacelabs.dev/foundation/std/networking/gateway/controller":                              "sha256:11ff24b7079bd83001568570ccfac7b6118baa84f585901d54419bb7f08727a5"
 		"namespacelabs.dev/foundation/std/networking/gateway/server/configure":                        "sha256:a6b6fcb1f42e730004aa0fdf339130dea9665df1a2581f517b78137bbb3631c7"
 		"namespacelabs.dev/foundation/std/runtime/kubernetes/kube-state-metrics/configure":            "sha256:159e5af8e9c2724a272f1ff22a4d1b8d9e4f93e75fc8ac9b85309e36b6c8f676"
-		"namespacelabs.dev/foundation/std/secrets/kubernetes":                                         "sha256:f4386a5382860db880e2c6efc9b32117cf861532e98d80b4f20966d661d8777f"
+		"namespacelabs.dev/foundation/std/secrets/kubernetes":                                         "sha256:7c5be17536bdb60b99ef658dbc77f4f9ebbcbf10f343a79ce59aa2a9d91c9845"
 		"namespacelabs.dev/foundation/std/startup/testdriver":                                         "sha256:87ed023cec48cade0a5cdb4a433cc7859863cb0c7cddab6fd913249a1ead5ad5"
 		"namespacelabs.dev/foundation/std/testdata/datastore/keygen":                                  "sha256:5733814d051904c67ec5543d2f63de700c2d55d6561f21fa6a44e8d8609a91ac"
 		"namespacelabs.dev/foundation/std/web/http/configure":                                         "sha256:128c028ef235bc9a2a2cd3ecce42298a4414b29acbddf1755f1f1c0014a927f5"

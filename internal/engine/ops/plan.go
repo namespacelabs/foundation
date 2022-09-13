@@ -24,13 +24,13 @@ import (
 // A dispatcher provides the implementation for a particular type, i.e. it
 // handles the execution of a particular serialized invocation.
 type Dispatcher[M proto.Message] interface {
-	Handle(context.Context, planning.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
+	Handle(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
 }
 
 // A BatchedDispatcher represents an implementation which batches the execution
 // of multiple invocations.
 type BatchedDispatcher[M proto.Message] interface {
-	StartSession(context.Context, planning.Context) Session[M]
+	StartSession(context.Context) (Session[M], error)
 }
 
 // A session represents a single batched invocation.
@@ -77,23 +77,25 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) error {
 	return nil
 }
 
-func Execute(ctx context.Context, actionName string, env planning.Context, g *Plan, injected ...InjectionInstance) (waiters []Waiter, err error) {
+func Execute(ctx context.Context, config planning.Configuration, actionName string, g *Plan, injected ...InjectionInstance) (waiters []Waiter, err error) {
+	ctx = injectValues(ctx, ConfigurationInjection.With(config))
 	ctx = injectValues(ctx, injected...)
 
 	err = tasks.Action(actionName).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
-			waiters, err = g.apply(ctx, env, false)
+			waiters, err = g.apply(ctx, false)
 			return
 		})
 	return
 }
 
-func ExecuteParallel(ctx context.Context, name string, env planning.Context, g *Plan, injected ...InjectionInstance) (waiters []Waiter, err error) {
+func ExecuteParallel(ctx context.Context, config planning.Configuration, name string, g *Plan, injected ...InjectionInstance) (waiters []Waiter, err error) {
+	ctx = injectValues(ctx, ConfigurationInjection.With(config))
 	ctx = injectValues(ctx, injected...)
 
 	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
 		func(ctx context.Context) (err error) {
-			waiters, err = g.apply(ctx, env, true)
+			waiters, err = g.apply(ctx, true)
 			return
 		})
 	return
@@ -103,7 +105,7 @@ func Serialize(g *Plan) *schema.SerializedProgram {
 	return &schema.SerializedProgram{Invocation: g.definitions}
 }
 
-func (g *Plan) apply(ctx context.Context, env planning.Context, parallel bool) ([]Waiter, error) {
+func (g *Plan) apply(ctx context.Context, parallel bool) ([]Waiter, error) {
 	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)
@@ -128,7 +130,10 @@ func (g *Plan) apply(ctx context.Context, env planning.Context, parallel bool) (
 		}
 
 		if n.reg.startSession != nil {
-			dispatcher, commit := n.reg.startSession(ctx, env)
+			dispatcher, commit, err := n.reg.startSession(ctx)
+			if err != nil {
+				return nil, err
+			}
 			sessions[typeUrl] = dispatcher
 			commits[typeUrl] = commit
 		}
@@ -153,7 +158,7 @@ func (g *Plan) apply(ctx context.Context, env planning.Context, parallel bool) (
 			dispatcher = d
 		}
 
-		d, err := dispatcher(ctx, env, n.def, copy)
+		d, err := dispatcher(ctx, n.def, copy)
 		n.res = d
 		n.err = err
 		if err != nil {

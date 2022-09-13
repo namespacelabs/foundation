@@ -115,17 +115,17 @@ func digestRequest(ctx context.Context, req *frontendReq) (schema.Digest, error)
 	return schema.FromHash("sha256", w), nil
 }
 
-func LLBToFS(ctx context.Context, env planning.Context, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
+func LLBToFS(ctx context.Context, conf planning.Configuration, target build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
 	serialized, err := state.Marshal(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	base := reqBase{
-		sourceLabel:    conf.SourceLabel(),
-		sourcePackage:  conf.SourcePackage(),
-		config:         env.Configuration(),
-		targetPlatform: platformOrDefault(conf.TargetPlatform()),
+		sourceLabel:    target.SourceLabel(),
+		sourcePackage:  target.SourcePackage(),
+		config:         conf,
+		targetPlatform: platformOrDefault(target.TargetPlatform()),
 		req:            precomputedReq(&frontendReq{Def: serialized}),
 		localDirs:      localDirs,
 	}

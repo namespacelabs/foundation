@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 type injectionKey string
@@ -17,6 +18,8 @@ var _injectionKey injectionKey = "fn.ops.injection"
 type Injection[V any] struct {
 	key string
 }
+
+var ConfigurationInjection = Define[planning.Configuration]("ns.configuration")
 
 func Define[V any](key string) Injection[V] {
 	return Injection[V]{key}

@@ -16,12 +16,11 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func registerDelete() {
-	ops.RegisterFunc(func(ctx context.Context, env planning.Context, d *schema.SerializedInvocation, delete *kubedef.OpDelete) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, d *schema.SerializedInvocation, delete *kubedef.OpDelete) (*ops.HandleResult, error) {
 		if delete.Resource == "" {
 			return nil, fnerrors.InternalError("%s: delete.Resource is required", d.Description)
 		}

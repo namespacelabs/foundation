@@ -24,7 +24,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-func MakeProtoSrcs(ctx context.Context, env planning.Context, request map[schema.Framework]*protos.FileDescriptorSetAndDeps) (compute.Computable[fs.FS], error) {
+func MakeProtoSrcs(ctx context.Context, conf planning.Configuration, request map[schema.Framework]*protos.FileDescriptorSetAndDeps) (compute.Computable[fs.FS], error) {
 	platform, err := tools.HostPlatform(ctx)
 	if err != nil {
 		return nil, err
@@ -104,5 +104,5 @@ func MakeProtoSrcs(ctx context.Context, env planning.Context, request map[schema
 		out = out.File(llb.Copy(result, ".", "."), llb.WithCustomNamef("copying %s generated sources", fmwk))
 	}
 
-	return buildkit.LLBToFS(ctx, env, build.NewBuildTarget(&platform).WithSourceLabel("protobuf-codegen"), out)
+	return buildkit.LLBToFS(ctx, conf, build.NewBuildTarget(&platform).WithSourceLabel("protobuf-codegen"), out)
 }

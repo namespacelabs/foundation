@@ -312,7 +312,7 @@ func evalProvision(ctx context.Context, server provision.Server, node *pkggraph.
 			var resp *protocol.PrepareResponse
 
 			if tools.InvocationCanUseBuildkit && opts.PublicImageID != nil {
-				resp, err = invoke.InvokeOnBuildkit(ctx, server.SealedContext(), "foundation.provision.tool.protocol.PrepareService/Prepare",
+				resp, err = invoke.InvokeOnBuildkit(ctx, server.SealedContext().Configuration(), "foundation.provision.tool.protocol.PrepareService/Prepare",
 					schema.PackageName(hook.InvokeBinary.Binary), *opts.PublicImageID, opts, req)
 			} else {
 				resp, err = invoke.Invoke(ctx, node.PackageName(), opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.PrepareRequest, ...grpc.CallOption) (*protocol.PrepareResponse, error) {

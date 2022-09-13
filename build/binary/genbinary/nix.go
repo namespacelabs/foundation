@@ -31,18 +31,18 @@ type nixImage struct {
 }
 
 func (l nixImage) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	return NixImage(ctx, env, conf, l.sources)
+	return NixImage(ctx, env.Configuration(), conf, l.sources)
 
 }
 
 func (l nixImage) PlatformIndependent() bool { return false }
 
-func NixImage(ctx context.Context, env planning.Context, conf build.BuildTarget, sources fs.FS) (compute.Computable[oci.Image], error) {
-	if conf.TargetPlatform() == nil {
+func NixImage(ctx context.Context, conf planning.Configuration, target build.BuildTarget, sources fs.FS) (compute.Computable[oci.Image], error) {
+	if target.TargetPlatform() == nil {
 		return nil, fnerrors.BadInputError("nix: target platform is missing")
 	}
 
-	const target = "/source"
+	const dirTarget = "/source"
 	const outputImageFile = "image.tgz"
 
 	var err error
@@ -65,12 +65,12 @@ experimental-features = nix-command flakes
 filter-syscalls = false
 	`
 
-	base := llb.Image(nixosImage, llb.Platform(*conf.TargetPlatform())).
+	base := llb.Image(nixosImage, llb.Platform(*target.TargetPlatform())).
 		File(llb.Mkfile("/etc/nix/nix.conf", 0777, []byte(nixconf))).
 		AddEnv("PATH", "/root/.nix-profile/bin")
 
 	build := base.
-		Run(llb.Shlexf("nix build %s -o /tmp/result", target))
+		Run(llb.Shlexf("nix build %s -o /tmp/result", dirTarget))
 	build.AddMount("/source", sourceFiles)
 
 	// nix build produces a symlink to the result, which we then need to copy into the target mount so buildkit copies it out.
@@ -78,7 +78,7 @@ filter-syscalls = false
 		Run(llb.Shlexf("cp -L /tmp/result /out/" + outputImageFile))
 	out := postCopy.AddMount("/out", llb.Scratch())
 
-	fsys, err := buildkit.LLBToFS(ctx, env, conf, out)
+	fsys, err := buildkit.LLBToFS(ctx, conf, target, out)
 	if err != nil {
 		return nil, err
 	}

@@ -28,7 +28,6 @@ import (
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 	p "namespacelabs.dev/foundation/std/proto"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
@@ -41,13 +40,13 @@ func Register() {
 
 type generator struct{}
 
-func (generator) Handle(ctx context.Context, env planning.Context, _ *schema.SerializedInvocation, msg *OpGenNode) (*ops.HandleResult, error) {
-	wenv, ok := env.(pkggraph.PackageLoader)
-	if !ok {
-		return nil, fnerrors.New("pkggraph.PackageLoader required")
+func (generator) Handle(ctx context.Context, _ *schema.SerializedInvocation, msg *OpGenNode) (*ops.HandleResult, error) {
+	loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+	if err != nil {
+		return nil, err
 	}
 
-	loc, err := wenv.Resolve(ctx, schema.PackageName(msg.Node.PackageName))
+	loc, err := loader.Resolve(ctx, schema.PackageName(msg.Node.PackageName))
 	if err != nil {
 		return nil, err
 	}

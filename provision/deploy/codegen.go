@@ -95,12 +95,10 @@ func codegenServer(ctx context.Context, srv provision.Server) error {
 		return err
 	}
 
-	waiters, err := ops.ExecuteParallel(ctx, "workspace.codegen", codegenEnv{
-		config:   srv.SealedContext().Configuration(),
-		root:     srv.Module(),
-		packages: srv.SealedContext(),
-		fs:       srv.Module().ReadWriteFS(),
-	}, r)
+	waiters, err := ops.ExecuteParallel(ctx, srv.SealedContext().Configuration(), "workspace.codegen", r,
+		pkggraph.MutableModuleInjection.With(srv.Module()),
+		pkggraph.PackageLoaderInjection.With(srv.SealedContext()),
+	)
 	if err != nil {
 		return err
 	}

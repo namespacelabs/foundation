@@ -15,12 +15,11 @@ import (
 	"namespacelabs.dev/foundation/internal/tools/maketlscert"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/types"
 )
 
 func RegisterCreateSecret() {
-	ops.RegisterFunc(func(ctx context.Context, env planning.Context, d *schema.SerializedInvocation, create *kubedef.OpCreateSecretConditionally) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, d *schema.SerializedInvocation, create *kubedef.OpCreateSecretConditionally) (*ops.HandleResult, error) {
 		if create.Name == "" {
 			return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
 		}
@@ -47,12 +46,12 @@ func RegisterCreateSecret() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      create.Name,
 				Namespace: create.Namespace,
-				Labels:    kubedef.MakeLabels(env.Environment(), nil),
+				Labels:    kubedef.MakeLabels(create.Environment, nil),
 			},
 		}
 
 		if create.SelfSignedCertificate != nil {
-			bundle, err := maketlscert.CreateSelfSignedCertificateChain(ctx, env.Environment(), create.SelfSignedCertificate)
+			bundle, err := maketlscert.CreateSelfSignedCertificateChain(ctx, create.Environment, create.SelfSignedCertificate)
 			if err != nil {
 				return nil, err
 			}

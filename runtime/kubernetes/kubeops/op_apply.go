@@ -28,12 +28,11 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func registerApply() {
-	ops.RegisterFunc(func(ctx context.Context, env planning.Context, d *schema.SerializedInvocation, apply *kubedef.OpApply) (*ops.HandleResult, error) {
+	ops.RegisterFunc(func(ctx context.Context, d *schema.SerializedInvocation, apply *kubedef.OpApply) (*ops.HandleResult, error) {
 		if apply.BodyJson == "" {
 			return nil, fnerrors.InternalError("%s: apply.Body is required", d.Description)
 		}
