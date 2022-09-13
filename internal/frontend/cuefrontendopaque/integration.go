@@ -15,15 +15,21 @@ import (
 
 type cueIntegration struct {
 	cueIntegrationDocker
+	cueIntegrationGo
 
 	Kind string `json:"kind"`
 
 	// Shortcuts
 	Docker *cueIntegrationDocker `json:"docker"`
+	Golang *cueIntegrationGo     `json:"go"`
 }
 
 type cueIntegrationDocker struct {
 	Dockerfile string `json:"dockerfile"`
+}
+
+type cueIntegrationGo struct {
+	Package string `json:"pkg"`
 }
 
 // Mutates "pkg"
@@ -39,7 +45,13 @@ func parseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV,
 			bits.cueIntegrationDocker = *bits.Docker
 			bits.Kind = serverKindDockerfile
 		}
+		if bits.Golang != nil {
+			bits.cueIntegrationGo = *bits.Golang
+			bits.Kind = serverKindGo
+		}
 	}
+
+	var bp *schema.ImageBuildPlan
 
 	switch bits.Kind {
 	case serverKindDockerfile:
@@ -47,22 +59,29 @@ func parseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV,
 			return fnerrors.UserError(loc, "docker integration requires dockerfile")
 		}
 
-		pkg.Binaries = append(pkg.Binaries, &schema.Binary{
-			Name: pkg.Server.Name,
-			BuildPlan: &schema.LayeredImageBuildPlan{
-				LayerBuildPlan: []*schema.ImageBuildPlan{
-					{Dockerfile: bits.cueIntegrationDocker.Dockerfile},
-				},
-			},
-		})
-		pkg.Server.Binary = &schema.Server_Binary{
-			PackageRef: schema.MakePackageRef(loc.PackageName, pkg.Server.Name),
+		bp = &schema.ImageBuildPlan{Dockerfile: bits.cueIntegrationDocker.Dockerfile}
+	case serverKindGo:
+		goPkg := bits.Package
+		if goPkg == "" {
+			goPkg = "."
 		}
 
-		return nil
+		bp = &schema.ImageBuildPlan{GoPackage: goPkg}
 	default:
 		return fnerrors.UserError(loc, "unsupported integration kind %q", bits.Kind)
 	}
+
+	pkg.Binaries = append(pkg.Binaries, &schema.Binary{
+		Name: pkg.Server.Name,
+		BuildPlan: &schema.LayeredImageBuildPlan{
+			LayerBuildPlan: []*schema.ImageBuildPlan{bp},
+		},
+	})
+	pkg.Server.Binary = &schema.Server_Binary{
+		PackageRef: schema.MakePackageRef(loc.PackageName, pkg.Server.Name),
+	}
+
+	return nil
 }
 
 // Mutates "pkg"

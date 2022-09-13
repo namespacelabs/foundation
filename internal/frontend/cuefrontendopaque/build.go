@@ -15,6 +15,7 @@ import (
 
 const (
 	serverKindDockerfile = "namespace.so/from-dockerfile"
+	serverKindGo         = "namespace.so/from-go"
 )
 
 type cueBuild struct {

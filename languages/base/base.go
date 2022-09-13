@@ -44,6 +44,27 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 }
 
 func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ContainerRunOpts) error {
+	bin := server.Proto().GetBinary()
+
+	if bin.GetPackageRef() != nil {
+		pkg, err := server.SealedContext().LoadByName(ctx, bin.GetPackageRef().AsPackageName())
+		if err != nil {
+			return err
+		}
+
+		binary, err := binary.GetBinary(pkg, bin.GetPackageRef().GetName())
+		if err != nil {
+			return err
+		}
+
+		config := binary.Config
+		if config != nil {
+			run.Command = config.Command
+			run.Args = config.Args
+			run.Env = config.Env
+		}
+	}
+
 	return nil
 }
 
