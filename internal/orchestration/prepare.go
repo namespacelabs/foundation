@@ -54,7 +54,7 @@ func prepare(ctx context.Context, targetEnv planning.Context, cluster runtime.Cl
 		return nil, err
 	}
 
-	plan, err := deploy.PrepareDeployServers(ctx, env, cluster.Planner(env), []provision.Server{focus}, nil)
+	plan, err := deploy.PrepareDeployServers(ctx, env, boundCluster.Planner(), []provision.Server{focus}, nil)
 	if err != nil {
 		return nil, err
 	}
