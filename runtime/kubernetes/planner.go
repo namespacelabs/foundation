@@ -83,7 +83,7 @@ func (r Planner) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) 
 	return parsePlatforms(systemInfo.NodePlatform)
 }
 
-func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) (*runtime.DeploymentPlan, error) {
+func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deployment) (*runtime.DeploymentPlan, error) {
 	var state runtime.DeploymentPlan
 	deployOpts := deployOpts{
 		secrets: d.Secrets,
@@ -92,18 +92,18 @@ func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) 
 	for _, deployable := range d.Deployables {
 		var singleState serverRunState
 
-		if err := prepareDeployment(ctx, r, deployable, deployable.InternalEndpoints, deployOpts, &singleState); err != nil {
+		if err := prepareDeployment(ctx, target, deployable, deployable.InternalEndpoints, deployOpts, &singleState); err != nil {
 			return nil, err
 		}
 
 		// XXX verify we've consumed all endpoints.
 		for _, endpoint := range deployable.Endpoints {
-			if err := deployEndpoint(ctx, r, deployable, endpoint, &singleState); err != nil {
+			if err := deployEndpoint(ctx, target, deployable, endpoint, &singleState); err != nil {
 				return nil, err
 			}
 		}
 
-		if at := tasks.Attachments(ctx); at.IsStoring() {
+		if at := tasks.Attachments(ctx); deployable.PackageName != "" && at.IsStoring() {
 			output := &bytes.Buffer{}
 			for k, decl := range singleState.operations {
 				if k > 0 {
@@ -129,10 +129,10 @@ func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) 
 		}
 	}
 
-	if !r.env.Ephemeral {
+	if !target.env.GetEphemeral() {
 		cleanup, err := anypb.New(&kubedef.OpCleanupRuntimeConfig{
-			Namespace: r.namespace,
-			CheckPods: deployAsPods(r.env),
+			Namespace: target.namespace,
+			CheckPods: deployAsPods(target.env),
 		})
 		if err != nil {
 			return nil, fnerrors.InternalError("failed to serialize cleanup: %w", err)
@@ -145,7 +145,7 @@ func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) 
 	}
 
 	state.Hints = append(state.Hints, fmt.Sprintf("Inspecting your deployment: %s",
-		colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("kubectl -n %s get pods", r.namespace))))
+		colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("kubectl -n %s get pods", target.namespace))))
 
 	return &state, nil
 }

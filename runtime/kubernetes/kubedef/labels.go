@@ -71,10 +71,11 @@ type Deployable interface {
 	GetName() string
 }
 
+// Env may be nil.
 func MakeLabels(env *schema.Environment, srv Deployable) map[string]string {
 	// XXX add recommended labels https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 	m := ManagedByUs()
-	if srv != nil {
+	if srv != nil && srv.GetId() != "" {
 		m[K8sServerId] = srv.GetId()
 	}
 	if env != nil {
@@ -103,6 +104,7 @@ func HasFocusMark(labels map[string]string) bool {
 	return label == "true"
 }
 
+// Env may be nil.
 func MakeAnnotations(env *schema.Environment, pkg schema.PackageName) map[string]string {
 	m := map[string]string{}
 

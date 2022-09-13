@@ -55,7 +55,7 @@ type perEnvConf struct {
 	failureThreshold      int32
 }
 
-var constants = map[schema.Environment_Purpose]perEnvConf{
+var constants = map[schema.Environment_Purpose]*perEnvConf{
 	schema.Environment_DEVELOPMENT: {
 		dashnessPeriod:        1,
 		livenessInitialDelay:  1,
@@ -122,7 +122,7 @@ func toProbe(port *schema.Endpoint_Port, md *schema.ServiceMetadata) (*kubedef.C
 	return &kubedef.ContainerExtension_Probe{Path: exported.GetPath(), ContainerPort: port.GetContainerPort(), Kind: md.Kind}, nil
 }
 
-func toK8sProbe(p *applycorev1.ProbeApplyConfiguration, probevalues perEnvConf, probe *kubedef.ContainerExtension_Probe) *applycorev1.ProbeApplyConfiguration {
+func toK8sProbe(p *applycorev1.ProbeApplyConfiguration, probevalues *perEnvConf, probe *kubedef.ContainerExtension_Probe) *applycorev1.ProbeApplyConfiguration {
 	return p.WithHTTPGet(applycorev1.HTTPGetAction().WithPath(probe.GetPath()).
 		WithPort(intstr.FromInt(int(probe.GetContainerPort())))).
 		WithPeriodSeconds(probevalues.dashnessPeriod).
@@ -135,17 +135,12 @@ type deployOpts struct {
 }
 
 func deployAsPods(env *schema.Environment) bool {
-	return env.Purpose == schema.Environment_TESTING && DeployAsPodsInTests
+	return env.GetPurpose() == schema.Environment_TESTING && DeployAsPodsInTests
 }
 
 func prepareDeployment(ctx context.Context, target clusterTarget, deployable runtime.Deployable, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
 	if deployable.RunOpts.Image.Repository == "" {
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.RunOpts.Image)
-	}
-
-	probevalues, ok := constants[target.env.Purpose]
-	if !ok {
-		return fnerrors.InternalError("%s: no constants configured", target.env.Name)
 	}
 
 	secCtx := applycorev1.SecurityContext()
@@ -349,6 +344,13 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			}
 		default:
 			return fnerrors.BadInputError("%s: unknown probe kind", probe.Kind)
+		}
+	}
+
+	probevalues := constants[target.env.GetPurpose()]
+	if readinessProbe != nil || livenessProbe != nil {
+		if probevalues == nil {
+			return fnerrors.InternalError("%s: no constants configured", target.env.GetPurpose())
 		}
 	}
 
@@ -640,8 +642,8 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 	}
 
-	if _, err := runAsToPodSecCtx(deployable.PackageName.String(), podSecCtx, deployable.RunOpts.RunAs); err != nil {
-		return err
+	if _, err := runAsToPodSecCtx(podSecCtx, deployable.RunOpts.RunAs); err != nil {
+		return fnerrors.Wrap(deployable.Location, err)
 	}
 
 	spec = spec.
@@ -774,7 +776,7 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 	var operations []kubedef.Apply
 	var v *applycorev1.VolumeApplyConfiguration
 
-	if env.Ephemeral {
+	if env.GetEphemeral() {
 		v = applycorev1.Volume().
 			WithName(name).
 			WithEmptyDir(applycorev1.EmptyDirVolumeSource().
@@ -804,7 +806,7 @@ func sidecarName(o runtime.SidecarRunOpts, prefix string) string {
 	return fmt.Sprintf("%s-%s", prefix, o.Name)
 }
 
-func runAsToPodSecCtx(name string, podSecCtx *applycorev1.PodSecurityContextApplyConfiguration, runAs *runtime.RunAs) (*applycorev1.PodSecurityContextApplyConfiguration, error) {
+func runAsToPodSecCtx(podSecCtx *applycorev1.PodSecurityContextApplyConfiguration, runAs *runtime.RunAs) (*applycorev1.PodSecurityContextApplyConfiguration, error) {
 	if runAs != nil {
 		if runAs.UserID != "" {
 			userId, err := strconv.ParseInt(runAs.UserID, 10, 64)
@@ -813,7 +815,7 @@ func runAsToPodSecCtx(name string, podSecCtx *applycorev1.PodSecurityContextAppl
 			}
 
 			if podSecCtx.RunAsUser != nil && *podSecCtx.RunAsUser != userId {
-				return nil, fnerrors.BadInputError("%s: incompatible userid %d vs %d (in RunAs)", name, *podSecCtx.RunAsUser, userId)
+				return nil, fnerrors.BadInputError("incompatible userid %d vs %d (in RunAs)", *podSecCtx.RunAsUser, userId)
 			}
 
 			podSecCtx = podSecCtx.WithRunAsUser(userId).WithRunAsNonRoot(true)
@@ -826,7 +828,7 @@ func runAsToPodSecCtx(name string, podSecCtx *applycorev1.PodSecurityContextAppl
 			}
 
 			if podSecCtx.FSGroup != nil && *podSecCtx.FSGroup != fsGroup {
-				return nil, fnerrors.BadInputError("%s: incompatible fsgroup %d vs %d (in RunAs)", name, *podSecCtx.FSGroup, fsGroup)
+				return nil, fnerrors.BadInputError("incompatible fsgroup %d vs %d (in RunAs)", *podSecCtx.FSGroup, fsGroup)
 			}
 
 			podSecCtx.WithFSGroup(fsGroup)

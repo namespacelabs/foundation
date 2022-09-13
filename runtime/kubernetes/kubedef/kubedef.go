@@ -102,9 +102,11 @@ func (a Apply) ToDefinition(scope ...fnschema.PackageName) (*fnschema.Serialized
 }
 
 func scopeToStrings(scope []fnschema.PackageName) []string {
-	r := make([]string, len(scope))
-	for k, s := range scope {
-		r[k] = s.String()
+	var r []string
+	for _, s := range scope {
+		if s != "" {
+			r = append(r, s.String())
+		}
 	}
 	return r
 }
