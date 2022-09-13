@@ -283,7 +283,7 @@ func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, s
 	}
 
 	if dockerFile := src.Dockerfile; dockerFile != "" {
-		spec, err := buildkit.DockerfileBuild(loc.Rel(), dockerFile)
+		spec, err := buildkit.DockerfileBuild(loc.Rel(), dockerFile, opts.IsFocus)
 		if err != nil {
 			return nil, fnerrors.Wrap(loc, err)
 		}

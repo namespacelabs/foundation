@@ -23,13 +23,14 @@ import (
 // A Dockerfile build is always relative to the module it lives in. Within that
 // module, what's the relative path to the context, and within that context,
 // what's the relative path to the Dockerfile.
-func DockerfileBuild(rel, dockerfile string) (build.Spec, error) {
-	return dockerfileBuild{rel, dockerfile}, nil
+func DockerfileBuild(rel, dockerfile string, isFocus bool) (build.Spec, error) {
+	return dockerfileBuild{rel, dockerfile, isFocus}, nil
 }
 
 type dockerfileBuild struct {
 	ContextRel string // Relative to the workspace.
 	Dockerfile string // Relative to ContextRel.
+	IsFocus    bool
 }
 
 var _ build.Spec = dockerfileBuild{}
@@ -46,7 +47,7 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env planning.Context, 
 	generatedRequest := &generateRequest{
 		// Setting observeChanges to true will yield a new solve() on changes to the workspace.
 		// Also importantly we scope observe changes to ContextRel.
-		workspace:  conf.Workspace().VersionedFS(df.ContextRel, true),
+		workspace:  conf.Workspace().VersionedFS(df.ContextRel, df.IsFocus),
 		contextRel: df.ContextRel,
 		dockerfile: df.Dockerfile,
 		conf:       conf,
