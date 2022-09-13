@@ -18,15 +18,15 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
-	var state deploymentState
+func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allFragments []*schema.IngressFragment) (*runtime.DeploymentPlan, error) {
+	var state runtime.DeploymentPlan
 
 	cleanup, err := anypb.New(&ingress.OpCleanupMigration{Namespace: r.namespace})
 	if err != nil {
 		return nil, err
 	}
 
-	state.definitions = append(state.definitions, &schema.SerializedInvocation{
+	state.Definitions = append(state.Definitions, &schema.SerializedInvocation{
 		Description: "Ingress migration cleanup",
 		Impl:        cleanup,
 	})
@@ -39,7 +39,7 @@ func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allF
 		if err != nil {
 			return nil, err
 		}
-		state.definitions = append(state.definitions, def)
+		state.Definitions = append(state.Definitions, def)
 	}
 
 	// XXX ensure that any single domain is only used by a single ingress.
@@ -66,7 +66,7 @@ func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allF
 			if err != nil {
 				return nil, err
 			}
-			state.definitions = append(state.definitions, def)
+			state.Definitions = append(state.Definitions, def)
 		}
 
 		if err := allManaged.Merge(managed); err != nil {
@@ -85,13 +85,13 @@ func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allF
 			return nil, err
 		}
 
-		state.definitions = append(state.definitions, &schema.SerializedInvocation{
+		state.Definitions = append(state.Definitions, &schema.SerializedInvocation{
 			Description: fmt.Sprintf("Update %s's address", frag.FQDN),
 			Impl:        impl,
 		})
 	}
 
-	return state, nil
+	return &state, nil
 }
 
 func (r *ClusterNamespace) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, notify runtime.PortForwardedFunc) (io.Closer, error) {

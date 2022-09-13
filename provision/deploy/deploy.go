@@ -145,7 +145,7 @@ type makeDeployGraph struct {
 	stack            *stack.Stack
 	prepare          compute.Computable[prepareAndBuildResult]
 	ingressFragments compute.Computable[*ComputeIngressResult]
-	ingressPlan      compute.Computable[runtime.DeploymentState]
+	ingressPlan      compute.Computable[*runtime.DeploymentPlan]
 
 	compute.LocalScoped[*Plan]
 }
@@ -184,18 +184,18 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 		return nil, err
 	}
 
-	if err := g.Add(pbr.DeploymentState.Definitions()...); err != nil {
+	if err := g.Add(pbr.DeploymentPlan.Definitions...); err != nil {
 		return nil, err
 	}
 
 	plan := &Plan{
 		Deployer:      g,
 		ComputedStack: m.stack,
-		Hints:         pbr.DeploymentState.Hints(),
+		Hints:         pbr.DeploymentPlan.Hints,
 	}
 
 	if ingress, ok := compute.GetDep(deps, m.ingressPlan, "ingressPlan"); ok {
-		if err := g.Add(ingress.Value.Definitions()...); err != nil {
+		if err := g.Add(ingress.Value.Definitions...); err != nil {
 			return nil, err
 		}
 	}
@@ -222,8 +222,8 @@ func prepareHandlerInvocations(ctx context.Context, env planning.Context, planne
 }
 
 type prepareAndBuildResult struct {
-	HandlerResult   *handlerResult
-	DeploymentState runtime.DeploymentState
+	HandlerResult  *handlerResult
+	DeploymentPlan *runtime.DeploymentPlan
 }
 
 type sidecarPackage struct {
@@ -424,8 +424,8 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 			}
 
 			return prepareAndBuildResult{
-				HandlerResult:   handlerR,
-				DeploymentState: deployment,
+				HandlerResult:  handlerR,
+				DeploymentPlan: deployment,
 			}, nil
 		})
 
@@ -684,10 +684,12 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 		ServerImage:   imgs.Binary.RepoAndDigest(),
 		ServerRootAbs: s.Location.Abs(),
 	}
+
 	serverStartupPlan, err := s.Startup.EvalStartup(ctx, s.SealedContext(), inputs, nil)
 	if err != nil {
 		return err
 	}
+
 	merged, err := startup.ComputeConfig(ctx, s.SealedContext(), serverStartupPlan, stack.GetParsed(s.PackageName()).Deps, inputs)
 	if err != nil {
 		return err

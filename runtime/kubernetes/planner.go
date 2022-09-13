@@ -42,11 +42,11 @@ func (r Planner) Planner() runtime.Planner {
 	return r
 }
 
-func (r Planner) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
+func (r Planner) PlanDeployment(ctx context.Context, d runtime.Deployment) (*runtime.DeploymentPlan, error) {
 	return planDeployment(ctx, r.target, d)
 }
 
-func (r Planner) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
+func (r Planner) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (*runtime.DeploymentPlan, error) {
 	return planIngress(ctx, r.target, stack, allFragments)
 }
 
@@ -83,8 +83,8 @@ func (r Planner) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) 
 	return parsePlatforms(systemInfo.NodePlatform)
 }
 
-func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) (runtime.DeploymentState, error) {
-	var state deploymentState
+func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) (*runtime.DeploymentPlan, error) {
+	var state runtime.DeploymentPlan
 	deployOpts := deployOpts{
 		secrets: d.Secrets,
 	}
@@ -125,7 +125,7 @@ func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) 
 			if err != nil {
 				return nil, err
 			}
-			state.definitions = append(state.definitions, def)
+			state.Definitions = append(state.Definitions, def)
 		}
 	}
 
@@ -138,14 +138,14 @@ func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) 
 			return nil, fnerrors.InternalError("failed to serialize cleanup: %w", err)
 		}
 
-		state.definitions = append(state.definitions, &schema.SerializedInvocation{
+		state.Definitions = append(state.Definitions, &schema.SerializedInvocation{
 			Description: "Kubernetes: cleanup unused resources",
 			Impl:        cleanup,
 		})
 	}
 
-	state.hints = append(state.hints, fmt.Sprintf("Inspecting your deployment: %s",
+	state.Hints = append(state.Hints, fmt.Sprintf("Inspecting your deployment: %s",
 		colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("kubectl -n %s get pods", r.namespace))))
 
-	return state, nil
+	return &state, nil
 }

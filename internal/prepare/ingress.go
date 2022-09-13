@@ -69,7 +69,7 @@ func PrepareIngressInKube(ctx context.Context, env planning.Context, kube *kuber
 	}
 
 	g := ops.NewPlan()
-	if err := g.Add(state.Definitions()...); err != nil {
+	if err := g.Add(state.Definitions...); err != nil {
 		return err
 	}
 

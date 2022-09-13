@@ -62,13 +62,13 @@ type Planner interface {
 	// instantiate the required deployment resources to run the servers in the
 	// specified Deployment. This method is side-effect free; mutations are
 	// applied when the generated plan is applied.
-	PlanDeployment(context.Context, Deployment) (DeploymentState, error)
+	PlanDeployment(context.Context, Deployment) (*DeploymentPlan, error)
 
 	// Plans an ingress deployment, i.e. produces a series of instructions that
 	// will instantiate the required deployment resources to run the servers in
 	// the specified Ingresses. This method is side-effect free; mutations are
 	// applied when the generated plan is applied.
-	PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error)
+	PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (*DeploymentPlan, error)
 
 	// PrepareProvision is called before invoking a provisioning tool, to offer
 	// the runtime implementation a way to pass runtime-specific information to
@@ -251,9 +251,9 @@ type ObserveEvent struct {
 	Removed            bool
 }
 
-type DeploymentState interface {
-	Definitions() []*schema.SerializedInvocation
-	Hints() []string
+type DeploymentPlan struct {
+	Definitions []*schema.SerializedInvocation
+	Hints       []string
 }
 
 type TerminalIO struct {

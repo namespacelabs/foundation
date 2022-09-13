@@ -83,19 +83,6 @@ type serverRunState struct {
 	operations []kubedef.Apply
 }
 
-type deploymentState struct {
-	definitions []*schema.SerializedInvocation
-	hints       []string // Optional messages to pass to the user.
-}
-
-func (r deploymentState) Definitions() []*schema.SerializedInvocation {
-	return r.definitions
-}
-
-func (r deploymentState) Hints() []string {
-	return r.hints
-}
-
 func lookupByName(env []*schema.BinaryConfig_EnvEntry, name string) (*schema.BinaryConfig_EnvEntry, bool) {
 	for _, env := range env {
 		if env.Name == name {

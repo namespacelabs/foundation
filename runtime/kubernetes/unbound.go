@@ -97,17 +97,17 @@ func (u *Cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {
 	return &ClusterNamespace{cluster: u, target: newTarget(env)}, nil
 }
 
-func (r *Cluster) PrepareCluster(ctx context.Context) (runtime.DeploymentState, error) {
-	var state deploymentState
+func (r *Cluster) PrepareCluster(ctx context.Context) (*runtime.DeploymentPlan, error) {
+	var state runtime.DeploymentPlan
 
 	ingressDefs, err := ingress.EnsureStack(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	state.definitions = ingressDefs
+	state.Definitions = ingressDefs
 
-	return state, nil
+	return &state, nil
 }
 
 func (r *Cluster) EnsureState(ctx context.Context, key string, env planning.Context) (any, error) {
