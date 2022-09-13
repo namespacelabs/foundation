@@ -26,12 +26,7 @@ import (
 
 func RegisterGraphHandlers() {
 	ops.RegisterFunc(func(ctx context.Context, env planning.Context, g *schema.SerializedInvocation, op *OpMapAddress) (*ops.HandleResult, error) {
-		restcfg, err := client.ResolveConfig(ctx, env)
-		if err != nil {
-			return nil, err
-		}
-
-		cli, err := k8s.NewForConfig(restcfg)
+		cluster, err := kubedef.InjectedKubeCluster(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -39,23 +34,18 @@ func RegisterGraphHandlers() {
 		return nil, tasks.Action("kubernetes.ingress.wait").Arg("fqdn", op.Fdqn).Run(ctx, func(ctx context.Context) error {
 			ingressSvc := nginx.IngressLoadBalancerService() // Make nginx reference configurable.
 
-			return waitForIngress(ctx, cli, ingressSvc, op)
+			return waitForIngress(ctx, cluster.Client(), ingressSvc, op)
 		})
 	})
 
 	ops.RegisterFunc(func(ctx context.Context, env planning.Context, g *schema.SerializedInvocation, op *OpCleanupMigration) (*ops.HandleResult, error) {
-		restcfg, err := client.ResolveConfig(ctx, env)
-		if err != nil {
-			return nil, err
-		}
-
-		cli, err := k8s.NewForConfig(restcfg)
+		cluster, err := kubedef.InjectedKubeCluster(ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		return nil, tasks.Action("kubernetes.ingress.cleanup-migration").Run(ctx, func(ctx context.Context) error {
-			ingresses, err := cli.NetworkingV1().Ingresses(op.Namespace).List(ctx, metav1.ListOptions{
+			ingresses, err := cluster.Client().NetworkingV1().Ingresses(op.Namespace).List(ctx, metav1.ListOptions{
 				LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 			})
 			if err != nil {
@@ -65,7 +55,7 @@ func RegisterGraphHandlers() {
 			// We no longer emit "-managed" ingresses.
 			for _, ingress := range ingresses.Items {
 				if strings.HasSuffix(ingress.Name, "-managed") {
-					if err := cli.NetworkingV1().Ingresses(op.Namespace).Delete(ctx, ingress.Name, metav1.DeleteOptions{}); err != nil {
+					if err := cluster.Client().NetworkingV1().Ingresses(op.Namespace).Delete(ctx, ingress.Name, metav1.DeleteOptions{}); err != nil {
 						return err
 					}
 				}

@@ -64,7 +64,7 @@ func prepare(ctx context.Context, targetEnv planning.Context, cluster runtime.Cl
 		return nil, err
 	}
 
-	waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, env, computed.Deployer)
+	waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, env, computed.Deployer, runtime.ClusterInjection.With(cluster))
 	if err != nil {
 		return nil, err
 	}

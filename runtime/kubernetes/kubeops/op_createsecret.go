@@ -10,11 +10,9 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/tools/maketlscert"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
@@ -31,12 +29,12 @@ func RegisterCreateSecret() {
 			return nil, fnerrors.InternalError("%s: create.Namespace is required", d.Description)
 		}
 
-		restcfg, err := client.ResolveConfig(ctx, env)
+		cluster, err := kubedef.InjectedKubeCluster(ctx)
 		if err != nil {
-			return nil, fnerrors.New("resolve config failed: %w", err)
+			return nil, err
 		}
 
-		existing, err := fetchResource(ctx, restcfg, d.Description, inlineClass("secrets"), create.Name, create.Namespace, schema.PackageNames(d.Scope...))
+		existing, err := fetchResource(ctx, cluster.RESTConfig(), d.Description, inlineClass("secrets"), create.Name, create.Namespace, schema.PackageNames(d.Scope...))
 		if err != nil {
 			return nil, err
 		}
@@ -82,12 +80,7 @@ func RegisterCreateSecret() {
 			}
 		}
 
-		cli, err := k8s.NewForConfig(restcfg)
-		if err != nil {
-			return nil, err
-		}
-
-		if _, err := cli.CoreV1().Secrets(create.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
+		if _, err := cluster.Client().CoreV1().Secrets(create.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
 			FieldManager: kubedef.K8sFieldManager,
 		}); err != nil {
 			return nil, err

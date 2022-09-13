@@ -70,12 +70,14 @@ func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.
 		func(ctx context.Context, r compute.Resolved) (*kubernetes.Cluster, error) {
 			computed, _ := compute.GetDepWithType[[]*schema.DevHost_ConfigureEnvironment](r, "conf")
 
-			var merged []*anypb.Any
-			for _, m := range computed.Value {
-				merged = append(merged, m.Configuration...)
+			devhost := &schema.DevHost{Configure: computed.Value}
+
+			config, err := planning.MakeConfigurationCompat(env, env.Workspace().Proto(), devhost, env.Environment())
+			if err != nil {
+				return nil, err
 			}
 
-			return kubernetes.NewCluster(ctx, planning.MakeConfigurationWith(env.Environment().Name, planning.ConfigurationSlice{Configuration: merged}))
+			return kubernetes.NewCluster(ctx, config)
 		})
 }
 

@@ -45,13 +45,13 @@ func registerCreate() {
 			return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
 		}
 
-		restcfg, err := client.ResolveConfig(ctx, env)
+		cluster, err := kubedef.InjectedKubeCluster(ctx)
 		if err != nil {
-			return nil, fnerrors.New("failed to resolve config: %w", err)
+			return nil, err
 		}
 
 		if create.SkipIfAlreadyExists || create.UpdateIfExisting {
-			obj, err := fetchResource(ctx, restcfg, d.Description, create, obj.Metadata.Name,
+			obj, err := fetchResource(ctx, cluster.RESTConfig(), d.Description, create, obj.Metadata.Name,
 				obj.Metadata.Namespace, schema.PackageNames(d.Scope...))
 			if err != nil {
 				return nil, fnerrors.New("failed to fetch resource: %w", err)
@@ -71,7 +71,7 @@ func registerCreate() {
 					// This is not advised. Overwriting without reading.
 					msg.SetResourceVersion(obj.GetResourceVersion())
 
-					return nil, updateResource(ctx, d, create, msg, restcfg)
+					return nil, updateResource(ctx, d, create, msg, cluster.RESTConfig())
 				}
 			}
 		}
@@ -81,7 +81,7 @@ func registerCreate() {
 			Arg("resource", resourceName(create)).
 			Arg("name", obj.Metadata.Name).
 			Arg("namespace", obj.Metadata.Namespace).Run(ctx, func(ctx context.Context) error {
-			client, err := client.MakeResourceSpecificClient(ctx, create, restcfg)
+			client, err := client.MakeResourceSpecificClient(ctx, create, cluster.RESTConfig())
 			if err != nil {
 				return err
 			}

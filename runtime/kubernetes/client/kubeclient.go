@@ -51,8 +51,9 @@ var (
 )
 
 type ComputedClient struct {
-	Clientset *k8s.Clientset
-	parent    *computedConfig
+	Clientset  *k8s.Clientset
+	RESTConfig *rest.Config
+	parent     *computedConfig
 }
 
 func (cc ComputedClient) Provider() (ClusterConfiguration, error) {
@@ -223,8 +224,9 @@ func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
 		}
 
 		clientCache.cache[key] = &ComputedClient{
-			Clientset: clientset,
-			parent:    parent,
+			Clientset:  clientset,
+			RESTConfig: config,
+			parent:     parent,
 		}
 	}
 
@@ -295,26 +297,6 @@ func CopyAndSetDefaults(config rest.Config, gv schema.GroupVersion) *rest.Config
 	}
 
 	return &config
-}
-
-func ResolveConfig(ctx context.Context, env planning.Context) (*rest.Config, error) {
-	if x, ok := env.(interface {
-		KubeconfigProvider() (*HostConfig, error)
-	}); ok {
-		cfg, err := x.KubeconfigProvider()
-		if err != nil {
-			return nil, err
-		}
-
-		return NewRestConfigFromHostEnv(ctx, cfg)
-	}
-
-	cfg, err := ComputeHostConfig(env.Configuration())
-	if err != nil {
-		return nil, err
-	}
-
-	return NewRestConfigFromHostEnv(ctx, cfg)
 }
 
 func CheckGetHostEnv(cfg planning.Configuration) (*HostEnv, error) {

@@ -9,11 +9,8 @@ import (
 	"fmt"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
@@ -25,17 +22,12 @@ func registerCleanup() {
 		return tasks.Return(ctx, tasks.Action("kubernetes.cleanup").HumanReadablef(d.Description), func(ctx context.Context) (*ops.HandleResult, error) {
 			// Remove configmap runtime configs no longer being used.
 
-			restcfg, err := client.ResolveConfig(ctx, env)
-			if err != nil {
-				return nil, fnerrors.New("resolve config failed: %w", err)
-			}
-
-			cli, err := k8s.NewForConfig(restcfg)
+			cluster, err := kubedef.InjectedKubeCluster(ctx)
 			if err != nil {
 				return nil, err
 			}
 
-			configs, err := cli.CoreV1().ConfigMaps(cleanup.Namespace).List(ctx, v1.ListOptions{
+			configs, err := cluster.Client().CoreV1().ConfigMaps(cleanup.Namespace).List(ctx, v1.ListOptions{
 				LabelSelector: kubedef.SerializeSelector(map[string]string{
 					kubedef.K8sKind: kubedef.K8sRuntimeConfigKind,
 				}),
@@ -51,7 +43,7 @@ func registerCleanup() {
 			usedConfigs := map[string]struct{}{}
 
 			if cleanup.CheckPods {
-				pods, err := cli.CoreV1().Pods(cleanup.Namespace).List(ctx, v1.ListOptions{
+				pods, err := cluster.Client().CoreV1().Pods(cleanup.Namespace).List(ctx, v1.ListOptions{
 					LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 				})
 				if err != nil {
@@ -64,7 +56,7 @@ func registerCleanup() {
 					}
 				}
 			} else {
-				deployments, err := cli.AppsV1().Deployments(cleanup.Namespace).List(ctx, v1.ListOptions{
+				deployments, err := cluster.Client().AppsV1().Deployments(cleanup.Namespace).List(ctx, v1.ListOptions{
 					LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 				})
 				if err != nil {
@@ -77,7 +69,7 @@ func registerCleanup() {
 					}
 				}
 
-				statefulSets, err := cli.AppsV1().StatefulSets(cleanup.Namespace).List(ctx, v1.ListOptions{
+				statefulSets, err := cluster.Client().AppsV1().StatefulSets(cleanup.Namespace).List(ctx, v1.ListOptions{
 					LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 				})
 				if err != nil {
@@ -96,7 +88,7 @@ func registerCleanup() {
 					continue
 				}
 
-				if err := cli.CoreV1().ConfigMaps(cleanup.Namespace).Delete(ctx, cfg.Name, v1.DeleteOptions{}); err != nil {
+				if err := cluster.Client().CoreV1().ConfigMaps(cleanup.Namespace).Delete(ctx, cfg.Name, v1.DeleteOptions{}); err != nil {
 					fmt.Fprintf(console.Warnings(ctx), "kubernetes: failed to remove unused runtime configuration %q: %v\n", cfg.Name, err)
 				}
 			}

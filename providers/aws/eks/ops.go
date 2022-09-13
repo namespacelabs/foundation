@@ -8,25 +8,21 @@ import (
 	"context"
 
 	awsauth "github.com/keikoproj/aws-auth/pkg/mapper"
-	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
 func RegisterGraphHandlers() {
 	ops.RegisterFunc(func(ctx context.Context, env planning.Context, def *schema.SerializedInvocation, a *OpEnsureAwsAuth) (*ops.HandleResult, error) {
-		restcfg, err := client.ResolveConfig(ctx, env)
+		cluster, err := kubedef.InjectedKubeCluster(ctx)
 		if err != nil {
 			return nil, err
 		}
-		clientset, err := kubernetes.NewForConfig(restcfg)
-		if err != nil {
-			return nil, err
-		}
-		awsAuth := awsauth.New(clientset, false)
+
+		awsAuth := awsauth.New(cluster.Client(), false)
 		args := &awsauth.MapperArguments{
 			MapRoles: true,
 			RoleARN:  a.Rolearn,

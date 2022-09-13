@@ -49,7 +49,7 @@ func registerApply() {
 			return nil, fnerrors.InternalError("%s: APIVersion is required", d.Description)
 		}
 
-		restcfg, err := client.ResolveConfig(ctx, env)
+		cluster, err := kubedef.InjectedKubeCluster(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -82,7 +82,7 @@ func registerApply() {
 				if apply.ResourceClass != nil && apply.ResourceClass.GetGroup() == "k8s.namespacelabs.dev" {
 					crd := fmt.Sprintf("%s.%s", apply.ResourceClass.GetResource(), apply.ResourceClass.GetGroup())
 
-					cli, err := apiextensionsv1.NewForConfig(restcfg)
+					cli, err := apiextensionsv1.NewForConfig(cluster.RESTConfig())
 					if err != nil {
 						return false, err
 					}
@@ -127,12 +127,7 @@ func registerApply() {
 				}
 
 				if waitOnNamespace != "" {
-					c, err := k8s.NewForConfig(restcfg)
-					if err != nil {
-						return false, err
-					}
-
-					if err := waitForDefaultServiceAccount(ctx, c, waitOnNamespace); err != nil {
+					if err := waitForDefaultServiceAccount(ctx, cluster.Client(), waitOnNamespace); err != nil {
 						return false, err
 					}
 				}
@@ -140,7 +135,7 @@ func registerApply() {
 				return false, nil
 			},
 			Run: func(ctx context.Context) error {
-				client, err := client.MakeGroupVersionBasedClient(ctx, gv, restcfg)
+				client, err := client.MakeGroupVersionBasedClient(ctx, gv, cluster.RESTConfig())
 				if err != nil {
 					return err
 				}
@@ -180,7 +175,7 @@ func registerApply() {
 			}
 
 			return &ops.HandleResult{Waiters: []ops.Waiter{kobs.WaitOnGenerationCondition{
-				RestConfig:         restcfg,
+				RestConfig:         cluster.RESTConfig(),
 				Namespace:          header.Namespace,
 				Name:               header.Name,
 				ExpectedGeneration: generation,
@@ -202,7 +197,7 @@ func registerApply() {
 				var waiters []ops.Waiter
 				for _, sc := range scope {
 					w := kobs.WaitOnResource{
-						RestConfig:   restcfg,
+						RestConfig:   cluster.RESTConfig(),
 						Description:  d.Description,
 						Namespace:    header.Namespace,
 						Name:         header.Name,
@@ -230,12 +225,7 @@ func registerApply() {
 						defer close(ch)
 					}
 
-					cli, err := k8s.NewForConfig(restcfg)
-					if err != nil {
-						return err
-					}
-
-					return kobs.WaitForCondition(ctx, cli, tasks.Action(runtime.TaskServerStart).Scope(sc),
+					return kobs.WaitForCondition(ctx, cluster.Client(), tasks.Action(runtime.TaskServerStart).Scope(sc),
 						kobs.WaitForPodConditition(kobs.PickPod(header.Namespace, header.Name),
 							func(ps v1.PodStatus) (bool, error) {
 								meta, err := json.Marshal(ps)

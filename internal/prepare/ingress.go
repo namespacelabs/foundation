@@ -39,10 +39,6 @@ func (noPackageEnv) Ensure(ctx context.Context, packageName schema.PackageName) 
 	return fnerrors.New("not supported")
 }
 
-func (p noPackageEnv) KubeconfigProvider() (*client.HostConfig, error) {
-	return p.hostConfig, nil
-}
-
 func PrepareIngressFromHostConfig(env planning.Context, k8sconfig compute.Computable[*client.HostConfig]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return PrepareIngress(env, compute.Transform("create k8s runtime", k8sconfig, func(ctx context.Context, cfg *client.HostConfig) (*kubernetes.Cluster, error) {
 		return kubernetes.NewFromConfig(ctx, cfg)
@@ -77,7 +73,7 @@ func PrepareIngressInKube(ctx context.Context, env planning.Context, kube *kuber
 		return err
 	}
 
-	waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{kube.HostConfig(), env}, g)
+	waiters, err := ops.Execute(ctx, runtime.TaskServerDeploy, noPackageEnv{kube.HostConfig(), env}, g, runtime.ClusterInjection.With(kube))
 	if err != nil {
 		return err
 	}

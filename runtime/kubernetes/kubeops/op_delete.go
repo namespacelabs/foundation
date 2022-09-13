@@ -30,17 +30,17 @@ func registerDelete() {
 			return nil, fnerrors.InternalError("%s: delete.Name is required", d.Description)
 		}
 
+		cluster, err := kubedef.InjectedKubeCluster(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		if err := tasks.Action("kubernetes.delete").Scope(schema.PackageNames(d.Scope...)...).
 			HumanReadablef(d.Description).
 			Arg("resource", resourceName(delete)).
 			Arg("name", delete.Name).
 			Arg("namespace", delete.Namespace).Run(ctx, func(ctx context.Context) error {
-			restcfg, err := client.ResolveConfig(ctx, env)
-			if err != nil {
-				return err
-			}
-
-			client, err := client.MakeResourceSpecificClient(ctx, delete, restcfg)
+			client, err := client.MakeResourceSpecificClient(ctx, delete, cluster.RESTConfig())
 			if err != nil {
 				return err
 			}

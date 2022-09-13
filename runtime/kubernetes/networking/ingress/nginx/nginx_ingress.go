@@ -20,11 +20,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/schema"
@@ -39,18 +37,13 @@ var (
 
 func RegisterGraphHandlers() {
 	ops.RegisterFunc(func(ctx context.Context, env planning.Context, g *schema.SerializedInvocation, op *OpGenerateWebhookCert) (*ops.HandleResult, error) {
-		restcfg, err := client.ResolveConfig(ctx, env)
-		if err != nil {
-			return nil, err
-		}
-
-		cli, err := k8s.NewForConfig(restcfg)
+		cluster, err := kubedef.InjectedKubeCluster(ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		if err := tasks.Action("nginx.apply-namespace").Run(ctx, func(ctx context.Context) error {
-			_, err := cli.CoreV1().Namespaces().Apply(ctx, corev1.Namespace(op.Namespace).WithLabels(map[string]string{
+			_, err := cluster.Client().CoreV1().Namespaces().Apply(ctx, corev1.Namespace(op.Namespace).WithLabels(map[string]string{
 				"app.kubernetes.io/name":     "ingress-nginx",
 				"app.kubernetes.io/instance": "ingress-nginx",
 			}), kubedef.Ego())
@@ -65,7 +58,7 @@ func RegisterGraphHandlers() {
 				return fnerrors.InternalError("nginx: failed to deserialize webhook definition: %w", err)
 			}
 
-			secret, err := cli.CoreV1().Secrets(op.Namespace).Get(ctx, op.SecretName, metav1.GetOptions{})
+			secret, err := cluster.Client().CoreV1().Secrets(op.Namespace).Get(ctx, op.SecretName, metav1.GetOptions{})
 			if k8serrors.IsNotFound(err) {
 				newCa, newCert, newKey := certs.GenerateCerts(op.TargetHost)
 				newSecret := &v1.Secret{
@@ -76,7 +69,7 @@ func RegisterGraphHandlers() {
 					Data: map[string][]byte{"ca": newCa, "cert": newCert, "key": newKey},
 				}
 
-				_, err := cli.CoreV1().Secrets(op.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
+				_, err := cluster.Client().CoreV1().Secrets(op.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
 					FieldManager: kubedef.Ego().FieldManager,
 				})
 				if err != nil {
@@ -92,7 +85,7 @@ func RegisterGraphHandlers() {
 				webhook.ClientConfig.WithCABundle(secret.Data["ca"]...)
 			}
 
-			if _, err := cli.AdmissionregistrationV1().ValidatingWebhookConfigurations().Apply(ctx, webhook, kubedef.Ego()); err != nil {
+			if _, err := cluster.Client().AdmissionregistrationV1().ValidatingWebhookConfigurations().Apply(ctx, webhook, kubedef.Ego()); err != nil {
 				return fnerrors.InvocationError("nginx: failed to apply webhook: %w", err)
 			}
 

@@ -9,8 +9,10 @@ import (
 	"sync"
 
 	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/std/planning"
 )
@@ -30,6 +32,8 @@ type state struct {
 	value    any
 	err      error
 }
+
+var _ kubedef.KubeCluster = &Cluster{}
 
 func NewFromConfig(ctx context.Context, config *client.HostConfig) (*Cluster, error) {
 	cli, err := client.NewClient(ctx, config)
@@ -75,6 +79,10 @@ func (u *Cluster) Provider() (client.ClusterConfiguration, error) {
 
 func (u *Cluster) Client() *k8s.Clientset {
 	return u.cli
+}
+
+func (u *Cluster) RESTConfig() *rest.Config {
+	return u.computedClient.RESTConfig
 }
 
 func (u *Cluster) HostConfig() *client.HostConfig {
