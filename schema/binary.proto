@@ -42,6 +42,8 @@ message ImageBuildPlan {
         string rel_path    = 1;
         string binary_name = 2;
         bool   binary_only = 3;
+        // Whether to observe changes to the file system.
+        bool is_focus = 4;
     }
 }
 

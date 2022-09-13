@@ -50,7 +50,10 @@ type PreparedImage struct {
 
 type BuildImageOpts struct {
 	UsePrebuilts bool
-	Platforms    []specs.Platform
+	// Whether the server build is triggered explicitly, e.g. as a parameter of `ns dev` and not as a dependant server.
+	// Builders may use this flag to listen to the FS changes and do hot restart, for example.
+	IsFocus   bool
+	Platforms []specs.Platform
 }
 
 func GetBinary(pkg *pkggraph.Package, binName string) (*schema.Binary, error) {
@@ -182,7 +185,7 @@ func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, env planning.Co
 func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, env planning.Context, opts BuildImageOpts) (build.Spec, error) {
 	// We prepare the build spec, as we need information, e.g. whether it's platform independent,
 	// if a prebuilt is specified.
-	spec, err := buildLayeredSpec(ctx, loc, bin)
+	spec, err := buildLayeredSpec(ctx, loc, bin, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +203,7 @@ func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, e
 	return spec, nil
 }
 
-func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary) (build.Spec, error) {
+func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
 	src := bin.BuildPlan
 
 	if src == nil || len(src.LayerBuildPlan) == 0 {
@@ -208,14 +211,14 @@ func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Bi
 	}
 
 	if len(src.LayerBuildPlan) == 1 {
-		return buildSpec(ctx, loc, bin, src.LayerBuildPlan[0])
+		return buildSpec(ctx, loc, bin, src.LayerBuildPlan[0], opts)
 	}
 
 	specs := make([]build.Spec, len(src.LayerBuildPlan))
 	platformIndependent := true
 	for k, plan := range src.LayerBuildPlan {
 		var err error
-		specs[k], err = buildSpec(ctx, loc, bin, plan)
+		specs[k], err = buildSpec(ctx, loc, bin, plan, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -227,7 +230,7 @@ func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Bi
 	return mergeSpecs{specs, platformIndependent}, nil
 }
 
-func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan) (build.Spec, error) {
+func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, opts BuildImageOpts) (build.Spec, error) {
 	if src == nil {
 		return nil, fnerrors.UserError(loc, "don't know how to build %q: no plan", bin.Name)
 	}
@@ -247,6 +250,7 @@ func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, s
 		return BuildGo(loc, &schema.ImageBuildPlan_GoBuild{
 			RelPath:    goPackage,
 			BinaryName: bin.Name,
+			IsFocus:    opts.IsFocus,
 		}, false)
 	}
 
@@ -262,7 +266,7 @@ func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, s
 	}
 
 	if llb := src.LlbPlan; llb != nil {
-		spec, err := buildLayeredSpec(ctx, loc, llb.OutputOf)
+		spec, err := buildLayeredSpec(ctx, loc, llb.OutputOf, opts)
 		if err != nil {
 			return nil, err
 		}

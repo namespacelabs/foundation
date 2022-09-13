@@ -75,6 +75,7 @@ func GoBuilder(loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsaf
 
 	gobin.BinaryOnly = plan.BinaryOnly
 	gobin.BinaryName = plan.BinaryName
+	gobin.isFocus = plan.IsFocus
 	gobin.UnsafeCacheable = unsafeCacheable
 	return gobin, nil
 }
