@@ -56,10 +56,6 @@ func parseCueBinary(ctx context.Context, loc pkggraph.Location, parent, v *fncue
 		return nil, err
 	}
 
-	if err := workspace.TransformBinary(loc, bin); err != nil {
-		return nil, err
-	}
-
 	return bin, nil
 }
 

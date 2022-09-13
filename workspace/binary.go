@@ -10,7 +10,7 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func TransformBinary(loc pkggraph.Location, bin *schema.Binary) error {
+func transformBinary(loc pkggraph.Location, bin *schema.Binary) error {
 	if bin.PackageName != "" {
 		return fnerrors.UserError(loc, "package_name can not be set")
 	}

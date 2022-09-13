@@ -37,5 +37,11 @@ func SealPackage(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Pa
 		pp.Tests = append(pp.Tests, test)
 	}
 
+	for _, binary := range pp.Binaries {
+		if err := transformBinary(pp.Location, binary); err != nil {
+			return nil, err
+		}
+	}
+
 	return pp, nil
 }
