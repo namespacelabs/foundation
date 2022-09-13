@@ -24,30 +24,34 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func (r ClusterNamespace) RunOneShot(ctx context.Context, name string, runOpts runtime.ServerRunOpts, logOutput io.Writer, follow bool) error {
+func (r *ClusterNamespace) RunOneShot(ctx context.Context, name string, runOpts runtime.ServerRunOpts, logOutput io.Writer, follow bool) error {
+	return r.cluster.RunOneShot(ctx, r.target.namespace, name, runOpts, logOutput, follow)
+}
+
+func (r *Cluster) RunOneShot(ctx context.Context, namespace, name string, runOpts runtime.ServerRunOpts, logOutput io.Writer, follow bool) error {
 	spec, err := makePodSpec(name, runOpts)
 	if err != nil {
 		return err
 	}
 
-	if err := spawnAndWaitPod(ctx, r.cli, r.namespace, name, spec, false); err != nil {
+	if err := spawnAndWaitPod(ctx, r.cli, namespace, name, spec, false); err != nil {
 		return err
 	}
 
 	defer func() {
-		if err := r.cli.CoreV1().Pods(r.namespace).Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
-			fmt.Fprintf(console.Warnings(ctx), "Failed to delete pod %s/%s: %v\n", r.namespace, name, err)
+		if err := r.cli.CoreV1().Pods(namespace).Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to delete pod %s/%s: %v\n", namespace, name, err)
 		}
 	}()
 
 	if follow {
-		if err := fetchPodLogs(ctx, r.cli, logOutput, r.namespace, name, "", runtime.FetchLogsOpts{Follow: true}); err != nil {
+		if err := fetchPodLogs(ctx, r.cli, logOutput, namespace, name, "", runtime.FetchLogsOpts{Follow: true}); err != nil {
 			return err
 		}
 	}
 
 	for k := 0; ; k++ {
-		finalState, err := r.cli.CoreV1().Pods(r.namespace).Get(ctx, name, metav1.GetOptions{})
+		finalState, err := r.cli.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return fnerrors.InvocationError("kubernetes: failed to fetch final pod status: %w", err)
 		}
@@ -68,7 +72,7 @@ func (r ClusterNamespace) RunOneShot(ctx context.Context, name string, runOpts r
 						opts.TailLines = 50
 					}
 
-					logErr = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, r.namespace, name, "", opts)
+					logErr = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, namespace, name, "", opts)
 				}
 
 				if term.ExitCode != 0 {
@@ -84,9 +88,9 @@ func (r ClusterNamespace) RunOneShot(ctx context.Context, name string, runOpts r
 		}
 
 		if err := kubeobserver.WaitForCondition(ctx, r.cli,
-			tasks.Action("kubernetes.pod.wait").Arg("namespace", r.namespace).Arg("name", name).Arg("condition", "terminated"),
+			tasks.Action("kubernetes.pod.wait").Arg("namespace", namespace).Arg("name", name).Arg("condition", "terminated"),
 			kubeobserver.WaitForPodConditition(
-				kubeobserver.PickPod(r.namespace, name),
+				kubeobserver.PickPod(namespace, name),
 				func(status corev1.PodStatus) (bool, error) {
 					return (status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 				})); err != nil {
@@ -100,8 +104,8 @@ func (r ClusterNamespace) RunOneShot(ctx context.Context, name string, runOpts r
 	}
 }
 
-func (r ClusterNamespace) RunAttached(ctx context.Context, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO) error {
-	return r.RunAttachedOpts(ctx, r.namespace, name, runOpts, io, nil)
+func (r *ClusterNamespace) RunAttached(ctx context.Context, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO) error {
+	return r.cluster.RunAttachedOpts(ctx, r.target.namespace, name, runOpts, io, nil)
 }
 
 func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ServerRunOpts, io runtime.TerminalIO, onStart func()) error {

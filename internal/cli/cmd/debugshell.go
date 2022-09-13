@@ -88,7 +88,7 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 		}
 
-		cluster, err := runtime.ClusterFor(ctx, env)
+		cluster, err := runtime.NamespaceFor(ctx, env)
 		if err != nil {
 			return err
 		}

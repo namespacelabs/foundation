@@ -35,12 +35,12 @@ func (r *Cluster) UnmatchedTargetPlatforms(ctx context.Context) ([]specs.Platfor
 	return parsePlatforms(sysInfo.NodePlatform)
 }
 
-func (r ClusterNamespace) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
-	if !UseNodePlatformsForProduction && r.env.Purpose == schema.Environment_PRODUCTION {
+func (r *ClusterNamespace) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
+	if !UseNodePlatformsForProduction && r.target.env.Purpose == schema.Environment_PRODUCTION {
 		return parsePlatforms(ProductionPlatforms)
 	}
 
-	return r.UnmatchedTargetPlatforms(ctx)
+	return r.cluster.UnmatchedTargetPlatforms(ctx)
 }
 
 func parsePlatforms(plats []string) ([]specs.Platform, error) {

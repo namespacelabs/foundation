@@ -30,8 +30,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func invokeHandlers(ctx context.Context, env planning.Context, cluster runtime.Cluster, stack *stack.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
-	props, err := runtime.PrepareProvision(ctx, env)
+func invokeHandlers(ctx context.Context, env planning.Context, planner runtime.Planner, stack *stack.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
+	props, err := planner.PrepareProvision(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func invokeHandlers(ctx context.Context, env planning.Context, cluster runtime.C
 			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", r.TargetServer)
 		}
 
-		inv, err := tool.MakeInvocation(ctx, env, cluster, r, stack.Proto(), focus.PackageName(), propsPerServer[focus.PackageName()])
+		inv, err := tool.MakeInvocation(ctx, env, planner, r, stack.Proto(), focus.PackageName(), propsPerServer[focus.PackageName()])
 		if err != nil {
 			return nil, err
 		}

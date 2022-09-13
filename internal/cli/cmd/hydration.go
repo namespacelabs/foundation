@@ -95,7 +95,7 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 			return fnerrors.UserError(nil, "--rehydrate only supports a single server")
 		}
 
-		cluster, err := runtime.ClusterFor(ctx, *h.env)
+		cluster, err := runtime.NamespaceFor(ctx, *h.env)
 		if err != nil {
 			return err
 		}
@@ -119,7 +119,7 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 			return err
 		}
 
-		cluster, err := runtime.ClusterFor(ctx, *h.env)
+		cluster, err := runtime.PlannerFor(ctx, *h.env)
 		if err != nil {
 			return err
 		}

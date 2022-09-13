@@ -43,13 +43,13 @@ func (r *Cluster) FetchDiagnostics(ctx context.Context, reference *runtime.Conta
 	return &runtime.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.PodName, opaque.Container)
 }
 
-func (r ClusterNamespace) FetchEnvironmentDiagnostics(ctx context.Context) (*storage.EnvironmentDiagnostics, error) {
-	systemInfo, err := r.SystemInfo(ctx)
+func (r *ClusterNamespace) FetchEnvironmentDiagnostics(ctx context.Context) (*storage.EnvironmentDiagnostics, error) {
+	systemInfo, err := r.cluster.SystemInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	events, err := r.cli.CoreV1().Events(r.namespace).List(ctx, metav1.ListOptions{})
+	events, err := r.cluster.cli.CoreV1().Events(r.target.namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fnerrors.New("kubernetes: failed to obtain event list: %w", err)
 	}

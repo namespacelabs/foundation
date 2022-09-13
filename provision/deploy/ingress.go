@@ -23,8 +23,8 @@ type ComputeIngressResult struct {
 	stack   *schema.Stack
 }
 
-func ComputeIngress(rootenv planning.Context, cluster runtime.Cluster, stack *schema.Stack, plans compute.Computable[[]*schema.IngressFragment], allocate bool) compute.Computable[*ComputeIngressResult] {
-	return &computeIngress{rootenv: rootenv, cluster: cluster, stack: stack, fragments: plans, allocate: allocate}
+func ComputeIngress(rootenv planning.Context, planner runtime.Planner, stack *schema.Stack, plans compute.Computable[[]*schema.IngressFragment], allocate bool) compute.Computable[*ComputeIngressResult] {
+	return &computeIngress{rootenv: rootenv, planner: planner, stack: stack, fragments: plans, allocate: allocate}
 }
 
 func PlanIngressDeployment(rc runtime.Planner, c compute.Computable[*ComputeIngressResult]) compute.Computable[runtime.DeploymentState] {
@@ -35,7 +35,7 @@ func PlanIngressDeployment(rc runtime.Planner, c compute.Computable[*ComputeIngr
 
 type computeIngress struct {
 	rootenv   planning.Context
-	cluster   runtime.Cluster
+	planner   runtime.Planner
 	stack     *schema.Stack
 	fragments compute.Computable[[]*schema.IngressFragment]
 	allocate  bool // Actually fetch SSL certificates etc.
@@ -46,7 +46,7 @@ type computeIngress struct {
 func (ci *computeIngress) Action() *tasks.ActionEvent { return tasks.Action("deploy.compute-ingress") }
 func (ci *computeIngress) Inputs() *compute.In {
 	return compute.Inputs().
-		Indigestible("cluster", ci.cluster).
+		Indigestible("cluster", ci.planner).
 		Indigestible("rootenv", ci.rootenv).
 		Proto("stack", ci.stack).
 		Computable("fragments", ci.fragments)
@@ -55,7 +55,7 @@ func (ci *computeIngress) Output() compute.Output {
 	return compute.Output{NotCacheable: true}
 }
 func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*ComputeIngressResult, error) {
-	allFragments, err := computeDeferredIngresses(ctx, ci.rootenv, ci.cluster, ci.stack)
+	allFragments, err := computeDeferredIngresses(ctx, ci.rootenv, ci.planner, ci.stack)
 	if err != nil {
 		return nil, err
 	}
@@ -95,12 +95,12 @@ func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*
 	}, nil
 }
 
-func computeDeferredIngresses(ctx context.Context, env planning.Context, cluster runtime.Cluster, stack *schema.Stack) ([]*schema.IngressFragment, error) {
+func computeDeferredIngresses(ctx context.Context, env planning.Context, planner runtime.Planner, stack *schema.Stack) ([]*schema.IngressFragment, error) {
 	var fragments []*schema.IngressFragment
 
 	// XXX parallelism.
 	for _, srv := range stack.Entry {
-		frags, err := runtime.ComputeIngress(ctx, env, cluster, srv, stack.Endpoint)
+		frags, err := runtime.ComputeIngress(ctx, env, planner, srv, stack.Endpoint)
 		if err != nil {
 			return nil, err
 		}

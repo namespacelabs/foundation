@@ -58,27 +58,27 @@ func Register() {
 	RegisterGraphHandlers()
 }
 
-func provideEKS(ctx context.Context, config planning.Configuration) (client.Provider, error) {
+func provideEKS(ctx context.Context, config planning.Configuration) (client.ClusterConfiguration, error) {
 	conf := &EKSCluster{}
 
 	if !config.Get(conf) {
-		return client.Provider{}, fnerrors.BadInputError("eks provider configured, but missing EKSCluster")
+		return client.ClusterConfiguration{}, fnerrors.BadInputError("eks provider configured, but missing EKSCluster")
 	}
 
 	s, err := NewSession(ctx, config)
 	if err != nil {
-		return client.Provider{}, fnerrors.InternalError("failed to create session: %w", err)
+		return client.ClusterConfiguration{}, fnerrors.InternalError("failed to create session: %w", err)
 	}
 
 	kubecfg, err := KubeconfigFromCluster(ctx, s, conf.Name)
 	if err != nil {
-		return client.Provider{}, err
+		return client.ClusterConfiguration{}, err
 	}
 
 	var mu sync.Mutex
 	var lastToken *Token
 
-	return client.Provider{
+	return client.ClusterConfiguration{
 		Config: *kubecfg,
 		TokenProvider: func(ctx context.Context) (string, error) {
 			mu.Lock()

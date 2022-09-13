@@ -14,44 +14,59 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"sigs.k8s.io/yaml"
 )
 
-type planner struct {
-	namespace clusterTarget
+type Planner struct {
+	fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)
+	target          clusterTarget
 }
 
-var _ runtime.Namespace = planner{}
-var _ runtime.Planner = planner{}
+var _ runtime.Namespace = Planner{}
+var _ runtime.Planner = Planner{}
 
-func (r planner) UniqueID() string {
-	return fmt.Sprintf("kubernetes:%s", r.namespace.namespace)
+func NewPlanner(env planning.Context, fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)) Planner {
+	return Planner{fetchSystemInfo: fetchSystemInfo, target: newTarget(env)}
 }
 
-func (r planner) Planner() runtime.Planner {
+func (r Planner) UniqueID() string {
+	return fmt.Sprintf("kubernetes:%s", r.target.namespace)
+}
+
+func (r Planner) Planner() runtime.Planner {
 	return r
 }
 
-func (r planner) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
-	return planDeployment(ctx, r.namespace, d)
+func (r Planner) PlanDeployment(ctx context.Context, d runtime.Deployment) (runtime.DeploymentState, error) {
+	return planDeployment(ctx, r.target, d)
 }
 
-func (r planner) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
-	return planIngress(ctx, r.namespace, stack, allFragments)
+func (r Planner) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (runtime.DeploymentState, error) {
+	return planIngress(ctx, r.target, stack, allFragments)
 }
 
-func (r planner) Namespace() runtime.Namespace {
+func (r Planner) Namespace() runtime.Namespace {
 	return r
-	// id := &runtime.NamespaceId{
-	// 	HumanReference: fmt.Sprintf("kubernetes:%s", r.target.namespace),
-	// }
+}
 
-	// hash := sha256.Sum256([]byte(id.HumanReference))
-	// id.UniqueId = hex.EncodeToString(hash[:])
+func (r Planner) KubernetesNamespace() string { return r.target.namespace }
 
-	// return id, nil
+func (r Planner) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, error) {
+	systemInfo, err := r.fetchSystemInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return PrepareProvisionWith(r.target.env, r.target.namespace, systemInfo)
+}
+
+func (r Planner) ComputeBaseNaming(*schema.Naming) (*schema.ComputedNaming, error) {
+	// The default kubernetes integration has no assumptions regarding how ingress names are allocated.
+	return nil, nil
 }
 
 func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) (runtime.DeploymentState, error) {

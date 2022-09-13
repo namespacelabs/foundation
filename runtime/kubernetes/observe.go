@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func (r ClusterNamespace) Observe(ctx context.Context, srv *schema.Server, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
+func (r *ClusterNamespace) Observe(ctx context.Context, srv *schema.Server, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
 	// XXX use a watch
 	announced := map[string]*runtime.ContainerReference{}
 
@@ -30,7 +30,7 @@ func (r ClusterNamespace) Observe(ctx context.Context, srv *schema.Server, opts 
 			// No cancelation, moving along.
 		}
 
-		pods, err := r.cli.CoreV1().Pods(r.namespace).List(ctx, metav1.ListOptions{
+		pods, err := r.cluster.cli.CoreV1().Pods(r.target.namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
 		})
 		if err != nil {
@@ -46,7 +46,7 @@ func (r ClusterNamespace) Observe(ctx context.Context, srv *schema.Server, opts 
 		labels := map[string]string{}
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == v1.PodRunning {
-				instance := kubedef.MakePodRef(r.namespace, pod.Name, kubedef.ServerCtrName(srv), srv)
+				instance := kubedef.MakePodRef(r.target.namespace, pod.Name, kubedef.ServerCtrName(srv), srv)
 				keys = append(keys, Key{
 					Instance:  instance,
 					CreatedAt: pod.CreationTimestamp.Time,
@@ -56,7 +56,7 @@ func (r ClusterNamespace) Observe(ctx context.Context, srv *schema.Server, opts 
 
 				if ObserveInitContainerLogs {
 					for _, container := range pod.Spec.InitContainers {
-						instance := kubedef.MakePodRef(r.namespace, pod.Name, container.Name, srv)
+						instance := kubedef.MakePodRef(r.target.namespace, pod.Name, container.Name, srv)
 						keys = append(keys, Key{Instance: instance, CreatedAt: pod.CreationTimestamp.Time})
 						newM[instance.UniqueId] = struct{}{}
 						labels[instance.UniqueId] = fmt.Sprintf("%s:%s (%s)", srv.Name, container.Name, pod.ResourceVersion)

@@ -42,7 +42,7 @@ func newPrintSealedCmd() *cobra.Command {
 			pl := workspace.NewPackageLoader(env)
 			loc := locs.Locs[0]
 
-			cluster, err := runtime.ClusterFor(ctx, env)
+			cluster, err := runtime.PlannerFor(ctx, env)
 			if err != nil {
 				return err
 			}

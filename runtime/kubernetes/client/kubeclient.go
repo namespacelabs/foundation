@@ -23,7 +23,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -31,7 +30,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type Provider struct {
+type ClusterConfiguration struct {
 	Config           clientcmdapi.Config
 	TokenProvider    TokenProviderFunc
 	ProviderSpecific any // Up to an implementation to attach state if needed.
@@ -41,16 +40,14 @@ type DeferredProvider struct{}
 
 type TokenProviderFunc func(context.Context) (string, error)
 
-type DeferredProviderFunc func(context.Context, *HostConfig) (runtime.Class, error)
-type ProviderFunc func(context.Context, planning.Configuration) (Provider, error)
+type ProviderFunc func(context.Context, planning.Configuration) (ClusterConfiguration, error)
 
 var (
 	clientCache struct {
 		mu    sync.Mutex
 		cache map[string]*ComputedClient
 	}
-	providers         = map[string]ProviderFunc{}
-	deferredProviders = map[string]DeferredProviderFunc{}
+	providers = map[string]ProviderFunc{}
 )
 
 type ComputedClient struct {
@@ -58,14 +55,14 @@ type ComputedClient struct {
 	parent    *computedConfig
 }
 
-func (cc ComputedClient) Provider() (Provider, error) {
+func (cc ComputedClient) Provider() (ClusterConfiguration, error) {
 	if cc.parent == nil {
-		return Provider{}, nil
+		return ClusterConfiguration{}, nil
 	}
 
 	x, err := cc.parent.computeConfig()
 	if err != nil {
-		return Provider{}, err
+		return ClusterConfiguration{}, err
 	}
 
 	return x.Provider, nil
@@ -77,10 +74,6 @@ func init() {
 
 func RegisterProvider(name string, p ProviderFunc) {
 	providers[name] = p
-}
-
-func RegisterDeferredProvider(name string, p DeferredProviderFunc) {
-	deferredProviders[name] = p
 }
 
 func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*rest.Config, error) {
@@ -102,7 +95,7 @@ type computedConfig struct {
 type configResult struct {
 	ClientConfig  clientcmd.ClientConfig
 	TokenProvider TokenProviderFunc
-	Provider      Provider
+	Provider      ClusterConfiguration
 }
 
 func (cfg *computedConfig) computeConfig() (*configResult, error) {
@@ -127,7 +120,7 @@ func (cfg *computedConfig) computeConfig() (*configResult, error) {
 			provider:     p,
 		}
 
-		x, err := compute.GetValue[Provider](cfg.ctx, cached)
+		x, err := compute.GetValue[ClusterConfiguration](cfg.ctx, cached)
 		if err != nil {
 			return nil, err
 		}
@@ -324,29 +317,26 @@ func ResolveConfig(ctx context.Context, env planning.Context) (*rest.Config, err
 	return NewRestConfigFromHostEnv(ctx, cfg)
 }
 
-func ComputeHostConfig(cfg planning.Configuration) (*HostConfig, error) {
+func CheckGetHostEnv(cfg planning.Configuration) (*HostEnv, error) {
 	hostEnv := &HostEnv{}
 	if !cfg.Get(hostEnv) {
 		return nil, fnerrors.UsageError("Try running one `ns prepare local` or `ns prepare eks`", "%s: no kubernetes configuration available", cfg.EnvKey())
 	}
+	return hostEnv, nil
+}
 
-	var err error
+func ComputeHostConfig(cfg planning.Configuration) (*HostConfig, error) {
+	hostEnv, err := CheckGetHostEnv(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	hostEnv.Kubeconfig, err = dirs.ExpandHome(hostEnv.Kubeconfig)
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to expand %q", hostEnv.Kubeconfig)
 	}
 
 	return &HostConfig{Config: cfg, HostEnv: hostEnv}, nil
-}
-
-func MakeDeferredRuntime(ctx context.Context, cfg *HostConfig) (runtime.Class, error) {
-	if cfg.HostEnv.Provider != "" {
-		if p := deferredProviders[cfg.HostEnv.Provider]; p != nil {
-			return p(ctx, cfg)
-		}
-	}
-
-	return nil, nil
 }
 
 // Only compute configurations once per `ns` invocation.
@@ -356,10 +346,10 @@ type cachedProviderConfig struct {
 
 	provider ProviderFunc
 
-	compute.DoScoped[Provider]
+	compute.DoScoped[ClusterConfiguration]
 }
 
-var _ compute.Computable[Provider] = &cachedProviderConfig{}
+var _ compute.Computable[ClusterConfiguration] = &cachedProviderConfig{}
 
 func (t *cachedProviderConfig) Action() *tasks.ActionEvent {
 	return tasks.Action("kubernetes.compute-config").Arg("provider", t.providerName)
@@ -370,6 +360,6 @@ func (t *cachedProviderConfig) Inputs() *compute.In {
 		Str("config", t.config.EnvKey())
 }
 func (t *cachedProviderConfig) Output() compute.Output { return compute.Output{NotCacheable: true} }
-func (t *cachedProviderConfig) Compute(ctx context.Context, _ compute.Resolved) (Provider, error) {
+func (t *cachedProviderConfig) Compute(ctx context.Context, _ compute.Resolved) (ClusterConfiguration, error) {
 	return t.provider(ctx, t.config)
 }

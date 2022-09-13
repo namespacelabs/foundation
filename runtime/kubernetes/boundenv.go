@@ -15,8 +15,8 @@ import (
 )
 
 type ClusterNamespace struct {
-	*Cluster
-	clusterTarget
+	cluster *Cluster
+	target  clusterTarget
 }
 
 type clusterTarget struct {
@@ -24,10 +24,18 @@ type clusterTarget struct {
 	namespace string
 }
 
-var _ runtime.Cluster = ClusterNamespace{}
+var _ runtime.ClusterNamespace = &ClusterNamespace{}
 
-func (cn ClusterNamespace) Planner() runtime.Planner {
-	return planner{cn.clusterTarget}
+func (cn *ClusterNamespace) Cluster() runtime.Cluster {
+	return cn.cluster
+}
+
+func (cn *ClusterNamespace) Planner() runtime.Planner {
+	return Planner{fetchSystemInfo: cn.cluster.SystemInfo, target: cn.target}
+}
+
+func (u *ClusterNamespace) HostConfig() *client.HostConfig {
+	return u.cluster.HostConfig()
 }
 
 func resolveConfig(ctx context.Context, host *client.HostConfig) (*rest.Config, error) {

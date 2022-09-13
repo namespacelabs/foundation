@@ -36,7 +36,7 @@ const (
 )
 
 type RemoteOrchestrator struct {
-	cluster  runtime.Cluster
+	cluster  runtime.ClusterNamespace
 	server   *schema.Server
 	endpoint *schema.Endpoint
 }

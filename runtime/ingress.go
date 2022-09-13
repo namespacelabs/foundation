@@ -45,7 +45,7 @@ func RegisterSupport(fmwk schema.Framework, f LanguageRuntimeSupport) {
 	supportByFramework[fmwk.String()] = f
 }
 
-func ComputeIngress(ctx context.Context, env planning.Context, cluster Cluster, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]*schema.IngressFragment, error) {
+func ComputeIngress(ctx context.Context, env planning.Context, planner Planner, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]*schema.IngressFragment, error) {
 	var ingresses []*schema.IngressFragment
 
 	var serverEndpoints []*schema.Endpoint
@@ -147,7 +147,7 @@ func ComputeIngress(ctx context.Context, env planning.Context, cluster Cluster, 
 			return nil, fnerrors.BadInputError("can't mix grpc and http paths within a single endpoint")
 		}
 
-		attached, err := AttachComputedDomains(ctx, env.Workspace().ModuleName(), env, cluster, sch, &schema.IngressFragment{
+		attached, err := AttachComputedDomains(ctx, env.Workspace().ModuleName(), env, planner, sch, &schema.IngressFragment{
 			Name:        endpoint.ServiceName,
 			Owner:       endpoint.ServerOwner,
 			Endpoint:    endpoint,
@@ -219,7 +219,7 @@ func ComputeIngress(ctx context.Context, env planning.Context, cluster Cluster, 
 				})
 			}
 
-			attached, err := AttachComputedDomains(ctx, env.Workspace().ModuleName(), env, cluster, sch, &schema.IngressFragment{
+			attached, err := AttachComputedDomains(ctx, env.Workspace().ModuleName(), env, planner, sch, &schema.IngressFragment{
 				Name:     serverScoped(sch.Server, name),
 				Owner:    sch.GetPackageName().String(),
 				HttpPath: paths,
@@ -239,7 +239,7 @@ func ComputeIngress(ctx context.Context, env planning.Context, cluster Cluster, 
 	return ingresses, nil
 }
 
-func AttachComputedDomains(ctx context.Context, ws string, env planning.Context, cluster Cluster, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName DomainsRequest) ([]*schema.IngressFragment, error) {
+func AttachComputedDomains(ctx context.Context, ws string, env planning.Context, cluster Planner, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName DomainsRequest) ([]*schema.IngressFragment, error) {
 	domains, err := computeDomains(ctx, ws, env, cluster, sch.ServerNaming, allocatedName)
 	if err != nil {
 		return nil, err
@@ -279,7 +279,7 @@ func MaybeAllocateDomainCertificate(ctx context.Context, env *schema.Environment
 	return nil, nil
 }
 
-func computeDomains(ctx context.Context, ws string, env planning.Context, cluster Cluster, naming *schema.Naming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
+func computeDomains(ctx context.Context, ws string, env planning.Context, cluster Planner, naming *schema.Naming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
 	computed, err := ComputeNaming(ctx, ws, env, cluster, naming)
 	if err != nil {
 		return nil, err

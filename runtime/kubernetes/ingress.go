@@ -94,14 +94,14 @@ func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allF
 	return state, nil
 }
 
-func (r *Cluster) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f runtime.PortForwardedFunc) (io.Closer, error) {
+func (r *ClusterNamespace) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, notify runtime.PortForwardedFunc) (io.Closer, error) {
 	svc := nginx.IngressLoadBalancerService()
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)
-	obs := kubeobserver.NewPodObserver(ctxWithCancel, r.cli, svc.Namespace, nginx.ControllerSelector())
+	obs := kubeobserver.NewPodObserver(ctxWithCancel, r.cluster.cli, svc.Namespace, nginx.ControllerSelector())
 
 	go func() {
-		if err := r.StartAndBlockPortFwd(ctxWithCancel, StartAndBlockPortFwdArgs{
+		if err := r.cluster.StartAndBlockPortFwd(ctxWithCancel, StartAndBlockPortFwdArgs{
 			Namespace:     svc.Namespace,
 			Identifier:    "ingress",
 			LocalAddrs:    localAddrs,
@@ -109,7 +109,7 @@ func (r *Cluster) ForwardIngress(ctx context.Context, localAddrs []string, local
 			ContainerPort: svc.ContainerPort,
 			PodResolver:   obs,
 			ReportPorts: func(p runtime.ForwardedPort) {
-				f(runtime.ForwardedPortEvent{
+				notify(runtime.ForwardedPortEvent{
 					Added: []runtime.ForwardedPort{{
 						LocalPort:     p.LocalPort,
 						ContainerPort: p.ContainerPort,

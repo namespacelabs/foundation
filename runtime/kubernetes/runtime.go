@@ -29,59 +29,54 @@ var (
 	ObserveInitContainerLogs = false
 )
 
+type ProvideOverrideFunc func(context.Context, planning.Configuration) (runtime.Class, error)
+
+var classOverrides = map[string]ProvideOverrideFunc{}
+
+func RegisterOverrideClass(name string, p ProvideOverrideFunc) {
+	classOverrides[name] = p
+}
+
 func Register() {
-	runtime.Register("kubernetes", func(ctx context.Context, env planning.Context) (runtime.Class, error) {
-		hostConfig, err := client.ComputeHostConfig(env.Configuration())
+	runtime.Register("kubernetes", func(ctx context.Context, cfg planning.Configuration) (runtime.Class, error) {
+		hostEnv, err := client.CheckGetHostEnv(cfg)
 		if err != nil {
 			return nil, err
 		}
 
-		fmt.Fprintf(console.Debug(ctx), "kubernetes: selected %+v for %q\n", hostConfig.HostEnv, env.Environment().Name)
+		fmt.Fprintf(console.Debug(ctx), "kubernetes: selected %+v for %q\n", hostEnv, cfg.EnvKey())
 
-		p, err := client.MakeDeferredRuntime(ctx, hostConfig)
-		if err != nil {
-			return nil, err
+		if hostEnv.Provider != "" {
+			if provider := classOverrides[hostEnv.Provider]; provider != nil {
+				klass, err := provider(ctx, cfg)
+				if err != nil {
+					return nil, err
+				}
+				if klass != nil {
+					return klass, nil
+				}
+			}
 		}
 
-		if p != nil {
-			return p, nil
-		}
-
-		return deferredRuntime{env.Configuration()}, nil
+		return kubernetesClass{}, nil
 	})
 
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
 }
 
-type deferredRuntime struct {
-	cfg planning.Configuration
+type kubernetesClass struct{}
+
+var _ runtime.Class = kubernetesClass{}
+
+func (d kubernetesClass) AttachToCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
+	return NewCluster(ctx, cfg)
 }
 
-var _ runtime.Class = deferredRuntime{}
-
-func (d deferredRuntime) Namespace(env planning.Context) runtime.Namespace {
-	return RuntimeClass(env)
+func (d kubernetesClass) EnsureCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
+	return NewCluster(ctx, cfg)
 }
 
-func (d deferredRuntime) AttachToCluster(ctx context.Context, ns runtime.Namespace) (runtime.Cluster, error) {
-	unbound, err := NewCluster(ctx, d.cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return unbound.Bind(ns)
-}
-
-func (d deferredRuntime) EnsureCluster(ctx context.Context) (runtime.DeferredCluster, error) {
-	unbound, err := NewCluster(ctx, d.cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return unbound, nil
-}
-
-func RuntimeClass(env planning.Context) planner {
+func newTarget(env planning.Context) clusterTarget {
 	ns := ModuleNamespace(env.Workspace().Proto(), env.Environment())
 
 	conf := &kubetool.KubernetesEnv{}
@@ -89,22 +84,13 @@ func RuntimeClass(env planning.Context) planner {
 		ns = conf.Namespace
 	}
 
-	return planner{clusterTarget{env: env.Environment(), namespace: ns}}
+	return clusterTarget{env: env.Environment(), namespace: ns}
 }
 
 func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApplyConfiguration {
 	return applycorev1.Namespace(ns).
 		WithLabels(kubedef.MakeLabels(env, nil)).
 		WithAnnotations(kubedef.MakeAnnotations(env, nil))
-}
-
-func (r ClusterNamespace) PrepareProvision(ctx context.Context, _ planning.Context) (*rtypes.ProvisionProps, error) {
-	systemInfo, err := r.SystemInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return PrepareProvisionWith(r.env, r.namespace, systemInfo)
 }
 
 func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubedef.SystemInfo) (*rtypes.ProvisionProps, error) {
@@ -135,11 +121,11 @@ func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubede
 	}, nil
 }
 
-func (r ClusterNamespace) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
+func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
 	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.PackageName)),
 		func(ctx context.Context) (oci.ImageID, error) {
 			// XXX need a StatefulSet variant.
-			d, err := r.cli.AppsV1().Deployments(r.namespace).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
+			d, err := r.cluster.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
 			if err != nil {
 				// XXX better error messages.
 				return oci.ImageID{}, err
@@ -162,13 +148,13 @@ func (r ClusterNamespace) DeployedConfigImageID(ctx context.Context, server *sch
 		})
 }
 
-func (r ClusterNamespace) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
+func (r *ClusterNamespace) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
 	cmd := append([]string{command}, rest...)
 
-	return r.startTerminal(ctx, r.cli, server, rio, cmd)
+	return r.startTerminal(ctx, r.cluster.cli, server, rio, cmd)
 }
 
-func (r ClusterNamespace) AttachTerminal(ctx context.Context, reference *runtime.ContainerReference, rio runtime.TerminalIO) error {
+func (r *Cluster) AttachTerminal(ctx context.Context, reference *runtime.ContainerReference, rio runtime.TerminalIO) error {
 	cpr := &kubedef.ContainerPodReference{}
 	if err := reference.Opaque.UnmarshalTo(cpr); err != nil {
 		return fnerrors.InternalError("invalid reference: %w", err)

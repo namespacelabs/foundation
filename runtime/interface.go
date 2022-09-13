@@ -30,23 +30,34 @@ const (
 
 var ClusterInjection = ops.Define[Cluster]("ns.cluster")
 
+// A runtime class represents a runtime implementation type, e.g. "kubernetes".
+// The codebase seldom interacts with Class, but instead of Cluster instances
+// obtained from a runtime class.
 type Class interface {
-	Namespace(planning.Context) Namespace
-
 	// Attaches to an existing cluster. Fails if the cluster doesn't exist or
 	// the provider used would have instantiated a new cluster.
-	AttachToCluster(context.Context, Namespace) (Cluster, error)
+	AttachToCluster(context.Context, planning.Configuration) (Cluster, error)
 
-	// Initiates the creation of a new cluster.
-	EnsureCluster(context.Context) (DeferredCluster, error)
+	// Ensures the cluster that would be targeted by this runtime class'
+	// configuration exists.
+	EnsureCluster(context.Context, planning.Configuration) (Cluster, error)
 }
 
+// Represents an application deployment target within a cluster. Clusters may
+// provider one, or more co-existing Namespaces.
 type Namespace interface {
+	// XXX document guarantees.
 	UniqueID() string
-	Planner() Planner
 }
 
+// A planner is capable of generating namespace-specific deployment plans. It
+// may obtain external data in order to produce a plan, but none of its methods
+// mutate outside state in order to do so.
 type Planner interface {
+	// Returns a representation of the Namespace this Planner will generate
+	// plans to.
+	Namespace() Namespace
+
 	// Plans a deployment, i.e. produces a series of instructions that will
 	// instantiate the required deployment resources to run the servers in the
 	// specified Deployment. This method is side-effect free; mutations are
@@ -59,23 +70,50 @@ type Planner interface {
 	// applied when the generated plan is applied.
 	PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (DeploymentState, error)
 
-	Namespace() Namespace
-}
-
-type DeferredCluster interface {
-	Class() Class
-
-	Bind(Namespace) (Cluster, error)
-}
-
-// Cluster represents a target deployment environment, scoped to an application
-// (usually the combination of an environment and workspace).
-type Cluster interface {
-	Planner() Planner
+	// PrepareProvision is called before invoking a provisioning tool, to offer
+	// the runtime implementation a way to pass runtime-specific information to
+	// the tool. E.g. what's the Kubernetes namespace we're working with.
+	// XXX move to planner.
+	PrepareProvision(context.Context) (*rtypes.ProvisionProps, error)
 
 	// ComputeBaseNaming returns a base naming configuration that is specific
 	// to the target runtime (e.g. kubernetes cluster).
 	ComputeBaseNaming(*schema.Naming) (*schema.ComputedNaming, error)
+}
+
+// A cluster represents a cluster where Namespace is capable of deployment one
+// or more applications.
+type Cluster interface {
+	// Returns a Planner implementation which emits deployment plans which
+	// target a namespace within this cluster.
+	Planner(planning.Context) Planner
+
+	// Returns a namespace'd cluster -- one for a particular application use,
+	// bound to the workspace identified by the planning.Context.
+	Bind(planning.Context) (ClusterNamespace, error)
+
+	// Fetch diagnostics of a particular container reference.
+	FetchDiagnostics(context.Context, *ContainerReference) (*Diagnostics, error)
+
+	// Fetch logs of a specific container reference.
+	FetchLogsTo(context.Context, io.Writer, *ContainerReference, FetchLogsOpts) error
+
+	// Attaches to a running container.
+	AttachTerminal(ctx context.Context, container *ContainerReference, io TerminalIO) error
+
+	// Prepare ensures that a cluster-specific bit of initialization is done once per instance.
+	// XXX remove planning.Context, as it leaks environment bits.
+	Prepare(context.Context, string, planning.Context) (any, error)
+}
+
+// ClusterNamespace represents a target deployment environment, scoped to an application
+// (usually the combination of an environment and workspace).
+type ClusterNamespace interface {
+	// Returns a reference to the cluster where this namespace exists.
+	Cluster() Cluster
+
+	// Planner returns a Planner bound to the same namespace as this ClusterNamespace.
+	Planner() Planner
 
 	// DeployedConfigImageID retrieves the image reference of the "configuration
 	// image" used to deploy the specified server. Configuration images are only
@@ -85,12 +123,6 @@ type Cluster interface {
 	// Returns a list of containers that the server has deployed.
 	ResolveContainers(context.Context, *schema.Server) ([]*ContainerReference, error)
 
-	// Fetch logs of a specific container reference.
-	FetchLogsTo(context.Context, io.Writer, *ContainerReference, FetchLogsOpts) error
-
-	// Fetch diagnostics of a particular container reference.
-	FetchDiagnostics(context.Context, *ContainerReference) (*Diagnostics, error)
-
 	// Fetch environment diagnostics, e.g. event list.
 	FetchEnvironmentDiagnostics(context.Context) (*storage.EnvironmentDiagnostics, error)
 
@@ -99,11 +131,8 @@ type Cluster interface {
 	// containers, see #329.
 	StartTerminal(ctx context.Context, server *schema.Server, io TerminalIO, command string, rest ...string) error
 
-	// Attaches to a previously running container.
-	AttachTerminal(ctx context.Context, container *ContainerReference, io TerminalIO) error
-
 	// Forwards a single port.
-	ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, callback SinglePortForwardedFunc) (io.Closer, error)
+	ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, notify SinglePortForwardedFunc) (io.Closer, error)
 
 	// Dials a TCP port to one of the replicas of the target server. The
 	// lifecycle of the connection is bound to the specified context.
@@ -112,7 +141,7 @@ type Cluster interface {
 	// Exposes the cluster's ingress, in the specified local address and port.
 	// This is used to create stable localhost-bound ingress addresses (for e.g.
 	// nslocal.host).
-	ForwardIngress(ctx context.Context, localAddrs []string, localPort int, f PortForwardedFunc) (io.Closer, error)
+	ForwardIngress(ctx context.Context, localAddrs []string, localPort int, notify PortForwardedFunc) (io.Closer, error)
 
 	// Observes lifecyle events of the specified server. Unless OneShot is set,
 	// Observe runs until the context is cancelled.
@@ -121,7 +150,7 @@ type Cluster interface {
 	// Runs the specified container as a one-shot, streaming it's output to the
 	// specified writer. This mechanism is targeted at invoking test runners
 	// within the runtime environment.
-	RunOneShot(context.Context, string /*name*/, ServerRunOpts, io.Writer, bool /*follow*/) error
+	RunOneShot(ctx context.Context, name string, opts ServerRunOpts, w io.Writer, follow bool) error
 
 	// RunAttached runs the specified container, and attaches to it.
 	RunAttached(context.Context, string, ServerRunOpts, TerminalIO) error
@@ -136,19 +165,7 @@ type Cluster interface {
 	// removed. Returns true if resources were deleted.
 	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
 
-	// Prepare ensures that a cluster-specific bit of initialization is done once per instance.
-	// XXX remove planning.Context, as it leaks environment bits.
-	Prepare(context.Context, string, planning.Context) (any, error)
-
-	HasPrepareProvision
 	HasTargetPlatforms
-}
-
-type HasPrepareProvision interface {
-	// PrepareProvision is called before invoking a provisioning tool, to offer
-	// the runtime implementation a way to pass runtime-specific information to
-	// the tool. E.g. what's the Kubernetes namespace we're working with.
-	PrepareProvision(context.Context, planning.Context) (*rtypes.ProvisionProps, error)
 }
 
 type HasTargetPlatforms interface {

@@ -130,7 +130,7 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 		return err
 	}
 
-	ns := cluster.Planner().Namespace()
+	ns := cluster.Planner(env).Namespace()
 
 	releaseLease, err := d.leaser.acquireLease(ns.UniqueID(), arrival)
 	if err != nil {

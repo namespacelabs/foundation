@@ -59,7 +59,7 @@ func MakePlan(ctx context.Context, server provision.Server, spec build.Spec) (bu
 }
 
 type prepareServerConfig struct {
-	cluster         runtime.Cluster
+	planner         runtime.Planner
 	serverPackage   schema.PackageName
 	env             planning.Context
 	stack           *schema.Stack
@@ -71,7 +71,7 @@ type prepareServerConfig struct {
 
 func (c *prepareServerConfig) Inputs() *compute.In {
 	in := compute.Inputs().
-		Indigestible("cluster", c.cluster).
+		Indigestible("planner", c.planner).
 		JSON("serverPackage", c.serverPackage).
 		Indigestible("env", c.env).
 		Proto("stack", c.stack).
@@ -99,7 +99,7 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 	var fragment []*schema.IngressFragment
 	for _, entry := range c.stack.Entry {
 		var err error
-		fragment, err = runtime.ComputeIngress(ctx, c.env, c.cluster, entry, c.stack.Endpoint)
+		fragment, err = runtime.ComputeIngress(ctx, c.env, c.planner, entry, c.stack.Endpoint)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +124,7 @@ type moduleAndFiles struct {
 	files      fs.FS
 }
 
-func prepareConfigImage(ctx context.Context, env planning.Context, cluster runtime.Cluster, server provision.Server, stack *stack.Stack,
+func prepareConfigImage(ctx context.Context, env planning.Context, planner runtime.Planner, server provision.Server, stack *stack.Stack,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) oci.NamedImage {
 	var modulesSrcs []moduleAndFiles
 	for _, srcs := range server.SealedContext().Sources() {
@@ -141,7 +141,7 @@ func prepareConfigImage(ctx context.Context, env planning.Context, cluster runti
 	return oci.MakeImageFromScratch(fmt.Sprintf("config %s", server.PackageName()),
 		oci.MakeLayer(fmt.Sprintf("config %s", server.PackageName()),
 			&prepareServerConfig{
-				cluster:         cluster,
+				planner:         planner,
 				serverPackage:   server.PackageName(),
 				env:             env,
 				stack:           stack.Proto(),

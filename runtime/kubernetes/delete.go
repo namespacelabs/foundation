@@ -21,12 +21,12 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func (r ClusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
-	return DeleteAllRecursively(ctx, r.cli, wait, nil, r.namespace)
+func (r *ClusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
+	return DeleteAllRecursively(ctx, r.cluster.cli, wait, nil, r.target.namespace)
 }
 
-func (r *Cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
-	namespaces, err := r.cli.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
+func (r *ClusterNamespace) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
+	namespaces, err := r.cluster.cli.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
 		LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 	})
 	if err != nil {
@@ -43,7 +43,7 @@ func (r *Cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress 
 		filtered = append(filtered, ns.Name)
 	}
 
-	return DeleteAllRecursively(ctx, r.cli, wait, progress, filtered...)
+	return DeleteAllRecursively(ctx, r.cluster.cli, wait, progress, filtered...)
 }
 
 func DeleteAllRecursively(ctx context.Context, cli *kubernetes.Clientset, wait bool, progress io.Writer, namespaces ...string) (bool, error) {

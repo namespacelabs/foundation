@@ -27,7 +27,7 @@ import (
 
 func setWorkspace(ctx context.Context, env planning.Context, packageNames []string, obs *Session, pfw *endpointfwd.PortForward) error {
 	return compute.Do(ctx, func(ctx context.Context) error {
-		rt, err := runtime.ClusterFor(ctx, env)
+		rt, err := runtime.NamespaceFor(ctx, env)
 		if err != nil {
 			return err
 		}
@@ -64,7 +64,7 @@ type buildAndDeploy struct {
 	env            planning.Context
 	serverPackages []schema.PackageName
 	focusServers   compute.Computable[*provision.ServerSnapshot]
-	cluster        runtime.Cluster
+	cluster        runtime.ClusterNamespace
 
 	mu            sync.Mutex
 	cancelRunning func()
@@ -131,7 +131,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			s.Stack = stack.Proto()
 		})
 
-		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.cluster, stack, focus)
+		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.cluster.Planner(), stack, focus)
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		cancel := compute.SpawnCancelableOnContinuously(ctx, func(ctx context.Context) error {
 			defer close(done)
 			return compute.Continuously(ctx,
-				newUpdateCluster(focusServers.Env(), do.cluster, stack.Proto(), do.serverPackages, observers, plan, do.pfw),
+				newUpdateCluster(focusServers.Env(), do.cluster.Cluster(), stack.Proto(), do.serverPackages, observers, plan, do.pfw),
 				transformError)
 		})
 

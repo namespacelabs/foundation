@@ -8,10 +8,10 @@ type KubeConfig struct {
 	Config, Context, Namespace string
 }
 
-func (r ClusterNamespace) KubeConfig() KubeConfig {
+func (r *ClusterNamespace) KubeConfig() KubeConfig {
 	return KubeConfig{
-		Config:    r.host.HostEnv.Kubeconfig,
-		Context:   r.host.HostEnv.Context,
-		Namespace: r.namespace,
+		Config:    r.cluster.host.HostEnv.Kubeconfig,
+		Context:   r.cluster.host.HostEnv.Context,
+		Namespace: r.target.namespace,
 	}
 }

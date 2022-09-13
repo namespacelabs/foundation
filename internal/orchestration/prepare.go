@@ -31,20 +31,20 @@ func RegisterPrepare() {
 		return
 	}
 
-	runtime.RegisterPrepare(key, func(ctx context.Context, target planning.Context, cluster runtime.DeferredCluster) (any, error) {
+	runtime.RegisterPrepare(key, func(ctx context.Context, target planning.Context, cluster runtime.Cluster) (any, error) {
 		return tasks.Return(ctx, tasks.Action("orchestrator.prepare").Arg("env", target.Environment().Name), func(ctx context.Context) (any, error) {
 			return prepare(ctx, target, cluster)
 		})
 	})
 }
 
-func prepare(ctx context.Context, targetEnv planning.Context, target runtime.DeferredCluster) (any, error) {
+func prepare(ctx context.Context, targetEnv planning.Context, cluster runtime.Cluster) (any, error) {
 	env, err := makeOrchEnv(ctx, targetEnv)
 	if err != nil {
 		return nil, err
 	}
 
-	cluster, err := target.Bind(target.Class().Namespace(env))
+	boundCluster, err := cluster.Bind(env)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func prepare(ctx context.Context, targetEnv planning.Context, target runtime.Def
 		return nil, err
 	}
 
-	plan, err := deploy.PrepareDeployServers(ctx, env, cluster, []provision.Server{focus}, nil)
+	plan, err := deploy.PrepareDeployServers(ctx, env, cluster.Planner(env), []provision.Server{focus}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -99,5 +99,5 @@ func prepare(ctx context.Context, targetEnv planning.Context, target runtime.Def
 		return nil, fnerrors.InternalError("orchestration service not found: %+v", computed.ComputedStack.Endpoints)
 	}
 
-	return &RemoteOrchestrator{cluster: cluster, server: focus.Proto(), endpoint: endpoint}, nil
+	return &RemoteOrchestrator{cluster: boundCluster, server: focus.Proto(), endpoint: endpoint}, nil
 }

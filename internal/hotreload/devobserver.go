@@ -28,7 +28,7 @@ type FileSyncDevObserver struct {
 	ctx          context.Context
 	log          io.Writer
 	server       *schema.Server
-	cluster      runtime.Cluster
+	cluster      runtime.ClusterNamespace
 	fileSyncPort int32
 
 	mu   sync.Mutex
@@ -36,7 +36,7 @@ type FileSyncDevObserver struct {
 	port io.Closer
 }
 
-func NewFileSyncDevObserver(ctx context.Context, cluster runtime.Cluster, srv provision.Server, fileSyncPort int32) *FileSyncDevObserver {
+func NewFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv provision.Server, fileSyncPort int32) *FileSyncDevObserver {
 	return &FileSyncDevObserver{
 		ctx:          ctx,
 		log:          console.TypedOutput(ctx, "hot reload", console.CatOutputUs),

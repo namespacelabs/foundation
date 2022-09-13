@@ -75,7 +75,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			plan, err := deploy.PrepareDeployStack(ctx, env, cluster, stack, servers.Servers)
+			plan, err := deploy.PrepareDeployStack(ctx, env, cluster.Planner(env), stack, servers.Servers)
 			if err != nil {
 				return err
 			}

@@ -38,7 +38,7 @@ var errTestFailed = errors.New("test failed")
 
 type testRun struct {
 	SealedContext planning.Context // Doesn't affect the output.
-	RuntimeClass  runtime.Class    // Target, doesn't affect the output.
+	Cluster       runtime.Cluster  // Target, doesn't affect the output.
 
 	TestRef *schema.PackageRef
 
@@ -78,10 +78,6 @@ func (test *testRun) Inputs() *compute.In {
 	return in
 }
 
-func (test *testRun) prepareDeployEnv(ctx context.Context, r compute.Resolved, cluster runtime.Cluster) (planning.Context, func(context.Context) error, error) {
-	return test.SealedContext, makeDeleteEnv(cluster), nil
-}
-
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
 	// The actual test run is wrapped in another action, so we can apply policies to it (e.g. constrain how many tests are deployed in parallel).
 	return tasks.Return(ctx, tasks.Action(TestRunAction), func(ctx context.Context) (*storage.TestResultBundle, error) {
@@ -92,23 +88,14 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.
 func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
 	p := compute.MustGetDepValue(r, test.Plan, "plan")
 
-	pcluster, err := test.RuntimeClass.EnsureCluster(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	cluster, err := pcluster.Bind(test.RuntimeClass.Namespace(test.SealedContext))
-	if err != nil {
-		return nil, err
-	}
-
-	env, cleanup, err := test.prepareDeployEnv(ctx, r, cluster)
+	env := test.SealedContext
+	cluster, err := test.Cluster.Bind(test.SealedContext)
 	if err != nil {
 		return nil, err
 	}
 
 	defer func() {
-		if err := cleanup(ctx); err != nil {
+		if _, err := cluster.DeleteRecursively(ctx, false); err != nil {
 			fmt.Fprintln(console.Errors(ctx), "Failed to cleanup: ", err)
 		}
 	}()
@@ -118,7 +105,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	fmt.Fprintf(console.Stderr(ctx), "%s: Test %s\n", test.TestRef.Canonical(), aec.LightBlackF.Apply("RUNNING"))
 
 	var waitErr error
-	if err := orchestration.Deploy(ctx, env, cluster, p.Deployer, deployPlan, true, test.OutputProgress); err != nil {
+	if err := orchestration.Deploy(ctx, env, test.Cluster, p.Deployer, deployPlan, true, test.OutputProgress); err != nil {
 		waitErr = fnerrors.Wrap(test.TestRef.AsPackageName(), err)
 	}
 
@@ -216,7 +203,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	return bundle, nil
 }
 
-func collectLogs(ctx context.Context, env planning.Context, rt runtime.Cluster, testRef *schema.PackageRef, stack *schema.Stack, focus []string, printLogs bool) (*storage.TestResultBundle, error) {
+func collectLogs(ctx context.Context, env planning.Context, rt runtime.ClusterNamespace, testRef *schema.PackageRef, stack *schema.Stack, focus []string, printLogs bool) (*storage.TestResultBundle, error) {
 	ex := executor.New(ctx, "test.collect-logs")
 
 	type serverLog struct {
@@ -270,7 +257,7 @@ func collectLogs(ctx context.Context, env planning.Context, rt runtime.Cluster, 
 				mu.Unlock()
 
 				ex.Go(func(ctx context.Context) error {
-					err := rt.FetchLogsTo(ctx, w, ctr, runtime.FetchLogsOpts{IncludeTimestamps: true})
+					err := rt.Cluster().FetchLogsTo(ctx, w, ctr, runtime.FetchLogsOpts{IncludeTimestamps: true})
 					if errors.Is(err, context.Canceled) {
 						return nil
 					}

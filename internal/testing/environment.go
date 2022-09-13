@@ -9,7 +9,6 @@ import (
 
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
@@ -43,14 +42,4 @@ func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool)
 	})
 
 	return planning.MakeUnverifiedContext(newCfg, sourceEnv.Workspace(), testEnv, sourceEnv.ErrorLocation())
-}
-
-func makeDeleteEnv(cluster runtime.Cluster) func(context.Context) error {
-	return func(ctx context.Context) error {
-		if _, err := cluster.DeleteRecursively(ctx, false); err != nil {
-			return err
-		}
-
-		return nil
-	}
 }

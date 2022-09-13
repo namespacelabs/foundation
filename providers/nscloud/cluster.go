@@ -29,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -94,7 +93,8 @@ var (
 
 func RegisterClusterProvider() {
 	client.RegisterProvider("nscloud", provideCluster)
-	client.RegisterDeferredProvider("nscloud", provideDeferred)
+	kubernetes.RegisterOverrideClass("nscloud", provideClass)
+
 	planning.RegisterConfigProvider(&config.Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
 		cluster := &config.Cluster{}
 		if err := input.UnmarshalTo(cluster); err != nil {
@@ -113,16 +113,16 @@ func RegisterClusterProvider() {
 	})
 }
 
-func provideCluster(ctx context.Context, cfg planning.Configuration) (client.Provider, error) {
+func provideCluster(ctx context.Context, cfg planning.Configuration) (client.ClusterConfiguration, error) {
 	conf := &PrebuiltCluster{}
 
 	if cfg.Get(conf) {
 		cluster, err := GetCluster(ctx, conf.ClusterId)
 		if err != nil {
-			return client.Provider{}, err
+			return client.ClusterConfiguration{}, err
 		}
 
-		var p client.Provider
+		var p client.ClusterConfiguration
 		p.ProviderSpecific = cluster
 		p.Config = *makeConfig(cluster)
 		return p, nil
@@ -130,10 +130,10 @@ func provideCluster(ctx context.Context, cfg planning.Configuration) (client.Pro
 
 	result, err := CreateClusterForEnv(ctx, cfg, true)
 	if err != nil {
-		return client.Provider{}, err
+		return client.ClusterConfiguration{}, err
 	}
 
-	return client.Provider{Config: *makeConfig(result.Cluster), ProviderSpecific: result.Cluster}, nil
+	return client.ClusterConfiguration{Config: *makeConfig(result.Cluster), ProviderSpecific: result.Cluster}, nil
 }
 
 type CreateClusterResult struct {
@@ -339,68 +339,52 @@ func reparse(obj interface{}, target interface{}) error {
 	return json.Unmarshal(b, target)
 }
 
-func provideDeferred(ctx context.Context, cfg *client.HostConfig) (runtime.Class, error) {
+func provideClass(ctx context.Context, cfg planning.Configuration) (runtime.Class, error) {
 	conf := &PrebuiltCluster{}
-	if !cfg.Config.Get(conf) {
+	if !cfg.Get(conf) {
 		compute.On(ctx).DetachWith(compute.Detach{
 			Action: tasks.Action("nscloud.cluster-prepare").LogLevel(1),
 			Do: func(ctx context.Context) error {
 				// Kick off the cluster provisioning as soon as we can.
-				_, _ = CreateClusterForEnv(ctx, cfg.Config, true)
+				_, _ = CreateClusterForEnv(ctx, cfg, true)
 				return nil
 			},
 			BestEffort: true,
 		})
 	}
 
-	return deferred{cfg}, nil
+	return runtimeClass{}, nil
 }
 
-type deferred struct {
-	cfg *client.HostConfig
-}
+type runtimeClass struct{}
 
-var _ runtime.Class = deferred{}
-var _ runtime.HasPrepareProvision = deferred{}
-var _ runtime.HasTargetPlatforms = deferred{}
+var _ runtime.Class = runtimeClass{}
+var _ runtime.HasTargetPlatforms = runtimeClass{}
 
-func (d deferred) Namespace(env planning.Context) runtime.Namespace {
-	return kubernetes.RuntimeClass(env)
-}
-
-func (d deferred) AttachToCluster(ctx context.Context, ns runtime.Namespace) (runtime.Cluster, error) {
+func (d runtimeClass) AttachToCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
 	conf := &PrebuiltCluster{}
 
-	if !d.cfg.Config.Get(conf) {
-		return nil, fnerrors.BadInputError("%s: no cluster configured", d.cfg.Config.EnvKey())
+	if !cfg.Get(conf) {
+		return nil, fnerrors.BadInputError("%s: no cluster configured", cfg.EnvKey())
 	}
 
-	deferred, err := d.EnsureCluster(ctx)
+	return d.EnsureCluster(ctx, cfg)
+}
+
+func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
+	// XXX This is confusing. We can call NewCluster because the runtime class
+	// and cluster providers are registered with the same provider key. We
+	// should instead create the cluster here, when the CreateCluster intent is
+	// still clear.
+	unbound, err := kubernetes.NewCluster(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return deferred.Bind(ns)
+	return cluster{unbound}, nil
 }
 
-func (d deferred) EnsureCluster(ctx context.Context) (runtime.DeferredCluster, error) {
-	unbound, err := kubernetes.NewCluster(ctx, d.cfg.Config)
-	if err != nil {
-		return nil, err
-	}
-
-	return deferredCluster{d.cfg, unbound}, nil
-}
-
-func (d deferred) PrepareProvision(_ context.Context, env planning.Context) (*rtypes.ProvisionProps, error) {
-	// XXX fetch SystemInfo in the future.
-	return kubernetes.PrepareProvisionWith(env.Environment(), kubernetes.ModuleNamespace(env.Workspace().Proto(), env.Environment()), &kubedef.SystemInfo{
-		NodePlatform:         []string{"linux/amd64"},
-		DetectedDistribution: "k3s",
-	})
-}
-
-func (d deferred) TargetPlatforms(context.Context) ([]specs.Platform, error) {
+func (d runtimeClass) TargetPlatforms(context.Context) ([]specs.Platform, error) {
 	// XXX fetch this in the future.
 	p, err := devhost.ParsePlatform("linux/amd64")
 	if err != nil {
@@ -409,17 +393,41 @@ func (d deferred) TargetPlatforms(context.Context) ([]specs.Platform, error) {
 	return []specs.Platform{p}, nil
 }
 
-type deferredCluster struct {
-	cfg     *client.HostConfig
-	cluster *kubernetes.Cluster
+type cluster struct {
+	*kubernetes.Cluster
 }
 
-func (d deferredCluster) Class() runtime.Class {
-	return deferred{d.cfg}
+func (d cluster) Class() runtime.Class {
+	return runtimeClass{}
 }
 
-func (d deferredCluster) Bind(ns runtime.Namespace) (runtime.Cluster, error) {
-	p, err := d.cluster.Provider()
+func (d cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {
+	config, err := d.config()
+	if err != nil {
+		return nil, err
+	}
+
+	bound, err := d.Cluster.Bind(env)
+	if err != nil {
+		return nil, err
+	}
+
+	return clusterNamespace{ClusterNamespace: bound, Config: config}, nil
+}
+
+func (d cluster) Planner(env planning.Context) runtime.Planner {
+	base := kubernetes.NewPlanner(env, func(ctx context.Context) (*kubedef.SystemInfo, error) {
+		return &kubedef.SystemInfo{
+			NodePlatform:         []string{"linux/amd64"},
+			DetectedDistribution: "k3s",
+		}, nil
+	})
+
+	return planner{Planner: base, cluster: d, env: env.Environment(), workspace: env.Workspace().Proto()}
+}
+
+func (d cluster) config() (*KubernetesCluster, error) {
+	p, err := d.Cluster.Provider()
 	if err != nil {
 		return nil, err
 	}
@@ -428,40 +436,47 @@ func (d deferredCluster) Bind(ns runtime.Namespace) (runtime.Cluster, error) {
 		return nil, fnerrors.InternalError("cluster creation state is missing")
 	}
 
-	bound, err := d.cluster.Bind(ns)
+	return p.ProviderSpecific.(*KubernetesCluster), nil
+}
+
+type planner struct {
+	kubernetes.Planner
+	cluster   cluster
+	env       *schema.Environment
+	workspace *schema.Workspace
+}
+
+func (d planner) ComputeBaseNaming(source *schema.Naming) (*schema.ComputedNaming, error) {
+	config, err := d.cluster.config()
 	if err != nil {
 		return nil, err
 	}
 
-	return clusterRuntime{Cluster: bound, Config: p.ProviderSpecific.(*KubernetesCluster)}, nil
-}
-
-type clusterRuntime struct {
-	runtime.Cluster
-	Config *KubernetesCluster
-}
-
-func (cr clusterRuntime) ComputeBaseNaming(source *schema.Naming) (*schema.ComputedNaming, error) {
 	return &schema.ComputedNaming{
 		Source:                   source,
-		BaseDomain:               cr.Config.IngressDomain,
-		TlsPassthroughBaseDomain: "int-" + cr.Config.IngressDomain, // XXX receive this value.
+		BaseDomain:               config.IngressDomain,
+		TlsPassthroughBaseDomain: "int-" + config.IngressDomain, // XXX receive this value.
 		Managed:                  schema.Domain_CLOUD_TERMINATION,
 		UpstreamTlsTermination:   true,
-		DomainFragmentSuffix:     cr.Config.ClusterId, // XXX fetch ingress external IP to calculate domain.
+		DomainFragmentSuffix:     config.ClusterId, // XXX fetch ingress external IP to calculate domain.
 		UseShortAlias:            true,
 	}, nil
 }
 
-func (cr clusterRuntime) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
+type clusterNamespace struct {
+	runtime.ClusterNamespace
+	Config *KubernetesCluster
+}
+
+func (cr clusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
 	return cr.deleteCluster(ctx)
 }
 
-func (cr clusterRuntime) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
+func (cr clusterNamespace) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
 	return cr.deleteCluster(ctx)
 }
 
-func (cr clusterRuntime) deleteCluster(ctx context.Context) (bool, error) {
+func (cr clusterNamespace) deleteCluster(ctx context.Context) (bool, error) {
 	if err := DestroyCluster(ctx, cr.Config.ClusterId); err != nil {
 		if status.Code(err) == codes.NotFound {
 			return false, nil

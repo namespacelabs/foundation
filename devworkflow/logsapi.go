@@ -24,7 +24,7 @@ func serveLogs(s *Session, w http.ResponseWriter, r *http.Request, serverID stri
 			return err
 		}
 
-		rt, err := runtime.ClusterFor(ctx, env)
+		rt, err := runtime.NamespaceFor(ctx, env)
 		if err != nil {
 			return err
 		}
@@ -36,7 +36,7 @@ func serveLogs(s *Session, w http.ResponseWriter, r *http.Request, serverID stri
 
 		for _, ref := range refs {
 			if ref.Kind == schema.ContainerKind_PRIMARY {
-				return rt.FetchLogsTo(ctx, wsWriter, ref, runtime.FetchLogsOpts{Follow: true})
+				return rt.Cluster().FetchLogsTo(ctx, wsWriter, ref, runtime.FetchLogsOpts{Follow: true})
 			}
 		}
 

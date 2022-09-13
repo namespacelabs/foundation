@@ -64,7 +64,7 @@ func NewBuildCmd() *cobra.Command {
 				}
 			}
 
-			cluster, err := runtime.ClusterFor(ctx, env)
+			cluster, err := runtime.PlannerFor(ctx, env)
 			if err != nil {
 				return err
 			}

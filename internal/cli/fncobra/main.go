@@ -186,8 +186,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		})
 
 		// Runtime
-		tool.RegisterInjection("schema.ComputedNaming", func(ctx context.Context, env planning.Context, cluster runtime.Cluster, s *schema.Stack_Entry) (*schema.ComputedNaming, error) {
-			return runtime.ComputeNaming(ctx, env.Workspace().ModuleName(), env, cluster, s.ServerNaming)
+		tool.RegisterInjection("schema.ComputedNaming", func(ctx context.Context, env planning.Context, planner runtime.Planner, s *schema.Stack_Entry) (*schema.ComputedNaming, error) {
+			return runtime.ComputeNaming(ctx, env.Workspace().ModuleName(), env, planner, s.ServerNaming)
 		})
 
 		// Compute cacheables.

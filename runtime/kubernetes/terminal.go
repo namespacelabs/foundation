@@ -23,13 +23,13 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func (r ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Clientset, server *schema.Server, rio runtime.TerminalIO, cmd []string) error {
+func (r *ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Clientset, server *schema.Server, rio runtime.TerminalIO, cmd []string) error {
 	pod, err := r.resolvePod(ctx, cli, rio.Stderr, server)
 	if err != nil {
 		return err
 	}
 
-	return r.lowLevelAttachTerm(ctx, cli, pod.Namespace, pod.Name, rio, "exec", &corev1.PodExecOptions{
+	return r.cluster.lowLevelAttachTerm(ctx, cli, pod.Namespace, pod.Name, rio, "exec", &corev1.PodExecOptions{
 		Command: cmd,
 		Stdin:   true,
 		Stdout:  true,

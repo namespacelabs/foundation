@@ -69,7 +69,7 @@ func serveTerminal(s *Session, w http.ResponseWriter, r *http.Request, serverID 
 			})
 		}()
 
-		rt, err := runtime.ClusterFor(ctx, env)
+		rt, err := runtime.NamespaceFor(ctx, env)
 		if err != nil {
 			return err
 		}

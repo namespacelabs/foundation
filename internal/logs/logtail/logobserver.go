@@ -140,7 +140,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 // Listen blocks fetching logs from a container.
 func Listen(ctx context.Context, env planning.Context, server *schema.Server) error {
 	// TODO simplify runtime creation.
-	rt, err := runtime.ClusterFor(ctx, env)
+	rt, err := runtime.NamespaceFor(ctx, env)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func Listen(ctx context.Context, env planning.Context, server *schema.Server) er
 
 			fmt.Fprintf(w, "<Starting log tail for %s>\n", ev.HumanReadableID)
 
-			return rt.FetchLogsTo(ctx, w, ev.ContainerReference, runtime.FetchLogsOpts{
+			return rt.Cluster().FetchLogsTo(ctx, w, ev.ContainerReference, runtime.FetchLogsOpts{
 				TailLines: 30,
 				Follow:    true,
 			})

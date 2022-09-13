@@ -21,6 +21,7 @@
             upx
             nodejs-16_x
             yarn
+            git
 
             docker-client # Required by `ns prepare`.
             crane
