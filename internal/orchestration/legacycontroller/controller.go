@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -28,8 +29,7 @@ func Prepare(ctx context.Context, _ ExtensionDeps) error {
 	}
 
 	w := watcher{
-		clientset:   clientset,
-		controllers: make(map[metav1.ListOptions]controllerFunc),
+		clientset: clientset,
 	}
 
 	w.Add(controlEphemeral, metav1.ListOptions{
@@ -52,34 +52,48 @@ func Prepare(ctx context.Context, _ ExtensionDeps) error {
 
 type controllerFunc func(context.Context, *kubernetes.Clientset, *corev1.Namespace, chan struct{})
 
+type controller struct {
+	opts    metav1.ListOptions
+	tracked map[string]chan struct{}
+	f       controllerFunc
+}
+
 type watcher struct {
 	clientset   *kubernetes.Clientset
-	controllers map[metav1.ListOptions]controllerFunc
+	controllers []controller
 }
 
-func (w watcher) Add(c controllerFunc, opts metav1.ListOptions) {
-	w.controllers[opts] = c
+func (w *watcher) Add(f controllerFunc, opts metav1.ListOptions) {
+	w.controllers = append(w.controllers, controller{
+		opts:    opts,
+		tracked: make(map[string]chan struct{}),
+		f:       f,
+	})
 }
 
-func (w watcher) Run(ctx context.Context) {
-	for opts, controller := range w.controllers {
-		go watchNamespaces(ctx, w.clientset, opts, controller)
+func (w *watcher) Run(ctx context.Context) {
+	for _, controller := range w.controllers {
+		go watchNamespaces(ctx, w.clientset, controller)
 	}
 }
 
-func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, opts metav1.ListOptions, f controllerFunc) {
-	w, err := clientset.CoreV1().Namespaces().Watch(ctx, opts)
+func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, c controller) {
+	w, err := clientset.CoreV1().Namespaces().Watch(ctx, c.opts)
 	if err != nil {
-		log.Fatalf("failed to watch namespaces: %v", err)
+		// This is a critical failure, so log.Fatalf could be justified.
+		// However, the legacy controller is best-effort & we will remodel it soon, so let's not kill the orchestrator here.
+		fmt.Fprintf(os.Stderr, "failed to watch namespaces: %v", err)
+		return
 	}
 
 	defer w.Stop()
 
-	tracked := make(map[string]chan struct{})
 	for {
 		ev, ok := <-w.ResultChan()
 		if !ok {
-			log.Fatalf("unexpected namespace watch closure: %v", err)
+			log.Printf("namespace watch closure - retrying")
+			go watchNamespaces(ctx, clientset, c)
+			return
 		}
 		ns, ok := ev.Object.(*corev1.Namespace)
 		if !ok {
@@ -87,12 +101,12 @@ func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, opts 
 			continue
 		}
 
-		if done, ok := tracked[ns.Name]; ok {
+		if done, ok := c.tracked[ns.Name]; ok {
 			if ns.Status.Phase == corev1.NamespaceTerminating {
 				log.Printf("Stopping watch on %q. It is terminating.", ns.Name)
 				done <- struct{}{}
 
-				delete(tracked, ns.Name)
+				delete(c.tracked, ns.Name)
 			}
 			continue
 		}
@@ -102,8 +116,8 @@ func watchNamespaces(ctx context.Context, clientset *kubernetes.Clientset, opts 
 		}
 
 		done := make(chan struct{})
-		tracked[ns.Name] = done
+		c.tracked[ns.Name] = done
 
-		go f(ctx, clientset, ns, done)
+		go c.f(ctx, clientset, ns, done)
 	}
 }

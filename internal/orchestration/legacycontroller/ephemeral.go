@@ -6,7 +6,9 @@ package legacycontroller
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
 	"reflect"
 	"time"
 
@@ -25,7 +27,8 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 	if anno, ok := ns.Annotations[kubedef.K8sEnvTimeout]; ok {
 		var err error
 		if timeout, err = time.ParseDuration(anno); err != nil {
-			log.Fatalf("invalid timeout annotation %q for namespace %q: %v", anno, ns.Name, err)
+			fmt.Fprintf(os.Stderr, "skipping namespace %q: invalid timeout annotation %q: %v", ns.Name, anno, err)
+			return
 		}
 	}
 
@@ -33,8 +36,8 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 		LabelSelector: kubedef.SerializeSelector(kubedef.SelectNamespaceDriver()),
 	})
 	if err != nil {
-		log.Fatalf("failed to watch driver pod for namespace %q: %v", ns.Name, err)
-
+		fmt.Fprintf(os.Stderr, "skipping namespace %q: failed to watch driver pod: %v", ns.Name, err)
+		return
 	}
 
 	for {
@@ -48,18 +51,21 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 			return
 		case <-time.After(remaining):
 			if err := deleteNs(ctx, clientset, ns.Name); err != nil {
-				log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
+				log.Printf("failed to delete namespace %s: %v", ns.Name, err)
+				return
 			}
 			return
 
 		case ev, ok := <-w.ResultChan():
 			if !ok {
-				log.Fatalf("unexpected event watch closure for namespace %q: %v", ns.Name, err)
+				log.Printf("watch closure for namespace %q - retrying", ns.Name)
+				go controlEphemeral(ctx, clientset, ns, done)
+				return
 			}
 
 			driver, ok := ev.Object.(*corev1.Pod)
 			if !ok {
-				log.Printf("received non-pod watch event for namespace %q: %v", ns.Name, reflect.TypeOf(ev.Object))
+				fmt.Fprintf(os.Stderr, "received non-pod watch event for namespace %q: %v", ns.Name, reflect.TypeOf(ev.Object))
 				continue
 			}
 
@@ -76,7 +82,7 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 				return
 			case <-time.After(gracePeriod):
 				if err := deleteNs(ctx, clientset, ns.Name); err != nil {
-					log.Fatalf("failed to delete namespace %s: %v", ns.Name, err)
+					fmt.Fprintf(os.Stderr, "failed to delete namespace %s: %v", ns.Name, err)
 				}
 				return
 			}
