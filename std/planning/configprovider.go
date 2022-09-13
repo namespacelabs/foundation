@@ -11,7 +11,7 @@ import (
 
 var configProviders = map[string]func(*anypb.Any) ([]proto.Message, error){}
 
-func RegisterConfigProvider(msg proto.Message, handle func(*anypb.Any) ([]proto.Message, error)) {
+func RegisterConfigurationProvider(msg proto.Message, handle func(*anypb.Any) ([]proto.Message, error)) {
 	any, err := anypb.New(msg)
 	if err != nil {
 		panic(err)

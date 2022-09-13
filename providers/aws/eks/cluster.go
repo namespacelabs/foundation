@@ -35,10 +35,10 @@ const minimumTokenExpiry = 5 * time.Minute
 func Register() {
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster", prepareDescribeCluster)
 
-	client.RegisterProvider("eks", provideEKS)
-	client.RegisterProvider("aws/eks", provideEKS)
+	client.RegisterConfigurationProvider("eks", provideEKS)
+	client.RegisterConfigurationProvider("aws/eks", provideEKS)
 
-	planning.RegisterConfigProvider(&config.Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
+	planning.RegisterConfigurationProvider(&config.Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
 		cluster := &config.Cluster{}
 		if err := input.UnmarshalTo(cluster); err != nil {
 			return nil, err

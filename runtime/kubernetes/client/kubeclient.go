@@ -73,7 +73,7 @@ func init() {
 	clientCache.cache = map[string]*ComputedClient{}
 }
 
-func RegisterProvider(name string, p ProviderFunc) {
+func RegisterConfigurationProvider(name string, p ProviderFunc) {
 	providers[name] = p
 }
 

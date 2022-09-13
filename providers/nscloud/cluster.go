@@ -92,10 +92,10 @@ var (
 )
 
 func RegisterClusterProvider() {
-	client.RegisterProvider("nscloud", provideCluster)
+	client.RegisterConfigurationProvider("nscloud", provideCluster)
 	kubernetes.RegisterOverrideClass("nscloud", provideClass)
 
-	planning.RegisterConfigProvider(&config.Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
+	planning.RegisterConfigurationProvider(&config.Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
 		cluster := &config.Cluster{}
 		if err := input.UnmarshalTo(cluster); err != nil {
 			return nil, err
