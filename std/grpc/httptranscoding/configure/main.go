@@ -148,7 +148,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 			return fnerrors.New("failed to marshal FileDescriptorSet: %w", err)
 		}
 
-		annotations, err := kubedef.MakeServiceAnnotations(x.Server.Server, x.Endpoint)
+		annotations, err := kubedef.MakeServiceAnnotations(x.Endpoint)
 		if err != nil {
 			return fnerrors.New("failed to calculate annotations: %w", err)
 		}

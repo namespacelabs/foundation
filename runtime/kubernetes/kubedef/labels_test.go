@@ -34,12 +34,8 @@ func TestMakeLabels(t *testing.T) {
 
 func TestMakeAnnotations(t *testing.T) {
 	env := &schema.Environment{Ephemeral: true}
-	srv := &schema.Server{
-		Id:          "abc",
-		PackageName: "namespacelabs.dev/foundation/test",
-	}
 
-	got := MakeAnnotations(env, srv)
+	got := MakeAnnotations(env, "namespacelabs.dev/foundation/test")
 
 	if d := cmp.Diff(map[string]string{
 		"k8s.namespacelabs.dev/server-package-name": "namespacelabs.dev/foundation/test",

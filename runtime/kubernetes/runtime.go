@@ -93,7 +93,7 @@ func newTarget(env planning.Context) clusterTarget {
 func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApplyConfiguration {
 	return applycorev1.Namespace(ns).
 		WithLabels(kubedef.MakeLabels(env, nil)).
-		WithAnnotations(kubedef.MakeAnnotations(env, nil))
+		WithAnnotations(kubedef.MakeAnnotations(env, ""))
 }
 
 func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubedef.SystemInfo) (*rtypes.ProvisionProps, error) {

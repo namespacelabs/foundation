@@ -91,27 +91,20 @@ func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) 
 	}
 
 	// Collect all required servers before planning deployment as they are referenced in annotations.
-	for _, server := range d.Servers {
-		deployOpts.stackIds = append(deployOpts.stackIds, server.Server.Id)
+	for _, server := range d.Deployables {
+		deployOpts.stackIds = append(deployOpts.stackIds, server.Object.GetId())
 	}
 
-	for _, server := range d.Servers {
+	for _, deployable := range d.Deployables {
 		var singleState serverRunState
 
-		var serverInternalEndpoints []*schema.InternalEndpoint
-		for _, ie := range d.Stack.InternalEndpoint {
-			if server.Server.PackageName == ie.ServerOwner {
-				serverInternalEndpoints = append(serverInternalEndpoints, ie)
-			}
-		}
-
-		if err := prepareServerDeployment(ctx, r, server, serverInternalEndpoints, deployOpts, &singleState); err != nil {
+		if err := prepareDeployment(ctx, r, deployable, deployable.InternalEndpoints, deployOpts, &singleState); err != nil {
 			return nil, err
 		}
 
 		// XXX verify we've consumed all endpoints.
-		for _, endpoint := range d.Stack.EndpointsBy(schema.PackageName(server.Server.PackageName)) {
-			if err := deployEndpoint(ctx, r, server.Server, endpoint, &singleState); err != nil {
+		for _, endpoint := range deployable.Endpoints {
+			if err := deployEndpoint(ctx, r, deployable.Object, endpoint, &singleState); err != nil {
 				return nil, err
 			}
 		}
@@ -130,11 +123,11 @@ func planDeployment(ctx context.Context, r clusterTarget, d runtime.Deployment) 
 				}
 			}
 
-			at.Attach(tasks.Output(fmt.Sprintf("%s.k8s-decl.yaml", server.Server.PackageName), "application/yaml"), output.Bytes())
+			at.Attach(tasks.Output(fmt.Sprintf("%s.k8s-decl.yaml", deployable.PackageName), "application/yaml"), output.Bytes())
 		}
 
 		for _, apply := range singleState.operations {
-			def, err := apply.ToDefinition(schema.PackageName(server.Server.PackageName))
+			def, err := apply.ToDefinition(deployable.PackageName)
 			if err != nil {
 				return nil, err
 			}

@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"strings"
 
-	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/runtime"
 )
 
-func MakeDeploymentId(srv *schema.Server) string {
-	if srv.Name == "" {
-		return srv.Id
+func MakeDeploymentId(srv runtime.DeployableObject) string {
+	if srv.GetName() == "" {
+		return srv.GetId()
 	}
 
 	// k8s doesn't accept uppercase names.
-	return fmt.Sprintf("%s-%s", strings.ToLower(srv.Name), srv.Id)
+	return fmt.Sprintf("%s-%s", strings.ToLower(srv.GetName()), srv.GetId())
 }

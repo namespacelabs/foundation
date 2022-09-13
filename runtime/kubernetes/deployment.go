@@ -153,11 +153,11 @@ func deployAsPods(env *schema.Environment) bool {
 	return env.Purpose == schema.Environment_TESTING && DeployAsPodsInTests
 }
 
-func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtime.ServerConfig, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
-	srv := server.Server
+func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.Deployable, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
+	obj := deployable.Object
 
-	if server.Image.Repository == "" {
-		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", server.Image)
+	if deployable.Image.Repository == "" {
+		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.Image)
 	}
 
 	probevalues, ok := constants[r.env.Purpose]
@@ -167,17 +167,17 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 
 	secCtx := applycorev1.SecurityContext()
 
-	if server.ReadOnlyFilesystem {
+	if deployable.ReadOnlyFilesystem {
 		secCtx = secCtx.WithReadOnlyRootFilesystem(true)
 	}
 
-	name := kubedef.ServerCtrName(srv)
+	name := kubedef.ServerCtrName(obj)
 	containers := []string{name}
 	container := applycorev1.Container().
 		WithName(name).
-		WithImage(server.Image.RepoAndDigest()).
-		WithArgs(server.Args...).
-		WithCommand(server.Command...).
+		WithImage(deployable.Image.RepoAndDigest()).
+		WithArgs(deployable.Args...).
+		WithCommand(deployable.Command...).
 		WithSecurityContext(secCtx)
 
 	var probes []*kubedef.ContainerExtension_Probe
@@ -194,26 +194,26 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 		}
 	}
 
-	if _, err := fillEnv(container, server.Env); err != nil {
+	if _, err := fillEnv(container, deployable.Env); err != nil {
 		return err
 	}
 
-	if server.WorkingDir != "" {
-		container = container.WithWorkingDir(server.WorkingDir)
+	if deployable.WorkingDir != "" {
+		container = container.WithWorkingDir(deployable.WorkingDir)
 	}
 
 	spec := applycorev1.PodSpec().
 		WithEnableServiceLinks(false) // Disable service injection via environment variables.
 
-	labels := kubedef.MakeLabels(r.env, srv)
+	labels := kubedef.MakeLabels(r.env, obj)
 
-	annotations := kubedef.MakeAnnotations(r.env, srv)
+	annotations := kubedef.MakeAnnotations(r.env, deployable.PackageName)
 
-	if opts.focus.Includes(schema.PackageName(srv.PackageName)) {
+	if opts.focus.Includes(deployable.PackageName) {
 		labels = kubedef.WithFocusMark(labels)
 	}
 
-	deploymentId := kubedef.MakeDeploymentId(srv)
+	deploymentId := kubedef.MakeDeploymentId(obj)
 
 	tmpl := applycorev1.PodTemplateSpec().
 		WithAnnotations(annotations).
@@ -230,7 +230,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 	var env []*schema.BinaryConfig_EnvEntry
 	var specifiedSec *kubedef.SpecExtension_SecurityContext
 
-	for _, input := range server.Extensions {
+	for _, input := range deployable.Extensions {
 		specExt := &kubedef.SpecExtension{}
 		containerExt := &kubedef.ContainerExtension{}
 		initContainerExt := &kubedef.InitContainerExtension{}
@@ -260,7 +260,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 			if specExt.EnsureServiceAccount {
 				createServiceAccount = true
 				if specExt.ServiceAccount == "" {
-					return fnerrors.UserError(server.ServerLocation, "ensure_service_account requires service_account to be set")
+					return fnerrors.UserError(deployable.Location, "ensure_service_account requires service_account to be set")
 				}
 			}
 
@@ -268,7 +268,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 
 			if specExt.ServiceAccount != "" {
 				if serviceAccount != "" && serviceAccount != specExt.ServiceAccount {
-					return fnerrors.UserError(server.ServerLocation, "incompatible service accounts defined, %q vs %q",
+					return fnerrors.UserError(deployable.Location, "incompatible service accounts defined, %q vs %q",
 						serviceAccount, specExt.ServiceAccount)
 				}
 				serviceAccount = specExt.ServiceAccount
@@ -278,7 +278,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 				if specifiedSec == nil {
 					specifiedSec = specExt.SecurityContext
 				} else if !proto.Equal(specifiedSec, specExt.SecurityContext) {
-					return fnerrors.UserError(server.ServerLocation, "incompatible securitycontext defined, %v vs %v",
+					return fnerrors.UserError(deployable.Location, "incompatible securitycontext defined, %v vs %v",
 						specifiedSec, specExt.SecurityContext)
 				}
 			}
@@ -305,7 +305,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 			// XXX O(n^2)
 			for _, kv := range containerExt.Env {
 				if current, found := lookupByName(env, kv.Name); found && !proto.Equal(current, kv) {
-					return fnerrors.UserError(server.ServerLocation, "env variable %q is already set, but would be overwritten by container extension", kv.Name)
+					return fnerrors.UserError(deployable.Location, "env variable %q is already set, but would be overwritten by container extension", kv.Name)
 				}
 
 				env = append(env, kv)
@@ -317,7 +317,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 				// Deprecated path.
 				for _, arg := range containerExt.ArgTuple {
 					if currentValue, found := getArg(container, arg.Name); found && currentValue != arg.Value {
-						return fnerrors.UserError(server.ServerLocation, "argument '%s' is already set to '%s' but would be overwritten to '%s' by container extension", arg.Name, currentValue, arg.Value)
+						return fnerrors.UserError(deployable.Location, "argument '%s' is already set to '%s' but would be overwritten to '%s' by container extension", arg.Name, currentValue, arg.Value)
 					}
 					container = container.WithArgs(fmt.Sprintf("--%s=%s", arg.Name, arg.Value))
 				}
@@ -385,10 +385,10 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 		return err
 	}
 
-	volumes := slices.Clone(srv.Volumes)
-	mounts := slices.Clone(srv.Mounts)
+	volumes := slices.Clone(obj.GetVolumes())
+	mounts := slices.Clone(obj.GetMounts())
 
-	for _, ext := range server.ServerExtensions {
+	for _, ext := range deployable.ServerExtensions {
 		volumes = append(volumes, ext.Volume...)
 		mounts = append(mounts, ext.Mount...)
 	}
@@ -414,7 +414,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 				return fnerrors.BadInputError("%s: persistent ID is missing", volume.Name)
 			}
 
-			v, operations, err := makePersistentVolume(r.namespace, r.env, server.ServerLocation, srv, volume.Owner, name, pv.Id, pv.SizeBytes)
+			v, operations, err := makePersistentVolume(r.namespace, r.env, deployable.Location, volume.Owner, name, pv.Id, pv.SizeBytes)
 			if err != nil {
 				return err
 			}
@@ -486,7 +486,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 
 			if len(secretItems) > 0 {
 				// XXX Think through this, should it also be hashed + immutable?
-				secretId := fmt.Sprintf("ns-managed-%s-%s", srv.Name, srv.Id)
+				secretId := fmt.Sprintf("ns-managed-%s-%s", obj.GetName(), obj.GetId())
 
 				projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
 					applycorev1.SecretProjection().WithName(secretId).WithItems(secretItems...)))
@@ -529,8 +529,8 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 	}
 
 	// Before sidecars so they have access to the "runtime config" volume.
-	if server.RuntimeConfig != nil {
-		serializedConfig, err := json.Marshal(server.RuntimeConfig)
+	if deployable.RuntimeConfig != nil {
+		serializedConfig, err := json.Marshal(deployable.RuntimeConfig)
 		if err != nil {
 			return fnerrors.InternalError("failed to serialize runtime configuration: %w", err)
 		}
@@ -570,7 +570,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 		annotations[kubedef.K8sRuntimeConfig] = configId
 	}
 
-	for _, sidecar := range server.Sidecars {
+	for _, sidecar := range deployable.Sidecars {
 		if sidecar.Name == "" {
 			return fnerrors.InternalError("sidecar name is missing")
 		}
@@ -578,7 +578,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 		name := sidecarName(sidecar, "sidecar")
 		for _, c := range containers {
 			if name == c {
-				return fnerrors.UserError(server.ServerLocation, "duplicate sidecar container name: %s", name)
+				return fnerrors.UserError(deployable.Location, "duplicate sidecar container name: %s", name)
 			}
 		}
 		containers = append(containers, name)
@@ -592,8 +592,8 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 		// XXX remove this
 		scntr = scntr.WithEnv(
 			applycorev1.EnvVar().WithName("FN_KUBERNETES_NAMESPACE").WithValue(r.namespace),
-			applycorev1.EnvVar().WithName("FN_SERVER_ID").WithValue(srv.Id),
-			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(srv.Name),
+			applycorev1.EnvVar().WithName("FN_SERVER_ID").WithValue(obj.GetId()),
+			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(obj.GetName()),
 		)
 
 		if _, err := fillEnv(scntr, sidecar.Env); err != nil {
@@ -606,7 +606,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 		spec.WithContainers(scntr)
 	}
 
-	for _, init := range server.Inits {
+	for _, init := range deployable.Inits {
 		if init.Name == "" {
 			return fnerrors.InternalError("sidecar name is missing")
 		}
@@ -614,7 +614,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 		name := sidecarName(init, "init")
 		for _, c := range containers {
 			if name == c {
-				return fnerrors.UserError(server.ServerLocation, "duplicate init container name: %s", name)
+				return fnerrors.UserError(deployable.Location, "duplicate init container name: %s", name)
 			}
 		}
 		containers = append(containers, name)
@@ -657,7 +657,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 		}
 	}
 
-	if _, err := runAsToPodSecCtx(server.Server.PackageName, podSecCtx, server.RunAs); err != nil {
+	if _, err := runAsToPodSecCtx(deployable.PackageName.String(), podSecCtx, deployable.RunAs); err != nil {
 		return err
 	}
 
@@ -673,8 +673,8 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 	tmpl = tmpl.WithSpec(spec)
 
 	// Only mutate `annotations` after all other uses above.
-	if server.ConfigImage != nil {
-		annotations[kubedef.K8sConfigImage] = server.ConfigImage.RepoAndDigest()
+	if deployable.ConfigImage != nil {
+		annotations[kubedef.K8sConfigImage] = deployable.ConfigImage.RepoAndDigest()
 	}
 
 	if createServiceAccount {
@@ -691,7 +691,7 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 		})
 	} else {
 		if len(serviceAccountAnnotations) > 0 {
-			return fnerrors.UserError(server.ServerLocation, "can't set service account annotations without ensure_service_account")
+			return fnerrors.UserError(deployable.Location, "can't set service account annotations without ensure_service_account")
 		}
 	}
 
@@ -712,19 +712,8 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 		return nil
 	}
 
-	if srv.IsStateful {
-		s.operations = append(s.operations, kubedef.Apply{
-			Description: "Server StatefulSet",
-			Resource: appsv1.
-				StatefulSet(deploymentId, r.namespace).
-				WithAnnotations(annotations).
-				WithLabels(labels).
-				WithSpec(appsv1.StatefulSetSpec().
-					WithReplicas(1).
-					WithTemplate(tmpl).
-					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(srv)))),
-		})
-	} else {
+	switch obj.GetDeployableClass() {
+	case schema.DeployableClass_STATELESS:
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: "Server Deployment",
 			Resource: appsv1.
@@ -734,8 +723,24 @@ func prepareServerDeployment(ctx context.Context, r clusterTarget, server runtim
 				WithSpec(appsv1.DeploymentSpec().
 					WithReplicas(1).
 					WithTemplate(tmpl).
-					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(srv)))),
+					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(obj)))),
 		})
+
+	case schema.DeployableClass_STATEFUL:
+		s.operations = append(s.operations, kubedef.Apply{
+			Description: "Server StatefulSet",
+			Resource: appsv1.
+				StatefulSet(deploymentId, r.namespace).
+				WithAnnotations(annotations).
+				WithLabels(labels).
+				WithSpec(appsv1.StatefulSetSpec().
+					WithReplicas(1).
+					WithTemplate(tmpl).
+					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(obj)))),
+		})
+
+	default:
+		return fnerrors.InternalError("%s: unsupported deployable class", obj.GetDeployableClass())
 	}
 
 	return nil
@@ -769,7 +774,7 @@ func makeConfigEntry(h io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *s
 	return applycorev1.KeyToPath().WithKey(key)
 }
 
-func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, srv *schema.Server, owner, name, persistentId string, sizeBytes uint64) (*applycorev1.VolumeApplyConfiguration, []kubedef.Apply, error) {
+func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64) (*applycorev1.VolumeApplyConfiguration, []kubedef.Apply, error) {
 	if sizeBytes >= math.MaxInt64 {
 		return nil, nil, fnerrors.UserError(loc, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
 	}
@@ -868,7 +873,7 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 	return container, nil
 }
 
-func deployEndpoint(ctx context.Context, r clusterTarget, srv *schema.Server, endpoint *schema.Endpoint, s *serverRunState) error {
+func deployEndpoint(ctx context.Context, r clusterTarget, srv kubedef.ObjectWithID, endpoint *schema.Endpoint, s *serverRunState) error {
 	serviceSpec := applycorev1.ServiceSpec().WithSelector(kubedef.SelectById(srv))
 
 	port := endpoint.Port
@@ -876,7 +881,7 @@ func deployEndpoint(ctx context.Context, r clusterTarget, srv *schema.Server, en
 		serviceSpec = serviceSpec.WithPorts(applycorev1.ServicePort().
 			WithProtocol(corev1.ProtocolTCP).WithName(port.Name).WithPort(port.ContainerPort))
 
-		serviceAnnotations, err := kubedef.MakeServiceAnnotations(srv, endpoint)
+		serviceAnnotations, err := kubedef.MakeServiceAnnotations(endpoint)
 		if err != nil {
 			return err
 		}

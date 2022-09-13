@@ -369,14 +369,14 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			var serverRuns []runtime.ServerConfig
+			var serverRuns []runtime.Deployable
 			for k, srv := range stack.Servers {
 				img, ok := imageIDs.get(srv.PackageRef())
 				if !ok {
 					return prepareAndBuildResult{}, fnerrors.InternalError("%s: missing an image to run", srv.PackageName())
 				}
 
-				var run runtime.ServerConfig
+				var run runtime.Deployable
 
 				run.RuntimeConfig, err = serverToRuntimeConfig(stack, srv, img.Binary)
 				if err != nil {
@@ -402,14 +402,21 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 					run.ServerExtensions = sr.ServerExtensions
 				}
 
+				for _, ie := range stack.Proto().InternalEndpoint {
+					if srv.PackageName().Equals(ie.ServerOwner) {
+						run.InternalEndpoints = append(run.InternalEndpoints, ie)
+					}
+				}
+
+				run.Endpoints = stack.Proto().EndpointsBy(srv.PackageName())
+
 				serverRuns = append(serverRuns, run)
 			}
 
 			deployment, err := rc.PlanDeployment(ctx, runtime.Deployment{
-				Focus:   focus,
-				Stack:   stack.Proto(),
-				Servers: serverRuns,
-				Secrets: *secrets,
+				Focus:       focus,
+				Deployables: serverRuns,
+				Secrets:     *secrets,
 			})
 			if err != nil {
 				return prepareAndBuildResult{}, err
@@ -651,9 +658,9 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 	return stack, images, nil
 }
 
-func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server, imgs builtImage, out *runtime.ServerConfig) error {
-	out.Server = s.Proto()
-	out.ServerLocation = s.Location
+func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server, imgs builtImage, out *runtime.Deployable) error {
+	out.Object = s.Proto()
+	out.Location = s.Location
 	out.Image = imgs.Binary
 	if imgs.Config.Repository != "" {
 		out.ConfigImage = &imgs.Config

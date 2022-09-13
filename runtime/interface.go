@@ -170,22 +170,32 @@ type ClusterNamespace interface {
 }
 
 type Deployment struct {
-	Focus   schema.PackageList
-	Stack   *schema.Stack
-	Servers []ServerConfig
-	Secrets GroundedSecrets
+	Focus       schema.PackageList
+	Deployables []Deployable
+	Secrets     GroundedSecrets
 }
 
-type ServerConfig struct {
+type Deployable struct {
 	ServerRunOpts
-	ServerLocation   fnerrors.Location
-	Server           *schema.Server
-	ConfigImage      *oci.ImageID
-	ServerExtensions []*schema.ServerExtension
-	Extensions       []*schema.DefExtension
-	Sidecars         []SidecarRunOpts
-	Inits            []SidecarRunOpts
-	RuntimeConfig    *runtime.RuntimeConfig
+	Location          fnerrors.Location
+	PackageName       schema.PackageName
+	Object            DeployableObject
+	ConfigImage       *oci.ImageID
+	ServerExtensions  []*schema.ServerExtension
+	Extensions        []*schema.DefExtension
+	Sidecars          []SidecarRunOpts
+	Inits             []SidecarRunOpts
+	RuntimeConfig     *runtime.RuntimeConfig
+	Endpoints         []*schema.Endpoint         // Owned by this server.
+	InternalEndpoints []*schema.InternalEndpoint // Owned by this server.
+}
+
+type DeployableObject interface {
+	GetName() string
+	GetId() string
+	GetVolumes() []*schema.Volume
+	GetMounts() []*schema.Mount
+	GetDeployableClass() schema.DeployableClass
 }
 
 type GroundedSecrets struct {

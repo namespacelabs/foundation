@@ -67,28 +67,3 @@ func ClassFor(ctx context.Context, env planning.Context) (Class, error) {
 
 	return nil, fnerrors.InternalError("%s: no such runtime", rt)
 }
-
-func obtainSpecialized[V any](ctx context.Context, env planning.Context) (V, error) {
-	var empty V
-
-	deferred, err := ClassFor(ctx, env)
-	if err != nil {
-		return empty, err
-	}
-
-	if h, ok := deferred.(V); ok {
-		return h, nil
-	}
-
-	cluster, err := deferred.AttachToCluster(ctx, env.Configuration())
-	if err != nil {
-		return empty, err
-	}
-
-	bound, err := cluster.Bind(env)
-	if err != nil {
-		return empty, err
-	}
-
-	return bound.(V), nil
-}

@@ -94,7 +94,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		Resource: applycorev1.
 			Secret(serverSecretName, namespace).
 			WithType(v1.SecretTypeOpaque).
-			WithAnnotations(kubedef.MakeAnnotations(r.Env, r.Stack.GetServer(r.Focus.GetPackageName()).Server)).
+			WithAnnotations(kubedef.MakeAnnotations(r.Env, r.Focus.GetPackageName())).
 			WithLabels(kubedef.MakeLabels(r.Env, r.Focus.Server)).
 			WithData(data),
 	})

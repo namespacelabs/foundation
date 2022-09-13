@@ -36,9 +36,9 @@ const (
 	defaultEphemeralTimeout = time.Hour
 )
 
-func SelectById(srv *schema.Server) map[string]string {
+func SelectById(srv ObjectWithID) map[string]string {
 	return map[string]string{
-		K8sServerId: srv.Id,
+		K8sServerId: srv.GetId(),
 	}
 }
 
@@ -66,11 +66,15 @@ func ManagedByUs() map[string]string {
 	}
 }
 
-func MakeLabels(env *schema.Environment, srv *schema.Server) map[string]string {
+type ObjectWithID interface {
+	GetId() string
+}
+
+func MakeLabels(env *schema.Environment, srv ObjectWithID) map[string]string {
 	// XXX add recommended labels https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 	m := ManagedByUs()
 	if srv != nil {
-		m[K8sServerId] = srv.Id
+		m[K8sServerId] = srv.GetId()
 	}
 	if env != nil {
 		m[K8sEnvName] = env.Name
@@ -98,11 +102,11 @@ func HasFocusMark(labels map[string]string) bool {
 	return label == "true"
 }
 
-func MakeAnnotations(env *schema.Environment, entry *schema.Server) map[string]string {
+func MakeAnnotations(env *schema.Environment, pkg schema.PackageName) map[string]string {
 	m := map[string]string{}
 
-	if entry != nil {
-		m[K8sServerPackageName] = entry.GetPackageName()
+	if pkg != "" {
+		m[K8sServerPackageName] = pkg.String()
 	}
 
 	if env.GetEphemeral() {
@@ -113,7 +117,7 @@ func MakeAnnotations(env *schema.Environment, entry *schema.Server) map[string]s
 	return m
 }
 
-func MakeServiceAnnotations(srv *schema.Server, endpoint *schema.Endpoint) (map[string]string, error) {
+func MakeServiceAnnotations(endpoint *schema.Endpoint) (map[string]string, error) {
 	m := map[string]string{
 		K8sServicePackageName: endpoint.GetEndpointOwner(),
 	}
@@ -141,7 +145,7 @@ func MakeServiceAnnotations(srv *schema.Server, endpoint *schema.Endpoint) (map[
 	return m, nil
 }
 
-func MakeServiceLabels(env *schema.Environment, srv *schema.Server, endpoint *schema.Endpoint) map[string]string {
+func MakeServiceLabels(env *schema.Environment, srv ObjectWithID, endpoint *schema.Endpoint) map[string]string {
 	m := MakeLabels(env, srv)
 
 	return m

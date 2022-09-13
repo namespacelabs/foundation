@@ -16,11 +16,6 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-const (
-	serverClassStateless = "stateless"
-	serverClassStateful  = "stateful"
-)
-
 type cueServer struct {
 	Name  string `json:"name"`
 	Class string `json:"class"`
@@ -54,15 +49,16 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	out.Framework = schema.Framework_BASE
 	out.RunByDefault = true
 
-	class := bits.Class
-	if class == "" {
-		class = serverClassStateless
+	switch bits.Class {
+	case "stateless", "":
+		out.DeployableClass = schema.DeployableClass_STATELESS
+	case "stateful":
+		out.DeployableClass = schema.DeployableClass_STATEFUL
+	default:
+		return nil, nil, fnerrors.UserError(loc, "%s: server class is not supported", bits.Class)
 	}
 
-	if class != serverClassStateful && class != serverClassStateless {
-		return nil, nil, fnerrors.UserError(loc, "server class is not supported: %s", class)
-	}
-	out.IsStateful = class != serverClassStateless
+	out.IsStateful = out.DeployableClass == schema.DeployableClass_STATEFUL
 
 	for name, svc := range bits.Services {
 		parsed, endpointType, err := parseService(loc, name, svc)
