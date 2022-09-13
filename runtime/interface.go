@@ -177,21 +177,23 @@ type Deployment struct {
 type Deployable struct {
 	Location    fnerrors.Location
 	PackageName schema.PackageName
-	Class       schema.DeployableClass
-	Id          string // Must not be empty.
-	Name        string // Can be empty.
-	Volumes     []*schema.Volume
-	Mounts      []*schema.Mount
+	Focused     bool // Set to true if the user explicitly asked for this object to be deployed.
 
-	Focused bool // Set to true if the user explicitly asked for this object to be deployed.
+	Class   schema.DeployableClass
+	Id      string // Must not be empty.
+	Name    string // Can be empty.
+	Volumes []*schema.Volume
+
 	RunOpts ContainerRunOpts
 
-	ConfigImage       *oci.ImageID
-	ServerExtensions  []*schema.ServerExtension
-	Extensions        []*schema.DefExtension
-	Sidecars          []SidecarRunOpts
-	Inits             []SidecarRunOpts
-	RuntimeConfig     *runtime.RuntimeConfig
+	ConfigImage   *oci.ImageID
+	RuntimeConfig *runtime.RuntimeConfig
+
+	ServerExtensions []*schema.ServerExtension
+	Extensions       []*schema.DefExtension
+	Sidecars         []SidecarRunOpts
+	Inits            []SidecarRunOpts
+
 	Endpoints         []*schema.Endpoint         // Owned by this deployable.
 	InternalEndpoints []*schema.InternalEndpoint // Owned by this deployable.
 }
@@ -217,6 +219,7 @@ type ContainerRunOpts struct {
 	Env                []*schema.BinaryConfig_EnvEntry
 	RunAs              *RunAs
 	ReadOnlyFilesystem bool
+	Mounts             []*schema.Mount
 }
 
 type RunAs struct {

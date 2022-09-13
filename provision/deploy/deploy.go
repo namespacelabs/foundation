@@ -667,7 +667,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 	out.Id = srv.Id
 	out.Name = srv.Name
 	out.Volumes = srv.Volumes
-	out.Mounts = srv.Mounts
+	out.RunOpts.Mounts = srv.Mounts
 
 	out.RunOpts.Image = imgs.Binary
 	if imgs.Config.Repository != "" {

@@ -382,7 +382,7 @@ func prepareDeployment(ctx context.Context, r clusterTarget, deployable runtime.
 	}
 
 	volumes := slices.Clone(deployable.Volumes)
-	mounts := slices.Clone(deployable.Mounts)
+	mounts := slices.Clone(deployable.RunOpts.Mounts)
 
 	for _, ext := range deployable.ServerExtensions {
 		volumes = append(volumes, ext.Volume...)
