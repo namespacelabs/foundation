@@ -6,7 +6,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	sync "sync"
 
@@ -27,9 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/dirs"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type ClusterConfiguration struct {
@@ -45,10 +42,6 @@ type TokenProviderFunc func(context.Context) (string, error)
 type ProviderFunc func(context.Context, planning.Configuration) (ClusterConfiguration, error)
 
 var (
-	clientCache struct {
-		mu    sync.Mutex
-		cache map[string]*ComputedClient
-	}
 	providers = map[string]ProviderFunc{}
 )
 
@@ -69,10 +62,6 @@ func (cc ComputedClient) Provider() (ClusterConfiguration, error) {
 	}
 
 	return x.Provider, nil
-}
-
-func init() {
-	clientCache.cache = map[string]*ComputedClient{}
 }
 
 func RegisterConfigurationProvider(name string, p ProviderFunc) {
@@ -108,18 +97,12 @@ func (cfg *computedConfig) computeConfig() (*configResult, error) {
 	c := cfg.host.HostEnv
 
 	if c.Provider != "" {
-		p := providers[c.Provider]
-		if p == nil {
+		provider := providers[c.Provider]
+		if provider == nil {
 			return nil, fnerrors.BadInputError("%s: no such kubernetes configuration provider", c.Provider)
 		}
 
-		cached := &cachedProviderConfig{
-			providerName: c.Provider,
-			config:       cfg.host.Config,
-			provider:     p,
-		}
-
-		x, err := compute.GetValue[ClusterConfiguration](cfg.ctx, cached)
+		x, err := provider(cfg.ctx, cfg.host.Config)
 		if err != nil {
 			return nil, err
 		}
@@ -197,40 +180,23 @@ func (cfg *computedConfig) ConfigAccess() clientcmd.ConfigAccess {
 func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
 	fmt.Fprintf(console.Debug(ctx), "kubernetes.NewClient\n")
 
-	keyBytes, err := json.Marshal(struct {
-		C *HostEnv
-		S string
-	}{host.HostEnv, host.Config.HashKey()})
+	parent := NewClientConfig(ctx, host)
+
+	config, err := parent.ClientConfig()
 	if err != nil {
-		return nil, fnerrors.InternalError("failed to serialize config/env key: %w", err)
+		return nil, err
 	}
 
-	key := string(keyBytes)
-
-	clientCache.mu.Lock()
-	defer clientCache.mu.Unlock()
-
-	if _, ok := clientCache.cache[key]; !ok {
-		parent := NewClientConfig(ctx, host)
-
-		config, err := parent.ClientConfig()
-		if err != nil {
-			return nil, err
-		}
-
-		clientset, err := k8s.NewForConfig(config)
-		if err != nil {
-			return nil, err
-		}
-
-		clientCache.cache[key] = &ComputedClient{
-			Clientset:  clientset,
-			RESTConfig: config,
-			parent:     parent,
-		}
+	clientset, err := k8s.NewForConfig(config)
+	if err != nil {
+		return nil, err
 	}
 
-	return clientCache.cache[key], nil
+	return &ComputedClient{
+		Clientset:  clientset,
+		RESTConfig: config,
+		parent:     parent,
+	}, nil
 }
 
 var groups = map[string]schema.GroupVersion{
@@ -319,29 +285,4 @@ func ComputeHostConfig(cfg planning.Configuration) (*HostConfig, error) {
 	}
 
 	return &HostConfig{Config: cfg, HostEnv: hostEnv}, nil
-}
-
-// Only compute configurations once per `ns` invocation.
-type cachedProviderConfig struct {
-	providerName string
-	config       planning.Configuration
-
-	provider ProviderFunc
-
-	compute.DoScoped[ClusterConfiguration]
-}
-
-var _ compute.Computable[ClusterConfiguration] = &cachedProviderConfig{}
-
-func (t *cachedProviderConfig) Action() *tasks.ActionEvent {
-	return tasks.Action("kubernetes.compute-config").Arg("provider", t.providerName)
-}
-func (t *cachedProviderConfig) Inputs() *compute.In {
-	return compute.Inputs().Str("provider", t.providerName).
-		Str("configHash", t.config.HashKey()). // We depend on the configuration cache keys being stable.
-		Str("config", t.config.EnvKey())
-}
-func (t *cachedProviderConfig) Output() compute.Output { return compute.Output{NotCacheable: true} }
-func (t *cachedProviderConfig) Compute(ctx context.Context, _ compute.Resolved) (ClusterConfiguration, error) {
-	return t.provider(ctx, t.config)
 }

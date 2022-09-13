@@ -19,9 +19,6 @@ type Configuration interface {
 	GetForPlatform(specs.Platform, proto.Message) bool
 	Derive(string, func(ConfigurationSlice) ConfigurationSlice) Configuration
 
-	// HashKey returns a digest of the configuration that is being used.
-	HashKey() string
-
 	// When the configuration is loaded pinned to an environment, returns the
 	// environment name. Else, the return value is undefined.
 	EnvKey() string
@@ -159,14 +156,6 @@ func (cfg config) GetForPlatform(target specs.Platform, msg proto.Message) bool 
 	}
 
 	return cfg.Get(msg)
-}
-
-func (cfg config) HashKey() string {
-	d, err := schema.DigestOf(cfg.atoms)
-	if err != nil {
-		panic(err)
-	}
-	return d.String()
 }
 
 func (cfg config) EnvKey() string {
