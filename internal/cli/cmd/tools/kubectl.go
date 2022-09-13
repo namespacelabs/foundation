@@ -33,7 +33,7 @@ func newKubeCtlCmd() *cobra.Command {
 	keepConfig := cmd.Flags().Bool("keep_config", false, "If set to true, does not delete the generated configuration.")
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
-		cluster, err := kubernetes.NewNamespacedCluster(ctx, env)
+		cluster, err := kubernetes.ConnectToNamespace(ctx, env)
 		if err != nil {
 			return err
 		}

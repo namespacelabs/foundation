@@ -23,7 +23,7 @@ func newOctantCmd() *cobra.Command {
 	}
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
-		k8s, err := kubernetes.NewNamespacedCluster(ctx, env)
+		k8s, err := kubernetes.ConnectToNamespace(ctx, env)
 		if err != nil {
 			return err
 		}

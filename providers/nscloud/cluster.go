@@ -376,7 +376,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configurat
 	// and cluster providers are registered with the same provider key. We
 	// should instead create the cluster here, when the CreateCluster intent is
 	// still clear.
-	unbound, err := kubernetes.NewCluster(ctx, cfg)
+	unbound, err := kubernetes.ConnectToCluster(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}

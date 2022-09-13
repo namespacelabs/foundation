@@ -261,7 +261,7 @@ func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, ru
 		return fnerrors.BadInputError("%s: no credentials available", database)
 	}
 
-	k8s, err := kubernetes.NewNamespacedCluster(ctx, res.Env)
+	k8s, err := kubernetes.ConnectToNamespace(ctx, res.Env)
 	if err != nil {
 		return err
 	}

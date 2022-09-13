@@ -77,7 +77,7 @@ func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.
 				return nil, err
 			}
 
-			return kubernetes.NewCluster(ctx, config)
+			return kubernetes.ConnectToCluster(ctx, config)
 		})
 }
 

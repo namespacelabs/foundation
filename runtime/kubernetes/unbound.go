@@ -44,7 +44,7 @@ func NewFromConfig(ctx context.Context, config *client.HostConfig) (*Cluster, er
 	return &Cluster{cli: cli.Clientset, computedClient: cli, host: config}, nil
 }
 
-func NewCluster(ctx context.Context, cfg planning.Configuration) (*Cluster, error) {
+func ConnectToCluster(ctx context.Context, cfg planning.Configuration) (*Cluster, error) {
 	hostConfig, err := client.ComputeHostConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -53,8 +53,8 @@ func NewCluster(ctx context.Context, cfg planning.Configuration) (*Cluster, erro
 	return NewFromConfig(ctx, hostConfig)
 }
 
-func NewNamespacedCluster(ctx context.Context, env planning.Context) (*ClusterNamespace, error) {
-	cluster, err := NewCluster(ctx, env.Configuration())
+func ConnectToNamespace(ctx context.Context, env planning.Context) (*ClusterNamespace, error) {
+	cluster, err := ConnectToCluster(ctx, env.Configuration())
 	if err != nil {
 		return nil, err
 	}

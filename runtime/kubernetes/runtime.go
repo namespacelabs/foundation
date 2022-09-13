@@ -69,11 +69,11 @@ type kubernetesClass struct{}
 var _ runtime.Class = kubernetesClass{}
 
 func (d kubernetesClass) AttachToCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
-	return NewCluster(ctx, cfg)
+	return ConnectToCluster(ctx, cfg)
 }
 
 func (d kubernetesClass) EnsureCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
-	return NewCluster(ctx, cfg)
+	return ConnectToCluster(ctx, cfg)
 }
 
 func newTarget(env planning.Context) clusterTarget {
