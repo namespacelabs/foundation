@@ -29,10 +29,11 @@ import (
 )
 
 const (
-	eof       = "EOF" // magic marker to signal when to stop tailing logs
-	taskFile  = "tasks.json"
-	eventFile = "events.json"
-	errFile   = "error.txt"
+	eof           = "EOF" // magic marker to signal when to stop tailing logs
+	taskFile      = "tasks.json"
+	eventFile     = "events.json"
+	errFile       = "error.txt"
+	updateTimeout = time.Minute // Deployments can take very long (e.g. > 15 minutes for RDS cluster setup) but we expect regular log/event updates.
 )
 
 type deployer struct {
@@ -245,6 +246,8 @@ func (d *deployer) Status(ctx context.Context, id string, loglevel int32, ch cha
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-time.After(updateTimeout):
+			return fmt.Errorf("deployment %s likely died: didn't receive any event/log update in %v", id, updateTimeout)
 		case line := <-events.Lines:
 			if line.Text == eof {
 				eventsDone = true
