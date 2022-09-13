@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -49,10 +50,7 @@ func (r *Cluster) attachTerminal(ctx context.Context, cli *kubernetes.Clientset,
 }
 
 func (r *Cluster) lowLevelAttachTerm(ctx context.Context, cli *kubernetes.Clientset, ns, podname string, rio runtime.TerminalIO, subresource string, params k8srt.Object) error {
-	config, err := resolveConfig(ctx, r.host)
-	if err != nil {
-		return err
-	}
+	config := client.CopyAndSetDefaults(*r.RESTConfig(), corev1.SchemeGroupVersion)
 
 	restClient, err := rest.RESTClientFor(config)
 	if err != nil {

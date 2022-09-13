@@ -77,10 +77,6 @@ func RegisterProvider(name string, p ProviderFunc) {
 	providers[name] = p
 }
 
-func NewRestConfigFromHostEnv(ctx context.Context, host *HostConfig) (*rest.Config, error) {
-	return NewClientConfig(ctx, host).ClientConfig()
-}
-
 func NewClientConfig(ctx context.Context, host *HostConfig) *computedConfig {
 	return &computedConfig{ctx: ctx, host: host}
 }

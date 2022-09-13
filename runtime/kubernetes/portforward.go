@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnnet"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/schema"
@@ -87,10 +88,7 @@ func (u *Cluster) RawDialServer(ctx context.Context, ns string, podLabels map[st
 		return nil, err
 	}
 
-	config, err := resolveConfig(ctx, u.host)
-	if err != nil {
-		return nil, err
-	}
+	config := client.CopyAndSetDefaults(*u.RESTConfig(), v1.SchemeGroupVersion)
 
 	restClient, err := rest.RESTClientFor(config)
 	if err != nil {
@@ -109,10 +107,7 @@ func (u *Cluster) RawDialServer(ctx context.Context, ns string, podLabels map[st
 }
 
 func (r *Cluster) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPortFwdArgs) error {
-	config, err := resolveConfig(ctx, r.host)
-	if err != nil {
-		return err
-	}
+	config := client.CopyAndSetDefaults(*r.RESTConfig(), v1.SchemeGroupVersion)
 
 	restClient, err := rest.RESTClientFor(config)
 	if err != nil {
