@@ -34,7 +34,7 @@ func transformTest(loc pkggraph.Location, server *schema.Server, test *schema.Te
 		test.Driver.Name = test.Name
 	}
 
-	if err := TransformBinary(loc, test.Driver); err != nil {
+	if err := transformBinary(loc, test.Driver); err != nil {
 		return err
 	}
 
