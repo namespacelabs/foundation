@@ -67,6 +67,11 @@ type Cluster interface {
 	// EnsureState ensures that a cluster-specific bit of initialization is done once per instance.
 	// XXX remove planning.Context, as it leaks environment bits.
 	EnsureState(context.Context, string, planning.Context) (any, error)
+
+	// Deletes any runtime resource deployed by this runtime, regardless of
+	// environment. If wait is true, waits until the target resources have been
+	// removed. Returns true if resources were deleted.
+	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
 }
 
 // A planner is capable of generating namespace-specific deployment plans. It
@@ -163,11 +168,6 @@ type ClusterNamespace interface {
 	// after a test invocation). If wait is true, waits until the target
 	// resources have been removed. Returns true if resources were deleted.
 	DeleteRecursively(ctx context.Context, wait bool) (bool, error)
-
-	// Deletes any runtime resource deployed by this runtime, regardless of
-	// environment. If wait is true, waits until the target resources have been
-	// removed. Returns true if resources were deleted.
-	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
 }
 
 type Deployable interface {

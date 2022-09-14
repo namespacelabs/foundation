@@ -66,7 +66,7 @@ func NewDeploymentCmd() *cobra.Command {
 			}
 		}
 
-		cluster, err := runtime.NamespaceFor(ctx, env)
+		cluster, err := runtime.ClusterFor(ctx, env)
 		if err != nil {
 			return err
 		}

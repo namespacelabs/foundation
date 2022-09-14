@@ -20,7 +20,7 @@ import (
 func serveTerminal(s *Session, w http.ResponseWriter, r *http.Request, serverID string) {
 	serveStream("terminal", w, r, func(ctx context.Context, ws *websocket.Conn, w io.Writer) error {
 		// XXX rather than obtaining the current one, it should be encoded in the request to logs.
-		env, server, err := s.ResolveServer(r.Context(), serverID)
+		cluster, server, err := s.ResolveServer(r.Context(), serverID)
 		if err != nil {
 			return err
 		}
@@ -69,13 +69,8 @@ func serveTerminal(s *Session, w http.ResponseWriter, r *http.Request, serverID 
 			})
 		}()
 
-		rt, err := runtime.NamespaceFor(ctx, env)
-		if err != nil {
-			return err
-		}
-
 		// Returns when stdout is drained; which may happen when w fails to write, e.g. when ws is closed.
-		return rt.StartTerminal(ctx, server, runtime.TerminalIO{
+		return cluster.StartTerminal(ctx, server, runtime.TerminalIO{
 			TTY:   true,
 			Stdin: inr, Stdout: w, Stderr: w,
 			ResizeQueue: resizeCh,

@@ -439,6 +439,10 @@ func (d *cluster) EnsureState(ctx context.Context, key string, env planning.Cont
 	return d.ClusterAttachedState.EnsureState(ctx, key, env, d)
 }
 
+func (d *cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
+	return d.cluster.DeleteAllRecursively(ctx, wait, progress)
+}
+
 func (d *cluster) Client() *k8s.Clientset {
 	return d.cluster.Client()
 }

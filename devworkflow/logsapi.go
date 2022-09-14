@@ -19,24 +19,19 @@ import (
 func serveLogs(s *Session, w http.ResponseWriter, r *http.Request, serverID string) {
 	serveStream("server.logs", w, r, func(ctx context.Context, conn *websocket.Conn, wsWriter io.Writer) error {
 		// XXX rather than obtaining the current one, it should be encoded in the request to logs.
-		env, server, err := s.ResolveServer(ctx, serverID)
+		cluster, server, err := s.ResolveServer(ctx, serverID)
 		if err != nil {
 			return err
 		}
 
-		rt, err := runtime.NamespaceFor(ctx, env)
-		if err != nil {
-			return err
-		}
-
-		refs, err := rt.ResolveContainers(ctx, server)
+		refs, err := cluster.ResolveContainers(ctx, server)
 		if err != nil {
 			return err
 		}
 
 		for _, ref := range refs {
 			if ref.Kind == schema.ContainerKind_PRIMARY {
-				return rt.Cluster().FetchLogsTo(ctx, wsWriter, ref, runtime.FetchLogsOpts{Follow: true})
+				return cluster.Cluster().FetchLogsTo(ctx, wsWriter, ref, runtime.FetchLogsOpts{Follow: true})
 			}
 		}
 

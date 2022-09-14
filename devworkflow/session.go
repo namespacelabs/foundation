@@ -102,13 +102,13 @@ func (s *Session) CommandOutput() io.ReadCloser   { return io.NopCloser(bytes.Ne
 func (s *Session) BuildOutput() io.ReadCloser     { return io.NopCloser(bytes.NewReader(nil)) }
 func (s *Session) BuildJSONOutput() io.ReadCloser { return io.NopCloser(bytes.NewReader(nil)) }
 
-func (s *Session) ResolveServer(ctx context.Context, serverID string) (planning.Context, *schema.Server, error) {
+func (s *Session) ResolveServer(ctx context.Context, serverID string) (runtime.ClusterNamespace, *schema.Server, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	entry := s.currentStack.GetStack().GetServerByID(serverID)
 	if entry != nil {
-		return s.currentEnv, entry.Server, nil
+		return s.cluster, entry.Server, nil
 	}
 
 	return nil, nil, fnerrors.UserError(nil, "%s: no such server in the current session", serverID)
